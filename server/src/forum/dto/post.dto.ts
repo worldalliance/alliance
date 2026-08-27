@@ -16,6 +16,7 @@ import {
   CreateEditableContentDto,
   EditableContentDto,
 } from "./editablecontent.dto";
+import { PostTagDto } from "./post-tag.dto";
 
 export class PostDto extends PickType(Post, [
   "id",
@@ -69,6 +70,9 @@ export class PostDto extends PickType(Post, [
   @ApiPropertyOptional({ type: () => ProfileDto, isArray: true })
   authors?: ProfileDto[];
 
+  @ApiPropertyOptional({ type: () => PostTagDto, isArray: true })
+  tags?: PostTagDto[];
+
   constructor({
     post,
     commentCount,
@@ -121,6 +125,11 @@ export class PostDto extends PickType(Post, [
       : undefined;
     this.authors = post.authors
       ? post.authors.map((author) => new ProfileDto(author))
+      : undefined;
+    this.tags = post.tags
+      ? [...post.tags]
+          .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
+          .map((tag) => new PostTagDto(tag))
       : undefined;
   }
 }

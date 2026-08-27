@@ -4,6 +4,7 @@ import {
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
 import { CreateCommentDto, UpdateCommentDto } from "src/forum/dto/comment.dto";
+import { UpdatePostTagsDto } from "src/forum/dto/post-tag.dto";
 import { CommentParentObject } from "src/forum/entities/comment.entity";
 import {
   Notification,
@@ -1766,6 +1767,235 @@ describe("Forum (e2e)", () => {
       expect(activityCommentNotifs[0].webAppLocation).toBe(
         `/actions/${testAction.id}/activity/${activityId}?replyId=${commentId}`,
       );
+    });
+  });
+
+  describe("Post tags", () => {
+    const saveTags = ({
+      postId,
+      tags,
+      knownTagIds,
+    }: {
+      postId: number;
+      tags: { id?: number; name: string }[];
+      knownTagIds: number[];
+    }) =>
+      request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/tags`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ tags, knownTagIds } satisfies UpdatePostTagsDto);
+
+    const createTaggedPost = async (names: string[]) => {
+      const post = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Tagged Post",
+          editableContent: { body: "Body content", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const tagged = await saveTags({
+        postId: post.body.id,
+        tags: names.map((name) => ({ name })),
+        knownTagIds: [],
+      }).expect(200);
+
+      return { postId: post.body.id as number, tags: tagged.body.tags };
+    };
+
+    const postComment = (postId: number, body: Partial<CreateCommentDto>) =>
+      request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "Tagged comment", attachments: [] },
+          parentObjectId: postId,
+          parentObjectType: CommentParentObject.Post,
+          ...body,
+        } satisfies CreateCommentDto);
+
+    const commentWithTag = async (postId: number, tagId: number) => {
+      const created = await postComment(postId, { tagId }).expect(201);
+      return created.body.id;
+    };
+
+    const commentTagId = async (postId: number, commentId: number) => {
+      const comments = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${postId}/comments`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      return comments.body.find((comment) => comment.id === commentId).tagId;
+    };
+
+    const tagIds = (tags: { id: number }[]) => tags.map((tag) => tag.id);
+
+    it("swaps two tag names in one save", async () => {
+      const { postId, tags } = await createTaggedPost(["A", "B"]);
+      const commentId = await commentWithTag(postId, tags[0].id);
+
+      const swapped = await saveTags({
+        postId,
+        tags: [
+          { id: tags[0].id, name: "B" },
+          { id: tags[1].id, name: "A" },
+        ],
+        knownTagIds: tagIds(tags),
+      }).expect(200);
+
+      expect(swapped.body.tags).toEqual([
+        { id: tags[0].id, name: "B", sortOrder: 0 },
+        { id: tags[1].id, name: "A", sortOrder: 1 },
+      ]);
+      expect(await commentTagId(postId, commentId)).toBe(tags[0].id);
+    });
+
+    it("drops a tag and renames the others in one save", async () => {
+      const { postId, tags } = await createTaggedPost(["A", "B", "C"]);
+      const keptCommentId = await commentWithTag(postId, tags[0].id);
+      const droppedCommentId = await commentWithTag(postId, tags[2].id);
+
+      const saved = await saveTags({
+        postId,
+        tags: [
+          { id: tags[0].id, name: "B" },
+          { id: tags[1].id, name: "A" },
+        ],
+        knownTagIds: tagIds(tags),
+      }).expect(200);
+
+      expect(saved.body.tags).toEqual([
+        { id: tags[0].id, name: "B", sortOrder: 0 },
+        { id: tags[1].id, name: "A", sortOrder: 1 },
+      ]);
+      expect(await commentTagId(postId, keptCommentId)).toBe(tags[0].id);
+      expect(await commentTagId(postId, droppedCommentId)).toBeNull();
+    });
+
+    it("keeps every tag when a save fails partway", async () => {
+      const { postId, tags } = await createTaggedPost(["A", "B", "C"]);
+      const commentId = await commentWithTag(postId, tags[2].id);
+
+      await saveTags({
+        postId,
+        tags: [
+          { id: tags[0].id, name: "B" },
+          { id: tags[1].id, name: "A" },
+          { id: tags[2].id + 1000, name: "D" },
+        ],
+        knownTagIds: tagIds(tags),
+      }).expect(400);
+
+      const post = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${postId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      expect(post.body.tags).toEqual([
+        { id: tags[0].id, name: "A", sortOrder: 0 },
+        { id: tags[1].id, name: "B", sortOrder: 1 },
+        { id: tags[2].id, name: "C", sortOrder: 2 },
+      ]);
+      expect(await commentTagId(postId, commentId)).toBe(tags[2].id);
+    });
+
+    it("refuses to save over a tag added from another session", async () => {
+      const { postId, tags } = await createTaggedPost(["A"]);
+      const other = await saveTags({
+        postId,
+        tags: [{ id: tags[0].id, name: "A" }, { name: "B" }],
+        knownTagIds: tagIds(tags),
+      }).expect(200);
+
+      const stale = await saveTags({
+        postId,
+        tags: [{ id: tags[0].id, name: "A renamed" }],
+        knownTagIds: tagIds(tags),
+      }).expect(409);
+      expect(stale.body.message).toContain("Another admin");
+
+      const post = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${postId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      expect(post.body.tags).toEqual(other.body.tags);
+    });
+
+    it("rejects a tag name that is only whitespace", async () => {
+      const { postId, tags } = await createTaggedPost(["A"]);
+
+      await saveTags({
+        postId,
+        tags: [{ name: "   " }],
+        knownTagIds: tagIds(tags),
+      }).expect(400);
+    });
+
+    it("trims a tag name, and catches names that collide once trimmed", async () => {
+      const { postId, tags } = await createTaggedPost(["A"]);
+
+      const saved = await saveTags({
+        postId,
+        tags: [{ name: "  Praise  " }],
+        knownTagIds: tagIds(tags),
+      }).expect(200);
+      expect(saved.body.tags[0].name).toBe("Praise");
+
+      await saveTags({
+        postId,
+        tags: [{ name: "Praise" }, { name: " Praise " }],
+        knownTagIds: tagIds(saved.body.tags),
+      }).expect(400);
+    });
+
+    it("requires a tag once the post defines them", async () => {
+      const { postId } = await createTaggedPost(["A"]);
+
+      const rejected = await postComment(postId, {}).expect(400);
+      expect(rejected.body.message).toBe("Pick a tag for this comment");
+    });
+
+    it("rejects a tag that belongs to another post", async () => {
+      const other = await createTaggedPost(["A"]);
+      const { postId } = await createTaggedPost(["B"]);
+
+      await postComment(postId, { tagId: other.tags[0].id }).expect(400);
+    });
+
+    it("keeps the picked tag on a top-level comment", async () => {
+      const { postId, tags } = await createTaggedPost(["A", "B"]);
+
+      const commentId = await commentWithTag(postId, tags[1].id);
+
+      expect(await commentTagId(postId, commentId)).toBe(tags[1].id);
+    });
+
+    it("ignores a tag sent on a reply", async () => {
+      const { postId, tags } = await createTaggedPost(["A"]);
+      const parentId = await commentWithTag(postId, tags[0].id);
+
+      const reply = await postComment(postId, {
+        parentId,
+        tagId: tags[0].id,
+      }).expect(201);
+
+      expect(reply.body.tagId).toBeNull();
+    });
+
+    it("takes no tag on a post that defines none", async () => {
+      const post = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Untagged Post",
+          editableContent: { body: "Body content", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const created = await postComment(post.body.id, {}).expect(201);
+      expect(created.body.tagId).toBeNull();
     });
   });
 });

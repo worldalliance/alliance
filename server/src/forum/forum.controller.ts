@@ -24,6 +24,7 @@ import {
   UpdateCommentDto,
   UserCommentDto,
 } from "./dto/comment.dto";
+import { UpdatePostTagsDto } from "./dto/post-tag.dto";
 import {
   CreatePostDto,
   PostDto,
@@ -394,6 +395,18 @@ export class ForumController {
       id,
       updatePostAuthorsDto.authorIds,
     );
+    return new PostDto({ post });
+  }
+
+  @Patch("admin/posts/:id/tags")
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: "Replace the tags available on a post" })
+  @ApiOkResponse({ type: PostDto })
+  async updatePostTagsAdmin(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() updatePostTagsDto: UpdatePostTagsDto,
+  ): Promise<PostDto> {
+    const post = await this.forumService.updatePostTags(id, updatePostTagsDto);
     return new PostDto({ post });
   }
 

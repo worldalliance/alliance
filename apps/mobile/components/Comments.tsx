@@ -7,6 +7,7 @@ import {
   CreateCommentDto,
   CreateEditableContentDto,
   NotificationDto,
+  PostTagDto,
   UserDto,
   forumCreateComment,
   forumDeleteComment,
@@ -26,6 +27,11 @@ import {
   sortLabels,
   useCommentFilterData,
 } from "@alliance/shared/lib/commentsFilter";
+import {
+  TagFilter,
+  countCommentsByTag,
+  matchesTagFilter,
+} from "@alliance/shared/lib/commentTags";
 import {
   uploadAttachments,
   withUploadedKeys,
@@ -48,7 +54,10 @@ import { LikeActionButton } from "./LikeFooter";
 import LikeSummary from "./LikeSummary";
 import ProfileImage from "./ProfileImage";
 import Text from "./system/Text";
+import TagChips from "./TagChips";
 import UserDisplayName from "./UserDisplayName";
+
+const NO_TAGS: readonly PostTagDto[] = [];
 
 export interface CommentsProps {
   objectId: number;
@@ -65,6 +74,7 @@ export interface CommentsProps {
   expertIds?: number[];
   expertLabel?: string;
   showClusterTags?: boolean;
+  tags?: readonly PostTagDto[];
 }
 
 const shouldShowComment = (comment: CommentDto) => {
@@ -172,6 +182,9 @@ type ReplyFormProps = {
   isSubmitting: boolean;
   error?: string | null;
   onDismissError?: () => void;
+  tags?: readonly PostTagDto[];
+  selectedTagId?: number;
+  setSelectedTagId?: (id: number | undefined) => void;
   onSubmit: (
     content: CreateEditableContentDto,
     parentId?: number | null,
@@ -188,8 +201,12 @@ const ReplyForm = ({
   isSubmitting,
   error,
   onDismissError,
+  tags = [],
+  selectedTagId,
+  setSelectedTagId,
   onSubmit,
 }: ReplyFormProps) => {
+  const needsTag = parentId === null && tags.length > 0;
   // EditableContentForm hides its Cancel button when onCancel is undefined.
   const handleCancel = onCancel
     ? () => {
@@ -200,6 +217,18 @@ const ReplyForm = ({
 
   return (
     <View className="p-2 bg-zinc-100 rounded">
+      {needsTag && (
+        <View className="mb-3">
+          <Text className="text-sm text-zinc-500 mb-1.5">
+            Pick a tag for your comment
+          </Text>
+          <TagChips
+            tags={tags}
+            selected={selectedTagId}
+            onSelect={(value) => setSelectedTagId?.(value ?? undefined)}
+          />
+        </View>
+      )}
       <EditableContentForm
         value={content}
         onChange={(next) => {
@@ -213,6 +242,7 @@ const ReplyForm = ({
         onCancel={handleCancel}
         submitLabel="Post"
         isSubmitting={isSubmitting}
+        submitDisabled={needsTag && selectedTagId === undefined}
       />
       {error && <Text className="mt-2 text-sm text-red-500">{error}</Text>}
     </View>
@@ -237,6 +267,7 @@ type ReplyItemSharedProps = {
   expertIds: number[];
   expertLabel?: string;
   showClusterTags: boolean;
+  tags: readonly PostTagDto[];
   onSubmitReply: (
     content: CreateEditableContentDto,
     parentId?: number | null,
@@ -271,6 +302,7 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
   const isReplyingToThis = shared.replyingTo === reply.id;
   const hasChildren = (reply.children?.length ?? 0) > 0;
   const isHighlighted = shared.highlightedId === reply.id;
+  const tag = shared.tags.find((candidate) => candidate.id === reply.tagId);
   const isNewlyAdded = shared.newlyAddedReplies.has(reply.id);
   const metaTextClass = shared.small ? "text-xs" : "text-sm";
   const actionTextClass = shared.small
@@ -385,6 +417,11 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
           <Text className={cn("text-zinc-500", metaTextClass)}>
             {formatTime(new Date(reply.createdAt), { addSuffix: true })}
           </Text>
+          {tag && (
+            <View className="bg-zinc-200 rounded-full px-2 py-0.5">
+              <Text className="text-xs text-zinc-700">{tag.name}</Text>
+            </View>
+          )}
           {hasChildren && isCollapsed && (
             <Text className={cn("text-zinc-500", metaTextClass)}>
               {withCount(reply.children?.length ?? 0, "reply")} hidden
@@ -544,6 +581,7 @@ export default function Comments({
   expertIds: expertIdsProp = [],
   expertLabel,
   showClusterTags = false,
+  tags = NO_TAGS,
 }: CommentsProps) {
   const expertIds = useMemo(
     () => (qaMode ? expertIdsProp : []),
@@ -556,6 +594,10 @@ export default function Comments({
   const [editableContent, setEditableContent] =
     useState<CreateEditableContentDto>({ body: "", attachments: [] });
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [selectedTagId, setSelectedTagId] = useState<number | undefined>(
+    undefined,
+  );
+  const [tagFilter, setTagFilter] = useState<TagFilter>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newlyAddedReplies, setNewlyAddedReplies] = useState<Set<number>>(
     new Set(),
@@ -664,6 +706,7 @@ export default function Comments({
             body: contentDto.body,
             attachments: uploaded.value,
           },
+          tagId: parentId ? undefined : selectedTagId,
         };
 
         const response = await forumCreateComment({ body: commentDto });
@@ -695,9 +738,13 @@ export default function Comments({
         }
 
         await fetchComments();
+        if (!parentId) {
+          setTagFilter(selectedTagId);
+        }
         setEditableContent({ body: "", attachments: [] });
         setNestedDraft({ body: "", attachments: [] });
         setReplyingTo(null);
+        setSelectedTagId(undefined);
         setIsComposing(false);
       } catch (err) {
         console.error("Error posting reply:", err);
@@ -709,7 +756,7 @@ export default function Comments({
         setIsSubmitting(false);
       }
     },
-    [fetchComments, objectId, type],
+    [fetchComments, objectId, selectedTagId, type],
   );
 
   const handleDeleteReply = useCallback(
@@ -877,22 +924,34 @@ export default function Comments({
     return counts;
   }, [filterOptions, topLevelComments, filterContext]);
 
+  const filterMatchedComments = useMemo(
+    () =>
+      topLevelComments.filter((comment) =>
+        matchesCommentFilter(comment, commentFilter, filterContext),
+      ),
+    [topLevelComments, commentFilter, filterContext],
+  );
+
+  const tagCounts = useMemo(
+    () => countCommentsByTag(filterMatchedComments, tags),
+    [filterMatchedComments, tags],
+  );
+
   const sortedComments = useMemo(() => {
     if (!comments) return null;
     return sortComments(
-      topLevelComments.filter((comment) =>
-        matchesCommentFilter(comment, commentFilter, filterContext),
+      filterMatchedComments.filter((comment) =>
+        matchesTagFilter(comment, tagFilter),
       ),
       commentSort,
       { randomSeed, userClusterId: user?.clusterId },
     );
   }, [
     comments,
-    topLevelComments,
-    commentFilter,
+    filterMatchedComments,
     commentSort,
-    filterContext,
     randomSeed,
+    tagFilter,
     user?.clusterId,
   ]);
 
@@ -955,6 +1014,9 @@ export default function Comments({
             isSubmitting={isSubmitting}
             error={submitErrorFor(null)}
             onDismissError={clearSubmitError}
+            tags={isPostComments ? tags : []}
+            selectedTagId={selectedTagId}
+            setSelectedTagId={setSelectedTagId}
             onSubmit={handleSubmitReply}
           />
         ) : (
@@ -992,6 +1054,15 @@ export default function Comments({
         </View>
       )}
 
+      {isPostComments && tags.length > 0 && topLevelComments.length > 0 && (
+        <TagChips
+          tags={tags}
+          selected={tagFilter}
+          onSelect={setTagFilter}
+          counts={tagCounts}
+        />
+      )}
+
       {sortedComments && sortedComments.length > 0 ? (
         <View className="gap-y-3">
           {sortedComments.map((reply) => (
@@ -1015,6 +1086,7 @@ export default function Comments({
               expertIds={expertIds}
               expertLabel={expertLabel}
               showClusterTags={showClusterTags}
+              tags={tags}
               onSubmitReply={handleSubmitReply}
               onUpdateReply={handleUpdateReply}
               submitErrorFor={submitErrorFor}

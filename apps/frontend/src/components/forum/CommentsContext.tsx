@@ -13,9 +13,11 @@ import {
   forumFindCommentsForPost,
   forumPinCommentAdmin,
   forumUpdateComment,
+  PostTagDto,
   UserDto,
 } from "@alliance/shared/client";
 import { captureException } from "@alliance/shared/lib/analytics";
+import { TagFilter } from "@alliance/shared/lib/commentTags";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
 import {
   createContext,
@@ -54,6 +56,7 @@ interface CommentsContextValue {
   showClusterTags?: boolean;
   compact?: boolean;
   showUserBadges?: boolean;
+  tags: readonly PostTagDto[];
 }
 
 const CommentsContext = createContext<CommentsContextValue | null>(null);
@@ -92,6 +95,10 @@ export interface UseCommentTreeResult {
   highlightedReplyId: number | null;
   editableContent: CreateEditableContentDto;
   setEditableContent: Dispatch<SetStateAction<CreateEditableContentDto>>;
+  selectedTagId: number | undefined;
+  setSelectedTagId: (id: number | undefined) => void;
+  tagFilter: TagFilter;
+  setTagFilter: (filter: TagFilter) => void;
 }
 
 export function useCommentTree(
@@ -112,6 +119,10 @@ export function useCommentTree(
   const [editableContent, setEditableContent] =
     useState<CreateEditableContentDto>({ body: "", attachments: [] });
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [selectedTagId, setSelectedTagId] = useState<number | undefined>(
+    undefined,
+  );
+  const [tagFilter, setTagFilter] = useState<TagFilter>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newlyAddedReplies, setNewlyAddedReplies] = useState<Set<number>>(
     new Set(),
@@ -204,6 +215,7 @@ export function useCommentTree(
         parentId: replyingTo ?? undefined,
         parentObjectType: type,
         editableContent: contentDto,
+        tagId: replyingTo ? undefined : selectedTagId,
       };
 
       const response = await forumCreateComment({ body: commentDto });
@@ -237,8 +249,12 @@ export function useCommentTree(
         onSuccess?.();
       }
 
+      if (!replyingTo) {
+        setTagFilter(selectedTagId);
+      }
       setEditableContent({ body: "", attachments: [] });
       setReplyingTo(null);
+      setSelectedTagId(undefined);
     } catch (err) {
       console.error("Error posting reply:", err);
       captureException(ExceptionEvent.PostReplyError, err);
@@ -348,6 +364,10 @@ export function useCommentTree(
     highlightedReplyId,
     editableContent,
     setEditableContent,
+    selectedTagId,
+    setSelectedTagId,
+    tagFilter,
+    setTagFilter,
   };
 }
 

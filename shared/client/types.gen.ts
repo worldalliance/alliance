@@ -515,6 +515,42 @@ export type ActionUpdate = {
 
 export type CommentParentObject = 'post' | 'action' | 'activity';
 
+export type Post = {
+    id: number;
+    title: string;
+    editableContent?: EditableContent;
+    author?: {
+        [key: string]: unknown;
+    };
+    authorId: number;
+    action?: Action;
+    actionId?: number;
+    createdAt: string;
+    pinned: boolean;
+    updatedAt: string;
+    visibleAt?: string;
+    deleted: boolean;
+    likes?: Array<User>;
+    likesIds: Array<number>;
+    qaMode: boolean;
+    expertLabel?: string;
+    experts?: Array<User>;
+    expertIds: Array<number>;
+    authors?: Array<User>;
+    authorIds: Array<number>;
+    notifyForReplies: boolean;
+    showClusterTags: boolean;
+    tags?: Array<PostTag>;
+};
+
+export type PostTag = {
+    id: number;
+    post?: Post;
+    postId: number;
+    name: string;
+    sortOrder: number;
+};
+
 export type Comment = {
     id: number;
     editableContent?: EditableContent;
@@ -533,6 +569,8 @@ export type Comment = {
     pinned: boolean;
     likes: Array<User>;
     likesCount: number;
+    tag?: PostTag;
+    tagId: number | null;
 };
 
 export type Notification = {
@@ -1776,6 +1814,7 @@ export type CommentDto = {
     updatedAt: string;
     parentId?: number;
     pinned: boolean;
+    tagId: number | null;
     author: ProfileDto;
     children?: Array<CommentDto>;
     likes: Array<ProfileDto>;
@@ -3132,6 +3171,12 @@ export type CreatePostDto = {
     editableContent: CreateEditableContentDto;
 };
 
+export type PostTagDto = {
+    id: number;
+    name: string;
+    sortOrder: number;
+};
+
 export type PostDto = {
     id: number;
     title: string;
@@ -3158,6 +3203,7 @@ export type PostDto = {
     likeCount?: number;
     experts?: Array<ProfileDto>;
     authors?: Array<ProfileDto>;
+    tags?: Array<PostTagDto>;
 };
 
 export type UserCommentDto = {
@@ -3169,6 +3215,7 @@ export type UserCommentDto = {
     updatedAt: string;
     parentId?: number;
     pinned: boolean;
+    tagId: number | null;
     author: ProfileDto;
     children?: Array<CommentDto>;
     likes: Array<ProfileDto>;
@@ -3190,6 +3237,7 @@ export type CreateCommentDto = {
     parentObjectId: number;
     parentId?: number;
     editableContent: CreateEditableContentDto;
+    tagId?: number | null;
 };
 
 export type UpdateCommentDto = {
@@ -3197,6 +3245,7 @@ export type UpdateCommentDto = {
     parentObjectId?: number;
     parentId?: number;
     editableContent?: CreateEditableContentDto;
+    tagId?: number | null;
 };
 
 export type UpdatePostExpertsDto = {
@@ -3209,6 +3258,16 @@ export type UpdatePostExpertsDto = {
 
 export type UpdatePostAuthorsDto = {
     authorIds: Array<number>;
+};
+
+export type PostTagInputDto = {
+    id?: number;
+    name: string;
+};
+
+export type UpdatePostTagsDto = {
+    tags: Array<PostTagInputDto>;
+    knownTagIds: Array<number>;
 };
 
 export type CreateActionPartnershipResponseDto = {
@@ -10669,6 +10728,30 @@ export type ForumUpdatePostAuthorsAdminResponses = {
 };
 
 export type ForumUpdatePostAuthorsAdminResponse = ForumUpdatePostAuthorsAdminResponses[keyof ForumUpdatePostAuthorsAdminResponses];
+
+export type ForumUpdatePostTagsAdminData = {
+    body: UpdatePostTagsDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/forum/admin/posts/{id}/tags';
+};
+
+export type ForumUpdatePostTagsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ForumUpdatePostTagsAdminError = ForumUpdatePostTagsAdminErrors[keyof ForumUpdatePostTagsAdminErrors];
+
+export type ForumUpdatePostTagsAdminResponses = {
+    200: PostDto;
+};
+
+export type ForumUpdatePostTagsAdminResponse = ForumUpdatePostTagsAdminResponses[keyof ForumUpdatePostTagsAdminResponses];
 
 export type ForumPinCommentAdminData = {
     body?: never;

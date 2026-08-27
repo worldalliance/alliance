@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -41,9 +42,11 @@ import {
   UpdateCommentDto,
   UserComment,
 } from "./dto/comment.dto";
+import { UpdatePostTagsDto } from "./dto/post-tag.dto";
 import { CreatePostDto, PostDtoArgs, UpdatePostDto } from "./dto/post.dto";
 import { Comment, CommentParentObject } from "./entities/comment.entity";
 import { EditableContent } from "./entities/editablecontent.entity";
+import { PostTag } from "./entities/post-tag.entity";
 import { parsePost, Post, type ParsedPost } from "./entities/post.entity";
 
 export type ForumFeedComment = {
@@ -72,6 +75,8 @@ export class ForumService {
     private actionActivityRepository: Repository<ActionActivity>,
     @InjectRepository(EditableContent)
     private editableContentRepository: TypedRepository<EditableContent>,
+    @InjectRepository(PostTag)
+    private postTagRepository: Repository<PostTag>,
     private readonly likeNotificationService: LikeNotificationService,
     private readonly eventLogService: EventLogService,
     private readonly notifsService: NotifsService,
@@ -276,6 +281,7 @@ export class ForumService {
       .leftJoinAndSelect("post.editableContent", "editableContent")
       .leftJoinAndSelect("post.authors", "authors")
       .leftJoinAndSelect("post.likes", "likes")
+      .leftJoinAndSelect("post.tags", "tags")
       .where("post.id = :id", { id });
     this.addPostVisibilityFilter(qb, "post", userId);
     const post = await qb.getOne();
@@ -604,6 +610,35 @@ export class ForumService {
     await this.postRepository.update(id, { deleted: true });
   }
 
+  private async resolveCommentTag(
+    createCommentDto: CreateCommentDto,
+  ): Promise<number | null> {
+    if (
+      createCommentDto.parentObjectType !== CommentParentObject.Post ||
+      createCommentDto.parentId
+    ) {
+      return null;
+    }
+
+    const tags = await this.postTagRepository.find({
+      where: { postId: createCommentDto.parentObjectId },
+    });
+
+    if (tags.length === 0) {
+      return null;
+    }
+    const tagId = createCommentDto.tagId;
+    if (tagId == null) {
+      throw new BadRequestException("Pick a tag for this comment");
+    }
+    if (!tags.some((tag) => tag.id === tagId)) {
+      throw new BadRequestException(
+        `Tag ${tagId} does not belong to post ${createCommentDto.parentObjectId}`,
+      );
+    }
+    return tagId;
+  }
+
   async createComment(
     createCommentDto: CreateCommentDto,
     userId: number,
@@ -634,6 +669,8 @@ export class ForumService {
       throw new BadRequestException("Reply cannot be empty");
     }
 
+    const tagId = await this.resolveCommentTag(createCommentDto);
+
     const content = this.editableContentRepository.create({
       body: createCommentDto.editableContent.body,
       attachments: createCommentDto.editableContent.attachments ?? [],
@@ -642,6 +679,7 @@ export class ForumService {
 
     const reply = this.commentRepository.create({
       ...createCommentDto,
+      tagId,
       authorId: userId,
       editableContent: content,
     });
@@ -1150,6 +1188,7 @@ export class ForumService {
         editableContent: true,
         experts: true,
         authors: true,
+        tags: true,
       },
     });
 
@@ -1196,6 +1235,7 @@ export class ForumService {
         experts: true,
         authors: true,
         editableContent: true,
+        tags: true,
       },
       order: { createdAt: "DESC" },
     });
@@ -1220,6 +1260,76 @@ export class ForumService {
     });
 
     return this.findPostForAdmin(postId);
+  }
+
+  async updatePostTags(
+    postId: number,
+    { tags: tagInputs, knownTagIds }: UpdatePostTagsDto,
+  ): Promise<ParsedPost> {
+    const post = await this.postRepository.findOne({ where: { id: postId } });
+    if (!post) {
+      throw new NotFoundException(`Post with ID "${postId}" not found`);
+    }
+
+    const names = tagInputs.map((input) => input.name);
+    if (new Set(names).size !== names.length) {
+      throw new BadRequestException("Tag names must be unique within a post");
+    }
+
+    await this.postTagRepository.manager.transaction(async (manager) => {
+      const tagRepository = manager.getRepository(PostTag);
+      const existing = await tagRepository.find({ where: { postId } });
+      const existingIds = new Set(existing.map((tag) => tag.id));
+      const known = new Set(knownTagIds);
+      if (
+        known.size !== existingIds.size ||
+        [...existingIds].some((id) => !known.has(id))
+      ) {
+        throw new ConflictException(
+          "Another admin changed this post's tags. Reload and try again.",
+        );
+      }
+      const existingById = new Map(existing.map((tag) => [tag.id, tag]));
+      const kept = tagInputs.map((input, index) => {
+        if (input.id === undefined) {
+          return tagRepository.create({
+            postId,
+            name: input.name,
+            sortOrder: index,
+          });
+        }
+        const tag = existingById.get(input.id);
+        if (!tag) {
+          throw new BadRequestException(
+            `Tag ${input.id} does not belong to post ${postId}`,
+          );
+        }
+        tag.name = input.name;
+        tag.sortOrder = index;
+        return tag;
+      });
+      const keptIds = new Set(
+        kept.map((tag) => tag.id).filter((id) => id !== undefined),
+      );
+      const removed = existing.filter((tag) => !keptIds.has(tag.id));
+
+      if (removed.length > 0) {
+        await tagRepository.remove(removed);
+      }
+      await tagRepository.save(kept);
+    });
+
+    return parsePost(
+      await this.postRepository.findOneOrFail({
+        where: { id: postId },
+        relations: {
+          author: true,
+          action: true,
+          editableContent: true,
+          tags: true,
+        },
+      }),
+    );
   }
 
   async togglePinComment(commentId: number): Promise<Comment> {

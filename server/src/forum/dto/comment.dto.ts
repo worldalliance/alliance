@@ -6,7 +6,7 @@ import {
   PickType,
 } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { ValidateNested } from "class-validator";
+import { IsOptional, ValidateNested } from "class-validator";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { User } from "src/user/entities/user.entity";
 import { Comment } from "../entities/comment.entity";
@@ -30,6 +30,7 @@ export class CommentDto extends PickType(Comment, [
   "updatedAt",
   "deleted",
   "pinned",
+  "tagId",
 ]) {
   @ApiProperty({ type: ProfileDto })
   author: ProfileDto;
@@ -71,6 +72,7 @@ export class CommentDto extends PickType(Comment, [
     this.updatedAt = comment.updatedAt;
     this.deleted = comment.deleted;
     this.pinned = comment.pinned;
+    this.tagId = comment.tagId;
     this.author = new ProfileDto(comment.author);
     this.children = comment.children
       ? comment.children.map(
@@ -115,6 +117,10 @@ export class CreateCommentDto extends PickType(Comment, [
   @ValidateNested()
   @Type(() => CreateEditableContentDto)
   editableContent: CreateEditableContentDto;
+
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  tagId?: number | null;
 }
 
 export class UpdateCommentDto extends PartialType(CreateCommentDto) {}

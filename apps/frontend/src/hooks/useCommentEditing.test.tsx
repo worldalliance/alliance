@@ -24,6 +24,7 @@ const reply: CommentDto = {
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   pinned: false,
+  tagId: null,
   author: {
     id: 1,
     displayName: "Jane Smith",

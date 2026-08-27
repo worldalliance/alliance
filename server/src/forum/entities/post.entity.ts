@@ -13,6 +13,7 @@ import {
   JoinTable,
   ManyToMany,
   ManyToOne,
+  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
   RelationId,
@@ -24,6 +25,7 @@ import {
 } from "../../actions/entities/action.entity";
 import { User } from "../../user/entities/user.entity";
 import { EditableContent } from "./editablecontent.entity";
+import { PostTag } from "./post-tag.entity";
 
 @Entity()
 export class Post {
@@ -160,6 +162,12 @@ export class Post {
   @ApiProperty()
   @Allow()
   showClusterTags: boolean;
+
+  @OneToMany(() => PostTag, (tag) => tag.post, { cascade: true })
+  @ApiPropertyOptional({ type: () => PostTag, isArray: true })
+  @IsOptional()
+  @Type(() => PostTag)
+  tags?: Relation<PostTag>[];
 }
 
 /**

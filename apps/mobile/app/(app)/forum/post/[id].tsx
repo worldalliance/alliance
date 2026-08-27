@@ -211,6 +211,7 @@ export default function PostDetailScreen() {
             expertIds={post.expertIds ?? []}
             expertLabel={post.expertLabel ?? undefined}
             showClusterTags={post.showClusterTags}
+            tags={post.tags ?? []}
           />
         </View>
       </View>

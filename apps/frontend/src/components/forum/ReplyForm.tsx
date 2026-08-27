@@ -1,4 +1,4 @@
-import { CreateEditableContentDto } from "@alliance/shared/client";
+import { CreateEditableContentDto, PostTagDto } from "@alliance/shared/client";
 import {
   uploadAttachments,
   withUploadedKeys,
@@ -14,6 +14,7 @@ import React, {
   type Dispatch,
   type SetStateAction,
 } from "react";
+import TagChips from "./TagChips";
 
 interface ReplyFormProps {
   parentId: number | null;
@@ -28,6 +29,9 @@ interface ReplyFormProps {
   startExpanded?: boolean;
   error?: string | null;
   onDismissError?: () => void;
+  tags?: readonly PostTagDto[];
+  selectedTagId?: number;
+  setSelectedTagId?: (id: number | undefined) => void;
 }
 
 const ReplyForm: React.FC<ReplyFormProps> = ({
@@ -43,8 +47,12 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
   startExpanded = false,
   error,
   onDismissError,
+  tags = [],
+  selectedTagId,
+  setSelectedTagId,
 }: ReplyFormProps) => {
   const [expanded, setExpanded] = useState(startExpanded);
+  const needsTag = parentId === null && tags.length > 0;
   const [clearDraftSignal, setClearDraftSignal] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -101,6 +109,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
     if (!ok) return;
     onDismissError?.();
     setEditableContent({ body: "", attachments: [] });
+    setSelectedTagId?.(undefined);
     setExpanded(false);
     setReplyingTo(null);
     onCancel?.();
@@ -109,6 +118,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
     confirm,
     onDismissError,
     setEditableContent,
+    setSelectedTagId,
     setReplyingTo,
     editableContent.body,
   ]);
@@ -144,6 +154,18 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
           }}
           placeholder={"Add a comment..."}
         />
+        {expanded && needsTag && (
+          <div className="mt-3">
+            <p className="text-sm text-zinc-500 mb-1.5">
+              Pick a tag for your comment
+            </p>
+            <TagChips
+              tags={tags}
+              selected={selectedTagId}
+              onSelect={(value) => setSelectedTagId?.(value ?? undefined)}
+            />
+          </div>
+        )}
         {(uploadError ?? error) && (
           <p role="alert" className="mt-2 text-sm text-red-500">
             {uploadError ?? error}
@@ -160,6 +182,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
               disabled={
                 isSubmitting ||
                 isUploading ||
+                (needsTag && selectedTagId === undefined) ||
                 (!editableContent.body.trim() &&
                   editableContent.attachments.length === 0)
               }

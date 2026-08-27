@@ -225,6 +225,7 @@ const PostDetailPage: React.FC = () => {
             post.qaMode ? (post.expertLabel ?? undefined) : undefined
           }
           showClusterTags={post.showClusterTags}
+          tags={post.tags ?? []}
           className="px-2 md:px-4"
         />
       </div>

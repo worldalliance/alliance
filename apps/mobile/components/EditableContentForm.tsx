@@ -27,6 +27,7 @@ interface EditableContentFormProps {
   onSubmit: () => void;
   isSubmitting?: boolean;
   submitLabel?: string;
+  submitDisabled?: boolean;
 
   /** Optional namespace to distinguish drafts across pages/users/entities */
   draftKey?: string;
@@ -123,6 +124,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
   onCancel,
   onSubmit,
   submitLabel = "Post",
+  submitDisabled = false,
   draftKey,
   autosaveMs = 1200,
   restoreDraft,
@@ -283,7 +285,8 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
   };
 
   const canSubmit =
-    value.body.trim() !== "" || (value.attachments?.length ?? 0) > 0;
+    !submitDisabled &&
+    (value.body.trim() !== "" || (value.attachments?.length ?? 0) > 0);
 
   const toolbarTap = (onTap: () => void) => {
     if (toolbarHideRef.current != null) {
@@ -371,7 +374,9 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
                     if (canSubmit && !isSubmitting) onSubmit();
                   })
                 }
-                className="px-3 py-1.5 bg-green rounded-full"
+                className={`px-3 py-1.5 rounded-full ${
+                  canSubmit ? "bg-green" : "bg-zinc-300"
+                }`}
               >
                 <Text className="text-white">
                   {isSubmitting ? "Posting..." : submitLabel}

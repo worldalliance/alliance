@@ -55,6 +55,7 @@ const ReplyContent = ({
     showClusterTags = false,
   } = ctx;
   const isExpert = expertIds.includes(reply.author.id);
+  const tag = ctx.tags.find((candidate) => candidate.id === reply.tagId);
   const editing = useCommentEditing(reply, ctx.onUpdateReply);
 
   return (
@@ -103,6 +104,11 @@ const ReplyContent = ({
                   addSuffix: true,
                 })}
               </span>
+              {tag && (
+                <span className="text-xs bg-zinc-200 text-zinc-700 rounded-full px-2 py-0.5">
+                  {tag.name}
+                </span>
+              )}
             </div>
             {isCollapsible && onToggleCollapse && (
               <button
