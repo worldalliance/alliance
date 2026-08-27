@@ -84,6 +84,23 @@ export const groupLeadConditionSchema = z.strictObject({
 });
 export type GroupLeadCondition = z.infer<typeof groupLeadConditionSchema>;
 
+/**
+ * Members located in the United States. The city on their profile decides it;
+ * for members without one, their time zone's country does. A member with
+ * neither, or with a zone no country claims (UTC), matches neither this nor
+ * {@link nonUsMemberConditionSchema}.
+ */
+export const usMemberConditionSchema = z.strictObject({
+  type: z.literal("USMember"),
+});
+export type UsMemberCondition = z.infer<typeof usMemberConditionSchema>;
+
+/** Members located outside the United States, resolved like {@link usMemberConditionSchema}. */
+export const nonUsMemberConditionSchema = z.strictObject({
+  type: z.literal("NonUSMember"),
+});
+export type NonUsMemberCondition = z.infer<typeof nonUsMemberConditionSchema>;
+
 export const leafConditionSchema = z.discriminatedUnion("type", [
   tagConditionSchema,
   manualConditionSchema,
@@ -92,6 +109,8 @@ export const leafConditionSchema = z.discriminatedUnion("type", [
   missedActionDeadlineConditionSchema,
   formFieldValueConditionSchema,
   groupLeadConditionSchema,
+  usMemberConditionSchema,
+  nonUsMemberConditionSchema,
 ]);
 export type LeafCondition = z.infer<typeof leafConditionSchema>;
 
@@ -141,6 +160,8 @@ export const cohortExpressionSchema: z.ZodType<CohortExpression> =
     missedActionDeadlineConditionSchema,
     formFieldValueConditionSchema,
     groupLeadConditionSchema,
+    usMemberConditionSchema,
+    nonUsMemberConditionSchema,
     andOperatorSchema,
     orOperatorSchema,
     notOperatorSchema,

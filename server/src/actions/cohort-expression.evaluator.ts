@@ -3,6 +3,7 @@
  */
 
 import { CohortExpression } from "@alliance/common/cohort-expression";
+import { UsMembership } from "src/geo/us-membership";
 
 // --- Evaluation Context ---
 
@@ -18,6 +19,9 @@ export type CohortEvaluationContext = {
     responseAny?: boolean;
   }): Promise<Set<number>>;
   getGroupLeadUserIds(): Promise<Set<number>>;
+  getUserIdsByUsMembership(
+    membership: UsMembership.Us | UsMembership.NonUs,
+  ): Promise<Set<number>>;
   getAllCandidateUserIds(): Promise<Set<number>>;
   targetUserId?: number;
 };
@@ -76,6 +80,10 @@ export async function evaluateCohortExpression(
       });
     case "GroupLead":
       return ctx.getGroupLeadUserIds();
+    case "USMember":
+      return ctx.getUserIdsByUsMembership(UsMembership.Us);
+    case "NonUSMember":
+      return ctx.getUserIdsByUsMembership(UsMembership.NonUs);
     case "AND": {
       if (expr.children.length === 0) return new Set();
       const { targetUserId } = ctx;
@@ -161,6 +169,8 @@ export function collectCohortDependencies(
       case "Tag":
       case "Manual":
       case "GroupLead":
+      case "USMember":
+      case "NonUSMember":
         break;
       case "AND":
       case "OR":
@@ -200,6 +210,7 @@ export type SingleUserCohortPredicates = {
     responseAny?: boolean;
   }): Promise<boolean>;
   isGroupLead(): Promise<boolean>;
+  usMembership(): Promise<UsMembership>;
 };
 
 /**
@@ -234,6 +245,8 @@ export function singleUserCohortContext(
       justAsync(p.missedActionDeadline(actionId)),
     getUserIdsForFormField: (params) => justAsync(p.matchesFormField(params)),
     getGroupLeadUserIds: () => justAsync(p.isGroupLead()),
+    getUserIdsByUsMembership: async (membership) =>
+      just((await p.usMembership()) === membership),
     getAllCandidateUserIds: async () => just(p.isCandidate),
     targetUserId: p.userId,
   };

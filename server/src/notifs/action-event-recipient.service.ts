@@ -14,6 +14,7 @@ import {
 } from "src/actions/entities/reminder-group.entity";
 import { CommunityService } from "src/community/community.service";
 import { Community } from "src/community/entities/community.entity";
+import { resolveUsMembership, UsMembership } from "src/geo/us-membership";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { Tag } from "src/user/entities/tag.entity";
 import { computeIsAssignedAndPresent } from "src/utils/action-user";
@@ -50,6 +51,8 @@ export class ActionEventRecipientService {
     private readonly communityRepository: Repository<Community>,
     @InjectRepository(Tag)
     private readonly tagRepository: Repository<Tag>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private readonly communityService: CommunityService,
     private readonly userService: UserService,
   ) {}
@@ -190,6 +193,10 @@ export class ActionEventRecipientService {
           .select("leader.id", "userId")
           .getRawMany<{ userId: number }>()
           .then((rows) => new Set(rows.map((row) => Number(row.userId))))),
+      getUserIdsByUsMembership: async (membership) =>
+        (
+          await (session.usMembershipUserIds ??= this.loadUsMembershipUserIds())
+        )[membership],
       // getActiveUsers primes candidateUserIds from its snapshot, so this
       // lean load only runs for sessions that never hydrate full users.
       getAllCandidateUserIds: () =>
@@ -197,6 +204,37 @@ export class ActionEventRecipientService {
           .findActiveUserIds()
           .then((ids) => new Set(ids))),
     };
+  }
+
+  /**
+   * Partition every user by where they live, in one pass. The city on the
+   * profile wins; time zone is the fallback. Users we can't place land in
+   * `Unknown` and so match neither country leaf.
+   */
+  private async loadUsMembershipUserIds(): Promise<
+    Record<UsMembership, Set<number>>
+  > {
+    const rows = await this.userRepository
+      .createQueryBuilder("user")
+      .leftJoin("user.city", "city")
+      .select("user.id", "userId")
+      .addSelect("user.timeZone", "timeZone")
+      .addSelect("city.countryCode", "countryCode")
+      .getRawMany<{
+        userId: number;
+        timeZone: string | null;
+        countryCode: string | null;
+      }>();
+
+    const byMembership: Record<UsMembership, Set<number>> = {
+      [UsMembership.Us]: new Set(),
+      [UsMembership.NonUs]: new Set(),
+      [UsMembership.Unknown]: new Set(),
+    };
+    for (const row of rows) {
+      byMembership[resolveUsMembership(row)].add(Number(row.userId));
+    }
+    return byMembership;
   }
 
   private async loadInProgressActionUserIds(

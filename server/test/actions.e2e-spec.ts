@@ -1,7 +1,10 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { ActionsService } from "src/actions/actions.service";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { ContractService } from "src/contract/contract.service";
 import { CommentParentObject } from "src/forum/entities/comment.entity";
+import { City } from "src/geo/city.entity";
+import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import {
   Notification,
   NotificationCategory,
@@ -1056,6 +1059,127 @@ describe("Actions (e2e)", () => {
       await actionRepo.delete(targetAction.id);
       await userRepo.delete(leaderUser.id);
       await userRepo.delete(nonLeaderUser.id);
+    });
+
+    it("splits members into US and non-US by city, falling back to time zone", async () => {
+      const cityRepo = ctx.dataSource.getRepository(City);
+      const recipientService = ctx.app.get(ActionEventRecipientService);
+      const actionsService = ctx.app.get(ActionsService);
+      const stamp = Date.now();
+
+      const [usCity, frenchCity] = await cityRepo.save([
+        cityRepo.create({
+          id: 900001,
+          name: "Springfield",
+          asciiName: "Springfield",
+          englishName: null,
+          admin1: "IL",
+          admin2: "Sangamon",
+          countryCode: "US",
+          countryName: "United States",
+          latitude: 39.8,
+          longitude: -89.6,
+        }),
+        cityRepo.create({
+          id: 900002,
+          name: "Lyon",
+          asciiName: "Lyon",
+          englishName: null,
+          admin1: "ARA",
+          admin2: "Rhone",
+          countryCode: "FR",
+          countryName: "France",
+          latitude: 45.75,
+          longitude: 4.85,
+        }),
+      ]);
+
+      const makeUser = async (
+        label: string,
+        location: { city?: City; timeZone?: string },
+      ): Promise<User> => {
+        const created = await userService.create({
+          email: `${label}-${stamp}@example.com`,
+          password: "Password123!",
+          name: label,
+        });
+        const user = await userRepo.findOneOrFail({
+          where: { id: created.id },
+        });
+        user.city = location.city ?? null;
+        user.timeZone = location.timeZone;
+        return await userRepo.save(user);
+      };
+
+      // A city outranks a conflicting time zone, so the French member stays
+      // non-US despite a US zone.
+      const usCityUser = await makeUser("us-city", { city: usCity });
+      const frenchCityUser = await makeUser("french-city", {
+        city: frenchCity,
+        timeZone: "America/New_York",
+      });
+      const usZoneUser = await makeUser("us-zone", {
+        timeZone: "America/Chicago",
+      });
+      const berlinZoneUser = await makeUser("berlin-zone", {
+        timeZone: "Europe/Berlin",
+      });
+      const unplaceableUser = await makeUser("unplaceable", {});
+
+      const [inUs, outsideUs] = await Promise.all([
+        recipientService.resolveCohortMemberIds({ type: "USMember" }),
+        recipientService.resolveCohortMemberIds({ type: "NonUSMember" }),
+      ]);
+
+      expect(inUs.has(usCityUser.id)).toBe(true);
+      expect(inUs.has(usZoneUser.id)).toBe(true);
+      expect(inUs.has(frenchCityUser.id)).toBe(false);
+      expect(inUs.has(berlinZoneUser.id)).toBe(false);
+      expect(inUs.has(unplaceableUser.id)).toBe(false);
+
+      expect(outsideUs.has(frenchCityUser.id)).toBe(true);
+      expect(outsideUs.has(berlinZoneUser.id)).toBe(true);
+      expect(outsideUs.has(usCityUser.id)).toBe(false);
+      expect(outsideUs.has(usZoneUser.id)).toBe(false);
+      expect(outsideUs.has(unplaceableUser.id)).toBe(false);
+
+      // NOT(USMember) keeps the members we can't place, so it is wider than
+      // NonUSMember.
+      const notUs = await recipientService.resolveCohortMemberIds({
+        type: "NOT",
+        child: { type: "USMember" },
+      });
+      expect(notUs.has(unplaceableUser.id)).toBe(true);
+      expect(notUs.has(usCityUser.id)).toBe(false);
+
+      // The per-user path has to agree with the batch one.
+      const perUser = async (user: User) => ({
+        us: await actionsService.computeIsInCohortExpression({
+          user,
+          cohortExpression: { type: "USMember" },
+        }),
+        nonUs: await actionsService.computeIsInCohortExpression({
+          user,
+          cohortExpression: { type: "NonUSMember" },
+        }),
+      });
+      expect(await perUser(usCityUser)).toEqual({ us: true, nonUs: false });
+      expect(await perUser(usZoneUser)).toEqual({ us: true, nonUs: false });
+      expect(await perUser(frenchCityUser)).toEqual({ us: false, nonUs: true });
+      expect(await perUser(unplaceableUser)).toEqual({
+        us: false,
+        nonUs: false,
+      });
+
+      // Cleanup
+      await userRepo.delete([
+        usCityUser.id,
+        frenchCityUser.id,
+        usZoneUser.id,
+        berlinZoneUser.id,
+        unplaceableUser.id,
+      ]);
+      await cityRepo.delete([usCity.id, frenchCity.id]);
     });
 
     it("evaluates FormFieldValue cohort expression against real form response data", async () => {
