@@ -52,3 +52,7 @@ shared/tsconfig.tsbuildinfo
 # Worktrees
 .worktree/
 common/.tmp-test/
+
+# Redesign working files: source comps/fonts and screenshot output
+design/
+scratch/
