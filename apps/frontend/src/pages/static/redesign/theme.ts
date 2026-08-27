@@ -18,8 +18,8 @@ export enum HeroKind {
   NotificationsOnly = "notifications-only",
   /** Version 5: a row of posts across the top, headline below. Landing 5. */
   PostsMarquee = "posts-marquee",
-  /** Version 6: headline left, posts clustered beside it. Landing 6. */
-  PostsCollage = "posts-collage",
+  /** Version 6: headline left, two product screens offset beside it. Landing 6. */
+  ProductPair = "product-pair",
   /** Version 7: centred headline over a panel the posts flank. Landing 7. */
   PostsSpotlight = "posts-spotlight",
 }
@@ -287,7 +287,7 @@ export const redesignThemes = {
     version: RedesignVersion.V6,
     joinLabel: "Request to join",
     cta: CtaKind.PhotoShort,
-    hero: HeroKind.PostsCollage,
+    hero: HeroKind.ProductPair,
     showHeadlineIntro: false,
   },
   [RedesignVersion.V7]: {
@@ -327,7 +327,7 @@ export const navStart: Record<HeroKind, NavStart> = {
   [HeroKind.Network]: NavStart.Surface,
   [HeroKind.NotificationsOnly]: NavStart.Surface,
   [HeroKind.PostsMarquee]: NavStart.Surface,
-  [HeroKind.PostsCollage]: NavStart.Surface,
+  [HeroKind.ProductPair]: NavStart.Surface,
   [HeroKind.PostsSpotlight]: NavStart.Media,
 };
 

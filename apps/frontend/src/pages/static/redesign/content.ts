@@ -640,7 +640,7 @@ export const PRIORITIES_NOTE =
   "We focus on urgent global crises that result from a lack of human coordination.";
 
 export const CTA_BODY =
-  "Every new member makes each new project more impactful.";
+  "Each new member makes every new project more impactful";
 export const CTA_BUTTON = "Request an invite";
 
 export const FOOTER_TAGLINE =

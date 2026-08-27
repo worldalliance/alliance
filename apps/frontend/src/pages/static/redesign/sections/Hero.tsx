@@ -5,9 +5,9 @@ import { HERO_HEADLINE, HERO_SUBHEAD } from "../content";
 import { NetworkAnimation } from "../graphics/NetworkAnimation";
 import { NotificationRotator } from "../graphics/NotificationRotator";
 import { NotificationStack } from "../graphics/NotificationStack";
-import { PostCollage } from "../graphics/PostCollage";
 import { PostMarquee } from "../graphics/PostMarquee";
 import { PostSpotlight } from "../graphics/PostSpotlight";
+import { ProductPair } from "../graphics/ProductPair";
 import { HeroKind, type RedesignTheme } from "../theme";
 import { RD_COL, RdButton } from "../ui";
 import { useJoinTarget } from "./JoinRequest";
@@ -182,16 +182,16 @@ function PostsMarqueeHero() {
 }
 
 /**
- * Landing 6. Headline and subhead hold the left column while a row of activity
- * runs beside them, each card larger than the last and the third off the page.
+ * Landing 6. Headline and subhead hold the left column, with the feed and an
+ * opened post beside them, offset from one another rather than set in a row.
  */
-function PostsCollageHero({ theme }: { theme: RedesignTheme }) {
+function ProductPairHero({ theme }: { theme: RedesignTheme }) {
   return (
     <section className="overflow-hidden bg-[var(--rd-surface)]">
       <div
         className={cn(
           RD_COL,
-          "grid items-center gap-12 pb-24 lg:grid-cols-[1.15fr_1.3fr] lg:gap-16 lg:pb-32",
+          "grid items-center gap-12 pb-24 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-16 lg:pb-32",
           OVERLAP_CLEARANCE,
         )}
         style={{ paddingTop: NAV_HEIGHT + 104 }}
@@ -205,7 +205,7 @@ function PostsCollageHero({ theme }: { theme: RedesignTheme }) {
             {HERO_SUBHEAD}
           </p>
         </div>
-        <PostCollage className="min-w-0" />
+        <ProductPair />
       </div>
     </section>
   );
@@ -260,7 +260,7 @@ const heroByKind: Record<
   [HeroKind.Network]: NetworkHero,
   [HeroKind.NotificationsOnly]: NotificationsOnlyHero,
   [HeroKind.PostsMarquee]: PostsMarqueeHero,
-  [HeroKind.PostsCollage]: PostsCollageHero,
+  [HeroKind.ProductPair]: ProductPairHero,
   [HeroKind.PostsSpotlight]: PostsSpotlightHero,
 };
 

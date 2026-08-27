@@ -10,11 +10,16 @@ links to it, so it only exists for whoever has this URL.
 | [`/redesign?v=3`](/redesign?v=3) | Green, Galdeano, centred, network animation |
 | [`/redesign?v=4`](/redesign?v=4) | Blue, notification animation hero, headline below |
 | [`/redesign?v=5`](/redesign?v=5) | Version 4, hero is a row of activity off both edges |
-| [`/redesign?v=6`](/redesign?v=6) | Version 4, hero is a growing row of activity beside the headline |
+| [`/redesign?v=6`](/redesign?v=6) | Version 4, hero is the feed and an opened post beside the headline |
 | [`/redesign?v=7`](/redesign?v=7) | Version 4, hero is a panel over the video, cards either side |
 
 Switch between them with the pill at the bottom of the screen, or edit the `v`
 param. Anything else falls back to version 1.
+
+The pill's `system` link opens `/redesign/system`, an inventory of every colour,
+face, heading, component, and font size in use, each specimen sitting beside
+where it came from. It is drawn from mockup 6 alone, so the pill drops its
+version buttons there.
 
 Versions 1 to 4 also vary their testimonial, closing CTA, footer, and the
 graphic in the "how the model works" section. See `theme.ts`, which is the
@@ -84,7 +89,8 @@ anywhere; submitting swaps the fields for a confirmation.
 - `pageContent.ts`, `docContent.ts` — copy for the pages behind the nav
 - `RedesignPage.tsx` — the route, which reads `?v=` and `:page` and picks a page
 - `RedesignHome.tsx` — section order on the home page
-- `pages/` — one file per page behind the nav
+- `pages/` — one file per page behind the nav, plus `SystemPage.tsx`, the
+  style inventory
 - `sections/` — one file per band of a page, plus the shared frame in
   `PageShell.tsx`
 - `graphics/` — the animated and illustrative pieces

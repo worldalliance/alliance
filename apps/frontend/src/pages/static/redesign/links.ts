@@ -16,6 +16,8 @@ export enum RedesignPage {
   Foundation = "foundation",
   Privacy = "privacy",
   Terms = "terms",
+  /** Not a mockup page: the inventory of every style in use. */
+  System = "system",
 }
 
 /** The `:page` segment each one sits at. Home has none. */
@@ -31,6 +33,7 @@ const pageSlugs: Record<RedesignPage, string> = {
   [RedesignPage.Foundation]: "foundation",
   [RedesignPage.Privacy]: "privacy",
   [RedesignPage.Terms]: "terms",
+  [RedesignPage.System]: "system",
 };
 
 /** The version travels in `?v=`, so every internal link has to carry it on. */

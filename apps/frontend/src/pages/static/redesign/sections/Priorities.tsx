@@ -14,7 +14,7 @@ import { DisplayHeading, RD_COL } from "../ui";
  * anything. Works out to the top quarter of a card at each breakpoint, so that
  * much of the row rides onto whatever sits above it.
  */
-const OVERLAP = "-mt-[23.4%] sm:-mt-[11.5%] lg:-mt-[5.7%]";
+const OVERLAP = "-mt-[27.6%] sm:-mt-[13.5%] lg:-mt-[6.7%]";
 
 /**
  * Bottom padding for a section whose copy must stay clear of the overlapping
@@ -31,7 +31,7 @@ function PriorityCard({
   return (
     <article
       tabIndex={0}
-      className="group relative isolate aspect-[321/301] overflow-hidden focus:outline-none"
+      className="group relative isolate aspect-[321/355] overflow-hidden focus:outline-none"
       style={{
         borderRadius: "var(--rd-radius-card)",
         backgroundColor: PRIORITY_TINTS[index % PRIORITY_TINTS.length],

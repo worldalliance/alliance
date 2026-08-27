@@ -71,8 +71,8 @@ function PriorityGrid() {
               opacity: 0.45,
             }}
           />
-          <h3 className="text-[1.4rem] leading-tight whitespace-pre-line">
-            {priority.title}
+          <h3 className="text-[1.4rem] leading-tight">
+            {priority.title.replace("\n", " ")}
           </h3>
           <p className="mt-2 text-[0.9rem] leading-snug text-white/85">
             {priority.description}

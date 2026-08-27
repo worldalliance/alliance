@@ -14,6 +14,7 @@ import {
 import { RedesignPartnerPage } from "./pages/PartnerPage";
 import { RedesignPeoplePage } from "./pages/PeoplePage";
 import { RedesignProgressPage } from "./pages/ProgressPage";
+import { RedesignSystemPage } from "./pages/SystemPage";
 import { RedesignHome } from "./RedesignHome";
 import { JoinRequestProvider } from "./sections/JoinRequest";
 import {
@@ -46,6 +47,7 @@ const pageByKind: Record<
   [RedesignPage.Foundation]: RedesignFoundationPage,
   [RedesignPage.Privacy]: RedesignPrivacyPage,
   [RedesignPage.Terms]: RedesignTermsPage,
+  [RedesignPage.System]: RedesignSystemPage,
 };
 
 /**
@@ -68,7 +70,7 @@ export default function RedesignRoute() {
     <JoinRequestProvider theme={theme}>
       {/* Remounting restarts the animations when either axis changes. */}
       <Component key={`${version}-${page}`} theme={theme} />
-      <VersionConsole active={version} onSelect={select} />
+      <VersionConsole active={version} activePage={page} onSelect={select} />
     </JoinRequestProvider>
   );
 }

@@ -56,3 +56,6 @@ common/.tmp-test/
 # Redesign working files: source comps/fonts and screenshot output
 design/
 scratch/
+
+# Agent working output
+.scratch/
