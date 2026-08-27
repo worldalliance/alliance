@@ -14,9 +14,11 @@ Read `(root)/skills/review/SKILL.md` and use it to review the base commit. The c
 
 While reviewing, feel free to run `git reset --hard` to test various functionality. If you do, make sure to reset back to the current commit after your review.
 
-# Purpose
+# One commit, one change
 
-Each commit from the base commit to `HEAD` should be a small standalone change.
+The base commit should carry one purpose, and typecheck and pass tests on its own.
+
+Judge it against that as part of the review. A base commit holding more than one purpose gets its own finding, naming the commits it should become, each with the files it takes, ordered so every commit in the sequence is safe to deploy alone: the client that satisfies a new requirement lands before the change that switches the requirement on.
 
 # Applying fixes
 
