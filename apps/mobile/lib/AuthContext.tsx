@@ -2,6 +2,7 @@ import { AnalyticsEvent } from "@alliance/common/analytics";
 import { run } from "@alliance/common/run";
 import { client } from "@alliance/shared/client/client.gen";
 import { captureEvent } from "@alliance/shared/lib/analytics";
+import { useBackfillTimeZone } from "@alliance/shared/lib/useBackfillTimeZone";
 import type { QueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { usePostHog } from "posthog-react-native";
@@ -47,6 +48,8 @@ export const AuthProvider: React.FC<
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [canConnectToServer, setCanConnectToServer] = useState<boolean>(false);
   const router = useRouter();
+
+  useBackfillTimeZone(user);
 
   const saveTokens = useCallback(async (access: string, refresh: string) => {
     await SecureStorage.setItem(SecureStorageKey.ACCESS_TOKEN, access);

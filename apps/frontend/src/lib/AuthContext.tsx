@@ -16,6 +16,7 @@ import React, {
   useState,
 } from "react";
 
+import { useBackfillTimeZone } from "@alliance/shared/lib/useBackfillTimeZone";
 import { ViewerAuthenticationProvider } from "@alliance/sharedweb/ui/ViewerAuthenticationProvider";
 import type { QueryClient } from "@tanstack/react-query";
 import posthog from "posthog-js";
@@ -58,6 +59,8 @@ export const AuthProvider: React.FC<
       },
       [],
     );
+
+    useBackfillTimeZone(user, { enabled: !isImpersonation });
 
     useEffect(() => {
       if (import.meta.env.PROD) {
