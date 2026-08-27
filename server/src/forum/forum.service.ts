@@ -25,6 +25,7 @@ import {
   userActionNotifsEnabled_email,
   userActionNotifsEnabled_text,
 } from "src/user/user.utils";
+import { isUniqueViolation } from "src/utils/db-errors";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import {
   type EntityManager,
@@ -895,7 +896,7 @@ export class ForumService {
     userId: number,
     unlike = false,
     type: "comment" | "post",
-  ): Promise<Comment | Post> {
+  ): Promise<void> {
     const object =
       type === "comment"
         ? await this.commentRepository.findOne({
@@ -920,21 +921,22 @@ export class ForumService {
       if (!likes.some((like) => like.id === userId)) {
         throw new NotFoundException(`User has not liked this ${type}`);
       }
-
-      object.likes = likes.filter((like) => like.id !== userId);
-    } else {
-      if (likes.some((like) => like.id === userId)) {
-        throw new NotFoundException(`User has already liked this ${type}`);
-      }
-
-      object.likes = [...likes, user];
+    } else if (likes.some((like) => like.id === userId)) {
+      throw new NotFoundException(`User has already liked this ${type}`);
     }
-    const obj = await (type === "comment"
-      ? this.commentRepository.save(object)
-      : this.postRepository.save(object));
+    const likeRows = this.postRepository.manager
+      .createQueryBuilder()
+      .relation(type === "comment" ? Comment : Post, "likes")
+      .of(id);
+    try {
+      await (unlike ? likeRows.remove(userId) : likeRows.add(userId));
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      throw new NotFoundException(`User has already liked this ${type}`);
+    }
 
     if (type === "comment") {
-      await this.refreshLikesCount(obj as Comment);
+      await this.refreshLikesCount(object as Comment);
     }
 
     if (!unlike) {
@@ -950,8 +952,6 @@ export class ForumService {
         await this.removePostLikeNotification(object as Post, user);
       }
     }
-
-    return obj;
   }
 
   private getUniquePostAuthors(post: Post): User[] {

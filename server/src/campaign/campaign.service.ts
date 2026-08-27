@@ -5,9 +5,9 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { isUniqueViolation } from "src/utils/db-errors";
 import { randomToken } from "src/utils/random";
 import type { Repository } from "src/utils/Repository";
-import { QueryFailedError } from "typeorm";
 import { CreateCampaignDto, UpdateCampaignDto } from "./dto/campaign.dto";
 import { Campaign } from "./entities/campaign.entity";
 
@@ -17,13 +17,6 @@ const MAX_CODE_GENERATION_ATTEMPTS = 5;
 /** A fixed-length, URL-safe referral code with ~96 bits of entropy. */
 function generateCampaignCode(): string {
   return randomToken(12);
-}
-
-function isUniqueViolation(err: unknown): boolean {
-  return (
-    err instanceof QueryFailedError &&
-    (err as { code?: string }).code === "23505"
-  );
 }
 
 @Injectable()

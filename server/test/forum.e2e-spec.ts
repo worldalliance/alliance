@@ -934,6 +934,171 @@ describe("Forum (e2e)", () => {
         .expect(201);
     });
 
+    it("keeps a settings write that lands while a like is open", async () => {
+      const { user: coAuthor } = await createExtraUserAndToken();
+      const { token: likerToken } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Liked Mid-Save",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      // The like reads the expert join rows after the post itself, so holding
+      // that table parks it on the post it has already read.
+      const [likeInFlight] = await withLockHeld(
+        { query: 'lock table "post_experts_user" in access exclusive mode' },
+        async () => {
+          const inFlight = request(ctx.app.getHttpServer())
+            .post(`/forum/posts/${postId}/like`)
+            .set("Authorization", `Bearer ${likerToken}`)
+            .then((res) => res);
+          await waitForBlockedBackends(1);
+
+          await ctx.dataSource.query(
+            `update post set "qaMode" = true, "expertLabel" = $2 where id = $1`,
+            [postId, "AMA Guest"],
+          );
+          await ctx.dataSource.query(
+            `insert into post_authors_user ("postId", "userId") values ($1, $2)`,
+            [postId, coAuthor.id],
+          );
+          return [inFlight] as const;
+        },
+      );
+
+      expect((await likeInFlight).status).toBe(201);
+
+      const adminPosts = await request(ctx.app.getHttpServer())
+        .get("/forum/admin/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const stored = adminPosts.body.find((p) => p.id === postId);
+      expect(stored.qaMode).toBe(true);
+      expect(stored.expertLabel).toBe("AMA Guest");
+      expect(stored.authorIds).toEqual([coAuthor.id]);
+
+      const likeRows = await ctx.dataSource.query(
+        `select "userId" from post_likes_user where "postId" = $1`,
+        [postId],
+      );
+      expect(likeRows).toHaveLength(1);
+    });
+
+    it("rejects a like that the same user already landed elsewhere", async () => {
+      const { user: liker, token: likerToken } =
+        await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Liked Twice At Once",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      const [likeInFlight] = await withLockHeld(
+        { query: 'lock table "post_experts_user" in access exclusive mode' },
+        async () => {
+          const inFlight = request(ctx.app.getHttpServer())
+            .post(`/forum/posts/${postId}/like`)
+            .set("Authorization", `Bearer ${likerToken}`)
+            .then((res) => res);
+          await waitForBlockedBackends(1);
+
+          await ctx.dataSource.query(
+            `insert into post_likes_user ("postId", "userId") values ($1, $2)`,
+            [postId, liker.id],
+          );
+          return [inFlight] as const;
+        },
+      );
+
+      expect((await likeInFlight).status).toBe(404);
+
+      const likeRows = await ctx.dataSource.query(
+        `select "userId" from post_likes_user where "postId" = $1`,
+        [postId],
+      );
+      expect(likeRows).toHaveLength(1);
+    });
+
+    it("keeps a comment edit that lands while a like is open", async () => {
+      const { token: likerToken } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Holding A Comment Liked Mid-Save",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const commentResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "original body", attachments: [] },
+          parentObjectId: postResponse.body.id,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+
+      const commentId = commentResponse.body.id;
+      const contentId = commentResponse.body.editableContent.id;
+
+      // A comment loads its relations in one query, so what parks the like is
+      // the liker read after it: User.leaderOf is a RelationId, and its query
+      // hits community_leaders_user.
+      const [likeInFlight] = await withLockHeld(
+        {
+          query: 'lock table "community_leaders_user" in access exclusive mode',
+        },
+        async () => {
+          const inFlight = request(ctx.app.getHttpServer())
+            .post(`/forum/comments/${commentId}/like`)
+            .set("Authorization", `Bearer ${likerToken}`)
+            .then((res) => res);
+          await waitForBlockedBackends(1);
+
+          await ctx.dataSource.query(
+            `update editable_content set body = $2 where id = $1`,
+            [contentId, "edited body"],
+          );
+          await ctx.dataSource.query(
+            `update comment set pinned = true where id = $1`,
+            [commentId],
+          );
+          return [inFlight] as const;
+        },
+      );
+
+      expect((await likeInFlight).status).toBe(201);
+
+      const [stored] = await ctx.dataSource.query(
+        `select c.pinned, c."likesCount", ec.body from comment c
+         join editable_content ec on ec.id = c."editableContentId"
+         where c.id = $1`,
+        [commentId],
+      );
+      expect(stored.body).toBe("edited body");
+      expect(stored.pinned).toBe(true);
+      expect(stored.likesCount).toBe(1);
+    });
+
     it("groups unread post likes and migrates legacy grouping keys", async () => {
       const postResponse = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
