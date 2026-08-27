@@ -33,7 +33,7 @@ export function HowItWorks({ theme }: { theme: RedesignTheme }) {
   const Cards = cardsByKind[theme.productCards];
 
   return (
-    <section className="bg-[var(--rd-surface-alt)] pt-20 pb-36 lg:pt-28 lg:pb-48">
+    <section className="bg-[var(--rd-surface)] pt-20 pb-36 lg:pt-28 lg:pb-48">
       <div className={cn(RD_COL, "flex flex-col gap-6")}>
         <div className="flex flex-col gap-2">
           <SectionHeading>{WORK_HEADLINE}</SectionHeading>

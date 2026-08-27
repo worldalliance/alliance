@@ -196,7 +196,7 @@ function ProductPairHero({ theme }: { theme: RedesignTheme }) {
         <div className="flex flex-col gap-5">
           <Headline
             theme={theme}
-            className="text-[var(--rd-primary)] sm:text-[3rem] lg:text-[3.6rem]"
+            className="text-[var(--rd-primary)] sm:text-[3rem] lg:text-[5rem]"
           />
           <p className="max-w-[32rem] text-lg leading-snug text-[var(--rd-ink)] sm:text-[1.35rem]">
             {HERO_SUBHEAD}

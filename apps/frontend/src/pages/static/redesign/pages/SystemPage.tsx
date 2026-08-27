@@ -172,8 +172,7 @@ const TEXT_SIZE_CENSUS: { size: string; count: number }[] = [
   { size: "1.02rem", count: 3 },
 ];
 
-const TWICE_USED_SIZES =
-  "2 1.15 0.98 0.88 0.8 0.78 rem, and text-lg";
+const TWICE_USED_SIZES = "2 1.15 0.98 0.88 0.8 0.78 rem, and text-lg";
 
 const ONE_OFF_SIZES =
   "3.2 3.1 3 2.9 2.7 2.6 2.5 2.2 2.1 1.95 1.7 1.5 1.4 1.33 1.3 1.1 0.92 0.9 0.72 0.7 rem, 14 11.5 px, text-xl, text-xs";
@@ -254,8 +253,8 @@ function Colours() {
       </div>
       <p className={cn(MONO, "pt-2 text-black/55")}>
         Everything else is an opacity of ink or white: 21 distinct steps of{" "}
-        <span className="text-black/80">--rd-ink</span>, from /[0.05] to /85, and
-        14 of <span className="text-black/80">white</span>, from /10 to /90.
+        <span className="text-black/80">--rd-ink</span>, from /[0.05] to /85,
+        and 14 of <span className="text-black/80">white</span>, from /10 to /90.
       </p>
     </Section>
   );

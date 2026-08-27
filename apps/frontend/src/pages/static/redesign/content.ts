@@ -12,7 +12,7 @@ import poverty from "../../../assets/redesign/priority-poverty.jpg";
 import technology from "../../../assets/redesign/priority-technology.jpg";
 import { RedesignPage } from "./links";
 
-export const HERO_HEADLINE = "We’re assembling a group that cooperates";
+export const HERO_HEADLINE = "We’re assembling a group that cooperates.";
 export const HERO_SUBHEAD =
   "To combat global problems, we commit 15 minutes each week to projects that depend on everyone’s participation. We are in an experimental phase.";
 /** Version 7 sets the middle clause of the subhead in a heavier weight. */

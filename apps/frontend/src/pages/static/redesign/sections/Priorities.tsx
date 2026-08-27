@@ -90,11 +90,7 @@ export function HeadlineIntro({ theme }: { theme: RedesignTheme }) {
           OVERLAP_CLEARANCE,
         )}
       >
-        <DisplayHeading
-          theme={theme}
-          as="h1"
-          className="lg:text-[3.5rem]"
-        >
+        <DisplayHeading theme={theme} as="h1" className="lg:text-[3.5rem]">
           {HERO_HEADLINE}
         </DisplayHeading>
         <p className="self-center text-lg leading-snug font-medium text-[var(--rd-ink)] sm:text-[1.4rem]">
@@ -112,7 +108,7 @@ export function HeadlineIntro({ theme }: { theme: RedesignTheme }) {
 export function Priorities({ showNote }: { showNote: boolean }) {
   return (
     // `flow-root` keeps the pulled-up row from dragging the band up with it.
-    <section className="flow-root bg-[var(--rd-surface-alt)]">
+    <section className="flow-root bg-[var(--rd-surface)]">
       <div className={cn(RD_COL, "relative")}>
         <div className={OVERLAP}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
