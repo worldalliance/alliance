@@ -229,9 +229,13 @@ jobs:
             pm2 save
 
             # Source of truth is deploy/nginx/alliance.conf, uploaded to
-            # ~/alliance.conf; substitute the per-environment domain into
+            # ~/alliance.conf; substitute the per-environment domains into
             # server_name + cert paths.
-            sed "s/__DOMAIN__/${{ vars.DOMAIN_NAME }}/g" ~/alliance.conf \
+            DOMAIN='${{ vars.DOMAIN_NAME }}'
+            ALT_DOMAIN='${{ vars.ALT_DOMAIN_NAME }}'
+            [ -n "$DOMAIN" ] || { echo "DOMAIN_NAME is unset for this environment"; exit 1; }
+            [ -n "$ALT_DOMAIN" ] || { echo "ALT_DOMAIN_NAME is unset for this environment"; exit 1; }
+            sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__ALT_DOMAIN__/$ALT_DOMAIN/g" ~/alliance.conf \
               | sudo tee /etc/nginx/conf.d/alliance.conf > /dev/null
             sudo nginx -t || { echo "nginx config invalid"; exit 1; }
             sudo systemctl reload nginx
@@ -786,6 +790,12 @@ jobs:
           curl --fail --silent --show-error http://${{vars.DOMAIN_NAME}} > /dev/null
           echo "main app is reachable"
 
+      - name: Check main app on alt domain
+        run: |
+          echo "Checking main app on ${{vars.ALT_DOMAIN_NAME}}..."
+          curl --fail --silent --show-error http://${{vars.ALT_DOMAIN_NAME}} > /dev/null
+          echo "main app is reachable on the alt domain"
+
       - name: Check admin app
         run: |
           echo "Checking admin app..."
@@ -804,6 +814,12 @@ jobs:
           echo "Checking main app..."
           curl --fail --silent --show-error https://${{vars.DOMAIN_NAME}} > /dev/null
           echo "main app https ok"
+
+      - name: Check main app https on alt domain
+        run: |
+          echo "Checking main app https on ${{vars.ALT_DOMAIN_NAME}}..."
+          curl --fail --silent --show-error https://${{vars.ALT_DOMAIN_NAME}} > /dev/null
+          echo "alt domain https ok"
 
       - name: Check admin app
         run: |
