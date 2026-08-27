@@ -7,31 +7,26 @@ export type TzOption = {
 };
 
 export const TZ_OPTIONS: TzOption[] = [
-  // US/Canada
-  {
-    group: "US/Canada",
-    label: "Pacific Time - US & Canada",
-    tz: "America/Los_Angeles",
-  },
-  {
-    group: "US/Canada",
-    label: "Mountain Time - US & Canada",
-    tz: "America/Denver",
-  },
-  {
-    group: "US/Canada",
-    label: "Central Time - US & Canada",
-    tz: "America/Chicago",
-  },
-  {
-    group: "US/Canada",
-    label: "Eastern Time - US & Canada",
-    tz: "America/New_York",
-  },
-  { group: "US/Canada", label: "Alaska Time", tz: "America/Anchorage" },
-  { group: "US/Canada", label: "Arizona, Yukon Time", tz: "America/Phoenix" },
-  { group: "US/Canada", label: "Newfoundland Time", tz: "America/St_Johns" },
-  { group: "US/Canada", label: "Hawaii Time", tz: "Pacific/Honolulu" },
+  // US
+  { group: "US", label: "Pacific Time", tz: "America/Los_Angeles" },
+  { group: "US", label: "Mountain Time", tz: "America/Denver" },
+  { group: "US", label: "Central Time", tz: "America/Chicago" },
+  { group: "US", label: "Eastern Time", tz: "America/New_York" },
+  { group: "US", label: "Alaska Time", tz: "America/Anchorage" },
+  { group: "US", label: "Arizona Time", tz: "America/Phoenix" },
+  { group: "US", label: "Hawaii Time", tz: "Pacific/Honolulu" },
+
+  // Canada gets its own zones rather than sharing the US ones beside it.
+  // America/Los_Angeles belongs to the US whatever an option is labelled, so
+  // sharing it leaves a Vancouver member indistinguishable from a Seattle one.
+  { group: "Canada", label: "Pacific Time", tz: "America/Vancouver" },
+  { group: "Canada", label: "Mountain Time", tz: "America/Edmonton" },
+  { group: "Canada", label: "Saskatchewan Time", tz: "America/Regina" },
+  { group: "Canada", label: "Central Time", tz: "America/Winnipeg" },
+  { group: "Canada", label: "Eastern Time", tz: "America/Toronto" },
+  { group: "Canada", label: "Atlantic Time", tz: "America/Halifax" },
+  { group: "Canada", label: "Newfoundland Time", tz: "America/St_Johns" },
+  { group: "Canada", label: "Yukon Time", tz: "America/Whitehorse" },
 
   // America
   { group: "America", label: "Mexico City Time", tz: "America/Mexico_City" },
