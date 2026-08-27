@@ -14,7 +14,6 @@ import {
   forumFindCommentsForActivity,
   forumFindCommentsForPost,
   forumUpdateComment,
-  imagesUploadImage,
 } from "@alliance/shared/client";
 import {
   CommentFilter,
@@ -27,6 +26,7 @@ import {
   sortLabels,
   useCommentFilterData,
 } from "@alliance/shared/lib/commentsFilter";
+import { uploadAttachments } from "@alliance/shared/lib/uploadAttachments";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
 import { formatTime } from "@alliance/shared/lib/utils";
@@ -63,19 +63,6 @@ export interface CommentsProps {
   expertLabel?: string;
   showClusterTags?: boolean;
 }
-
-const uploadAttachments = async (attachments: string[]) => {
-  const uploads = await Promise.all(
-    attachments.map(async (file) => {
-      if (file.startsWith("data:")) {
-        const res = await imagesUploadImage({ body: { file } });
-        return res.data?.key;
-      }
-      return file;
-    }),
-  );
-  return uploads.filter((key): key is string => Boolean(key));
-};
 
 const shouldShowComment = (comment: CommentDto) => {
   return !comment.deleted || (comment.children?.length ?? 0) > 0;

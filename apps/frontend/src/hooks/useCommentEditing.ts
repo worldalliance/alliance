@@ -1,7 +1,7 @@
 import { R, type Result } from "@alliance/common/result";
 import { CommentDto, CreateEditableContentDto } from "@alliance/shared/client";
+import { uploadAttachments } from "@alliance/shared/lib/uploadAttachments";
 import { useState } from "react";
-import { uploadAttachments } from "../lib/uploadAttachments";
 
 export interface CommentEditingResult {
   isEditing: boolean;

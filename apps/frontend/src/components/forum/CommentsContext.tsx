@@ -16,6 +16,7 @@ import {
   UserDto,
 } from "@alliance/shared/client";
 import { captureException } from "@alliance/shared/lib/analytics";
+import { uploadAttachments } from "@alliance/shared/lib/uploadAttachments";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
 import {
   createContext,
@@ -26,7 +27,6 @@ import {
 } from "react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "../../lib/AuthContext";
-import { uploadAttachments } from "../../lib/uploadAttachments";
 
 interface CommentsContextValue {
   user?: UserDto;
