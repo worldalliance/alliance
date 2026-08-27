@@ -111,6 +111,7 @@ import {
 } from "react-native";
 import { resolveImageSource } from "../../lib/config";
 import { getImageLoadSize } from "../../lib/imageLoadSize";
+import { colors } from "../../lib/style/colors";
 import AppMarkdownWrapper, { useHandleLinkPress } from "../AppMarkdownWrapper";
 import { ImageGalleryModal } from "../ImageLightbox";
 import { MARKDOWN_HUG_WIDTH_STYLE, MarkdownTone } from "../markdownStyles";
@@ -1598,7 +1599,7 @@ const FormRenderer = ({
   if (visibilityContextLoading) {
     return (
       <View className="items-center py-8">
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.green} />
       </View>
     );
   }

@@ -116,7 +116,7 @@ export default function VideoPlayer({
         {SHOWS_SPINNER[state] && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-gray-100/80 rounded">
             <div className="text-center">
-              <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2" />
+              <div className="animate-spin h-8 w-8 border-2 border-green border-t-transparent rounded-full mx-auto mb-2" />
               <p className="text-sm text-gray-600">{"Loading video..."}</p>
             </div>
           </div>

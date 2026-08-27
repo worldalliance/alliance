@@ -35,6 +35,7 @@ import SwipeableNotification from "../../components/SwipeableNotification";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
+import { colors } from "../../lib/style/colors";
 
 const normalizeLocation = (location: string | null) => {
   if (!location) return null;
@@ -326,7 +327,7 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
       </SimplePageTitle>
       <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#0D1B2A" />
+        <ActivityIndicator size="large" color={colors.green} />
       </View>
     </View>
   ) : error ? (

@@ -16,6 +16,7 @@ import {
   View,
 } from "react-native";
 import { getApiUrl } from "../../lib/config";
+import { colors } from "../../lib/style/colors";
 import Text from "../system/Text";
 
 type VideoPlayerProps = {
@@ -142,7 +143,7 @@ const VideoPlayer = ({ src, videoId, caption }: VideoPlayerProps) => {
             pointerEvents="none"
             className="absolute inset-0 items-center justify-center bg-zinc-100/80"
           >
-            <ActivityIndicator size="large" color="#2563eb" />
+            <ActivityIndicator size="large" color={colors.green} />
             <Text className="mt-2 text-sm text-zinc-600">Loading video...</Text>
           </View>
         ) : null}

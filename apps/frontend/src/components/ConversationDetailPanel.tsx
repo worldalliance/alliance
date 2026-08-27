@@ -473,7 +473,7 @@ const ConversationDetailPanel = ({
 
             {convoMessages === null && mode === "existing" ? (
               <div className="flex justify-center items-center h-full">
-                <Spinner size="large" color="fill-zinc-500" />
+                <Spinner size="large" />
               </div>
             ) : convoMessages !== null ? (
               <div>

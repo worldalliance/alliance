@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Alert, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
+import { colors } from "../lib/style/colors";
 import AppMarkdownWrapper from "./AppMarkdownWrapper";
 import FormRenderer from "./forms/FormRenderer";
 import Card, { CardStyle } from "./system/Card";
@@ -96,7 +97,7 @@ export default function FollowUpFormPanel({
   if (isPending) {
     return (
       <View className="items-center justify-center p-6">
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.green} />
       </View>
     );
   }

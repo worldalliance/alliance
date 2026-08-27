@@ -17,6 +17,7 @@ import { useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
 import { getStoredGuestToken, setStoredGuestToken } from "../lib/guestSession";
+import { colors } from "../lib/style/colors";
 import FormRenderer from "./forms/FormRenderer";
 import Text from "./system/Text";
 
@@ -138,7 +139,7 @@ const ActionTaskPanelForm = ({
   if (isPending) {
     return (
       <View className="items-center justify-center py-6">
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.green} />
       </View>
     );
   }
