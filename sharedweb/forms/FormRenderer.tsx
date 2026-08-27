@@ -519,27 +519,22 @@ const FormRenderer = ({
     ? savedVisibilityValidatorResults
     : fetchedVisibilityValidatorResults;
 
+  // Drop verdicts for validators the schema no longer references. Returning
+  // `prev` when there are none matters: a fresh object here re-runs the fetch
+  // below, which would request every validator a second time on mount.
   useEffect(() => {
     if (readOnly) {
       return;
     }
     setVisibilityValidatorResults((prev) => {
-      let changed = false;
-      const next: Record<number, boolean> = {};
-      for (const id of visibilityValidatorIds) {
-        if (Object.prototype.hasOwnProperty.call(prev, id)) {
-          next[id] = prev[id];
-        } else {
-          changed = true;
-        }
-      }
-      if (
-        !changed &&
-        Object.keys(prev).length === visibilityValidatorIds.length
-      ) {
+      const referenced = new Set(visibilityValidatorIds);
+      const kept = Object.entries(prev).filter(([id]) =>
+        referenced.has(Number(id)),
+      );
+      if (kept.length === Object.keys(prev).length) {
         return prev;
       }
-      return next;
+      return Object.fromEntries(kept);
     });
   }, [visibilityValidatorIds, readOnly]);
 
