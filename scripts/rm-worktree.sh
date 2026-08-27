@@ -61,13 +61,6 @@ fi
 
 branch="$(git -C "$worktree_dir" rev-parse --abbrev-ref HEAD)"
 
-# --force is required for generated ignored files, so reproduce git's safety
-# check before using it.
-if [[ -n "$(git -C "$worktree_dir" status --porcelain)" ]]; then
-  git -C "$worktree_dir" status --short >&2
-  die "$worktree_dir has uncommitted changes or untracked files — commit or remove them, or remove the worktree by hand with 'git worktree remove --force'"
-fi
-
 source_env="$main_root/server/.env"
 
 # Resolve the main database before removing the metadata needed for recovery.
