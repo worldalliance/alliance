@@ -737,7 +737,9 @@ export function useFormValidation(args: {
         }
       }
 
-      const listFieldIds = visibleFields
+      // Every list on the page, not just the visible ones: a list the user
+      // has since hidden still owns stale `parentId:cardIndex:subId` keys.
+      const listFieldIds = fieldsOnPage
         .filter((f) => f.kind === "list")
         .map((f) => f.id);
       applyFieldErrorUpdates(
