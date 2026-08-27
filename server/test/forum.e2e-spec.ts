@@ -18,7 +18,10 @@ import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import { In, type Repository } from "typeorm";
 import { Action } from "../src/actions/entities/action.entity";
-import { CreatePostDto } from "../src/forum/dto/post.dto";
+import {
+  CreatePostDto,
+  UpdatePostSettingsDto,
+} from "../src/forum/dto/post.dto";
 import { createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Forum (e2e)", () => {
@@ -2041,6 +2044,194 @@ describe("Forum (e2e)", () => {
       expect(new Date(updated.body.updatedAt).getTime()).toBeGreaterThan(
         new Date(postResponse.body.updatedAt).getTime(),
       );
+    });
+
+    it("saves experts, authors, settings and tags in one call", async () => {
+      const { user: expert } = await createExtraUserAndToken();
+      const { user: coAuthor } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Saved In One Call",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      const saved = await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          expertIds: [expert.id],
+          authorIds: [coAuthor.id],
+          qaMode: true,
+          expertLabel: "AMA Guest",
+          notifyForReplies: true,
+          showClusterTags: true,
+          tags: { tags: [{ name: "Logistics" }], knownTagIds: [] },
+        } satisfies UpdatePostSettingsDto)
+        .expect(200);
+
+      expect(saved.body.expertIds).toEqual([expert.id]);
+      expect(saved.body.authorIds).toEqual([coAuthor.id]);
+      expect(saved.body.qaMode).toBe(true);
+      expect(saved.body.expertLabel).toBe("AMA Guest");
+      expect(saved.body.notifyForReplies).toBe(true);
+      expect(saved.body.showClusterTags).toBe(true);
+      expect(saved.body.tags.map((tag) => tag.name)).toEqual(["Logistics"]);
+
+      const untagged = await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          expertIds: [],
+          authorIds: [coAuthor.id],
+          qaMode: false,
+        } satisfies UpdatePostSettingsDto)
+        .expect(200);
+
+      expect(untagged.body.expertIds).toEqual([]);
+      expect(untagged.body.qaMode).toBe(false);
+      expect(untagged.body.expertLabel).toBe("AMA Guest");
+      expect(untagged.body.tags.map((tag) => tag.name)).toEqual(["Logistics"]);
+    });
+
+    it("keeps the experts a rejected tag save came with", async () => {
+      const { user: expert } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Saved Against Stale Tags",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+      const settings = {
+        expertIds: [expert.id],
+        authorIds: [],
+        qaMode: true,
+      };
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          ...settings,
+          tags: { tags: [{ name: "Logistics" }], knownTagIds: [] },
+        } satisfies UpdatePostSettingsDto)
+        .expect(200);
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          expertIds: [],
+          authorIds: [],
+          qaMode: false,
+          tags: { tags: [{ name: "Timeline" }], knownTagIds: [] },
+        } satisfies UpdatePostSettingsDto)
+        .expect(409);
+
+      const adminPosts = await request(ctx.app.getHttpServer())
+        .get("/forum/admin/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const stored = adminPosts.body.find((p) => p.id === postId);
+      expect(stored.expertIds).toEqual([expert.id]);
+      expect(stored.qaMode).toBe(true);
+    });
+
+    it("refuses a save whose settings are the wrong type", async () => {
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Saved With A Word For A Flag",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          expertIds: [],
+          authorIds: [],
+          qaMode: true,
+          showClusterTags: true,
+          expertLabel: "AMA Guest",
+        } satisfies UpdatePostSettingsDto)
+        .expect(200);
+
+      const rejected = await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ expertIds: [], authorIds: [], qaMode: "nope" })
+        .expect(400);
+      expect(rejected.body.message).toContain("qaMode must be a boolean value");
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          expertIds: [],
+          authorIds: [],
+          qaMode: true,
+          showClusterTags: "nope",
+        })
+        .expect(400);
+
+      const labelled = await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          expertIds: [],
+          authorIds: [],
+          qaMode: true,
+          expertLabel: { deeply: "nested" },
+        })
+        .expect(400);
+      expect(labelled.body.message).toContain("expertLabel must be a string");
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          expertIds: [],
+          authorIds: [],
+          qaMode: true,
+          expertLabel: "A".repeat(65),
+        } satisfies UpdatePostSettingsDto)
+        .expect(400);
+
+      const listedTags = await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ expertIds: [], authorIds: [], qaMode: true, tags: [] })
+        .expect(400);
+      expect(listedTags.body.message).toContain("tags must be an object");
+
+      const adminPosts = await request(ctx.app.getHttpServer())
+        .get("/forum/admin/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const unchanged = adminPosts.body.find((p) => p.id === postId);
+      expect(unchanged.qaMode).toBe(true);
+      expect(unchanged.showClusterTags).toBe(true);
+      expect(unchanged.expertLabel).toBe("AMA Guest");
     });
 
     it("rejects non-admin from updating post authors", async () => {

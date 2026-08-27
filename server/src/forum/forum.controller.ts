@@ -31,6 +31,7 @@ import {
   UpdatePostAuthorsDto,
   UpdatePostDto,
   UpdatePostExpertsDto,
+  UpdatePostSettingsDto,
 } from "./dto/post.dto";
 import { ForumService } from "./forum.service";
 
@@ -394,6 +395,21 @@ export class ForumController {
     const post = await this.forumService.updatePostAuthors(
       id,
       updatePostAuthorsDto.authorIds,
+    );
+    return new PostDto({ post });
+  }
+
+  @Patch("admin/posts/:id/settings")
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: "Update post experts, authors, tags and Q&A mode" })
+  @ApiOkResponse({ type: PostDto })
+  async updatePostSettingsAdmin(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() updatePostSettingsDto: UpdatePostSettingsDto,
+  ): Promise<PostDto> {
+    const post = await this.forumService.updatePostSettings(
+      id,
+      updatePostSettingsDto,
     );
     return new PostDto({ post });
   }

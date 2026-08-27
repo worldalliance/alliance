@@ -2,6 +2,7 @@ import { byLikeOrder, LIKE_FACEPILE_LIMIT } from "@alliance/common/likeOrder";
 import {
   ApiProperty,
   ApiPropertyOptional,
+  IntersectionType,
   PartialType,
   PickType,
 } from "@nestjs/swagger";
@@ -11,6 +12,7 @@ import {
   IsBoolean,
   IsDefined,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   MaxLength,
@@ -25,7 +27,7 @@ import {
   CreateEditableContentDto,
   EditableContentDto,
 } from "./editablecontent.dto";
-import { PostTagDto } from "./post-tag.dto";
+import { PostTagDto, UpdatePostTagsDto } from "./post-tag.dto";
 
 export class PostDto extends PickType(Post, [
   "id",
@@ -199,4 +201,18 @@ export class UpdatePostAuthorsDto {
   @IsArray()
   @IsInt({ each: true })
   authorIds: number[];
+}
+
+export class UpdatePostSettingsDto extends IntersectionType(
+  UpdatePostExpertsDto,
+  UpdatePostAuthorsDto,
+) {
+  /** Absent leaves the tags alone, so a save that did not touch them cannot
+   * lose a race with a session that did. */
+  @ApiPropertyOptional({ type: () => UpdatePostTagsDto })
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => UpdatePostTagsDto)
+  tags?: UpdatePostTagsDto;
 }

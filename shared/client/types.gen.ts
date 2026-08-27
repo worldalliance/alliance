@@ -533,7 +533,7 @@ export type Post = {
     likes?: Array<User>;
     likesIds: Array<number>;
     qaMode: boolean;
-    expertLabel?: string;
+    expertLabel: string | null;
     experts?: Array<User>;
     expertIds: Array<number>;
     authors?: Array<User>;
@@ -3268,6 +3268,16 @@ export type PostTagInputDto = {
 export type UpdatePostTagsDto = {
     tags: Array<PostTagInputDto>;
     knownTagIds: Array<number>;
+};
+
+export type UpdatePostSettingsDto = {
+    expertIds: Array<number>;
+    qaMode: boolean;
+    expertLabel?: string | null;
+    notifyForReplies?: boolean;
+    showClusterTags?: boolean;
+    authorIds: Array<number>;
+    tags?: UpdatePostTagsDto;
 };
 
 export type CreateActionPartnershipResponseDto = {
@@ -10728,6 +10738,30 @@ export type ForumUpdatePostAuthorsAdminResponses = {
 };
 
 export type ForumUpdatePostAuthorsAdminResponse = ForumUpdatePostAuthorsAdminResponses[keyof ForumUpdatePostAuthorsAdminResponses];
+
+export type ForumUpdatePostSettingsAdminData = {
+    body: UpdatePostSettingsDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/forum/admin/posts/{id}/settings';
+};
+
+export type ForumUpdatePostSettingsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ForumUpdatePostSettingsAdminError = ForumUpdatePostSettingsAdminErrors[keyof ForumUpdatePostSettingsAdminErrors];
+
+export type ForumUpdatePostSettingsAdminResponses = {
+    200: PostDto;
+};
+
+export type ForumUpdatePostSettingsAdminResponse = ForumUpdatePostSettingsAdminResponses[keyof ForumUpdatePostSettingsAdminResponses];
 
 export type ForumUpdatePostTagsAdminData = {
     body: UpdatePostTagsDto;

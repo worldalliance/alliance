@@ -44,7 +44,12 @@ import {
   UserComment,
 } from "./dto/comment.dto";
 import { UpdatePostTagsDto } from "./dto/post-tag.dto";
-import { CreatePostDto, PostDtoArgs, UpdatePostDto } from "./dto/post.dto";
+import {
+  CreatePostDto,
+  PostDtoArgs,
+  UpdatePostDto,
+  UpdatePostSettingsDto,
+} from "./dto/post.dto";
 import { Comment, CommentParentObject } from "./entities/comment.entity";
 import { EditableContent } from "./entities/editablecontent.entity";
 import { PostTag } from "./entities/post-tag.entity";
@@ -1232,6 +1237,37 @@ export class ForumService {
     return this.findPostForAdmin(postId);
   }
 
+  async updatePostSettings(
+    postId: number,
+    settings: UpdatePostSettingsDto,
+  ): Promise<ParsedPost> {
+    const { expertIds, authorIds, tags, ...columns } = settings;
+
+    await this.postRepository.manager.transaction(async (manager) => {
+      const post = await this.lockPost(manager, postId);
+      await manager.update(Post, postId, columns);
+      await this.replacePostUsers({
+        manager,
+        postId,
+        relation: "experts",
+        userIds: expertIds,
+        currentIds: post.expertIds,
+      });
+      await this.replacePostUsers({
+        manager,
+        postId,
+        relation: "authors",
+        userIds: authorIds,
+        currentIds: post.authorIds,
+      });
+      if (tags) {
+        await this.replacePostTags({ manager, postId, tags });
+      }
+    });
+
+    return this.findPostForAdmin(postId);
+  }
+
   async getPostsForAdmin(): Promise<ParsedPost[]> {
     const posts = await this.postRepository.find({
       where: { deleted: false },
@@ -1269,72 +1305,75 @@ export class ForumService {
 
   async updatePostTags(
     postId: number,
-    { tags: tagInputs, knownTagIds }: UpdatePostTagsDto,
+    tags: UpdatePostTagsDto,
   ): Promise<ParsedPost> {
     const post = await this.postRepository.findOne({ where: { id: postId } });
     if (!post) {
       throw new NotFoundException(`Post with ID "${postId}" not found`);
     }
 
+    await this.postTagRepository.manager.transaction((manager) =>
+      this.replacePostTags({ manager, postId, tags }),
+    );
+
+    return this.findPostForAdmin(postId);
+  }
+
+  private async replacePostTags(params: {
+    manager: EntityManager;
+    postId: number;
+    tags: UpdatePostTagsDto;
+  }): Promise<void> {
+    const {
+      manager,
+      postId,
+      tags: { tags: tagInputs, knownTagIds },
+    } = params;
     const names = tagInputs.map((input) => input.name);
     if (new Set(names).size !== names.length) {
       throw new BadRequestException("Tag names must be unique within a post");
     }
 
-    await this.postTagRepository.manager.transaction(async (manager) => {
-      const tagRepository = manager.getRepository(PostTag);
-      const existing = await tagRepository.find({ where: { postId } });
-      const existingIds = new Set(existing.map((tag) => tag.id));
-      const known = new Set(knownTagIds);
-      if (
-        known.size !== existingIds.size ||
-        [...existingIds].some((id) => !known.has(id))
-      ) {
-        throw new ConflictException(
-          "Another admin changed this post's tags. Reload and try again.",
+    const tagRepository = manager.getRepository(PostTag);
+    const existing = await tagRepository.find({ where: { postId } });
+    const existingIds = new Set(existing.map((tag) => tag.id));
+    const known = new Set(knownTagIds);
+    if (
+      known.size !== existingIds.size ||
+      [...existingIds].some((id) => !known.has(id))
+    ) {
+      throw new ConflictException(
+        "Another admin changed this post's tags. Reload and try again.",
+      );
+    }
+    const existingById = new Map(existing.map((tag) => [tag.id, tag]));
+    const kept = tagInputs.map((input, index) => {
+      if (input.id === undefined) {
+        return tagRepository.create({
+          postId,
+          name: input.name,
+          sortOrder: index,
+        });
+      }
+      const tag = existingById.get(input.id);
+      if (!tag) {
+        throw new BadRequestException(
+          `Tag ${input.id} does not belong to post ${postId}`,
         );
       }
-      const existingById = new Map(existing.map((tag) => [tag.id, tag]));
-      const kept = tagInputs.map((input, index) => {
-        if (input.id === undefined) {
-          return tagRepository.create({
-            postId,
-            name: input.name,
-            sortOrder: index,
-          });
-        }
-        const tag = existingById.get(input.id);
-        if (!tag) {
-          throw new BadRequestException(
-            `Tag ${input.id} does not belong to post ${postId}`,
-          );
-        }
-        tag.name = input.name;
-        tag.sortOrder = index;
-        return tag;
-      });
-      const keptIds = new Set(
-        kept.map((tag) => tag.id).filter((id) => id !== undefined),
-      );
-      const removed = existing.filter((tag) => !keptIds.has(tag.id));
-
-      if (removed.length > 0) {
-        await tagRepository.remove(removed);
-      }
-      await tagRepository.save(kept);
+      tag.name = input.name;
+      tag.sortOrder = index;
+      return tag;
     });
-
-    return parsePost(
-      await this.postRepository.findOneOrFail({
-        where: { id: postId },
-        relations: {
-          author: true,
-          action: true,
-          editableContent: true,
-          tags: true,
-        },
-      }),
+    const keptIds = new Set(
+      kept.map((tag) => tag.id).filter((id) => id !== undefined),
     );
+    const removed = existing.filter((tag) => !keptIds.has(tag.id));
+
+    if (removed.length > 0) {
+      await tagRepository.remove(removed);
+    }
+    await tagRepository.save(kept);
   }
 
   async togglePinComment(commentId: number): Promise<Comment> {
