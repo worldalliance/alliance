@@ -12,11 +12,11 @@ import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import CopyIcon from "@alliance/sharedweb/ui/icons/CopyIcon";
 import List from "@alliance/sharedweb/ui/List";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
@@ -246,7 +246,7 @@ const InvitesPage = () => {
                       className="cursor-pointer active:scale-85 transition-all duration-100"
                       onClick={() => copyToClipboard(invite.code)}
                     >
-                      <CopyIcon size="medium" fill="gray" />
+                      <Copy className="h-4 w-4 text-gray-500" />
                     </div>
                   </div>
                 </div>

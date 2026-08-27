@@ -39,7 +39,6 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import Dropdown from "@alliance/sharedweb/ui/Dropdown";
-import CopyIcon from "@alliance/sharedweb/ui/icons/CopyIcon";
 import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
@@ -48,6 +47,7 @@ import {
   CheckIcon,
   ChevronDown,
   ChevronUp,
+  Copy,
   EyeOff,
   ListChecks,
   TrendingUp,
@@ -1029,7 +1029,7 @@ const ActionDashboard: React.FC = () => {
                     color={ButtonColor.White}
                     className="!px-3 !text-sm gap-x-1"
                   >
-                    <CopyIcon size="large" />
+                    <Copy className="h-5 w-5" />
                     Duplicate Action
                   </Button>
                   <div className="relative">

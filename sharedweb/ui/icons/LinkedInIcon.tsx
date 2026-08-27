@@ -3,7 +3,13 @@ import {
   linkedInIconPath,
   linkedInIconViewBox,
 } from "@alliance/shared/icons/linkedInIcon";
-import { DefaultIconProps, sizeClass } from "./icons";
+
+const sizeClass = {
+  mini: "w-2.5 h-2.5",
+  small: "w-3 h-3",
+  medium: "w-4 h-4",
+  large: "w-5 h-5",
+};
 
 /**
  * LinkedIn's official "in-bug" logo.
@@ -14,7 +20,10 @@ import { DefaultIconProps, sizeClass } from "./icons";
 const LinkedInIcon = ({
   size = "small",
   monochrome = false,
-}: Omit<DefaultIconProps, "fill"> & { monochrome?: boolean }) => {
+}: {
+  size?: keyof typeof sizeClass;
+  monochrome?: boolean;
+}) => {
   return (
     <svg
       className={sizeClass[size]}

@@ -3,9 +3,8 @@ import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
-import PinnedIcon from "@alliance/sharedweb/ui/icons/PinnedIcon";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Pin } from "lucide-react";
 import { Link, href, useNavigate } from "react-router";
 
 export interface ForumListPostProps {
@@ -50,7 +49,12 @@ const ForumListPost = ({
         <div className="flex flex-row gap-y-1 gap-2 justify-between">
           <div>
             <div className="flex flex-row gap-x-1 items-center">
-              {post.pinned && <PinnedIcon size="small" />}
+              {post.pinned && (
+                <Pin
+                  className="inline h-6 w-6 fill-green text-green"
+                  aria-label="Pinned"
+                />
+              )}
               <p className="text-lg font-medium">{post.title}</p>
               {post.commentCount != null && post.commentCount > 0 && (
                 <>

@@ -11,9 +11,9 @@ import {
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import DropdownIcon from "@alliance/sharedweb/ui/icons/DropdownIcon";
 import { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { formatDate, formatDistanceToNow } from "date-fns";
+import { ChevronDown } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import TextareaWithHighlights from "../TextareaWithHighlights";
@@ -199,7 +199,7 @@ const ActionReminderCard = ({
               minified && "rotate-180",
             )}
           >
-            <DropdownIcon size="small" fill="black" />
+            <ChevronDown className="h-3 w-3 text-black" />
           </Button>
           <div className="flex flex-col gap-1">
             <div className="flex flex-row gap-2 items-center">

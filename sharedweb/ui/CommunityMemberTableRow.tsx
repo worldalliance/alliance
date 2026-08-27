@@ -14,11 +14,11 @@ import { formatNextTaskDue } from "@alliance/shared/lib/formatNextTaskDue";
 import { useAwayRanges } from "@alliance/shared/lib/useAwayRanges";
 import { cn } from "@alliance/shared/styles/util";
 import { keyBy } from "es-toolkit";
+import { ChevronDown } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { AvatarProfile } from "./Avatar";
 import Button, { ButtonColor } from "./Button";
-import DropdownIcon from "./icons/DropdownIcon";
 import InfoTooltip from "./InfoTooltip";
 import { useToast } from "./ToastProvider";
 import UserDisplayName from "./UserDisplayName";
@@ -101,7 +101,7 @@ const CommunityMemberTableRow = ({
           <div className="flex flex-row items-center gap-x-1 md:gap-x-3">
             {canExpand && (
               <div className={cn(expanded ? "" : "-rotate-90")}>
-                <DropdownIcon size="mini" fill="black" />
+                <ChevronDown className="h-2.5 w-2.5 text-black" />
               </div>
             )}
             <Link

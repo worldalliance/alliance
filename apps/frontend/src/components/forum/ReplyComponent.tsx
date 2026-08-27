@@ -6,10 +6,9 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import ClusterTag from "@alliance/sharedweb/ui/ClusterTag";
 import EditableContentForm from "@alliance/sharedweb/ui/EditableContentForm";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
-import PinnedIcon from "@alliance/sharedweb/ui/icons/PinnedIcon";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
 import { formatDistanceToNow } from "date-fns";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Pin } from "lucide-react";
 import { useState } from "react";
 import { Link, href } from "react-router";
 import { useCommentEditing } from "../../hooks/useCommentEditing";
@@ -123,7 +122,12 @@ const ReplyContent = ({
               </span>
             )}
           </div>
-          {reply.pinned && <PinnedIcon size="small" />}
+          {reply.pinned && (
+            <Pin
+              className="inline h-6 w-6 fill-green text-green"
+              aria-label="Pinned"
+            />
+          )}
         </div>
 
         <div className="text-base mb-1">

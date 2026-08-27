@@ -6,11 +6,10 @@ import { CardStyle } from "@alliance/shared/styles/card";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Card from "@alliance/sharedweb/ui/Card";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
-import PinnedIcon from "@alliance/sharedweb/ui/icons/PinnedIcon";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pin } from "lucide-react";
 import React, { useState } from "react";
 import { Link, href, useNavigate, useParams } from "react-router";
 import Comments from "../../components/Comments";
@@ -131,7 +130,10 @@ const PostDetailPage: React.FC = () => {
               <h1 className="text-title">
                 {post.title}
                 {post.pinned && (
-                  <PinnedIcon size="large" className="ml-2 -mt-1" />
+                  <Pin
+                    className="ml-2 -mt-1 inline h-8 w-8 fill-green text-green"
+                    aria-label="Pinned"
+                  />
                 )}
               </h1>
             </div>

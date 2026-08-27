@@ -2,8 +2,8 @@ import { NAV_BAR_CONTAINER_HEIGHT } from "@alliance/shared/lib/constants";
 import { cn } from "@alliance/shared/styles/util";
 import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import DropdownIcon from "@alliance/sharedweb/ui/icons/DropdownIcon";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
+import { ChevronDown } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Link, href, useNavigate } from "react-router";
 import { useAuth } from "../lib/AuthContext";
@@ -50,7 +50,7 @@ const ProfileDropdown = () => {
             size="override"
             className={`h-${NAV_BAR_CONTAINER_HEIGHT} w-${NAV_BAR_CONTAINER_HEIGHT}`}
           />
-          <DropdownIcon size="small" fill="black" />
+          <ChevronDown className="h-3 w-3 text-black" />
         </button>
       ) : (
         <>
@@ -72,7 +72,7 @@ const ProfileDropdown = () => {
             aria-label="Profile menu"
             aria-expanded={isOpen}
           >
-            <DropdownIcon size="small" fill="black" />
+            <ChevronDown className="h-3 w-3 text-black" />
           </button>
         </>
       )}

@@ -9,7 +9,6 @@ import { cn } from "@alliance/shared/styles/util";
 import { isProduction } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Dropdown from "@alliance/sharedweb/ui/Dropdown";
-import SidebarIcon from "@alliance/sharedweb/ui/icons/SidebarIcon";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -28,6 +27,7 @@ import {
   MoreHorizontal,
   Network,
   Newspaper,
+  PanelLeft,
   ScrollText,
   Share2,
   SquareActivity,
@@ -481,7 +481,7 @@ const Sidebar: React.FC = () => {
           )}
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
         >
-          <SidebarIcon size="large" fill="black" />
+          <PanelLeft className="h-5 w-5" />
         </div>
       </div>
       <div className="flex-1 overflow-y-scroll max-h-screen">

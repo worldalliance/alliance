@@ -29,7 +29,7 @@ import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
 import { isOutputValueMissing } from "@alliance/shared/outputrenderer";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
-import { Plus, X } from "lucide-react";
+import { ChevronDown, Plus, X } from "lucide-react";
 import {
   useEffect,
   useId,
@@ -44,7 +44,6 @@ import { readFileDataUri } from "../lib/readFileDataUri";
 import AppMarkdownWrapper from "../ui/AppMarkdownWrapper";
 import Card from "../ui/Card";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
-import DropdownIcon from "../ui/icons/DropdownIcon";
 import ImageLightbox from "../ui/ImageLightbox";
 import NewButton, { ButtonColor, ButtonSize } from "../ui/NewButton";
 import PhoneNumberInput from "../ui/PhoneNumberInput";
@@ -1323,7 +1322,7 @@ export function TimeInputField({
           className="absolute right-2 sm:right-3 h-full"
           tabIndex={-1}
         >
-          <DropdownIcon size="mini" fill="black" />
+          <ChevronDown className="h-2.5 w-2.5 text-black" />
         </button>
 
         {/* Dropdown List */}

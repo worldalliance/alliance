@@ -12,10 +12,9 @@ import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import CreateIcon from "@alliance/sharedweb/ui/icons/CreateIcon";
 import List from "@alliance/sharedweb/ui/List";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, SquarePen, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { href, Link } from "react-router";
 import { useAuth } from "../lib/AuthContext";
@@ -201,7 +200,7 @@ const ConversationInfoPanel = ({
                   className="cursor-pointer hover:bg-zinc-100 rounded-md p-2"
                   onClick={() => setIsEditingGroup(true)}
                 >
-                  <CreateIcon size="medium" fill="var(--color-zinc-500)" />
+                  <SquarePen className="h-4 w-4 text-zinc-500" />
                 </div>
               )}
             </div>

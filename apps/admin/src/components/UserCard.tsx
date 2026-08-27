@@ -10,11 +10,11 @@ import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Badge from "@alliance/sharedweb/ui/Badge";
 import Card from "@alliance/sharedweb/ui/Card";
-import DropdownIcon from "@alliance/sharedweb/ui/icons/DropdownIcon";
 import UserProgressPills, {
   PILL_STATUS_DATA,
 } from "@alliance/sharedweb/ui/UserProgressPills";
 import { keyBy } from "es-toolkit";
+import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 
@@ -117,7 +117,7 @@ const UserCard = ({
               }}
             >
               Manage
-              <DropdownIcon size="mini" fill="#2563eb" />
+              <ChevronDown className="h-2.5 w-2.5 text-blue-600" />
             </button>
             {isDropdownOpen && (
               <div

@@ -2,7 +2,7 @@ import { ActionDto } from "@alliance/shared/client";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import Card from "@alliance/sharedweb/ui/Card";
-import DropdownIcon from "@alliance/sharedweb/ui/icons/DropdownIcon";
+import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { formatStatus, getStatusColor } from "../pages/ActionDashboard";
 import CreateEventForm from "./CreateEventForm";
@@ -31,7 +31,7 @@ const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
               transform: addEventExpanded ? "rotate(180deg)" : "rotate(0deg)",
             }}
           >
-            <DropdownIcon size="small" fill="black" />
+            <ChevronDown className="h-3 w-3 text-black" />
           </button>
           <h2 className="text-lg font-semibold">Add New Event</h2>
         </div>

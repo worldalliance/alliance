@@ -382,9 +382,9 @@ const MembershipPage: React.FC = () => {
                   action.
                 </li>
                 <li className="text-base">
-                  You can schedule an away period on this page if you
-                  won&apos;t be able to complete actions for a prolonged period,
-                  such as during a vacation.
+                  You can schedule an away period on this page if you won&apos;t
+                  be able to complete actions for a prolonged period, such as
+                  during a vacation.
                 </li>
               </ol>
             </div>
