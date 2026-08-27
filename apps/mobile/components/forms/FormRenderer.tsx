@@ -81,14 +81,7 @@ import {
   MessagesSquare,
   Signature,
 } from "lucide-react-native";
-import {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -873,17 +866,6 @@ const FormRenderer = ({
     readOnly,
   ]);
 
-  const fieldPositions = useRef<Record<string, number>>({});
-  const fieldScreenPositions = useRef<Record<string, number>>({});
-
-  const scrollToField = useCallback(
-    (fieldId: string) => {
-      const yPosition = fieldPositions.current[fieldId];
-      scrollPageTo(Math.max(0, yPosition + 100));
-    },
-    [scrollPageTo],
-  );
-
   useEffect(() => {
     const completedPublicAnswers = completedFormResponse?.publicAnswers as
       | Record<string, unknown>
@@ -1013,8 +995,6 @@ const FormRenderer = ({
     if (result.isValid) {
       setCurrentPageIndex(nextVisiblePageIndex);
       setImmediate(() => scrollPageTo(0, false));
-    } else if (result.firstInvalidFieldId) {
-      scrollToField(result.firstInvalidFieldId);
     }
   };
 
@@ -1041,27 +1021,20 @@ const FormRenderer = ({
       const result = await validatePage(currentPageIndex, true);
       if (result.isValid) {
         setCurrentPageIndex(nextVisiblePageIndex);
-      } else if (result.firstInvalidFieldId) {
-        scrollToField(result.firstInvalidFieldId);
+        setImmediate(() => scrollPageTo(0, false));
       }
       setSubmitting(false);
       return;
     }
 
-    const { isValid, firstInvalidPageIndex, firstInvalidFieldId } =
-      await validateAllPages();
+    const { isValid, firstInvalidPageIndex } = await validateAllPages();
     if (!isValid) {
       if (
         typeof firstInvalidPageIndex === "number" &&
         firstInvalidPageIndex !== currentPageIndex
       ) {
         setCurrentPageIndex(firstInvalidPageIndex);
-        // Scroll after page change - use setTimeout to wait for re-render
-        if (firstInvalidFieldId) {
-          setTimeout(() => scrollToField(firstInvalidFieldId), 100);
-        }
-      } else if (firstInvalidFieldId) {
-        scrollToField(firstInvalidFieldId);
+        setImmediate(() => scrollPageTo(0, false));
       }
       setSubmitting(false);
       return;
@@ -1202,16 +1175,7 @@ const FormRenderer = ({
           }
           const field = element as AnyField;
           return (
-            <View
-              key={field.id}
-              ref={(ref) => {
-                if (ref) {
-                  ref.measure((_x, _y, _width, _height, _pageX, pageY) => {
-                    fieldScreenPositions.current[field.id] = pageY;
-                  });
-                }
-              }}
-            >
+            <View key={field.id}>
               <RenderField
                 field={interpolateFieldText(field, variableValues)}
                 value={effectiveFormData[field.id]}
