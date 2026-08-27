@@ -2,7 +2,7 @@ import {
   cohortExpressionSchema,
   type CohortExpression,
 } from "@alliance/common/cohort-expression";
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { Allow, IsOptional } from "class-validator";
 import { Form } from "src/tasks/entities/form.entity";
@@ -26,53 +26,36 @@ export class FollowUpForm {
   id: number;
 
   @Column({ type: "text", nullable: true })
-  @ApiPropertyOptional({
-    type: String,
-    nullable: true,
-  })
+  @ApiProperty({ type: String, nullable: true })
   @Allow()
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  name?: string;
+  name: string | null;
 
   @Column({ type: "timestamptz", nullable: true })
-  @ApiPropertyOptional({
-    type: Date,
-    nullable: true,
-  })
+  @ApiProperty({ type: Date, nullable: true })
   @Type(() => Date)
   @Allow()
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  startDate?: Date;
+  startDate: Date | null;
 
   @Column({ type: "timestamptz", nullable: true })
-  @ApiPropertyOptional({
-    type: Date,
-    nullable: true,
-  })
+  @ApiProperty({ type: Date, nullable: true })
   @Type(() => Date)
   @Allow()
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  endDate?: Date;
+  endDate: Date | null;
 
   @Column({ type: "text", nullable: true })
-  @ApiPropertyOptional({
-    type: String,
-    nullable: true,
-  })
+  @ApiProperty({ type: String, nullable: true })
   @Allow()
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  instructions?: string;
+  instructions: string | null;
 
   @Column({ type: "jsonb", nullable: true })
-  @ApiPropertyOptional({ nullable: true })
+  @ApiProperty({ nullable: true })
   @IsOptional()
   @Type(() => Object)
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  cohortExpression?: unknown;
+  cohortExpression: unknown | null;
 
   // Relations
 

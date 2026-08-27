@@ -1,4 +1,9 @@
-import { ApiPropertyOptional, PartialType, PickType } from "@nestjs/swagger";
+import {
+  ApiPropertyOptional,
+  IntersectionType,
+  PartialType,
+  PickType,
+} from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { IsOptional } from "class-validator";
 import { Form } from "src/tasks/entities/form.entity";
@@ -33,15 +38,18 @@ export class FollowUpFormDto extends PickType(FollowUpForm, [
   }
 }
 
-export class CreateFollowUpFormDto extends PickType(FollowUpForm, [
-  "actionId",
-  "formId",
-  "startDate",
-  "endDate",
-  "name",
-  "instructions",
-  "cohortExpression",
-]) {}
+export class CreateFollowUpFormDto extends IntersectionType(
+  PickType(FollowUpForm, ["actionId", "formId"]),
+  PartialType(
+    PickType(FollowUpForm, [
+      "startDate",
+      "endDate",
+      "name",
+      "instructions",
+      "cohortExpression",
+    ]),
+  ),
+) {}
 
 export class UpdateFollowUpFormDto extends PartialType(
   PickType(FollowUpForm, [

@@ -181,11 +181,11 @@ export type ActionActivity = {
 
 export type FollowUpForm = {
     id: number;
-    name?: string | null;
-    startDate?: string | null;
-    endDate?: string | null;
-    instructions?: string | null;
-    cohortExpression?: {
+    name: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    instructions: string | null;
+    cohortExpression: {
         [key: string]: unknown;
     } | null;
     actionId: number;
@@ -2240,11 +2240,11 @@ export type Form = {
 
 export type FollowUpFormDto = {
     id: number;
-    name?: string | null;
-    startDate?: string | null;
-    endDate?: string | null;
-    instructions?: string | null;
-    cohortExpression?: {
+    name: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    instructions: string | null;
+    cohortExpression: {
         [key: string]: unknown;
     } | null;
     actionId: number;
@@ -2253,6 +2253,8 @@ export type FollowUpFormDto = {
 };
 
 export type CreateFollowUpFormDto = {
+    actionId: number;
+    formId: number;
     name?: string | null;
     startDate?: string | null;
     endDate?: string | null;
@@ -2260,8 +2262,6 @@ export type CreateFollowUpFormDto = {
     cohortExpression?: {
         [key: string]: unknown;
     } | null;
-    actionId: number;
-    formId: number;
 };
 
 export type UpdateFollowUpFormDto = {
