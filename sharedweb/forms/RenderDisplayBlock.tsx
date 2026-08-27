@@ -326,7 +326,12 @@ export default function RenderDisplayBlock({
     case "biglink": {
       const IconComponent = bigLinkIcons[block.icon || "messages-square"];
       return (
-        <Link to={block.url} className="block group text-black ">
+        <Link
+          to={block.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block group text-black "
+        >
           <Card
             className="flex flex-row items-center gap-3 hover:bg-zinc-100"
             style={CardStyle.Grey}
