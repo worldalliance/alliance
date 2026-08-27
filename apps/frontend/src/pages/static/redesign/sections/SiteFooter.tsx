@@ -6,31 +6,56 @@ import {
   FOOTER_LEGAL_LINKS,
   FOOTER_LINKS_FLAT,
   FOOTER_TAGLINE,
-  type FooterLink,
+  type SiteLink,
 } from "../content";
-import { FooterKind, type RedesignTheme } from "../theme";
-import { Logotype, RD_COL, RdArrow } from "../ui";
+import { rdHref, RedesignPage } from "../links";
+import { FooterKind, type RedesignTheme, type RedesignVersion } from "../theme";
+import { Logotype, RD_COL, RdArrow, RdTrigger } from "../ui";
+import { useJoinTarget } from "./JoinRequest";
 
-function FooterAnchor({ link }: { link: FooterLink }) {
+function FooterAnchor({
+  link,
+  theme,
+}: {
+  link: SiteLink;
+  theme: RedesignTheme;
+}) {
+  const joinTarget = useJoinTarget(theme.version);
+  // On the version that keeps the join form in a modal, this opens it.
+  const target =
+    link.page === RedesignPage.Join
+      ? joinTarget
+      : { href: rdHref(theme.version, link.page) };
+
   return (
-    <a
-      href={link.href}
-      className="inline-flex min-h-11 items-center gap-1.5 text-white hover:underline"
+    <RdTrigger
+      {...target}
+      className="-my-2.5 inline-flex items-center gap-1.5 py-2.5 text-white hover:underline"
     >
       {link.label}
-      {link.external && <RdArrow className="size-2.5" />}
-    </a>
+      {link.withArrow && <RdArrow className="size-2.5" />}
+    </RdTrigger>
   );
 }
 
-function LinkColumns() {
+function LinkColumns({
+  theme,
+  accountLast = false,
+}: {
+  theme: RedesignTheme;
+  accountLast?: boolean;
+}) {
+  // The account column is authored first; some footers want it rightmost.
+  const [account, ...rest] = FOOTER_COLUMNS;
+  const columns = accountLast ? [...rest, account] : FOOTER_COLUMNS;
+
   return (
     <nav className="flex flex-wrap gap-x-[52px] gap-y-8" aria-label="Footer">
-      {FOOTER_COLUMNS.map((column) => (
-        <ul key={column[0].href} className="flex flex-col gap-0.5 sm:gap-[13px]">
+      {columns.map((column) => (
+        <ul key={column[0].page} className="flex flex-col gap-1.5">
           {column.map((link) => (
-            <li key={link.href}>
-              <FooterAnchor link={link} />
+            <li key={link.page}>
+              <FooterAnchor link={link} theme={theme} />
             </li>
           ))}
         </ul>
@@ -39,14 +64,20 @@ function LinkColumns() {
   );
 }
 
-function InlineLinks({ className }: { className?: string }) {
+function InlineLinks({
+  theme,
+  className,
+}: {
+  theme: RedesignTheme;
+  className?: string;
+}) {
   return (
     <nav
-      className={cn("flex flex-wrap gap-x-7 gap-y-3", className)}
+      className={cn("flex flex-wrap gap-x-7 gap-y-1", className)}
       aria-label="Footer"
     >
       {FOOTER_LINKS_FLAT.map((link) => (
-        <FooterAnchor key={link.href} link={link} />
+        <FooterAnchor key={link.page} link={link} theme={theme} />
       ))}
     </nav>
   );
@@ -70,7 +101,13 @@ function Brand({
 }
 
 /** Copyright and the legal links share one dot-separated row under a rule. */
-function LegalRow({ centered = false }: { centered?: boolean }) {
+function LegalRow({
+  version,
+  centered = false,
+}: {
+  version: RedesignVersion;
+  centered?: boolean;
+}) {
   return (
     <div className="mt-14 border-t border-white/15 pt-6">
       <p
@@ -81,11 +118,11 @@ function LegalRow({ centered = false }: { centered?: boolean }) {
       >
         <span>{FOOTER_COPYRIGHT}</span>
         {FOOTER_LEGAL_LINKS.map((link) => (
-          <Fragment key={link.href}>
+          <Fragment key={link.page}>
             <span aria-hidden>·</span>
             <a
-              href={link.href}
-              className="inline-flex min-h-11 items-center hover:underline"
+              href={rdHref(version, link.page)}
+              className="-my-3 inline-flex items-center py-3 hover:underline"
             >
               {link.label}
             </a>
@@ -109,10 +146,10 @@ function ColumnsFooter({ theme }: { theme: RedesignTheme }) {
   return (
     <Shell>
       <div className="flex flex-col gap-12 lg:flex-row lg:justify-between">
-        <LinkColumns />
+        <LinkColumns theme={theme} />
         <Brand theme={theme} />
       </div>
-      <LegalRow />
+      <LegalRow version={theme.version} />
     </Shell>
   );
 }
@@ -123,9 +160,22 @@ function MirroredFooter({ theme }: { theme: RedesignTheme }) {
     <Shell>
       <div className="flex flex-col gap-12 lg:flex-row lg:justify-between">
         <Brand theme={theme} />
-        <LinkColumns />
+        <LinkColumns theme={theme} />
       </div>
-      <LegalRow />
+      <LegalRow version={theme.version} />
+    </Shell>
+  );
+}
+
+/** Version 4: brand right, links left, account column rightmost. */
+function ColumnsAccountLastFooter({ theme }: { theme: RedesignTheme }) {
+  return (
+    <Shell>
+      <div className="flex flex-col gap-12 lg:flex-row lg:justify-between">
+        <LinkColumns theme={theme} accountLast />
+        <Brand theme={theme} />
+      </div>
+      <LegalRow version={theme.version} />
     </Shell>
   );
 }
@@ -136,9 +186,9 @@ function CenteredFooter({ theme }: { theme: RedesignTheme }) {
     <Shell>
       <div className="flex flex-col items-center gap-7 text-center">
         <Brand theme={theme} className="items-center" />
-        <InlineLinks className="justify-center" />
+        <InlineLinks theme={theme} className="justify-center" />
       </div>
-      <LegalRow centered />
+      <LegalRow version={theme.version} centered />
     </Shell>
   );
 }
@@ -149,9 +199,9 @@ function InlineFooter({ theme }: { theme: RedesignTheme }) {
     <Shell>
       <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
         <Brand theme={theme} />
-        <InlineLinks className="lg:max-w-[30rem] lg:justify-end" />
+        <InlineLinks theme={theme} className="lg:max-w-[30rem] lg:justify-end" />
       </div>
-      <LegalRow />
+      <LegalRow version={theme.version} />
     </Shell>
   );
 }
@@ -162,6 +212,7 @@ const footerByKind: Record<
 > = {
   [FooterKind.Columns]: ColumnsFooter,
   [FooterKind.Mirrored]: MirroredFooter,
+  [FooterKind.ColumnsAccountLast]: ColumnsAccountLastFooter,
   [FooterKind.Centered]: CenteredFooter,
   [FooterKind.Inline]: InlineFooter,
 };

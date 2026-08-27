@@ -10,6 +10,9 @@ export default [
   route("/", "pages/static/PrelaunchLandingPage.tsx"),
   route("/landing-test", "pages/static/LandingTestPage.tsx"),
   route("/redesign", "pages/static/redesign/RedesignPage.tsx"),
+  route("/redesign/:page", "pages/static/redesign/RedesignPage.tsx", {
+    id: "redesign-subpage",
+  }),
   route("/people", "pages/static/PeoplePage.tsx"),
   route("/guide", "pages/static/GuidePage.tsx"),
   route("/foundation", "pages/static/FoundationPage.tsx"),

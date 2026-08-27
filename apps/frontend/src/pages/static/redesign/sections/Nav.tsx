@@ -2,7 +2,8 @@ import { cn } from "@alliance/shared/styles/util";
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NAV_LINKS, NAV_LOGIN, NAV_PARTNER } from "../content";
-import type { RedesignTheme } from "../theme";
+import { LOGIN_HREF, rdHref, RedesignPage } from "../links";
+import { NavStart, type RedesignTheme } from "../theme";
 import { Logotype, RD_COL, RdArrow } from "../ui";
 
 /** Height the heroes reserve when the bar isn't overlaying artwork. */
@@ -13,11 +14,13 @@ const SOLID_AFTER = 24;
 
 export function Nav({
   theme,
-  onDark,
+  start,
+  current = RedesignPage.Home,
 }: {
   theme: RedesignTheme;
-  /** True when the bar starts over a photo or video. */
-  onDark: boolean;
+  start: NavStart;
+  /** Underlines the page you are on, so the bar says where you are. */
+  current?: RedesignPage;
 }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -44,7 +47,9 @@ export function Nav({
   }, [menuOpen]);
 
   // Light type only survives while the bar is still over the artwork.
-  const light = onDark && !scrolled && !menuOpen;
+  const light = start !== NavStart.Surface && !scrolled && !menuOpen;
+  // A primary button on the primary band would vanish, so it inverts there.
+  const invertedLogin = light && start === NavStart.Primary;
 
   return (
     <header
@@ -68,9 +73,12 @@ export function Nav({
         >
           {NAV_LINKS.map((link) => (
             <a
-              key={link.href}
-              href={link.href}
-              className="inline-flex min-h-11 items-center hover:underline"
+              key={link.page}
+              href={rdHref(theme.version, link.page)}
+              aria-current={link.page === current ? "page" : undefined}
+              className={cn(
+                "inline-flex min-h-11 items-center hover:underline",
+              )}
             >
               {link.label}
             </a>
@@ -78,7 +86,7 @@ export function Nav({
         </nav>
 
         <a
-          href="/"
+          href={rdHref(theme.version, RedesignPage.Home)}
           className="inline-flex min-h-11 items-center text-xl sm:text-2xl"
         >
           <Logotype theme={theme} onDark={light} />
@@ -86,7 +94,7 @@ export function Nav({
 
         <div className="flex items-center justify-end gap-2.5">
           <a
-            href="/outreach-partner"
+            href={rdHref(theme.version, RedesignPage.Partner)}
             className={cn(
               "hidden min-h-11 items-center px-4 text-sm font-medium transition-colors sm:inline-flex",
               light
@@ -98,8 +106,13 @@ export function Nav({
             {NAV_PARTNER}
           </a>
           <a
-            href="/login"
-            className="inline-flex min-h-11 items-center gap-2 bg-[var(--rd-primary)] px-4 text-sm font-medium text-white transition-colors hover:bg-[var(--rd-primary-hover)]"
+            href={LOGIN_HREF}
+            className={cn(
+              "inline-flex min-h-11 items-center gap-2 px-4 text-sm font-medium transition-colors",
+              invertedLogin
+                ? "bg-white text-[var(--rd-primary)] hover:bg-white/85"
+                : "bg-[var(--rd-primary)] text-white hover:bg-[var(--rd-primary-hover)]",
+            )}
             style={{ borderRadius: "var(--rd-radius-button)" }}
           >
             {NAV_LOGIN}
@@ -128,8 +141,9 @@ export function Nav({
         >
           {NAV_LINKS.map((link) => (
             <a
-              key={link.href}
-              href={link.href}
+              key={link.page}
+              href={rdHref(theme.version, link.page)}
+              aria-current={link.page === current ? "page" : undefined}
               className="border-b border-[var(--rd-ink)]/10 py-4 text-2xl text-[var(--rd-ink)]"
               onClick={() => setMenuOpen(false)}
             >
@@ -137,7 +151,7 @@ export function Nav({
             </a>
           ))}
           <a
-            href="/outreach-partner"
+            href={rdHref(theme.version, RedesignPage.Partner)}
             className="inline-flex items-center gap-2 py-4 text-2xl text-[var(--rd-ink)]"
             onClick={() => setMenuOpen(false)}
           >

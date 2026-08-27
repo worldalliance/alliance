@@ -1,20 +1,27 @@
 import { cn } from "@alliance/shared/styles/util";
-import { HERO_HEADLINE, HERO_SUBHEAD, priorities } from "../content";
+import {
+  HERO_HEADLINE,
+  HERO_SUBHEAD,
+  PRIORITIES_NOTE,
+  priorities,
+} from "../content";
 import { PRIORITY_TINTS, type RedesignTheme } from "../theme";
 import { DisplayHeading, RD_COL } from "../ui";
 
 /**
- * Negative margin as a share of the container's width, which is what a
- * percentage margin resolves against. Works out to roughly a third of a card's
- * height at each breakpoint, so the row overlaps whatever sits above it.
+ * Negative margin as a share of its containing block, which has to be the
+ * content column rather than the full-bleed section for the share to mean
+ * anything. Works out to the top quarter of a card at each breakpoint, so that
+ * much of the row rides onto whatever sits above it.
  */
-const OVERLAP = "-mt-[29%] sm:-mt-[14.4%] lg:-mt-[7%]";
+const OVERLAP = "-mt-[23.4%] sm:-mt-[11.5%] lg:-mt-[5.7%]";
 
 /**
- * Matching bottom padding for a section whose copy must stay clear of the
- * overlapping cards. The hero variants absorb the overlap in their own padding.
+ * Bottom padding for a section whose copy must stay clear of the overlapping
+ * cards. It resolves against the full-bleed section rather than the column, so
+ * it runs wider than the pull above; erring long only adds air.
  */
-const OVERLAP_CLEARANCE =
+export const OVERLAP_CLEARANCE =
   "pb-[calc(29%+2rem)] sm:pb-[calc(14.4%+2.5rem)] lg:pb-[calc(7%+3.5rem)]";
 
 function PriorityCard({
@@ -70,8 +77,8 @@ function PriorityCard({
 }
 
 /**
- * Version 4 only. Its hero is the notification animation alone, so the h1 lives
- * here, in the Landing 2 layout of an oversized heading beside supporting copy.
+ * Versions 4 and 5, whose heroes carry no headline, so the h1 lives here in the
+ * Landing 2 layout of an oversized heading beside supporting copy.
  */
 export function HeadlineIntro({ theme }: { theme: RedesignTheme }) {
   return (
@@ -102,16 +109,24 @@ export function HeadlineIntro({ theme }: { theme: RedesignTheme }) {
  * The card row sits on the `surfaceAlt` band that runs into the next section,
  * pulled up so it overlaps whatever precedes it.
  */
-export function Priorities() {
+export function Priorities({ showNote }: { showNote: boolean }) {
   return (
     // `flow-root` keeps the pulled-up row from dragging the band up with it.
     <section className="flow-root bg-[var(--rd-surface-alt)]">
-      <div className={cn(RD_COL, "relative", OVERLAP)}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {priorities.map((priority, index) => (
-            <PriorityCard key={priority.id} index={index} {...priority} />
-          ))}
+      <div className={cn(RD_COL, "relative")}>
+        <div className={OVERLAP}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {priorities.map((priority, index) => (
+              <PriorityCard key={priority.id} index={index} {...priority} />
+            ))}
+          </div>
         </div>
+        {showNote && (
+          // Sits against the right margin, still ranged left.
+          <p className="rd-priorities-note rd-display mt-10 ml-auto max-w-[32rem] text-[1.45rem] leading-snug text-[var(--rd-ink)]/85 lg:mt-12 lg:text-[1.95rem]">
+            {PRIORITIES_NOTE}
+          </p>
+        )}
       </div>
     </section>
   );

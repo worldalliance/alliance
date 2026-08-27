@@ -55,3 +55,45 @@ export function usePrefersReducedMotion() {
 
   return reduced;
 }
+
+/**
+ * The id of the section nearest the top of the viewport, so a table of contents
+ * can mark where the reader is. Falls back to the first id before any scroll.
+ */
+export function useActiveSection(ids: string[]): string | undefined {
+  const [active, setActive] = useState(ids[0]);
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+
+    const seen = new Map<string, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          seen.set(entry.target.id, entry.intersectionRatio);
+        }
+        // The section showing the most of itself wins, so a short one at the
+        // top of the viewport doesn't beat the one being read.
+        let best: string | undefined;
+        let bestRatio = 0;
+        for (const id of ids) {
+          const ratio = seen.get(id) ?? 0;
+          if (ratio > bestRatio) {
+            best = id;
+            bestRatio = ratio;
+          }
+        }
+        if (best) setActive(best);
+      },
+      { threshold: [0, 0.15, 0.35, 0.6, 0.9] },
+    );
+
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+  }, [ids]);
+
+  return active;
+}

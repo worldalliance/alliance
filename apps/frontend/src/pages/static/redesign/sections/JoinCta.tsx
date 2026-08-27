@@ -1,9 +1,10 @@
 import { cn } from "@alliance/shared/styles/util";
 import type { ReactNode } from "react";
 import membersPhoto from "../../../../assets/redesign/members-photo.webp";
-import { CTA_BODY, CTA_BUTTON, CTA_HEADLINE } from "../content";
+import { CTA_BODY, CTA_BUTTON } from "../content";
 import { CtaKind, type RedesignTheme } from "../theme";
-import { RD_COL, RdArrow, RdButton } from "../ui";
+import { RD_COL, RdArrow, RdButton, RdTrigger } from "../ui";
+import { useJoinTarget } from "./JoinRequest";
 
 /** How far the artwork hangs over the footer, measured off the Figma. */
 const FOOTER_OVERLAP = 54;
@@ -18,10 +19,16 @@ function Photo({ className }: { className?: string }) {
   );
 }
 
-function Heading({ className }: { className?: string }) {
+function Heading({
+  theme,
+  className,
+}: {
+  theme: RedesignTheme;
+  className?: string;
+}) {
   return (
     <h2 className={cn("leading-none font-normal", className)}>
-      {CTA_HEADLINE}
+      {theme.joinLabel}
     </h2>
   );
 }
@@ -49,12 +56,21 @@ function CtaShell({
 }
 
 /** Landing 1: copy bottom-left over the photo, arrow bottom-right. */
-function PhotoCta() {
+function PhotoCta({
+  theme,
+  short = false,
+}: {
+  theme: RedesignTheme;
+  short?: boolean;
+}) {
+  const target = useJoinTarget(theme.version);
+
   return (
     <CtaShell>
-      <a
-        href="/signup"
-        className="group relative isolate block overflow-hidden"
+      <RdTrigger
+        {...target}
+        ariaLabel={CTA_BUTTON}
+        className="group relative isolate block w-full overflow-hidden"
         style={{ borderRadius: "var(--rd-radius-card)" }}
       >
         <Photo className="absolute inset-0 -z-20 transition-transform duration-[900ms] ease-out group-hover:scale-[1.06]" />
@@ -64,12 +80,19 @@ function PhotoCta() {
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute inset-3 border border-white/0 transition-colors duration-500 group-hover:border-white/45"
+          className="pointer-events-none absolute inset-3 border border-[#1E68D9]/0 transition-colors duration-500 group-hover:border-[#1E68D9]"
           style={{ borderRadius: "var(--rd-radius-card)" }}
           aria-hidden
         />
-        <div className="flex min-h-[420px] flex-col justify-end p-8 text-white sm:min-h-[560px] sm:p-10">
-          <Heading className="text-[3.1rem] sm:text-[3.6rem]" />
+        <div
+          className={cn(
+            "flex flex-col justify-end p-8 text-white sm:p-10",
+            short
+              ? "min-h-[315px] sm:min-h-[420px]"
+              : "min-h-[420px] sm:min-h-[560px]",
+          )}
+        >
+          <Heading theme={theme} className="text-[3.1rem] sm:text-[3.6rem]" />
           <p className="mt-3 max-w-[40rem] text-lg leading-snug font-light sm:text-[1.35rem]">
             {CTA_BODY}
           </p>
@@ -77,13 +100,20 @@ function PhotoCta() {
         <span className="absolute right-8 bottom-8 sm:right-10 sm:bottom-9">
           <RdArrow className="size-6 text-white transition-transform duration-500 ease-out group-hover:translate-x-2 group-hover:-translate-y-2 group-hover:scale-110" />
         </span>
-      </a>
+      </RdTrigger>
     </CtaShell>
   );
 }
 
 /** Version 2: a solid primary panel beside the photo, inside a white stroke. */
-function SplitCtaLayout({ reversed }: { reversed: boolean }) {
+function SplitCtaLayout({
+  theme,
+  reversed,
+}: {
+  theme: RedesignTheme;
+  reversed: boolean;
+}) {
+  const target = useJoinTarget(theme.version);
   const photo = (
     <div className="relative min-h-[300px] lg:min-h-[520px]">
       <Photo className="absolute inset-0" />
@@ -91,11 +121,11 @@ function SplitCtaLayout({ reversed }: { reversed: boolean }) {
   );
   const panel = (
     <div className="flex flex-col justify-center gap-6 bg-[var(--rd-primary)] p-9 text-white sm:p-12">
-      <Heading className="text-[2.8rem] sm:text-[3.2rem]" />
+      <Heading theme={theme} className="text-[2.8rem] sm:text-[3.2rem]" />
       <p className="-mt-2 text-lg leading-snug font-light sm:text-[1.25rem]">
         {CTA_BODY}
       </p>
-      <RdButton href="/signup" tone="light" className="w-fit" withArrow>
+      <RdButton {...target} tone="light" className="w-fit" withArrow>
         {CTA_BUTTON}
       </RdButton>
     </div>
@@ -126,17 +156,20 @@ function SplitCtaLayout({ reversed }: { reversed: boolean }) {
   );
 }
 
-function SplitCta() {
-  return <SplitCtaLayout reversed={false} />;
+function SplitCta({ theme }: { theme: RedesignTheme }) {
+  return <SplitCtaLayout theme={theme} reversed={false} />;
 }
 
 /** Version 3: the photo container and the invite button, nothing else. */
-function BandCta() {
+function BandCta({ theme }: { theme: RedesignTheme }) {
+  const target = useJoinTarget(theme.version);
+
   return (
     <CtaShell>
-      <a
-        href="/signup"
-        className="group relative isolate flex min-h-[340px] items-center justify-center overflow-hidden border-2 border-white sm:min-h-[440px]"
+      <RdTrigger
+        {...target}
+        ariaLabel={CTA_BUTTON}
+        className="group relative isolate flex min-h-[340px] w-full items-center justify-center overflow-hidden border-2 border-white sm:min-h-[440px]"
         style={{ borderRadius: "var(--rd-radius-card)" }}
       >
         <Photo className="absolute inset-0 -z-20 transition-transform duration-[900ms] ease-out group-hover:scale-[1.06]" />
@@ -152,13 +185,15 @@ function BandCta() {
           {CTA_BUTTON}
           <RdArrow className="size-3 transition-transform duration-300 ease-out group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </span>
-      </a>
+      </RdTrigger>
     </CtaShell>
   );
 }
 
 /** Version 4: a solid card overlapping the lower-left corner of the photo. */
-function OverlapCardCta() {
+function OverlapCardCta({ theme }: { theme: RedesignTheme }) {
+  const target = useJoinTarget(theme.version);
+
   return (
     <CtaShell>
       <div className="relative pb-14 lg:pb-0">
@@ -177,11 +212,16 @@ function OverlapCardCta() {
           className="relative -mt-16 flex w-full flex-col gap-5 bg-[var(--rd-primary)] p-8 text-white sm:p-10 lg:absolute lg:bottom-16 lg:left-0 lg:-mt-0 lg:w-[46%]"
           style={{ borderRadius: "var(--rd-radius-card)" }}
         >
-          <Heading className="text-[2.7rem] sm:text-[3.1rem]" />
+          <Heading theme={theme} className="text-[2.7rem] sm:text-[3.1rem]" />
           <p className="-mt-2 text-lg leading-snug font-light sm:text-[1.2rem]">
             {CTA_BODY}
           </p>
-          <RdButton href="/signup" tone="outlineLight" className="w-fit" withArrow>
+          <RdButton
+            {...target}
+            tone="outlineLight"
+            className="w-fit"
+            withArrow
+          >
             {CTA_BUTTON}
           </RdButton>
         </div>
@@ -190,8 +230,12 @@ function OverlapCardCta() {
   );
 }
 
-const ctaByKind: Record<CtaKind, () => ReactNode> = {
+const ctaByKind: Record<
+  CtaKind,
+  (props: { theme: RedesignTheme }) => ReactNode
+> = {
   [CtaKind.Photo]: PhotoCta,
+  [CtaKind.PhotoShort]: (props) => <PhotoCta {...props} short />,
   [CtaKind.Split]: SplitCta,
   [CtaKind.Band]: BandCta,
   [CtaKind.OverlapCard]: OverlapCardCta,
@@ -199,5 +243,5 @@ const ctaByKind: Record<CtaKind, () => ReactNode> = {
 
 export function JoinCta({ theme }: { theme: RedesignTheme }) {
   const Component = ctaByKind[theme.cta];
-  return <Component />;
+  return <Component theme={theme} />;
 }

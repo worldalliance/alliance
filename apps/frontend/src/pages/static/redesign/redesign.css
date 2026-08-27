@@ -44,6 +44,13 @@
 }
 
 @font-face {
+  font-family: "Alex Brush";
+  font-weight: 400;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/AlexBrush-Regular.ttf") format("truetype");
+}
+
+@font-face {
   font-family: "Galdeano";
   font-weight: 400;
   font-display: swap;
@@ -119,6 +126,11 @@
   font-family: var(--rd-font-headline);
 }
 
+/** The signature field in version 4's commitment card. */
+.rd-root .rd-signature {
+  font-family: "Alex Brush", cursive;
+}
+
 .rd-console,
 .rd-console * {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -191,4 +203,19 @@
   .rd-root .rd-priority-body p {
     opacity: 1 !important;
   }
+}
+
+@keyframes rd-post-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rd-root .rd-post-slide-in {
+  animation: rd-post-slide-in 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }

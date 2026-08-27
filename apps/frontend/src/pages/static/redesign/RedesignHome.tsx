@@ -6,11 +6,11 @@ import { ModelSection } from "./sections/ModelSection";
 import { HeadlineIntro, Priorities } from "./sections/Priorities";
 import { SiteFooter } from "./sections/SiteFooter";
 import { Testimonial } from "./sections/Testimonial";
-import { navStartsOnDark, themeVars, type RedesignTheme } from "./theme";
+import { navStart, themeVars, type RedesignTheme } from "./theme";
 
 /**
- * Versions 1 to 3 carry the headline in the hero. Version 4's hero is the
- * notification animation alone, so its headline sits in a block below it.
+ * Most versions carry the headline in the hero. Versions 4 and 5 give the hero
+ * over to member activity instead, so their headline sits in a block below it.
  */
 export function RedesignHome({ theme }: { theme: RedesignTheme }) {
   return (
@@ -18,11 +18,11 @@ export function RedesignHome({ theme }: { theme: RedesignTheme }) {
       className="rd-root min-h-screen bg-[var(--rd-surface)] text-[var(--rd-ink)]"
       style={themeVars(theme)}
     >
-      <Nav theme={theme} onDark={navStartsOnDark[theme.hero]} />
+      <Nav theme={theme} start={navStart[theme.hero]} />
       <Hero theme={theme} />
       {theme.showHeadlineIntro && <HeadlineIntro theme={theme} />}
-      <Priorities />
-      <HowItWorks />
+      <Priorities showNote={theme.showPrioritiesNote} />
+      <HowItWorks theme={theme} />
       <ModelSection theme={theme} />
       <Testimonial theme={theme} />
       <JoinCta theme={theme} />

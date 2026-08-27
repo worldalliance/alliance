@@ -1,8 +1,50 @@
 import { cn } from "@alliance/shared/styles/util";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import type { LinkTarget } from "./links";
+import texture from "../../../assets/redesign/priority-environment.jpg";
 import type { RedesignTheme } from "./theme";
 
 export const RD_COL = "mx-auto w-full max-w-[1300px] px-5 sm:px-8 lg:px-[68px]";
+
+/**
+ * A solid tinted card with a desaturated photo screened over it, which is the
+ * treatment the milestone panel established.
+ */
+export function RdTexturedPanel({
+  tint,
+  children,
+  className,
+}: {
+  tint: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "relative isolate overflow-hidden px-6 py-8 sm:px-[78px] sm:py-10",
+        className,
+      )}
+      style={{
+        borderRadius: "var(--rd-radius-card)",
+        backgroundColor: tint,
+      }}
+    >
+      <img
+        src={texture}
+        alt=""
+        aria-hidden
+        className="absolute inset-0 size-full object-cover"
+        style={{
+          mixBlendMode: "screen",
+          filter: "grayscale(1) contrast(1.05)",
+          opacity: 0.62,
+        }}
+      />
+      <div className="relative z-10">{children}</div>
+    </div>
+  );
+}
 
 /** Traced from `design/arrow-vector.svg` so the nav and CTA share one arrow. */
 export function RdArrow({ className }: { className?: string }) {
@@ -34,19 +76,22 @@ export enum QuoteMarkKind {
  */
 export function RdQuoteMark({
   kind,
+  flipped = false,
   className,
 }: {
   kind: QuoteMarkKind;
+  /** Mirrors the glyph left to right, so a pair faces inward. */
+  flipped?: boolean;
   className?: string;
 }) {
   const mark = "M0 0H40V38L18 79H0L22 38H0Z";
+  const scaleY = kind === QuoteMarkKind.Open ? -1 : 1;
+  const scaleX = flipped ? -1 : 1;
   return (
     <svg
       viewBox="0 0 90 79"
       className={cn("shrink-0", className)}
-      style={
-        kind === QuoteMarkKind.Open ? { transform: "scaleY(-1)" } : undefined
-      }
+      style={{ transform: `scale(${scaleX}, ${scaleY})` }}
       aria-hidden
     >
       <path d={mark} fill="currentColor" />
@@ -88,7 +133,7 @@ const toneClasses: Record<ButtonTone, string> = {
   primary:
     "bg-[var(--rd-primary)] text-white hover:bg-[var(--rd-primary-hover)] border border-transparent",
   outline:
-    "bg-transparent text-[var(--rd-primary)] border border-[var(--rd-primary)]/35 hover:border-[var(--rd-primary)]/70",
+    "bg-transparent text-[#1E68D9] border border-[#1E68D9]/40 hover:border-[#1E68D9]/80",
   light:
     "bg-white text-[var(--rd-ink)] border border-transparent hover:bg-white/85",
   outlineLight:
@@ -98,38 +143,132 @@ const toneClasses: Record<ButtonTone, string> = {
 export function RdButton({
   children,
   tone = "primary",
-  href,
   className,
   size = "base",
   withArrow = false,
+  ...target
 }: {
   children: ReactNode;
   tone?: ButtonTone;
-  href: string;
   className?: string;
   size?: "sm" | "base";
   withArrow?: boolean;
-}) {
-  return (
-    <a
-      href={href}
-      className={cn(
-        "group/btn inline-flex items-center gap-2 font-medium",
-        "transition-[background-color,border-color,transform,box-shadow] duration-300 ease-out",
-        "hover:-translate-y-0.5 hover:shadow-[0_10px_22px_-12px_rgba(0,0,0,0.55)]",
-        size === "sm"
-          ? "min-h-11 px-4 py-2 text-sm"
-          : "min-h-12 px-5 py-2.5 text-base",
-        toneClasses[tone],
-        className,
-      )}
-      style={{ borderRadius: "var(--rd-radius-button)" }}
-    >
+} & LinkTarget) {
+  const classes = cn(
+    "group/btn inline-flex items-center gap-2 font-medium",
+    "transition-[background-color,border-color,transform,box-shadow] duration-300 ease-out",
+    "hover:-translate-y-0.5 hover:shadow-[0_10px_22px_-12px_rgba(0,0,0,0.55)]",
+    size === "sm"
+      ? "min-h-11 px-4 py-2 text-sm"
+      : "min-h-12 px-5 py-2.5 text-base",
+    toneClasses[tone],
+    className,
+  );
+  const body = (
+    <>
       {children}
       {withArrow && (
         <RdArrow className="size-2.5 transition-transform duration-300 ease-out group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
       )}
+    </>
+  );
+  const style = { borderRadius: "var(--rd-radius-button)" };
+
+  return "href" in target ? (
+    <a href={target.href} className={classes} style={style}>
+      {body}
     </a>
+  ) : (
+    <button
+      type="button"
+      onClick={target.onClick}
+      className={classes}
+      style={style}
+    >
+      {body}
+    </button>
+  );
+}
+
+/**
+ * A link or a button, whichever the target calls for, with no styling of its
+ * own. The join CTAs need this: version 4 opens a modal where the rest
+ * navigate, and some of them wrap a whole photo panel.
+ */
+export function RdTrigger({
+  children,
+  className,
+  style,
+  ariaLabel,
+  ...target
+}: {
+  children: ReactNode;
+  className?: string;
+  style?: CSSProperties;
+  ariaLabel?: string;
+} & LinkTarget) {
+  return "href" in target ? (
+    <a
+      href={target.href}
+      className={className}
+      style={style}
+      aria-label={ariaLabel}
+    >
+      {children}
+    </a>
+  ) : (
+    <button
+      type="button"
+      onClick={target.onClick}
+      className={cn("text-left", className)}
+      style={style}
+      aria-label={ariaLabel}
+    >
+      {children}
+    </button>
+  );
+}
+
+export const RD_INPUT =
+  "w-full border border-[var(--rd-ink)]/15 bg-white px-3.5 py-2.5 text-base text-[var(--rd-ink)] outline-none transition-colors placeholder:text-[var(--rd-ink)]/35 focus:border-[var(--rd-primary)]";
+
+/** Label above the control, with the asterisk the required ones carry. */
+export function RdField({
+  label,
+  name,
+  required = false,
+  onDark = false,
+  children,
+  className,
+}: {
+  label: string;
+  name: string;
+  required?: boolean;
+  /** Set where the field sits on a primary band rather than the surface. */
+  onDark?: boolean;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <label htmlFor={name} className={cn("flex flex-col gap-1.5", className)}>
+      <span
+        className={cn(
+          "text-sm font-medium",
+          onDark ? "text-white/75" : "text-[var(--rd-ink)]/70",
+        )}
+      >
+        {label}
+        {required && (
+          <span
+            className={onDark ? "text-white/50" : "text-[var(--rd-primary)]"}
+            aria-hidden
+          >
+            {" *"}
+          </span>
+        )}
+      </span>
+      {children}
+    </label>
   );
 }
 

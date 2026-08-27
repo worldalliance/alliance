@@ -70,7 +70,9 @@ export function NotificationCard({
               : "text-[var(--rd-ink)]/65",
           )}
         >
-          {notification.name} and {notification.othersCount} others
+          {notification.othersCount > 0
+            ? `${notification.name} and ${notification.othersCount} others`
+            : notification.name}
         </p>
         <p
           className={cn(
