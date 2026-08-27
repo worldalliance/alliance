@@ -33,6 +33,7 @@ describe("Campaigns (e2e)", () => {
         password: "pass",
         name: email,
         mode: "header",
+        timeZone: "America/Los_Angeles",
         referralCode,
       })
       .expect(201);

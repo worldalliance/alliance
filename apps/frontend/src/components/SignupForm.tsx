@@ -1,4 +1,5 @@
 import { SignUpDto } from "@alliance/shared/client";
+import { deviceTimeZone } from "@alliance/shared/lib/timeZone";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import FormInput from "@alliance/sharedweb/ui/FormInput";
 import { useCallback, useState } from "react";
@@ -26,6 +27,7 @@ const SignupForm = ({
     password: "",
     confirmPassword: "",
     mode: "cookie",
+    timeZone: deviceTimeZone(),
   });
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});

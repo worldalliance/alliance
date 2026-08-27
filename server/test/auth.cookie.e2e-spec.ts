@@ -12,6 +12,7 @@ describe("Auth via Http-Only cookies (e2e)", () => {
       password: "password",
       name: "Cookie Tester",
       mode: "cookie",
+      timeZone: "America/Los_Angeles",
     });
   }, 50000);
 
@@ -30,6 +31,7 @@ describe("Auth via Http-Only cookies (e2e)", () => {
         password: "password",
         name: "Cookie Tester",
         mode: "cookie",
+        timeZone: "America/Los_Angeles",
       })
       .expect(201);
   });

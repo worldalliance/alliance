@@ -1,4 +1,5 @@
 import { authRegister } from "@alliance/shared/client";
+import { deviceTimeZone } from "@alliance/shared/lib/timeZone";
 import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
@@ -65,6 +66,7 @@ const SignupScreen = () => {
           email,
           password,
           mode: "header",
+          timeZone: deviceTimeZone(),
           guestToken,
         },
       });

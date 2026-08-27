@@ -748,6 +748,7 @@ describe("Users (e2e)", () => {
         email: params.email,
         password: "Password123!",
         mode: "header",
+        timeZone: "America/Los_Angeles",
         referralCode: sid,
       });
     };

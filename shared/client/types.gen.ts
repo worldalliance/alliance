@@ -34,6 +34,7 @@ export type SignUpDto = {
     email: string;
     password: string;
     mode: TokenMode;
+    timeZone: string;
     referralCode?: string;
     guestToken?: string;
 };

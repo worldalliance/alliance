@@ -24,6 +24,7 @@ describe("Auth register rate limiting (e2e)", () => {
         password: "password",
         name: `Throttle User ${n}`,
         mode: "header",
+        timeZone: "America/Los_Angeles",
       });
 
   it(`blocks with 429 once the burst limit (${burstLimit}/min) is exceeded`, async () => {
