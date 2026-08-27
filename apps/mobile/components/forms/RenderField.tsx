@@ -65,6 +65,8 @@ export type RenderFieldProps = {
   fileUpload?: FileUploadSlots;
   fileUploadSlot?: FileUploadSlot;
   error?: string | null;
+  /** Keyed `parentId:cardIndex:subId`, for the sub-fields of a list field. */
+  fieldErrors?: Record<string, string | null>;
   randomizationKey?: string;
   disableOptionRandomization?: boolean;
   isOutputView?: boolean;
@@ -139,6 +141,7 @@ export function RenderField({
   fileUpload,
   fileUploadSlot,
   error,
+  fieldErrors,
   randomizationKey,
   disableOptionRandomization,
   isOutputView,
@@ -763,7 +766,7 @@ export function RenderField({
             required={required}
           />
           <View className="gap-3">
-            {cards.map((card) => {
+            {cards.map((card, cardIndex) => {
               const cardId = card[CARD_ID_KEY];
               return (
                 <Card
@@ -796,6 +799,11 @@ export function RenderField({
                         subFieldId: subField.id,
                         defaultCardCount: defaultCount,
                       }}
+                      error={
+                        fieldErrors?.[
+                          `${field.id}:${cardIndex}:${subField.id}`
+                        ] ?? null
+                      }
                       randomizationKey={randomizationKey}
                       disableOptionRandomization={disableOptionRandomization}
                       isOutputView={isOutputView}
