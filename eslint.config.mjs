@@ -1,12 +1,10 @@
 import tseslint from "typescript-eslint";
-import eslintPluginExample from "./eslint/eslint-local-rules.mjs";
 import sharedRules from "./eslint/shared-rules.mjs";
 
 export default tseslint.config([
   ...tseslint.configs.recommended,
   sharedRules,
   {
-    plugins: { "local-rules": eslintPluginExample },
     files: ["**/*.ts", "**/*.tsx"],
     languageOptions: {
       parserOptions: {
@@ -14,7 +12,6 @@ export default tseslint.config([
       },
     },
     rules: {
-      "local-rules/enforce-foo-bar": "error",
       "@typescript-eslint/no-restricted-imports": [
         "error",
         {
