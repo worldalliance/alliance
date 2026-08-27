@@ -11,7 +11,6 @@ import multer from "multer";
 import { ActionPartnershipsModule } from "./action-partnerships/action-partnerships.module";
 import { ActionsModule } from "./actions/actions.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
-import { ApnsModule } from "./apns/apns.module";
 import { AppController } from "./app.controller";
 import { AuthModule } from "./auth/auth.module";
 import { CampaignModule } from "./campaign/campaign.module";
@@ -97,7 +96,6 @@ import { VideosModule } from "./videos/videos.module";
     MessagingModule,
     PushModule,
     EventLogModule,
-    ApnsModule,
   ],
   controllers: [AppController],
 })

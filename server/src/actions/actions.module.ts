@@ -1,6 +1,5 @@
 import { forwardRef, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { ApnsModule } from "src/apns/apns.module";
 import { CommunityModule } from "src/community/community.module";
 import { Community } from "src/community/entities/community.entity";
 import { ContractModule } from "src/contract/contract.module";
@@ -88,7 +87,6 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
     EventLogModule,
     FormSnapshotModule,
     forwardRef(() => ShareUrlsModule),
-    forwardRef(() => ApnsModule),
   ],
   controllers: [ActionsController],
   providers: [

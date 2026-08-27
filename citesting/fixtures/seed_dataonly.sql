@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict bpdxXXvKq7RLaFD5wUbhj0K289KFCA5Mp3T63gM8utOO3Oxx8ohmgHIAeanpCEZ
+\restrict eT75e0Zv0WJF3xc1URHZLBxqQZZ2002bz9qt59F1XIroquCzUZHkydNO20bTy5m
 
 -- Dumped from database version 18.3 (Homebrew)
 -- Dumped by pg_dump version 18.3 (Homebrew)
@@ -1962,14 +1962,6 @@ COPY public.group_users_user ("groupId", "userId") FROM stdin;
 
 
 --
--- Data for Name: live_activity_registration; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.live_activity_registration (id, "userId", "actionId", "updateToken", "activityId", "pushToStartSent", ended, "lastCompletedCountSent", "createdAt", "updatedAt") FROM stdin;
-\.
-
-
---
 -- Data for Name: message; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -2280,7 +2272,7 @@ COPY public.user_away_range (id, "userId", "startDate", "endDate", note, reason,
 -- Data for Name: user_device; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.user_device ("deviceType", "expoPushToken", "updatedAt", "createdAt", "userId", id, "liveActivityPushToStartToken") FROM stdin;
+COPY public.user_device ("deviceType", "expoPushToken", "updatedAt", "createdAt", "userId", id) FROM stdin;
 \.
 
 
@@ -2566,13 +2558,6 @@ SELECT pg_catalog.setval('public.group_id_seq', 4, true);
 
 
 --
--- Name: live_activity_registration_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.live_activity_registration_id_seq', 1, false);
-
-
---
 -- Name: mail_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -2583,7 +2568,7 @@ SELECT pg_catalog.setval('public.mail_id_seq', 752, true);
 -- Name: migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.migrations_id_seq', 356, true);
+SELECT pg_catalog.setval('public.migrations_id_seq', 357, true);
 
 
 --
@@ -2702,5 +2687,5 @@ SELECT pg_catalog.setval('public.video_id_seq', 1, false);
 -- PostgreSQL database dump complete
 --
 
-\unrestrict bpdxXXvKq7RLaFD5wUbhj0K289KFCA5Mp3T63gM8utOO3Oxx8ohmgHIAeanpCEZ
+\unrestrict eT75e0Zv0WJF3xc1URHZLBxqQZZ2002bz9qt59F1XIroquCzUZHkydNO20bTy5m
 

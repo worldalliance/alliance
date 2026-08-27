@@ -18,7 +18,6 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { countBy } from "es-toolkit";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
-import { LiveActivityRegistration } from "src/apns/entities/live-activity-registration.entity";
 import { CampaignService } from "src/campaign/campaign.service";
 import { Campaign } from "src/campaign/entities/campaign.entity";
 import { CommunityService } from "src/community/community.service";
@@ -75,8 +74,6 @@ import {
 import { CreateAwayRangeDto, UpdateAwayRangeDto } from "./dto/away-range.dto";
 import {
   RegisterDeviceDto,
-  RegisterLiveActivityPushToStartTokenDto,
-  RegisterLiveActivityUpdateTokenDto,
 } from "./dto/device.dto";
 import {
   AmbassadorInviteDashboard,
@@ -250,8 +247,6 @@ export class UserService {
     private readonly contractEventRepository: Repository<ContractEvent>,
     @InjectRepository(UserDevice)
     private readonly userDeviceRepository: Repository<UserDevice>,
-    @InjectRepository(LiveActivityRegistration)
-    private readonly liveActivityRegistrationRepository: Repository<LiveActivityRegistration>,
     @InjectRepository(ActionActivity)
     private readonly actionActivityRepository: Repository<ActionActivity>,
     private readonly shareUrlsService: ShareUrlsService,
@@ -3008,60 +3003,6 @@ export class UserService {
         relations: { contractEvents: true },
       })
     ).filter((user) => user.hasActiveContract).length;
-  }
-
-  async registerLiveActivityPushToStartToken(
-    userId: number,
-    body: RegisterLiveActivityPushToStartTokenDto,
-  ): Promise<string> {
-    const user = await this.findOneOrFail(userId, { devices: true });
-
-    // Find the device to update - match by deviceId if provided, otherwise first device
-    let device: UserDevice | null = null;
-    if (body.deviceId) {
-      device = await this.userDeviceRepository.findOne({
-        where: { id: body.deviceId, user: { id: userId } },
-      });
-    }
-    if (!device && user.devices?.length) {
-      device = user.devices[0];
-    }
-
-    if (!device) {
-      throw new NotFoundException("No device found for user");
-    }
-
-    await this.userDeviceRepository.update(device.id, {
-      liveActivityPushToStartToken: body.pushToStartToken,
-    });
-
-    return device.id;
-  }
-
-  async registerLiveActivityUpdateToken(
-    userId: number,
-    body: RegisterLiveActivityUpdateTokenDto,
-  ): Promise<void> {
-    const existing = await this.liveActivityRegistrationRepository.findOne({
-      where: { userId, actionId: body.actionId },
-    });
-
-    if (existing) {
-      await this.liveActivityRegistrationRepository.update(existing.id, {
-        updateToken: body.updateToken,
-        activityId: body.activityId,
-      });
-    } else {
-      await this.liveActivityRegistrationRepository.save(
-        this.liveActivityRegistrationRepository.create({
-          userId,
-          actionId: body.actionId,
-          updateToken: body.updateToken,
-          activityId: body.activityId,
-          pushToStartSent: true,
-        }),
-      );
-    }
   }
 
   // The event log is the system of record for deletion requests — the failure

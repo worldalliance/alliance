@@ -1,7 +1,6 @@
 import { Module, OnModuleInit, forwardRef } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { LiveActivityRegistration } from "src/apns/entities/live-activity-registration.entity";
 import { CampaignModule } from "src/campaign/campaign.module";
 import { CommunityModule } from "src/community/community.module";
 import { CommunityInvite } from "src/community/entities/community-invite.entity";
@@ -50,7 +49,6 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
       Tag,
       UserDevice,
       UserAwayRange,
-      LiveActivityRegistration,
     ]),
     JwtModule,
     ImagesModule,

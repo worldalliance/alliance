@@ -35,9 +35,6 @@ export class UserDevice {
   @Column({ type: "varchar", nullable: true })
   expoPushToken: string | null;
 
-  @Column({ type: "varchar", nullable: true })
-  liveActivityPushToStartToken: string | null;
-
   @UpdateDateColumnTz()
   updatedAt: Date;
 

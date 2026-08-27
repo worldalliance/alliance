@@ -41,8 +41,6 @@ import {
 } from "./dto/away-range.dto";
 import {
   RegisterDeviceDto,
-  RegisterLiveActivityPushToStartTokenDto,
-  RegisterLiveActivityUpdateTokenDto,
   TestPushNotificationDto,
   UserDeviceDto,
 } from "./dto/device.dto";
@@ -1007,30 +1005,6 @@ export class UserController {
     return new PushDto(
       await this.userService.testPushNotification(body.userId, body.message),
     );
-  }
-
-  @Post("registerLiveActivityPushToStartToken")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: UserDeviceDto })
-  async registerLiveActivityPushToStartToken(
-    @Request() req: JwtRequest,
-    @Body() body: RegisterLiveActivityPushToStartTokenDto,
-  ): Promise<UserDeviceDto> {
-    const id = await this.userService.registerLiveActivityPushToStartToken(
-      req.user.sub,
-      body,
-    );
-    return new UserDeviceDto(id);
-  }
-
-  @Post("registerLiveActivityUpdateToken")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse()
-  async registerLiveActivityUpdateToken(
-    @Request() req: JwtRequest,
-    @Body() body: RegisterLiveActivityUpdateTokenDto,
-  ): Promise<void> {
-    await this.userService.registerLiveActivityUpdateToken(req.user.sub, body);
   }
 
   @Post("requestAccountDeletion")
