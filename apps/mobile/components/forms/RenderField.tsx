@@ -18,6 +18,7 @@ import {
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
 import {
   CARD_ID_KEY,
+  defaultCardCount,
   listCardWriters,
   resolveCards,
 } from "@alliance/shared/forms/listCards";
@@ -65,6 +66,8 @@ export type RenderFieldProps = {
   fileUpload?: FileUploadSlots;
   fileUploadSlot?: FileUploadSlot;
   error?: string | null;
+  /** Keyed `parentId:cardIndex:subId`, for the sub-fields of a list field. */
+  fieldErrors?: Record<string, string | null>;
   randomizationKey?: string;
   disableOptionRandomization?: boolean;
   isOutputView?: boolean;
@@ -139,6 +142,7 @@ export function RenderField({
   fileUpload,
   fileUploadSlot,
   error,
+  fieldErrors,
   randomizationKey,
   disableOptionRandomization,
   isOutputView,
@@ -731,10 +735,7 @@ export function RenderField({
     case "list": {
       const listField = field as ListField;
       const subFields = listField.fields ?? [];
-      const defaultCount = Math.max(
-        0,
-        Math.floor(listField.defaultNumber ?? 0),
-      );
+      const defaultCount = defaultCardCount(listField);
       const minCards = Math.max(0, Math.floor(Number(listField.min || 0)));
       const maxCards =
         typeof listField.max === "number" && listField.max >= 0
@@ -763,7 +764,7 @@ export function RenderField({
             required={required}
           />
           <View className="gap-3">
-            {cards.map((card) => {
+            {cards.map((card, cardIndex) => {
               const cardId = card[CARD_ID_KEY];
               return (
                 <Card
@@ -796,6 +797,11 @@ export function RenderField({
                         subFieldId: subField.id,
                         defaultCardCount: defaultCount,
                       }}
+                      error={
+                        fieldErrors?.[
+                          `${field.id}:${cardIndex}:${subField.id}`
+                        ] ?? null
+                      }
                       randomizationKey={randomizationKey}
                       disableOptionRandomization={disableOptionRandomization}
                       isOutputView={isOutputView}

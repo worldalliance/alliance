@@ -4,10 +4,12 @@ import type {
   ListField,
   TextField,
 } from "@alliance/common/forms/form-schema";
+import type { ConditionExtras } from "@alliance/common/forms/visibility";
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
 import {
   findUnknownConditionKind,
   getFallbackVisiblePageIndex,
+  getListSubFieldErrors,
   getNextVisiblePageIndex,
   getPreviousVisiblePageIndex,
   schemaNeedsVisibilityContext,
@@ -275,5 +277,51 @@ describe("findUnknownConditionKind", () => {
         }),
       ),
     ).toBe("somethingAddedLater");
+  });
+});
+
+describe("getListSubFieldErrors", () => {
+  const extras: ConditionExtras = { deviceType: "desktop" };
+
+  const addresses = (overrides: Partial<ListField> = {}): ListField => ({
+    id: "addresses",
+    type: "input",
+    kind: "list",
+    label: "Addresses",
+    fields: [
+      {
+        id: "street",
+        type: "input",
+        kind: "text",
+        label: "Street",
+        required: true,
+      },
+    ],
+    ...overrides,
+  });
+
+  it("validates the empty cards a list renders before anyone answers it", () => {
+    expect(
+      getListSubFieldErrors(
+        addresses({ defaultNumber: 2 }),
+        undefined,
+        {},
+        extras,
+      ),
+    ).toEqual({
+      "addresses:0:street": "This field is required.",
+      "addresses:1:street": "This field is required.",
+    });
+  });
+
+  it("validates the stored cards once there is an answer", () => {
+    expect(
+      getListSubFieldErrors(
+        addresses({ defaultNumber: 2 }),
+        [{ street: "1 Main St" }],
+        {},
+        extras,
+      ),
+    ).toEqual({ "addresses:0:street": null });
   });
 });
