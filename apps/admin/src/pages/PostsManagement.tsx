@@ -1,9 +1,7 @@
 import { errorMessage } from "@alliance/common/errorMessage";
 import {
   forumGetPostsForAdmin,
-  forumUpdatePostAuthorsAdmin,
-  forumUpdatePostExpertsAdmin,
-  forumUpdatePostTagsAdmin,
+  forumUpdatePostSettingsAdmin,
   userListAdmin,
 } from "@alliance/shared/client";
 import type { PostDto } from "@alliance/shared/client/types.gen";
@@ -138,49 +136,35 @@ const PostsManagementPage: React.FC = () => {
     }
     setSaving(true);
     try {
-      const expertsResponse = await forumUpdatePostExpertsAdmin({
+      const { data: updatedPost, error } = await forumUpdatePostSettingsAdmin({
         path: { id: selectedPost.id },
         body: {
           expertIds: expertSelection,
+          authorIds: authorSelection,
           qaMode,
           expertLabel: expertLabel || null,
           notifyForReplies,
           showClusterTags,
+          tags: tagsChanged
+            ? {
+                tags,
+                knownTagIds: (selectedPost.tags ?? []).map((tag) => tag.id),
+              }
+            : undefined,
         },
       });
-      const authorsResponse = await forumUpdatePostAuthorsAdmin({
-        path: { id: selectedPost.id },
-        body: {
-          authorIds: authorSelection,
-        },
-      });
-      const tagsResponse = tagsChanged
-        ? await forumUpdatePostTagsAdmin({
-            path: { id: selectedPost.id },
-            body: {
-              tags,
-              knownTagIds: (selectedPost.tags ?? []).map((tag) => tag.id),
-            },
-          })
-        : undefined;
-      const updatedPost =
-        tagsResponse?.data ?? authorsResponse.data ?? expertsResponse.data;
+      if (error) {
+        console.error("Failed to save", error);
+        pushError(errorMessage({ error, fallback: "Failed to save settings" }));
+        return;
+      }
       if (updatedPost) {
         setSelectedPost(updatedPost);
         setPosts((prev) =>
           prev.map((p) => (p.id === updatedPost.id ? updatedPost : p)),
         );
+        setTagDrafts(toTagDrafts(updatedPost));
       }
-      const failure =
-        expertsResponse.error ?? authorsResponse.error ?? tagsResponse?.error;
-      if (failure) {
-        console.error("Failed to save", failure);
-        pushError(
-          errorMessage({ error: failure, fallback: "Failed to save settings" }),
-        );
-        return;
-      }
-      if (updatedPost) setTagDrafts(toTagDrafts(updatedPost));
       success("Post updated", "Settings saved successfully");
     } catch (err) {
       console.error("Failed to save", err);
