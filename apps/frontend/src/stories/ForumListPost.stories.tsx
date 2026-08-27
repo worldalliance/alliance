@@ -28,6 +28,7 @@ const samplePost: PostDto = {
   pinned: false,
   deleted: false,
   qaMode: false,
+  expertLabel: null,
   expertIds: [],
   authorIds: [],
   notifyForReplies: false,

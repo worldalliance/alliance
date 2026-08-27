@@ -121,12 +121,11 @@ export class Post {
   @Allow()
   qaMode: boolean;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
   @Allow()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  expertLabel?: string;
+  expertLabel: string | null;
 
   @ManyToMany(() => User, { onDelete: "CASCADE" })
   @ApiPropertyOptional({ type: () => User, isArray: true })

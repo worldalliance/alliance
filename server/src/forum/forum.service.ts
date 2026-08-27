@@ -1100,7 +1100,7 @@ export class ForumService {
     postId: number,
     expertIds: number[],
     qaMode: boolean,
-    expertLabel?: string,
+    expertLabel?: string | null,
     notifyForReplies?: boolean,
     showClusterTags?: boolean,
   ): Promise<ParsedPost> {
@@ -1126,7 +1126,9 @@ export class ForumService {
 
     post.experts = experts;
     post.qaMode = qaMode;
-    post.expertLabel = expertLabel;
+    if (expertLabel !== undefined) {
+      post.expertLabel = expertLabel;
+    }
     if (notifyForReplies !== undefined) {
       post.notifyForReplies = notifyForReplies;
     }

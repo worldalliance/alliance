@@ -3143,7 +3143,7 @@ export type PostDto = {
     visibleAt?: string;
     deleted: boolean;
     qaMode: boolean;
-    expertLabel?: string;
+    expertLabel: string | null;
     expertIds: Array<number>;
     authorIds: Array<number>;
     notifyForReplies: boolean;
@@ -3202,7 +3202,7 @@ export type UpdateCommentDto = {
 export type UpdatePostExpertsDto = {
     expertIds: Array<number>;
     qaMode: boolean;
-    expertLabel?: string;
+    expertLabel?: string | null;
     notifyForReplies?: boolean;
     showClusterTags?: boolean;
 };

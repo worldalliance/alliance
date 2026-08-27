@@ -155,9 +155,9 @@ export class UpdatePostExpertsDto {
   @IsDefined()
   qaMode: boolean;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: String, nullable: true })
   @IsOptional()
-  expertLabel?: string;
+  expertLabel?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()

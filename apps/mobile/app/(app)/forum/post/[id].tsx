@@ -209,7 +209,7 @@ export default function PostDetailScreen() {
             repliesAsCards={false}
             qaMode={post.qaMode}
             expertIds={post.expertIds ?? []}
-            expertLabel={post.expertLabel}
+            expertLabel={post.expertLabel ?? undefined}
             showClusterTags={post.showClusterTags}
           />
         </View>

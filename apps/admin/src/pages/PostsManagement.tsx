@@ -104,7 +104,7 @@ const PostsManagementPage: React.FC = () => {
           body: {
             expertIds: expertSelection,
             qaMode,
-            expertLabel: expertLabel || undefined,
+            expertLabel: expertLabel || null,
             notifyForReplies,
             showClusterTags,
           },
