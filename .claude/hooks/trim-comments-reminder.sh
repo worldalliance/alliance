@@ -24,6 +24,6 @@ esac
 jq -n '{
   hookSpecificOutput: {
     hookEventName: "PostToolUse",
-    additionalContext: "Reminder: before presenting this change, apply skills/trim-comments/SKILL.md (and skills/keep-test.md) to every comment you're about to add. Default to no comments."
+    additionalContext: "Reminder: before presenting this change, apply skills/trim-comments/SKILL.md (and skills/keep-test.md) to every comment. Default to no comments."
   }
 }'
