@@ -15,7 +15,6 @@ import {
   type ImagesItem,
 } from "@alliance/common/forms/display-blocks";
 import {
-  collectSourceFormIds,
   isQuestionField,
   type AnyField,
   type FormSchema,
@@ -28,13 +27,10 @@ import {
 import {
   FormResponseDto,
   SubmitFormDto,
-  tasksGetForm,
-  tasksGetMyFormResponse,
   type UserDto,
 } from "@alliance/shared/client";
 import {
   applyDefaultValues,
-  collectManualSourceFormIds,
   computeActiveUserKey,
   computeFormStorageKey,
   filterAnswersByFieldIds,
@@ -63,6 +59,7 @@ import {
   useFormSchemaMaps,
   useFormValidation,
   useFormVisibility,
+  usePreviousAnswerSources,
   useRandomizationKey,
   useVisibilityValidatorResults,
 } from "@alliance/shared/useFormRenderer";
@@ -616,105 +613,8 @@ const FormRenderer = ({
     maxPageIndex,
   } = useFormSchemaMaps({ schema, userDefaultPublic });
 
-  const previousAnswerSourceFormIds = useMemo(() => {
-    const ids = new Set<number>();
-    for (const page of schema.pages) {
-      for (const element of page.fields) {
-        if (!isQuestionField(element) && element.kind === "previousAnswer") {
-          if (element.sourceFormId) {
-            ids.add(element.sourceFormId);
-          }
-          for (const id of collectManualSourceFormIds(element)) {
-            ids.add(id);
-          }
-        }
-      }
-    }
-    for (const id of collectSourceFormIds(schema)) {
-      ids.add(id);
-    }
-    return Array.from(ids);
-  }, [schema]);
-
-  const [previousAnswerSchemas, setPreviousAnswerSchemas] = useState<
-    Record<number, FormSchema>
-  >({});
-  const [previousAnswerData, setPreviousAnswerData] = useState<
-    Record<number, Record<string, unknown>>
-  >({});
-
-  useEffect(() => {
-    if (previousAnswerSourceFormIds.length === 0) {
-      setPreviousAnswerSchemas({});
-      setPreviousAnswerData({});
-      return;
-    }
-
-    let cancelled = false;
-
-    (async () => {
-      const schemaEntries = await Promise.all(
-        previousAnswerSourceFormIds.map(async (formId) => {
-          try {
-            const response = await tasksGetForm({ path: { id: formId } });
-            if (response.data) {
-              const form = response.data as Record<string, unknown>;
-              return [formId, form.schema as FormSchema] as const;
-            }
-          } catch {
-            // Form not found or inaccessible.
-          }
-
-          return null;
-        }),
-      );
-
-      if (cancelled) return;
-
-      const schemas: Record<number, FormSchema> = {};
-      for (const entry of schemaEntries) {
-        if (entry) {
-          schemas[entry[0]] = entry[1];
-        }
-      }
-      setPreviousAnswerSchemas(schemas);
-
-      const dataEntries = await Promise.all(
-        previousAnswerSourceFormIds.map(async (formId) => {
-          try {
-            const response = await tasksGetMyFormResponse({
-              path: { id: formId },
-            });
-            if (response.data) {
-              const formResponse = response.data as Record<string, unknown>;
-              return [
-                formId,
-                (formResponse.answers as Record<string, unknown>) ?? {},
-              ] as const;
-            }
-          } catch {
-            // User has not submitted the source form.
-          }
-
-          return null;
-        }),
-      );
-
-      if (cancelled) return;
-
-      const data: Record<number, Record<string, unknown>> = {};
-      for (const entry of dataEntries) {
-        if (entry) {
-          data[entry[0]] = entry[1];
-        }
-      }
-      setPreviousAnswerData(data);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [previousAnswerSourceFormIds]);
+  const { previousAnswerSchemas, previousAnswerData } =
+    usePreviousAnswerSources({ schema });
 
   const clampPageIndex = (idx: number): number => {
     if (!Number.isFinite(idx)) return 0;
