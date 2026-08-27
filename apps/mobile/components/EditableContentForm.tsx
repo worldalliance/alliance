@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { KeyboardExtender } from "react-native-keyboard-controller";
 import Reanimated from "react-native-reanimated";
+import { resolveImageSource } from "../lib/config";
 import { pickImageDataUris } from "../lib/pickImageDataUri";
 import { useKeyboardExtenderPortal } from "./KeyboardExtenderPortal";
 import Text from "./system/Text";
@@ -320,7 +321,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
           {(value.attachments ?? []).map((img, idx) => (
             <View key={`${img}-${idx}`} style={styles.attachment}>
               <Image
-                source={{ uri: img }}
+                source={{ uri: resolveImageSource(img) }}
                 className="w-20 h-20 rounded"
                 resizeMode="cover"
               />

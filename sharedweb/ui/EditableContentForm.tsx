@@ -3,6 +3,7 @@ import { cn } from "@alliance/shared/styles/util";
 import React, { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import { htmlToMarkdownFromDocs } from "../lib/htmlToMarkdown";
+import { resolveImageSrc } from "../lib/imageSrc";
 
 interface EditableContentFormProps {
   value: CreateEditableContentDto;
@@ -259,7 +260,10 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
         <div className="mt-2 flex flex-wrap gap-2">
           {value.attachments.map((img, idx) => (
             <div key={idx} className="relative inline-block">
-              <img src={img} className="w-20 h-20 object-cover rounded" />
+              <img
+                src={resolveImageSrc(img)}
+                className="w-20 h-20 object-cover rounded"
+              />
               <button
                 type="button"
                 onClick={() =>
