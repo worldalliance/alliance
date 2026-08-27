@@ -59,6 +59,17 @@ const bufferingBackend: AnalyticsBackend = {
 
 let backend: AnalyticsBackend = bufferingBackend;
 
+// posthog's `capture` propagates whatever it throws — @posthog/core's `wrap`
+// re-throws by design — so a broken backend would otherwise take down the code
+// that was only trying to report on itself.
+function report(send: (b: AnalyticsBackend) => void, what: string): void {
+  try {
+    send(backend);
+  } catch (error) {
+    console.warn(`[analytics] ${what} failed`, error);
+  }
+}
+
 /** Wires {@link captureEvent}/{@link captureException} to a platform's posthog client. Call once at app startup, next to posthog init. */
 export function registerAnalytics(b: AnalyticsBackend): void {
   backend = b;
@@ -66,7 +77,7 @@ export function registerAnalytics(b: AnalyticsBackend): void {
   const queued = pending;
   pending = [];
   for (const replay of queued) {
-    replay(b);
+    report(() => replay(b), "replay");
   }
 }
 
@@ -85,15 +96,19 @@ export function __resetAnalyticsForTests(): void {
   hasWarnedOverflow = false;
 }
 
-/** Sends a strongly-typed event to posthog (wired up per-platform via {@link registerAnalytics}). */
+/** Sends a strongly-typed event to posthog (wired up per-platform via {@link registerAnalytics}). Never throws. */
 export function captureEvent(
   event: AnalyticsEvent,
   properties?: AnalyticsProperties,
 ): void {
-  backend.capture(event, {
-    ...properties,
-    [SLACK_PROPERTY]: SEND_TO_SLACK[event],
-  });
+  report(
+    (b) =>
+      b.capture(event, {
+        ...properties,
+        [SLACK_PROPERTY]: SEND_TO_SLACK[event],
+      }),
+    event,
+  );
 }
 
 export enum FlushOutcome {
@@ -143,15 +158,19 @@ export async function flushAnalytics(timeoutMs: number): Promise<FlushResult> {
   });
 }
 
-/** Reports an exception to posthog (wired up per-platform via {@link registerAnalytics}). */
+/** Reports an exception to posthog (wired up per-platform via {@link registerAnalytics}). Never throws. */
 export function captureException(
   event: ExceptionEvent,
   error: unknown,
   properties?: AnalyticsProperties,
 ): void {
-  backend.captureException(error, {
+  report(
+    (b) =>
+      b.captureException(error, {
+        event,
+        [SLACK_PROPERTY]: SEND_TO_SLACK[event],
+        properties: properties ?? {},
+      }),
     event,
-    [SLACK_PROPERTY]: SEND_TO_SLACK[event],
-    properties: properties ?? {},
-  });
+  );
 }
