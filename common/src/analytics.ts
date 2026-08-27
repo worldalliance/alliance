@@ -78,7 +78,16 @@ export enum AnalyticsEvent {
   DbSlowQuery = "db.slow_query",
 }
 
-/** The `outcome` property of {@link AnalyticsEvent.OtaGateResolved}: why the mobile cold-start gate stopped blocking. */
+/**
+ * The `outcome` property of {@link AnalyticsEvent.OtaGateResolved}: why the
+ * mobile cold-start gate stopped blocking.
+ *
+ * Applying reports `applied` up front, since a reload that works never comes
+ * back to report anything, and a reload that then fails or stalls emits a
+ * second row naming `applied` in `supersedes`. So count launches with
+ * `restart_count = 0`, and updates that landed as `applied` rows minus rows
+ * with `supersedes = 'applied'`.
+ */
 export enum OtaGateOutcome {
   NoUpdate = "no_update",
   Applied = "applied",
@@ -87,7 +96,16 @@ export enum OtaGateOutcome {
   Skipped = "skipped",
   CheckError = "check_error",
   DownloadError = "download_error",
+  /** `reloadAsync` rejected. */
   ReloadFailed = "reload_failed",
+  /** `reloadAsync` resolved but the reload never landed. */
+  ReloadStalled = "reload_stalled",
+  /** The startup procedure ended mid-download, pending nothing and reporting no error. */
+  DownloadIncomplete = "download_incomplete",
+  /** This runtime came from a reload. */
+  Relaunched = "relaunched",
+  /** A notification tap is waiting to be handled, and a reload would discard it. */
+  NotificationLaunch = "notification_launch",
 }
 
 // Strongly-typed labels for exceptions reported via `captureException`.
@@ -95,6 +113,7 @@ export enum ExceptionEvent {
   FormSubmitError = "form_submit_error",
   FollowUpFormSubmitError = "follow_up_form_submit_error",
   PostReplyError = "post_reply_error",
+  OtaGateCrashed = "ota_gate_crashed",
 }
 
 export const SLACK_PROPERTY = "send_to_slack";
@@ -181,4 +200,5 @@ export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   [ExceptionEvent.FormSubmitError]: false,
   [ExceptionEvent.FollowUpFormSubmitError]: false,
   [ExceptionEvent.PostReplyError]: false,
+  [ExceptionEvent.OtaGateCrashed]: true,
 };

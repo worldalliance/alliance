@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
 import { setNotificationHandler } from "expo-notifications";
 import { Slot } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -11,6 +12,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import DeviceRegistration from "../components/DeviceRegistration";
 import { KeyboardExtenderPortalProvider } from "../components/KeyboardExtenderPortal";
+import OtaUpdateGate from "../components/OtaUpdateGate";
 import PushNotificationResponseHandler from "../components/PushNotificationResponseHandler";
 import UpdateAvailableModal from "../components/UpdateAvailableModal";
 import "../global.css";
@@ -18,6 +20,14 @@ import { AuthProvider } from "../lib/AuthContext";
 import PostHogProvider from "../lib/PostHogProvider";
 import { SecureStorage, SecureStorageKey } from "../lib/SecureStorage";
 import { getApiUrl } from "../lib/config";
+import { hideSplash } from "../lib/splash";
+
+// OtaUpdateGate decides when the app is ready to be seen, so the splash must
+// outlive the first render.
+void SplashScreen.preventAutoHideAsync().catch(() => {});
+
+const SPLASH_WATCHDOG_MS = 30_000;
+setTimeout(hideSplash, SPLASH_WATCHDOG_MS);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -114,15 +124,19 @@ export default function RootLayout() {
         <GestureHandlerRootView style={{ flex: 1 }}>
           <KeyboardProvider>
             <PostHogProvider>
-              <AuthProvider queryClient={queryClient}>
-                <KeyboardExtenderPortalProvider>
-                  <DeviceRegistration />
-                  <PushNotificationResponseHandler queryClient={queryClient} />
-                  <UpdateAvailableModal />
-                  <StatusBar style="dark" />
-                  <Slot />
-                </KeyboardExtenderPortalProvider>
-              </AuthProvider>
+              <OtaUpdateGate>
+                <AuthProvider queryClient={queryClient}>
+                  <KeyboardExtenderPortalProvider>
+                    <DeviceRegistration />
+                    <PushNotificationResponseHandler
+                      queryClient={queryClient}
+                    />
+                    <UpdateAvailableModal />
+                    <StatusBar style="dark" />
+                    <Slot />
+                  </KeyboardExtenderPortalProvider>
+                </AuthProvider>
+              </OtaUpdateGate>
             </PostHogProvider>
           </KeyboardProvider>
         </GestureHandlerRootView>
