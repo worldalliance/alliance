@@ -16,6 +16,8 @@ interface ReplyFormProps {
   compact?: boolean;
   className?: string;
   startExpanded?: boolean;
+  error?: string | null;
+  onDismissError?: () => void;
 }
 
 const ReplyForm: React.FC<ReplyFormProps> = ({
@@ -29,6 +31,8 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
   compact,
   className,
   startExpanded = false,
+  error,
+  onDismissError,
 }: ReplyFormProps) => {
   const [expanded, setExpanded] = useState(startExpanded);
   const [clearDraftSignal, setClearDraftSignal] = useState(0);
@@ -36,8 +40,10 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      setClearDraftSignal((x) => x + 1);
+      // Clear the draft only once the server accepts, so a rejected comment
+      // keeps its text.
       onSubmit(editableContent, () => {
+        setClearDraftSignal((x) => x + 1);
         setExpanded(false);
       });
     },
@@ -59,6 +65,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
             placement: "topleft",
           });
     if (!ok) return;
+    onDismissError?.();
     setEditableContent({ body: "", attachments: [] });
     setExpanded(false);
     setReplyingTo(null);
@@ -66,6 +73,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
   }, [
     onCancel,
     confirm,
+    onDismissError,
     setEditableContent,
     setReplyingTo,
     editableContent.body,
@@ -87,6 +95,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
           clearDraftSignal={clearDraftSignal}
           draftKey={`reply-${parentId}`}
           onChange={(val) => {
+            onDismissError?.();
             setEditableContent(val);
             if ((val.body || val.attachments.length > 0) && !expanded)
               setExpanded(true);
@@ -100,6 +109,11 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
           }}
           placeholder={"Add a comment..."}
         />
+        {error && (
+          <p role="alert" className="mt-2 text-sm text-red-500">
+            {error}
+          </p>
+        )}
         {expanded && (
           <div
             className="mt-3 flex justify-start gap-x-2 items-center flex-row-reverse"

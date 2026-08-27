@@ -235,6 +235,8 @@ const Comments = ({
       handleSubmitReply: tree.handleSubmitReply,
       handleDeleteReply: tree.handleDeleteReply,
       onUpdateReply: tree.handleUpdateReply,
+      submitErrorFor: tree.submitErrorFor,
+      clearSubmitError: tree.clearSubmitError,
       onLikeReply: tree.handleLikeReply,
       onPinReply: tree.handlePinReply,
       isSubmitting: tree.isSubmitting,
@@ -253,6 +255,8 @@ const Comments = ({
       tree.handleSubmitReply,
       tree.handleDeleteReply,
       tree.handleUpdateReply,
+      tree.submitErrorFor,
+      tree.clearSubmitError,
       tree.handleLikeReply,
       tree.handlePinReply,
       tree.isSubmitting,
@@ -279,6 +283,8 @@ const Comments = ({
             setReplyingTo={tree.setReplyingTo}
             compact={compact}
             startExpanded={autofocus}
+            error={tree.submitErrorFor(null)}
+            onDismissError={tree.clearSubmitError}
           />
         ) : !user && !compact ? (
           <div className="text-center py-6 bg-zinc-50 rounded border border-zinc-200">

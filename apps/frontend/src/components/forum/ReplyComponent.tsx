@@ -153,6 +153,11 @@ const ReplyContent = ({
               }}
               placeholder="Edit your reply..."
             />
+            {editing.editError && (
+              <p role="alert" className="mt-2 text-sm text-red-500">
+                {editing.editError}
+              </p>
+            )}
             <div className="flex gap-2 mt-2 justify-end items-center">
               <span className="text-sm text-zinc-500">
                 Drag an image to attach
@@ -281,6 +286,8 @@ const ReplyComponent = ({ reply, depth = 0 }: ReplyComponentProps) => {
         setReplyingTo={ctx.setReplyingTo}
         compact={ctx.compact}
         startExpanded={true}
+        error={ctx.submitErrorFor(reply.id)}
+        onDismissError={ctx.clearSubmitError}
       />
     ) : null;
 

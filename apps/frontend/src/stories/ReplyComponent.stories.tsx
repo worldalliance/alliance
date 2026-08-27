@@ -1,3 +1,4 @@
+import { type Result } from "@alliance/common/result";
 import { CommentDto, CreateEditableContentDto } from "@alliance/shared/client";
 import { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
@@ -58,7 +59,9 @@ const defaultCtx = {
   onUpdateReply: fn() as (
     id: number,
     content: CreateEditableContentDto,
-  ) => Promise<void>,
+  ) => Promise<Result<void, string>>,
+  submitErrorFor: fn() as (parentId: number | null) => string | null,
+  clearSubmitError: fn() as () => void,
   onLikeReply: fn() as (id: number, unlike?: boolean) => Promise<void>,
   onPinReply: fn() as (id: number) => Promise<void>,
   isSubmitting: false,

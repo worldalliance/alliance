@@ -1,3 +1,4 @@
+import { R, type Result } from "@alliance/common/result";
 import { CommentDto, CreateEditableContentDto } from "@alliance/shared/client";
 import { useState } from "react";
 import { uploadAttachments } from "../lib/uploadAttachments";
@@ -7,6 +8,7 @@ export interface CommentEditingResult {
   editContent: string;
   editAttachments: string[];
   isUpdating: boolean;
+  editError: string | null;
   setEditContent: (body: string) => void;
   setEditAttachments: (attachments: string[]) => void;
   startEdit: () => void;
@@ -19,7 +21,7 @@ export function useCommentEditing(
   onUpdateReply: (
     id: number,
     content: CreateEditableContentDto,
-  ) => Promise<void>,
+  ) => Promise<Result<void, string>>,
 ): CommentEditingResult {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(reply.editableContent.body);
@@ -27,33 +29,44 @@ export function useCommentEditing(
     reply.editableContent.attachments,
   );
   const [isUpdating, setIsUpdating] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const startEdit = () => {
     setEditContent(reply.editableContent?.body ?? "");
     setEditAttachments(reply.editableContent?.attachments ?? []);
+    setEditError(null);
     setIsEditing(true);
   };
 
   const cancelEdit = () => {
     setEditContent(reply.editableContent?.body ?? "");
     setEditAttachments(reply.editableContent?.attachments ?? []);
+    setEditError(null);
     setIsEditing(false);
   };
 
   const saveEdit = async () => {
     setIsUpdating(true);
-    try {
+    setEditError(null);
+    const saved = await R.fromPromiseFn(async () => {
       const attachmentKeys = await uploadAttachments(editAttachments);
-      await onUpdateReply(reply.id, {
+      return onUpdateReply(reply.id, {
         body: editContent.trim(),
         attachments: attachmentKeys,
       });
-      setIsEditing(false);
-    } catch (error) {
-      console.error("Failed to update reply:", error);
-    } finally {
-      setIsUpdating(false);
+    });
+    setIsUpdating(false);
+
+    if (!saved.ok) {
+      console.error("Failed to update reply:", saved.error);
+      setEditError("Failed to save your edit");
+      return;
     }
+
+    R.match(saved.value, {
+      success: () => setIsEditing(false),
+      failure: setEditError,
+    });
   };
 
   return {
@@ -61,6 +74,7 @@ export function useCommentEditing(
     editContent,
     editAttachments,
     isUpdating,
+    editError,
     setEditContent,
     setEditAttachments,
     startEdit,

@@ -1,4 +1,6 @@
+import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
+import { R, type Result } from "@alliance/common/result";
 import {
   CommentDto,
   CommentParentObject,
@@ -178,6 +180,8 @@ type ReplyFormProps = {
   autofocus?: boolean;
   objectId: number;
   isSubmitting: boolean;
+  error?: string | null;
+  onDismissError?: () => void;
   onSubmit: (
     content: CreateEditableContentDto,
     parentId?: number | null,
@@ -192,21 +196,35 @@ const ReplyForm = ({
   autofocus,
   objectId,
   isSubmitting,
+  error,
+  onDismissError,
   onSubmit,
 }: ReplyFormProps) => {
+  // EditableContentForm hides its Cancel button when onCancel is undefined.
+  const handleCancel = onCancel
+    ? () => {
+        onDismissError?.();
+        onCancel();
+      }
+    : undefined;
+
   return (
     <View className="p-2 bg-zinc-100 rounded">
       <EditableContentForm
         value={content}
-        onChange={setContent}
+        onChange={(next) => {
+          onDismissError?.();
+          setContent(next);
+        }}
         placeholder="Add a comment..."
         expanded={autofocus || parentId !== null}
         draftKey={`reply-${parentId ?? "root"}-${objectId}`}
         onSubmit={() => onSubmit(content, parentId)}
-        onCancel={onCancel}
+        onCancel={handleCancel}
         submitLabel="Post"
         isSubmitting={isSubmitting}
       />
+      {error && <Text className="mt-2 text-sm text-red-500">{error}</Text>}
     </View>
   );
 };
@@ -236,7 +254,9 @@ type ReplyItemSharedProps = {
   onUpdateReply: (
     replyId: number,
     content: CreateEditableContentDto,
-  ) => Promise<void>;
+  ) => Promise<Result<void, string>>;
+  submitErrorFor: (parentId: number | null) => string | null;
+  clearSubmitError: () => void;
   onDeleteReply: (replyId: number) => void;
   onLikeReply: (replyId: number, unlike?: boolean) => Promise<unknown>;
 };
@@ -248,6 +268,7 @@ type ReplyItemProps = ReplyItemSharedProps & {
 
 const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<CreateEditableContentDto>({
     body: reply.editableContent.body ?? "",
     attachments: reply.editableContent.attachments ?? [],
@@ -362,18 +383,28 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
               expanded
               draftKey={`edit-reply-${reply.id}`}
               onSubmit={() => {
+                setEditError(null);
                 void shared
                   .onUpdateReply(reply.id, editContent)
-                  .then(() => setIsEditing(false));
+                  .then((result) =>
+                    R.match(result, {
+                      success: () => setIsEditing(false),
+                      failure: setEditError,
+                    }),
+                  );
               }}
               onCancel={() => {
                 setEditContent({
                   body: reply.editableContent.body ?? "",
                   attachments: reply.editableContent.attachments ?? [],
                 });
+                setEditError(null);
                 setIsEditing(false);
               }}
             />
+            {editError && (
+              <Text className="text-sm text-red-500">{editError}</Text>
+            )}
           </View>
         ) : (
           <EditableContentRenderer
@@ -459,6 +490,8 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
             autofocus={shared.autofocus}
             objectId={shared.objectId}
             isSubmitting={shared.isSubmitting}
+            error={shared.submitErrorFor(reply.id)}
+            onDismissError={shared.clearSubmitError}
             onSubmit={shared.onSubmitReply}
           />
         </View>
@@ -516,6 +549,12 @@ export default function Comments({
     initialComments ?? null,
   );
   const [error, setError] = useState<string | null>(null);
+  // Keyed by the form that produced it, so a nested reply's rejection shows
+  // under that reply rather than at the top of the thread.
+  const [submitError, setSubmitError] = useState<{
+    parentId: number | null;
+    message: string;
+  } | null>(null);
   const [nestedDraft, setNestedDraft] = useState<CreateEditableContentDto>({
     body: "",
     attachments: [],
@@ -582,6 +621,7 @@ export default function Comments({
     async (contentDto: CreateEditableContentDto, parentId?: number | null) => {
       try {
         setIsSubmitting(true);
+        setSubmitError(null);
         const attachmentKeys = await uploadAttachments(
           contentDto.attachments ?? [],
         );
@@ -596,6 +636,18 @@ export default function Comments({
         };
 
         const response = await forumCreateComment({ body: commentDto });
+
+        if (response.error) {
+          setSubmitError({
+            parentId: parentId ?? null,
+            message: errorMessage({
+              error: response.error,
+              fallback: "Failed to submit reply",
+            }),
+          });
+          return;
+        }
+
         if (response.data) {
           setNewlyAddedReplies((prev) => {
             const next = new Set(prev);
@@ -616,10 +668,12 @@ export default function Comments({
         setNestedDraft({ body: "", attachments: [] });
         setReplyingTo(null);
         setIsComposing(false);
-        setError(null);
       } catch (err) {
         console.error("Error posting reply:", err);
-        setError("Failed to submit reply");
+        setSubmitError({
+          parentId: parentId ?? null,
+          message: "Failed to submit reply",
+        });
       } finally {
         setIsSubmitting(false);
       }
@@ -654,17 +708,41 @@ export default function Comments({
   );
 
   const handleUpdateReply = useCallback(
-    async (replyId: number, content: CreateEditableContentDto) => {
-      const attachmentKeys = await uploadAttachments(content.attachments ?? []);
-      await forumUpdateComment({
-        path: { id: replyId },
-        body: {
-          editableContent: {
-            body: content.body,
-            attachments: attachmentKeys,
+    async (
+      replyId: number,
+      content: CreateEditableContentDto,
+    ): Promise<Result<void, string>> => {
+      const saved = await R.fromPromiseFn(async () => {
+        const attachmentKeys = await uploadAttachments(
+          content.attachments ?? [],
+        );
+        const response = await forumUpdateComment({
+          path: { id: replyId },
+          body: {
+            editableContent: {
+              body: content.body,
+              attachments: attachmentKeys,
+            },
           },
-        },
+        });
+        return { attachmentKeys, error: response.error };
       });
+
+      if (!saved.ok) {
+        console.error("Failed to update comment:", saved.error);
+        return R.failure("Failed to save your edit");
+      }
+
+      if (saved.value.error) {
+        return R.failure(
+          errorMessage({
+            error: saved.value.error,
+            fallback: "Failed to save your edit",
+          }),
+        );
+      }
+
+      const { attachmentKeys } = saved.value;
 
       setComments((prevComments) => {
         if (!prevComments) return null;
@@ -692,9 +770,19 @@ export default function Comments({
 
         return updateRecursively(prevComments);
       });
+
+      return R.success(undefined);
     },
     [],
   );
+
+  const submitErrorFor = useCallback(
+    (parentId: number | null) =>
+      submitError?.parentId === parentId ? submitError.message : null,
+    [submitError],
+  );
+
+  const clearSubmitError = useCallback(() => setSubmitError(null), []);
 
   const handleLikeReply = useCommentLikeMutation({
     userId: user?.id,
@@ -845,6 +933,8 @@ export default function Comments({
             onCancel={() => setIsComposing(false)}
             objectId={objectId}
             isSubmitting={isSubmitting}
+            error={submitErrorFor(null)}
+            onDismissError={clearSubmitError}
             onSubmit={handleSubmitReply}
           />
         ) : (
@@ -907,6 +997,8 @@ export default function Comments({
               showClusterTags={showClusterTags}
               onSubmitReply={handleSubmitReply}
               onUpdateReply={handleUpdateReply}
+              submitErrorFor={submitErrorFor}
+              clearSubmitError={clearSubmitError}
               onDeleteReply={handleDeleteReply}
               onLikeReply={handleLikeReply}
             />

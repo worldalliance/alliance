@@ -1,4 +1,6 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
+import { errorMessage } from "@alliance/common/errorMessage";
+import { R, type Result } from "@alliance/common/result";
 import {
   CommentDto,
   CommentParentObject,
@@ -38,7 +40,9 @@ interface CommentsContextValue {
   onUpdateReply: (
     id: number,
     content: CreateEditableContentDto,
-  ) => Promise<void>;
+  ) => Promise<Result<void, string>>;
+  submitErrorFor: (parentId: number | null) => string | null;
+  clearSubmitError: () => void;
   onLikeReply: (id: number, unlike?: boolean) => Promise<unknown>;
   onPinReply: (id: number) => Promise<void>;
   isSubmitting: boolean;
@@ -75,7 +79,9 @@ export interface UseCommentTreeResult {
   handleUpdateReply: (
     id: number,
     content: CreateEditableContentDto,
-  ) => Promise<void>;
+  ) => Promise<Result<void, string>>;
+  submitErrorFor: (parentId: number | null) => string | null;
+  clearSubmitError: () => void;
   handleLikeReply: (id: number, unlike?: boolean) => Promise<unknown>;
   handlePinReply: (id: number) => Promise<void>;
   replyingTo: number | null;
@@ -96,6 +102,12 @@ export function useCommentTree(
     initialComments ?? null,
   );
   const [error, setError] = useState<string | null>(null);
+  // Keyed by the form that produced it, so a nested reply's rejection shows
+  // under that reply rather than at the top of the thread.
+  const [submitError, setSubmitError] = useState<{
+    parentId: number | null;
+    message: string;
+  } | null>(null);
   const [editableContent, setEditableContent] =
     useState<CreateEditableContentDto>({ body: "", attachments: [] });
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
@@ -185,6 +197,7 @@ export function useCommentTree(
   ) => {
     try {
       setIsSubmitting(true);
+      setSubmitError(null);
       let attachmentKeys: string[] = [];
       if (contentDto.attachments.length > 0) {
         attachmentKeys = await uploadAttachments(contentDto.attachments);
@@ -197,6 +210,17 @@ export function useCommentTree(
       };
 
       const response = await forumCreateComment({ body: commentDto });
+
+      if (response.error) {
+        setSubmitError({
+          parentId: replyingTo,
+          message: errorMessage({
+            error: response.error,
+            fallback: "Failed to submit reply",
+          }),
+        });
+        return;
+      }
 
       if (response.data) {
         const newReplyId = response.data.id;
@@ -218,11 +242,13 @@ export function useCommentTree(
 
       setEditableContent({ body: "", attachments: [] });
       setReplyingTo(null);
-      setError(null);
     } catch (err) {
       console.error("Error posting reply:", err);
       captureException(ExceptionEvent.PostReplyError, err);
-      setError("Failed to submit reply");
+      setSubmitError({
+        parentId: replyingTo,
+        message: "Failed to submit reply",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -243,37 +269,50 @@ export function useCommentTree(
   const handleUpdateReply = async (
     replyId: number,
     content: CreateEditableContentDto,
-  ) => {
-    try {
-      await forumUpdateComment({
+  ): Promise<Result<void, string>> => {
+    const response = await R.fromPromise(
+      forumUpdateComment({
         path: { id: replyId },
         body: { editableContent: content },
-      });
+      }),
+    );
 
-      setComments((prevComments) => {
-        if (!prevComments) return null;
-
-        const updateRecursively = (comments: CommentDto[]): CommentDto[] => {
-          return comments.map((comment) => {
-            if (comment.id === replyId) {
-              return { ...comment, editableContent: { ...content, id: -1 } };
-            }
-            if (comment.children) {
-              return {
-                ...comment,
-                children: updateRecursively(comment.children),
-              };
-            }
-            return comment;
-          });
-        };
-
-        return updateRecursively(prevComments);
-      });
-    } catch (error) {
-      console.error("Failed to update comment:", error);
-      throw error;
+    if (!response.ok) {
+      console.error("Failed to update comment:", response.error);
+      return R.failure("Failed to save your edit");
     }
+
+    if (response.value.error) {
+      return R.failure(
+        errorMessage({
+          error: response.value.error,
+          fallback: "Failed to save your edit",
+        }),
+      );
+    }
+
+    setComments((prevComments) => {
+      if (!prevComments) return null;
+
+      const updateRecursively = (comments: CommentDto[]): CommentDto[] => {
+        return comments.map((comment) => {
+          if (comment.id === replyId) {
+            return { ...comment, editableContent: { ...content, id: -1 } };
+          }
+          if (comment.children) {
+            return {
+              ...comment,
+              children: updateRecursively(comment.children),
+            };
+          }
+          return comment;
+        });
+      };
+
+      return updateRecursively(prevComments);
+    });
+
+    return R.success(undefined);
   };
 
   const { user } = useAuth();
@@ -283,6 +322,11 @@ export function useCommentTree(
     setComments,
     fetchComments,
   });
+
+  const submitErrorFor = (parentId: number | null) =>
+    submitError?.parentId === parentId ? submitError.message : null;
+
+  const clearSubmitError = () => setSubmitError(null);
 
   const handlePinReply = async (replyId: number) => {
     await forumPinCommentAdmin({ path: { id: replyId } });
@@ -296,6 +340,8 @@ export function useCommentTree(
     handleSubmitReply,
     handleDeleteReply,
     handleUpdateReply,
+    submitErrorFor,
+    clearSubmitError,
     handleLikeReply,
     handlePinReply,
     replyingTo,
