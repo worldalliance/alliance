@@ -18,6 +18,11 @@ export interface OtaGateSignals {
   hasDownloadError: boolean;
   /** JS restarts since cold start. Above 0 means a reload produced this runtime. */
   restartCount: number;
+  /**
+   * An unhandled notification tap. A reload replaces the native module holding
+   * it, dropping the tap and the screen it asked for.
+   */
+  hasPendingNotificationResponse: boolean;
 }
 
 export enum OtaGateStepKind {
@@ -41,6 +46,11 @@ const open = (outcome: OtaGateOutcome): OtaGateStep => ({
 });
 
 function stepWhileWaiting(signals: OtaGateSignals): OtaGateStep | null {
+  // Ahead of the pending update: the tap has no next launch to fall back to,
+  // the update does.
+  if (signals.hasPendingNotificationResponse) {
+    return open(OtaGateOutcome.NotificationLaunch);
+  }
   if (signals.isUpdatePending) return { kind: OtaGateStepKind.Apply };
   if (signals.isDownloading) return { kind: OtaGateStepKind.Download };
   if (signals.hasCheckError) return open(OtaGateOutcome.CheckError);

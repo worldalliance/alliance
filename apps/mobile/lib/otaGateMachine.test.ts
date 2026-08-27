@@ -15,6 +15,7 @@ const SETTLED: OtaGateSignals = {
   hasCheckError: false,
   hasDownloadError: false,
   restartCount: 0,
+  hasPendingNotificationResponse: false,
 };
 
 const RUNNING: OtaGateSignals = { ...SETTLED, isStartupProcedureRunning: true };
@@ -54,6 +55,28 @@ describe("nextStep", () => {
         isUpdatePending: true,
       }),
     ).toEqual({ kind: OtaGateStepKind.Apply });
+  });
+
+  test("opens rather than reloading over an unhandled notification tap", () => {
+    const tapped = { ...RUNNING, hasPendingNotificationResponse: true };
+    for (const phase of [OtaGatePhase.Checking, OtaGatePhase.Downloading]) {
+      expect(nextStep(phase, { ...tapped, isUpdatePending: true })).toEqual(
+        opensWith(OtaGateOutcome.NotificationLaunch),
+      );
+      expect(nextStep(phase, { ...tapped, isDownloading: true })).toEqual(
+        opensWith(OtaGateOutcome.NotificationLaunch),
+      );
+    }
+  });
+
+  // The reload is already in flight by then, so there is nothing left to spare.
+  test("still holds through the apply phase after a tap arrives", () => {
+    expect(
+      nextStep(OtaGatePhase.Applying, {
+        ...RUNNING,
+        hasPendingNotificationResponse: true,
+      }),
+    ).toEqual({ kind: OtaGateStepKind.Hold });
   });
 
   test("enters the download phase when a bundle starts arriving", () => {

@@ -5,6 +5,7 @@ import {
   flushAnalytics,
   FlushOutcome,
 } from "@alliance/shared/lib/analytics";
+import { getLastNotificationResponse } from "expo-notifications";
 import * as Updates from "expo-updates";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SPLASH_BACKGROUND_COLOR, SPLASH_IMAGE } from "../constants/splash";
@@ -163,6 +164,9 @@ export function useOtaUpdateGate(): OtaUpdateGate {
       hasCheckError: checkError !== undefined,
       hasDownloadError: downloadError !== undefined,
       restartCount,
+      // Read each step, not once at launch: a tap arriving while the gate is
+      // up has to be seen before the reload it would be lost to.
+      hasPendingNotificationResponse: !!getLastNotificationResponse(),
     });
 
     switch (step.kind) {

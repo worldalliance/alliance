@@ -104,6 +104,8 @@ export enum OtaGateOutcome {
   DownloadIncomplete = "download_incomplete",
   /** This runtime came from a reload. */
   Relaunched = "relaunched",
+  /** A notification tap is waiting to be handled, and a reload would discard it. */
+  NotificationLaunch = "notification_launch",
 }
 
 // Strongly-typed labels for exceptions reported via `captureException`.
