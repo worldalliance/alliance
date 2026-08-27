@@ -29,6 +29,7 @@ import {
   type ConditionExtras,
 } from "@alliance/common/forms/visibility";
 import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
+import { R } from "@alliance/common/result";
 import {
   FormResponseDto,
   SubmitFormDto,
@@ -71,6 +72,7 @@ import {
 } from "@alliance/shared/lib/copy";
 import { useImageUpload } from "@alliance/shared/lib/useImageUpload";
 import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
+import { parseVisibilityValidatorResults } from "@alliance/shared/parsed-dtos";
 import { cn } from "@alliance/shared/styles/util";
 import {
   CircleDashed,
@@ -489,17 +491,33 @@ const FormRenderer = ({
     return Array.from(ids);
   }, [schema]);
 
-  const [visibilityValidatorResults, setVisibilityValidatorResults] = useState<
-    Record<number, boolean>
-  >(() => {
-    if (readOnly && completedFormResponse?.visibilityValidatorResults) {
-      return completedFormResponse.visibilityValidatorResults as Record<
-        number,
-        boolean
-      >;
+  const [fetchedVisibilityValidatorResults, setVisibilityValidatorResults] =
+    useState<Record<number, boolean>>({});
+
+  // A response saved before a validator was added has no verdict for it, and a
+  // missing verdict reads as hidden, so default to passing.
+  const savedVisibilityValidatorResults = useMemo(() => {
+    const defaults: Record<number, boolean> = {};
+    for (const id of visibilityValidatorIds) {
+      defaults[id] = true;
     }
-    return {};
-  });
+    return {
+      ...defaults,
+      ...R.unwrapOr(
+        parseVisibilityValidatorResults(
+          completedFormResponse?.visibilityValidatorResults,
+        ),
+        {},
+      ),
+    };
+  }, [
+    visibilityValidatorIds,
+    completedFormResponse?.visibilityValidatorResults,
+  ]);
+
+  const visibilityValidatorResults = readOnly
+    ? savedVisibilityValidatorResults
+    : fetchedVisibilityValidatorResults;
 
   useEffect(() => {
     if (readOnly) {
@@ -530,7 +548,7 @@ const FormRenderer = ({
       return;
     }
     const missingIds = visibilityValidatorIds.filter(
-      (id) => !(id in visibilityValidatorResults),
+      (id) => !(id in fetchedVisibilityValidatorResults),
     );
     if (!missingIds.length) {
       return;
@@ -571,7 +589,7 @@ const FormRenderer = ({
     return () => {
       cancelled = true;
     };
-  }, [visibilityValidatorIds, visibilityValidatorResults, readOnly]);
+  }, [visibilityValidatorIds, fetchedVisibilityValidatorResults, readOnly]);
 
   // --- Previous Answer block data fetching ---
   const previousAnswerSourceFormIds = useMemo(() => {
@@ -1431,60 +1449,6 @@ const FormRenderer = ({
       );
     }
   }, [readOnly, completedFormResponse, fieldLookup]);
-
-  useEffect(() => {
-    if (!readOnly) {
-      return;
-    }
-    if (!visibilityValidatorIds.length) {
-      return;
-    }
-    setVisibilityValidatorResults((prev) => {
-      let changed = false;
-      const next = { ...prev };
-      for (const id of visibilityValidatorIds) {
-        if (!(id in next)) {
-          next[id] = true;
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [readOnly, visibilityValidatorIds]);
-
-  useEffect(() => {
-    if (!readOnly) {
-      return;
-    }
-    if (!completedFormResponse?.visibilityValidatorResults) {
-      return;
-    }
-    setVisibilityValidatorResults((prev) => {
-      const normalized =
-        completedFormResponse.visibilityValidatorResults as Record<
-          number,
-          boolean
-        >;
-      const keys = Object.keys(normalized);
-      if (keys.length === Object.keys(prev).length) {
-        let identical = true;
-        for (const key of keys) {
-          const numericKey = Number(key);
-          if (!Number.isFinite(numericKey)) {
-            continue;
-          }
-          if (prev[numericKey] !== normalized[numericKey]) {
-            identical = false;
-            break;
-          }
-        }
-        if (identical) {
-          return prev;
-        }
-      }
-      return normalized;
-    });
-  }, [readOnly, completedFormResponse?.visibilityValidatorResults]);
 
   useEffect(() => {
     if (
