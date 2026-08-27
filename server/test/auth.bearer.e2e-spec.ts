@@ -38,6 +38,7 @@ describe("Auth (e2e)", () => {
         password: "password",
         name: "Test User",
         mode: "header",
+        timeZone: "America/Los_Angeles",
       } satisfies SignUpDto)
       .expect(201);
   });
@@ -151,6 +152,7 @@ describe("Auth (e2e)", () => {
           name: "Invited User",
           referralCode: "TEST-INVITE-CODE",
           mode: "header",
+          timeZone: "America/Los_Angeles",
         } satisfies SignUpDto)
         .expect(201);
 
@@ -189,6 +191,7 @@ describe("Auth (e2e)", () => {
           name: "Friend Invited User",
           referralCode: "FRIEND-INVITE-CODE",
           mode: "header",
+          timeZone: "America/Los_Angeles",
         } satisfies SignUpDto)
         .expect(201);
 
@@ -242,6 +245,7 @@ describe("Auth (e2e)", () => {
           name: "No Join User",
           referralCode: "NO-JOIN-CODE",
           mode: "header",
+          timeZone: "America/Los_Angeles",
         } satisfies SignUpDto)
         .expect(201);
 
@@ -264,6 +268,7 @@ describe("Auth (e2e)", () => {
           name: "No Invite User",
           referralCode: "INVALID-CODE",
           mode: "header",
+          timeZone: "America/Los_Angeles",
         } satisfies SignUpDto)
         .expect(201);
 
@@ -301,6 +306,7 @@ describe("Auth (e2e)", () => {
           name: "Referred User",
           referralCode: referringUser.referralCode,
           mode: "header",
+          timeZone: "America/Los_Angeles",
         } satisfies SignUpDto)
         .expect(201);
 
@@ -331,6 +337,62 @@ describe("Auth (e2e)", () => {
 
       expect(friendship).not.toBeNull();
     });
+  });
+
+  describe("time zone", () => {
+    it("stores the time zone the client signed up with", async () => {
+      const referringUser = await userRepository.save(
+        userRepository.create({
+          email: "tz-referrer@test.com",
+          password: "password",
+          name: "TZ Referrer",
+        }),
+      );
+      if (!referringUser.referralCode) {
+        await referringUser.generateReferralCode();
+        await userRepository.save(referringUser);
+      }
+
+      await request(ctx.app.getHttpServer())
+        .post("/auth/register")
+        .send({
+          email: "tz-member@test.com",
+          password: "password",
+          name: "TZ Member",
+          referralCode: referringUser.referralCode,
+          mode: "header",
+          timeZone: "Europe/Berlin",
+        } satisfies SignUpDto)
+        .expect(201);
+
+      const newUser = await userRepository.findOneOrFail({
+        where: { email: "tz-member@test.com" },
+      });
+      expect(newUser.timeZone).toBe("Europe/Berlin");
+    });
+
+    it.each([["not-a-zone"], [""], [undefined]])(
+      "rejects a signup carrying %p as its time zone",
+      async (timeZone) => {
+        const res = await request(ctx.app.getHttpServer())
+          .post("/auth/register")
+          .send({
+            email: `bad-tz-${String(timeZone)}@test.com`,
+            password: "password",
+            name: "Bad TZ",
+            referralCode: "ANY-CODE",
+            mode: "header",
+            timeZone,
+          });
+        expect(res.status).toBe(400);
+        expect(JSON.stringify(res.body.message)).toContain("timeZone");
+        expect(
+          await userRepository.findOneBy({
+            email: `bad-tz-${String(timeZone)}@test.com`,
+          }),
+        ).toBeNull();
+      },
+    );
   });
 
   afterEach(async () => {

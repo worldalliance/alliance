@@ -8,6 +8,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsTimeZone,
 } from "class-validator";
 import type { TokenMode } from "./signin.dto";
 
@@ -33,6 +34,11 @@ export class SignUpDto {
   @IsEnum(["cookie", "header"])
   @ApiProperty({ enum: ["cookie", "header"], enumName: "TokenMode" })
   mode: TokenMode;
+
+  @IsDefined()
+  @IsTimeZone()
+  @ApiProperty()
+  readonly timeZone: string;
 
   @IsOptional()
   @ApiPropertyOptional()

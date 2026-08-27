@@ -1,3 +1,4 @@
+import type { UsMembership } from "src/geo/us-membership";
 import type { User } from "src/user/entities/user.entity";
 
 /** Raw slice of a form response needed to evaluate FormFieldValue leaves. */
@@ -25,6 +26,12 @@ export class CohortResolutionSession {
   activeUsers?: Promise<User[]>;
   candidateUserIds?: Promise<Set<number>>;
   groupLeadUserIds?: Promise<Set<number>>;
+  usMembershipUserIds?: Promise<Record<UsMembership, Set<number>>>;
+  /**
+   * The single-user path's counterpart to `usMembershipUserIds`: one lookup
+   * per user rather than a partition of every user.
+   */
+  readonly usMembershipByUserId = new Map<number, Promise<UsMembership>>();
   readonly expressionMemberIds = new Map<string, Promise<Set<number>>>();
   readonly tagUserIds = new Map<string, Promise<Set<number>>>();
   readonly completedActionUserIds = new Map<number, Promise<Set<number>>>();

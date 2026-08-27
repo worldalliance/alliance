@@ -45,6 +45,7 @@ import {
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { Post } from "src/forum/entities/post.entity";
 import { ForumService } from "src/forum/forum.service";
+import { resolveUsMembership, UsMembership } from "src/geo/us-membership";
 import { FacepileService } from "src/likes/facepile.service";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import {
@@ -832,12 +833,14 @@ export class ActionsService {
   private async computeViewerInCohort(params: {
     action: ParsedAction;
     user: User | null;
+    session?: CohortResolutionSession;
   }): Promise<boolean> {
-    const { action, user } = params;
+    const { action, user, session } = params;
     return user
       ? await this.computeIsInCohortExpression({
           user,
           cohortExpression: action.cohortExpression,
+          session,
         })
       : false;
   }
@@ -865,9 +868,16 @@ export class ActionsService {
         })
       : null;
 
+    // One session for the whole feed: every action re-asks the same per-user
+    // leaf questions, and the answers can't change mid-request.
+    const session = new CohortResolutionSession();
+
     const filtered: ParsedAction[] = [];
     for (const action of actions) {
-      if ((await this.userCanSeeAction(action, user)) && !action.publicOnly) {
+      if (
+        (await this.userCanSeeAction({ action, user, session })) &&
+        !action.publicOnly
+      ) {
         filtered.push(action);
       }
     }
@@ -893,7 +903,11 @@ export class ActionsService {
 
     return await Promise.all(
       filtered.map(async (action) => {
-        const inCohort = await this.computeViewerInCohort({ action, user });
+        const inCohort = await this.computeViewerInCohort({
+          action,
+          user,
+          session,
+        });
         const shouldParticipate = computeIsAssignedToAction({
           action,
           user,
@@ -902,10 +916,11 @@ export class ActionsService {
         });
 
         if (user && action.followUpForms) {
-          action.followUpForms = await this.filterFollowUpFormsByCohort(
-            action.followUpForms.map(parseFollowUpForm),
+          action.followUpForms = await this.filterFollowUpFormsByCohort({
+            followUpForms: action.followUpForms.map(parseFollowUpForm),
             user,
-          );
+            session,
+          });
         }
 
         return new ActionDto(action, {
@@ -969,10 +984,12 @@ export class ActionsService {
     );
   }
 
-  async userCanSeeAction(
-    action: ParsedAction,
-    user: User | null,
-  ): Promise<boolean> {
+  async userCanSeeAction(params: {
+    action: ParsedAction;
+    user: User | null;
+    session?: CohortResolutionSession;
+  }): Promise<boolean> {
+    const { action, user, session } = params;
     if (user?.admin) {
       return true;
     }
@@ -997,6 +1014,7 @@ export class ActionsService {
     return this.computeIsInCohortExpression({
       user,
       cohortExpression: action.cohortExpression,
+      session,
     });
   }
 
@@ -1010,12 +1028,15 @@ export class ActionsService {
      * default rather than by remembering to filter.
      */
     includeUnpublishedUpdates?: boolean;
+    /** Share per-user leaf lookups; see computeIsInCohortExpression. */
+    session?: CohortResolutionSession;
   }): Promise<ParsedAction> {
     const {
       id,
       userId,
       serverSide = false,
       includeUnpublishedUpdates = false,
+      session,
     } = params;
 
     const user = userId
@@ -1051,7 +1072,7 @@ export class ActionsService {
 
     if (
       !action ||
-      !((await this.userCanSeeAction(action, user)) || serverSide)
+      !((await this.userCanSeeAction({ action, user, session })) || serverSide)
     ) {
       throw new NotFoundException("Action not found");
     }
@@ -1063,7 +1084,13 @@ export class ActionsService {
     userId?: number,
     serverSide = false,
   ): Promise<ActionDto> {
-    const action = await this.findOneOrFail({ id, userId, serverSide });
+    const session = new CohortResolutionSession();
+    const action = await this.findOneOrFail({
+      id,
+      userId,
+      serverSide,
+      session,
+    });
     const user = userId
       ? await this.userService.findOne(userId, {
           tags: true,
@@ -1072,10 +1099,11 @@ export class ActionsService {
         })
       : null;
     if (user && action.followUpForms) {
-      action.followUpForms = await this.filterFollowUpFormsByCohort(
-        action.followUpForms.map(parseFollowUpForm),
+      action.followUpForms = await this.filterFollowUpFormsByCohort({
+        followUpForms: action.followUpForms.map(parseFollowUpForm),
         user,
-      );
+        session,
+      });
     }
     if (userId) {
       await this.applyAssignedFormIds([action], userId);
@@ -1089,7 +1117,11 @@ export class ActionsService {
     const dismissed = activities.some(
       (activity) => activity.type === ActionActivityType.USER_DISMISSED,
     );
-    const inCohort = await this.computeViewerInCohort({ action, user });
+    const inCohort = await this.computeViewerInCohort({
+      action,
+      user,
+      session,
+    });
     const now = new Date();
 
     return new ActionDto(action, {
@@ -4726,15 +4758,18 @@ export class ActionsService {
    * A null/absent cohortExpression targets no members, so the form is
    * filtered out (consistent with action cohort semantics).
    */
-  async filterFollowUpFormsByCohort(
-    followUpForms: ParsedFollowUpForm[],
-    user: User,
-  ): Promise<ParsedFollowUpForm[]> {
+  async filterFollowUpFormsByCohort(params: {
+    followUpForms: ParsedFollowUpForm[];
+    user: User;
+    session?: CohortResolutionSession;
+  }): Promise<ParsedFollowUpForm[]> {
+    const { followUpForms, user, session } = params;
     const results = await Promise.all(
       followUpForms.map((form) =>
         this.computeIsInCohortExpression({
           user,
           cohortExpression: form.cohortExpression,
+          session,
         }),
       ),
     );
@@ -4748,9 +4783,12 @@ export class ActionsService {
     user: User;
     cohortExpression: CohortExpression | null | undefined;
     visitedActionIds?: Set<number>;
+    /** Share per-user leaf lookups across the expressions of one request. */
+    session?: CohortResolutionSession;
   }): Promise<boolean> {
     const { user, cohortExpression } = params;
     const visitedActionIds = params.visitedActionIds ?? new Set<number>();
+    const session = params.session ?? new CohortResolutionSession();
 
     if (!cohortExpression) {
       return false;
@@ -4785,6 +4823,7 @@ export class ActionsService {
           user,
           cohortExpression: action.cohortExpression,
           visitedActionIds: new Set(visitedActionIds).add(actionId),
+          session,
         });
         if (action.status !== ActionStatus.MemberAction) return false;
 
@@ -4849,6 +4888,7 @@ export class ActionsService {
           user,
           cohortExpression: action.cohortExpression,
           visitedActionIds: new Set(visitedActionIds).add(actionId),
+          session,
         });
         // Shared assignment rule (cohort membership + contract requirement),
         // so this agrees with the batch roster. `user` must have
@@ -4892,6 +4932,14 @@ export class ActionsService {
           .getCount();
         return count > 0;
       },
+      usMembership: () => {
+        let pending = session.usMembershipByUserId.get(user.id);
+        if (!pending) {
+          pending = this.loadUsMembership(user.id);
+          session.usMembershipByUserId.set(user.id, pending);
+        }
+        return pending;
+      },
     });
 
     const memberIds = await evaluateCohortExpression(
@@ -4900,5 +4948,25 @@ export class ActionsService {
       visitedActionIds,
     );
     return memberIds.has(user.id);
+  }
+
+  /**
+   * Read city and time zone back from the db rather than off `user`: the city
+   * relation is absent on most callers' users, and an unloaded relation would
+   * silently read as "no location". Memoize on the session, since a member's
+   * feed evaluates one expression per action against the same user.
+   */
+  private async loadUsMembership(userId: number): Promise<UsMembership> {
+    const row = await this.userRepository
+      .createQueryBuilder("user")
+      .leftJoin("user.city", "city")
+      .select("user.timeZone", "timeZone")
+      .addSelect("city.countryCode", "countryCode")
+      .where("user.id = :userId", { userId })
+      .getRawOne<{ timeZone: string | null; countryCode: string | null }>();
+    return resolveUsMembership({
+      countryCode: row?.countryCode,
+      timeZone: row?.timeZone,
+    });
   }
 }

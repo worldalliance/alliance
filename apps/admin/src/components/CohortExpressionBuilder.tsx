@@ -66,6 +66,8 @@ const LEAF_TYPES = [
   { value: "MissedActionDeadline", label: "Missed Action Deadline" },
   { value: "FormFieldValue", label: "Form Field Value" },
   { value: "GroupLead", label: "Group Lead" },
+  { value: "USMember", label: "US Member" },
+  { value: "NonUSMember", label: "Non-US Member" },
 ] as const;
 
 const OPERATOR_TYPES = [
@@ -104,6 +106,10 @@ function createDefaultLeaf(type: LeafCondition["type"]): LeafCondition {
       return { type: "FormFieldValue", formId: 0, fieldId: "" };
     case "GroupLead":
       return { type: "GroupLead" };
+    case "USMember":
+      return { type: "USMember" };
+    case "NonUSMember":
+      return { type: "NonUSMember" };
   }
 }
 
@@ -469,6 +475,18 @@ const LeafConditionEditor: React.FC<{
       return (
         <p className="text-sm text-gray-500 italic">
           All community group leaders
+        </p>
+      );
+    case "USMember":
+      return (
+        <p className="text-sm text-gray-500 italic">
+          City in the US, or time zone if no city is set.
+        </p>
+      );
+    case "NonUSMember":
+      return (
+        <p className="text-sm text-gray-500 italic">
+          City outside the US, or time zone if no city is set.
         </p>
       );
   }

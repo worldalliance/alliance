@@ -5,6 +5,7 @@ import {
   isBooleanOperator,
   isLeafCondition,
 } from "@alliance/common/cohort-expression";
+import { UsMembership } from "src/geo/us-membership";
 import {
   answerMatchesFormField,
   CohortEvaluationContext,
@@ -27,6 +28,7 @@ function mockBatchContext(
       .mockResolvedValue(new Set<number>()),
     getUserIdsForFormField: jest.fn().mockResolvedValue(new Set<number>()),
     getGroupLeadUserIds: jest.fn().mockResolvedValue(new Set<number>()),
+    getUserIdsByUsMembership: jest.fn().mockResolvedValue(new Set<number>()),
     getAllCandidateUserIds: jest.fn().mockResolvedValue(new Set<number>()),
     ...overrides,
   };
@@ -49,6 +51,7 @@ function scopedContext(
     missedActionDeadline: async () => false,
     matchesFormField: async () => false,
     isGroupLead: async () => false,
+    usMembership: async () => UsMembership.Unknown,
     ...overrides,
   });
 }
@@ -383,6 +386,26 @@ describe("evaluateCohortExpression", () => {
       });
       const result = await evaluateCohortExpression({ type: "GroupLead" }, ctx);
       expect(result).toEqual(new Set([100, 200]));
+    });
+
+    it("asks for the US partition on USMember and the non-US one on NonUSMember", async () => {
+      const getUserIdsByUsMembership = jest
+        .fn()
+        .mockImplementation((membership: UsMembership) =>
+          Promise.resolve(
+            membership === UsMembership.Us ? new Set([1]) : new Set([2]),
+          ),
+        );
+      const ctx = mockBatchContext({ getUserIdsByUsMembership });
+
+      expect(await evaluateCohortExpression({ type: "USMember" }, ctx)).toEqual(
+        new Set([1]),
+      );
+      expect(
+        await evaluateCohortExpression({ type: "NonUSMember" }, ctx),
+      ).toEqual(new Set([2]));
+      expect(getUserIdsByUsMembership).toHaveBeenCalledWith(UsMembership.Us);
+      expect(getUserIdsByUsMembership).toHaveBeenCalledWith(UsMembership.NonUs);
     });
   });
 
@@ -784,6 +807,18 @@ describe("single-user scoping (singleUserCohortContext)", () => {
         },
       );
       expect(result).toBe(true);
+    });
+
+    it.each([
+      [UsMembership.Us, true, false],
+      [UsMembership.NonUs, false, true],
+      [UsMembership.Unknown, false, false],
+    ])("places a %s member", async (membership, inUs, outsideUs) => {
+      const overrides = { usMembership: async () => membership };
+      expect(await userInCohort(1, { type: "USMember" }, overrides)).toBe(inUs);
+      expect(await userInCohort(1, { type: "NonUSMember" }, overrides)).toBe(
+        outsideUs,
+      );
     });
   });
 
