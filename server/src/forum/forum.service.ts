@@ -25,7 +25,7 @@ import {
   userActionNotifsEnabled_email,
   userActionNotifsEnabled_text,
 } from "src/user/user.utils";
-import { isUniqueViolation } from "src/utils/db-errors";
+import { isForeignKeyViolation, isUniqueViolation } from "src/utils/db-errors";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import {
   type EntityManager,
@@ -1145,20 +1145,25 @@ export class ForumService {
     currentIds: number[];
   }): Promise<void> {
     const { manager, postId, relation, userIds, currentIds } = params;
-    const users =
-      userIds.length > 0
-        ? await manager.find(User, { where: { id: In(userIds) } })
-        : [];
-    const next = new Set(users.map((user) => user.id));
+    const next = new Set(userIds);
     const current = new Set(currentIds);
-    await manager
-      .createQueryBuilder()
-      .relation(Post, relation)
-      .of(postId)
-      .addAndRemove(
-        [...next].filter((id) => !current.has(id)),
-        [...current].filter((id) => !next.has(id)),
+    try {
+      await manager
+        .createQueryBuilder()
+        .relation(Post, relation)
+        .of(postId)
+        .addAndRemove(
+          [...next].filter((id) => !current.has(id)),
+          [...current].filter((id) => !next.has(id)),
+        );
+    } catch (error) {
+      // The caller holds the post row locked, so the join row's other foreign
+      // key is the only one a save can break.
+      if (!isForeignKeyViolation(error)) throw error;
+      throw new BadRequestException(
+        `Cannot set ${relation}: one of those users no longer exists`,
       );
+    }
   }
 
   /** Locked so two writers cannot both diff against the same pre-state and

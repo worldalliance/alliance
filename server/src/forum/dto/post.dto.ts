@@ -6,7 +6,13 @@ import {
   PickType,
 } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsDefined, IsOptional, ValidateNested } from "class-validator";
+import {
+  IsArray,
+  IsDefined,
+  IsInt,
+  IsOptional,
+  ValidateNested,
+} from "class-validator";
 import { ActionDto } from "src/actions/dto/action.dto";
 import { ProfileDto } from "../../user/dto/user.dto";
 import { Comment } from "../entities/comment.entity";
@@ -157,7 +163,8 @@ export class UpdatePostDto extends PartialType(CreatePostDto) {}
 
 export class UpdatePostExpertsDto {
   @ApiProperty({ type: Number, isArray: true })
-  @IsDefined()
+  @IsArray()
+  @IsInt({ each: true })
   expertIds: number[];
 
   @ApiProperty()
@@ -179,6 +186,7 @@ export class UpdatePostExpertsDto {
 
 export class UpdatePostAuthorsDto {
   @ApiProperty({ type: Number, isArray: true })
-  @IsDefined()
+  @IsArray()
+  @IsInt({ each: true })
   authorIds: number[];
 }

@@ -1871,6 +1871,82 @@ describe("Forum (e2e)", () => {
       expect(stored.authorIds).toEqual([coAuthor.id]);
     });
 
+    it("refuses a save naming a user that does not exist", async () => {
+      const { user: expert } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Saved With A Ghost",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/experts`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ expertIds: [expert.id], qaMode: true })
+        .expect(200);
+
+      const rejected = await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/experts`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ expertIds: [expert.id, 999999], qaMode: false })
+        .expect(400);
+      expect(rejected.body.message).toContain("experts");
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/authors`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ authorIds: [999999] })
+        .expect(400);
+
+      const adminPosts = await request(ctx.app.getHttpServer())
+        .get("/forum/admin/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const stored = adminPosts.body.find((p) => p.id === postId);
+      expect(stored.expertIds).toEqual([expert.id]);
+      expect(stored.qaMode).toBe(true);
+    });
+
+    it("refuses a save whose ids are not user ids", async () => {
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Saved With A Word For An Id",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/experts`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ expertIds: ["nobody"], qaMode: false })
+        .expect(400);
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/authors`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ authorIds: [1.5] })
+        .expect(400);
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/authors`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ authorIds: [null] })
+        .expect(400);
+    });
+
     it("clears the expert label only when the save sends null", async () => {
       const postResponse = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
