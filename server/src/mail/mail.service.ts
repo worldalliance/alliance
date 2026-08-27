@@ -30,6 +30,8 @@ export function processKeywordReplacements(
     uncompletedTasksNames: string[];
     dateNow?: Date;
     uncompletedMembersInGroupCount?: number;
+    isFirstAssignedSuite?: boolean;
+    consecutiveMissedSuiteCount?: number;
   },
 ): string {
   const names = context.user.name.split(" ");
@@ -57,6 +59,26 @@ export function processKeywordReplacements(
     .replaceAll("#{tasknames}", context.uncompletedTasksNames.join(", "))
     .replaceAll("#{n}", context.uncompletedTasksCount.toString())
     .replaceAll("#{tasktime}", context.uncompletedTasksTime)
+    .replaceAll(
+      "#{missedactionsubject}",
+      context.consecutiveMissedSuiteCount === 2
+        ? "You missed two Alliance actions in a row"
+        : context.isFirstAssignedSuite
+          ? "You missed your first Alliance action"
+          : "You missed an Alliance action",
+    )
+    .replaceAll(
+      "#{firstactionreliability}",
+      context.isFirstAssignedSuite
+        ? "Since this was your first Alliance action, we want to explain why reliability matters. We plan each action around the number of members assigned to it. When members don't follow through, those plans fall short."
+        : "",
+    )
+    .replaceAll(
+      "#{secondmisswarning}",
+      context.consecutiveMissedSuiteCount === 2
+        ? "This is the second week in a row that you missed all of your assigned non-optional actions. If this happens a third week in a row, your contract will be suspended automatically and you will stop receiving tasks. You can sign the contract again at any time."
+        : "",
+    )
     .replaceAll("#{s}", context.uncompletedTasksCount === 1 ? "" : "s")
     .replaceAll(
       "#{days}",

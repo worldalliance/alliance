@@ -228,12 +228,19 @@ type SuspendPlanContext = {
  */
 export type SuspensionCandidate = { user: User; reasonKey: string };
 
+<<<<<<< Updated upstream
 /**
  * All anything resolving a form back to its action reads. A partially selected
  * `Action` would type as a whole one with most columns silently undefined, so
  * the narrow reads hand back a narrow type instead.
  */
 export type LinkedAction = Pick<Action, "id" | "name">;
+=======
+export type MissedActionReminderContext = {
+  isFirstAssignedSuite: boolean;
+  consecutiveMissedSuiteCount: number;
+};
+>>>>>>> Stashed changes
 
 /** Facepile preview size; member-list endpoints paginate full lists. */
 const GLOBAL_FEED_FACEPILE_LIMIT = 8;
@@ -4093,6 +4100,48 @@ export class ActionsService {
 
     const context = await this.buildSuspendPlanContext(actions, now);
     return this.computeUsersToSuspendFromContext(now, context);
+  }
+
+  async getMissedActionReminderContexts(
+    userIds: number[],
+    now: Date,
+  ): Promise<Map<number, MissedActionReminderContext>> {
+    const uniqueUserIds = [...new Set(userIds)];
+    if (uniqueUserIds.length === 0) {
+      return new Map();
+    }
+
+    const actions = await this.findAllSorted({ events: true, suite: true });
+    const context = await this.buildSuspendPlanContext(actions, now);
+
+    return new Map(
+      uniqueUserIds.map((userId) => {
+        let consecutiveMissedSuiteCount = 0;
+        let assignedSuiteCount = 0;
+        for (const suite of context.orderedSuites) {
+          if (!suite.pastDate || suite.pastDate >= now) {
+            continue;
+          }
+          if (!context.expectedBySuite.get(suite.suiteId)?.has(userId)) {
+            continue;
+          }
+          assignedSuiteCount += 1;
+          if (context.failedBySuite.get(suite.suiteId)?.has(userId)) {
+            consecutiveMissedSuiteCount += 1;
+          } else {
+            consecutiveMissedSuiteCount = 0;
+          }
+        }
+
+        return [
+          userId,
+          {
+            isFirstAssignedSuite: assignedSuiteCount === 1,
+            consecutiveMissedSuiteCount,
+          },
+        ] as const;
+      }),
+    );
   }
 
   async getSuspendPlans(

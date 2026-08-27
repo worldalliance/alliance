@@ -2,7 +2,10 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
-import { ActionsService } from "src/actions/actions.service";
+import {
+  ActionsService,
+  type MissedActionReminderContext,
+} from "src/actions/actions.service";
 import {
   cohortNotifiesRecipientPersonally,
   ReminderCohortType,
@@ -80,8 +83,21 @@ export class ActionEventNotifWorker {
           windowStart,
           now,
         );
+        const personalizedMissedActionPlans = duePlans.filter((plan) =>
+          [plan.group.emailSubject, plan.group.emailMessage].some(
+            (message) =>
+              message.includes("#{missedactionsubject}") ||
+              message.includes("#{firstactionreliability}") ||
+              message.includes("#{secondmisswarning}"),
+          ),
+        );
+        const missedActionContexts =
+          await this.actionsService.getMissedActionReminderContexts(
+            personalizedMissedActionPlans.map((plan) => plan.user.id),
+            now,
+          );
         for (const plan of duePlans) {
-          await this.processOne(plan);
+          await this.processOne(plan, missedActionContexts.get(plan.user.id));
         }
       },
     );
@@ -109,6 +125,7 @@ export class ActionEventNotifWorker {
     plan: NotificationPlan,
     cid: string,
     uncompletedTasks: UncompletedTaskSummary[],
+    missedActionContext?: MissedActionReminderContext,
   ): Promise<string> {
     let uncompletedMembersInGroupCount: number | undefined = undefined;
     if (
@@ -135,10 +152,16 @@ export class ActionEventNotifWorker {
           (acc, task) => acc + (task.timeEstimate ?? 0),
           0,
         ) + " minutes",
+      isFirstAssignedSuite: missedActionContext?.isFirstAssignedSuite,
+      consecutiveMissedSuiteCount:
+        missedActionContext?.consecutiveMissedSuiteCount,
     });
   }
 
-  private async processOne(plan: NotificationPlan) {
+  private async processOne(
+    plan: NotificationPlan,
+    missedActionContext?: MissedActionReminderContext,
+  ) {
     const cid = generateCIDForNotif();
 
     let uncompletedTasks = await this.findUncompletedTasksForPlan(plan);
@@ -216,6 +239,7 @@ export class ActionEventNotifWorker {
         plan,
         cid,
         uncompletedTasks,
+        missedActionContext,
       );
 
       const pushes = await this.pushService.getPushForAllUserDevices(
@@ -241,6 +265,7 @@ export class ActionEventNotifWorker {
         plan,
         cid,
         uncompletedTasks,
+        missedActionContext,
       );
       const result = await this.mmsService.sendMms({
         to: plan.user.phoneNumber!,
@@ -262,12 +287,14 @@ export class ActionEventNotifWorker {
         plan,
         cid,
         uncompletedTasks,
+        missedActionContext,
       );
       const emailSubject = await this.processCustomReminderText(
         plan.group.emailSubject,
         plan,
         cid,
         uncompletedTasks,
+        missedActionContext,
       );
 
       const result = await this.mailService.sendActionEventNotificationEmail({

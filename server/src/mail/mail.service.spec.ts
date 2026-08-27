@@ -58,6 +58,54 @@ describe("processKeywordReplacements", () => {
       );
       expect(result).toContain("cid=test-cid");
     });
+
+    it("explains reliability when the member misses their first action", () => {
+      const result = processKeywordReplacements(
+        "#{missedactionsubject}\n#{firstactionreliability}\n#{secondmisswarning}",
+        {
+          ...baseContext,
+          uncompletedTasksCount: 1,
+          isFirstAssignedSuite: true,
+          consecutiveMissedSuiteCount: 1,
+        },
+      );
+
+      expect(result).toContain("You missed your first Alliance action");
+      expect(result).toContain("Since this was your first Alliance action");
+      expect(result).not.toContain("contract will be suspended");
+    });
+
+    it("warns after a second consecutive missed action", () => {
+      const result = processKeywordReplacements(
+        "#{missedactionsubject}\n#{firstactionreliability}\n#{secondmisswarning}",
+        {
+          ...baseContext,
+          uncompletedTasksCount: 1,
+          isFirstAssignedSuite: false,
+          consecutiveMissedSuiteCount: 2,
+        },
+      );
+
+      expect(result).toContain("You missed two Alliance actions in a row");
+      expect(result).not.toContain("why reliability matters");
+      expect(result).toContain(
+        "If this happens a third week in a row, your contract will be suspended automatically",
+      );
+    });
+
+    it("keeps an ordinary missed-action email brief for returning members", () => {
+      const result = processKeywordReplacements(
+        "#{missedactionsubject}#{firstactionreliability}#{secondmisswarning}",
+        {
+          ...baseContext,
+          uncompletedTasksCount: 1,
+          isFirstAssignedSuite: false,
+          consecutiveMissedSuiteCount: 1,
+        },
+      );
+
+      expect(result).toBe("You missed an Alliance action");
+    });
   });
 
   describe("#{x|y} singular/plural", () => {
