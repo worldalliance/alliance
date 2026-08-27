@@ -53,6 +53,24 @@ describe("Forum (e2e)", () => {
     return { user: extraUser, token };
   };
 
+  /** A backend waiting on a lock has finished every read it made before
+   * reaching it, so this is the signal that a save sits on a stale snapshot. */
+  const waitForBlockedBackends = async (
+    count: number,
+    orSettled: () => boolean = () => false,
+  ) => {
+    for (let attempt = 0; attempt < 100; attempt++) {
+      if (orSettled()) return;
+      const [{ blocked }] = await ctx.dataSource.query<[{ blocked: number }]>(
+        `select count(*)::int as blocked from pg_stat_activity
+         where datname = current_database() and wait_event_type = 'Lock'`,
+      );
+      if (blocked >= count) return;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    throw new Error(`fewer than ${count} backends ever blocked`);
+  };
+
   beforeAll(async () => {
     ctx = await createTestApp([]);
     actionRepo = ctx.dataSource.getRepository(Action);
@@ -1502,6 +1520,187 @@ describe("Forum (e2e)", () => {
         expect.arrayContaining([ctx.testUserId, coAuthor.id]),
       );
       expect(matchedPost.authors).toHaveLength(2);
+    });
+
+    it("keeps a settings write that lands while an authors save is open", async () => {
+      const { user: coAuthor } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Saved From Both Halves",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      // The authors save reads the post's join rows last, so holding that
+      // table parks it on the columns it has already read, which is the window
+      // a settings write used to land in and lose.
+      const gate = ctx.dataSource.createQueryRunner();
+      await gate.connect();
+      await gate.startTransaction();
+      await gate.query(
+        'lock table "post_authors_user" in access exclusive mode',
+      );
+
+      const authorsInFlight = request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/authors`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
+        .then((res) => res);
+      await waitForBlockedBackends(1);
+
+      let settingsWritten = false;
+      const settingsInFlight = ctx.dataSource
+        .query(
+          `update post set "qaMode" = true, "expertLabel" = $2,
+             "notifyForReplies" = true, "showClusterTags" = true where id = $1`,
+          [postId, "AMA Guest"],
+        )
+        .then(() => {
+          settingsWritten = true;
+        });
+      await waitForBlockedBackends(2, () => settingsWritten);
+
+      await gate.commitTransaction();
+      await gate.release();
+
+      const [authorsResponse] = await Promise.all([
+        authorsInFlight,
+        settingsInFlight,
+      ]);
+
+      expect(authorsResponse.status).toBe(200);
+      expect(authorsResponse.body.authorIds).toEqual(
+        expect.arrayContaining([ctx.testUserId, coAuthor.id]),
+      );
+
+      const adminPosts = await request(ctx.app.getHttpServer())
+        .get("/forum/admin/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const stored = adminPosts.body.find((p) => p.id === postId);
+      expect(stored.authorIds).toEqual(
+        expect.arrayContaining([ctx.testUserId, coAuthor.id]),
+      );
+      expect(stored.qaMode).toBe(true);
+      expect(stored.expertLabel).toBe("AMA Guest");
+      expect(stored.notifyForReplies).toBe(true);
+      expect(stored.showClusterTags).toBe(true);
+    });
+
+    it("drops the experts and authors a later save leaves out", async () => {
+      const { user: firstExpert } = await createExtraUserAndToken();
+      const { user: secondExpert } = await createExtraUserAndToken();
+      const { user: coAuthor } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post With Shrinking Lists",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      const patchExperts = (expertIds: number[]) =>
+        request(ctx.app.getHttpServer())
+          .patch(`/forum/admin/posts/${postId}/experts`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({ expertIds, qaMode: true })
+          .expect(200);
+
+      const patchAuthors = (authorIds: number[]) =>
+        request(ctx.app.getHttpServer())
+          .patch(`/forum/admin/posts/${postId}/authors`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({ authorIds })
+          .expect(200);
+
+      await patchExperts([firstExpert.id, secondExpert.id]);
+      await patchAuthors([ctx.testUserId, coAuthor.id]);
+
+      const shrunkExperts = await patchExperts([secondExpert.id]);
+      const shrunkAuthors = await patchAuthors([coAuthor.id]);
+
+      expect(shrunkExperts.body.expertIds).toEqual([secondExpert.id]);
+      expect(shrunkAuthors.body.authorIds).toEqual([coAuthor.id]);
+
+      const emptied = await patchExperts([]);
+      expect(emptied.body.expertIds).toEqual([]);
+
+      const adminPosts = await request(ctx.app.getHttpServer())
+        .get("/forum/admin/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const stored = adminPosts.body.find((p) => p.id === postId);
+      expect(stored.expertIds).toEqual([]);
+      expect(stored.authorIds).toEqual([coAuthor.id]);
+    });
+
+    it("clears the expert label only when the save sends null", async () => {
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post With An Expert Label",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      const patchExperts = (body: object) =>
+        request(ctx.app.getHttpServer())
+          .patch(`/forum/admin/posts/${postId}/experts`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({ expertIds: [], qaMode: true, ...body })
+          .expect(200);
+
+      const labelled = await patchExperts({ expertLabel: "AMA Guest" });
+      expect(labelled.body.expertLabel).toBe("AMA Guest");
+
+      const untouched = await patchExperts({});
+      expect(untouched.body.expertLabel).toBe("AMA Guest");
+
+      const cleared = await patchExperts({ expertLabel: null });
+      expect(cleared.body.expertLabel).toBeNull();
+    });
+
+    it("moves a post up the feed when its authors change", async () => {
+      const { user: coAuthor } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Whose Authors Change",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      const updated = await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/authors`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ authorIds: [coAuthor.id] })
+        .expect(200);
+
+      expect(new Date(updated.body.updatedAt).getTime()).toBeGreaterThan(
+        new Date(postResponse.body.updatedAt).getTime(),
+      );
     });
 
     it("rejects non-admin from updating post authors", async () => {

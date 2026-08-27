@@ -26,6 +26,7 @@ import {
 } from "src/user/user.utils";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import {
+  type EntityManager,
   ILike,
   In,
   Not,
@@ -1096,6 +1097,69 @@ export class ForumService {
     });
   }
 
+  /** Targets the join rows, so a concurrent write to the post's other half
+   * cannot read this one into a stale snapshot and write it back. */
+  private async replacePostUsers(params: {
+    manager: EntityManager;
+    postId: number;
+    relation: "experts" | "authors";
+    userIds: number[];
+    currentIds: number[];
+  }): Promise<void> {
+    const { manager, postId, relation, userIds, currentIds } = params;
+    const users =
+      userIds.length > 0
+        ? await manager.find(User, { where: { id: In(userIds) } })
+        : [];
+    const next = new Set(users.map((user) => user.id));
+    const current = new Set(currentIds);
+    await manager
+      .createQueryBuilder()
+      .relation(Post, relation)
+      .of(postId)
+      .addAndRemove(
+        [...next].filter((id) => !current.has(id)),
+        [...current].filter((id) => !next.has(id)),
+      );
+  }
+
+  /** Locked so two writers cannot both diff against the same pre-state and
+   * insert the same join row twice. */
+  private async lockPost(
+    manager: EntityManager,
+    postId: number,
+  ): Promise<Post> {
+    const post = await manager.findOne(Post, {
+      where: { id: postId },
+      lock: { mode: "pessimistic_write" },
+    });
+
+    if (!post) {
+      throw new NotFoundException(`Post with ID "${postId}" not found`);
+    }
+
+    return post;
+  }
+
+  private async findPostForAdmin(postId: number): Promise<ParsedPost> {
+    const post = await this.postRepository.findOne({
+      where: { id: postId },
+      relations: {
+        author: true,
+        action: { reviewers: true },
+        editableContent: true,
+        experts: true,
+        authors: true,
+      },
+    });
+
+    if (!post) {
+      throw new NotFoundException(`Post with ID "${postId}" not found`);
+    }
+
+    return parsePost(post);
+  }
+
   async updatePostExperts(
     postId: number,
     expertIds: number[],
@@ -1104,39 +1168,24 @@ export class ForumService {
     notifyForReplies?: boolean,
     showClusterTags?: boolean,
   ): Promise<ParsedPost> {
-    const post = await this.postRepository.findOne({
-      where: { id: postId },
-      relations: {
-        author: true,
-        action: { reviewers: true },
-        editableContent: true,
-      },
+    await this.postRepository.manager.transaction(async (manager) => {
+      const post = await this.lockPost(manager, postId);
+      await manager.update(Post, postId, {
+        qaMode,
+        expertLabel,
+        notifyForReplies,
+        showClusterTags,
+      });
+      await this.replacePostUsers({
+        manager,
+        postId,
+        relation: "experts",
+        userIds: expertIds,
+        currentIds: post.expertIds,
+      });
     });
 
-    if (!post) {
-      throw new NotFoundException(`Post with ID "${postId}" not found`);
-    }
-
-    const experts =
-      expertIds.length > 0
-        ? await this.userRepository.find({
-            where: { id: In(expertIds) },
-          })
-        : [];
-
-    post.experts = experts;
-    post.qaMode = qaMode;
-    if (expertLabel !== undefined) {
-      post.expertLabel = expertLabel;
-    }
-    if (notifyForReplies !== undefined) {
-      post.notifyForReplies = notifyForReplies;
-    }
-    if (showClusterTags !== undefined) {
-      post.showClusterTags = showClusterTags;
-    }
-
-    return parsePost(await this.postRepository.save(post));
+    return this.findPostForAdmin(postId);
   }
 
   async getPostsForAdmin(): Promise<ParsedPost[]> {
@@ -1157,29 +1206,20 @@ export class ForumService {
     postId: number,
     authorIds: number[],
   ): Promise<ParsedPost> {
-    const post = await this.postRepository.findOne({
-      where: { id: postId },
-      relations: {
-        author: true,
-        action: { reviewers: true },
-        editableContent: true,
-      },
+    await this.postRepository.manager.transaction(async (manager) => {
+      const post = await this.lockPost(manager, postId);
+      await this.replacePostUsers({
+        manager,
+        postId,
+        relation: "authors",
+        userIds: authorIds,
+        currentIds: post.authorIds,
+      });
+      // Post lists order by updatedAt, which the join rows alone leave untouched.
+      await manager.update(Post, postId, { updatedAt: new Date() });
     });
 
-    if (!post) {
-      throw new NotFoundException(`Post with ID "${postId}" not found`);
-    }
-
-    const authors =
-      authorIds.length > 0
-        ? await this.userRepository.find({
-            where: { id: In(authorIds) },
-          })
-        : [];
-
-    post.authors = authors;
-
-    return parsePost(await this.postRepository.save(post));
+    return this.findPostForAdmin(postId);
   }
 
   async togglePinComment(commentId: number): Promise<Comment> {

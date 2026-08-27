@@ -98,24 +98,22 @@ const PostsManagementPage: React.FC = () => {
     if (!selectedPost) return;
     setSaving(true);
     try {
-      const [expertsResponse, authorsResponse] = await Promise.all([
-        forumUpdatePostExpertsAdmin({
-          path: { id: selectedPost.id },
-          body: {
-            expertIds: expertSelection,
-            qaMode,
-            expertLabel: expertLabel || null,
-            notifyForReplies,
-            showClusterTags,
-          },
-        }),
-        forumUpdatePostAuthorsAdmin({
-          path: { id: selectedPost.id },
-          body: {
-            authorIds: authorSelection,
-          },
-        }),
-      ]);
+      const expertsResponse = await forumUpdatePostExpertsAdmin({
+        path: { id: selectedPost.id },
+        body: {
+          expertIds: expertSelection,
+          qaMode,
+          expertLabel: expertLabel || null,
+          notifyForReplies,
+          showClusterTags,
+        },
+      });
+      const authorsResponse = await forumUpdatePostAuthorsAdmin({
+        path: { id: selectedPost.id },
+        body: {
+          authorIds: authorSelection,
+        },
+      });
       const updatedPost = authorsResponse.data ?? expertsResponse.data;
       if (updatedPost) {
         setSelectedPost(updatedPost);
