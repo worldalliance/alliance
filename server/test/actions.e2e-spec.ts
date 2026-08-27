@@ -45,6 +45,7 @@ import {
   ActionTaskType,
   VisibilityMode,
 } from "../src/actions/entities/action.entity";
+import { FollowUpForm } from "../src/actions/entities/follow-up-form.entity";
 import type { Community } from "../src/community/entities/community.entity";
 import { User } from "../src/user/entities/user.entity";
 import {
@@ -1999,6 +2000,106 @@ describe("Actions (e2e)", () => {
       .send(incompleteEvent);
 
     expect(res.status).toBe(400);
+  });
+
+  describe("Follow-up forms", () => {
+    const followUpFormRepo = () => ctx.dataSource.getRepository(FollowUpForm);
+
+    const createTargetForm = async (title: string) => {
+      const { form } = await createFormWithSnapshot(ctx.dataSource, {
+        title,
+        schema: { title, pages: [], outputViews: [] },
+      });
+      return form;
+    };
+
+    it("admin create round-trips every nullable field", async () => {
+      const { action } = await createPublishedAction("Follow-up Create All");
+      const form = await createTargetForm("Follow-up Create All Form");
+      const startDate = "2026-01-02T03:04:05.000Z";
+      const endDate = "2026-02-03T04:05:06.000Z";
+      const cohortExpression = { type: "Tag", tagId: ctx.defaultTag.id };
+
+      const res = await request(ctx.app.getHttpServer())
+        .post(`/actions/${action.id}/follow-up-forms`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          actionId: action.id,
+          formId: form.id,
+          name: "Debrief",
+          instructions: "Tell us how it went",
+          startDate,
+          endDate,
+          cohortExpression,
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body).toMatchObject({
+        name: "Debrief",
+        instructions: "Tell us how it went",
+        startDate,
+        endDate,
+        cohortExpression,
+      });
+
+      const stored = await followUpFormRepo().findOneByOrFail({
+        id: res.body.id,
+      });
+      expect(stored.name).toBe("Debrief");
+      expect(stored.instructions).toBe("Tell us how it went");
+      expect(stored.startDate?.toISOString()).toBe(startDate);
+      expect(stored.endDate?.toISOString()).toBe(endDate);
+      expect(stored.cohortExpression).toEqual(cohortExpression);
+    });
+
+    it("admin create needs only actionId and formId", async () => {
+      const { action } = await createPublishedAction("Follow-up Create Bare");
+      const form = await createTargetForm("Follow-up Create Bare Form");
+
+      const res = await request(ctx.app.getHttpServer())
+        .post(`/actions/${action.id}/follow-up-forms`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ actionId: action.id, formId: form.id });
+
+      expect(res.status).toBe(201);
+
+      const stored = await followUpFormRepo().findOneByOrFail({
+        id: res.body.id,
+      });
+      expect(stored.name).toBeNull();
+      expect(stored.startDate).toBeNull();
+      expect(stored.endDate).toBeNull();
+      expect(stored.instructions).toBeNull();
+      expect(stored.cohortExpression).toBeNull();
+    });
+
+    it("explicit null clears a follow-up form column, omitting leaves it", async () => {
+      const { action } = await createPublishedAction("Follow-up Update");
+      const form = await createTargetForm("Follow-up Update Form");
+
+      const createRes = await request(ctx.app.getHttpServer())
+        .post(`/actions/${action.id}/follow-up-forms`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          actionId: action.id,
+          formId: form.id,
+          name: "Debrief",
+          instructions: "Tell us how it went",
+        });
+      expect(createRes.status).toBe(201);
+
+      const updateRes = await request(ctx.app.getHttpServer())
+        .patch(`/actions/follow-up-forms/${createRes.body.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ name: null });
+      expect(updateRes.status).toBe(200);
+
+      const stored = await followUpFormRepo().findOneByOrFail({
+        id: createRes.body.id,
+      });
+      expect(stored.name).toBeNull();
+      expect(stored.instructions).toBe("Tell us how it went");
+    });
   });
 
   describe("Additional endpoints", () => {
