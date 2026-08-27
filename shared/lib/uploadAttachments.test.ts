@@ -14,7 +14,7 @@ jest.mock("./uploadImageDataUri", () => ({
   },
 }));
 
-import { uploadAttachments } from "./uploadAttachments";
+import { uploadAttachments, withUploadedKeys } from "./uploadAttachments";
 
 const dataUri = (n: number) => `data:image/png;base64,AAAA${n}`;
 
@@ -31,5 +31,27 @@ it("reports an attachment the server rejected instead of dropping it", async () 
   failOn = null;
 
   expect(uploaded.ok).toBe(false);
-  expect(R.isFailure(uploaded) && uploaded.error).toBe("Failed to upload image");
+  expect(R.isFailure(uploaded) && uploaded.error).toBe(
+    "Failed to upload image",
+  );
+});
+
+it("keeps an attachment the draft gained while the upload ran", () => {
+  const merged = withUploadedKeys({
+    current: [dataUri(1), dataUri(4)],
+    sources: [dataUri(1)],
+    keys: ["key-1"],
+  });
+
+  expect(merged).toEqual(["key-1", dataUri(4)]);
+});
+
+it("drops the key for an attachment the draft removed while the upload ran", () => {
+  const merged = withUploadedKeys({
+    current: ["existing-key.webp"],
+    sources: ["existing-key.webp", dataUri(5)],
+    keys: ["existing-key.webp", "key-5"],
+  });
+
+  expect(merged).toEqual(["existing-key.webp"]);
 });

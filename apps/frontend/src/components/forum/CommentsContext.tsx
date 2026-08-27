@@ -16,7 +16,6 @@ import {
   UserDto,
 } from "@alliance/shared/client";
 import { captureException } from "@alliance/shared/lib/analytics";
-import { uploadAttachments } from "@alliance/shared/lib/uploadAttachments";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
 import {
   createContext,
@@ -24,6 +23,8 @@ import {
   useContext,
   useEffect,
   useState,
+  type Dispatch,
+  type SetStateAction,
 } from "react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "../../lib/AuthContext";
@@ -90,7 +91,7 @@ export interface UseCommentTreeResult {
   newlyAddedReplies: Set<number>;
   highlightedReplyId: number | null;
   editableContent: CreateEditableContentDto;
-  setEditableContent: (val: CreateEditableContentDto) => void;
+  setEditableContent: Dispatch<SetStateAction<CreateEditableContentDto>>;
 }
 
 export function useCommentTree(
@@ -198,16 +199,11 @@ export function useCommentTree(
     try {
       setIsSubmitting(true);
       setSubmitError(null);
-      const uploaded = await uploadAttachments(contentDto.attachments);
-      if (!uploaded.ok) {
-        setSubmitError({ parentId: replyingTo, message: uploaded.error });
-        return;
-      }
       const commentDto: CreateCommentDto = {
         parentObjectId: Number(objectId),
         parentId: replyingTo ?? undefined,
         parentObjectType: type,
-        editableContent: { body: contentDto.body, attachments: uploaded.value },
+        editableContent: contentDto,
       };
 
       const response = await forumCreateComment({ body: commentDto });

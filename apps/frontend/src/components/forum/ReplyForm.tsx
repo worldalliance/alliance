@@ -1,15 +1,25 @@
 import { CreateEditableContentDto } from "@alliance/shared/client";
+import {
+  uploadAttachments,
+  withUploadedKeys,
+} from "@alliance/shared/lib/uploadAttachments";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import EditableContentForm from "@alliance/sharedweb/ui/EditableContentForm";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import React, { useCallback, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 
 interface ReplyFormProps {
   parentId: number | null;
   onCancel?: () => void;
   editableContent: CreateEditableContentDto;
-  setEditableContent: (val: CreateEditableContentDto) => void;
+  setEditableContent: Dispatch<SetStateAction<CreateEditableContentDto>>;
   onSubmit: (content: CreateEditableContentDto, onSuccess?: () => void) => void;
   isSubmitting: boolean;
   setReplyingTo: (id: number | null) => void;
@@ -36,18 +46,42 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
 }: ReplyFormProps) => {
   const [expanded, setExpanded] = useState(startExpanded);
   const [clearDraftSignal, setClearDraftSignal] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const submit = useCallback(async () => {
+    onDismissError?.();
+    setUploadError(null);
+    setIsUploading(true);
+    const sources = editableContent.attachments;
+    const uploaded = await uploadAttachments(sources);
+    setIsUploading(false);
+    if (!uploaded.ok) {
+      setUploadError(uploaded.error);
+      return;
+    }
+    setEditableContent((prev) => ({
+      ...prev,
+      attachments: withUploadedKeys({
+        current: prev.attachments,
+        sources,
+        keys: uploaded.value,
+      }),
+    }));
+    // Clear the draft only once the server accepts, so a rejected comment
+    // keeps its text.
+    onSubmit({ ...editableContent, attachments: uploaded.value }, () => {
+      setClearDraftSignal((x) => x + 1);
+      setExpanded(false);
+    });
+  }, [editableContent, onSubmit, onDismissError, setEditableContent]);
 
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      // Clear the draft only once the server accepts, so a rejected comment
-      // keeps its text.
-      onSubmit(editableContent, () => {
-        setClearDraftSignal((x) => x + 1);
-        setExpanded(false);
-      });
+      void submit();
     },
-    [editableContent, onSubmit],
+    [submit],
   );
 
   const { confirm } = useToast();
@@ -96,6 +130,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
           draftKey={`reply-${parentId}`}
           onChange={(val) => {
             onDismissError?.();
+            setUploadError(null);
             setEditableContent(val);
             if ((val.body || val.attachments.length > 0) && !expanded)
               setExpanded(true);
@@ -109,9 +144,9 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
           }}
           placeholder={"Add a comment..."}
         />
-        {error && (
+        {(uploadError ?? error) && (
           <p role="alert" className="mt-2 text-sm text-red-500">
-            {error}
+            {uploadError ?? error}
           </p>
         )}
         {expanded && (
@@ -124,12 +159,13 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
               color={ButtonColor.Stone}
               disabled={
                 isSubmitting ||
+                isUploading ||
                 (!editableContent.body.trim() &&
                   editableContent.attachments.length === 0)
               }
               className="transition disabled:opacity-50 text-nowrap"
             >
-              {isSubmitting ? "Posting..." : "Post"}
+              {isSubmitting || isUploading ? "Posting..." : "Post"}
             </Button>
             <Button
               type="button"

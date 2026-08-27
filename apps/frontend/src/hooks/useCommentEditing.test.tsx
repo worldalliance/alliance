@@ -1,6 +1,19 @@
 import { R } from "@alliance/common/result";
 import { CommentDto } from "@alliance/shared/client";
 import { act, renderHook } from "@testing-library/react";
+
+import { withUploadedKeys } from "@alliance/shared/lib/uploadAttachments";
+import {
+  resetUploads,
+  uploadAttachments,
+  uploads,
+} from "../testing/uploadAttachmentsMock";
+
+jest.mock("@alliance/shared/lib/uploadAttachments", () => ({
+  uploadAttachments,
+  withUploadedKeys,
+}));
+
 import { useCommentEditing } from "./useCommentEditing";
 
 const reply: CommentDto = {
@@ -31,10 +44,12 @@ const reply: CommentDto = {
 
 const editWith = async (
   onUpdateReply: Parameters<typeof useCommentEditing>[1],
+  attachments: string[] = [],
 ) => {
   const { result } = renderHook(() => useCommentEditing(reply, onUpdateReply));
   act(() => result.current.startEdit());
   act(() => result.current.setEditContent("the rewrite"));
+  act(() => result.current.setEditAttachments(attachments));
   await act(() => result.current.saveEdit());
   return result;
 };
@@ -48,6 +63,19 @@ describe("useCommentEditing", () => {
     expect(result.current.isEditing).toBe(true);
     expect(result.current.editContent).toBe("the rewrite");
     expect(result.current.editError).toBe("You can only edit your own replies");
+  });
+
+  it("retries a rejected edit with the keys, not the base64 it uploaded", async () => {
+    resetUploads();
+    const result = await editWith(
+      async () => R.failure("Try again"),
+      ["data:image/png;base64,AAAA"],
+    );
+
+    expect(result.current.editAttachments).toEqual(["key-0"]);
+
+    await act(() => result.current.saveEdit());
+    expect(uploads).toEqual(["data:image/png;base64,AAAA", "key-0"]);
   });
 
   it("closes the editor once the save lands", async () => {

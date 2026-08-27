@@ -26,7 +26,10 @@ import {
   sortLabels,
   useCommentFilterData,
 } from "@alliance/shared/lib/commentsFilter";
-import { uploadAttachments } from "@alliance/shared/lib/uploadAttachments";
+import {
+  uploadAttachments,
+  withUploadedKeys,
+} from "@alliance/shared/lib/uploadAttachments";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
 import { formatTime } from "@alliance/shared/lib/utils";
@@ -301,6 +304,33 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
     reply.editableContent.attachments,
   ]);
 
+  const saveEdit = async () => {
+    const sources = editContent.attachments;
+    const uploaded = await uploadAttachments(sources);
+    if (!uploaded.ok) {
+      setEditError(uploaded.error);
+      return;
+    }
+    setEditContent((prev) => ({
+      ...prev,
+      attachments: withUploadedKeys({
+        current: prev.attachments,
+        sources,
+        keys: uploaded.value,
+      }),
+    }));
+    R.match(
+      await shared.onUpdateReply(reply.id, {
+        ...editContent,
+        attachments: uploaded.value,
+      }),
+      {
+        success: () => setIsEditing(false),
+        failure: setEditError,
+      },
+    );
+  };
+
   useEffect(() => {
     if (!isHighlighted || !viewRef.current || !shared.scrollViewRef?.current)
       return;
@@ -371,14 +401,7 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
               draftKey={`edit-reply-${reply.id}`}
               onSubmit={() => {
                 setEditError(null);
-                void shared
-                  .onUpdateReply(reply.id, editContent)
-                  .then((result) =>
-                    R.match(result, {
-                      success: () => setIsEditing(false),
-                      failure: setEditError,
-                    }),
-                  );
+                void saveEdit();
               }}
               onCancel={() => {
                 setEditContent({
@@ -609,7 +632,8 @@ export default function Comments({
       try {
         setIsSubmitting(true);
         setSubmitError(null);
-        const uploaded = await uploadAttachments(contentDto.attachments ?? []);
+        const sources = contentDto.attachments;
+        const uploaded = await uploadAttachments(sources);
         if (!uploaded.ok) {
           setSubmitError({
             parentId: parentId ?? null,
@@ -617,6 +641,15 @@ export default function Comments({
           });
           return;
         }
+        const setDraft = parentId ? setNestedDraft : setEditableContent;
+        setDraft((prev) => ({
+          ...prev,
+          attachments: withUploadedKeys({
+            current: prev.attachments,
+            sources,
+            keys: uploaded.value,
+          }),
+        }));
         const commentDto: CreateCommentDto = {
           parentObjectId: Number(objectId),
           parentId: parentId ?? undefined,
@@ -704,18 +737,11 @@ export default function Comments({
       replyId: number,
       content: CreateEditableContentDto,
     ): Promise<Result<void, string>> => {
-      const uploaded = await uploadAttachments(content.attachments ?? []);
-      if (!uploaded.ok) return R.failure(uploaded.error);
-      const attachmentKeys = uploaded.value;
-
       const saved = await R.fromPromiseFn(async () => {
         const response = await forumUpdateComment({
           path: { id: replyId },
           body: {
-            editableContent: {
-              body: content.body,
-              attachments: attachmentKeys,
-            },
+            editableContent: content,
           },
         });
         return response.error;
@@ -743,10 +769,7 @@ export default function Comments({
             if (item.id === replyId) {
               return {
                 ...item,
-                editableContent: {
-                  body: content.body,
-                  attachments: attachmentKeys,
-                },
+                editableContent: content,
               };
             }
             if (item.children) {
