@@ -1,3 +1,4 @@
+import { errorMessage } from "@alliance/common/errorMessage";
 import {
   forumGetPostsForAdmin,
   forumUpdatePostAuthorsAdmin,
@@ -119,10 +120,18 @@ const PostsManagementPage: React.FC = () => {
       if (updatedPost) {
         setSelectedPost(updatedPost);
         setPosts((prev) =>
-          prev.map((p) => (p.id === updatedPost!.id ? updatedPost! : p)),
+          prev.map((p) => (p.id === updatedPost.id ? updatedPost : p)),
         );
-        success("Post updated", "Settings saved successfully");
       }
+      const failure = expertsResponse.error ?? authorsResponse.error;
+      if (failure) {
+        console.error("Failed to save", failure);
+        pushError(
+          errorMessage({ error: failure, fallback: "Failed to save settings" }),
+        );
+        return;
+      }
+      success("Post updated", "Settings saved successfully");
     } catch (err) {
       console.error("Failed to save", err);
       pushError("Failed to save settings");
