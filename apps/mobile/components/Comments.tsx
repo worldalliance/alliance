@@ -258,6 +258,7 @@ type ReplyItemProps = ReplyItemSharedProps & {
 
 const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<CreateEditableContentDto>({
     body: reply.editableContent.body ?? "",
@@ -305,30 +306,35 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
   ]);
 
   const saveEdit = async () => {
-    const sources = editContent.attachments;
-    const uploaded = await uploadAttachments(sources);
-    if (!uploaded.ok) {
-      setEditError(uploaded.error);
-      return;
+    setIsSavingEdit(true);
+    try {
+      const sources = editContent.attachments;
+      const uploaded = await uploadAttachments(sources);
+      if (!uploaded.ok) {
+        setEditError(uploaded.error);
+        return;
+      }
+      setEditContent((prev) => ({
+        ...prev,
+        attachments: withUploadedKeys({
+          current: prev.attachments,
+          sources,
+          keys: uploaded.value,
+        }),
+      }));
+      R.match(
+        await shared.onUpdateReply(reply.id, {
+          ...editContent,
+          attachments: uploaded.value,
+        }),
+        {
+          success: () => setIsEditing(false),
+          failure: setEditError,
+        },
+      );
+    } finally {
+      setIsSavingEdit(false);
     }
-    setEditContent((prev) => ({
-      ...prev,
-      attachments: withUploadedKeys({
-        current: prev.attachments,
-        sources,
-        keys: uploaded.value,
-      }),
-    }));
-    R.match(
-      await shared.onUpdateReply(reply.id, {
-        ...editContent,
-        attachments: uploaded.value,
-      }),
-      {
-        success: () => setIsEditing(false),
-        failure: setEditError,
-      },
-    );
   };
 
   useEffect(() => {
@@ -392,7 +398,7 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
         {isEditing ? (
           <View className="gap-y-2">
             <EditableContentForm
-              isSubmitting={shared.isSubmitting}
+              isSubmitting={shared.isSubmitting || isSavingEdit}
               value={editContent}
               onChange={setEditContent}
               className="bg-zinc-100 rounded overflow-visible"
