@@ -1,5 +1,6 @@
 import type {
   FormValue,
+  ListField,
   ListFieldValue,
 } from "@alliance/common/forms/form-schema";
 import { resolveFormValue, type FormValueUpdater } from "./formValueUpdater";
@@ -76,6 +77,10 @@ export function withCardIds(cards: ListFieldValue): IdentifiedCard[] {
       }
     }
   });
+}
+
+export function defaultCardCount(listField: ListField): number {
+  return Math.max(0, Math.floor(listField.defaultNumber ?? 0));
 }
 
 /**

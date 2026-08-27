@@ -29,6 +29,7 @@ import {
 import { withCount } from "@alliance/common/plural";
 import { parseTimeToMinutes } from "@alliance/shared/forms/timeUtils";
 import { dropUnuploadedFileAnswers } from "./forms/fileAnswers";
+import { defaultCardCount, resolveCards } from "./forms/listCards";
 
 /** Indices into `pages` of the currently visible pages. */
 export function getVisiblePageIndices(
@@ -641,16 +642,13 @@ export function getListSubFieldErrors(
   extras: ConditionExtras,
 ): Record<string, string | null> {
   const result: Record<string, string | null> = {};
-  const listVal = Array.isArray(listValue) ? listValue : [];
-  const listValTyped = listVal.every(
-    (item): item is Record<string, FormValue> =>
-      item !== null && typeof item === "object" && !Array.isArray(item),
-  )
-    ? listVal
-    : [];
+  const cards = resolveCards({
+    value: listValue,
+    defaultCardCount: defaultCardCount(listField),
+  });
   const subFields = listField.fields ?? [];
-  for (let cardIndex = 0; cardIndex < listValTyped.length; cardIndex++) {
-    const card = listValTyped[cardIndex] ?? {};
+  for (let cardIndex = 0; cardIndex < cards.length; cardIndex++) {
+    const card = cards[cardIndex] ?? {};
     const mergedData = { ...data, ...card };
     for (const sub of subFields) {
       const key = `${listField.id}:${cardIndex}:${sub.id}`;
@@ -658,9 +656,7 @@ export function getListSubFieldErrors(
         result[key] = null;
         continue;
       }
-      const subValue = card[sub.id];
-      const subError = validateFieldValue(sub, subValue, mergedData, extras);
-      result[key] = subError;
+      result[key] = validateFieldValue(sub, card[sub.id], mergedData, extras);
     }
   }
   return result;

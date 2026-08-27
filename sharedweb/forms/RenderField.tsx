@@ -18,6 +18,7 @@ import {
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
 import {
   CARD_ID_KEY,
+  defaultCardCount,
   listCardWriters,
   resolveCards,
 } from "@alliance/shared/forms/listCards";
@@ -870,10 +871,7 @@ export function RenderField({
     case "list": {
       const listField = field as ListField;
       const subFields = listField.fields ?? [];
-      const defaultCount = Math.max(
-        0,
-        Math.floor(listField.defaultNumber ?? 0),
-      );
+      const defaultCount = defaultCardCount(listField);
       const minCards = Math.max(0, Math.floor(Number(listField.min || 0)));
       const maxCards =
         typeof listField.max === "number" && listField.max >= 0
