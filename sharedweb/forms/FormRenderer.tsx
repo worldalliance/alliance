@@ -8,7 +8,6 @@ import {
 import { type DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import { type DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
-  collectSourceFormIds,
   isQuestionField,
   type AnyField,
   type FormSchema,
@@ -21,14 +20,10 @@ import {
 import {
   FormResponseDto,
   SubmitFormDto,
-  tasksGetForm,
-  tasksGetFormResponsesAdmin,
-  tasksGetMyFormResponse,
   type UserDto,
 } from "@alliance/shared/client";
 import {
   applyDefaultValues,
-  collectManualSourceFormIds,
   computeActiveUserKey,
   computeFormStorageKey,
   filterAnswersByFieldIds,
@@ -56,6 +51,7 @@ import {
   useFormSchemaMaps,
   useFormValidation,
   useFormVisibility,
+  usePreviousAnswerSources,
   useRandomizationKey,
   useVisibilityValidatorResults,
 } from "@alliance/shared/useFormRenderer";
@@ -361,121 +357,8 @@ const FormRenderer = ({
     savedResults: completedFormResponse?.visibilityValidatorResults,
   });
 
-  // --- Previous Answer block data fetching ---
-  const previousAnswerSourceFormIds = useMemo(() => {
-    const ids = new Set<number>();
-    for (const page of schema.pages) {
-      for (const element of page.fields) {
-        if (!isQuestionField(element) && element.kind === "previousAnswer") {
-          if (element.sourceFormId) {
-            ids.add(element.sourceFormId);
-          }
-          for (const id of collectManualSourceFormIds(element)) {
-            ids.add(id);
-          }
-        }
-        // Also collect from list fields with prefillFromPreviousAnswer
-        if (isQuestionField(element) && element.kind === "list") {
-          if (element.prefillFromPreviousAnswer?.sourceFormId) {
-            ids.add(element.prefillFromPreviousAnswer.sourceFormId);
-          }
-        }
-      }
-    }
-    for (const id of collectSourceFormIds(schema)) {
-      ids.add(id);
-    }
-    return Array.from(ids);
-  }, [schema]);
-
-  const [previousAnswerSchemas, setPreviousAnswerSchemas] = useState<
-    Record<number, FormSchema>
-  >({});
-  const [previousAnswerData, setPreviousAnswerData] = useState<
-    Record<number, Record<string, unknown>>
-  >({});
-
-  useEffect(() => {
-    if (previousAnswerSourceFormIds.length === 0) return;
-    let cancelled = false;
-
-    (async () => {
-      const schemaEntries = await Promise.all(
-        previousAnswerSourceFormIds.map(async (formId) => {
-          try {
-            const response = await tasksGetForm({ path: { id: formId } });
-            if (response.data) {
-              const form = response.data as Record<string, unknown>;
-              return [formId, form.schema as FormSchema] as const;
-            }
-          } catch {
-            // form not found or inaccessible
-          }
-          return null;
-        }),
-      );
-      if (cancelled) return;
-      const schemas: Record<number, FormSchema> = {};
-      for (const entry of schemaEntries) {
-        if (entry) schemas[entry[0]] = entry[1];
-      }
-      setPreviousAnswerSchemas(schemas);
-
-      const previewId =
-        adminPreviewUserId !== undefined && adminPreviewUserId !== null
-          ? String(adminPreviewUserId)
-          : null;
-
-      const dataEntries = await Promise.all(
-        previousAnswerSourceFormIds.map(async (formId) => {
-          try {
-            if (previewId) {
-              // Admin preview: fetch all responses and find the one for the target user
-              const response = await tasksGetFormResponsesAdmin({
-                path: { id: formId },
-              });
-              const allResponses = (response.data ?? []) as Array<
-                FormResponseDto & { user?: { id: number | string } }
-              >;
-              const match = allResponses.find(
-                (r) => String(r.user?.id) === previewId,
-              );
-              if (match) {
-                return [
-                  formId,
-                  (match.answers as Record<string, unknown>) ?? {},
-                ] as const;
-              }
-            } else {
-              const response = await tasksGetMyFormResponse({
-                path: { id: formId },
-              });
-              if (response.data) {
-                const resp = response.data as Record<string, unknown>;
-                return [
-                  formId,
-                  (resp.answers as Record<string, unknown>) ?? {},
-                ] as const;
-              }
-            }
-          } catch {
-            // user hasn't submitted this form — graceful 404
-          }
-          return null;
-        }),
-      );
-      if (cancelled) return;
-      const data: Record<number, Record<string, unknown>> = {};
-      for (const entry of dataEntries) {
-        if (entry) data[entry[0]] = entry[1];
-      }
-      setPreviousAnswerData(data);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [previousAnswerSourceFormIds, adminPreviewUserId]);
+  const { previousAnswerSchemas, previousAnswerData } =
+    usePreviousAnswerSources({ schema, previewUserId: adminPreviewUserId });
 
   // --- Apply guest draft answers when they arrive after mount ---
   // The draft query is fired in parallel with the form render so we don't

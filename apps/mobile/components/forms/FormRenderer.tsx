@@ -15,12 +15,8 @@ import {
   type ImagesItem,
 } from "@alliance/common/forms/display-blocks";
 import {
-  collectSourceFormIds,
-  collectVariableInputFields,
   isQuestionField,
-  variableInputFieldsById,
   type AnyField,
-  type CityFieldValue,
   type FormSchema,
   type FormValue,
 } from "@alliance/common/forms/form-schema";
@@ -28,40 +24,19 @@ import {
   interpolateDisplayBlock,
   interpolateFieldText,
 } from "@alliance/common/forms/variable-interpolation";
-import { resolveVariableValues } from "@alliance/common/forms/variables";
-import {
-  isElementCurrentlyVisible as isElementCurrentlyVisibleShared,
-  isFieldConditionallyRequired,
-  stripHiddenAnswers,
-  type ConditionExtras,
-} from "@alliance/common/forms/visibility";
-import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import {
   FormResponseDto,
   SubmitFormDto,
-  tasksGetForm,
-  tasksGetMyFormResponse,
-  tasksRunValidator,
-  userMyLocation,
   type UserDto,
 } from "@alliance/shared/client";
 import {
   applyDefaultValues,
-  collectManualSourceFormIds,
   computeActiveUserKey,
   computeFormStorageKey,
   filterAnswersByFieldIds,
-  findUnknownConditionKind,
-  findUnknownFormElementKind,
   formatUserLocationDisplayValue,
-  getFallbackVisiblePageIndex,
-  getNextVisiblePageIndex,
-  getPreviousVisiblePageIndex,
-  getVisiblePageIndices,
   resolveDisplayBlockForUser,
-  resolveFieldDefaultValue,
   restorableAnswers,
-  validateFieldValue as validateFieldValueShared,
   type UserLocationDisplayValue,
 } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
@@ -78,6 +53,16 @@ import {
 import { useImageUpload } from "@alliance/shared/lib/useImageUpload";
 import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { cn } from "@alliance/shared/styles/util";
+import {
+  useCurrentUserLocation,
+  useFieldErrors,
+  useFormSchemaMaps,
+  useFormValidation,
+  useFormVisibility,
+  usePreviousAnswerSources,
+  useRandomizationKey,
+  useVisibilityValidatorResults,
+} from "@alliance/shared/useFormRenderer";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { setStringAsync as setClipboardStringAsync } from "expo-clipboard";
 import { DeviceType, deviceType as expoDeviceType } from "expo-device";
@@ -93,14 +78,7 @@ import {
   MessagesSquare,
   Signature,
 } from "lucide-react-native";
-import {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -619,171 +597,24 @@ const FormRenderer = ({
     [user?.id, userId],
   );
 
-  const randomizationKey = useMemo(() => {
-    const base = `form:${id}`;
-    if (activeUserKey) {
-      return `${base}:user:${activeUserKey}`;
-    }
-    if (persistKey !== undefined && persistKey !== null && persistKey !== "") {
-      return `${base}:persist:${String(persistKey)}`;
-    }
-    return base;
-  }, [id, activeUserKey, persistKey]);
+  const randomizationKey = useRandomizationKey({
+    formId: id,
+    activeUserKey,
+    persistKey,
+  });
 
-  const { fieldLookup, defaultValueMap } = useMemo(() => {
-    const lookup = new Map<string, AnyField>();
-    const defaults = new Map<string, FormValue>();
-
-    for (const page of schema.pages) {
-      for (const element of page.fields) {
-        if (isQuestionField(element)) {
-          lookup.set(element.id, element);
-          const defaultValue = resolveFieldDefaultValue(element);
-          if (defaultValue !== undefined) {
-            defaults.set(element.id, defaultValue);
-          }
-        }
-      }
-    }
-
-    return { fieldLookup: lookup, defaultValueMap: defaults };
-  }, [schema]);
-
-  const unknownKind = useMemo(
-    () =>
-      findUnknownFormElementKind(schema) ?? findUnknownConditionKind(schema),
-    [schema],
-  );
-  const hasUserLocationDisplayBlock = useMemo(
-    () =>
-      schema.pages?.some((page) =>
-        page.fields?.some(
-          (element) =>
-            !isQuestionField(element) && element.kind === "userLocation",
-        ),
-      ) ?? false,
-    [schema],
-  );
-
-  const previousAnswerSourceFormIds = useMemo(() => {
-    const ids = new Set<number>();
-    for (const page of schema.pages) {
-      for (const element of page.fields) {
-        if (!isQuestionField(element) && element.kind === "previousAnswer") {
-          if (element.sourceFormId) {
-            ids.add(element.sourceFormId);
-          }
-          for (const id of collectManualSourceFormIds(element)) {
-            ids.add(id);
-          }
-        }
-      }
-    }
-    for (const id of collectSourceFormIds(schema)) {
-      ids.add(id);
-    }
-    return Array.from(ids);
-  }, [schema]);
-
-  const [previousAnswerSchemas, setPreviousAnswerSchemas] = useState<
-    Record<number, FormSchema>
-  >({});
-  const [previousAnswerData, setPreviousAnswerData] = useState<
-    Record<number, Record<string, unknown>>
-  >({});
-
-  useEffect(() => {
-    if (previousAnswerSourceFormIds.length === 0) {
-      setPreviousAnswerSchemas({});
-      setPreviousAnswerData({});
-      return;
-    }
-
-    let cancelled = false;
-
-    (async () => {
-      const schemaEntries = await Promise.all(
-        previousAnswerSourceFormIds.map(async (formId) => {
-          try {
-            const response = await tasksGetForm({ path: { id: formId } });
-            if (response.data) {
-              const form = response.data as Record<string, unknown>;
-              return [formId, form.schema as FormSchema] as const;
-            }
-          } catch {
-            // Form not found or inaccessible.
-          }
-
-          return null;
-        }),
-      );
-
-      if (cancelled) return;
-
-      const schemas: Record<number, FormSchema> = {};
-      for (const entry of schemaEntries) {
-        if (entry) {
-          schemas[entry[0]] = entry[1];
-        }
-      }
-      setPreviousAnswerSchemas(schemas);
-
-      const dataEntries = await Promise.all(
-        previousAnswerSourceFormIds.map(async (formId) => {
-          try {
-            const response = await tasksGetMyFormResponse({
-              path: { id: formId },
-            });
-            if (response.data) {
-              const formResponse = response.data as Record<string, unknown>;
-              return [
-                formId,
-                (formResponse.answers as Record<string, unknown>) ?? {},
-              ] as const;
-            }
-          } catch {
-            // User has not submitted the source form.
-          }
-
-          return null;
-        }),
-      );
-
-      if (cancelled) return;
-
-      const data: Record<number, Record<string, unknown>> = {};
-      for (const entry of dataEntries) {
-        if (entry) {
-          data[entry[0]] = entry[1];
-        }
-      }
-      setPreviousAnswerData(data);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [previousAnswerSourceFormIds]);
-
-  const pageCount = schema.pages?.length ?? 0;
-  const maxPageIndex = Math.max(0, (pageCount || 1) - 1);
   const userDefaultPublic = user?.formDataPreference === "public";
-  const outputFieldDefaultPublic = useMemo(() => {
-    const defaults = new Map<string, boolean>();
-    for (const page of schema.pages ?? []) {
-      for (const element of page.fields ?? []) {
-        if (isQuestionField(element)) {
-          if (element.output?.output) {
-            defaults.set(
-              element.id,
-              element.output.privateByDefault ? false : userDefaultPublic,
-            );
-          }
-        }
-      }
-    }
-    return defaults;
-  }, [schema, userDefaultPublic]);
+  const {
+    fieldLookup,
+    defaultValueMap,
+    unknownKind,
+    hasUserLocationDisplayBlock,
+    outputFieldDefaultPublic,
+    maxPageIndex,
+  } = useFormSchemaMaps({ schema, userDefaultPublic });
+
+  const { previousAnswerSchemas, previousAnswerData } =
+    usePreviousAnswerSources({ schema });
 
   const clampPageIndex = (idx: number): number => {
     if (!Number.isFinite(idx)) return 0;
@@ -820,61 +651,23 @@ const FormRenderer = ({
       return defaults;
     },
   );
-  const [visibilityValidatorResults, setVisibilityValidatorResults] = useState<
-    Record<number, boolean>
-  >(() => {
-    if (readOnly && completedFormResponse?.visibilityValidatorResults) {
-      return completedFormResponse.visibilityValidatorResults as Record<
-        number,
-        boolean
-      >;
-    }
-    return {};
+  const visibilityValidatorResults = useVisibilityValidatorResults({
+    schema,
+    readOnly,
+    savedResults: completedFormResponse?.visibilityValidatorResults,
   });
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const { fieldErrors, applyFieldErrorUpdates } = useFieldErrors();
   const [submitting, setSubmitting] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawalOption, setWithdrawalOption] =
     useState<WithdrawalOption | null>(null);
   const [customReason, setCustomReason] = useState("");
   const [hasEmittedStart, setHasEmittedStart] = useState(false);
-  const [currentUserLocation, setCurrentUserLocation] =
-    useState<CityFieldValue | null>(null);
-  const [currentUserLocationLoading, setCurrentUserLocationLoading] =
-    useState(false);
-
-  useEffect(() => {
-    if (!loadCurrentUserLocation || !hasUserLocationDisplayBlock || !user) {
-      setCurrentUserLocation(null);
-      setCurrentUserLocationLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    setCurrentUserLocation(null);
-    setCurrentUserLocationLoading(true);
-
-    userMyLocation()
-      .then((response) => {
-        if (cancelled) return;
-        setCurrentUserLocation(response.data?.city ?? null);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setCurrentUserLocation(null);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setCurrentUserLocationLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [hasUserLocationDisplayBlock, loadCurrentUserLocation, user?.id, user]);
-
-  const userLocationDisplayValue =
-    currentUserLocation ?? user?.customCityString ?? null;
+  const { currentUserLocationLoading, userLocationDisplayValue } =
+    useCurrentUserLocation({
+      enabled: !!loadCurrentUserLocation && hasUserLocationDisplayBlock,
+      user,
+    });
 
   const {
     userHasCity,
@@ -973,17 +766,6 @@ const FormRenderer = ({
     readOnly,
   ]);
 
-  const fieldPositions = useRef<Record<string, number>>({});
-  const fieldScreenPositions = useRef<Record<string, number>>({});
-
-  const scrollToField = useCallback(
-    (fieldId: string) => {
-      const yPosition = fieldPositions.current[fieldId];
-      scrollPageTo(Math.max(0, yPosition + 100));
-    },
-    [scrollPageTo],
-  );
-
   useEffect(() => {
     const completedPublicAnswers = completedFormResponse?.publicAnswers as
       | Record<string, unknown>
@@ -1014,367 +796,41 @@ const FormRenderer = ({
     });
   }, [completedFormResponse?.publicAnswers, outputFieldDefaultPublic]);
 
-  const visibilityValidatorIds = useMemo(() => {
-    const ids = new Set<number>();
-    const collectFromVisibleIfFormula = (
-      visibleIfFormula: VisibleIfFormula | undefined,
-    ) => {
-      if (!visibleIfFormula?.conditions) {
-        return;
-      }
-      for (const condition of Object.values(visibleIfFormula.conditions)) {
-        if (condition.kind === "validator") {
-          ids.add(condition.validatorId);
-        }
-      }
-    };
-    for (const page of schema.pages) {
-      collectFromVisibleIfFormula(page.visibleIfFormula);
-      for (const element of page.fields) {
-        collectFromVisibleIfFormula(element.visibleIfFormula);
-        if (isQuestionField(element) && element.kind === "list") {
-          if (Array.isArray(element.fields)) {
-            for (const sub of element.fields) {
-              collectFromVisibleIfFormula(sub.visibleIfFormula);
-            }
-          }
-        }
-      }
-    }
-    return Array.from(ids);
-  }, [schema]);
+  const {
+    visibilityExtras,
+    effectiveFormData,
+    variableValues,
+    isElementCurrentlyVisible,
+    isFieldCurrentlyRequired,
+    visiblePageIndices,
+    nextVisiblePageIndex,
+    previousVisiblePageIndex,
+    validateFieldValue,
+  } = useFormVisibility({
+    schema,
+    formData,
+    readOnly,
+    currentPageIndex,
+    setCurrentPageIndex,
+    effectiveDeviceType: DEVICE_TYPE,
+    visibilityValidatorResults,
+    fieldLookup,
+    previousAnswerData,
+    userHasCity,
+    firstContractSignedAt,
+    completedActionCount,
+  });
 
-  useEffect(() => {
-    if (readOnly) {
-      return;
-    }
-    const missingIds = visibilityValidatorIds.filter(
-      (id) => !(id in visibilityValidatorResults),
-    );
-    if (!missingIds.length) {
-      return;
-    }
-
-    let cancelled = false;
-    (async () => {
-      const entries = await Promise.all(
-        missingIds.map(async (validatorId) => {
-          try {
-            const response = await tasksRunValidator({
-              path: { id: validatorId },
-              body: {},
-            });
-            if (!response.data || response.error) {
-              throw response.error ?? new Error("Missing validator response");
-            }
-            return [validatorId, response.data.isValid] as const;
-          } catch (error) {
-            console.error(
-              `Failed to evaluate visibility validator ${validatorId}`,
-              error,
-            );
-            return [validatorId, false] as const;
-          }
-        }),
-      );
-      if (cancelled) return;
-      setVisibilityValidatorResults((prev) => {
-        const next = { ...prev };
-        for (const [id, value] of entries) {
-          next[id] = value;
-        }
-        return next;
-      });
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [visibilityValidatorIds, visibilityValidatorResults, readOnly]);
-
-  // The single source of the account/device/validator state every visibility
-  // and requiredness evaluation reads. Built once so a new condition kind is
-  // added here rather than at each call site — miss one and it would silently
-  // evaluate against the guest default, since every key is optional.
-  const visibilityExtras = useMemo<ConditionExtras>(
-    () => ({
-      deviceType: DEVICE_TYPE,
-      visibilityValidatorResults,
-      fieldLookup,
-      previousAnswerData,
-      userHasCity,
-      firstContractSignedAt,
-      completedActionCount,
-    }),
-    [
-      visibilityValidatorResults,
-      fieldLookup,
-      previousAnswerData,
-      userHasCity,
-      firstContractSignedAt,
-      completedActionCount,
-    ],
-  );
-
-  // `readOnly` isn't part of `ConditionExtras` — only the element/page
-  // visibility helpers take it, to treat a completed form's fields as visible.
-  const visibilityExtrasReadOnly = useMemo(
-    () => ({ ...visibilityExtras, readOnly }),
-    [visibilityExtras, readOnly],
-  );
-
-  // Answers for fields the user can't currently see, treated as never given:
-  // visibility, validation, rendering, and the submitted payload all read
-  // this, so what the user sees is exactly what submits. Raw formData still
-  // holds the hidden values, so re-showing a field restores what the user
-  // typed.
-  const effectiveFormData = useMemo(
-    () =>
-      stripHiddenAnswers(
-        schema.pages ?? [],
-        formData,
-        visibilityExtrasReadOnly,
-      ),
-    [schema.pages, formData, visibilityExtrasReadOnly],
-  );
-
-  const variableInputFields = useMemo(
-    () => variableInputFieldsById(collectVariableInputFields(schema)),
-    [schema],
-  );
-
-  const variableValues = useMemo(
-    () =>
-      resolveVariableValues(schema.variables, {
-        answers: effectiveFormData,
-        fields: variableInputFields,
-      }),
-    [schema.variables, effectiveFormData, variableInputFields],
-  );
-
-  const isElementCurrentlyVisible = useCallback(
-    (
-      element: AnyField | DisplayBlock,
-      data?: Record<string, FormValue>,
-    ): boolean =>
-      isElementCurrentlyVisibleShared(
-        element,
-        data ?? effectiveFormData,
-        visibilityExtrasReadOnly,
-      ),
-    [effectiveFormData, visibilityExtrasReadOnly],
-  );
-
-  // Mirrors `isElementCurrentlyVisible`: the same answers and extras, so the
-  // label agrees with what `validateFieldValue` and the server's submit-time
-  // check enforce.
-  const isFieldCurrentlyRequired = useCallback(
-    (field: AnyField, data?: Record<string, FormValue>): boolean =>
-      isFieldConditionallyRequired(
-        field,
-        data ?? effectiveFormData,
-        visibilityExtras,
-      ),
-    [effectiveFormData, visibilityExtras],
-  );
-
-  const visiblePageIndices = useMemo(
-    () =>
-      getVisiblePageIndices(
-        schema.pages ?? [],
-        effectiveFormData,
-        visibilityExtrasReadOnly,
-      ),
-    [schema.pages, effectiveFormData, visibilityExtrasReadOnly],
-  );
-
-  const nextVisiblePageIndex = useMemo(
-    () => getNextVisiblePageIndex(visiblePageIndices, currentPageIndex),
-    [visiblePageIndices, currentPageIndex],
-  );
-
-  const previousVisiblePageIndex = useMemo(
-    () => getPreviousVisiblePageIndex(visiblePageIndices, currentPageIndex),
-    [visiblePageIndices, currentPageIndex],
-  );
-
-  // If answers change and hide the current page, move to the nearest visible
-  // page.
-  useEffect(() => {
-    const fallback = getFallbackVisiblePageIndex(
-      visiblePageIndices,
-      currentPageIndex,
-    );
-    if (fallback !== null) {
-      setCurrentPageIndex(fallback);
-    }
-  }, [visiblePageIndices, currentPageIndex]);
-
-  const validateFieldValue = useCallback(
-    (
-      field: AnyField,
-      fieldValue: FormValue | undefined,
-      data?: Record<string, FormValue>,
-    ): string | null =>
-      validateFieldValueShared(
-        field,
-        fieldValue,
-        data ?? effectiveFormData,
-        visibilityExtras,
-      ),
-    [effectiveFormData, visibilityExtras],
-  );
-
-  const applyFieldErrorUpdates = useCallback(
-    (updates: Record<string, string | null>) => {
-      if (!updates || Object.keys(updates).length === 0) return;
-
-      setFieldErrors((prev) => {
-        let changed = false;
-        const next = { ...prev };
-        for (const [fieldId, message] of Object.entries(updates)) {
-          if (message && message.trim().length > 0) {
-            if (next[fieldId] !== message) {
-              next[fieldId] = message;
-              changed = true;
-            }
-          } else if (fieldId in next) {
-            delete next[fieldId];
-            changed = true;
-          }
-        }
-        return changed ? next : prev;
-      });
-    },
-    [],
-  );
-
-  const runCustomValidatorsForFields = useCallback(
-    async (
-      fieldsToValidate: AnyField[],
-    ): Promise<Record<string, string | null>> => {
-      if (!fieldsToValidate.length || readOnly) {
-        return {};
-      }
-
-      const results = await Promise.all(
-        fieldsToValidate.map(async (field) => {
-          if (!field.customValidatorId) {
-            return [field.id, null] as const;
-          }
-
-          try {
-            const fieldValue = effectiveFormData[field.id];
-            const response = await tasksRunValidator({
-              path: { id: field.customValidatorId },
-              body: { fieldValue: fieldValue?.toString() ?? "" },
-            });
-
-            if (response.error || !response.data) {
-              throw response.error;
-            }
-
-            const isValid = response.data.isValid;
-            return [
-              field.id,
-              isValid ? null : (response.data.message ?? null),
-            ] as const;
-          } catch (err) {
-            console.error("Failed to run custom validator", err);
-            return [
-              field.id,
-              "Unable to validate this field right now. Please try again.",
-            ] as const;
-          }
-        }),
-      );
-
-      return Object.fromEntries(results);
-    },
-    [readOnly, effectiveFormData],
-  );
-
-  const validatePage = useCallback(
-    async (
-      pageIndex: number,
-      includeCustomValidators: boolean,
-    ): Promise<{ isValid: boolean; firstInvalidFieldId?: string }> => {
-      const page = schema.pages[pageIndex];
-      if (!page) {
-        return { isValid: true };
-      }
-
-      const updates: Record<string, string | null> = {};
-      const fieldsOnPage = page.fields.filter(isQuestionField);
-      // Fields on a hidden page are treated as invisible: errors clear and
-      // nothing blocks navigation or submission.
-      const pageVisible = visiblePageIndices.includes(pageIndex);
-      const visibleFields = pageVisible
-        ? fieldsOnPage.filter((field) => isElementCurrentlyVisible(field))
-        : [];
-      const visibleFieldIds = new Set(visibleFields.map((field) => field.id));
-
-      for (const field of fieldsOnPage) {
-        if (!visibleFieldIds.has(field.id)) {
-          updates[field.id] = null;
-          continue;
-        }
-        const fieldValue = effectiveFormData[field.id];
-        updates[field.id] = validateFieldValue(field, fieldValue);
-      }
-
-      if (includeCustomValidators && !readOnly) {
-        const candidates = visibleFields.filter(
-          (field) => field.customValidatorId && !updates[field.id],
-        );
-        if (candidates.length > 0) {
-          const customResults = await runCustomValidatorsForFields(candidates);
-          Object.assign(updates, customResults);
-        }
-      }
-
-      applyFieldErrorUpdates(updates);
-
-      const firstInvalid = visibleFields.find((field) => {
-        const message = updates[field.id];
-        return !!(message && message.trim().length > 0);
-      });
-
-      return {
-        isValid: !firstInvalid,
-        firstInvalidFieldId: firstInvalid?.id,
-      };
-    },
-    [
-      schema,
-      effectiveFormData,
-      isElementCurrentlyVisible,
-      visiblePageIndices,
-      validateFieldValue,
-      runCustomValidatorsForFields,
-      applyFieldErrorUpdates,
-      readOnly,
-    ],
-  );
-
-  const validateAllPages = useCallback(async () => {
-    let firstInvalidPageIndex: number | null = null;
-    let firstInvalidFieldId: string | undefined;
-
-    for (let pageIndex = 0; pageIndex < schema.pages.length; pageIndex += 1) {
-      const result = await validatePage(pageIndex, true);
-      if (!result.isValid && firstInvalidPageIndex === null) {
-        firstInvalidPageIndex = pageIndex;
-        firstInvalidFieldId = result.firstInvalidFieldId;
-      }
-    }
-
-    return {
-      isValid: firstInvalidPageIndex === null,
-      firstInvalidPageIndex,
-      firstInvalidFieldId,
-    } as const;
-  }, [schema.pages.length, validatePage]);
+  const { validatePage, validateAllPages } = useFormValidation({
+    schema,
+    readOnly,
+    effectiveFormData,
+    visibilityExtras,
+    visiblePageIndices,
+    isElementCurrentlyVisible,
+    validateFieldValue,
+    applyFieldErrorUpdates,
+  });
 
   const markFormStarted = () => {
     if (hasEmittedStart) return;
@@ -1388,12 +844,10 @@ const FormRenderer = ({
       ...prev,
       [fieldId]: resolveFormValue(value, prev[fieldId]),
     }));
-    setFieldErrors((prev) => {
-      if (!(fieldId in prev)) return prev;
-      const next = { ...prev };
-      delete next[fieldId];
-      return next;
-    });
+    applyFieldErrorUpdates(
+      { [fieldId]: null },
+      fieldLookup.get(fieldId)?.kind === "list" ? fieldId : undefined,
+    );
     markFormStarted();
   };
 
@@ -1441,8 +895,6 @@ const FormRenderer = ({
     if (result.isValid) {
       setCurrentPageIndex(nextVisiblePageIndex);
       setImmediate(() => scrollPageTo(0, false));
-    } else if (result.firstInvalidFieldId) {
-      scrollToField(result.firstInvalidFieldId);
     }
   };
 
@@ -1469,27 +921,20 @@ const FormRenderer = ({
       const result = await validatePage(currentPageIndex, true);
       if (result.isValid) {
         setCurrentPageIndex(nextVisiblePageIndex);
-      } else if (result.firstInvalidFieldId) {
-        scrollToField(result.firstInvalidFieldId);
+        setImmediate(() => scrollPageTo(0, false));
       }
       setSubmitting(false);
       return;
     }
 
-    const { isValid, firstInvalidPageIndex, firstInvalidFieldId } =
-      await validateAllPages();
+    const { isValid, firstInvalidPageIndex } = await validateAllPages();
     if (!isValid) {
       if (
         typeof firstInvalidPageIndex === "number" &&
         firstInvalidPageIndex !== currentPageIndex
       ) {
         setCurrentPageIndex(firstInvalidPageIndex);
-        // Scroll after page change - use setTimeout to wait for re-render
-        if (firstInvalidFieldId) {
-          setTimeout(() => scrollToField(firstInvalidFieldId), 100);
-        }
-      } else if (firstInvalidFieldId) {
-        scrollToField(firstInvalidFieldId);
+        setImmediate(() => scrollPageTo(0, false));
       }
       setSubmitting(false);
       return;
@@ -1630,16 +1075,7 @@ const FormRenderer = ({
           }
           const field = element as AnyField;
           return (
-            <View
-              key={field.id}
-              ref={(ref) => {
-                if (ref) {
-                  ref.measure((_x, _y, _width, _height, _pageX, pageY) => {
-                    fieldScreenPositions.current[field.id] = pageY;
-                  });
-                }
-              }}
-            >
+            <View key={field.id}>
               <RenderField
                 field={interpolateFieldText(field, variableValues)}
                 value={effectiveFormData[field.id]}
@@ -1647,6 +1083,7 @@ const FormRenderer = ({
                 fileUpload={readOnly ? undefined : imageUpload}
                 disabled={readOnly}
                 error={fieldErrors[field.id]}
+                fieldErrors={fieldErrors}
                 randomizationKey={randomizationKey}
                 disableOptionRandomization={disableOptionRandomization}
                 user={user}

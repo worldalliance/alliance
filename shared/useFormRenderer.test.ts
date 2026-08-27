@@ -314,34 +314,37 @@ function renderValidation(args: {
   schema: FormSchema;
   formData: Record<string, FormValue>;
 }) {
-  return renderHook(() => {
-    const { applyFieldErrorUpdates, fieldErrors } = useFieldErrors();
-    const visibility: FormVisibility = useFormVisibility({
-      schema: args.schema,
-      formData: args.formData,
-      readOnly: false,
-      currentPageIndex: 0,
-      setCurrentPageIndex: () => {},
-      effectiveDeviceType: "desktop",
-      visibilityValidatorResults: {},
-      fieldLookup: lookupFor(args.schema),
-      previousAnswerData: undefined,
-      userHasCity: false,
-      firstContractSignedAt: null,
-      completedActionCount: 0,
-    });
-    const validation = useFormValidation({
-      schema: args.schema,
-      readOnly: false,
-      effectiveFormData: visibility.effectiveFormData,
-      visibilityExtras: visibility.visibilityExtras,
-      visiblePageIndices: visibility.visiblePageIndices,
-      isElementCurrentlyVisible: visibility.isElementCurrentlyVisible,
-      validateFieldValue: visibility.validateFieldValue,
-      applyFieldErrorUpdates,
-    });
-    return { ...validation, fieldErrors, applyFieldErrorUpdates };
-  });
+  return renderHook(
+    (formData: Record<string, FormValue>) => {
+      const { applyFieldErrorUpdates, fieldErrors } = useFieldErrors();
+      const visibility: FormVisibility = useFormVisibility({
+        schema: args.schema,
+        formData,
+        readOnly: false,
+        currentPageIndex: 0,
+        setCurrentPageIndex: () => {},
+        effectiveDeviceType: "desktop",
+        visibilityValidatorResults: {},
+        fieldLookup: lookupFor(args.schema),
+        previousAnswerData: undefined,
+        userHasCity: false,
+        firstContractSignedAt: null,
+        completedActionCount: 0,
+      });
+      const validation = useFormValidation({
+        schema: args.schema,
+        readOnly: false,
+        effectiveFormData: visibility.effectiveFormData,
+        visibilityExtras: visibility.visibilityExtras,
+        visiblePageIndices: visibility.visiblePageIndices,
+        isElementCurrentlyVisible: visibility.isElementCurrentlyVisible,
+        validateFieldValue: visibility.validateFieldValue,
+        applyFieldErrorUpdates,
+      });
+      return { ...validation, fieldErrors, applyFieldErrorUpdates };
+    },
+    { initialProps: args.formData },
+  );
 }
 
 /** `act` around a validation run, so the error state it sets is flushed. */
@@ -395,6 +398,39 @@ describe("useFormValidation", () => {
     expect(page.isValid).toBe(false);
     expect(page.firstInvalidFieldId).toBe("addresses");
     expect(result.current.fieldErrors["addresses:0:street"]).toBeTruthy();
+  });
+
+  it("clears a card's errors once the list itself is hidden", async () => {
+    const schema: FormSchema = {
+      pages: [
+        {
+          id: "p1",
+          fields: [
+            textField("gate"),
+            {
+              ...listField("addresses", [
+                { ...textField("street"), required: true },
+              ]),
+              visibleIfFormula: gatedOnYes,
+            },
+          ],
+        },
+      ],
+      outputViews: [],
+    };
+    const { result, rerender } = renderValidation({
+      schema,
+      formData: { gate: "yes", addresses: [{ street: "" }] },
+    });
+
+    await validate(() => result.current.validatePage(0, false));
+    expect(result.current.fieldErrors["addresses:0:street"]).toBeTruthy();
+
+    rerender({ gate: "no", addresses: [{ street: "" }] });
+    const page = await validate(() => result.current.validatePage(0, false));
+
+    expect(page.isValid).toBe(true);
+    expect(result.current.fieldErrors).toEqual({});
   });
 
   it("reports the first invalid page across the whole form", async () => {

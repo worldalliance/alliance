@@ -7,6 +7,7 @@
 import { type DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import { type DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
+  collectSourceFormIds,
   collectVariableInputFields,
   isQuestionField,
   variableInputFieldsById,
@@ -25,8 +26,16 @@ import {
 import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { R } from "@alliance/common/result";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { tasksRunValidator, userMyLocation, type UserDto } from "./client";
 import {
+  tasksGetForm,
+  tasksGetFormResponsesAdmin,
+  tasksGetMyFormResponse,
+  tasksRunValidator,
+  userMyLocation,
+  type UserDto,
+} from "./client";
+import {
+  collectManualSourceFormIds,
   findUnknownConditionKind,
   findUnknownFormElementKind,
   getFallbackVisiblePageIndex,
@@ -271,6 +280,136 @@ export function useCurrentUserLocation(args: {
     userLocationDisplayValue:
       currentUserLocation ?? user?.customCityString ?? null,
   };
+}
+
+/**
+ * The schemas and the user's answers for every form this one reads back:
+ * `previousAnswer` display blocks, answer sources a variable or condition
+ * names, and a list's prefill source.
+ */
+export function usePreviousAnswerSources(args: {
+  schema: FormSchema;
+  /** Admin preview: read this user's responses rather than the caller's. */
+  previewUserId?: string | number | null;
+}): {
+  previousAnswerSchemas: Record<number, FormSchema>;
+  previousAnswerData: Record<number, Record<string, unknown>>;
+} {
+  const { schema, previewUserId } = args;
+
+  const sourceFormIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const page of schema.pages) {
+      for (const element of page.fields) {
+        if (!isQuestionField(element) && element.kind === "previousAnswer") {
+          if (element.sourceFormId) {
+            ids.add(element.sourceFormId);
+          }
+          for (const id of collectManualSourceFormIds(element)) {
+            ids.add(id);
+          }
+        }
+        if (
+          isQuestionField(element) &&
+          element.kind === "list" &&
+          element.prefillFromPreviousAnswer?.sourceFormId
+        ) {
+          ids.add(element.prefillFromPreviousAnswer.sourceFormId);
+        }
+      }
+    }
+    for (const id of collectSourceFormIds(schema)) {
+      ids.add(id);
+    }
+    return Array.from(ids);
+  }, [schema]);
+
+  const [previousAnswerSchemas, setPreviousAnswerSchemas] = useState<
+    Record<number, FormSchema>
+  >({});
+  const [previousAnswerData, setPreviousAnswerData] = useState<
+    Record<number, Record<string, unknown>>
+  >({});
+
+  useEffect(() => {
+    if (sourceFormIds.length === 0) {
+      setPreviousAnswerSchemas({});
+      setPreviousAnswerData({});
+      return;
+    }
+
+    const previewId =
+      previewUserId === undefined || previewUserId === null
+        ? null
+        : String(previewUserId);
+
+    let cancelled = false;
+    void (async () => {
+      const schemaEntries = await Promise.all(
+        sourceFormIds.map(async (formId) => {
+          try {
+            const response = await tasksGetForm({ path: { id: formId } });
+            // Stored jsonb, written by a builder that validated it; nothing
+            // re-checks it on the way back in.
+            const stored: unknown = response.data?.schema;
+            return stored ? ([formId, stored as FormSchema] as const) : null;
+          } catch {
+            // Source form deleted or not visible to this user.
+            return null;
+          }
+        }),
+      );
+      if (cancelled) return;
+
+      const schemas: Record<number, FormSchema> = {};
+      for (const entry of schemaEntries) {
+        if (entry) {
+          schemas[entry[0]] = entry[1];
+        }
+      }
+      setPreviousAnswerSchemas(schemas);
+
+      const dataEntries = await Promise.all(
+        sourceFormIds.map(async (formId) => {
+          try {
+            if (previewId !== null) {
+              const response = await tasksGetFormResponsesAdmin({
+                path: { id: formId },
+              });
+              const match = (response.data ?? []).find(
+                (candidate) => String(candidate.user?.id) === previewId,
+              );
+              return match ? ([formId, match.answers ?? {}] as const) : null;
+            }
+            const response = await tasksGetMyFormResponse({
+              path: { id: formId },
+            });
+            return response.data
+              ? ([formId, response.data.answers ?? {}] as const)
+              : null;
+          } catch {
+            // The user has not submitted the source form.
+            return null;
+          }
+        }),
+      );
+      if (cancelled) return;
+
+      const data: Record<number, Record<string, unknown>> = {};
+      for (const entry of dataEntries) {
+        if (entry) {
+          data[entry[0]] = entry[1];
+        }
+      }
+      setPreviousAnswerData(data);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sourceFormIds, previewUserId]);
+
+  return { previousAnswerSchemas, previousAnswerData };
 }
 
 /**
@@ -737,7 +876,9 @@ export function useFormValidation(args: {
         }
       }
 
-      const listFieldIds = visibleFields
+      // Every list on the page, not just the visible ones: a list the user
+      // has since hidden still owns stale `parentId:cardIndex:subId` keys.
+      const listFieldIds = fieldsOnPage
         .filter((f) => f.kind === "list")
         .map((f) => f.id);
       applyFieldErrorUpdates(
