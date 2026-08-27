@@ -1282,17 +1282,6 @@ export type PushDto = {
     openedAt: string | null;
 };
 
-export type RegisterLiveActivityPushToStartTokenDto = {
-    pushToStartToken: string;
-    deviceId?: string;
-};
-
-export type RegisterLiveActivityUpdateTokenDto = {
-    activityId: string;
-    updateToken: string;
-    actionId: number;
-};
-
 export type StreamableFile = {
     [key: string]: unknown;
 };
@@ -5690,52 +5679,6 @@ export type UserSendPushNotificationAdminResponses = {
 };
 
 export type UserSendPushNotificationAdminResponse = UserSendPushNotificationAdminResponses[keyof UserSendPushNotificationAdminResponses];
-
-export type UserRegisterLiveActivityPushToStartTokenData = {
-    body: RegisterLiveActivityPushToStartTokenDto;
-    path?: never;
-    query?: never;
-    url: '/user/registerLiveActivityPushToStartToken';
-};
-
-export type UserRegisterLiveActivityPushToStartTokenErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserRegisterLiveActivityPushToStartTokenError = UserRegisterLiveActivityPushToStartTokenErrors[keyof UserRegisterLiveActivityPushToStartTokenErrors];
-
-export type UserRegisterLiveActivityPushToStartTokenResponses = {
-    200: UserDeviceDto;
-};
-
-export type UserRegisterLiveActivityPushToStartTokenResponse = UserRegisterLiveActivityPushToStartTokenResponses[keyof UserRegisterLiveActivityPushToStartTokenResponses];
-
-export type UserRegisterLiveActivityUpdateTokenData = {
-    body: RegisterLiveActivityUpdateTokenDto;
-    path?: never;
-    query?: never;
-    url: '/user/registerLiveActivityUpdateToken';
-};
-
-export type UserRegisterLiveActivityUpdateTokenErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserRegisterLiveActivityUpdateTokenError = UserRegisterLiveActivityUpdateTokenErrors[keyof UserRegisterLiveActivityUpdateTokenErrors];
-
-export type UserRegisterLiveActivityUpdateTokenResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserRegisterLiveActivityUpdateTokenResponse = UserRegisterLiveActivityUpdateTokenResponses[keyof UserRegisterLiveActivityUpdateTokenResponses];
 
 export type UserRequestAccountDeletionData = {
     body?: never;

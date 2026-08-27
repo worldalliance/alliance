@@ -41,11 +41,6 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
         className="block"
       >
         <div className="flex flex-row gap-x-3 md:gap-x-4">
-          {/* <ActionSquareThumbnail
-            imgSrc={action.squareThumbnailImage}
-            imgAlt={action.squareThumbnailImageAlt}
-            size="smallDynamic"
-          /> */}
           <div className="flex flex-col justify-between flex-1">
             <div className="flex flex-row items-start gap-x-8">
               <div className="flex-1 flex flex-col">

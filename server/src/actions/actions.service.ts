@@ -32,7 +32,6 @@ import {
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
-import { LiveActivityService } from "src/apns/live-activity.service";
 import { CommunityService } from "src/community/community.service";
 import { Community } from "src/community/entities/community.entity";
 import { EventType } from "src/eventlog/event-log.entity";
@@ -307,7 +306,6 @@ export class ActionsService {
     private readonly actionEventReminderService: ActionEventReminderService,
     private readonly likeNotificationService: LikeNotificationService,
     private readonly forumService: ForumService,
-    private readonly liveActivityService: LiveActivityService,
     private readonly eventLogService: EventLogService,
     @Inject(forwardRef(() => ActionFormVariantService))
     private readonly actionFormVariantService: ActionFormVariantService,
@@ -1700,7 +1698,6 @@ export class ActionsService {
     await this.reloadUsersJoinedForAction(actionId);
     if (type === ActionActivityType.USER_COMPLETED) {
       await this.reloadUsersCompletedForAction(actionId);
-      await this.liveActivityService.updateCompletionCount(actionId);
     }
 
     return savedActivity;

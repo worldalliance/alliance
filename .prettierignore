@@ -14,7 +14,6 @@ apps/mobile/uniwind-types.d.ts
 shared/client
 apps/*/public/assets/world.js
 apps/*/public/assets/world.json
-apps/*/public/mockServiceWorker.js
 
 # Vendored native dependencies
 apps/mobile/ios

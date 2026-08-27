@@ -62,8 +62,6 @@
     "libphonenumber-js": "^1.12.17",
     "lucide-react": "^0.563.0",
     "morgan": "^1.10.0",
-    "msw": "^2.8.4",
-    "msw-storybook-addon": "^2.0.4",
     "pluralize": "^8.0.0",
     "pm2": "^6.0.6",
     "posthog-js": "^1.311.0",
@@ -127,11 +125,6 @@
   "eslintConfig": {
     "extends": [
       "plugin:storybook/recommended"
-    ]
-  },
-  "msw": {
-    "workerDirectory": [
-      "public"
     ]
   }
 }
