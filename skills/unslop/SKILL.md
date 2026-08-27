@@ -9,6 +9,8 @@ Edit text to remove AI patterns and add human voice.
 
 ## Process
 
+`(root)/skills/keep-test.md` decides what survives: scope, the delete test, whole units, rewrite, stability. The patterns below decide how what survives is worded.
+
 1. Scan for the patterns below.
 2. Rewrite. Preserve meaning, match intended tone.
 3. Add soul (see next section).

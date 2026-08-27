@@ -14,7 +14,7 @@ Every edit to an agent-facing document makes this pass:
 1. Place it: **where the rule goes**.
 2. Write it positively, and only if it **earns space**.
 3. Correcting an earlier version? The diff is a replacement: **after a correction**.
-4. Prune, until every sentence you added or changed survives the test in **pruning**.
+4. Prune, until every sentence you added or changed passes the **keep test** in `(root)/skills/keep-test.md`, then the rules in **pruning**.
 
 Done when each rule below has been applied to each line you touched.
 
@@ -107,21 +107,14 @@ You win twice: fewer tokens, and a sharper hook for the agent to hang its thinki
 
 ## After a correction
 
-A correction gives you the new rule. The document states the new rule and only the new rule. Find the line that produced the wrong behavior, and rewrite that line in place.
+**Corrections replace** in `(root)/skills/keep-test.md` governs the edit: rewrite the line that produced the wrong behavior, in place, so the document states the new rule and only the new rule.
 
-Leaving the old rule standing beside its replacement is **negation** written into the file. "Don't do X, do Y instead" keeps X in the document and keeps it available, and it costs load on every future read to say what the file already stopped saying.
-
-Two checks, because a correction is the one edit you cannot judge from the inside:
-
-- **The reader test.** The finished document reads as if the wrong version never existed. Someone who never saw the correction cannot tell what changed, and no line is legible only to a reader who saw the previous version.
-- **The diff test.** A correction produces a replacement: lines removed as well as added. An edit that is only additions means the old rule is still there and you wrote a second one next to it.
-
-Same for the record of the correction itself. Change history, migration notes, and reorg rationale describe the document's past; the agent acts on its present.
+What's specific to an agent doc is the cost. Leaving the old rule standing beside its replacement is **negation** written into the file. "Don't do X, do Y instead" keeps X in the document and keeps it available, and it costs load on every future read to say what the file already stopped saying.
 
 ## Pruning
 
 - Keep each meaning in a **single source of truth**: one authoritative place, so changing the behavior is a one-place edit. **Duplication** (the same meaning in more than one place) costs maintenance and tokens, and inflates a meaning's prominence on the ladder past its real rank. (The accidental inverse of a leading word, which repeats a token on purpose, never the meaning.) Within one document this is absolute: an inline value _and_ a pointer to the file defining it are one meaning twice, so pick one. Across documents a copy earns its keep when the two audiences never both see it.
 - The **environment** is a source of truth too (`package.json` scripts, config files, the directory layout, `--help` output), and a document that restates it is a **cache**: a copy of a lookup, earning its load only when the lookup is expensive. Cache what the agent cannot find by looking: the unwritten convention, the reason behind a choice, the gotcha no config confesses. Anything one `grep`, `ls`, or `--help` away is a cheap lookup: where the routes live, SQL against named tables, standard CLI flags. Those belong to the environment, where they cannot go stale.
 - Check every line for **relevance**: does it still bear on what the document does? A line loses relevance by never bearing on the task (mere exposition, or a branch that should be disclosed) or by going stale as the behavior or world it describes changes. Shorter documents are easier to keep relevant. Without a pruning discipline the default fate is **sediment**: stale layers that settle because adding feels safe and removing feels risky, until you must core down through them to find what is still live.
-- Hunt **no-ops** sentence by sentence: an instruction the model already obeys by default pays load to say nothing. Test each one by deleting it and naming the action the agent now takes differently. Name a divergent action and the sentence earns its place. Name none and it stays deleted. The test is model-relative, not reader-relative, so two people disagreeing about a no-op disagree about the default, and they settle it by running the document rather than by debate. When a sentence fails, delete the whole sentence rather than trim words from it. Cutting whole units keeps what survives fully legible, where shaving words degrades every sentence at once and buys back little. The test also grades leading words: a word too weak to beat the default (_be thorough_ when the agent is already thorough-ish) is a no-op, and the fix is a stronger word (_relentless_), not a different technique.
+- Hunt **no-ops** sentence by sentence: an instruction the model already obeys by default pays load to say nothing. Here the keep test runs model-relative rather than reader-relative, so two people disagreeing about a no-op disagree about the default, and they settle it by running the document rather than by debate. It also grades leading words: a word too weak to beat the default (_be thorough_ when the agent is already thorough-ish) is a no-op, and the fix is a stronger word (_relentless_), not a different technique.
   - **Reassurance** is the no-op that survives longest, because writing it feels like heading off a mistake. It answers a question the agent never asked, in the form _X is already set, so Y works normally_. "The fixtures are committed, so the suite runs on a fresh clone" changes nothing, since an agent told to run the suite runs it either way. The tells are _without changes_, _as usual_, _as expected_, _automatically_, _no need to_, _just works_. Each one is a sentence claiming the default is the default, so they are greppable.
