@@ -285,6 +285,7 @@ export const redesignThemes = {
   [RedesignVersion.V6]: {
     ...V4_BASE,
     version: RedesignVersion.V6,
+    surface: "#ffffff",
     joinLabel: "Request to join",
     cta: CtaKind.PhotoShort,
     hero: HeroKind.ProductPair,

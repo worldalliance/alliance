@@ -177,11 +177,17 @@ export const activityRows: ActivityRow[] = [
     id: "chatbot",
     subject: "57 members",
     verb: "completed",
-    action: "Review chatbot transcripts to help make chatbots safer for children",
+    action:
+      "Review chatbot transcripts to help make chatbots safer for children",
     timeAgo: "2 hours ago",
     avatars: [xuijin, nihar, christina],
   },
-  { id: "joined", subject: "11 members", verb: "joined the Alliance", avatars: [nihar, christina, xuijin] },
+  {
+    id: "joined",
+    subject: "11 members",
+    verb: "joined the Alliance",
+    avatars: [nihar, christina, xuijin],
+  },
   {
     id: "ewaste",
     subject: "Nihar Doshi",
@@ -316,7 +322,10 @@ export const heroActivity: HeroActivity[] = [
       "Review chatbot transcripts to help make chatbots safer for children",
     summary: "Rated a chatbot transcript on the child-safety rubric",
     blocks: [
-      { kind: PostBlockKind.Heading, text: "“Refreshing Read Receipts All Night”" },
+      {
+        kind: PostBlockKind.Heading,
+        text: "“Refreshing Read Receipts All Night”",
+      },
       {
         kind: PostBlockKind.Paragraph,
         lead: "Adequate.",
@@ -611,7 +620,7 @@ export const testimonials: Testimonial[] = [
     quoteEmphasis:
       "it's just a few minutes per week and I've found every project thus far to be self-enriching and meaningful.",
     name: "Sameer Vaidya",
-    role: "Alliance Member",
+    role: "Alliance member",
     avatar: kanishk,
   },
   {
@@ -620,7 +629,7 @@ export const testimonials: Testimonial[] = [
       "On the whole, the world is not going in the right direction. We need new ideas to change that, and the Alliance is just that. ",
     quoteEmphasis: "But it will work only if we all participate.",
     name: "Christina Okafor",
-    role: "Alliance Member",
+    role: "Alliance member",
     avatar: christina,
   },
   {
@@ -629,7 +638,7 @@ export const testimonials: Testimonial[] = [
       "There is an inability to leverage collective will towards problems that almost everybody agrees exist. I think this is mostly the result of individuals not having clear actions that can affect the relevant issues. ",
     quoteEmphasis: "The Alliance is the natural solution.",
     name: "Nihar Doshi",
-    role: "Alliance Member",
+    role: "Alliance member",
     avatar: nihar,
   },
 ];
@@ -664,13 +673,13 @@ export const NAV_LINKS: SiteLink[] = [
   { label: "Progress", page: RedesignPage.Progress },
 ];
 
-export const NAV_PARTNER = "Partner with Us";
+export const NAV_PARTNER = "Partner";
 export const NAV_LOGIN = "Log In";
 
 export const FOOTER_COLUMNS: SiteLink[][] = [
   [
-    { label: "Request to Join", page: RedesignPage.Join, withArrow: true },
-    { label: "Partner with Us", page: RedesignPage.Partner, withArrow: true },
+    { label: "Join", page: RedesignPage.Join, withArrow: true },
+    { label: "Partner", page: RedesignPage.Partner, withArrow: true },
   ],
   [
     { label: "People", page: RedesignPage.People },

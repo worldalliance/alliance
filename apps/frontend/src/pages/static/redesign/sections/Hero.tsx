@@ -171,10 +171,7 @@ function NotificationsOnlyHero() {
 function PostsMarqueeHero() {
   return (
     <section className="bg-[var(--rd-surface)]">
-      <div
-        className="pb-20 lg:pb-28"
-        style={{ paddingTop: NAV_HEIGHT + 76 }}
-      >
+      <div className="pb-20 lg:pb-28" style={{ paddingTop: NAV_HEIGHT + 76 }}>
         <PostMarquee />
       </div>
     </section>

@@ -1,10 +1,10 @@
 import { cn } from "@alliance/shared/styles/util";
 import type { CSSProperties, ReactNode } from "react";
-import type { LinkTarget } from "./links";
 import texture from "../../../assets/redesign/priority-environment.jpg";
+import type { LinkTarget } from "./links";
 import type { RedesignTheme } from "./theme";
 
-export const RD_COL = "mx-auto w-full max-w-[1300px] px-5 sm:px-8 lg:px-[68px]";
+export const RD_COL = "mx-auto w-full max-w-[1400px] px-5 sm:px-8 lg:px-[68px]";
 
 /**
  * A solid tinted card with a desaturated photo screened over it, which is the
