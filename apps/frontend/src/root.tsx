@@ -1,6 +1,5 @@
 import { client } from "@alliance/shared/client/client.gen";
 import { registerAnalytics } from "@alliance/shared/lib/analytics";
-import { getApiUrl } from "@alliance/sharedweb/lib/config";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -18,6 +17,7 @@ import {
 import { Route } from "../.react-router/types/src/+types/root";
 import { HtmlBackgroundManager } from "./components/HtmlBackgroundManager";
 import { AuthProvider } from "./lib/AuthContext";
+import { getApiUrl, getPosthogHost } from "./lib/config";
 import PosthogBuildTag from "./lib/PosthogBuildTag";
 
 const queryClient = new QueryClient({
@@ -39,7 +39,7 @@ export function meta() {
 }
 
 const options: Partial<PostHogConfig> = {
-  api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
+  api_host: getPosthogHost(),
   defaults: "2025-05-24",
   capture_exceptions: {
     capture_unhandled_errors: true,
