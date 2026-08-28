@@ -27,7 +27,7 @@ export const NAV_LINKS: SiteLink[] = [
   { label: "Progress", to: PROGRESS_HREF },
 ];
 
-export const NAV_PARTNER = "Partner with Us";
+export const NAV_PARTNER = "Partner";
 
 /**
  * The account column is authored last, which is where this footer wants it.
@@ -44,7 +44,7 @@ export const FOOTER_COLUMNS: SiteLink[][] = [
   ],
   [
     { label: "Request to Join", to: JOIN_HREF, withArrow: true },
-    { label: "Partner with Us", to: PARTNER_HREF, withArrow: true },
+    { label: "Partner", to: PARTNER_HREF, withArrow: true },
   ],
 ];
 

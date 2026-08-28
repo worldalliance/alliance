@@ -110,7 +110,7 @@ html.white {
 
 /* The public site's surface, set by `useSiteBackground`. */
 html.site-surface {
-  background-color: #f7f7f6 !important;
+  background-color: white !important;
 }
 
 img {
