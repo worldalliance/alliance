@@ -156,7 +156,7 @@ const guideExtras: Record<GuideSectionKind, ReactNode> = {
           <ImpactCard
             key={action.actionId}
             action={action}
-            className="border border-[var(--site-ink)]/10"
+            className="bg-zinc-50"
           />
         ))}
       </div>

@@ -1496,7 +1496,7 @@ export type NotifClickResponseDto = {
     mms: boolean;
 };
 
-export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested' | 'account_deleted';
+export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested' | 'account_deleted' | 'join_request';
 
 export type EventLogUserDto = {
     id: number;
@@ -3669,6 +3669,16 @@ export type ContractStatusPointDto = {
      * Total users who ever signed up to this point
      */
     totalEverSigned: number;
+};
+
+export type CreateJoinRequestDto = {
+    name: string;
+    email: string;
+    reason: string;
+};
+
+export type JoinRequestResultDto = {
+    submitted: boolean;
 };
 
 export type HeyApiError = {
@@ -12245,6 +12255,28 @@ export type AnalyticsGetContractStatusHistoryAdminResponses = {
 };
 
 export type AnalyticsGetContractStatusHistoryAdminResponse = AnalyticsGetContractStatusHistoryAdminResponses[keyof AnalyticsGetContractStatusHistoryAdminResponses];
+
+export type JoinRequestsCreateData = {
+    body: CreateJoinRequestDto;
+    path?: never;
+    query?: never;
+    url: '/join-requests';
+};
+
+export type JoinRequestsCreateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type JoinRequestsCreateError = JoinRequestsCreateErrors[keyof JoinRequestsCreateErrors];
+
+export type JoinRequestsCreateResponses = {
+    200: JoinRequestResultDto;
+};
+
+export type JoinRequestsCreateResponse = JoinRequestsCreateResponses[keyof JoinRequestsCreateResponses];
 
 export type ClientOptions = {
     baseUrl: string;
