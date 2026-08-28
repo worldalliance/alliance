@@ -109,10 +109,12 @@ describe("Community (e2e)", () => {
     const res = await request(ctx.app.getHttpServer())
       .post("/community/create")
       .set("Authorization", `Bearer ${testUserToken}`)
-      .send({
-        name: "HTTP Created Community",
-        description: "Via controller",
-      });
+      .send(
+        createDto({
+          name: "HTTP Created Community",
+          description: "Via controller",
+        }),
+      );
 
     expect(res.status).toBe(201);
     expect(res.body.name).toBe("HTTP Created Community");
@@ -124,21 +126,60 @@ describe("Community (e2e)", () => {
     const res = await request(ctx.app.getHttpServer())
       .post("/community/create")
       .set("Authorization", `Bearer ${testUserToken}`)
-      .send({
-        name: "",
-        description: "Empty name",
-      });
+      .send(createDto({ name: "", description: "Empty name" }));
 
     expect(res.status).toBe(400);
+  });
+
+  it("POST /community/create rejects an absent capacity with 400", async () => {
+    const { maxCapacity: _maxCapacity, ...body } = createDto({
+      name: "Missing Capacity",
+      description: "No capacity key",
+    });
+
+    const res = await request(ctx.app.getHttpServer())
+      .post("/community/create")
+      .set("Authorization", `Bearer ${testUserToken}`)
+      .send(body);
+
+    expect(res.status).toBe(400);
+  });
+
+  it("POST /community/create rejects a fractional, non-positive or out-of-range capacity with 400", async () => {
+    for (const maxCapacity of [10.7, 0, 3_000_000_000]) {
+      const res = await request(ctx.app.getHttpServer())
+        .post("/community/create")
+        .set("Authorization", `Bearer ${testUserToken}`)
+        .send(
+          createDto({
+            name: `Capacity ${maxCapacity}`,
+            description: "Bad capacity",
+            maxCapacity,
+          }),
+        );
+
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it("POST /community/create rejects an over-long name or description with 400", async () => {
+    for (const body of [
+      { name: "x".repeat(121), description: "Long name" },
+      { name: "Long description", description: "x".repeat(4001) },
+    ]) {
+      const res = await request(ctx.app.getHttpServer())
+        .post("/community/create")
+        .set("Authorization", `Bearer ${testUserToken}`)
+        .send(createDto(body));
+
+      expect(res.status).toBe(400);
+    }
   });
 
   it("POST /community/create returns 401 when unauthenticated", async () => {
     const res = await request(ctx.app.getHttpServer())
       .post("/community/create")
-      .send({
-        name: "No Auth",
-        description: "Should fail",
-      });
+      .send(createDto({ name: "No Auth", description: "Should fail" }));
 
     expect(res.status).toBe(401);
   });
@@ -147,24 +188,49 @@ describe("Community (e2e)", () => {
     const res = await request(ctx.app.getHttpServer())
       .post("/community/create/admin")
       .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-      .send({
-        name: "Admin HTTP Community",
-        description: "Via admin endpoint",
-      });
+      .send(
+        createDto({
+          name: "Admin HTTP Community",
+          description: "Via admin endpoint",
+        }),
+      );
 
     expect(res.status).toBe(201);
     expect(res.body.name).toBe("Admin HTTP Community");
     expect(res.body.id).toBeDefined();
   });
 
+  it("POST /community/create/admin rejects a whitespace-only name with 400", async () => {
+    const res = await request(ctx.app.getHttpServer())
+      .post("/community/create/admin")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send(createDto({ name: "   ", description: "Blank name" }));
+
+    expect(res.status).toBe(400);
+  });
+
+  it("POST /community/create/admin trims the name", async () => {
+    const res = await request(ctx.app.getHttpServer())
+      .post("/community/create/admin")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send(
+        createDto({ name: "  Padded Admin  ", description: "Padded name" }),
+      );
+
+    expect(res.status).toBe(201);
+    expect(res.body.name).toBe("Padded Admin");
+  });
+
   it("POST /community/create/admin returns 401 when not admin", async () => {
     const res = await request(ctx.app.getHttpServer())
       .post("/community/create/admin")
       .set("Authorization", `Bearer ${testUserToken}`)
-      .send({
-        name: "Non-Admin Tries Admin",
-        description: "Should fail",
-      });
+      .send(
+        createDto({
+          name: "Non-Admin Tries Admin",
+          description: "Should fail",
+        }),
+      );
 
     expect(res.status).toBe(401);
   });
@@ -420,6 +486,23 @@ describe("Community (e2e)", () => {
     expect(res.status).toBe(200);
     expect(res.body.name).toBe("E2E HTTP Updated");
     expect(res.body.description).toBe("After update");
+  });
+
+  it("PATCH /community/:communityId rejects null on a NOT NULL column with 400", async () => {
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP Update Null",
+        leaders: [testUser],
+        users: [testUser],
+      }),
+    );
+
+    const res = await request(ctx.app.getHttpServer())
+      .patch(`/community/${community.id}`)
+      .set("Authorization", `Bearer ${testUserToken}`)
+      .send({ public: null });
+
+    expect(res.status).toBe(400);
   });
 
   it("PATCH /community/:communityId returns 401 when unauthenticated", async () => {

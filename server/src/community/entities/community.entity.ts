@@ -1,6 +1,22 @@
+import {
+  COMMUNITY_DESCRIPTION_MAX_LENGTH,
+  COMMUNITY_NAME_MAX_LENGTH,
+} from "@alliance/common/community";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { Type } from "class-transformer";
-import { Allow, IsDefined, IsOptional, IsString } from "class-validator";
+import { Transform, Type } from "class-transformer";
+import {
+  Allow,
+  IsBoolean,
+  IsDefined,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  ValidateIf,
+} from "class-validator";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -8,6 +24,7 @@ import {
 import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
 import { User } from "src/user/entities/user.entity";
 import type { Relation } from "src/utils/Repository";
+import { trim } from "src/utils/transforms";
 import {
   Check,
   Column,
@@ -41,13 +58,17 @@ export class Community {
   id: number;
 
   @Column()
-  @ApiProperty()
-  @Allow()
+  @ApiProperty({ maxLength: COMMUNITY_NAME_MAX_LENGTH })
+  @Transform(trim)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(COMMUNITY_NAME_MAX_LENGTH)
   name: string;
 
   @Column({ default: "" })
-  @ApiProperty()
+  @ApiProperty({ maxLength: COMMUNITY_DESCRIPTION_MAX_LENGTH })
   @IsString()
+  @MaxLength(COMMUNITY_DESCRIPTION_MAX_LENGTH)
   description: string;
 
   @Column({ type: "varchar", nullable: true })
@@ -67,22 +88,25 @@ export class Community {
 
   @Column({ default: false })
   @ApiProperty()
-  @Allow()
+  @IsBoolean()
   public: boolean;
 
   @Column({ default: true })
   @ApiProperty()
-  @Allow()
+  @IsBoolean()
   allowMemberInvites: boolean;
 
   @Column({ default: true })
   @ApiProperty()
-  @Allow()
+  @IsBoolean()
   allowStaffAssignments: boolean;
 
   @Column({ type: "int", nullable: true, default: 10 })
   @ApiProperty({ type: Number, nullable: true, default: 10 })
-  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsInt()
+  @Min(1)
+  @Max(2_147_483_647)
   maxCapacity: number | null;
 
   // Relations
