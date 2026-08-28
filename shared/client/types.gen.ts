@@ -335,6 +335,8 @@ export type ActionSuite = {
 export type ActionReviewerIcon = 'linkedin';
 
 export type ActionReviewer = {
+    id: number;
+    actionId: number;
     /**
      * Display name of the reviewer
      */
@@ -342,11 +344,15 @@ export type ActionReviewer = {
     /**
      * Link to the reviewer's website, LinkedIn, etc.
      */
-    url?: string;
+    url: string | null;
     /**
      * Icon shown next to the reviewer name
      */
-    icon?: ActionReviewerIcon;
+    icon: ActionReviewerIcon | null;
+    /**
+     * Display order within the action
+     */
+    position: number;
 };
 
 export type Action = {
@@ -478,10 +484,7 @@ export type Action = {
     formVariants: Array<ActionFormVariant>;
     suite?: ActionSuite;
     authors?: Array<User>;
-    /**
-     * Non-user reviewers credited on the action
-     */
-    reviewers: Array<ActionReviewer>;
+    reviewers?: Array<ActionReviewer>;
     status: ActionStatus;
 };
 
@@ -1833,6 +1836,21 @@ export type UserActionRelationDto = {
     relation: UserActionRelation;
 };
 
+export type ActionReviewerResponseDto = {
+    /**
+     * Display name of the reviewer
+     */
+    name: string;
+    /**
+     * Link to the reviewer's website, LinkedIn, etc.
+     */
+    url?: string;
+    /**
+     * Icon shown next to the reviewer name
+     */
+    icon?: ActionReviewerIcon;
+};
+
 export type ActionEventDto = {
     /**
      * Unique identifier for the action event
@@ -2028,7 +2046,7 @@ export type ActionDto = {
     /**
      * Non-user reviewers credited on the action
      */
-    reviewers: Array<ActionReviewer>;
+    reviewers: Array<ActionReviewerResponseDto>;
     usersCompleted: number;
     events: Array<ActionEventDto>;
     status: ActionStatus;
@@ -2344,6 +2362,21 @@ export type UpdateActionFormVariantDto = {
     splitValue?: number;
 };
 
+export type ActionReviewerDto = {
+    /**
+     * Display name of the reviewer
+     */
+    name: string;
+    /**
+     * Link to the reviewer's website, LinkedIn, etc.
+     */
+    url?: string;
+    /**
+     * Icon shown next to the reviewer name
+     */
+    icon?: ActionReviewerIcon;
+};
+
 export type CreateActionDto = {
     /**
      * Name of the action
@@ -2439,7 +2472,7 @@ export type CreateActionDto = {
     customStatGoal?: number;
     followUpForms: Array<FollowUpForm>;
     suiteId?: number | null;
-    reviewers?: Array<ActionReviewer>;
+    reviewers?: Array<ActionReviewerDto>;
     authorIds?: Array<number>;
 };
 
@@ -2538,7 +2571,7 @@ export type UpdateActionDto = {
     customStatGoal?: number;
     followUpForms?: Array<FollowUpForm>;
     suiteId?: number | null;
-    reviewers?: Array<ActionReviewer>;
+    reviewers?: Array<ActionReviewerDto>;
     authorIds?: Array<number>;
 };
 
@@ -2868,10 +2901,7 @@ export type ExportActionDto = {
     followUpForms: Array<FollowUpForm>;
     suite?: ActionSuite;
     authors?: Array<User>;
-    /**
-     * Non-user reviewers credited on the action
-     */
-    reviewers: Array<ActionReviewer>;
+    reviewers?: Array<ActionReviewer>;
     taskForm?: Form;
     reminderGroups?: Array<ReminderGroup>;
 };

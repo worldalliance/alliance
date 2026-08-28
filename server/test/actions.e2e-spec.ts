@@ -37,6 +37,11 @@ import {
   ActionStatus,
 } from "../src/actions/entities/action-event.entity";
 import {
+  ACTION_REVIEWERS_MAX,
+  ActionReviewer,
+  ActionReviewerIcon,
+} from "../src/actions/entities/action-reviewer.entity";
+import {
   Action,
   ActionTaskType,
   VisibilityMode,
@@ -3369,6 +3374,245 @@ describe("Actions (e2e)", () => {
 
         expect(rewritten.body.visibleAt).toBe(update.date);
       });
+    });
+  });
+
+  describe("Reviewers", () => {
+    let reviewerRepo: Repository<ActionReviewer>;
+
+    beforeAll(() => {
+      reviewerRepo = ctx.dataSource.getRepository(ActionReviewer);
+    });
+
+    const withReviewers = (
+      name: string,
+      reviewers: CreateActionDto["reviewers"],
+      extra: Partial<CreateActionDto> = {},
+    ): CreateActionDto => ({
+      name,
+      body: "Body",
+      category: "category",
+      image: "",
+      timeEstimate: 5,
+      shortDescription: "Short",
+      visibilityMode: VisibilityMode.Public,
+      type: ActionTaskType.Activity,
+      isContractSigningAction: false,
+      shouldCompleteAfterDeadline: false,
+      isForumParticipationAction: false,
+      optional: false,
+      preventCompletion: false,
+      publicOnly: false,
+      onboarding: false,
+      followUpForms: [],
+      reviewers,
+      ...extra,
+    });
+
+    const createAction = async (
+      name: string,
+      reviewers: CreateActionDto["reviewers"],
+      extra: Partial<CreateActionDto> = {},
+    ) => {
+      const res = await request(ctx.app.getHttpServer())
+        .post("/actions/create")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send(withReviewers(name, reviewers, extra));
+      expect(res.status).toBe(201);
+      return res.body as ActionDto;
+    };
+
+    it("stores reviewers in the order they were sent", async () => {
+      const action = await createAction("Reviewed Action", [
+        {
+          name: "Jane",
+          url: "https://example.com",
+          icon: ActionReviewerIcon.LinkedIn,
+        },
+        { name: "Bob" },
+      ]);
+
+      expect(action.reviewers).toEqual([
+        { name: "Jane", url: "https://example.com", icon: "linkedin" },
+        { name: "Bob" },
+      ]);
+
+      const rows = await reviewerRepo.find({
+        where: { actionId: action.id },
+        order: { position: "ASC" },
+      });
+      expect(rows.map((row) => [row.name, row.position])).toEqual([
+        ["Jane", 0],
+        ["Bob", 1],
+      ]);
+    });
+
+    it("rejects a nameless reviewer instead of failing to build the DTO", async () => {
+      const res = await request(ctx.app.getHttpServer())
+        .post("/actions/create")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send(
+          withReviewers("Nameless Reviewer", [
+            { url: "https://example.com" },
+          ] as CreateActionDto["reviewers"]),
+        );
+
+      expect(res.status).toBe(400);
+    });
+
+    it("replaces the whole list on update", async () => {
+      const action = await createAction("Replaced Reviewers", [
+        { name: "Jane" },
+        { name: "Bob" },
+      ]);
+
+      const res = await request(ctx.app.getHttpServer())
+        .patch(`/actions/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ reviewers: [{ name: "Carol" }] })
+        .expect(200);
+
+      expect(res.body.reviewers).toEqual([{ name: "Carol" }]);
+      expect(await reviewerRepo.countBy({ actionId: action.id })).toBe(1);
+    });
+
+    it("leaves reviewers alone when the update omits them", async () => {
+      const action = await createAction("Kept Reviewers", [{ name: "Jane" }]);
+
+      const res = await request(ctx.app.getHttpServer())
+        .patch(`/actions/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ name: "Kept Reviewers Renamed" })
+        .expect(200);
+
+      expect(res.body.reviewers).toEqual([{ name: "Jane" }]);
+    });
+
+    it("loads reviewers for the public list and the timeline feed", async () => {
+      const action = await createAction("Widely Served", [{ name: "Jane" }]);
+      const entity = await actionRepo.findOneOrFail({
+        where: { id: action.id },
+      });
+      await eventRepo.save([
+        eventRepo.create({
+          title: "Planned",
+          description: "Planned",
+          newStatus: ActionStatus.Planned,
+          date: new Date(Date.now() - 1000 * 60 * 60 * 2),
+          action: entity,
+        }),
+        eventRepo.create({
+          title: "Started",
+          description: "Started",
+          newStatus: ActionStatus.MemberAction,
+          date: new Date(Date.now() - 1000 * 60 * 60),
+          action: entity,
+        }),
+      ]);
+
+      const publicRes = await request(ctx.app.getHttpServer())
+        .get("/actions/public")
+        .expect(200);
+      expect(
+        publicRes.body.find((a: ActionDto) => a.id === action.id)?.reviewers,
+      ).toEqual([{ name: "Jane" }]);
+
+      const timelineRes = await request(ctx.app.getHttpServer())
+        .get("/actions/timeline-feed")
+        .expect(200);
+      expect(
+        timelineRes.body.find(
+          (item: { action: ActionDto }) => item.action.id === action.id,
+        )?.action.reviewers,
+      ).toEqual([{ name: "Jane" }]);
+    });
+
+    it("loads reviewers for suite actions and for archive/unarchive", async () => {
+      const suite = await request(ctx.app.getHttpServer())
+        .post("/actions/createSuite")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ name: "Reviewed Suite" })
+        .expect(201);
+
+      const action = await createAction("Suited Action", [{ name: "Jane" }], {
+        suiteId: suite.body.id,
+      });
+
+      const suiteRes = await request(ctx.app.getHttpServer())
+        .get(`/actions/suite/${suite.body.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      expect(
+        suiteRes.body.actions.find((a: ActionDto) => a.id === action.id)
+          ?.reviewers,
+      ).toEqual([{ name: "Jane" }]);
+
+      const archived = await request(ctx.app.getHttpServer())
+        .post(`/actions/archive/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(201);
+      expect(archived.body.reviewers).toEqual([{ name: "Jane" }]);
+
+      const unarchived = await request(ctx.app.getHttpServer())
+        .post(`/actions/unarchive/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(201);
+      expect(unarchived.body.reviewers).toEqual([{ name: "Jane" }]);
+    });
+
+    it("round-trips reviewers through export and pasteJson", async () => {
+      const action = await createAction("Exported Action", [
+        { name: "Jane", url: "https://example.com" },
+        { name: "Bob" },
+      ]);
+
+      const exported = await request(ctx.app.getHttpServer())
+        .get(`/actions/export/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      expect(exported.body.reviewers).toHaveLength(2);
+
+      const imported = await request(ctx.app.getHttpServer())
+        .post("/actions/pasteJson")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ body: JSON.stringify(exported.body) })
+        .expect(201);
+      expect(imported.body.reviewers).toEqual([
+        { name: "Jane", url: "https://example.com" },
+        { name: "Bob" },
+      ]);
+    });
+
+    const pasteWithReviewers = (reviewers: unknown) =>
+      request(ctx.app.getHttpServer())
+        .post("/actions/pasteJson")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          body: JSON.stringify({
+            name: "Pasted Action",
+            category: "category",
+            body: "Body",
+            reviewers,
+          }),
+        });
+
+    it("rejects an imported reviewer the request DTO would reject", async () => {
+      await pasteWithReviewers([{ url: "https://example.com" }]).expect(400);
+      await pasteWithReviewers([{ name: "Jane", url: "not-a-url" }]).expect(400);
+      await pasteWithReviewers([
+        { name: "Jane", icon: "myspace" },
+      ]).expect(400);
+      await pasteWithReviewers("Jane").expect(400);
+      await pasteWithReviewers(
+        Array.from({ length: ACTION_REVIEWERS_MAX + 1 }, () => ({
+          name: "Jane",
+        })),
+      ).expect(400);
+    });
+
+    it("imports an action with no reviewers key at all", async () => {
+      const res = await pasteWithReviewers(undefined).expect(201);
+      expect(res.body.reviewers).toEqual([]);
     });
   });
 

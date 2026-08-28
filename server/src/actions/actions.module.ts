@@ -38,6 +38,7 @@ import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionEvent } from "./entities/action-event.entity";
 import { ActionFormAssignment } from "./entities/action-form-assignment.entity";
 import { ActionFormVariant } from "./entities/action-form-variant.entity";
+import { ActionReviewer } from "./entities/action-reviewer.entity";
 import { ActionSuite } from "./entities/action-suite.entity";
 import { ActionUpdate } from "./entities/action-update.entity";
 import { Action } from "./entities/action.entity";
@@ -58,6 +59,7 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
       ActionEventNotif,
       ActionFormAssignment,
       ActionFormVariant,
+      ActionReviewer,
       ActionSuite,
       ActionUpdate,
       Comment,
