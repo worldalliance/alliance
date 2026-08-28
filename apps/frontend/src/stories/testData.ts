@@ -130,6 +130,7 @@ export const testAuthUser: UserDto = {
   referredByCampaignId: null,
   anonymous: false,
   forumDigestPreference: "off",
+  switchedDomainAt: null,
   emailNotifsForActions: false,
   textNotifsForActions: false,
   pushNotifsForActions: false,

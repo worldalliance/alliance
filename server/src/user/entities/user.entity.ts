@@ -221,6 +221,10 @@ export class User {
   })
   forumDigestPreference: ForumDigestPreference;
 
+  @Column({ type: "timestamptz", nullable: true })
+  @ApiProperty({ type: Date, nullable: true })
+  switchedDomainAt: Date | null;
+
   @Column()
   @IsNotEmpty()
   password: string;

@@ -326,6 +326,13 @@ export class UserService {
     });
   }
 
+  async markDomainSwitched(id: number): Promise<void> {
+    await this.userRepository.update(
+      { id, switchedDomainAt: IsNull() },
+      { switchedDomainAt: new Date() },
+    );
+  }
+
   async setPassword(id: number, password: string): Promise<User> {
     const user = await this.findOneOrFail(id);
     user.password = password;

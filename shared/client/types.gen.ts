@@ -666,6 +666,7 @@ export type User = {
     socialNotifsPreference: NotificationPreference;
     turnedOffAllNotifs: boolean;
     forumDigestPreference: ForumDigestPreference;
+    switchedDomainAt: string | null;
     admin: boolean;
     staff: boolean;
     staffTitle: string | null;
@@ -743,6 +744,7 @@ export type UserDto = {
     sharePhoneNumberWithCommunityLead: boolean;
     turnedOffAllNotifs: boolean;
     forumDigestPreference: ForumDigestPreference;
+    switchedDomainAt: string | null;
     admin: boolean;
     staff: boolean;
     ambassador: boolean;
@@ -931,6 +933,7 @@ export type UserAdminDetailDto = {
     sharePhoneNumberWithCommunityLead: boolean;
     turnedOffAllNotifs: boolean;
     forumDigestPreference: ForumDigestPreference;
+    switchedDomainAt: string | null;
     admin: boolean;
     staff: boolean;
     ambassador: boolean;
@@ -4168,6 +4171,30 @@ export type UserUpdateResponses = {
 };
 
 export type UserUpdateResponse = UserUpdateResponses[keyof UserUpdateResponses];
+
+export type UserSwitchDomainData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/switch-domain';
+};
+
+export type UserSwitchDomainErrors = {
+    401: HeyApiError;
+};
+
+export type UserSwitchDomainError = UserSwitchDomainErrors[keyof UserSwitchDomainErrors];
+
+export type UserSwitchDomainResponses = {
+    /**
+     * Opted in to the new domain
+     */
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserSwitchDomainResponse = UserSwitchDomainResponses[keyof UserSwitchDomainResponses];
 
 export type UserMyLocationData = {
     body?: never;

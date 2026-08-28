@@ -216,6 +216,7 @@ export class UserDto extends PickType(User, [
   "textNotifsForActions",
   "profileDescription",
   "forumDigestPreference",
+  "switchedDomainAt",
   "turnedOffAllNotifs",
   "referralCode",
   "referralSource",
@@ -278,6 +279,7 @@ export class UserDto extends PickType(User, [
       user.sharePhoneNumberWithCommunityLead;
     this.turnedOffAllNotifs = user.turnedOffAllNotifs;
     this.forumDigestPreference = user.forumDigestPreference;
+    this.switchedDomainAt = user.switchedDomainAt;
     this.admin = user.admin;
     this.staff = user.staff;
     this.ambassador = user.ambassador;

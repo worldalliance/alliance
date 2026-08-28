@@ -37,6 +37,7 @@ export const testUser = new User({
   pushesForFriendRequests: false,
   turnedOffAllNotifs: false,
   forumDigestPreference: ForumDigestPreference.Off,
+  switchedDomainAt: null,
   password: "",
   admin: false,
   staff: false,

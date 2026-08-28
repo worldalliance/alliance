@@ -11,6 +11,7 @@ export const FORM_BUILDER_PREVIEW_USER: UserDto = {
   pushNotifsForActions: false,
   turnedOffAllNotifs: false,
   forumDigestPreference: "off",
+  switchedDomainAt: null,
   admin: false,
   staff: false,
   ambassador: false,

@@ -22,7 +22,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import posthog from "posthog-js";
 import { testAuthUser } from "../stories/testData";
 
-interface AuthContextType {
+export interface AuthContextType {
   isAuthenticated: boolean;
   user: UserDto | undefined;
   isImpersonation: boolean;
@@ -33,7 +33,9 @@ interface AuthContextType {
   loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(
+  undefined,
+);
 
 export const AuthProvider: React.FC<
   React.PropsWithChildren<{ queryClient: QueryClient }>

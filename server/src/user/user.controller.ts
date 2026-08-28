@@ -224,6 +224,14 @@ export class UserController {
     );
   }
 
+  @Post("switch-domain")
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ description: "Opted in to the new domain" })
+  @ApiUnauthorizedResponse()
+  async switchDomain(@Request() req: JwtRequest): Promise<void> {
+    await this.userService.markDomainSwitched(req.user.sub);
+  }
+
   @Get("mylocation")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: MaybeUserLocationDto })

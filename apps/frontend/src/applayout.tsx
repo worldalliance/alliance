@@ -4,6 +4,7 @@ import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { useEffect } from "react";
 import { href, Outlet, useNavigate, useNavigation } from "react-router";
+import DomainMigrationModal from "./components/DomainMigrationModal";
 import { useAuth } from "./lib/AuthContext";
 
 export function HydrateFallback() {
@@ -78,6 +79,7 @@ export default function AppLayout() {
   return (
     <>
       <Outlet />
+      <DomainMigrationModal />
       {isStaging() && (
         <div
           className={cn(
