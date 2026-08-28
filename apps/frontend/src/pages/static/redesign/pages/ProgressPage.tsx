@@ -12,7 +12,12 @@ import {
   STATS_TITLE,
 } from "../pageContent";
 import { ImpactCard } from "../sections/PageCards";
-import { PageBand, PageShell, BandHeading, BandLede } from "../sections/PageShell";
+import {
+  BandHeading,
+  BandLede,
+  PageBand,
+  PageShell,
+} from "../sections/PageShell";
 import { PANEL_GREEN, type RedesignTheme } from "../theme";
 import { RdTexturedPanel } from "../ui";
 

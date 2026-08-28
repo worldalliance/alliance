@@ -3,15 +3,15 @@
 Seven homepage directions, live at `/redesign`. The page is `noindex` and nothing
 links to it, so it only exists for whoever has this URL.
 
-| | |
-| --- | --- |
-| [`/redesign?v=1`](/redesign?v=1) | Blue, Caslon headline, photo hero |
-| [`/redesign?v=2`](/redesign?v=2) | Green, Neoris headline, video hero |
-| [`/redesign?v=3`](/redesign?v=3) | Green, Galdeano, centred, network animation |
-| [`/redesign?v=4`](/redesign?v=4) | Blue, notification animation hero, headline below |
-| [`/redesign?v=5`](/redesign?v=5) | Version 4, hero is a row of activity off both edges |
+|                                  |                                                                    |
+| -------------------------------- | ------------------------------------------------------------------ |
+| [`/redesign?v=1`](/redesign?v=1) | Blue, Caslon headline, photo hero                                  |
+| [`/redesign?v=2`](/redesign?v=2) | Green, Neoris headline, video hero                                 |
+| [`/redesign?v=3`](/redesign?v=3) | Green, Galdeano, centred, network animation                        |
+| [`/redesign?v=4`](/redesign?v=4) | Blue, notification animation hero, headline below                  |
+| [`/redesign?v=5`](/redesign?v=5) | Version 4, hero is a row of activity off both edges                |
 | [`/redesign?v=6`](/redesign?v=6) | Version 4, hero is the feed and an opened post beside the headline |
-| [`/redesign?v=7`](/redesign?v=7) | Version 4, hero is a panel over the video, cards either side |
+| [`/redesign?v=7`](/redesign?v=7) | Version 4, hero is a panel over the video, cards either side       |
 
 Switch between them with the pill at the bottom of the screen, or edit the `v`
 param. Anything else falls back to version 1.
@@ -51,16 +51,16 @@ read on a long doc page and a form as well as the home page. Every nav link,
 footer link, and in-page cross-reference carries the version with it, which is
 what `rdHref` in `links.ts` is for. Drop the `v` and you land on version 1.
 
-| | |
-| --- | --- |
-| `/redesign/people` | Expert group, office, member grid |
-| `/redesign/guide` | The guide, with a contents list that tracks the scroll |
-| `/redesign/progress` | Headline figures, then every action that has closed |
-| `/redesign/partner` | The outreach pitch and its signup form |
-| `/redesign/join` | The request-to-join form |
-| `/redesign/faq` | Accordion, one question per row |
-| `/redesign/governance`, `/redesign/foundation` | The two founding documents |
-| `/redesign/privacy`, `/redesign/terms` | The legal pages |
+|                                                |                                                        |
+| ---------------------------------------------- | ------------------------------------------------------ |
+| `/redesign/people`                             | Expert group, office, member grid                      |
+| `/redesign/guide`                              | The guide, with a contents list that tracks the scroll |
+| `/redesign/progress`                           | Headline figures, then every action that has closed    |
+| `/redesign/partner`                            | The outreach pitch and its signup form                 |
+| `/redesign/join`                               | The request-to-join form                               |
+| `/redesign/faq`                                | Accordion, one question per row                        |
+| `/redesign/governance`, `/redesign/foundation` | The two founding documents                             |
+| `/redesign/privacy`, `/redesign/terms`         | The legal pages                                        |
 
 Copy comes from the pages the live site already serves. `pageContent.ts`
 holds it where it has structure, such as the expert list and the partner offers.

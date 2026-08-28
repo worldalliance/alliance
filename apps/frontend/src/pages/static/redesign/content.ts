@@ -42,21 +42,21 @@ export const priorities: Priority[] = [
     id: "environment",
     title: "Environmental\nDestruction",
     description:
-      "Humanity should not destroy anything that billions of people love without consent. However, the overuse of land for development and agriculture, overexploitation of natural resources, climate change, pollution, and invasive species are driving a mass extinction in nature.",
+      "The overuse of land for development and agriculture, overexploitation of natural resources, climate change, pollution, and invasive species are driving a mass extinction in nature.",
     image: environment,
   },
   {
     id: "democracy",
     title: "Decline of\nDemocratic\nInstitutions",
     description:
-      "Humanity should not exclude anyone from the ability to influence their own futures. However, more countries are losing democratic qualities than at any time since the 1940s, and measures of global freedom have fallen for 19 straight years.",
+      "More countries are losing democratic qualities than at any time since the 1940s, and measures of global freedom have fallen for 19 straight years.",
     image: democracy,
   },
   {
     id: "technology",
     title: "Development of\nDangerous\nTechnology",
     description:
-      "Humanity should not take massive risks on behalf of billions of people. However, biotechnology is lowering the barrier to engineering deadly pathogens, and experts warn that artificial intelligence poses a risk of human extinction.",
+      "Biotechnology is lowering the barrier to engineering deadly pathogens, and experts warn that artificial intelligence poses a risk of human extinction.",
     image: technology,
   },
 ];

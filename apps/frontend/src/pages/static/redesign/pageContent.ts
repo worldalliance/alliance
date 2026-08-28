@@ -108,7 +108,8 @@ export const MEMBERS_TITLE = "Members";
 export const MEMBERS_NOTE =
   "This directory only includes members who have chosen to make their information public.";
 /** Reads as "The Alliance has 225 members. Membership is …". */
-export const MEMBERS_INVITE_ONLY = "Membership is currently by invitation only.";
+export const MEMBERS_INVITE_ONLY =
+  "Membership is currently by invitation only.";
 
 export type DirectoryMember = {
   name: string;
