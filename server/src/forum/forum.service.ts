@@ -1333,13 +1333,16 @@ export class ForumService {
   }
 
   async togglePinComment(commentId: number): Promise<Comment> {
-    const comment = await this.commentRepository.findOneOrFail({
+    await this.commentRepository
+      .createQueryBuilder()
+      .update(Comment)
+      .set({ pinned: () => `NOT "pinned"` })
+      .where("id = :commentId", { commentId })
+      .execute();
+
+    return this.commentRepository.findOneOrFail({
       where: { id: commentId },
       relations: { author: true, editableContent: true, likes: true },
     });
-
-    comment.pinned = !comment.pinned;
-
-    return this.commentRepository.save(comment);
   }
 }

@@ -742,6 +742,47 @@ describe("Forum (e2e)", () => {
         } satisfies CreateCommentDto)
         .expect(404);
     });
+
+    it("lands both halves of two pins racing each other", async () => {
+      const replyResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "Pinned From Both Sides", attachments: [] },
+          parentObjectId: testPostId,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+
+      const replyId = replyResponse.body.id;
+
+      const pins = await withLockHeld(
+        {
+          query: "select id from comment where id = $1 for update",
+          params: [replyId],
+        },
+        async () => {
+          const inFlight = [1, 2].map(() =>
+            request(ctx.app.getHttpServer())
+              .patch(`/forum/admin/comments/${replyId}/pin`)
+              .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+              .then((res) => res),
+          );
+          await waitForBlockedBackends(2);
+          return inFlight;
+        },
+      );
+
+      for (const pin of await Promise.all(pins)) {
+        expect(pin.status).toBe(200);
+      }
+
+      const [stored] = await ctx.dataSource.query<[{ pinned: boolean }]>(
+        `select pinned from comment where id = $1`,
+        [replyId],
+      );
+      expect(stored.pinned).toBe(false);
+    });
   });
 
   describe("Additional endpoints", () => {
