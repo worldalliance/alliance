@@ -72,6 +72,27 @@ describe("Forum (e2e)", () => {
     throw new Error(`fewer than ${count} backends ever blocked`);
   };
 
+  /** Holds `lock` in an open transaction while `body` runs, then commits. The
+   * commit sits in a finally, so a body that throws still frees the lock
+   * instead of parking every later test on it. Requests left in flight come
+   * back in a tuple: returned bare, the async body awaits one, and what it is
+   * waiting on is this lock. */
+  const withLockHeld = async <T>(
+    lock: { query: string; params?: unknown[] },
+    body: () => Promise<T>,
+  ): Promise<T> => {
+    const gate = ctx.dataSource.createQueryRunner();
+    await gate.connect();
+    await gate.startTransaction();
+    try {
+      await gate.query(lock.query, lock.params);
+      return await body();
+    } finally {
+      await gate.commitTransaction();
+      await gate.release();
+    }
+  };
+
   beforeAll(async () => {
     ctx = await createTestApp([]);
     actionRepo = ctx.dataSource.getRepository(Action);
@@ -1541,34 +1562,30 @@ describe("Forum (e2e)", () => {
       // The authors save reads the post's join rows last, so holding that
       // table parks it on the columns it has already read, which is the window
       // a settings write used to land in and lose.
-      const gate = ctx.dataSource.createQueryRunner();
-      await gate.connect();
-      await gate.startTransaction();
-      await gate.query(
-        'lock table "post_authors_user" in access exclusive mode',
+      const [authorsInFlight, settingsInFlight] = await withLockHeld(
+        { query: 'lock table "post_authors_user" in access exclusive mode' },
+        async () => {
+          const authors = request(ctx.app.getHttpServer())
+            .patch(`/forum/admin/posts/${postId}/authors`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .send({ authorIds: [ctx.testUserId, coAuthor.id] })
+            .then((res) => res);
+          await waitForBlockedBackends(1);
+
+          let settingsWritten = false;
+          const settings = ctx.dataSource
+            .query(
+              `update post set "qaMode" = true, "expertLabel" = $2,
+                 "notifyForReplies" = true, "showClusterTags" = true where id = $1`,
+              [postId, "AMA Guest"],
+            )
+            .then(() => {
+              settingsWritten = true;
+            });
+          await waitForBlockedBackends(2, () => settingsWritten);
+          return [authors, settings] as const;
+        },
       );
-
-      const authorsInFlight = request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
-        .then((res) => res);
-      await waitForBlockedBackends(1);
-
-      let settingsWritten = false;
-      const settingsInFlight = ctx.dataSource
-        .query(
-          `update post set "qaMode" = true, "expertLabel" = $2,
-             "notifyForReplies" = true, "showClusterTags" = true where id = $1`,
-          [postId, "AMA Guest"],
-        )
-        .then(() => {
-          settingsWritten = true;
-        });
-      await waitForBlockedBackends(2, () => settingsWritten);
-
-      await gate.commitTransaction();
-      await gate.release();
 
       const [authorsResponse] = await Promise.all([
         authorsInFlight,
