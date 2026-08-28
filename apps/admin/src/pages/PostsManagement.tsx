@@ -354,6 +354,7 @@ const PostsManagementPage: React.FC = () => {
                     </label>
                     <input
                       type="text"
+                      maxLength={64}
                       value={expertLabel}
                       onChange={(e) => setExpertLabel(e.target.value)}
                       placeholder="Expert"

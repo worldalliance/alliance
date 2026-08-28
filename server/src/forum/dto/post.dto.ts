@@ -5,12 +5,15 @@ import {
   PartialType,
   PickType,
 } from "@nestjs/swagger";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsArray,
+  IsBoolean,
   IsDefined,
   IsInt,
   IsOptional,
+  IsString,
+  MaxLength,
   ValidateNested,
 } from "class-validator";
 import { ActionDto } from "src/actions/dto/action.dto";
@@ -168,19 +171,26 @@ export class UpdatePostExpertsDto {
   expertIds: number[];
 
   @ApiProperty()
-  @IsDefined()
+  @IsBoolean()
   qaMode: boolean;
 
   @ApiPropertyOptional({ type: String, nullable: true })
   @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.trim() || null : value,
+  )
+  @IsString()
+  @MaxLength(64)
   expertLabel?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsBoolean()
   notifyForReplies?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsBoolean()
   showClusterTags?: boolean;
 }
 

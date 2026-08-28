@@ -1947,7 +1947,40 @@ describe("Forum (e2e)", () => {
         .expect(400);
     });
 
-    it("clears the expert label only when the save sends null", async () => {
+    it("refuses an experts save whose settings are the wrong type", async () => {
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Whose Experts Save Carries A Word For A Flag",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      const rejected = await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/experts`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ expertIds: [], qaMode: "nope" })
+        .expect(400);
+      expect(rejected.body.message).toContain("qaMode must be a boolean value");
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/experts`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ expertIds: [], qaMode: true, expertLabel: { deeply: "nested" } })
+        .expect(400);
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/experts`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ expertIds: [], qaMode: true, expertLabel: "A".repeat(65) })
+        .expect(400);
+    });
+
+    it("trims an expert label and clears one the save blanks out", async () => {
       const postResponse = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
         .set("Authorization", `Bearer ${ctx.accessToken}`)
@@ -1973,8 +2006,15 @@ describe("Forum (e2e)", () => {
       const untouched = await patchExperts({});
       expect(untouched.body.expertLabel).toBe("AMA Guest");
 
+      const padded = await patchExperts({ expertLabel: "  AMA Guest  " });
+      expect(padded.body.expertLabel).toBe("AMA Guest");
+
       const cleared = await patchExperts({ expertLabel: null });
       expect(cleared.body.expertLabel).toBeNull();
+
+      await patchExperts({ expertLabel: "AMA Guest" });
+      const blanked = await patchExperts({ expertLabel: "   " });
+      expect(blanked.body.expertLabel).toBeNull();
     });
 
     it("moves a post up the feed when its authors change", async () => {
