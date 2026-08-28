@@ -1,6 +1,11 @@
-import { ApiProperty, PartialType, PickType } from "@nestjs/swagger";
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  PartialType,
+  PickType,
+} from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsNumber } from "class-validator";
+import { Allow, IsNumber, IsOptional, IsString } from "class-validator";
 import { Community } from "src/community/entities/community.entity";
 import { getImageSource } from "src/images/images.service";
 import { ProfileDto } from "src/user/dto/user.dto";
@@ -30,7 +35,7 @@ export class CommunityDto extends PickType(Community, [
     this.id = community.id;
     this.name = community.name;
     this.description = community.description;
-    this.photo = community.photo ? getImageSource(community.photo) : undefined;
+    this.photo = community.photo ? getImageSource(community.photo) : null;
     this.public = community.public;
     this.allowMemberInvites = community.allowMemberInvites;
     this.allowStaffAssignments = community.allowStaffAssignments;
@@ -47,14 +52,20 @@ export class CommunityDto extends PickType(Community, [
 export class CreateCommunityDto extends PickType(CommunityDto, [
   "name",
   "description",
-  "photo",
   "public",
   "allowMemberInvites",
   "allowStaffAssignments",
   "maxCapacity",
-]) {}
+]) {
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsOptional()
+  @IsString()
+  photo?: string | null;
+}
 
-export class UpdateCommunityDto extends PartialType(CreateCommunityDto) {}
+export class UpdateCommunityDto extends PartialType(CreateCommunityDto, {
+  skipNullProperties: false,
+}) {}
 
 export class CommunityMemberDto {
   @ApiProperty()

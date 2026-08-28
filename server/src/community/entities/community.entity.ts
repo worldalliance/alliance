@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsDefined, IsOptional } from "class-validator";
+import { Allow, IsDefined, IsOptional, IsString } from "class-validator";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -45,17 +45,15 @@ export class Community {
   @Allow()
   name: string;
 
-  @Column({ nullable: true })
+  @Column({ default: "" })
   @ApiProperty()
-  @Allow()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
+  @IsString()
   description: string;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  photo?: string;
+  photo: string | null;
 
   @CreateDateColumnTz()
   @Allow()

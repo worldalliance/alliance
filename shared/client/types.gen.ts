@@ -573,7 +573,7 @@ export type Community = {
     id: number;
     name: string;
     description: string;
-    photo?: string;
+    photo: string | null;
     public: boolean;
     allowMemberInvites: boolean;
     allowStaffAssignments: boolean;
@@ -1148,7 +1148,7 @@ export type CommunityDto = {
     id: number;
     name: string;
     description: string;
-    photo?: string;
+    photo: string | null;
     public: boolean;
     allowMemberInvites: boolean;
     allowStaffAssignments: boolean;
@@ -1526,21 +1526,21 @@ export type EventLogListDto = {
 export type CreateCommunityDto = {
     name: string;
     description: string;
-    photo?: string;
     public: boolean;
     allowMemberInvites: boolean;
     allowStaffAssignments: boolean;
     maxCapacity: number | null;
+    photo?: string | null;
 };
 
 export type UpdateCommunityDto = {
     name?: string;
     description?: string;
-    photo?: string;
     public?: boolean;
     allowMemberInvites?: boolean;
     allowStaffAssignments?: boolean;
     maxCapacity?: number | null;
+    photo?: string | null;
 };
 
 export type CommunityMemberDto = {
