@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import {
   ACTION_PARTNERSHIP_RESPONSE_THROTTLE,
+  JOIN_REQUEST_THROTTLE,
   SIGNUP_THROTTLE,
 } from "src/auth/signup-throttle.config";
 import { LINK_PREVIEW_THROTTLE } from "src/link-preview/link-preview-throttle.config";
@@ -56,6 +57,7 @@ describe("ALL_THROTTLES", () => {
     const groups = [
       SIGNUP_THROTTLE,
       ACTION_PARTNERSHIP_RESPONSE_THROTTLE,
+      JOIN_REQUEST_THROTTLE,
       LINK_PREVIEW_THROTTLE,
     ];
     const totalNames = groups.reduce(
