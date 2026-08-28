@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
+import { ApiProperty, PickType } from "@nestjs/swagger";
 import { Video } from "../entities/video.entity";
 
 export class UploadVideoResponseDto extends PickType(Video, ["id", "key"]) {
@@ -24,7 +24,6 @@ export class VideoListItemDto extends PickType(Video, [
   "originalFilename",
   "mime",
   "size",
-  "duration",
 ]) {
   @ApiProperty()
   dateCreated: Date;
@@ -39,7 +38,6 @@ export class VideoListItemDto extends PickType(Video, [
     this.originalFilename = input.originalFilename;
     this.mime = input.mime;
     this.size = input.size;
-    this.duration = input.duration;
     this.dateCreated = input.dateCreated;
     this.dateUpdated = input.dateUpdated;
   }
@@ -73,59 +71,6 @@ export class VideoSegmentDto {
   }
 }
 
-export type VideoProcessingInfo = {
-  codec: string;
-  preset: string;
-  crf: number;
-  maxrate: string;
-  bufsize: string;
-  scale: string;
-  audioCodec: string;
-  audioBitrate: string;
-  hlsTime: number;
-};
-
-export class VideoProcessingInfoDto {
-  @ApiProperty()
-  codec: string;
-
-  @ApiProperty()
-  preset: string;
-
-  @ApiProperty()
-  crf: number;
-
-  @ApiProperty()
-  maxrate: string;
-
-  @ApiProperty()
-  bufsize: string;
-
-  @ApiProperty()
-  scale: string;
-
-  @ApiProperty()
-  audioCodec: string;
-
-  @ApiProperty()
-  audioBitrate: string;
-
-  @ApiProperty()
-  hlsTime: number;
-
-  constructor(input: VideoProcessingInfo) {
-    this.codec = input.codec;
-    this.preset = input.preset;
-    this.crf = input.crf;
-    this.maxrate = input.maxrate;
-    this.bufsize = input.bufsize;
-    this.scale = input.scale;
-    this.audioCodec = input.audioCodec;
-    this.audioBitrate = input.audioBitrate;
-    this.hlsTime = input.hlsTime;
-  }
-}
-
 export type VideoDetailResponse = {
   video: Video;
   segments: VideoSegment[];
@@ -138,16 +83,12 @@ export class VideoDetailResponseDto extends PickType(Video, [
   "originalFilename",
   "mime",
   "size",
-  "duration",
 ]) {
   @ApiProperty({ isArray: true, type: VideoSegmentDto })
   segments: VideoSegmentDto[];
 
   @ApiProperty()
   totalOutputSize: number;
-
-  @ApiPropertyOptional({ type: VideoProcessingInfoDto })
-  processingInfo?: VideoProcessingInfoDto;
 
   @ApiProperty()
   dateCreated: Date;
@@ -162,14 +103,8 @@ export class VideoDetailResponseDto extends PickType(Video, [
     this.originalFilename = input.video.originalFilename;
     this.mime = input.video.mime;
     this.size = input.video.size;
-    this.duration = input.video.duration;
     this.segments = input.segments.map((s) => new VideoSegmentDto(s));
     this.totalOutputSize = input.totalOutputSize;
-    this.processingInfo = input.video.processingInfo
-      ? new VideoProcessingInfoDto(
-          input.video.processingInfo as unknown as VideoProcessingInfo,
-        )
-      : undefined;
     this.dateCreated = input.video.dateCreated;
     this.dateUpdated = input.video.dateUpdated;
   }

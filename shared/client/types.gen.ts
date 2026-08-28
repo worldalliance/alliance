@@ -165,7 +165,6 @@ export type ActionActivity = {
     actionId: number;
     userId: number;
     createdAt: string;
-    dollar_amount?: number;
     editableContent?: EditableContent;
     likes: Array<User>;
     likesCount: number;
@@ -643,7 +642,6 @@ export type Participant = {
     role: ParticipantRole;
     lastReadMessage?: Message;
     state: ParticipantState;
-    userHidden: boolean;
 };
 
 export type Cluster = {
@@ -1596,7 +1594,6 @@ export type MessageReferenceDto = {
 export type ParticipantDto = {
     role: ParticipantRole;
     state: ParticipantState;
-    userHidden: boolean;
     user: ProfileDto;
     lastReadMessage?: MessageReferenceDto;
 };
@@ -3108,7 +3105,6 @@ export type VideoListItemDto = {
     originalFilename: string;
     mime: string;
     size: number;
-    duration: number | null;
     dateCreated: string;
     dateUpdated: string;
 };
@@ -3123,28 +3119,14 @@ export type VideoSegmentDto = {
     key: string;
 };
 
-export type VideoProcessingInfoDto = {
-    codec: string;
-    preset: string;
-    crf: number;
-    maxrate: string;
-    bufsize: string;
-    scale: string;
-    audioCodec: string;
-    audioBitrate: string;
-    hlsTime: number;
-};
-
 export type VideoDetailResponseDto = {
     id: number;
     key: string;
     originalFilename: string;
     mime: string;
     size: number;
-    duration: number | null;
     segments: Array<VideoSegmentDto>;
     totalOutputSize: number;
-    processingInfo?: VideoProcessingInfoDto;
     dateCreated: string;
     dateUpdated: string;
 };

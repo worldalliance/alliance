@@ -17,13 +17,6 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
-function formatDuration(seconds: number | null): string {
-  if (seconds == null) return "-";
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
 const VideoDetail: React.FC = () => {
   const { videoId } = useParams();
   const navigate = useNavigate();
@@ -67,9 +60,6 @@ const VideoDetail: React.FC = () => {
     );
   }
 
-  const { processingInfo } = video;
-  const hasProcessingInfo = processingInfo != null;
-
   return (
     <div className="bg-white min-h-screen">
       <div className="p-6 pt-10 flex flex-col gap-6 max-w-5xl">
@@ -97,8 +87,6 @@ const VideoDetail: React.FC = () => {
             <dd>{formatSize(video.size)}</dd>
             <dt className="text-zinc-500">Output Size</dt>
             <dd>{formatSize(video.totalOutputSize)}</dd>
-            <dt className="text-zinc-500">Duration</dt>
-            <dd>{formatDuration(video.duration)}</dd>
             <dt className="text-zinc-500">MIME Type</dt>
             <dd>{video.mime}</dd>
             <dt className="text-zinc-500">Created</dt>
@@ -106,52 +94,6 @@ const VideoDetail: React.FC = () => {
             <dt className="text-zinc-500">Updated</dt>
             <dd>{new Date(video.dateUpdated).toLocaleString()}</dd>
           </dl>
-        </Card>
-
-        {/* Processing Settings */}
-        <Card style={CardStyle.White}>
-          <h2 className="font-semibold text-lg mb-3">Processing Settings</h2>
-          {hasProcessingInfo ? (
-            <div className="grid grid-cols-3 gap-x-6 gap-y-2 text-sm">
-              <div>
-                <span className="text-zinc-500">Codec:</span>{" "}
-                {processingInfo.codec}
-              </div>
-              <div>
-                <span className="text-zinc-500">Preset:</span>{" "}
-                {processingInfo.preset}
-              </div>
-              <div>
-                <span className="text-zinc-500">CRF:</span> {processingInfo.crf}
-              </div>
-              <div>
-                <span className="text-zinc-500">Max Rate:</span>{" "}
-                {processingInfo.maxrate}
-              </div>
-              <div>
-                <span className="text-zinc-500">Buffer Size:</span>{" "}
-                {processingInfo.bufsize}
-              </div>
-              <div>
-                <span className="text-zinc-500">Scale:</span>{" "}
-                {processingInfo.scale}
-              </div>
-              <div>
-                <span className="text-zinc-500">Audio Codec:</span>{" "}
-                {processingInfo.audioCodec}
-              </div>
-              <div>
-                <span className="text-zinc-500">Audio Bitrate:</span>{" "}
-                {processingInfo.audioBitrate}
-              </div>
-              <div>
-                <span className="text-zinc-500">HLS Segment Duration:</span>{" "}
-                {processingInfo.hlsTime}s
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-zinc-500">Processing info not found.</p>
-          )}
         </Card>
 
         {/* HLS Segments */}

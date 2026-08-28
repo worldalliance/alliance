@@ -110,8 +110,6 @@ export class VideosService {
         originalFilename: playlist?.originalname ?? files[0].originalname,
         mime: "application/vnd.apple.mpegurl",
         size: totalSize,
-        duration: null,
-        processingInfo: null,
       }),
     );
   }
@@ -187,8 +185,8 @@ export class VideosService {
       ),
     );
 
-    await this.videoRepository.update(video.id, { processingInfo: null });
-    return this.videoRepository.findOneBy({ id });
+    video.dateUpdated = new Date();
+    return this.videoRepository.save(video);
   }
 
   async deleteVideo(id: number): Promise<boolean> {

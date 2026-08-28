@@ -81,18 +81,6 @@ export class ActionActivity {
   @ApiProperty()
   createdAt: Date;
 
-  @Column({ type: "text", nullable: true })
-  @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  metadata?: string;
-
-  // just for donation-based actions
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  dollar_amount?: number;
-
   @OneToOne(() => EditableContent, {
     cascade: true,
     onDelete: "CASCADE",

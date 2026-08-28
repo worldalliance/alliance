@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict eT75e0Zv0WJF3xc1URHZLBxqQZZ2002bz9qt59F1XIroquCzUZHkydNO20bTy5m
+\restrict 9ohbWRfVJiPIk42Dm9tv0jBy8VhwkvjSbGR9yKYrvQ9kOjslMytTn9BXOjTLvM5
 
 -- Dumped from database version 18.3 (Homebrew)
 -- Dumped by pg_dump version 18.3 (Homebrew)
@@ -669,24 +669,24 @@ COPY public.form_response (id, "formId", answers, "userId", "visibilityValidator
 -- Data for Name: action_activity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.action_activity (id, "actionId", "userId", metadata, dollar_amount, type, "editableContentId", "declineReason", "isMoral", "outOfTime", "taskFormResponseId", "likesCount", source, "createdAt") FROM stdin;
-679	11	10	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 02:35:45.797213-07
-678	10	10	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 02:35:45.797214-07
-677	9	10	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 02:35:45.797215-07
-676	11	7	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 02:34:45.797213-07
-675	10	7	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 02:34:45.797214-07
-674	9	7	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 02:34:45.797215-07
-681	26	15	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 05:20:45.797213-07
-687	13	10	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 06:02:45.797213-07
-686	12	10	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 06:02:45.797214-07
-685	13	7	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 06:02:45.797215-07
-201	12	7	\N	\N	user_completed	\N	\N	\N	\N	\N	1	user	2025-09-30 23:10:42.026928-07
-660	10	11	\N	\N	user_completed	\N	\N	\N	\N	\N	1	user	2025-10-19 02:28:45.797213-07
-1108	60	11	\N	\N	user_dismissed	\N	\N	\N	\N	\N	0	user	2026-01-13 23:36:25.529804-08
-1220	66	24	\N	\N	user_dismissed	\N	\N	\N	\N	\N	0	user	2026-01-16 03:31:05.981852-08
-1222	66	11	\N	\N	user_dismissed	\N	\N	\N	\N	\N	0	user	2026-01-16 04:42:08.877048-08
-1219	62	24	\N	\N	user_dismissed	\N	\N	\N	\N	\N	0	user	2026-01-16 03:31:04.234883-08
-1337	70	15	\N	\N	user_dismissed	\N	\N	\N	\N	\N	0	user	2026-01-28 23:53:58.857424-08
+COPY public.action_activity (id, "actionId", "userId", type, "editableContentId", "declineReason", "isMoral", "outOfTime", "taskFormResponseId", "likesCount", source, "createdAt") FROM stdin;
+679	11	10	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 02:35:45.797213-07
+678	10	10	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 02:35:45.797214-07
+677	9	10	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 02:35:45.797215-07
+676	11	7	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 02:34:45.797213-07
+675	10	7	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 02:34:45.797214-07
+674	9	7	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 02:34:45.797215-07
+681	26	15	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 05:20:45.797213-07
+687	13	10	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 06:02:45.797213-07
+686	12	10	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 06:02:45.797214-07
+685	13	7	user_completed	\N	\N	\N	\N	\N	0	user	2025-10-19 06:02:45.797215-07
+201	12	7	user_completed	\N	\N	\N	\N	\N	1	user	2025-09-30 23:10:42.026928-07
+660	10	11	user_completed	\N	\N	\N	\N	\N	1	user	2025-10-19 02:28:45.797213-07
+1108	60	11	user_dismissed	\N	\N	\N	\N	\N	0	user	2026-01-13 23:36:25.529804-08
+1220	66	24	user_dismissed	\N	\N	\N	\N	\N	0	user	2026-01-16 03:31:05.981852-08
+1222	66	11	user_dismissed	\N	\N	\N	\N	\N	0	user	2026-01-16 04:42:08.877048-08
+1219	62	24	user_dismissed	\N	\N	\N	\N	\N	0	user	2026-01-16 03:31:04.234883-08
+1337	70	15	user_dismissed	\N	\N	\N	\N	\N	0	user	2026-01-28 23:53:58.857424-08
 \.
 
 
@@ -2066,9 +2066,9 @@ COPY public.onetime_invite_request (id, invitee, "inviteeDescription", "createdA
 -- Data for Name: participant; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.participant (id, role, state, "joinedAt", "createdAt", "updatedAt", "conversationId", "userId", "lastReadMessageId", "userHidden") FROM stdin;
-270	member	joined	2026-02-11 11:28:15.061-08	2026-02-11 11:28:15.061672-08	2026-02-11 11:28:15.061672-08	84	15	\N	f
-271	admin	joined	2026-02-11 11:28:15.061-08	2026-02-11 11:28:15.064959-08	2026-02-11 11:28:15.064959-08	84	24	\N	f
+COPY public.participant (id, role, state, "joinedAt", "createdAt", "updatedAt", "conversationId", "userId", "lastReadMessageId") FROM stdin;
+270	member	joined	2026-02-11 11:28:15.061-08	2026-02-11 11:28:15.061672-08	2026-02-11 11:28:15.061672-08	84	15	\N
+271	admin	joined	2026-02-11 11:28:15.061-08	2026-02-11 11:28:15.064959-08	2026-02-11 11:28:15.064959-08	84	24	\N
 \.
 
 
@@ -2280,7 +2280,7 @@ COPY public.user_device ("deviceType", "expoPushToken", "updatedAt", "createdAt"
 -- Data for Name: video; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.video (id, key, "originalFilename", mime, size, duration, "dateCreated", "dateUpdated", "processingInfo") FROM stdin;
+COPY public.video (id, key, "originalFilename", mime, size, "dateCreated", "dateUpdated") FROM stdin;
 \.
 
 
@@ -2568,7 +2568,7 @@ SELECT pg_catalog.setval('public.mail_id_seq', 752, true);
 -- Name: migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.migrations_id_seq', 357, true);
+SELECT pg_catalog.setval('public.migrations_id_seq', 358, true);
 
 
 --
@@ -2687,5 +2687,5 @@ SELECT pg_catalog.setval('public.video_id_seq', 1, false);
 -- PostgreSQL database dump complete
 --
 
-\unrestrict eT75e0Zv0WJF3xc1URHZLBxqQZZ2002bz9qt59F1XIroquCzUZHkydNO20bTy5m
+\unrestrict 9ohbWRfVJiPIk42Dm9tv0jBy8VhwkvjSbGR9yKYrvQ9kOjslMytTn9BXOjTLvM5
 

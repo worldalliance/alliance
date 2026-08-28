@@ -27,14 +27,6 @@ export class Video {
   @ApiProperty()
   size: number;
 
-  @Column({ type: "float", nullable: true })
-  @ApiProperty({ nullable: true })
-  duration: number | null;
-
-  @Column({ type: "jsonb", nullable: true })
-  @ApiProperty({ nullable: true })
-  processingInfo: Record<string, unknown> | null;
-
   @CreateDateColumnTz()
   dateCreated: Date;
 

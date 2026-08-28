@@ -69,10 +69,6 @@ export class Participant {
   @Column({ type: "timestamptz" })
   joinedAt: Date;
 
-  @Column({ type: "boolean", default: false })
-  @ApiProperty({ type: Boolean })
-  userHidden: boolean;
-
   @CreateDateColumnTz()
   createdAt: Date;
 

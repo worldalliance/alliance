@@ -15,13 +15,6 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
-function formatDuration(seconds: number | null): string {
-  if (seconds == null) return "-";
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
 const VideoManagement: React.FC = () => {
   const [videos, setVideos] = useState<VideoListItemDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +94,6 @@ const VideoManagement: React.FC = () => {
                   <th className="py-3 px-2">Filename</th>
                   <th className="py-3 px-2">ID</th>
                   <th className="py-3 px-2">Size</th>
-                  <th className="py-3 px-2">Duration</th>
                   <th className="py-3 px-2">Created</th>
                   <th className="py-3 px-2"></th>
                 </tr>
@@ -118,9 +110,6 @@ const VideoManagement: React.FC = () => {
                     </td>
                     <td className="py-3 px-2 text-zinc-500">{video.id}</td>
                     <td className="py-3 px-2">{formatSize(video.size)}</td>
-                    <td className="py-3 px-2">
-                      {formatDuration(video.duration)}
-                    </td>
                     <td className="py-3 px-2 text-zinc-500">
                       {new Date(video.dateCreated).toLocaleDateString()}
                     </td>

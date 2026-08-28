@@ -167,18 +167,6 @@ describe("Videos (e2e)", () => {
         originalFilename: "detail.mp4",
         mime: "video/mp4",
         size: 5000,
-        duration: 30.0,
-        processingInfo: {
-          codec: "libx264",
-          preset: "fast",
-          crf: 28,
-          maxrate: "2M",
-          bufsize: "4M",
-          scale: "-2:720",
-          audioCodec: "aac",
-          audioBitrate: "128k",
-          hlsTime: 6,
-        },
       }),
     );
 
@@ -210,14 +198,11 @@ describe("Videos (e2e)", () => {
     expect(response.body).toMatchObject({
       id: video.id,
       originalFilename: "detail.mp4",
-      duration: 30.0,
     });
     expect(response.body.segments).toHaveLength(3);
     expect(response.body.segments[0]).toHaveProperty("filename");
     expect(response.body.segments[0]).toHaveProperty("size");
     expect(response.body.totalOutputSize).toBe(98200);
-    expect(response.body.processingInfo).toHaveProperty("codec");
-    expect(response.body.processingInfo.codec).toBe("libx264");
   });
 
   it("returns 404 for non-existent video details", async () => {
@@ -266,5 +251,9 @@ describe("Videos (e2e)", () => {
       id: video.id,
       key: video.key,
     });
+    const replaced = await videoRepo.findOneByOrFail({ id: video.id });
+    expect(replaced.dateUpdated.getTime()).toBeGreaterThan(
+      video.dateUpdated.getTime(),
+    );
   });
 });
