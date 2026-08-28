@@ -248,6 +248,7 @@ const ConversationDetailPanel = ({
         body: draftMessage,
         attachments: draftAttachments,
         createdAt: new Date().toISOString(),
+        deletedAt: null,
         author: {
           ...user,
           displayName: user.name,

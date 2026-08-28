@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiProperty } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -55,9 +55,8 @@ export class Message {
   updatedAt: Date;
 
   @Column({ type: "timestamptz", nullable: true })
-  @ApiPropertyOptional({ type: Date })
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  deletedAt?: Date;
+  @ApiProperty({ type: Date, nullable: true })
+  deletedAt: Date | null;
 
   @ManyToOne(() => Message, (message) => message.replies, {
     onDelete: "SET NULL",

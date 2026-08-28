@@ -632,7 +632,7 @@ export type Message = {
     attachments: Array<string>;
     author: User;
     createdAt: string;
-    deletedAt?: string;
+    deletedAt: string | null;
     replyTo?: Message;
 };
 
@@ -1606,7 +1606,7 @@ export type MessageDto = {
      */
     attachments: Array<string>;
     createdAt: string;
-    deletedAt?: string;
+    deletedAt: string | null;
     author: ProfileDto;
     conversationId: number;
     replyTo?: MessageReferenceDto;

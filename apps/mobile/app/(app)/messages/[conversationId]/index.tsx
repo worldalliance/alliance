@@ -173,6 +173,7 @@ export default function ConversationScreen() {
         body: draftMessage,
         attachments: draftAttachments,
         createdAt: new Date().toISOString(),
+        deletedAt: null,
         author: optimisticAuthor,
         conversationId: selectedConvo.id,
         replyTo: replyingToMessage ?? undefined,
