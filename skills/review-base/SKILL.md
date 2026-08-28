@@ -22,9 +22,13 @@ Judge it against that as part of the review. A base commit holding more than one
 
 # Applying fixes
 
-If you are asked to apply changes (after your review), do so, then place each change in the commit that owns it. Fold a fix into the base commit while the base commit stays one standalone change. Once folding would give it a second purpose, the fix takes its own commit, ordered so each commit still deploys alone.
+Asked to apply changes after your review, you own the git history for them. This waives the root `AGENTS.md` rule on git writes for the rest of the task: commit, amend, and rebase without asking again.
+
+Place each change in the commit that owns it. Fold a fix into the base commit while the base commit stays one standalone change. Once folding would give it a second purpose, the fix takes its own commit, ordered so each commit still deploys alone.
 
 Where one fix does both, split the fix along that line.
+
+A message describes the commit it ends up on, so rewrite the parts a fix makes false.
 
 You may change the code or commits in any way such as (but not limited to):
 
