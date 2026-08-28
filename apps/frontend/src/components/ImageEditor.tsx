@@ -8,7 +8,7 @@ import Modal, {
   ModalTitle,
 } from "@alliance/sharedweb/ui/Modal";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { RotateCcw, RotateCw } from "lucide-react";
+import { RotateCcw, RotateCw, Trash2 } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -29,11 +29,13 @@ import "react-image-crop/dist/ReactCrop.css";
 
 type ImageEditorProps = {
   initialImageUrl: string | null;
+  /** Null only when the user removes the image. A pick reports nothing until its crop lands. */
   onChange: (imageDataUrl: string | null) => void;
   allowedMimeTypes: string[];
   maxFileSizeMb?: number;
   className?: string;
   isUploading?: boolean;
+  canRemove?: boolean;
 };
 
 type Dimensions = {
@@ -172,6 +174,7 @@ const ImageEditor: FC<ImageEditorProps> = ({
   maxFileSizeMb = DEFAULT_MAX_FILE_SIZE_MB,
   className,
   isUploading = false,
+  canRemove = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const previewImageRef = useRef<HTMLImageElement | null>(null);
@@ -314,13 +317,26 @@ const ImageEditor: FC<ImageEditorProps> = ({
         setIsCropModalOpen(true);
         setRotation(0);
         setError(null);
-        onChange(null);
       };
       reader.readAsDataURL(file);
       event.target.value = "";
     },
-    [allowedMimeTypes, imageSrc, maxFileSizeMb, onChange],
+    [allowedMimeTypes, imageSrc, maxFileSizeMb],
   );
+
+  const handleRemove = useCallback(() => {
+    setImageSrc(null);
+    setPreviewSrc(null);
+    setCroppedImage(null);
+    setSourceDimensions(null);
+    setCrop(undefined);
+    setCompletedCrop(null);
+    setHasCustomImage(false);
+    setIsCropModalOpen(false);
+    setRotation(0);
+    setError(null);
+    onChange(null);
+  }, [onChange]);
 
   const centerSquareCrop = useCallback((image: HTMLImageElement) => {
     const { width, height } = image;
@@ -381,7 +397,12 @@ const ImageEditor: FC<ImageEditorProps> = ({
 
   const handleRotate = useCallback(
     async (direction: "left" | "right") => {
-      if (!hasCustomImage || isUploading || isPreviewProcessing || !previewSrc) {
+      if (
+        !hasCustomImage ||
+        isUploading ||
+        isPreviewProcessing ||
+        !previewSrc
+      ) {
         return;
       }
 
@@ -450,8 +471,21 @@ const ImageEditor: FC<ImageEditorProps> = ({
           </button>
         )}
 
+        {canRemove && previewImage && (
+          <button
+            type="button"
+            onClick={handleRemove}
+            disabled={isUploading}
+            aria-label="Remove photo"
+            title="Remove photo"
+            className="absolute right-1 top-1 z-10 rounded-full bg-black/60 p-1 text-white shadow hover:bg-black/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+
         {(isUploading || isPreviewProcessing) && (
-          <div className="absolute inset-0 flex items-center justify-center rounded-md bg-white/60 backdrop-blur-[1px]">
+          <div className="absolute inset-0 z-20 flex items-center justify-center rounded-md bg-white/60 backdrop-blur-[1px]">
             <Spinner size="small" />
           </div>
         )}

@@ -311,7 +311,7 @@ const CommunityPage = () => {
         body: {
           name: editName,
           description: editDescription,
-          photo: editPhotoUrl ?? undefined,
+          photo: editPhotoUrl,
           public: editPublic,
           maxCapacity: normalizedMaxCapacity,
           allowMemberInvites: editAllowMemberInvites,
@@ -501,6 +501,7 @@ const CommunityPage = () => {
                     className="mt-[-55px]"
                     initialImageUrl={editPhotoUrl}
                     onChange={setEditPhotoUrl}
+                    canRemove
                     allowedMimeTypes={sharp_allowed_mime_types}
                     isUploading={isPhotoUploadPending}
                   />

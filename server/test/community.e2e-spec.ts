@@ -539,6 +539,27 @@ describe("Community (e2e)", () => {
     expect(res.body.description).toBe("After update");
   });
 
+  it("PATCH /community/:communityId clears the photo when sent null", async () => {
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP Clear Photo",
+        photo: "some-key.webp",
+        leaders: [testUser],
+        users: [testUser],
+      }),
+    );
+
+    const res = await request(ctx.app.getHttpServer())
+      .patch(`/community/${community.id}`)
+      .set("Authorization", `Bearer ${testUserToken}`)
+      .send({ photo: null });
+
+    expect(res.status).toBe(200);
+    expect(res.body.photo).toBeNull();
+    const reloaded = await communityRepo.findOneByOrFail({ id: community.id });
+    expect(reloaded.photo).toBeNull();
+  });
+
   it("PATCH /community/:communityId rejects clearing a capacity the flags require with 400", async () => {
     const community = await communityRepo.save(
       communityRepo.create({

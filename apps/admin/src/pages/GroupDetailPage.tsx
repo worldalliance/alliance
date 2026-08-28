@@ -241,7 +241,7 @@ const CommunityDetailPage: React.FC = () => {
       const payload: UpdateCommunityDto = {
         name: formValues.name.trim(),
         description: formValues.description.trim(),
-        photo: formValues.photo?.trim() ? formValues.photo.trim() : undefined,
+        photo: formValues.photo?.trim() ? formValues.photo.trim() : null,
         public: formValues.public,
         maxCapacity: normalizedMaxCapacity,
         allowMemberInvites: formValues.allowMemberInvites,

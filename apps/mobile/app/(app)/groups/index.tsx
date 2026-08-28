@@ -28,7 +28,7 @@ import { LegendList } from "@legendapp/list";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keyBy } from "es-toolkit";
 import { router, useFocusEffect } from "expo-router";
-import { ChevronDown, Settings, X } from "lucide-react-native";
+import { ChevronDown, Settings, Trash2, X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -816,6 +816,11 @@ function GroupSettingsTab({
     setError(null);
   }, []);
 
+  const handleRemovePhoto = useCallback(() => {
+    setEditForm((prev) => ({ ...prev, photo: "" }));
+    setError(null);
+  }, []);
+
   const handleSave = useCallback(async () => {
     setError(null);
     const trimmed = editForm.name.trim();
@@ -848,7 +853,7 @@ function GroupSettingsTab({
         body: {
           name: trimmed,
           description: editForm.description,
-          photo: photoTrim || undefined,
+          photo: photoTrim || null,
           public: editForm.public,
           maxCapacity: normalizedMaxCapacity,
           allowMemberInvites: editForm.allowMemberInvites,
@@ -961,6 +966,16 @@ function GroupSettingsTab({
                     Change photo
                   </Text>
                 </TouchableOpacity>
+                {!!editForm.photo?.trim() && (
+                  <TouchableOpacity
+                    onPress={handleRemovePhoto}
+                    disabled={isSaving}
+                    accessibilityLabel="Remove photo"
+                    className="p-2 rounded-lg border border-zinc-300 bg-white"
+                  >
+                    <Trash2 size={16} color={colors.text.icon} />
+                  </TouchableOpacity>
+                )}
               </View>
             }
           />
