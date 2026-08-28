@@ -1,3 +1,7 @@
+import {
+  COMMUNITY_DESCRIPTION_MAX_LENGTH,
+  COMMUNITY_NAME_MAX_LENGTH,
+} from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
 import {
@@ -15,6 +19,7 @@ import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
+import CharacterLimitNotice from "@alliance/sharedweb/ui/CharacterLimitNotice";
 import List from "@alliance/sharedweb/ui/List";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { href, Link } from "react-router";
@@ -226,6 +231,7 @@ const GroupsPage: React.FC = () => {
               type="text"
               className="border border-zinc-300 rounded px-3 py-2 text-sm"
               value={newCommunity.name}
+              maxLength={COMMUNITY_NAME_MAX_LENGTH}
               onChange={(event) => {
                 setCreateError(null);
                 setNewCommunity((prev) => ({
@@ -234,6 +240,10 @@ const GroupsPage: React.FC = () => {
                 }));
               }}
               placeholder="Member-visible title"
+            />
+            <CharacterLimitNotice
+              value={newCommunity.name}
+              max={COMMUNITY_NAME_MAX_LENGTH}
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -247,6 +257,7 @@ const GroupsPage: React.FC = () => {
               id="community-description"
               className="border border-zinc-300 rounded px-3 py-2 text-sm min-h-[80px]"
               value={newCommunity.description}
+              maxLength={COMMUNITY_DESCRIPTION_MAX_LENGTH}
               onChange={(event) => {
                 setCreateError(null);
                 setNewCommunity((prev) => ({
@@ -255,6 +266,10 @@ const GroupsPage: React.FC = () => {
                 }));
               }}
               placeholder="What is this group for?"
+            />
+            <CharacterLimitNotice
+              value={newCommunity.description}
+              max={COMMUNITY_DESCRIPTION_MAX_LENGTH}
             />
           </div>
           <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">

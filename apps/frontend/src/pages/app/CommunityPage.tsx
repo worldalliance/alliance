@@ -1,3 +1,7 @@
+import {
+  COMMUNITY_DESCRIPTION_MAX_LENGTH,
+  COMMUNITY_NAME_MAX_LENGTH,
+} from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import {
   actionsCommunityCompletedActionsCount,
@@ -27,6 +31,7 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import BottomSpacer from "@alliance/sharedweb/ui/BottomSpacer";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
+import CharacterLimitNotice from "@alliance/sharedweb/ui/CharacterLimitNotice";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
 import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
@@ -549,20 +554,34 @@ const CommunityPage = () => {
                 <div className="flex flex-col gap-y-4 mb-2 mt-3">
                   {isEditing ? (
                     <div className="flex flex-col gap-y-4">
-                      <input
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="text-title-small w-full border-none !bg-zinc-100 px-2 -mx-2 rounded focus:outline-none"
-                        placeholder="Enter group name"
-                      />
-                      <textarea
-                        value={editDescription}
-                        onChange={(e) => setEditDescription(e.target.value)}
-                        rows={6}
-                        className="w-full border-none !bg-zinc-100 px-2 -mx-2 rounded focus:outline-none p-2"
-                        placeholder="Enter group description..."
-                      />
+                      <div className="flex flex-col gap-1">
+                        <input
+                          type="text"
+                          value={editName}
+                          maxLength={COMMUNITY_NAME_MAX_LENGTH}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="text-title-small w-full border-none !bg-zinc-100 px-2 -mx-2 rounded focus:outline-none"
+                          placeholder="Enter group name"
+                        />
+                        <CharacterLimitNotice
+                          value={editName}
+                          max={COMMUNITY_NAME_MAX_LENGTH}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <textarea
+                          value={editDescription}
+                          maxLength={COMMUNITY_DESCRIPTION_MAX_LENGTH}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          rows={6}
+                          className="w-full border-none !bg-zinc-100 px-2 -mx-2 rounded focus:outline-none p-2"
+                          placeholder="Enter group description..."
+                        />
+                        <CharacterLimitNotice
+                          value={editDescription}
+                          max={COMMUNITY_DESCRIPTION_MAX_LENGTH}
+                        />
+                      </div>
                       <div className="mt-3 rounded border border-zinc-200 bg-zinc-50 p-3">
                         <div className="flex flex-col gap-y-3">
                           <label

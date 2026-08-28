@@ -1,3 +1,7 @@
+import {
+  COMMUNITY_DESCRIPTION_MAX_LENGTH,
+  COMMUNITY_NAME_MAX_LENGTH,
+} from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import type {
   CommunityDto,
@@ -29,6 +33,7 @@ import AppMarkdownWrapper from "./AppMarkdownWrapper";
 import FormModal from "./forms/FormModal";
 import Button, { ButtonColor } from "./system/Button";
 import Card, { CardStyle } from "./system/Card";
+import CharacterLimitNotice from "./system/CharacterLimitNotice";
 import Input from "./system/Input";
 import Text, { FontWeight } from "./system/Text";
 
@@ -364,22 +369,36 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
                 this member.
               </Text>
             )}
-            <Input
-              label="Group name"
-              placeholder="Enter group name"
-              value={newGroupName}
-              onChangeText={setNewGroupName}
-              containerClassName="gap-0"
-            />
-            <Input
-              label="Description (optional)"
-              placeholder="Enter group description"
-              value={newGroupDescription}
-              onChangeText={setNewGroupDescription}
-              multiline
-              numberOfLines={2}
-              containerClassName="gap-0"
-            />
+            <View className="gap-1">
+              <Input
+                label="Group name"
+                placeholder="Enter group name"
+                value={newGroupName}
+                maxLength={COMMUNITY_NAME_MAX_LENGTH}
+                onChangeText={setNewGroupName}
+                containerClassName="gap-0"
+              />
+              <CharacterLimitNotice
+                value={newGroupName}
+                max={COMMUNITY_NAME_MAX_LENGTH}
+              />
+            </View>
+            <View className="gap-1">
+              <Input
+                label="Description (optional)"
+                placeholder="Enter group description"
+                value={newGroupDescription}
+                maxLength={COMMUNITY_DESCRIPTION_MAX_LENGTH}
+                onChangeText={setNewGroupDescription}
+                multiline
+                numberOfLines={2}
+                containerClassName="gap-0"
+              />
+              <CharacterLimitNotice
+                value={newGroupDescription}
+                max={COMMUNITY_DESCRIPTION_MAX_LENGTH}
+              />
+            </View>
             <Button
               onPress={() => handleCreateGroup()}
               color={ButtonColor.Black}

@@ -1,8 +1,13 @@
+import {
+  COMMUNITY_DESCRIPTION_MAX_LENGTH,
+  COMMUNITY_NAME_MAX_LENGTH,
+} from "@alliance/common/community";
 import type { CreateCommunityDto } from "@alliance/shared/client/types.gen";
 import { groupSettings } from "@alliance/shared/lib/copy";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { Switch, TextInput, TouchableOpacity, View } from "react-native";
 import { colors } from "../../lib/style/colors";
+import CharacterLimitNotice from "../system/CharacterLimitNotice";
 import Text, { FontWeight } from "../system/Text";
 
 export function CreateGroupForm({
@@ -52,6 +57,7 @@ export function CreateGroupForm({
         <TextInput
           className="border border-zinc-300 rounded-lg px-3 py-2 text-sm bg-white text-zinc-900"
           value={newCommunity.name}
+          maxLength={COMMUNITY_NAME_MAX_LENGTH}
           onChangeText={(text) => {
             setError(null);
             setNewCommunity((prev) => ({ ...prev, name: text }));
@@ -59,6 +65,10 @@ export function CreateGroupForm({
           placeholder="Member-visible title"
           placeholderTextColor="#a1a1aa"
           editable={!disabled}
+        />
+        <CharacterLimitNotice
+          value={newCommunity.name}
+          max={COMMUNITY_NAME_MAX_LENGTH}
         />
       </View>
 
@@ -69,6 +79,7 @@ export function CreateGroupForm({
         <TextInput
           className="border border-zinc-300 rounded-lg px-3 py-2 text-sm bg-white text-zinc-900 min-h-[72px]"
           value={newCommunity.description}
+          maxLength={COMMUNITY_DESCRIPTION_MAX_LENGTH}
           onChangeText={(text) => {
             setError(null);
             setNewCommunity((prev) => ({ ...prev, description: text }));
@@ -78,6 +89,10 @@ export function CreateGroupForm({
           multiline
           textAlignVertical="top"
           editable={!disabled}
+        />
+        <CharacterLimitNotice
+          value={newCommunity.description}
+          max={COMMUNITY_DESCRIPTION_MAX_LENGTH}
         />
       </View>
 

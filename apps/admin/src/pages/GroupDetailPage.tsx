@@ -1,3 +1,7 @@
+import {
+  COMMUNITY_DESCRIPTION_MAX_LENGTH,
+  COMMUNITY_NAME_MAX_LENGTH,
+} from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
 import {
@@ -28,6 +32,7 @@ import { groupSettings } from "@alliance/shared/lib/copy";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
+import CharacterLimitNotice from "@alliance/sharedweb/ui/CharacterLimitNotice";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
@@ -603,12 +608,17 @@ const CommunityDetailPage: React.FC = () => {
                 type="text"
                 className="border border-zinc-300 rounded px-3 py-2 text-sm"
                 value={formValues.name}
+                maxLength={COMMUNITY_NAME_MAX_LENGTH}
                 onChange={(event) =>
                   setFormValues((prev) => ({
                     ...prev,
                     name: event.target.value,
                   }))
                 }
+              />
+              <CharacterLimitNotice
+                value={formValues.name}
+                max={COMMUNITY_NAME_MAX_LENGTH}
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -618,12 +628,17 @@ const CommunityDetailPage: React.FC = () => {
               <textarea
                 className="border border-zinc-300 rounded px-3 py-2 text-sm min-h-[80px]"
                 value={formValues.description}
+                maxLength={COMMUNITY_DESCRIPTION_MAX_LENGTH}
                 onChange={(event) =>
                   setFormValues((prev) => ({
                     ...prev,
                     description: event.target.value,
                   }))
                 }
+              />
+              <CharacterLimitNotice
+                value={formValues.description}
+                max={COMMUNITY_DESCRIPTION_MAX_LENGTH}
               />
             </div>
             <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">

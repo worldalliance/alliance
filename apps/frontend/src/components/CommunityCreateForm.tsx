@@ -1,3 +1,7 @@
+import {
+  COMMUNITY_DESCRIPTION_MAX_LENGTH,
+  COMMUNITY_NAME_MAX_LENGTH,
+} from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import {
   CommunityDto,
@@ -9,6 +13,7 @@ import { groupSettings } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
 import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import CharacterLimitNotice from "@alliance/sharedweb/ui/CharacterLimitNotice";
 import {
   useCallback,
   useEffect,
@@ -139,9 +144,14 @@ const CommunityCreateForm = ({
       <input
         id="name"
         value={formValues.name}
+        maxLength={COMMUNITY_NAME_MAX_LENGTH}
         placeholder="Enter group name"
         onChange={(e) => setFormValues({ ...formValues, name: e.target.value })}
         className="border border-zinc-300 rounded px-3 py-2 w-full"
+      />
+      <CharacterLimitNotice
+        value={formValues.name}
+        max={COMMUNITY_NAME_MAX_LENGTH}
       />
       <label
         className="text-black text-sm font-semibold mt-3"
@@ -152,11 +162,16 @@ const CommunityCreateForm = ({
       <textarea
         id="description"
         placeholder={"Enter group description"}
+        maxLength={COMMUNITY_DESCRIPTION_MAX_LENGTH}
         value={formValues.description}
         onChange={(e) =>
           setFormValues({ ...formValues, description: e.target.value })
         }
         className="border border-zinc-300 rounded px-3 py-2 w-full bg-white"
+      />
+      <CharacterLimitNotice
+        value={formValues.description}
+        max={COMMUNITY_DESCRIPTION_MAX_LENGTH}
       />
       <div className="mt-3 rounded border border-zinc-200 bg-zinc-50 p-3">
         <div className="flex flex-col gap-y-3">
