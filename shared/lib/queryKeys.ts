@@ -23,6 +23,9 @@ export const queryKeys = {
   myVisibilityContext: () => ["userMyVisibilityContext"] as const,
   onetimeInvitesOverview: () => ["userGetOnetimeInvitesOverview"] as const,
   publicCommunities: () => ["communityGetPublicCommunities"] as const,
+  publicMembers: () => ["userMembersPublic"] as const,
+  publicProfile: (userId: number) => ["userFindOne", userId] as const,
+  staffDirectory: () => ["userStaffDirectory"] as const,
 
   // Admin
   actionAdmin: (actionId: number | null) =>

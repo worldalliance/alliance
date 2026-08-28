@@ -1,14 +1,42 @@
-import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { actionPartnershipsCreateResponse } from "@alliance/shared/client";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { cn } from "@alliance/shared/styles/util";
-import React, { type FormEvent, useState } from "react";
-import Footer from "../../components/Footer";
-import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
-import PrelaunchNavbar from "../../components/PrelaunchNavbar";
-import { exampleMemberTaskAction } from "../../lib/exampleMemberTaskAction";
+import { Check } from "lucide-react";
+import React, { useState, type FormEvent } from "react";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
-import LargeActionCard from "../app/LargeActionCard";
+import { CONTACT_EMAIL } from "../../site/content";
+import {
+  BandHeading,
+  PageBand,
+  PageShell,
+} from "../../site/PageShell";
+import {
+  OUTREACH_CHANNELS,
+  PARTNER_AUDIENCE_LABEL,
+  PARTNER_CHANNELS_LABEL,
+  PARTNER_FORM_BODY,
+  PARTNER_FORM_TITLE,
+  PARTNER_OFFERS_BODY,
+  PARTNER_OFFERS_TITLE,
+  PARTNER_RELY_TITLE,
+  PARTNER_TASKS_BODY,
+  PARTNER_TASKS_TITLE,
+  PARTNER_TITLE,
+  partnerOffers,
+  partnerReliance,
+  partnerTasks,
+  partnerTrade,
+  pastPartners,
+  type PartnerTask,
+} from "../../site/partnerContent";
+import {
+  SectionSubtitle,
+  SITE_INPUT,
+  SITE_INPUT_STYLE,
+  SITE_SUBMIT,
+  SiteField,
+  TexturedPanel,
+} from "../../site/ui";
 
 export function meta() {
   return socialPreviewMeta({
@@ -19,186 +47,176 @@ export function meta() {
   });
 }
 
-const OUTREACH_CHANNELS = [
-  "Website",
-  "Newsletter or mailing list",
-  "Online meeting",
-  "In-person event",
-  "Social media",
-  "Member community",
-  "Other",
-] as const;
-
-const PARTNER_OFFERS = [
-  {
-    title: "Tell members about your cause",
-    body: "Help people who already want to make a difference understand the issue you work on and why it matters.",
-  },
-  {
-    title: "Get thoughtful feedback",
-    body: "Invite members to review your website, actions, product, campaigns, messages, or other materials.",
-  },
-  {
-    title: "Invite engagement",
-    body: "Ask members to follow, comment, share, test, or attend something you are planning or doing.",
-  },
-  {
-    title: "Help with data collection",
-    body: "Members can fill out surveys, participate in studies, and collect other kinds of information.",
-  },
-] as const;
-
-const PAST_PARTNERS = [
-  { name: "EarthDay", href: "https://www.earthday.org/" },
-  { name: "apgard", href: "https://www.apgardai.com/" },
-  { name: "NutritionFacts.org", href: "http://nutritionfacts.org" },
-] as const;
-
-const outreachPartnerExampleAction = {
-  ...exampleMemberTaskAction,
-  id: 2,
-  name: "Learn about and assist a Colombian reforestation project",
-  body: "Learn about deforestation in Colombia, then help a local nonprofit that works to restore the forest.",
-  category: "environment",
-  timeEstimate: 15,
-  usersJoined: 186,
-  usersCompleted: 139,
-  shortDescription:
-    "Members will help a reforestation organization prepare for an upcoming project launch.",
-};
-
-const outreachPartnerExampleFormSchema = {
-  description: "",
-  pages: [
-    {
-      id: "page-1",
-      title: "Page 1",
-      fields: [
-        {
-          id: "field-site-opened",
-          type: "input",
-          kind: "radio",
-          label: "Were you able to open the nonprofit's homepage?",
-          required: true,
-          options: [
-            { label: "Yes", value: "yes" },
-            { label: "No", value: "no" },
-          ],
-        },
-      ],
-    },
-    {
-      id: "page-2",
-      title: "Page 2",
-      fields: [
-        {
-          id: "field-first-attention",
-          type: "input",
-          kind: "textarea",
-          label: "When the website loads, where is your eye drawn first?",
-          placeholder:
-            "For example: the headline, a photo, a donate button, a statistic, or something else.",
-          rows: 2,
-          required: true,
-        },
-        {
-          id: "field-main-point",
-          type: "input",
-          kind: "radio",
-          label: "What did you most take away from the site?",
-          required: true,
-          options: [
-            {
-              label: "They plant trees in strategic areas",
-              value: "local-reforestation",
-            },
-            {
-              label: "They need donations or volunteers",
-              value: "support-needed",
-            },
-            {
-              label: "Reforestation is important",
-              value: "environmental-problem",
-            },
-            { label: "Other", value: "not-sure" },
-          ],
-        },
-        {
-          id: "field-discuss-founder-label",
-          type: "display",
-          kind: "label",
-          text: "Share any hesitations, questions, or other feedback with the organization's founder.",
-        },
-        {
-          id: "field-discuss-founder",
-          type: "display",
-          kind: "biglink",
-          text: "Discuss the organization and its upcoming launch with the founder.",
-          url: "https://worldalliance.org/forum/posts/89",
-          icon: "messages-square",
-        },
-      ],
-    },
-    {
-      id: "page-3",
-      title: "Page 3",
-      fields: [
-        {
-          id: "field-one-thing-learned",
-          type: "input",
-          kind: "textarea",
-          label: "What is one thing you learned from the page?",
-          placeholder:
-            "Share a point you would remember or repeat to someone else.",
-          rows: 2,
-          required: true,
-        },
-        {
-          id: "field-confusing-moment",
-          type: "input",
-          kind: "textarea",
-          label: "Was anything confusing or hard to follow?",
-          placeholder:
-            "It is fine to say no. If yes, describe where you got stuck in your own words.",
-          rows: 2,
-          required: true,
-        },
-      ],
-    },
-  ],
-  submit: { label: "Complete" },
-  outputViews: [],
-  aggregateViews: [],
-} satisfies FormSchema;
-
-function Field({
-  label,
-  name,
-  children,
-  required = false,
-}: {
-  label: string;
-  name: string;
-  children: React.ReactNode;
-  required?: boolean;
-}) {
+/**
+ * The promise a mailing list can make, beside the one we can. The second box
+ * carries the link-blue stroke, so the difference reads before the words do.
+ */
+function Reliance() {
   return (
-    <label htmlFor={name} className="flex flex-col gap-2">
-      <span className="text-sm font-semibold text-zinc-900">
-        {label}
-        {required ? <span className="text-green-bg-card"> *</span> : null}
-      </span>
-      {children}
-    </label>
+    <PageBand className="flex flex-col gap-7 pb-8 lg:pb-10">
+      <BandHeading>{PARTNER_RELY_TITLE}</BandHeading>
+      <div className="grid gap-5 sm:grid-cols-2 sm:gap-8">
+        {partnerReliance.map((pledge, index) => {
+          const ours = index === partnerReliance.length - 1;
+          return (
+            <blockquote
+              key={pledge.label}
+              className={cn(
+                "bg-white px-5 py-4 text-[1.05rem] leading-snug",
+                ours
+                  ? "border-2 border-[var(--site-link)] font-medium text-[var(--site-ink)]"
+                  : "border border-[var(--site-ink)]/20 text-[var(--site-ink)]/70",
+              )}
+              style={{ borderRadius: "var(--site-radius-card)" }}
+            >
+              {`“${pledge.quote}”`}
+            </blockquote>
+          );
+        })}
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {partnerTrade.map((half) => (
+          <article
+            key={half.title}
+            className="flex flex-col gap-2 border border-[var(--site-ink)]/15 bg-white p-6"
+            style={{ borderRadius: "var(--site-radius-card)" }}
+          >
+            <h3 className="text-[1.15rem] font-medium text-[var(--site-primary)]">
+              {half.title}
+            </h3>
+            <p className="text-[1rem] leading-snug text-[var(--site-ink)]/70">
+              {half.body}
+            </p>
+          </article>
+        ))}
+      </div>
+    </PageBand>
   );
 }
 
-const inputClassName =
-  "w-full rounded-md border border-zinc-300 bg-white px-4 py-3 text-base text-zinc-950 outline-none transition focus:border-green-bg-card focus:ring-2 focus:ring-green-bg-card/20";
+/** One green panel holding the four things a partnership can be. */
+function Offers() {
+  return (
+    <PageBand className="py-0">
+      <TexturedPanel tint="var(--site-panel)">
+        <div className="mb-8 flex flex-col gap-3">
+          <h2 className="site-display text-[1.9rem] leading-tight text-white sm:text-[2.4rem]">
+            {PARTNER_OFFERS_TITLE}
+          </h2>
+          <SectionSubtitle onDark>{PARTNER_OFFERS_BODY}</SectionSubtitle>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {partnerOffers.map((offer) => (
+            <article
+              key={offer.title}
+              className="flex flex-col gap-2 bg-white/10 p-6"
+              style={{ borderRadius: "var(--site-radius-card)" }}
+            >
+              <h3 className="text-[1.15rem] font-medium text-white">
+                {offer.title}
+              </h3>
+              <p className="text-[1rem] leading-snug text-white/70">
+                {offer.body}
+              </p>
+            </article>
+          ))}
+        </div>
+      </TexturedPanel>
+    </PageBand>
+  );
+}
 
-function OutreachPartnerPage() {
-  useWhiteBackground();
-  const { data: memberCount } = useAllianceMemberCount();
+/** The task as members receive it, so the ask is concrete. */
+function TaskMock({ task }: { task: PartnerTask }) {
+  const percent = Math.round((task.done / task.total) * 100);
+
+  return (
+    <article
+      className="flex flex-col gap-4 border border-[var(--site-ink)]/15 bg-white px-5 py-5"
+      style={{ borderRadius: "var(--site-radius-card)" }}
+    >
+      <div className="flex flex-col gap-1">
+        <a
+          href={task.href}
+          target="_blank"
+          rel="noreferrer"
+          className="w-fit text-[0.8rem] font-medium tracking-[0.12em] text-[var(--site-link)] uppercase hover:underline"
+        >
+          {task.partner}
+        </a>
+        <h3 className="text-[1.05rem] leading-snug font-semibold text-[var(--site-ink)]">
+          {task.title}
+        </h3>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <div className="h-2 overflow-hidden rounded-full bg-[var(--site-ink)]/12">
+          <div
+            className="h-full rounded-full bg-[var(--site-primary)]"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+        <p className="text-[0.78rem] text-[var(--site-ink)]/55">
+          {`${task.done}/${task.total} members completed the task`}
+        </p>
+      </div>
+
+      <ul className="flex flex-col gap-1">
+        {task.steps.map((step) => (
+          <li
+            key={step}
+            className="flex items-start gap-2.5 rounded bg-[var(--site-ink)]/[0.06] px-2 py-1.5 text-[0.85rem] leading-snug text-[var(--site-ink)]"
+          >
+            <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-[var(--site-primary)] text-white">
+              <Check className="size-2.5" strokeWidth={3.5} aria-hidden />
+            </span>
+            {step}
+          </li>
+        ))}
+      </ul>
+    </article>
+  );
+}
+
+function PartnerTasks() {
+  return (
+    <PageBand className="flex flex-col gap-8 pt-12 lg:pt-16">
+      <div className="flex flex-col gap-3">
+        <BandHeading>{PARTNER_TASKS_TITLE}</BandHeading>
+        <SectionSubtitle>{PARTNER_TASKS_BODY}</SectionSubtitle>
+        <SectionSubtitle>
+          {"We have previously worked with organizations like "}
+          {pastPartners.map((partner, index) => (
+            <React.Fragment key={partner.name}>
+              {index === 0
+                ? ""
+                : index === pastPartners.length - 1
+                  ? ", and "
+                  : ", "}
+              <a
+                href={partner.href}
+                target="_blank"
+                rel="noreferrer"
+                className="underline decoration-[var(--site-primary)]/35 underline-offset-2 hover:decoration-[var(--site-primary)]"
+              >
+                {partner.name}
+              </a>
+            </React.Fragment>
+          ))}
+          .
+        </SectionSubtitle>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        {partnerTasks.map((task) => (
+          <TaskMock key={task.partner} task={task} />
+        ))}
+      </div>
+    </PageBand>
+  );
+}
+
+/** Flattened onto one screen, with the heading inside the card. */
+function PartnerForm() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -209,7 +227,7 @@ function OutreachPartnerPage() {
     event.preventDefault();
 
     const form = event.currentTarget;
-    const formData = new FormData(event.currentTarget);
+    const formData = new FormData(form);
     const outreachChannels = formData
       .getAll("outreachChannels")
       .map((value) => String(value));
@@ -254,7 +272,7 @@ function OutreachPartnerPage() {
       console.error("Failed to submit action partnership form", error);
       setSubmitted(false);
       setSubmitError(
-        "Something went wrong submitting this. Please try again or email contact@worldalliance.org.",
+        `Something went wrong submitting this. Please try again or email ${CONTACT_EMAIL}.`,
       );
     } finally {
       setSubmitting(false);
@@ -262,306 +280,224 @@ function OutreachPartnerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-zinc-950">
-      <PrelaunchNavbar transparent={false} absolute={false} />
-      <main className="bg-white">
-        <section>
-          <div className="mx-auto grid w-full max-w-[90rem] grid-cols-1 gap-8 px-5 pb-10 sm:px-8 md:pb-14 lg:grid-cols-[minmax(0,0.95fr)_minmax(460px,1.05fr)] lg:items-center lg:gap-12 xl:gap-14">
-            <div className="flex flex-col gap-6">
-              <div className="flex flex-col gap-5">
-                <h1 className="font-serif text-4xl font-semibold leading-tight text-zinc-950 sm:text-5xl lg:text-5xl">
-                  Mobilize an online community that cares
-                </h1>
-                <p className="text-lg text-zinc-700">
-                  At the Alliance, our{" "}
-                  <span className="font-semibold text-zinc-900">
-                    {memberCount ? memberCount.toLocaleString() : ""}
-                    {memberCount ? " " : ""}volunteer members
-                  </span>{" "}
-                  each spend 15 minutes a week taking actions on our online
-                  platform.
-                </p>
-                <p className="text-lg text-zinc-700">
-                  For organizations working to address our priorities, we can
-                  design a focused task within our weekly action program in
-                  which members help your organization.
-                </p>
-              </div>
+    <PageBand id="outreach-partner-form">
+      <form
+        onSubmit={(event) => void handleSubmit(event)}
+        className="flex flex-col gap-6 bg-[var(--site-primary)] p-7 text-white sm:p-10"
+        style={{ borderRadius: "var(--site-radius-card)" }}
+      >
+        <div className="flex flex-col gap-3">
+          <h2 className="site-display text-[1.9rem] leading-tight text-white sm:text-[2.4rem]">
+            {PARTNER_FORM_TITLE}
+          </h2>
+          <SectionSubtitle onDark>{PARTNER_FORM_BODY}</SectionSubtitle>
+        </div>
 
-              <p className="text-lg text-zinc-700">
-                We have previously worked with organizations like{" "}
-                {PAST_PARTNERS.map((partner, index) => (
-                  <React.Fragment key={partner.name}>
-                    {index === 0
-                      ? ""
-                      : index === PAST_PARTNERS.length - 1
-                        ? ", and "
-                        : ", "}
-                    <a
-                      href={partner.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-link"
-                    >
-                      {partner.name}
-                    </a>
-                  </React.Fragment>
-                ))}
-                .
-              </p>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <SiteField
+            label="Organization name"
+            name="organizationName"
+            required
+            onDark
+          >
+            <input
+              id="organizationName"
+              name="organizationName"
+              type="text"
+              required
+              placeholder="Reforest Local"
+              className={SITE_INPUT}
+              style={SITE_INPUT_STYLE}
+            />
+          </SiteField>
+          <SiteField
+            label="Organization website"
+            name="organizationWebsite"
+            required
+            onDark
+          >
+            <input
+              id="organizationWebsite"
+              name="organizationWebsite"
+              type="url"
+              required
+              placeholder="https://example.org"
+              className={SITE_INPUT}
+              style={SITE_INPUT_STYLE}
+            />
+          </SiteField>
+          <SiteField label="Your name" name="personName" required onDark>
+            <input
+              id="personName"
+              name="personName"
+              type="text"
+              required
+              autoComplete="name"
+              className={SITE_INPUT}
+              style={SITE_INPUT_STYLE}
+            />
+          </SiteField>
+          <SiteField label="Email" name="contact" required onDark>
+            <input
+              id="contact"
+              name="contact"
+              type="email"
+              required
+              autoComplete="email"
+              className={SITE_INPUT}
+              style={SITE_INPUT_STYLE}
+            />
+          </SiteField>
+        </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <article className="rounded-md border border-zinc-200 bg-white p-5">
-                  <h2 className="font-serif text-2xl font-semibold text-green-bg">
-                    What we can do
-                  </h2>
-                  <p className="mt-2 text-base text-zinc-700">
-                    Run a focused action where members help with a clear, useful
-                    task.
-                  </p>
-                </article>
-                <article className="rounded-md border border-zinc-200 bg-white p-5">
-                  <h2 className="font-serif text-2xl font-semibold text-green-bg">
-                    What we ask
-                  </h2>
-                  <p className="mt-2 text-base text-zinc-700">
-                    Help your audience or staff team learn about the Alliance
-                    and potentially join us as members.
-                  </p>
-                </article>
-              </div>
-            </div>
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+          <SiteField
+            label={PARTNER_AUDIENCE_LABEL}
+            name="audienceSize"
+            required
+            onDark
+          >
+            <input
+              id="audienceSize"
+              name="audienceSize"
+              type="text"
+              required
+              placeholder="Approximate size and where those people are"
+              className={SITE_INPUT}
+              style={SITE_INPUT_STYLE}
+            />
+          </SiteField>
+          <SiteField
+            label="What would you like Alliance members to do?"
+            name="desiredCollaboration"
+            required
+            onDark
+          >
+            <textarea
+              id="desiredCollaboration"
+              name="desiredCollaboration"
+              required
+              rows={3}
+              placeholder="For example: learn about a cause, review a website, give campaign feedback, or help with a survey."
+              className={cn(SITE_INPUT, "resize-y")}
+              style={SITE_INPUT_STYLE}
+            />
+          </SiteField>
+        </div>
 
-            <aside className="min-w-0 rounded-md px-4 py-3 sm:px-6 sm:py-5">
-              <LargeActionCard
-                action={outreachPartnerExampleAction}
-                staticTaskFormSchema={outreachPartnerExampleFormSchema}
-                staticTaskInitialPageIndex={1}
-                userRelation="none"
-                onUpdateActionState={() => {}}
-                onCompleteAction={() => {}}
-                showDetails={false}
-                className="pointer-events-none transform-[scale(0.9)] bg-white drop-shadow-xl drop-shadow-zinc-100"
-              />
-              <p className="text-center text-zinc-500 text-base">
-                Example of a task members might see on the platform
-              </p>
-            </aside>
-          </div>
-        </section>
-
-        <section className="bg-grey-0">
-          <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-5 py-12 sm:px-8 md:py-16">
-            <div>
-              <h2 className="font-serif text-3xl font-semibold text-zinc-950 sm:text-4xl">
-                How we can help
-              </h2>
-              <p className="mt-3 text-lg text-zinc-700">
-                We can run any kind of action that helps your organization.
-                These are a few common examples.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {PARTNER_OFFERS.map((offer) => (
-                <article
-                  key={offer.title}
-                  className="rounded-md border border-zinc-200 bg-white p-6"
-                >
-                  <h3 className="font-serif text-2xl font-semibold text-green-bg">
-                    {offer.title}
-                  </h3>
-                  <p className="mt-2 text-base text-zinc-700">{offer.body}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="outreach-partner-form">
-          <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-5 py-12 sm:px-8 md:py-16 lg:grid-cols-[0.66fr_1.1fr]">
-            <div className="flex flex-col gap-4">
-              <h2 className="font-serif text-3xl font-semibold text-zinc-950 sm:text-4xl">
-                Sign up as a potential outreach partner
-              </h2>
-              <p className="text-lg text-zinc-700">
-                Tell us what you are working on, what kind of action would help
-                you, and how you could help people discover the Alliance.
-              </p>
-            </div>
-
-            <form
-              onSubmit={handleSubmit}
-              className="flex flex-col gap-5 rounded-md border border-zinc-200 bg-white p-5 sm:p-7"
-            >
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                <Field
-                  label="Organization name"
-                  name="organizationName"
-                  required
-                >
-                  <input
-                    className={inputClassName}
-                    id="organizationName"
-                    name="organizationName"
-                    placeholder="Reforest Local"
-                    required
-                    type="text"
-                  />
-                </Field>
-                <Field
-                  label="Organization website"
-                  name="organizationWebsite"
-                  required
-                >
-                  <input
-                    className={inputClassName}
-                    id="organizationWebsite"
-                    name="organizationWebsite"
-                    placeholder="https://example.org"
-                    required
-                    type="url"
-                  />
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                <Field label="Your name" name="personName" required>
-                  <input
-                    className={inputClassName}
-                    id="personName"
-                    name="personName"
-                    placeholder="Your name"
-                    required
-                    type="text"
-                  />
-                </Field>
-                <Field label="Email" name="contact" required>
-                  <input
-                    className={inputClassName}
-                    id="contact"
-                    name="contact"
-                    placeholder="Email"
-                    required
-                    type="email"
-                  />
-                </Field>
-              </div>
-
-              <Field
-                label="What would you like Alliance members to do?"
-                name="desiredCollaboration"
-                required
-              >
-                <textarea
-                  className={cn(inputClassName, "min-h-32 resize-y")}
-                  id="desiredCollaboration"
-                  name="desiredCollaboration"
-                  placeholder="For example: learn about a cause, review a website, give campaign feedback, engage on social media, help with a survey, or something more custom."
-                  required
-                />
-              </Field>
-
-              <fieldset className="flex flex-col gap-3">
-                <legend className="text-sm font-semibold text-zinc-900">
-                  How could your organization help others learn about the
-                  Alliance? <span className="text-green-bg-card">*</span>
-                </legend>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {OUTREACH_CHANNELS.map((channel) => (
-                    <label
-                      key={channel}
-                      className="flex items-center gap-3 rounded-md border border-zinc-200 px-3 py-3 text-sm font-medium text-zinc-800"
-                    >
-                      <input
-                        name="outreachChannels"
-                        type="checkbox"
-                        value={channel}
-                        className="size-4 accent-green-bg-card"
-                        disabled={submitting}
-                        onChange={(event) => {
-                          if (channel === "Other") {
-                            setOtherOutreachSelected(event.target.checked);
-                          }
-                          setOutreachError(null);
-                          setSubmitted(false);
-                          setSubmitError(null);
-                        }}
-                      />
-                      {channel}
-                    </label>
-                  ))}
-                </div>
-                {otherOutreachSelected ? (
-                  <Field
-                    label="What other way could you share?"
-                    name="outreachOtherDetails"
-                    required
-                  >
-                    <textarea
-                      className={cn(inputClassName, "min-h-24 resize-y")}
-                      id="outreachOtherDetails"
-                      name="outreachOtherDetails"
-                      placeholder="Briefly describe the other channel or context."
-                      required={otherOutreachSelected}
-                      maxLength={1000}
-                    />
-                  </Field>
-                ) : null}
-                {outreachError ? (
-                  <p className="text-sm font-medium text-red-600">
-                    {outreachError}
-                  </p>
-                ) : null}
-              </fieldset>
-
-              <Field
-                label="Membership, mailing list, or audience size"
-                name="audienceSize"
-                required
+        <fieldset className="flex flex-col gap-2.5">
+          <legend className="mb-2.5 text-sm font-medium text-white/70">
+            {PARTNER_CHANNELS_LABEL}
+            <span className="text-white/50" aria-hidden>
+              {" *"}
+            </span>
+          </legend>
+          <div className="flex flex-wrap gap-2">
+            {OUTREACH_CHANNELS.map((channel) => (
+              <label
+                key={channel}
+                className="flex items-center gap-2 border border-white/25 px-3 py-2 text-sm text-white"
+                style={SITE_INPUT_STYLE}
               >
                 <input
-                  className={inputClassName}
-                  id="audienceSize"
-                  name="audienceSize"
-                  placeholder="Approximate size and where those people are"
-                  required
-                  type="text"
+                  type="checkbox"
+                  name="outreachChannels"
+                  value={channel}
+                  className="size-4 accent-[var(--site-link)]"
+                  disabled={submitting}
+                  onChange={(event) => {
+                    if (channel === "Other") {
+                      setOtherOutreachSelected(event.target.checked);
+                    }
+                    setOutreachError(null);
+                    setSubmitted(false);
+                    setSubmitError(null);
+                  }}
                 />
-              </Field>
-
-              <Field label="Other notes" name="notes">
-                <textarea
-                  className={cn(inputClassName, "min-h-28 resize-y")}
-                  id="notes"
-                  name="notes"
-                  placeholder="Anything else we should know?"
-                />
-              </Field>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="self-start rounded-md bg-green-bg-card px-6 py-3 text-base font-semibold text-white transition hover:bg-green-bg focus:outline-none focus:ring-2 focus:ring-green-bg-card/30"
-              >
-                {submitting ? "Sending..." : "Submit"}
-              </button>
-              {submitError ? (
-                <p className="text-sm font-medium text-red-600">
-                  {submitError}
-                </p>
-              ) : null}
-              {submitted ? (
-                <p className="text-sm font-medium text-green-bg">
-                  Thanks. We received your response and will follow up soon.
-                </p>
-              ) : null}
-            </form>
+                {channel}
+              </label>
+            ))}
           </div>
-        </section>
-      </main>
-      <Footer />
-    </div>
+          {otherOutreachSelected && (
+            <SiteField
+              label="What other way could you share?"
+              name="outreachOtherDetails"
+              required
+              onDark
+              className="mt-2"
+            >
+              <textarea
+                id="outreachOtherDetails"
+                name="outreachOtherDetails"
+                required
+                rows={3}
+                maxLength={1000}
+                placeholder="Briefly describe the other channel or context."
+                className={cn(SITE_INPUT, "resize-y")}
+                style={SITE_INPUT_STYLE}
+              />
+            </SiteField>
+          )}
+          {outreachError && (
+            <p className="text-sm font-medium text-red-200" role="alert">
+              {outreachError}
+            </p>
+          )}
+        </fieldset>
+
+        <SiteField label="Other notes" name="notes" onDark>
+          <textarea
+            id="notes"
+            name="notes"
+            rows={3}
+            placeholder="Anything else we should know?"
+            className={cn(SITE_INPUT, "resize-y")}
+            style={SITE_INPUT_STYLE}
+          />
+        </SiteField>
+
+        <div className="flex flex-wrap items-center gap-4">
+          <button
+            type="submit"
+            disabled={submitting}
+            className={cn(
+              SITE_SUBMIT,
+              "bg-white text-[var(--site-primary)] hover:bg-white/85",
+            )}
+            style={{ borderRadius: "var(--site-radius-button)" }}
+          >
+            {submitting ? "Sending…" : "Submit"}
+          </button>
+          {submitted && (
+            <p className="text-[1rem] text-white">
+              Thanks. We received your response and will follow up soon.
+            </p>
+          )}
+          {submitError && (
+            <p className="text-[1rem] text-red-200" role="alert">
+              {submitError}
+            </p>
+          )}
+        </div>
+      </form>
+    </PageBand>
   );
 }
 
-export default OutreachPartnerPage;
+export default function OutreachPartnerPage() {
+  const { data: memberCount } = useAllianceMemberCount();
+  const lede = `Alliance members each spend 15 minutes a week taking actions on our online platform. For organizations working on our priorities, we can design a focused task in which ${
+    memberCount
+      ? `our ${memberCount.toLocaleString()} volunteer members`
+      : "members"
+  } help you.`;
+
+  return (
+    <PageShell title={PARTNER_TITLE} subtitle={lede} showJoinCta={false}>
+      <Reliance />
+      <Offers />
+      <PartnerTasks />
+      <PartnerForm />
+    </PageShell>
+  );
+}

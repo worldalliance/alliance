@@ -14,6 +14,7 @@ import { ApiOkResponse } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import { AuthGuard } from "src/auth/guards/auth.guard";
 import type { JwtRequest } from "src/auth/guards/jwtreq";
+import { Public } from "src/auth/public.decorator";
 import { PosthogService } from "src/posthog/posthog.service";
 import { ContractService } from "./contract.service";
 import {
@@ -33,7 +34,7 @@ export class ContractController {
   ) {}
 
   @Get("current")
-  @UseGuards(AuthGuard)
+  @Public()
   @ApiOkResponse({ type: ContractDto })
   async getCurrent(): Promise<ContractDto> {
     return new ContractDto(

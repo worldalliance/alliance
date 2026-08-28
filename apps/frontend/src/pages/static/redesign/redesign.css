@@ -1,0 +1,221 @@
+@font-face {
+  font-family: "Libre Caslon Text";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/LibreCaslonCondensed-Regular.otf")
+    format("opentype");
+}
+
+@font-face {
+  font-family: "Libre Caslon Text";
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/LibreCaslonCondensed-Italic.otf")
+    format("opentype");
+}
+
+@font-face {
+  font-family: "Libre Caslon Text";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/LibreCaslonCondensed-Medium.otf")
+    format("opentype");
+}
+
+@font-face {
+  font-family: "Libre Caslon Text";
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/LibreCaslonCondensed-SemiBold.otf")
+    format("opentype");
+}
+
+@font-face {
+  font-family: "Libre Caslon Text";
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/LibreCaslonCondensed-Bold.otf")
+    format("opentype");
+}
+
+@font-face {
+  font-family: "Alex Brush";
+  font-weight: 400;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/AlexBrush-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Galdeano";
+  font-weight: 400;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/Galdeano-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "TT Neoris";
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/TTNeoris-Light.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "TT Neoris";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/TTNeoris-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "TT Neoris";
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/TTNeoris-Italic.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "TT Neoris";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/TTNeoris-Medium.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "TT Neoris";
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/TTNeoris-DemiBold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "TT Neoris";
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/TTNeoris-Bold.ttf") format("truetype");
+}
+
+/*
+ * The app sets `font-family` with a `*` selector in index.css, which outranks
+ * Tailwind's layered utilities. These unlayered rules take the redesign tree
+ * back from it.
+ */
+.rd-root,
+.rd-root * {
+  font-family: var(--rd-font-body);
+  font-synthesis: weight style;
+  -webkit-font-smoothing: antialiased;
+}
+
+.rd-root .rd-display {
+  font-family: var(--rd-font-display);
+}
+
+/** The h1 and the priorities h2, which swap faces per version. */
+.rd-root .rd-headline {
+  font-family: var(--rd-font-headline);
+}
+
+/** The signature field in version 4's commitment card. */
+.rd-root .rd-signature {
+  font-family: "Alex Brush", cursive;
+}
+
+.rd-console,
+.rd-console * {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@keyframes rd-caret {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes rd-check-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rd-root *,
+  .rd-root *::before,
+  .rd-root *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+@keyframes rd-deck-advance {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97) rotate(-1.4deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+}
+
+.rd-root .rd-deck-card {
+  animation: rd-deck-advance 520ms cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+/*
+ * Touch devices can't hover, so the priority descriptions would never show.
+ * There they sit open, with the title already lifted to make room.
+ */
+@media (hover: none) {
+  .rd-root .rd-priority-body {
+    top: 18% !important;
+  }
+
+  .rd-root .rd-priority-body > .grid {
+    grid-template-rows: 1fr !important;
+  }
+
+  .rd-root .rd-priority-body p {
+    opacity: 1 !important;
+  }
+}
+
+@keyframes rd-post-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rd-root .rd-post-slide-in {
+  animation: rd-post-slide-in 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}

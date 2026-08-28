@@ -53,6 +53,15 @@ shared/tsconfig.tsbuildinfo
 .worktree/
 common/.tmp-test/
 
+<<<<<<< HEAD
 # Captured migration output — carries row values from the database it ran against
 migration_log.txt
 prod_migration_*.txt
+=======
+# Redesign working files: source comps/fonts and screenshot output
+design/
+scratch/
+
+# Agent working output
+.scratch/
+>>>>>>> publicsite-redesign

@@ -80,6 +80,21 @@
   --color-gray-4: #404040;
 }
 
+:root {
+  --site-primary: #081e40;
+  --site-primary-hover: #0d2c5c;
+  --site-panel: #11301f;
+  --site-link: #1e68d9;
+  --site-surface: #fff;
+  --site-surface-alt: #e4e5e3;
+  --site-ink: #14181d;
+  --site-font-body: "TT Neoris", system-ui, sans-serif;
+  --site-font-display: "Libre Caslon Text", Georgia, serif;
+  --site-radius-button: 0.375rem;
+  --site-radius-card: 0.5rem;
+  --site-radius-input: 0.375rem;
+}
+
 * {
   font-family: "Source Sans 3", sans-serif;
 }
@@ -106,6 +121,11 @@ html {
 
 html.white {
   background-color: white !important;
+}
+
+/* The public site's surface, set by `useSiteBackground`. */
+html.site-surface {
+  background-color: var(--site-surface) !important;
 }
 
 img {
