@@ -10,15 +10,22 @@ import Modal, {
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { RotateCcw, RotateCw } from "lucide-react";
 import {
-  type ChangeEventHandler,
-  type FC,
-  type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
+  type ChangeEventHandler,
+  type FC,
 } from "react";
+import ReactCrop, {
+  areCropsEqual,
+  centerCrop,
+  makeAspectCrop,
+  type Crop,
+  type PercentCrop,
+} from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
 
 type ImageEditorProps = {
   initialImageUrl: string | null;
@@ -29,15 +36,7 @@ type ImageEditorProps = {
   isUploading?: boolean;
 };
 
-type CropRect = {
-  x: number;
-  y: number;
-  size: number;
-};
-
-type ImageLayout = {
-  x: number;
-  y: number;
+type Dimensions = {
   width: number;
   height: number;
 };
@@ -49,29 +48,11 @@ type PixelCrop = {
   height: number;
 };
 
-type DragHandle = "topLeft" | "topRight" | "bottomLeft" | "bottomRight";
-
-type DragState =
-  | {
-      type: "move";
-      startPointer: { x: number; y: number };
-      startCrop: CropRect;
-    }
-  | {
-      type: "resize";
-      handle: DragHandle;
-      startCrop: CropRect;
-      containerRect: DOMRect;
-    };
-
 const DEFAULT_MAX_FILE_SIZE_MB = 20;
-const ABS_MIN_CROP_SIZE = 80;
-const MIN_CROP_RATIO = 0.45;
+const MIN_CROP_SIZE = 80;
 const MAX_PREVIEW_SIZE = 1200;
+const MAX_CROP_HEIGHT = "60vh";
 const CROPPED_IMAGE_STRING_MAX_LENGTH = 50_000_000;
-
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(Math.max(value, min), max);
 
 const getRadianAngle = (degreeValue: number) => (degreeValue * Math.PI) / 180;
 
@@ -163,10 +144,9 @@ const rotateImageData = async (
   const rotRad = getRadianAngle(angle);
   const width = image.width;
   const height = image.height;
-  const swap = Math.abs(angle / 90) % 2 === 1;
 
-  canvas.width = swap ? height : width;
-  canvas.height = swap ? width : height;
+  canvas.width = height;
+  canvas.height = width;
 
   ctx.translate(canvas.width / 2, canvas.height / 2);
   ctx.rotate(rotRad);
@@ -175,101 +155,15 @@ const rotateImageData = async (
   return canvas.toDataURL("image/png");
 };
 
-const getMinCropSize = (layout: ImageLayout) => {
-  const maxSize = Math.min(layout.width, layout.height);
-  return Math.min(
-    Math.max(maxSize * MIN_CROP_RATIO, ABS_MIN_CROP_SIZE),
-    maxSize,
-  );
-};
-
-const convertCropToPixels = (
-  cropRect: CropRect,
-  imageLayout: ImageLayout,
-  dimensions: { width: number; height: number },
-): PixelCrop => {
-  const scaleX = dimensions.width / imageLayout.width;
-  const scaleY = dimensions.height / imageLayout.height;
-
-  return {
-    x: (cropRect.x - imageLayout.x) * scaleX,
-    y: (cropRect.y - imageLayout.y) * scaleY,
-    width: cropRect.size * scaleX,
-    height: cropRect.size * scaleY,
-  };
-};
-
-const areCropsRoughlyEqual = (a: PixelCrop | null, b: PixelCrop) => {
-  if (!a) return false;
-  const threshold = 0.5;
-  return (
-    Math.abs(a.x - b.x) < threshold &&
-    Math.abs(a.y - b.y) < threshold &&
-    Math.abs(a.width - b.width) < threshold &&
-    Math.abs(a.height - b.height) < threshold
-  );
-};
-
-const resizeCropRect = (
-  handle: DragHandle,
-  pointer: { x: number; y: number },
-  start: CropRect,
-  imageRect: ImageLayout,
-): CropRect => {
-  const minSize = getMinCropSize(imageRect);
-  const maxRight = imageRect.x + imageRect.width;
-  const maxBottom = imageRect.y + imageRect.height;
-  const minLeft = imageRect.x;
-  const minTop = imageRect.y;
-
-  switch (handle) {
-    case "topLeft": {
-      const anchorX = start.x + start.size;
-      const anchorY = start.y + start.size;
-      const pointerX = clamp(pointer.x, minLeft, anchorX - minSize);
-      const pointerY = clamp(pointer.y, minTop, anchorY - minSize);
-      const deltaX = anchorX - pointerX;
-      const deltaY = anchorY - pointerY;
-      const maxSize = Math.min(anchorX - minLeft, anchorY - minTop);
-      const size = clamp(Math.min(deltaX, deltaY), minSize, maxSize);
-      return { x: anchorX - size, y: anchorY - size, size };
-    }
-    case "topRight": {
-      const anchorX = start.x;
-      const anchorY = start.y + start.size;
-      const pointerX = clamp(pointer.x, anchorX + minSize, maxRight);
-      const pointerY = clamp(pointer.y, minTop, anchorY - minSize);
-      const deltaX = pointerX - anchorX;
-      const deltaY = anchorY - pointerY;
-      const maxSize = Math.min(maxRight - anchorX, anchorY - minTop);
-      const size = clamp(Math.min(deltaX, deltaY), minSize, maxSize);
-      return { x: anchorX, y: anchorY - size, size };
-    }
-    case "bottomLeft": {
-      const anchorX = start.x + start.size;
-      const anchorY = start.y;
-      const pointerX = clamp(pointer.x, minLeft, anchorX - minSize);
-      const pointerY = clamp(pointer.y, anchorY + minSize, maxBottom);
-      const deltaX = anchorX - pointerX;
-      const deltaY = pointerY - anchorY;
-      const maxSize = Math.min(anchorX - minLeft, maxBottom - anchorY);
-      const size = clamp(Math.min(deltaX, deltaY), minSize, maxSize);
-      return { x: anchorX - size, y: anchorY, size };
-    }
-    case "bottomRight":
-    default: {
-      const anchorX = start.x;
-      const anchorY = start.y;
-      const pointerX = clamp(pointer.x, anchorX + minSize, maxRight);
-      const pointerY = clamp(pointer.y, anchorY + minSize, maxBottom);
-      const deltaX = pointerX - anchorX;
-      const deltaY = pointerY - anchorY;
-      const maxSize = Math.min(maxRight - anchorX, maxBottom - anchorY);
-      const size = clamp(Math.min(deltaX, deltaY), minSize, maxSize);
-      return { x: anchorX, y: anchorY, size };
-    }
-  }
-};
+const toSourcePixels = (
+  percentCrop: PercentCrop,
+  dimensions: Dimensions,
+): PixelCrop => ({
+  x: (percentCrop.x / 100) * dimensions.width,
+  y: (percentCrop.y / 100) * dimensions.height,
+  width: (percentCrop.width / 100) * dimensions.width,
+  height: (percentCrop.height / 100) * dimensions.height,
+});
 
 const ImageEditor: FC<ImageEditorProps> = ({
   initialImageUrl,
@@ -280,27 +174,31 @@ const ImageEditor: FC<ImageEditorProps> = ({
   isUploading = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const dragStateRef = useRef<DragState | null>(null);
+  const previewImageRef = useRef<HTMLImageElement | null>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(initialImageUrl);
   const [previewSrc, setPreviewSrc] = useState<string | null>(initialImageUrl);
+  const [croppedImage, setCroppedImage] = useState<string | null>(
+    initialImageUrl,
+  );
+  const [crop, setCrop] = useState<Crop | undefined>(undefined);
+  const [completedCrop, setCompletedCrop] = useState<PercentCrop | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rotation, setRotation] = useState(0);
   const [isPreviewProcessing, setIsPreviewProcessing] = useState(false);
   const [hasCustomImage, setHasCustomImage] = useState(false);
-  const [sourceDimensions, setSourceDimensions] = useState<{
-    width: number;
-    height: number;
-  } | null>(null);
-  const [imageLayout, setImageLayout] = useState<ImageLayout | null>(null);
-  const [cropRect, setCropRect] = useState<CropRect | null>(null);
+  const [sourceDimensions, setSourceDimensions] = useState<Dimensions | null>(
+    null,
+  );
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
-  const [cropCommitVersion, setCropCommitVersion] = useState(0);
   const lastInitialUrlRef = useRef<string | null>(initialImageUrl);
-  const lastGeneratedRef = useRef<string | null>(initialImageUrl);
-  const lastSelectionRef = useRef<PixelCrop | null>(null);
-  const isDraggingRef = useRef(false);
-  const activePointerIdRef = useRef<number | null>(null);
+
+  // The crop effect below re-encodes the source at full resolution, so onChange
+  // stays out of its dependencies: a caller that renders a fresh callback and
+  // sets state from it would otherwise re-encode on every render, forever.
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
 
   const rotatedDimensions = useMemo(() => {
     if (!sourceDimensions) return null;
@@ -311,19 +209,25 @@ const ImageEditor: FC<ImageEditorProps> = ({
     return { width: height, height: width };
   }, [sourceDimensions, rotation]);
 
+  // A definite width, rather than max-width plus max-height, is what scales a
+  // small image up to the crop box: max-* only ever shrinks, and pairing a
+  // full width with a capped height stretches the image instead of fitting it.
+  const cropWidth = rotatedDimensions
+    ? `min(100%, calc(${MAX_CROP_HEIGHT} * ${rotatedDimensions.width / rotatedDimensions.height}))`
+    : undefined;
+
   useEffect(() => {
     if (hasCustomImage) return;
     if (initialImageUrl === lastInitialUrlRef.current) return;
 
     setImageSrc(initialImageUrl);
     setPreviewSrc(initialImageUrl);
+    setCroppedImage(initialImageUrl);
     setRotation(0);
-    setImageLayout(null);
-    setCropRect(null);
+    setCrop(undefined);
+    setCompletedCrop(null);
     setError(null);
-    lastGeneratedRef.current = initialImageUrl;
     lastInitialUrlRef.current = initialImageUrl;
-    lastSelectionRef.current = null;
   }, [initialImageUrl, hasCustomImage]);
 
   const triggerFileSelect = useCallback(() => {
@@ -397,18 +301,16 @@ const ImageEditor: FC<ImageEditorProps> = ({
       const reader = new FileReader();
       reader.onload = () => {
         if (typeof reader.result !== "string") return;
-        dragStateRef.current = null;
         setImageSrc(reader.result);
         setPreviewSrc(reader.result);
+        setCroppedImage(null);
         setSourceDimensions(null);
-        setImageLayout(null);
-        setCropRect(null);
+        setCrop(undefined);
+        setCompletedCrop(null);
         setHasCustomImage(true);
         setIsCropModalOpen(true);
         setRotation(0);
         setError(null);
-        lastGeneratedRef.current = null;
-        lastSelectionRef.current = null;
         onChange(null);
       };
       reader.readAsDataURL(file);
@@ -417,262 +319,62 @@ const ImageEditor: FC<ImageEditorProps> = ({
     [allowedMimeTypes, maxFileSizeMb, onChange],
   );
 
-  const updateLayout = useCallback(() => {
-    if (!containerRef.current || !rotatedDimensions) return;
-
-    const rect = containerRef.current.getBoundingClientRect();
-    const containerWidth = rect.width;
-    const containerHeight = rect.height;
-
-    if (!containerWidth || !containerHeight) return;
-
-    const imageAspect = rotatedDimensions.width / rotatedDimensions.height;
-    const containerAspect = containerWidth / containerHeight;
-
-    let displayWidth = containerWidth;
-    let displayHeight = containerHeight;
-
-    if (imageAspect > containerAspect) {
-      displayHeight = containerWidth / imageAspect;
-    } else {
-      displayWidth = containerHeight * imageAspect;
-    }
-
-    const offsetX = (containerWidth - displayWidth) / 2;
-    const offsetY = (containerHeight - displayHeight) / 2;
-    const layout: ImageLayout = {
-      x: offsetX,
-      y: offsetY,
-      width: displayWidth,
-      height: displayHeight,
-    };
-
-    setImageLayout(layout);
-    setCropRect((prev) => {
-      const maxSize = Math.min(displayWidth, displayHeight);
-      const minSize = getMinCropSize(layout);
-
-      if (!prev) {
-        const size = maxSize;
-        return {
-          x: offsetX + (displayWidth - size) / 2,
-          y: offsetY + (displayHeight - size) / 2,
-          size,
-        };
-      }
-
-      const size = clamp(prev.size, minSize, maxSize);
-      const maxX = offsetX + displayWidth - size;
-      const maxY = offsetY + displayHeight - size;
-
-      return {
-        x: clamp(prev.x, offsetX, maxX),
-        y: clamp(prev.y, offsetY, maxY),
-        size,
-      };
-    });
-  }, [rotatedDimensions]);
-
-  useEffect(() => {
-    if (
-      typeof window === "undefined" ||
-      !isCropModalOpen ||
-      !hasCustomImage ||
-      !rotatedDimensions
-    ) {
-      return;
-    }
-
-    updateLayout();
-
-    const container = containerRef.current;
-    if (!container) return;
-
-    const observer =
-      typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(() => updateLayout())
-        : null;
-
-    observer?.observe(container);
-
-    const handleWindowResize = () => updateLayout();
-    window.addEventListener("resize", handleWindowResize);
-
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener("resize", handleWindowResize);
-    };
-  }, [hasCustomImage, isCropModalOpen, rotatedDimensions, updateLayout]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!isCropModalOpen || !imageLayout || isUploading) {
-      dragStateRef.current = null;
-      return;
-    }
-
-    const handleMove = (event: PointerEvent) => {
-      const state = dragStateRef.current;
-      if (
-        activePointerIdRef.current !== null &&
-        event.pointerId !== activePointerIdRef.current
-      ) {
-        return;
-      }
-      if (!state || !imageLayout) return;
-
-      event.preventDefault();
-
-      if (state.type === "move") {
-        const deltaX = event.clientX - state.startPointer.x;
-        const deltaY = event.clientY - state.startPointer.y;
-        const size = state.startCrop.size;
-        const maxX = imageLayout.x + imageLayout.width - size;
-        const maxY = imageLayout.y + imageLayout.height - size;
-
-        setCropRect({
-          x: clamp(state.startCrop.x + deltaX, imageLayout.x, maxX),
-          y: clamp(state.startCrop.y + deltaY, imageLayout.y, maxY),
-          size,
-        });
-      } else if (state.type === "resize") {
-        const { left, top } = state.containerRect;
-        const pointer = {
-          x: event.clientX - left,
-          y: event.clientY - top,
-        };
-        setCropRect(
-          resizeCropRect(state.handle, pointer, state.startCrop, imageLayout),
-        );
-      }
-    };
-
-    const stopDragging = (event: PointerEvent) => {
-      if (
-        activePointerIdRef.current !== null &&
-        event.pointerId !== activePointerIdRef.current
-      ) {
-        return;
-      }
-      activePointerIdRef.current = null;
-      if (isDraggingRef.current) {
-        isDraggingRef.current = false;
-        setCropCommitVersion((value) => value + 1);
-      }
-      dragStateRef.current = null;
-    };
-
-    window.addEventListener("pointermove", handleMove);
-    window.addEventListener("pointerup", stopDragging);
-    window.addEventListener("pointercancel", stopDragging);
-
-    return () => {
-      window.removeEventListener("pointermove", handleMove);
-      window.removeEventListener("pointerup", stopDragging);
-      window.removeEventListener("pointercancel", stopDragging);
-    };
-  }, [imageLayout, isCropModalOpen, isUploading]);
-
-  useEffect(() => {
-    if (
-      !hasCustomImage ||
-      !imageSrc ||
-      !cropRect ||
-      !imageLayout ||
-      !rotatedDimensions
-    ) {
-      return;
-    }
-
-    if (isDraggingRef.current) {
-      return;
-    }
-
-    const pixelCrop = convertCropToPixels(
-      cropRect,
-      imageLayout,
-      rotatedDimensions,
+  const centerSquareCrop = useCallback((image: HTMLImageElement) => {
+    const { width, height } = image;
+    if (!width || !height) return;
+    const centered = centerCrop(
+      makeAspectCrop({ unit: "%", width: 100 }, 1, width, height),
+      width,
+      height,
     );
-    const previous = lastSelectionRef.current;
-    if (previous && areCropsRoughlyEqual(previous, pixelCrop)) {
+    setCrop((prev) => prev ?? centered);
+    setCompletedCrop((prev) => prev ?? centered);
+  }, []);
+
+  // The preview only fires load when its src changes, so a rotation that
+  // re-encodes to a byte-identical preview leaves the crop cleared by
+  // handleRotate with nothing to restore it.
+  useEffect(() => {
+    if (crop || isPreviewProcessing) return;
+    const image = previewImageRef.current;
+    if (image?.complete) centerSquareCrop(image);
+  }, [crop, previewSrc, isPreviewProcessing, centerSquareCrop]);
+
+  useEffect(() => {
+    if (!hasCustomImage || !imageSrc || !completedCrop || !rotatedDimensions) {
       return;
     }
 
-    lastSelectionRef.current = pixelCrop;
+    let cancelled = false;
 
-    let isCancelled = false;
-
-    const generate = async () => {
+    void (async () => {
       try {
-        const cropped = await getCroppedImage(imageSrc, pixelCrop, rotation);
+        const cropped = await getCroppedImage(
+          imageSrc,
+          toSourcePixels(completedCrop, rotatedDimensions),
+          rotation,
+        );
+        if (cancelled) return;
         if (cropped.length > CROPPED_IMAGE_STRING_MAX_LENGTH) {
-          if (!isCancelled) {
-            setError(
-              "The cropped image is too large. Please crop a smaller area or use a smaller image.",
-            );
-          }
+          setError(
+            "The cropped image is too large. Please crop a smaller area or use a smaller image.",
+          );
           return;
         }
-        if (!isCancelled) {
-          lastGeneratedRef.current = cropped;
-          onChange(cropped);
-          setError(null);
-        }
+        setCroppedImage(cropped);
+        onChangeRef.current(cropped);
+        setError(null);
       } catch {
-        if (!isCancelled) {
+        if (!cancelled) {
           setError("Unable to process image. Please try another file.");
         }
-      } finally {
       }
-    };
-
-    void generate();
+    })();
 
     return () => {
-      isCancelled = true;
+      cancelled = true;
     };
-  }, [
-    cropRect,
-    cropCommitVersion,
-    hasCustomImage,
-    imageLayout,
-    imageSrc,
-    onChange,
-    rotatedDimensions,
-    rotation,
-  ]);
-
-  const handleStartMove = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (!cropRect || isUploading) return;
-      event.preventDefault();
-      isDraggingRef.current = true;
-      activePointerIdRef.current = event.pointerId;
-      dragStateRef.current = {
-        type: "move",
-        startPointer: { x: event.clientX, y: event.clientY },
-        startCrop: cropRect,
-      };
-    },
-    [cropRect, isUploading],
-  );
-
-  const handleResizePointerDown = useCallback(
-    (handle: DragHandle) => (event: ReactPointerEvent<HTMLButtonElement>) => {
-      if (!cropRect || !containerRef.current || isUploading) return;
-      event.preventDefault();
-      event.stopPropagation();
-      isDraggingRef.current = true;
-      activePointerIdRef.current = event.pointerId;
-      dragStateRef.current = {
-        type: "resize",
-        handle,
-        startCrop: cropRect,
-        containerRect: containerRef.current.getBoundingClientRect(),
-      };
-    },
-    [cropRect, isUploading],
-  );
+  }, [completedCrop, hasCustomImage, imageSrc, rotatedDimensions, rotation]);
 
   const handleRotate = useCallback(
     async (direction: "left" | "right") => {
@@ -680,11 +382,9 @@ const ImageEditor: FC<ImageEditorProps> = ({
         return;
       }
       const delta = direction === "left" ? -90 : 90;
-      const updatedRotation = (((rotation + delta) % 360) + 360) % 360;
-      setRotation(updatedRotation);
-      setCropRect(null);
-      lastSelectionRef.current = null;
-      lastGeneratedRef.current = null;
+      setRotation((((rotation + delta) % 360) + 360) % 360);
+      setCrop(undefined);
+      setCompletedCrop(null);
 
       if (!previewSrc) {
         return;
@@ -692,8 +392,7 @@ const ImageEditor: FC<ImageEditorProps> = ({
 
       setIsPreviewProcessing(true);
       try {
-        const rotatedPreview = await rotateImageData(previewSrc, direction);
-        setPreviewSrc(rotatedPreview);
+        setPreviewSrc(await rotateImageData(previewSrc, direction));
       } catch {
         setError("Unable to rotate image. Please try again.");
       } finally {
@@ -703,24 +402,15 @@ const ImageEditor: FC<ImageEditorProps> = ({
     [hasCustomImage, isUploading, previewSrc, rotation, isPreviewProcessing],
   );
 
-  const previewImage = useMemo(() => {
-    if (hasCustomImage) {
-      return lastGeneratedRef.current ?? previewSrc ?? imageSrc ?? undefined;
-    }
-    return previewSrc ?? imageSrc ?? undefined;
-  }, [hasCustomImage, imageSrc, previewSrc]);
+  const previewImage = croppedImage ?? previewSrc ?? imageSrc ?? undefined;
   const showMobileOverlay = !hasCustomImage && Boolean(previewImage);
 
-  const containerClassName = useMemo(() => {
-    return cn("relative w-fit", className);
-  }, [className]);
-
   return (
-    <div className={containerClassName}>
+    <div className={cn("relative w-fit", className)}>
       <div className="group relative w-29 h-29 rounded-md overflow-hidden bg-zinc-100">
         {previewImage ? (
           <img
-            src={lastGeneratedRef.current ?? previewImage}
+            src={previewImage}
             alt="Profile preview"
             className="h-full w-full object-cover"
             draggable={false}
@@ -789,66 +479,43 @@ const ImageEditor: FC<ImageEditorProps> = ({
           </ModalHeader>
 
           <ModalBody>
-            <div
-              ref={containerRef}
-              className="relative aspect-square w-full select-none touch-none overflow-hidden rounded-xl bg-zinc-900"
-            >
+            <div className="relative flex min-h-40 w-full items-center justify-center overflow-hidden rounded-xl bg-zinc-900 p-3">
               {isPreviewProcessing && (
                 <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40">
                   <Spinner />
                 </div>
               )}
               {previewSrc ? (
-                <img
-                  src={previewSrc}
-                  alt="Profile to crop"
-                  className="absolute inset-0 h-full w-full object-contain"
-                  draggable={false}
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-zinc-300">
-                  Loading preview...
-                </div>
-              )}
-
-              {cropRect && (
-                <div
-                  className="absolute border-2 border-white touch-none"
-                  style={{
-                    left: `${cropRect.x}px`,
-                    top: `${cropRect.y}px`,
-                    width: `${cropRect.size}px`,
-                    height: `${cropRect.size}px`,
-                    boxShadow: "0 0 0 9999px rgba(0,0,0,0.55)",
-                    cursor: "move",
-                  }}
-                  onPointerDown={handleStartMove}
+                <ReactCrop
+                  crop={crop}
+                  onChange={(_, percentCrop) => setCrop(percentCrop)}
+                  // Every change to completedCrop re-encodes the source at full
+                  // resolution, and ReactCrop completes a crop on any
+                  // pointer-up, so keep the previous object when nothing moved.
+                  onComplete={(_, percentCrop) =>
+                    setCompletedCrop((prev) =>
+                      prev && areCropsEqual(prev, percentCrop)
+                        ? prev
+                        : percentCrop,
+                    )
+                  }
+                  aspect={1}
+                  minWidth={MIN_CROP_SIZE}
+                  minHeight={MIN_CROP_SIZE}
+                  keepSelection
+                  disabled={isUploading}
+                  style={{ maxHeight: MAX_CROP_HEIGHT, width: cropWidth }}
                 >
-                  {(
-                    [
-                      "topLeft",
-                      "topRight",
-                      "bottomLeft",
-                      "bottomRight",
-                    ] as DragHandle[]
-                  ).map((handle) => (
-                    <button
-                      key={handle}
-                      type="button"
-                      aria-label={`Resize ${handle}`}
-                      className="absolute h-8 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/90 bg-white shadow-[0_0_8px_rgba(0,0,0,0.55)] focus-visible:outline-2 focus-visible:outline-white touch-none"
-                      style={{
-                        left: handle.includes("Right") ? "100%" : "0%",
-                        top: handle.startsWith("top") ? "0%" : "100%",
-                        cursor:
-                          handle === "topLeft" || handle === "bottomRight"
-                            ? "nwse-resize"
-                            : "nesw-resize",
-                      }}
-                      onPointerDown={handleResizePointerDown(handle)}
-                    />
-                  ))}
-                </div>
+                  <img
+                    ref={previewImageRef}
+                    src={previewSrc}
+                    alt="Profile to crop"
+                    className="w-full"
+                    onLoad={(event) => centerSquareCrop(event.currentTarget)}
+                  />
+                </ReactCrop>
+              ) : (
+                <div className="p-8 text-zinc-300">Loading preview...</div>
               )}
             </div>
 
