@@ -176,6 +176,40 @@ describe("Community (e2e)", () => {
     }
   });
 
+  it("POST /community/create rejects a null capacity the flags require with 400", async () => {
+    const res = await request(ctx.app.getHttpServer())
+      .post("/community/create")
+      .set("Authorization", `Bearer ${testUserToken}`)
+      .send(
+        createDto({
+          name: "Uncapped Open Community",
+          description: "Takes members it did not name",
+          maxCapacity: null,
+        }),
+      );
+
+    expect(res.status).toBe(400);
+  });
+
+  it("POST /community/create allows a null capacity when the group takes nobody automatically", async () => {
+    const res = await request(ctx.app.getHttpServer())
+      .post("/community/create")
+      .set("Authorization", `Bearer ${testUserToken}`)
+      .send(
+        createDto({
+          name: "Uncapped Closed Community",
+          description: "Invite only",
+          public: false,
+          allowMemberInvites: false,
+          allowStaffAssignments: false,
+          maxCapacity: null,
+        }),
+      );
+
+    expect(res.status).toBe(201);
+    expect(res.body.maxCapacity).toBeNull();
+  });
+
   it("POST /community/create returns 401 when unauthenticated", async () => {
     const res = await request(ctx.app.getHttpServer())
       .post("/community/create")
@@ -486,6 +520,23 @@ describe("Community (e2e)", () => {
     expect(res.status).toBe(200);
     expect(res.body.name).toBe("E2E HTTP Updated");
     expect(res.body.description).toBe("After update");
+  });
+
+  it("PATCH /community/:communityId rejects clearing a capacity the flags require with 400", async () => {
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP Clear Capacity",
+        leaders: [testUser],
+        users: [testUser],
+      }),
+    );
+
+    const res = await request(ctx.app.getHttpServer())
+      .patch(`/community/${community.id}`)
+      .set("Authorization", `Bearer ${testUserToken}`)
+      .send({ maxCapacity: null });
+
+    expect(res.status).toBe(400);
   });
 
   it("PATCH /community/:communityId rejects null on a NOT NULL column with 400", async () => {
