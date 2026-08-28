@@ -1,8 +1,9 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
-import { ActionDto, tasksCreateFormAdmin } from "@alliance/shared/client";
+import { AdminActionDto, tasksCreateFormAdmin } from "@alliance/shared/client";
 import type {
+  AdminFollowUpFormDto,
   FollowUpFormDto,
   TagDto,
 } from "@alliance/shared/client/types.gen";
@@ -23,7 +24,7 @@ import CohortExpressionBuilder from "./CohortExpressionBuilder";
 import { FormBuilder } from "./FormBuilder";
 
 export interface ActionFollowUpFormsTabProps {
-  action: ActionDto;
+  action: AdminActionDto;
   availableTags: TagDto[];
   availableActions: { id: number; name: string }[];
   availableUsers: UserSelectUser[];
@@ -264,7 +265,7 @@ export default function ActionFollowUpFormsTab({
 }
 
 interface FollowUpFormCardProps {
-  followUpForm: FollowUpFormDto;
+  followUpForm: AdminFollowUpFormDto;
   actionName: string;
   onSaveFields: (
     followUpFormId: number,

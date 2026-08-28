@@ -1,5 +1,5 @@
 import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
-import { ActionDto, FollowUpForm } from "@alliance/shared/client";
+import { ActionDto, FollowUpFormDto } from "@alliance/shared/client";
 import {
   ActionWithAwayStatus,
   homePagePriorityComparator,
@@ -52,7 +52,7 @@ import {
 /** Ordered queue of main-column cards (action or follow-up) driven by the task navigator list. */
 type TaskNavigatorItem =
   | { kind: "action"; action: ActionWithAwayStatus }
-  | { kind: "followUpForm"; followUpForm: FollowUpForm; actionId: number };
+  | { kind: "followUpForm"; followUpForm: FollowUpFormDto; actionId: number };
 
 function TaskNavigatorListShell({ children }: { children: ReactNode }) {
   return (
@@ -162,7 +162,7 @@ const HomePage = () => {
   }, [actionProgressViews, actions]);
 
   const followUpFormsByActionId = useMemo(() => {
-    const map: Record<number, FollowUpForm[]> = {};
+    const map: Record<number, FollowUpFormDto[]> = {};
     for (const { followUpForm, actionId } of activeCompletableFollowUpForms) {
       (map[actionId] ??= []).push(followUpForm);
     }

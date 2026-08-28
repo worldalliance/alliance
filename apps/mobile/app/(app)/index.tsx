@@ -1,4 +1,4 @@
-import type { FollowUpForm } from "@alliance/shared/client";
+import type { FollowUpFormDto } from "@alliance/shared/client";
 import { actionsDismissAction } from "@alliance/shared/client";
 import { useActionsQuery } from "@alliance/shared/lib/actionsListPage";
 import {
@@ -44,7 +44,7 @@ import { colors } from "../../lib/style/colors";
 type HomeScreenItem =
   | { kind: "action"; action: ActionWithAwayStatus }
   | { kind: "generalUpdate"; generalUpdate: ParsedGeneralUpdate }
-  | { kind: "followUpForm"; followUpForm: FollowUpForm; actionId: number };
+  | { kind: "followUpForm"; followUpForm: FollowUpFormDto; actionId: number };
 
 // Stable identity — LegendList remounts its scroll view whenever this prop changes.
 const renderKeyboardAwareScrollComponent = (props: ScrollViewProps) => (

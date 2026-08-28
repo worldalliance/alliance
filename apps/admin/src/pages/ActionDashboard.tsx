@@ -309,7 +309,6 @@ const ActionDashboard: React.FC = () => {
     optional: false,
     authorIds: [],
     onboarding: false,
-    followUpForms: [],
   });
   const [reviewerRows, setReviewerRows] = useState<ReviewerRow[]>([]);
 
@@ -337,7 +336,6 @@ const ActionDashboard: React.FC = () => {
         optional: false,
         authorIds: [],
         onboarding: false,
-        followUpForms: [],
       });
       setReviewerRows([]);
       setImageKey(null);
@@ -377,6 +375,7 @@ const ActionDashboard: React.FC = () => {
       updates: _updates,
       suite,
       reviewers,
+      followUpForms: _followUpForms,
       ...formData
     } = parsedAction;
 

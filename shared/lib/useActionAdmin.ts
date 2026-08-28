@@ -7,7 +7,6 @@ import {
 } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import {
-  ActionDto,
   actionsArchiveAdmin,
   actionsCreateAdmin,
   actionsCreateFollowUpFormAdmin,
@@ -17,6 +16,7 @@ import {
   actionsUnarchiveAdmin,
   actionsUpdateAdmin,
   actionsUpdateFollowUpFormAdmin,
+  AdminActionDto,
   CreateActionDto,
   CreateFollowUpFormDto,
   UpdateActionDto,
@@ -120,12 +120,12 @@ export function useActionAdmin(
     Promise.all([invalidate(), invalidateList()]);
 
   /**
-   * For child flows that hand back a raw ActionDto: validate the
+   * For child flows that hand back a raw AdminActionDto: validate the
    * cohortExpression at the boundary and write the result into the query
    * cache, so `action` is always parsed.
    */
   const setActionFromDto = useCallback(
-    (dto: ActionDto) => {
+    (dto: AdminActionDto) => {
       queryClient.setQueryData(
         queryKeys.actionAdmin(dto.id),
         parseActionDto(dto),

@@ -229,7 +229,6 @@ describe("Actions (e2e)", () => {
         preventCompletion: false,
         publicOnly: false,
         onboarding: false,
-        followUpForms: [],
       };
 
       const res = await request(ctx.app.getHttpServer())
@@ -272,7 +271,6 @@ describe("Actions (e2e)", () => {
         preventCompletion: false,
         publicOnly: false,
         onboarding: false,
-        followUpForms: [],
       };
 
       const malformedExpressions = [
@@ -325,7 +323,6 @@ describe("Actions (e2e)", () => {
           preventCompletion: false,
           publicOnly: false,
           onboarding: false,
-          followUpForms: [],
           cohortExpression: { type: "Manual", userIds: [1] },
         } satisfies CreateActionDto & { cohortExpression: unknown });
       expect(createRes.status).toBe(201);
@@ -3504,7 +3501,6 @@ describe("Actions (e2e)", () => {
       preventCompletion: false,
       publicOnly: false,
       onboarding: false,
-      followUpForms: [],
       reviewers,
       ...extra,
     });
@@ -3681,6 +3677,102 @@ describe("Actions (e2e)", () => {
         { name: "Jane", url: "https://example.com" },
         { name: "Bob" },
       ]);
+    });
+  });
+
+  describe("Cohort expression exposure", () => {
+    const manualCohort = { type: "Manual", userIds: [1] };
+    let targetedActionId: number;
+
+    beforeAll(async () => {
+      const created = await request(ctx.app.getHttpServer())
+        .post("/actions/create")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          name: "Targeted Action",
+          body: "Body",
+          category: "category",
+          image: "",
+          timeEstimate: 5,
+          shortDescription: "Short",
+          visibilityMode: VisibilityMode.Public,
+          type: ActionTaskType.Activity,
+          isContractSigningAction: false,
+          shouldCompleteAfterDeadline: false,
+          isForumParticipationAction: false,
+          optional: false,
+          preventCompletion: false,
+          publicOnly: false,
+          onboarding: false,
+          cohortExpression: manualCohort,
+        })
+        .expect(201);
+      targetedActionId = created.body.id as number;
+
+      const { form } = await createFormWithSnapshot(ctx.dataSource, {
+        title: "Targeted Follow-up",
+        schema: { title: "Targeted Follow-up", pages: [], outputViews: [] },
+      });
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/${targetedActionId}/follow-up-forms`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          actionId: targetedActionId,
+          formId: form.id,
+          cohortExpression: manualCohort,
+        })
+        .expect(201);
+
+      await eventRepo.save(
+        eventRepo.create({
+          title: "Started",
+          description: "Started",
+          newStatus: ActionStatus.MemberAction,
+          date: new Date(Date.now() - 1000 * 60 * 60),
+          action: await actionRepo.findOneOrFail({
+            where: { id: targetedActionId },
+          }),
+        }),
+      );
+    });
+
+    it("serves cohort expressions to admins and to no one else", async () => {
+      const publicRes = await request(ctx.app.getHttpServer())
+        .get("/actions/public")
+        .expect(200);
+      const served = publicRes.body.find(
+        (a: ActionDto) => a.id === targetedActionId,
+      ) as ActionDto | undefined;
+      expect(served?.followUpForms).toHaveLength(1);
+      expect(JSON.stringify(publicRes.body)).not.toContain("cohortExpression");
+
+      const adminRes = await request(ctx.app.getHttpServer())
+        .get(`/actions/adminslug/${targetedActionId}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      expect(adminRes.body.cohortExpression).toEqual(manualCohort);
+      expect(adminRes.body.followUpForms[0].cohortExpression).toEqual(
+        manualCohort,
+      );
+    });
+
+    it("takes back an action the admin loaded, follow-up forms and all", async () => {
+      const adminRes = await request(ctx.app.getHttpServer())
+        .get(`/actions/adminslug/${targetedActionId}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const saved = await request(ctx.app.getHttpServer())
+        .patch(`/actions/${targetedActionId}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          name: "Targeted Action, renamed",
+          cohortExpression: adminRes.body.cohortExpression,
+          followUpForms: adminRes.body.followUpForms,
+        })
+        .expect(200);
+      expect(saved.body.name).toBe("Targeted Action, renamed");
+      expect(saved.body.cohortExpression).toEqual(manualCohort);
     });
   });
 

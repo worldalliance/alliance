@@ -2,7 +2,7 @@ import { ExceptionEvent } from "@alliance/common/analytics";
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import { tasksGetForm, tasksSubmitFollowUpForm } from "@alliance/shared/client";
 import type {
-  FollowUpForm,
+  FollowUpFormDto,
   SubmitFollowUpFormDto,
   SubmitFormDto,
 } from "@alliance/shared/client/types.gen";
@@ -20,7 +20,7 @@ import Card, { CardStyle } from "./system/Card";
 import Text, { FontWeight } from "./system/Text";
 
 interface FollowUpFormPanelProps {
-  followUpForm: FollowUpForm;
+  followUpForm: FollowUpFormDto;
   actionId: number;
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;

@@ -6,7 +6,7 @@ import {
   tasksSubmitFollowUpForm,
 } from "@alliance/shared/client";
 import type {
-  FollowUpForm,
+  FollowUpFormDto,
   SubmitFollowUpFormDto,
   SubmitFormDto,
 } from "@alliance/shared/client/types.gen";
@@ -24,7 +24,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
 
 interface FollowUpFormPanelProps {
-  followUpForm: FollowUpForm;
+  followUpForm: FollowUpFormDto;
   actionId: number;
   border?: boolean;
   onSubmitted?: () => void;

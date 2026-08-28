@@ -5,6 +5,7 @@ import {
   actionsAddSuiteEventAdmin,
   ActionStatus,
   ActionSuiteDto,
+  AdminActionDto,
   CreateActionEventDto,
 } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
@@ -14,7 +15,6 @@ import DateTimePicker, {
 import { useState } from "react";
 
 export type CreateEventFormProps = {
-  action: ActionDto;
   creatingEvent: boolean;
   setCreatingEvent: (creatingEvent: boolean) => void;
   setEventCreatedSuccess: (eventCreatedSuccess: boolean) => void;
@@ -22,10 +22,12 @@ export type CreateEventFormProps = {
 } & (
   | {
       suiteMode: false;
-      setAction: (action: ActionDto) => void;
+      action: AdminActionDto;
+      setAction: (action: AdminActionDto) => void;
     }
   | {
       suiteMode: true;
+      action: ActionDto;
       suiteId: number;
       setSuite: (suite: ActionSuiteDto) => void;
     }

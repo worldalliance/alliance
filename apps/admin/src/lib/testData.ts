@@ -54,7 +54,6 @@ export const testActions: CreateActionDto[] = [
   // Funding Action 1
   {
     name: "Save 2,500 acres of Ecuador cloud forest",
-    followUpForms: [],
     category: "Climate Change",
     body: `Protect Ecuador's Biodiversity Hotspot
 
@@ -93,7 +92,6 @@ This is our chance to take direct action against environmental destruction. Ever
   },
   {
     name: "Use public transportation instead of driving",
-    followUpForms: [],
     category: "Climate Change",
     body: `Transform Your Daily Commute
 

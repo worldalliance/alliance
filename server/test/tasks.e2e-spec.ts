@@ -167,7 +167,6 @@ describe("Tasks (e2e)", () => {
         publicOnly: false,
         isContractSigningAction: false,
         onboarding: false,
-        followUpForms: [],
         cohortExpression: {
           type: "Tag",
           tagId: ctx.defaultTag.id,
@@ -221,7 +220,6 @@ describe("Tasks (e2e)", () => {
           type: "Tag",
           tagId: ctx.defaultTag.id,
         },
-        followUpForms: [],
       } satisfies CreateActionDto),
     );
 
@@ -643,7 +641,6 @@ describe("Tasks (e2e)", () => {
           type: "Tag",
           tagId: ctx.defaultTag.id,
         },
-        followUpForms: [],
       } satisfies CreateActionDto),
     );
 
@@ -753,7 +750,6 @@ describe("Tasks (e2e)", () => {
           type: "Tag",
           tagId: ctx.defaultTag.id,
         },
-        followUpForms: [],
       } satisfies CreateActionDto),
     );
 
@@ -890,7 +886,6 @@ describe("Tasks (e2e)", () => {
           isContractSigningAction: false,
           isForumParticipationAction: false,
           onboarding: false,
-          followUpForms: [],
           cohortExpression: {
             type: "Tag",
             tagId: ctx.defaultTag.id,

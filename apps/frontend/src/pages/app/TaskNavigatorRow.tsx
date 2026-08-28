@@ -1,4 +1,4 @@
-import { type ActionDto, type FollowUpForm } from "@alliance/shared/client";
+import { type ActionDto, type FollowUpFormDto } from "@alliance/shared/client";
 import {
   useCompletedTaskForm,
   useTaskForm,
@@ -125,7 +125,7 @@ export function TaskNavigatorFollowUpRows({
   activeFollowUpFormId,
   onSelectFollowUp,
 }: {
-  forms: FollowUpForm[];
+  forms: FollowUpFormDto[];
   activeFollowUpFormId: number | null;
   onSelectFollowUp: (formId: number) => void;
 }) {
@@ -158,7 +158,7 @@ export function TaskNavigatorCompletedRow({
   onSelectFollowUp,
 }: {
   action: ActionDto;
-  followUpForms: FollowUpForm[];
+  followUpForms: FollowUpFormDto[];
   activeFollowUpFormId: number | null;
   onSelectFollowUp: (formId: number) => void;
 }) {

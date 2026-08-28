@@ -15,7 +15,7 @@
  *
  * The parsed types use `cohortExpression?: CohortExpression` (not `| null`)
  * so they stay assignable to their generated counterparts and can flow into
- * existing `ActionDto`/`FollowUpFormDto`-typed props unchanged.
+ * existing `AdminActionDto`/`AdminFollowUpFormDto`-typed props unchanged.
  */
 
 import {
@@ -24,14 +24,14 @@ import {
 } from "@alliance/common/cohort-expression";
 import { R, type Result } from "@alliance/common/result";
 import { z, type ZodError } from "zod";
-import type { ActionDto, FollowUpFormDto } from "./client/types.gen";
+import type { AdminActionDto, AdminFollowUpFormDto } from "./client/types.gen";
 
-export type ParsedActionDto = Omit<ActionDto, "cohortExpression"> & {
+export type ParsedActionDto = Omit<AdminActionDto, "cohortExpression"> & {
   cohortExpression?: CohortExpression;
 };
 
 export type ParsedFollowUpFormDto = Omit<
-  FollowUpFormDto,
+  AdminFollowUpFormDto,
   "cohortExpression"
 > & {
   cohortExpression?: CohortExpression;
@@ -52,7 +52,7 @@ function parseCohortExpressionField(
   return { expression: undefined, error: parsed.error };
 }
 
-export function parseActionDto(dto: ActionDto): {
+export function parseActionDto(dto: AdminActionDto): {
   action: ParsedActionDto;
   cohortExpressionError: ZodError | null;
 } {
@@ -66,7 +66,7 @@ export function parseActionDto(dto: ActionDto): {
   };
 }
 
-export function parseFollowUpFormDto(dto: FollowUpFormDto): {
+export function parseFollowUpFormDto(dto: AdminFollowUpFormDto): {
   followUpForm: ParsedFollowUpFormDto;
   cohortExpressionError: ZodError | null;
 } {

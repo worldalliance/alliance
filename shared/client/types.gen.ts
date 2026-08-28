@@ -1851,6 +1851,25 @@ export type ActionReviewerResponseDto = {
     icon?: ActionReviewerIcon;
 };
 
+export type Form = {
+    id: number;
+    title: string;
+    formSnapshotId: number;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type FollowUpFormDto = {
+    id: number;
+    name: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    instructions: string | null;
+    actionId: number;
+    formId: number;
+    form?: Form;
+};
+
 export type ActionEventDto = {
     /**
      * Unique identifier for the action event
@@ -1988,12 +2007,6 @@ export type ActionDto = {
      */
     updatedAt: string;
     /**
-     * Cohort expression tree defining who participates
-     */
-    cohortExpression?: {
-        [key: string]: unknown;
-    } | null;
-    /**
      * special case for contract signing (prevent doing other onboarding actions)
      */
     isContractSigningAction: boolean;
@@ -2041,12 +2054,12 @@ export type ActionDto = {
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
-    followUpForms: Array<FollowUpForm>;
     suite?: ActionSuite;
     /**
      * Non-user reviewers credited on the action
      */
     reviewers: Array<ActionReviewerResponseDto>;
+    followUpForms: Array<FollowUpFormDto>;
     usersCompleted: number;
     events: Array<ActionEventDto>;
     status: ActionStatus;
@@ -2248,26 +2261,155 @@ export type ActionReferralCodeDto = {
     referralCode: string;
 };
 
-export type Form = {
-    id: number;
-    title: string;
-    formSnapshotId: number;
-    createdAt: string;
-    updatedAt: string;
-};
-
-export type FollowUpFormDto = {
+export type AdminFollowUpFormDto = {
     id: number;
     name: string | null;
     startDate: string | null;
     endDate: string | null;
     instructions: string | null;
-    cohortExpression: {
-        [key: string]: unknown;
-    } | null;
     actionId: number;
     formId: number;
     form?: Form;
+    /**
+     * Cohort expression tree defining who the form targets
+     */
+    cohortExpression: {
+        [key: string]: unknown;
+    } | null;
+};
+
+export type AdminActionDto = {
+    /**
+     * Unique identifier for the action
+     */
+    id: number;
+    /**
+     * Name of the action
+     */
+    name: string;
+    /**
+     * Category of the action
+     */
+    category: string;
+    /**
+     * Image URL for the action
+     */
+    image?: string;
+    /**
+     * Square thumbnail image URL for the action
+     */
+    squareThumbnailImage?: string;
+    /**
+     * Square thumbnail image alt for the action
+     */
+    squareThumbnailImageAlt?: string;
+    /**
+     * Suggested donation amount (cents)
+     */
+    donationAmount?: number;
+    /**
+     * markdown page body
+     */
+    body: string;
+    /**
+     * markdown contents for activity task card (instructions)
+     */
+    taskContents?: string;
+    /**
+     * Short description shown in cards
+     */
+    shortDescription: string;
+    /**
+     * Time estimate in minutes
+     */
+    timeEstimate?: number;
+    /**
+     * Type of the action
+     */
+    type: ActionTaskType;
+    /**
+     * Form associated with the action
+     */
+    taskFormId?: number;
+    /**
+     * Timestamp when the action was created
+     */
+    createdAt: string;
+    /**
+     * Timestamp when the action was last updated
+     */
+    updatedAt: string;
+    /**
+     * special case for contract signing (prevent doing other onboarding actions)
+     */
+    isContractSigningAction: boolean;
+    visibilityMode: VisibilityMode;
+    usersJoined: number;
+    /**
+     * Whether the action is an onboarding action (hide for existing members)
+     */
+    onboarding: boolean;
+    archived: boolean;
+    /**
+     * Priority of the action
+     */
+    priority: number;
+    optional: boolean;
+    /**
+     * Prevent completion of the action (for old actions)
+     */
+    preventCompletion: boolean;
+    /**
+     * Whether the action is visible to and supposed to only be completed by non-members
+     */
+    publicOnly: boolean;
+    /**
+     * Whether the action shows up in the tasks page after the deadline
+     */
+    shouldCompleteAfterDeadline: boolean;
+    /**
+     * Whether to autocomplete action based on forum participation
+     */
+    isForumParticipationAction: boolean;
+    /**
+     * Manual override: forum post id whose repliers should be autocompleted. When set, takes precedence over any forum validator on the task form.
+     */
+    forumParticipationPostId?: number;
+    /**
+     * When using forumParticipationPostId, also count replies to nested child posts
+     */
+    forumParticipationIncludeChildren?: boolean;
+    /**
+     * Date and time when the action was computed for autocomplete
+     */
+    computedAutocompleteAt?: string;
+    customStatType?: CustomActionStat;
+    customStatLabel?: string;
+    customStatValue?: number;
+    customStatGoal?: number;
+    suite?: ActionSuite;
+    /**
+     * Non-user reviewers credited on the action
+     */
+    reviewers: Array<ActionReviewerResponseDto>;
+    followUpForms: Array<AdminFollowUpFormDto>;
+    usersCompleted: number;
+    events: Array<ActionEventDto>;
+    status: ActionStatus;
+    updates: Array<ActionUpdateDto>;
+    canParticipate?: boolean;
+    shouldParticipate?: boolean;
+    userRelation?: UserActionRelation;
+    awayStatus?: TaskAwayStatus;
+    viewer?: UserActionStatusDto;
+    reqAuthenticated?: boolean;
+    authors?: Array<ProfileDto>;
+    /**
+     * Cohort expression tree defining who participates
+     */
+    cohortExpression?: {
+        [key: string]: unknown;
+    } | null;
 };
 
 export type CreateFollowUpFormDto = {
@@ -2379,6 +2521,12 @@ export type ActionReviewerDto = {
 
 export type CreateActionDto = {
     /**
+     * Cohort expression tree defining who participates
+     */
+    cohortExpression?: {
+        [key: string]: unknown;
+    } | null;
+    /**
      * Name of the action
      */
     name: string;
@@ -2423,12 +2571,6 @@ export type CreateActionDto = {
      */
     taskFormId?: number;
     /**
-     * Cohort expression tree defining who participates
-     */
-    cohortExpression?: {
-        [key: string]: unknown;
-    } | null;
-    /**
      * special case for contract signing (prevent doing other onboarding actions)
      */
     isContractSigningAction: boolean;
@@ -2470,13 +2612,18 @@ export type CreateActionDto = {
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
-    followUpForms: Array<FollowUpForm>;
     suiteId?: number | null;
     reviewers?: Array<ActionReviewerDto>;
     authorIds?: Array<number>;
 };
 
 export type UpdateActionDto = {
+    /**
+     * Cohort expression tree defining who participates
+     */
+    cohortExpression?: {
+        [key: string]: unknown;
+    } | null;
     /**
      * Name of the action
      */
@@ -2522,12 +2669,6 @@ export type UpdateActionDto = {
      */
     taskFormId?: number;
     /**
-     * Cohort expression tree defining who participates
-     */
-    cohortExpression?: {
-        [key: string]: unknown;
-    } | null;
-    /**
      * special case for contract signing (prevent doing other onboarding actions)
      */
     isContractSigningAction?: boolean;
@@ -2569,7 +2710,6 @@ export type UpdateActionDto = {
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
-    followUpForms?: Array<FollowUpForm>;
     suiteId?: number | null;
     reviewers?: Array<ActionReviewerDto>;
     authorIds?: Array<number>;
@@ -8757,7 +8897,7 @@ export type ActionsFindOneAdminErrors = {
 export type ActionsFindOneAdminError = ActionsFindOneAdminErrors[keyof ActionsFindOneAdminErrors];
 
 export type ActionsFindOneAdminResponses = {
-    200: ActionDto;
+    200: AdminActionDto;
 };
 
 export type ActionsFindOneAdminResponse = ActionsFindOneAdminResponses[keyof ActionsFindOneAdminResponses];
@@ -8781,7 +8921,7 @@ export type ActionsGetFollowUpFormsAdminErrors = {
 export type ActionsGetFollowUpFormsAdminError = ActionsGetFollowUpFormsAdminErrors[keyof ActionsGetFollowUpFormsAdminErrors];
 
 export type ActionsGetFollowUpFormsAdminResponses = {
-    200: Array<FollowUpFormDto>;
+    200: Array<AdminFollowUpFormDto>;
 };
 
 export type ActionsGetFollowUpFormsAdminResponse = ActionsGetFollowUpFormsAdminResponses[keyof ActionsGetFollowUpFormsAdminResponses];
@@ -8805,7 +8945,7 @@ export type ActionsCreateFollowUpFormAdminErrors = {
 export type ActionsCreateFollowUpFormAdminError = ActionsCreateFollowUpFormAdminErrors[keyof ActionsCreateFollowUpFormAdminErrors];
 
 export type ActionsCreateFollowUpFormAdminResponses = {
-    200: FollowUpFormDto;
+    200: AdminFollowUpFormDto;
 };
 
 export type ActionsCreateFollowUpFormAdminResponse = ActionsCreateFollowUpFormAdminResponses[keyof ActionsCreateFollowUpFormAdminResponses];
@@ -8855,7 +8995,7 @@ export type ActionsUpdateFollowUpFormAdminErrors = {
 export type ActionsUpdateFollowUpFormAdminError = ActionsUpdateFollowUpFormAdminErrors[keyof ActionsUpdateFollowUpFormAdminErrors];
 
 export type ActionsUpdateFollowUpFormAdminResponses = {
-    200: FollowUpFormDto;
+    200: AdminFollowUpFormDto;
 };
 
 export type ActionsUpdateFollowUpFormAdminResponse = ActionsUpdateFollowUpFormAdminResponses[keyof ActionsUpdateFollowUpFormAdminResponses];
@@ -9067,7 +9207,7 @@ export type ActionsCreateAdminErrors = {
 export type ActionsCreateAdminError = ActionsCreateAdminErrors[keyof ActionsCreateAdminErrors];
 
 export type ActionsCreateAdminResponses = {
-    200: ActionDto;
+    200: AdminActionDto;
 };
 
 export type ActionsCreateAdminResponse = ActionsCreateAdminResponses[keyof ActionsCreateAdminResponses];
@@ -9117,7 +9257,7 @@ export type ActionsUpdateAdminErrors = {
 export type ActionsUpdateAdminError = ActionsUpdateAdminErrors[keyof ActionsUpdateAdminErrors];
 
 export type ActionsUpdateAdminResponses = {
-    200: ActionDto;
+    200: AdminActionDto;
 };
 
 export type ActionsUpdateAdminResponse = ActionsUpdateAdminResponses[keyof ActionsUpdateAdminResponses];
@@ -9531,7 +9671,7 @@ export type ActionsArchiveAdminErrors = {
 export type ActionsArchiveAdminError = ActionsArchiveAdminErrors[keyof ActionsArchiveAdminErrors];
 
 export type ActionsArchiveAdminResponses = {
-    200: ActionDto;
+    200: AdminActionDto;
 };
 
 export type ActionsArchiveAdminResponse = ActionsArchiveAdminResponses[keyof ActionsArchiveAdminResponses];
@@ -9555,7 +9695,7 @@ export type ActionsUnarchiveAdminErrors = {
 export type ActionsUnarchiveAdminError = ActionsUnarchiveAdminErrors[keyof ActionsUnarchiveAdminErrors];
 
 export type ActionsUnarchiveAdminResponses = {
-    200: ActionDto;
+    200: AdminActionDto;
 };
 
 export type ActionsUnarchiveAdminResponse = ActionsUnarchiveAdminResponses[keyof ActionsUnarchiveAdminResponses];
@@ -10132,7 +10272,7 @@ export type ActionsPasteJsonAdminErrors = {
 export type ActionsPasteJsonAdminError = ActionsPasteJsonAdminErrors[keyof ActionsPasteJsonAdminErrors];
 
 export type ActionsPasteJsonAdminResponses = {
-    200: ActionDto;
+    200: AdminActionDto;
 };
 
 export type ActionsPasteJsonAdminResponse = ActionsPasteJsonAdminResponses[keyof ActionsPasteJsonAdminResponses];

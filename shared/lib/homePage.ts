@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { ActionDto, FollowUpForm } from "../client";
+import { ActionDto, FollowUpFormDto } from "../client";
 import {
   ActionWithAwayStatus,
   homePagePriorityComparator,
@@ -10,7 +10,7 @@ import {
 } from "./actionUtils";
 
 export type ActiveFollowUpFormEntry = {
-  followUpForm: FollowUpForm;
+  followUpForm: FollowUpFormDto;
   actionId: number;
 };
 
@@ -118,12 +118,12 @@ export function useHomePageActions(actions: ActionWithAwayStatus[] | null) {
   };
 }
 
-export function followUpStartTimeMs(f: FollowUpForm): number {
+export function followUpStartTimeMs(f: FollowUpFormDto): number {
   return f.startDate ? new Date(f.startDate).getTime() : Infinity;
 }
 export function compareFollowUpFormsByStartDateDesc(
-  a: FollowUpForm,
-  b: FollowUpForm,
+  a: FollowUpFormDto,
+  b: FollowUpFormDto,
 ): number {
   return followUpStartTimeMs(b) - followUpStartTimeMs(a);
 }

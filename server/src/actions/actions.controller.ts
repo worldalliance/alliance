@@ -62,6 +62,7 @@ import {
   ActionSuiteDto,
   ActionUpdateDto,
   ActionWithdrawalDto,
+  AdminActionDto,
   CreateActionActivityDto,
   CreateActionDto,
   CreateActionEventDto,
@@ -96,8 +97,8 @@ import {
 } from "./dto/action.dto";
 import { CommunityCompletedActionsCountDto } from "./dto/community-completed-actions-count.dto";
 import {
+  AdminFollowUpFormDto,
   CreateFollowUpFormDto,
-  FollowUpFormDto,
   UpdateFollowUpFormDto,
 } from "./dto/follow-up-form.dto";
 import {
@@ -702,13 +703,13 @@ export class ActionsController {
 
   @Get("adminslug/:id")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionDto })
+  @ApiOkResponse({ type: AdminActionDto })
   @ApiUnauthorizedResponse()
   async findOneAdmin(
     @Param("id", ParseIntPipe) id: number,
     @Request() req: JwtRequest,
-  ): Promise<ActionDto> {
-    return new ActionDto(
+  ): Promise<AdminActionDto> {
+    return new AdminActionDto(
       await this.actionsService.findOneOrFail({
         id,
         userId: req.user.sub,
@@ -719,46 +720,46 @@ export class ActionsController {
 
   @Get(":id/follow-up-forms")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: [FollowUpFormDto] })
+  @ApiOkResponse({ type: [AdminFollowUpFormDto] })
   async getFollowUpFormsAdmin(
     @Param("id", ParseIntPipe) id: number,
-  ): Promise<FollowUpFormDto[]> {
+  ): Promise<AdminFollowUpFormDto[]> {
     const action = await this.actionsService.findOneOrFail({
       id,
       serverSide: true,
     });
     const list = action.followUpForms ?? [];
-    return list.map((f) => new FollowUpFormDto(f));
+    return list.map((f) => new AdminFollowUpFormDto(f));
   }
 
   @Post(":id/follow-up-forms")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: FollowUpFormDto })
+  @ApiOkResponse({ type: AdminFollowUpFormDto })
   async createFollowUpFormAdmin(
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: CreateFollowUpFormDto,
-  ): Promise<FollowUpFormDto> {
+  ): Promise<AdminFollowUpFormDto> {
     const created = await this.actionsService.createFollowUpForm(id, dto);
     const withForm = await this.actionsService.findOneOrFail({
       id,
       serverSide: true,
     });
     const found = withForm.followUpForms?.find((f) => f.id === created.id);
-    return new FollowUpFormDto(found ?? created);
+    return new AdminFollowUpFormDto(found ?? created);
   }
 
   @Patch("follow-up-forms/:followUpFormId")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: FollowUpFormDto })
+  @ApiOkResponse({ type: AdminFollowUpFormDto })
   async updateFollowUpFormAdmin(
     @Param("followUpFormId", ParseIntPipe) followUpFormId: number,
     @Body() dto: UpdateFollowUpFormDto,
-  ): Promise<FollowUpFormDto> {
+  ): Promise<AdminFollowUpFormDto> {
     const updated = await this.actionsService.updateFollowUpForm(
       followUpFormId,
       dto,
     );
-    return new FollowUpFormDto(updated);
+    return new AdminFollowUpFormDto(updated);
   }
 
   @Delete("follow-up-forms/:followUpFormId")
@@ -862,22 +863,24 @@ export class ActionsController {
 
   @Post("create")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionDto })
+  @ApiOkResponse({ type: AdminActionDto })
   async createAdmin(
     @Body() createActionDto: CreateActionDto,
-  ): Promise<ActionDto> {
-    return new ActionDto(await this.actionsService.create(createActionDto));
+  ): Promise<AdminActionDto> {
+    return new AdminActionDto(
+      await this.actionsService.create(createActionDto),
+    );
   }
 
   @Patch(":id")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionDto })
+  @ApiOkResponse({ type: AdminActionDto })
   async updateAdmin(
     @Param("id", ParseIntPipe) id: number,
     @Body() updateActionDto: UpdateActionDto,
     @Request() req: JwtRequest,
-  ): Promise<ActionDto> {
-    return new ActionDto(
+  ): Promise<AdminActionDto> {
+    return new AdminActionDto(
       await this.actionsService.update(id, updateActionDto, req.user.sub),
     );
   }
@@ -1122,20 +1125,20 @@ export class ActionsController {
 
   @Post("archive/:id")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionDto })
+  @ApiOkResponse({ type: AdminActionDto })
   async archiveAdmin(
     @Param("id", ParseIntPipe) id: number,
-  ): Promise<ActionDto> {
-    return new ActionDto(await this.actionsService.archive(id));
+  ): Promise<AdminActionDto> {
+    return new AdminActionDto(await this.actionsService.archive(id));
   }
 
   @Post("unarchive/:id")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionDto })
+  @ApiOkResponse({ type: AdminActionDto })
   async unarchiveAdmin(
     @Param("id", ParseIntPipe) id: number,
-  ): Promise<ActionDto> {
-    return new ActionDto(await this.actionsService.unarchive(id));
+  ): Promise<AdminActionDto> {
+    return new AdminActionDto(await this.actionsService.unarchive(id));
   }
 
   @Get("reminderGroupsForEvent/:id")
@@ -1418,9 +1421,11 @@ export class ActionsController {
 
   @Post("pasteJson")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionDto })
-  async pasteJsonAdmin(@Body() body: PasteJsonDto): Promise<ActionDto> {
-    return new ActionDto(await this.actionsService.importAction(body.body));
+  @ApiOkResponse({ type: AdminActionDto })
+  async pasteJsonAdmin(@Body() body: PasteJsonDto): Promise<AdminActionDto> {
+    return new AdminActionDto(
+      await this.actionsService.importAction(body.body),
+    );
   }
 
   @Get("scheduledPlans")

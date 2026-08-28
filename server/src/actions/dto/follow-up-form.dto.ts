@@ -1,4 +1,6 @@
+import { type CohortExpression } from "@alliance/common/cohort-expression";
 import {
+  ApiProperty,
   ApiPropertyOptional,
   IntersectionType,
   PartialType,
@@ -18,7 +20,6 @@ export class FollowUpFormDto extends PickType(FollowUpForm, [
   "startDate",
   "endDate",
   "instructions",
-  "cohortExpression",
   "actionId",
   "formId",
 ]) {
@@ -27,17 +28,35 @@ export class FollowUpFormDto extends PickType(FollowUpForm, [
   @Type(() => Form)
   form?: Form;
 
-  constructor(followUpForm: ParsedFollowUpForm) {
+  constructor(followUpForm: FollowUpForm) {
     super();
     this.id = followUpForm.id;
     this.name = followUpForm.name;
     this.startDate = followUpForm.startDate;
     this.endDate = followUpForm.endDate;
     this.instructions = followUpForm.instructions;
-    this.cohortExpression = followUpForm.cohortExpression;
     this.actionId = followUpForm.actionId;
     this.formId = followUpForm.formId;
     this.form = followUpForm.form;
+  }
+}
+
+/**
+ * A follow-up form as an admin sees it. Its cohort expression names the members
+ * the form targets, so it stays off {@link FollowUpFormDto}.
+ */
+export class AdminFollowUpFormDto extends FollowUpFormDto {
+  @ApiProperty({
+    description: "Cohort expression tree defining who the form targets",
+    nullable: true,
+  })
+  @IsOptional()
+  @Type(() => Object)
+  cohortExpression: CohortExpression | null;
+
+  constructor(followUpForm: ParsedFollowUpForm) {
+    super(followUpForm);
+    this.cohortExpression = followUpForm.cohortExpression;
   }
 }
 

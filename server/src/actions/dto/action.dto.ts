@@ -3,12 +3,14 @@ import {
   WITHDRAWAL_OPTIONS,
   type WithdrawalOption,
 } from "@alliance/common/actionActivity";
+import { type CohortExpression } from "@alliance/common/cohort-expression";
 import type { DisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
 import { byLikeOrder, LIKE_FACEPILE_LIMIT } from "@alliance/common/likeOrder";
 import { HTTP_URL_VALIDATOR_OPTIONS } from "@alliance/common/url";
 import {
   ApiProperty,
   ApiPropertyOptional,
+  IntersectionType,
   OmitType,
   PartialType,
   PickType,
@@ -71,6 +73,7 @@ import {
   type UserActionStatus,
   type UserActionWithdrawal,
 } from "../user-action-status";
+import { AdminFollowUpFormDto, FollowUpFormDto } from "./follow-up-form.dto";
 import { GeneralUpdateDto } from "./general-update.dto";
 
 export class CreateReminderGroupDto extends PickType(ReminderGroup, [
@@ -358,6 +361,15 @@ export class ActionReviewerResponseDto extends ActionReviewerDto {
   }
 }
 
+export type ActionDtoExtra = {
+  canParticipate?: boolean;
+  shouldParticipate?: boolean;
+  userRelation?: UserActionRelation;
+  awayStatus?: TaskAwayStatus;
+  viewer?: UserActionStatus;
+  reqAuthenticated?: boolean;
+};
+
 export class ActionDto extends PickType(Action, [
   "id",
   "name",
@@ -374,7 +386,6 @@ export class ActionDto extends PickType(Action, [
   "taskFormId",
   "createdAt",
   "updatedAt",
-  "cohortExpression",
   "isContractSigningAction",
   "visibilityMode",
   "usersJoined",
@@ -393,7 +404,6 @@ export class ActionDto extends PickType(Action, [
   "customStatLabel",
   "customStatValue",
   "customStatGoal",
-  "followUpForms",
   "suite",
 ]) {
   @ApiProperty({
@@ -403,6 +413,10 @@ export class ActionDto extends PickType(Action, [
     maxItems: ACTION_REVIEWERS_MAX,
   })
   reviewers: ActionReviewerResponseDto[];
+
+  @ApiProperty({ type: () => FollowUpFormDto, isArray: true })
+  @Type(() => FollowUpFormDto)
+  followUpForms: FollowUpFormDto[];
 
   @ApiProperty()
   usersCompleted: number;
@@ -443,17 +457,7 @@ export class ActionDto extends PickType(Action, [
   @Type(() => ProfileDto)
   authors?: ProfileDto[];
 
-  constructor(
-    action: ParsedAction,
-    extra?: {
-      canParticipate?: boolean;
-      shouldParticipate?: boolean;
-      userRelation?: UserActionRelation;
-      awayStatus?: TaskAwayStatus;
-      viewer?: UserActionStatus;
-      reqAuthenticated?: boolean;
-    },
-  ) {
+  constructor(action: ParsedAction, extra?: ActionDtoExtra) {
     super();
     this.id = action.id;
     this.name = action.name;
@@ -473,7 +477,6 @@ export class ActionDto extends PickType(Action, [
     this.taskFormId = action.taskFormId;
     this.createdAt = action.createdAt;
     this.updatedAt = action.updatedAt;
-    this.cohortExpression = action.cohortExpression;
     this.isContractSigningAction = action.isContractSigningAction;
     this.visibilityMode = action.visibilityMode;
     this.usersJoined = action.usersJoined;
@@ -494,7 +497,8 @@ export class ActionDto extends PickType(Action, [
     this.customStatLabel = action.customStatLabel;
     this.customStatValue = action.customStatValue;
     this.customStatGoal = action.customStatGoal;
-    this.followUpForms = action.followUpForms;
+    this.followUpForms =
+      action.followUpForms?.map((form) => new FollowUpFormDto(form)) ?? [];
     if (!action.reviewers) {
       throw new Error("`reviewers` relation is not loaded");
     }
@@ -520,36 +524,64 @@ export class ActionDto extends PickType(Action, [
   }
 }
 
-export class CreateActionDto extends PickType(ActionDto, [
-  "name",
-  "category",
-  "image",
-  "squareThumbnailImage",
-  "squareThumbnailImageAlt",
-  "donationAmount",
-  "body",
-  "shortDescription",
-  "timeEstimate",
-  "type",
-  "taskFormId",
-  "cohortExpression",
-  "isContractSigningAction",
-  "visibilityMode",
-  "onboarding",
-  "optional",
-  "preventCompletion",
-  "publicOnly",
-  "shouldCompleteAfterDeadline",
-  "isForumParticipationAction",
-  "forumParticipationPostId",
-  "forumParticipationIncludeChildren",
-  "computedAutocompleteAt",
-  "customStatType",
-  "customStatLabel",
-  "customStatValue",
-  "customStatGoal",
-  "followUpForms",
-]) {
+/**
+ * An action as an admin sees it. A cohort expression names the members an
+ * action targets — down to their user ids — so it stays off {@link ActionDto},
+ * which members and logged-out clients receive.
+ */
+export class AdminActionDto extends ActionDto {
+  @ApiPropertyOptional({
+    description: "Cohort expression tree defining who participates",
+    nullable: true,
+  })
+  @IsOptional()
+  @Type(() => Object)
+  cohortExpression?: CohortExpression | null;
+
+  @ApiProperty({ type: () => AdminFollowUpFormDto, isArray: true })
+  @Allow()
+  @Type(() => AdminFollowUpFormDto)
+  followUpForms: AdminFollowUpFormDto[];
+
+  constructor(action: ParsedAction, extra?: ActionDtoExtra) {
+    super(action, extra);
+    this.cohortExpression = action.cohortExpression;
+    this.followUpForms =
+      action.followUpForms?.map((form) => new AdminFollowUpFormDto(form)) ?? [];
+  }
+}
+
+export class CreateActionDto extends IntersectionType(
+  PickType(Action, ["cohortExpression"]),
+  PickType(ActionDto, [
+    "name",
+    "category",
+    "image",
+    "squareThumbnailImage",
+    "squareThumbnailImageAlt",
+    "donationAmount",
+    "body",
+    "shortDescription",
+    "timeEstimate",
+    "type",
+    "taskFormId",
+    "isContractSigningAction",
+    "visibilityMode",
+    "onboarding",
+    "optional",
+    "preventCompletion",
+    "publicOnly",
+    "shouldCompleteAfterDeadline",
+    "isForumParticipationAction",
+    "forumParticipationPostId",
+    "forumParticipationIncludeChildren",
+    "computedAutocompleteAt",
+    "customStatType",
+    "customStatLabel",
+    "customStatValue",
+    "customStatGoal",
+  ]),
+) {
   @ApiPropertyOptional({
     type: Number,
     nullable: true,
