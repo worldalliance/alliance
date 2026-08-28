@@ -118,9 +118,6 @@ export class CommunityService {
     const user = await this.userRepository.findOneOrFail({
       where: { id: userId },
     });
-    if (body.name.trim().length === 0) {
-      throw new BadRequestException("Name cannot be empty");
-    }
 
     if (body.photo?.startsWith("data:")) {
       body.photo = await this.imagesService.processAndUploadProfileImage(
@@ -130,7 +127,6 @@ export class CommunityService {
 
     const community = this.communityRepository.create({
       ...body,
-      name: body.name.trim(),
       leaders: [user],
       users: [user],
     });
@@ -437,10 +433,7 @@ export class CommunityService {
 
     const { name, photo, ...updateData } = body;
 
-    community.name = name?.trim() ?? community.name;
-    if (community.name.length === 0) {
-      throw new BadRequestException("Name cannot be empty");
-    }
+    community.name = name ?? community.name;
 
     if (photo?.startsWith("data:")) {
       const key = await this.imagesService.processAndUploadProfileImage(photo);
