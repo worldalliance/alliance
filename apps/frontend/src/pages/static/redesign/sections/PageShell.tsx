@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import texture from "../../../../assets/redesign/priority-environment.jpg";
 import type { RedesignPage } from "../links";
 import { NavStart, themeVars, type RedesignTheme } from "../theme";
-import { DisplayHeading, RD_COL } from "../ui";
+import { DisplayHeading, RD_COL, RD_H1 } from "../ui";
 import { JoinCta } from "./JoinCta";
 import { Nav, NAV_HEIGHT } from "./Nav";
 import { SiteFooter } from "./SiteFooter";
@@ -72,7 +72,7 @@ export function BandLede({
   return (
     <p
       className={cn(
-        "max-w-[46rem] text-[1.08rem] leading-snug sm:text-[1.2rem]",
+        "max-w-[46rem] text-[1.05rem] leading-[1.65] sm:text-[1.12rem]",
         onDark ? "text-white/75" : "text-[var(--rd-ink)]/70",
         className,
       )}
@@ -120,7 +120,7 @@ function PageHeader({
         <DisplayHeading
           theme={theme}
           as="h1"
-          className="max-w-[64rem] text-white sm:text-[2.7rem] lg:text-[3.2rem]"
+          className={cn(RD_H1, "max-w-[64rem] text-white")}
         >
           {lede ?? title}
         </DisplayHeading>

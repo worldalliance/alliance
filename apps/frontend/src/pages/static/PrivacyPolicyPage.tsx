@@ -1,84 +1,23 @@
-import MarkdownWrapper from "../../components/MarkdownWrapper";
+import { cn } from "@alliance/shared/styles/util";
+import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
+import { PRIVACY_MARKDOWN, PRIVACY_UPDATED } from "../../site/docContent";
+import { DocProse } from "../../site/DocProse";
+import { PageShell } from "../../site/PageShell";
+import { SITE_COL } from "../../site/ui";
 
-const PrivacyPolicyPage = () => {
+export function meta() {
+  return socialPreviewMeta({
+    title: "Privacy policy — The Alliance",
+    url: "/privacypolicy",
+  });
+}
+
+export default function PrivacyPolicyPage() {
   return (
-    <div>
-      <MarkdownWrapper
-        id="privacy-policy"
-        markdownContent={`
-# Alliance Foundation Privacy Policy
-
-Last updated: 2025-08-25
-
-Alliance Foundation (“Alliance,” “we,” “our,” or “us”) operates the Alliance Platform (the “Platform”). This privacy policy explains how our organization uses the personal data we collect from you when you use our website and services.
-
-## What data do we collect?
-
-The Alliance collects the following data:
-- Personal identification information (name, email address, phone number)
-- Account information (username, password, account preferences)
-- Activity data related to your use of the Platform (actions joined, events created, preferences set)
-- Payment information (processed securely through Stripe, never stored directly by us)
-- Technical information (IP address, browser type, device information, approximate location)
-
-## How do we collect your data?
-
-You directly provide Alliance with most of the data we collect. We collect data and process data when you:
-
-- Register online for an account on the Platform.
-- Fill out your profile information.
-- Opt in to receive SMS or email notifications.
-- Voluntarily complete surveys or make posts.
-- Contact us for support.
-- Use or view our website via your browser’s cookies.
-
-## How will we use your data?
-
-Alliance collects your data so that we can:
-
-- Provide you access to and maintain your account.
-- Notify you about activities, events, and updates you have opted in to receive.
-- Process your payments.
-- Improve our services, analytics, and website functionality.
-- Enforce our Terms of Service and comply with applicable laws.
-
-We do not sell or rent your personal data to third parties. Mobile information will not be shared with third parties for marketing/promotional purposes
-
-## How do we use cookies?
-
-Alliance uses cookies in the following ways:
-
-- To keep you signed in to the Platform.
-- To remember your preferences (e.g., notification settings, language).
-- To understand how you use the Platform and improve your experience.
-
-What types of cookies do we use?
-
-Our website uses:
-
-- Functionality cookies – to recognize you on our site and remember preferences.
-- Analytics cookies – to collect information on how users interact with the Platform (e.g., page visits, time spent).
-
-## How to manage cookies
-
-You can set your browser not to accept cookies, and you can remove cookies from your browser at any time. However, some website features may not function as a result.
-
-## Privacy policies of other websites
-
-The Alliance Platform may contain links to other websites. This privacy policy applies only to our Platform. If you click on a link to another website, you should read their privacy policy.
-
-## Changes to our privacy policy
-
-Alliance keeps its privacy policy under regular review and places any updates on this web page.
-
-## How to contact us
-
-If you have any questions about Alliance’s privacy policy, the data we hold on you, or you would like to exercise one of your data protection rights, please contact us:
-
-Email: [support@worldalliance.org](mailto:support@worldalliance.org)`}
-      />
-    </div>
+    <PageShell title="Privacy policy" lede={PRIVACY_UPDATED}>
+      <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
+        <DocProse markdown={PRIVACY_MARKDOWN} className="max-w-[46rem]" />
+      </div>
+    </PageShell>
   );
-};
-
-export default PrivacyPolicyPage;
+}

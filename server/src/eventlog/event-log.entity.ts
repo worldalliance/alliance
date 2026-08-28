@@ -24,6 +24,7 @@ export enum EventType {
   ActionOptOut = "action_opt_out",
   AccountDeletionRequested = "account_deletion_requested",
   AccountDeleted = "account_deleted",
+  JoinRequest = "join_request",
 }
 
 export const SEND_TO_SLACK: Record<EventType, boolean> = {
@@ -40,6 +41,7 @@ export const SEND_TO_SLACK: Record<EventType, boolean> = {
   [EventType.ActionOptOut]: true,
   [EventType.AccountDeletionRequested]: true,
   [EventType.AccountDeleted]: true,
+  [EventType.JoinRequest]: true,
 };
 
 @Entity()

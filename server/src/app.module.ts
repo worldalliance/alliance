@@ -23,6 +23,7 @@ import { EventLogModule } from "./eventlog/eventlog.module";
 import { ForumModule } from "./forum/forum.module";
 import { GeoModule } from "./geo/geo.module";
 import { ImagesModule } from "./images/images.module";
+import { JoinRequestsModule } from "./join-requests/join-requests.module";
 import { LikesModule } from "./likes/likes.module";
 import { LinkPreviewModule } from "./link-preview/link-preview.module";
 import { MailModule } from "./mail/mail.module";
@@ -97,6 +98,7 @@ import { VideosModule } from "./videos/videos.module";
     MessagingModule,
     PushModule,
     EventLogModule,
+    JoinRequestsModule,
     ApnsModule,
   ],
   controllers: [AppController],

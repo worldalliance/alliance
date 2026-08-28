@@ -1,9 +1,10 @@
+import { cn } from "@alliance/shared/styles/util";
 import React from "react";
 import { useLoaderData } from "react-router";
-import Footer from "../../components/Footer";
-import PrelaunchNavbar from "../../components/PrelaunchNavbar";
 import { getProgressProject } from "../../content/projects";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
+import { PageShell } from "../../site/PageShell";
+import { SITE_COL } from "../../site/ui";
 
 export async function loader({ params }: { params: { slug: string } }) {
   const project = getProgressProject(params.slug);
@@ -28,30 +29,22 @@ const ProgressProjectPage: React.FC = () => {
 
   if (!project) {
     return (
-      <div className="min-h-screen flex flex-col bg-white">
-        <PrelaunchNavbar transparent={false} absolute={false} />
-        <div className="flex-1 container mx-auto pt-16 md:pt-28 pb-56 flex flex-col px-5">
-          <div className="mx-auto w-full max-w-3xl">
-            <h1 className="text-title">Project not found</h1>
-          </div>
-        </div>
-        <Footer />
-      </div>
+      <PageShell title="Progress" lede="Project not found">
+        {null}
+      </PageShell>
     );
   }
 
   const { Content } = project;
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      <PrelaunchNavbar transparent={false} absolute={false} />
-      <div className="flex-1 container mx-auto pt-16 md:pt-28 pb-56 flex flex-col px-5">
+    <PageShell title="Progress" lede={project.title}>
+      <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
         <div className="mx-auto w-full max-w-[960px]">
           <Content />
         </div>
       </div>
-      <Footer />
-    </div>
+    </PageShell>
   );
 };
 

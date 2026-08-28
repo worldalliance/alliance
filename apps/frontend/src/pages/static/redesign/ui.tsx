@@ -7,6 +7,16 @@ import type { RedesignTheme } from "./theme";
 export const RD_COL = "mx-auto w-full max-w-[1450px] px-5 sm:px-8 lg:px-[68px]";
 
 /**
+ * The h1 size, shared by the hero and every page header behind the nav. Steps
+ * DisplayHeading down from its own sm and lg sizes, keeping its 2.5rem base.
+ */
+export const RD_H1 = "sm:text-[2.7rem] lg:text-[3.2rem]";
+
+/** Both form submits: one box, and the fill is all that separates them. */
+export const RD_SUBMIT =
+  "inline-flex min-h-12 w-fit items-center gap-2 px-5 text-base font-medium transition-colors";
+
+/**
  * A solid tinted card with a desaturated photo screened over it, which is the
  * treatment the milestone panel established.
  */

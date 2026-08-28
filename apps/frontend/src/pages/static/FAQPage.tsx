@@ -1,297 +1,51 @@
-import React from "react";
-import { Link, useSearchParams } from "react-router";
-import Footer from "../../components/Footer";
+import { cn } from "@alliance/shared/styles/util";
+import { Plus } from "lucide-react";
+import { useSearchParams } from "react-router";
+import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
+import { FAQ_ITEMS } from "../../site/docContent";
+import { DocProse } from "../../site/DocProse";
+import { PageShell } from "../../site/PageShell";
+import { SITE_COL } from "../../site/ui";
 
-import ExampleActionCardList from "../../components/ExampleActionCardList";
-import FAQExpandable from "../../components/FAQExpandable";
-import MemberContract from "../../components/MemberContract";
-import PrelaunchNavbar from "../../components/PrelaunchNavbar";
+export function meta() {
+  return socialPreviewMeta({
+    title: "Frequently asked questions — The Alliance",
+    url: "/faq",
+  });
+}
 
-const FAQPage: React.FC = () => {
+const FAQ_TITLE = "Frequently asked questions";
+const FAQ_LEDE =
+  "If your question is not here, the guide covers the same ground at length.";
+
+export default function FAQPage() {
   const [searchParams] = useSearchParams();
+  // `?question=` opens one row, which is how the app deep-links into the page.
   const question = searchParams.get("question");
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      <PrelaunchNavbar transparent={false} absolute={false} />
-      <div className="flex flex-col md:flex-row mx-2 sm:mx-4 md:mx-12 pt-8 md:pt-32 pb-56 justify-center">
-        <div className="flex flex-col w-full md:w-3xl gap-y-12">
-          <h1 className="text-title-large">Frequently asked questions</h1>
-          <div className="flex flex-col gap-y-6 text-lg">
-            <FAQExpandable
-              title="What is the Alliance?"
-              expanded={question === "what-is-the-alliance"}
+    <PageShell title={FAQ_TITLE} lede={FAQ_LEDE}>
+      <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
+        <div className="max-w-[52rem]">
+          {FAQ_ITEMS.map((item) => (
+            <details
+              key={item.id}
+              id={item.id}
+              open={question === item.id}
+              className="group scroll-mt-32 border-t border-[var(--site-ink)]/12 last:border-b"
             >
-              <p>
-                The Alliance is a group of people working together to improve
-                the world. Members spend a fraction of their time – currently 15
-                minutes a week – completing tasks on our online platform. These
-                tasks are designed by a full-time strategic office to advance
-                our priorities.
-              </p>
-              <p>
-                Our long-term goal is to unite humanity behind a democratic,
-                expert-developed plan to end global crises. Right now, we are
-                running experiments to test our organizational structures and
-                processes.
-              </p>
-              <p>
-                We define &quot;the Alliance&quot; as the body of our members,
-                not as any legal entity.
-              </p>
-            </FAQExpandable>
-            <FAQExpandable
-              title="How do I join the Alliance?"
-              expanded={question === "how-do-i-join"}
-            >
-              <p>
-                Membership is currently by invitation only. To request a signup
-                link, please email{" "}
-                <a
-                  href="mailto:contact@worldalliance.org"
-                  className="text-link"
-                >
-                  contact@worldalliance.org
-                </a>
-                .
-              </p>
-            </FAQExpandable>
-            <FAQExpandable
-              title="How is the Alliance structured?"
-              expanded={question === "how-is-the-alliance-structured"}
-            >
-              <p>
-                The Alliance is composed of a body of members and a full-time
-                strategic office.
-              </p>
-              <ol className="list-decimal list-inside space-y-2 pl-4">
-                <li>
-                  The office is responsible for developing plans, and
-                  corresponding tasks, that effectively advance Alliance
-                  priorities.
-                </li>
-                <li>
-                  Members are responsible for reliably completing tasks they are
-                  assigned on our online platform.
-                </li>
-              </ol>
-            </FAQExpandable>
-            <FAQExpandable
-              title="What are the priorities of the Alliance?"
-              expanded={question === "what-are-the-priorities"}
-            >
-              <p>In no particular order, we are focused on:</p>
-              <ol className="list-decimal list-inside space-y-2 pl-4">
-                <li>Extreme poverty</li>
-                <li>Environmental destruction</li>
-                <li>The decline of democratic institutions</li>
-                <li>Dangerous technological development</li>
-              </ol>
-              <p>
-                Learn more about our priorities{" "}
-                <Link to={"/foundation"} className="text-link">
-                  here.
-                </Link>
-              </p>
-            </FAQExpandable>
-            <FAQExpandable
-              title="How is the Alliance governed?"
-              expanded={question === "how-is-the-alliance-governed"}
-            >
-              <p>
-                We conduct a membership-wide oversight process that occurs on a
-                regular basis. In the process, the Alliance office asks members
-                what they think about the direction of the Alliance and whether
-                or not they have any major concerns. The office collects and
-                responds to feedback until we reach an approval threshold of
-                75%.
-              </p>
-              <p>This procedure achieves two goals:</p>
-              <ol className="list-decimal list-inside space-y-2 pl-4">
-                <li>
-                  Members determine the high-level goals and methods of the
-                  Alliance.
-                </li>
-                <li>
-                  The office retains the freedom to plan any action that
-                  advances approved goals with approved methods. It is not
-                  required to do what is most popular, nor do actions need
-                  unanimous support, so it can operate efficiently and
-                  effectively.
-                </li>
-              </ol>
-              <p>
-                In addition to formal governance, the office incorporates member
-                input by other means. For instance, the office hosts
-                discussions, asks members for action proposals, solicits
-                open-ended feedback, and so on.
-              </p>
-              <p>
-                Learn more about our governance{" "}
-                <Link to={"/governance"} className="text-link">
-                  here.
-                </Link>
-              </p>
-            </FAQExpandable>
-            <FAQExpandable
-              title="What is expected of members?"
-              expanded={question === "what-is-expected-of-members"}
-            >
-              <p>
-                Members are expected to complete all tasks they are assigned on
-                time. Members are not required to contribute to the Alliance
-                financially.
-              </p>
-
-              <p>
-                We define members of the Alliance as individuals that have
-                signed and abide by the following membership contract.
-              </p>
-
-              <MemberContract id="contract" />
-            </FAQExpandable>
-            <FAQExpandable
-              title="How are actions designed and selected?"
-              expanded={question === "how-are-actions-designed-and-selected"}
-            >
-              <p>
-                Action design is a creative, open-ended process that searches
-                for levers of change that members can pull. The office draws
-                inspiration from many places, including life experiences,
-                subject matter experts, and member suggestions.
-              </p>
-
-              <p>
-                The office selects actions according to several criteria,
-                including the quality of the experience they provide to members,
-                the impact they achieve, and how they help the Alliance learn
-                and build capacity.
-              </p>
-            </FAQExpandable>
-            <FAQExpandable title="What are some examples of actions?">
-              <p>
-                Right now, we are taking small-scale actions focused on
-                learning, not direct impact. Here are examples of actions we
-                have taken recently:
-              </p>
-
-              <ExampleActionCardList />
-            </FAQExpandable>
-            <FAQExpandable
-              title="Why are tasks not optional?"
-              expanded={question === "why-are-tasks-not-optional"}
-            >
-              <p>
-                Reliability is the foundation of the Alliance. Since the office
-                knows exactly who and how many members will complete tasks, it
-                can design concrete and effective action plans.
-              </p>
-
-              <p>For example:</p>
-              <ol className="list-decimal list-inside space-y-2 pl-4">
-                <li>
-                  The office was able to motivate a group of cafes to adopt a
-                  sustainable policy before members took action because it could
-                  promise that members would help them attain media coverage
-                  later.
-                </li>
-                <li>
-                  The office was able to design a statistically meaningful
-                  experiment because it knew how many members would participate.
-                </li>
-              </ol>
-              <p>
-                Strategically, the Alliance operates like a sports team,
-                orchestra, or company—not like a loose crowd. A crowd can be
-                large and energetic, but it is unpredictable: people drift in
-                and out, and no one knows exactly who will act when needed. By
-                contrast, a sports team, orchestra, or company can set specific
-                goals and execute precise strategies because every person will
-                show up and do their part.
-              </p>
-
-              <p>
-                In the long run, the willingness of members to take actions that
-                are inconvenient or do not personally benefit them will allow
-                people with many different interests from around the world to
-                help each other. Given the urgency of global crises, we
-                prioritize effective action over perfect consensus.
-              </p>
-            </FAQExpandable>
-            <FAQExpandable
-              title="What if I do not, or cannot, complete a task?"
-              expanded={question === "cannot-complete-a-task"}
-            >
-              <p>
-                If you have already spent 15 minutes completing tasks in a given
-                week, you can withdraw from your remaining tasks without
-                affecting your membership status.
-              </p>
-
-              <p>
-                If you have a moral objection to a task, you can withdraw from
-                that task without affecting your membership status.
-              </p>
-
-              <p>
-                Otherwise, a member who misses all assigned non-optional actions
-                for 3 weeks in a row will have their contract suspended and will
-                be unable to participate in Alliance governance.
-              </p>
-
-              <p>
-                Former members can rejoin the Alliance by re-signing the
-                contract.
-              </p>
-            </FAQExpandable>
-            <FAQExpandable
-              title="What if I do not live in the United States?"
-              expanded={question === "cannot-complete-a-task"}
-            >
-              <p>Alliance membership is open to anyone.</p>
-              <p>
-                However, some actions require members to live in the United
-                States. If an action is restricted to US members, we provide
-                non-US members with a modified action, or we do not assign them
-                that action.
-              </p>
-              <p>
-                As the Alliance grows, actions will have greater global
-                coverage.
-              </p>
-            </FAQExpandable>
-            <FAQExpandable
-              title="Who runs the Alliance?"
-              expanded={question === "who-runs-the-alliance"}
-            >
-              <p>
-                The Alliance is run by Sidney Hough and Mark Xu. The full list
-                of Alliance staff can be found{" "}
-                <Link to={"/people"} className="text-link">
-                  here
-                </Link>
-                .
-              </p>
-            </FAQExpandable>
-            <FAQExpandable
-              title="How is the Alliance funded?"
-              expanded={question === "how-is-the-alliance-funded"}
-            >
-              <p>
-                Initial funding for the Alliance was provided by{" "}
-                <a href="https://barnes.page/" className="text-link">
-                  Elizabeth Barnes
-                </a>
-                . Funds are managed by the Alliance Foundation, a 501(c)(3)
-                nonprofit organization.
-              </p>
-            </FAQExpandable>
-          </div>
+              <summary className="flex cursor-pointer list-none items-start justify-between gap-6 py-5 text-[1.15rem] leading-snug text-[var(--site-primary)] sm:text-[1.3rem]">
+                {item.question}
+                <Plus
+                  className="mt-1 size-5 shrink-0 text-[var(--site-ink)]/40 transition-transform duration-300 ease-out group-open:rotate-45"
+                  aria-hidden
+                />
+              </summary>
+              <DocProse markdown={item.answer} className="max-w-[44rem] pb-7" />
+            </details>
+          ))}
         </div>
       </div>
-      <Footer />
-    </div>
+    </PageShell>
   );
-};
-
-export default FAQPage;
+}

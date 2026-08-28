@@ -28,7 +28,7 @@ import {
   type RedesignTheme,
   type RedesignVersion,
 } from "../theme";
-import { RD_INPUT, RdField } from "../ui";
+import { RD_INPUT, RD_SUBMIT, RdField } from "../ui";
 
 /** Set only where the version puts the form in a modal, so version 4 alone. */
 const OpenJoinModalContext = createContext<(() => void) | null>(null);
@@ -137,7 +137,10 @@ export function RequestToJoinForm({ className }: { className?: string }) {
       </RdField>
       <button
         type="submit"
-        className="mt-1 inline-flex min-h-12 w-fit items-center gap-2 bg-[var(--rd-primary)] px-5 text-base font-medium text-white transition-colors hover:bg-[var(--rd-primary-hover)]"
+        className={cn(
+          RD_SUBMIT,
+          "mt-1 bg-[var(--rd-primary)] text-white hover:bg-[var(--rd-primary-hover)]",
+        )}
         style={{ borderRadius: "var(--rd-radius-button)" }}
       >
         {JOIN_SUBMIT}

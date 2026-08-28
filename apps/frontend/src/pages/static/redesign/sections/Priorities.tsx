@@ -119,7 +119,7 @@ export function Priorities({ showNote }: { showNote: boolean }) {
         </div>
         {showNote && (
           // Sits against the right margin, still ranged left.
-          <p className="rd-priorities-note rd-display mt-10 ml-auto max-w-[32rem] text-[1.45rem] leading-snug text-[var(--rd-ink)]/85 lg:mt-12 lg:text-[1.95rem]">
+          <p className="rd-priorities-note mt-10 ml-auto max-w-[32rem] text-lg leading-snug text-[var(--rd-ink)]/85 sm:text-[1.35rem] lg:mt-12">
             {PRIORITIES_NOTE}
           </p>
         )}

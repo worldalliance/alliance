@@ -1,11 +1,12 @@
 import { formatLongDateEnUS } from "@alliance/shared/lib/dateFormatters";
+import { cn } from "@alliance/shared/styles/util";
 import matter from "gray-matter";
 import React from "react";
 import { useLoaderData } from "react-router";
-import Footer from "../../components/Footer";
 import MarkdownWrapper from "../../components/MarkdownWrapper";
-import PrelaunchNavbar from "../../components/PrelaunchNavbar";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
+import { PageShell } from "../../site/PageShell";
+import { SITE_COL } from "../../site/ui";
 
 export async function loader({ params }: { params: { slug: string } }) {
   const { slug } = params;
@@ -42,31 +43,26 @@ const ProgressPostPage: React.FC = () => {
   const { content, frontmatter } = useLoaderData<typeof loader>();
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      <PrelaunchNavbar transparent={false} absolute={false} />
-      <div className="flex-1 container mx-auto pt-16 md:pt-28 pb-56 flex flex-col px-5">
-        <div className="mx-auto w-full max-w-3xl flex flex-col gap-y-4">
-          <h1 className="text-title">{frontmatter?.title}</h1>
-          <div className="flex flex-col gap-y-0.5 text-lg">
-            <p className="text-zinc-500">
+    <PageShell title="Progress" lede={frontmatter?.title}>
+      <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
+        <div className="mx-auto flex w-full max-w-[46rem] flex-col gap-y-4">
+          <div className="flex flex-col gap-y-0.5 text-[1.02rem] text-[var(--site-ink)]/55">
+            <p>
               By{" "}
               {frontmatter?.authors.map((author: string) => author).join(", ")}
             </p>
-
-            <p className="text-zinc-500">
-              {formatLongDateEnUS(new Date(frontmatter?.date))}
-            </p>
+            <p>{formatLongDateEnUS(new Date(frontmatter?.date))}</p>
           </div>
 
           <MarkdownWrapper
             id="post-content"
             markdownContent={content ?? ""}
+            maxWidth="max-w-[46rem]"
             className="mt-8"
           />
         </div>
       </div>
-      <Footer />
-    </div>
+    </PageShell>
   );
 };
 

@@ -23,3 +23,8 @@ export const ACTION_PARTNERSHIP_RESPONSE_THROTTLE: Record<
   actionPartnershipResponseBurst: { limit: 3, ttl: 60 * 1000 }, // 3 per minute
   actionPartnershipResponseSustained: { limit: 10, ttl: 60 * 60 * 1000 }, // 10 per hour
 };
+
+export const JOIN_REQUEST_THROTTLE: Record<string, ThrottlerOptions> = {
+  joinRequestBurst: { limit: 3, ttl: 60 * 1000 }, // 3 per minute
+  joinRequestSustained: { limit: 10, ttl: 60 * 60 * 1000 }, // 10 per hour
+};

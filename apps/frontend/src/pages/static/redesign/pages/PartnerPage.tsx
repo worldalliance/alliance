@@ -29,7 +29,7 @@ import {
   PageShell,
 } from "../sections/PageShell";
 import { LINK_BLUE, PANEL_GREEN, type RedesignTheme } from "../theme";
-import { RD_INPUT, RdField, RdTexturedPanel } from "../ui";
+import { RD_INPUT, RD_SUBMIT, RdField, RdTexturedPanel } from "../ui";
 
 /**
  * The promise a mailing list can make, beside the one we can. The second box
@@ -203,7 +203,12 @@ function PartnerForm() {
 
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-5">
-            <RdField label="Organization" name="organizationName" required onDark>
+            <RdField
+              label="Organization"
+              name="organizationName"
+              required
+              onDark
+            >
               <input
                 id="organizationName"
                 name="organizationName"
@@ -312,12 +317,17 @@ function PartnerForm() {
         <div className="flex flex-wrap items-center gap-4">
           <button
             type="submit"
-            className="inline-flex min-h-12 items-center bg-white px-5 text-base font-medium text-[var(--rd-primary)] transition-colors hover:bg-white/85"
+            className={cn(
+              RD_SUBMIT,
+              "bg-white text-[var(--rd-primary)] hover:bg-white/85",
+            )}
             style={{ borderRadius: "var(--rd-radius-button)" }}
           >
             {PARTNER_SUBMIT}
           </button>
-          {submitted && <p className="text-[1rem] text-white">{PARTNER_SUBMITTED}</p>}
+          {submitted && (
+            <p className="text-[1rem] text-white">{PARTNER_SUBMITTED}</p>
+          )}
         </div>
       </form>
     </PageBand>

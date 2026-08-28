@@ -14,6 +14,7 @@ export default [
     id: "redesign-subpage",
   }),
   route("/people", "pages/static/PeoplePage.tsx"),
+  route("/join", "pages/static/JoinPage.tsx"),
   route("/guide", "pages/static/GuidePage.tsx"),
   route("/foundation", "pages/static/FoundationPage.tsx"),
   route("/governance", "pages/static/GovernancePage.tsx"),
