@@ -92,9 +92,9 @@ export class FollowUpForm {
  * untyped source), so the parse happens exactly once and everything downstream
  * works with a typed expression.
  */
-export type ParsedFollowUpForm = FollowUpForm & {
+export interface ParsedFollowUpForm extends FollowUpForm {
   cohortExpression: CohortExpression | null;
-};
+}
 
 export function parseFollowUpForm(form: FollowUpForm): ParsedFollowUpForm {
   form.cohortExpression =

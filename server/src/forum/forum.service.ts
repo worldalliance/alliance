@@ -43,7 +43,7 @@ import {
 import { CreatePostDto, PostDtoArgs, UpdatePostDto } from "./dto/post.dto";
 import { Comment, CommentParentObject } from "./entities/comment.entity";
 import { EditableContent } from "./entities/editablecontent.entity";
-import { Post } from "./entities/post.entity";
+import { parsePost, Post, type ParsedPost } from "./entities/post.entity";
 
 export type ForumFeedComment = {
   comment: Comment;
@@ -83,7 +83,7 @@ export class ForumService {
   async createPost(
     createPostDto: CreatePostDto,
     userId: number,
-  ): Promise<Post> {
+  ): Promise<ParsedPost> {
     const user = await this.userRepository.findOneOrFail({
       where: { id: userId },
     });
@@ -108,7 +108,7 @@ export class ForumService {
       visibleAt,
       likes: [],
     });
-    return this.postRepository.save(post);
+    return parsePost(await this.postRepository.save(post));
   }
 
   private addPostVisibilityFilter<T extends ObjectLiteral>(
@@ -222,13 +222,13 @@ export class ForumService {
     );
 
     return posts.map((post, index) => ({
-      post,
+      post: parsePost(post),
       commentCount: Number(raw[index].commentCount ?? 0),
       lastComment: lastCommentByPostId.get(post.id) ?? undefined,
     }));
   }
 
-  async findPostsByAction(actionId: number): Promise<Post[]> {
+  async findPostsByAction(actionId: number): Promise<ParsedPost[]> {
     const qb = this.postRepository
       .createQueryBuilder("post")
       .leftJoinAndSelect("post.author", "author")
@@ -239,7 +239,7 @@ export class ForumService {
       .where("post.actionId = :actionId", { actionId })
       .orderBy("post.updatedAt", "DESC");
     this.addPostVisibilityFilter(qb, "post");
-    const posts = await qb.getMany();
+    const posts = (await qb.getMany()).map(parsePost);
 
     const postsWithComments = await Promise.all(
       posts.map(async (post) => {
@@ -259,7 +259,10 @@ export class ForumService {
     return postsWithComments;
   }
 
-  private async findOneVisiblePost(id: number, userId?: number): Promise<Post> {
+  private async findOneVisiblePost(
+    id: number,
+    userId?: number,
+  ): Promise<ParsedPost> {
     const qb = this.postRepository
       .createQueryBuilder("post")
       .leftJoinAndSelect("post.author", "author")
@@ -273,14 +276,14 @@ export class ForumService {
     if (!post) {
       throw new NotFoundException(`Post with ID "${id}" not found`);
     }
-    return post;
+    return parsePost(post);
   }
 
-  async findOnePostFull(id: number, userId?: number): Promise<Post> {
+  async findOnePostFull(id: number, userId?: number): Promise<ParsedPost> {
     return this.findOneVisiblePost(id, userId);
   }
 
-  async findOnePost(id: number, userId?: number): Promise<Post> {
+  async findOnePost(id: number, userId?: number): Promise<ParsedPost> {
     return this.findOneVisiblePost(id, userId);
   }
 
@@ -553,7 +556,7 @@ export class ForumService {
     id: number,
     updatePostDto: UpdatePostDto,
     userId: number,
-  ): Promise<Post> {
+  ): Promise<ParsedPost> {
     const post = await this.findOnePost(id, userId);
 
     if (
@@ -1014,7 +1017,7 @@ export class ForumService {
     await this.commentRepository.update(id, { deleted: true });
   }
 
-  async findPostsByUser(userId: number): Promise<Post[]> {
+  async findPostsByUser(userId: number): Promise<ParsedPost[]> {
     const qb = this.postRepository
       .createQueryBuilder("post")
       .leftJoinAndSelect("post.author", "author")
@@ -1025,7 +1028,7 @@ export class ForumService {
         userId,
       });
     this.addPostVisibilityFilter(qb, "post", userId);
-    return qb.getMany();
+    return (await qb.getMany()).map(parsePost);
   }
 
   async findCommentsByUser(userId: number): Promise<UserComment[]> {
@@ -1094,7 +1097,7 @@ export class ForumService {
     expertLabel?: string,
     notifyForReplies?: boolean,
     showClusterTags?: boolean,
-  ): Promise<Post> {
+  ): Promise<ParsedPost> {
     const post = await this.postRepository.findOne({
       where: { id: postId },
       relations: { author: true, action: true, editableContent: true },
@@ -1121,11 +1124,11 @@ export class ForumService {
       post.showClusterTags = showClusterTags;
     }
 
-    return this.postRepository.save(post);
+    return parsePost(await this.postRepository.save(post));
   }
 
-  async getPostsForAdmin(): Promise<Post[]> {
-    return this.postRepository.find({
+  async getPostsForAdmin(): Promise<ParsedPost[]> {
+    const posts = await this.postRepository.find({
       where: { deleted: false },
       relations: {
         author: true,
@@ -1135,9 +1138,13 @@ export class ForumService {
       },
       order: { createdAt: "DESC" },
     });
+    return posts.map(parsePost);
   }
 
-  async updatePostAuthors(postId: number, authorIds: number[]): Promise<Post> {
+  async updatePostAuthors(
+    postId: number,
+    authorIds: number[],
+  ): Promise<ParsedPost> {
     const post = await this.postRepository.findOne({
       where: { id: postId },
       relations: { author: true, action: true, editableContent: true },
@@ -1156,7 +1163,7 @@ export class ForumService {
 
     post.authors = authors;
 
-    return this.postRepository.save(post);
+    return parsePost(await this.postRepository.save(post));
   }
 
   async togglePinComment(commentId: number): Promise<Comment> {

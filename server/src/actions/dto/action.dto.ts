@@ -44,12 +44,16 @@ import { TaskAwayStatus } from "src/utils/action-user";
 import { UserActionRelation } from "../action-activity-status";
 import { ActionActivity } from "../entities/action-activity.entity";
 import { ActionEvent, ActionStatus } from "../entities/action-event.entity";
-import { ActionSuite } from "../entities/action-suite.entity";
+import {
+  ActionSuite,
+  type ParsedActionSuite,
+} from "../entities/action-suite.entity";
 import { ActionUpdate } from "../entities/action-update.entity";
 import {
   Action,
   ACTION_REVIEWERS_MAX,
   ActionReviewer,
+  type ParsedAction,
 } from "../entities/action.entity";
 import { GeneralUpdate } from "../entities/general-update.entity";
 import {
@@ -384,7 +388,7 @@ export class ActionDto extends PickType(Action, [
   authors?: ProfileDto[];
 
   constructor(
-    action: Action,
+    action: ParsedAction,
     extra?: {
       canParticipate?: boolean;
       shouldParticipate?: boolean;
@@ -940,7 +944,7 @@ export class ActionSuiteDto extends PickType(ActionSuite, ["id", "name"]) {
   @Allow()
   generalUpdates: GeneralUpdateDto[];
 
-  constructor(suite: ActionSuite, actions?: Action[]) {
+  constructor(suite: ParsedActionSuite, actions?: ParsedAction[]) {
     super();
     this.id = suite.id;
     this.name = suite.name;
@@ -1238,7 +1242,7 @@ export enum TimelineFeedItemType {
 
 export type TimelineFeedItem = {
   date: Date;
-  action: Action;
+  action: ParsedAction;
 } & (
   | {
       type: TimelineFeedItemType.ActionEvent;

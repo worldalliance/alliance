@@ -10,7 +10,7 @@ import { IsDefined, IsOptional, ValidateNested } from "class-validator";
 import { ActionDto } from "src/actions/dto/action.dto";
 import { ProfileDto } from "../../user/dto/user.dto";
 import { Comment } from "../entities/comment.entity";
-import { Post } from "../entities/post.entity";
+import { Post, type ParsedPost } from "../entities/post.entity";
 import { CommentDto } from "./comment.dto";
 import {
   CreateEditableContentDto,
@@ -126,7 +126,7 @@ export class PostDto extends PickType(Post, [
 }
 
 export type PostDtoArgs = {
-  post: Post;
+  post: ParsedPost;
   commentCount?: number;
   lastComment?: Comment;
   requestingUserId?: number;

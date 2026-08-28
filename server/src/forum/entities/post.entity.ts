@@ -17,7 +17,11 @@ import {
   PrimaryGeneratedColumn,
   RelationId,
 } from "typeorm";
-import { Action } from "../../actions/entities/action.entity";
+import {
+  Action,
+  parseAction,
+  type ParsedAction,
+} from "../../actions/entities/action.entity";
 import { User } from "../../user/entities/user.entity";
 import { EditableContent } from "./editablecontent.entity";
 
@@ -157,4 +161,20 @@ export class Post {
   @ApiProperty()
   @Allow()
   showClusterTags: boolean;
+}
+
+/**
+ * A Post whose loaded action has been parsed. Produce with {@link parsePost}
+ * immediately after pulling a post from the db, so the parse happens exactly
+ * once and everything downstream works with a typed expression.
+ */
+export interface ParsedPost extends Post {
+  action?: ParsedAction | null;
+}
+
+export function parsePost(post: Post): ParsedPost {
+  if (post.action) {
+    post.action = parseAction(post.action);
+  }
+  return post as ParsedPost;
 }

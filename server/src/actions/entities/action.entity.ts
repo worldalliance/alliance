@@ -44,7 +44,11 @@ import { ActionEvent, ActionStatus } from "./action-event.entity";
 import { ActionFormVariant } from "./action-form-variant.entity";
 import { ActionSuite } from "./action-suite.entity";
 import { ActionUpdate } from "./action-update.entity";
-import { FollowUpForm } from "./follow-up-form.entity";
+import {
+  FollowUpForm,
+  parseFollowUpForm,
+  type ParsedFollowUpForm,
+} from "./follow-up-form.entity";
 
 export enum CustomActionStat {
   NONE = "none",
@@ -487,21 +491,24 @@ export class Action {
 }
 
 /**
- * An Action whose jsonb columns have been parsed. Produce with {@link
- * parseAction} immediately after pulling an Action from the db (or any other
- * untyped source), so the parse happens exactly once and everything downstream
- * works with a typed expression.
+ * An Action whose jsonb columns have been parsed, including those of any
+ * loaded follow-up form. Produce with {@link parseAction} immediately after
+ * pulling an Action from the db (or any other untyped source), so the parse
+ * happens exactly once and everything downstream works with a typed
+ * expression.
  */
-export type ParsedAction = Action & {
+export interface ParsedAction extends Action {
   cohortExpression: CohortExpression | null;
-};
+  followUpForms: ParsedFollowUpForm[];
+}
 
 export function parseAction(action: Action): ParsedAction {
   action.cohortExpression =
     action.cohortExpression == null
       ? null
       : cohortExpressionSchema.parse(action.cohortExpression);
+  action.followUpForms = action.followUpForms?.map(parseFollowUpForm);
   // Mutate-and-cast (rather than spread) to keep the entity's getters; the
-  // assignment above just validated the only field the cast narrows.
+  // assignments above just validated the only fields the cast narrows.
   return action as ParsedAction;
 }

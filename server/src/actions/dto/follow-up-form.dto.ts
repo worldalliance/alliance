@@ -7,7 +7,10 @@ import {
 import { Type } from "class-transformer";
 import { IsOptional } from "class-validator";
 import { Form } from "src/tasks/entities/form.entity";
-import { FollowUpForm } from "../entities/follow-up-form.entity";
+import {
+  FollowUpForm,
+  type ParsedFollowUpForm,
+} from "../entities/follow-up-form.entity";
 
 export class FollowUpFormDto extends PickType(FollowUpForm, [
   "id",
@@ -24,7 +27,7 @@ export class FollowUpFormDto extends PickType(FollowUpForm, [
   @Type(() => Form)
   form?: Form;
 
-  constructor(followUpForm: FollowUpForm) {
+  constructor(followUpForm: ParsedFollowUpForm) {
     super();
     this.id = followUpForm.id;
     this.name = followUpForm.name;

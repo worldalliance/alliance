@@ -14,7 +14,7 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { ActionEvent } from "./action-event.entity";
-import { Action } from "./action.entity";
+import { Action, parseAction, type ParsedAction } from "./action.entity";
 import { GeneralUpdate } from "./general-update.entity";
 import { ReminderGroup } from "./reminder-group.entity";
 
@@ -76,4 +76,19 @@ export class ActionSuite {
       ? this.actions[0].events.filter((event) => event.suiteManaged)
       : [];
   }
+}
+
+/**
+ * An ActionSuite whose loaded actions have been parsed. Produce with {@link
+ * parseActionSuite} immediately after pulling a suite from the db, so the
+ * parse happens exactly once and everything downstream works with typed
+ * expressions.
+ */
+export interface ParsedActionSuite extends ActionSuite {
+  actions: ParsedAction[];
+}
+
+export function parseActionSuite(suite: ActionSuite): ParsedActionSuite {
+  suite.actions = suite.actions?.map(parseAction);
+  return suite as ParsedActionSuite;
 }

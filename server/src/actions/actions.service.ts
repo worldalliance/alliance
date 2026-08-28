@@ -176,7 +176,11 @@ import {
 } from "./entities/action-activity.entity";
 import { ActionEvent, ActionStatus } from "./entities/action-event.entity";
 import { ActionFormVariant } from "./entities/action-form-variant.entity";
-import { ActionSuite } from "./entities/action-suite.entity";
+import {
+  ActionSuite,
+  parseActionSuite,
+  type ParsedActionSuite,
+} from "./entities/action-suite.entity";
 import {
   ActionUpdate,
   ActionUpdateNotifyType,
@@ -434,7 +438,7 @@ export class ActionsService {
     return parsed.data;
   }
 
-  async create(createActionDto: CreateActionDto): Promise<Action> {
+  async create(createActionDto: CreateActionDto): Promise<ParsedAction> {
     const { suiteId, authorIds, ...rest } = createActionDto;
     if (rest.cohortExpression != null) {
       rest.cohortExpression = this.parseCohortExpressionOrThrow(
@@ -462,7 +466,7 @@ export class ActionsService {
     const saved = await this.actionRepository.save(action);
     await this.shiftPrioritiesAfterInsertion();
     await this.syncGeneralUpdateDatesForSuites([saved.suite?.id]);
-    return saved;
+    return parseAction(saved);
   }
 
   async findAll(): Promise<ParsedAction[]> {
@@ -915,7 +919,7 @@ export class ActionsService {
 
         if (user && action.followUpForms) {
           action.followUpForms = await this.filterFollowUpFormsByCohort({
-            followUpForms: action.followUpForms.map(parseFollowUpForm),
+            followUpForms: action.followUpForms,
             user,
             session,
           });
@@ -1098,7 +1102,7 @@ export class ActionsService {
       : null;
     if (user && action.followUpForms) {
       action.followUpForms = await this.filterFollowUpFormsByCohort({
-        followUpForms: action.followUpForms.map(parseFollowUpForm),
+        followUpForms: action.followUpForms,
         user,
         session,
       });
@@ -1742,7 +1746,7 @@ export class ActionsService {
     id: number,
     updateActionDto: UpdateActionDto,
     userId: number,
-  ): Promise<Action> {
+  ): Promise<ParsedAction> {
     const action: DeepPartial<Action> | null =
       await this.actionRepository.findOne({
         where: { id },
@@ -1865,7 +1869,7 @@ export class ActionsService {
   async createFollowUpForm(
     actionId: number,
     dto: CreateFollowUpFormDto,
-  ): Promise<FollowUpForm> {
+  ): Promise<ParsedFollowUpForm> {
     if (dto.cohortExpression != null) {
       dto.cohortExpression = this.parseCohortExpressionOrThrow(
         dto.cohortExpression,
@@ -1881,13 +1885,15 @@ export class ActionsService {
       ...dto,
       actionId,
     });
-    return this.followUpFormRepository.save(followUpForm);
+    return parseFollowUpForm(
+      await this.followUpFormRepository.save(followUpForm),
+    );
   }
 
   async updateFollowUpForm(
     followUpFormId: number,
     dto: UpdateFollowUpFormDto,
-  ): Promise<FollowUpForm> {
+  ): Promise<ParsedFollowUpForm> {
     if (dto.cohortExpression != null) {
       dto.cohortExpression = this.parseCohortExpressionOrThrow(
         dto.cohortExpression,
@@ -1898,7 +1904,9 @@ export class ActionsService {
       relations: { form: true, action: true },
     });
     Object.assign(followUpForm, dto);
-    return this.followUpFormRepository.save(followUpForm);
+    return parseFollowUpForm(
+      await this.followUpFormRepository.save(followUpForm),
+    );
   }
 
   async deleteFollowUpForm(followUpFormId: number): Promise<void> {
@@ -2730,16 +2738,16 @@ export class ActionsService {
     });
   }
 
-  async archive(id: number): Promise<Action> {
+  async archive(id: number): Promise<ParsedAction> {
     const action = await this.actionRepository.findOneOrFail({ where: { id } });
     action.archived = true;
-    return this.actionRepository.save(action);
+    return parseAction(await this.actionRepository.save(action));
   }
 
-  async unarchive(id: number): Promise<Action> {
+  async unarchive(id: number): Promise<ParsedAction> {
     const action = await this.actionRepository.findOneOrFail({ where: { id } });
     action.archived = false;
-    return this.actionRepository.save(action);
+    return parseAction(await this.actionRepository.save(action));
   }
 
   async createActionUpdate(
@@ -3039,12 +3047,13 @@ export class ActionsService {
     }
   }
 
-  async findSuites(): Promise<ActionSuite[]> {
-    return this.actionSuiteRepository.find();
+  async findSuites(): Promise<ParsedActionSuite[]> {
+    const suites = await this.actionSuiteRepository.find();
+    return suites.map(parseActionSuite);
   }
 
-  async findSuite(id: number): Promise<ActionSuite> {
-    return this.actionSuiteRepository.findOneOrFail({
+  async findSuite(id: number): Promise<ParsedActionSuite> {
+    const suite = await this.actionSuiteRepository.findOneOrFail({
       where: { id },
       relations: {
         actions: { events: true, activities: true },
@@ -3053,15 +3062,16 @@ export class ActionsService {
       },
       relationLoadStrategy: "query",
     });
+    return parseActionSuite(suite);
   }
 
   async createSuite(
     createActionSuiteDto: CreateActionSuiteDto,
-  ): Promise<ActionSuite> {
+  ): Promise<ParsedActionSuite> {
     const suite = this.actionSuiteRepository.create(createActionSuiteDto);
     const saved = await this.actionSuiteRepository.save(suite);
     await this.syncGeneralUpdateDatesForSuites([suite.id]);
-    return saved;
+    return parseActionSuite(saved);
   }
 
   async batchUpdateSuiteEvents(
@@ -3331,7 +3341,7 @@ export class ActionsService {
     });
   }
 
-  async importAction(json: string): Promise<Action> {
+  async importAction(json: string): Promise<ParsedAction> {
     const importaction = JSON.parse(json) as ExportActionDto;
 
     const {
@@ -3422,7 +3432,7 @@ export class ActionsService {
       },
     );
     await this.syncGeneralUpdateDatesForSuites([suiteIdToSync]);
-    return result;
+    return parseAction(result);
   }
 
   // TODO move ==================================
@@ -4721,7 +4731,7 @@ export class ActionsService {
         new TimelineFeedItemDto({
           type: TimelineFeedItemType.ActionEvent,
           date: event.date,
-          action: event.action,
+          action: parseAction(event.action),
           actionEvent: event,
         }),
       );
@@ -4732,7 +4742,7 @@ export class ActionsService {
         new TimelineFeedItemDto({
           type: TimelineFeedItemType.ActionUpdate,
           date: actionUpdate.date,
-          action: actionUpdate.action,
+          action: parseAction(actionUpdate.action),
           actionUpdate,
         }),
       );
