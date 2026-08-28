@@ -375,7 +375,7 @@ export class ConversationService {
     const conversation = await this.conversationRepository.save(
       this.conversationRepository.create({
         title: dto.title.trim(),
-        photo: dto.photo,
+        photo: dto.photo ?? null,
         type: ConversationType.Multiple,
       }),
     );
@@ -637,22 +637,23 @@ export class ConversationService {
       relations: this.conversationRelations,
     });
 
+    const photo = community.photo ?? null;
+
     if (!conversation) {
       conversation = await this.conversationRepository.save(
         this.conversationRepository.create({
           title: community.name,
-          photo: community.photo,
+          photo,
           type: ConversationType.Community,
           community,
         }),
       );
     } else {
       const needsUpdate =
-        conversation.title !== community.name ||
-        conversation.photo !== community.photo;
+        conversation.title !== community.name || conversation.photo !== photo;
       if (needsUpdate) {
         conversation.title = community.name;
-        conversation.photo = community.photo;
+        conversation.photo = photo;
         await this.conversationRepository.save(conversation);
       }
     }
@@ -752,7 +753,7 @@ export class ConversationService {
       destinationConversation = await conversationRepository.save(
         conversationRepository.create({
           title: destinationCommunity.name,
-          photo: destinationCommunity.photo,
+          photo: destinationCommunity.photo ?? null,
           type: ConversationType.Community,
           community: destinationCommunity,
         }),

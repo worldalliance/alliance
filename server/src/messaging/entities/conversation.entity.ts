@@ -64,10 +64,9 @@ export class Conversation {
   @ApiProperty({ type: String })
   title: string;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional({ type: String })
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  photo?: string;
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
+  photo: string | null;
 
   @ManyToOne(() => Community, { nullable: true, onDelete: "CASCADE" })
   @JoinColumn({ name: "communityId" })
