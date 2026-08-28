@@ -6,13 +6,13 @@ import officePhoto from "../../assets/redesign/office.jpg";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import {
   BandHeading,
-  BandLede,
   BandTone,
   PageBand,
   PageShell,
 } from "../../site/PageShell";
 import { usePublicMembers, useStaffDirectory } from "../../site/data";
 import { experts } from "../../site/peopleContent";
+import { SectionSubtitle } from "../../site/ui";
 
 export function meta() {
   return socialPreviewMeta({
@@ -35,21 +35,25 @@ const OFFICE_PHOTO_CAPTION = "The office in San Francisco, California";
 /** Four columns of names, since we hold no photographs of the expert group. */
 function ExpertGroup() {
   return (
-    <PageBand id="expert-group" className="flex flex-col gap-10">
+    <PageBand
+      id="expert-group"
+      tone={BandTone.Primary}
+      className="flex flex-col gap-10"
+    >
       <div className="flex flex-col gap-3">
-        <BandHeading>Expert group</BandHeading>
-        <BandLede>
+        <BandHeading onDark>Expert group</BandHeading>
+        <SectionSubtitle onDark>
           Experts occasionally lend time, knowledge, or resources to the
           Alliance.
-        </BandLede>
+        </SectionSubtitle>
       </div>
       <div className="grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
         {experts.map((expert) => (
           <div key={expert.name} className="min-w-0">
-            <p className="text-[1.08rem] leading-snug font-medium text-[var(--site-ink)]">
+            <p className="text-[1.08rem] leading-snug font-medium text-white">
               {expert.name}
             </p>
-            <p className="text-[0.92rem] leading-snug text-[var(--site-ink)]/55">
+            <p className="text-[0.92rem] leading-snug text-white/55">
               {expert.description}
             </p>
           </div>
@@ -63,19 +67,15 @@ function Office() {
   const { data: staff, isPending } = useStaffDirectory();
 
   return (
-    <PageBand
-      id="office"
-      tone={BandTone.Primary}
-      className="flex flex-col gap-10"
-    >
+    <PageBand id="office" className="flex flex-col gap-10">
       <div className="flex flex-col gap-3">
-        <BandHeading onDark>Office</BandHeading>
-        <BandLede onDark className="text-white/80">
+        <BandHeading>Office</BandHeading>
+        <SectionSubtitle>
           Our staff team plans actions, creates infrastructure, and manages the
           Alliance.
-        </BandLede>
+        </SectionSubtitle>
       </div>
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-16">
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-16">
         <figure className="flex flex-col gap-3">
           <img
             src={officePhoto}
@@ -83,33 +83,33 @@ function Office() {
             className="aspect-[4/3] w-full object-cover"
             style={{ borderRadius: "var(--site-radius-card)" }}
           />
-          <figcaption className="text-sm text-white/50">
+          <figcaption className="text-sm text-[var(--site-ink)]/50">
             {OFFICE_PHOTO_CAPTION}
           </figcaption>
         </figure>
         {isPending ? (
-          <p className="text-white/60">Loading staff…</p>
+          <p className="text-[var(--site-ink)]/50">Loading staff…</p>
         ) : (
           <ul className="flex flex-col">
             {(staff ?? []).map((member) => (
               <li
                 key={member.id}
-                className="flex items-center justify-between gap-6 border-t border-white/20 py-3 last:border-b"
+                className="flex items-center justify-between gap-6 py-3"
               >
                 <span className="flex min-w-0 items-center gap-3">
                   <AvatarProfile
                     pfp={member.profilePicture ?? null}
                     size="override"
                     alt=""
-                    className="size-10 rounded-[9px]"
+                    className="size-12 rounded"
                   />
-                  <span className="truncate text-[0.98rem] text-white">
+                  <span className="truncate text-[0.98rem] text-[var(--site-ink)]">
                     {member.displayName}
                   </span>
                 </span>
                 <span className="flex shrink-0 items-baseline gap-3">
                   {member.staffTitle && (
-                    <span className="text-[0.88rem] text-white/55">
+                    <span className="text-[0.88rem] text-[var(--site-ink)]/55">
                       {member.staffTitle}
                     </span>
                   )}
@@ -118,7 +118,7 @@ function Office() {
                       href={member.staffLink}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[0.88rem] text-white/80 underline decoration-white/40 underline-offset-2 hover:decoration-white"
+                      className="text-[0.88rem] text-[var(--site-ink)]/80 underline decoration-[var(--site-ink)]/40 underline-offset-2 hover:decoration-[var(--site-ink)]"
                     >
                       About
                     </a>
@@ -146,14 +146,10 @@ function MemberDirectory({ memberCount }: { memberCount: number | undefined }) {
       <div className="flex flex-col gap-3">
         <BandHeading>Members</BandHeading>
         {memberCount !== undefined && (
-          <BandLede>
+          <SectionSubtitle>
             {`The Alliance has ${memberCount} ${memberCount === 1 ? "member" : "members"}. Membership is currently by invitation only.`}
-          </BandLede>
+          </SectionSubtitle>
         )}
-        <p className="max-w-[46rem] text-[0.95rem] text-[var(--site-ink)]/45">
-          This directory only includes members who have chosen to make their
-          information public.
-        </p>
       </div>
       {isPending ? (
         <p className="text-[var(--site-ink)]/50">Loading members…</p>
@@ -194,8 +190,8 @@ export default function PeoplePage() {
 
   return (
     <PageShell title={PEOPLE_TITLE}>
-      <ExpertGroup />
       <Office />
+      <ExpertGroup />
       <MemberDirectory memberCount={memberCount} />
     </PageShell>
   );

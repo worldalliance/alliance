@@ -1,0 +1,15 @@
+{
+  "topCount": 3,
+  "nestedCount": 3,
+  "markdownDump": 2,
+  "topLeads": [
+    "I commit to complete up to 15 minutes of Alliance tasks per week.",
+    "I commit to complete every task I am assigned by its deadline, unless:I have spent more th",
+    "I understand that if I miss all assigned non-optional actions for 3 weeks in a row, my con"
+  ],
+  "nestedLeads": [
+    "I have spent more than 15 minutes completing Alliance tasks in the past week.",
+    "I cannot complete the task due to a serious external circumstance, such as a medical issue",
+    "I believe the task is immoral. In this case, I will inform the strategic office of my reas"
+  ]
+}

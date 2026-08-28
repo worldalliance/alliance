@@ -112,10 +112,7 @@ export function Navbar({
           <Link
             to={PARTNER_HREF}
             className={cn(
-              "hidden min-h-11 items-center border px-4 text-sm font-medium transition-colors sm:inline-flex",
-              light
-                ? "border-white/55 text-white hover:bg-white/10"
-                : "border-[var(--site-ink)]/25 hover:border-[var(--site-ink)]/55",
+              "hidden min-h-11 items-center px-4 text-sm font-medium transition-colors md:inline-flex bg-zinc-200/60 text-black hover:bg-zinc-200",
             )}
             style={{ borderRadius: "var(--site-radius-button)" }}
           >

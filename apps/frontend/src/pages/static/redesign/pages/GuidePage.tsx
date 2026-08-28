@@ -9,17 +9,17 @@ import {
   GUIDE_SECTIONS,
   GuideSectionKind,
 } from "../docContent";
-import { useActiveSection } from "../hooks";
-import { rdHref, RedesignPage } from "../links";
-import { GUIDE_LEDE, GUIDE_TITLE, GUIDE_TOC_LABEL } from "../pageContent";
-import { DocProse } from "../sections/DocProse";
 import {
   CommitSignatureCard,
   TaskProgressCard,
   UpdateSlideCard,
 } from "../graphics/ProductCards";
-import { ContractCard, ImpactCard } from "../sections/PageCards";
+import { useActiveSection } from "../hooks";
+import { rdHref, RedesignPage } from "../links";
+import { GUIDE_LEDE, GUIDE_TITLE, GUIDE_TOC_LABEL } from "../pageContent";
+import { DocProse } from "../sections/DocProse";
 import { NAV_HEIGHT } from "../sections/Nav";
+import { ContractCard, ImpactCard } from "../sections/PageCards";
 import { PageShell } from "../sections/PageShell";
 import type { RedesignTheme } from "../theme";
 import { PRIORITY_TINTS } from "../theme";
@@ -137,12 +137,17 @@ function ResourceLinks({ theme }: { theme: RedesignTheme }) {
 }
 
 /** Whatever sits between a section's prose and the prose that follows it. */
-function guideExtras(theme: RedesignTheme): Record<GuideSectionKind, ReactNode> {
+function guideExtras(
+  theme: RedesignTheme,
+): Record<GuideSectionKind, ReactNode> {
   return {
     [GuideSectionKind.Introduction]: null,
     [GuideSectionKind.Structure]: (
       <div className="flex flex-col gap-6">
-        <ContractCard version={theme.version} caption={GUIDE_CONTRACT_CAPTION} />
+        <ContractCard
+          version={theme.version}
+          caption={GUIDE_CONTRACT_CAPTION}
+        />
         <div className="max-w-[24rem]">
           <CommitSignatureCard />
         </div>
@@ -223,7 +228,10 @@ export function RedesignGuidePage({ theme }: { theme: RedesignTheme }) {
                     {section.label}
                   </h2>
                   {section.markdown.trim() && (
-                    <DocProse version={theme.version} markdown={section.markdown} />
+                    <DocProse
+                      version={theme.version}
+                      markdown={section.markdown}
+                    />
                   )}
                   {extras[kind]}
                   {section.markdownAfter && (

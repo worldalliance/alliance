@@ -40,15 +40,15 @@ export function JoinCta() {
             style={{ borderRadius: "var(--site-radius-card)" }}
             aria-hidden
           />
-          <div className="flex min-h-[315px] flex-col justify-end p-8 text-white sm:min-h-[420px] sm:p-10">
-            <h2 className="text-[3.1rem] leading-none font-normal sm:text-[3.6rem]">
+          <div className="flex min-h-[260px] flex-col justify-end p-6 pr-16 text-white sm:min-h-[420px] sm:p-10 sm:pr-20">
+            <h2 className="text-[2.25rem] leading-none font-normal sm:text-[3.1rem] lg:text-[3.6rem]">
               Request to join
             </h2>
             <p className="mt-3 max-w-[40rem] text-lg leading-snug font-light sm:text-[1.35rem]">
               {CTA_BODY}
             </p>
           </div>
-          <span className="absolute right-8 bottom-8 sm:right-10 sm:bottom-9">
+          <span className="absolute right-6 bottom-6 sm:right-10 sm:bottom-9">
             <SiteArrow className="size-6 text-white transition-transform duration-500 ease-out group-hover:translate-x-2 group-hover:-translate-y-2 group-hover:scale-110" />
           </span>
         </SiteTrigger>

@@ -12,7 +12,7 @@ export function Testimonial() {
   const { data: profile } = usePublicProfile(HOME_TESTIMONIAL.memberId);
 
   return (
-    <section className="bg-[var(--site-surface)] pt-6 pb-20 lg:pt-5 lg:pb-28">
+    <section className="bg-[var(--site-surface)] pt-10 pb-24 lg:pt-10 lg:pb-32">
       <div className={SITE_COL}>
         <figure className="relative mx-auto flex max-w-[600px] flex-col gap-5">
           <QuoteMark

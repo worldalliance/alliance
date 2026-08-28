@@ -5,7 +5,7 @@ import { SiteFooter } from "./Footer";
 import { JoinCta } from "./JoinCta";
 import { NAV_HEIGHT, Navbar } from "./Navbar";
 import "./site.css";
-import { DisplayHeading, SITE_COL, SITE_H1 } from "./ui";
+import { DisplayHeading, PageShellSubtitle, SITE_COL } from "./ui";
 
 /** The page root every public page sits inside. */
 export function SiteRoot({
@@ -75,35 +75,13 @@ export function BandHeading({
   return (
     <h2
       className={cn(
-        "site-display text-4xl leading-tight sm:text-5xl",
-        onDark ? "text-white" : "text-[var(--site-primary)]",
+        "site-display text-5xl leading-tight sm:text-6xl font-medium",
+        onDark ? "text-white" : "text-black",
         className,
       )}
     >
       {children}
     </h2>
-  );
-}
-
-export function BandLede({
-  children,
-  className,
-  onDark = false,
-}: {
-  children: ReactNode;
-  className?: string;
-  onDark?: boolean;
-}) {
-  return (
-    <p
-      className={cn(
-        "max-w-[46rem] text-lg leading-[1.65] sm:text-xl",
-        onDark ? "text-white/75" : "text-[var(--site-ink)]/70",
-        className,
-      )}
-    >
-      {children}
-    </p>
   );
 }
 
@@ -119,10 +97,10 @@ function PageHeader({
       className={cn(SITE_COL, "flex flex-col gap-4")}
       style={{ paddingTop: NAV_HEIGHT + 64 }}
     >
-      <DisplayHeading as="h1" className={SITE_H1}>
+      <DisplayHeading as="h1" className="sm:text-6xl lg:text-7xl font-medium">
         {title}
       </DisplayHeading>
-      {subtitle && <BandLede>{subtitle}</BandLede>}
+      {subtitle && <PageShellSubtitle>{subtitle}</PageShellSubtitle>}
     </header>
   );
 }

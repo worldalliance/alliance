@@ -1,5 +1,9 @@
-import { PLACEHOLDER_CONTRACT_MARKDOWN } from "@alliance/shared/lib/contract";
+import {
+  CONTRACT_TERMS,
+  PLACEHOLDER_CONTRACT_MARKDOWN,
+} from "@alliance/shared/lib/contract";
 import { cn } from "@alliance/shared/styles/util";
+import type { ReactNode } from "react";
 import { href, Link } from "react-router";
 import {
   ACTION_PRIORITY_LABELS,
@@ -10,68 +14,7 @@ import { useContract } from "../lib/useContract";
 import { DocProse } from "./DocProse";
 import { MEMBER_CONTRACT_TITLE } from "./docContent";
 
-/**
- * One outcome from `content/featuredImpactActions`. The emphasis carries the
- * result; the rest says how members got there. The card links at the action it
- * came from, as the current progress cards do.
- */
-export function ImpactCard({
-  action,
-  className,
-}: {
-  action: FeaturedImpactAction;
-  className?: string;
-}) {
-  const external = Boolean(action.customLink?.startsWith("http"));
-  const to =
-    action.customLink ??
-    href("/actions/:id", { id: action.actionId.toString() });
-
-  const body = (
-    <>
-      {action.imageSrc && (
-        <img
-          src={action.imageSrc}
-          alt={action.imageAlt ?? ""}
-          aria-hidden={action.imageAlt ? undefined : true}
-          className="aspect-[16/10] w-full object-cover"
-        />
-      )}
-      <div className="flex flex-col gap-1.5 p-5">
-        <PriorityTags tags={action.tags} />
-        <p className="text-[1.05rem] leading-snug font-medium text-[var(--site-primary)]">
-          {action.emphasis}
-        </p>
-        <p className="text-[0.98rem] leading-snug text-[var(--site-ink)]/65">
-          {action.rest}
-        </p>
-      </div>
-    </>
-  );
-
-  const classes = cn(
-    "flex flex-col overflow-hidden bg-[var(--site-surface)]",
-    "transition-transform duration-300 ease-out hover:-translate-y-0.5",
-    className,
-  );
-  const style = { borderRadius: "var(--site-radius-card)" };
-
-  return external ? (
-    <a
-      href={to}
-      target="_blank"
-      rel="noreferrer"
-      className={classes}
-      style={style}
-    >
-      {body}
-    </a>
-  ) : (
-    <Link to={to} className={classes} style={style}>
-      {body}
-    </Link>
-  );
-}
+const progressCardStyle = { borderRadius: "var(--site-radius-card)" };
 
 function PriorityTags({ tags }: { tags: ActionPriorityTags }) {
   return (
@@ -88,49 +31,150 @@ function PriorityTags({ tags }: { tags: ActionPriorityTags }) {
   );
 }
 
-/** A written outcome with no action behind it, so it carries no link. */
+function ProgressCardLink({
+  to,
+  className,
+  children,
+}: {
+  to: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  const classes = cn(
+    "flex flex-col gap-1.5 bg-[var(--site-surface)] p-5",
+    "transition-transform duration-300 ease-out hover:-translate-y-0.5",
+    className,
+  );
+  const external = to.startsWith("http");
+  return external ? (
+    <a
+      href={to}
+      target="_blank"
+      rel="noreferrer"
+      className={classes}
+      style={progressCardStyle}
+    >
+      {children}
+    </a>
+  ) : (
+    <Link to={to} className={classes} style={progressCardStyle}>
+      {children}
+    </Link>
+  );
+}
+
+function ProgressCardCopy({
+  title,
+  description,
+  tags,
+}: {
+  title: string;
+  description: string;
+  tags: ActionPriorityTags;
+}) {
+  return (
+    <>
+      <PriorityTags tags={tags} />
+      <p className="mt-2 sm:mt-4 text-base leading-snug font-medium text-black sm:text-lg">
+        {title}
+      </p>
+      <p className="text-base sm:text-lg leading-snug text-(--site-ink)/80 ">
+        {description}
+      </p>
+    </>
+  );
+}
+
 export function ProgressLinkCard({
   title,
   description,
   tags,
   to,
   className,
+  imageSrc,
+  imageAlt,
 }: {
   title: string;
   description: string;
   tags: ActionPriorityTags;
   to: string;
   className?: string;
+  imageSrc?: string;
+  imageAlt?: string;
 }) {
   return (
-    <Link
-      to={to}
-      className={cn(
-        "flex flex-col gap-1.5 bg-[var(--site-surface)] p-5",
-        "transition-transform duration-300 ease-out hover:-translate-y-0.5",
-        className,
+    <ProgressCardLink to={to} className={className}>
+      {imageSrc && (
+        <img
+          src={imageSrc}
+          alt={imageAlt ?? ""}
+          aria-hidden={imageAlt ? undefined : true}
+          className="aspect-16/10 w-full object-cover"
+        />
       )}
-      style={{ borderRadius: "var(--site-radius-card)" }}
-    >
-      <PriorityTags tags={tags} />
-      <p className="text-[1.05rem] leading-snug font-medium text-[var(--site-primary)]">
-        {title}
-      </p>
-      <p className="text-[0.98rem] leading-snug text-[var(--site-ink)]/65">
-        {description}
-      </p>
-      <span className="mt-1 text-[0.85rem] text-[var(--site-link)]">
-        Read the write-up
-      </span>
-    </Link>
+      <ProgressCardCopy title={title} description={description} tags={tags} />
+    </ProgressCardLink>
   );
 }
 
-/** The live membership contract, quoted the way the current site quotes it. */
-export function ContractCard({ caption }: { caption?: string }) {
+/** Maps a featured action onto the same card as a written project. */
+export function ImpactCard({
+  action,
+  className,
+}: {
+  action: FeaturedImpactAction;
+  className?: string;
+}) {
+  return (
+    <ProgressLinkCard
+      title={action.emphasis}
+      description={action.rest}
+      tags={action.tags}
+      to={
+        action.customLink ??
+        href("/actions/:id", { id: action.actionId.toString() })
+      }
+      imageSrc={action.imageSrc}
+      imageAlt={action.imageAlt}
+      className={className}
+    />
+  );
+}
+
+function ContractTermList() {
+  return (
+    <ol className="mt-4 flex list-outside list-decimal flex-col gap-3 pl-6 text-[1.05rem] leading-[1.65] text-[var(--site-ink)]/85 sm:text-[1.12rem]">
+      {CONTRACT_TERMS.map((term) => (
+        <li key={term.text}>
+          {term.text}
+          {term.subItems && (
+            <ol className="mt-2 flex list-outside list-[lower-alpha] flex-col gap-2 pl-6">
+              {term.subItems.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ol>
+          )}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function ContractMarkdown() {
   const { latestContract } = useContract();
   const markdown = latestContract?.markdown ?? PLACEHOLDER_CONTRACT_MARKDOWN;
+  return <DocProse markdown={markdown} className="mt-4" />;
+}
 
+/** The membership contract, quoted the way the current site quotes it. */
+export function ContractCard({
+  caption,
+  terms = false,
+}: {
+  caption?: string;
+  /** Numbered terms instead of the live markdown. */
+  terms?: boolean;
+}) {
   return (
     <figure className="flex flex-col gap-3">
       <div
@@ -141,7 +185,7 @@ export function ContractCard({ caption }: { caption?: string }) {
         <p className="text-sm tracking-wide text-[var(--site-ink)]/45 uppercase">
           {MEMBER_CONTRACT_TITLE}
         </p>
-        <DocProse markdown={markdown} className="mt-4" />
+        {terms ? <ContractTermList /> : <ContractMarkdown />}
       </div>
       {caption && (
         <figcaption className="text-sm text-[var(--site-ink)]/50">

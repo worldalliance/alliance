@@ -1,5 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
-import { ScaledCard } from "./PostCard";
+import type { ReactNode } from "react";
 import {
   DETAIL_HEIGHT,
   DETAIL_WIDTH,
@@ -20,6 +20,34 @@ const DETAIL_Y = 172;
 const STAGE_WIDTH = DETAIL_X + DETAIL_WIDTH;
 const STAGE_HEIGHT = DETAIL_Y + DETAIL_HEIGHT;
 
+function ScaledStage({
+  width,
+  height,
+  children,
+}: {
+  width: number;
+  height: number;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className="relative"
+      style={{ height: `calc(100cqi * ${height} / ${width})` }}
+    >
+      <div
+        className="absolute top-0 left-0 origin-top-left"
+        style={{
+          width,
+          height,
+          transform: `scale(calc(100cqi / ${width}px))`,
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /**
  * The feed and an opened post, laid out at full size on a stage that is scaled
  * as a unit, so the offset between them holds at every width.
@@ -31,50 +59,35 @@ export function ProductPair({ className }: { className?: string }) {
       aria-label="Recent member activity"
     >
       <div className="hidden w-full [container-type:inline-size] lg:block">
-        <div
-          className="relative"
-          style={{
-            height: `calc(100cqi * ${STAGE_HEIGHT} / ${STAGE_WIDTH})`,
-          }}
-        >
+        <ScaledStage width={STAGE_WIDTH} height={STAGE_HEIGHT}>
           <div
-            className="absolute top-0 left-0 origin-top-left"
+            className="absolute top-0 left-0"
+            style={{ width: FEED_WIDTH, height: FEED_HEIGHT }}
+          >
+            <FeedCard />
+          </div>
+          <div
+            className="absolute"
             style={{
-              width: STAGE_WIDTH,
-              height: STAGE_HEIGHT,
-              transform: `scale(calc(100cqi / ${STAGE_WIDTH}px))`,
+              left: DETAIL_X,
+              top: DETAIL_Y,
+              width: DETAIL_WIDTH,
+              height: DETAIL_HEIGHT,
             }}
           >
-            <div
-              className="absolute top-0 left-0"
-              style={{ width: FEED_WIDTH, height: FEED_HEIGHT }}
-            >
-              <FeedCard />
-            </div>
-            <div
-              className="absolute"
-              style={{
-                left: DETAIL_X,
-                top: DETAIL_Y,
-                width: DETAIL_WIDTH,
-                height: DETAIL_HEIGHT,
-              }}
-            >
-              <PostDetailCard />
-            </div>
+            <PostDetailCard />
           </div>
-        </div>
+        </ScaledStage>
       </div>
 
       {/* No room to offset the pair below lg, so the feed stands in for it. */}
-      <ScaledCard
-        width={FEED_WIDTH}
-        height={FEED_HEIGHT}
-        scale={0.78}
-        className="lg:hidden"
-      >
-        <FeedCard />
-      </ScaledCard>
+      <div className="w-full max-w-md [container-type:inline-size] lg:hidden">
+        <ScaledStage width={FEED_WIDTH} height={FEED_HEIGHT}>
+          <div style={{ width: FEED_WIDTH, height: FEED_HEIGHT }}>
+            <FeedCard />
+          </div>
+        </ScaledStage>
+      </div>
     </div>
   );
 }

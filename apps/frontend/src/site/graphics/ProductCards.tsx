@@ -1,10 +1,8 @@
 import { cn } from "@alliance/shared/styles/util";
-import { Check } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { useEffect, useState, type ReactNode, type RefObject } from "react";
 import {
   COMMIT_PLEDGE,
-  COMMIT_SIGNATURE,
-  COMMIT_SIGNATURE_LABEL,
   COMMIT_TITLE,
   TASK_CTA,
   TASK_PROGRESS_DONE,
@@ -18,15 +16,44 @@ import {
 import { FALLBACK_FACE, useUpdateAuthor } from "../data";
 import { useInView, usePrefersReducedMotion } from "../hooks";
 
-const CARD_H = "min-h-[236px]";
+const CARD_ICON = "size-6";
+const MOCK_COPY = "text-lg leading-snug";
+const MOCK_COPY_SMALL = "text-base leading-snug";
+
+/** Two slightly bowed strokes so the commit mark reads as drawn, not geometric. */
+function HanddrawnX({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className ?? CARD_ICON}
+      aria-hidden
+    >
+      <path
+        d="M5.2 4.9c4.4 3.2 8.8 8.9 13.7 14.4"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
+      <path
+        d="M18.7 5.1c-2.4 3.5-8.1 9.5-13.8 14"
+        stroke="currentColor"
+        strokeWidth="2.25"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
 function MockCard({
   title,
+  icon,
   children,
   cardRef,
   className,
 }: {
   title: string;
+  icon: ReactNode;
   children: ReactNode;
   cardRef?: RefObject<HTMLDivElement | null>;
   className?: string;
@@ -35,15 +62,40 @@ function MockCard({
     <div
       ref={cardRef}
       className={cn(
-        "flex flex-col overflow-hidden bg-zinc-50 px-5 pt-8",
-        CARD_H,
+        "flex h-full w-full flex-col gap-6 overflow-visible bg-zinc-100 p-6",
         className,
       )}
       style={{ borderRadius: "var(--site-radius-card)" }}
     >
-      <p className="mb-12 text-2xl font-medium text-[var(--site-ink)]">
-        {title}
-      </p>
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-2xl font-medium text-black sm:text-3xl">{title}</p>
+        <span
+          className="flex size-10 shrink-0 items-center justify-center rounded-md  text-black"
+          aria-hidden
+        >
+          {icon}
+        </span>
+      </div>
+      <div className="mt-auto">{children}</div>
+    </div>
+  );
+}
+
+function MockInnerCard({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "w-full overflow-hidden bg-white p-4 sm:p-5 shadow-[0_15px_22px_0px_rgba(0,0,0,0.04)]",
+        className,
+      )}
+      style={{ borderRadius: "var(--site-radius-card)" }}
+    >
       {children}
     </div>
   );
@@ -52,9 +104,9 @@ function MockCard({
 function MockButton({ label }: { label: string }) {
   return (
     <div
-      className="mt-auto mb-5 py-2.5 text-center text-sm font-medium text-white"
+      className={cn(MOCK_COPY, "py-2.5 text-center font-medium text-white")}
       style={{
-        backgroundColor: "var(--site-primary)",
+        backgroundColor: "black",
         borderRadius: "var(--site-radius-button)",
       }}
     >
@@ -63,64 +115,49 @@ function MockButton({ label }: { label: string }) {
   );
 }
 
-function useTypewriter(text: string, active: boolean, msPerChar: number) {
-  const [count, setCount] = useState(0);
-  const reduced = usePrefersReducedMotion();
-
-  useEffect(() => {
-    if (!active) return;
-    if (reduced) {
-      setCount(text.length);
-      return;
-    }
-    setCount(0);
-    const id = setInterval(() => {
-      setCount((c) => {
-        if (c >= text.length) {
-          clearInterval(id);
-          return c;
-        }
-        return c + 1;
-      });
-    }, msPerChar);
-    return () => clearInterval(id);
-  }, [text, active, msPerChar, reduced]);
-
-  return { typed: text.slice(0, count), done: count >= text.length };
+function CommitCheckbox({ checked }: { checked: boolean }) {
+  return (
+    <span
+      className={cn(
+        "flex size-6 shrink-0 items-center justify-center rounded-sm border border-2",
+        checked ? "border-(--site-ink) text-(--site-ink)" : "border-zinc-300",
+      )}
+      aria-hidden
+    >
+      {checked && <HanddrawnX className="size-5" />}
+    </span>
+  );
 }
 
-/**
- * The pledge is stated for the member and they only sign it, which reads less
- * like an exam than typing the sentence out.
- */
+/** One checked line, then unread rows so the card reads as a longer form. */
 export function CommitCard() {
-  const { ref, inView } = useInView<HTMLDivElement>(0.4);
-  const { typed, done } = useTypewriter(COMMIT_SIGNATURE, inView, 150);
-
   return (
-    <MockCard title={COMMIT_TITLE} cardRef={ref}>
-      <p className="border-l-2 border-[var(--site-primary)] bg-[var(--site-ink)]/[0.06] px-3 py-3 text-[0.88rem] leading-snug text-[var(--site-ink)]/80">
-        {COMMIT_PLEDGE}
-      </p>
-      <p className="mt-4 text-[0.72rem] tracking-wide text-[var(--site-ink)]/45 uppercase">
-        {COMMIT_SIGNATURE_LABEL}
-      </p>
-      {/*
-       * The row owns the remaining height and the glyphs sit on its baseline, so
-       * ascenders and descenders appearing mid-word can't shift the layout.
-       */}
-      <div className="mt-auto mb-5 flex flex-1 items-end border-b border-[var(--site-ink)]/25">
-        <span className="site-signature flex h-[2.9rem] items-end pb-1 text-[2.9rem] leading-none whitespace-nowrap text-[var(--site-ink)]">
-          {typed}
-          {!done && (
-            <span
-              className="mb-[0.45rem] ml-0.5 inline-block h-[1.4rem] w-px shrink-0 bg-[var(--site-ink)]"
-              style={{ animation: "site-caret 1s steps(1) infinite" }}
-              aria-hidden
-            />
-          )}
-        </span>
-      </div>
+    <MockCard title={COMMIT_TITLE} icon={<HanddrawnX />}>
+      <MockInnerCard>
+        <ul className="flex flex-col gap-2.5">
+          <li
+            className={cn(
+              MOCK_COPY,
+              "flex items-center gap-2.5 font-medium text-[var(--site-ink)]",
+            )}
+          >
+            <CommitCheckbox checked />
+            {COMMIT_PLEDGE}
+          </li>
+          <li className="flex items-center gap-2.5">
+            <CommitCheckbox checked={false} />
+            <span className="min-w-0 flex-1" aria-hidden>
+              <span className="block h-3.5 w-[92%] rounded-sm bg-zinc-100" />
+            </span>
+          </li>
+          <li className="flex items-center gap-2.5">
+            <CommitCheckbox checked={false} />
+            <span className="min-w-0 flex-1" aria-hidden>
+              <span className="block h-3.5 w-[68%] rounded-sm bg-zinc-100" />
+            </span>
+          </li>
+        </ul>
+      </MockInnerCard>
     </MockCard>
   );
 }
@@ -147,52 +184,61 @@ export function TaskCard() {
   const percent = Math.round((TASK_PROGRESS_DONE / TASK_PROGRESS_TOTAL) * 100);
 
   return (
-    <MockCard title={TASK_TITLE} cardRef={ref}>
-      <div className="flex flex-col gap-1.5">
-        <div className="h-2 overflow-hidden rounded-full bg-[var(--site-ink)]/12">
-          <div
-            className="h-full origin-left rounded-full bg-[var(--site-primary)] transition-transform duration-[900ms] ease-out"
-            style={{ transform: `scaleX(${inView ? percent / 100 : 0})` }}
-          />
+    <MockCard
+      title={TASK_TITLE}
+      icon={<Check className={CARD_ICON} strokeWidth={2.5} />}
+      cardRef={ref}
+    >
+      <MockInnerCard>
+        <div className="flex flex-col gap-1.5 mb-4">
+          <div className="h-3 overflow-hidden rounded-full bg-zinc-100">
+            <div
+              className="h-full origin-left rounded-full bg-green transition-transform duration-[900ms] ease-out"
+              style={{ transform: `scaleX(${inView ? percent / 100 : 0})` }}
+            />
+          </div>
+          <p className={cn(MOCK_COPY_SMALL, "text-zinc-500")}>
+            {TASK_PROGRESS_DONE}/{TASK_PROGRESS_TOTAL} members have completed
+            the week&apos;s tasks
+          </p>
         </div>
-        <p className="text-[0.78rem] text-[var(--site-ink)]/60">
-          {TASK_PROGRESS_DONE}/{TASK_PROGRESS_TOTAL} members have completed the
-          week&apos;s tasks
-        </p>
-      </div>
 
-      <ul className="my-3.5 flex flex-col gap-1">
-        {TASK_STEPS.map((step, i) => {
-          const isChecked = i < checked;
-          return (
-            <li
-              key={step}
-              className="flex items-center gap-2.5 rounded bg-[var(--site-ink)]/[0.06] px-2 py-1.5 text-[0.82rem] font-medium text-[var(--site-ink)]"
-            >
-              <span
+        <ul className="my-3.5 flex flex-col gap-1">
+          {TASK_STEPS.map((step, i) => {
+            const isChecked = i < checked;
+            return (
+              <li
+                key={step}
                 className={cn(
-                  "flex size-4 shrink-0 items-center justify-center rounded-full border",
-                  isChecked
-                    ? "border-[var(--site-primary)] bg-[var(--site-primary)] text-white"
-                    : "border-[var(--site-primary)]/70",
+                  MOCK_COPY,
+                  "flex items-center gap-2.5 bg-zinc-100 p-2 rounded-md font-medium text-(--site-ink)",
                 )}
               >
-                {isChecked && (
-                  <Check
-                    className="size-2.5"
-                    strokeWidth={3.5}
-                    style={{ animation: "site-check-pop 320ms ease-out" }}
-                    aria-hidden
-                  />
-                )}
-              </span>
-              {step}
-            </li>
-          );
-        })}
-      </ul>
+                <span
+                  className={cn(
+                    "flex size-6 shrink-0 items-center justify-center rounded-full",
+                    isChecked
+                      ? "bg-green text-white border-none"
+                      : "border border-2 border-green",
+                  )}
+                >
+                  {isChecked && (
+                    <Check
+                      className="size-3"
+                      strokeWidth={6}
+                      style={{ animation: "site-check-pop 320ms ease-out" }}
+                      aria-hidden
+                    />
+                  )}
+                </span>
+                {step}
+              </li>
+            );
+          })}
+        </ul>
 
-      <MockButton label={TASK_CTA} />
+        <MockButton label={TASK_CTA} />
+      </MockInnerCard>
     </MockCard>
   );
 }
@@ -203,31 +249,32 @@ export function UpdateCard() {
   const author = useUpdateAuthor();
 
   return (
-    <MockCard title={UPDATE_TITLE} cardRef={ref} className="pb-0">
-      <div
-        className={cn(
-          "relative flex-1 overflow-hidden bg-[var(--site-ink)]/[0.05] px-3.5 pt-3",
-          inView ? "site-post-slide-in" : "opacity-0",
-        )}
-      >
+    <MockCard
+      title={UPDATE_TITLE}
+      icon={<ArrowRight className={CARD_ICON} strokeWidth={2.5} />}
+      cardRef={ref}
+    >
+      <MockInnerCard className={inView ? "site-post-slide-in" : "opacity-0"}>
         <div className="flex items-center gap-2">
           <img
             src={author?.avatar ?? FALLBACK_FACE}
             alt=""
             aria-hidden
-            className="size-5 rounded object-cover"
+            className="size-6 rounded object-cover"
           />
-          <span className="text-[0.82rem] font-medium text-[var(--site-ink)]">
+          <span className={cn(MOCK_COPY_SMALL, " text-[var(--site-ink)]")}>
             {author?.name ?? "The office"}
           </span>
         </div>
-        <p className="mt-2.5 text-[0.82rem] font-semibold text-[var(--site-ink)]">
+        <p
+          className={cn(MOCK_COPY, "mt-2.5 font-medium text-[var(--site-ink)]")}
+        >
           {UPDATE_HEADLINE}
         </p>
-        <p className="mt-2 text-[0.82rem] leading-snug text-[var(--site-ink)]/75">
+        <p className={cn(MOCK_COPY, "mt-2 text-[var(--site-ink)]/75")}>
           {UPDATE_BODY}
         </p>
-      </div>
+      </MockInnerCard>
     </MockCard>
   );
 }

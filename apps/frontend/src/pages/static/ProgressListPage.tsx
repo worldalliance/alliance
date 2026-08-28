@@ -16,7 +16,6 @@ import {
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import { ImpactCard, ProgressLinkCard } from "../../site/PageCards";
 import { PageBand, PageShell } from "../../site/PageShell";
-import { TexturedPanel } from "../../site/ui";
 
 export function meta() {
   return socialPreviewMeta({
@@ -30,17 +29,17 @@ const PROGRESS_TITLE = "Progress";
 const PROGRESS_LEDE =
   "Examples of projects that members have completed so far.";
 
-type ImpactStat = { value: string; label: string };
+// type ImpactStat = { value: string; label: string };
 
-/** Each figure is the outcome of one closed action. */
-const impactStats: ImpactStat[] = [
-  { value: "11", label: "cafe locations adopted a bring-your-own-cup policy" },
-  { value: "57 kg", label: "of e-waste collected and taken to be recycled" },
-  { value: "$2,702", label: "raised for Helen Keller International" },
-  { value: "100+", label: "California cities sent public records requests" },
-  { value: "27", label: "researched comments submitted to regulators" },
-  { value: "20", label: "potholes reported and filled" },
-];
+// /** Each figure is the outcome of one closed action. */
+// const impactStats: ImpactStat[] = [
+//   { value: "11", label: "cafe locations adopted a bring-your-own-cup policy" },
+//   { value: "57 kg", label: "of e-waste collected and taken to be recycled" },
+//   { value: "$2,702", label: "raised for Helen Keller International" },
+//   { value: "100+", label: "California cities sent public records requests" },
+//   { value: "27", label: "researched comments submitted to regulators" },
+//   { value: "20", label: "potholes reported and filled" },
+// ];
 
 enum ProgressItemKind {
   Writeup = "writeup",
@@ -99,7 +98,11 @@ function PriorityFilter({
   onToggle: (priority: ActionPriority) => void;
 }) {
   return (
-    <div role="group" className="flex flex-wrap gap-2">
+    <div
+      role="group"
+      aria-label="Filter by priority"
+      className="flex flex-wrap gap-2"
+    >
       {ACTION_PRIORITIES.map((priority) => {
         const pressed = selected.includes(priority);
         return (
@@ -109,10 +112,10 @@ function PriorityFilter({
             aria-pressed={pressed}
             onClick={() => onToggle(priority)}
             className={cn(
-              "border px-3 py-2 text-sm transition-colors",
+              "border px-3 py-2 text-sm transition-colors font-medium",
               pressed
-                ? "border-[var(--site-primary)] bg-[var(--site-primary)] text-white"
-                : "border-[var(--site-ink)]/15 text-[var(--site-ink)]/70 hover:border-[var(--site-ink)]/35",
+                ? "border-(--site-primary) bg-(--site-primary) text-white"
+                : "border-(--site-ink)/15 text-(--site-ink)/70 hover:border-(--site-ink)/35",
             )}
             style={{ borderRadius: "var(--site-radius-input)" }}
           >
@@ -125,7 +128,7 @@ function PriorityFilter({
 }
 
 function ProgressCard({ item }: { item: ProgressItem }) {
-  const className = "border border-[var(--site-ink)]/10";
+  const className = "bg-zinc-50";
   switch (item.kind) {
     case ProgressItemKind.Writeup:
       return (
@@ -144,39 +147,39 @@ function ProgressCard({ item }: { item: ProgressItem }) {
   }
 }
 
-/** The headline figures, each tied back to the action that produced it. */
-function Statistics() {
-  return (
-    <PageBand>
-      <TexturedPanel tint="var(--site-panel)">
-        <div className="mb-8 flex flex-col gap-3">
-          <h2 className="site-display text-[1.9rem] leading-tight text-white sm:text-[2.4rem]">
-            By the numbers
-          </h2>
-          <p className="max-w-[46rem] text-[1.08rem] leading-snug text-white/75 sm:text-[1.2rem]">
-            What particular actions produced, at the scale we are working at
-            now.
-          </p>
-        </div>
-        <dl className="grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
-          {impactStats.map((stat) => (
-            <div
-              key={stat.label}
-              className="flex flex-col gap-1 border-t border-white/20 pt-4"
-            >
-              <dt className="site-display text-[2.4rem] leading-none text-white">
-                {stat.value}
-              </dt>
-              <dd className="text-[1rem] leading-snug text-white/75">
-                {stat.label}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </TexturedPanel>
-    </PageBand>
-  );
-}
+// /** The headline figures, each tied back to the action that produced it. */
+// function Statistics() {
+//   return (
+//     <PageBand>
+//       <TexturedPanel tint="var(--site-panel)">
+//         <div className="mb-8 flex flex-col gap-3">
+//           <h2 className="site-display text-[1.9rem] leading-tight text-white sm:text-[2.4rem]">
+//             By the numbers
+//           </h2>
+//           <p className="max-w-[46rem] text-[1.08rem] leading-snug text-white/75 sm:text-[1.2rem]">
+//             What particular actions produced, at the scale we are working at
+//             now.
+//           </p>
+//         </div>
+//         <dl className="grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+//           {impactStats.map((stat) => (
+//             <div
+//               key={stat.label}
+//               className="flex flex-col gap-1 border-t border-white/20 pt-4"
+//             >
+//               <dt className="site-display text-[2.4rem] leading-none text-white">
+//                 {stat.value}
+//               </dt>
+//               <dd className="text-[1rem] leading-snug text-white/75">
+//                 {stat.label}
+//               </dd>
+//             </div>
+//           ))}
+//         </dl>
+//       </TexturedPanel>
+//     </PageBand>
+//   );
+// }
 
 /**
  * Two columns packed by height rather than by kind. The outcomes vary from a
@@ -201,14 +204,9 @@ function Projects() {
 
   return (
     <PageBand className="flex flex-col gap-8">
-      {/* <div className="flex flex-col gap-3">
-        <BandHeading>Projects</BandHeading>
-        <PriorityFilter selected={selected} onToggle={toggle} />
-      </div> */}
+      <PriorityFilter selected={selected} onToggle={toggle} />
       {shown.length === 0 ? (
-        <p className="text-[1rem] text-[var(--site-ink)]/55">
-          No matching projects.
-        </p>
+        <p className="text-base text-(--site-ink)/90">No matching projects.</p>
       ) : (
         <BalancedColumns columns={{ default: 1, lg: 2 }} gap={12}>
           {shown.map((item) => (

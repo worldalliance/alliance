@@ -37,36 +37,39 @@ function MilestoneTrack({
   const progress = filledSegments(milestones, members);
 
   return (
-    <div className="-mx-1 overflow-x-auto px-1 pb-1">
-      <div
-        className="grid min-w-[520px] gap-2 sm:min-w-0 sm:gap-2.5"
-        style={{
-          gridTemplateColumns: `repeat(${milestones.length}, minmax(0, 1fr))`,
-        }}
-      >
-        {milestones.map((milestone, i) => (
-          <div key={milestone.members} className="flex flex-col gap-1.5">
-            <p className="text-right text-xs text-white tabular-nums sm:text-sm">
-              {milestone.members.toLocaleString("en-US")}
-              {showUnit && i === 0 && " Members"}
-            </p>
-            <div className="h-6 overflow-hidden rounded-[5px] bg-white/35 sm:h-[30px]">
-              <div
-                className="h-full origin-left rounded-[5px] bg-white ease-out"
-                style={{
-                  transform: `scaleX(${inView ? Math.min(Math.max(progress - i, 0), 1) : 0})`,
-                  transitionProperty: "transform",
-                  transitionDuration: `${BAR_FILL_MS}ms`,
-                  transitionDelay: `${i * BAR_FILL_MS}ms`,
-                }}
-              />
-            </div>
-            <p className="text-right text-[0.7rem] leading-tight text-white sm:text-sm">
+    <div
+      className="flex flex-col gap-5 md:grid md:gap-2.5"
+      style={{
+        gridTemplateColumns: `repeat(${milestones.length}, minmax(0, 1fr))`,
+      }}
+    >
+      {milestones.map((milestone, i) => (
+        <div key={milestone.members} className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1 md:block">
+            <p className="text-[0.85rem] leading-snug text-white md:hidden">
               {milestone.label}
             </p>
+            <p className="text-xs text-white tabular-nums md:text-right md:text-sm">
+              {milestone.members.toLocaleString("en-US")}
+              {showUnit && i === 0 && " members"}
+            </p>
           </div>
-        ))}
-      </div>
+          <div className="h-5 overflow-hidden rounded-[5px] bg-white/35 md:h-[30px]">
+            <div
+              className="h-full origin-left rounded-[5px] bg-white ease-out"
+              style={{
+                transform: `scaleX(${inView ? Math.min(Math.max(progress - i, 0), 1) : 0})`,
+                transitionProperty: "transform",
+                transitionDuration: `${BAR_FILL_MS}ms`,
+                transitionDelay: `${i * BAR_FILL_MS}ms`,
+              }}
+            />
+          </div>
+          <p className="hidden text-right text-[0.7rem] leading-tight text-white md:block md:text-sm">
+            {milestone.label}
+          </p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -97,7 +100,7 @@ export function GrowthMilestones({
         showUnit
       />
       <MilestoneTrack milestones={far} members={0} inView={inView} />
-      <div className="flex flex-col items-end gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+      <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
         <p className="max-w-[52rem] text-[0.95rem] leading-snug text-white/80">
           {footnote}
         </p>

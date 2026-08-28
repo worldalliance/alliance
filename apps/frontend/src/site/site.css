@@ -115,26 +115,6 @@
   font-family: var(--site-font-display);
 }
 
-.site-root .site-headline {
-  font-weight: var(--site-headline-weight);
-}
-
-/** The signature field in the commitment card. */
-.site-root .site-signature {
-  font-family: "Alex Brush", cursive;
-}
-
-@keyframes site-caret {
-  0%,
-  49% {
-    opacity: 1;
-  }
-  50%,
-  100% {
-    opacity: 0;
-  }
-}
-
 @keyframes site-check-pop {
   0% {
     transform: scale(0.4);
@@ -170,16 +150,18 @@
  * There they sit open, with the title already lifted to make room.
  */
 @media (hover: none) {
-  .site-root .site-priority-body {
-    top: 10% !important;
-  }
-
   .site-root .site-priority-body > .grid {
     grid-template-rows: 1fr !important;
   }
 
   .site-root .site-priority-body p {
     opacity: 1 !important;
+  }
+}
+
+@media (hover: none) and (min-width: 768px) {
+  .site-root .site-priority-body {
+    top: 10% !important;
   }
 }
 

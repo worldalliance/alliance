@@ -525,15 +525,14 @@ export const COMMIT_CTA = "Join The Alliance";
 
 export const TASK_TITLE = "Everyone completes actions";
 export const TASK_STEPS = [
-  "Identify a coffee shop in your area",
-  "Bring the owner our ‘Bring-your-own-cup’ proposal",
-  "Input the shop's name and location below",
+  "Go on a walk and collect trash",
+  "Record the brand of each item",
 ];
 export const TASK_CTA = "Complete";
 /** Version 4 shows two steps plus how many members have finished them. */
 export const TASK_SHORT_STEPS = [
-  "Identify a coffee shop in your area",
-  "Bring the owner our ‘Bring-your-own-cup’ proposal",
+  "Go on a walk and collect trash",
+  "Record the brand of each item",
 ];
 export const TASK_PROGRESS_DONE = 189;
 export const TASK_PROGRESS_TOTAL = 233;

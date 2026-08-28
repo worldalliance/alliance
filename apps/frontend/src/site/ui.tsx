@@ -10,7 +10,6 @@ export const SITE_COL =
  * The h1 size, shared by the hero and every page header behind the nav. Steps
  * DisplayHeading down from its own sm and lg sizes, keeping its 2.5rem base.
  */
-export const SITE_H1 = "sm:text-6xl lg:text-7xl";
 
 /** Both form submits: one box, and the fill is all that separates them. */
 export const SITE_SUBMIT =
@@ -32,7 +31,7 @@ export function TexturedPanel({
   return (
     <div
       className={cn(
-        "relative isolate overflow-hidden px-6 py-8 sm:px-[78px] sm:py-10",
+        "relative isolate overflow-hidden px-5 py-7 sm:px-10 sm:py-10 lg:px-[78px]",
         className,
       )}
       style={{
@@ -121,7 +120,7 @@ export function Logotype({
     <span
       className={cn(
         "site-display leading-none whitespace-nowrap",
-        onDark ? "text-white" : "text-[var(--site-primary)]",
+        onDark ? "text-white" : "text-black",
         className,
       )}
       style={{ fontWeight: 500, letterSpacing: "0.02em" }}
@@ -319,11 +318,74 @@ export function DisplayHeading({
   return (
     <Tag
       className={cn(
-        "site-display site-headline text-[var(--site-primary)] leading-[1.06] text-4xl sm:text-5xl lg:text-6xl",
+        "site-display font-medium text-black leading-[1.06]",
         className,
       )}
     >
       {children}
     </Tag>
+  );
+}
+
+/** Companion to the hero's DisplayHeading. Landing page only. */
+export function DisplaySubtitle({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <p
+      className={cn(
+        "max-w-xl text-lg leading-snug text-(--site-ink) sm:text-2xl",
+        className,
+      )}
+    >
+      {children}
+    </p>
+  );
+}
+
+/** Under a BandHeading on landing, people, partner, and similar sections. */
+export function SectionSubtitle({
+  children,
+  className,
+  onDark = false,
+}: {
+  children: ReactNode;
+  className?: string;
+  onDark?: boolean;
+}) {
+  return (
+    <p
+      className={cn(
+        "max-w-2xl text-xl leading-snug sm:text-2xl",
+        onDark ? "text-white/75" : "text-(--site-ink)/90",
+        className,
+      )}
+    >
+      {children}
+    </p>
+  );
+}
+
+/** The line under a page's DisplayHeading h1. */
+export function PageShellSubtitle({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <p
+      className={cn(
+        "max-w-2xl text-xl sm:text-2xl text-(--site-ink)/90 ",
+        className,
+      )}
+    >
+      {children}
+    </p>
   );
 }

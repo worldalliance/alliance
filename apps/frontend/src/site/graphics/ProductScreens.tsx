@@ -3,7 +3,7 @@ import { pickFaces, useMemberFaces, useUpdateAuthor } from "../data";
 import { PostCard } from "./PostCard";
 
 const FEED_TITLE = "Activity";
-const DETAIL_TITLE = "Action update";
+const DETAIL_TITLE = "Project update";
 
 /** Both cards are laid out at these sizes and scaled down where they're used. */
 export const FEED_WIDTH = 380;
@@ -16,7 +16,7 @@ const STRIP_FACES = 4;
 
 function CardTitleBar({ children }: { children: string }) {
   return (
-    <div className="shrink-0 bg-zinc-100 px-4 py-2.5 text-sm font-semibold text-[var(--site-ink)]">
+    <div className="shrink-0 bg-zinc-100 px-4 py-2.5 text-sm font-semibold text-zinc-400">
       {children}
     </div>
   );
@@ -77,7 +77,7 @@ export function FeedCard() {
 
   return (
     <div
-      className="flex h-full flex-col overflow-hidden bg-white shadow-[0_18px_45px_-20px_rgba(4,14,32,0.55)]"
+      className="flex h-full flex-col overflow-hidden bg-white shadow-[0_15px_22px_0px_rgba(0,0,0,0.04)]"
       style={{ borderRadius: "var(--site-radius-card)" }}
     >
       <CardTitleBar>{FEED_TITLE}</CardTitleBar>
@@ -105,7 +105,7 @@ export function PostDetailCard() {
 
   return (
     <div
-      className="flex h-full flex-col overflow-hidden bg-white shadow-[0_18px_45px_-20px_rgba(4,14,32,0.55)]"
+      className="flex h-full flex-col overflow-hidden bg-white shadow-[0_15px_22px_0px_rgba(0,0,0,0.04)]"
       style={{ borderRadius: "var(--site-radius-card)" }}
     >
       <CardTitleBar>{DETAIL_TITLE}</CardTitleBar>

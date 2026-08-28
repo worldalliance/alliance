@@ -4,7 +4,7 @@ import poverty from "../assets/redesign/priority-poverty.jpg";
 import technology from "../assets/redesign/priority-technology.jpg";
 
 export const HERO_HEADLINE =
-  "We’re assembling a group that coordinates tightly";
+  "We’re assembling people who can count on each other";
 export const HERO_SUBHEAD =
   "To combat global problems, we commit 15 minutes each week to projects that depend on everyone’s participation. We are in an experimental phase.";
 
@@ -19,30 +19,30 @@ export type Priority = {
 export const priorities: Priority[] = [
   {
     id: "extreme-poverty",
-    title: "Extreme\nPoverty",
+    title: "Extreme\npoverty",
     description:
-      "Humanity should not deprive anyone of the resources required for basic health. However, over 800 million people live on less than $3 a day, commonly suffering malnutrition and dying from preventable diseases.",
+      "Over 800 million people live on less than $3 a day, commonly suffering  from malnutrition and dying from preventable diseases.",
     image: poverty,
   },
   {
     id: "environmental-destruction",
-    title: "Environmental\nDestruction",
+    title: "Environmental\ndestruction",
     description:
-      "Humanity should not destroy anything that billions of people love without consent. However, the overuse of land for development and agriculture, overexploitation of natural resources, climate change, pollution, and invasive species are driving a mass extinction in nature.",
+      "The overuse of land for development and agriculture, overexploitation of natural resources, climate change, pollution, and invasive species are driving a mass extinction in nature.",
     image: environment,
   },
   {
     id: "democratic-decline",
-    title: "Decline of\nDemocratic\nInstitutions",
+    title: "Democratic\ndecline",
     description:
-      "Humanity should not exclude anyone from the ability to influence their own futures. However, more countries are losing democratic qualities than at any time since the 1940s, and measures of global freedom have fallen for 19 straight years.",
+      "More countries are losing democratic qualities than at any time since the 1940s, and measures of global freedom have fallen for 19 straight years.",
     image: democracy,
   },
   {
     id: "dangerous-technology",
-    title: "Development of\nDangerous\nTechnology",
+    title: "Dangerous\ntechnologies",
     description:
-      "Humanity should not take massive risks on behalf of billions of people. However, biotechnology is lowering the barrier to engineering deadly pathogens, and experts warn that artificial intelligence poses a risk of human extinction.",
+      "Biotechnology is lowering the barrier to engineering deadly pathogens, and experts warn that artificial intelligence poses a risk of human extinction.",
     image: technology,
   },
 ];
@@ -152,29 +152,24 @@ export const WORK_HEADLINE = "How does it work?";
 export const WORK_SUBHEAD =
   "To effectively work together, we need to be able to count on each other.";
 
-export const COMMIT_TITLE = "Members commit";
-export const COMMIT_PLEDGE =
-  "I commit to spending 15 minutes a week to improve the world.";
-export const COMMIT_SIGNATURE = "John Doe";
-export const COMMIT_SIGNATURE_LABEL = "Sign your name";
+export const COMMIT_TITLE = "Members commit to weekly participation";
+export const COMMIT_PLEDGE = "I will complete each 15-minute task on time";
 
-export const TASK_TITLE = "Everyone completes actions";
+export const TASK_TITLE = "Everyone contributes to weekly projects";
 export const TASK_STEPS = [
-  "Identify a coffee shop in your area",
-  "Bring the owner our ‘Bring-your-own-cup’ proposal",
+  "Go on a walk and collect trash",
+  "Record the brand of each item",
 ];
 export const TASK_PROGRESS_DONE = 189;
 export const TASK_PROGRESS_TOTAL = 233;
 export const TASK_CTA = "Complete";
 
-export const UPDATE_TITLE = "We share the outcome";
-export const UPDATE_HEADLINE =
-  "‘Bring-your-own-cup’ cafe coalition received media coverage";
+export const UPDATE_TITLE = "We learn and share the outcomes";
+export const UPDATE_HEADLINE = "We collected data on 1,022 pieces of trash";
 export const UPDATE_BODY =
-  "Thank you to everyone that participated! Recall that media coverage was not itself the desired outcome of this action. The desired outcome was the cafes' adoption of a sustainable policy, which happened in advance because the cafes could point to the coverage.";
+  "Beverage bottles were the most common item collected (82), followed by cigarette butts and food wrappers. We're writing up a report...";
 
-export const MODEL_HEADLINE =
-  "With commitment, we can plan projects that we expect to succeed";
+export const MODEL_HEADLINE = "We plan projects that we expect to succeed";
 export const MODEL_PROJECTS_LABEL = "See previous projects";
 
 /** The middle clause links out to the people page. */

@@ -26,15 +26,13 @@ import { SITE_COL, SiteArrow } from "../../site/ui";
 export function meta() {
   return socialPreviewMeta({
     title: "Guide to the Alliance",
-    description:
-      "What we are trying to do, how the office and members divide the work, and where we go next.",
+    description: "Our goals, how we divide work, and our next steps.",
     url: "/guide",
   });
 }
 
 const GUIDE_TITLE = "Guide to the Alliance";
-const GUIDE_LEDE =
-  "What we are trying to do, how the office and members divide the work, and where we go next.";
+const GUIDE_LEDE = "Our goals, how we divide work, and our next steps.";
 /** Names the table of contents for screen readers; nothing draws it. */
 const GUIDE_TOC_LABEL = "Sections";
 
@@ -99,10 +97,10 @@ function PriorityDetail() {
     <div className="flex flex-col gap-8">
       {alliancePriorities.map((priority: AlliancePriority) => (
         <div key={priority.id} id={priority.id} className="flex flex-col gap-3">
-          <h3 className="text-[1.2rem] leading-tight font-medium">
+          <h3 className="text-xl leading-tight font-medium">
             {priority.title}
           </h3>
-          <p className="text-[1.05rem] leading-[1.65] text-[var(--site-ink)]/85 sm:text-[1.12rem] [&_a]:text-[var(--site-primary)] [&_a]:underline [&_a]:decoration-[var(--site-primary)]/35 [&_a]:underline-offset-2">
+          <p className="text-[1.05rem] leading-[1.65] text-(--site-ink)/85 sm:text-[1.12rem] [&_a]:text-[var(--site-primary)] [&_a]:underline [&_a]:decoration-[var(--site-primary)]/35 [&_a]:underline-offset-2">
             {priority.description}
           </p>
         </div>
@@ -169,7 +167,7 @@ const guideExtras: Record<GuideSectionKind, ReactNode> = {
   [GuideSectionKind.Introduction]: null,
   [GuideSectionKind.Structure]: (
     <div className="flex flex-col gap-6">
-      <ContractCard caption={GUIDE_CONTRACT_CAPTION} />
+      <ContractCard caption={GUIDE_CONTRACT_CAPTION} terms />
     </div>
   ),
   [GuideSectionKind.Actions]: (
@@ -189,7 +187,6 @@ const guideExtras: Record<GuideSectionKind, ReactNode> = {
   [GuideSectionKind.Priorities]: (
     <div className="flex flex-col gap-10">
       <PriorityGrid />
-      <PriorityDetail />
     </div>
   ),
   [GuideSectionKind.Roadmap]: <CategoryTable />,
@@ -202,33 +199,8 @@ export default function GuidePage() {
   return (
     <PageShell title={GUIDE_TITLE} subtitle={GUIDE_LEDE}>
       <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] lg:gap-16">
-          <nav
-            className="hidden self-start lg:block"
-            style={{ position: "sticky", top: NAV_HEIGHT + 32 }}
-            aria-label={GUIDE_TOC_LABEL}
-          >
-            <ul className="flex flex-col gap-2.5">
-              {GUIDE_SECTION_ORDER.map((kind) => (
-                <li key={kind}>
-                  <a
-                    href={`#${kind}`}
-                    aria-current={kind === active ? "true" : undefined}
-                    className={cn(
-                      "text-[1rem] transition-colors",
-                      kind === active
-                        ? "font-semibold text-[var(--site-primary)]"
-                        : "text-[var(--site-ink)]/60 hover:text-[var(--site-primary)]",
-                    )}
-                  >
-                    {GUIDE_SECTIONS[kind].label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-
-          <div className="flex max-w-[46rem] flex-col gap-16">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,46rem)_minmax(0,18rem)] lg:justify-between lg:gap-16">
+          <div className="flex flex-col gap-16">
             {GUIDE_SECTION_ORDER.map((kind) => {
               const section = GUIDE_SECTIONS[kind];
               return (
@@ -237,7 +209,7 @@ export default function GuidePage() {
                   id={kind}
                   className="flex scroll-mt-32 flex-col gap-6"
                 >
-                  <h2 className="site-display text-[1.9rem] leading-tight text-[var(--site-primary)] sm:text-[2.2rem]">
+                  <h2 className="site-display text-3xl sm:text-4xl font-medium leading-tight text-black ">
                     {section.label}
                   </h2>
                   {section.markdown.trim() && (
@@ -251,6 +223,35 @@ export default function GuidePage() {
               );
             })}
           </div>
+
+          <nav
+            className="hidden self-start bg-zinc-50 px-7 py-20 lg:block"
+            style={{
+              position: "sticky",
+              top: NAV_HEIGHT + 32,
+              borderRadius: "var(--site-radius-button)",
+            }}
+            aria-label={GUIDE_TOC_LABEL}
+          >
+            <ul className="flex flex-col gap-2.5">
+              {GUIDE_SECTION_ORDER.map((kind) => (
+                <li key={kind}>
+                  <a
+                    href={`#${kind}`}
+                    aria-current={kind === active ? "true" : undefined}
+                    className={cn(
+                      "text-lg",
+                      kind === active
+                        ? "font-semibold text-[var(--site-primary)]"
+                        : "text-[var(--site-ink)]/60 hover:text-[var(--site-primary)]",
+                    )}
+                  >
+                    {GUIDE_SECTIONS[kind].label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </div>
       </div>
     </PageShell>

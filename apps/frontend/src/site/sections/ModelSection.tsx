@@ -10,18 +10,20 @@ import {
 } from "../content";
 import { GrowthMilestones } from "../graphics/GrowthMilestones";
 import { PEOPLE_HREF, PROGRESS_HREF } from "../links";
-import { BandHeading, BandLede } from "../PageShell";
-import { SITE_COL, SiteArrow, TexturedPanel } from "../ui";
+import { BandHeading } from "../PageShell";
+import { SectionSubtitle, SITE_COL, SiteArrow, TexturedPanel } from "../ui";
 
 export function ModelSection() {
   const { data: memberCount } = useAllianceMemberCount();
 
   return (
-    <section className="bg-[var(--site-surface)] pb-16 md:pb-20 lg:pb-24">
+    <section className="bg-[var(--site-surface)] pb-20 sm:pb-36">
       <div className={`${SITE_COL} flex flex-col gap-8`}>
         <div className="flex flex-col gap-3">
-          <BandHeading className="max-w-[46rem]">{MODEL_HEADLINE}</BandHeading>
-          <BandLede>
+          <BandHeading className="max-w-[46rem] text-[2.25rem] sm:text-5xl lg:text-6xl">
+            {MODEL_HEADLINE}
+          </BandHeading>
+          <SectionSubtitle>
             {GROWTH_HEADLINE_FAR_PARTS.lead}
             <Link
               to={PEOPLE_HREF}
@@ -30,7 +32,7 @@ export function ModelSection() {
               {GROWTH_HEADLINE_FAR_PARTS.link}
             </Link>
             {GROWTH_HEADLINE_FAR_PARTS.tail}
-          </BandLede>
+          </SectionSubtitle>
         </div>
         <TexturedPanel tint="var(--site-primary)">
           <GrowthMilestones

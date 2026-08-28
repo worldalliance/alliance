@@ -43,7 +43,7 @@ export const FOOTER_COLUMNS: SiteLink[][] = [
     { label: "Governance", to: GOVERNANCE_HREF },
   ],
   [
-    { label: "Request to Join", to: JOIN_HREF, withArrow: true },
+    { label: "Join", to: JOIN_HREF, withArrow: true },
     { label: "Partner", to: PARTNER_HREF, withArrow: true },
   ],
 ];

@@ -49,7 +49,7 @@ function LegalRow() {
 export function SiteFooter() {
   return (
     <footer className="bg-[var(--site-primary)] text-white">
-      <div className={cn(SITE_COL, "pt-24 pb-10")}>
+      <div className={cn(SITE_COL, "pt-16 pb-10 lg:pt-24")}>
         <div className="flex flex-col gap-12 lg:flex-row lg:justify-between">
           <nav
             className="flex flex-wrap gap-x-[52px] gap-y-8"

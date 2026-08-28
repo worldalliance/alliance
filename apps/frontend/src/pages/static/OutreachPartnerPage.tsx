@@ -7,7 +7,6 @@ import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import { CONTACT_EMAIL } from "../../site/content";
 import {
   BandHeading,
-  BandLede,
   PageBand,
   PageShell,
 } from "../../site/PageShell";
@@ -31,6 +30,7 @@ import {
   type PartnerTask,
 } from "../../site/partnerContent";
 import {
+  SectionSubtitle,
   SITE_INPUT,
   SITE_INPUT_STYLE,
   SITE_SUBMIT,
@@ -103,9 +103,7 @@ function Offers() {
           <h2 className="site-display text-[1.9rem] leading-tight text-white sm:text-[2.4rem]">
             {PARTNER_OFFERS_TITLE}
           </h2>
-          <p className="max-w-[46rem] text-[1.08rem] leading-snug text-white/75 sm:text-[1.2rem]">
-            {PARTNER_OFFERS_BODY}
-          </p>
+          <SectionSubtitle onDark>{PARTNER_OFFERS_BODY}</SectionSubtitle>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           {partnerOffers.map((offer) => (
@@ -185,8 +183,8 @@ function PartnerTasks() {
     <PageBand className="flex flex-col gap-8 pt-12 lg:pt-16">
       <div className="flex flex-col gap-3">
         <BandHeading>{PARTNER_TASKS_TITLE}</BandHeading>
-        <BandLede>{PARTNER_TASKS_BODY}</BandLede>
-        <BandLede>
+        <SectionSubtitle>{PARTNER_TASKS_BODY}</SectionSubtitle>
+        <SectionSubtitle>
           {"We have previously worked with organizations like "}
           {pastPartners.map((partner, index) => (
             <React.Fragment key={partner.name}>
@@ -206,7 +204,7 @@ function PartnerTasks() {
             </React.Fragment>
           ))}
           .
-        </BandLede>
+        </SectionSubtitle>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         {partnerTasks.map((task) => (
@@ -292,9 +290,7 @@ function PartnerForm() {
           <h2 className="site-display text-[1.9rem] leading-tight text-white sm:text-[2.4rem]">
             {PARTNER_FORM_TITLE}
           </h2>
-          <p className="max-w-[46rem] text-[1.08rem] leading-snug text-white/75 sm:text-[1.2rem]">
-            {PARTNER_FORM_BODY}
-          </p>
+          <SectionSubtitle onDark>{PARTNER_FORM_BODY}</SectionSubtitle>
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">

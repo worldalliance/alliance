@@ -1,22 +1,5 @@
-import { cn } from "@alliance/shared/styles/util";
 import { PRIORITIES_NOTE, priorities, type Priority } from "../content";
 import { SITE_COL } from "../ui";
-
-/**
- * Negative margin as a share of its containing block, which has to be the
- * content column rather than the full-bleed section for the share to mean
- * anything. Works out to the top quarter of a card at each breakpoint, so that
- * much of the row rides onto whatever sits above it.
- */
-const OVERLAP = "-mt-[20%] sm:-mt-[9.7%] lg:-mt-[4.85%]";
-
-/**
- * Bottom padding for a section whose copy must stay clear of the overlapping
- * cards. It resolves against the full-bleed section rather than the column, so
- * it runs wider than the pull above; erring long only adds air.
- */
-export const OVERLAP_CLEARANCE =
-  "pb-[calc(21.5%+2rem)] sm:pb-[calc(10.6%+2.5rem)] lg:pb-[calc(5.2%+3.5rem)]";
 
 function PriorityCard({
   priority,
@@ -28,7 +11,7 @@ function PriorityCard({
   return (
     <article
       tabIndex={0}
-      className="group relative isolate aspect-[5/4] overflow-hidden focus:outline-none"
+      className="group relative isolate overflow-hidden focus:outline-none aspect-auto min-h-[13.5rem] md:aspect-[5/4] md:min-h-0"
       style={{
         borderRadius: "var(--site-radius-card)",
         backgroundColor:
@@ -58,8 +41,8 @@ function PriorityCard({
       />
 
       {/* The title rides up on hover to make room for the description. */}
-      <div className="site-priority-body absolute inset-x-6 bottom-5 z-10 flex flex-col top-[36%] transition-[top] duration-500 ease-out group-hover:top-[10%] group-focus-visible:top-[10%]">
-        <h3 className="text-[1.75rem] leading-[1.16] font-normal whitespace-pre-line text-white sm:text-[2rem]">
+      <div className="site-priority-body relative z-10 flex flex-col px-6 pt-14 pb-5 transition-[top] duration-500 ease-out md:absolute md:inset-x-6 md:top-[36%] md:bottom-5 md:px-0 md:pt-0 md:pb-0 md:group-hover:top-[10%] md:group-focus-visible:top-[10%]">
+        <h3 className="text-[1.75rem] leading-[1.16] font-normal whitespace-normal text-white md:whitespace-pre-line md:text-[2rem]">
           {priority.title}
         </h3>
         <div className="grid min-h-0 flex-1 grid-rows-[0fr] transition-[grid-template-rows] duration-500 ease-out group-hover:grid-rows-[1fr] group-focus-visible:grid-rows-[1fr]">
@@ -74,28 +57,21 @@ function PriorityCard({
   );
 }
 
-/**
- * The card row sits on the surface band that runs into the next section,
- * pulled up so it overlaps whatever precedes it.
- */
 export function Priorities() {
   return (
-    // `flow-root` keeps the pulled-up row from dragging the band up with it.
-    <section className="flow-root bg-[var(--site-surface)]">
-      <div className={cn(SITE_COL, "relative")}>
-        <div className={OVERLAP}>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {priorities.map((priority, index) => (
-              <PriorityCard
-                key={priority.id}
-                priority={priority}
-                index={index}
-              />
-            ))}
-          </div>
+    <section className="bg-[var(--site-surface)]">
+      <div className={SITE_COL}>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+          {priorities.map((priority, index) => (
+            <PriorityCard
+              key={priority.id}
+              priority={priority}
+              index={index}
+            />
+          ))}
         </div>
         {/* Sits against the right margin, still ranged left. */}
-        <p className="mt-10 ml-auto max-w-[32rem] text-lg leading-snug text-[var(--site-ink)]/85 sm:text-[1.35rem] lg:mt-12">
+        <p className="mt-8 max-w-[32rem] text-lg leading-snug text-[var(--site-ink)]/85 md:mt-10 lg:mt-12 lg:ml-auto sm:text-[1.35rem]">
           {PRIORITIES_NOTE}
         </p>
       </div>
