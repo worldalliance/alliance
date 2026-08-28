@@ -1,4 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
+import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { ArrowRight, Check } from "lucide-react";
 import { useEffect, useState, type ReactNode, type RefObject } from "react";
 import {
@@ -13,7 +14,7 @@ import {
   UPDATE_HEADLINE,
   UPDATE_TITLE,
 } from "../content";
-import { FALLBACK_FACE, useUpdateAuthor } from "../data";
+import { usePublicProfile } from "../data";
 import { useInView, usePrefersReducedMotion } from "../hooks";
 
 const CARD_ICON = "size-6";
@@ -246,7 +247,9 @@ export function TaskCard() {
 /** The outcome card, where the published post slides in on scroll. */
 export function UpdateCard() {
   const { ref, inView } = useInView<HTMLDivElement>(0.4);
-  const author = useUpdateAuthor();
+
+  const authorId = 270;
+  const { data: author } = usePublicProfile(authorId);
 
   return (
     <MockCard
@@ -256,14 +259,20 @@ export function UpdateCard() {
     >
       <MockInnerCard className={inView ? "site-post-slide-in" : "opacity-0"}>
         <div className="flex items-center gap-2">
-          <img
+          {/* <img
             src={author?.avatar ?? FALLBACK_FACE}
             alt=""
             aria-hidden
             className="size-6 rounded object-cover"
+          /> */}
+          <AvatarProfile
+            pfp={author?.profilePicture ?? null}
+            size="override"
+            alt=""
+            className="size-8 rounded"
           />
           <span className={cn(MOCK_COPY_SMALL, " text-[var(--site-ink)]")}>
-            {author?.name ?? "The office"}
+            {author?.displayName ?? "The office"}
           </span>
         </div>
         <p

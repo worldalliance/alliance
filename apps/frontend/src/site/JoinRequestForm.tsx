@@ -13,7 +13,7 @@ const JOIN_REASON_PLACEHOLDER =
 const JOIN_SUBMIT = "Request an invite";
 const JOIN_SUBMITTED_TITLE = "Request received";
 const JOIN_SUBMITTED_BODY =
-  "Thanks. We read every request, and we will email you either way.";
+  "Thanks. We read every request, and will send you an email.";
 
 /**
  * Sends a join request to the office. Nothing about the sender is known, so
