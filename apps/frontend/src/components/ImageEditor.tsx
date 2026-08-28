@@ -301,6 +301,9 @@ const ImageEditor: FC<ImageEditorProps> = ({
       const reader = new FileReader();
       reader.onload = () => {
         if (typeof reader.result !== "string") return;
+        // Re-picking the loaded file leaves imageSrc untouched, so the effects
+        // keyed on it never rerun to rebuild what the reset below clears.
+        if (reader.result === imageSrc) return;
         setImageSrc(reader.result);
         setPreviewSrc(reader.result);
         setCroppedImage(null);
@@ -316,7 +319,7 @@ const ImageEditor: FC<ImageEditorProps> = ({
       reader.readAsDataURL(file);
       event.target.value = "";
     },
-    [allowedMimeTypes, maxFileSizeMb, onChange],
+    [allowedMimeTypes, imageSrc, maxFileSizeMb, onChange],
   );
 
   const centerSquareCrop = useCallback((image: HTMLImageElement) => {
