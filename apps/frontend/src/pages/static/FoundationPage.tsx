@@ -17,7 +17,7 @@ export default function FoundationPage() {
   return (
     <PageShell
       title="Foundation"
-      lede={<ApprovedBy what="principle, aims, and priorities" />}
+      subtitle={<ApprovedBy what="principle, aims, and priorities" />}
     >
       <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
         <DocProse markdown={FOUNDATION_MARKDOWN} className="max-w-[46rem]" />

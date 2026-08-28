@@ -2,16 +2,15 @@ import { cn } from "@alliance/shared/styles/util";
 import type { CSSProperties, ReactNode } from "react";
 import { Link } from "react-router";
 import texture from "../assets/redesign/priority-environment.jpg";
-import { HEADLINE_WEIGHT } from "./tokens";
 
 export const SITE_COL =
-  "mx-auto w-full max-w-[1300px] px-5 sm:px-8 lg:px-[68px]";
+  "mx-auto w-full max-w-[1600px] px-5 sm:px-8 lg:px-[68px]";
 
 /**
  * The h1 size, shared by the hero and every page header behind the nav. Steps
  * DisplayHeading down from its own sm and lg sizes, keeping its 2.5rem base.
  */
-export const SITE_H1 = "sm:text-[2.7rem] lg:text-[3.2rem]";
+export const SITE_H1 = "sm:text-6xl lg:text-7xl";
 
 /** Both form submits: one box, and the fill is all that separates them. */
 export const SITE_SUBMIT =
@@ -138,7 +137,7 @@ const toneClasses: Record<ButtonTone, string> = {
   primary:
     "bg-[var(--site-primary)] text-white hover:bg-[var(--site-primary-hover)] border border-transparent",
   outline:
-    "bg-transparent text-[#1E68D9] border border-[#1E68D9]/40 hover:border-[#1E68D9]/80",
+    "bg-transparent text-[var(--site-link)] border border-[var(--site-link)]/40 hover:border-[var(--site-link)]/80",
   light:
     "bg-white text-[var(--site-ink)] border border-transparent hover:bg-white/85",
   outlineLight:
@@ -320,10 +319,9 @@ export function DisplayHeading({
   return (
     <Tag
       className={cn(
-        "site-display text-[2.5rem] leading-[1.06] text-[var(--site-primary)] sm:text-[3.4rem] lg:text-[4.1rem]",
+        "site-display site-headline text-[var(--site-primary)] leading-[1.06] text-4xl sm:text-5xl lg:text-6xl",
         className,
       )}
-      style={{ fontWeight: HEADLINE_WEIGHT }}
     >
       {children}
     </Tag>

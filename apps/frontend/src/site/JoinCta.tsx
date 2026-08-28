@@ -36,7 +36,7 @@ export function JoinCta() {
             aria-hidden
           />
           <div
-            className="pointer-events-none absolute inset-3 border border-[#1E68D9]/0 transition-colors duration-500 group-hover:border-[#1E68D9]"
+            className="pointer-events-none absolute inset-3 border border-[var(--site-link)]/0 transition-colors duration-500 group-hover:border-[var(--site-link)]"
             style={{ borderRadius: "var(--site-radius-card)" }}
             aria-hidden
           />

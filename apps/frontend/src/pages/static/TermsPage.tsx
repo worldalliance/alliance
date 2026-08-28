@@ -14,7 +14,7 @@ export function meta() {
 
 export default function TermsPage() {
   return (
-    <PageShell title="Terms & conditions" lede={TERMS_UPDATED}>
+    <PageShell title="Terms & conditions" subtitle={TERMS_UPDATED}>
       <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
         <DocProse markdown={TERMS_MARKDOWN} className="max-w-[46rem]" />
       </div>

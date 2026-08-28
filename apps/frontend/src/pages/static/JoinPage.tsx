@@ -27,7 +27,7 @@ const JOIN_EXPECTATIONS = [
 
 export default function JoinPage() {
   return (
-    <PageShell title={JOIN_TITLE} lede={JOIN_LEDE} showJoinCta={false}>
+    <PageShell title={JOIN_TITLE} subtitle={JOIN_LEDE} showJoinCta={false}>
       <div
         className={cn(
           SITE_COL,

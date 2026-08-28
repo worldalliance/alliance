@@ -1,6 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
 import { PRIORITIES_NOTE, priorities, type Priority } from "../content";
-import { PRIORITY_TINTS } from "../tokens";
 import { SITE_COL } from "../ui";
 
 /**
@@ -9,7 +8,7 @@ import { SITE_COL } from "../ui";
  * anything. Works out to the top quarter of a card at each breakpoint, so that
  * much of the row rides onto whatever sits above it.
  */
-const OVERLAP = "-mt-[27.6%] sm:-mt-[13.5%] lg:-mt-[6.7%]";
+const OVERLAP = "-mt-[20%] sm:-mt-[9.7%] lg:-mt-[4.85%]";
 
 /**
  * Bottom padding for a section whose copy must stay clear of the overlapping
@@ -17,7 +16,7 @@ const OVERLAP = "-mt-[27.6%] sm:-mt-[13.5%] lg:-mt-[6.7%]";
  * it runs wider than the pull above; erring long only adds air.
  */
 export const OVERLAP_CLEARANCE =
-  "pb-[calc(29%+2rem)] sm:pb-[calc(14.4%+2.5rem)] lg:pb-[calc(7%+3.5rem)]";
+  "pb-[calc(21.5%+2rem)] sm:pb-[calc(10.6%+2.5rem)] lg:pb-[calc(5.2%+3.5rem)]";
 
 function PriorityCard({
   priority,
@@ -29,10 +28,11 @@ function PriorityCard({
   return (
     <article
       tabIndex={0}
-      className="group relative isolate aspect-[321/355] overflow-hidden focus:outline-none"
+      className="group relative isolate aspect-[5/4] overflow-hidden focus:outline-none"
       style={{
         borderRadius: "var(--site-radius-card)",
-        backgroundColor: PRIORITY_TINTS[index % PRIORITY_TINTS.length],
+        backgroundColor:
+          index % 2 === 0 ? "var(--site-primary)" : "var(--site-panel)",
       }}
     >
       {/* Screening a desaturated photo over the tint gives the mockup's duotone. */}
@@ -58,7 +58,7 @@ function PriorityCard({
       />
 
       {/* The title rides up on hover to make room for the description. */}
-      <div className="site-priority-body absolute inset-x-6 bottom-5 z-10 flex flex-col top-[36%] transition-[top] duration-500 ease-out group-hover:top-[18%] group-focus-visible:top-[18%]">
+      <div className="site-priority-body absolute inset-x-6 bottom-5 z-10 flex flex-col top-[36%] transition-[top] duration-500 ease-out group-hover:top-[10%] group-focus-visible:top-[10%]">
         <h3 className="text-[1.75rem] leading-[1.16] font-normal whitespace-pre-line text-white sm:text-[2rem]">
           {priority.title}
         </h3>
@@ -75,13 +75,13 @@ function PriorityCard({
 }
 
 /**
- * The card row sits on the `surface-alt` band that runs into the next section,
+ * The card row sits on the surface band that runs into the next section,
  * pulled up so it overlaps whatever precedes it.
  */
 export function Priorities() {
   return (
     // `flow-root` keeps the pulled-up row from dragging the band up with it.
-    <section className="flow-root bg-[var(--site-surface-alt)]">
+    <section className="flow-root bg-[var(--site-surface)]">
       <div className={cn(SITE_COL, "relative")}>
         <div className={OVERLAP}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

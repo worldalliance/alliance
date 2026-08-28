@@ -29,7 +29,7 @@ const ProgressProjectPage: React.FC = () => {
 
   if (!project) {
     return (
-      <PageShell title="Progress" lede="Project not found">
+      <PageShell title="Progress" subtitle="Project not found">
         {null}
       </PageShell>
     );
@@ -38,7 +38,7 @@ const ProgressProjectPage: React.FC = () => {
   const { Content } = project;
 
   return (
-    <PageShell title="Progress" lede={project.title}>
+    <PageShell title="Progress" subtitle={project.title}>
       <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
         <div className="mx-auto w-full max-w-[960px]">
           <Content />

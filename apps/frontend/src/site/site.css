@@ -115,6 +115,10 @@
   font-family: var(--site-font-display);
 }
 
+.site-root .site-headline {
+  font-weight: var(--site-headline-weight);
+}
+
 /** The signature field in the commitment card. */
 .site-root .site-signature {
   font-family: "Alex Brush", cursive;
@@ -167,7 +171,7 @@
  */
 @media (hover: none) {
   .site-root .site-priority-body {
-    top: 18% !important;
+    top: 10% !important;
   }
 
   .site-root .site-priority-body > .grid {

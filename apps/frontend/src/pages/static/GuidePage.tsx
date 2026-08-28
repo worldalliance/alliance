@@ -16,17 +16,11 @@ import {
   GuideSectionKind,
 } from "../../site/docContent";
 import { DocProse } from "../../site/DocProse";
-import {
-  CommitCard,
-  TaskCard,
-  UpdateCard,
-} from "../../site/graphics/ProductCards";
 import { useActiveSection } from "../../site/hooks";
 import { FAQ_HREF, FOUNDATION_HREF, GOVERNANCE_HREF } from "../../site/links";
 import { NAV_HEIGHT } from "../../site/Navbar";
 import { ContractCard, ImpactCard } from "../../site/PageCards";
 import { PageShell } from "../../site/PageShell";
-import { PRIORITY_TINTS } from "../../site/tokens";
 import { SITE_COL, SiteArrow } from "../../site/ui";
 
 export function meta() {
@@ -72,7 +66,8 @@ function PriorityGrid() {
           className="relative isolate flex min-h-[190px] flex-col justify-end overflow-hidden p-5 text-white"
           style={{
             borderRadius: "var(--site-radius-card)",
-            backgroundColor: PRIORITY_TINTS[index % PRIORITY_TINTS.length],
+            backgroundColor:
+              index % 2 === 0 ? "var(--site-primary)" : "var(--site-panel)",
           }}
         >
           <img
@@ -175,18 +170,11 @@ const guideExtras: Record<GuideSectionKind, ReactNode> = {
   [GuideSectionKind.Structure]: (
     <div className="flex flex-col gap-6">
       <ContractCard caption={GUIDE_CONTRACT_CAPTION} />
-      <div className="max-w-[24rem]">
-        <CommitCard />
-      </div>
     </div>
   ),
   [GuideSectionKind.Actions]: (
     <div className="flex flex-col gap-6">
       {/* The two screens a member sees: the action, then what came of it. */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <TaskCard />
-        <UpdateCard />
-      </div>
       <div className="grid gap-3 sm:grid-cols-3">
         {FEATURED_IMPACT_ACTIONS.slice(0, 3).map((action) => (
           <ImpactCard
@@ -212,7 +200,7 @@ export default function GuidePage() {
   const active = useActiveSection(GUIDE_SECTION_ORDER);
 
   return (
-    <PageShell title={GUIDE_TITLE} lede={GUIDE_LEDE}>
+    <PageShell title={GUIDE_TITLE} subtitle={GUIDE_LEDE}>
       <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
         <div className="grid gap-12 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] lg:gap-16">
           <nav

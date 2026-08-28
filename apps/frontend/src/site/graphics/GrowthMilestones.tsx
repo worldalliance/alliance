@@ -72,18 +72,18 @@ function MilestoneTrack({
 }
 
 export function GrowthMilestones({
-  farHeadline,
   footnote,
   near,
   far,
   members,
+  footer,
   className,
 }: {
-  farHeadline: ReactNode;
   footnote: string;
   near: Milestone[];
   far: Milestone[];
   members: number;
+  footer?: ReactNode;
   className?: string;
 }) {
   const { ref, inView } = useInView<HTMLDivElement>(0.25);
@@ -96,16 +96,13 @@ export function GrowthMilestones({
         inView={inView}
         showUnit
       />
-      <div className="flex flex-col gap-5">
-        {/* Set to match the panel's own headline. */}
-        <h3 className="max-w-[88%] text-[1.45rem] leading-snug font-normal text-white sm:text-[1.75rem]">
-          {farHeadline}
-        </h3>
-        <MilestoneTrack milestones={far} members={0} inView={inView} />
+      <MilestoneTrack milestones={far} members={0} inView={inView} />
+      <div className="flex flex-col items-end gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+        <p className="max-w-[52rem] text-[0.95rem] leading-snug text-white/80">
+          {footnote}
+        </p>
+        {footer}
       </div>
-      <p className="max-w-[52rem] text-[0.95rem] leading-snug text-white/80">
-        {footnote}
-      </p>
     </div>
   );
 }

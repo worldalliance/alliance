@@ -24,7 +24,7 @@ export default function FAQPage() {
   const question = searchParams.get("question");
 
   return (
-    <PageShell title={FAQ_TITLE} lede={FAQ_LEDE}>
+    <PageShell title={FAQ_TITLE} subtitle={FAQ_LEDE}>
       <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
         <div className="max-w-[52rem]">
           {FAQ_ITEMS.map((item) => (

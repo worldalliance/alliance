@@ -1,3 +1,4 @@
+import { cn } from "@alliance/shared/styles/util";
 import { ScaledCard } from "./PostCard";
 import {
   DETAIL_HEIGHT,
@@ -25,39 +26,42 @@ const STAGE_HEIGHT = DETAIL_Y + DETAIL_HEIGHT;
  */
 export function ProductPair({ className }: { className?: string }) {
   return (
-    <div className={className} aria-label="Recent member activity">
-      <div
-        className="relative hidden [--pair-scale:0.6] lg:block xl:[--pair-scale:0.7]"
-        style={{
-          width: `calc(${STAGE_WIDTH}px * var(--pair-scale))`,
-          height: `calc(${STAGE_HEIGHT}px * var(--pair-scale))`,
-        }}
-      >
+    <div
+      className={cn("min-w-0 w-full", className)}
+      aria-label="Recent member activity"
+    >
+      <div className="hidden w-full [container-type:inline-size] lg:block">
         <div
-          className="absolute top-0 left-0"
+          className="relative"
           style={{
-            width: STAGE_WIDTH,
-            height: STAGE_HEIGHT,
-            transform: "scale(var(--pair-scale))",
-            transformOrigin: "top left",
+            height: `calc(100cqi * ${STAGE_HEIGHT} / ${STAGE_WIDTH})`,
           }}
         >
           <div
-            className="absolute top-0 left-0"
-            style={{ width: FEED_WIDTH, height: FEED_HEIGHT }}
-          >
-            <FeedCard />
-          </div>
-          <div
-            className="absolute"
+            className="absolute top-0 left-0 origin-top-left"
             style={{
-              left: DETAIL_X,
-              top: DETAIL_Y,
-              width: DETAIL_WIDTH,
-              height: DETAIL_HEIGHT,
+              width: STAGE_WIDTH,
+              height: STAGE_HEIGHT,
+              transform: `scale(calc(100cqi / ${STAGE_WIDTH}px))`,
             }}
           >
-            <PostDetailCard />
+            <div
+              className="absolute top-0 left-0"
+              style={{ width: FEED_WIDTH, height: FEED_HEIGHT }}
+            >
+              <FeedCard />
+            </div>
+            <div
+              className="absolute"
+              style={{
+                left: DETAIL_X,
+                top: DETAIL_Y,
+                width: DETAIL_WIDTH,
+                height: DETAIL_HEIGHT,
+              }}
+            >
+              <PostDetailCard />
+            </div>
           </div>
         </div>
       </div>

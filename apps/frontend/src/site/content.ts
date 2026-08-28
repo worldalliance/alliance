@@ -3,7 +3,8 @@ import environment from "../assets/redesign/priority-environment.jpg";
 import poverty from "../assets/redesign/priority-poverty.jpg";
 import technology from "../assets/redesign/priority-technology.jpg";
 
-export const HERO_HEADLINE = "We’re assembling a group that cooperates";
+export const HERO_HEADLINE =
+  "We’re assembling a group that coordinates tightly";
 export const HERO_SUBHEAD =
   "To combat global problems, we commit 15 minutes each week to projects that depend on everyone’s participation. We are in an experimental phase.";
 
@@ -173,14 +174,14 @@ export const UPDATE_BODY =
   "Thank you to everyone that participated! Recall that media coverage was not itself the desired outcome of this action. The desired outcome was the cafes' adoption of a sustainable policy, which happened in advance because the cafes could point to the coverage.";
 
 export const MODEL_HEADLINE =
-  "Since members commit to show up, we can plan projects that we expect to succeed";
-export const MODEL_PARTNER_LABEL = "Become a partner";
+  "With commitment, we can plan projects that we expect to succeed";
+export const MODEL_PROJECTS_LABEL = "See previous projects";
 
 /** The middle clause links out to the people page. */
 export const GROWTH_HEADLINE_FAR_PARTS = {
   lead: "The larger we are, the more impact we can have. Our work is advised by ",
   link: "scientists, analysts, and other experts",
-  tail: " for rigor and effectiveness",
+  tail: " for rigor and effectiveness.",
 };
 
 export const GROWTH_FOOTNOTE =

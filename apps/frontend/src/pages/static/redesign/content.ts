@@ -554,7 +554,7 @@ export const MODEL_PARTNER_LABEL = "Become a partner";
 export const GROWTH_HEADLINE_FAR_PARTS = {
   lead: "The larger we are, the more impact we can have. Our work is advised by ",
   link: "scientists, analysts, and other experts",
-  tail: " for rigor and effectiveness",
+  tail: " for rigor and effectiveness.",
 };
 
 /** Closes the milestone panel, under the second track. */

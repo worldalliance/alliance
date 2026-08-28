@@ -12,8 +12,8 @@ export const useWhiteBackground = () => {
 };
 
 /**
- * The public site's own surface, which is neither the app's white nor its grey.
- * Set on `html` so overscroll and the scrollbar gutter match the page.
+ * The public site's surface. Set on `html` so overscroll and the scrollbar
+ * gutter match the page.
  */
 export const useSiteBackground = () => {
   useEffect(() => {

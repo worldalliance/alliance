@@ -43,7 +43,7 @@ const ProgressPostPage: React.FC = () => {
   const { content, frontmatter } = useLoaderData<typeof loader>();
 
   return (
-    <PageShell title="Progress" lede={frontmatter?.title}>
+    <PageShell title="Progress" subtitle={frontmatter?.title}>
       <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
         <div className="mx-auto flex w-full max-w-[46rem] flex-col gap-y-4">
           <div className="flex flex-col gap-y-0.5 text-[1.02rem] text-[var(--site-ink)]/55">

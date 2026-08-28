@@ -14,7 +14,7 @@ export function meta() {
 
 export default function PrivacyPolicyPage() {
   return (
-    <PageShell title="Privacy policy" lede={PRIVACY_UPDATED}>
+    <PageShell title="Privacy policy" subtitle={PRIVACY_UPDATED}>
       <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
         <DocProse markdown={PRIVACY_MARKDOWN} className="max-w-[46rem]" />
       </div>

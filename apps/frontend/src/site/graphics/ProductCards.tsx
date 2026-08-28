@@ -35,13 +35,13 @@ function MockCard({
     <div
       ref={cardRef}
       className={cn(
-        "flex flex-col overflow-hidden border border-[var(--site-ink)]/15 bg-white px-5 pt-4",
+        "flex flex-col overflow-hidden bg-zinc-50 px-5 pt-8",
         CARD_H,
         className,
       )}
       style={{ borderRadius: "var(--site-radius-card)" }}
     >
-      <p className="mb-2.5 text-[1.02rem] leading-snug font-semibold text-[var(--site-ink)]">
+      <p className="mb-12 text-2xl font-medium text-[var(--site-ink)]">
         {title}
       </p>
       {children}
@@ -157,11 +157,11 @@ export function TaskCard() {
         </div>
         <p className="text-[0.78rem] text-[var(--site-ink)]/60">
           {TASK_PROGRESS_DONE}/{TASK_PROGRESS_TOTAL} members have completed the
-          task
+          week&apos;s tasks
         </p>
       </div>
 
-      <ul className="mt-3.5 flex flex-col gap-1">
+      <ul className="my-3.5 flex flex-col gap-1">
         {TASK_STEPS.map((step, i) => {
           const isChecked = i < checked;
           return (

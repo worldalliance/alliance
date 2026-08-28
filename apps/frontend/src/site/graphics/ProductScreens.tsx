@@ -1,6 +1,5 @@
 import { activityRows, openedPost, type ActivityRow } from "../content";
 import { pickFaces, useMemberFaces, useUpdateAuthor } from "../data";
-import { LINK_BLUE } from "../tokens";
 import { PostCard } from "./PostCard";
 
 const FEED_TITLE = "Activity";
@@ -17,7 +16,7 @@ const STRIP_FACES = 4;
 
 function CardTitleBar({ children }: { children: string }) {
   return (
-    <div className="shrink-0 bg-[var(--site-surface-alt)] px-4 py-2.5 text-[13px] font-semibold text-[var(--site-ink)]">
+    <div className="shrink-0 bg-zinc-100 px-4 py-2.5 text-sm font-semibold text-[var(--site-ink)]">
       {children}
     </div>
   );
@@ -61,7 +60,7 @@ function ActivityLine({
         {row.action && (
           <>
             {" "}
-            <span className="font-semibold" style={{ color: LINK_BLUE }}>
+            <span className="font-semibold text-[var(--site-link)]">
               {row.action}
             </span>
           </>

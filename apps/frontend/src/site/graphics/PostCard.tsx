@@ -2,7 +2,6 @@ import { cn } from "@alliance/shared/styles/util";
 import type { CSSProperties, ReactNode } from "react";
 import { PostBlockKind, type PostBlock, type PostUpdate } from "../content";
 import type { SiteAuthor } from "../data";
-import { LINK_BLUE } from "../tokens";
 
 function Block({ block }: { block: PostBlock }) {
   switch (block.kind) {
@@ -77,10 +76,7 @@ export function PostCard({
             {post.timeAgo}
           </span>
         </p>
-        <span
-          className="text-[12.5px] leading-tight underline"
-          style={{ color: LINK_BLUE }}
-        >
+        <span className="text-[12.5px] leading-tight text-[var(--site-link)] underline">
           {post.actionLabel}
         </span>
       </header>

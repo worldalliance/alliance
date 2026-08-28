@@ -29,10 +29,8 @@ export async function loader() {
 }
 
 const PEOPLE_TITLE = "People";
-const PEOPLE_LEDE =
-  "A full-time office plans the actions. Members carry them out. Experts tell us where we are wrong.";
 
-const OFFICE_PHOTO_CAPTION = "The office in San Francisco";
+const OFFICE_PHOTO_CAPTION = "The office in San Francisco, California";
 
 /** Four columns of names, since we hold no photographs of the expert group. */
 function ExpertGroup() {
@@ -44,10 +42,6 @@ function ExpertGroup() {
           Experts occasionally lend time, knowledge, or resources to the
           Alliance.
         </BandLede>
-        <p className="max-w-[46rem] text-[0.95rem] text-[var(--site-ink)]/45">
-          This list only includes experts who have chosen to make their
-          information public.
-        </p>
       </div>
       <div className="grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
         {experts.map((expert) => (
@@ -199,7 +193,7 @@ export default function PeoplePage() {
   const memberCount = useLoaderData<typeof loader>();
 
   return (
-    <PageShell title={PEOPLE_TITLE} lede={PEOPLE_LEDE}>
+    <PageShell title={PEOPLE_TITLE}>
       <ExpertGroup />
       <Office />
       <MemberDirectory memberCount={memberCount} />

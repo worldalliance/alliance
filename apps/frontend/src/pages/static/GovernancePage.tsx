@@ -21,7 +21,7 @@ export default function GovernancePage() {
   return (
     <PageShell
       title="Governance"
-      lede={<ApprovedBy what="governance procedures" />}
+      subtitle={<ApprovedBy what="governance procedures" />}
     >
       <div
         className={cn(

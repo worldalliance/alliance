@@ -30,7 +30,6 @@ import {
   pastPartners,
   type PartnerTask,
 } from "../../site/partnerContent";
-import { LINK_BLUE, PANEL_GREEN } from "../../site/tokens";
 import {
   SITE_INPUT,
   SITE_INPUT_STYLE,
@@ -65,7 +64,7 @@ function Reliance() {
               className={cn(
                 "bg-white px-5 py-4 text-[1.05rem] leading-snug",
                 ours
-                  ? "border-2 border-[#1E68D9] font-medium text-[var(--site-ink)]"
+                  ? "border-2 border-[var(--site-link)] font-medium text-[var(--site-ink)]"
                   : "border border-[var(--site-ink)]/20 text-[var(--site-ink)]/70",
               )}
               style={{ borderRadius: "var(--site-radius-card)" }}
@@ -99,7 +98,7 @@ function Reliance() {
 function Offers() {
   return (
     <PageBand className="py-0">
-      <TexturedPanel tint={PANEL_GREEN}>
+      <TexturedPanel tint="var(--site-panel)">
         <div className="mb-8 flex flex-col gap-3">
           <h2 className="site-display text-[1.9rem] leading-tight text-white sm:text-[2.4rem]">
             {PARTNER_OFFERS_TITLE}
@@ -143,8 +142,7 @@ function TaskMock({ task }: { task: PartnerTask }) {
           href={task.href}
           target="_blank"
           rel="noreferrer"
-          className="w-fit text-[0.8rem] font-medium tracking-[0.12em] uppercase hover:underline"
-          style={{ color: LINK_BLUE }}
+          className="w-fit text-[0.8rem] font-medium tracking-[0.12em] text-[var(--site-link)] uppercase hover:underline"
         >
           {task.partner}
         </a>
@@ -409,7 +407,7 @@ function PartnerForm() {
                   type="checkbox"
                   name="outreachChannels"
                   value={channel}
-                  className="size-4 accent-[#1E68D9]"
+                  className="size-4 accent-[var(--site-link)]"
                   disabled={submitting}
                   onChange={(event) => {
                     if (channel === "Other") {
@@ -499,7 +497,7 @@ export default function OutreachPartnerPage() {
   } help you.`;
 
   return (
-    <PageShell title={PARTNER_TITLE} lede={lede} showJoinCta={false}>
+    <PageShell title={PARTNER_TITLE} subtitle={lede} showJoinCta={false}>
       <Reliance />
       <Offers />
       <PartnerTasks />

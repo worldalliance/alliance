@@ -15,12 +15,12 @@ export function Hero() {
       <div
         className={cn(
           SITE_COL,
-          "grid items-center gap-12 pb-24 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-16 lg:pb-32",
+          "grid items-end gap-12 pb-24 lg:grid-cols-2 lg:gap-16 lg:pb-32",
           OVERLAP_CLEARANCE,
         )}
         style={{ paddingTop: NAV_HEIGHT + 104 }}
       >
-        <div className="flex flex-col gap-5">
+        <div className="flex min-w-0 flex-col gap-5">
           <DisplayHeading as="h1" className={SITE_H1}>
             {HERO_HEADLINE}
           </DisplayHeading>

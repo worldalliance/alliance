@@ -1,11 +1,14 @@
 import { PLACEHOLDER_CONTRACT_MARKDOWN } from "@alliance/shared/lib/contract";
 import { cn } from "@alliance/shared/styles/util";
 import { href, Link } from "react-router";
-import type { FeaturedImpactAction } from "../content/featuredImpactActions";
+import {
+  ACTION_PRIORITY_LABELS,
+  type ActionPriorityTags,
+  type FeaturedImpactAction,
+} from "../content/featuredImpactActions";
 import { useContract } from "../lib/useContract";
 import { DocProse } from "./DocProse";
 import { MEMBER_CONTRACT_TITLE } from "./docContent";
-import { LINK_BLUE } from "./tokens";
 
 /**
  * One outcome from `content/featuredImpactActions`. The emphasis carries the
@@ -35,6 +38,7 @@ export function ImpactCard({
         />
       )}
       <div className="flex flex-col gap-1.5 p-5">
+        <PriorityTags tags={action.tags} />
         <p className="text-[1.05rem] leading-snug font-medium text-[var(--site-primary)]">
           {action.emphasis}
         </p>
@@ -69,15 +73,32 @@ export function ImpactCard({
   );
 }
 
+function PriorityTags({ tags }: { tags: ActionPriorityTags }) {
+  return (
+    <ul className="flex flex-wrap gap-x-2 gap-y-1">
+      {tags.map((tag) => (
+        <li
+          key={tag}
+          className="text-[0.75rem] tracking-wide text-[var(--site-ink)]/45 uppercase"
+        >
+          {ACTION_PRIORITY_LABELS[tag]}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** A written outcome with no action behind it, so it carries no link. */
 export function ProgressLinkCard({
   title,
   description,
+  tags,
   to,
   className,
 }: {
   title: string;
   description: string;
+  tags: ActionPriorityTags;
   to: string;
   className?: string;
 }) {
@@ -91,13 +112,14 @@ export function ProgressLinkCard({
       )}
       style={{ borderRadius: "var(--site-radius-card)" }}
     >
+      <PriorityTags tags={tags} />
       <p className="text-[1.05rem] leading-snug font-medium text-[var(--site-primary)]">
         {title}
       </p>
       <p className="text-[0.98rem] leading-snug text-[var(--site-ink)]/65">
         {description}
       </p>
-      <span className="mt-1 text-[0.85rem]" style={{ color: LINK_BLUE }}>
+      <span className="mt-1 text-[0.85rem] text-[var(--site-link)]">
         Read the write-up
       </span>
     </Link>
