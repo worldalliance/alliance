@@ -191,7 +191,7 @@ export class ForumService {
 
     const postsWithAuthors = await this.postRepository.find({
       where: { id: In(postIds) },
-      relations: { authors: true, likes: true },
+      relations: { authors: true, likes: true, action: { reviewers: true } },
       relationLoadStrategy: "query",
     });
     const relationsByPostId = new Map(postsWithAuthors.map((p) => [p.id, p]));
@@ -200,6 +200,9 @@ export class ForumService {
       post.authors = loaded?.authors ?? [];
       post.likes = loaded?.likes ?? [];
       post.likesIds = loaded?.likesIds ?? [];
+      if (post.action) {
+        post.action.reviewers = loaded?.action?.reviewers;
+      }
     }
 
     // 3) Fetch last comment per post in one query using DISTINCT ON (Postgres)
@@ -233,6 +236,7 @@ export class ForumService {
       .createQueryBuilder("post")
       .leftJoinAndSelect("post.author", "author")
       .leftJoinAndSelect("post.action", "action")
+      .leftJoinAndSelect("action.reviewers", "actionReviewer")
       .leftJoinAndSelect("post.editableContent", "editableContent")
       .leftJoinAndSelect("post.authors", "authors")
       .leftJoinAndSelect("post.likes", "likes")
@@ -267,6 +271,7 @@ export class ForumService {
       .createQueryBuilder("post")
       .leftJoinAndSelect("post.author", "author")
       .leftJoinAndSelect("post.action", "action")
+      .leftJoinAndSelect("action.reviewers", "actionReviewer")
       .leftJoinAndSelect("post.editableContent", "editableContent")
       .leftJoinAndSelect("post.authors", "authors")
       .leftJoinAndSelect("post.likes", "likes")
@@ -705,7 +710,7 @@ export class ForumService {
     if (comment.parentObjectType === CommentParentObject.Activity) {
       const activity = await this.actionActivityRepository.findOneOrFail({
         where: { id: comment.parentObjectId },
-        relations: { user: true, action: true },
+        relations: { user: true, action: { reviewers: true } },
       });
       usersToNotify.push(activity.user);
     }
@@ -1022,6 +1027,7 @@ export class ForumService {
       .createQueryBuilder("post")
       .leftJoinAndSelect("post.author", "author")
       .leftJoinAndSelect("post.action", "action")
+      .leftJoinAndSelect("action.reviewers", "actionReviewer")
       .leftJoinAndSelect("post.editableContent", "editableContent")
       .leftJoin("post.authors", "coAuthor")
       .andWhere("(post.authorId = :userId OR coAuthor.id = :userId)", {
@@ -1100,7 +1106,11 @@ export class ForumService {
   ): Promise<ParsedPost> {
     const post = await this.postRepository.findOne({
       where: { id: postId },
-      relations: { author: true, action: true, editableContent: true },
+      relations: {
+        author: true,
+        action: { reviewers: true },
+        editableContent: true,
+      },
     });
 
     if (!post) {
@@ -1147,7 +1157,11 @@ export class ForumService {
   ): Promise<ParsedPost> {
     const post = await this.postRepository.findOne({
       where: { id: postId },
-      relations: { author: true, action: true, editableContent: true },
+      relations: {
+        author: true,
+        action: { reviewers: true },
+        editableContent: true,
+      },
     });
 
     if (!post) {

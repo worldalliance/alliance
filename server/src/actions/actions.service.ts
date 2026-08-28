@@ -129,6 +129,7 @@ import {
 import {
   ActionActivityDto,
   ActionDto,
+  ActionReviewerDto,
   ActionSharePreview,
   CreateActionActivityDto,
   CreateActionDto,
@@ -176,6 +177,7 @@ import {
 } from "./entities/action-activity.entity";
 import { ActionEvent, ActionStatus } from "./entities/action-event.entity";
 import { ActionFormVariant } from "./entities/action-form-variant.entity";
+import { ActionReviewer } from "./entities/action-reviewer.entity";
 import {
   ActionSuite,
   parseActionSuite,
@@ -273,6 +275,8 @@ export class ActionsService {
   constructor(
     @InjectRepository(Action)
     private actionRepository: Repository<Action>,
+    @InjectRepository(ActionReviewer)
+    private readonly actionReviewerRepository: Repository<ActionReviewer>,
     @InjectRepository(ActionEvent)
     private readonly actionEventRepository: Repository<ActionEvent>,
     @InjectRepository(ActionActivity)
@@ -443,8 +447,20 @@ export class ActionsService {
     return parsed.data;
   }
 
+  /** Reviewers are ordered by the position the admin sent them in. */
+  private reviewerRows(reviewers: ActionReviewerDto[]): ActionReviewer[] {
+    return reviewers.map((reviewer, position) =>
+      this.actionReviewerRepository.create({
+        name: reviewer.name,
+        url: reviewer.url ?? null,
+        icon: reviewer.icon ?? null,
+        position,
+      }),
+    );
+  }
+
   async create(createActionDto: CreateActionDto): Promise<ParsedAction> {
-    const { suiteId, authorIds, ...rest } = createActionDto;
+    const { suiteId, authorIds, reviewers, ...rest } = createActionDto;
     if (rest.cohortExpression != null) {
       rest.cohortExpression = this.parseCohortExpressionOrThrow(
         rest.cohortExpression,
@@ -454,6 +470,7 @@ export class ActionsService {
       await this.assertFormIdNotUsedAsVariant(rest.taskFormId);
     }
     const action = this.actionRepository.create(rest);
+    action.reviewers = this.reviewerRows(reviewers ?? []);
 
     if (suiteId) {
       const suite = await this.actionSuiteRepository.findOneOrFail({
@@ -859,6 +876,7 @@ export class ActionsService {
     const relations: Omit<Relations<Action>, "usersCompleted" | "status"> = {
       events: true,
       followUpForms: true,
+      reviewers: true,
     };
     const actions = sorted
       ? await this.findAllSorted(relations)
@@ -969,6 +987,7 @@ export class ActionsService {
     const relations: Omit<Relations<Action>, "usersCompleted" | "status"> = {
       events: true,
       followUpForms: true,
+      reviewers: true,
     };
 
     const filterActions = (action: Action) =>
@@ -1062,6 +1081,7 @@ export class ActionsService {
         suite: true,
         authors: true,
         followUpForms: { form: true },
+        reviewers: true,
       },
     });
     const action = fetched ? parseAction(fetched) : null;
@@ -1766,7 +1786,7 @@ export class ActionsService {
     }
     const oldSuiteId = action.suite?.id;
 
-    const { suiteId, authorIds, ...rest } = updateActionDto;
+    const { suiteId, authorIds, reviewers, ...rest } = updateActionDto;
     if (rest.cohortExpression != null) {
       rest.cohortExpression = this.parseCohortExpressionOrThrow(
         rest.cohortExpression,
@@ -1792,7 +1812,15 @@ export class ActionsService {
 
     Object.assign(action, rest);
 
-    await this.actionRepository.save(action);
+    // Replacing reviewers is a delete plus a cascading insert; without one
+    // transaction a failed save leaves the action with none.
+    await this.actionRepository.manager.transaction(async (em) => {
+      if (reviewers !== undefined) {
+        await em.delete(ActionReviewer, { actionId: id });
+        action.reviewers = this.reviewerRows(reviewers);
+      }
+      await em.save(Action, action);
+    });
     const newSuiteId = action.suite?.id;
     await this.syncGeneralUpdateDatesForSuites([oldSuiteId, newSuiteId]);
 
@@ -2744,13 +2772,19 @@ export class ActionsService {
   }
 
   async archive(id: number): Promise<ParsedAction> {
-    const action = await this.actionRepository.findOneOrFail({ where: { id } });
+    const action = await this.actionRepository.findOneOrFail({
+      where: { id },
+      relations: { reviewers: true },
+    });
     action.archived = true;
     return parseAction(await this.actionRepository.save(action));
   }
 
   async unarchive(id: number): Promise<ParsedAction> {
-    const action = await this.actionRepository.findOneOrFail({ where: { id } });
+    const action = await this.actionRepository.findOneOrFail({
+      where: { id },
+      relations: { reviewers: true },
+    });
     action.archived = false;
     return parseAction(await this.actionRepository.save(action));
   }
@@ -3061,7 +3095,7 @@ export class ActionsService {
     const suite = await this.actionSuiteRepository.findOneOrFail({
       where: { id },
       relations: {
-        actions: { events: true, activities: true },
+        actions: { events: true, activities: true, reviewers: true },
         reminderGroups: { memberActionEvent: true, deadlineEvent: true },
         generalUpdates: { schemaSnapshot: true },
       },
@@ -3320,6 +3354,7 @@ export class ActionsService {
       authors: true,
       events: events || undefined,
       suite: suite || undefined,
+      reviewers: true,
     };
 
     const action = await this.actionRepository.findOneOrFail({
@@ -3358,6 +3393,7 @@ export class ActionsService {
       authors,
       updates: _updates,
       followUpForms: _followUpForms,
+      reviewers,
       ...actionCols
     } = importaction;
 
@@ -3391,6 +3427,20 @@ export class ActionsService {
         });
 
         const actionId = inserted.identifiers[0].id as number;
+
+        if (reviewers?.length) {
+          await em.getRepository(ActionReviewer).insert(
+            [...reviewers]
+              .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+              .map((reviewer, position) => ({
+                name: reviewer.name,
+                url: reviewer.url ?? null,
+                icon: reviewer.icon ?? null,
+                position,
+                actionId,
+              })),
+          );
+        }
 
         if (suite) {
           let foundSuite = await suiteRepo.findOne({
@@ -3433,6 +3483,7 @@ export class ActionsService {
 
         return actionRepo.findOneOrFail({
           where: { id: actionId },
+          relations: { reviewers: true },
         });
       },
     );
@@ -4755,14 +4806,14 @@ export class ActionsService {
     const now = new Date();
 
     const eventsQuery = this.actionEventRepository.find({
-      relations: { action: true },
+      relations: { action: { reviewers: true } },
       where: { newStatus: Not(ActionStatus.MemberAction) },
       order: { date: "DESC" },
       take: 10,
     });
 
     const actionUpdatesQuery = this.actionUpdateRepository.find({
-      relations: { action: true, schemaSnapshot: true },
+      relations: { action: { reviewers: true }, schemaSnapshot: true },
       where: publishedActionUpdateWhere(now),
       order: { date: "DESC" },
       take: 10,

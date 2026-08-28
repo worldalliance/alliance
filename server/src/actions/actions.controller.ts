@@ -536,6 +536,7 @@ export class ActionsController {
     const actions = await this.actionsService.findAllSorted({
       events: true,
       suite: true,
+      reviewers: true,
     });
     return actions.map((action) => new ActionDto(action));
   }

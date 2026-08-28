@@ -5,6 +5,7 @@ import {
 } from "@alliance/common/actionActivity";
 import type { DisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
 import { byLikeOrder, LIKE_FACEPILE_LIMIT } from "@alliance/common/likeOrder";
+import { HTTP_URL_VALIDATOR_OPTIONS } from "@alliance/common/url";
 import {
   ApiProperty,
   ApiPropertyOptional,
@@ -21,10 +22,13 @@ import {
   IsDefined,
   IsEnum,
   IsInt,
+  IsNotEmpty,
   IsNumber,
   IsObject,
   IsOptional,
   IsString,
+  IsUrl,
+  MaxLength,
   ValidateIf,
   ValidateNested,
 } from "class-validator";
@@ -45,16 +49,18 @@ import { UserActionRelation } from "../action-activity-status";
 import { ActionActivity } from "../entities/action-activity.entity";
 import { ActionEvent, ActionStatus } from "../entities/action-event.entity";
 import {
+  ACTION_REVIEWERS_MAX,
+  ActionReviewer,
+  ActionReviewerIcon,
+  REVIEWER_NAME_MAX_LENGTH,
+  REVIEWER_URL_MAX_LENGTH,
+} from "../entities/action-reviewer.entity";
+import {
   ActionSuite,
   type ParsedActionSuite,
 } from "../entities/action-suite.entity";
 import { ActionUpdate } from "../entities/action-update.entity";
-import {
-  Action,
-  ACTION_REVIEWERS_MAX,
-  ActionReviewer,
-  type ParsedAction,
-} from "../entities/action.entity";
+import { Action, type ParsedAction } from "../entities/action.entity";
 import { GeneralUpdate } from "../entities/general-update.entity";
 import {
   ReminderCohortType,
@@ -309,6 +315,49 @@ export class UserActionStatusDto {
   }
 }
 
+/**
+ * The wire shape of a reviewer: the display fields only. Ids and ordering are
+ * server-owned, and an update replaces the whole list rather than patching
+ * rows, so neither is meaningful to a client.
+ *
+ * class-transformer instantiates this one with no arguments to validate a
+ * request body, so it must stay constructor-less; the outbound half is
+ * {@link ActionReviewerResponseDto}.
+ */
+export class ActionReviewerDto {
+  @ApiProperty({ description: "Display name of the reviewer" })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(REVIEWER_NAME_MAX_LENGTH)
+  name: string;
+
+  @ApiPropertyOptional({
+    description: "Link to the reviewer's website, LinkedIn, etc.",
+  })
+  @IsOptional()
+  @IsUrl(HTTP_URL_VALIDATOR_OPTIONS)
+  @MaxLength(REVIEWER_URL_MAX_LENGTH)
+  url?: string;
+
+  @ApiPropertyOptional({
+    enum: ActionReviewerIcon,
+    enumName: "ActionReviewerIcon",
+    description: "Icon shown next to the reviewer name",
+  })
+  @IsOptional()
+  @IsEnum(ActionReviewerIcon)
+  icon?: ActionReviewerIcon;
+}
+
+export class ActionReviewerResponseDto extends ActionReviewerDto {
+  constructor(input: ActionReviewer) {
+    super();
+    this.name = input.name;
+    this.url = input.url ?? undefined;
+    this.icon = input.icon ?? undefined;
+  }
+}
+
 export class ActionDto extends PickType(Action, [
   "id",
   "name",
@@ -345,9 +394,16 @@ export class ActionDto extends PickType(Action, [
   "customStatValue",
   "customStatGoal",
   "followUpForms",
-  "reviewers",
   "suite",
 ]) {
+  @ApiProperty({
+    type: () => ActionReviewerResponseDto,
+    isArray: true,
+    description: "Non-user reviewers credited on the action",
+    maxItems: ACTION_REVIEWERS_MAX,
+  })
+  reviewers: ActionReviewerResponseDto[];
+
   @ApiProperty()
   usersCompleted: number;
 
@@ -439,7 +495,12 @@ export class ActionDto extends PickType(Action, [
     this.customStatValue = action.customStatValue;
     this.customStatGoal = action.customStatGoal;
     this.followUpForms = action.followUpForms;
-    this.reviewers = action.reviewers ?? [];
+    if (!action.reviewers) {
+      throw new Error("`reviewers` relation is not loaded");
+    }
+    this.reviewers = [...action.reviewers]
+      .sort((a, b) => a.position - b.position)
+      .map((reviewer) => new ActionReviewerResponseDto(reviewer));
     this.suite = action.suite;
     this.status = (action.events && action.status) ?? ActionStatus.Draft;
     this.events =
@@ -497,7 +558,7 @@ export class CreateActionDto extends PickType(ActionDto, [
   suiteId?: number | null;
 
   @ApiPropertyOptional({
-    type: () => ActionReviewer,
+    type: () => ActionReviewerDto,
     isArray: true,
     maxItems: ACTION_REVIEWERS_MAX,
   })
@@ -505,8 +566,8 @@ export class CreateActionDto extends PickType(ActionDto, [
   @IsArray()
   @ArrayMaxSize(ACTION_REVIEWERS_MAX)
   @ValidateNested({ each: true })
-  @Type(() => ActionReviewer)
-  reviewers?: ActionReviewer[];
+  @Type(() => ActionReviewerDto)
+  reviewers?: ActionReviewerDto[];
 
   @ApiPropertyOptional({
     type: Number,
@@ -974,6 +1035,7 @@ export class ExportActionDto extends OmitType(Action, [
   "usersJoined",
   "usersCompleted",
   "formVariants",
+  "legacyReviewers",
 ]) {
   @ApiPropertyOptional({ type: () => Form })
   @Type(() => Form)

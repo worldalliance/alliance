@@ -2,7 +2,7 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { urlMatchesDomain } from "@alliance/common/url";
 import {
-  ActionReviewer,
+  ActionReviewerDto,
   ActionReviewerIcon,
   ActionSuiteDto,
   CreateActionDto,
@@ -54,7 +54,7 @@ interface ActionFormProps {
 }
 
 /** Reviewer row being edited; `key` is a client-only React key, never sent to the server. */
-export type ReviewerRow = ActionReviewer & { key: string };
+export type ReviewerRow = ActionReviewerDto & { key: string };
 
 /**
  * Frontend-only "auto" icon detection: infers the reviewer icon from the
@@ -73,7 +73,7 @@ const REVIEWER_ICON_LABELS: Record<ActionReviewerIcon, string> = {
  * The select shows "Auto" whenever the stored icon matches what detection
  * would pick anyway, so an explicit choice only sticks when it differs.
  */
-const reviewerIconSelectValue = (reviewer: ActionReviewer): string => {
+const reviewerIconSelectValue = (reviewer: ActionReviewerDto): string => {
   if (reviewer.icon === detectReviewerIcon(reviewer.url)) return "auto";
   return reviewer.icon ?? "none";
 };
