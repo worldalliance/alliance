@@ -65,7 +65,9 @@ function ActivityLine({
             </span>
           </>
         )}
-        {row.timeAgo && ` ${row.timeAgo}`}
+        <span className="text-zinc-400">
+          {row.timeAgo && ` ${row.timeAgo}`}
+        </span>
       </p>
     </li>
   );

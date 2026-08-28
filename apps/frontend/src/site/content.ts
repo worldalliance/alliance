@@ -66,10 +66,11 @@ export type ActivityRow = {
 
 export const activityRows: ActivityRow[] = [
   {
-    id: "cup-proposal",
+    id: "recycling-bin-check",
     subject: "43 members",
     verb: "completed",
-    action: "Bring the owner our bring-your-own-cup proposal",
+    action:
+      "Check three items in your recycling bin against city recycling guidelines",
     timeAgo: "21 minutes ago",
   },
   {
