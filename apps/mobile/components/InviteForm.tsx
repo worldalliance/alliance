@@ -1,3 +1,4 @@
+import { errorMessage } from "@alliance/common/errorMessage";
 import type {
   CommunityDto,
   CreateOnetimeInviteDto,
@@ -183,7 +184,10 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
       } else {
         Alert.alert(
           "Error",
-          response.response?.statusText ?? "Failed to create group.",
+          errorMessage({
+            error: response.error,
+            fallback: "Failed to create group.",
+          }),
         );
       }
     } catch {

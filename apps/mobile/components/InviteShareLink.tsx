@@ -1,3 +1,4 @@
+import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
 import type { CommunityDto, ShareUrlMineDto } from "@alliance/shared/client";
 import { communityCreateCommunity } from "@alliance/shared/client";
@@ -167,7 +168,10 @@ export default function InviteShareLink() {
       if (!response.data) {
         Alert.alert(
           "Error",
-          response.response?.statusText ?? "Failed to create group.",
+          errorMessage({
+            error: response.error,
+            fallback: "Failed to create group.",
+          }),
         );
         return;
       }

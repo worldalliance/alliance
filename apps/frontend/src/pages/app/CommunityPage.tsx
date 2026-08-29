@@ -1,3 +1,4 @@
+import { errorMessage } from "@alliance/common/errorMessage";
 import {
   actionsCommunityCompletedActionsCount,
   actionsGetCommunityMemberInfo,
@@ -317,7 +318,12 @@ const CommunityPage = () => {
         updateSelectedCommunity(response.data);
         setIsEditing(false);
       } else {
-        setError("Failed to update group");
+        setError(
+          errorMessage({
+            error: response.error,
+            fallback: "Failed to update group",
+          }),
+        );
       }
     } catch (err) {
       console.error("Failed to update group:", err);

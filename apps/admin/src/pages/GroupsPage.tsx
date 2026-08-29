@@ -1,3 +1,4 @@
+import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
 import {
   communityCreateCommunityAdmin,
@@ -37,7 +38,8 @@ const GroupsPage: React.FC = () => {
     useState<Record<number, number>>({});
   const [communities, setCommunities] = useState<CommunityDto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [newCommunity, setNewCommunity] =
     useState<CreateCommunityDto>(INITIAL_COMMUNITY);
   const [creating, setCreating] = useState(false);
@@ -49,13 +51,22 @@ const GroupsPage: React.FC = () => {
 
   const loadCommunities = useCallback(async () => {
     setLoading(true);
-    setError(null);
+    setLoadError(null);
     try {
       const response = await communityGetCommunitiesAdmin();
-      setCommunities(response.data ?? []);
+      if (!response.data) {
+        setLoadError(
+          errorMessage({
+            error: response.error,
+            fallback: "Unable to load communities. Please try again.",
+          }),
+        );
+        return;
+      }
+      setCommunities(response.data);
     } catch (err) {
       console.error("Failed to load communities", err);
-      setError("Unable to load communities. Please try again.");
+      setLoadError("Unable to load communities. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -102,17 +113,17 @@ const GroupsPage: React.FC = () => {
       let normalizedMaxCapacity: number | null = null;
       if (requiresMaxCapacity) {
         if (!newCommunity.maxCapacity || newCommunity.maxCapacity <= 0) {
-          setError("Member capacity is required.");
+          setCreateError("Member capacity is required.");
           return;
         }
         normalizedMaxCapacity = newCommunity.maxCapacity;
       }
       if (!name || !description) {
-        setError("Name and description are required.");
+        setCreateError("Name and description are required.");
         return;
       }
       setCreating(true);
-      setError(null);
+      setCreateError(null);
       try {
         const response = await communityCreateCommunityAdmin({
           body: {
@@ -128,10 +139,17 @@ const GroupsPage: React.FC = () => {
         if (response.data) {
           setCommunities((prev) => [...prev, response.data]);
           setNewCommunity(INITIAL_COMMUNITY);
+        } else {
+          setCreateError(
+            errorMessage({
+              error: response.error,
+              fallback: "Unable to create community. Please try again.",
+            }),
+          );
         }
       } catch (err) {
         console.error("Failed to create community", err);
-        setError("Unable to create community. Please try again.");
+        setCreateError("Unable to create community. Please try again.");
       } finally {
         setCreating(false);
       }
@@ -141,12 +159,6 @@ const GroupsPage: React.FC = () => {
 
   return (
     <div className="h-full p-5 pt-20 flex flex-col items-center gap-y-4">
-      {error && (
-        <div className="w-full max-w-5xl">
-          <p className="text-sm text-red-500">{error}</p>
-        </div>
-      )}
-
       {membersUndergoingGroupAssignment.length > 0 && (
         <GroupAssignmentPanel
           members={membersUndergoingGroupAssignment}
@@ -165,17 +177,23 @@ const GroupsPage: React.FC = () => {
           </div>
         </div>
 
-        <Card style={CardStyle.White}>
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-zinc-700">Unused capacity</p>
-            <p className="text-2xl font-semibold text-zinc-900">
-              {totalUnusedCapacity}
-            </p>
-          </div>
-        </Card>
+        {!loadError && (
+          <Card style={CardStyle.White}>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-zinc-700">
+                Unused capacity
+              </p>
+              <p className="text-2xl font-semibold text-zinc-900">
+                {totalUnusedCapacity}
+              </p>
+            </div>
+          </Card>
+        )}
 
         {loading ? (
           <p className="text-sm text-zinc-500">Loading groups…</p>
+        ) : loadError ? (
+          <p className="text-sm text-red-500">{loadError}</p>
         ) : sortedCommunities.length ? (
           <List>
             {sortedCommunities.map((community) => (
@@ -209,7 +227,7 @@ const GroupsPage: React.FC = () => {
               className="border border-zinc-300 rounded px-3 py-2 text-sm"
               value={newCommunity.name}
               onChange={(event) => {
-                setError(null);
+                setCreateError(null);
                 setNewCommunity((prev) => ({
                   ...prev,
                   name: event.target.value,
@@ -230,7 +248,7 @@ const GroupsPage: React.FC = () => {
               className="border border-zinc-300 rounded px-3 py-2 text-sm min-h-[80px]"
               value={newCommunity.description}
               onChange={(event) => {
-                setError(null);
+                setCreateError(null);
                 setNewCommunity((prev) => ({
                   ...prev,
                   description: event.target.value,
@@ -251,7 +269,7 @@ const GroupsPage: React.FC = () => {
                   checked={newCommunity.public}
                   onChange={(event) => {
                     const checked = event.target.checked;
-                    setError(null);
+                    setCreateError(null);
                     setNewCommunity((prev) => ({
                       ...prev,
                       public: checked,
@@ -279,7 +297,7 @@ const GroupsPage: React.FC = () => {
                   type="checkbox"
                   checked={newCommunity.allowMemberInvites}
                   onChange={(event) => {
-                    setError(null);
+                    setCreateError(null);
                     setNewCommunity((prev) => ({
                       ...prev,
                       allowMemberInvites: event.target.checked,
@@ -306,7 +324,7 @@ const GroupsPage: React.FC = () => {
                   type="checkbox"
                   checked={newCommunity.allowStaffAssignments}
                   onChange={(event) => {
-                    setError(null);
+                    setCreateError(null);
                     setNewCommunity((prev) => ({
                       ...prev,
                       allowStaffAssignments: event.target.checked,
@@ -347,7 +365,7 @@ const GroupsPage: React.FC = () => {
                   onChange={(event) => {
                     const value = event.target.value;
                     const parsed = Number(value);
-                    setError(null);
+                    setCreateError(null);
                     setNewCommunity((prev) => ({
                       ...prev,
                       maxCapacity:
@@ -358,6 +376,7 @@ const GroupsPage: React.FC = () => {
               </div>
             )}
           </div>
+          {createError && <p className="text-sm text-red-500">{createError}</p>}
           <Button
             type="submit"
             color={ButtonColor.Blue}

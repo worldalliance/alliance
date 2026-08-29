@@ -1,3 +1,4 @@
+import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
 import {
   actionsGetCommunityMemberInfoAdmin,
@@ -83,9 +84,17 @@ const CommunityDetailPage: React.FC = () => {
     setError(null);
     try {
       const response = await communityGetCommunitiesAdmin();
+      if (!response.data) {
+        setError(
+          errorMessage({
+            error: response.error,
+            fallback: "Unable to load community. Please try again.",
+          }),
+        );
+        return;
+      }
       const match =
-        response.data?.find((candidate) => candidate.id === communityId) ??
-        null;
+        response.data.find((candidate) => candidate.id === communityId) ?? null;
       if (!match) {
         setError("Community not found.");
       }
@@ -246,6 +255,13 @@ const CommunityDetailPage: React.FC = () => {
         if (response.data) {
           setCommunity(response.data);
           success("Group updated", response.data.name);
+        } else {
+          const message = errorMessage({
+            error: response.error,
+            fallback: "Unable to update group. Please try again.",
+          });
+          setError(message);
+          pushError(message);
         }
       } catch (err) {
         console.error("Failed to update group", err);

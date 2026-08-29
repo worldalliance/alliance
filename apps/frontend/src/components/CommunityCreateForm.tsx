@@ -1,3 +1,4 @@
+import { errorMessage } from "@alliance/common/errorMessage";
 import {
   CommunityDto,
   CreateCommunityDto,
@@ -93,7 +94,12 @@ const CommunityCreateForm = ({
       if (response.data) {
         await onSuccess(response.data);
       } else {
-        setError(`Failed to create community`);
+        setError(
+          errorMessage({
+            error: response.error,
+            fallback: "Failed to create community",
+          }),
+        );
       }
     } catch (err) {
       console.error("Failed to create community:", err);
