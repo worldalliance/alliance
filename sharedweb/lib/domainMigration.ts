@@ -18,9 +18,10 @@ export const newDomainUrl = (location: {
   hostname: string;
   pathname: string;
   search: string;
+  hash: string;
 }): string => {
   const subdomain = location.hostname.slice(0, -LEGACY_DOMAIN.length);
-  return `https://${subdomain}${NEW_DOMAIN}${location.pathname}${location.search}`;
+  return `https://${subdomain}${NEW_DOMAIN}${location.pathname}${location.search}${location.hash}`;
 };
 
 export const isSnoozed = (now: Date): boolean => {

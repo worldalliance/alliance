@@ -70,10 +70,20 @@ describe("DomainMigrationModal", () => {
     expect(title()).toBeNull();
   });
 
-  test("stays away from someone who already switched", () => {
-    visitAs("https://worldalliance.org/actions", switchedUser);
+  test("moves someone who already switched to the new domain", () => {
+    visitAs("https://worldalliance.org/actions?tab=open#top", switchedUser);
 
     expect(title()).toBeNull();
+    expect(window.location.href).toBe(
+      "https://thealliance.org/actions?tab=open#top",
+    );
+  });
+
+  test("leaves someone who already switched alone on the new domain", () => {
+    visitAs("https://thealliance.org/actions", switchedUser);
+
+    expect(title()).toBeNull();
+    expect(window.location.href).toBe("https://thealliance.org/actions");
   });
 
   test("stays away from a logged-out visitor", () => {

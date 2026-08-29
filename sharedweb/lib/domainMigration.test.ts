@@ -22,14 +22,15 @@ describe("isLegacyDomain", () => {
 });
 
 describe("newDomainUrl", () => {
-  test("swaps the domain, keeping path and query", () => {
+  test("swaps the domain, keeping path, query and hash", () => {
     expect(
       newDomainUrl({
         hostname: "worldalliance.org",
         pathname: "/settings",
         search: "?tab=account",
+        hash: "#password",
       }),
-    ).toBe("https://thealliance.org/settings?tab=account");
+    ).toBe("https://thealliance.org/settings?tab=account#password");
   });
 
   test("keeps the subdomain", () => {
@@ -38,6 +39,7 @@ describe("newDomainUrl", () => {
         hostname: "staging.worldalliance.org",
         pathname: "/",
         search: "",
+        hash: "",
       }),
     ).toBe("https://staging.thealliance.org/");
   });

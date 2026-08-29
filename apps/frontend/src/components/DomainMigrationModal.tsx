@@ -27,12 +27,18 @@ const DomainMigrationModal: React.FC = () => {
   // Gated in an effect rather than during render: hostname and the snooze both
   // read browser-only state, and this tree server-renders.
   useEffect(() => {
-    setOpen(
-      !!user &&
-        user.switchedDomainAt === null &&
-        isLegacyDomain(window.location.hostname) &&
-        !isSnoozed(new Date()),
-    );
+    if (!user || !isLegacyDomain(window.location.hostname)) {
+      return;
+    }
+
+    // The session does not cross domains, so they land signed out and sign in
+    // again on the other side. That second sign-in is accepted, not a bug.
+    if (user.switchedDomainAt !== null) {
+      window.location.href = newDomainUrl(window.location);
+      return;
+    }
+
+    setOpen(!isSnoozed(new Date()));
   }, [user]);
 
   const handleSnooze = useCallback(() => {
@@ -58,6 +64,7 @@ const DomainMigrationModal: React.FC = () => {
       hostname: window.location.hostname,
       pathname: "/login",
       search: `?redirect=${encodeURIComponent(window.location.pathname)}`,
+      hash: "",
     });
   }, [errorToast]);
 
