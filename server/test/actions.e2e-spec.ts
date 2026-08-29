@@ -3681,10 +3681,11 @@ describe("Actions (e2e)", () => {
   });
 
   describe("Cohort expression exposure", () => {
-    const manualCohort = { type: "Manual", userIds: [1] };
+    let manualCohort: { type: string; userIds: number[] };
     let targetedActionId: number;
 
     beforeAll(async () => {
+      manualCohort = { type: "Manual", userIds: [ctx.testUserId] };
       const created = await request(ctx.app.getHttpServer())
         .post("/actions/create")
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
@@ -3743,7 +3744,8 @@ describe("Actions (e2e)", () => {
       const served = publicRes.body.find(
         (a: ActionDto) => a.id === targetedActionId,
       ) as ActionDto | undefined;
-      expect(served?.followUpForms).toHaveLength(1);
+      expect(served).toBeDefined();
+      expect(served?.followUpForms).toEqual([]);
       expect(JSON.stringify(publicRes.body)).not.toContain("cohortExpression");
 
       const adminRes = await request(ctx.app.getHttpServer())
@@ -3754,6 +3756,17 @@ describe("Actions (e2e)", () => {
       expect(adminRes.body.followUpForms[0].cohortExpression).toEqual(
         manualCohort,
       );
+    });
+
+    it("serves a targeted follow-up form to the member it targets", async () => {
+      const memberRes = await request(ctx.app.getHttpServer())
+        .get("/actions/loggedIn")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      const served = memberRes.body.find(
+        (a: ActionDto) => a.id === targetedActionId,
+      ) as ActionDto | undefined;
+      expect(served?.followUpForms).toHaveLength(1);
     });
 
     it("takes back an action the admin loaded, follow-up forms and all", async () => {

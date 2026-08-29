@@ -941,7 +941,7 @@ export class ActionsService {
           dismissed: actionsDismissed.has(action.id),
         });
 
-        if (user && action.followUpForms) {
+        if (action.followUpForms) {
           action.followUpForms = await this.filterFollowUpFormsByCohort({
             followUpForms: action.followUpForms,
             user,
@@ -985,9 +985,10 @@ export class ActionsService {
   }
 
   async findPublicOnly(): Promise<ActionDto[]> {
+    // No follow-up forms: a logged-out client is in no cohort, and every form
+    // is cohort-scoped.
     const relations: Omit<Relations<Action>, "usersCompleted" | "status"> = {
       events: true,
-      followUpForms: true,
       reviewers: true,
     };
 
@@ -1127,7 +1128,7 @@ export class ActionsService {
           awayRanges: true,
         })
       : null;
-    if (user && action.followUpForms) {
+    if (action.followUpForms) {
       action.followUpForms = await this.filterFollowUpFormsByCohort({
         followUpForms: action.followUpForms,
         user,
@@ -4863,14 +4864,18 @@ export class ActionsService {
   /**
    * Filter follow-up forms by cohort expression for a given user.
    * A null/absent cohortExpression targets no members, so the form is
-   * filtered out (consistent with action cohort semantics).
+   * filtered out (consistent with action cohort semantics). A logged-out
+   * client is in no cohort, so it gets nothing.
    */
   async filterFollowUpFormsByCohort(params: {
     followUpForms: ParsedFollowUpForm[];
-    user: User;
+    user: User | null;
     session?: CohortResolutionSession;
   }): Promise<ParsedFollowUpForm[]> {
     const { followUpForms, user, session } = params;
+    if (!user) {
+      return [];
+    }
     const results = await Promise.all(
       followUpForms.map((form) =>
         this.computeIsInCohortExpression({
