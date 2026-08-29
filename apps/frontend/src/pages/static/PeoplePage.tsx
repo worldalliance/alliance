@@ -1,6 +1,11 @@
-import { userNmembers } from "@alliance/shared/client";
+import {
+  userNmembers,
+  type StaffDirectoryEntryDto,
+} from "@alliance/shared/client";
+import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { href, Link, useLoaderData } from "react-router";
 import officePhoto from "../../assets/redesign/office.jpg";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
@@ -32,6 +37,20 @@ const PEOPLE_TITLE = "People";
 
 const OFFICE_PHOTO_CAPTION = "The office in San Francisco, California";
 
+const MEMBER_ROWS = 2;
+const MEMBER_GAP_PX = 8;
+const PROFILE_TILE_PX = 80;
+
+function memberGridCols(width: number, memberCount: number): number {
+  if (width <= 0 || memberCount <= 0) return 0;
+  const maxCols = Math.max(
+    1,
+    Math.floor((width + MEMBER_GAP_PX) / (PROFILE_TILE_PX + MEMBER_GAP_PX)),
+  );
+  if (memberCount >= maxCols * MEMBER_ROWS) return maxCols;
+  return Math.ceil(memberCount / MEMBER_ROWS);
+}
+
 /** Four columns of names, since we hold no photographs of the expert group. */
 function ExpertGroup() {
   return (
@@ -50,16 +69,59 @@ function ExpertGroup() {
       <div className="grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
         {experts.map((expert) => (
           <div key={expert.name} className="min-w-0">
-            <p className="text-[1.08rem] leading-snug font-medium text-white">
+            <p className="text-lg leading-snug font-medium text-white">
               {expert.name}
             </p>
-            <p className="text-[0.92rem] leading-snug text-white/55">
+            <p className="text-base leading-snug text-white/55">
               {expert.description}
             </p>
           </div>
         ))}
       </div>
     </PageBand>
+  );
+}
+
+function StaffPerson({ member }: { member: StaffDirectoryEntryDto }) {
+  const inner = (
+    <>
+      <div
+        className="shrink-0 overflow-hidden rounded-[7px] bg-[var(--site-ink)]/[0.09]"
+        style={{ width: PROFILE_TILE_PX, height: PROFILE_TILE_PX }}
+      >
+        <AvatarProfile
+          pfp={member.profilePicture}
+          size="override"
+          alt=""
+          className="size-full rounded-[7px]"
+        />
+      </div>
+      <div className="min-w-0">
+        <p className="text-lg leading-snug font-medium text-[var(--site-ink)] group-hover:underline decoration-[var(--site-ink)]/40 underline-offset-2 group-hover:decoration-[var(--site-ink)]">
+          {member.displayName}
+        </p>
+        {member.staffTitle && (
+          <p className="text-base leading-snug text-[var(--site-ink)]/55">
+            {member.staffTitle}
+          </p>
+        )}
+      </div>
+    </>
+  );
+
+  if (!member.staffLink) {
+    return <div className="flex items-center gap-3">{inner}</div>;
+  }
+
+  return (
+    <a
+      href={member.staffLink}
+      target="_blank"
+      rel="noreferrer"
+      className="group flex items-center gap-3"
+    >
+      {inner}
+    </a>
   );
 }
 
@@ -75,7 +137,7 @@ function Office() {
           Alliance.
         </SectionSubtitle>
       </div>
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-16">
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-16">
         <figure className="flex flex-col gap-3">
           <img
             src={officePhoto}
@@ -90,40 +152,10 @@ function Office() {
         {isPending ? (
           <p className="text-[var(--site-ink)]/50">Loading staff…</p>
         ) : (
-          <ul className="flex flex-col">
+          <ul className="grid grid-cols-2 gap-x-8 gap-y-8">
             {(staff ?? []).map((member) => (
-              <li
-                key={member.id}
-                className="flex items-center justify-between gap-6 py-3"
-              >
-                <span className="flex min-w-0 items-center gap-3">
-                  <AvatarProfile
-                    pfp={member.profilePicture ?? null}
-                    size="override"
-                    alt=""
-                    className="size-12 rounded"
-                  />
-                  <span className="truncate text-[0.98rem] text-[var(--site-ink)]">
-                    {member.displayName}
-                  </span>
-                </span>
-                <span className="flex shrink-0 items-baseline gap-3">
-                  {member.staffTitle && (
-                    <span className="text-[0.88rem] text-[var(--site-ink)]/55">
-                      {member.staffTitle}
-                    </span>
-                  )}
-                  {member.staffLink && (
-                    <a
-                      href={member.staffLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[0.88rem] text-[var(--site-ink)]/80 underline decoration-[var(--site-ink)]/40 underline-offset-2 hover:decoration-[var(--site-ink)]"
-                    >
-                      About
-                    </a>
-                  )}
-                </span>
+              <li key={member.id} className="min-w-0">
+                <StaffPerson member={member} />
               </li>
             ))}
           </ul>
@@ -133,13 +165,28 @@ function Office() {
   );
 }
 
-/**
- * One tile per public member, each their own profile picture and a link to
- * their profile. Dense enough that the roll reads as a body of people rather
- * than a list of cards.
- */
 function MemberDirectory({ memberCount }: { memberCount: number | undefined }) {
   const { data: members, isPending } = usePublicMembers();
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  const shuffleSeed = useRef(Math.random().toString());
+
+  useLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+    const update = () => setWidth(grid.clientWidth);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(grid);
+    return () => observer.disconnect();
+  }, [isPending]);
+
+  const shuffled = useMemo(
+    () => shuffleWithSeed(members ?? [], shuffleSeed.current),
+    [members],
+  );
+  const cols = memberGridCols(width, shuffled.length);
+  const visible = shuffled.slice(0, cols * MEMBER_ROWS);
 
   return (
     <PageBand id="members" className="flex flex-col gap-10">
@@ -155,12 +202,16 @@ function MemberDirectory({ memberCount }: { memberCount: number | undefined }) {
         <p className="text-[var(--site-ink)]/50">Loading members…</p>
       ) : (
         <div
-          className="grid gap-2"
+          ref={gridRef}
+          className="grid"
           style={{
-            gridTemplateColumns: "repeat(auto-fill, minmax(44px, 1fr))",
+            gap: MEMBER_GAP_PX,
+            gridTemplateColumns:
+              cols > 0 ? `repeat(${cols}, minmax(0, 1fr))` : undefined,
+            gridTemplateRows: `repeat(${MEMBER_ROWS}, auto)`,
           }}
         >
-          {(members ?? []).map((member) => (
+          {visible.map((member) => (
             <Link
               key={member.id}
               to={href("/member/:id", { id: member.id.toString() })}

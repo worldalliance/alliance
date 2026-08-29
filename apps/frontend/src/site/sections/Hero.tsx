@@ -22,7 +22,7 @@ export function Hero() {
           "lg:flex-row lg:items-start lg:gap-16 lg:pt-[104px]",
         )}
       >
-        <div className="flex min-w-0 flex-col gap-5 lg:flex-1">
+        <div className="flex min-w-0 flex-col gap-5 lg:flex-1 lg:self-end">
           <DisplayHeading
             as="h1"
             className="text-5xl sm:text-6xl lg:text-[5.5rem]"

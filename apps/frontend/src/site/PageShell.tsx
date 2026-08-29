@@ -75,7 +75,7 @@ export function BandHeading({
   return (
     <h2
       className={cn(
-        "site-display text-5xl leading-tight sm:text-6xl font-medium",
+        "site-display text-4xl sm:text-5xl md:text-6xl  leading-tight font-medium",
         onDark ? "text-white" : "text-black",
         className,
       )}
@@ -97,7 +97,10 @@ function PageHeader({
       className={cn(SITE_COL, "flex flex-col gap-4")}
       style={{ paddingTop: NAV_HEIGHT + 64 }}
     >
-      <DisplayHeading as="h1" className="sm:text-6xl lg:text-7xl font-medium">
+      <DisplayHeading
+        as="h1"
+        className="text-5xl sm:text-6xl lg:text-7xl font-medium"
+      >
         {title}
       </DisplayHeading>
       {subtitle && <PageShellSubtitle>{subtitle}</PageShellSubtitle>}

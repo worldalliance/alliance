@@ -41,6 +41,7 @@ export const FOOTER_COLUMNS: SiteLink[][] = [
   [
     { label: "FAQ", to: FAQ_HREF },
     { label: "Governance", to: GOVERNANCE_HREF },
+    { label: "Foundation", to: FOUNDATION_HREF },
   ],
   [
     { label: "Join", to: JOIN_HREF, withArrow: true },

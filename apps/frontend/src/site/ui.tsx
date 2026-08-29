@@ -349,7 +349,7 @@ export function PageShellSubtitle({
   return (
     <p
       className={cn(
-        "max-w-2xl text-xl sm:text-2xl text-(--site-ink)/90 ",
+        "max-w-2xl text-lg sm:text-xl md:text-2xl text-(--site-ink)/90 ",
         className,
       )}
     >
