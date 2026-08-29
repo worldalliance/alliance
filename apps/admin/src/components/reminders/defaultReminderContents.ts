@@ -32,15 +32,13 @@ export const defaultPushMessage =
 
 // missed deadline
 
-export const defaultMissedDeadlineEmailSubject = "#{missedactionsubject}";
+export const defaultMissedDeadlineEmailSubject = "You missed an Alliance task";
 
 export const defaultMissedDeadlineEmailContents = `Hi #{firstname},
 
-The deadline for the current task has passed and you have not completed it. If you did complete it, please contact us. We may have made a mistake.
+The deadline for the current task has passed and you have not completed it. If you did complete it, please contact us — we may have made a mistake.
 
-#{firstactionreliability}
-
-#{secondmisswarning}
+#{missedactioncontext}#{secondmisswarning}
 
 Best,
 The Alliance Team`;

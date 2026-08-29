@@ -60,23 +60,15 @@ export function processKeywordReplacements(
     .replaceAll("#{n}", context.uncompletedTasksCount.toString())
     .replaceAll("#{tasktime}", context.uncompletedTasksTime)
     .replaceAll(
-      "#{missedactionsubject}",
-      context.consecutiveMissedSuiteCount === 2
-        ? "You missed two Alliance actions in a row"
-        : context.isFirstAssignedSuite
-          ? "You missed your first Alliance action"
-          : "You missed an Alliance action",
-    )
-    .replaceAll(
-      "#{firstactionreliability}",
+      "#{missedactioncontext}",
       context.isFirstAssignedSuite
-        ? "Since this was your first Alliance action, we want to explain why reliability matters. We plan each action around the number of members assigned to it. When members don't follow through, those plans fall short."
-        : "",
+        ? 'The Alliance counts on every member. We plan precise actions based on the number of people we expect to participate.\n\nTo learn more about our model, you can watch <a href="https://www.youtube.com/watch?v=fR7Upo0DlYs&t=125s">this video</a>.\n\nPlease know that if you miss several actions in a row, we will suspend your contract and no longer assign you tasks.'
+        : "Remember that we plan each action around the number of members we expect to participate.",
     )
     .replaceAll(
       "#{secondmisswarning}",
       context.consecutiveMissedSuiteCount === 2
-        ? "This is the second week in a row that you missed all of your assigned non-optional actions. If this happens a third week in a row, your contract will be suspended automatically and you will stop receiving tasks. You can sign the contract again at any time."
+        ? "\n\nIf you miss all of your assigned non-optional actions again next week, your contract will be suspended automatically."
         : "",
     )
     .replaceAll("#{s}", context.uncompletedTasksCount === 1 ? "" : "s")

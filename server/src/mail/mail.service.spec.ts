@@ -61,7 +61,7 @@ describe("processKeywordReplacements", () => {
 
     it("explains reliability when the member misses their first action", () => {
       const result = processKeywordReplacements(
-        "#{missedactionsubject}\n#{firstactionreliability}\n#{secondmisswarning}",
+        "#{missedactioncontext}\n#{secondmisswarning}",
         {
           ...baseContext,
           uncompletedTasksCount: 1,
@@ -70,14 +70,15 @@ describe("processKeywordReplacements", () => {
         },
       );
 
-      expect(result).toContain("You missed your first Alliance action");
-      expect(result).toContain("Since this was your first Alliance action");
+      expect(result).toContain("The Alliance counts on every member");
+      expect(result).toContain("To learn more about our model");
+      expect(result).toContain("if you miss several actions in a row");
       expect(result).not.toContain("contract will be suspended");
     });
 
     it("warns after a second consecutive missed action", () => {
       const result = processKeywordReplacements(
-        "#{missedactionsubject}\n#{firstactionreliability}\n#{secondmisswarning}",
+        "#{missedactioncontext}\n#{secondmisswarning}",
         {
           ...baseContext,
           uncompletedTasksCount: 1,
@@ -86,16 +87,20 @@ describe("processKeywordReplacements", () => {
         },
       );
 
-      expect(result).toContain("You missed two Alliance actions in a row");
-      expect(result).not.toContain("why reliability matters");
       expect(result).toContain(
-        "If this happens a third week in a row, your contract will be suspended automatically",
+        "Remember that we plan each action around the number of members we expect to participate.",
       );
+      expect(result).toContain(
+        "If you miss all of your assigned non-optional actions again next week, your contract will be suspended automatically.",
+      );
+      expect(result).not.toContain("second week");
+      expect(result).not.toContain("third week");
+      expect(result).not.toContain("sign the contract again");
     });
 
     it("keeps an ordinary missed-action email brief for returning members", () => {
       const result = processKeywordReplacements(
-        "#{missedactionsubject}#{firstactionreliability}#{secondmisswarning}",
+        "#{missedactioncontext}#{secondmisswarning}",
         {
           ...baseContext,
           uncompletedTasksCount: 1,
@@ -104,7 +109,9 @@ describe("processKeywordReplacements", () => {
         },
       );
 
-      expect(result).toBe("You missed an Alliance action");
+      expect(result).toBe(
+        "Remember that we plan each action around the number of members we expect to participate.",
+      );
     });
   });
 

@@ -228,19 +228,17 @@ type SuspendPlanContext = {
  */
 export type SuspensionCandidate = { user: User; reasonKey: string };
 
-<<<<<<< Updated upstream
 /**
  * All anything resolving a form back to its action reads. A partially selected
  * `Action` would type as a whole one with most columns silently undefined, so
  * the narrow reads hand back a narrow type instead.
  */
 export type LinkedAction = Pick<Action, "id" | "name">;
-=======
+
 export type MissedActionReminderContext = {
   isFirstAssignedSuite: boolean;
   consecutiveMissedSuiteCount: number;
 };
->>>>>>> Stashed changes
 
 /** Facepile preview size; member-list endpoints paginate full lists. */
 const GLOBAL_FEED_FACEPILE_LIMIT = 8;

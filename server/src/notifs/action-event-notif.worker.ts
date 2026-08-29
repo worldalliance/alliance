@@ -86,8 +86,7 @@ export class ActionEventNotifWorker {
         const personalizedMissedActionPlans = duePlans.filter((plan) =>
           [plan.group.emailSubject, plan.group.emailMessage].some(
             (message) =>
-              message.includes("#{missedactionsubject}") ||
-              message.includes("#{firstactionreliability}") ||
+              message.includes("#{missedactioncontext}") ||
               message.includes("#{secondmisswarning}"),
           ),
         );
