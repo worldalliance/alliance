@@ -88,9 +88,11 @@ export function BandHeading({
 function PageHeader({
   title,
   subtitle,
+  titleClassName,
 }: {
   title: string;
   subtitle?: ReactNode;
+  titleClassName?: string;
 }) {
   return (
     <header
@@ -99,7 +101,10 @@ function PageHeader({
     >
       <DisplayHeading
         as="h1"
-        className="text-5xl sm:text-6xl lg:text-7xl font-medium"
+        className={cn(
+          "text-5xl sm:text-6xl lg:text-7xl font-medium",
+          titleClassName,
+        )}
       >
         {title}
       </DisplayHeading>
@@ -118,16 +123,22 @@ export function PageShell({
   subtitle,
   children,
   showJoinCta = true,
+  titleClassName,
 }: {
   title: string;
   subtitle?: ReactNode;
   children: ReactNode;
   showJoinCta?: boolean;
+  titleClassName?: string;
 }) {
   return (
     <SiteRoot>
       <Navbar />
-      <PageHeader title={title} subtitle={subtitle} />
+      <PageHeader
+        title={title}
+        subtitle={subtitle}
+        titleClassName={titleClassName}
+      />
       <main>{children}</main>
       {showJoinCta && <JoinCta />}
       <SiteFooter />

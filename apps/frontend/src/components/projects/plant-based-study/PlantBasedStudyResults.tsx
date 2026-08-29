@@ -15,22 +15,13 @@ export default function PlantBasedStudyResults() {
         <p className="mb-3 text-sm text-(--sub)">
           <time dateTime="2026-07-16">July 16, 2026</time>
         </p>
-        <h1>
-          Thinking about eating more plant-based? Here&apos;s what to expect.
-        </h1>
-        <div className="flex flex-col gap-2">
-          <p className="dek">
-            We ran a study with 274 people to measure how much less animal
-            product people could eat if they tried.
-          </p>
-          <p className="dek">
-            Participants sent us daily food logs for 14 days. A{" "}
-            <span className="font-semibold">reduction group</span> of 219 people
-            attempted to reduce their animal product consumption, while a{" "}
-            <span className="font-semibold">comparison group</span> of 55 were
-            told to eat as normal.
-          </p>
-        </div>
+        <p className="dek">
+          Participants sent us daily food logs for 14 days. A{" "}
+          <span className="font-semibold">reduction group</span> of 219 people
+          attempted to reduce their animal product consumption, while a{" "}
+          <span className="font-semibold">comparison group</span> of 55 were
+          told to eat as normal.
+        </p>
         <p className="tk-lead">If you try eating more plant-based…</p>
         <nav className="tiles" aria-label="What to expect, based on the study">
           <a className="tile" href="#cut">

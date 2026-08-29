@@ -8,6 +8,7 @@ import {
 export type ProgressProject = {
   slug: string;
   title: string;
+  headline: string;
   date: string;
   summary: string;
   tags: ActionPriorityTags;
@@ -18,6 +19,7 @@ export const PROGRESS_PROJECTS: readonly ProgressProject[] = [
   {
     slug: "plant-based-study",
     title: "Large-scale behavioral study on adopting a plant-based diet",
+    headline: "Thinking about eating more plant-based? Here's what to expect.",
     date: "2026-07-16",
     summary:
       "We ran a study with 274 people to measure how much less animal product people could eat if they tried.",

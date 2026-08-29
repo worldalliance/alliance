@@ -13,7 +13,7 @@ export async function loader({ params }: { params: { slug: string } }) {
   }
   return {
     slug: project.slug,
-    title: project.title,
+    title: project.headline,
   };
 }
 
@@ -28,21 +28,19 @@ const ProgressProjectPage: React.FC = () => {
   const project = data.slug ? getProgressProject(data.slug) : undefined;
 
   if (!project) {
-    return (
-      <PageShell title="Progress" subtitle="Project not found">
-        {null}
-      </PageShell>
-    );
+    return <PageShell title="Project not found">{null}</PageShell>;
   }
 
   const { Content } = project;
 
   return (
-    <PageShell title="Progress" subtitle={project.title}>
+    <PageShell
+      title={project.headline}
+      subtitle={project.summary}
+      titleClassName="max-w-[20ch] text-balance"
+    >
       <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
-        <div className="mx-auto w-full max-w-[960px]">
-          <Content />
-        </div>
+        <Content />
       </div>
     </PageShell>
   );

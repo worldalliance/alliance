@@ -1,16 +1,13 @@
-/* Interactive results page — ported from the standalone vis
-   (interactive-vis/variations/v14-synthesis in the analysis repo).
-   All rules are scoped under .ir; tokens shadow site tokens only
-   inside the wrapper. Light-only, matching the site. */
+/* Chart tokens stay under .ir so they don't leak. */
 
 .ir {
-  --surface: #f3f2f0; /* site background, so cards blend */
-  --ink: #1b211d;
-  --sub: #4e5852;
-  --mut: #66706a;
-  --grid: #e3e8e2;
-  --axis: #c6cec7;
-  --hairline: rgba(27, 33, 29, 0.13);
+  --surface: var(--site-surface);
+  --ink: var(--site-ink);
+  --sub: color-mix(in srgb, var(--site-ink) 70%, transparent);
+  --mut: color-mix(in srgb, var(--site-ink) 45%, transparent);
+  --grid: color-mix(in srgb, var(--site-ink) 10%, transparent);
+  --axis: color-mix(in srgb, var(--site-ink) 22%, transparent);
+  --hairline: color-mix(in srgb, var(--site-ink) 12%, transparent);
   --reduction: #009e73;
   --reduction-soft: rgba(0, 158, 115, 0.16);
   --comparison: #64748b;
@@ -20,27 +17,22 @@
   --dv-0: #c3c9c3;
   --dv-h1: #c795be;
   --dv-h2: #84519c;
-  --chip-bg: rgba(27, 33, 29, 0.05);
+  --chip-bg: color-mix(in srgb, var(--site-ink) 5%, transparent);
   --tooltip-bg: #22281f;
   --tooltip-ink: #f2f4ef;
   --seg-label-light: #ffffff;
-  --font-display:
-    "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia,
-    serif;
-  --font-body:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
-    Arial, sans-serif;
+  --font-display: var(--site-font-display);
+  --font-body: var(--site-font-body);
   --font-data:
     ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas,
     "Liberation Mono", monospace;
 
   width: 100%;
-  max-width: 960px;
+  max-width: 60rem;
   color: var(--ink);
   font-family: var(--font-body);
-  font-size: 17px;
+  font-size: 1.05rem;
   line-height: 1.65;
-  -webkit-font-smoothing: antialiased;
 }
 .ir .text-col {
   max-width: 680px;
@@ -98,29 +90,15 @@
 }
 @media (max-width: 560px) {
   .ir {
-    font-size: 16px;
+    font-size: 1rem;
   }
 }
 
-/* ================= masthead ================= */
 .ir .masthead {
   padding-bottom: 26px;
 }
-.ir h1 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: clamp(32px, 5.6vw, 50px);
-  line-height: 1.1;
-  letter-spacing: -0.015em;
-  margin: 0 0 14px;
-  text-wrap: balance;
-  max-width: 21ch;
-}
-.ir h1 > span {
-  color: var(--reduction);
-}
 .ir .dek {
-  font-size: clamp(17px, 2.2vw, 19.5px);
+  font-size: 1.12rem;
   color: var(--sub);
   margin: 0;
   max-width: 62ch;
@@ -130,8 +108,8 @@
 /* ================= takeaway tiles ================= */
 .ir .tk-lead {
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 21px;
+  font-weight: 500;
+  font-size: 1.35rem;
   letter-spacing: -0.005em;
   margin: 28px 0 0;
 }
@@ -151,10 +129,10 @@
   flex-direction: column;
   gap: 3px;
   text-decoration: none;
-  background: #ffffff;
+  background: #fafafa;
   border: 1px solid var(--hairline);
   border-left: 3px solid var(--reduction);
-  border-radius: 0 12px 12px 0;
+  border-radius: 0 var(--site-radius-card) var(--site-radius-card) 0;
   padding: 13px 18px 12px;
 }
 .ir a.tile:hover {
@@ -163,8 +141,8 @@
 }
 .ir .t-claim {
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 19.5px;
+  font-weight: 500;
+  font-size: 1.2rem;
   line-height: 1.3;
   letter-spacing: -0.005em;
   text-wrap: balance;
@@ -181,12 +159,18 @@
 }
 .ir section.finding h2 {
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: clamp(25px, 3.6vw, 32px);
+  font-weight: 500;
+  font-size: 1.875rem;
   line-height: 1.18;
   letter-spacing: -0.01em;
   margin: 0 0 14px;
   text-wrap: balance;
+}
+@media (min-width: 640px) {
+  .ir section.finding h2,
+  .ir .report-note h2 {
+    font-size: 2.25rem;
+  }
 }
 .ir .kick {
   font-family: var(--font-data);
@@ -220,9 +204,9 @@
 .ir figure.fig {
   margin: 26px 0 8px;
   padding: 20px 20px 12px;
-  background: #ffffff;
+  background: #f4f4f5;
   border: 1px solid var(--hairline);
-  border-radius: 12px;
+  border-radius: var(--site-radius-card);
 }
 .ir .fig-head {
   display: flex;
@@ -239,8 +223,8 @@
 }
 .ir .fig-title {
   font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 1.15rem;
+  font-weight: 500;
 }
 .ir .fig-note {
   font-size: 13px;
@@ -301,7 +285,7 @@
   color: var(--sub);
   background: var(--chip-bg);
   border: 1px solid var(--hairline);
-  border-radius: 999px;
+  border-radius: var(--site-radius-input);
   padding: 4px 13px;
   cursor: pointer;
 }
@@ -309,9 +293,9 @@
   color: var(--ink);
 }
 .ir button.chip[aria-pressed="true"] {
-  background: var(--ink);
-  color: var(--surface);
-  border-color: var(--ink);
+  background: var(--site-primary);
+  color: white;
+  border-color: var(--site-primary);
 }
 
 /* dot + row-reorder transitions */
@@ -366,8 +350,8 @@
 }
 .ir .report-note h2 {
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: clamp(25px, 3.6vw, 32px);
+  font-weight: 500;
+  font-size: 1.875rem;
   line-height: 1.18;
   letter-spacing: -0.01em;
   margin: 0 0 14px;
