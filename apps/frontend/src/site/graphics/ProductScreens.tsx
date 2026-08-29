@@ -1,5 +1,10 @@
 import { activityRows, openedPost, type ActivityRow } from "../content";
-import { pickFaces, useMemberFaces, useUpdateAuthor } from "../data";
+import {
+  FALLBACK_FACE,
+  pickFaces,
+  useMemberFaces,
+  usePublicProfile,
+} from "../data";
 import { PostCard } from "./PostCard";
 
 const FEED_TITLE = "Activity";
@@ -103,7 +108,8 @@ export function FeedCard() {
 
 /** A single post opened from the feed, so the pair reads as one product. */
 export function PostDetailCard() {
-  const author = useUpdateAuthor();
+  const authorId = 38;
+  const { data: author } = usePublicProfile(authorId);
 
   return (
     <div
@@ -114,7 +120,14 @@ export function PostDetailCard() {
       <div className="min-h-0 flex-1">
         <PostCard
           post={openedPost}
-          author={author}
+          author={
+            author
+              ? {
+                  name: author.displayName,
+                  avatar: author.profilePicture ?? FALLBACK_FACE,
+                }
+              : undefined
+          }
           className="border-0 shadow-none"
         />
       </div>

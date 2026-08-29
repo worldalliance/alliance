@@ -20,18 +20,18 @@ export function RedesignGovernancePage({ theme }: { theme: RedesignTheme }) {
       title={GOVERNANCE_TITLE}
       lede={GOVERNANCE_INTRO}
     >
-      <div
-        className={cn(RD_COL, "flex max-w-[46rem] flex-col gap-8 pt-16 pb-20 lg:pt-20 lg:pb-28")}
-      >
-        <DocProse
-          version={theme.version}
-          markdown={GOVERNANCE_MARKDOWN_BEFORE}
-        />
-        <ContractCard version={theme.version} />
-        <DocProse
-          version={theme.version}
-          markdown={GOVERNANCE_MARKDOWN_AFTER}
-        />
+      <div className={cn(RD_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
+        <div className="flex max-w-[46rem] flex-col gap-8">
+          <DocProse
+            version={theme.version}
+            markdown={GOVERNANCE_MARKDOWN_BEFORE}
+          />
+          <ContractCard version={theme.version} />
+          <DocProse
+            version={theme.version}
+            markdown={GOVERNANCE_MARKDOWN_AFTER}
+          />
+        </div>
       </div>
     </PageShell>
   );

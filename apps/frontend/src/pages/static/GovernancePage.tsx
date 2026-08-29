@@ -23,15 +23,12 @@ export default function GovernancePage() {
       title="Governance"
       subtitle={<ApprovedBy what="governance procedures" />}
     >
-      <div
-        className={cn(
-          SITE_COL,
-          "flex max-w-[46rem] flex-col gap-8 pt-16 pb-20 lg:pt-20 lg:pb-28",
-        )}
-      >
-        <DocProse markdown={GOVERNANCE_MARKDOWN_BEFORE} />
-        <ContractCard />
-        <DocProse markdown={GOVERNANCE_MARKDOWN_AFTER} />
+      <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
+        <div className="flex max-w-[46rem] flex-col gap-8">
+          <DocProse markdown={GOVERNANCE_MARKDOWN_BEFORE} />
+          <ContractCard />
+          <DocProse markdown={GOVERNANCE_MARKDOWN_AFTER} />
+        </div>
       </div>
     </PageShell>
   );
