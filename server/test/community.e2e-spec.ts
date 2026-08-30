@@ -210,6 +210,23 @@ describe("Community (e2e)", () => {
     expect(res.body.maxCapacity).toBeNull();
   });
 
+  it("POST /community/create rejects a public group that blocks the flags it requires with 400", async () => {
+    const res = await request(ctx.app.getHttpServer())
+      .post("/community/create")
+      .set("Authorization", `Bearer ${testUserToken}`)
+      .send(
+        createDto({
+          name: "Closed Public Community",
+          description: "Public but takes nobody",
+          public: true,
+          allowMemberInvites: false,
+          allowStaffAssignments: false,
+        }),
+      );
+
+    expect(res.status).toBe(400);
+  });
+
   it("POST /community/create returns 401 when unauthenticated", async () => {
     const res = await request(ctx.app.getHttpServer())
       .post("/community/create")
@@ -535,6 +552,43 @@ describe("Community (e2e)", () => {
       .patch(`/community/${community.id}`)
       .set("Authorization", `Bearer ${testUserToken}`)
       .send({ maxCapacity: null });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("PATCH /community/:communityId rejects going public without the flags it requires with 400", async () => {
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP Go Public",
+        leaders: [testUser],
+        users: [testUser],
+        allowMemberInvites: false,
+        allowStaffAssignments: false,
+      }),
+    );
+
+    const res = await request(ctx.app.getHttpServer())
+      .patch(`/community/${community.id}`)
+      .set("Authorization", `Bearer ${testUserToken}`)
+      .send({ public: true });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("PATCH /community/:communityId rejects clearing a flag a public group requires with 400", async () => {
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP Clear Flag",
+        leaders: [testUser],
+        users: [testUser],
+        public: true,
+      }),
+    );
+
+    const res = await request(ctx.app.getHttpServer())
+      .patch(`/community/${community.id}`)
+      .set("Authorization", `Bearer ${testUserToken}`)
+      .send({ allowMemberInvites: false });
 
     expect(res.status).toBe(400);
   });

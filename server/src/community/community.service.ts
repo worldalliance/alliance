@@ -36,10 +36,10 @@ import {
 import { Community } from "./entities/community.entity";
 
 /**
- * The capacity check constraint on {@link Community}, applied before the write
- * so a group missing its cap is a 400 and not a 500.
+ * The check constraints on {@link Community}, applied before the write so a row
+ * that breaks one is a 400 and not a 500.
  */
-function assertCapacityMatchesAccess(
+function assertCommunityAccessRules(
   community: Pick<
     Community,
     "public" | "allowMemberInvites" | "allowStaffAssignments" | "maxCapacity"
@@ -53,6 +53,14 @@ function assertCapacityMatchesAccess(
   ) {
     throw new BadRequestException(
       "Capacity is required when the group is public or allows member invites or staff assignments",
+    );
+  }
+  if (
+    community.public &&
+    !(community.allowMemberInvites && community.allowStaffAssignments)
+  ) {
+    throw new BadRequestException(
+      "A public group must allow member invites and staff assignments",
     );
   }
 }
@@ -126,7 +134,7 @@ export class CommunityService {
       );
     }
     const community = this.communityRepository.create(body);
-    assertCapacityMatchesAccess(community);
+    assertCommunityAccessRules(community);
     const savedCommunity = await this.communityRepository.save(community);
     await this.conversationService.syncCommunityConversationMembers(
       savedCommunity.id,
@@ -153,7 +161,7 @@ export class CommunityService {
       leaders: [user],
       users: [user],
     });
-    assertCapacityMatchesAccess(community);
+    assertCommunityAccessRules(community);
     const savedCommunity = await this.communityRepository.save(community);
     await this.conversationService.syncCommunityConversationMembers(
       savedCommunity.id,
@@ -475,7 +483,7 @@ export class CommunityService {
       }
     }
 
-    assertCapacityMatchesAccess(community);
+    assertCommunityAccessRules(community);
 
     const updated = await this.communityRepository.save(community);
     await this.conversationService.syncCommunityConversationMembers(updated.id);
