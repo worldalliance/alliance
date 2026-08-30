@@ -377,11 +377,16 @@ const CommunityPage = () => {
       const response = await communityDelete({
         path: { communityId: community.id },
       });
-      if (response.data) {
+      if (response.error) {
+        setError(
+          errorMessage({
+            error: response.error,
+            fallback: "Failed to delete community",
+          }),
+        );
+      } else {
         removeCommunity(community.id);
         setParams({ communityId: null, tab: null });
-      } else {
-        setError("Failed to delete community");
       }
     } catch (err) {
       console.error("Failed to delete community:", err);

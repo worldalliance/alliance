@@ -438,7 +438,16 @@ const CommunityDetailPage: React.FC = () => {
     setDeleting(true);
     setError(null);
     try {
-      await communityDeleteAdmin({ path: { communityId } });
+      const response = await communityDeleteAdmin({ path: { communityId } });
+      if (response.error) {
+        const message = errorMessage({
+          error: response.error,
+          fallback: "Unable to delete community. Please try again.",
+        });
+        setError(message);
+        pushError(message);
+        return;
+      }
       success("Community deleted", community.name);
       navigate(href("/groups"));
     } catch (err) {
