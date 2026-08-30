@@ -89,6 +89,7 @@ export interface UseCommentTreeResult {
   handlePinReply: (id: number) => Promise<void>;
   replyingTo: number | null;
   setReplyingTo: (id: number | null) => void;
+  focusComposer: boolean;
   newlyAddedReplies: Set<number>;
   highlightedReplyId: number | null;
   editableContent: CreateEditableContentDto;
@@ -117,6 +118,9 @@ export function useCommentTree(
   const [editableContent, setEditableContent] =
     useState<CreateEditableContentDto>({ body: "", attachments: [] });
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  // The composer takes the caret when the user asked for it, not when it comes
+  // back after a reply posted further down the thread.
+  const [focusComposer, setFocusComposer] = useState(true);
   const [selectedTagId, setSelectedTagId] = useState<number | undefined>(
     undefined,
   );
@@ -245,12 +249,11 @@ export function useCommentTree(
         onSuccess?.();
       }
 
-      if (!replyingTo) {
+      if (replyingTo) {
+        setFocusComposer(false);
+      } else {
         setTagFilter(selectedTagId);
       }
-      setEditableContent({ body: "", attachments: [] });
-      setReplyingTo(null);
-      setSelectedTagId(undefined);
     } catch (err) {
       console.error("Error posting reply:", err);
       captureException(ExceptionEvent.PostReplyError, err);
@@ -353,6 +356,7 @@ export function useCommentTree(
     handlePinReply,
     replyingTo,
     setReplyingTo,
+    focusComposer,
     newlyAddedReplies,
     highlightedReplyId,
     editableContent,

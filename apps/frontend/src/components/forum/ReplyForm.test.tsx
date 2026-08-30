@@ -56,18 +56,26 @@ const tags: PostTagDto[] = [
 ];
 
 const Harness = ({
+  parentId = null,
   onSubmit,
+  onCancel,
   error,
   initialContent = draft,
   withTags = false,
+  startExpanded = true,
+  focusOnMount = true,
 }: {
+  parentId?: number | null;
   onSubmit: (
     content: CreateEditableContentDto,
     onSuccess?: () => void,
   ) => void | Promise<void>;
+  onCancel?: () => void;
   error?: string | null;
   initialContent?: CreateEditableContentDto;
   withTags?: boolean;
+  startExpanded?: boolean;
+  focusOnMount?: boolean;
 }) => {
   const [content, setContent] = useState(initialContent);
   const [selectedTagId, setSelectedTagId] = useState<number | undefined>(
@@ -76,12 +84,14 @@ const Harness = ({
   return (
     <ToastProvider>
       <ReplyForm
-        parentId={null}
+        parentId={parentId}
         editableContent={content}
         setEditableContent={setContent}
         onSubmit={onSubmit}
+        onCancel={onCancel}
         setReplyingTo={() => {}}
-        startExpanded
+        focusOnMount={focusOnMount}
+        startExpanded={startExpanded}
         error={error}
         tags={withTags ? tags : []}
         selectedTagId={selectedTagId}
@@ -158,6 +168,35 @@ describe("ReplyForm", () => {
     }
 
     expect(sessionStorage.getItem(draftStorageKey)).toBeNull();
+  });
+
+  it("keeps a draft it was handed over the older copy that draft saved", () => {
+    seedSavedDraft();
+    const typedSince = `${draft.body} and a few words more`;
+    render(
+      <Harness
+        onSubmit={() => {}}
+        initialContent={{ body: typedSince, attachments: [] }}
+      />,
+    );
+
+    expect(screen.getByRole<HTMLTextAreaElement>("textbox").value).toBe(
+      typedSince,
+    );
+  });
+
+  it("restores a saved draft into a composer that mounts empty", () => {
+    seedSavedDraft();
+    render(
+      <Harness
+        onSubmit={() => {}}
+        initialContent={{ body: "", attachments: [] }}
+      />,
+    );
+
+    expect(screen.getByRole<HTMLTextAreaElement>("textbox").value).toBe(
+      draft.body,
+    );
   });
 
   it("retries a rejected reply with the keys, not the base64 it uploaded", async () => {
@@ -290,9 +329,13 @@ describe("ReplyForm", () => {
 
   it("ignores a discard confirmed after the post it could not stop", async () => {
     const finishUpload = deferUpload();
+    let discarded = false;
     render(
       <Harness
         onSubmit={(_content, onSuccess) => onSuccess?.()}
+        onCancel={() => {
+          discarded = true;
+        }}
         initialContent={{
           body: draft.body,
           attachments: ["data:image/png;base64,AAAA"],
@@ -309,9 +352,54 @@ describe("ReplyForm", () => {
     });
     await act(async () => finishUpload());
 
+    expect(discarded).toBe(false);
+  });
+
+  it("opens on a draft it was handed, so the text has a Post button", () => {
+    render(<Harness onSubmit={() => {}} startExpanded={false} />);
+
     expect(screen.getByRole<HTMLTextAreaElement>("textbox").value).toBe(
       draft.body,
     );
+    expect(screen.getByRole("button", { name: "Post" })).toBeTruthy();
+  });
+
+  it("takes no focus when it comes back after a reply posted", () => {
+    render(
+      <Harness
+        onSubmit={() => {}}
+        focusOnMount={false}
+        initialContent={{ body: "", attachments: [] }}
+      />,
+    );
+
+    expect(document.activeElement).not.toBe(screen.getByRole("textbox"));
+  });
+
+  it("takes the caret over a draft it was handed", () => {
+    render(<Harness onSubmit={() => {}} />);
+
+    expect(document.activeElement).toBe(screen.getByRole("textbox"));
+  });
+
+  it("stays shut on an empty draft", () => {
+    render(
+      <Harness
+        onSubmit={() => {}}
+        initialContent={{ body: "", attachments: [] }}
+        startExpanded={false}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Post" })).toBeNull();
+  });
+
+  it("empties the draft it posted, so reopening the composer starts clean", async () => {
+    render(<Harness onSubmit={(_content, onSuccess) => onSuccess?.()} />);
+
+    await post();
+
+    expect(screen.getByRole<HTMLTextAreaElement>("textbox").value).toBe("");
   });
 
   it("freezes the tag picker too, so the post carries the tag the composer shows", async () => {

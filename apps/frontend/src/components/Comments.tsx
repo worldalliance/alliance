@@ -304,6 +304,7 @@ const Comments = ({
             setEditableContent={tree.setEditableContent}
             onSubmit={tree.handleSubmitReply}
             setReplyingTo={tree.setReplyingTo}
+            focusOnMount={!!autofocus && tree.focusComposer}
             compact={compact}
             startExpanded={autofocus}
             error={tree.submitErrorFor(null)}

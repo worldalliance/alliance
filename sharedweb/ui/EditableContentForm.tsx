@@ -11,6 +11,8 @@ interface EditableContentFormProps {
   className?: string;
   placeholder?: string;
   expanded?: boolean;
+  /** Defaults to `expanded`. Set it to open a form without taking focus. */
+  autoFocus?: boolean;
   /** Freezes the draft, so a submit in flight cannot post a stale copy of it. */
   disabled?: boolean;
 
@@ -60,6 +62,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
   className,
   placeholder,
   expanded,
+  autoFocus,
   disabled = false,
   storageKey,
   autosaveMs = 1200,
@@ -269,7 +272,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
         }}
         onPaste={onPaste}
         placeholder={placeholder}
-        autoFocus={expanded}
+        autoFocus={autoFocus ?? expanded}
         style={{ overflowAnchor: "none" }}
       />
       {isDragging && !disabled && (

@@ -29,6 +29,8 @@ interface ReplyFormProps {
     onSuccess?: () => void,
   ) => void | Promise<void>;
   setReplyingTo: (id: number | null) => void;
+  /** Takes the caret on mount. False for a form the user did not ask for. */
+  focusOnMount: boolean;
   compact?: boolean;
   className?: string;
   startExpanded?: boolean;
@@ -46,6 +48,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
   setEditableContent,
   onSubmit,
   setReplyingTo,
+  focusOnMount,
   compact,
   className,
   startExpanded = false,
@@ -55,7 +58,14 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
   selectedTagId,
   setSelectedTagId,
 }: ReplyFormProps) => {
-  const [expanded, setExpanded] = useState(startExpanded);
+  const handedDraft = useRef(
+    editableContent.body.trim() !== "" ||
+      editableContent.attachments.length > 0,
+  );
+  // Post and Cancel render only while expanded, so a draft handed in opens it.
+  const [expanded, setExpanded] = useState(
+    startExpanded || handedDraft.current,
+  );
   const needsTag = parentId === null && tags.length > 0;
   const storageKey = useDraftStorageKey(`reply-${parentId}`);
   const [clearDraftSignal, setClearDraftSignal] = useState(0);
@@ -95,7 +105,10 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
           // while the post is in flight, and the signal below dies with it.
           clearDraft(storageKey);
           setClearDraftSignal((x) => x + 1);
+          setEditableContent({ body: "", attachments: [] });
+          setSelectedTagId?.(undefined);
           setExpanded(false);
+          setReplyingTo(null);
         },
       );
     } finally {
@@ -107,6 +120,8 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
     onSubmit,
     onDismissError,
     setEditableContent,
+    setSelectedTagId,
+    setReplyingTo,
     storageKey,
   ]);
 
@@ -165,6 +180,9 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
           disabled={isPosting}
           clearDraftSignal={clearDraftSignal}
           storageKey={storageKey}
+          autoFocus={focusOnMount}
+          // The saved copy is written from this draft, so it only trails it.
+          restoreDraft={!handedDraft.current}
           onChange={(val) => {
             onDismissError?.();
             setUploadError(null);

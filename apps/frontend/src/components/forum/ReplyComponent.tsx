@@ -290,6 +290,7 @@ const ReplyComponent = ({ reply, depth = 0 }: ReplyComponentProps) => {
         onSubmit={ctx.handleSubmitReply}
         className={isTopLevel ? "mt-3" : undefined}
         setReplyingTo={ctx.setReplyingTo}
+        focusOnMount
         compact={ctx.compact}
         startExpanded={true}
         error={ctx.submitErrorFor(reply.id)}

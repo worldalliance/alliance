@@ -188,6 +188,7 @@ type ReplyFormProps = {
     content: CreateEditableContentDto,
     parentId?: number | null,
   ) => void | Promise<void>;
+  focusOnMount: boolean;
 };
 
 const ReplyForm = ({
@@ -196,6 +197,7 @@ const ReplyForm = ({
   setContent,
   onCancel,
   autofocus,
+  focusOnMount,
   objectId,
   error,
   onDismissError,
@@ -205,6 +207,7 @@ const ReplyForm = ({
   onSubmit,
 }: ReplyFormProps) => {
   const needsTag = parentId === null && tags.length > 0;
+  const expanded = autofocus || parentId !== null;
   // Local, so posting one comment leaves every other composer live.
   const [isPosting, setIsPosting] = useState(false);
 
@@ -247,7 +250,8 @@ const ReplyForm = ({
           setContent(next);
         }}
         placeholder="Add a comment..."
-        expanded={autofocus || parentId !== null}
+        expanded={expanded}
+        autoFocus={focusOnMount}
         draftKey={`reply-${parentId ?? "root"}-${objectId}`}
         onSubmit={() => void post()}
         onCancel={handleCancel}
@@ -551,6 +555,7 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
             setContent={shared.setNestedDraft}
             onCancel={() => shared.setReplyingTo(null)}
             autofocus={shared.autofocus}
+            focusOnMount
             objectId={shared.objectId}
             error={shared.submitErrorFor(reply.id)}
             onDismissError={shared.clearSubmitError}
@@ -627,6 +632,9 @@ export default function Comments({
   });
   const [showForm, setShowForm] = useState(showFormProp);
   const [isComposing, setIsComposing] = useState(!!autofocus);
+  // The composer takes the keyboard when the user opened it, not when it comes
+  // back after a reply posted further down the thread.
+  const [focusComposer, setFocusComposer] = useState(!!autofocus);
 
   // useAuth() is hydrated before this mounts in the common case, so the initializer
   // picks the right default without needing an effect to react to late-arriving user data.
@@ -745,14 +753,15 @@ export default function Comments({
         }
 
         await fetchComments();
+        setDraft({ body: "", attachments: [] });
+        setReplyingTo(null);
         if (!parentId) {
           setTagFilter(selectedTagId);
+          setSelectedTagId(undefined);
+          setIsComposing(false);
+        } else {
+          setFocusComposer(false);
         }
-        setEditableContent({ body: "", attachments: [] });
-        setNestedDraft({ body: "", attachments: [] });
-        setReplyingTo(null);
-        setSelectedTagId(undefined);
-        setIsComposing(false);
       } catch (err) {
         console.error("Error posting reply:", err);
         setSubmitError({
@@ -1014,6 +1023,7 @@ export default function Comments({
             content={editableContent}
             setContent={setEditableContent}
             autofocus
+            focusOnMount={focusComposer}
             onCancel={() => setIsComposing(false)}
             objectId={objectId}
             error={submitErrorFor(null)}
@@ -1025,7 +1035,10 @@ export default function Comments({
           />
         ) : (
           <TouchableOpacity
-            onPress={() => setIsComposing(true)}
+            onPress={() => {
+              setIsComposing(true);
+              setFocusComposer(true);
+            }}
             activeOpacity={0.7}
             className="p-3 bg-zinc-100 rounded"
           >
