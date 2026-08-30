@@ -2455,6 +2455,25 @@ describe("Forum (e2e)", () => {
       expect(post.body.tags.map((tag) => tag.name)).toEqual(["First"]);
     });
 
+    it("refuses a save that names one tag twice, rather than dropping the rest", async () => {
+      const { postId, tags } = await createTaggedPost(["A", "B"]);
+
+      await saveTags({
+        postId,
+        tags: [
+          { id: tags[0].id, name: "X" },
+          { id: tags[0].id, name: "Y" },
+        ],
+        knownTagIds: tagIds(tags),
+      }).expect(400);
+
+      const post = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${postId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      expect(post.body.tags.map((tag) => tag.name)).toEqual(["A", "B"]);
+    });
+
     it("rejects a tag name that is only whitespace", async () => {
       const { postId, tags } = await createTaggedPost(["A"]);
 

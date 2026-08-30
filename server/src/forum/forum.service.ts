@@ -1271,6 +1271,12 @@ export class ForumService {
     if (new Set(names).size !== names.length) {
       throw new BadRequestException("Tag names must be unique within a post");
     }
+    // A tag named twice collapses into one kept row, and every tag the save
+    // left out of that row is deleted.
+    const ids = tagInputs.map((input) => input.id).filter((id) => id != null);
+    if (new Set(ids).size !== ids.length) {
+      throw new BadRequestException("Each tag can appear once in a save");
+    }
 
     const tagRepository = manager.getRepository(PostTag);
     const existing = await tagRepository.find({ where: { postId } });
