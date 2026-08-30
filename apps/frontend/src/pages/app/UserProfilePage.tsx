@@ -1,3 +1,4 @@
+import { changedPhoto } from "@alliance/common/image-src";
 import { forCount } from "@alliance/common/plural";
 import {
   UpdateProfileDto,
@@ -264,7 +265,10 @@ const UserProfilePage: React.FC = () => {
       const payload: UpdateProfileDto = {
         name: editName,
         profileDescription: editBio,
-        profilePicture: editAvatarUrl ?? undefined,
+        profilePicture: changedPhoto({
+          current: currentProfilePicture,
+          next: editAvatarUrl,
+        }),
       };
       const response = await updateProfileMutation.mutateAsync(payload);
 

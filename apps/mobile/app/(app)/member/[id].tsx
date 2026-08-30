@@ -1,3 +1,4 @@
+import { changedPhoto } from "@alliance/common/image-src";
 import { run } from "@alliance/common/run";
 import {
   ActionActivityDto,
@@ -167,6 +168,7 @@ export default function UserProfileScreen() {
   const [editAvatarUrl, setEditAvatarUrl] = useState<string | null>(null);
   const [isPickingAvatar, setIsPickingAvatar] = useState(false);
   const [pfpLightboxOpen, setPfpLightboxOpen] = useState(false);
+  const currentProfilePicture = profile?.profilePicture ?? null;
 
   const { data: completedCountData } = useQuery({
     queryKey: ["userCompletedCount", userId],
@@ -232,7 +234,10 @@ export default function UserProfileScreen() {
     const payload: UpdateProfileDto = {
       name: editName,
       profileDescription: editBio,
-      profilePicture: editAvatarUrl ?? undefined,
+      profilePicture: changedPhoto({
+        current: currentProfilePicture,
+        next: editAvatarUrl,
+      }),
     };
 
     try {
@@ -241,7 +246,14 @@ export default function UserProfileScreen() {
     } catch (error) {
       console.error("Failed to save profile", error);
     }
-  }, [isMe, updateProfileMutation, editName, editBio, editAvatarUrl]);
+  }, [
+    isMe,
+    updateProfileMutation,
+    editName,
+    editBio,
+    editAvatarUrl,
+    currentProfilePicture,
+  ]);
 
   const handleCancelEdit = useCallback(() => {
     if (!profile) return;
