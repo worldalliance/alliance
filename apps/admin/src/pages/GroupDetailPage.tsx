@@ -54,7 +54,6 @@ const CommunityDetailPage: React.FC = () => {
   const [formValues, setFormValues] = useState<CreateCommunityDto>({
     name: "",
     description: "",
-    photo: "",
     public: false,
     maxCapacity: GROUP_MAX_CAPACITY_DEFAULT,
     allowMemberInvites: true,
@@ -196,7 +195,6 @@ const CommunityDetailPage: React.FC = () => {
       setFormValues({
         name: community.name,
         description: community.description,
-        photo: community.photo ?? "",
         public: community.public,
         maxCapacity: community.maxCapacity,
         allowMemberInvites: community.allowMemberInvites,
@@ -241,7 +239,6 @@ const CommunityDetailPage: React.FC = () => {
       const payload: UpdateCommunityDto = {
         name: formValues.name.trim(),
         description: formValues.description.trim(),
-        photo: formValues.photo?.trim() ? formValues.photo.trim() : null,
         public: formValues.public,
         maxCapacity: normalizedMaxCapacity,
         allowMemberInvites: formValues.allowMemberInvites,

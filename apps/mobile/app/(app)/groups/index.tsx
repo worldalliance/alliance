@@ -1,4 +1,5 @@
 import { errorMessage } from "@alliance/common/errorMessage";
+import { changedPhoto } from "@alliance/common/image-src";
 import {
   actionsGetCommunityMemberInfo,
   communityGetCommunityInvites,
@@ -853,7 +854,10 @@ function GroupSettingsTab({
         body: {
           name: trimmed,
           description: editForm.description,
-          photo: photoTrim || null,
+          photo: changedPhoto({
+            current: community.photo ?? null,
+            next: photoTrim || null,
+          }),
           public: editForm.public,
           maxCapacity: normalizedMaxCapacity,
           allowMemberInvites: editForm.allowMemberInvites,
@@ -879,6 +883,7 @@ function GroupSettingsTab({
     }
   }, [
     community.id,
+    community.photo,
     editForm.allowMemberInvites,
     editForm.allowStaffAssignments,
     editForm.description,

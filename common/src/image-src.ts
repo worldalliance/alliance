@@ -41,3 +41,19 @@ export function resolveSafeUploadSrc({
   const safe = safeUrl(src);
   return safe ? resolveUploadSrc({ src: safe, apiUrl }) : safe;
 }
+
+/**
+ * What an update should send for a photo the user may have edited. The api
+ * renders a stored photo as a url, so sending an unchanged one back would
+ * replace the upload key with that url. Undefined leaves the photo alone and
+ * null clears it.
+ */
+export function changedPhoto({
+  current,
+  next,
+}: {
+  current: string | null;
+  next: string | null;
+}): string | null | undefined {
+  return next === current ? undefined : next;
+}

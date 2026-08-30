@@ -561,6 +561,26 @@ describe("Community (e2e)", () => {
     expect(reloaded.photo).toBeNull();
   });
 
+  it("PATCH /community/:communityId keeps the photo when the field is omitted", async () => {
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP Keep Photo",
+        photo: "some-key.webp",
+        leaders: [testUser],
+        users: [testUser],
+      }),
+    );
+
+    const res = await request(ctx.app.getHttpServer())
+      .patch(`/community/${community.id}`)
+      .set("Authorization", `Bearer ${testUserToken}`)
+      .send({ name: "E2E HTTP Keep Photo Renamed" });
+
+    expect(res.status).toBe(200);
+    const reloaded = await communityRepo.findOneByOrFail({ id: community.id });
+    expect(reloaded.photo).toBe("some-key.webp");
+  });
+
   it("PATCH /community/:communityId keeps the key when sent the url it rendered", async () => {
     const community = await communityRepo.save(
       communityRepo.create({

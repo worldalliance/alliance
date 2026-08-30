@@ -49,7 +49,6 @@ const sortByName = (a: CommunityDto, b: CommunityDto) =>
 const INITIAL_COMMUNITY: CreateCommunityDto = {
   name: "",
   description: "",
-  photo: "",
   public: false,
   allowMemberInvites: true,
   allowStaffAssignments: true,
@@ -179,7 +178,6 @@ export default function GroupManageScreen() {
   const handleCreateCommunity = useCallback(async () => {
     const name = newCommunity.name.trim();
     const description = newCommunity.description.trim();
-    const photo = newCommunity.photo?.trim();
 
     let normalizedMaxCapacity: number | null = null;
     if (requiresMaxCapacity) {
@@ -202,7 +200,6 @@ export default function GroupManageScreen() {
         body: {
           name,
           description,
-          photo: photo || undefined,
           public: newCommunity.public,
           allowMemberInvites: newCommunity.allowMemberInvites,
           allowStaffAssignments: newCommunity.allowStaffAssignments,

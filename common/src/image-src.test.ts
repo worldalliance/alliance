@@ -1,4 +1,5 @@
 import {
+  changedPhoto,
   isUploadKey,
   resolveSafeUploadSrc,
   resolveUploadSrc,
@@ -76,5 +77,24 @@ describe("resolveSafeUploadSrc", () => {
     expect(resolveSafeUploadSrc({ src: "alliance://actions/12", apiUrl })).toBe(
       "",
     );
+  });
+});
+
+describe("changedPhoto", () => {
+  const url = "https://dj92mxbdjuclo.cloudfront.net/1770253183572.webp";
+
+  it("sends nothing for the url the api just rendered", () => {
+    expect(changedPhoto({ current: url, next: url })).toBeUndefined();
+    expect(changedPhoto({ current: null, next: null })).toBeUndefined();
+  });
+
+  it("sends null for a photo the user cleared", () => {
+    expect(changedPhoto({ current: url, next: null })).toBeNull();
+  });
+
+  it("sends the new image the user picked", () => {
+    const dataUri = "data:image/webp;base64,UklGRg==";
+    expect(changedPhoto({ current: url, next: dataUri })).toBe(dataUri);
+    expect(changedPhoto({ current: null, next: dataUri })).toBe(dataUri);
   });
 });

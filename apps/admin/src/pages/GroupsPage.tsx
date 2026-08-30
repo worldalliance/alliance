@@ -29,7 +29,6 @@ import { useGroupAssignment } from "../lib/GroupAssignmentContext";
 const INITIAL_COMMUNITY: CreateCommunityDto = {
   name: "",
   description: "",
-  photo: "",
   public: false,
   allowMemberInvites: true,
   allowStaffAssignments: true,
@@ -114,7 +113,6 @@ const GroupsPage: React.FC = () => {
       event.preventDefault();
       const name = newCommunity.name.trim();
       const description = newCommunity.description.trim();
-      const photo = newCommunity.photo?.trim();
       let normalizedMaxCapacity: number | null = null;
       if (requiresMaxCapacity) {
         if (!newCommunity.maxCapacity || newCommunity.maxCapacity <= 0) {
@@ -134,7 +132,6 @@ const GroupsPage: React.FC = () => {
           body: {
             name,
             description,
-            photo: photo ? photo : undefined,
             public: newCommunity.public,
             allowMemberInvites: newCommunity.allowMemberInvites,
             allowStaffAssignments: newCommunity.allowStaffAssignments,

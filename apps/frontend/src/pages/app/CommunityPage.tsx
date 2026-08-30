@@ -3,6 +3,7 @@ import {
   COMMUNITY_NAME_MAX_LENGTH,
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
+import { changedPhoto } from "@alliance/common/image-src";
 import {
   actionsCommunityCompletedActionsCount,
   actionsGetCommunityMemberInfo,
@@ -311,7 +312,7 @@ const CommunityPage = () => {
         body: {
           name: editName,
           description: editDescription,
-          photo: editPhotoUrl,
+          photo: changedPhoto({ current: currentPhoto, next: editPhotoUrl }),
           public: editPublic,
           maxCapacity: normalizedMaxCapacity,
           allowMemberInvites: editAllowMemberInvites,
@@ -345,6 +346,7 @@ const CommunityPage = () => {
     editAllowStaffAssignments,
     editMaxCapacity,
     editPhotoUrl,
+    currentPhoto,
     isSaving,
     useMaxCapacity,
     memberCount,
