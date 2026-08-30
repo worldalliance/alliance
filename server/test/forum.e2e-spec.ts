@@ -2018,6 +2018,105 @@ describe("Forum (e2e)", () => {
       expect(stored.qaMode).toBe(true);
     });
 
+    it("adds an expert and an author once when two saves race to add them", async () => {
+      const { user: expert } = await createExtraUserAndToken();
+      const { user: coAuthor } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Gaining The Same Expert Twice",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+      const addBoth = () =>
+        saveSettings(postId, {
+          expertIds: [expert.id],
+          authorIds: [coAuthor.id],
+        }).then((res) => res);
+
+      const inFlight = await withLockHeld(
+        {
+          query: "select id from post where id = $1 for update",
+          params: [postId],
+        },
+        async () => {
+          const first = addBoth();
+          await waitForBlockedBackends(1);
+          const second = addBoth();
+          await waitForBlockedBackends(2);
+          return [first, second] as const;
+        },
+      );
+
+      for (const save of await Promise.all(inFlight)) {
+        expect(save.status).toBe(200);
+      }
+
+      expect(
+        await ctx.dataSource.query(
+          `select "userId" from post_experts_user where "postId" = $1`,
+          [postId],
+        ),
+      ).toEqual([{ userId: expert.id }]);
+      expect(
+        await ctx.dataSource.query(
+          `select "userId" from post_authors_user where "postId" = $1`,
+          [postId],
+        ),
+      ).toEqual([{ userId: coAuthor.id }]);
+    });
+
+    it("keeps only the experts the later save named", async () => {
+      const { user: firstExpert } = await createExtraUserAndToken();
+      const { user: secondExpert } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Gaining Two Different Experts",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      const inFlight = await withLockHeld(
+        {
+          query: "select id from post where id = $1 for update",
+          params: [postId],
+        },
+        async () => {
+          const first = saveSettings(postId, {
+            expertIds: [firstExpert.id],
+          }).then((res) => res);
+          await waitForBlockedBackends(1);
+          const second = saveSettings(postId, {
+            expertIds: [secondExpert.id],
+          }).then((res) => res);
+          await waitForBlockedBackends(2);
+          return [first, second] as const;
+        },
+      );
+
+      for (const save of await Promise.all(inFlight)) {
+        expect(save.status).toBe(200);
+      }
+
+      expect(
+        await ctx.dataSource.query(
+          `select "userId" from post_experts_user where "postId" = $1`,
+          [postId],
+        ),
+      ).toEqual([{ userId: secondExpert.id }]);
+    });
+
     it("refuses a save whose settings are the wrong type", async () => {
       const postResponse = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
