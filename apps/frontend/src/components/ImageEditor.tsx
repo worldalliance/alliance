@@ -187,13 +187,20 @@ const ImageEditor: FC<ImageEditorProps> = ({
   const [completedCrop, setCompletedCrop] = useState<PercentCrop | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rotation, setRotation] = useState(0);
-  const [isPreviewProcessing, setIsPreviewProcessing] = useState(false);
+  // The measurement and a rotation settle only their own flag, so a dropped
+  // rotation cannot report the measurement that replaced it as finished.
+  const [isMeasuring, setIsMeasuring] = useState(false);
+  const [isRotating, setIsRotating] = useState(false);
+  const isPreviewProcessing = isMeasuring || isRotating;
   const [hasCustomImage, setHasCustomImage] = useState(false);
   const [sourceDimensions, setSourceDimensions] = useState<Dimensions | null>(
     null,
   );
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const lastInitialUrlRef = useRef<string | null>(initialImageUrl);
+  // Bumped by everything that replaces the preview, so a rotation still
+  // encoding when one of them lands is dropped rather than written back.
+  const previewGenerationRef = useRef(0);
 
   // The crop effect below re-encodes the source at full resolution, so onChange
   // stays out of its dependencies: a caller that renders a fresh callback and
@@ -233,6 +240,13 @@ const ImageEditor: FC<ImageEditorProps> = ({
     lastInitialUrlRef.current = initialImageUrl;
   }, [initialImageUrl, hasCustomImage]);
 
+  // A rotation that clears this flag on its way out clears a later rotation's,
+  // so whatever replaced the preview it drew on clears it here instead.
+  const dropRotation = useCallback(() => {
+    previewGenerationRef.current += 1;
+    setIsRotating(false);
+  }, []);
+
   const triggerFileSelect = useCallback(() => {
     if (isUploading) return;
     fileInputRef.current?.click();
@@ -242,11 +256,13 @@ const ImageEditor: FC<ImageEditorProps> = ({
     if (!imageSrc) {
       setSourceDimensions(null);
       setPreviewSrc(null);
+      // A cancelled run leaves this set, and never reaches the clear below.
+      setIsMeasuring(false);
       return;
     }
 
     let cancelled = false;
-    setIsPreviewProcessing(true);
+    setIsMeasuring(true);
 
     (async () => {
       try {
@@ -269,7 +285,7 @@ const ImageEditor: FC<ImageEditorProps> = ({
         }
       } finally {
         if (!cancelled) {
-          setIsPreviewProcessing(false);
+          setIsMeasuring(false);
         }
       }
     })();
@@ -307,6 +323,7 @@ const ImageEditor: FC<ImageEditorProps> = ({
         // Re-picking the loaded file leaves imageSrc untouched, so the effects
         // keyed on it never rerun to rebuild what the reset below clears.
         if (reader.result === imageSrc) return;
+        dropRotation();
         setImageSrc(reader.result);
         setPreviewSrc(reader.result);
         setCroppedImage(null);
@@ -321,10 +338,11 @@ const ImageEditor: FC<ImageEditorProps> = ({
       reader.readAsDataURL(file);
       event.target.value = "";
     },
-    [allowedMimeTypes, imageSrc, maxFileSizeMb],
+    [allowedMimeTypes, dropRotation, imageSrc, maxFileSizeMb],
   );
 
   const handleRemove = useCallback(() => {
+    dropRotation();
     setImageSrc(null);
     setPreviewSrc(null);
     setCroppedImage(null);
@@ -336,7 +354,7 @@ const ImageEditor: FC<ImageEditorProps> = ({
     setRotation(0);
     setError(null);
     onChange(null);
-  }, [onChange]);
+  }, [dropRotation, onChange]);
 
   const centerSquareCrop = useCallback((image: HTMLImageElement) => {
     const { width, height } = image;
@@ -406,9 +424,11 @@ const ImageEditor: FC<ImageEditorProps> = ({
         return;
       }
 
-      setIsPreviewProcessing(true);
+      const generation = previewGenerationRef.current;
+      setIsRotating(true);
       try {
         const rotated = await rotateImageData(previewSrc, direction);
+        if (previewGenerationRef.current !== generation) return;
         // The crop is mapped onto the source at `rotation`, so the angle and
         // the preview it was drawn on have to move together or not at all.
         const delta = direction === "left" ? -90 : 90;
@@ -417,9 +437,11 @@ const ImageEditor: FC<ImageEditorProps> = ({
         setCrop(undefined);
         setCompletedCrop(null);
       } catch {
-        setError("Unable to rotate image. Please try again.");
+        if (previewGenerationRef.current === generation) {
+          setError("Unable to rotate image. Please try again.");
+        }
       } finally {
-        setIsPreviewProcessing(false);
+        if (previewGenerationRef.current === generation) setIsRotating(false);
       }
     },
     [hasCustomImage, isUploading, previewSrc, rotation, isPreviewProcessing],
