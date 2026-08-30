@@ -135,6 +135,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
 }) => {
   const portal = useKeyboardExtenderPortal();
   const [isPicking, setIsPicking] = useState(false);
+  const [, setDroppedKeystrokes] = useState(0);
   const [pickerError, setPickerError] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedHashRef = useRef<string>("");
@@ -244,7 +245,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
   }, [clearDraftSignal, draftPath]);
 
   const handlePickImages = async () => {
-    if (isPickingRef.current || isPicking) {
+    if (isPickingRef.current || isPicking || isSubmitting) {
       return;
     }
     isPickingRef.current = true;
@@ -300,9 +301,21 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
     <View className={className}>
       <TextInput
         ref={inputRef}
-        className="w-full px-3 py-2 text-base text-zinc-900"
+        className={`w-full px-3 py-2 text-base text-zinc-900 ${
+          isSubmitting ? "opacity-50" : ""
+        }`}
         value={value.body}
-        onChangeText={(text) => onChange({ ...value, body: text })}
+        // `editable={false}` would blur the input and take the keyboard toolbar
+        // holding Post and Cancel down with it, so a frozen form drops the
+        // keystroke instead. Native keeps the typed text on screen until a
+        // render puts `value` back, which is what the counter forces.
+        onChangeText={(text) => {
+          if (isSubmitting) {
+            setDroppedKeystrokes((count) => count + 1);
+            return;
+          }
+          onChange({ ...value, body: text });
+        }}
         placeholder={placeholder}
         placeholderTextColor="#9ca3af"
         multiline
@@ -330,7 +343,8 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
               />
               <TouchableOpacity
                 onPress={() => removeAttachment(idx)}
-                style={styles.removeButton}
+                disabled={isSubmitting}
+                style={[styles.removeButton, isSubmitting && styles.frozen]}
                 accessibilityLabel="Remove image"
               >
                 <Text className="text-xs text-white">x</Text>
@@ -348,7 +362,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
                   if (!isPicking) handlePickImages();
                 })
               }
-              className="px-3 py-1.5"
+              className={`px-3 py-1.5 ${isSubmitting ? "opacity-50" : ""}`}
             >
               {isPicking ? (
                 <ActivityIndicator size="small" color="#444" />
@@ -362,8 +376,12 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
             <View className="flex-row justify-center items-center">
               {onCancel && (
                 <ToolbarButton
-                  onTap={() => toolbarTap(onCancel)}
-                  className="px-3 py-1.5"
+                  onTap={() =>
+                    toolbarTap(() => {
+                      if (!isSubmitting) onCancel();
+                    })
+                  }
+                  className={`px-3 py-1.5 ${isSubmitting ? "opacity-50" : ""}`}
                 >
                   <Text className="text-zinc-500">Cancel</Text>
                 </ToolbarButton>
@@ -415,6 +433,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0, 0, 0, 0.7)",
+  },
+  frozen: {
+    opacity: 0.5,
   },
 });
 

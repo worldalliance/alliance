@@ -179,7 +179,6 @@ type ReplyFormProps = {
   onCancel?: () => void;
   autofocus?: boolean;
   objectId: number;
-  isSubmitting: boolean;
   error?: string | null;
   onDismissError?: () => void;
   tags?: readonly PostTagDto[];
@@ -188,7 +187,7 @@ type ReplyFormProps = {
   onSubmit: (
     content: CreateEditableContentDto,
     parentId?: number | null,
-  ) => void;
+  ) => void | Promise<void>;
 };
 
 const ReplyForm = ({
@@ -198,7 +197,6 @@ const ReplyForm = ({
   onCancel,
   autofocus,
   objectId,
-  isSubmitting,
   error,
   onDismissError,
   tags = [],
@@ -207,6 +205,18 @@ const ReplyForm = ({
   onSubmit,
 }: ReplyFormProps) => {
   const needsTag = parentId === null && tags.length > 0;
+  // Local, so posting one comment leaves every other composer live.
+  const [isPosting, setIsPosting] = useState(false);
+
+  const post = async () => {
+    setIsPosting(true);
+    try {
+      await onSubmit(content, parentId);
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
   // EditableContentForm hides its Cancel button when onCancel is undefined.
   const handleCancel = onCancel
     ? () => {
@@ -224,6 +234,7 @@ const ReplyForm = ({
           </Text>
           <TagChips
             tags={tags}
+            disabled={isPosting}
             selected={selectedTagId}
             onSelect={(value) => setSelectedTagId?.(value ?? undefined)}
           />
@@ -238,10 +249,10 @@ const ReplyForm = ({
         placeholder="Add a comment..."
         expanded={autofocus || parentId !== null}
         draftKey={`reply-${parentId ?? "root"}-${objectId}`}
-        onSubmit={() => onSubmit(content, parentId)}
+        onSubmit={() => void post()}
         onCancel={handleCancel}
         submitLabel="Post"
-        isSubmitting={isSubmitting}
+        isSubmitting={isPosting}
         submitDisabled={needsTag && selectedTagId === undefined}
       />
       {error && <Text className="mt-2 text-sm text-red-500">{error}</Text>}
@@ -259,7 +270,6 @@ type ReplyItemSharedProps = {
   setReplyingTo: (id: number | null) => void;
   nestedDraft: CreateEditableContentDto;
   setNestedDraft: (next: CreateEditableContentDto) => void;
-  isSubmitting: boolean;
   highlightedId: number | null;
   scrollViewRef?: React.RefObject<KeyboardAwareScrollViewRef | null>;
   newlyAddedReplies: Set<number>;
@@ -435,7 +445,7 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
         {isEditing ? (
           <View className="gap-y-2">
             <EditableContentForm
-              isSubmitting={shared.isSubmitting || isSavingEdit}
+              isSubmitting={isSavingEdit}
               value={editContent}
               onChange={setEditContent}
               className="bg-zinc-100 rounded overflow-visible"
@@ -542,7 +552,6 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
             onCancel={() => shared.setReplyingTo(null)}
             autofocus={shared.autofocus}
             objectId={shared.objectId}
-            isSubmitting={shared.isSubmitting}
             error={shared.submitErrorFor(reply.id)}
             onDismissError={shared.clearSubmitError}
             onSubmit={shared.onSubmitReply}
@@ -598,7 +607,6 @@ export default function Comments({
     undefined,
   );
   const [tagFilter, setTagFilter] = useState<TagFilter>(undefined);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [newlyAddedReplies, setNewlyAddedReplies] = useState<Set<number>>(
     new Set(),
   );
@@ -678,7 +686,6 @@ export default function Comments({
   const handleSubmitReply = useCallback(
     async (contentDto: CreateEditableContentDto, parentId?: number | null) => {
       try {
-        setIsSubmitting(true);
         setSubmitError(null);
         const sources = contentDto.attachments;
         const uploaded = await uploadAttachments(sources);
@@ -752,8 +759,6 @@ export default function Comments({
           parentId: parentId ?? null,
           message: "Failed to submit reply",
         });
-      } finally {
-        setIsSubmitting(false);
       }
     },
     [fetchComments, objectId, selectedTagId, type],
@@ -1011,7 +1016,6 @@ export default function Comments({
             autofocus
             onCancel={() => setIsComposing(false)}
             objectId={objectId}
-            isSubmitting={isSubmitting}
             error={submitErrorFor(null)}
             onDismissError={clearSubmitError}
             tags={isPostComments ? tags : []}
@@ -1078,7 +1082,6 @@ export default function Comments({
               setReplyingTo={setReplyingTo}
               nestedDraft={nestedDraft}
               setNestedDraft={setNestedDraft}
-              isSubmitting={isSubmitting}
               highlightedId={highlightedId}
               scrollViewRef={scrollViewRef}
               newlyAddedReplies={newlyAddedReplies}

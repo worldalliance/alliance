@@ -11,6 +11,8 @@ interface EditableContentFormProps {
   className?: string;
   placeholder?: string;
   expanded?: boolean;
+  /** Freezes the draft, so a submit in flight cannot post a stale copy of it. */
+  disabled?: boolean;
 
   /** Optional namespace to distinguish drafts across pages/users/entities */
   draftKey?: string;
@@ -42,6 +44,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
   className,
   placeholder,
   expanded,
+  disabled = false,
   draftKey,
   autosaveMs = 1200,
   restoreDraft,
@@ -142,7 +145,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
     dataTransfer?: DataTransfer | null;
   }) => {
     const files = e.target?.files ?? e.dataTransfer?.files ?? null;
-    if (!files || files.length === 0) return;
+    if (disabled || !files || files.length === 0) return;
 
     try {
       const base64s = await readImagesFromFiles(Array.from(files));
@@ -156,6 +159,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
   };
 
   const onPaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (disabled) return;
     try {
       const items = Array.from(e.clipboardData?.items ?? []);
       const imageFiles: File[] = [];
@@ -242,16 +246,21 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
         className={cn(
           "w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-transparent border-none",
           !expanded && "resize-none",
+          disabled && "opacity-50 cursor-not-allowed",
         )}
         minRows={expanded ? 2 : 1}
         value={value.body}
-        onChange={(e) => onChange({ ...value, body: e.target.value })}
+        readOnly={disabled}
+        onChange={(e) => {
+          if (disabled) return;
+          onChange({ ...value, body: e.target.value });
+        }}
         onPaste={onPaste}
         placeholder={placeholder}
         autoFocus={expanded}
         style={{ overflowAnchor: "none" }}
       />
-      {isDragging && (
+      {isDragging && !disabled && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 rounded pointer-events-none">
           <div className="text-white font-medium">Drop images to attach</div>
         </div>
@@ -266,13 +275,14 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
               />
               <button
                 type="button"
+                disabled={disabled}
                 onClick={() =>
                   onChange({
                     ...value,
                     attachments: value.attachments!.filter((_, i) => i !== idx),
                   })
                 }
-                className="absolute -top-2 -right-2 bg-black/70 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center pl-[0.5px] pb-[1px]"
+                className="absolute -top-2 -right-2 bg-black/70 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center pl-[0.5px] pb-[1px] disabled:opacity-50"
                 aria-label="Remove image"
               >
                 &times;

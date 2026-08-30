@@ -69,7 +69,6 @@ const defaultCtx = {
   clearSubmitError: fn() as () => void,
   onLikeReply: fn() as (id: number, unlike?: boolean) => Promise<void>,
   onPinReply: fn() as (id: number) => Promise<void>,
-  isSubmitting: false,
   newlyAddedReplies: new Set<number>(),
   highlightedReplyId: null as number | null,
   expertIds: [] as number[],

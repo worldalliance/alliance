@@ -14,6 +14,7 @@ interface TagChipsProps {
   onSelect: (value: TagFilter) => void;
   counts?: TagCounts;
   className?: string;
+  disabled?: boolean;
 }
 
 const TagChips = ({
@@ -22,6 +23,7 @@ const TagChips = ({
   onSelect,
   counts,
   className,
+  disabled = false,
 }: TagChipsProps) => (
   <View className={cn("flex-row flex-wrap gap-2", className)}>
     {buildTagChips(tags, counts).map((chip) => {
@@ -30,10 +32,12 @@ const TagChips = ({
         <TouchableOpacity
           key={chip.key}
           onPress={() => onSelect(chip.value)}
+          disabled={disabled}
           activeOpacity={0.7}
           className={cn(
             "px-3 py-1 rounded-full border",
             isSelected ? "bg-zinc-800 border-zinc-800" : "border-zinc-300",
+            disabled && "opacity-50",
           )}
         >
           <Text

@@ -157,6 +157,7 @@ const ReplyContent = ({
                 editing.setEditContent(val.body);
                 editing.setEditAttachments(val.attachments);
               }}
+              disabled={editing.isUpdating}
               placeholder="Edit your reply..."
             />
             {editing.editError && (
@@ -287,7 +288,6 @@ const ReplyComponent = ({ reply, depth = 0 }: ReplyComponentProps) => {
         editableContent={nestedDraft}
         setEditableContent={setNestedDraft}
         onSubmit={ctx.handleSubmitReply}
-        isSubmitting={ctx.isSubmitting}
         className={isTopLevel ? "mt-3" : undefined}
         setReplyingTo={ctx.setReplyingTo}
         compact={ctx.compact}

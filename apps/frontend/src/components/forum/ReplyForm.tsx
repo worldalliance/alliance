@@ -21,8 +21,10 @@ interface ReplyFormProps {
   onCancel?: () => void;
   editableContent: CreateEditableContentDto;
   setEditableContent: Dispatch<SetStateAction<CreateEditableContentDto>>;
-  onSubmit: (content: CreateEditableContentDto, onSuccess?: () => void) => void;
-  isSubmitting: boolean;
+  onSubmit: (
+    content: CreateEditableContentDto,
+    onSuccess?: () => void,
+  ) => void | Promise<void>;
   setReplyingTo: (id: number | null) => void;
   compact?: boolean;
   className?: string;
@@ -40,7 +42,6 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
   editableContent,
   setEditableContent,
   onSubmit,
-  isSubmitting,
   setReplyingTo,
   compact,
   className,
@@ -55,33 +56,45 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
   const needsTag = parentId === null && tags.length > 0;
   const [clearDraftSignal, setClearDraftSignal] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  // Local, so posting one comment leaves every other composer live.
+  const [isPosting, setIsPosting] = useState(false);
+  // The discard confirm resumes in a later render than the one it opened in, so
+  // it reads the freeze from here rather than from a captured `isPosting`.
+  const isPostingRef = useRef(false);
 
   const submit = useCallback(async () => {
     onDismissError?.();
     setUploadError(null);
-    setIsUploading(true);
-    const sources = editableContent.attachments;
-    const uploaded = await uploadAttachments(sources);
-    setIsUploading(false);
-    if (!uploaded.ok) {
-      setUploadError(uploaded.error);
-      return;
+    isPostingRef.current = true;
+    setIsPosting(true);
+    try {
+      const sources = editableContent.attachments;
+      const uploaded = await uploadAttachments(sources);
+      if (!uploaded.ok) {
+        setUploadError(uploaded.error);
+        return;
+      }
+      setEditableContent((prev) => ({
+        ...prev,
+        attachments: withUploadedKeys({
+          current: prev.attachments,
+          sources,
+          keys: uploaded.value,
+        }),
+      }));
+      // Clear the draft only once the server accepts, so a rejected comment
+      // keeps its text.
+      await onSubmit(
+        { ...editableContent, attachments: uploaded.value },
+        () => {
+          setClearDraftSignal((x) => x + 1);
+          setExpanded(false);
+        },
+      );
+    } finally {
+      isPostingRef.current = false;
+      setIsPosting(false);
     }
-    setEditableContent((prev) => ({
-      ...prev,
-      attachments: withUploadedKeys({
-        current: prev.attachments,
-        sources,
-        keys: uploaded.value,
-      }),
-    }));
-    // Clear the draft only once the server accepts, so a rejected comment
-    // keeps its text.
-    onSubmit({ ...editableContent, attachments: uploaded.value }, () => {
-      setClearDraftSignal((x) => x + 1);
-      setExpanded(false);
-    });
   }, [editableContent, onSubmit, onDismissError, setEditableContent]);
 
   const handleSubmit = useCallback(
@@ -106,7 +119,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
             anchorEl: cancelRef.current,
             placement: "topleft",
           });
-    if (!ok) return;
+    if (!ok || isPostingRef.current) return;
     onDismissError?.();
     setEditableContent({ body: "", attachments: [] });
     setSelectedTagId?.(undefined);
@@ -136,6 +149,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
         <EditableContentForm
           value={editableContent}
           expanded={expanded}
+          disabled={isPosting}
           clearDraftSignal={clearDraftSignal}
           draftKey={`reply-${parentId}`}
           onChange={(val) => {
@@ -161,6 +175,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
             </p>
             <TagChips
               tags={tags}
+              disabled={isPosting}
               selected={selectedTagId}
               onSelect={(value) => setSelectedTagId?.(value ?? undefined)}
             />
@@ -180,19 +195,19 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
               type="submit"
               color={ButtonColor.Stone}
               disabled={
-                isSubmitting ||
-                isUploading ||
+                isPosting ||
                 (needsTag && selectedTagId === undefined) ||
                 (!editableContent.body.trim() &&
                   editableContent.attachments.length === 0)
               }
               className="transition disabled:opacity-50 text-nowrap"
             >
-              {isSubmitting || isUploading ? "Posting..." : "Post"}
+              {isPosting ? "Posting..." : "Post"}
             </Button>
             <Button
               type="button"
               color={ButtonColor.Grey}
+              disabled={isPosting}
               onClick={handleCancel}
             >
               Cancel

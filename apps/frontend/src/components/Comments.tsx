@@ -263,7 +263,6 @@ const Comments = ({
       clearSubmitError: tree.clearSubmitError,
       onLikeReply: tree.handleLikeReply,
       onPinReply: tree.handlePinReply,
-      isSubmitting: tree.isSubmitting,
       newlyAddedReplies: tree.newlyAddedReplies,
       highlightedReplyId: tree.highlightedReplyId,
       expertIds,
@@ -284,7 +283,6 @@ const Comments = ({
       tree.clearSubmitError,
       tree.handleLikeReply,
       tree.handlePinReply,
-      tree.isSubmitting,
       tree.newlyAddedReplies,
       tree.highlightedReplyId,
       expertIds,
@@ -305,7 +303,6 @@ const Comments = ({
             editableContent={tree.editableContent}
             setEditableContent={tree.setEditableContent}
             onSubmit={tree.handleSubmitReply}
-            isSubmitting={tree.isSubmitting}
             setReplyingTo={tree.setReplyingTo}
             compact={compact}
             startExpanded={autofocus}

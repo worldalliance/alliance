@@ -48,7 +48,6 @@ interface CommentsContextValue {
   clearSubmitError: () => void;
   onLikeReply: (id: number, unlike?: boolean) => Promise<unknown>;
   onPinReply: (id: number) => Promise<void>;
-  isSubmitting: boolean;
   newlyAddedReplies: Set<number>;
   highlightedReplyId: number | null;
   expertIds: number[];
@@ -90,7 +89,6 @@ export interface UseCommentTreeResult {
   handlePinReply: (id: number) => Promise<void>;
   replyingTo: number | null;
   setReplyingTo: (id: number | null) => void;
-  isSubmitting: boolean;
   newlyAddedReplies: Set<number>;
   highlightedReplyId: number | null;
   editableContent: CreateEditableContentDto;
@@ -123,7 +121,6 @@ export function useCommentTree(
     undefined,
   );
   const [tagFilter, setTagFilter] = useState<TagFilter>(undefined);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [newlyAddedReplies, setNewlyAddedReplies] = useState<Set<number>>(
     new Set(),
   );
@@ -208,7 +205,6 @@ export function useCommentTree(
     onSuccess?: () => void,
   ) => {
     try {
-      setIsSubmitting(true);
       setSubmitError(null);
       const commentDto: CreateCommentDto = {
         parentObjectId: Number(objectId),
@@ -262,8 +258,6 @@ export function useCommentTree(
         parentId: replyingTo,
         message: "Failed to submit reply",
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -359,7 +353,6 @@ export function useCommentTree(
     handlePinReply,
     replyingTo,
     setReplyingTo,
-    isSubmitting,
     newlyAddedReplies,
     highlightedReplyId,
     editableContent,

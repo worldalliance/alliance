@@ -12,11 +12,12 @@ interface TagChipsProps {
   onSelect: (value: TagFilter) => void;
   counts?: TagCounts;
   className?: string;
+  disabled?: boolean;
 }
 
 const chipClass = (selected: boolean) =>
   cn(
-    "px-3 py-1 rounded-full border text-[14px] cursor-pointer transition",
+    "px-3 py-1 rounded-full border text-[14px] cursor-pointer transition disabled:opacity-50",
     selected
       ? "bg-zinc-800 border-zinc-800 text-white"
       : "bg-white border-zinc-300 text-zinc-600 hover:border-zinc-400",
@@ -28,12 +29,14 @@ const TagChips = ({
   onSelect,
   counts,
   className,
+  disabled = false,
 }: TagChipsProps) => (
   <div className={cn("flex flex-wrap gap-2", className)}>
     {buildTagChips(tags, counts).map((chip) => (
       <button
         key={chip.key}
         type="button"
+        disabled={disabled}
         onClick={() => onSelect(chip.value)}
         className={chipClass(selected === chip.value)}
       >
