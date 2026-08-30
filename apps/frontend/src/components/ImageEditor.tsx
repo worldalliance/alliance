@@ -381,21 +381,20 @@ const ImageEditor: FC<ImageEditorProps> = ({
 
   const handleRotate = useCallback(
     async (direction: "left" | "right") => {
-      if (!hasCustomImage || isUploading || isPreviewProcessing) {
-        return;
-      }
-      const delta = direction === "left" ? -90 : 90;
-      setRotation((((rotation + delta) % 360) + 360) % 360);
-      setCrop(undefined);
-      setCompletedCrop(null);
-
-      if (!previewSrc) {
+      if (!hasCustomImage || isUploading || isPreviewProcessing || !previewSrc) {
         return;
       }
 
       setIsPreviewProcessing(true);
       try {
-        setPreviewSrc(await rotateImageData(previewSrc, direction));
+        const rotated = await rotateImageData(previewSrc, direction);
+        // The crop is mapped onto the source at `rotation`, so the angle and
+        // the preview it was drawn on have to move together or not at all.
+        const delta = direction === "left" ? -90 : 90;
+        setPreviewSrc(rotated);
+        setRotation((((rotation + delta) % 360) + 360) % 360);
+        setCrop(undefined);
+        setCompletedCrop(null);
       } catch {
         setError("Unable to rotate image. Please try again.");
       } finally {
