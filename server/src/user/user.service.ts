@@ -300,22 +300,12 @@ export class UserService {
 
     const { cityId: _cityId, profilePicture, ...updateData } = data;
 
-    if (profilePicture?.startsWith("data:")) {
-      //TODO: differentiate between file and url
-      const key =
-        await this.imagesService.processAndUploadProfileImage(profilePicture);
+    const nextPicture =
+      await this.imagesService.resolvePhotoUpdate(profilePicture);
 
-      const updateDataWithPfp = {
-        ...updateData,
-        profilePicture: key,
-      };
-
-      Object.assign(user, updateDataWithPfp);
-    } else {
-      Object.assign(user, updateData);
-      if (profilePicture !== undefined) {
-        user.profilePicture = profilePicture;
-      }
+    Object.assign(user, updateData);
+    if (nextPicture !== undefined) {
+      user.profilePicture = nextPicture;
     }
 
     await this.userRepository.save(user);

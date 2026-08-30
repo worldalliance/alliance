@@ -20,6 +20,7 @@ import type { Repository } from "typeorm";
 import { Community } from "../src/community/entities/community.entity";
 import { City } from "../src/geo/city.entity";
 import { GeoModule } from "../src/geo/geo.module";
+import { getImageSource } from "../src/images/images.service";
 import { FriendStatus } from "../src/user/entities/friend.entity";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
 import {
@@ -255,22 +256,38 @@ describe("Users (e2e)", () => {
     const pictureOf = async (id: number) =>
       (await userRepo.findOneByOrFail({ id })).profilePicture;
 
+    const givePicture = () =>
+      userRepo.update(userAId, { profilePicture: "some-key.webp" });
+
     const update = (body: Record<string, unknown>) =>
       request(ctx.app.getHttpServer())
         .post("/user/update")
         .send(body)
         .set("Authorization", `Bearer ${userAToken}`);
 
-    it("stores a key it is given", async () => {
+    it("keeps the key when sent the url it rendered", async () => {
+      await givePicture();
+
+      const res = await update({
+        profilePicture: getImageSource("some-key.webp"),
+      });
+
+      expect(res.status).toBe(201);
+      expect(await pictureOf(userAId)).toBe("some-key.webp");
+    });
+
+    it("ignores a key it is given rather than storing it", async () => {
+      await givePicture();
+
       const res = await update({ profilePicture: "some/uploaded/key.jpg" });
 
       expect(res.status).toBe(201);
-      expect(await pictureOf(userAId)).toBe("some/uploaded/key.jpg");
+      expect(await pictureOf(userAId)).toBe("some-key.webp");
     });
 
     it("stores blank input as null, not as an empty string", async () => {
       for (const blank of ["", "   "]) {
-        await update({ profilePicture: "some/uploaded/key.jpg" });
+        await givePicture();
 
         const res = await update({ profilePicture: blank });
 
@@ -280,21 +297,21 @@ describe("Users (e2e)", () => {
     });
 
     it("rejects a non-string picture instead of storing it", async () => {
-      await update({ profilePicture: "some/uploaded/key.jpg" });
+      await givePicture();
 
       const res = await update({ profilePicture: 42 });
 
       expect(res.status).toBe(400);
-      expect(await pictureOf(userAId)).toBe("some/uploaded/key.jpg");
+      expect(await pictureOf(userAId)).toBe("some-key.webp");
     });
 
     it("leaves the picture alone when the field is absent", async () => {
-      await update({ profilePicture: "some/uploaded/key.jpg" });
+      await givePicture();
 
       const res = await update({ profileDescription: "unrelated edit" });
 
       expect(res.status).toBe(201);
-      expect(await pictureOf(userAId)).toBe("some/uploaded/key.jpg");
+      expect(await pictureOf(userAId)).toBe("some-key.webp");
     });
 
     it("serializes a cleared picture as null rather than omitting it", async () => {
