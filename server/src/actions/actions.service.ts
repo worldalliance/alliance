@@ -2,7 +2,6 @@ import {
   ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
   ActionActivityType,
   WITHDRAWAL_OPTION_LABELS,
-  withdrawalHasRequiredReason,
   withdrawalOptionFromFlags,
 } from "@alliance/common/actionActivity";
 import {
@@ -36,7 +35,6 @@ import { CommunityService } from "src/community/community.service";
 import { Community } from "src/community/entities/community.entity";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
-import { CommentDto, CreateCommentDto } from "src/forum/dto/comment.dto";
 import {
   Comment,
   CommentParentObject,
@@ -155,7 +153,6 @@ import {
   TimelineFeedItemDto,
   TimelineFeedItemType,
   UnwelcomedSignedContractMember,
-  UpdateActionActivityDto,
   UpdateActionDto,
   UpdateActionEventDto,
   UpdateActionUpdateDto,
@@ -578,13 +575,6 @@ export class ActionsService {
     await this.actionRepository.update(actionId, { usersCompleted });
   }
 
-  async reloadAllActionUsersCompleted(): Promise<void> {
-    const actions = await this.actionRepository.find();
-    for (const action of actions) {
-      await this.reloadUsersCompletedForAction(action.id);
-    }
-  }
-
   async reloadAllActionUsersJoined(): Promise<void> {
     const actions = await this.actionRepository.find();
     for (const action of actions) {
@@ -754,23 +744,6 @@ export class ActionsService {
     }
 
     return this.userService.findByIds(incompleteUserIds);
-  }
-
-  async findCompletedUsersForAction(actionId: number): Promise<User[]> {
-    const completedActivities = await this.actionActivityRepository.find({
-      where: {
-        actionId,
-        type: ActionActivityType.USER_COMPLETED,
-      },
-      select: { userId: true },
-    });
-    const completedUserIds = completedActivities.map((a) => a.userId);
-
-    if (completedUserIds.length === 0) {
-      return [];
-    }
-
-    return this.userService.findByIds(completedUserIds);
   }
 
   async findUnwelcomedSignedContractMembers(): Promise<
@@ -981,34 +954,6 @@ export class ActionsService {
           reqAuthenticated: !!user,
         });
       }),
-    );
-  }
-
-  async findPublicOnly(): Promise<ActionDto[]> {
-    // No follow-up forms: a logged-out client is in no cohort, and every form
-    // is cohort-scoped.
-    const relations: Omit<Relations<Action>, "usersCompleted" | "status"> = {
-      events: true,
-      reviewers: true,
-    };
-
-    const filterActions = (action: Action) =>
-      action.visibilityMode === VisibilityMode.Public &&
-      action.status !== ActionStatus.Draft &&
-      !action.onboarding &&
-      !action.archived;
-
-    const actions = await this.findAllSorted(relations);
-
-    const filteredActions = actions.filter(filterActions);
-
-    return filteredActions.map(
-      (action) =>
-        new ActionDto(action, {
-          canParticipate: false,
-          shouldParticipate: false,
-          reqAuthenticated: false,
-        }),
     );
   }
 
@@ -1735,24 +1680,6 @@ export class ActionsService {
     return savedActivity;
   }
 
-  async withdrawFromAction(
-    actionId: number,
-    userId: number,
-    withdrawal: { reason: string; outOfTime: boolean; isMoral: boolean },
-  ): Promise<ActionActivity> {
-    if (!withdrawalHasRequiredReason(withdrawal)) {
-      throw new BadRequestException("A withdrawal reason is required");
-    }
-    return this.createActionActivity({
-      actionId,
-      userId,
-      type: ActionActivityType.USER_WONT_COMPLETE,
-      declineReason: withdrawal.reason,
-      isOutOfTime: withdrawal.outOfTime,
-      isMoral: withdrawal.isMoral,
-    });
-  }
-
   async completeAction(
     actionId: number,
     userId: number,
@@ -2260,24 +2187,6 @@ export class ActionsService {
     }
   }
 
-  async clearDb() {
-    if (process.env.NODE_ENV !== "development") {
-      return;
-    }
-    await this.actionActivityRepository.delete({});
-    await this.actionEventRepository.delete({});
-    await this.actionRepository.delete({});
-  }
-
-  async getActivityForUser(userId: number): Promise<ActionActivity[]> {
-    return this.actionActivityRepository.find({
-      where: {
-        user: { id: userId },
-      },
-      relations: { action: true, user: true, editableContent: true },
-    });
-  }
-
   async friendActivity(
     userId: number,
     comments?: boolean,
@@ -2591,17 +2500,6 @@ export class ActionsService {
     });
   }
 
-  async getEvent(id: number): Promise<ActionEvent> {
-    const event = await this.actionEventRepository.findOne({
-      where: { id },
-      relations: { action: true },
-    });
-    if (!event) {
-      throw new NotFoundException("Event not found");
-    }
-    return event;
-  }
-
   async likeActivity(
     id: number,
     userId: number,
@@ -2689,67 +2587,6 @@ export class ActionsService {
     return new ActionActivityDto(updatedActivity, {
       likedByMe: !unlike,
     });
-  }
-
-  async addActivityComment(
-    id: number,
-    commentDto: CreateCommentDto,
-    userId: number,
-  ): Promise<CommentDto> {
-    const user = await this.userService.findOneOrFail(userId);
-    const content = this.editableContentRepository.create({
-      body: commentDto.editableContent.body,
-      attachments: commentDto.editableContent.attachments ?? [],
-    });
-    await this.editableContentRepository.save(content);
-    const comment = this.commentRepository.create({
-      parentObjectType: CommentParentObject.Activity,
-      parentObjectId: id,
-      parentId: commentDto.parentId,
-      author: user,
-      authorId: user.id,
-      editableContent: content,
-    });
-    const savedComment = await this.commentRepository.save(comment);
-    return new CommentDto(savedComment, { requestingUserId: userId });
-  }
-
-  async updateActivity(
-    id: number,
-    updateActivityDto: UpdateActionActivityDto,
-    userId: number,
-  ): Promise<ActionActivityDto> {
-    const activity = await this.actionActivityRepository.findOne({
-      where: { id },
-      relations: {
-        editableContent: true,
-        taskFormResponse: {
-          formSnapshot: true,
-        },
-      },
-    });
-    if (!activity) {
-      throw new NotFoundException("Activity not found");
-    }
-    if (activity.userId !== userId) {
-      throw new ForbiddenException("You are not the owner of this activity");
-    }
-    let editableContent = await this.editableContentRepository.findOne({
-      where: { id: activity.editableContent?.id },
-    });
-    if (!editableContent) {
-      editableContent = this.editableContentRepository.create(
-        updateActivityDto.editableContent,
-      );
-    }
-    editableContent.attachments = updateActivityDto.editableContent.attachments;
-    editableContent.body = updateActivityDto.editableContent.body;
-    await this.editableContentRepository.save(editableContent);
-
-    activity.editableContent = editableContent;
-    await this.actionActivityRepository.save(activity);
-
-    return this.getActivity(id);
   }
 
   async getPaymentAmountForAction(id: number): Promise<number> {

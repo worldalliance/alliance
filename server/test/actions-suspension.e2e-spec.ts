@@ -184,7 +184,7 @@ describe("findUsersToSuspend (e2e)", () => {
     const rangeEnd = new Date("2023-04-02T00:00:00Z");
 
     const res = await request(ctx.app.getHttpServer())
-      .get("/actions/suspendPlans")
+      .get("/actions/scheduledPlans")
       .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .query({
         rangeStart: rangeStart.toISOString(),
@@ -192,10 +192,10 @@ describe("findUsersToSuspend (e2e)", () => {
       });
 
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body).toHaveLength(1);
+    expect(Array.isArray(res.body.suspensionPlans)).toBe(true);
+    expect(res.body.suspensionPlans).toHaveLength(1);
 
-    const [plan] = res.body;
+    const [plan] = res.body.suspensionPlans;
     expect(new Date(plan.date).toISOString()).toBe(rangeStart.toISOString());
 
     const userIds = plan.users.map((user: { id: number }) => user.id);

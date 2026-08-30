@@ -815,7 +815,7 @@ describe("Forum (e2e)", () => {
       const activityId = actionComplete.body.id;
 
       await request(ctx.app.getHttpServer())
-        .post(`/actions/addActivityComment/${activityId}`)
+        .post("/forum/comments")
         .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({
           editableContent: { body: "Activity comment", attachments: [] },
@@ -1536,7 +1536,7 @@ describe("Forum (e2e)", () => {
       const activityId = completeResponse.body.id;
 
       const commentResponse = await request(ctx.app.getHttpServer())
-        .post(`/actions/addActivityComment/${activityId}`)
+        .post("/forum/comments")
         .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({
           editableContent: { body: "Activity thread comment", attachments: [] },

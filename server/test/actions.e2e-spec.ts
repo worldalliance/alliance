@@ -2,7 +2,6 @@ import { ActionActivityType } from "@alliance/common/actionActivity";
 import { ActionsService } from "src/actions/actions.service";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { ContractService } from "src/contract/contract.service";
-import { CommentParentObject } from "src/forum/entities/comment.entity";
 import { City } from "src/geo/city.entity";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import {
@@ -30,7 +29,6 @@ import {
   CreateActionDto,
   CreateActionEventDto,
   GlobalFeedItemType,
-  UserActionRelation,
 } from "../src/actions/dto/action.dto";
 import {
   ActionEvent,
@@ -352,37 +350,9 @@ describe("Actions (e2e)", () => {
       expect(untouched.cohortExpression).toEqual({ type: "GroupLead" });
     });
 
-    it("user is shown their own relation to an action", async () => {
-      const action = await actionRepo.findOneBy({
-        name: "Test Action",
-      });
-
-      const res = await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${action!.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`);
-
-      expect(res.status).toBe(201);
-
-      const res2 = await request(ctx.app.getHttpServer())
-        .get(`/actions/myStatus/${action!.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`);
-
-      expect(res2.status).toBe(200);
-      expect(res2.body.relation).toBe(UserActionRelation.Completed);
-    });
-
-    it("user can see their action activities", async () => {
-      const res = await request(ctx.app.getHttpServer())
-        .get("/actions/myActivity")
-        .set("Authorization", `Bearer ${ctx.accessToken}`);
-
-      expect(res.status).toBe(200);
-      expect(res.body[0].type).toBe(ActionActivityType.USER_COMPLETED);
-    });
-
     it("can fetch all actions with status", async () => {
       const res = await request(ctx.app.getHttpServer())
-        .get("/actions")
+        .get("/actions/loggedIn")
         .set("Authorization", `Bearer ${ctx.accessToken}`);
 
       expect(res.status).toBe(200);
@@ -391,6 +361,13 @@ describe("Actions (e2e)", () => {
     });
 
     it("can see completed actions for a user", async () => {
+      const action = await actionRepo.findOneBy({ name: "Test Action" });
+
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/complete/${action!.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(201);
+
       const res = await request(ctx.app.getHttpServer())
         .get(`/actions/completed/${ctx.testUserId}`)
         .set("Authorization", `Bearer ${ctx.accessToken}`);
@@ -401,7 +378,7 @@ describe("Actions (e2e)", () => {
 
     it("user cannot see draft actions", async () => {
       const res = await request(ctx.app.getHttpServer())
-        .get("/actions")
+        .get("/actions/loggedIn")
         .set("Authorization", `Bearer ${ctx.accessToken}`);
 
       expect(res.status).toBe(200);
@@ -453,22 +430,9 @@ describe("Actions (e2e)", () => {
       expect(res.body.name).toBe("Test Draft Action");
     });
 
-    it("unauthenticated user can see actions", async () => {
-      const res = await request(ctx.app.getHttpServer()).get("/actions");
-
-      expect(res.status).toBe(200);
-      expect(res.body.length).toBeGreaterThan(1);
-
-      expect(
-        res.body.some(
-          (action: ActionDto) => action.status === ActionStatus.Draft,
-        ),
-      ).toBe(false);
-    });
-
     it("shows actions to outsider if showToNonparticipating is true", async () => {
       const res = await request(ctx.app.getHttpServer())
-        .get("/actions")
+        .get("/actions/loggedIn")
         .set("Authorization", `Bearer ${outsiderToken}`);
 
       expect(res.status).toBe(200);
@@ -481,7 +445,7 @@ describe("Actions (e2e)", () => {
 
     it("does not show actions to non-participating groups if showToNonparticipating is false", async () => {
       const res = await request(ctx.app.getHttpServer())
-        .get("/actions")
+        .get("/actions/loggedIn")
         .set("Authorization", `Bearer ${outsiderToken}`);
 
       expect(res.status).toBe(200);
@@ -1608,15 +1572,15 @@ describe("Actions (e2e)", () => {
 
       const [unsignedRes, lateRes, eligibleRes] = await Promise.all([
         request(ctx.app.getHttpServer())
-          .get("/actions")
+          .get("/actions/loggedIn")
           .set("Authorization", `Bearer ${unsignedToken}`)
           .expect(200),
         request(ctx.app.getHttpServer())
-          .get("/actions")
+          .get("/actions/loggedIn")
           .set("Authorization", `Bearer ${lateToken}`)
           .expect(200),
         request(ctx.app.getHttpServer())
-          .get("/actions")
+          .get("/actions/loggedIn")
           .set("Authorization", `Bearer ${eligibleToken}`)
           .expect(200),
       ]);
@@ -1666,7 +1630,7 @@ describe("Actions (e2e)", () => {
       );
 
       const res = await request(ctx.app.getHttpServer())
-        .get("/actions")
+        .get("/actions/loggedIn")
         .set("Authorization", `Bearer ${contractlessToken}`)
         .expect(200);
 
@@ -2100,26 +2064,6 @@ describe("Actions (e2e)", () => {
   });
 
   describe("Additional endpoints", () => {
-    it("allows a user to opt out of completing an action", async () => {
-      const { action } = await createPublishedAction("Optout Scenario", {
-        status: ActionStatus.MemberAction,
-      });
-
-      const optout = await request(ctx.app.getHttpServer())
-        .post(`/actions/optout/${action.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .send({
-          reason: "Out of time",
-          outOfTime: true,
-          isMoral: false,
-          actionId: action.id,
-        })
-        .expect(201);
-
-      expect(optout.body.type).toBe(ActionActivityType.USER_WONT_COMPLETE);
-      await actionRepo.delete(action.id);
-    });
-
     it("records a completion activity for a user", async () => {
       const { action } = await createPublishedAction("Completion Scenario", {
         status: ActionStatus.MemberAction,
@@ -2176,17 +2120,6 @@ describe("Actions (e2e)", () => {
         .expect(200);
 
       expect(single.body.id).toBe(activityId);
-
-      const event = await eventRepo.findOne({
-        where: { action: { id: action.id } },
-      });
-      expect(event).toBeDefined();
-
-      const eventRes = await request(ctx.app.getHttpServer())
-        .get(`/actions/events/${event!.id}`)
-        .expect(200);
-
-      expect(eventRes.body.id).toBe(event!.id);
 
       await actionRepo.delete(action.id);
     });
@@ -2258,28 +2191,6 @@ describe("Actions (e2e)", () => {
         .expect(201);
 
       expect(like.body.likes.length).toBe(1);
-
-      const comment = await request(ctx.app.getHttpServer())
-        .post(`/actions/addActivityComment/${activityId}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .send({
-          editableContent: { body: "Great job", attachments: [] },
-          parentObjectId: activityId,
-          parentObjectType: CommentParentObject.Activity,
-        })
-        .expect(201);
-
-      expect(comment.body.parentObjectId).toBe(activityId);
-
-      const update = await request(ctx.app.getHttpServer())
-        .post(`/actions/updateActivity/${activityId}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .send({
-          editableContent: { body: "Updated note", attachments: [] },
-        })
-        .expect(201);
-
-      expect(update.body.editableContent.body).toBe("Updated note");
 
       const unlike = await request(ctx.app.getHttpServer())
         .post(`/actions/unlikeActivity/${activityId}`)
@@ -3111,16 +3022,6 @@ describe("Actions (e2e)", () => {
           v3.body.schemaSnapshotId as number,
         ]),
       );
-
-      await request(ctx.app.getHttpServer())
-        .delete(`/actions/generalUpdates/${id}`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
-
-      const afterDelete = await ctx.dataSource.query<unknown[]>(
-        `SELECT 1 FROM general_update_snapshot_history WHERE "generalUpdateId" = $1`,
-        [id],
-      );
-      expect(afterDelete).toHaveLength(0);
     });
 
     it("rejects content a display-only schema cannot hold", async () => {
@@ -3139,10 +3040,6 @@ describe("Actions (e2e)", () => {
         },
         expectedSchemaSnapshotId: created.body.schemaSnapshotId as number,
       }).expect(400);
-
-      await request(ctx.app.getHttpServer())
-        .delete(`/actions/generalUpdates/${id}`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
     });
 
     it("refuses a schema write with no snapshot to guard against", async () => {
@@ -3163,10 +3060,6 @@ describe("Actions (e2e)", () => {
       expect(after.body.schemaSnapshotId).toBe(snapshot0);
 
       await patch(id, { name: "Renamed" }).expect(200);
-
-      await request(ctx.app.getHttpServer())
-        .delete(`/actions/generalUpdates/${id}`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
     });
   });
 
@@ -3606,13 +3499,6 @@ describe("Actions (e2e)", () => {
         }),
       ]);
 
-      const publicRes = await request(ctx.app.getHttpServer())
-        .get("/actions/public")
-        .expect(200);
-      expect(
-        publicRes.body.find((a: ActionDto) => a.id === action.id)?.reviewers,
-      ).toEqual([{ name: "Jane" }]);
-
       const timelineRes = await request(ctx.app.getHttpServer())
         .get("/actions/timeline-feed")
         .expect(200);
@@ -3739,13 +3625,11 @@ describe("Actions (e2e)", () => {
 
     it("serves cohort expressions to admins and to no one else", async () => {
       const publicRes = await request(ctx.app.getHttpServer())
-        .get("/actions/public")
+        .get(`/actions/slug/${targetedActionId}`)
         .expect(200);
-      const served = publicRes.body.find(
-        (a: ActionDto) => a.id === targetedActionId,
-      ) as ActionDto | undefined;
-      expect(served).toBeDefined();
-      expect(served?.followUpForms).toEqual([]);
+      const served = publicRes.body as ActionDto;
+      expect(served.id).toBe(targetedActionId);
+      expect(served.followUpForms).toEqual([]);
       expect(JSON.stringify(publicRes.body)).not.toContain("cohortExpression");
 
       const adminRes = await request(ctx.app.getHttpServer())

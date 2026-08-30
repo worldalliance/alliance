@@ -1756,16 +1756,6 @@ export type UpdateClusterDto = {
     displayName: string;
 };
 
-export type OptOutActionDto = {
-    actionId: number;
-    reason: string;
-    outOfTime: boolean;
-    isMoral: boolean;
-    partialFormData?: {
-        [key: string]: unknown;
-    };
-};
-
 export type EditableContentDto = {
     /**
      * Markdown or plain text body
@@ -1828,12 +1818,6 @@ export type ActionActivityDto = {
     comments: Array<CommentDto>;
     formResponseOutput?: FormResponseOutputDto;
     editableContent: EditableContentDto;
-};
-
-export type UserActionRelation = 'completed' | 'none' | 'declined' | 'dismissed';
-
-export type UserActionRelationDto = {
-    relation: UserActionRelation;
 };
 
 export type ActionReviewerResponseDto = {
@@ -1918,6 +1902,8 @@ export type ActionUpdateDto = {
     };
     actionName?: string;
 };
+
+export type UserActionRelation = 'completed' | 'none' | 'declined' | 'dismissed';
 
 export type TaskAwayStatus = 'away_previously' | 'away_currently' | 'away_later' | 'not_away';
 
@@ -2796,28 +2782,6 @@ export type PreviewNotificationPlanDto = {
     channels: Array<NotificationChannel>;
 };
 
-export type CreateEditableContentDto = {
-    /**
-     * Markdown or plain text body
-     */
-    body: string;
-    /**
-     * Image keys attached to the content
-     */
-    attachments: Array<string>;
-};
-
-export type CreateCommentDto = {
-    parentObjectType: CommentParentObject;
-    parentObjectId: number;
-    parentId?: number;
-    editableContent: CreateEditableContentDto;
-};
-
-export type UpdateActionActivityDto = {
-    editableContent: EditableContentDto;
-};
-
 export type CreateActionActivityDto = {
     /**
      * Type of action activity
@@ -3142,6 +3106,17 @@ export type TimelineFeedItemDto = {
     actionEvent?: ActionEventDto;
 };
 
+export type CreateEditableContentDto = {
+    /**
+     * Markdown or plain text body
+     */
+    body: string;
+    /**
+     * Image keys attached to the content
+     */
+    attachments: Array<string>;
+};
+
 export type CreatePostDto = {
     title: string;
     actionId?: number;
@@ -3200,6 +3175,13 @@ export type UpdatePostDto = {
     actionId?: number;
     visibleAt?: string;
     editableContent?: CreateEditableContentDto;
+};
+
+export type CreateCommentDto = {
+    parentObjectType: CommentParentObject;
+    parentObjectId: number;
+    parentId?: number;
+    editableContent: CreateEditableContentDto;
 };
 
 export type UpdateCommentDto = {
@@ -3585,6 +3567,16 @@ export type TestCustomExpressionResponseDto = {
     failUsers: Array<CustomExpressionUserDto>;
     selectedUserId?: number;
     selectedUserResult?: boolean;
+};
+
+export type OptOutActionDto = {
+    actionId: number;
+    reason: string;
+    outOfTime: boolean;
+    isMoral: boolean;
+    partialFormData?: {
+        [key: string]: unknown;
+    };
 };
 
 export type TimeSpentForUserDto = {
@@ -8020,30 +8012,6 @@ export type ClusterUpdateAdminResponses = {
 
 export type ClusterUpdateAdminResponse = ClusterUpdateAdminResponses[keyof ClusterUpdateAdminResponses];
 
-export type ActionsOptoutData = {
-    body: OptOutActionDto;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/optout/{id}';
-};
-
-export type ActionsOptoutErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsOptoutError = ActionsOptoutErrors[keyof ActionsOptoutErrors];
-
-export type ActionsOptoutResponses = {
-    200: ActionActivityDto;
-};
-
-export type ActionsOptoutResponse = ActionsOptoutResponses[keyof ActionsOptoutResponses];
-
 export type ActionsCompleteData = {
     body?: never;
     path: {
@@ -8068,74 +8036,6 @@ export type ActionsCompleteResponses = {
 
 export type ActionsCompleteResponse = ActionsCompleteResponses[keyof ActionsCompleteResponses];
 
-export type ActionsMyStatusData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/myStatus/{id}';
-};
-
-export type ActionsMyStatusErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsMyStatusError = ActionsMyStatusErrors[keyof ActionsMyStatusErrors];
-
-export type ActionsMyStatusResponses = {
-    200: UserActionRelationDto;
-};
-
-export type ActionsMyStatusResponse = ActionsMyStatusResponses[keyof ActionsMyStatusResponses];
-
-export type ActionsFindAllData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/actions';
-};
-
-export type ActionsFindAllErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsFindAllError = ActionsFindAllErrors[keyof ActionsFindAllErrors];
-
-export type ActionsFindAllResponses = {
-    200: Array<ActionDto>;
-};
-
-export type ActionsFindAllResponse = ActionsFindAllResponses[keyof ActionsFindAllResponses];
-
-export type ActionsFindPublicListData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/actions/public';
-};
-
-export type ActionsFindPublicListErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsFindPublicListError = ActionsFindPublicListErrors[keyof ActionsFindPublicListErrors];
-
-export type ActionsFindPublicListResponses = {
-    200: Array<ActionDto>;
-};
-
-export type ActionsFindPublicListResponse = ActionsFindPublicListResponses[keyof ActionsFindPublicListResponses];
-
 export type ActionsFindAllLoggedInData = {
     body?: never;
     path?: never;
@@ -8159,28 +8059,6 @@ export type ActionsFindAllLoggedInResponses = {
 };
 
 export type ActionsFindAllLoggedInResponse = ActionsFindAllLoggedInResponses[keyof ActionsFindAllLoggedInResponses];
-
-export type ActionsMyActivityData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/actions/myActivity';
-};
-
-export type ActionsMyActivityErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsMyActivityError = ActionsMyActivityErrors[keyof ActionsMyActivityErrors];
-
-export type ActionsMyActivityResponses = {
-    200: Array<ActionActivityDto>;
-};
-
-export type ActionsMyActivityResponse = ActionsMyActivityResponses[keyof ActionsMyActivityResponses];
 
 export type ActionsAllGeneralUpdatesData = {
     body?: never;
@@ -8319,32 +8197,6 @@ export type ActionsCreateGeneralUpdateAdminResponses = {
 };
 
 export type ActionsCreateGeneralUpdateAdminResponse = ActionsCreateGeneralUpdateAdminResponses[keyof ActionsCreateGeneralUpdateAdminResponses];
-
-export type ActionsDeleteGeneralUpdateAdminData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/generalUpdates/{id}';
-};
-
-export type ActionsDeleteGeneralUpdateAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsDeleteGeneralUpdateAdminError = ActionsDeleteGeneralUpdateAdminErrors[keyof ActionsDeleteGeneralUpdateAdminErrors];
-
-export type ActionsDeleteGeneralUpdateAdminResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type ActionsDeleteGeneralUpdateAdminResponse = ActionsDeleteGeneralUpdateAdminResponses[keyof ActionsDeleteGeneralUpdateAdminResponses];
 
 export type ActionsUpdateGeneralUpdateAdminData = {
     body: UpdateGeneralUpdateDto;
@@ -8545,30 +8397,6 @@ export type ActionsGetWithdrawalsAdminResponses = {
 };
 
 export type ActionsGetWithdrawalsAdminResponse = ActionsGetWithdrawalsAdminResponses[keyof ActionsGetWithdrawalsAdminResponses];
-
-export type ActionsGetEventData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/events/{id}';
-};
-
-export type ActionsGetEventErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsGetEventError = ActionsGetEventErrors[keyof ActionsGetEventErrors];
-
-export type ActionsGetEventResponses = {
-    200: ActionEventDto;
-};
-
-export type ActionsGetEventResponse = ActionsGetEventResponses[keyof ActionsGetEventResponses];
 
 export type ActionsGetNotificationScheduleAdminData = {
     body?: never;
@@ -8902,30 +8730,6 @@ export type ActionsFindOneAdminResponses = {
 
 export type ActionsFindOneAdminResponse = ActionsFindOneAdminResponses[keyof ActionsFindOneAdminResponses];
 
-export type ActionsGetFollowUpFormsAdminData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/{id}/follow-up-forms';
-};
-
-export type ActionsGetFollowUpFormsAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsGetFollowUpFormsAdminError = ActionsGetFollowUpFormsAdminErrors[keyof ActionsGetFollowUpFormsAdminErrors];
-
-export type ActionsGetFollowUpFormsAdminResponses = {
-    200: Array<AdminFollowUpFormDto>;
-};
-
-export type ActionsGetFollowUpFormsAdminResponse = ActionsGetFollowUpFormsAdminResponses[keyof ActionsGetFollowUpFormsAdminResponses];
-
 export type ActionsCreateFollowUpFormAdminData = {
     body: CreateFollowUpFormDto;
     path: {
@@ -9023,30 +8827,6 @@ export type ActionsGetIncompleteUsersAdminResponses = {
 };
 
 export type ActionsGetIncompleteUsersAdminResponse = ActionsGetIncompleteUsersAdminResponses[keyof ActionsGetIncompleteUsersAdminResponses];
-
-export type ActionsGetCompletedUsersAdminData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/{id}/completed-users';
-};
-
-export type ActionsGetCompletedUsersAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsGetCompletedUsersAdminError = ActionsGetCompletedUsersAdminErrors[keyof ActionsGetCompletedUsersAdminErrors];
-
-export type ActionsGetCompletedUsersAdminResponses = {
-    200: Array<ProfileDto>;
-};
-
-export type ActionsGetCompletedUsersAdminResponse = ActionsGetCompletedUsersAdminResponses[keyof ActionsGetCompletedUsersAdminResponses];
 
 export type ActionsGetUnwelcomedSignedContractMembersAdminData = {
     body?: never;
@@ -9486,30 +9266,6 @@ export type ActionsSentNotifsForGroupAdminResponses = {
 
 export type ActionsSentNotifsForGroupAdminResponse = ActionsSentNotifsForGroupAdminResponses[keyof ActionsSentNotifsForGroupAdminResponses];
 
-export type ActionsClearDbAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/actions/clearDb';
-};
-
-export type ActionsClearDbAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsClearDbAdminError = ActionsClearDbAdminErrors[keyof ActionsClearDbAdminErrors];
-
-export type ActionsClearDbAdminResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type ActionsClearDbAdminResponse = ActionsClearDbAdminResponses[keyof ActionsClearDbAdminResponses];
-
 export type ActionsLikeActivityData = {
     body?: never;
     path: {
@@ -9557,54 +9313,6 @@ export type ActionsUnlikeActivityResponses = {
 };
 
 export type ActionsUnlikeActivityResponse = ActionsUnlikeActivityResponses[keyof ActionsUnlikeActivityResponses];
-
-export type ActionsAddActivityCommentData = {
-    body: CreateCommentDto;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/addActivityComment/{id}';
-};
-
-export type ActionsAddActivityCommentErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsAddActivityCommentError = ActionsAddActivityCommentErrors[keyof ActionsAddActivityCommentErrors];
-
-export type ActionsAddActivityCommentResponses = {
-    200: CommentDto;
-};
-
-export type ActionsAddActivityCommentResponse = ActionsAddActivityCommentResponses[keyof ActionsAddActivityCommentResponses];
-
-export type ActionsUpdateActivityData = {
-    body: UpdateActionActivityDto;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/updateActivity/{id}';
-};
-
-export type ActionsUpdateActivityErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsUpdateActivityError = ActionsUpdateActivityErrors[keyof ActionsUpdateActivityErrors];
-
-export type ActionsUpdateActivityResponses = {
-    200: ActionActivityDto;
-};
-
-export type ActionsUpdateActivityResponse = ActionsUpdateActivityResponses[keyof ActionsUpdateActivityResponses];
 
 export type ActionsDismissActionData = {
     body?: never;
@@ -10178,54 +9886,6 @@ export type ActionsPreviewTextMessageAdminResponses = {
 
 export type ActionsPreviewTextMessageAdminResponse = ActionsPreviewTextMessageAdminResponses[keyof ActionsPreviewTextMessageAdminResponses];
 
-export type ActionsReloadAllActionUsersJoinedAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/actions/reloadAllActionUsersJoined';
-};
-
-export type ActionsReloadAllActionUsersJoinedAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsReloadAllActionUsersJoinedAdminError = ActionsReloadAllActionUsersJoinedAdminErrors[keyof ActionsReloadAllActionUsersJoinedAdminErrors];
-
-export type ActionsReloadAllActionUsersJoinedAdminResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type ActionsReloadAllActionUsersJoinedAdminResponse = ActionsReloadAllActionUsersJoinedAdminResponses[keyof ActionsReloadAllActionUsersJoinedAdminResponses];
-
-export type ActionsReloadAllActionUsersCompletedAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/actions/reloadAllActionUsersCompleted';
-};
-
-export type ActionsReloadAllActionUsersCompletedAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsReloadAllActionUsersCompletedAdminError = ActionsReloadAllActionUsersCompletedAdminErrors[keyof ActionsReloadAllActionUsersCompletedAdminErrors];
-
-export type ActionsReloadAllActionUsersCompletedAdminResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type ActionsReloadAllActionUsersCompletedAdminResponse = ActionsReloadAllActionUsersCompletedAdminResponses[keyof ActionsReloadAllActionUsersCompletedAdminResponses];
-
 export type ActionsExportActionAdminData = {
     body?: never;
     path: {
@@ -10301,55 +9961,6 @@ export type ActionsScheduledPlansAdminResponses = {
 };
 
 export type ActionsScheduledPlansAdminResponse = ActionsScheduledPlansAdminResponses[keyof ActionsScheduledPlansAdminResponses];
-
-export type ActionsSuspendPlansAdminData = {
-    body?: never;
-    path?: never;
-    query: {
-        rangeStart: string;
-        rangeEnd: string;
-    };
-    url: '/actions/suspendPlans';
-};
-
-export type ActionsSuspendPlansAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsSuspendPlansAdminError = ActionsSuspendPlansAdminErrors[keyof ActionsSuspendPlansAdminErrors];
-
-export type ActionsSuspendPlansAdminResponses = {
-    200: Array<SuspensionPlanDto>;
-};
-
-export type ActionsSuspendPlansAdminResponse = ActionsSuspendPlansAdminResponses[keyof ActionsSuspendPlansAdminResponses];
-
-export type ActionsGetShareLinkData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/getShareLink/{id}';
-};
-
-export type ActionsGetShareLinkErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsGetShareLinkError = ActionsGetShareLinkErrors[keyof ActionsGetShareLinkErrors];
-
-export type ActionsGetShareLinkResponses = {
-    200: ShareLinkDto;
-};
-
-export type ActionsGetShareLinkResponse = ActionsGetShareLinkResponses[keyof ActionsGetShareLinkResponses];
 
 export type ActionsShareLinksForFormAdminData = {
     body?: never;

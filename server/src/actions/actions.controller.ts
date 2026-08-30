@@ -8,7 +8,6 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  NotFoundException,
   Param,
   ParseBoolPipe,
   ParseIntPipe,
@@ -16,7 +15,6 @@ import {
   Post,
   Query,
   Request,
-  UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
@@ -29,12 +27,10 @@ import {
 } from "@nestjs/swagger";
 import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
 import type { JwtRequest } from "src/auth/guards/jwtreq";
-import { CommentDto, CreateCommentDto } from "src/forum/dto/comment.dto";
 import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
 import { PreviewNotificationPlanDto } from "src/notifs/dto/notification-plan.dto";
 import { ActionEventNotifDto } from "src/notifs/entities/action-event-notif.dto";
 import { PosthogService } from "src/posthog/posthog.service";
-import { ShareLinkDto } from "src/share-urls/dto/share-url.dto";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
 import {
   CommunityUserInfoDto,
@@ -76,7 +72,6 @@ import {
   GlobalFeedActivityTypes,
   GlobalFeedItemDto,
   HomeFeedItemDto,
-  OptOutActionDto,
   PasteJsonDto,
   PreviewEmailHtmlDto,
   PreviewEmailHtmlResponseDto,
@@ -86,14 +81,11 @@ import {
   ReminderGroupDto,
   ScheduledPlansOverviewDto,
   SetPriorityDto,
-  SuspensionPlanDto,
   TimelineFeedItemDto,
   UnwelcomedSignedContractMemberDto,
-  UpdateActionActivityDto,
   UpdateActionDto,
   UpdateActionEventDto,
   UpdateActionUpdateDto,
-  UserActionRelationDto,
 } from "./dto/action.dto";
 import { CommunityCompletedActionsCountDto } from "./dto/community-completed-actions-count.dto";
 import {
@@ -142,33 +134,6 @@ export class ActionsController {
     private readonly userService: UserService,
   ) {}
 
-  @Post("optout/:id")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: ActionActivityDto })
-  async optout(
-    @Request() req: JwtRequest,
-    @Param("id", ParseIntPipe) id: number,
-    @Body() body: OptOutActionDto,
-  ): Promise<ActionActivityDto> {
-    const activity = await this.actionsService.withdrawFromAction(
-      id,
-      req.user.sub,
-      {
-        reason: body.reason,
-        outOfTime: body.outOfTime,
-        isMoral: body.isMoral,
-      },
-    );
-    this.posthog.capture({
-      event: AnalyticsEvent.ActionOptedOut,
-      distinctId: String(req.user.sub),
-      properties: {
-        actionId: id,
-      },
-    });
-    return new ActionActivityDto(activity);
-  }
-
   @Post("complete/:id")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ActionActivityDto })
@@ -189,43 +154,6 @@ export class ActionsController {
     return new ActionActivityDto(activity);
   }
 
-  @Get("myStatus/:id")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: UserActionRelationDto })
-  @ApiOperation({
-    summary: "Get the authenticated user's relation to a single action",
-  })
-  async myStatus(
-    @Request() req: JwtRequest,
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<UserActionRelationDto> {
-    if (!req.user) {
-      throw new UnauthorizedException("User not found");
-    }
-    const relation = await this.actionsService.getActionRelation(
-      +id,
-      req.user.sub,
-    );
-    if (!relation) {
-      throw new NotFoundException("User action not found");
-    }
-    return new UserActionRelationDto(relation);
-  }
-
-  @Get()
-  @UseGuards(AuthOptionalGuard)
-  @ApiOkResponse({ type: [ActionDto] })
-  async findAll(@Request() req: JwtRequest): Promise<ActionDto[]> {
-    return this.actionsService.findMemberPublic(req.user?.sub);
-  }
-
-  @Get("public")
-  @Public()
-  @ApiOkResponse({ type: [ActionDto] })
-  async findPublicList(): Promise<ActionDto[]> {
-    return this.actionsService.findPublicOnly();
-  }
-
   @Get("loggedIn")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: [ActionDto] })
@@ -234,16 +162,6 @@ export class ActionsController {
     @Query("sorted", new ParseBoolPipe({ optional: true })) sorted?: boolean,
   ): Promise<ActionDto[]> {
     return this.actionsService.findMemberPublic(req.user.sub, sorted);
-  }
-
-  @Get("myActivity")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: [ActionActivityDto] })
-  async myActivity(@Request() req: JwtRequest): Promise<ActionActivityDto[]> {
-    const activities = await this.actionsService.getActivityForUser(
-      req.user?.sub,
-    );
-    return activities.map((activity) => new ActionActivityDto(activity));
   }
 
   @Get("generalUpdates")
@@ -329,15 +247,6 @@ export class ActionsController {
     return new GeneralUpdateAdminDto(
       await this.actionsService.updateGeneralUpdate(id, dto),
     );
-  }
-
-  @Delete("generalUpdates/:id")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse()
-  async deleteGeneralUpdateAdmin(
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<void> {
-    return this.actionsService.deleteGeneralUpdate(id);
   }
 
   @Get("activities/feed")
@@ -475,15 +384,6 @@ export class ActionsController {
   ): Promise<ActionWithdrawalDto[]> {
     const activities = await this.actionsService.getWithdrawalsForForm(formId);
     return activities.map((a) => new ActionWithdrawalDto(a));
-  }
-
-  @Get("events/:id")
-  @Public()
-  @ApiOkResponse({ type: ActionEventDto })
-  async getEvent(
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<ActionEventDto> {
-    return new ActionEventDto(await this.actionsService.getEvent(id));
   }
 
   @Get("notification-schedule")
@@ -718,20 +618,6 @@ export class ActionsController {
     );
   }
 
-  @Get(":id/follow-up-forms")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: [AdminFollowUpFormDto] })
-  async getFollowUpFormsAdmin(
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<AdminFollowUpFormDto[]> {
-    const action = await this.actionsService.findOneOrFail({
-      id,
-      serverSide: true,
-    });
-    const list = action.followUpForms ?? [];
-    return list.map((f) => new AdminFollowUpFormDto(f));
-  }
-
   @Post(":id/follow-up-forms")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: AdminFollowUpFormDto })
@@ -778,16 +664,6 @@ export class ActionsController {
     @Param("id", ParseIntPipe) id: number,
   ): Promise<ProfileDto[]> {
     const users = await this.actionsService.findIncompleteUsersForAction(id);
-    return users.map((user) => new ProfileDto(user));
-  }
-
-  @Get(":id/completed-users")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: [ProfileDto] })
-  async getCompletedUsersAdmin(
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<ProfileDto[]> {
-    const users = await this.actionsService.findCompletedUsersForAction(id);
     return users.map((user) => new ProfileDto(user));
   }
 
@@ -1019,13 +895,6 @@ export class ActionsController {
     return this.actionEventReminderService.getSentNotifsForGroup(groupId);
   }
 
-  @Post("clearDb")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse()
-  clearDbAdmin(): Promise<void> {
-    return this.actionsService.clearDb();
-  }
-
   @Post("likeActivity/:id")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ActionActivityDto })
@@ -1066,38 +935,6 @@ export class ActionsController {
       },
     });
     return activity;
-  }
-
-  @Post("addActivityComment/:id")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: CommentDto })
-  async addActivityComment(
-    @Param("id", ParseIntPipe) id: number,
-    @Body() commentDto: CreateCommentDto,
-    @Request() req: JwtRequest,
-  ): Promise<CommentDto> {
-    const comment = await this.actionsService.addActivityComment(
-      id,
-      commentDto,
-      req.user.sub,
-    );
-    this.posthog.capture({
-      event: AnalyticsEvent.ActivityCommentCreated,
-      distinctId: String(req.user.sub),
-      properties: { activityId: id, commentId: comment.id },
-    });
-    return comment;
-  }
-
-  @Post("updateActivity/:id")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: ActionActivityDto })
-  async updateActivity(
-    @Param("id", ParseIntPipe) id: number,
-    @Body() activityDto: UpdateActionActivityDto,
-    @Request() req: JwtRequest,
-  ): Promise<ActionActivityDto> {
-    return this.actionsService.updateActivity(id, activityDto, req.user.sub);
   }
 
   @Post("dismiss/:id")
@@ -1384,20 +1221,6 @@ export class ActionsController {
     );
   }
 
-  @Get("reloadAllActionUsersJoined")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse()
-  async reloadAllActionUsersJoinedAdmin(): Promise<void> {
-    return this.actionsService.reloadAllActionUsersJoined();
-  }
-
-  @Get("reloadAllActionUsersCompleted")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse()
-  async reloadAllActionUsersCompletedAdmin(): Promise<void> {
-    return this.actionsService.reloadAllActionUsersCompleted();
-  }
-
   @Get("export/:id")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ExportActionDto })
@@ -1446,37 +1269,6 @@ export class ActionsController {
       suspensionPlans,
       forumAutocompletePlans,
     });
-  }
-
-  @Get("suspendPlans")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: SuspensionPlanDto, isArray: true })
-  async suspendPlansAdmin(
-    @Query("rangeStart") rangeStart: Date,
-    @Query("rangeEnd") rangeEnd: Date,
-  ): Promise<SuspensionPlanDto[]> {
-    const start = new Date(rangeStart);
-    const end = new Date(rangeEnd);
-    const plans = await this.actionsService.getSuspendPlans(start, end, 6);
-    return plans.map((plan) => new SuspensionPlanDto(plan));
-  }
-
-  @Post("getShareLink/:id")
-  @UseGuards(AuthGuard)
-  @ApiOperation({
-    deprecated: true,
-    summary: "Deprecated. Use POST /share-urls/get-share-link instead.",
-  })
-  @ApiOkResponse({ type: ShareLinkDto })
-  async getShareLink(
-    @Param("id", ParseIntPipe) id: number,
-    @Request() req: JwtRequest,
-  ): Promise<ShareLinkDto> {
-    const url = await this.shareUrlsService.getShareLink({
-      userId: req.user.sub,
-      actionId: id,
-    });
-    return new ShareLinkDto(url);
   }
 
   @Get("shareLinksForForm/:formId")
