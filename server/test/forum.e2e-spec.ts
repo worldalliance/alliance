@@ -2320,6 +2320,42 @@ describe("Forum (e2e)", () => {
       expect(post.body.tags).toEqual(other.body.tags);
     });
 
+    it("refuses to save over tags a save in flight has not committed", async () => {
+      const { postId, tags } = await createTaggedPost(["A"]);
+
+      const inFlight = await withLockHeld(
+        {
+          query: "select id from post where id = $1 for update",
+          params: [postId],
+        },
+        async () => {
+          const first = saveTags({
+            postId,
+            tags: [{ name: "First" }],
+            knownTagIds: tagIds(tags),
+          }).then((res) => res);
+          await waitForBlockedBackends(1);
+          const second = saveTags({
+            postId,
+            tags: [{ name: "Second" }],
+            knownTagIds: tagIds(tags),
+          }).then((res) => res);
+          await waitForBlockedBackends(2);
+          return [first, second] as const;
+        },
+      );
+
+      const [first, second] = await Promise.all(inFlight);
+      expect(first.status).toBe(200);
+      expect(second.status).toBe(409);
+
+      const post = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${postId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      expect(post.body.tags.map((tag) => tag.name)).toEqual(["First"]);
+    });
+
     it("rejects a tag name that is only whitespace", async () => {
       const { postId, tags } = await createTaggedPost(["A"]);
 
