@@ -557,6 +557,7 @@ export class ActionsService {
     const actionsWithRelations = await this.actionRepository.find({
       where: { id: In(actionIds) },
       relations,
+      relationLoadStrategy: "query",
     });
 
     const actionMap = new Map(actionsWithRelations.map((a) => [a.id, a]));
@@ -881,7 +882,7 @@ export class ActionsService {
     const actions = sorted
       ? await this.findAllSorted(relations)
       : await this.actionRepository
-          .find({ relations })
+          .find({ relations, relationLoadStrategy: "query" })
           .then((rows) => rows.map(parseAction));
 
     const user = userId
@@ -1083,6 +1084,7 @@ export class ActionsService {
         followUpForms: { form: true },
         reviewers: true,
       },
+      relationLoadStrategy: "query",
     });
     const action = fetched ? parseAction(fetched) : null;
 
