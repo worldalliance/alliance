@@ -43,7 +43,7 @@ type Dimensions = {
   height: number;
 };
 
-type PixelCrop = {
+type SourcePixels = {
   x: number;
   y: number;
   width: number;
@@ -69,7 +69,7 @@ const createImage = (url: string) =>
 
 const getCroppedImage = async (
   imageSrc: string,
-  pixelCrop: PixelCrop,
+  pixelCrop: SourcePixels,
   rotation: number,
 ) => {
   const image = await createImage(imageSrc);
@@ -160,7 +160,7 @@ const rotateImageData = async (
 const toSourcePixels = (
   percentCrop: PercentCrop,
   dimensions: Dimensions,
-): PixelCrop => ({
+): SourcePixels => ({
   x: (percentCrop.x / 100) * dimensions.width,
   y: (percentCrop.y / 100) * dimensions.height,
   width: (percentCrop.width / 100) * dimensions.width,
