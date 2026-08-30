@@ -16,6 +16,7 @@ import type {
   CommunityDto,
   CommunityMemberContactInfoDto,
   CreateCommunityDto,
+  HeyApiError,
   UpdateCommunityDto,
   UserActionRelationDetailDto,
   UserActionSummaryDto,
@@ -296,6 +297,20 @@ const CommunityDetailPage: React.FC = () => {
       if (!community) {
         return;
       }
+      const applyCommunity = (
+        response: { data?: CommunityDto; error?: HeyApiError },
+        fallback: string,
+      ): boolean => {
+        if (response.data) {
+          setCommunity(response.data);
+          setError(null);
+          return true;
+        }
+        const message = errorMessage({ error: response.error, fallback });
+        setError(message);
+        pushError(message);
+        return false;
+      };
       try {
         switch (action) {
           case "add": {
@@ -305,8 +320,12 @@ const CommunityDetailPage: React.FC = () => {
               path: { communityId },
               body: { userId: memberSelection[0] },
             });
-            if (response.data) {
-              setCommunity(response.data);
+            if (
+              applyCommunity(
+                response,
+                "Unable to add member. Please try again.",
+              )
+            ) {
               setMemberSelection([]);
             }
             setAddingMember(false);
@@ -323,9 +342,10 @@ const CommunityDetailPage: React.FC = () => {
               path: { communityId },
               body: { userId },
             });
-            if (response.data) {
-              setCommunity(response.data);
-            }
+            applyCommunity(
+              response,
+              "Unable to remove member. Please try again.",
+            );
             setPendingMemberIds((prev) => {
               const next = new Set(prev);
               next.delete(userId);
@@ -340,8 +360,12 @@ const CommunityDetailPage: React.FC = () => {
               path: { communityId },
               body: { userId: leaderSelection[0] },
             });
-            if (response.data) {
-              setCommunity(response.data);
+            if (
+              applyCommunity(
+                response,
+                "Unable to add leader. Please try again.",
+              )
+            ) {
               setLeaderSelection([]);
             }
             setAddingLeader(false);
@@ -358,9 +382,10 @@ const CommunityDetailPage: React.FC = () => {
               path: { communityId },
               body: { userId },
             });
-            if (response.data) {
-              setCommunity(response.data);
-            }
+            applyCommunity(
+              response,
+              "Unable to promote leader. Please try again.",
+            );
             setPendingLeaderIds((prev) => {
               const next = new Set(prev);
               next.delete(userId);
@@ -379,9 +404,10 @@ const CommunityDetailPage: React.FC = () => {
               path: { communityId },
               body: { userId },
             });
-            if (response.data) {
-              setCommunity(response.data);
-            }
+            applyCommunity(
+              response,
+              "Unable to remove leader. Please try again.",
+            );
             setPendingLeaderIds((prev) => {
               const next = new Set(prev);
               next.delete(userId);
