@@ -1,13 +1,20 @@
 import { devPorts, PortCaller } from "@alliance/common/dev-ports";
 import { isUploadKey } from "@alliance/common/image-src";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+} from "@nestjs/common";
 import { randomUUID } from "crypto";
 import convert from "heic-convert";
 import sharp from "sharp";
 
 @Injectable()
 export class ImagesService {
+  private readonly logger = new Logger(ImagesService.name);
+
   constructor(@Inject("S3_CLIENT") private readonly s3: S3Client) {}
 
   private readonly bucket = process.env.ASSETS_BUCKET!; // TODO: separate dev bucket
@@ -60,6 +67,26 @@ export class ImagesService {
     );
 
     return key;
+  }
+
+  /**
+   * A data uri uploads, null clears, and undefined leaves the column alone. The
+   * api renders a stored photo as a url, so a client that sends one back has it
+   * ignored rather than overwriting the upload key.
+   */
+  async resolvePhotoUpdate(
+    photo: string | null | undefined,
+  ): Promise<string | null | undefined> {
+    if (photo === undefined || photo === null) {
+      return photo;
+    }
+    if (photo.startsWith("data:")) {
+      return this.processAndUploadProfileImage(photo);
+    }
+    this.logger.warn(
+      `Ignored a photo that is neither a data uri nor null: ${photo.slice(0, 100)}`,
+    );
+    return undefined;
   }
 
   async uploadImage(

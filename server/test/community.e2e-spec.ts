@@ -10,6 +10,7 @@ import {
   CommunityInviteStatus,
 } from "../src/community/entities/community-invite.entity";
 import { Community } from "../src/community/entities/community.entity";
+import { getImageSource } from "../src/images/images.service";
 import { ConversationService } from "../src/messaging/conversation.service";
 import { Conversation } from "../src/messaging/entities/conversation.entity";
 import { Participant } from "../src/messaging/entities/participant.entity";
@@ -558,6 +559,26 @@ describe("Community (e2e)", () => {
     expect(res.body.photo).toBeNull();
     const reloaded = await communityRepo.findOneByOrFail({ id: community.id });
     expect(reloaded.photo).toBeNull();
+  });
+
+  it("PATCH /community/:communityId keeps the key when sent the url it rendered", async () => {
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP Echoed Photo",
+        photo: "some-key.webp",
+        leaders: [testUser],
+        users: [testUser],
+      }),
+    );
+
+    const res = await request(ctx.app.getHttpServer())
+      .patch(`/community/${community.id}`)
+      .set("Authorization", `Bearer ${testUserToken}`)
+      .send({ photo: getImageSource("some-key.webp") });
+
+    expect(res.status).toBe(200);
+    const reloaded = await communityRepo.findOneByOrFail({ id: community.id });
+    expect(reloaded.photo).toBe("some-key.webp");
   });
 
   it("PATCH /community/:communityId rejects clearing a capacity the flags require with 400", async () => {

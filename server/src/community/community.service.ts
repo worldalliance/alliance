@@ -128,12 +128,8 @@ export class CommunityService {
   }
 
   async createCommunityAdmin(body: CreateCommunityDto): Promise<Community> {
-    if (body.photo?.startsWith("data:")) {
-      body.photo = await this.imagesService.processAndUploadProfileImage(
-        body.photo,
-      );
-    }
-    const community = this.communityRepository.create(body);
+    const photo = await this.imagesService.resolvePhotoUpdate(body.photo);
+    const community = this.communityRepository.create({ ...body, photo });
     assertCommunityAccessRules(community);
     const savedCommunity = await this.communityRepository.save(community);
     await this.conversationService.syncCommunityConversationMembers(
@@ -150,14 +146,11 @@ export class CommunityService {
       where: { id: userId },
     });
 
-    if (body.photo?.startsWith("data:")) {
-      body.photo = await this.imagesService.processAndUploadProfileImage(
-        body.photo,
-      );
-    }
+    const photo = await this.imagesService.resolvePhotoUpdate(body.photo);
 
     const community = this.communityRepository.create({
       ...body,
+      photo,
       leaders: [user],
       users: [user],
     });
@@ -467,20 +460,11 @@ export class CommunityService {
 
     community.name = name ?? community.name;
 
-    if (photo?.startsWith("data:")) {
-      const key = await this.imagesService.processAndUploadProfileImage(photo);
+    const nextPhoto = await this.imagesService.resolvePhotoUpdate(photo);
 
-      const updateDataWithPhoto = {
-        ...updateData,
-        photo: key,
-      };
-
-      Object.assign(community, updateDataWithPhoto);
-    } else {
-      Object.assign(community, updateData);
-      if (photo !== undefined) {
-        community.photo = photo;
-      }
+    Object.assign(community, updateData);
+    if (nextPhoto !== undefined) {
+      community.photo = nextPhoto;
     }
 
     assertCommunityAccessRules(community);
