@@ -25,6 +25,10 @@ jest.mock("@alliance/shared/lib/uploadAttachments", () => ({
 
 import ReplyForm from "./ReplyForm";
 
+// happy-dom leaves `location` where it is on `history.pushState`.
+declare const happyDOM: { setURL: (url: string) => void };
+const setUrl = (url: string) => happyDOM.setURL(url);
+
 afterEach(cleanup);
 
 beforeEach(() => {
@@ -110,6 +114,48 @@ describe("ReplyForm", () => {
     render(<Harness onSubmit={(_content, onSuccess) => onSuccess?.()} />);
 
     await post();
+
+    expect(sessionStorage.getItem(draftStorageKey)).toBeNull();
+  });
+
+  it("drops the saved draft of a composer that closed before the post landed", async () => {
+    seedSavedDraft();
+    let succeed = () => {};
+    const { unmount } = render(
+      <Harness
+        onSubmit={(_content, onSuccess) => {
+          succeed = () => onSuccess?.();
+        }}
+      />,
+    );
+
+    await post();
+    unmount();
+    await act(async () => succeed());
+
+    expect(sessionStorage.getItem(draftStorageKey)).toBeNull();
+  });
+
+  it("drops the draft it posted after the page moved on", async () => {
+    seedSavedDraft();
+    const url = window.location.href;
+    let succeed = () => {};
+    const { unmount } = render(
+      <Harness
+        onSubmit={(_content, onSuccess) => {
+          succeed = () => onSuccess?.();
+        }}
+      />,
+    );
+
+    await post();
+    unmount();
+    setUrl("http://localhost/another-thread");
+    try {
+      await act(async () => succeed());
+    } finally {
+      setUrl(url);
+    }
 
     expect(sessionStorage.getItem(draftStorageKey)).toBeNull();
   });

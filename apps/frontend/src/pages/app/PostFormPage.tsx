@@ -10,7 +10,10 @@ import {
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
-import EditableContentForm from "@alliance/sharedweb/ui/EditableContentForm";
+import EditableContentForm, {
+  clearDraft,
+  useDraftStorageKey,
+} from "@alliance/sharedweb/ui/EditableContentForm";
 import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import React, { useEffect, useState } from "react";
 import {
@@ -51,6 +54,7 @@ const PostFormPage: React.FC = () => {
   const navigate = useNavigate();
 
   const canSchedulePost = mode === "create" || scheduledVisibleAt !== null;
+  const storageKey = useDraftStorageKey(`post-${postId}`);
   const [clearDraftSignal, setClearDraftSignal] = useState(0);
 
   useEffect(() => {
@@ -160,6 +164,9 @@ const PostFormPage: React.FC = () => {
       }
 
       if (response.data) {
+        // Leaving the page unmounts this form while the post is in flight, and
+        // the signal below dies with it.
+        clearDraft(storageKey);
         setClearDraftSignal((x) => x + 1);
         navigate(href("/forum/post/:id", { id: response.data.id.toString() }));
       } else {
@@ -234,7 +241,7 @@ const PostFormPage: React.FC = () => {
                   clearDraftSignal={clearDraftSignal}
                   expanded={true}
                   placeholder="Write your post content here..."
-                  draftKey={`post-${postId}`}
+                  storageKey={storageKey}
                 />
                 <div className="mt-3 flex justify-end text-sm text-zinc-500">
                   Drag an image to attach

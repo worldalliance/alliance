@@ -5,7 +5,10 @@ import {
 } from "@alliance/shared/lib/uploadAttachments";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import EditableContentForm from "@alliance/sharedweb/ui/EditableContentForm";
+import EditableContentForm, {
+  clearDraft,
+  useDraftStorageKey,
+} from "@alliance/sharedweb/ui/EditableContentForm";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, {
   useCallback,
@@ -54,6 +57,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
 }: ReplyFormProps) => {
   const [expanded, setExpanded] = useState(startExpanded);
   const needsTag = parentId === null && tags.length > 0;
+  const storageKey = useDraftStorageKey(`reply-${parentId}`);
   const [clearDraftSignal, setClearDraftSignal] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
   // Local, so posting one comment leaves every other composer live.
@@ -87,6 +91,9 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
       await onSubmit(
         { ...editableContent, attachments: uploaded.value },
         () => {
+          // Collapsing the thread or replying elsewhere unmounts this form
+          // while the post is in flight, and the signal below dies with it.
+          clearDraft(storageKey);
           setClearDraftSignal((x) => x + 1);
           setExpanded(false);
         },
@@ -95,7 +102,13 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
       isPostingRef.current = false;
       setIsPosting(false);
     }
-  }, [editableContent, onSubmit, onDismissError, setEditableContent]);
+  }, [
+    editableContent,
+    onSubmit,
+    onDismissError,
+    setEditableContent,
+    storageKey,
+  ]);
 
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
@@ -151,7 +164,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
           expanded={expanded}
           disabled={isPosting}
           clearDraftSignal={clearDraftSignal}
-          draftKey={`reply-${parentId}`}
+          storageKey={storageKey}
           onChange={(val) => {
             onDismissError?.();
             setUploadError(null);

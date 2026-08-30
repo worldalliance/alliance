@@ -1,6 +1,6 @@
 import { CreateEditableContentDto } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import { htmlToMarkdownFromDocs } from "../lib/htmlToMarkdown";
 import { resolveImageSrc } from "../lib/imageSrc";
@@ -14,8 +14,8 @@ interface EditableContentFormProps {
   /** Freezes the draft, so a submit in flight cannot post a stale copy of it. */
   disabled?: boolean;
 
-  /** Optional namespace to distinguish drafts across pages/users/entities */
-  draftKey?: string;
+  /** Names this draft, from `draftStorageKey`. Without it nothing is saved or restored. */
+  storageKey?: string;
   /** Debounce interval for autosave (ms) */
   autosaveMs?: number;
   /** Whether to restore a found draft on mount */
@@ -31,11 +31,27 @@ interface EditableContentFormProps {
 
 const STORAGE_PREFIX = "editablecontent:draft:v1";
 
-function getStorageKey(draftKey?: string) {
+/**
+ * Names a draft in session storage. The name carries the URL, so a form that
+ * outlives a navigation has to hold the name it resolved. `useDraftStorageKey`
+ * holds it.
+ */
+export function draftStorageKey(draftKey?: string) {
   if (typeof window === "undefined") return `${STORAGE_PREFIX}:ssr`;
   const urlPart =
     window.location.origin + window.location.pathname + window.location.search;
   return `${STORAGE_PREFIX}:${urlPart}${draftKey ? `:${draftKey}` : ""}`;
+}
+
+/** Holds the name from mount, so a navigation cannot rename a draft mid-life. */
+export function useDraftStorageKey(draftKey?: string) {
+  return useMemo(() => draftStorageKey(draftKey), [draftKey]);
+}
+
+/** Drops a saved draft without the form that wrote it having to still be mounted. */
+export function clearDraft(storageKey: string) {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(storageKey);
 }
 
 const EditableContentForm: React.FC<EditableContentFormProps> = ({
@@ -45,7 +61,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
   placeholder,
   expanded,
   disabled = false,
-  draftKey,
+  storageKey,
   autosaveMs = 1200,
   restoreDraft,
   onDraftRestored,
@@ -54,20 +70,16 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const dragCounterRef = useRef(0);
   const saveTimer = useRef<number | null>(null);
-  const storageKeyRef = useRef<string>(getStorageKey(draftKey));
   const lastSavedHashRef = useRef<string>("");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const shouldRestoreDraft = restoreDraft ?? draftKey !== undefined;
+  const shouldRestoreDraft = restoreDraft ?? storageKey !== undefined;
 
   useEffect(() => {
-    storageKeyRef.current = getStorageKey(draftKey);
-  }, [draftKey]);
+    if (!shouldRestoreDraft || !storageKey || typeof window === "undefined")
+      return;
 
-  useEffect(() => {
-    if (!shouldRestoreDraft || typeof window === "undefined") return;
-
-    const raw = sessionStorage.getItem(storageKeyRef.current);
+    const raw = sessionStorage.getItem(storageKey);
     if (!raw) return;
 
     const parsed = JSON.parse(raw) as {
@@ -85,7 +97,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
   }, [shouldRestoreDraft]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !storageKey) return;
 
     const doSave = () => {
       const hash = JSON.stringify(value);
@@ -94,7 +106,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
         dto: value,
         savedAt: new Date().toISOString(),
       });
-      sessionStorage.setItem(storageKeyRef.current, payload);
+      sessionStorage.setItem(storageKey, payload);
       lastSavedHashRef.current = hash;
     };
 
@@ -114,10 +126,10 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
 
   // Allow parent to clear the draft after a successful real save
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !storageKey) return;
     if (!clearDraftSignal) return;
     try {
-      sessionStorage.removeItem(storageKeyRef.current);
+      sessionStorage.removeItem(storageKey);
       lastSavedHashRef.current = JSON.stringify(value);
     } catch {
       // ignore
