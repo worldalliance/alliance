@@ -34,17 +34,20 @@ class StubImage {
 
   set src(url: string) {
     this.url = url;
-    const fire = () => this.listeners["load"]?.forEach((listener) => listener());
+    const event = decodeFails ? "error" : "load";
+    const fire = () => this.listeners[event]?.forEach((listener) => listener());
     if (heldDecodes) heldDecodes.push(fire);
     else setTimeout(fire, 0);
   }
 }
 
+let decodeFails = false;
+let cropRects: number[][] = [];
 let encoded = CROPPED;
 let angles: number[] = [];
 let cropAngles: number[] = [];
 // An array here holds every decode until a test releases it, which is how a
-// rotation lands after the pick that was meant to drop it.
+// rotation lands after the dismissal or the pick that was meant to drop it.
 let heldDecodes: (() => void)[] | null = null;
 
 const stubContext = {
@@ -55,8 +58,9 @@ const stubContext = {
   drawImage() {},
   // Only the crop encode reads pixels back, and it turns the source to the
   // angle it crops at first, so the last angle is the one it drew at.
-  getImageData: () => {
+  getImageData: (x: number, y: number, width: number, height: number) => {
     cropAngles.push(angles.at(-1) ?? 0);
+    cropRects.push([x, y, width, height]);
     return {};
   },
   putImageData() {},
@@ -67,6 +71,8 @@ const realGetContext = HTMLCanvasElement.prototype.getContext;
 const realToDataURL = HTMLCanvasElement.prototype.toDataURL;
 
 beforeEach(() => {
+  decodeFails = false;
+  cropRects = [];
   encoded = CROPPED;
   angles = [];
   cropAngles = [];
@@ -104,6 +110,17 @@ const pick = (contents: string) => {
   fireEvent.change(input);
 };
 
+const done = () => screen.getByRole("button", { name: "Done" });
+
+const dragCorner = () => {
+  const wrapper = document.querySelector(".ReactCrop__child-wrapper")!;
+  wrapper.getBoundingClientRect = () =>
+    ({ x: 0, y: 0, width: 600, height: 400 }) as DOMRect;
+  fireEvent.pointerDown(wrapper, { clientX: 10, clientY: 10 });
+  fireEvent.pointerMove(document, { clientX: 210, clientY: 210 });
+  fireEvent.pointerUp(document, { clientX: 210, clientY: 210 });
+};
+
 // The crop starts centered on the preview's load, which happy-dom never fires.
 const firePreviewLoad = async () => {
   const preview =
@@ -114,28 +131,203 @@ const firePreviewLoad = async () => {
   return preview;
 };
 
+const loadPreview = async () => {
+  const preview = await firePreviewLoad();
+  await waitFor(() => expect(done().hasAttribute("disabled")).toBe(false));
+  return preview;
+};
+
+// A `toBeNull` on the heading itself serializes the whole element on every
+// retry, which is slow enough to spend the timeout before the modal closes.
+const modalClosed = () =>
+  waitFor(() => {
+    if (screen.queryByText("Adjust your photo")) throw new Error("still open");
+  });
+
 const settled = () =>
   waitFor(() => {
     if (screen.queryByRole("status")) throw new Error("still processing");
   });
 
+const dismiss = async () => {
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  await modalClosed();
+};
+
+const rotateRight = async () => {
+  const previous = encoded;
+  encoded = ROTATED;
+  fireEvent.click(screen.getByRole("button", { name: "Rotate right" }));
+  await waitFor(() =>
+    expect(screen.getByAltText<HTMLImageElement>("Profile to crop").src).toBe(
+      ROTATED,
+    ),
+  );
+  encoded = previous;
+  await loadPreview();
+};
+
+const apply = async () => {
+  const encodes = cropAngles.length;
+  fireEvent.click(done());
+  await modalClosed();
+  return cropAngles.slice(encodes);
+};
+
+const reopen = async () => {
+  fireEvent.click(screen.getByRole("button", { name: "Edit photo" }));
+  await loadPreview();
+};
+
+const thumbnail = () =>
+  screen.queryByAltText<HTMLImageElement>("Profile preview");
+
 describe("ImageEditor", () => {
-  test("reports nothing for a pick whose crop never lands", async () => {
+  test("encodes nothing until Done, then hands the caller one image", async () => {
     const applied = editor(INITIAL_URL);
 
     pick("first");
     await screen.findByText("Adjust your photo");
-    await settled();
+    expect(done().hasAttribute("disabled")).toBe(true);
+
+    await loadPreview();
+    expect(cropAngles).toEqual([]);
+    expect(applied).toEqual([]);
+
+    fireEvent.click(done());
+    await waitFor(() => expect(applied).toEqual([CROPPED]));
+    expect(cropAngles).toEqual([0]);
+    expect(screen.queryByText("Adjust your photo")).toBeNull();
+    expect(thumbnail()?.src).toBe(CROPPED);
+  });
+
+  test("keeps the caller's photo when a pick is dismissed", async () => {
+    const applied = editor(INITIAL_URL);
+
+    pick("first");
+    await loadPreview();
+    await dismiss();
 
     expect(applied).toEqual([]);
+    expect(thumbnail()?.src).toBe(INITIAL_URL);
+  });
+
+  test("returns the editor to the applied photo when a pick is dismissed", async () => {
+    const applied = editor(null);
+
+    pick("first");
+    const firstSrc = (await loadPreview()).src;
+    fireEvent.click(done());
+    await waitFor(() => expect(applied.length).toBe(1));
+
+    pick("second");
+    const secondSrc = (await loadPreview()).src;
+    expect(secondSrc).not.toBe(firstSrc);
+    await dismiss();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit photo" }));
+    const reopened =
+      await screen.findByAltText<HTMLImageElement>("Profile to crop");
+    expect(reopened.src).toBe(firstSrc);
+  });
+
+  test("offers the file picker again when a first pick is dismissed", async () => {
+    editor(null);
+
+    pick("first");
+    await loadPreview();
+    await dismiss();
+
+    expect(thumbnail()).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit photo" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Upload photo" }),
+    ).not.toBeNull();
+  });
+
+  test("keeps the rotation its photo was applied at when a later pick is dismissed", async () => {
+    const applied = editor(null);
+
+    pick("first");
+    await loadPreview();
+    await rotateRight();
+    expect(await apply()).toEqual([90]);
+    expect(applied).toEqual([CROPPED]);
+
+    pick("second");
+    await loadPreview();
+    await dismiss();
+
+    await reopen();
+    expect(await apply()).toEqual([90]);
+  });
+
+  test("keeps the crop its photo was applied at when a pick is dismissed", async () => {
+    editor(null);
+
+    pick("first");
+    await screen.findByAltText("Profile to crop");
+    dragCorner();
+    await loadPreview();
+    await apply();
+    expect(cropRects.at(-1)).toEqual([10, 10, 200, 200]);
+
+    await reopen();
+    await dismiss();
+
+    await reopen();
+    await apply();
+    expect(cropRects.at(-1)).toEqual([10, 10, 200, 200]);
+  });
+
+  test("drops a rotation the user dismissed", async () => {
+    editor(null);
+
+    pick("first");
+    await loadPreview();
+    expect(await apply()).toEqual([0]);
+
+    await reopen();
+    await rotateRight();
+    await dismiss();
+
+    await reopen();
+    expect(await apply()).toEqual([0]);
+  });
+
+  test("drops a rotation that lands after the dismissal", async () => {
+    editor(null);
+
+    pick("first");
+    const firstSrc = (await loadPreview()).src;
+    expect(await apply()).toEqual([0]);
+
+    await reopen();
+    heldDecodes = [];
+    encoded = ROTATED;
+    fireEvent.click(screen.getByRole("button", { name: "Rotate right" }));
+    await waitFor(() => expect(heldDecodes?.length).toBe(1));
+    await dismiss();
+
+    const held = heldDecodes ?? [];
+    heldDecodes = null;
+    angles = [];
+    held.forEach((fire) => fire());
+    await waitFor(() => expect(angles).toEqual([90]));
+    encoded = CROPPED;
+
+    await reopen();
+    expect(screen.getByAltText<HTMLImageElement>("Profile to crop").src).toBe(
+      firstSrc,
+    );
+    expect(await apply()).toEqual([0]);
   });
 
   test("drops a rotation that a new pick replaced", async () => {
     editor(null);
 
     pick("first");
-    const firstSrc = (await firePreviewLoad()).src;
-    await waitFor(() => expect(cropAngles).toEqual([0]));
+    const firstSrc = (await loadPreview()).src;
 
     heldDecodes = [];
     encoded = ROTATED;
@@ -144,35 +336,26 @@ describe("ImageEditor", () => {
 
     pick("second");
     await waitFor(() => expect(heldDecodes?.length).toBe(2));
-    cropAngles = [];
 
     const held = heldDecodes ?? [];
     heldDecodes = null;
     encoded = CROPPED;
     held.forEach((fire) => fire());
-    const preview = await firePreviewLoad();
-    await waitFor(() => expect(cropAngles).toEqual([0]));
+    const preview = await loadPreview();
 
     expect(preview.src).not.toBe(ROTATED);
     expect(preview.src).not.toBe(firstSrc);
+    expect(await apply()).toEqual([0]);
   });
 
-  test("drops a rotation that a removal replaced", async () => {
-    editor(null, true);
-
-    pick("first");
-    await firePreviewLoad();
-    await waitFor(() => expect(cropAngles).toEqual([0]));
+  test("clears the spinner when a dismissal leaves nothing to measure", async () => {
+    editor(null);
 
     heldDecodes = [];
-    encoded = ROTATED;
-    fireEvent.click(screen.getByRole("button", { name: "Rotate right" }));
+    pick("first");
+    await screen.findByText("Adjust your photo");
     await waitFor(() => expect(heldDecodes?.length).toBe(1));
-
-    // The open modal marks the thumbnail inert, so closing it is what puts the
-    // remove button back within reach.
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
-    fireEvent.click(screen.getByRole("button", { name: "Remove photo" }));
+    await dismiss();
 
     // The dropped rotation has nothing left to build, so its spinner must come
     // off the button that picks the next photo rather than wait for the encode.
@@ -181,19 +364,16 @@ describe("ImageEditor", () => {
     const held = heldDecodes ?? [];
     heldDecodes = null;
     held.forEach((fire) => fire());
-    await settled();
 
-    expect(screen.queryByAltText("Profile preview")).toBeNull();
+    await settled();
   });
 
   test("keeps the spinner up for a measurement a dropped rotation outlived", async () => {
     editor(null);
 
     pick("first");
-    await firePreviewLoad();
-    await waitFor(() => expect(cropAngles).toEqual([0]));
+    await loadPreview();
 
-    angles = [];
     heldDecodes = [];
     encoded = ROTATED;
     fireEvent.click(screen.getByRole("button", { name: "Rotate right" }));
@@ -204,6 +384,7 @@ describe("ImageEditor", () => {
 
     const [rotation, measurement] = heldDecodes ?? [];
     heldDecodes = null;
+    angles = [];
     encoded = CROPPED;
     rotation!();
     await waitFor(() => expect(angles).toEqual([90]));
@@ -218,38 +399,27 @@ describe("ImageEditor", () => {
   });
 
   test("keeps the spinner up for a rotation a dropped rotation outlived", async () => {
-    editor(null, true);
+    editor(null);
 
     pick("first");
-    await firePreviewLoad();
-    await waitFor(() => expect(cropAngles).toEqual([0]));
+    await loadPreview();
+    await apply();
 
+    await reopen();
     heldDecodes = [];
     encoded = ROTATED;
     fireEvent.click(screen.getByRole("button", { name: "Rotate right" }));
     await waitFor(() => expect(heldDecodes?.length).toBe(1));
-
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
-    fireEvent.click(screen.getByRole("button", { name: "Remove photo" }));
+    await dismiss();
 
     encoded = CROPPED;
-    pick("second");
-    await waitFor(() => expect(heldDecodes?.length).toBe(2));
-
-    await act(async () => {
-      heldDecodes![1]!();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-    await firePreviewLoad();
+    await reopen();
     const rotate = () =>
       screen.getByRole<HTMLButtonElement>("button", { name: "Rotate right" });
     await waitFor(() => expect(rotate().disabled).toBe(false));
 
-    const beforeSecondRotation = heldDecodes!.length;
     fireEvent.click(rotate());
-    await waitFor(() =>
-      expect(heldDecodes!.length).toBeGreaterThan(beforeSecondRotation),
-    );
+    await waitFor(() => expect(heldDecodes?.length).toBe(2));
 
     heldDecodes![0]!();
     await act(async () => {
@@ -270,6 +440,83 @@ describe("ImageEditor", () => {
     await settled();
   });
 
+  test("keeps Done disabled until a dismissal has re-measured its source", async () => {
+    editor(null);
+
+    pick("first");
+    await loadPreview();
+    expect(await apply()).toEqual([0]);
+
+    await reopen();
+    const firstSrc =
+      screen.getByAltText<HTMLImageElement>("Profile to crop").src;
+    pick("second");
+    await waitFor(() =>
+      expect(
+        screen.getByAltText<HTMLImageElement>("Profile to crop").src,
+      ).not.toBe(firstSrc),
+    );
+    await loadPreview();
+
+    heldDecodes = [];
+    encoded = ROTATED;
+    fireEvent.click(screen.getByRole("button", { name: "Rotate right" }));
+    await waitFor(() => expect(heldDecodes?.length).toBe(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await modalClosed();
+    await waitFor(() => expect(heldDecodes?.length).toBe(2));
+
+    const [rotation, measurement] = heldDecodes ?? [];
+    heldDecodes = null;
+    encoded = CROPPED;
+    rotation!();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit photo" }));
+    await firePreviewLoad();
+    expect(done().hasAttribute("disabled")).toBe(true);
+
+    measurement!();
+    await waitFor(() => expect(done().hasAttribute("disabled")).toBe(false));
+  });
+
+  test("replaces the zero-size crop left by a click that never became a drag", async () => {
+    editor(null);
+
+    pick("first");
+    await screen.findByAltText("Profile to crop");
+    const wrapper = document.querySelector(".ReactCrop__child-wrapper")!;
+    wrapper.getBoundingClientRect = () =>
+      ({ x: 0, y: 0, width: 600, height: 400 }) as DOMRect;
+    fireEvent.pointerDown(wrapper, { clientX: 100, clientY: 100 });
+    expect(done().hasAttribute("disabled")).toBe(true);
+
+    await loadPreview();
+  });
+
+  test("says so when the source will not decode", async () => {
+    const applied = editor(null);
+    decodeFails = true;
+
+    pick("broken");
+    await screen.findByText(
+      "Unable to read this image. Please try another file.",
+    );
+    expect(done().hasAttribute("disabled")).toBe(true);
+    expect(applied).toEqual([]);
+  });
+
+  test("says nothing when the caller's own photo will not decode", async () => {
+    decodeFails = true;
+    const applied = editor(INITIAL_URL);
+
+    await settled();
+    expect(
+      screen.queryByText("Unable to read this image. Please try another file."),
+    ).toBeNull();
+    expect(applied).toEqual([]);
+  });
+
   test("reports null when the user removes the photo", () => {
     const applied = editor(INITIAL_URL, true);
 
@@ -282,5 +529,38 @@ describe("ImageEditor", () => {
     editor(INITIAL_URL);
 
     expect(screen.queryByRole("button", { name: "Remove photo" })).toBeNull();
+  });
+
+  test("does not offer back a photo the user removed", async () => {
+    const applied = editor(INITIAL_URL, true);
+
+    pick("first");
+    await loadPreview();
+    fireEvent.click(done());
+    await waitFor(() => expect(applied).toEqual([CROPPED]));
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove photo" }));
+    expect(applied).toEqual([CROPPED, null]);
+
+    pick("second");
+    await loadPreview();
+    await dismiss();
+
+    expect(applied).toEqual([CROPPED, null]);
+    expect(thumbnail()).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit photo" })).toBeNull();
+  });
+
+  test("keeps the modal open when the crop encodes past the size limit", async () => {
+    const applied = editor(null);
+    encoded = "d".repeat(50_000_001);
+
+    pick("first");
+    await loadPreview();
+    fireEvent.click(done());
+
+    await screen.findByText(/cropped image is too large/);
+    expect(screen.queryByText("Adjust your photo")).not.toBeNull();
+    expect(applied).toEqual([]);
   });
 });

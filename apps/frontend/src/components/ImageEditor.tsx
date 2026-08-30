@@ -19,10 +19,8 @@ import {
   type FC,
 } from "react";
 import ReactCrop, {
-  areCropsEqual,
   centerCrop,
   makeAspectCrop,
-  type Crop,
   type PercentCrop,
 } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
@@ -48,6 +46,13 @@ type SourcePixels = {
   y: number;
   width: number;
   height: number;
+};
+
+type AppliedState = {
+  imageSrc: string | null;
+  previewSrc: string | null;
+  rotation: number;
+  crop: PercentCrop | undefined;
 };
 
 const DEFAULT_MAX_FILE_SIZE_MB = 20;
@@ -157,6 +162,11 @@ const rotateImageData = async (
   return canvas.toDataURL("image/png");
 };
 
+// ReactCrop hands back a zero-size crop for a click that never became a drag,
+// and then refuses to start another one while `keepSelection` holds it.
+const withSize = (crop: PercentCrop | undefined) =>
+  crop && crop.width > 0 && crop.height > 0 ? crop : null;
+
 const toSourcePixels = (
   percentCrop: PercentCrop,
   dimensions: Dimensions,
@@ -180,11 +190,12 @@ const ImageEditor: FC<ImageEditorProps> = ({
   const previewImageRef = useRef<HTMLImageElement | null>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(initialImageUrl);
   const [previewSrc, setPreviewSrc] = useState<string | null>(initialImageUrl);
+  // The last image handed to the caller. It is the only thing the thumbnail
+  // shows, so the thumbnail cannot show an edit the caller was never given.
   const [croppedImage, setCroppedImage] = useState<string | null>(
     initialImageUrl,
   );
-  const [crop, setCrop] = useState<Crop | undefined>(undefined);
-  const [completedCrop, setCompletedCrop] = useState<PercentCrop | null>(null);
+  const [crop, setCrop] = useState<PercentCrop | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [rotation, setRotation] = useState(0);
   // The measurement and a rotation settle only their own flag, so a dropped
@@ -192,23 +203,29 @@ const ImageEditor: FC<ImageEditorProps> = ({
   const [isMeasuring, setIsMeasuring] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
   const isPreviewProcessing = isMeasuring || isRotating;
+  const [isCropping, setIsCropping] = useState(false);
   const [hasCustomImage, setHasCustomImage] = useState(false);
   const [sourceDimensions, setSourceDimensions] = useState<Dimensions | null>(
     null,
   );
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const lastInitialUrlRef = useRef<string | null>(initialImageUrl);
+  // The editor state the caller's photo was made from. Dismissing returns the
+  // editor to it, so it cannot hold a photo the thumbnail isn't showing.
+  const appliedRef = useRef<AppliedState>({
+    imageSrc: initialImageUrl,
+    previewSrc: initialImageUrl,
+    rotation: 0,
+    crop: undefined,
+  });
+  const restoredPreviewRef = useRef(false);
+  // Only a picked file gets told it will not decode. The caller's own photo
+  // has no Done to explain, and it renders in the thumbnail, which sets no
+  // crossOrigin and so survives what the measurement's decode cannot.
+  const pickedSourceRef = useRef(false);
   // Bumped by everything that replaces the preview, so a rotation still
   // encoding when one of them lands is dropped rather than written back.
   const previewGenerationRef = useRef(0);
-
-  // The crop effect below re-encodes the source at full resolution, so onChange
-  // stays out of its dependencies: a caller that renders a fresh callback and
-  // sets state from it would otherwise re-encode on every render, forever.
-  const onChangeRef = useRef(onChange);
-  useEffect(() => {
-    onChangeRef.current = onChange;
-  });
 
   const rotatedDimensions = useMemo(() => {
     if (!sourceDimensions) return null;
@@ -235,9 +252,14 @@ const ImageEditor: FC<ImageEditorProps> = ({
     setCroppedImage(initialImageUrl);
     setRotation(0);
     setCrop(undefined);
-    setCompletedCrop(null);
     setError(null);
     lastInitialUrlRef.current = initialImageUrl;
+    appliedRef.current = {
+      imageSrc: initialImageUrl,
+      previewSrc: initialImageUrl,
+      rotation: 0,
+      crop: undefined,
+    };
   }, [initialImageUrl, hasCustomImage]);
 
   // A rotation that clears this flag on its way out clears a later rotation's,
@@ -253,6 +275,11 @@ const ImageEditor: FC<ImageEditorProps> = ({
   }, [isUploading]);
 
   useEffect(() => {
+    // A dismiss puts back the preview the applied photo was made on, rotation
+    // included, which the downscale below would otherwise overwrite.
+    const restored = restoredPreviewRef.current;
+    restoredPreviewRef.current = false;
+
     if (!imageSrc) {
       setSourceDimensions(null);
       setPreviewSrc(null);
@@ -269,6 +296,7 @@ const ImageEditor: FC<ImageEditorProps> = ({
         const image = await createImage(imageSrc);
         if (cancelled) return;
         setSourceDimensions({ width: image.width, height: image.height });
+        if (restored) return;
         let preview = imageSrc;
         try {
           preview = await createPreviewImage(image);
@@ -282,6 +310,9 @@ const ImageEditor: FC<ImageEditorProps> = ({
         if (!cancelled) {
           setSourceDimensions(null);
           setPreviewSrc(imageSrc);
+          if (pickedSourceRef.current) {
+            setError("Unable to read this image. Please try another file.");
+          }
         }
       } finally {
         if (!cancelled) {
@@ -324,12 +355,11 @@ const ImageEditor: FC<ImageEditorProps> = ({
         // keyed on it never rerun to rebuild what the reset below clears.
         if (reader.result === imageSrc) return;
         dropRotation();
+        pickedSourceRef.current = true;
         setImageSrc(reader.result);
         setPreviewSrc(reader.result);
-        setCroppedImage(null);
         setSourceDimensions(null);
         setCrop(undefined);
-        setCompletedCrop(null);
         setHasCustomImage(true);
         setIsCropModalOpen(true);
         setRotation(0);
@@ -343,12 +373,18 @@ const ImageEditor: FC<ImageEditorProps> = ({
 
   const handleRemove = useCallback(() => {
     dropRotation();
+    appliedRef.current = {
+      imageSrc: null,
+      previewSrc: null,
+      rotation: 0,
+      crop: undefined,
+    };
+    pickedSourceRef.current = false;
     setImageSrc(null);
     setPreviewSrc(null);
     setCroppedImage(null);
     setSourceDimensions(null);
     setCrop(undefined);
-    setCompletedCrop(null);
     setHasCustomImage(false);
     setIsCropModalOpen(false);
     setRotation(0);
@@ -364,8 +400,7 @@ const ImageEditor: FC<ImageEditorProps> = ({
       width,
       height,
     );
-    setCrop((prev) => prev ?? centered);
-    setCompletedCrop((prev) => prev ?? centered);
+    setCrop((prev) => withSize(prev) ?? centered);
   }, []);
 
   // The preview only fires load when its src changes, so a rotation that
@@ -377,41 +412,62 @@ const ImageEditor: FC<ImageEditorProps> = ({
     if (image?.complete) centerSquareCrop(image);
   }, [crop, previewSrc, isPreviewProcessing, centerSquareCrop]);
 
-  useEffect(() => {
-    if (!hasCustomImage || !imageSrc || !completedCrop || !rotatedDimensions) {
+  const usableCrop = withSize(crop);
+  const isCropReady =
+    Boolean(usableCrop && rotatedDimensions) && !isPreviewProcessing;
+
+  // ReactCrop finishes a crop on every pointer-up and every arrow keypress, so
+  // the full-resolution encode runs here rather than per finished crop.
+  const applyCropAndClose = useCallback(async () => {
+    if (!imageSrc || !usableCrop || !rotatedDimensions) {
+      setError("Unable to process image. Please try another file.");
       return;
     }
 
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const cropped = await getCroppedImage(
-          imageSrc,
-          toSourcePixels(completedCrop, rotatedDimensions),
-          rotation,
+    setIsCropping(true);
+    try {
+      const cropped = await getCroppedImage(
+        imageSrc,
+        toSourcePixels(usableCrop, rotatedDimensions),
+        rotation,
+      );
+      if (cropped.length > CROPPED_IMAGE_STRING_MAX_LENGTH) {
+        setError(
+          "The cropped image is too large. Please crop a smaller area or use a smaller image.",
         );
-        if (cancelled) return;
-        if (cropped.length > CROPPED_IMAGE_STRING_MAX_LENGTH) {
-          setError(
-            "The cropped image is too large. Please crop a smaller area or use a smaller image.",
-          );
-          return;
-        }
-        setCroppedImage(cropped);
-        onChangeRef.current(cropped);
-        setError(null);
-      } catch {
-        if (!cancelled) {
-          setError("Unable to process image. Please try another file.");
-        }
+        return;
       }
-    })();
+      setCroppedImage(cropped);
+      appliedRef.current = { imageSrc, previewSrc, rotation, crop: usableCrop };
+      onChange(cropped);
+      setError(null);
+      setIsCropModalOpen(false);
+    } catch {
+      setError("Unable to process image. Please try another file.");
+    } finally {
+      setIsCropping(false);
+    }
+  }, [usableCrop, imageSrc, onChange, previewSrc, rotatedDimensions, rotation]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [completedCrop, hasCustomImage, imageSrc, rotatedDimensions, rotation]);
+  const dismissCrop = useCallback(() => {
+    setError(null);
+    setIsCropModalOpen(false);
+    dropRotation();
+
+    const applied = appliedRef.current;
+    pickedSourceRef.current = false;
+    // Only a changed source reruns the effect that would clobber the preview,
+    // so only a changed source arms the flag that stops it.
+    restoredPreviewRef.current = applied.imageSrc !== imageSrc;
+    setImageSrc(applied.imageSrc);
+    setPreviewSrc(applied.previewSrc);
+    setRotation(applied.rotation);
+    setCrop(applied.crop);
+    setHasCustomImage(
+      Boolean(applied.imageSrc) &&
+        applied.imageSrc !== lastInitialUrlRef.current,
+    );
+  }, [dropRotation, imageSrc]);
 
   const handleRotate = useCallback(
     async (direction: "left" | "right") => {
@@ -435,7 +491,6 @@ const ImageEditor: FC<ImageEditorProps> = ({
         setPreviewSrc(rotated);
         setRotation((((rotation + delta) % 360) + 360) % 360);
         setCrop(undefined);
-        setCompletedCrop(null);
       } catch {
         if (previewGenerationRef.current === generation) {
           setError("Unable to rotate image. Please try again.");
@@ -447,7 +502,7 @@ const ImageEditor: FC<ImageEditorProps> = ({
     [hasCustomImage, isUploading, previewSrc, rotation, isPreviewProcessing],
   );
 
-  const previewImage = croppedImage ?? previewSrc ?? imageSrc ?? undefined;
+  const previewImage = croppedImage ?? undefined;
   const showMobileOverlay = !hasCustomImage && Boolean(previewImage);
 
   return (
@@ -522,12 +577,17 @@ const ImageEditor: FC<ImageEditorProps> = ({
         disabled={isUploading}
       />
 
-      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
+      {error && !isCropModalOpen && (
+        <p className="mt-2 text-xs text-red-500">{error}</p>
+      )}
 
       {hasCustomImage && isCropModalOpen && imageSrc && (
         <Modal
-          onClose={() => setIsCropModalOpen(false)}
-          dismissDisabled={isUploading}
+          onClose={dismissCrop}
+          // Dismissing throws away the pick and every adjustment, so it needs
+          // a press the user meant, not a click that landed beside the panel.
+          dismissOnBackdrop={false}
+          dismissDisabled={isUploading || isCropping}
           panelClassName="max-w-[640px] shadow-2xl"
         >
           <ModalHeader>
@@ -538,7 +598,7 @@ const ImageEditor: FC<ImageEditorProps> = ({
 
           <ModalBody>
             <div className="relative flex min-h-40 w-full items-center justify-center overflow-hidden rounded-xl bg-zinc-900 p-3">
-              {isPreviewProcessing && (
+              {(isPreviewProcessing || isCropping) && (
                 <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40">
                   <Spinner />
                 </div>
@@ -547,21 +607,11 @@ const ImageEditor: FC<ImageEditorProps> = ({
                 <ReactCrop
                   crop={crop}
                   onChange={(_, percentCrop) => setCrop(percentCrop)}
-                  // Every change to completedCrop re-encodes the source at full
-                  // resolution, and ReactCrop completes a crop on any
-                  // pointer-up, so keep the previous object when nothing moved.
-                  onComplete={(_, percentCrop) =>
-                    setCompletedCrop((prev) =>
-                      prev && areCropsEqual(prev, percentCrop)
-                        ? prev
-                        : percentCrop,
-                    )
-                  }
                   aspect={1}
                   minWidth={MIN_CROP_SIZE}
                   minHeight={MIN_CROP_SIZE}
                   keepSelection
-                  disabled={isUploading}
+                  disabled={isUploading || isCropping}
                   style={{ maxHeight: MAX_CROP_HEIGHT, width: cropWidth }}
                 >
                   <img
@@ -585,7 +635,7 @@ const ImageEditor: FC<ImageEditorProps> = ({
                   title="Rotate left"
                   className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-40 disabled:hover:bg-transparent"
                   onClick={() => handleRotate("left")}
-                  disabled={isPreviewProcessing || isUploading}
+                  disabled={isPreviewProcessing || isUploading || isCropping}
                 >
                   <RotateCcw className="h-5 w-5" />
                 </button>
@@ -595,7 +645,7 @@ const ImageEditor: FC<ImageEditorProps> = ({
                   title="Rotate right"
                   className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-40 disabled:hover:bg-transparent"
                   onClick={() => handleRotate("right")}
-                  disabled={isPreviewProcessing || isUploading}
+                  disabled={isPreviewProcessing || isUploading || isCropping}
                 >
                   <RotateCw className="h-5 w-5" />
                 </button>
@@ -604,6 +654,8 @@ const ImageEditor: FC<ImageEditorProps> = ({
                 Drag the corners or move the square to crop your picture.
               </p>
             </div>
+
+            {error && <p className="mt-4 text-sm text-red-500">{error}</p>}
           </ModalBody>
 
           <ModalFooter className="flex items-center justify-between gap-3">
@@ -611,14 +663,21 @@ const ImageEditor: FC<ImageEditorProps> = ({
               type="button"
               className="font-medium text-green hover:opacity-80 disabled:opacity-40"
               onClick={triggerFileSelect}
-              disabled={isUploading}
+              disabled={isUploading || isCropping}
             >
               Choose another photo
             </button>
             <ModalActions>
               <Button
-                onClick={() => setIsCropModalOpen(false)}
-                disabled={isUploading}
+                onClick={dismissCrop}
+                disabled={isUploading || isCropping}
+                color={ButtonColor.White}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={applyCropAndClose}
+                disabled={isUploading || isCropping || !isCropReady}
                 color={ButtonColor.Black}
               >
                 Done
