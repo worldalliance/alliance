@@ -3248,18 +3248,6 @@ export type UpdateCommentDto = {
     tagId?: number | null;
 };
 
-export type UpdatePostExpertsDto = {
-    expertIds: Array<number>;
-    qaMode: boolean;
-    expertLabel?: string | null;
-    notifyForReplies?: boolean;
-    showClusterTags?: boolean;
-};
-
-export type UpdatePostAuthorsDto = {
-    authorIds: Array<number>;
-};
-
 export type PostTagInputDto = {
     id?: number;
     name: string;
@@ -10691,54 +10679,6 @@ export type ForumGetPostsForAdminResponses = {
 
 export type ForumGetPostsForAdminResponse = ForumGetPostsForAdminResponses[keyof ForumGetPostsForAdminResponses];
 
-export type ForumUpdatePostExpertsAdminData = {
-    body: UpdatePostExpertsDto;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/forum/admin/posts/{id}/experts';
-};
-
-export type ForumUpdatePostExpertsAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ForumUpdatePostExpertsAdminError = ForumUpdatePostExpertsAdminErrors[keyof ForumUpdatePostExpertsAdminErrors];
-
-export type ForumUpdatePostExpertsAdminResponses = {
-    200: PostDto;
-};
-
-export type ForumUpdatePostExpertsAdminResponse = ForumUpdatePostExpertsAdminResponses[keyof ForumUpdatePostExpertsAdminResponses];
-
-export type ForumUpdatePostAuthorsAdminData = {
-    body: UpdatePostAuthorsDto;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/forum/admin/posts/{id}/authors';
-};
-
-export type ForumUpdatePostAuthorsAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ForumUpdatePostAuthorsAdminError = ForumUpdatePostAuthorsAdminErrors[keyof ForumUpdatePostAuthorsAdminErrors];
-
-export type ForumUpdatePostAuthorsAdminResponses = {
-    200: PostDto;
-};
-
-export type ForumUpdatePostAuthorsAdminResponse = ForumUpdatePostAuthorsAdminResponses[keyof ForumUpdatePostAuthorsAdminResponses];
-
 export type ForumUpdatePostSettingsAdminData = {
     body: UpdatePostSettingsDto;
     path: {
@@ -10762,30 +10702,6 @@ export type ForumUpdatePostSettingsAdminResponses = {
 };
 
 export type ForumUpdatePostSettingsAdminResponse = ForumUpdatePostSettingsAdminResponses[keyof ForumUpdatePostSettingsAdminResponses];
-
-export type ForumUpdatePostTagsAdminData = {
-    body: UpdatePostTagsDto;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/forum/admin/posts/{id}/tags';
-};
-
-export type ForumUpdatePostTagsAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ForumUpdatePostTagsAdminError = ForumUpdatePostTagsAdminErrors[keyof ForumUpdatePostTagsAdminErrors];
-
-export type ForumUpdatePostTagsAdminResponses = {
-    200: PostDto;
-};
-
-export type ForumUpdatePostTagsAdminResponse = ForumUpdatePostTagsAdminResponses[keyof ForumUpdatePostTagsAdminResponses];
 
 export type ForumPinCommentAdminData = {
     body?: never;

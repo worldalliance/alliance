@@ -24,13 +24,10 @@ import {
   UpdateCommentDto,
   UserCommentDto,
 } from "./dto/comment.dto";
-import { UpdatePostTagsDto } from "./dto/post-tag.dto";
 import {
   CreatePostDto,
   PostDto,
-  UpdatePostAuthorsDto,
   UpdatePostDto,
-  UpdatePostExpertsDto,
   UpdatePostSettingsDto,
 } from "./dto/post.dto";
 import { ForumService } from "./forum.service";
@@ -365,40 +362,6 @@ export class ForumController {
     return posts.map((post) => new PostDto({ post }));
   }
 
-  @Patch("admin/posts/:id/experts")
-  @UseGuards(AdminGuard)
-  @ApiOperation({ summary: "Update post experts and Q&A mode" })
-  @ApiOkResponse({ type: PostDto })
-  async updatePostExpertsAdmin(
-    @Param("id", ParseIntPipe) id: number,
-    @Body() updatePostExpertsDto: UpdatePostExpertsDto,
-  ): Promise<PostDto> {
-    const post = await this.forumService.updatePostExperts(
-      id,
-      updatePostExpertsDto.expertIds,
-      updatePostExpertsDto.qaMode,
-      updatePostExpertsDto.expertLabel,
-      updatePostExpertsDto.notifyForReplies,
-      updatePostExpertsDto.showClusterTags,
-    );
-    return new PostDto({ post });
-  }
-
-  @Patch("admin/posts/:id/authors")
-  @UseGuards(AdminGuard)
-  @ApiOperation({ summary: "Update post authors" })
-  @ApiOkResponse({ type: PostDto })
-  async updatePostAuthorsAdmin(
-    @Param("id", ParseIntPipe) id: number,
-    @Body() updatePostAuthorsDto: UpdatePostAuthorsDto,
-  ): Promise<PostDto> {
-    const post = await this.forumService.updatePostAuthors(
-      id,
-      updatePostAuthorsDto.authorIds,
-    );
-    return new PostDto({ post });
-  }
-
   @Patch("admin/posts/:id/settings")
   @UseGuards(AdminGuard)
   @ApiOperation({ summary: "Update post experts, authors, tags and Q&A mode" })
@@ -411,18 +374,6 @@ export class ForumController {
       id,
       updatePostSettingsDto,
     );
-    return new PostDto({ post });
-  }
-
-  @Patch("admin/posts/:id/tags")
-  @UseGuards(AdminGuard)
-  @ApiOperation({ summary: "Replace the tags available on a post" })
-  @ApiOkResponse({ type: PostDto })
-  async updatePostTagsAdmin(
-    @Param("id", ParseIntPipe) id: number,
-    @Body() updatePostTagsDto: UpdatePostTagsDto,
-  ): Promise<PostDto> {
-    const post = await this.forumService.updatePostTags(id, updatePostTagsDto);
     return new PostDto({ post });
   }
 

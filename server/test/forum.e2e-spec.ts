@@ -4,7 +4,6 @@ import {
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
 import { CreateCommentDto, UpdateCommentDto } from "src/forum/dto/comment.dto";
-import { UpdatePostTagsDto } from "src/forum/dto/post-tag.dto";
 import { CommentParentObject } from "src/forum/entities/comment.entity";
 import {
   Notification,
@@ -56,6 +55,20 @@ describe("Forum (e2e)", () => {
     );
     return { user: extraUser, token };
   };
+
+  const saveSettings = (
+    postId: number,
+    settings: Partial<UpdatePostSettingsDto>,
+  ) =>
+    request(ctx.app.getHttpServer())
+      .patch(`/forum/admin/posts/${postId}/settings`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({
+        expertIds: [],
+        authorIds: [],
+        qaMode: false,
+        ...settings,
+      } satisfies UpdatePostSettingsDto);
 
   /** A backend waiting on a lock has finished every read it made before
    * reaching it, so this is the signal that a save sits on a stale snapshot. */
@@ -1369,11 +1382,9 @@ describe("Forum (e2e)", () => {
       const postId = postResponse.body.id;
       const { user: coAuthor } = await createExtraUserAndToken();
 
-      const updateResponse = await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
-        .expect(200);
+      const updateResponse = await saveSettings(postId, {
+        authorIds: [ctx.testUserId, coAuthor.id],
+      }).expect(200);
 
       expect(updateResponse.body.authorIds).toEqual(
         expect.arrayContaining([ctx.testUserId, coAuthor.id]),
@@ -1396,11 +1407,9 @@ describe("Forum (e2e)", () => {
 
       const postId = postResponse.body.id;
 
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
-        .expect(200);
+      await saveSettings(postId, {
+        authorIds: [ctx.testUserId, coAuthor.id],
+      }).expect(200);
 
       // Admin comments on the post
       const commentResponse = await request(ctx.app.getHttpServer())
@@ -1451,11 +1460,9 @@ describe("Forum (e2e)", () => {
 
       const postId = postResponse.body.id;
 
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
-        .expect(200);
+      await saveSettings(postId, {
+        authorIds: [ctx.testUserId, coAuthor.id],
+      }).expect(200);
 
       // Admin likes the post
       await request(ctx.app.getHttpServer())
@@ -1603,11 +1610,9 @@ describe("Forum (e2e)", () => {
 
       const postId = postResponse.body.id;
 
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
-        .expect(200);
+      await saveSettings(postId, {
+        authorIds: [ctx.testUserId, coAuthor.id],
+      }).expect(200);
 
       const { token: secondLikerToken } = await createExtraUserAndToken();
 
@@ -1660,11 +1665,9 @@ describe("Forum (e2e)", () => {
 
       const postId = postResponse.body.id;
 
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
-        .expect(200);
+      await saveSettings(postId, {
+        authorIds: [ctx.testUserId, coAuthor.id],
+      }).expect(200);
 
       const coAuthorPosts = await request(ctx.app.getHttpServer())
         .get(`/forum/posts/user/${coAuthor.id}`)
@@ -1688,11 +1691,9 @@ describe("Forum (e2e)", () => {
 
       const postId = postResponse.body.id;
 
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
-        .expect(200);
+      await saveSettings(postId, {
+        authorIds: [ctx.testUserId, coAuthor.id],
+      }).expect(200);
 
       const adminPosts = await request(ctx.app.getHttpServer())
         .get("/forum/admin/posts")
@@ -1722,11 +1723,9 @@ describe("Forum (e2e)", () => {
 
       const postId = postResponse.body.id;
 
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
-        .expect(200);
+      await saveSettings(postId, {
+        authorIds: [ctx.testUserId, coAuthor.id],
+      }).expect(200);
 
       // GET /forum/posts/:id should include authors
       const singlePost = await request(ctx.app.getHttpServer())
@@ -1753,74 +1752,6 @@ describe("Forum (e2e)", () => {
       expect(matchedPost.authors).toHaveLength(2);
     });
 
-    it("keeps a settings write that lands while an authors save is open", async () => {
-      const { user: coAuthor } = await createExtraUserAndToken();
-
-      const postResponse = await request(ctx.app.getHttpServer())
-        .post("/forum/posts")
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .send({
-          title: "Post Saved From Both Halves",
-          editableContent: { body: "Body", attachments: [] },
-          visibleAt: new Date(),
-        } satisfies CreatePostDto)
-        .expect(201);
-
-      const postId = postResponse.body.id;
-
-      // The authors save reads the post's join rows last, so holding that
-      // table parks it on the columns it has already read, which is the window
-      // a settings write used to land in and lose.
-      const [authorsInFlight, settingsInFlight] = await withLockHeld(
-        { query: 'lock table "post_authors_user" in access exclusive mode' },
-        async () => {
-          const authors = request(ctx.app.getHttpServer())
-            .patch(`/forum/admin/posts/${postId}/authors`)
-            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-            .send({ authorIds: [ctx.testUserId, coAuthor.id] })
-            .then((res) => res);
-          await waitForBlockedBackends(1);
-
-          let settingsWritten = false;
-          const settings = ctx.dataSource
-            .query(
-              `update post set "qaMode" = true, "expertLabel" = $2,
-                 "notifyForReplies" = true, "showClusterTags" = true where id = $1`,
-              [postId, "AMA Guest"],
-            )
-            .then(() => {
-              settingsWritten = true;
-            });
-          await waitForBlockedBackends(2, () => settingsWritten);
-          return [authors, settings] as const;
-        },
-      );
-
-      const [authorsResponse] = await Promise.all([
-        authorsInFlight,
-        settingsInFlight,
-      ]);
-
-      expect(authorsResponse.status).toBe(200);
-      expect(authorsResponse.body.authorIds).toEqual(
-        expect.arrayContaining([ctx.testUserId, coAuthor.id]),
-      );
-
-      const adminPosts = await request(ctx.app.getHttpServer())
-        .get("/forum/admin/posts")
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .expect(200);
-
-      const stored = adminPosts.body.find((p) => p.id === postId);
-      expect(stored.authorIds).toEqual(
-        expect.arrayContaining([ctx.testUserId, coAuthor.id]),
-      );
-      expect(stored.qaMode).toBe(true);
-      expect(stored.expertLabel).toBe("AMA Guest");
-      expect(stored.notifyForReplies).toBe(true);
-      expect(stored.showClusterTags).toBe(true);
-    });
-
     it("drops the experts and authors a later save leaves out", async () => {
       const { user: firstExpert } = await createExtraUserAndToken();
       const { user: secondExpert } = await createExtraUserAndToken();
@@ -1838,30 +1769,21 @@ describe("Forum (e2e)", () => {
 
       const postId = postResponse.body.id;
 
-      const patchExperts = (expertIds: number[]) =>
-        request(ctx.app.getHttpServer())
-          .patch(`/forum/admin/posts/${postId}/experts`)
-          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-          .send({ expertIds, qaMode: true })
-          .expect(200);
+      const save = (expertIds: number[], authorIds: number[]) =>
+        saveSettings(postId, { expertIds, authorIds, qaMode: true }).expect(
+          200,
+        );
 
-      const patchAuthors = (authorIds: number[]) =>
-        request(ctx.app.getHttpServer())
-          .patch(`/forum/admin/posts/${postId}/authors`)
-          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-          .send({ authorIds })
-          .expect(200);
+      await save(
+        [firstExpert.id, secondExpert.id],
+        [ctx.testUserId, coAuthor.id],
+      );
 
-      await patchExperts([firstExpert.id, secondExpert.id]);
-      await patchAuthors([ctx.testUserId, coAuthor.id]);
+      const shrunk = await save([secondExpert.id], [coAuthor.id]);
+      expect(shrunk.body.expertIds).toEqual([secondExpert.id]);
+      expect(shrunk.body.authorIds).toEqual([coAuthor.id]);
 
-      const shrunkExperts = await patchExperts([secondExpert.id]);
-      const shrunkAuthors = await patchAuthors([coAuthor.id]);
-
-      expect(shrunkExperts.body.expertIds).toEqual([secondExpert.id]);
-      expect(shrunkAuthors.body.authorIds).toEqual([coAuthor.id]);
-
-      const emptied = await patchExperts([]);
+      const emptied = await save([], [coAuthor.id]);
       expect(emptied.body.expertIds).toEqual([]);
 
       const adminPosts = await request(ctx.app.getHttpServer())
@@ -1889,24 +1811,17 @@ describe("Forum (e2e)", () => {
 
       const postId = postResponse.body.id;
 
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/experts`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ expertIds: [expert.id], qaMode: true })
-        .expect(200);
+      await saveSettings(postId, {
+        expertIds: [expert.id],
+        qaMode: true,
+      }).expect(200);
 
-      const rejected = await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/experts`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ expertIds: [expert.id, 999999], qaMode: false })
-        .expect(400);
+      const rejected = await saveSettings(postId, {
+        expertIds: [expert.id, 999999],
+      }).expect(400);
       expect(rejected.body.message).toContain("experts");
 
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [999999] })
-        .expect(400);
+      await saveSettings(postId, { authorIds: [999999] }).expect(400);
 
       const adminPosts = await request(ctx.app.getHttpServer())
         .get("/forum/admin/posts")
@@ -1931,56 +1846,15 @@ describe("Forum (e2e)", () => {
 
       const postId = postResponse.body.id;
 
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/experts`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ expertIds: ["nobody"], qaMode: false })
-        .expect(400);
+      const badSave = (body: object) =>
+        request(ctx.app.getHttpServer())
+          .patch(`/forum/admin/posts/${postId}/settings`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({ expertIds: [], authorIds: [], qaMode: false, ...body });
 
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [1.5] })
-        .expect(400);
-
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [null] })
-        .expect(400);
-    });
-
-    it("refuses an experts save whose settings are the wrong type", async () => {
-      const postResponse = await request(ctx.app.getHttpServer())
-        .post("/forum/posts")
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .send({
-          title: "Post Whose Experts Save Carries A Word For A Flag",
-          editableContent: { body: "Body", attachments: [] },
-          visibleAt: new Date(),
-        } satisfies CreatePostDto)
-        .expect(201);
-
-      const postId = postResponse.body.id;
-
-      const rejected = await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/experts`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ expertIds: [], qaMode: "nope" })
-        .expect(400);
-      expect(rejected.body.message).toContain("qaMode must be a boolean value");
-
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/experts`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ expertIds: [], qaMode: true, expertLabel: { deeply: "nested" } })
-        .expect(400);
-
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/experts`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ expertIds: [], qaMode: true, expertLabel: "A".repeat(65) })
-        .expect(400);
+      await badSave({ expertIds: ["nobody"] }).expect(400);
+      await badSave({ authorIds: [1.5] }).expect(400);
+      await badSave({ authorIds: [null] }).expect(400);
     });
 
     it("trims an expert label and clears one the save blanks out", async () => {
@@ -1996,27 +1870,23 @@ describe("Forum (e2e)", () => {
 
       const postId = postResponse.body.id;
 
-      const patchExperts = (body: object) =>
-        request(ctx.app.getHttpServer())
-          .patch(`/forum/admin/posts/${postId}/experts`)
-          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-          .send({ expertIds: [], qaMode: true, ...body })
-          .expect(200);
+      const patchLabel = (body: Partial<UpdatePostSettingsDto>) =>
+        saveSettings(postId, { qaMode: true, ...body }).expect(200);
 
-      const labelled = await patchExperts({ expertLabel: "AMA Guest" });
+      const labelled = await patchLabel({ expertLabel: "AMA Guest" });
       expect(labelled.body.expertLabel).toBe("AMA Guest");
 
-      const untouched = await patchExperts({});
+      const untouched = await patchLabel({});
       expect(untouched.body.expertLabel).toBe("AMA Guest");
 
-      const padded = await patchExperts({ expertLabel: "  AMA Guest  " });
+      const padded = await patchLabel({ expertLabel: "  AMA Guest  " });
       expect(padded.body.expertLabel).toBe("AMA Guest");
 
-      const cleared = await patchExperts({ expertLabel: null });
+      const cleared = await patchLabel({ expertLabel: null });
       expect(cleared.body.expertLabel).toBeNull();
 
-      await patchExperts({ expertLabel: "AMA Guest" });
-      const blanked = await patchExperts({ expertLabel: "   " });
+      await patchLabel({ expertLabel: "AMA Guest" });
+      const blanked = await patchLabel({ expertLabel: "   " });
       expect(blanked.body.expertLabel).toBeNull();
     });
 
@@ -2035,11 +1905,9 @@ describe("Forum (e2e)", () => {
 
       const postId = postResponse.body.id;
 
-      const updated = await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [coAuthor.id] })
-        .expect(200);
+      const updated = await saveSettings(postId, {
+        authorIds: [coAuthor.id],
+      }).expect(200);
 
       expect(new Date(updated.body.updatedAt).getTime()).toBeGreaterThan(
         new Date(postResponse.body.updatedAt).getTime(),
@@ -2234,7 +2102,7 @@ describe("Forum (e2e)", () => {
       expect(unchanged.expertLabel).toBe("AMA Guest");
     });
 
-    it("rejects non-admin from updating post authors", async () => {
+    it("rejects non-admin from updating post settings", async () => {
       const postResponse = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
         .set("Authorization", `Bearer ${ctx.accessToken}`)
@@ -2246,9 +2114,13 @@ describe("Forum (e2e)", () => {
         .expect(201);
 
       await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postResponse.body.id}/authors`)
+        .patch(`/forum/admin/posts/${postResponse.body.id}/settings`)
         .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .send({ authorIds: [ctx.testUserId] })
+        .send({
+          expertIds: [],
+          authorIds: [ctx.testUserId],
+          qaMode: false,
+        } satisfies UpdatePostSettingsDto)
         .expect(401);
     });
 
@@ -2309,11 +2181,7 @@ describe("Forum (e2e)", () => {
       postId: number;
       tags: { id?: number; name: string }[];
       knownTagIds: number[];
-    }) =>
-      request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/tags`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ tags, knownTagIds } satisfies UpdatePostTagsDto);
+    }) => saveSettings(postId, { tags: { tags, knownTagIds } });
 
     const createTaggedPost = async (names: string[]) => {
       const post = await request(ctx.app.getHttpServer())

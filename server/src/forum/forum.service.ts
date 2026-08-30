@@ -1209,34 +1209,6 @@ export class ForumService {
     return parsePost(post);
   }
 
-  async updatePostExperts(
-    postId: number,
-    expertIds: number[],
-    qaMode: boolean,
-    expertLabel?: string | null,
-    notifyForReplies?: boolean,
-    showClusterTags?: boolean,
-  ): Promise<ParsedPost> {
-    await this.postRepository.manager.transaction(async (manager) => {
-      const post = await this.lockPost(manager, postId);
-      await manager.update(Post, postId, {
-        qaMode,
-        expertLabel,
-        notifyForReplies,
-        showClusterTags,
-      });
-      await this.replacePostUsers({
-        manager,
-        postId,
-        relation: "experts",
-        userIds: expertIds,
-        currentIds: post.expertIds,
-      });
-    });
-
-    return this.findPostForAdmin(postId);
-  }
-
   async updatePostSettings(
     postId: number,
     settings: UpdatePostSettingsDto,
@@ -1283,42 +1255,8 @@ export class ForumService {
     return posts.map(parsePost);
   }
 
-  async updatePostAuthors(
-    postId: number,
-    authorIds: number[],
-  ): Promise<ParsedPost> {
-    await this.postRepository.manager.transaction(async (manager) => {
-      const post = await this.lockPost(manager, postId);
-      await this.replacePostUsers({
-        manager,
-        postId,
-        relation: "authors",
-        userIds: authorIds,
-        currentIds: post.authorIds,
-      });
-      // Post lists order by updatedAt, which the join rows alone leave untouched.
-      await manager.update(Post, postId, { updatedAt: new Date() });
-    });
-
-    return this.findPostForAdmin(postId);
-  }
-
-  async updatePostTags(
-    postId: number,
-    tags: UpdatePostTagsDto,
-  ): Promise<ParsedPost> {
-    const post = await this.postRepository.findOne({ where: { id: postId } });
-    if (!post) {
-      throw new NotFoundException(`Post with ID "${postId}" not found`);
-    }
-
-    await this.postTagRepository.manager.transaction((manager) =>
-      this.replacePostTags({ manager, postId, tags }),
-    );
-
-    return this.findPostForAdmin(postId);
-  }
-
+  /** The caller holds the post row locked, so no other save can commit tags
+   * between the knownTagIds check and the writes it guards. */
   private async replacePostTags(params: {
     manager: EntityManager;
     postId: number;
