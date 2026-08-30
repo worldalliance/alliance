@@ -44,6 +44,7 @@ import { getApiUrl } from "../lib/config";
 import { readFileDataUri } from "../lib/readFileDataUri";
 import AppMarkdownWrapper from "../ui/AppMarkdownWrapper";
 import Card from "../ui/Card";
+import CharacterLimitNotice from "../ui/CharacterLimitNotice";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import ImageLightbox from "../ui/ImageLightbox";
 import NewButton, { ButtonColor, ButtonSize } from "../ui/NewButton";
@@ -276,9 +277,11 @@ export function RenderField({
           />
           {renderValidationMessage()}
           {field.maxLength && (
-            <p className="text-xs text-zinc-500 mt-1">
-              Maximum {field.maxLength} characters
-            </p>
+            <CharacterLimitNotice
+              value={(value as string) ?? ""}
+              max={field.maxLength}
+              readOnly={disabled}
+            />
           )}
         </div>
       );

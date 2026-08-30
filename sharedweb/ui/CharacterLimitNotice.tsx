@@ -3,11 +3,13 @@ import { cn } from "@alliance/shared/styles/util";
 export default function CharacterLimitNotice({
   value,
   max,
+  readOnly = false,
 }: {
   value: string;
   max: number;
+  readOnly?: boolean;
 }) {
-  const atLimit = value.length >= max;
+  const atLimit = !readOnly && value.length >= max;
   return (
     <p
       className={cn(

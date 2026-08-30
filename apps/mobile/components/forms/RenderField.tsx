@@ -47,6 +47,7 @@ import BottomSheetOptionPicker from "../BottomSheetOptionPicker";
 import InlineLabelMarkdownWrapper from "../InlineLabelMarkdownWrapper";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Card, { CardStyle } from "../system/Card";
+import CharacterLimitNotice from "../system/CharacterLimitNotice";
 import Checkbox, { CheckboxSize } from "../system/Checkbox";
 import Text, { FontWeight } from "../system/Text";
 import CityAutosuggest from "./CityAutosuggest";
@@ -254,9 +255,11 @@ export function RenderField({
             maxLength={field.maxLength}
           />
           {field.maxLength && (
-            <Text className="text-xs text-zinc-500 mt-1">
-              Maximum {field.maxLength} characters
-            </Text>
+            <CharacterLimitNotice
+              value={(value as string) ?? ""}
+              max={field.maxLength}
+              readOnly={disabled}
+            />
           )}
           {renderValidationMessage(errorMessage)}
         </View>
