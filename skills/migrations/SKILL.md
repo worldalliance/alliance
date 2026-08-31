@@ -19,6 +19,12 @@ Never hand-write a schema migration from scratch; always start from a generated 
 
 Always read the generated SQL before committing. The generator gets renames wrong: **a column rename comes out as `DROP` + `ADD`**, which deletes the data. Edit it to `RENAME COLUMN`.
 
+## How much to handle
+
+The bar is that it runs against prod, not that it survives every value the column's type allows. A branch for a shape no row holds never runs.
+
+Check the shapes against real data: `scripts/load_staging_data.sh` loads staging, a pii-pruned copy of prod, into the local db. `scripts/sync_prod_to_staging.sh` is what prunes it.
+
 ## Hand edits
 
 Hand edits change ordering and data handling, never the end state — confirm by re-running `migration:generate` and seeing `No changes in database schema were found`. Tell the user which statements you changed and why.
