@@ -230,6 +230,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
         type: "text",
         section: "content",
         gridCol: true,
+        helpText: "Left empty, the thumbnail is announced as the action name.",
       },
 
       // === SETTINGS SECTION  ===
