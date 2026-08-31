@@ -35,6 +35,10 @@ Read before the matching task:
 
 `bun run typecheck` — per-package, not at the repo root; resolves the right config per package (`tsconfig.typecheck.json` where shared sources need pulling in directly). Never bare `tsc`, even with `--noEmit`.
 
+## Formatting
+
+`bun run format` from the repo root, covering every package at once; `bun run format:check` to only report.
+
 ## Testing
 
 `bun run test` from the repo root; scope by package: `bun run test apps/admin sharedweb`. Bare `bun test` from inside a package.
