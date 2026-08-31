@@ -1,5 +1,5 @@
 import { devPorts, PortCaller } from "@alliance/common/dev-ports";
-import { isUploadKey } from "@alliance/common/image-src";
+import { isUploadKey, uploadKeyInUrl } from "@alliance/common/image-src";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
   BadRequestException,
@@ -145,4 +145,14 @@ export function getImageSource(string: string) {
   } else {
     return `http://localhost:${devPorts(PortCaller.Server).server}/images/${string}`;
   }
+}
+
+/**
+ * The upload key a url names, when this api rendered it. A url an admin typed
+ * can end in a key-shaped filename, so the candidate only counts if it renders
+ * back to the url it came from.
+ */
+export function renderedImageKey(src: string): string | undefined {
+  const key = uploadKeyInUrl(src);
+  return key && getImageSource(key) === src ? key : undefined;
 }

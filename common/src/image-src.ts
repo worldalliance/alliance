@@ -57,3 +57,35 @@ export function changedPhoto({
 }): string | null | undefined {
   return next === current ? undefined : next;
 }
+
+/**
+ * Whether a photo a client sent back is the url the api rendered for the key
+ * already stored. Writing it would replace the key with a url that breaks as
+ * soon as the host serving uploads changes.
+ */
+export function echoesStoredKey({
+  next,
+  stored,
+}: {
+  next: string;
+  stored: string | undefined;
+}): boolean {
+  return !!stored && isUploadKey(stored) && next.endsWith(`/${stored}`);
+}
+
+// The three shapes getImageSource renders a key as: a cloudfront url,
+// `{APP_URL}/api/images/{key}`, and `http://localhost:{port}/images/{key}`. A
+// key is `{timestamp}.webp`, or `{timestamp}-{uuid}.webp` since newImageKey
+// started appending a uuid.
+const RENDERED_KEY_URL =
+  /^https?:\/\/[^/]+\/(?:api\/images\/|images\/)?([0-9]+(?:-[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})?\.webp)$/;
+
+/**
+ * The upload key a url ends in, if it has the shape of one the api rendered.
+ * An external url whose filename happens to look like a key matches too, so a
+ * caller that knows how uploads are rendered confirms the whole url —
+ * `renderedImageKey` on the server.
+ */
+export function uploadKeyInUrl(src: string): string | undefined {
+  return RENDERED_KEY_URL.exec(src)?.[1];
+}

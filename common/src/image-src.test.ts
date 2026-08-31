@@ -1,8 +1,10 @@
 import {
   changedPhoto,
+  echoesStoredKey,
   isUploadKey,
   resolveSafeUploadSrc,
   resolveUploadSrc,
+  uploadKeyInUrl,
   uploadSrc,
 } from "./image-src";
 
@@ -96,5 +98,87 @@ describe("changedPhoto", () => {
     const dataUri = "data:image/webp;base64,UklGRg==";
     expect(changedPhoto({ current: url, next: dataUri })).toBe(dataUri);
     expect(changedPhoto({ current: null, next: dataUri })).toBe(dataUri);
+  });
+});
+
+describe("echoesStoredKey", () => {
+  const key = "1770253183572.webp";
+
+  it("catches the url whichever host rendered it", () => {
+    expect(
+      echoesStoredKey({
+        next: `https://dj92mxbdjuclo.cloudfront.net/${key}`,
+        stored: key,
+      }),
+    ).toBe(true);
+    expect(
+      echoesStoredKey({
+        next: `http://localhost:3000/images/${key}`,
+        stored: key,
+      }),
+    ).toBe(true);
+  });
+
+  it("leaves a url the client typed alone", () => {
+    expect(
+      echoesStoredKey({ next: "https://example.com/promo.png", stored: key }),
+    ).toBe(false);
+    expect(
+      echoesStoredKey({
+        next: "https://example.com/images/1770253183572-other.webp",
+        stored: key,
+      }),
+    ).toBe(false);
+  });
+
+  it("has nothing to echo when the column holds no key", () => {
+    expect(
+      echoesStoredKey({
+        next: `https://example.com/images/${key}`,
+        stored: undefined,
+      }),
+    ).toBe(false);
+    expect(
+      echoesStoredKey({ next: "https://example.com/a/", stored: "" }),
+    ).toBe(false);
+    expect(
+      echoesStoredKey({
+        next: `https://example.com/${key}`,
+        stored: "https://example.com/promo.png",
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("uploadKeyInUrl", () => {
+  it("reads the key back out of every shape getImageSource renders", () => {
+    const key = "1770253183572-4d1e3c2b-1a2b-3c4d-5e6f-7a8b9c0d1e2f.webp";
+    expect(uploadKeyInUrl(`https://dj92mxbdjuclo.cloudfront.net/${key}`)).toBe(
+      key,
+    );
+    expect(uploadKeyInUrl(`https://worldalliance.org/api/images/${key}`)).toBe(
+      key,
+    );
+    expect(uploadKeyInUrl(`http://localhost:3000/images/${key}`)).toBe(key);
+    expect(uploadKeyInUrl("https://worldalliance.org/1770253183572.webp")).toBe(
+      "1770253183572.webp",
+    );
+  });
+
+  it("has no key to read out of a url shaped like anything else", () => {
+    expect(uploadKeyInUrl("https://example.com/promo.png")).toBeUndefined();
+    expect(
+      uploadKeyInUrl("https://example.com/images/promo.webp"),
+    ).toBeUndefined();
+    expect(
+      uploadKeyInUrl("https://example.com/1770253183572.webp?w=64"),
+    ).toBeUndefined();
+    expect(uploadKeyInUrl("1770253183572.webp")).toBeUndefined();
+  });
+
+  it("reads one out of an external url that shares the shape", () => {
+    expect(
+      uploadKeyInUrl("https://images.unsplash.com/images/1707862.webp"),
+    ).toBe("1707862.webp");
   });
 });

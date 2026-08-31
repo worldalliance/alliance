@@ -45,6 +45,7 @@ import {
 } from "../src/actions/entities/action.entity";
 import { FollowUpForm } from "../src/actions/entities/follow-up-form.entity";
 import type { Community } from "../src/community/entities/community.entity";
+import { getImageSource } from "../src/images/images.service";
 import { User } from "../src/user/entities/user.entity";
 import {
   createFormWithSnapshot,
@@ -3670,6 +3671,142 @@ describe("Actions (e2e)", () => {
         .expect(200);
       expect(saved.body.name).toBe("Targeted Action, renamed");
       expect(saved.body.cohortExpression).toEqual(manualCohort);
+    });
+  });
+
+  describe("Image columns", () => {
+    const coverKey = "1770253183572.webp";
+    const thumbnailKey = "1770253184000.webp";
+
+    const actionWithImages = async (name: string) => {
+      const { action } = await createPublishedAction(name, {
+        actionOverrides: {
+          image: coverKey,
+          squareThumbnailImage: thumbnailKey,
+        },
+      });
+      return action;
+    };
+
+    const patchImages = async (
+      id: number,
+      body: { image?: string | null; squareThumbnailImage?: string | null },
+    ) => {
+      await request(ctx.app.getHttpServer())
+        .patch(`/actions/${id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send(body)
+        .expect(200);
+      return actionRepo.findOneByOrFail({ id });
+    };
+
+    it("keeps the keys when sent the urls it rendered", async () => {
+      const action = await actionWithImages("Echoed images");
+
+      const stored = await patchImages(action.id, {
+        image: getImageSource(coverKey),
+        squareThumbnailImage: getImageSource(thumbnailKey),
+      });
+
+      expect(stored.image).toBe(coverKey);
+      expect(stored.squareThumbnailImage).toBe(thumbnailKey);
+    });
+
+    it("keeps the key when the url names another host", async () => {
+      const action = await actionWithImages("Cloudfront echo");
+
+      const stored = await patchImages(action.id, {
+        squareThumbnailImage: `https://dj92mxbdjuclo.cloudfront.net/${thumbnailKey}`,
+      });
+
+      expect(stored.squareThumbnailImage).toBe(thumbnailKey);
+    });
+
+    it("keeps the keys when created from the urls it rendered", async () => {
+      const created = await request(ctx.app.getHttpServer())
+        .post("/actions/create")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          name: "Duplicated images",
+          category: "",
+          body: "",
+          type: ActionTaskType.Activity,
+          isContractSigningAction: false,
+          visibilityMode: VisibilityMode.Public,
+          image: getImageSource(coverKey),
+          squareThumbnailImage: getImageSource(thumbnailKey),
+        })
+        .expect(201);
+
+      const stored = await actionRepo.findOneByOrFail({ id: created.body.id });
+
+      expect(stored.image).toBe(coverKey);
+      expect(stored.squareThumbnailImage).toBe(thumbnailKey);
+    });
+
+    it("stores a thumbnail url the admin typed on a new action", async () => {
+      const created = await request(ctx.app.getHttpServer())
+        .post("/actions/create")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          name: "Typed thumbnail",
+          category: "",
+          body: "",
+          type: ActionTaskType.Activity,
+          isContractSigningAction: false,
+          visibilityMode: VisibilityMode.Public,
+          squareThumbnailImage: "https://example.com/promo.png",
+        })
+        .expect(201);
+
+      const stored = await actionRepo.findOneByOrFail({ id: created.body.id });
+
+      expect(stored.squareThumbnailImage).toBe("https://example.com/promo.png");
+    });
+
+    it("stores a thumbnail url whose filename looks like a key", async () => {
+      const typed = "https://images.unsplash.com/images/1707862.webp";
+      const created = await request(ctx.app.getHttpServer())
+        .post("/actions/create")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          name: "Key-shaped thumbnail",
+          category: "",
+          body: "",
+          type: ActionTaskType.Activity,
+          isContractSigningAction: false,
+          visibilityMode: VisibilityMode.Public,
+          squareThumbnailImage: typed,
+        })
+        .expect(201);
+
+      const stored = await actionRepo.findOneByOrFail({ id: created.body.id });
+
+      expect(stored.squareThumbnailImage).toBe(typed);
+    });
+
+    it("clears both columns when sent null", async () => {
+      const action = await actionWithImages("Cleared images");
+
+      const stored = await patchImages(action.id, {
+        image: null,
+        squareThumbnailImage: null,
+      });
+
+      expect(stored.image).toBeNull();
+      expect(stored.squareThumbnailImage).toBeNull();
+    });
+
+    it("stores a new upload and a thumbnail url the admin typed", async () => {
+      const action = await actionWithImages("Edited images");
+
+      const stored = await patchImages(action.id, {
+        image: "1770253185000.webp",
+        squareThumbnailImage: "https://example.com/promo.png",
+      });
+
+      expect(stored.image).toBe("1770253185000.webp");
+      expect(stored.squareThumbnailImage).toBe("https://example.com/promo.png");
     });
   });
 
