@@ -19,7 +19,6 @@ export function meta() {
   return socialPreviewMeta({
     title: "The Alliance — Landing test",
     description: "A global community working together to improve the world.",
-    image: "/og-home.png",
     url: "/landing-test",
   });
 }

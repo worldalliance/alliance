@@ -53,7 +53,6 @@ export function meta() {
     title: "Create an account — The Alliance",
     description:
       "Join a global community cooperating to improve the world. Members spend 15 minutes a week completing thoughtfully designed actions for measurable impact.",
-    image: "/og-signup.png",
     url: "/signup",
   });
 }

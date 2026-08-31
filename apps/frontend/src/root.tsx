@@ -18,6 +18,7 @@ import { Route } from "../.react-router/types/src/+types/root";
 import { HtmlBackgroundManager } from "./components/HtmlBackgroundManager";
 import { AuthProvider } from "./lib/AuthContext";
 import { getApiUrl, getPosthogHost } from "./lib/config";
+import { socialPreviewMeta } from "./lib/socialPreviewMeta";
 import PosthogBuildTag from "./lib/PosthogBuildTag";
 
 const queryClient = new QueryClient({
@@ -35,7 +36,7 @@ client.setConfig({
 registerAnalytics(posthog);
 
 export function meta() {
-  return [{ title: "Alliance" }];
+  return socialPreviewMeta({ title: "Alliance" });
 }
 
 const options: Partial<PostHogConfig> = {

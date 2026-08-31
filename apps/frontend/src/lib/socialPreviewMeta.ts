@@ -5,11 +5,13 @@ interface SocialPreviewOptions {
   title: string;
   /** Short description for search results and link previews. */
   description?: string;
-  /** Preview image — an absolute URL or a root-relative path (e.g. "/og-home.png"). */
+  /** An absolute URL or a root-relative path. Defaults to the site thumbnail. */
   image?: string;
   /** Root-relative canonical path for this page (e.g. "/signup"). */
   url?: string;
 }
+
+export const DEFAULT_PREVIEW_IMAGE = "/link-thumbnail.png";
 
 /**
  * Builds an Open Graph + Twitter Card meta descriptor array for a route's
@@ -19,7 +21,7 @@ interface SocialPreviewOptions {
 export function socialPreviewMeta({
   title,
   description,
-  image,
+  image = DEFAULT_PREVIEW_IMAGE,
   url,
 }: SocialPreviewOptions) {
   const base = getBaseUrl();

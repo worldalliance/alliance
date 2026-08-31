@@ -30,7 +30,6 @@ export function meta() {
     title: "Invitation to the Alliance",
     description:
       "A global group of people cooperating to improve the world. Members spend 15 minutes a week completing thoughtfully designed actions for measurable impact.",
-    image: "/og-home.png",
     url: "/invite",
   });
 }
