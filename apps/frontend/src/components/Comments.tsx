@@ -17,11 +17,10 @@ import BaseButton, {
   BaseButtonVariant,
 } from "@alliance/sharedweb/ui/BaseButton";
 import {
-  DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
 } from "@alliance/sharedweb/ui/DropdownMenu";
+import { Menu } from "@base-ui/react/menu";
 import { ArrowUpDown } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, href } from "react-router";
@@ -66,8 +65,8 @@ const SortDropdown = ({
   onChange: (sort: CommentSort) => void;
 }) => (
   <div className="ml-auto">
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu.Root>
+      <Menu.Trigger
         render={
           <BaseButton
             variant={BaseButtonVariant.TransparentMuted}
@@ -76,7 +75,7 @@ const SortDropdown = ({
         }
       >
         {sortLabels[commentSort]}
-      </DropdownMenuTrigger>
+      </Menu.Trigger>
       <DropdownMenuContent align="end" sideOffset={4} className="min-w-[160px]">
         {sortOptions.map((sort) => (
           <DropdownMenuItem
@@ -88,7 +87,7 @@ const SortDropdown = ({
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
-    </DropdownMenu>
+    </Menu.Root>
   </div>
 );
 
