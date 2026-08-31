@@ -22,6 +22,7 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
+  createDisplayBlock,
   EditableDividerBlock,
   EditableHeaderBlock,
   EditableHtmlBlock,
@@ -47,61 +48,6 @@ const DISPLAY_BLOCK_KINDS = [
 ] as const satisfies DisplayKind[];
 
 type OutputDisplayBlockKind = (typeof DISPLAY_BLOCK_KINDS)[number];
-
-const createDisplayBlock = (kind: OutputDisplayBlockKind): DisplayBlock => {
-  const blockId = `block-${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2, 6)}`;
-  switch (kind) {
-    case "header":
-      return {
-        type: "display" as const,
-        kind,
-        id: blockId,
-        text: "Header",
-        level: 2,
-      };
-    case "text":
-      return {
-        type: "display" as const,
-        kind,
-        id: blockId,
-        text: "Text content",
-      };
-    case "label":
-      return { type: "display" as const, kind, id: blockId, text: "Label" };
-    case "divider":
-      return { type: "display" as const, kind, id: blockId, thickness: "thin" };
-    case "spacer":
-      return { type: "display" as const, kind, id: blockId, size: "md" };
-    case "html":
-      return {
-        type: "display" as const,
-        kind,
-        id: blockId,
-        html: "<p>Custom HTML</p>",
-      };
-    case "images":
-      return { type: "display" as const, kind, id: blockId, images: [] };
-    case "quote":
-      return {
-        type: "display" as const,
-        kind,
-        id: blockId,
-        text: "Quote text",
-      };
-    case "userLocation":
-      return {
-        type: "display" as const,
-        kind,
-        id: blockId,
-        title: "Your location",
-        emptyText: "No location set",
-      };
-    default:
-      throw new Error(`Unknown display block kind: ${kind satisfies never}`);
-  }
-};
 
 const collectOutputFields = (schema: FormSchema): AnyField[] => {
   const result: AnyField[] = [];
@@ -272,7 +218,10 @@ export function OutputBuilder({ schema, onSchemaChange }: OutputBuilderProps) {
   };
 
   const addDisplayBlock = (kind: OutputDisplayBlockKind) => {
-    const block = createDisplayBlock(kind);
+    const block = createDisplayBlock(
+      kind,
+      `block-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    );
     if (
       !schema.outputViews ||
       schema.outputViews.length === 0 ||
