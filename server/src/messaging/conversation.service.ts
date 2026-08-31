@@ -372,10 +372,12 @@ export class ConversationService {
       throw new NotFoundException("One or more participants were not found.");
     }
 
+    const photo = await this.imagesService.resolvePhotoUpdate(dto.photo);
+
     const conversation = await this.conversationRepository.save(
       this.conversationRepository.create({
         title: dto.title.trim(),
-        photo: dto.photo ?? null,
+        photo: photo ?? null,
         type: ConversationType.Multiple,
       }),
     );

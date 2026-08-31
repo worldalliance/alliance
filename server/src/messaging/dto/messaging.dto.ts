@@ -279,7 +279,6 @@ export class CreateGroupConversationDto {
   @ApiPropertyOptional({ type: String })
   @IsOptional()
   @IsString()
-  @MaxLength(512)
   photo?: string;
 
   @ApiProperty({ type: Number, isArray: true })

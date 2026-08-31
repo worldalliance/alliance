@@ -257,6 +257,25 @@ describe("ConversationController (e2e)", () => {
       expect(repeatResponse.body.participants).toHaveLength(3);
     });
 
+    it("ignores a photo at creation that is not a data uri", async () => {
+      const { user: member } = await createUserAndToken();
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Rendered Photo Chat",
+          participantIds: [member.id],
+          photo: "https://cdn.example.com/1770248545092.webp",
+        })
+        .expect(201);
+
+      const storedConversation = await conversationRepo.findOne({
+        where: { id: createResponse.body.id },
+      });
+      expect(storedConversation?.photo).toBeNull();
+    });
+
     it("allows invited participants to accept and blocks outsiders", async () => {
       const { user: invitedUser, token: invitedToken } =
         await createUserAndToken();
