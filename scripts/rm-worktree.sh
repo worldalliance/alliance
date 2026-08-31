@@ -10,8 +10,8 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=scripts/lib/env-value.sh
 source "$repo_root/scripts/lib/env-value.sh"
 
-main_root="$(git -C "$repo_root" rev-parse --path-format=absolute --git-common-dir)"
-main_root="$(cd "$(dirname "$main_root")" && pwd)"
+git_common_dir="$(git -C "$repo_root" rev-parse --path-format=absolute --git-common-dir)"
+main_root="$(cd "$(dirname "$git_common_dir")" && pwd)"
 
 die() { echo "error: $*" >&2; exit 1; }
 
@@ -39,6 +39,11 @@ worktree_dir="$(dirname "$main_root")/alliance-$name"
 [[ "$PWD" != "$worktree_dir" && "$PWD" != "$worktree_dir"/* ]] ||
   die "$worktree_dir is the checkout you are working in, so removing it would delete the ground under you. Report this rather than working around it."
 
+# A half-removed worktree is already deregistered, so the .git pointer, not
+# 'git worktree list', is what says this tree is ours for rm -rf to delete.
+[[ "$(cat "$worktree_dir/.git" 2>/dev/null)" == "gitdir: $git_common_dir/worktrees/"* ]] ||
+  die "$worktree_dir is not a worktree of $main_root, so it will not be removed"
+
 worktree_ports="$worktree_dir/.worktree/ports.json"
 worktree_env="$worktree_dir/.worktree/env"
 
@@ -53,19 +58,26 @@ elif [[ -f "$worktree_env" ]]; then
   db_name="$(env_value "$worktree_env" ALLIANCE_DB_NAME)"
   test_db_name="$(env_value "$worktree_env" TEST_DB_NAME)"
 else
-  die "$worktree_dir has neither .worktree/ports.json nor .worktree/env, so its databases cannot be named — drop them by hand, then 'git worktree remove --force $worktree_dir'"
+  die "$worktree_dir has neither .worktree/ports.json nor .worktree/env, so its databases cannot be named — drop them by hand, then 'rm -rf $worktree_dir && git -C $main_root worktree prune'"
 fi
 
 [[ -n "$db_name" || -n "$test_db_name" ]] ||
-  die "neither .worktree/ports.json nor .worktree/env names a database for $worktree_dir — drop them by hand, then 'git worktree remove --force $worktree_dir'"
+  die "neither .worktree/ports.json nor .worktree/env names a database for $worktree_dir — drop them by hand, then 'rm -rf $worktree_dir && git -C $main_root worktree prune'"
 
-branch="$(git -C "$worktree_dir" rev-parse --abbrev-ref HEAD)"
+# A worktree left half-removed by an earlier run has a dangling .git pointer,
+# so HEAD no longer resolves.
+branch="$(git -C "$worktree_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+
+# rm -rf does not honour the lock that 'git worktree remove' refuses to cross.
+worktree_git_dir="$(git -C "$worktree_dir" rev-parse --absolute-git-dir 2>/dev/null || true)"
+[[ -n "$worktree_git_dir" && -f "$worktree_git_dir/locked" ]] &&
+  die "$worktree_dir is locked — 'git -C $main_root worktree unlock $worktree_dir' first if you really mean to remove it"
 
 source_env="$main_root/server/.env"
 
 # Resolve the main database before removing the metadata needed for recovery.
 [[ -f "$source_env" ]] ||
-  die "$source_env not found, so $db_name cannot be told apart from the main checkout's database — remove the worktree by hand with 'git worktree remove --force'"
+  die "$source_env not found, so $db_name cannot be told apart from the main checkout's database — remove the worktree by hand with 'rm -rf $worktree_dir && git -C $main_root worktree prune'"
 
 main_db="$(env_value "$source_env" DB_NAME)"
 db_host="$(env_value "$source_env" DB_HOST)"
@@ -92,10 +104,14 @@ for db in "$db_name" "$test_db_name"; do
   dropdb --if-exists --force -h "$db_host" -p "$db_port" -U "$db_user" "$db"
 done
 
-echo "==> removing worktree $worktree_dir (branch $branch)"
-git -C "$main_root" worktree remove --force "$worktree_dir"
+echo "==> removing worktree $worktree_dir${branch:+ (branch $branch)}"
+# 'git worktree remove --force' has failed partway through a node_modules this
+# size and deregistered the worktree anyway. If rm -rf fails, set -e stops here
+# with the worktree still registered.
+rm -rf "$worktree_dir"
+git -C "$main_root" worktree prune
 
-if git -C "$main_root" show-ref --verify --quiet "refs/heads/$branch"; then
+if [[ -n "$branch" ]] && git -C "$main_root" show-ref --verify --quiet "refs/heads/$branch"; then
   if git -C "$main_root" branch -d "$branch" 2>/dev/null; then
     echo "==> deleted branch $branch"
   else
