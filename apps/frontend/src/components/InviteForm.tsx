@@ -23,7 +23,7 @@ import NewButton, {
   ButtonSize,
 } from "@alliance/sharedweb/ui/NewButton";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ExternalLink } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -580,14 +580,20 @@ const InviteForm = ({
                       "\n\n",
                     )}
                   />
-                  <Link
-                    to={`/groups?communityId=${memberCommunities[0].id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="border border-zinc-200 bg-white hover:bg-zinc-50 rounded px-3 py-2.5 flex flex-col gap-y-2 self-start max-w-full"
-                  >
-                    <p className={inviteSectionLabelClass}>
-                      Your current group
-                    </p>
+                  <div className="border border-zinc-200 bg-white rounded px-3 py-2.5 flex flex-col gap-y-2 self-start max-w-full">
+                    <div className="flex flex-row items-center justify-between gap-x-4">
+                      <p className={inviteSectionLabelClass}>
+                        Your current group
+                      </p>
+                      <Link
+                        to={`/groups?communityId=${memberCommunities[0].id}`}
+                        target="_blank"
+                        aria-label={`Open ${memberCommunities[0].name} in a new tab`}
+                        className="text-zinc-400 hover:text-zinc-700 shrink-0"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </Link>
+                    </div>
                     <div className="flex flex-row items-center gap-x-2 min-w-0">
                       <AvatarProfile
                         pfp={memberCommunities[0].photo ?? null}
@@ -605,7 +611,7 @@ const InviteForm = ({
                         </p>
                       </div>
                     </div>
-                  </Link>
+                  </div>
                 </>
               ) : (
                 <AppMarkdownWrapper
