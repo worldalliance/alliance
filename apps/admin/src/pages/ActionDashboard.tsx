@@ -71,6 +71,7 @@ import type {
   FormResponseFilter,
   FormWithSchema,
 } from "../components/FormResponsesView";
+import { changedActionImages } from "../lib/actionImages";
 import { makeTempId } from "../lib/tempId";
 
 // Status color mapping
@@ -392,7 +393,7 @@ const ActionDashboard: React.FC = () => {
 
     setCohortExpression(parsedAction.cohortExpression ?? null);
 
-    setImageKey(parsedAction.image ?? null);
+    setImageKey(null);
     setImagePreview(parsedAction.image ?? null);
   }, [action, actionFetching, seededActionId]);
 
@@ -667,7 +668,7 @@ const ActionDashboard: React.FC = () => {
 
     const formData = {
       ...form,
-      image: imageKey ?? undefined,
+      ...changedActionImages({ form, action, imageKey }),
       cohortExpression,
       reviewers: reviewerRows
         .map((r) => {
