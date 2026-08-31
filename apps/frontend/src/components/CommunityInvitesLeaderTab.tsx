@@ -12,13 +12,14 @@ import {
   inviteBuckets,
   onetimeInviteCreation,
 } from "@alliance/shared/lib/copy";
+import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import {
   bucketCommunityInvitesByActionability,
   bucketOnetimeInvitesByActionability,
 } from "@alliance/shared/lib/inviteUtils";
 import { useCommunityOnetimeInvites } from "@alliance/shared/lib/useCommunityOnetimeInvites";
 import { CardStyle } from "@alliance/shared/styles/card";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
@@ -150,9 +151,9 @@ const CommunityInvitesLeaderTab = ({
   }, [onetimeActionable.length, setInviteNotifCount]);
 
   const copyToClipboard = useCallback((text: string) => {
-    const baseUrl = getBaseUrl();
-    const url = `${baseUrl}/signup?ref=${text}`;
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(
+      getOnetimeInviteSignupUrl(getInviteBaseUrl(), text),
+    );
   }, []);
 
   const handleCopied = useCallback((inviteId: number) => {

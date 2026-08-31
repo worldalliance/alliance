@@ -22,7 +22,7 @@ import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
@@ -308,9 +308,9 @@ const InvitesPage = () => {
     : hasGroupInvites;
 
   const copyToClipboard = useCallback((text: string) => {
-    const baseUrl = getBaseUrl();
-    const url = `${baseUrl}/signup?ref=${text}`;
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(
+      getOnetimeInviteSignupUrl(getInviteBaseUrl(), text),
+    );
   }, []);
 
   const handleCopied = useCallback((inviteId: number) => {
@@ -377,7 +377,7 @@ const InvitesPage = () => {
   const settingsTarget: InviteSettingsTarget | null = settingsInvite && {
     title: settingsInvite.invitee,
     meta: `Invited ${formatTime(new Date(settingsInvite.createdAt), { addSuffix: true })}`,
-    url: getOnetimeInviteSignupUrl(getBaseUrl(), settingsInvite.code),
+    url: getOnetimeInviteSignupUrl(getInviteBaseUrl(), settingsInvite.code),
     name: {
       label: "Who this invite is for",
       value: settingsInvite.invitee,

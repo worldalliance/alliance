@@ -1,6 +1,7 @@
 type ViteEnv = {
   MODE: string;
   VITE_API_URL: string;
+  VITE_ALT_APP_URL?: string;
   // Vite configs inject these without the VITE_ prefix so `.env` files cannot
   // override them.
   ALLIANCE_DEV_API_URL?: string;
@@ -52,6 +53,9 @@ export const getBaseUrl = (): string => {
     return prod_url;
   }
 };
+
+export const getInviteBaseUrl = (): string =>
+  env.VITE_ALT_APP_URL || getBaseUrl();
 
 export const memberProfileUrl = (id: number | string): string =>
   `${getBaseUrl()}/member/${id}`;

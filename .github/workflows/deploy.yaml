@@ -64,11 +64,16 @@ jobs:
         run: bun typecheck
         working-directory: ./apps/frontend
 
+      - name: Check alt domain is configured
+        run: |
+          [ -n "${{ vars.ALT_DOMAIN_NAME }}" ] || { echo "ALT_DOMAIN_NAME is unset for this environment"; exit 1; }
+
       - name: Build React App
         run: bun run --cwd apps/frontend build -- --mode "$env_name"
         env:
           VITE_APP_GIT_SHA: ${{ github.sha }}
           VITE_APP_VERSION: ${{ github.ref_name }}
+          VITE_ALT_APP_URL: https://${{ vars.ALT_DOMAIN_NAME }}
 
       - name: Inject & upload source maps to PostHog
         continue-on-error: true
@@ -712,7 +717,9 @@ jobs:
             export STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}
             export ASSETS_BUCKET=${{ secrets.ASSETS_BUCKET_NAME }}
             export POSTHOG_KEY=${{ secrets.POSTHOG_KEY }}
+            [ -n "${{ vars.ALT_DOMAIN_NAME }}" ] || { echo "ALT_DOMAIN_NAME is unset for this environment"; exit 1; }
             export APP_URL=https://${{vars.DOMAIN_NAME}}
+            export ALT_APP_URL=https://${{vars.ALT_DOMAIN_NAME}}
             export ADMIN_URL=https://admin.${{vars.DOMAIN_NAME}}
             export TWILIO_PHONE_NUMBER=${{ secrets.TWILIO_PHONE_NUMBER }}
             export TWILIO_ACCOUNT_SID=${{ secrets.TWILIO_ACCOUNT_SID }}

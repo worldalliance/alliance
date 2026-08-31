@@ -15,7 +15,11 @@ export function actionUrl(actionId: number, full = false) {
 
 export function signupUrl(full = false) {
   const path = `/signup`;
-  return full ? `${process.env.APP_URL}${path}` : path;
+  return full ? `${inviteBaseUrl()}${path}` : path;
+}
+
+function inviteBaseUrl() {
+  return process.env.ALT_APP_URL || process.env.APP_URL;
 }
 
 export function groupUrl(params?: {

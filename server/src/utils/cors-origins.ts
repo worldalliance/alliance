@@ -9,13 +9,15 @@ const LOCALHOST_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 export function socketCorsOrigins({
   nodeEnv,
   appUrl,
+  altAppUrl,
   adminUrl,
 }: {
   nodeEnv: string | undefined;
   appUrl: string | undefined;
+  altAppUrl: string | undefined;
   adminUrl: string | undefined;
 }): (string | RegExp)[] {
-  const deployed = [appUrl, adminUrl].filter(
+  const deployed = [appUrl, altAppUrl, adminUrl].filter(
     (origin): origin is string => !!origin,
   );
 

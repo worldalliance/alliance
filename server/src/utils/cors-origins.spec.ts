@@ -3,6 +3,7 @@ import { socketCorsOrigins } from "./cors-origins";
 
 const DEPLOYED = {
   appUrl: "https://worldalliance.org",
+  altAppUrl: "https://thealliance.org",
   adminUrl: "https://admin.worldalliance.org",
 };
 
@@ -13,10 +14,11 @@ const matches = (origins: (string | RegExp)[], origin: string): boolean =>
 
 describe("socketCorsOrigins", () => {
   it.each([NodeEnv.Production, NodeEnv.Staging])(
-    "allows APP_URL and ADMIN_URL and nothing else under %s",
+    "allows APP_URL, ALT_APP_URL and ADMIN_URL and nothing else under %s",
     (nodeEnv) => {
       expect(socketCorsOrigins({ nodeEnv, ...DEPLOYED })).toEqual([
         DEPLOYED.appUrl,
+        DEPLOYED.altAppUrl,
         DEPLOYED.adminUrl,
       ]);
     },
@@ -41,6 +43,7 @@ describe("socketCorsOrigins", () => {
       const origins = socketCorsOrigins({
         nodeEnv,
         appUrl: "http://localhost:5273",
+        altAppUrl: undefined,
         adminUrl: "http://localhost:5274",
       });
 
@@ -70,6 +73,7 @@ describe("socketCorsOrigins", () => {
     (nodeEnv) => {
       expect(socketCorsOrigins({ nodeEnv, ...DEPLOYED })).toEqual([
         DEPLOYED.appUrl,
+        DEPLOYED.altAppUrl,
         DEPLOYED.adminUrl,
       ]);
     },
@@ -80,6 +84,7 @@ describe("socketCorsOrigins", () => {
       socketCorsOrigins({
         nodeEnv: NodeEnv.Production,
         appUrl: DEPLOYED.appUrl,
+        altAppUrl: undefined,
         adminUrl: undefined,
       }),
     ).toEqual([DEPLOYED.appUrl]);

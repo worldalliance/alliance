@@ -22,6 +22,7 @@ import {
 } from "typeorm";
 import { ExternalShareTarget } from "./entities/external-share-target.entity";
 import { ShareUrl, ShareUrlKind } from "./entities/share-url.entity";
+import { shareUrlPublicUrl } from "./share-url-public-url";
 import {
   inviteAssignmentColumns,
   inviteAssignmentFromColumns,
@@ -151,7 +152,7 @@ export class ShareUrlsService {
     const target = resolveTarget({ actionId, externalTargetId, invite });
     const owner: ShareUrlOwner = { type: "user", userId };
     const shareUrl = await this.getOrCreateForTarget(target, owner);
-    return shareUrl.url;
+    return shareUrlPublicUrl(shareUrl);
   }
 
   private async getOrCreateForTarget(

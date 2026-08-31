@@ -1,6 +1,6 @@
 import { Features } from "@alliance/shared/lib/features";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
 import Button from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useCallback } from "react";
@@ -11,7 +11,7 @@ const InviteMemberCard = () => {
   const { user } = useAuth();
   const referralLink =
     typeof window !== "undefined" && user?.referralCode
-      ? getOnetimeInviteSignupUrl(getBaseUrl(), user.referralCode)
+      ? getOnetimeInviteSignupUrl(getInviteBaseUrl(), user.referralCode)
       : "";
 
   const copyReferralLink = useCallback(() => {

@@ -13,7 +13,7 @@ import { useReusableInvites } from "@alliance/shared/lib/useReusableInvites";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -211,7 +211,10 @@ const InviteForm = ({
         const copying = copyToClipboard(
           request.then((response) =>
             response.data
-              ? getOnetimeInviteSignupUrl(getBaseUrl(), response.data.code)
+              ? getOnetimeInviteSignupUrl(
+                  getInviteBaseUrl(),
+                  response.data.code,
+                )
               : Promise.reject(new Error("invite was not created")),
           ),
         );
@@ -504,8 +507,10 @@ const InviteForm = ({
           {!multipleUseInvite && user?.referralCode && (
             <Link
               to={
-                getOnetimeInviteSignupUrl(getBaseUrl(), user.referralCode) +
-                "&preview=1"
+                getOnetimeInviteSignupUrl(
+                  getInviteBaseUrl(),
+                  user.referralCode,
+                ) + "&preview=1"
               }
               target="_blank"
               className="text-green hover:underline flex flex-row items-center gap-x-1"

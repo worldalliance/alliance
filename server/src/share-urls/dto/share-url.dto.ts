@@ -15,6 +15,7 @@ import {
   type StoredInviteAssignment,
   StoredInviteAssignmentKind,
 } from "../invite-assignment";
+import { shareUrlPublicUrl } from "../share-url-public-url";
 import type { ShareUrlMine, ShareUrlWithSignupCount } from "../share-url-views";
 
 type InviteAssignmentDetails = {
@@ -200,7 +201,7 @@ export class ShareUrlMineDto {
   constructor(input: ShareUrlMine) {
     const assignmentDetails = inviteAssignmentDetails(input.assignment);
     this.id = input.shareUrl.id;
-    this.url = input.shareUrl.url;
+    this.url = shareUrlPublicUrl(input.shareUrl);
     this.label = input.shareUrl.label ?? null;
     this.duplicate = input.shareUrl.duplicate;
     this.sid = input.shareUrl.sid;
@@ -286,7 +287,7 @@ export class ShareUrlAdminDto {
     this.id = input.shareUrl.id;
     this.kind = input.shareUrl.kind;
     this.sid = input.shareUrl.sid;
-    this.url = input.shareUrl.url;
+    this.url = shareUrlPublicUrl(input.shareUrl);
     this.duplicate = input.shareUrl.duplicate;
     this.label = input.shareUrl.label ?? null;
     this.userId = input.shareUrl.userId ?? null;
