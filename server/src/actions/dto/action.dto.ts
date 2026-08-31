@@ -466,8 +466,7 @@ export class ActionDto extends PickType(Action, [
     this.squareThumbnailImage = action.squareThumbnailImage
       ? getImageSource(action.squareThumbnailImage)
       : undefined;
-    this.squareThumbnailImageAlt =
-      action.squareThumbnailImageAlt ?? action.name;
+    this.squareThumbnailImageAlt = action.squareThumbnailImageAlt || undefined;
     this.donationAmount = action.donationAmount;
     this.body = action.body;
     this.taskContents = action.taskContents;
