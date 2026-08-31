@@ -25,7 +25,7 @@ import { VALIDATION_PIPE_OPTIONS } from "./utils/validation-pipe-options";
 function deployedUrlVars(): string[] {
   const env = currentNodeEnv();
   if (!env.ok || !isDeployed(env.value)) return [];
-  return ["APP_URL", "ALT_APP_URL", "ADMIN_URL"];
+  return ["APP_URL", "ALT_APP_URL", "ADMIN_URL", "ALT_ADMIN_URL"];
 }
 
 function validateEnv() {
@@ -80,6 +80,7 @@ class SocketIoAdapter extends IoAdapter {
           appUrl: process.env.APP_URL,
           altAppUrl: process.env.ALT_APP_URL,
           adminUrl: process.env.ADMIN_URL,
+          altAdminUrl: process.env.ALT_ADMIN_URL,
         }),
         methods: ["GET", "POST"],
         credentials: true,

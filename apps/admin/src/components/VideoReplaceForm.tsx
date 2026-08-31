@@ -1,6 +1,6 @@
 import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
-import { getApiUrl } from "@alliance/sharedweb/lib/config";
+import { getApiUrl } from "../lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useCallback, useRef, useState } from "react";

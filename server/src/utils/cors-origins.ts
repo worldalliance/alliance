@@ -11,13 +11,15 @@ export function socketCorsOrigins({
   appUrl,
   altAppUrl,
   adminUrl,
+  altAdminUrl,
 }: {
   nodeEnv: string | undefined;
   appUrl: string | undefined;
   altAppUrl: string | undefined;
   adminUrl: string | undefined;
+  altAdminUrl: string | undefined;
 }): (string | RegExp)[] {
-  const deployed = [appUrl, altAppUrl, adminUrl].filter(
+  const deployed = [appUrl, altAppUrl, adminUrl, altAdminUrl].filter(
     (origin): origin is string => !!origin,
   );
 

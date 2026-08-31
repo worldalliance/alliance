@@ -1,5 +1,5 @@
 import { client } from "@alliance/shared/client/client.gen";
-import { getApiUrl } from "@alliance/sharedweb/lib/config";
+import { getApiUrl } from "./lib/config";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

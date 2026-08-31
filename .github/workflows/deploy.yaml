@@ -129,8 +129,14 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
+      - name: Check alt domain is configured
+        run: |
+          [ -n "${{ vars.ALT_DOMAIN_NAME }}" ] || { echo "ALT_DOMAIN_NAME is unset for this environment"; exit 1; }
+
       - name: Build React App
         run: bun run --cwd apps/admin build -- --mode "$env_name"
+        env:
+          VITE_ALT_APP_URL: https://${{ vars.ALT_DOMAIN_NAME }}
 
       - name: Zip Build Output
         run: zip -r admin-build.zip build/client
@@ -240,6 +246,7 @@ jobs:
             ALT_DOMAIN='${{ vars.ALT_DOMAIN_NAME }}'
             [ -n "$DOMAIN" ] || { echo "DOMAIN_NAME is unset for this environment"; exit 1; }
             [ -n "$ALT_DOMAIN" ] || { echo "ALT_DOMAIN_NAME is unset for this environment"; exit 1; }
+            sudo mkdir -p /var/www/certbot
             sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__ALT_DOMAIN__/$ALT_DOMAIN/g" ~/alliance.conf \
               | sudo tee /etc/nginx/conf.d/alliance.conf > /dev/null
             sudo nginx -t || { echo "nginx config invalid"; exit 1; }
@@ -253,10 +260,23 @@ jobs:
       - visual-regression
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Download Admin Build Artifact
         uses: actions/download-artifact@v4
         with:
           name: admin-build
+
+      - name: Upload nginx vhost to EC2
+        uses: appleboy/scp-action@v0.1.3
+        with:
+          host: ${{ secrets.INSTANCE_IP }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "deploy/nginx/alliance_admin.conf"
+          target: "~/"
+          strip_components: 2
 
       - name: Upload Admin Build to EC2
         uses: appleboy/scp-action@v0.1.3
@@ -283,26 +303,34 @@ jobs:
 
             sudo rm -f /etc/nginx/conf.d/default.conf
 
-            if [ ! -f /etc/nginx/conf.d/admin.conf ]; then
-              cat <<EOF | sudo tee /etc/nginx/conf.d/admin.conf
-
-              server {
-                listen 80;
-                server_name admin.${{vars.DOMAIN_NAME}};
-
-                root /home/ec2-user/admin-app/build/client;
-                index index.html;
-
-                location / {
-                  try_files \$uri /index.html;
-                }
-              }
-            EOF
-            fi
-
             chmod o+x /home/ec2-user
 
-            sudo systemctl restart nginx
+            DOMAIN='${{ vars.DOMAIN_NAME }}'
+            ALT_DOMAIN='${{ vars.ALT_DOMAIN_NAME }}'
+            [ -n "$DOMAIN" ] || { echo "DOMAIN_NAME is unset for this environment"; exit 1; }
+            [ -n "$ALT_DOMAIN" ] || { echo "ALT_DOMAIN_NAME is unset for this environment"; exit 1; }
+            sudo mkdir -p /var/www/certbot
+
+            # Before the write: a vhost pointing at a missing cert fails every
+            # later `nginx -t`, the frontend deploy's included, and one whose
+            # cert omits a server_name deploys clean then fails TLS in the
+            # browser.
+            CERT="/etc/letsencrypt/live/admin.$DOMAIN/fullchain.pem"
+            for name in "admin.$DOMAIN" "admin.$ALT_DOMAIN"; do
+              if ! openssl x509 -noout -ext subjectAltName -in "$CERT" 2>/dev/null | grep -qF "DNS:$name"; then
+                echo "$CERT is missing or does not cover $name. Issue it on this box first:"
+                echo "  sudo mkdir -p /var/www/certbot"
+                echo "  sudo certbot certonly --webroot -w /var/www/certbot --cert-name admin.$DOMAIN --expand -d admin.$DOMAIN -d admin.$ALT_DOMAIN"
+                exit 1
+              fi
+            done
+            sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__ALT_DOMAIN__/$ALT_DOMAIN/g" ~/alliance_admin.conf \
+              | sudo tee /etc/nginx/conf.d/alliance_admin.conf > /dev/null
+            # Superseded by alliance_admin.conf; a leftover copy would claim the
+            # same server_name.
+            sudo rm -f /etc/nginx/conf.d/admin.conf
+            sudo nginx -t || { echo "nginx config invalid"; exit 1; }
+            sudo systemctl reload nginx
 
   migrations-drift-check:
     uses: ./.github/workflows/migrations-drift-check.yaml
@@ -721,6 +749,7 @@ jobs:
             export APP_URL=https://${{vars.DOMAIN_NAME}}
             export ALT_APP_URL=https://${{vars.ALT_DOMAIN_NAME}}
             export ADMIN_URL=https://admin.${{vars.DOMAIN_NAME}}
+            export ALT_ADMIN_URL=https://admin.${{vars.ALT_DOMAIN_NAME}}
             export TWILIO_PHONE_NUMBER=${{ secrets.TWILIO_PHONE_NUMBER }}
             export TWILIO_ACCOUNT_SID=${{ secrets.TWILIO_ACCOUNT_SID }}
             export TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}
@@ -833,6 +862,12 @@ jobs:
           echo "Checking admin app..."
           curl --fail --silent --show-error https://admin.${{vars.DOMAIN_NAME}} > /dev/null
           echo "admin app https ok"
+
+      - name: Check admin app on alt domain
+        run: |
+          echo "Checking admin app on admin.${{vars.ALT_DOMAIN_NAME}}..."
+          curl --fail --silent --show-error https://admin.${{vars.ALT_DOMAIN_NAME}} > /dev/null
+          echo "admin alt domain https ok"
 
   verify-api:
     needs:
