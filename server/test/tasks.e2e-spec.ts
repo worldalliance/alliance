@@ -1374,8 +1374,7 @@ describe("Tasks (e2e)", () => {
       });
 
       await request(ctx.app.getHttpServer())
-        .post(`/tasks/submitForm/${form.body.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .post(`/tasks/submitPublicForm/${form.body.id}`)
         .send({
           answers: {},
           formSnapshotId: form.body.formSnapshotId as number,
@@ -1386,30 +1385,33 @@ describe("Tasks (e2e)", () => {
         .expect(400);
     });
 
-    it("accepts the draft validator ids an admin-built schema can keep", async () => {
-      const draftValidatorSchema: FormSchema = {
-        pages: [
-          {
-            id: "page-1",
-            fields: [
-              {
-                id: "proof",
-                type: "input",
-                kind: "text",
-                label: "Proof",
-                visibleIfFormula: {
-                  conditions: {
-                    condition1: { kind: "validator", validatorId: -1 },
-                  },
-                  formula: "condition1",
+    // Validator -1 never resolves to a row, so the server reads it as false —
+    // a verdict a client can be caught disagreeing with.
+    const draftValidatorSchema: FormSchema = {
+      pages: [
+        {
+          id: "page-1",
+          fields: [
+            {
+              id: "proof",
+              type: "input",
+              kind: "text",
+              label: "Proof",
+              visibleIfFormula: {
+                conditions: {
+                  condition1: { kind: "validator", validatorId: -1 },
                 },
+                formula: "condition1",
               },
-            ],
-          },
-        ],
-        outputViews: [],
-        aggregateViews: [],
-      };
+            },
+          ],
+        },
+      ],
+      outputViews: [],
+      aggregateViews: [],
+    };
+
+    it("accepts the draft validator ids an admin-built schema can keep", async () => {
       const action = await createAction("Validator Action Four");
       const form = await request(ctx.app.getHttpServer())
         .post("/tasks/createForm")
@@ -1437,6 +1439,31 @@ describe("Tasks (e2e)", () => {
         .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
       expect(read.body.visibilityValidatorResults["-1"]).toBe(false);
+    });
+
+    it("stores the verdicts the server ran, not the ones the client claims", async () => {
+      const action = await createAction("Validator Action Six");
+      const form = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "Validator Visibility 6", schema: draftValidatorSchema })
+        .expect(201);
+      await actionRepo.update(action.id, {
+        taskFormId: form.body.id as number,
+      });
+
+      const submit = await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${form.body.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {},
+          formSnapshotId: form.body.formSnapshotId as number,
+          actionId: action.id,
+          deviceType: "desktop" as const,
+          visibilityValidatorResults: { "-1": true },
+        })
+        .expect(201);
+      expect(submit.body.visibilityValidatorResults["-1"]).toBe(false);
     });
 
     it("drops unreadable stored verdicts instead of failing the read", async () => {

@@ -1004,7 +1004,9 @@ export class TasksService {
       form,
       formId,
       dto: submitFormDto,
-      validatorResults: {},
+      validatorResults: parseSubmittedValidatorResults(
+        submitFormDto.visibilityValidatorResults ?? {},
+      ),
       guestId,
     });
   }
@@ -1026,7 +1028,9 @@ export class TasksService {
       form,
       formId,
       dto: partialFormData,
-      validatorResults: {},
+      validatorResults: parseSubmittedValidatorResults(
+        partialFormData.visibilityValidatorResults ?? {},
+      ),
       user,
     });
 
@@ -1060,7 +1064,6 @@ export class TasksService {
       // clients. Resolved to a snapshot row below. Remove once the floor
       // mobile version sends formSnapshotId.
       schemaSnapshot?: Record<string, unknown>;
-      visibilityValidatorResults?: unknown;
       deviceType: DeviceVisibilityTarget;
       publicAnswers?: Record<string, boolean>;
       phDistinctId?: string;
@@ -1068,23 +1071,22 @@ export class TasksService {
       sid?: string;
     };
     snapshot?: FormSnapshot;
+    /**
+     * The verdicts to store. A path that runs the validators itself passes
+     * its own; only one that can't — a guest submission, an opt-out draft —
+     * falls back to the blob the client sent.
+     */
     validatorResults: VisibilityValidatorResults;
     user?: User;
     guestId?: string;
   }): Promise<ParsedFormResponse> {
     const snapshot =
       preResolvedSnapshot ?? (await this.resolveSubmissionSnapshot(form, dto));
-    // Parsed before the insert, so a bad payload is a 400 instead of a 500
-    // over a row that is already committed.
-    const visibilityValidatorResults =
-      dto.visibilityValidatorResults == null
-        ? validatorResults
-        : parseSubmittedValidatorResults(dto.visibilityValidatorResults);
     const formResponse = this.formResponseRepository.create({
       answers: dto.answers,
       formSnapshotId: snapshot.id,
       formSnapshot: snapshot,
-      visibilityValidatorResults,
+      visibilityValidatorResults: validatorResults,
       deviceType: dto.deviceType,
       publicAnswers: dto.publicAnswers ?? {},
       phDistinctId: dto.phDistinctId,
@@ -1097,7 +1099,7 @@ export class TasksService {
     });
     const savedForm: ParsedFormResponse = Object.assign(
       await this.formResponseRepository.save(formResponse),
-      { visibilityValidatorResults },
+      { visibilityValidatorResults: validatorResults },
     );
     await this.aiDetectionQueueService.addDetectJob({
       entityType: DetectableEntity.FormResponse,
