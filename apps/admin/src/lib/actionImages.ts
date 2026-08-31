@@ -1,5 +1,9 @@
 import { changedPhoto } from "@alliance/common/image-src";
-import type { ActionDto, CreateActionDto } from "@alliance/shared/client";
+import type {
+  ActionDto,
+  AdminActionDto,
+  CreateActionDto,
+} from "@alliance/shared/client";
 
 /**
  * The image fields an action save sends. ActionDto renders both columns as
@@ -23,5 +27,30 @@ export function changedActionImages({
         current: action?.squareThumbnailImage ?? null,
         next: form.squareThumbnailImage ?? null,
       }) ?? undefined,
+  };
+}
+
+/**
+ * The image fields duplicating an action sends. A save leaves a column alone by
+ * sending nothing for it, and a new action has no column to leave alone, so an
+ * unsent field falls back to what the original stores.
+ */
+export function duplicatedActionImages({
+  form,
+  action,
+  imageKey,
+}: {
+  form: Pick<CreateActionDto, "squareThumbnailImage">;
+  action: Pick<
+    AdminActionDto,
+    "squareThumbnailImage" | "storedImage" | "storedSquareThumbnailImage"
+  > | null;
+  imageKey: string | null;
+}): Pick<CreateActionDto, "image" | "squareThumbnailImage"> {
+  const changed = changedActionImages({ form, action, imageKey });
+  return {
+    image: changed.image ?? action?.storedImage,
+    squareThumbnailImage:
+      changed.squareThumbnailImage ?? action?.storedSquareThumbnailImage,
   };
 }

@@ -71,7 +71,10 @@ import type {
   FormResponseFilter,
   FormWithSchema,
 } from "../components/FormResponsesView";
-import { changedActionImages } from "../lib/actionImages";
+import {
+  changedActionImages,
+  duplicatedActionImages,
+} from "../lib/actionImages";
 import { makeTempId } from "../lib/tempId";
 
 // Status color mapping
@@ -531,6 +534,7 @@ const ActionDashboard: React.FC = () => {
     const duplicateForm = {
       ...form,
       name: `${form.name} (Copy)`,
+      ...duplicatedActionImages({ form, action, imageKey }),
       taskFormId,
     };
     const result = await R.fromPromise(createAction(duplicateForm));
@@ -540,7 +544,14 @@ const ActionDashboard: React.FC = () => {
       return;
     }
     handleActionCreated(result.value);
-  }, [form, createAction, handleActionCreated, invalidateFormsIndex]);
+  }, [
+    form,
+    action,
+    imageKey,
+    createAction,
+    handleActionCreated,
+    invalidateFormsIndex,
+  ]);
 
   const handleActionDeleted = useCallback(() => {
     navigate("/actions");
