@@ -334,7 +334,7 @@ jobs:
             # server_name deploys clean then fails TLS in the browser.
             CERT="/etc/letsencrypt/live/admin.$DOMAIN/fullchain.pem"
             for name in "admin.$DOMAIN" "admin.$ALT_DOMAIN"; do
-              if ! openssl x509 -noout -ext subjectAltName -in "$CERT" 2>/dev/null | grep -qF "DNS:$name"; then
+              if ! sudo openssl x509 -noout -ext subjectAltName -in "$CERT" 2>/dev/null | grep -qF "DNS:$name"; then
                 echo "$CERT is missing or does not cover $name. The challenge is now served for both names; issue the cert on this box, then re-run this job:"
                 echo "  sudo certbot certonly --webroot -w /var/www/certbot --cert-name admin.$DOMAIN --expand -d admin.$DOMAIN -d admin.$ALT_DOMAIN"
                 exit 1
