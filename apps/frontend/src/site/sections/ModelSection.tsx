@@ -34,7 +34,7 @@ export function ModelSection() {
             {GROWTH_HEADLINE_FAR_PARTS.tail}
           </SectionSubtitle>
         </div>
-        <TexturedPanel tint="var(--site-primary)">
+        <TexturedPanel tint="var(--site-primary)" textureOpacity={0.14}>
           <GrowthMilestones
             footnote={GROWTH_FOOTNOTE}
             near={nearMilestones}

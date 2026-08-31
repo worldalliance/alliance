@@ -19,28 +19,28 @@ export type Priority = {
 export const priorities: Priority[] = [
   {
     id: "extreme-poverty",
-    title: "Extreme\npoverty",
+    title: "Extreme\nPoverty",
     description:
       "Over 800 million people live on less than $3 a day, commonly suffering  from malnutrition and dying from preventable diseases.",
     image: poverty,
   },
   {
     id: "environmental-destruction",
-    title: "Environmental\ndestruction",
+    title: "Environmental\nDestruction",
     description:
       "The overuse of land for development and agriculture, overexploitation of natural resources, climate change, pollution, and invasive species are driving a mass extinction in nature.",
     image: environment,
   },
   {
     id: "democratic-decline",
-    title: "Democratic\ndecline",
+    title: "Democratic\nDecline",
     description:
       "More countries are losing democratic qualities than at any time since the 1940s, and measures of global freedom have fallen for 19 straight years.",
     image: democracy,
   },
   {
     id: "dangerous-technology",
-    title: "Dangerous\ntechnologies",
+    title: "Dangerous\nTechnologies",
     description:
       "Biotechnology is lowering the barrier to engineering deadly pathogens, and experts warn that artificial intelligence poses a risk of human extinction.",
     image: technology,

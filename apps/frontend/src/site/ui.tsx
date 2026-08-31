@@ -21,10 +21,13 @@ export const SITE_SUBMIT =
  */
 export function TexturedPanel({
   tint,
+  textureOpacity = 0.62,
   children,
   className,
 }: {
   tint: string;
+  /** Lower it where the tint itself has to read, since screening lifts it. */
+  textureOpacity?: number;
   children: ReactNode;
   className?: string;
 }) {
@@ -47,7 +50,7 @@ export function TexturedPanel({
         style={{
           mixBlendMode: "screen",
           filter: "grayscale(1) contrast(1.05)",
-          opacity: 0.62,
+          opacity: textureOpacity,
         }}
       />
       <div className="relative z-10">{children}</div>

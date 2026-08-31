@@ -25,7 +25,7 @@ export function Hero() {
         <div className="flex min-w-0 flex-col gap-5 lg:flex-1">
           <DisplayHeading
             as="h1"
-            className="text-[2.5rem] sm:text-6xl lg:text-8xl"
+            className="text-[2.5rem] sm:text-6xl lg:text-[3.25rem] xl:text-[4.5rem] 2xl:text-[5.5rem]"
           >
             {HERO_HEADLINE}
           </DisplayHeading>
