@@ -274,7 +274,7 @@ jobs:
           host: ${{ secrets.INSTANCE_IP }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "deploy/nginx/alliance_admin.conf"
+          source: "deploy/nginx/alliance_admin.conf,deploy/nginx/alliance_admin_http.conf"
           target: "~/"
           strip_components: 2
 
@@ -311,26 +311,38 @@ jobs:
             [ -n "$ALT_DOMAIN" ] || { echo "ALT_DOMAIN_NAME is unset for this environment"; exit 1; }
             sudo mkdir -p /var/www/certbot
 
-            # Before the write: a vhost pointing at a missing cert fails every
-            # later `nginx -t`, the frontend deploy's included, and one whose
-            # cert omits a server_name deploys clean then fails TLS in the
-            # browser.
+            render () {
+              sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__ALT_DOMAIN__/$ALT_DOMAIN/g" "$HOME/$1" \
+                | sudo tee "/etc/nginx/conf.d/$1" > /dev/null
+            }
+
+            reload () {
+              sudo nginx -t || { echo "nginx config invalid"; exit 1; }
+              sudo systemctl reload nginx
+            }
+
+            # The port 80 vhost lands first and unconditionally: it serves the
+            # ACME challenge, so the cert below cannot be issued until it is
+            # live. admin.conf is its predecessor and would claim the same
+            # server_name.
+            render alliance_admin_http.conf
+            sudo rm -f /etc/nginx/conf.d/admin.conf
+            reload
+
+            # A vhost pointing at a missing cert fails every later `nginx -t`,
+            # the frontend deploy's included, and one whose cert omits a
+            # server_name deploys clean then fails TLS in the browser.
             CERT="/etc/letsencrypt/live/admin.$DOMAIN/fullchain.pem"
             for name in "admin.$DOMAIN" "admin.$ALT_DOMAIN"; do
               if ! openssl x509 -noout -ext subjectAltName -in "$CERT" 2>/dev/null | grep -qF "DNS:$name"; then
-                echo "$CERT is missing or does not cover $name. Issue it on this box first:"
-                echo "  sudo mkdir -p /var/www/certbot"
+                echo "$CERT is missing or does not cover $name. The challenge is now served for both names; issue the cert on this box, then re-run this job:"
                 echo "  sudo certbot certonly --webroot -w /var/www/certbot --cert-name admin.$DOMAIN --expand -d admin.$DOMAIN -d admin.$ALT_DOMAIN"
                 exit 1
               fi
             done
-            sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__ALT_DOMAIN__/$ALT_DOMAIN/g" ~/alliance_admin.conf \
-              | sudo tee /etc/nginx/conf.d/alliance_admin.conf > /dev/null
-            # Superseded by alliance_admin.conf; a leftover copy would claim the
-            # same server_name.
-            sudo rm -f /etc/nginx/conf.d/admin.conf
-            sudo nginx -t || { echo "nginx config invalid"; exit 1; }
-            sudo systemctl reload nginx
+
+            render alliance_admin.conf
+            reload
 
   migrations-drift-check:
     uses: ./.github/workflows/migrations-drift-check.yaml
