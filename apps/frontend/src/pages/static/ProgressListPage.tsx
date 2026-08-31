@@ -136,7 +136,7 @@ function ProgressCard({ item }: { item: ProgressItem }) {
           title={item.project.title}
           description={item.project.summary}
           tags={item.project.tags}
-          to={href("/progress/projects/:slug", { slug: item.project.slug })}
+          to={href("/projects/:slug", { slug: item.project.slug })}
           className={className}
         />
       );

@@ -6,7 +6,7 @@ import ProgressCard from "./ProgressCard";
 const ProjectCard: React.FC<{ project: ProgressProject }> = ({ project }) => {
   return (
     <ProgressCard
-      to={href("/progress/projects/:slug", { slug: project.slug })}
+      to={href("/projects/:slug", { slug: project.slug })}
       title={project.title}
       description={project.summary}
       // meta={formatLongDateEnUS(new Date(project.date))}
