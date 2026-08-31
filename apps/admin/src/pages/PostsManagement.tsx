@@ -1,8 +1,7 @@
 import { errorMessage } from "@alliance/common/errorMessage";
 import {
   forumGetPostsForAdmin,
-  forumUpdatePostAuthorsAdmin,
-  forumUpdatePostExpertsAdmin,
+  forumUpdatePostSettingsAdmin,
   userListAdmin,
 } from "@alliance/shared/client";
 import type { PostDto } from "@alliance/shared/client/types.gen";
@@ -12,8 +11,14 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
+import { Plus, Trash2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { href, useNavigate, useParams } from "react-router";
+
+type TagDraft = { id?: number; name: string };
+
+const toTagDrafts = (post: PostDto): TagDraft[] =>
+  (post.tags ?? []).map((tag) => ({ id: tag.id, name: tag.name }));
 
 const PostsManagementPage: React.FC = () => {
   const { postId } = useParams();
@@ -31,7 +36,8 @@ const PostsManagementPage: React.FC = () => {
   const [expertLabel, setExpertLabel] = useState("");
   const [notifyForReplies, setNotifyForReplies] = useState(false);
   const [showClusterTags, setShowClusterTags] = useState(false);
-  const { success, error: pushError } = useToast();
+  const [tagDrafts, setTagDrafts] = useState<TagDraft[]>([]);
+  const { success, error: pushError, confirm } = useToast();
 
   useEffect(() => {
     const loadPosts = async () => {
@@ -60,6 +66,7 @@ const PostsManagementPage: React.FC = () => {
         setExpertLabel(match.expertLabel ?? "");
         setNotifyForReplies(match.notifyForReplies ?? false);
         setShowClusterTags(match.showClusterTags ?? false);
+        setTagDrafts(toTagDrafts(match));
       }
     }
   }, [postId, posts, selectedPost?.id]);
@@ -91,45 +98,72 @@ const PostsManagementPage: React.FC = () => {
     setExpertLabel(post.expertLabel ?? "");
     setNotifyForReplies(post.notifyForReplies ?? false);
     setShowClusterTags(post.showClusterTags ?? false);
+    setTagDrafts(toTagDrafts(post));
     navigate(href(`/posts/:postId?`, { postId: post.id.toString() }));
   };
 
   const handleSave = async () => {
     if (!selectedPost) return;
+    const tags = tagDrafts
+      .map((tag) => ({ ...tag, name: tag.name.trim() }))
+      .filter((tag) => tag.name.length > 0);
+    if (new Set(tags.map((tag) => tag.name)).size !== tags.length) {
+      pushError("Tag names must be unique within a post");
+      return;
+    }
+    const savedTags = toTagDrafts(selectedPost);
+    const tagsChanged =
+      tags.length !== savedTags.length ||
+      tags.some(
+        (tag, i) =>
+          tag.id !== savedTags[i].id || tag.name !== savedTags[i].name,
+      );
+    const deletedTags = savedTags.filter(
+      (saved) => !tags.some((tag) => tag.id === saved.id),
+    );
+    if (deletedTags.length > 0) {
+      const names = deletedTags.map((tag) => `"${tag.name}"`).join(", ");
+      const confirmed = await confirm({
+        title: `Delete ${names}?`,
+        message: `Comments filed under ${
+          deletedTags.length > 1 ? "those tags" : "that tag"
+        } lose their label. This cannot be undone.`,
+        confirmLabel: "Delete",
+        cancelLabel: "Keep",
+        mode: "fullscreen",
+      });
+      if (!confirmed) return;
+    }
     setSaving(true);
     try {
-      const [expertsResponse, authorsResponse] = await Promise.all([
-        forumUpdatePostExpertsAdmin({
-          path: { id: selectedPost.id },
-          body: {
-            expertIds: expertSelection,
-            qaMode,
-            expertLabel: expertLabel || undefined,
-            notifyForReplies,
-            showClusterTags,
-          },
-        }),
-        forumUpdatePostAuthorsAdmin({
-          path: { id: selectedPost.id },
-          body: {
-            authorIds: authorSelection,
-          },
-        }),
-      ]);
-      const updatedPost = authorsResponse.data ?? expertsResponse.data;
+      const { data: updatedPost, error } = await forumUpdatePostSettingsAdmin({
+        path: { id: selectedPost.id },
+        body: {
+          expertIds: expertSelection,
+          authorIds: authorSelection,
+          qaMode,
+          expertLabel: expertLabel || null,
+          notifyForReplies,
+          showClusterTags,
+          tags: tagsChanged
+            ? {
+                tags,
+                knownTagIds: (selectedPost.tags ?? []).map((tag) => tag.id),
+              }
+            : undefined,
+        },
+      });
+      if (error) {
+        console.error("Failed to save", error);
+        pushError(errorMessage({ error, fallback: "Failed to save settings" }));
+        return;
+      }
       if (updatedPost) {
         setSelectedPost(updatedPost);
         setPosts((prev) =>
           prev.map((p) => (p.id === updatedPost.id ? updatedPost : p)),
         );
-      }
-      const failure = expertsResponse.error ?? authorsResponse.error;
-      if (failure) {
-        console.error("Failed to save", failure);
-        pushError(
-          errorMessage({ error: failure, fallback: "Failed to save settings" }),
-        );
-        return;
+        setTagDrafts(toTagDrafts(updatedPost));
       }
       success("Post updated", "Settings saved successfully");
     } catch (err) {
@@ -304,6 +338,7 @@ const PostsManagementPage: React.FC = () => {
                     </label>
                     <input
                       type="text"
+                      maxLength={64}
                       value={expertLabel}
                       onChange={(e) => setExpertLabel(e.target.value)}
                       placeholder="Expert"
@@ -323,6 +358,65 @@ const PostsManagementPage: React.FC = () => {
                     loading={usersLoading}
                     label="Designated Experts"
                   />
+
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">
+                      Comment Tags
+                    </label>
+                    <div className="flex flex-col gap-2">
+                      {tagDrafts.map((tag, index) => (
+                        <div
+                          key={tag.id ?? `new-${index}`}
+                          className="flex items-center gap-2"
+                        >
+                          <input
+                            type="text"
+                            value={tag.name}
+                            onChange={(e) =>
+                              setTagDrafts((prev) =>
+                                prev.map((draft, i) =>
+                                  i === index
+                                    ? { ...draft, name: e.target.value }
+                                    : draft,
+                                ),
+                              )
+                            }
+                            placeholder="Tag name"
+                            className="flex-1 border border-zinc-300 rounded px-3 py-2 text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setTagDrafts((prev) =>
+                                prev.filter((_, i) => i !== index),
+                              )
+                            }
+                            aria-label={`Remove tag ${tag.name || index + 1}`}
+                            title="Remove tag"
+                            className="p-2 text-zinc-500 hover:text-red-600 cursor-pointer"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTagDrafts((prev) => [...prev, { name: "" }])
+                        }
+                        className="flex items-center gap-1 text-sm text-blue self-start cursor-pointer"
+                      >
+                        <Plus size={16} />
+                        Add tag
+                      </button>
+                    </div>
+                    <p className="text-xs text-zinc-500 mt-1">
+                      Commenters pick exactly one of these when they start a new
+                      thread on this post, and readers can filter by them.
+                      Deleting a tag on save clears it from the comments that
+                      used it.
+                    </p>
+                  </div>
 
                   <Button
                     type="button"

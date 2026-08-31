@@ -10,7 +10,10 @@ import {
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
-import EditableContentForm from "@alliance/sharedweb/ui/EditableContentForm";
+import EditableContentForm, {
+  clearDraft,
+  useDraftStorageKey,
+} from "@alliance/sharedweb/ui/EditableContentForm";
 import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import React, { useEffect, useState } from "react";
 import {
@@ -51,6 +54,7 @@ const PostFormPage: React.FC = () => {
   const navigate = useNavigate();
 
   const canSchedulePost = mode === "create" || scheduledVisibleAt !== null;
+  const storageKey = useDraftStorageKey(`post-${postId}`);
   const [clearDraftSignal, setClearDraftSignal] = useState(0);
 
   useEffect(() => {
@@ -160,6 +164,9 @@ const PostFormPage: React.FC = () => {
       }
 
       if (response.data) {
+        // Leaving the page unmounts this form while the post is in flight, and
+        // the signal below dies with it.
+        clearDraft(storageKey);
         setClearDraftSignal((x) => x + 1);
         navigate(href("/forum/post/:id", { id: response.data.id.toString() }));
       } else {
@@ -217,7 +224,8 @@ const PostFormPage: React.FC = () => {
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                disabled={isSubmitting}
+                className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                 placeholder="Enter title"
                 required
               />
@@ -231,10 +239,11 @@ const PostFormPage: React.FC = () => {
                 <EditableContentForm
                   value={content}
                   onChange={setContent}
+                  disabled={isSubmitting}
                   clearDraftSignal={clearDraftSignal}
                   expanded={true}
                   placeholder="Write your post content here..."
-                  draftKey={`post-${postId}`}
+                  storageKey={storageKey}
                 />
                 <div className="mt-3 flex justify-end text-sm text-zinc-500">
                   Drag an image to attach
@@ -249,6 +258,7 @@ const PostFormPage: React.FC = () => {
                     <LargeCheckbox
                       label="Schedule post for later"
                       checked={useSchedulePost}
+                      disabled={isSubmitting}
                       onChange={() => {
                         setUseSchedulePost(!useSchedulePost);
                         if (!useSchedulePost && !scheduledVisibleAt) {
@@ -264,6 +274,7 @@ const PostFormPage: React.FC = () => {
                         <DateTimePicker
                           id="schedulePostDate"
                           value={scheduledVisibleAt}
+                          disabled={isSubmitting}
                           onChange={({ utcValue }) => {
                             setScheduledVisibleAt(utcValue);
                             if (!utcValue) {
@@ -276,7 +287,7 @@ const PostFormPage: React.FC = () => {
                               setError(null);
                             }
                           }}
-                          inputClassName="-my-3"
+                          inputClassName="-my-3 disabled:opacity-50"
                         />
                       </div>
                     )}
@@ -287,6 +298,7 @@ const PostFormPage: React.FC = () => {
                 <Button
                   onClick={() => navigate(href("/forum"))}
                   color={ButtonColor.Light}
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </Button>

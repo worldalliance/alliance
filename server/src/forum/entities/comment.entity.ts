@@ -20,6 +20,7 @@ import {
 import { Notification } from "../../notifs/entities/notification.entity";
 import { User } from "../../user/entities/user.entity";
 import { EditableContent } from "./editablecontent.entity";
+import { PostTag } from "./post-tag.entity";
 
 export enum CommentParentObject {
   Post = "post",
@@ -135,4 +136,16 @@ export class Comment {
   @ApiProperty()
   @Allow()
   likesCount: number;
+
+  @ManyToOne(() => PostTag, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn()
+  @ApiPropertyOptional({ type: () => PostTag })
+  @IsOptional()
+  @Type(() => PostTag)
+  tag?: Relation<PostTag> | null;
+
+  @Column({ type: "int", nullable: true })
+  @ApiProperty({ type: Number, nullable: true })
+  @IsOptional()
+  tagId: number | null;
 }

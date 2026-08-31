@@ -14,6 +14,7 @@ import { User } from "../user/entities/user.entity";
 import { Comment } from "./entities/comment.entity";
 import { EditableContent } from "./entities/editablecontent.entity";
 import { ForumDigestLog } from "./entities/forum-digest-log.entity";
+import { PostTag } from "./entities/post-tag.entity";
 import { Post } from "./entities/post.entity";
 import { ForumDigestService } from "./forum-digest.service";
 import { ForumController } from "./forum.controller";
@@ -30,6 +31,7 @@ import { ForumService } from "./forum.service";
       EditableContent,
       Action,
       ForumDigestLog,
+      PostTag,
     ]),
     MailModule,
     MmsModule,

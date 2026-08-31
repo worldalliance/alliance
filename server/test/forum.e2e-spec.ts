@@ -17,7 +17,10 @@ import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import { In, type Repository } from "typeorm";
 import { Action } from "../src/actions/entities/action.entity";
-import { CreatePostDto } from "../src/forum/dto/post.dto";
+import {
+  CreatePostDto,
+  UpdatePostSettingsDto,
+} from "../src/forum/dto/post.dto";
 import { createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Forum (e2e)", () => {
@@ -51,6 +54,59 @@ describe("Forum (e2e)", () => {
       },
     );
     return { user: extraUser, token };
+  };
+
+  const saveSettings = (
+    postId: number,
+    settings: Partial<UpdatePostSettingsDto>,
+  ) =>
+    request(ctx.app.getHttpServer())
+      .patch(`/forum/admin/posts/${postId}/settings`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({
+        expertIds: [],
+        authorIds: [],
+        qaMode: false,
+        ...settings,
+      } satisfies UpdatePostSettingsDto);
+
+  /** A backend waiting on a lock has finished every read it made before
+   * reaching it, so this is the signal that a save sits on a stale snapshot. */
+  const waitForBlockedBackends = async (
+    count: number,
+    orSettled: () => boolean = () => false,
+  ) => {
+    for (let attempt = 0; attempt < 100; attempt++) {
+      if (orSettled()) return;
+      const [{ blocked }] = await ctx.dataSource.query<[{ blocked: number }]>(
+        `select count(*)::int as blocked from pg_stat_activity
+         where datname = current_database() and wait_event_type = 'Lock'`,
+      );
+      if (blocked >= count) return;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    throw new Error(`fewer than ${count} backends ever blocked`);
+  };
+
+  /** Holds `lock` in an open transaction while `body` runs, then commits. The
+   * commit sits in a finally, so a body that throws still frees the lock
+   * instead of parking every later test on it. Requests left in flight come
+   * back in a tuple: returned bare, the async body awaits one, and what it is
+   * waiting on is this lock. */
+  const withLockHeld = async <T>(
+    lock: { query: string; params?: unknown[] },
+    body: () => Promise<T>,
+  ): Promise<T> => {
+    const gate = ctx.dataSource.createQueryRunner();
+    await gate.connect();
+    await gate.startTransaction();
+    try {
+      await gate.query(lock.query, lock.params);
+      return await body();
+    } finally {
+      await gate.commitTransaction();
+      await gate.release();
+    }
   };
 
   beforeAll(async () => {
@@ -702,6 +758,47 @@ describe("Forum (e2e)", () => {
         } satisfies CreateCommentDto)
         .expect(404);
     });
+
+    it("lands both halves of two pins racing each other", async () => {
+      const replyResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "Pinned From Both Sides", attachments: [] },
+          parentObjectId: testPostId,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+
+      const replyId = replyResponse.body.id;
+
+      const pins = await withLockHeld(
+        {
+          query: "select id from comment where id = $1 for update",
+          params: [replyId],
+        },
+        async () => {
+          const inFlight = [1, 2].map(() =>
+            request(ctx.app.getHttpServer())
+              .patch(`/forum/admin/comments/${replyId}/pin`)
+              .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+              .then((res) => res),
+          );
+          await waitForBlockedBackends(2);
+          return inFlight;
+        },
+      );
+
+      for (const pin of await Promise.all(pins)) {
+        expect(pin.status).toBe(200);
+      }
+
+      const [stored] = await ctx.dataSource.query<[{ pinned: boolean }]>(
+        `select pinned from comment where id = $1`,
+        [replyId],
+      );
+      expect(stored.pinned).toBe(false);
+    });
   });
 
   describe("Additional endpoints", () => {
@@ -892,6 +989,171 @@ describe("Forum (e2e)", () => {
         .post(`/forum/comments/${commentResponse.body.id}/unlike`)
         .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(201);
+    });
+
+    it("keeps a settings write that lands while a like is open", async () => {
+      const { user: coAuthor } = await createExtraUserAndToken();
+      const { token: likerToken } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Liked Mid-Save",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      // The like reads the expert join rows after the post itself, so holding
+      // that table parks it on the post it has already read.
+      const [likeInFlight] = await withLockHeld(
+        { query: 'lock table "post_experts_user" in access exclusive mode' },
+        async () => {
+          const inFlight = request(ctx.app.getHttpServer())
+            .post(`/forum/posts/${postId}/like`)
+            .set("Authorization", `Bearer ${likerToken}`)
+            .then((res) => res);
+          await waitForBlockedBackends(1);
+
+          await ctx.dataSource.query(
+            `update post set "qaMode" = true, "expertLabel" = $2 where id = $1`,
+            [postId, "AMA Guest"],
+          );
+          await ctx.dataSource.query(
+            `insert into post_authors_user ("postId", "userId") values ($1, $2)`,
+            [postId, coAuthor.id],
+          );
+          return [inFlight] as const;
+        },
+      );
+
+      expect((await likeInFlight).status).toBe(201);
+
+      const adminPosts = await request(ctx.app.getHttpServer())
+        .get("/forum/admin/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const stored = adminPosts.body.find((p) => p.id === postId);
+      expect(stored.qaMode).toBe(true);
+      expect(stored.expertLabel).toBe("AMA Guest");
+      expect(stored.authorIds).toEqual([coAuthor.id]);
+
+      const likeRows = await ctx.dataSource.query(
+        `select "userId" from post_likes_user where "postId" = $1`,
+        [postId],
+      );
+      expect(likeRows).toHaveLength(1);
+    });
+
+    it("rejects a like that the same user already landed elsewhere", async () => {
+      const { user: liker, token: likerToken } =
+        await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Liked Twice At Once",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      const [likeInFlight] = await withLockHeld(
+        { query: 'lock table "post_experts_user" in access exclusive mode' },
+        async () => {
+          const inFlight = request(ctx.app.getHttpServer())
+            .post(`/forum/posts/${postId}/like`)
+            .set("Authorization", `Bearer ${likerToken}`)
+            .then((res) => res);
+          await waitForBlockedBackends(1);
+
+          await ctx.dataSource.query(
+            `insert into post_likes_user ("postId", "userId") values ($1, $2)`,
+            [postId, liker.id],
+          );
+          return [inFlight] as const;
+        },
+      );
+
+      expect((await likeInFlight).status).toBe(404);
+
+      const likeRows = await ctx.dataSource.query(
+        `select "userId" from post_likes_user where "postId" = $1`,
+        [postId],
+      );
+      expect(likeRows).toHaveLength(1);
+    });
+
+    it("keeps a comment edit that lands while a like is open", async () => {
+      const { token: likerToken } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Holding A Comment Liked Mid-Save",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const commentResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "original body", attachments: [] },
+          parentObjectId: postResponse.body.id,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+
+      const commentId = commentResponse.body.id;
+      const contentId = commentResponse.body.editableContent.id;
+
+      // A comment loads its relations in one query, so what parks the like is
+      // the liker read after it: User.leaderOf is a RelationId, and its query
+      // hits community_leaders_user.
+      const [likeInFlight] = await withLockHeld(
+        {
+          query: 'lock table "community_leaders_user" in access exclusive mode',
+        },
+        async () => {
+          const inFlight = request(ctx.app.getHttpServer())
+            .post(`/forum/comments/${commentId}/like`)
+            .set("Authorization", `Bearer ${likerToken}`)
+            .then((res) => res);
+          await waitForBlockedBackends(1);
+
+          await ctx.dataSource.query(
+            `update editable_content set body = $2 where id = $1`,
+            [contentId, "edited body"],
+          );
+          await ctx.dataSource.query(
+            `update comment set pinned = true where id = $1`,
+            [commentId],
+          );
+          return [inFlight] as const;
+        },
+      );
+
+      expect((await likeInFlight).status).toBe(201);
+
+      const [stored] = await ctx.dataSource.query(
+        `select c.pinned, c."likesCount", ec.body from comment c
+         join editable_content ec on ec.id = c."editableContentId"
+         where c.id = $1`,
+        [commentId],
+      );
+      expect(stored.body).toBe("edited body");
+      expect(stored.pinned).toBe(true);
+      expect(stored.likesCount).toBe(1);
     });
 
     it("groups unread post likes and migrates legacy grouping keys", async () => {
@@ -1120,11 +1382,9 @@ describe("Forum (e2e)", () => {
       const postId = postResponse.body.id;
       const { user: coAuthor } = await createExtraUserAndToken();
 
-      const updateResponse = await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
-        .expect(200);
+      const updateResponse = await saveSettings(postId, {
+        authorIds: [ctx.testUserId, coAuthor.id],
+      }).expect(200);
 
       expect(updateResponse.body.authorIds).toEqual(
         expect.arrayContaining([ctx.testUserId, coAuthor.id]),
@@ -1147,11 +1407,9 @@ describe("Forum (e2e)", () => {
 
       const postId = postResponse.body.id;
 
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
-        .expect(200);
+      await saveSettings(postId, {
+        authorIds: [ctx.testUserId, coAuthor.id],
+      }).expect(200);
 
       // Admin comments on the post
       const commentResponse = await request(ctx.app.getHttpServer())
@@ -1202,11 +1460,9 @@ describe("Forum (e2e)", () => {
 
       const postId = postResponse.body.id;
 
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
-        .expect(200);
+      await saveSettings(postId, {
+        authorIds: [ctx.testUserId, coAuthor.id],
+      }).expect(200);
 
       // Admin likes the post
       await request(ctx.app.getHttpServer())
@@ -1354,11 +1610,9 @@ describe("Forum (e2e)", () => {
 
       const postId = postResponse.body.id;
 
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
-        .expect(200);
+      await saveSettings(postId, {
+        authorIds: [ctx.testUserId, coAuthor.id],
+      }).expect(200);
 
       const { token: secondLikerToken } = await createExtraUserAndToken();
 
@@ -1411,11 +1665,9 @@ describe("Forum (e2e)", () => {
 
       const postId = postResponse.body.id;
 
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
-        .expect(200);
+      await saveSettings(postId, {
+        authorIds: [ctx.testUserId, coAuthor.id],
+      }).expect(200);
 
       const coAuthorPosts = await request(ctx.app.getHttpServer())
         .get(`/forum/posts/user/${coAuthor.id}`)
@@ -1439,11 +1691,9 @@ describe("Forum (e2e)", () => {
 
       const postId = postResponse.body.id;
 
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
-        .expect(200);
+      await saveSettings(postId, {
+        authorIds: [ctx.testUserId, coAuthor.id],
+      }).expect(200);
 
       const adminPosts = await request(ctx.app.getHttpServer())
         .get("/forum/admin/posts")
@@ -1473,11 +1723,9 @@ describe("Forum (e2e)", () => {
 
       const postId = postResponse.body.id;
 
-      await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postId}/authors`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
-        .expect(200);
+      await saveSettings(postId, {
+        authorIds: [ctx.testUserId, coAuthor.id],
+      }).expect(200);
 
       // GET /forum/posts/:id should include authors
       const singlePost = await request(ctx.app.getHttpServer())
@@ -1504,7 +1752,456 @@ describe("Forum (e2e)", () => {
       expect(matchedPost.authors).toHaveLength(2);
     });
 
-    it("rejects non-admin from updating post authors", async () => {
+    it("drops the experts and authors a later save leaves out", async () => {
+      const { user: firstExpert } = await createExtraUserAndToken();
+      const { user: secondExpert } = await createExtraUserAndToken();
+      const { user: coAuthor } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post With Shrinking Lists",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      const save = (expertIds: number[], authorIds: number[]) =>
+        saveSettings(postId, { expertIds, authorIds, qaMode: true }).expect(
+          200,
+        );
+
+      await save(
+        [firstExpert.id, secondExpert.id],
+        [ctx.testUserId, coAuthor.id],
+      );
+
+      const shrunk = await save([secondExpert.id], [coAuthor.id]);
+      expect(shrunk.body.expertIds).toEqual([secondExpert.id]);
+      expect(shrunk.body.authorIds).toEqual([coAuthor.id]);
+
+      const emptied = await save([], [coAuthor.id]);
+      expect(emptied.body.expertIds).toEqual([]);
+
+      const adminPosts = await request(ctx.app.getHttpServer())
+        .get("/forum/admin/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const stored = adminPosts.body.find((p) => p.id === postId);
+      expect(stored.expertIds).toEqual([]);
+      expect(stored.authorIds).toEqual([coAuthor.id]);
+    });
+
+    it("refuses a save naming a user that does not exist", async () => {
+      const { user: expert } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Saved With A Ghost",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      await saveSettings(postId, {
+        expertIds: [expert.id],
+        qaMode: true,
+      }).expect(200);
+
+      const rejected = await saveSettings(postId, {
+        expertIds: [expert.id, 999999],
+      }).expect(400);
+      expect(rejected.body.message).toContain("experts");
+
+      await saveSettings(postId, { authorIds: [999999] }).expect(400);
+
+      const adminPosts = await request(ctx.app.getHttpServer())
+        .get("/forum/admin/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const stored = adminPosts.body.find((p) => p.id === postId);
+      expect(stored.expertIds).toEqual([expert.id]);
+      expect(stored.qaMode).toBe(true);
+    });
+
+    it("refuses a save whose ids are not user ids", async () => {
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Saved With A Word For An Id",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      const badSave = (body: object) =>
+        request(ctx.app.getHttpServer())
+          .patch(`/forum/admin/posts/${postId}/settings`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({ expertIds: [], authorIds: [], qaMode: false, ...body });
+
+      await badSave({ expertIds: ["nobody"] }).expect(400);
+      await badSave({ authorIds: [1.5] }).expect(400);
+      await badSave({ authorIds: [null] }).expect(400);
+    });
+
+    it("trims an expert label and clears one the save blanks out", async () => {
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post With An Expert Label",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      const patchLabel = (body: Partial<UpdatePostSettingsDto>) =>
+        saveSettings(postId, { qaMode: true, ...body }).expect(200);
+
+      const labelled = await patchLabel({ expertLabel: "AMA Guest" });
+      expect(labelled.body.expertLabel).toBe("AMA Guest");
+
+      const untouched = await patchLabel({});
+      expect(untouched.body.expertLabel).toBe("AMA Guest");
+
+      const padded = await patchLabel({ expertLabel: "  AMA Guest  " });
+      expect(padded.body.expertLabel).toBe("AMA Guest");
+
+      const cleared = await patchLabel({ expertLabel: null });
+      expect(cleared.body.expertLabel).toBeNull();
+
+      await patchLabel({ expertLabel: "AMA Guest" });
+      const blanked = await patchLabel({ expertLabel: "   " });
+      expect(blanked.body.expertLabel).toBeNull();
+    });
+
+    it("moves a post up the feed when its authors change", async () => {
+      const { user: coAuthor } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Whose Authors Change",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      const updated = await saveSettings(postId, {
+        authorIds: [coAuthor.id],
+      }).expect(200);
+
+      expect(new Date(updated.body.updatedAt).getTime()).toBeGreaterThan(
+        new Date(postResponse.body.updatedAt).getTime(),
+      );
+    });
+
+    it("saves experts, authors, settings and tags in one call", async () => {
+      const { user: expert } = await createExtraUserAndToken();
+      const { user: coAuthor } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Saved In One Call",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      const saved = await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          expertIds: [expert.id],
+          authorIds: [coAuthor.id],
+          qaMode: true,
+          expertLabel: "AMA Guest",
+          notifyForReplies: true,
+          showClusterTags: true,
+          tags: { tags: [{ name: "Logistics" }], knownTagIds: [] },
+        } satisfies UpdatePostSettingsDto)
+        .expect(200);
+
+      expect(saved.body.expertIds).toEqual([expert.id]);
+      expect(saved.body.authorIds).toEqual([coAuthor.id]);
+      expect(saved.body.qaMode).toBe(true);
+      expect(saved.body.expertLabel).toBe("AMA Guest");
+      expect(saved.body.notifyForReplies).toBe(true);
+      expect(saved.body.showClusterTags).toBe(true);
+      expect(saved.body.tags.map((tag) => tag.name)).toEqual(["Logistics"]);
+
+      const untagged = await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          expertIds: [],
+          authorIds: [coAuthor.id],
+          qaMode: false,
+        } satisfies UpdatePostSettingsDto)
+        .expect(200);
+
+      expect(untagged.body.expertIds).toEqual([]);
+      expect(untagged.body.qaMode).toBe(false);
+      expect(untagged.body.expertLabel).toBe("AMA Guest");
+      expect(untagged.body.tags.map((tag) => tag.name)).toEqual(["Logistics"]);
+    });
+
+    it("keeps the experts a rejected tag save came with", async () => {
+      const { user: expert } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Saved Against Stale Tags",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+      const settings = {
+        expertIds: [expert.id],
+        authorIds: [],
+        qaMode: true,
+      };
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          ...settings,
+          tags: { tags: [{ name: "Logistics" }], knownTagIds: [] },
+        } satisfies UpdatePostSettingsDto)
+        .expect(200);
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          expertIds: [],
+          authorIds: [],
+          qaMode: false,
+          tags: { tags: [{ name: "Timeline" }], knownTagIds: [] },
+        } satisfies UpdatePostSettingsDto)
+        .expect(409);
+
+      const adminPosts = await request(ctx.app.getHttpServer())
+        .get("/forum/admin/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const stored = adminPosts.body.find((p) => p.id === postId);
+      expect(stored.expertIds).toEqual([expert.id]);
+      expect(stored.qaMode).toBe(true);
+    });
+
+    it("adds an expert and an author once when two saves race to add them", async () => {
+      const { user: expert } = await createExtraUserAndToken();
+      const { user: coAuthor } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Gaining The Same Expert Twice",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+      const addBoth = () =>
+        saveSettings(postId, {
+          expertIds: [expert.id],
+          authorIds: [coAuthor.id],
+        }).then((res) => res);
+
+      const inFlight = await withLockHeld(
+        {
+          query: "select id from post where id = $1 for update",
+          params: [postId],
+        },
+        async () => {
+          const first = addBoth();
+          await waitForBlockedBackends(1);
+          const second = addBoth();
+          await waitForBlockedBackends(2);
+          return [first, second] as const;
+        },
+      );
+
+      for (const save of await Promise.all(inFlight)) {
+        expect(save.status).toBe(200);
+      }
+
+      expect(
+        await ctx.dataSource.query(
+          `select "userId" from post_experts_user where "postId" = $1`,
+          [postId],
+        ),
+      ).toEqual([{ userId: expert.id }]);
+      expect(
+        await ctx.dataSource.query(
+          `select "userId" from post_authors_user where "postId" = $1`,
+          [postId],
+        ),
+      ).toEqual([{ userId: coAuthor.id }]);
+    });
+
+    it("keeps only the experts the later save named", async () => {
+      const { user: firstExpert } = await createExtraUserAndToken();
+      const { user: secondExpert } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Gaining Two Different Experts",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      const inFlight = await withLockHeld(
+        {
+          query: "select id from post where id = $1 for update",
+          params: [postId],
+        },
+        async () => {
+          const first = saveSettings(postId, {
+            expertIds: [firstExpert.id],
+          }).then((res) => res);
+          await waitForBlockedBackends(1);
+          const second = saveSettings(postId, {
+            expertIds: [secondExpert.id],
+          }).then((res) => res);
+          await waitForBlockedBackends(2);
+          return [first, second] as const;
+        },
+      );
+
+      for (const save of await Promise.all(inFlight)) {
+        expect(save.status).toBe(200);
+      }
+
+      expect(
+        await ctx.dataSource.query(
+          `select "userId" from post_experts_user where "postId" = $1`,
+          [postId],
+        ),
+      ).toEqual([{ userId: secondExpert.id }]);
+    });
+
+    it("refuses a save whose settings are the wrong type", async () => {
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Saved With A Word For A Flag",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          expertIds: [],
+          authorIds: [],
+          qaMode: true,
+          showClusterTags: true,
+          expertLabel: "AMA Guest",
+        } satisfies UpdatePostSettingsDto)
+        .expect(200);
+
+      const rejected = await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ expertIds: [], authorIds: [], qaMode: "nope" })
+        .expect(400);
+      expect(rejected.body.message).toContain("qaMode must be a boolean value");
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          expertIds: [],
+          authorIds: [],
+          qaMode: true,
+          showClusterTags: "nope",
+        })
+        .expect(400);
+
+      const labelled = await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          expertIds: [],
+          authorIds: [],
+          qaMode: true,
+          expertLabel: { deeply: "nested" },
+        })
+        .expect(400);
+      expect(labelled.body.message).toContain("expertLabel must be a string");
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          expertIds: [],
+          authorIds: [],
+          qaMode: true,
+          expertLabel: "A".repeat(65),
+        } satisfies UpdatePostSettingsDto)
+        .expect(400);
+
+      const listedTags = await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ expertIds: [], authorIds: [], qaMode: true, tags: [] })
+        .expect(400);
+      expect(listedTags.body.message).toContain("tags must be an object");
+
+      const adminPosts = await request(ctx.app.getHttpServer())
+        .get("/forum/admin/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const unchanged = adminPosts.body.find((p) => p.id === postId);
+      expect(unchanged.qaMode).toBe(true);
+      expect(unchanged.showClusterTags).toBe(true);
+      expect(unchanged.expertLabel).toBe("AMA Guest");
+    });
+
+    it("rejects non-admin from updating post settings", async () => {
       const postResponse = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
         .set("Authorization", `Bearer ${ctx.accessToken}`)
@@ -1516,9 +2213,13 @@ describe("Forum (e2e)", () => {
         .expect(201);
 
       await request(ctx.app.getHttpServer())
-        .patch(`/forum/admin/posts/${postResponse.body.id}/authors`)
+        .patch(`/forum/admin/posts/${postResponse.body.id}/settings`)
         .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .send({ authorIds: [ctx.testUserId] })
+        .send({
+          expertIds: [],
+          authorIds: [ctx.testUserId],
+          qaMode: false,
+        } satisfies UpdatePostSettingsDto)
         .expect(401);
     });
 
@@ -1567,6 +2268,286 @@ describe("Forum (e2e)", () => {
       expect(activityCommentNotifs[0].webAppLocation).toBe(
         `/actions/${testAction.id}/activity/${activityId}?replyId=${commentId}`,
       );
+    });
+  });
+
+  describe("Post tags", () => {
+    const saveTags = ({
+      postId,
+      tags,
+      knownTagIds,
+    }: {
+      postId: number;
+      tags: { id?: number; name: string }[];
+      knownTagIds: number[];
+    }) => saveSettings(postId, { tags: { tags, knownTagIds } });
+
+    const createTaggedPost = async (names: string[]) => {
+      const post = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Tagged Post",
+          editableContent: { body: "Body content", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const tagged = await saveTags({
+        postId: post.body.id,
+        tags: names.map((name) => ({ name })),
+        knownTagIds: [],
+      }).expect(200);
+
+      return { postId: post.body.id as number, tags: tagged.body.tags };
+    };
+
+    const postComment = (postId: number, body: Partial<CreateCommentDto>) =>
+      request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "Tagged comment", attachments: [] },
+          parentObjectId: postId,
+          parentObjectType: CommentParentObject.Post,
+          ...body,
+        } satisfies CreateCommentDto);
+
+    const commentWithTag = async (postId: number, tagId: number) => {
+      const created = await postComment(postId, { tagId }).expect(201);
+      return created.body.id;
+    };
+
+    const commentTagId = async (postId: number, commentId: number) => {
+      const comments = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${postId}/comments`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      return comments.body.find((comment) => comment.id === commentId).tagId;
+    };
+
+    const tagIds = (tags: { id: number }[]) => tags.map((tag) => tag.id);
+
+    it("swaps two tag names in one save", async () => {
+      const { postId, tags } = await createTaggedPost(["A", "B"]);
+      const commentId = await commentWithTag(postId, tags[0].id);
+
+      const swapped = await saveTags({
+        postId,
+        tags: [
+          { id: tags[0].id, name: "B" },
+          { id: tags[1].id, name: "A" },
+        ],
+        knownTagIds: tagIds(tags),
+      }).expect(200);
+
+      expect(swapped.body.tags).toEqual([
+        { id: tags[0].id, name: "B", sortOrder: 0 },
+        { id: tags[1].id, name: "A", sortOrder: 1 },
+      ]);
+      expect(await commentTagId(postId, commentId)).toBe(tags[0].id);
+    });
+
+    it("drops a tag and renames the others in one save", async () => {
+      const { postId, tags } = await createTaggedPost(["A", "B", "C"]);
+      const keptCommentId = await commentWithTag(postId, tags[0].id);
+      const droppedCommentId = await commentWithTag(postId, tags[2].id);
+
+      const saved = await saveTags({
+        postId,
+        tags: [
+          { id: tags[0].id, name: "B" },
+          { id: tags[1].id, name: "A" },
+        ],
+        knownTagIds: tagIds(tags),
+      }).expect(200);
+
+      expect(saved.body.tags).toEqual([
+        { id: tags[0].id, name: "B", sortOrder: 0 },
+        { id: tags[1].id, name: "A", sortOrder: 1 },
+      ]);
+      expect(await commentTagId(postId, keptCommentId)).toBe(tags[0].id);
+      expect(await commentTagId(postId, droppedCommentId)).toBeNull();
+    });
+
+    it("keeps every tag when a save fails partway", async () => {
+      const { postId, tags } = await createTaggedPost(["A", "B", "C"]);
+      const commentId = await commentWithTag(postId, tags[2].id);
+
+      await saveTags({
+        postId,
+        tags: [
+          { id: tags[0].id, name: "B" },
+          { id: tags[1].id, name: "A" },
+          { id: tags[2].id + 1000, name: "D" },
+        ],
+        knownTagIds: tagIds(tags),
+      }).expect(400);
+
+      const post = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${postId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      expect(post.body.tags).toEqual([
+        { id: tags[0].id, name: "A", sortOrder: 0 },
+        { id: tags[1].id, name: "B", sortOrder: 1 },
+        { id: tags[2].id, name: "C", sortOrder: 2 },
+      ]);
+      expect(await commentTagId(postId, commentId)).toBe(tags[2].id);
+    });
+
+    it("refuses to save over a tag added from another session", async () => {
+      const { postId, tags } = await createTaggedPost(["A"]);
+      const other = await saveTags({
+        postId,
+        tags: [{ id: tags[0].id, name: "A" }, { name: "B" }],
+        knownTagIds: tagIds(tags),
+      }).expect(200);
+
+      const stale = await saveTags({
+        postId,
+        tags: [{ id: tags[0].id, name: "A renamed" }],
+        knownTagIds: tagIds(tags),
+      }).expect(409);
+      expect(stale.body.message).toContain("Another admin");
+
+      const post = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${postId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      expect(post.body.tags).toEqual(other.body.tags);
+    });
+
+    it("refuses to save over tags a save in flight has not committed", async () => {
+      const { postId, tags } = await createTaggedPost(["A"]);
+
+      const inFlight = await withLockHeld(
+        {
+          query: "select id from post where id = $1 for update",
+          params: [postId],
+        },
+        async () => {
+          const first = saveTags({
+            postId,
+            tags: [{ name: "First" }],
+            knownTagIds: tagIds(tags),
+          }).then((res) => res);
+          await waitForBlockedBackends(1);
+          const second = saveTags({
+            postId,
+            tags: [{ name: "Second" }],
+            knownTagIds: tagIds(tags),
+          }).then((res) => res);
+          await waitForBlockedBackends(2);
+          return [first, second] as const;
+        },
+      );
+
+      const [first, second] = await Promise.all(inFlight);
+      expect(first.status).toBe(200);
+      expect(second.status).toBe(409);
+
+      const post = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${postId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      expect(post.body.tags.map((tag) => tag.name)).toEqual(["First"]);
+    });
+
+    it("refuses a save that names one tag twice, rather than dropping the rest", async () => {
+      const { postId, tags } = await createTaggedPost(["A", "B"]);
+
+      await saveTags({
+        postId,
+        tags: [
+          { id: tags[0].id, name: "X" },
+          { id: tags[0].id, name: "Y" },
+        ],
+        knownTagIds: tagIds(tags),
+      }).expect(400);
+
+      const post = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${postId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      expect(post.body.tags.map((tag) => tag.name)).toEqual(["A", "B"]);
+    });
+
+    it("rejects a tag name that is only whitespace", async () => {
+      const { postId, tags } = await createTaggedPost(["A"]);
+
+      await saveTags({
+        postId,
+        tags: [{ name: "   " }],
+        knownTagIds: tagIds(tags),
+      }).expect(400);
+    });
+
+    it("trims a tag name, and catches names that collide once trimmed", async () => {
+      const { postId, tags } = await createTaggedPost(["A"]);
+
+      const saved = await saveTags({
+        postId,
+        tags: [{ name: "  Praise  " }],
+        knownTagIds: tagIds(tags),
+      }).expect(200);
+      expect(saved.body.tags[0].name).toBe("Praise");
+
+      await saveTags({
+        postId,
+        tags: [{ name: "Praise" }, { name: " Praise " }],
+        knownTagIds: tagIds(saved.body.tags),
+      }).expect(400);
+    });
+
+    it("requires a tag once the post defines them", async () => {
+      const { postId } = await createTaggedPost(["A"]);
+
+      const rejected = await postComment(postId, {}).expect(400);
+      expect(rejected.body.message).toBe("Pick a tag for this comment");
+    });
+
+    it("rejects a tag that belongs to another post", async () => {
+      const other = await createTaggedPost(["A"]);
+      const { postId } = await createTaggedPost(["B"]);
+
+      await postComment(postId, { tagId: other.tags[0].id }).expect(400);
+    });
+
+    it("keeps the picked tag on a top-level comment", async () => {
+      const { postId, tags } = await createTaggedPost(["A", "B"]);
+
+      const commentId = await commentWithTag(postId, tags[1].id);
+
+      expect(await commentTagId(postId, commentId)).toBe(tags[1].id);
+    });
+
+    it("ignores a tag sent on a reply", async () => {
+      const { postId, tags } = await createTaggedPost(["A"]);
+      const parentId = await commentWithTag(postId, tags[0].id);
+
+      const reply = await postComment(postId, {
+        parentId,
+        tagId: tags[0].id,
+      }).expect(201);
+
+      expect(reply.body.tagId).toBeNull();
+    });
+
+    it("takes no tag on a post that defines none", async () => {
+      const post = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Untagged Post",
+          editableContent: { body: "Body content", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const created = await postComment(post.body.id, {}).expect(201);
+      expect(created.body.tagId).toBeNull();
     });
   });
 });

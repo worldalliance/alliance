@@ -515,6 +515,42 @@ export type ActionUpdate = {
 
 export type CommentParentObject = 'post' | 'action' | 'activity';
 
+export type Post = {
+    id: number;
+    title: string;
+    editableContent?: EditableContent;
+    author?: {
+        [key: string]: unknown;
+    };
+    authorId: number;
+    action?: Action;
+    actionId?: number;
+    createdAt: string;
+    pinned: boolean;
+    updatedAt: string;
+    visibleAt?: string;
+    deleted: boolean;
+    likes?: Array<User>;
+    likesIds: Array<number>;
+    qaMode: boolean;
+    expertLabel: string | null;
+    experts?: Array<User>;
+    expertIds: Array<number>;
+    authors?: Array<User>;
+    authorIds: Array<number>;
+    notifyForReplies: boolean;
+    showClusterTags: boolean;
+    tags?: Array<PostTag>;
+};
+
+export type PostTag = {
+    id: number;
+    post?: Post;
+    postId: number;
+    name: string;
+    sortOrder: number;
+};
+
 export type Comment = {
     id: number;
     editableContent?: EditableContent;
@@ -533,6 +569,8 @@ export type Comment = {
     pinned: boolean;
     likes: Array<User>;
     likesCount: number;
+    tag?: PostTag;
+    tagId: number | null;
 };
 
 export type Notification = {
@@ -1776,6 +1814,7 @@ export type CommentDto = {
     updatedAt: string;
     parentId?: number;
     pinned: boolean;
+    tagId: number | null;
     author: ProfileDto;
     children?: Array<CommentDto>;
     likes: Array<ProfileDto>;
@@ -3132,6 +3171,12 @@ export type CreatePostDto = {
     editableContent: CreateEditableContentDto;
 };
 
+export type PostTagDto = {
+    id: number;
+    name: string;
+    sortOrder: number;
+};
+
 export type PostDto = {
     id: number;
     title: string;
@@ -3143,7 +3188,7 @@ export type PostDto = {
     visibleAt?: string;
     deleted: boolean;
     qaMode: boolean;
-    expertLabel?: string;
+    expertLabel: string | null;
     expertIds: Array<number>;
     authorIds: Array<number>;
     notifyForReplies: boolean;
@@ -3158,6 +3203,7 @@ export type PostDto = {
     likeCount?: number;
     experts?: Array<ProfileDto>;
     authors?: Array<ProfileDto>;
+    tags?: Array<PostTagDto>;
 };
 
 export type UserCommentDto = {
@@ -3169,6 +3215,7 @@ export type UserCommentDto = {
     updatedAt: string;
     parentId?: number;
     pinned: boolean;
+    tagId: number | null;
     author: ProfileDto;
     children?: Array<CommentDto>;
     likes: Array<ProfileDto>;
@@ -3190,6 +3237,7 @@ export type CreateCommentDto = {
     parentObjectId: number;
     parentId?: number;
     editableContent: CreateEditableContentDto;
+    tagId?: number | null;
 };
 
 export type UpdateCommentDto = {
@@ -3197,18 +3245,27 @@ export type UpdateCommentDto = {
     parentObjectId?: number;
     parentId?: number;
     editableContent?: CreateEditableContentDto;
+    tagId?: number | null;
 };
 
-export type UpdatePostExpertsDto = {
+export type PostTagInputDto = {
+    id?: number;
+    name: string;
+};
+
+export type UpdatePostTagsDto = {
+    tags: Array<PostTagInputDto>;
+    knownTagIds: Array<number>;
+};
+
+export type UpdatePostSettingsDto = {
     expertIds: Array<number>;
     qaMode: boolean;
-    expertLabel?: string;
+    expertLabel?: string | null;
     notifyForReplies?: boolean;
     showClusterTags?: boolean;
-};
-
-export type UpdatePostAuthorsDto = {
     authorIds: Array<number>;
+    tags?: UpdatePostTagsDto;
 };
 
 export type CreateActionPartnershipResponseDto = {
@@ -10622,53 +10679,29 @@ export type ForumGetPostsForAdminResponses = {
 
 export type ForumGetPostsForAdminResponse = ForumGetPostsForAdminResponses[keyof ForumGetPostsForAdminResponses];
 
-export type ForumUpdatePostExpertsAdminData = {
-    body: UpdatePostExpertsDto;
+export type ForumUpdatePostSettingsAdminData = {
+    body: UpdatePostSettingsDto;
     path: {
         id: number;
     };
     query?: never;
-    url: '/forum/admin/posts/{id}/experts';
+    url: '/forum/admin/posts/{id}/settings';
 };
 
-export type ForumUpdatePostExpertsAdminErrors = {
+export type ForumUpdatePostSettingsAdminErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type ForumUpdatePostExpertsAdminError = ForumUpdatePostExpertsAdminErrors[keyof ForumUpdatePostExpertsAdminErrors];
+export type ForumUpdatePostSettingsAdminError = ForumUpdatePostSettingsAdminErrors[keyof ForumUpdatePostSettingsAdminErrors];
 
-export type ForumUpdatePostExpertsAdminResponses = {
+export type ForumUpdatePostSettingsAdminResponses = {
     200: PostDto;
 };
 
-export type ForumUpdatePostExpertsAdminResponse = ForumUpdatePostExpertsAdminResponses[keyof ForumUpdatePostExpertsAdminResponses];
-
-export type ForumUpdatePostAuthorsAdminData = {
-    body: UpdatePostAuthorsDto;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/forum/admin/posts/{id}/authors';
-};
-
-export type ForumUpdatePostAuthorsAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ForumUpdatePostAuthorsAdminError = ForumUpdatePostAuthorsAdminErrors[keyof ForumUpdatePostAuthorsAdminErrors];
-
-export type ForumUpdatePostAuthorsAdminResponses = {
-    200: PostDto;
-};
-
-export type ForumUpdatePostAuthorsAdminResponse = ForumUpdatePostAuthorsAdminResponses[keyof ForumUpdatePostAuthorsAdminResponses];
+export type ForumUpdatePostSettingsAdminResponse = ForumUpdatePostSettingsAdminResponses[keyof ForumUpdatePostSettingsAdminResponses];
 
 export type ForumPinCommentAdminData = {
     body?: never;

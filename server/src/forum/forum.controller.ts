@@ -27,9 +27,8 @@ import {
 import {
   CreatePostDto,
   PostDto,
-  UpdatePostAuthorsDto,
   UpdatePostDto,
-  UpdatePostExpertsDto,
+  UpdatePostSettingsDto,
 } from "./dto/post.dto";
 import { ForumService } from "./forum.service";
 
@@ -363,36 +362,17 @@ export class ForumController {
     return posts.map((post) => new PostDto({ post }));
   }
 
-  @Patch("admin/posts/:id/experts")
+  @Patch("admin/posts/:id/settings")
   @UseGuards(AdminGuard)
-  @ApiOperation({ summary: "Update post experts and Q&A mode" })
+  @ApiOperation({ summary: "Update post experts, authors, tags and Q&A mode" })
   @ApiOkResponse({ type: PostDto })
-  async updatePostExpertsAdmin(
+  async updatePostSettingsAdmin(
     @Param("id", ParseIntPipe) id: number,
-    @Body() updatePostExpertsDto: UpdatePostExpertsDto,
+    @Body() updatePostSettingsDto: UpdatePostSettingsDto,
   ): Promise<PostDto> {
-    const post = await this.forumService.updatePostExperts(
+    const post = await this.forumService.updatePostSettings(
       id,
-      updatePostExpertsDto.expertIds,
-      updatePostExpertsDto.qaMode,
-      updatePostExpertsDto.expertLabel,
-      updatePostExpertsDto.notifyForReplies,
-      updatePostExpertsDto.showClusterTags,
-    );
-    return new PostDto({ post });
-  }
-
-  @Patch("admin/posts/:id/authors")
-  @UseGuards(AdminGuard)
-  @ApiOperation({ summary: "Update post authors" })
-  @ApiOkResponse({ type: PostDto })
-  async updatePostAuthorsAdmin(
-    @Param("id", ParseIntPipe) id: number,
-    @Body() updatePostAuthorsDto: UpdatePostAuthorsDto,
-  ): Promise<PostDto> {
-    const post = await this.forumService.updatePostAuthors(
-      id,
-      updatePostAuthorsDto.authorIds,
+      updatePostSettingsDto,
     );
     return new PostDto({ post });
   }

@@ -1,4 +1,8 @@
-import { CommentDto, CommentParentObject } from "@alliance/shared/client";
+import {
+  CommentDto,
+  CommentParentObject,
+  PostTagDto,
+} from "@alliance/shared/client";
 import {
   CommentFilter,
   CommentSort,
@@ -10,6 +14,10 @@ import {
   sortLabels,
   useCommentFilterData,
 } from "@alliance/shared/lib/commentsFilter";
+import {
+  countCommentsByTag,
+  matchesTagFilter,
+} from "@alliance/shared/lib/commentTags";
 import { useOptionalNotifications } from "@alliance/shared/lib/useNotifications";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
 import { cn } from "@alliance/shared/styles/util";
@@ -28,6 +36,9 @@ import { useAuth } from "../lib/AuthContext";
 import { CommentsProvider, useCommentTree } from "./forum/CommentsContext";
 import ReplyComponent from "./forum/ReplyComponent";
 import ReplyForm from "./forum/ReplyForm";
+import TagChips from "./forum/TagChips";
+
+const NO_TAGS: readonly PostTagDto[] = [];
 
 export interface CommentsProps {
   objectId: number;
@@ -42,6 +53,7 @@ export interface CommentsProps {
   qaMode?: boolean;
   className?: string;
   showUserBadges?: boolean;
+  tags?: readonly PostTagDto[];
 }
 
 const collectCommentIds = (comments: CommentDto[]): number[] => {
@@ -104,6 +116,7 @@ const Comments = ({
   qaMode = false,
   className,
   showUserBadges = true,
+  tags = NO_TAGS,
 }: CommentsProps) => {
   const { user } = useAuth();
   // useAuth() is hydrated before this mounts in the common case, so the initializer
@@ -207,21 +220,33 @@ const Comments = ({
     return counts;
   }, [filterOptions, topLevelComments, filterContext]);
 
+  const filterMatchedComments = useMemo(
+    () =>
+      topLevelComments.filter((comment) =>
+        matchesCommentFilter(comment, commentFilter, filterContext),
+      ),
+    [topLevelComments, commentFilter, filterContext],
+  );
+
+  const tagCounts = useMemo(
+    () => countCommentsByTag(filterMatchedComments, tags),
+    [filterMatchedComments, tags],
+  );
+
   const filteredComments = useMemo(
     () =>
       sortComments(
-        topLevelComments.filter((comment) =>
-          matchesCommentFilter(comment, commentFilter, filterContext),
+        filterMatchedComments.filter((comment) =>
+          matchesTagFilter(comment, tree.tagFilter),
         ),
         commentSort,
         { randomSeed, userClusterId: user?.clusterId },
       ),
     [
-      topLevelComments,
-      commentFilter,
+      filterMatchedComments,
       commentSort,
-      filterContext,
       randomSeed,
+      tree.tagFilter,
       user?.clusterId,
     ],
   );
@@ -238,7 +263,6 @@ const Comments = ({
       clearSubmitError: tree.clearSubmitError,
       onLikeReply: tree.handleLikeReply,
       onPinReply: tree.handlePinReply,
-      isSubmitting: tree.isSubmitting,
       newlyAddedReplies: tree.newlyAddedReplies,
       highlightedReplyId: tree.highlightedReplyId,
       expertIds,
@@ -246,6 +270,7 @@ const Comments = ({
       showClusterTags,
       compact,
       showUserBadges,
+      tags,
     }),
     [
       user,
@@ -258,7 +283,6 @@ const Comments = ({
       tree.clearSubmitError,
       tree.handleLikeReply,
       tree.handlePinReply,
-      tree.isSubmitting,
       tree.newlyAddedReplies,
       tree.highlightedReplyId,
       expertIds,
@@ -266,6 +290,7 @@ const Comments = ({
       showClusterTags,
       compact,
       showUserBadges,
+      tags,
     ],
   );
 
@@ -278,12 +303,15 @@ const Comments = ({
             editableContent={tree.editableContent}
             setEditableContent={tree.setEditableContent}
             onSubmit={tree.handleSubmitReply}
-            isSubmitting={tree.isSubmitting}
             setReplyingTo={tree.setReplyingTo}
+            focusOnMount={!!autofocus && tree.focusComposer}
             compact={compact}
             startExpanded={autofocus}
             error={tree.submitErrorFor(null)}
             onDismissError={tree.clearSubmitError}
+            tags={isPostComments ? tags : []}
+            selectedTagId={tree.selectedTagId}
+            setSelectedTagId={tree.setSelectedTagId}
           />
         ) : !user && !compact ? (
           <div className="text-center py-6 bg-zinc-50 rounded border border-zinc-200">
@@ -328,6 +356,15 @@ const Comments = ({
               }}
             />
           </div>
+        )}
+        {isPostComments && tags.length > 0 && topLevelComments.length > 0 && (
+          <TagChips
+            className="my-3"
+            tags={tags}
+            selected={tree.tagFilter}
+            onSelect={tree.setTagFilter}
+            counts={tagCounts}
+          />
         )}
         {tree.error && <div className="text-red-500">{tree.error}</div>}
         {topLevelComments.length > 0 ? (

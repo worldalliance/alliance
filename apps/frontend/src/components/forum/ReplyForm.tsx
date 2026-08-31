@@ -1,23 +1,45 @@
-import { CreateEditableContentDto } from "@alliance/shared/client";
+import { hasContent } from "@alliance/common/editableContent";
+import { CreateEditableContentDto, PostTagDto } from "@alliance/shared/client";
+import {
+  uploadAttachments,
+  withUploadedKeys,
+} from "@alliance/shared/lib/uploadAttachments";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import EditableContentForm from "@alliance/sharedweb/ui/EditableContentForm";
+import EditableContentForm, {
+  clearDraft,
+  useDraftStorageKey,
+} from "@alliance/sharedweb/ui/EditableContentForm";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import React, { useCallback, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
+import TagChips from "./TagChips";
 
 interface ReplyFormProps {
   parentId: number | null;
   onCancel?: () => void;
   editableContent: CreateEditableContentDto;
-  setEditableContent: (val: CreateEditableContentDto) => void;
-  onSubmit: (content: CreateEditableContentDto, onSuccess?: () => void) => void;
-  isSubmitting: boolean;
+  setEditableContent: Dispatch<SetStateAction<CreateEditableContentDto>>;
+  onSubmit: (
+    content: CreateEditableContentDto,
+    onSuccess?: () => void,
+  ) => void | Promise<void>;
   setReplyingTo: (id: number | null) => void;
+  /** Takes the caret on mount. False for a form the user did not ask for. */
+  focusOnMount: boolean;
   compact?: boolean;
   className?: string;
   startExpanded?: boolean;
   error?: string | null;
   onDismissError?: () => void;
+  tags?: readonly PostTagDto[];
+  selectedTagId?: number;
+  setSelectedTagId?: (id: number | undefined) => void;
 }
 
 const ReplyForm: React.FC<ReplyFormProps> = ({
@@ -26,28 +48,87 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
   editableContent,
   setEditableContent,
   onSubmit,
-  isSubmitting,
   setReplyingTo,
+  focusOnMount,
   compact,
   className,
   startExpanded = false,
   error,
   onDismissError,
+  tags = [],
+  selectedTagId,
+  setSelectedTagId,
 }: ReplyFormProps) => {
-  const [expanded, setExpanded] = useState(startExpanded);
+  const handedDraft = useRef(hasContent(editableContent));
+  // Post and Cancel render only while expanded, so a draft handed in opens it.
+  const [expanded, setExpanded] = useState(
+    startExpanded || handedDraft.current,
+  );
+  const needsTag = parentId === null && tags.length > 0;
+  const storageKey = useDraftStorageKey(`reply-${parentId}`);
   const [clearDraftSignal, setClearDraftSignal] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  // Local, so posting one comment leaves every other composer live.
+  const [isPosting, setIsPosting] = useState(false);
+  // The discard confirm resumes in a later render than the one it opened in, so
+  // it reads the freeze from here rather than from a captured `isPosting`.
+  const isPostingRef = useRef(false);
+
+  const submit = useCallback(async () => {
+    onDismissError?.();
+    setUploadError(null);
+    isPostingRef.current = true;
+    setIsPosting(true);
+    try {
+      const sources = editableContent.attachments;
+      const uploaded = await uploadAttachments(sources);
+      if (!uploaded.ok) {
+        setUploadError(uploaded.error);
+        return;
+      }
+      setEditableContent((prev) => ({
+        ...prev,
+        attachments: withUploadedKeys({
+          current: prev.attachments,
+          sources,
+          keys: uploaded.value,
+        }),
+      }));
+      // Clear the draft only once the server accepts, so a rejected comment
+      // keeps its text.
+      await onSubmit(
+        { ...editableContent, attachments: uploaded.value },
+        () => {
+          // Collapsing the thread or replying elsewhere unmounts this form
+          // while the post is in flight, and the signal below dies with it.
+          clearDraft(storageKey);
+          setClearDraftSignal((x) => x + 1);
+          setEditableContent({ body: "", attachments: [] });
+          setSelectedTagId?.(undefined);
+          setExpanded(false);
+          setReplyingTo(null);
+        },
+      );
+    } finally {
+      isPostingRef.current = false;
+      setIsPosting(false);
+    }
+  }, [
+    editableContent,
+    onSubmit,
+    onDismissError,
+    setEditableContent,
+    setSelectedTagId,
+    setReplyingTo,
+    storageKey,
+  ]);
 
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      // Clear the draft only once the server accepts, so a rejected comment
-      // keeps its text.
-      onSubmit(editableContent, () => {
-        setClearDraftSignal((x) => x + 1);
-        setExpanded(false);
-      });
+      void submit();
     },
-    [editableContent, onSubmit],
+    [submit],
   );
 
   const { confirm } = useToast();
@@ -64,9 +145,10 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
             anchorEl: cancelRef.current,
             placement: "topleft",
           });
-    if (!ok) return;
+    if (!ok || isPostingRef.current) return;
     onDismissError?.();
     setEditableContent({ body: "", attachments: [] });
+    setSelectedTagId?.(undefined);
     setExpanded(false);
     setReplyingTo(null);
     onCancel?.();
@@ -75,6 +157,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
     confirm,
     onDismissError,
     setEditableContent,
+    setSelectedTagId,
     setReplyingTo,
     editableContent.body,
   ]);
@@ -92,26 +175,38 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
         <EditableContentForm
           value={editableContent}
           expanded={expanded}
+          disabled={isPosting}
           clearDraftSignal={clearDraftSignal}
-          draftKey={`reply-${parentId}`}
+          storageKey={storageKey}
+          autoFocus={focusOnMount}
+          // The saved copy is written from this draft, so it only trails it.
+          restoreDraft={!handedDraft.current}
           onChange={(val) => {
             onDismissError?.();
+            setUploadError(null);
             setEditableContent(val);
-            if ((val.body || val.attachments.length > 0) && !expanded)
-              setExpanded(true);
+            if (hasContent(val) && !expanded) setExpanded(true);
 
-            if (
-              expanded &&
-              val.body.trim() === "" &&
-              val.attachments.length === 0
-            )
-              setExpanded(false);
+            if (expanded && !hasContent(val)) setExpanded(false);
           }}
           placeholder={"Add a comment..."}
         />
-        {error && (
+        {expanded && needsTag && (
+          <div className="mt-3">
+            <p className="text-sm text-zinc-500 mb-1.5">
+              Pick a tag for your comment
+            </p>
+            <TagChips
+              tags={tags}
+              disabled={isPosting}
+              selected={selectedTagId}
+              onSelect={(value) => setSelectedTagId?.(value ?? undefined)}
+            />
+          </div>
+        )}
+        {(uploadError ?? error) && (
           <p role="alert" className="mt-2 text-sm text-red-500">
-            {error}
+            {uploadError ?? error}
           </p>
         )}
         {expanded && (
@@ -123,17 +218,18 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
               type="submit"
               color={ButtonColor.Stone}
               disabled={
-                isSubmitting ||
-                (!editableContent.body.trim() &&
-                  editableContent.attachments.length === 0)
+                isPosting ||
+                (needsTag && selectedTagId === undefined) ||
+                !hasContent(editableContent)
               }
               className="transition disabled:opacity-50 text-nowrap"
             >
-              {isSubmitting ? "Posting..." : "Post"}
+              {isPosting ? "Posting..." : "Post"}
             </Button>
             <Button
               type="button"
               color={ButtonColor.Grey}
+              disabled={isPosting}
               onClick={handleCancel}
             >
               Cancel

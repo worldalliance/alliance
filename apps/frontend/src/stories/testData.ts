@@ -177,6 +177,7 @@ export const testForumPosts: PostDto[] = [
     pinned: false,
     deleted: false,
     qaMode: false,
+    expertLabel: null,
     expertIds: [],
     authorIds: [],
     notifyForReplies: false,

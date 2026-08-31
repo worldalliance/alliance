@@ -1,8 +1,9 @@
 import { CreateEditableContentDto } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import { htmlToMarkdownFromDocs } from "../lib/htmlToMarkdown";
+import { resolveImageSrc } from "../lib/imageSrc";
 
 interface EditableContentFormProps {
   value: CreateEditableContentDto;
@@ -10,9 +11,13 @@ interface EditableContentFormProps {
   className?: string;
   placeholder?: string;
   expanded?: boolean;
+  /** Defaults to `expanded`. Set it to open a form without taking focus. */
+  autoFocus?: boolean;
+  /** Freezes the draft, so a submit in flight cannot post a stale copy of it. */
+  disabled?: boolean;
 
-  /** Optional namespace to distinguish drafts across pages/users/entities */
-  draftKey?: string;
+  /** Names this draft, from `draftStorageKey`. Without it nothing is saved or restored. */
+  storageKey?: string;
   /** Debounce interval for autosave (ms) */
   autosaveMs?: number;
   /** Whether to restore a found draft on mount */
@@ -28,11 +33,27 @@ interface EditableContentFormProps {
 
 const STORAGE_PREFIX = "editablecontent:draft:v1";
 
-function getStorageKey(draftKey?: string) {
+/**
+ * Names a draft in session storage. The name carries the URL, so a form that
+ * outlives a navigation has to hold the name it resolved. `useDraftStorageKey`
+ * holds it.
+ */
+export function draftStorageKey(draftKey?: string) {
   if (typeof window === "undefined") return `${STORAGE_PREFIX}:ssr`;
   const urlPart =
     window.location.origin + window.location.pathname + window.location.search;
   return `${STORAGE_PREFIX}:${urlPart}${draftKey ? `:${draftKey}` : ""}`;
+}
+
+/** Holds the name from mount, so a navigation cannot rename a draft mid-life. */
+export function useDraftStorageKey(draftKey?: string) {
+  return useMemo(() => draftStorageKey(draftKey), [draftKey]);
+}
+
+/** Drops a saved draft without the form that wrote it having to still be mounted. */
+export function clearDraft(storageKey: string) {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(storageKey);
 }
 
 const EditableContentForm: React.FC<EditableContentFormProps> = ({
@@ -41,7 +62,9 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
   className,
   placeholder,
   expanded,
-  draftKey,
+  autoFocus,
+  disabled = false,
+  storageKey,
   autosaveMs = 1200,
   restoreDraft,
   onDraftRestored,
@@ -50,20 +73,16 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const dragCounterRef = useRef(0);
   const saveTimer = useRef<number | null>(null);
-  const storageKeyRef = useRef<string>(getStorageKey(draftKey));
   const lastSavedHashRef = useRef<string>("");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const shouldRestoreDraft = restoreDraft ?? draftKey !== undefined;
+  const shouldRestoreDraft = restoreDraft ?? storageKey !== undefined;
 
   useEffect(() => {
-    storageKeyRef.current = getStorageKey(draftKey);
-  }, [draftKey]);
+    if (!shouldRestoreDraft || !storageKey || typeof window === "undefined")
+      return;
 
-  useEffect(() => {
-    if (!shouldRestoreDraft || typeof window === "undefined") return;
-
-    const raw = sessionStorage.getItem(storageKeyRef.current);
+    const raw = sessionStorage.getItem(storageKey);
     if (!raw) return;
 
     const parsed = JSON.parse(raw) as {
@@ -81,7 +100,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
   }, [shouldRestoreDraft]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !storageKey) return;
 
     const doSave = () => {
       const hash = JSON.stringify(value);
@@ -90,7 +109,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
         dto: value,
         savedAt: new Date().toISOString(),
       });
-      sessionStorage.setItem(storageKeyRef.current, payload);
+      sessionStorage.setItem(storageKey, payload);
       lastSavedHashRef.current = hash;
     };
 
@@ -110,10 +129,10 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
 
   // Allow parent to clear the draft after a successful real save
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !storageKey) return;
     if (!clearDraftSignal) return;
     try {
-      sessionStorage.removeItem(storageKeyRef.current);
+      sessionStorage.removeItem(storageKey);
       lastSavedHashRef.current = JSON.stringify(value);
     } catch {
       // ignore
@@ -141,7 +160,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
     dataTransfer?: DataTransfer | null;
   }) => {
     const files = e.target?.files ?? e.dataTransfer?.files ?? null;
-    if (!files || files.length === 0) return;
+    if (disabled || !files || files.length === 0) return;
 
     try {
       const base64s = await readImagesFromFiles(Array.from(files));
@@ -155,6 +174,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
   };
 
   const onPaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (disabled) return;
     try {
       const items = Array.from(e.clipboardData?.items ?? []);
       const imageFiles: File[] = [];
@@ -241,16 +261,21 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
         className={cn(
           "w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-transparent border-none",
           !expanded && "resize-none",
+          disabled && "opacity-50 cursor-not-allowed",
         )}
         minRows={expanded ? 2 : 1}
         value={value.body}
-        onChange={(e) => onChange({ ...value, body: e.target.value })}
+        readOnly={disabled}
+        onChange={(e) => {
+          if (disabled) return;
+          onChange({ ...value, body: e.target.value });
+        }}
         onPaste={onPaste}
         placeholder={placeholder}
-        autoFocus={expanded}
+        autoFocus={autoFocus ?? expanded}
         style={{ overflowAnchor: "none" }}
       />
-      {isDragging && (
+      {isDragging && !disabled && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 rounded pointer-events-none">
           <div className="text-white font-medium">Drop images to attach</div>
         </div>
@@ -259,16 +284,20 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
         <div className="mt-2 flex flex-wrap gap-2">
           {value.attachments.map((img, idx) => (
             <div key={idx} className="relative inline-block">
-              <img src={img} className="w-20 h-20 object-cover rounded" />
+              <img
+                src={resolveImageSrc(img)}
+                className="w-20 h-20 object-cover rounded"
+              />
               <button
                 type="button"
+                disabled={disabled}
                 onClick={() =>
                   onChange({
                     ...value,
                     attachments: value.attachments!.filter((_, i) => i !== idx),
                   })
                 }
-                className="absolute -top-2 -right-2 bg-black/70 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center pl-[0.5px] pb-[1px]"
+                className="absolute -top-2 -right-2 bg-black/70 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center pl-[0.5px] pb-[1px] disabled:opacity-50"
                 aria-label="Remove image"
               >
                 &times;

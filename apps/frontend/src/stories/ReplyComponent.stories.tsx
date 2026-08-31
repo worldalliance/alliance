@@ -1,5 +1,9 @@
 import { type Result } from "@alliance/common/result";
-import { CommentDto, CreateEditableContentDto } from "@alliance/shared/client";
+import {
+  CommentDto,
+  CreateEditableContentDto,
+  PostTagDto,
+} from "@alliance/shared/client";
 import { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 import React from "react";
@@ -32,6 +36,7 @@ const makeReply = (overrides: Partial<CommentDto> = {}): CommentDto => {
     createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
     updatedAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
     pinned: false,
+    tagId: null,
     author: makeAuthor(),
     children: [],
     likes: [],
@@ -64,12 +69,12 @@ const defaultCtx = {
   clearSubmitError: fn() as () => void,
   onLikeReply: fn() as (id: number, unlike?: boolean) => Promise<void>,
   onPinReply: fn() as (id: number) => Promise<void>,
-  isSubmitting: false,
   newlyAddedReplies: new Set<number>(),
   highlightedReplyId: null as number | null,
   expertIds: [] as number[],
   expertLabel: undefined as string | undefined,
   compact: undefined as boolean | undefined,
+  tags: [] as PostTagDto[],
 };
 
 type CtxOverrides = Partial<typeof defaultCtx>;

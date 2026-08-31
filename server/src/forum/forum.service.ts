@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -24,8 +25,10 @@ import {
   userActionNotifsEnabled_email,
   userActionNotifsEnabled_text,
 } from "src/user/user.utils";
+import { isForeignKeyViolation, isUniqueViolation } from "src/utils/db-errors";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import {
+  type EntityManager,
   ILike,
   In,
   Not,
@@ -40,9 +43,16 @@ import {
   UpdateCommentDto,
   UserComment,
 } from "./dto/comment.dto";
-import { CreatePostDto, PostDtoArgs, UpdatePostDto } from "./dto/post.dto";
+import { UpdatePostTagsDto } from "./dto/post-tag.dto";
+import {
+  CreatePostDto,
+  PostDtoArgs,
+  UpdatePostDto,
+  UpdatePostSettingsDto,
+} from "./dto/post.dto";
 import { Comment, CommentParentObject } from "./entities/comment.entity";
 import { EditableContent } from "./entities/editablecontent.entity";
+import { PostTag } from "./entities/post-tag.entity";
 import { parsePost, Post, type ParsedPost } from "./entities/post.entity";
 
 export type ForumFeedComment = {
@@ -71,6 +81,8 @@ export class ForumService {
     private actionActivityRepository: Repository<ActionActivity>,
     @InjectRepository(EditableContent)
     private editableContentRepository: TypedRepository<EditableContent>,
+    @InjectRepository(PostTag)
+    private postTagRepository: Repository<PostTag>,
     private readonly likeNotificationService: LikeNotificationService,
     private readonly eventLogService: EventLogService,
     private readonly notifsService: NotifsService,
@@ -275,6 +287,7 @@ export class ForumService {
       .leftJoinAndSelect("post.editableContent", "editableContent")
       .leftJoinAndSelect("post.authors", "authors")
       .leftJoinAndSelect("post.likes", "likes")
+      .leftJoinAndSelect("post.tags", "tags")
       .where("post.id = :id", { id });
     this.addPostVisibilityFilter(qb, "post", userId);
     const post = await qb.getOne();
@@ -603,6 +616,35 @@ export class ForumService {
     await this.postRepository.update(id, { deleted: true });
   }
 
+  private async resolveCommentTag(
+    createCommentDto: CreateCommentDto,
+  ): Promise<number | null> {
+    if (
+      createCommentDto.parentObjectType !== CommentParentObject.Post ||
+      createCommentDto.parentId
+    ) {
+      return null;
+    }
+
+    const tags = await this.postTagRepository.find({
+      where: { postId: createCommentDto.parentObjectId },
+    });
+
+    if (tags.length === 0) {
+      return null;
+    }
+    const tagId = createCommentDto.tagId;
+    if (tagId == null) {
+      throw new BadRequestException("Pick a tag for this comment");
+    }
+    if (!tags.some((tag) => tag.id === tagId)) {
+      throw new BadRequestException(
+        `Tag ${tagId} does not belong to post ${createCommentDto.parentObjectId}`,
+      );
+    }
+    return tagId;
+  }
+
   async createComment(
     createCommentDto: CreateCommentDto,
     userId: number,
@@ -633,6 +675,8 @@ export class ForumService {
       throw new BadRequestException("Reply cannot be empty");
     }
 
+    const tagId = await this.resolveCommentTag(createCommentDto);
+
     const content = this.editableContentRepository.create({
       body: createCommentDto.editableContent.body,
       attachments: createCommentDto.editableContent.attachments ?? [],
@@ -641,6 +685,7 @@ export class ForumService {
 
     const reply = this.commentRepository.create({
       ...createCommentDto,
+      tagId,
       authorId: userId,
       editableContent: content,
     });
@@ -856,7 +901,7 @@ export class ForumService {
     userId: number,
     unlike = false,
     type: "comment" | "post",
-  ): Promise<Comment | Post> {
+  ): Promise<void> {
     const object =
       type === "comment"
         ? await this.commentRepository.findOne({
@@ -881,21 +926,22 @@ export class ForumService {
       if (!likes.some((like) => like.id === userId)) {
         throw new NotFoundException(`User has not liked this ${type}`);
       }
-
-      object.likes = likes.filter((like) => like.id !== userId);
-    } else {
-      if (likes.some((like) => like.id === userId)) {
-        throw new NotFoundException(`User has already liked this ${type}`);
-      }
-
-      object.likes = [...likes, user];
+    } else if (likes.some((like) => like.id === userId)) {
+      throw new NotFoundException(`User has already liked this ${type}`);
     }
-    const obj = await (type === "comment"
-      ? this.commentRepository.save(object)
-      : this.postRepository.save(object));
+    const likeRows = this.postRepository.manager
+      .createQueryBuilder()
+      .relation(type === "comment" ? Comment : Post, "likes")
+      .of(id);
+    try {
+      await (unlike ? likeRows.remove(userId) : likeRows.add(userId));
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      throw new NotFoundException(`User has already liked this ${type}`);
+    }
 
     if (type === "comment") {
-      await this.refreshLikesCount(obj as Comment);
+      await this.refreshLikesCount(object as Comment);
     }
 
     if (!unlike) {
@@ -911,8 +957,6 @@ export class ForumService {
         await this.removePostLikeNotification(object as Post, user);
       }
     }
-
-    return obj;
   }
 
   private getUniquePostAuthors(post: Post): User[] {
@@ -1096,20 +1140,65 @@ export class ForumService {
     });
   }
 
-  async updatePostExperts(
+  /** Targets the join rows, so a concurrent write to the post's other half
+   * cannot read this one into a stale snapshot and write it back. */
+  private async replacePostUsers(params: {
+    manager: EntityManager;
+    postId: number;
+    relation: "experts" | "authors";
+    userIds: number[];
+    currentIds: number[];
+  }): Promise<void> {
+    const { manager, postId, relation, userIds, currentIds } = params;
+    const next = new Set(userIds);
+    const current = new Set(currentIds);
+    try {
+      await manager
+        .createQueryBuilder()
+        .relation(Post, relation)
+        .of(postId)
+        .addAndRemove(
+          [...next].filter((id) => !current.has(id)),
+          [...current].filter((id) => !next.has(id)),
+        );
+    } catch (error) {
+      // The caller holds the post row locked, so the join row's other foreign
+      // key is the only one a save can break.
+      if (!isForeignKeyViolation(error)) throw error;
+      throw new BadRequestException(
+        `Cannot set ${relation}: one of those users no longer exists`,
+      );
+    }
+  }
+
+  /** Locked so two writers cannot both diff against the same pre-state and
+   * insert the same join row twice. */
+  private async lockPost(
+    manager: EntityManager,
     postId: number,
-    expertIds: number[],
-    qaMode: boolean,
-    expertLabel?: string,
-    notifyForReplies?: boolean,
-    showClusterTags?: boolean,
-  ): Promise<ParsedPost> {
+  ): Promise<Post> {
+    const post = await manager.findOne(Post, {
+      where: { id: postId },
+      lock: { mode: "pessimistic_write" },
+    });
+
+    if (!post) {
+      throw new NotFoundException(`Post with ID "${postId}" not found`);
+    }
+
+    return post;
+  }
+
+  private async findPostForAdmin(postId: number): Promise<ParsedPost> {
     const post = await this.postRepository.findOne({
       where: { id: postId },
       relations: {
         author: true,
         action: { reviewers: true },
         editableContent: true,
+        experts: true,
+        authors: true,
+        tags: true,
       },
     });
 
@@ -1117,24 +1206,38 @@ export class ForumService {
       throw new NotFoundException(`Post with ID "${postId}" not found`);
     }
 
-    const experts =
-      expertIds.length > 0
-        ? await this.userRepository.find({
-            where: { id: In(expertIds) },
-          })
-        : [];
+    return parsePost(post);
+  }
 
-    post.experts = experts;
-    post.qaMode = qaMode;
-    post.expertLabel = expertLabel;
-    if (notifyForReplies !== undefined) {
-      post.notifyForReplies = notifyForReplies;
-    }
-    if (showClusterTags !== undefined) {
-      post.showClusterTags = showClusterTags;
-    }
+  async updatePostSettings(
+    postId: number,
+    settings: UpdatePostSettingsDto,
+  ): Promise<ParsedPost> {
+    const { expertIds, authorIds, tags, ...columns } = settings;
 
-    return parsePost(await this.postRepository.save(post));
+    await this.postRepository.manager.transaction(async (manager) => {
+      const post = await this.lockPost(manager, postId);
+      await manager.update(Post, postId, columns);
+      await this.replacePostUsers({
+        manager,
+        postId,
+        relation: "experts",
+        userIds: expertIds,
+        currentIds: post.expertIds,
+      });
+      await this.replacePostUsers({
+        manager,
+        postId,
+        relation: "authors",
+        userIds: authorIds,
+        currentIds: post.authorIds,
+      });
+      if (tags) {
+        await this.replacePostTags({ manager, postId, tags });
+      }
+    });
+
+    return this.findPostForAdmin(postId);
   }
 
   async getPostsForAdmin(): Promise<ParsedPost[]> {
@@ -1145,49 +1248,89 @@ export class ForumService {
         experts: true,
         authors: true,
         editableContent: true,
+        tags: true,
       },
       order: { createdAt: "DESC" },
     });
     return posts.map(parsePost);
   }
 
-  async updatePostAuthors(
-    postId: number,
-    authorIds: number[],
-  ): Promise<ParsedPost> {
-    const post = await this.postRepository.findOne({
-      where: { id: postId },
-      relations: {
-        author: true,
-        action: { reviewers: true },
-        editableContent: true,
-      },
-    });
-
-    if (!post) {
-      throw new NotFoundException(`Post with ID "${postId}" not found`);
+  /** The caller holds the post row locked, so no other save can commit tags
+   * between the knownTagIds check and the writes it guards. */
+  private async replacePostTags(params: {
+    manager: EntityManager;
+    postId: number;
+    tags: UpdatePostTagsDto;
+  }): Promise<void> {
+    const {
+      manager,
+      postId,
+      tags: { tags: tagInputs, knownTagIds },
+    } = params;
+    const names = tagInputs.map((input) => input.name);
+    if (new Set(names).size !== names.length) {
+      throw new BadRequestException("Tag names must be unique within a post");
+    }
+    // A tag named twice collapses into one kept row, and every tag the save
+    // left out of that row is deleted.
+    const ids = tagInputs.map((input) => input.id).filter((id) => id != null);
+    if (new Set(ids).size !== ids.length) {
+      throw new BadRequestException("Each tag can appear once in a save");
     }
 
-    const authors =
-      authorIds.length > 0
-        ? await this.userRepository.find({
-            where: { id: In(authorIds) },
-          })
-        : [];
+    const tagRepository = manager.getRepository(PostTag);
+    const existing = await tagRepository.find({ where: { postId } });
+    const existingIds = new Set(existing.map((tag) => tag.id));
+    const known = new Set(knownTagIds);
+    if (
+      known.size !== existingIds.size ||
+      [...existingIds].some((id) => !known.has(id))
+    ) {
+      throw new ConflictException(
+        "Another admin changed this post's tags. Reload and try again.",
+      );
+    }
+    const existingById = new Map(existing.map((tag) => [tag.id, tag]));
+    const kept = tagInputs.map((input, index) => {
+      if (input.id === undefined) {
+        return tagRepository.create({
+          postId,
+          name: input.name,
+          sortOrder: index,
+        });
+      }
+      const tag = existingById.get(input.id);
+      if (!tag) {
+        throw new BadRequestException(
+          `Tag ${input.id} does not belong to post ${postId}`,
+        );
+      }
+      tag.name = input.name;
+      tag.sortOrder = index;
+      return tag;
+    });
+    const keptIds = new Set(
+      kept.map((tag) => tag.id).filter((id) => id !== undefined),
+    );
+    const removed = existing.filter((tag) => !keptIds.has(tag.id));
 
-    post.authors = authors;
-
-    return parsePost(await this.postRepository.save(post));
+    if (removed.length > 0) {
+      await tagRepository.remove(removed);
+    }
+    await tagRepository.save(kept);
   }
 
   async togglePinComment(commentId: number): Promise<Comment> {
-    const comment = await this.commentRepository.findOneOrFail({
+    await this.commentRepository
+      .createQueryBuilder()
+      .update(Comment)
+      .set({ pinned: () => `NOT "pinned"` })
+      .where("id = :commentId", { commentId })
+      .execute();
+
+    return this.commentRepository.findOneOrFail({
       where: { id: commentId },
       relations: { author: true, editableContent: true, likes: true },
     });
-
-    comment.pinned = !comment.pinned;
-
-    return this.commentRepository.save(comment);
   }
 }

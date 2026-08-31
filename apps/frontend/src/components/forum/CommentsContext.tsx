@@ -13,9 +13,11 @@ import {
   forumFindCommentsForPost,
   forumPinCommentAdmin,
   forumUpdateComment,
+  PostTagDto,
   UserDto,
 } from "@alliance/shared/client";
 import { captureException } from "@alliance/shared/lib/analytics";
+import { TagFilter } from "@alliance/shared/lib/commentTags";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
 import {
   createContext,
@@ -23,10 +25,11 @@ import {
   useContext,
   useEffect,
   useState,
+  type Dispatch,
+  type SetStateAction,
 } from "react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "../../lib/AuthContext";
-import { uploadAttachments } from "../../lib/uploadAttachments";
 
 interface CommentsContextValue {
   user?: UserDto;
@@ -45,7 +48,6 @@ interface CommentsContextValue {
   clearSubmitError: () => void;
   onLikeReply: (id: number, unlike?: boolean) => Promise<unknown>;
   onPinReply: (id: number) => Promise<void>;
-  isSubmitting: boolean;
   newlyAddedReplies: Set<number>;
   highlightedReplyId: number | null;
   expertIds: number[];
@@ -53,6 +55,7 @@ interface CommentsContextValue {
   showClusterTags?: boolean;
   compact?: boolean;
   showUserBadges?: boolean;
+  tags: readonly PostTagDto[];
 }
 
 const CommentsContext = createContext<CommentsContextValue | null>(null);
@@ -86,11 +89,15 @@ export interface UseCommentTreeResult {
   handlePinReply: (id: number) => Promise<void>;
   replyingTo: number | null;
   setReplyingTo: (id: number | null) => void;
-  isSubmitting: boolean;
+  focusComposer: boolean;
   newlyAddedReplies: Set<number>;
   highlightedReplyId: number | null;
   editableContent: CreateEditableContentDto;
-  setEditableContent: (val: CreateEditableContentDto) => void;
+  setEditableContent: Dispatch<SetStateAction<CreateEditableContentDto>>;
+  selectedTagId: number | undefined;
+  setSelectedTagId: (id: number | undefined) => void;
+  tagFilter: TagFilter;
+  setTagFilter: (filter: TagFilter) => void;
 }
 
 export function useCommentTree(
@@ -111,7 +118,13 @@ export function useCommentTree(
   const [editableContent, setEditableContent] =
     useState<CreateEditableContentDto>({ body: "", attachments: [] });
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // The composer takes the caret when the user asked for it, not when it comes
+  // back after a reply posted further down the thread.
+  const [focusComposer, setFocusComposer] = useState(true);
+  const [selectedTagId, setSelectedTagId] = useState<number | undefined>(
+    undefined,
+  );
+  const [tagFilter, setTagFilter] = useState<TagFilter>(undefined);
   const [newlyAddedReplies, setNewlyAddedReplies] = useState<Set<number>>(
     new Set(),
   );
@@ -196,17 +209,13 @@ export function useCommentTree(
     onSuccess?: () => void,
   ) => {
     try {
-      setIsSubmitting(true);
       setSubmitError(null);
-      let attachmentKeys: string[] = [];
-      if (contentDto.attachments.length > 0) {
-        attachmentKeys = await uploadAttachments(contentDto.attachments);
-      }
       const commentDto: CreateCommentDto = {
         parentObjectId: Number(objectId),
         parentId: replyingTo ?? undefined,
         parentObjectType: type,
-        editableContent: { body: contentDto.body, attachments: attachmentKeys },
+        editableContent: contentDto,
+        tagId: replyingTo ? undefined : selectedTagId,
       };
 
       const response = await forumCreateComment({ body: commentDto });
@@ -240,8 +249,11 @@ export function useCommentTree(
         onSuccess?.();
       }
 
-      setEditableContent({ body: "", attachments: [] });
-      setReplyingTo(null);
+      if (replyingTo) {
+        setFocusComposer(false);
+      } else {
+        setTagFilter(selectedTagId);
+      }
     } catch (err) {
       console.error("Error posting reply:", err);
       captureException(ExceptionEvent.PostReplyError, err);
@@ -249,8 +261,6 @@ export function useCommentTree(
         parentId: replyingTo,
         message: "Failed to submit reply",
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -346,11 +356,15 @@ export function useCommentTree(
     handlePinReply,
     replyingTo,
     setReplyingTo,
-    isSubmitting,
+    focusComposer,
     newlyAddedReplies,
     highlightedReplyId,
     editableContent,
     setEditableContent,
+    selectedTagId,
+    setSelectedTagId,
+    tagFilter,
+    setTagFilter,
   };
 }
 

@@ -7,6 +7,7 @@ import {
   CreateCommentDto,
   CreateEditableContentDto,
   NotificationDto,
+  PostTagDto,
   UserDto,
   forumCreateComment,
   forumDeleteComment,
@@ -14,7 +15,6 @@ import {
   forumFindCommentsForActivity,
   forumFindCommentsForPost,
   forumUpdateComment,
-  imagesUploadImage,
 } from "@alliance/shared/client";
 import {
   CommentFilter,
@@ -27,6 +27,15 @@ import {
   sortLabels,
   useCommentFilterData,
 } from "@alliance/shared/lib/commentsFilter";
+import {
+  TagFilter,
+  countCommentsByTag,
+  matchesTagFilter,
+} from "@alliance/shared/lib/commentTags";
+import {
+  uploadAttachments,
+  withUploadedKeys,
+} from "@alliance/shared/lib/uploadAttachments";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
 import { formatTime } from "@alliance/shared/lib/utils";
@@ -45,7 +54,10 @@ import { LikeActionButton } from "./LikeFooter";
 import LikeSummary from "./LikeSummary";
 import ProfileImage from "./ProfileImage";
 import Text from "./system/Text";
+import TagChips from "./TagChips";
 import UserDisplayName from "./UserDisplayName";
+
+const NO_TAGS: readonly PostTagDto[] = [];
 
 export interface CommentsProps {
   objectId: number;
@@ -62,20 +74,8 @@ export interface CommentsProps {
   expertIds?: number[];
   expertLabel?: string;
   showClusterTags?: boolean;
+  tags?: readonly PostTagDto[];
 }
-
-const uploadAttachments = async (attachments: string[]) => {
-  const uploads = await Promise.all(
-    attachments.map(async (file) => {
-      if (file.startsWith("data:")) {
-        const res = await imagesUploadImage({ body: { file } });
-        return res.data?.key;
-      }
-      return file;
-    }),
-  );
-  return uploads.filter((key): key is string => Boolean(key));
-};
 
 const shouldShowComment = (comment: CommentDto) => {
   return !comment.deleted || (comment.children?.length ?? 0) > 0;
@@ -179,13 +179,16 @@ type ReplyFormProps = {
   onCancel?: () => void;
   autofocus?: boolean;
   objectId: number;
-  isSubmitting: boolean;
   error?: string | null;
   onDismissError?: () => void;
+  tags?: readonly PostTagDto[];
+  selectedTagId?: number;
+  setSelectedTagId?: (id: number | undefined) => void;
   onSubmit: (
     content: CreateEditableContentDto,
     parentId?: number | null,
-  ) => void;
+  ) => void | Promise<void>;
+  focusOnMount: boolean;
 };
 
 const ReplyForm = ({
@@ -194,12 +197,29 @@ const ReplyForm = ({
   setContent,
   onCancel,
   autofocus,
+  focusOnMount,
   objectId,
-  isSubmitting,
   error,
   onDismissError,
+  tags = [],
+  selectedTagId,
+  setSelectedTagId,
   onSubmit,
 }: ReplyFormProps) => {
+  const needsTag = parentId === null && tags.length > 0;
+  const expanded = autofocus || parentId !== null;
+  // Local, so posting one comment leaves every other composer live.
+  const [isPosting, setIsPosting] = useState(false);
+
+  const post = async () => {
+    setIsPosting(true);
+    try {
+      await onSubmit(content, parentId);
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
   // EditableContentForm hides its Cancel button when onCancel is undefined.
   const handleCancel = onCancel
     ? () => {
@@ -210,6 +230,19 @@ const ReplyForm = ({
 
   return (
     <View className="p-2 bg-zinc-100 rounded">
+      {needsTag && (
+        <View className="mb-3">
+          <Text className="text-sm text-zinc-500 mb-1.5">
+            Pick a tag for your comment
+          </Text>
+          <TagChips
+            tags={tags}
+            disabled={isPosting}
+            selected={selectedTagId}
+            onSelect={(value) => setSelectedTagId?.(value ?? undefined)}
+          />
+        </View>
+      )}
       <EditableContentForm
         value={content}
         onChange={(next) => {
@@ -217,12 +250,14 @@ const ReplyForm = ({
           setContent(next);
         }}
         placeholder="Add a comment..."
-        expanded={autofocus || parentId !== null}
+        expanded={expanded}
+        autoFocus={focusOnMount}
         draftKey={`reply-${parentId ?? "root"}-${objectId}`}
-        onSubmit={() => onSubmit(content, parentId)}
+        onSubmit={() => void post()}
         onCancel={handleCancel}
         submitLabel="Post"
-        isSubmitting={isSubmitting}
+        isSubmitting={isPosting}
+        submitDisabled={needsTag && selectedTagId === undefined}
       />
       {error && <Text className="mt-2 text-sm text-red-500">{error}</Text>}
     </View>
@@ -239,7 +274,6 @@ type ReplyItemSharedProps = {
   setReplyingTo: (id: number | null) => void;
   nestedDraft: CreateEditableContentDto;
   setNestedDraft: (next: CreateEditableContentDto) => void;
-  isSubmitting: boolean;
   highlightedId: number | null;
   scrollViewRef?: React.RefObject<KeyboardAwareScrollViewRef | null>;
   newlyAddedReplies: Set<number>;
@@ -247,6 +281,7 @@ type ReplyItemSharedProps = {
   expertIds: number[];
   expertLabel?: string;
   showClusterTags: boolean;
+  tags: readonly PostTagDto[];
   onSubmitReply: (
     content: CreateEditableContentDto,
     parentId?: number | null,
@@ -268,6 +303,7 @@ type ReplyItemProps = ReplyItemSharedProps & {
 
 const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<CreateEditableContentDto>({
     body: reply.editableContent.body ?? "",
@@ -280,6 +316,7 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
   const isReplyingToThis = shared.replyingTo === reply.id;
   const hasChildren = (reply.children?.length ?? 0) > 0;
   const isHighlighted = shared.highlightedId === reply.id;
+  const tag = shared.tags.find((candidate) => candidate.id === reply.tagId);
   const isNewlyAdded = shared.newlyAddedReplies.has(reply.id);
   const metaTextClass = shared.small ? "text-xs" : "text-sm";
   const actionTextClass = shared.small
@@ -313,6 +350,38 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
     reply.editableContent.body,
     reply.editableContent.attachments,
   ]);
+
+  const saveEdit = async () => {
+    setIsSavingEdit(true);
+    try {
+      const sources = editContent.attachments;
+      const uploaded = await uploadAttachments(sources);
+      if (!uploaded.ok) {
+        setEditError(uploaded.error);
+        return;
+      }
+      setEditContent((prev) => ({
+        ...prev,
+        attachments: withUploadedKeys({
+          current: prev.attachments,
+          sources,
+          keys: uploaded.value,
+        }),
+      }));
+      R.match(
+        await shared.onUpdateReply(reply.id, {
+          ...editContent,
+          attachments: uploaded.value,
+        }),
+        {
+          success: () => setIsEditing(false),
+          failure: setEditError,
+        },
+      );
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
 
   useEffect(() => {
     if (!isHighlighted || !viewRef.current || !shared.scrollViewRef?.current)
@@ -362,6 +431,11 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
           <Text className={cn("text-zinc-500", metaTextClass)}>
             {formatTime(new Date(reply.createdAt), { addSuffix: true })}
           </Text>
+          {tag && (
+            <View className="bg-zinc-200 rounded-full px-2 py-0.5">
+              <Text className="text-xs text-zinc-700">{tag.name}</Text>
+            </View>
+          )}
           {hasChildren && isCollapsed && (
             <Text className={cn("text-zinc-500", metaTextClass)}>
               {withCount(reply.children?.length ?? 0, "reply")} hidden
@@ -375,7 +449,7 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
         {isEditing ? (
           <View className="gap-y-2">
             <EditableContentForm
-              isSubmitting={shared.isSubmitting}
+              isSubmitting={isSavingEdit}
               value={editContent}
               onChange={setEditContent}
               className="bg-zinc-100 rounded overflow-visible"
@@ -384,14 +458,7 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
               draftKey={`edit-reply-${reply.id}`}
               onSubmit={() => {
                 setEditError(null);
-                void shared
-                  .onUpdateReply(reply.id, editContent)
-                  .then((result) =>
-                    R.match(result, {
-                      success: () => setIsEditing(false),
-                      failure: setEditError,
-                    }),
-                  );
+                void saveEdit();
               }}
               onCancel={() => {
                 setEditContent({
@@ -488,8 +555,8 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
             setContent={shared.setNestedDraft}
             onCancel={() => shared.setReplyingTo(null)}
             autofocus={shared.autofocus}
+            focusOnMount
             objectId={shared.objectId}
-            isSubmitting={shared.isSubmitting}
             error={shared.submitErrorFor(reply.id)}
             onDismissError={shared.clearSubmitError}
             onSubmit={shared.onSubmitReply}
@@ -528,6 +595,7 @@ export default function Comments({
   expertIds: expertIdsProp = [],
   expertLabel,
   showClusterTags = false,
+  tags = NO_TAGS,
 }: CommentsProps) {
   const expertIds = useMemo(
     () => (qaMode ? expertIdsProp : []),
@@ -540,7 +608,10 @@ export default function Comments({
   const [editableContent, setEditableContent] =
     useState<CreateEditableContentDto>({ body: "", attachments: [] });
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedTagId, setSelectedTagId] = useState<number | undefined>(
+    undefined,
+  );
+  const [tagFilter, setTagFilter] = useState<TagFilter>(undefined);
   const [newlyAddedReplies, setNewlyAddedReplies] = useState<Set<number>>(
     new Set(),
   );
@@ -561,6 +632,9 @@ export default function Comments({
   });
   const [showForm, setShowForm] = useState(showFormProp);
   const [isComposing, setIsComposing] = useState(!!autofocus);
+  // The composer takes the keyboard when the user opened it, not when it comes
+  // back after a reply posted further down the thread.
+  const [focusComposer, setFocusComposer] = useState(!!autofocus);
 
   // useAuth() is hydrated before this mounts in the common case, so the initializer
   // picks the right default without needing an effect to react to late-arriving user data.
@@ -620,19 +694,34 @@ export default function Comments({
   const handleSubmitReply = useCallback(
     async (contentDto: CreateEditableContentDto, parentId?: number | null) => {
       try {
-        setIsSubmitting(true);
         setSubmitError(null);
-        const attachmentKeys = await uploadAttachments(
-          contentDto.attachments ?? [],
-        );
+        const sources = contentDto.attachments;
+        const uploaded = await uploadAttachments(sources);
+        if (!uploaded.ok) {
+          setSubmitError({
+            parentId: parentId ?? null,
+            message: uploaded.error,
+          });
+          return;
+        }
+        const setDraft = parentId ? setNestedDraft : setEditableContent;
+        setDraft((prev) => ({
+          ...prev,
+          attachments: withUploadedKeys({
+            current: prev.attachments,
+            sources,
+            keys: uploaded.value,
+          }),
+        }));
         const commentDto: CreateCommentDto = {
           parentObjectId: Number(objectId),
           parentId: parentId ?? undefined,
           parentObjectType: type,
           editableContent: {
             body: contentDto.body,
-            attachments: attachmentKeys,
+            attachments: uploaded.value,
           },
+          tagId: parentId ? undefined : selectedTagId,
         };
 
         const response = await forumCreateComment({ body: commentDto });
@@ -664,21 +753,24 @@ export default function Comments({
         }
 
         await fetchComments();
-        setEditableContent({ body: "", attachments: [] });
-        setNestedDraft({ body: "", attachments: [] });
+        setDraft({ body: "", attachments: [] });
         setReplyingTo(null);
-        setIsComposing(false);
+        if (!parentId) {
+          setTagFilter(selectedTagId);
+          setSelectedTagId(undefined);
+          setIsComposing(false);
+        } else {
+          setFocusComposer(false);
+        }
       } catch (err) {
         console.error("Error posting reply:", err);
         setSubmitError({
           parentId: parentId ?? null,
           message: "Failed to submit reply",
         });
-      } finally {
-        setIsSubmitting(false);
       }
     },
-    [fetchComments, objectId, type],
+    [fetchComments, objectId, selectedTagId, type],
   );
 
   const handleDeleteReply = useCallback(
@@ -713,19 +805,13 @@ export default function Comments({
       content: CreateEditableContentDto,
     ): Promise<Result<void, string>> => {
       const saved = await R.fromPromiseFn(async () => {
-        const attachmentKeys = await uploadAttachments(
-          content.attachments ?? [],
-        );
         const response = await forumUpdateComment({
           path: { id: replyId },
           body: {
-            editableContent: {
-              body: content.body,
-              attachments: attachmentKeys,
-            },
+            editableContent: content,
           },
         });
-        return { attachmentKeys, error: response.error };
+        return response.error;
       });
 
       if (!saved.ok) {
@@ -733,16 +819,14 @@ export default function Comments({
         return R.failure("Failed to save your edit");
       }
 
-      if (saved.value.error) {
+      if (saved.value) {
         return R.failure(
           errorMessage({
-            error: saved.value.error,
+            error: saved.value,
             fallback: "Failed to save your edit",
           }),
         );
       }
-
-      const { attachmentKeys } = saved.value;
 
       setComments((prevComments) => {
         if (!prevComments) return null;
@@ -752,10 +836,7 @@ export default function Comments({
             if (item.id === replyId) {
               return {
                 ...item,
-                editableContent: {
-                  body: content.body,
-                  attachments: attachmentKeys,
-                },
+                editableContent: content,
               };
             }
             if (item.children) {
@@ -857,22 +938,34 @@ export default function Comments({
     return counts;
   }, [filterOptions, topLevelComments, filterContext]);
 
+  const filterMatchedComments = useMemo(
+    () =>
+      topLevelComments.filter((comment) =>
+        matchesCommentFilter(comment, commentFilter, filterContext),
+      ),
+    [topLevelComments, commentFilter, filterContext],
+  );
+
+  const tagCounts = useMemo(
+    () => countCommentsByTag(filterMatchedComments, tags),
+    [filterMatchedComments, tags],
+  );
+
   const sortedComments = useMemo(() => {
     if (!comments) return null;
     return sortComments(
-      topLevelComments.filter((comment) =>
-        matchesCommentFilter(comment, commentFilter, filterContext),
+      filterMatchedComments.filter((comment) =>
+        matchesTagFilter(comment, tagFilter),
       ),
       commentSort,
       { randomSeed, userClusterId: user?.clusterId },
     );
   }, [
     comments,
-    topLevelComments,
-    commentFilter,
+    filterMatchedComments,
     commentSort,
-    filterContext,
     randomSeed,
+    tagFilter,
     user?.clusterId,
   ]);
 
@@ -930,16 +1023,22 @@ export default function Comments({
             content={editableContent}
             setContent={setEditableContent}
             autofocus
+            focusOnMount={focusComposer}
             onCancel={() => setIsComposing(false)}
             objectId={objectId}
-            isSubmitting={isSubmitting}
             error={submitErrorFor(null)}
             onDismissError={clearSubmitError}
+            tags={isPostComments ? tags : []}
+            selectedTagId={selectedTagId}
+            setSelectedTagId={setSelectedTagId}
             onSubmit={handleSubmitReply}
           />
         ) : (
           <TouchableOpacity
-            onPress={() => setIsComposing(true)}
+            onPress={() => {
+              setIsComposing(true);
+              setFocusComposer(true);
+            }}
             activeOpacity={0.7}
             className="p-3 bg-zinc-100 rounded"
           >
@@ -972,6 +1071,15 @@ export default function Comments({
         </View>
       )}
 
+      {isPostComments && tags.length > 0 && topLevelComments.length > 0 && (
+        <TagChips
+          tags={tags}
+          selected={tagFilter}
+          onSelect={setTagFilter}
+          counts={tagCounts}
+        />
+      )}
+
       {sortedComments && sortedComments.length > 0 ? (
         <View className="gap-y-3">
           {sortedComments.map((reply) => (
@@ -987,7 +1095,6 @@ export default function Comments({
               setReplyingTo={setReplyingTo}
               nestedDraft={nestedDraft}
               setNestedDraft={setNestedDraft}
-              isSubmitting={isSubmitting}
               highlightedId={highlightedId}
               scrollViewRef={scrollViewRef}
               newlyAddedReplies={newlyAddedReplies}
@@ -995,6 +1102,7 @@ export default function Comments({
               expertIds={expertIds}
               expertLabel={expertLabel}
               showClusterTags={showClusterTags}
+              tags={tags}
               onSubmitReply={handleSubmitReply}
               onUpdateReply={handleUpdateReply}
               submitErrorFor={submitErrorFor}

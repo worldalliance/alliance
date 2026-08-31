@@ -2,11 +2,22 @@ import { byLikeOrder, LIKE_FACEPILE_LIMIT } from "@alliance/common/likeOrder";
 import {
   ApiProperty,
   ApiPropertyOptional,
+  IntersectionType,
   PartialType,
   PickType,
 } from "@nestjs/swagger";
-import { Type } from "class-transformer";
-import { IsDefined, IsOptional, ValidateNested } from "class-validator";
+import { Transform, Type } from "class-transformer";
+import {
+  IsArray,
+  IsBoolean,
+  IsDefined,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  MaxLength,
+  ValidateNested,
+} from "class-validator";
 import { ActionDto } from "src/actions/dto/action.dto";
 import { ProfileDto } from "../../user/dto/user.dto";
 import { Comment } from "../entities/comment.entity";
@@ -16,6 +27,7 @@ import {
   CreateEditableContentDto,
   EditableContentDto,
 } from "./editablecontent.dto";
+import { PostTagDto, UpdatePostTagsDto } from "./post-tag.dto";
 
 export class PostDto extends PickType(Post, [
   "id",
@@ -68,6 +80,9 @@ export class PostDto extends PickType(Post, [
 
   @ApiPropertyOptional({ type: () => ProfileDto, isArray: true })
   authors?: ProfileDto[];
+
+  @ApiPropertyOptional({ type: () => PostTagDto, isArray: true })
+  tags?: PostTagDto[];
 
   constructor({
     post,
@@ -122,6 +137,11 @@ export class PostDto extends PickType(Post, [
     this.authors = post.authors
       ? post.authors.map((author) => new ProfileDto(author))
       : undefined;
+    this.tags = post.tags
+      ? [...post.tags]
+          .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
+          .map((tag) => new PostTagDto(tag))
+      : undefined;
   }
 }
 
@@ -148,28 +168,51 @@ export class UpdatePostDto extends PartialType(CreatePostDto) {}
 
 export class UpdatePostExpertsDto {
   @ApiProperty({ type: Number, isArray: true })
-  @IsDefined()
+  @IsArray()
+  @IsInt({ each: true })
   expertIds: number[];
 
   @ApiProperty()
-  @IsDefined()
+  @IsBoolean()
   qaMode: boolean;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: String, nullable: true })
   @IsOptional()
-  expertLabel?: string;
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.trim() || null : value,
+  )
+  @IsString()
+  @MaxLength(64)
+  expertLabel?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsBoolean()
   notifyForReplies?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsBoolean()
   showClusterTags?: boolean;
 }
 
 export class UpdatePostAuthorsDto {
   @ApiProperty({ type: Number, isArray: true })
-  @IsDefined()
+  @IsArray()
+  @IsInt({ each: true })
   authorIds: number[];
+}
+
+export class UpdatePostSettingsDto extends IntersectionType(
+  UpdatePostExpertsDto,
+  UpdatePostAuthorsDto,
+) {
+  /** Absent leaves the tags alone, so a save that did not touch them cannot
+   * lose a race with a session that did. */
+  @ApiPropertyOptional({ type: () => UpdatePostTagsDto })
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => UpdatePostTagsDto)
+  tags?: UpdatePostTagsDto;
 }
