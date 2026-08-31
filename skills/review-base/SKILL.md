@@ -18,7 +18,15 @@ While reviewing, feel free to run `git reset --hard` to test various functionali
 
 The base commit should carry one purpose, and typecheck and pass tests on its own.
 
-Judge it against that as part of the review. A base commit holding more than one purpose gets its own finding, naming the commits it should become, each with the files it takes, ordered so every commit in the sequence is safe to deploy alone: the client that satisfies a new requirement lands before the change that switches the requirement on.
+Judge it against that as part of the review. A base commit holding more than one purpose gets its own `split` finding, naming the commits it should become and the files each one takes, ordered so every commit in the sequence is safe to deploy alone: the client that satisfies a new requirement lands before the change that switches the requirement on.
+
+# Output
+
+Findings and the judgment behind each field come from the review skill. Report them as JSON instead of the markdown it describes, conforming to `(root)/skills/review-base/findings.schema.json`.
+
+Before you start reviewing, create `.scratch/review/<base-sha>.json` holding `{"base": <sha>, "summary": "", "findings": []}`. Create, modify, or delete findings as you review the commit.
+
+Finish by re-reading the file and holding every finding to the bar: evidence naming something you actually ran, the tier you would defend if the author pushed back, worth their time to read. Delete or downgrade the rest, then write the summary from what survived. Your last message says where the file is, in addition to the markdown-style review.
 
 # Applying fixes
 
