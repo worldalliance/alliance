@@ -4,11 +4,7 @@ import { JoinCta } from "../../site/JoinCta";
 import { Navbar } from "../../site/Navbar";
 import { SiteRoot } from "../../site/PageShell";
 import { Hero } from "../../site/sections/Hero";
-import { HowItWorks } from "../../site/sections/HowItWorks";
-import { IntroVideo } from "../../site/sections/IntroVideo";
-import { ModelSection } from "../../site/sections/ModelSection";
-import { Priorities } from "../../site/sections/Priorities";
-import { Testimonial } from "../../site/sections/Testimonial";
+import { LandingBody } from "../../site/sections/LandingBody";
 
 export function meta() {
   return socialPreviewMeta({
@@ -26,11 +22,7 @@ export default function PrelaunchLandingPage() {
     <SiteRoot>
       <Navbar />
       <Hero />
-      <Priorities />
-      <HowItWorks />
-      <ModelSection />
-      <Testimonial />
-      <IntroVideo />
+      <LandingBody />
       <JoinCta />
       <SiteFooter />
     </SiteRoot>

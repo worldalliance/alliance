@@ -1,8 +1,13 @@
 import { SignUpDto } from "@alliance/shared/client";
 import { deviceTimeZone } from "@alliance/shared/lib/timeZone";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import FormInput from "@alliance/sharedweb/ui/FormInput";
+import { cn } from "@alliance/shared/styles/util";
 import { useCallback, useState } from "react";
+import {
+  SITE_INPUT,
+  SITE_INPUT_STYLE,
+  SITE_SUBMIT,
+  SiteField,
+} from "../site/ui";
 
 export interface SignupFormProps {
   onSubmit: (formData: SignUpDto) => void;
@@ -43,7 +48,6 @@ const SignupForm = ({
         setFieldErrors({
           confirmPassword: "Passwords do not match",
         });
-        console.log("Passwords do not match");
         return;
       }
 
@@ -71,71 +75,94 @@ const SignupForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <FormInput
-        label="Full name"
-        type="text"
-        value={formData.name}
-        onChange={handleChange}
-        placeholder="John Doe"
-        required
-        name="name"
-        error={fieldErrors.name}
-        className="text-[16px]"
-        inputClassName="text-[16px]"
-        disabled={disabled}
-      />
-
-      <FormInput
-        label="Email"
-        type="email"
-        value={formData.email}
-        onChange={handleChange}
-        placeholder="your@email.com"
-        required
-        name="email"
-        error={fieldErrors.email}
-        className="text-[16px]"
-        inputClassName="text-[16px]"
-        disabled={disabled}
-      />
-
-      <FormInput
-        label="Password"
-        type="password"
-        value={formData.password}
-        onChange={handleChange}
-        required
-        name="password"
-        error={fieldErrors.password}
-        className="text-[16px]"
-        inputClassName="text-[16px]"
-        disabled={disabled}
-      />
-
-      <FormInput
-        label="Confirm password"
-        type="password"
-        value={formData.confirmPassword}
-        onChange={handleChange}
-        required
-        name="confirmPassword"
-        error={fieldErrors.confirmPassword}
-        className="text-[16px]"
-        inputClassName="text-[16px]"
-        disabled={disabled}
-      />
-
-      <div className="pt-2">
-        <Button
-          color={ButtonColor.Black}
-          className="w-full flex justify-center text-center  justify-self-center pb-2 text-[16px]"
-          type="submit"
-          disabled={loading || disabled}
-        >
-          {loading ? "Creating account..." : submitButtonText}
-        </Button>
-      </div>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <SiteField label="Full name" name="name">
+        <input
+          id="name"
+          name="name"
+          type="text"
+          required
+          autoComplete="name"
+          value={formData.name}
+          onChange={handleChange}
+          disabled={disabled}
+          className={cn(SITE_INPUT, "disabled:opacity-60")}
+          style={SITE_INPUT_STYLE}
+        />
+        {fieldErrors.name && (
+          <p className="text-sm font-medium text-red-600" role="alert">
+            {fieldErrors.name}
+          </p>
+        )}
+      </SiteField>
+      <SiteField label="Email" name="email">
+        <input
+          id="email"
+          name="email"
+          type="email"
+          required
+          autoComplete="email"
+          value={formData.email}
+          onChange={handleChange}
+          disabled={disabled}
+          className={cn(SITE_INPUT, "disabled:opacity-60")}
+          style={SITE_INPUT_STYLE}
+        />
+        {fieldErrors.email && (
+          <p className="text-sm font-medium text-red-600" role="alert">
+            {fieldErrors.email}
+          </p>
+        )}
+      </SiteField>
+      <SiteField label="Password" name="password">
+        <input
+          id="password"
+          name="password"
+          type="password"
+          required
+          autoComplete="new-password"
+          value={formData.password}
+          onChange={handleChange}
+          disabled={disabled}
+          className={cn(SITE_INPUT, "disabled:opacity-60")}
+          style={SITE_INPUT_STYLE}
+        />
+        {fieldErrors.password && (
+          <p className="text-sm font-medium text-red-600" role="alert">
+            {fieldErrors.password}
+          </p>
+        )}
+      </SiteField>
+      <SiteField label="Confirm password" name="confirmPassword">
+        <input
+          id="confirmPassword"
+          name="confirmPassword"
+          type="password"
+          required
+          autoComplete="new-password"
+          value={formData.confirmPassword}
+          onChange={handleChange}
+          disabled={disabled}
+          className={cn(SITE_INPUT, "disabled:opacity-60")}
+          style={SITE_INPUT_STYLE}
+        />
+        {fieldErrors.confirmPassword && (
+          <p className="text-sm font-medium text-red-600" role="alert">
+            {fieldErrors.confirmPassword}
+          </p>
+        )}
+      </SiteField>
+      <button
+        type="submit"
+        disabled={loading || disabled}
+        className={cn(
+          SITE_SUBMIT,
+          "mt-1 w-full justify-center bg-[var(--site-primary)] text-white hover:bg-[var(--site-primary-hover)]",
+        )}
+        style={{ borderRadius: "var(--site-radius-button)" }}
+      >
+        {loading ? "Creating account..." : submitButtonText}
+      </button>
     </form>
   );
 };

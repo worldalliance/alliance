@@ -7,7 +7,6 @@ import {
   ProfileDto,
   ReferrerProfileDto,
   SignUpDto,
-  userFindOne,
   userOnetimeInvite,
   userReferrerProfile,
   userSignupSocialProof,
@@ -15,25 +14,22 @@ import {
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import { Features } from "@alliance/shared/lib/features";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
-import { CardStyle } from "@alliance/shared/styles/card";
+import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import Card from "@alliance/sharedweb/ui/Card";
-import { useQueries, useQuery } from "@tanstack/react-query";
-import { ChevronRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import posthog from "posthog-js";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, type ReactNode } from "react";
 import { href, Link, useSearchParams } from "react-router";
-import ExamplePriorityCardList from "../../components/ExamplePriorityCardList";
-import FeaturedImpactCard from "../../components/FeaturedImpactCard";
-import Footer from "../../components/Footer";
-import PrelaunchNavbar from "../../components/PrelaunchNavbar";
 import SignupForm from "../../components/SignupForm";
-import { FEATURED_IMPACT_ACTIONS } from "../../content/featuredImpactActions";
 import { isFeatureEnabled } from "../../lib/config";
-import { exampleMemberTaskAction } from "../../lib/exampleMemberTaskAction";
-import { exampleMemberTaskFormSchema } from "../../lib/exampleMemberTaskFormSchema";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
-import LargeActionCard from "./LargeActionCard";
+import { HERO_SUBHEAD } from "../../site/content";
+import { SiteFooter } from "../../site/Footer";
+import { LOGIN_HREF } from "../../site/links";
+import { NAV_HEIGHT, Navbar } from "../../site/Navbar";
+import { SiteRoot } from "../../site/PageShell";
+import { LandingBody } from "../../site/sections/LandingBody";
+import { DisplayHeading, DisplaySubtitle, SITE_COL } from "../../site/ui";
 
 function formatSignupSocialProofNames(
   profiles: Pick<ProfileDto, "displayName">[],
@@ -62,37 +58,24 @@ export function meta() {
   });
 }
 
-const memberQuotes = [
-  {
-    quote:
-      "On the whole, the world is not going in the right direction. We need new ideas to change that, and the Alliance is just that. But it will work only if we all participate.",
-    author:
-      "Janos Pasztor, former UN Assistant Secretary-General for Climate Change",
-    userId: 33,
-  },
-  {
-    quote: (
-      <span>
-        For a few years now, I&apos;ve been thinking about contributing back to
-        society and the world and what cause I should get behind. There are so
-        many possibilities - food security, climate change, poverty, housing,
-        education, all are worthy. But one thing I kept thinking was that
-        contributing to any one of these causes has minimal individual level
-        impact. How can I amplify or have a greater impact?
-        <br />
-        <br />I am convinced that the Alliance offers that platform and my
-        opportunity for maximizing the impact of my time and energy contribution
-        to the world over time. I want to be part of it and grow with it. They
-        take your commitment seriously and will hold your feet to the fire. But
-        it&apos;s just a few minutes per week and l&apos;ve found every project
-        thus far to be self-enriching and meaningful.
-      </span>
-    ),
-
-    author: "Sameer Vaidya, Alliance member",
-    userId: 96,
-  },
-];
+function CenteredBand({ id, children }: { id?: string; children: ReactNode }) {
+  return (
+    <section
+      id={id}
+      className="bg-[var(--site-surface)]"
+      style={{ paddingTop: NAV_HEIGHT }}
+    >
+      <div
+        className={cn(
+          SITE_COL,
+          "flex flex-col items-center gap-6 pt-16 pb-20 text-center lg:pt-24 lg:pb-28",
+        )}
+      >
+        {children}
+      </div>
+    </section>
+  );
+}
 
 const SignupPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -120,33 +103,8 @@ const SignupPage: React.FC = () => {
       enabled: isFeatureEnabled(Features.PublicSignup) || Boolean(referralCode),
     });
 
-  const quoteUserIds = useMemo(
-    () => [...new Set(memberQuotes.map((q) => q.userId))],
-    [],
-  );
-
-  const quoteProfileQueries = useQueries({
-    queries: quoteUserIds.map((userId) => ({
-      queryKey: ["user", "slug", userId] as const,
-      queryFn: () =>
-        userFindOne({ path: { id: userId } }).then((res) => res.data ?? null),
-      staleTime: 60 * 60 * 1000,
-      enabled:
-        (isFeatureEnabled(Features.PublicSignup) || Boolean(referralCode)) &&
-        quoteUserIds.length > 0,
-    })),
-  });
-
-  const quotePfpByUserId = new Map(
-    quoteUserIds.map((id, i) => [
-      id,
-      quoteProfileQueries[i]?.data?.profilePicture ?? null,
-    ]),
-  );
-
   const [inviterProfile, setInviterProfile] =
     useState<ReferrerProfileDto | null>(null);
-  // const [inviteeName, setInviteeName] = useState<string | null>(null);
   const [isInviteValid, setIsInviteValid] = useState(true);
 
   useEffect(() => {
@@ -157,7 +115,6 @@ const SignupPage: React.FC = () => {
 
     userOnetimeInvite({ path: { code: referralCode } }).then((response) => {
       if (response.data) {
-        // setInviteeName(response.data.invitee);
         setIsInviteValid(response.data.status !== "link_used");
       }
     });
@@ -210,39 +167,27 @@ const SignupPage: React.FC = () => {
     }
   };
 
-  if (!isFeatureEnabled(Features.PublicSignup) && !referralCode) {
-    return (
-      <div className="min-h-screen flex flex-col bg-page">
-        <div className="flex flex-col grow items-center justify-center ">
-          <div className="w-full max-w-md px-8">
-            <p className="font-bold !mb-2">
-              The Alliance is currently invite-only.
-            </p>
-            <p>If you received an invite link, please use it to sign up.</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const inviteOnly = !isFeatureEnabled(Features.PublicSignup) && !referralCode;
 
   let inviterLine: React.ReactNode = null;
-  if (isInviteValid && inviterProfile) {
+  if (!inviteOnly && isInviteValid && inviterProfile) {
     switch (inviterProfile.kind) {
       case "campaign":
-        // Campaign invites don't show an inviter line.
         break;
       case "user":
         inviterLine = (
-          <div className="rounded-md">
-            <div className="flex flex-row gap-x-1 items-center text-zinc-500">
-              <AvatarProfile
-                pfp={inviterProfile.profilePicture ?? null}
-                size="small"
-                className="inline-block text-green"
-              />
-              <span className="font-medium">{inviterProfile.displayName}</span>
-              <span> invited you to the Alliance</span>
-            </div>
+          <div className="flex flex-row items-center justify-center gap-x-2 text-[var(--site-ink)]/70">
+            <AvatarProfile
+              pfp={inviterProfile.profilePicture ?? null}
+              size="small"
+              className="inline-block"
+            />
+            <span>
+              <span className="font-medium text-[var(--site-ink)]">
+                {inviterProfile.displayName}
+              </span>{" "}
+              invited you to the Alliance
+            </span>
           </div>
         );
         break;
@@ -252,252 +197,113 @@ const SignupPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen w-full bg-white">
-      <PrelaunchNavbar transparent={false} absolute={false} />
-      <div className="mx-auto w-full max-w-3xl px-4 sm:px-8 py-12 lg:py-16 flex flex-col gap-y-12 lg:gap-y-16 mb-16">
-        <section className="flex flex-col gap-y-6">
-          {isPreviewMode && (
-            <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
-              Preview: this is what people will see when they sign up with your
-              invite link.
-            </p>
-          )}
-          {inviterLine}
-
-          {error && (
-            <Card style={CardStyle.Alert} className="border-red-400 bg-red-50">
-              <span className="text-red-700">{error}</span>
-            </Card>
-          )}
-
-          <div className="relative">
-            {isInviteValid ? (
-              <div>
-                <h2
-                  className="font-semibold text-3xl md:text-4xl font-serif mb-2"
-                  id="create-account"
-                >
-                  Create an account
-                </h2>
-                <p className="text-lg md:text-xl text-zinc-500">
-                  The Alliance is a global community of people who spend 15
-                  minutes a week on coordinated actions to improve the world.
-                  We&apos;re in an early, experimental phase—membership is
-                  invite-only.
-                </p>
-                {(signupSocialProofPending ||
-                  (signupSocialProof?.profiles?.length ?? 0) > 0) && (
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4 mt-3 min-h-9">
-                    <div className="flex flex-row items-center shrink-0">
-                      {signupSocialProofPending
-                        ? null
-                        : signupSocialProof?.profiles.map((p, i) => (
-                            <div
-                              key={p.id}
-                              className={
-                                i > 0
-                                  ? "-ml-1.5 ring-2 ring-white rounded-sm z-0 relative"
-                                  : "ring-2 ring-white rounded-sm z-0 relative"
-                              }
-                              style={{ zIndex: i }}
-                            >
-                              <AvatarProfile
-                                pfp={p.profilePicture ?? null}
-                                size="small"
-                                className="inline-block text-green"
-                              />
-                            </div>
-                          ))}
-                    </div>
-                    <p className="text-sm text-zinc-500 leading-snug">
-                      {signupSocialProofPending
-                        ? "…"
-                        : "Join " +
-                          formatSignupSocialProofNames(
-                            signupSocialProof?.profiles ?? [],
-                            memberCount ?? 100,
-                          )}
-                    </p>
-                  </div>
-                )}
-                <div className="mt-6">
-                  <SignupForm
-                    onSubmit={handleSubmit}
-                    loading={loading}
-                    referralCode={referralCode}
-                    disabled={isPreviewMode}
-                  />
+    <SiteRoot>
+      <Navbar />
+      <CenteredBand id="create-account">
+        {isPreviewMode && (
+          <p className="w-full max-w-xl border border-[var(--site-ink)]/15 bg-[var(--site-surface-alt)] px-4 py-3 text-sm text-[var(--site-ink)]/80">
+            Preview: this is what people will see when they sign up with your
+            invite link.
+          </p>
+        )}
+        {inviterLine}
+        <div className="flex flex-col items-center gap-4">
+          <DisplayHeading as="h1" className="text-4xl sm:text-5xl lg:text-6xl">
+            {inviteOnly
+              ? "The Alliance is currently invite-only"
+              : "Create an account"}
+          </DisplayHeading>
+          <DisplaySubtitle className="mx-auto text-center">
+            {inviteOnly
+              ? "If you received an invite link, please use it to sign up."
+              : HERO_SUBHEAD}
+          </DisplaySubtitle>
+        </div>
+        {error && (
+          <p className="text-sm font-medium text-red-600" role="alert">
+            {error}
+          </p>
+        )}
+        {!inviteOnly && isInviteValid && (
+          <>
+            {(signupSocialProofPending ||
+              (signupSocialProof?.profiles?.length ?? 0) > 0) && (
+              <div className="flex min-h-9 flex-col items-center justify-center gap-2 sm:flex-row">
+                <div className="flex shrink-0 flex-row items-center">
+                  {signupSocialProofPending
+                    ? null
+                    : signupSocialProof?.profiles.map((p, i) => (
+                        <div
+                          key={p.id}
+                          className={
+                            i > 0
+                              ? "-ml-1.5 relative z-0 rounded-sm ring-2 ring-[var(--site-surface)]"
+                              : "relative z-0 rounded-sm ring-2 ring-[var(--site-surface)]"
+                          }
+                          style={{ zIndex: i }}
+                        >
+                          <AvatarProfile
+                            pfp={p.profilePicture ?? null}
+                            size="small"
+                            className="inline-block"
+                          />
+                        </div>
+                      ))}
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-4 flex flex-col">
-                <p className="font-semibold">
-                  You were sent an invite that has already been used.
-                </p>
-                <p>
-                  If you haven&apos;t created an account yet, please reach out
-                  to whoever invited you for a new invite code.
-                </p>
-                <p>
-                  If you already have an account, please{" "}
-                  <Link to={href("/login")} className="text-link">
-                    log in
-                  </Link>
-                  .
+                <p className="text-sm leading-snug text-[var(--site-ink)]/60">
+                  {signupSocialProofPending
+                    ? "…"
+                    : "Join " +
+                      formatSignupSocialProofNames(
+                        signupSocialProof?.profiles ?? [],
+                        memberCount ?? 100,
+                      )}
                 </p>
               </div>
             )}
-          </div>
-
-          {!referralCode && (
-            <div className="text-center sm:text-left">
-              <p className="text-[11pt] text-zinc-600">
+            <div
+              className="w-full max-w-xl bg-zinc-100 p-7 text-left sm:p-9"
+              style={{ borderRadius: "var(--site-radius-card)" }}
+            >
+              <SignupForm
+                onSubmit={handleSubmit}
+                loading={loading}
+                referralCode={referralCode}
+                disabled={isPreviewMode}
+              />
+            </div>
+            {!referralCode && (
+              <p className="text-sm text-[var(--site-ink)]/60">
                 Already have an account?{" "}
-                <Link
-                  to={href("/login")}
-                  className="text-green hover:underline"
-                >
+                <Link to={LOGIN_HREF} className="text-[var(--site-link)]">
                   Log in
                 </Link>
               </p>
-            </div>
-          )}
-        </section>
-
-        <section className="flex flex-col">
-          <div className="flex flex-col gap-y-8 md:gap-y-14">
-            <div className="flex flex-col">
-              <h2 className="font-semibold text-2xl md:text-3xl font-serif mb-2">
-                Weekly online actions
-              </h2>
-              <div className="flex flex-col mb-6">
-                <p className="text-lg md:text-xl text-zinc-500">
-                  <Link to={href("/progress")}>
-                    Once you join, you&apos;ll complete actions on our web and
-                    mobile apps. Past actions have included contacting
-                    government officials, participating in studies, and
-                    providing feedback to nonprofits.
-                  </Link>
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-y-4">
-                <div className="p-1 md:p-2 bg-zinc-50 rounded-md">
-                  <LargeActionCard
-                    action={exampleMemberTaskAction}
-                    staticTaskFormSchema={exampleMemberTaskFormSchema}
-                    userRelation="none"
-                    onUpdateActionState={() => {}}
-                    onCompleteAction={() => {}}
-                    showDetails={false}
-                    className="pointer-events-none transform-[scale(0.9)] bg-white drop-shadow-xl drop-shadow-zinc-100"
-                  />
-                </div>
-                <p className="text-center text-zinc-500 text-base">
-                  Example task a member might see on the platform
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-col">
-              <h2 className="font-semibold text-2xl md:text-3xl font-serif mb-2">
-                Easy, tangible impact
-              </h2>
-              <div className="flex flex-col mb-6">
-                <p className="text-lg md:text-xl text-zinc-500">
-                  <Link to={href("/progress")}>
-                    Our full-time team designs actions to have a clear,
-                    measurable effect.
-                  </Link>
-                </p>
-              </div>
-              <div className="flex flex-col gap-4 mb-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {FEATURED_IMPACT_ACTIONS.slice(0, 4).map((action) => (
-                    <FeaturedImpactCard key={action.actionId} {...action} />
-                  ))}
-                </div>
-              </div>
-              <Link
-                to={href("/progress")}
-                className="whitespace-nowrap text-link text-base md:text-lg flex flex-row items-center gap-x-1 w-fit"
-              >
-                See more
-                <ChevronRight className="w-4 h-4" />
+            )}
+          </>
+        )}
+        {!inviteOnly && !isInviteValid && (
+          <div className="flex max-w-xl flex-col gap-4 text-lg leading-snug text-[var(--site-ink)]/80">
+            <p className="font-medium text-[var(--site-ink)]">
+              You were sent an invite that has already been used.
+            </p>
+            <p>
+              If you haven&apos;t created an account yet, please reach out to
+              whoever invited you for a new invite code.
+            </p>
+            <p>
+              If you already have an account, please{" "}
+              <Link to={LOGIN_HREF} className="text-[var(--site-link)]">
+                log in
               </Link>
-            </div>
-            <div className="flex flex-col">
-              <h2 className="font-semibold text-2xl md:text-3xl font-serif mb-2">
-                Focus on global crises
-              </h2>
-              <div className="flex flex-row gap-3 mb-6">
-                <p className="text-lg md:text-xl text-zinc-500">
-                  <Link to={href("/progress")}>
-                    We prioritize problems that cause enormous, irreversible
-                    harm.
-                  </Link>
-                </p>
-              </div>
-              <ExamplePriorityCardList />
-            </div>
-            <div className="flex flex-col">
-              <h2 className="font-semibold text-2xl md:text-3xl font-serif mb-2">
-                Commited community
-              </h2>
-              <p className="text-zinc-500 text-lg md:text-xl mb-6">
-                We ask members to show up consistently so that we can develop
-                precise, effective action plans.
-              </p>
-              <div className="flex flex-col gap-y-2">
-                {memberQuotes.map((memberQuote, index) => (
-                  <div
-                    className="text-base lg:text-lg bg-white p-4 sm:p-6 rounded-md border border-grey-1"
-                    key={`${memberQuote.userId}-${index}`}
-                  >
-                    <p>{memberQuote.quote}</p>
-                    <div className="flex flex-row items-center gap-x-2 mt-2">
-                      <AvatarProfile
-                        pfp={quotePfpByUserId.get(memberQuote.userId) ?? null}
-                        size="small"
-                        className="ml-1 inline-block text-green"
-                      />
-                      <span className="text-zinc-500">
-                        {memberQuote.author}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col">
-              <h2 className="font-semibold text-2xl md:text-3xl font-serif mb-2">
-                Help us grow
-              </h2>
-              <p className="text-zinc-500 text-lg md:text-xl mb-6">
-                You were invited because a current member of the Alliance
-                believes you are a good fit for our community. The more people
-                who join us, the more impact we will be able to achieve, and the
-                better we can test our processes and strategies.
-              </p>
-              <p className="text-zinc-500 text-lg md:text-xl mb-6">
-                Once we reach around 10,000 members, we will launch publicly.
-                You can read more about our roadmap on our{" "}
-                <Link to={href("/guide")} className="text-link">
-                  guide
-                </Link>
-                .
-              </p>
-              <a
-                href="#create-account"
-                className="bg-zinc-800 hover:bg-zinc-700 font-semibold text-center text-white px-6 py-4 rounded-md text-lg"
-              >
-                Join
-              </a>
-            </div>
+              .
+            </p>
           </div>
-        </section>
-      </div>
-      <Footer />
-    </div>
+        )}
+      </CenteredBand>
+      {!inviteOnly && isInviteValid && <LandingBody />}
+      <SiteFooter />
+    </SiteRoot>
   );
 };
 

@@ -127,7 +127,7 @@ export function PageShell({
 }: {
   title: string;
   subtitle?: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
   showJoinCta?: boolean;
   titleClassName?: string;
 }) {
