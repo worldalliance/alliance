@@ -11,7 +11,8 @@ import {
 import { rdHref, RedesignPage } from "../links";
 import { FooterKind, type RedesignTheme, type RedesignVersion } from "../theme";
 import { Logotype, RD_COL, RdArrow, RdTrigger } from "../ui";
-import { useJoinTarget } from "./JoinRequest";
+
+const JOIN_MAILTO = `mailto:contact@worldalliance.org?subject=${encodeURIComponent("I'd like to join the Alliance")}`;
 
 function FooterAnchor({
   link,
@@ -20,16 +21,14 @@ function FooterAnchor({
   link: SiteLink;
   theme: RedesignTheme;
 }) {
-  const joinTarget = useJoinTarget(theme.version);
-  // On the version that keeps the join form in a modal, this opens it.
-  const target =
+  const href =
     link.page === RedesignPage.Join
-      ? joinTarget
-      : { href: rdHref(theme.version, link.page) };
+      ? JOIN_MAILTO
+      : rdHref(theme.version, link.page);
 
   return (
     <RdTrigger
-      {...target}
+      href={href}
       className="-my-2.5 inline-flex items-center gap-1.5 py-2.5 text-white hover:underline"
     >
       {link.label}
