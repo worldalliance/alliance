@@ -74,6 +74,9 @@ const renderNewThreadPage = () =>
     </MemoryRouter>,
   );
 
+const schedulePicker = () =>
+  document.querySelector<HTMLInputElement>("#schedulePostDate")!;
+
 const publish = async () => {
   fireEvent.change(screen.getByPlaceholderText("Enter title"), {
     target: { value: "a title" },
@@ -103,5 +106,50 @@ describe("PostFormPage", () => {
     await act(async () => land());
 
     expect(sessionStorage.getItem(draftStorageKey)).toBeNull();
+  });
+
+  it("freezes the form while the create is in flight", async () => {
+    seedSavedDraft();
+    const land = deferCreate();
+    renderNewThreadPage();
+
+    await publish();
+
+    expect(
+      screen.getByPlaceholderText<HTMLInputElement>("Enter title").disabled,
+    ).toBe(true);
+    expect(
+      screen.getByPlaceholderText<HTMLTextAreaElement>(
+        "Write your post content here...",
+      ).readOnly,
+    ).toBe(true);
+    expect(
+      screen.getByLabelText<HTMLInputElement>("Schedule post for later")
+        .disabled,
+    ).toBe(true);
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", { name: "Cancel" })
+        .disabled,
+    ).toBe(true);
+
+    await act(async () => land());
+  });
+
+  it("freezes the schedule picker while the create is in flight", async () => {
+    seedSavedDraft();
+    const land = deferCreate();
+    renderNewThreadPage();
+
+    fireEvent.click(screen.getByLabelText("Schedule post for later"));
+    // The box seeds the picker with now, which the submit then refuses as past.
+    fireEvent.change(schedulePicker(), {
+      target: { value: "2999-01-01T10:00" },
+    });
+
+    await publish();
+
+    expect(schedulePicker().disabled).toBe(true);
+
+    await act(async () => land());
   });
 });

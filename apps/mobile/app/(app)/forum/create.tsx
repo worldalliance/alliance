@@ -91,6 +91,7 @@ export default function CreatePostScreen() {
           title="Cancel"
           onPress={handleCancel}
           color={ButtonColor.Light}
+          disabled={submitting}
         />
         <Text className="text-2xl" weight={FontWeight.Bold}>
           New Post
@@ -109,6 +110,8 @@ export default function CreatePostScreen() {
             label="Title"
             value={title}
             onChangeText={setTitle}
+            editable={!submitting}
+            containerClassName={submitting ? "opacity-50" : undefined}
             placeholder="Enter post title"
             error={titleError}
             required
@@ -118,6 +121,8 @@ export default function CreatePostScreen() {
             label="Content"
             value={content}
             onChangeText={setContent}
+            editable={!submitting}
+            containerClassName={submitting ? "opacity-50" : undefined}
             placeholder="Write your post content here..."
             multiline
             error={contentError}

@@ -224,7 +224,8 @@ const PostFormPage: React.FC = () => {
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                disabled={isSubmitting}
+                className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                 placeholder="Enter title"
                 required
               />
@@ -238,6 +239,7 @@ const PostFormPage: React.FC = () => {
                 <EditableContentForm
                   value={content}
                   onChange={setContent}
+                  disabled={isSubmitting}
                   clearDraftSignal={clearDraftSignal}
                   expanded={true}
                   placeholder="Write your post content here..."
@@ -256,6 +258,7 @@ const PostFormPage: React.FC = () => {
                     <LargeCheckbox
                       label="Schedule post for later"
                       checked={useSchedulePost}
+                      disabled={isSubmitting}
                       onChange={() => {
                         setUseSchedulePost(!useSchedulePost);
                         if (!useSchedulePost && !scheduledVisibleAt) {
@@ -271,6 +274,7 @@ const PostFormPage: React.FC = () => {
                         <DateTimePicker
                           id="schedulePostDate"
                           value={scheduledVisibleAt}
+                          disabled={isSubmitting}
                           onChange={({ utcValue }) => {
                             setScheduledVisibleAt(utcValue);
                             if (!utcValue) {
@@ -283,7 +287,7 @@ const PostFormPage: React.FC = () => {
                               setError(null);
                             }
                           }}
-                          inputClassName="-my-3"
+                          inputClassName="-my-3 disabled:opacity-50"
                         />
                       </div>
                     )}
@@ -294,6 +298,7 @@ const PostFormPage: React.FC = () => {
                 <Button
                   onClick={() => navigate(href("/forum"))}
                   color={ButtonColor.Light}
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </Button>
