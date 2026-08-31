@@ -54,6 +54,7 @@ import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
 import { AggregateBuilder } from "./AggregateBuilder";
 import ConfirmDialog from "./ConfirmDialog";
 import {
+  createDisplayBlock,
   EditableBigLinkBlock,
   EditableChatTranscriptBlock,
   EditableCopyTextBlock,
@@ -1173,128 +1174,7 @@ export function FormBuilder(props: FormBuilderProps) {
   };
 
   const addDisplayBlock = (kind: DisplayKind, insertIndex?: number) => {
-    const blockId = `block-${Date.now()}`;
-    let newBlock: DisplayBlock;
-
-    switch (kind) {
-      case "header":
-        newBlock = {
-          type: "display",
-          kind: "header",
-          id: blockId,
-          text: "Header Text",
-          level: 2,
-        };
-        break;
-      case "text":
-        newBlock = {
-          type: "display",
-          kind: "text",
-          id: blockId,
-          text: "Text content",
-        };
-        break;
-      case "label":
-        newBlock = {
-          type: "display",
-          kind: "label",
-          id: blockId,
-          text: "Label text",
-        };
-        break;
-      case "divider":
-        newBlock = {
-          type: "display",
-          kind: "divider",
-          id: blockId,
-          thickness: "thin",
-        };
-        break;
-      case "spacer":
-        newBlock = { type: "display", kind: "spacer", id: blockId, size: "md" };
-        break;
-      case "html":
-        newBlock = {
-          type: "display",
-          kind: "html",
-          id: blockId,
-          html: "<p>Custom HTML content</p>",
-        };
-        break;
-      case "images":
-        newBlock = {
-          type: "display",
-          kind: "images",
-          id: blockId,
-          images: [],
-        };
-        break;
-      case "video":
-        newBlock = {
-          type: "display",
-          kind: "video",
-          id: blockId,
-          src: "",
-        };
-        break;
-      case "quote":
-        newBlock = {
-          type: "display",
-          kind: "quote",
-          id: blockId,
-          text: "body text",
-        };
-        break;
-      case "biglink":
-        newBlock = {
-          type: "display",
-          kind: "biglink",
-          id: blockId,
-          text: "Link title",
-          url: "/",
-        };
-        break;
-      case "copytext":
-        newBlock = {
-          type: "display",
-          kind: "copytext",
-          id: blockId,
-          text: "",
-        };
-        break;
-      case "previousAnswer":
-        newBlock = {
-          type: "display",
-          kind: "previousAnswer",
-          id: blockId,
-          sourceFormId: 0,
-          sourceFieldId: "",
-          title: "",
-          showLabel: true,
-        };
-        break;
-      case "userLocation":
-        newBlock = {
-          type: "display",
-          kind: "userLocation",
-          id: blockId,
-          title: "Your location",
-          emptyText: "No location set",
-        };
-        break;
-      case "chatTranscript":
-        newBlock = {
-          type: "display",
-          kind: "chatTranscript",
-          id: blockId,
-          messages: [],
-        };
-        break;
-      default:
-        console.error(`Unknown block kind: ${kind satisfies never}`);
-        return;
-    }
-
+    const newBlock = createDisplayBlock(kind, `block-${Date.now()}`);
     const targetIndex = insertIndex ?? currentPage.fields.length;
     const newFields = [...currentPage.fields];
     newFields.splice(targetIndex, 0, newBlock);
