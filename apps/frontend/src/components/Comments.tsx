@@ -35,8 +35,8 @@ import { Link, href } from "react-router";
 import { useAuth } from "../lib/AuthContext";
 import { CommentsProvider, useCommentTree } from "./forum/CommentsContext";
 import ReplyComponent from "./forum/ReplyComponent";
-import ReplyForm from "./forum/ReplyForm";
 import TagChips from "./forum/TagChips";
+import TopLevelComposer from "./forum/TopLevelComposer";
 
 const NO_TAGS: readonly PostTagDto[] = [];
 
@@ -297,11 +297,9 @@ const Comments = ({
   return (
     <CommentsProvider value={ctxValue}>
       <div className={className}>
-        {user && !tree.replyingTo && showForm ? (
-          <ReplyForm
-            parentId={null}
-            editableContent={tree.editableContent}
-            setEditableContent={tree.setEditableContent}
+        {user && showForm ? (
+          <TopLevelComposer
+            replyingTo={tree.replyingTo}
             onSubmit={tree.handleSubmitReply}
             setReplyingTo={tree.setReplyingTo}
             focusOnMount={!!autofocus && tree.focusComposer}

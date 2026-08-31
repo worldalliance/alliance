@@ -25,14 +25,10 @@ const wrapper = ({ children }: PropsWithChildren) => (
   </QueryClientProvider>
 );
 
-it("leaves the thread draft alone when a reply posts", async () => {
+it("leaves the reply target alone when a reply posts", async () => {
   const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
 
   act(() => {
-    result.current.setEditableContent({
-      body: "a thread comment I am still writing",
-      attachments: [],
-    });
     result.current.setReplyingTo(5);
   });
 
@@ -43,9 +39,6 @@ it("leaves the thread draft alone when a reply posts", async () => {
     });
   });
 
-  expect(result.current.editableContent.body).toBe(
-    "a thread comment I am still writing",
-  );
   expect(result.current.replyingTo).toBe(5);
   expect(result.current.focusComposer).toBe(false);
 });

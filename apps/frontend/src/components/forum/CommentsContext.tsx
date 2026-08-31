@@ -25,8 +25,6 @@ import {
   useContext,
   useEffect,
   useState,
-  type Dispatch,
-  type SetStateAction,
 } from "react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "../../lib/AuthContext";
@@ -92,8 +90,6 @@ export interface UseCommentTreeResult {
   focusComposer: boolean;
   newlyAddedReplies: Set<number>;
   highlightedReplyId: number | null;
-  editableContent: CreateEditableContentDto;
-  setEditableContent: Dispatch<SetStateAction<CreateEditableContentDto>>;
   selectedTagId: number | undefined;
   setSelectedTagId: (id: number | undefined) => void;
   tagFilter: TagFilter;
@@ -115,8 +111,6 @@ export function useCommentTree(
     parentId: number | null;
     message: string;
   } | null>(null);
-  const [editableContent, setEditableContent] =
-    useState<CreateEditableContentDto>({ body: "", attachments: [] });
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   // The composer takes the caret when the user asked for it, not when it comes
   // back after a reply posted further down the thread.
@@ -359,8 +353,6 @@ export function useCommentTree(
     focusComposer,
     newlyAddedReplies,
     highlightedReplyId,
-    editableContent,
-    setEditableContent,
     selectedTagId,
     setSelectedTagId,
     tagFilter,
