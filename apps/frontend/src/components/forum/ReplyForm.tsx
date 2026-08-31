@@ -1,3 +1,4 @@
+import { hasContent } from "@alliance/common/editableContent";
 import { CreateEditableContentDto, PostTagDto } from "@alliance/shared/client";
 import {
   uploadAttachments,
@@ -58,10 +59,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
   selectedTagId,
   setSelectedTagId,
 }: ReplyFormProps) => {
-  const handedDraft = useRef(
-    editableContent.body.trim() !== "" ||
-      editableContent.attachments.length > 0,
-  );
+  const handedDraft = useRef(hasContent(editableContent));
   // Post and Cancel render only while expanded, so a draft handed in opens it.
   const [expanded, setExpanded] = useState(
     startExpanded || handedDraft.current,
@@ -187,15 +185,9 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
             onDismissError?.();
             setUploadError(null);
             setEditableContent(val);
-            if ((val.body || val.attachments.length > 0) && !expanded)
-              setExpanded(true);
+            if (hasContent(val) && !expanded) setExpanded(true);
 
-            if (
-              expanded &&
-              val.body.trim() === "" &&
-              val.attachments.length === 0
-            )
-              setExpanded(false);
+            if (expanded && !hasContent(val)) setExpanded(false);
           }}
           placeholder={"Add a comment..."}
         />
@@ -228,8 +220,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
               disabled={
                 isPosting ||
                 (needsTag && selectedTagId === undefined) ||
-                (!editableContent.body.trim() &&
-                  editableContent.attachments.length === 0)
+                !hasContent(editableContent)
               }
               className="transition disabled:opacity-50 text-nowrap"
             >

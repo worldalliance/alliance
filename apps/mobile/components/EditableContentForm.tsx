@@ -1,3 +1,4 @@
+import { hasContent } from "@alliance/common/editableContent";
 import { CreateEditableContentDto } from "@alliance/shared/client";
 import { photoPickFailed, unreadablePhotos } from "@alliance/shared/lib/copy";
 import { File, Paths } from "expo-file-system";
@@ -285,9 +286,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
     onChange({ ...value, attachments: next });
   };
 
-  const canSubmit =
-    !submitDisabled &&
-    (value.body.trim() !== "" || (value.attachments?.length ?? 0) > 0);
+  const canSubmit = !submitDisabled && hasContent(value);
 
   const toolbarTap = (onTap: () => void) => {
     if (toolbarHideRef.current != null) {

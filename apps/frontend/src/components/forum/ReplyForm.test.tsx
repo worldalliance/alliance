@@ -394,6 +394,50 @@ describe("ReplyForm", () => {
     expect(screen.queryByRole("button", { name: "Post" })).toBeNull();
   });
 
+  it("stays shut on a space, which is not enough to post", () => {
+    render(
+      <Harness
+        onSubmit={() => {}}
+        initialContent={{ body: "", attachments: [] }}
+        startExpanded={false}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: " " } });
+
+    expect(screen.queryByRole("button", { name: "Post" })).toBeNull();
+  });
+
+  it("opens on the first real character, so the text has a Post button", () => {
+    render(
+      <Harness
+        onSubmit={() => {}}
+        initialContent={{ body: "", attachments: [] }}
+        startExpanded={false}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "a" } });
+
+    expect(screen.getByRole("button", { name: "Post" })).toBeTruthy();
+  });
+
+  it("shuts again once the text it opened on is gone", () => {
+    render(
+      <Harness
+        onSubmit={() => {}}
+        initialContent={{ body: "", attachments: [] }}
+        startExpanded={false}
+      />,
+    );
+
+    const textbox = screen.getByRole("textbox");
+    fireEvent.change(textbox, { target: { value: "a" } });
+    fireEvent.change(textbox, { target: { value: "" } });
+
+    expect(screen.queryByRole("button", { name: "Post" })).toBeNull();
+  });
+
   it("empties the draft it posted, so reopening the composer starts clean", async () => {
     render(<Harness onSubmit={(_content, onSuccess) => onSuccess?.()} />);
 
