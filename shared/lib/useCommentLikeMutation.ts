@@ -65,11 +65,13 @@ export function useCommentLikeMutation({
     },
   });
 
+  const { mutateAsync } = mutation;
+
   const handleLikeReply = useCallback(
     (replyId: number, unlike = false) => {
-      return mutation.mutateAsync({ replyId, unlike });
+      return mutateAsync({ replyId, unlike });
     },
-    [mutation],
+    [mutateAsync],
   );
 
   return handleLikeReply;

@@ -198,126 +198,132 @@ export function useCommentTree(
     return () => clearTimeout(timeout);
   }, [comments, lastAddedReplyId]);
 
-  const handleSubmitReply = async (
-    contentDto: CreateEditableContentDto,
-    onSuccess?: () => void,
-  ) => {
-    try {
-      setSubmitError(null);
-      const commentDto: CreateCommentDto = {
-        parentObjectId: Number(objectId),
-        parentId: replyingTo ?? undefined,
-        parentObjectType: type,
-        editableContent: contentDto,
-        tagId: replyingTo ? undefined : selectedTagId,
-      };
+  const handleSubmitReply = useCallback(
+    async (contentDto: CreateEditableContentDto, onSuccess?: () => void) => {
+      try {
+        setSubmitError(null);
+        const commentDto: CreateCommentDto = {
+          parentObjectId: Number(objectId),
+          parentId: replyingTo ?? undefined,
+          parentObjectType: type,
+          editableContent: contentDto,
+          tagId: replyingTo ? undefined : selectedTagId,
+        };
 
-      const response = await forumCreateComment({ body: commentDto });
+        const response = await forumCreateComment({ body: commentDto });
 
-      if (response.error) {
+        if (response.error) {
+          setSubmitError({
+            parentId: replyingTo,
+            message: errorMessage({
+              error: response.error,
+              fallback: "Failed to submit reply",
+            }),
+          });
+          return;
+        }
+
+        if (response.data) {
+          const newReplyId = response.data.id;
+
+          setNewlyAddedReplies((prev) => new Set(prev).add(newReplyId));
+          setLastAddedReplyId(newReplyId);
+
+          setTimeout(() => {
+            setNewlyAddedReplies((prev) => {
+              const newSet = new Set(prev);
+              newSet.delete(newReplyId);
+              return newSet;
+            });
+          }, 3000);
+
+          fetchComments();
+          onSuccess?.();
+        }
+
+        if (replyingTo) {
+          setFocusComposer(false);
+        } else {
+          setTagFilter(selectedTagId);
+        }
+      } catch (err) {
+        console.error("Error posting reply:", err);
+        captureException(ExceptionEvent.PostReplyError, err);
         setSubmitError({
           parentId: replyingTo,
-          message: errorMessage({
-            error: response.error,
-            fallback: "Failed to submit reply",
-          }),
+          message: "Failed to submit reply",
         });
-        return;
       }
+    },
+    [objectId, type, replyingTo, selectedTagId, fetchComments],
+  );
 
-      if (response.data) {
-        const newReplyId = response.data.id;
-
-        setNewlyAddedReplies((prev) => new Set(prev).add(newReplyId));
-        setLastAddedReplyId(newReplyId);
-
-        setTimeout(() => {
-          setNewlyAddedReplies((prev) => {
-            const newSet = new Set(prev);
-            newSet.delete(newReplyId);
-            return newSet;
-          });
-        }, 3000);
-
-        fetchComments();
-        onSuccess?.();
+  const handleDeleteReply = useCallback(
+    async (replyId: number) => {
+      if (window.confirm("Are you sure you want to delete this reply?")) {
+        try {
+          await forumDeleteComment({ path: { id: replyId } });
+          fetchComments();
+        } catch (err) {
+          console.error("Error deleting reply:", err);
+          setError("Failed to delete reply");
+        }
       }
+    },
+    [fetchComments],
+  );
 
-      if (replyingTo) {
-        setFocusComposer(false);
-      } else {
-        setTagFilter(selectedTagId);
-      }
-    } catch (err) {
-      console.error("Error posting reply:", err);
-      captureException(ExceptionEvent.PostReplyError, err);
-      setSubmitError({
-        parentId: replyingTo,
-        message: "Failed to submit reply",
-      });
-    }
-  };
-
-  const handleDeleteReply = async (replyId: number) => {
-    if (window.confirm("Are you sure you want to delete this reply?")) {
-      try {
-        await forumDeleteComment({ path: { id: replyId } });
-        fetchComments();
-      } catch (err) {
-        console.error("Error deleting reply:", err);
-        setError("Failed to delete reply");
-      }
-    }
-  };
-
-  const handleUpdateReply = async (
-    replyId: number,
-    content: CreateEditableContentDto,
-  ): Promise<Result<void, string>> => {
-    const response = await R.fromPromise(
-      forumUpdateComment({
-        path: { id: replyId },
-        body: { editableContent: content },
-      }),
-    );
-
-    if (!response.ok) {
-      console.error("Failed to update comment:", response.error);
-      return R.failure("Failed to save your edit");
-    }
-
-    if (response.value.error) {
-      return R.failure(
-        errorMessage({
-          error: response.value.error,
-          fallback: "Failed to save your edit",
+  const handleUpdateReply = useCallback(
+    async (
+      replyId: number,
+      content: CreateEditableContentDto,
+    ): Promise<Result<void, string>> => {
+      const response = await R.fromPromise(
+        forumUpdateComment({
+          path: { id: replyId },
+          body: { editableContent: content },
         }),
       );
-    }
 
-    setComments((prevComments) => {
-      if (!prevComments) return null;
+      if (!response.ok) {
+        console.error("Failed to update comment:", response.error);
+        return R.failure("Failed to save your edit");
+      }
 
-      const updateRecursively = (comments: CommentDto[]): CommentDto[] => {
-        return comments.map((comment) => {
-          if (comment.id === replyId) {
-            return { ...comment, editableContent: { ...content, id: -1 } };
-          }
-          if (comment.children) {
-            return {
-              ...comment,
-              children: updateRecursively(comment.children),
-            };
-          }
-          return comment;
-        });
-      };
+      if (response.value.error) {
+        return R.failure(
+          errorMessage({
+            error: response.value.error,
+            fallback: "Failed to save your edit",
+          }),
+        );
+      }
 
-      return updateRecursively(prevComments);
-    });
+      setComments((prevComments) => {
+        if (!prevComments) return null;
 
-    return R.success(undefined);
-  };
+        const updateRecursively = (comments: CommentDto[]): CommentDto[] => {
+          return comments.map((comment) => {
+            if (comment.id === replyId) {
+              return { ...comment, editableContent: { ...content, id: -1 } };
+            }
+            if (comment.children) {
+              return {
+                ...comment,
+                children: updateRecursively(comment.children),
+              };
+            }
+            return comment;
+          });
+        };
+
+        return updateRecursively(prevComments);
+      });
+
+      return R.success(undefined);
+    },
+    [],
+  );
 
   const { user } = useAuth();
 
@@ -327,15 +333,21 @@ export function useCommentTree(
     fetchComments,
   });
 
-  const submitErrorFor = (parentId: number | null) =>
-    submitError?.parentId === parentId ? submitError.message : null;
+  const submitErrorFor = useCallback(
+    (parentId: number | null) =>
+      submitError?.parentId === parentId ? submitError.message : null,
+    [submitError],
+  );
 
-  const clearSubmitError = () => setSubmitError(null);
+  const clearSubmitError = useCallback(() => setSubmitError(null), []);
 
-  const handlePinReply = async (replyId: number) => {
-    await forumPinCommentAdmin({ path: { id: replyId } });
-    fetchComments();
-  };
+  const handlePinReply = useCallback(
+    async (replyId: number) => {
+      await forumPinCommentAdmin({ path: { id: replyId } });
+      fetchComments();
+    },
+    [fetchComments],
+  );
 
   return {
     comments,

@@ -39,6 +39,7 @@ import TagChips from "./forum/TagChips";
 import TopLevelComposer from "./forum/TopLevelComposer";
 
 const NO_TAGS: readonly PostTagDto[] = [];
+const NO_EXPERTS: number[] = [];
 
 export interface CommentsProps {
   objectId: number;
@@ -110,7 +111,7 @@ const Comments = ({
   autofocus,
   showForm = true,
   initialComments,
-  expertIds = [],
+  expertIds = NO_EXPERTS,
   expertLabel,
   showClusterTags = false,
   qaMode = false,
@@ -307,7 +308,7 @@ const Comments = ({
             startExpanded={autofocus}
             error={tree.submitErrorFor(null)}
             onDismissError={tree.clearSubmitError}
-            tags={isPostComments ? tags : []}
+            tags={isPostComments ? tags : NO_TAGS}
             selectedTagId={tree.selectedTagId}
             setSelectedTagId={tree.setSelectedTagId}
           />

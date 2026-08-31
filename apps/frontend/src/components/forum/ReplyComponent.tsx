@@ -9,7 +9,7 @@ import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRende
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
 import { formatDistanceToNow } from "date-fns";
 import { ChevronDown, Pin } from "lucide-react";
-import { useState } from "react";
+import { memo, useState } from "react";
 import { Link, href } from "react-router";
 import { useCommentEditing } from "../../hooks/useCommentEditing";
 import { LikeActionButton } from "../LikeFooter";
@@ -237,7 +237,7 @@ const ReplyContent = ({
   );
 };
 
-const ReplyComponent = ({ reply, depth = 0 }: ReplyComponentProps) => {
+const ReplyComponent = memo(({ reply, depth = 0 }: ReplyComponentProps) => {
   const ctx = useCommentsContext();
   const maxDepth = 10;
   const canNest = depth < maxDepth;
@@ -352,6 +352,8 @@ const ReplyComponent = ({ reply, depth = 0 }: ReplyComponentProps) => {
       {renderChildren()}
     </div>
   );
-};
+});
+
+ReplyComponent.displayName = "ReplyComponent";
 
 export default ReplyComponent;

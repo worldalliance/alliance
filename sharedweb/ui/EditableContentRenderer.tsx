@@ -1,6 +1,6 @@
 import { EditableContentDto } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
-import React from "react";
+import React, { memo } from "react";
 import AppMarkdownWrapper from "./AppMarkdownWrapper";
 import { ImageThumbnailGrid } from "./ImageLightbox";
 
@@ -54,4 +54,4 @@ const EditableContentRenderer: React.FC<EditableContentRendererProps> = ({
   );
 };
 
-export default EditableContentRenderer;
+export default memo(EditableContentRenderer);

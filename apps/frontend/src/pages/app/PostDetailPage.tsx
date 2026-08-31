@@ -220,12 +220,12 @@ const PostDetailPage: React.FC = () => {
           objectId={post.id}
           type={"post"}
           qaMode={post.qaMode}
-          expertIds={post.qaMode ? (post.expertIds ?? []) : []}
+          expertIds={post.qaMode ? post.expertIds : undefined}
           expertLabel={
             post.qaMode ? (post.expertLabel ?? undefined) : undefined
           }
           showClusterTags={post.showClusterTags}
-          tags={post.tags ?? []}
+          tags={post.tags}
           className="px-2 md:px-4"
         />
       </div>
