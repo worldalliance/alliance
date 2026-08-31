@@ -26,11 +26,13 @@ Findings and the judgment behind each field come from the review skill. Report t
 
 Before you start reviewing, create `.scratch/review/<base-sha>.json` holding `{"base": <sha>, "summary": "", "findings": []}`. Create, modify, or delete findings as you review the commit.
 
-Finish by re-reading the file and holding every finding to the bar: evidence naming something you actually ran, the tier you would defend if the author pushed back, worth their time to read. Delete or downgrade the rest, then write the summary from what survived. Your last message says where the file is, in addition to the markdown-style review.
+Your last message says where the file is, in addition to the markdown-style review.
+
+Do not delete this file after your review. It will be read later.
 
 # Applying fixes
 
-Asked to apply changes after your review, you own the git history for them. This waives the root `AGENTS.md` rule on git writes for the rest of the task: commit, amend, and rebase without asking again.
+If you are asked to apply changes after your review, you own the git history for them. This waives the root `AGENTS.md` rule on git writes for the rest of the task: commit, amend, and rebase without asking again.
 
 Place each change in the commit that owns it. Fold a fix into the base commit while the base commit stays one standalone change. Once folding would give it a second purpose, the fix takes its own commit, ordered so each commit still deploys alone.
 
