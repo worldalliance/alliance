@@ -162,6 +162,21 @@ const resolvingTo = (
     body,
   );
 
+describe("TZ_OPTIONS", () => {
+  it("offers only zones this runtime can format", () => {
+    const rejected = TZ_OPTIONS.filter(
+      ({ tz }) => formatNowTimeInTz(tz) === null,
+    );
+
+    expect(rejected.map(({ tz }) => tz)).toEqual([]);
+  });
+
+  it("offers India, which a TODO once claimed Intl could not place", () => {
+    expect(TZ_OPTIONS.map(({ tz }) => tz)).toContain("Asia/Kolkata");
+    expect(getOffsetMinutes("Asia/Kolkata")).toBe(330);
+  });
+});
+
 describe("a zone Intl rejects", () => {
   it("keeps its row, with no clock rather than no zone", () => {
     TZ_OPTIONS.push({ group: "Asia", label: "Nowhere", tz: "Not/AZone" });
