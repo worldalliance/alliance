@@ -61,6 +61,7 @@ const FACTORIES: {
     id,
     messages: [],
   }),
+  accordion: (id) => ({ type: "display", kind: "accordion", id, sections: [] }),
 };
 
 export const createDisplayBlock = <K extends DisplayKind>(

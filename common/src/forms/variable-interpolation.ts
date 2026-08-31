@@ -28,6 +28,7 @@ const INTERPOLATED_DISPLAY_FIELDS: Record<DisplayKind, readonly string[]> = {
   divider: [],
   spacer: [],
   html: [],
+  accordion: [],
 };
 
 const IMAGES_ITEM_PROPS = ["alt", "caption"] as const;
@@ -130,6 +131,16 @@ export function interpolateDisplayBlock<T extends DisplayBlock>(
     );
     return images === result.images ? result : { ...result, images };
   }
+  if (result.kind === "accordion") {
+    const sections = mapPreservingIdentity(result.sections, (section) => {
+      const titled = interpolateStringProps(section, ["title"], values);
+      const blocks = mapPreservingIdentity(titled.blocks, (nested) =>
+        interpolateDisplayBlock(nested, values),
+      );
+      return blocks === titled.blocks ? titled : { ...titled, blocks };
+    });
+    return sections === result.sections ? result : { ...result, sections };
+  }
   if (result.kind !== "chatTranscript") return result;
 
   const messages = mapPreservingIdentity(result.messages, (message) =>
@@ -222,6 +233,12 @@ export function forEachInterpolatableText(
       element.messages.forEach((message, index) =>
         visit(message.text, `${location}.messages[${index}].text`),
       );
+    }
+    if (element.kind === "accordion") {
+      element.sections.forEach((section, index) => {
+        visit(section.title, `${location}.sections[${index}].title`);
+        for (const nested of section.blocks) visitElement(nested);
+      });
     }
   };
 

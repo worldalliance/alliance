@@ -518,6 +518,28 @@ describe("interpolateDisplayBlock", () => {
     expect(block.messages[0].text).toBe("You saved 42");
     expect(block.messages[1].text).toBe("nice");
   });
+
+  it("substitutes into section titles and the blocks they hold", () => {
+    const block = interpolateDisplayBlock(
+      {
+        id: "b",
+        type: "display",
+        kind: "accordion",
+        sections: [
+          {
+            id: "s1",
+            title: "Saved #{total}",
+            blocks: [textBlock("n1", "You saved #{total}")],
+          },
+        ],
+      },
+      values,
+    );
+    expect(block.sections[0].title).toBe("Saved 42");
+    expect(block.sections[0].blocks[0]).toMatchObject({
+      text: "You saved 42",
+    });
+  });
 });
 
 describe("interpolateFieldText", () => {
@@ -643,6 +665,18 @@ describe("everywhere the validator accepts a reference is interpolated", () => {
               kind: "chatTranscript",
               leftName: "#{total}",
               messages: [{ side: "left", text: "#{total}" }],
+            },
+            {
+              id: "acc",
+              type: "display",
+              kind: "accordion",
+              sections: [
+                {
+                  id: "s1",
+                  title: "#{total}",
+                  blocks: [textBlock("nested", "#{total}")],
+                },
+              ],
             },
           ],
         },

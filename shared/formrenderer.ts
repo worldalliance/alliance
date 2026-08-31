@@ -143,6 +143,7 @@ const KNOWN_FORM_ELEMENT_KINDS_RECORD = {
   previousAnswer: true,
   userLocation: true,
   chatTranscript: true,
+  accordion: true,
 } as const satisfies Record<FormElementKind, true>;
 
 const KNOWN_FORM_ELEMENT_KINDS = new Set(
@@ -157,11 +158,28 @@ const KNOWN_FORM_ELEMENT_KINDS = new Set(
 export function findUnknownFormElementKind(
   schema: FormSchema,
 ): FormElementKind | null {
+  const findUnknown = (
+    element: AnyField | DisplayBlock,
+  ): FormElementKind | null => {
+    if (!KNOWN_FORM_ELEMENT_KINDS.has(element.kind)) {
+      return element.kind;
+    }
+    if (element.kind !== "accordion") {
+      return null;
+    }
+    for (const section of element.sections) {
+      for (const nested of section.blocks) {
+        const unknown = findUnknown(nested);
+        if (unknown) return unknown;
+      }
+    }
+    return null;
+  };
+
   for (const page of schema.pages ?? []) {
     for (const element of page.fields ?? []) {
-      if (!KNOWN_FORM_ELEMENT_KINDS.has(element.kind)) {
-        return element.kind;
-      }
+      const unknown = findUnknown(element);
+      if (unknown) return unknown;
     }
   }
   return null;

@@ -330,18 +330,24 @@ export class TasksService {
   async transformImageUrls(form: Form): Promise<Form> {
     const schema = structuredClone(form.formSnapshot.schema);
     const pages = schema.pages as Page[];
-    for (const page of pages) {
-      for (const field of page.fields) {
-        if (field.kind === "images") {
-          field.images = field.images.map((image) => ({
-            ...image,
-            src: getImageSource(image.src),
-          }));
-        }
-        if (field.kind === "video") {
-          field.src = getVideoSource(field.src);
+    const transformElement = (field: Page["fields"][number]): void => {
+      if (field.kind === "images") {
+        field.images = field.images.map((image) => ({
+          ...image,
+          src: getImageSource(image.src),
+        }));
+      }
+      if (field.kind === "video") {
+        field.src = getVideoSource(field.src);
+      }
+      if (field.kind === "accordion") {
+        for (const section of field.sections) {
+          section.blocks.forEach(transformElement);
         }
       }
+    };
+    for (const page of pages) {
+      page.fields.forEach(transformElement);
     }
     form.formSnapshot = this.cloneFormSnapshotWithSchema(
       form.formSnapshot,

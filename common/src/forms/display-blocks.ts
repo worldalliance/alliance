@@ -1,4 +1,5 @@
 import z from "zod";
+import type { Assert, Equal } from "../types";
 import { visibleIfFormulaSchema } from "./visible-if-formula";
 
 const baseContentFields = {
@@ -284,6 +285,51 @@ export const chatTranscriptBlockSchema = z.strictObject({
 });
 export type ChatTranscriptBlock = z.infer<typeof chatTranscriptBlockSchema>;
 
+// Per-viewer fields are omitted rather than ignored, so a nested block cannot
+// carry a visibility rule or a per-user override that nothing evaluates.
+const NESTED_OMITTED_FIELDS = {
+  visibleIfFormula: true,
+  manualPerUser: true,
+  manualUserContent: true,
+} as const;
+
+export const nestedDisplayBlockSchema = z.discriminatedUnion("kind", [
+  headerBlockSchema.omit(NESTED_OMITTED_FIELDS),
+  textBlockSchema.omit(NESTED_OMITTED_FIELDS),
+  quoteBlockSchema.omit(NESTED_OMITTED_FIELDS),
+  labelBlockSchema.omit(NESTED_OMITTED_FIELDS),
+  dividerBlockSchema.omit(NESTED_OMITTED_FIELDS),
+  spacerBlockSchema.omit(NESTED_OMITTED_FIELDS),
+  htmlBlockSchema.omit(NESTED_OMITTED_FIELDS),
+  imagesBlockSchema.omit(NESTED_OMITTED_FIELDS),
+  videoBlockSchema.omit(NESTED_OMITTED_FIELDS),
+  bigLinkBlockSchema.omit(NESTED_OMITTED_FIELDS),
+  copyTextBlockSchema.omit(NESTED_OMITTED_FIELDS),
+  chatTranscriptBlockSchema.omit(NESTED_OMITTED_FIELDS),
+]);
+export type NestedDisplayBlock = z.infer<typeof nestedDisplayBlockSchema>;
+export type NestedDisplayKind = NestedDisplayBlock["kind"];
+
+export const NESTABLE_DISPLAY_KINDS = nestedDisplayBlockSchema.options.map(
+  (option) => option.shape.kind.value,
+);
+
+const accordionSectionSchema = z.strictObject({
+  id: z.string().optional(),
+  title: z.string(),
+  blocks: z.array(nestedDisplayBlockSchema),
+});
+export type AccordionSection = z.infer<typeof accordionSectionSchema>;
+
+export const accordionBlockSchema = z.strictObject({
+  ...baseBlockFields,
+  kind: z.literal("accordion"),
+  ...baseContentFields,
+  sections: z.array(accordionSectionSchema),
+  singleOpen: z.boolean().optional(),
+});
+export type AccordionBlock = z.infer<typeof accordionBlockSchema>;
+
 export const displayBlockSchema = z.discriminatedUnion("kind", [
   headerBlockSchema,
   textBlockSchema,
@@ -299,9 +345,36 @@ export const displayBlockSchema = z.discriminatedUnion("kind", [
   previousAnswerBlockSchema,
   userLocationBlockSchema,
   chatTranscriptBlockSchema,
+  accordionBlockSchema,
 ]);
 export type DisplayBlock = z.infer<typeof displayBlockSchema>;
 export type DisplayKind = DisplayBlock["kind"];
+
+const _NESTABLE_BY_KIND = {
+  header: true,
+  text: true,
+  quote: true,
+  label: true,
+  divider: true,
+  spacer: true,
+  html: true,
+  images: true,
+  video: true,
+  biglink: true,
+  copytext: true,
+  chatTranscript: true,
+  previousAnswer: false,
+  userLocation: false,
+  accordion: false,
+} as const satisfies Record<DisplayKind, boolean>;
+
+type OptedInNestableKind = {
+  [K in keyof typeof _NESTABLE_BY_KIND]: (typeof _NESTABLE_BY_KIND)[K] extends true
+    ? K
+    : never;
+}[keyof typeof _NESTABLE_BY_KIND];
+
+type _nestableTypecheck = Assert<Equal<NestedDisplayKind, OptedInNestableKind>>;
 
 export type ManualImportField = "text" | "html";
 
@@ -328,6 +401,7 @@ export const MANUAL_IMPORT_FIELD_BY_KIND: Record<
   previousAnswer: null,
   userLocation: null,
   chatTranscript: null,
+  accordion: null,
 };
 
 export const manualImportClipboardSchema = z

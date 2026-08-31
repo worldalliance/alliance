@@ -24,6 +24,8 @@ const KEYED_LIST_PATHS = new Set<string>([
   "pages",
   "pages[].fields",
   "pages[].fields[].fields",
+  "pages[].fields[].sections",
+  "pages[].fields[].sections[].blocks",
   "outputViews",
   "outputViews[].blocks",
   "aggregateViews",

@@ -2,6 +2,7 @@ import z from "zod";
 import { R, type Result } from "../result";
 import type { Assert, Equal } from "../types";
 import {
+  accordionBlockSchema,
   bigLinkBlockSchema,
   chatTranscriptBlockSchema,
   copyTextBlockSchema,
@@ -39,6 +40,7 @@ const DISPLAY_ONLY_SCHEMA_BY_KIND = {
   biglink: bigLinkBlockSchema.omit(PER_VIEWER_FIELDS),
   copytext: copyTextBlockSchema.omit(PER_VIEWER_FIELDS),
   chatTranscript: chatTranscriptBlockSchema.omit(PER_VIEWER_FIELDS),
+  accordion: accordionBlockSchema.omit(PER_VIEWER_FIELDS),
   previousAnswer: null,
   userLocation: null,
 } satisfies Record<DisplayKind, z.ZodObject | null>;
@@ -56,6 +58,7 @@ export const displayOnlyBlockSchema = z.discriminatedUnion("kind", [
   DISPLAY_ONLY_SCHEMA_BY_KIND.biglink,
   DISPLAY_ONLY_SCHEMA_BY_KIND.copytext,
   DISPLAY_ONLY_SCHEMA_BY_KIND.chatTranscript,
+  DISPLAY_ONLY_SCHEMA_BY_KIND.accordion,
 ]);
 export type DisplayOnlyBlock = z.infer<typeof displayOnlyBlockSchema>;
 export type DisplayOnlyBlockKind = DisplayOnlyBlock["kind"];

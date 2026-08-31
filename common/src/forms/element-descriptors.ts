@@ -45,6 +45,7 @@ export const DISPLAY_KIND_NAMES = {
   previousAnswer: "Previous Answer Block",
   userLocation: "User Location Block",
   chatTranscript: "Chat Transcript Block",
+  accordion: "Accordion Block",
 } as const satisfies Record<DisplayKind, string>;
 
 export const DISPLAY_KINDS = Object.keys(DISPLAY_KIND_NAMES) as DisplayKind[];
@@ -106,6 +107,8 @@ export function displayBlockPreview(block: DisplayBlock): string {
       return block.title ?? "";
     case "chatTranscript":
       return withCount(block.messages.length, "message");
+    case "accordion":
+      return block.sections.map((section) => section.title).join(", ");
     default:
       block satisfies never;
       return "";

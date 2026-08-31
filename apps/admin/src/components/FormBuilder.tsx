@@ -55,6 +55,7 @@ import { AggregateBuilder } from "./AggregateBuilder";
 import ConfirmDialog from "./ConfirmDialog";
 import {
   createDisplayBlock,
+  EditableAccordionBlock,
   EditableBigLinkBlock,
   EditableChatTranscriptBlock,
   EditableCopyTextBlock,
@@ -417,8 +418,15 @@ const collectFormElementIds = (
     if (element.id) {
       usedIds.add(element.id);
     }
-    if (isQuestionField(element) && "fields" in element) {
-      collectFormElementIds(element.fields, usedIds);
+    if (isQuestionField(element)) {
+      if ("fields" in element) collectFormElementIds(element.fields, usedIds);
+      return;
+    }
+    if (element.kind === "accordion") {
+      element.sections.forEach((section) => {
+        if (section.id) usedIds.add(section.id);
+        collectFormElementIds(section.blocks, usedIds);
+      });
     }
   });
 };
@@ -537,6 +545,24 @@ const remapFieldReferences = <T extends AnyField>(
   };
 };
 
+const copyNestedBlockIds = (
+  block: DisplayBlock,
+  usedIds: Set<string>,
+): DisplayBlock =>
+  block.kind === "accordion"
+    ? {
+        ...block,
+        sections: block.sections.map((section) => ({
+          ...section,
+          id: createUniqueFormBuilderId("block", usedIds),
+          blocks: section.blocks.map((nested) => ({
+            ...nested,
+            id: createUniqueFormBuilderId("block", usedIds),
+          })),
+        })),
+      }
+    : block;
+
 const remapDisplayBlockReferences = (
   block: DisplayBlock,
   idMap: ReadonlyMap<string, string>,
@@ -598,7 +624,7 @@ const copyPageWithUniqueIds = (page: Page, schema: FormSchema): Page => {
       if (element.id) {
         idMap.set(element.id, nextId);
       }
-      return { ...element, id: nextId };
+      return copyNestedBlockIds({ ...element, id: nextId }, usedIds);
     });
 
   const pageWithCopiedIds: Page = {
@@ -628,7 +654,10 @@ const copyElementWithUniqueIds = (
     );
   }
 
-  return { ...cloned, id: createUniqueFormBuilderId("block", usedIds) };
+  return copyNestedBlockIds(
+    { ...cloned, id: createUniqueFormBuilderId("block", usedIds) },
+    usedIds,
+  );
 };
 
 const describeCopyableElement = (element: AnyField | DisplayBlock): string =>
@@ -2501,6 +2530,10 @@ export function FormBuilder(props: FormBuilderProps) {
                         block={block as any}
                         {...commonProps}
                       />
+                    );
+                  case "accordion":
+                    return (
+                      <EditableAccordionBlock block={block} {...commonProps} />
                     );
                   default:
                     console.error(

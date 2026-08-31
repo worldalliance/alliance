@@ -304,11 +304,40 @@ function collectDisplayContentErrors(
   errors: FormSchemaValidationError[],
 ): void {
   if (!("type" in item) || item.type !== "display") return;
+  const blockId = item.id ?? "<unnamed>";
   if (item.kind === "images" && item.images.length === 0) {
     errors.push({
       viewId,
-      blockId: item.id ?? "<unnamed>",
+      blockId,
       message: "Images block has no images. Add one or remove the block",
+    });
+  }
+  if (item.kind === "accordion") {
+    if (item.sections.length === 0) {
+      errors.push({
+        viewId,
+        blockId,
+        message: "Accordion has no sections. Add one or remove the block",
+      });
+    }
+    item.sections.forEach((section, index) => {
+      if (section.title.trim().length === 0) {
+        errors.push({
+          viewId,
+          blockId,
+          message: `Accordion section ${index + 1} has no title. Name it or remove the section`,
+        });
+      }
+      if (section.blocks.length === 0) {
+        errors.push({
+          viewId,
+          blockId,
+          message: `Accordion section ${index + 1} has no blocks. Add one or remove the section`,
+        });
+      }
+      for (const nested of section.blocks) {
+        collectDisplayContentErrors(nested, viewId, errors);
+      }
     });
   }
 }

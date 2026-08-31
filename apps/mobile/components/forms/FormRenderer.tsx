@@ -9,6 +9,7 @@ import { type DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import {
   CHAT_TRANSCRIPT_SIZE_UNIT_PX,
   groupChatTranscriptMessages,
+  type AccordionBlock,
   type BigLinkIcon,
   type ChatTranscriptMessage,
   type DisplayBlock,
@@ -69,6 +70,7 @@ import { DeviceType, deviceType as expoDeviceType } from "expo-device";
 import { router } from "expo-router";
 import {
   Check,
+  ChevronDown,
   CircleCheck,
   Copy,
   Ellipsis,
@@ -350,6 +352,54 @@ function ImagesDisplay({ images }: { images: ImagesItem[] }) {
   );
 }
 
+function AccordionDisplayMobile({ block }: { block: AccordionBlock }) {
+  const [openIndices, setOpenIndices] = useState<number[]>([]);
+
+  const toggle = (index: number) => {
+    setOpenIndices((open) => {
+      if (open.includes(index)) return open.filter((i) => i !== index);
+      return block.singleOpen ? [index] : [...open, index];
+    });
+  };
+
+  return (
+    <View className="border-t border-zinc-200">
+      {block.sections.map((section, index) => {
+        const isOpen = openIndices.includes(index);
+        return (
+          <View key={section.id ?? index} className="border-b border-zinc-200">
+            <TouchableOpacity
+              onPress={() => toggle(index)}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: isOpen }}
+              className="flex-row items-center justify-between gap-3 py-3"
+            >
+              <Text className="flex-1 text-zinc-900" weight={FontWeight.Medium}>
+                {section.title}
+              </Text>
+              <ChevronDown
+                size={18}
+                color={colors.text.icon}
+                style={{ transform: [{ rotate: isOpen ? "180deg" : "0deg" }] }}
+              />
+            </TouchableOpacity>
+            {isOpen && (
+              <View className="gap-3 pb-4">
+                {section.blocks.map((nested, nestedIndex) => (
+                  <RenderDisplayBlockMobile
+                    key={nested.id ?? nestedIndex}
+                    block={nested}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 export function RenderDisplayBlockMobile({
   block,
   previousAnswerData,
@@ -447,6 +497,9 @@ export function RenderDisplayBlockMobile({
       );
     case "copytext":
       return <CopyTextDisplayMobile text={block.text} title={block.title} />;
+    case "accordion":
+      if (block.sections.length === 0) return null;
+      return <AccordionDisplayMobile block={block} />;
     case "userLocation": {
       const locationText = formatUserLocationDisplayValue(userLocation);
       const displayText =

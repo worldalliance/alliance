@@ -448,6 +448,7 @@ export function OutputBuilder({ schema, onSchemaChange }: OutputBuilderProps) {
                 case "previousAnswer":
                 case "video":
                 case "chatTranscript":
+                case "accordion":
                   return null;
                 default:
                   displayBlockKind satisfies never;

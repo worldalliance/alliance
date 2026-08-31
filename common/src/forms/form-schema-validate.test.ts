@@ -1,4 +1,8 @@
-import type { ImagesBlock, LabelBlock } from "./display-blocks";
+import type {
+  AccordionBlock,
+  ImagesBlock,
+  LabelBlock,
+} from "./display-blocks";
 import type {
   AnyField,
   FormSchema,
@@ -43,6 +47,11 @@ const imagesBlock = (
   images: ImagesBlock["images"],
 ): ImagesBlock => ({ id, type: "display", kind: "images", images });
 
+const accordionBlock = (
+  id: string,
+  sections: AccordionBlock["sections"],
+): AccordionBlock => ({ id, type: "display", kind: "accordion", sections });
+
 const fieldBlock = (
   id: string,
   fieldId: string,
@@ -51,7 +60,7 @@ const fieldBlock = (
 
 const page = (
   id: string,
-  fields: Array<AnyField | LabelBlock | ImagesBlock>,
+  fields: Array<AnyField | LabelBlock | ImagesBlock | AccordionBlock>,
 ): Page => ({
   id,
   fields,
@@ -657,6 +666,109 @@ describe("validateFormSchema", () => {
   it("accepts an images block that has an image", () => {
     const schema = baseSchema({
       pages: [page("p1", [imagesBlock("blk-images", [{ src: "key" }])])],
+    });
+    expect(validateFormSchema(schema)).toEqual([]);
+  });
+
+  const filledSection = (title: string) => ({
+    id: "sec-1",
+    title,
+    blocks: [labelBlock("nested")],
+  });
+
+  it("flags an accordion with no sections on a page", () => {
+    const schema = baseSchema({
+      pages: [page("p1", [accordionBlock("blk-acc", [])])],
+    });
+    expect(validateFormSchema(schema)).toEqual([
+      {
+        viewId: undefined,
+        blockId: "blk-acc",
+        message: "Accordion has no sections. Add one or remove the block",
+      },
+    ]);
+  });
+
+  it("flags an accordion with no sections in an output view", () => {
+    const schema = baseSchema({
+      outputViews: [view("v1", [accordionBlock("blk-acc", [])])],
+    });
+    expect(validateFormSchema(schema)).toEqual([
+      {
+        viewId: "v1",
+        blockId: "blk-acc",
+        message: "Accordion has no sections. Add one or remove the block",
+      },
+    ]);
+  });
+
+  it("flags a section with a blank title, numbered from one", () => {
+    const schema = baseSchema({
+      pages: [
+        page("p1", [
+          accordionBlock("blk-acc", [
+            filledSection("First"),
+            filledSection("  "),
+          ]),
+        ]),
+      ],
+    });
+    expect(validateFormSchema(schema)).toEqual([
+      {
+        viewId: undefined,
+        blockId: "blk-acc",
+        message:
+          "Accordion section 2 has no title. Name it or remove the section",
+      },
+    ]);
+  });
+
+  it("flags a section with no blocks", () => {
+    const schema = baseSchema({
+      pages: [
+        page("p1", [
+          accordionBlock("blk-acc", [
+            { id: "sec-1", title: "Empty", blocks: [] },
+          ]),
+        ]),
+      ],
+    });
+    expect(validateFormSchema(schema)).toEqual([
+      {
+        viewId: undefined,
+        blockId: "blk-acc",
+        message:
+          "Accordion section 1 has no blocks. Add one or remove the section",
+      },
+    ]);
+  });
+
+  it("flags an empty images block nested in a section", () => {
+    const schema = baseSchema({
+      pages: [
+        page("p1", [
+          accordionBlock("blk-acc", [
+            {
+              id: "sec-1",
+              title: "First",
+              blocks: [imagesBlock("blk-images", [])],
+            },
+          ]),
+        ]),
+      ],
+    });
+    expect(validateFormSchema(schema)).toEqual([
+      {
+        viewId: undefined,
+        blockId: "blk-images",
+        message: "Images block has no images. Add one or remove the block",
+      },
+    ]);
+  });
+
+  it("accepts an accordion whose sections are titled and hold a block", () => {
+    const schema = baseSchema({
+      pages: [page("p1", [accordionBlock("blk-acc", [filledSection("First")])])],
     });
     expect(validateFormSchema(schema)).toEqual([]);
   });

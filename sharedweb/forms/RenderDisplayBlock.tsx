@@ -1,6 +1,7 @@
 import {
   CHAT_TRANSCRIPT_SIZE_UNIT_PX,
   groupChatTranscriptMessages,
+  type AccordionBlock,
   type BigLinkIcon,
   type DisplayBlock,
   type ImagesItem,
@@ -12,8 +13,10 @@ import {
 } from "@alliance/shared/formrenderer";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
+import { Accordion } from "@base-ui/react/accordion";
 import {
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Copy,
@@ -221,6 +224,39 @@ function ImagesDisplay({ images }: { images: ImagesItem[] }) {
   );
 }
 
+function AccordionDisplay({ block }: { block: AccordionBlock }) {
+  return (
+    <Accordion.Root
+      multiple={!block.singleOpen}
+      className="border-y border-gray-200 divide-y divide-gray-200"
+    >
+      {block.sections.map((section, index) => (
+        <Accordion.Item key={section.id ?? index}>
+          <Accordion.Header>
+            <Accordion.Trigger className="group flex w-full items-center justify-between gap-3 py-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+              <span className="font-medium text-zinc-900">{section.title}</span>
+              <ChevronDown
+                size={18}
+                className="shrink-0 text-zinc-500 transition-transform group-data-[panel-open]:rotate-180"
+              />
+            </Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Panel className="overflow-hidden">
+            <div className="flex flex-col gap-3 pb-4">
+              {section.blocks.map((nested, nestedIndex) => (
+                <RenderDisplayBlock
+                  key={nested.id ?? nestedIndex}
+                  block={nested}
+                />
+              ))}
+            </div>
+          </Accordion.Panel>
+        </Accordion.Item>
+      ))}
+    </Accordion.Root>
+  );
+}
+
 export default function RenderDisplayBlock({
   block,
   previousAnswerData,
@@ -350,6 +386,10 @@ export default function RenderDisplayBlock({
 
     case "copytext":
       return <CopyTextDisplay text={block.text} title={block.title} />;
+
+    case "accordion":
+      if (block.sections.length === 0) return null;
+      return <AccordionDisplay block={block} />;
 
     case "userLocation": {
       const locationText = formatUserLocationDisplayValue(userLocation);
