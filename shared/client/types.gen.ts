@@ -2396,6 +2396,14 @@ export type AdminActionDto = {
     cohortExpression?: {
         [key: string]: unknown;
     } | null;
+    /**
+     * The image column itself: an upload key or an external url, the form an update takes back. `image` is that value rendered as a url.
+     */
+    storedImage?: string;
+    /**
+     * The squareThumbnailImage column itself, like `storedImage`.
+     */
+    storedSquareThumbnailImage?: string;
 };
 
 export type CreateFollowUpFormDto = {
