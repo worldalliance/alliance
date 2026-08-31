@@ -35,6 +35,8 @@ import {
   isFieldConditionallyRequired,
   isPageCurrentlyVisible,
   stripHiddenAnswers,
+  type VisibilityValidatorResults,
+  visibilityValidatorResultsSchema,
 } from "@alliance/common/forms/visibility";
 import {
   type AccountDerivedConditionKind,
@@ -93,7 +95,11 @@ import {
   typeUsesIdArgument,
 } from "./entities/customvalidator.entity";
 import { Form } from "./entities/form.entity";
-import { FormResponse } from "./entities/formresponse.entity";
+import {
+  FormResponse,
+  type ParsedFormResponse,
+  parseFormResponse,
+} from "./entities/formresponse.entity";
 import {
   FormSnapshot,
   SnapshotHistoryOwner,
@@ -110,6 +116,24 @@ import {
   UpdateFormDto,
 } from "./form.dto";
 import { FormSnapshotService } from "./formsnapshot.service";
+
+/**
+ * Validator verdicts arrive from HTTP as arbitrary JSON — class-validator
+ * can't express the id-keyed record, so parse before anything reaches the db.
+ */
+function parseSubmittedValidatorResults(
+  value: unknown,
+): VisibilityValidatorResults {
+  const parsed = visibilityValidatorResultsSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new BadRequestException(
+      `Invalid visibility validator results: ${parsed.error.issues
+        .map((issue) => `${issue.path.join(".") || "<root>"}: ${issue.message}`)
+        .join("; ")}`,
+    );
+  }
+  return parsed.data;
+}
 
 const STORED_PAGES = `snapshot.schema -> 'pages'`;
 
@@ -688,7 +712,7 @@ export class TasksService {
     formId: number,
     userId: number,
     submitFormDto: SubmitFormDto,
-  ): Promise<FormResponse> {
+  ): Promise<ParsedFormResponse> {
     const form = await this.getForm(formId);
     const user = await this.userService.findOneOrFail(userId, {
       optInMms: true,
@@ -883,7 +907,7 @@ export class TasksService {
     followUpFormId: number,
     userId: number,
     submitFollowUpFormDto: SubmitFollowUpFormDto,
-  ): Promise<FormResponse> {
+  ): Promise<ParsedFormResponse> {
     const fetchedFollowUpForm = await this.followUpFormRepository.findOne({
       where: {
         id: followUpFormId,
@@ -964,7 +988,7 @@ export class TasksService {
     formId: number;
     submitFormDto: SubmitFormDto;
     guestId?: string;
-  }): Promise<FormResponse> {
+  }): Promise<ParsedFormResponse> {
     const form = await this.getForm(formId);
 
     if (guestId) {
@@ -980,7 +1004,7 @@ export class TasksService {
       form,
       formId,
       dto: submitFormDto,
-      validatorResults: submitFormDto.visibilityValidatorResults ?? {},
+      validatorResults: {},
       guestId,
     });
   }
@@ -1002,7 +1026,7 @@ export class TasksService {
       form,
       formId,
       dto: partialFormData,
-      validatorResults: partialFormData?.visibilityValidatorResults ?? {},
+      validatorResults: {},
       user,
     });
 
@@ -1036,7 +1060,7 @@ export class TasksService {
       // clients. Resolved to a snapshot row below. Remove once the floor
       // mobile version sends formSnapshotId.
       schemaSnapshot?: Record<string, unknown>;
-      visibilityValidatorResults?: Record<string, boolean>;
+      visibilityValidatorResults?: unknown;
       deviceType: DeviceVisibilityTarget;
       publicAnswers?: Record<string, boolean>;
       phDistinctId?: string;
@@ -1044,18 +1068,23 @@ export class TasksService {
       sid?: string;
     };
     snapshot?: FormSnapshot;
-    validatorResults: Record<string, boolean>;
+    validatorResults: VisibilityValidatorResults;
     user?: User;
     guestId?: string;
-  }): Promise<FormResponse> {
+  }): Promise<ParsedFormResponse> {
     const snapshot =
       preResolvedSnapshot ?? (await this.resolveSubmissionSnapshot(form, dto));
+    // Parsed before the insert, so a bad payload is a 400 instead of a 500
+    // over a row that is already committed.
+    const visibilityValidatorResults =
+      dto.visibilityValidatorResults == null
+        ? validatorResults
+        : parseSubmittedValidatorResults(dto.visibilityValidatorResults);
     const formResponse = this.formResponseRepository.create({
       answers: dto.answers,
       formSnapshotId: snapshot.id,
       formSnapshot: snapshot,
-      visibilityValidatorResults:
-        dto.visibilityValidatorResults ?? validatorResults,
+      visibilityValidatorResults,
       deviceType: dto.deviceType,
       publicAnswers: dto.publicAnswers ?? {},
       phDistinctId: dto.phDistinctId,
@@ -1066,7 +1095,10 @@ export class TasksService {
       user,
       guest: guestId ? { id: guestId } : undefined,
     });
-    const savedForm = await this.formResponseRepository.save(formResponse);
+    const savedForm: ParsedFormResponse = Object.assign(
+      await this.formResponseRepository.save(formResponse),
+      { visibilityValidatorResults },
+    );
     await this.aiDetectionQueueService.addDetectJob({
       entityType: DetectableEntity.FormResponse,
       entityId: savedForm.id,
@@ -1291,7 +1323,7 @@ export class TasksService {
     return responses.map(
       (response) =>
         new FormResponseDto({
-          response,
+          response: parseFormResponse(response),
           aiDetectionResults: aiDetectionByResponseId.get(response.id),
         }),
     );
@@ -1365,7 +1397,7 @@ export class TasksService {
   async getMyFormResponse(
     userId: number,
     formId: number,
-  ): Promise<FormResponse> {
+  ): Promise<ParsedFormResponse> {
     const response = await this.formResponseRepository.findOne({
       where: { formId, user: { id: userId } },
       relations: { formSnapshot: true, user: true },
@@ -1374,25 +1406,25 @@ export class TasksService {
     if (!response) {
       throw new NotFoundException("Form response not found");
     }
-    return response;
+    return parseFormResponse(response);
   }
 
   async getGuestFormResponse(
     guestId: string,
     formId: number,
-  ): Promise<FormResponse | null> {
+  ): Promise<ParsedFormResponse | null> {
     const response = await this.formResponseRepository.findOne({
       where: { formId, guest: { id: guestId, linkedUser: IsNull() } },
       relations: { formSnapshot: true },
       order: { createdAt: "DESC", id: "DESC" },
     });
-    return response;
+    return response && parseFormResponse(response);
   }
 
   async getLinkedGuestDraftFormResponse(
     userId: number,
     formId: number,
-  ): Promise<FormResponse | null> {
+  ): Promise<ParsedFormResponse | null> {
     // If the user has already submitted this form as an authenticated user,
     // any linked-guest draft is stale and shouldn't be surfaced as a prefill.
     const userResponse = await this.formResponseRepository.findOne({
@@ -1406,7 +1438,7 @@ export class TasksService {
       relations: { formSnapshot: true },
       order: { createdAt: "DESC", id: "DESC" },
     });
-    return draft;
+    return draft && parseFormResponse(draft);
   }
 
   async customValidators(): Promise<CustomValidatorTypeDtoArgs[]> {
@@ -1675,14 +1707,15 @@ export class TasksService {
     return { isValid: true };
   }
 
-  async getFormsForUserSID(userId: number): Promise<FormResponse[]> {
+  async getFormsForUserSID(userId: number): Promise<ParsedFormResponse[]> {
     const sids = await this.shareUrlsService.findActionShareSidsForUser(userId);
     if (sids.length === 0) {
       return [];
     }
-    return this.formResponseRepository.find({
+    const responses = await this.formResponseRepository.find({
       where: { sid: In(sids) },
       relations: { formSnapshot: true },
     });
+    return responses.map(parseFormResponse);
   }
 }

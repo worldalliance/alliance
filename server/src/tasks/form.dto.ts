@@ -6,6 +6,7 @@ import {
 import { FORM_RESPONSES_BY_FORMS_MAX_BATCH } from "@alliance/common/forms/form-responses";
 import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
 import { MIGRATE_RESPONSE_SNAPSHOTS_MAX_BATCH } from "@alliance/common/forms/snapshot-migration";
+import type { VisibilityValidatorResults } from "@alliance/common/forms/visibility";
 import {
   ApiProperty,
   ApiPropertyOptional,
@@ -29,7 +30,10 @@ import { AiDetectionResultDto } from "src/ai-detection/dto/ai-detection-result.d
 import { AiDetectionResult } from "src/ai-detection/entities/ai-detection-result.entity";
 import { UserDto } from "src/user/dto/user.dto";
 import { Form } from "./entities/form.entity";
-import { FormResponse } from "./entities/formresponse.entity";
+import {
+  FormResponse,
+  type ParsedFormResponse,
+} from "./entities/formresponse.entity";
 import { FormSnapshot } from "./entities/formsnapshot.entity";
 
 export class CreateFormDto extends PickType(Form, ["title"]) {
@@ -80,10 +84,11 @@ export class SubmitFormDto extends PickType(FormResponse, [
   @IsInt()
   actionId: number;
 
-  @ApiPropertyOptional()
+  // class-validator can't express the id-keyed record; the service parses it.
+  @ApiPropertyOptional({ type: Object })
   @IsOptional()
   @Type(() => Object)
-  visibilityValidatorResults?: Record<number, boolean>;
+  visibilityValidatorResults?: unknown;
 
   @ApiProperty({ enum: DEVICE_VISIBILITY_TARGETS })
   @IsEnum(DEVICE_VISIBILITY_TARGETS)
@@ -198,7 +203,7 @@ export class FormAggregateViewsDto {
 }
 
 export type FormResponseDtoArgs = {
-  response: FormResponse;
+  response: ParsedFormResponse;
   aiDetectionResults?: AiDetectionResult[];
 };
 
@@ -208,7 +213,6 @@ export class FormResponseDto extends PickType(FormResponse, [
   "formId",
   "formSnapshotId",
   "createdAt",
-  "visibilityValidatorResults",
   "phDistinctId",
   "sessionReplayUrl",
   "deviceType",
@@ -219,6 +223,11 @@ export class FormResponseDto extends PickType(FormResponse, [
   @IsDefined()
   @Type(() => Object)
   schemaSnapshot: Record<string, unknown>;
+
+  @ApiProperty({ type: Object })
+  @IsDefined()
+  @Type(() => Object)
+  visibilityValidatorResults: VisibilityValidatorResults;
 
   @ApiPropertyOptional({ type: () => UserDto })
   @IsOptional()
@@ -258,7 +267,7 @@ export class LinkedGuestDraftDto {
   @Type(() => FormResponseDto)
   draft?: FormResponseDto;
 
-  constructor(draft?: FormResponse | null) {
+  constructor(draft?: ParsedFormResponse | null) {
     this.draft = draft ? new FormResponseDto({ response: draft }) : undefined;
   }
 }
@@ -409,7 +418,7 @@ export class GuestFormResponseDto {
   @Type(() => FormResponseDto)
   response?: FormResponseDto;
 
-  constructor(response?: FormResponse | null) {
+  constructor(response?: ParsedFormResponse | null) {
     this.response = response ? new FormResponseDto({ response }) : undefined;
   }
 }

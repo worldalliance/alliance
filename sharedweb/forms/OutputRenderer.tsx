@@ -1,5 +1,7 @@
 import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import type { FormSchema, FormValue } from "@alliance/common/forms/form-schema";
+import type { VisibilityValidatorResults } from "@alliance/common/forms/visibility";
+import { R } from "@alliance/common/result";
 import type {
   FormResponseDto,
   FormResponseOutputDto,
@@ -9,6 +11,7 @@ import {
   resolveOutputView,
   type ResolvedOutputFieldItem,
 } from "@alliance/shared/outputrenderer";
+import { parseVisibilityValidatorResults } from "@alliance/shared/parsed-dtos";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { useMemo, type ReactNode } from "react";
@@ -23,7 +26,7 @@ type OutputRendererProps = {
   submission?: FormResponseOutputDto | FormResponseDto | null;
   answers?: Record<string, FormValue>;
   viewId?: string;
-  validatorResults?: Record<number, boolean>;
+  validatorResults?: VisibilityValidatorResults;
   deviceType?: DeviceVisibilityTarget;
   className?: string;
 };
@@ -70,10 +73,19 @@ export function OutputRenderer({
     }
     return {};
   }, [answers, submission]);
-  const resolvedValidatorResults =
-    validatorResults ??
-    (submission?.visibilityValidatorResults as Record<number, boolean>) ??
-    undefined;
+  const resolvedValidatorResults = useMemo(
+    () =>
+      validatorResults ??
+      (submission
+        ? R.unwrapOr(
+            parseVisibilityValidatorResults(
+              submission.visibilityValidatorResults,
+            ),
+            {},
+          )
+        : undefined),
+    [validatorResults, submission],
+  );
   const resolvedDeviceType =
     deviceType ?? (submission?.deviceType as DeviceVisibilityTarget);
   const resolvedPublicAnswers = (

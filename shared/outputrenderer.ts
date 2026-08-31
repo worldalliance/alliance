@@ -23,7 +23,10 @@ import {
   interpolateOutputFieldBlock,
 } from "@alliance/common/forms/variable-interpolation";
 import { resolveVariableValues } from "@alliance/common/forms/variables";
-import { isElementCurrentlyVisible } from "@alliance/common/forms/visibility";
+import {
+  isElementCurrentlyVisible,
+  type VisibilityValidatorResults,
+} from "@alliance/common/forms/visibility";
 import { withCount } from "@alliance/common/plural";
 
 export type ResolvedOutputDisplayItem = {
@@ -54,7 +57,7 @@ type ResolveOutputItemsParams = {
   schema: FormSchema;
   answers: Record<string, FormValue>;
   viewId?: string;
-  validatorResults?: Record<number, boolean>;
+  validatorResults?: VisibilityValidatorResults;
   deviceType?: DeviceVisibilityTarget;
   publicAnswers?: Record<string, boolean>;
 };
@@ -172,7 +175,7 @@ export const getOutputFileValues = (value: FormValue | undefined): string[] => {
 export const isOutputBlockVisible = (
   block: OutputBlock,
   answers: Record<string, FormValue>,
-  validatorResults?: Record<number, boolean>,
+  validatorResults?: VisibilityValidatorResults,
   deviceType?: DeviceVisibilityTarget,
   inputField?: AnyField,
   outputBlockVisibility?: Map<string, boolean>,

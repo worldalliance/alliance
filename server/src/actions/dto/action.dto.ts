@@ -5,6 +5,7 @@ import {
 } from "@alliance/common/actionActivity";
 import { type CohortExpression } from "@alliance/common/cohort-expression";
 import type { DisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
+import type { VisibilityValidatorResults } from "@alliance/common/forms/visibility";
 import { byLikeOrder, LIKE_FACEPILE_LIMIT } from "@alliance/common/likeOrder";
 import { HTTP_URL_VALIDATOR_OPTIONS } from "@alliance/common/url";
 import {
@@ -41,7 +42,10 @@ import type { ForumFeedComment } from "src/forum/forum.service";
 import { getImageSource } from "src/images/images.service";
 import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
 import { Form } from "src/tasks/entities/form.entity";
-import { FormResponse } from "src/tasks/entities/formresponse.entity";
+import {
+  FormResponse,
+  type ParsedFormResponse,
+} from "src/tasks/entities/formresponse.entity";
 import { SubmitFormDto } from "src/tasks/form.dto";
 import { UserActionRelationPillStatus } from "src/user/dto/user-action-relations.dto";
 import { ProfileDto } from "src/user/dto/user.dto";
@@ -684,7 +688,6 @@ export class FormResponseOutputDto extends PickType(FormResponse, [
   "id",
   "answers",
   "formId",
-  "visibilityValidatorResults",
   "deviceType",
   "publicAnswers",
 ]) {
@@ -692,7 +695,10 @@ export class FormResponseOutputDto extends PickType(FormResponse, [
   @Type(() => Object)
   schemaSnapshot: Record<string, unknown>;
 
-  constructor(formResponse: FormResponse) {
+  @ApiProperty({ type: Object })
+  visibilityValidatorResults: VisibilityValidatorResults;
+
+  constructor(formResponse: ParsedFormResponse) {
     super();
     this.id = formResponse.id;
     this.answers = formResponse.answers;
@@ -748,7 +754,7 @@ export class ActionActivityDto extends PickType(ActionActivity, [
     actionActivity: ActionActivity,
     extra?: {
       comments?: Comment[];
-      formResponseOutput?: FormResponse;
+      formResponseOutput?: ParsedFormResponse;
       likedByMe?: boolean;
       requestingUserId?: number;
       facepile?: User[];

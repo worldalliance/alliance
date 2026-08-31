@@ -1,3 +1,5 @@
+import { type ZodError, z } from "zod";
+import { R, type Result } from "../result";
 import type { DeviceVisibilityTarget } from "./device";
 import type { DisplayBlock } from "./display-blocks";
 import {
@@ -12,6 +14,62 @@ import {
   type VisibleIfFormula,
   evaluateVisibilityFormula,
 } from "./visible-if-formula";
+
+/** The verdict each visibility validator returned, keyed by validator id. */
+export type VisibilityValidatorResults = Record<number, boolean>;
+
+/**
+ * A jsonb round trip turns the validator ids into string keys. An id is a
+ * custom validator's row id, or the negative draft id an admin-built schema
+ * keeps when the builder never resolved the draft to a saved validator.
+ *
+ * Matched, not coerced: `Number` reads `"0x10"` as 16 and `" 7 "` as 7, so two
+ * keys could collapse onto one id, the later silently overwriting the earlier.
+ */
+const validatorIdSchema = z
+  .string()
+  .regex(/^-?\d+$/)
+  .transform(Number);
+
+export const visibilityValidatorResultsSchema = z.record(
+  validatorIdSchema,
+  z.boolean(),
+);
+
+const verdictEntrySchema = z.tuple([validatorIdSchema, z.boolean()]);
+
+/**
+ * Reads a stored blob: use this on the way out of storage, and the strict
+ * schema above on the way in, where a caller can still be told to fix the
+ * payload. Only a blob that isn't an object at all fails; an entry that isn't
+ * an id keyed to a boolean is dropped and named in `unreadable`, so one
+ * unreadable verdict doesn't discard the verdicts beside it.
+ */
+export function readVisibilityValidatorResults(
+  value: unknown,
+): Result<
+  { verdicts: VisibilityValidatorResults; unreadable: string[] },
+  ZodError
+> {
+  const blob = z.record(z.string(), z.unknown()).safeParse(value ?? {});
+  if (!blob.success) {
+    return R.failure(blob.error);
+  }
+
+  const verdicts: VisibilityValidatorResults = {};
+  const unreadable: string[] = [];
+  for (const entry of Object.entries(blob.data)) {
+    const parsed = verdictEntrySchema.safeParse(entry);
+    if (parsed.success) {
+      const [validatorId, verdict] = parsed.data;
+      verdicts[validatorId] = verdict;
+    } else {
+      unreadable.push(entry[0]);
+    }
+  }
+
+  return R.success({ verdicts, unreadable });
+}
 
 export const hasContent = (value: FormValue | undefined): boolean => {
   if (value === undefined || value === null) {
@@ -28,7 +86,7 @@ export const hasContent = (value: FormValue | undefined): boolean => {
 
 export type ConditionExtras = {
   deviceType: DeviceVisibilityTarget;
-  visibilityValidatorResults?: Record<number, boolean>;
+  visibilityValidatorResults?: VisibilityValidatorResults;
   fieldLookup?: Map<string, AnyField>;
   visibilityMemo?: Map<string, boolean>;
   visibilityEvaluationStack?: Set<string>;

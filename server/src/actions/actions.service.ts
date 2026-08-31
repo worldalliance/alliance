@@ -63,7 +63,11 @@ import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
 import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
 import { Form } from "src/tasks/entities/form.entity";
-import { FormResponse } from "src/tasks/entities/formresponse.entity";
+import {
+  FormResponse,
+  type ParsedFormResponse,
+  parseFormResponse,
+} from "src/tasks/entities/formresponse.entity";
 import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
 import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import {
@@ -1978,7 +1982,9 @@ export class ActionsService {
     return this.toActivityDtos({ activities, requestingUserId, comments });
   }
 
-  buildOutputFormResponse(activity: ActionActivity): FormResponse | undefined {
+  buildOutputFormResponse(
+    activity: ActionActivity,
+  ): ParsedFormResponse | undefined {
     if (!activity.taskFormResponse) {
       return undefined;
     }
@@ -2018,10 +2024,12 @@ export class ActionsService {
       return undefined;
     }
 
-    return Object.assign(new FormResponse(), {
-      ...activity.taskFormResponse,
-      answers,
-    });
+    return parseFormResponse(
+      Object.assign(new FormResponse(), {
+        ...activity.taskFormResponse,
+        answers,
+      }),
+    );
   }
 
   async getActionActivities(
