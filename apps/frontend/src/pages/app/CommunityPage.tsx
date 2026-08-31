@@ -12,8 +12,6 @@ import {
   CommunityMemberContactInfoDto,
   communityUpdate,
   conversationGetCommunityConversations,
-  UserActionRelationDetailDto,
-  UserActionSummaryDto,
 } from "@alliance/shared/client";
 import {
   calculateAllCompletionData,
@@ -76,15 +74,6 @@ const CommunityPage = () => {
     number,
     CommunityMemberContactInfoDto
   > | null>(null);
-  const [userActionRelations, setUserActionRelations] = useState<Record<
-    number,
-    UserActionRelationDetailDto[]
-  > | null>(null);
-
-  const [actionSummaries, setActionSummaries] = useState<
-    UserActionSummaryDto[]
-  >([]);
-
   const [searchParams, setSearchParams] = useSearchParams();
 
   const tab = (searchParams.get("tab") as Tab | undefined) ?? "activity";
@@ -100,14 +89,6 @@ const CommunityPage = () => {
   } = useMyCommunities({
     selectedCommunityId: communityId ? Number(communityId) : null,
   });
-
-  const maxActionsPerWeek = useMaxActionsPerWeek({
-    actionSummaries: actionSummaries,
-    userActionRelations,
-  });
-  const [allCompletionData, setAllCompletionData] = useState<ReturnType<
-    typeof calculateAllCompletionData
-  > | null>(null);
 
   const [chatOpen, setChatOpen] = useState(false);
   const { pendingCommunityInvites } = useIncomingCommunityInvites();
@@ -213,30 +194,41 @@ const CommunityPage = () => {
     }, [queryClient, community?.id, user?.id]),
   );
 
-  useEffect(() => {
-    if (!communityMemberInfo) {
-      return;
-    }
+  const userActionRelations = useMemo(
+    () =>
+      communityMemberInfo
+        ? Object.fromEntries(
+            communityMemberInfo.users.map(({ userId, relations }) => [
+              userId,
+              relations,
+            ]),
+          )
+        : null,
+    [communityMemberInfo],
+  );
 
-    setUserActionRelations(
-      Object.fromEntries(
-        communityMemberInfo.users.map(({ userId, relations }) => [
-          userId,
-          relations,
-        ]),
-      ),
-    );
+  const actionSummaries = useMemo(
+    () =>
+      communityMemberInfo ? [...communityMemberInfo.actions].reverse() : [],
+    [communityMemberInfo],
+  );
 
-    const reversedActions = [...communityMemberInfo.actions].reverse();
+  const allCompletionData = useMemo(
+    () =>
+      communityMemberInfo
+        ? calculateAllCompletionData({
+            actions: communityMemberInfo.actions,
+            users: communityMemberInfo.users,
+            actionDeadlineWindowMs: CURRENT_ACTION_WINDOW_MS,
+          })
+        : null,
+    [communityMemberInfo],
+  );
 
-    setActionSummaries(reversedActions);
-    const completionData = calculateAllCompletionData({
-      actions: communityMemberInfo.actions,
-      users: communityMemberInfo.users,
-      actionDeadlineWindowMs: CURRENT_ACTION_WINDOW_MS,
-    });
-    setAllCompletionData(completionData);
-  }, [communityMemberInfo]);
+  const maxActionsPerWeek = useMaxActionsPerWeek({
+    actionSummaries,
+    userActionRelations,
+  });
 
   useEffect(() => {
     if (amLeader && community?.id !== undefined) {
