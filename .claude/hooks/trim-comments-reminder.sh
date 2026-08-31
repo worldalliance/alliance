@@ -14,6 +14,7 @@ case "$tool" in
     ;;
   Bash)
     cmd=$(jq -r '.tool_input.command // ""' <<<"$input")
+    cmd=$(sed -E 's#[0-9]*>>?[[:space:]]*/dev/(null|stdout|stderr)##g' <<<"$cmd")
     grep -Eq '(>>?[[:space:]]*[^|&[:space:]]|<<|[[:space:]]tee[[:space:]]|sed[[:space:]]+-[a-zA-Z]*i|perl[[:space:]]+-[a-zA-Z]*i|[[:space:]]patch[[:space:]])' <<<"$cmd" || exit 0
     ;;
   *)
