@@ -12,7 +12,7 @@ export function meta() {
       "The Alliance — A global group of people cooperating to improve the world",
     description:
       "A global group of people cooperating to improve the world. Members spend 15 minutes a week completing thoughtfully designed actions for measurable impact.",
-    image: "/og-home.png",
+    image: "/link-thumbnail.png",
     url: "/",
   });
 }

@@ -38,22 +38,17 @@ function MilestoneTrack({
 
   return (
     <div
-      className="flex flex-col gap-5 md:grid md:gap-2.5"
+      className="flex flex-col gap-4 md:grid md:gap-2.5"
       style={{
         gridTemplateColumns: `repeat(${milestones.length}, minmax(0, 1fr))`,
       }}
     >
       {milestones.map((milestone, i) => (
-        <div key={milestone.members} className="flex flex-col gap-1.5">
-          <div className="flex flex-col gap-1 md:block">
-            <p className="text-base leading-snug text-white md:hidden">
-              {milestone.label}
-            </p>
-            <p className="text-sm text-white tabular-nums md:text-right md:text-base">
-              {milestone.members.toLocaleString("en-US")}
-              {showUnit && i === 0 && " members"}
-            </p>
-          </div>
+        <div key={milestone.members} className="flex flex-col gap-1 md:gap-1.5">
+          <p className="text-sm text-white tabular-nums md:text-right md:text-base">
+            {milestone.members.toLocaleString("en-US")}
+            {showUnit && i === 0 && " members"}
+          </p>
           <div className="h-5 overflow-hidden rounded-[5px] bg-white/35 md:h-[30px]">
             <div
               className="h-full origin-left rounded-[5px] bg-white ease-out"
@@ -65,7 +60,7 @@ function MilestoneTrack({
               }}
             />
           </div>
-          <p className="hidden text-right text-sm leading-tight text-white md:block md:text-base">
+          <p className="text-base leading-tight text-white md:text-right">
             {milestone.label}
           </p>
         </div>
@@ -92,7 +87,7 @@ export function GrowthMilestones({
   const { ref, inView } = useInView<HTMLDivElement>(0.25);
 
   return (
-    <div ref={ref} className={cn("flex flex-col gap-10 sm:gap-14", className)}>
+    <div ref={ref} className={cn("flex flex-col gap-7 sm:gap-14", className)}>
       <MilestoneTrack
         milestones={near}
         members={members}
