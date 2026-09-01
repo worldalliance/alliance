@@ -471,7 +471,7 @@ export default function OutreachPartnerPage() {
   const { data: memberCount } = useAllianceMemberCount();
   const lede = `We can design a focused task in which our ${
     memberCount
-      ? `our ${memberCount.toLocaleString()} volunteer members`
+      ? `${memberCount.toLocaleString()} volunteer members`
       : "members"
   } help your organization advance its goals.`;
 
