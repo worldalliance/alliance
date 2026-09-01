@@ -1,4 +1,5 @@
 import { isAllianceAppHostname } from "@alliance/common/url";
+import { urlProtocol } from "@alliance/common/url-safety";
 
 /**
  * Route patterns that can be handled internally by the mobile app.
@@ -97,25 +98,28 @@ const INTERNAL_ROUTE_PATTERNS: {
 ];
 
 /**
- * Check if a URL is a relative path that can be handled internally
+ * The in-app route for one of our own paths, with or without a leading slash,
+ * or null when the URL belongs somewhere else.
  */
 export function getInternalRoute(url: string): string | null {
-  // Only process relative URLs (starting with /)
-  if (!url.startsWith("/")) {
+  // A scheme or a `//host` prefix addresses somewhere else; anything else is
+  // one of our paths, however the author wrote it.
+  if (urlProtocol(url) !== null || url.startsWith("//")) {
     return null;
   }
+  const path = url.startsWith("/") ? url : `/${url}`;
 
   // Extract query string and hash to preserve them
-  const queryIndex = url.indexOf("?");
-  const hashIndex = url.indexOf("#");
+  const queryIndex = path.indexOf("?");
+  const hashIndex = path.indexOf("#");
   const suffixStart =
     queryIndex >= 0 && hashIndex >= 0
       ? Math.min(queryIndex, hashIndex)
       : queryIndex >= 0
         ? queryIndex
         : hashIndex;
-  const pathOnly = suffixStart >= 0 ? url.slice(0, suffixStart) : url;
-  const suffix = suffixStart >= 0 ? url.slice(suffixStart) : "";
+  const pathOnly = suffixStart >= 0 ? path.slice(0, suffixStart) : path;
+  const suffix = suffixStart >= 0 ? path.slice(suffixStart) : "";
 
   for (const { pattern, getRoute } of INTERNAL_ROUTE_PATTERNS) {
     const match = pathOnly.match(pattern);
