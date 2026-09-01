@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { minuteStart, useClockMinute } from "../lib/useClockMinute";
 
 export type TzOption = {
   group: string;
@@ -107,13 +108,17 @@ function getCachedFormatter(
   return fmt;
 }
 
-export function formatNowTimeInTz(tz: string, hour12: boolean = true): string {
+function formatTimeInTz(tz: string, hour12: boolean, when: Date): string {
   return getCachedFormatter(`time:${tz}:${hour12}`, {
     timeZone: tz,
     hour: "numeric",
     minute: "2-digit",
     hour12,
-  }).format(new Date());
+  }).format(when);
+}
+
+export function formatNowTimeInTz(tz: string, hour12: boolean = true): string {
+  return formatTimeInTz(tz, hour12, new Date());
 }
 
 const MAX_OFFSET_MINUTES = 16 * 60;
@@ -230,14 +235,13 @@ export type TimeZoneSelectItem = {
 
 export const DEFAULT_TIMEZONE = "America/Los_Angeles";
 
-const OBSERVER_REFRESH_MS = 30_000;
-
 type BaseLabel = { tz: string; labelLeft: string; searchText: string };
 let cachedLabels: BaseLabel[] | null = null;
 
 export function resetTimeZoneCaches(): void {
   formatterCache.clear();
   cachedLabels = null;
+  cachedBase = null;
 }
 
 function getBaseLabels(): BaseLabel[] {
@@ -255,10 +259,19 @@ function getBaseLabels(): BaseLabel[] {
   return cachedLabels;
 }
 
-function baseItems(): Omit<TimeZoneSelectItem, "timeLabel">[] {
+type BaseItem = Omit<TimeZoneSelectItem, "timeLabel">;
+
+let cachedBase: { minute: number; items: BaseItem[] } | null = null;
+
+// Keyed on the minute and shared by every picker on the page, so opening one a
+// second time, or closing it, costs nothing.
+function baseItems(minute: number): BaseItem[] {
+  if (cachedBase?.minute === minute) return cachedBase.items;
+
+  const when = minuteStart(minute);
   const items = getBaseLabels().map((label) => ({
     ...label,
-    offsetMins: getOffsetMinutes(label.tz),
+    offsetMins: getOffsetMinutes(label.tz, when),
   }));
 
   items.sort(
@@ -267,6 +280,7 @@ function baseItems(): Omit<TimeZoneSelectItem, "timeLabel">[] {
       a.labelLeft.localeCompare(b.labelLeft),
   );
 
+  cachedBase = { minute, items };
   return items;
 }
 
@@ -292,38 +306,35 @@ export function useTimeZoneSelect({
     value ?? defaultValue,
   );
 
-  const [tick, forceTick] = useState(0);
-
-  useEffect(() => {
-    if (!open) return;
-    forceTick((x) => x + 1);
-    const id = setInterval(() => forceTick((x) => x + 1), OBSERVER_REFRESH_MS);
-    return () => clearInterval(id);
-  }, [open]);
+  // The closed trigger shows a clock too, so the refresh cannot wait for open.
+  const minute = useClockMinute();
 
   useEffect(() => {
     if (value != null) setInternalValue(value);
   }, [value]);
 
+  const base = useMemo(() => baseItems(minute), [minute]);
+
   const items = useMemo<TimeZoneSelectItem[]>(() => {
-    const base = baseItems();
+    const when = minuteStart(minute);
     return base.map((item) => ({
       ...item,
-      timeLabel: formatNowTimeInTz(item.tz, hour12),
+      timeLabel: formatTimeInTz(item.tz, hour12, when),
     }));
-  }, [hour12, tick]);
+  }, [base, hour12, minute]);
 
   const selected = useMemo<TimeZoneSelectItem>(() => {
+    const when = minuteStart(minute);
     return (
       items.find((i) => i.tz === internalValue) ?? {
         tz: internalValue,
         labelLeft: internalValue,
         searchText: internalValue.toLowerCase(),
-        offsetMins: getOffsetMinutes(internalValue),
-        timeLabel: formatNowTimeInTz(internalValue, hour12),
+        offsetMins: getOffsetMinutes(internalValue, when),
+        timeLabel: formatTimeInTz(internalValue, hour12, when),
       }
     );
-  }, [items, internalValue, hour12]);
+  }, [items, internalValue, hour12, minute]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

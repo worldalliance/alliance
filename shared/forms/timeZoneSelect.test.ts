@@ -1,11 +1,18 @@
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
+import { createElement } from "react";
+import { renderToString } from "react-dom/server";
+import { resetClock } from "../lib/useClockMinute";
 import {
   getOffsetMinutes,
   resetTimeZoneCaches,
   useTimeZoneSelect,
 } from "./timeZoneSelect";
 
-beforeEach(resetTimeZoneCaches);
+beforeEach(() => {
+  resetTimeZoneCaches();
+  resetClock();
+});
+afterEach(() => jest.useRealTimers());
 
 type FormatterArgs = {
   locales?: Intl.LocalesArgument;
@@ -105,6 +112,124 @@ describe("a zone sitting on UTC", () => {
   });
 });
 
+describe("the clock beside a zone", () => {
+  // A whole minute crosses exactly one boundary, whatever minute it starts in.
+  const A_MINUTE = 60_000;
+
+  it("refreshes on a picker nobody has opened", () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() => useTimeZoneSelect({}));
+    const atMount = result.current.selected.timeLabel;
+
+    act(() => jest.advanceTimersByTime(A_MINUTE));
+
+    expect(result.current.selected.timeLabel).not.toBe(atMount);
+  });
+
+  it("flips on the minute boundary, not a minute after mount", () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() => useTimeZoneSelect({}));
+    const atMount = result.current.selected.timeLabel;
+
+    act(() => jest.advanceTimersByTime(A_MINUTE - (Date.now() % A_MINUTE) - 1));
+    expect(result.current.selected.timeLabel).toBe(atMount);
+
+    act(() => jest.advanceTimersByTime(1));
+    expect(result.current.selected.timeLabel).not.toBe(atMount);
+  });
+
+  it("re-arms on the boundary after that, not a minute past the fire", () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() => useTimeZoneSelect({}));
+
+    act(() => jest.advanceTimersByTime(A_MINUTE - (Date.now() % A_MINUTE)));
+    const atBoundary = result.current.selected.timeLabel;
+
+    act(() => jest.advanceTimersByTime(A_MINUTE - 1));
+    expect(result.current.selected.timeLabel).toBe(atBoundary);
+
+    act(() => jest.advanceTimersByTime(1));
+    expect(result.current.selected.timeLabel).not.toBe(atBoundary);
+  });
+
+  it("shows the minute it committed in, not the one it rendered in", () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.now() + (A_MINUTE - (Date.now() % A_MINUTE)) - 1);
+
+    let crossed = false;
+    const straddling = renderHook(() => {
+      const picker = useTimeZoneSelect({});
+      // Carries the clock past the boundary between this render and its commit.
+      if (!crossed) {
+        crossed = true;
+        jest.setSystemTime(Date.now() + 2);
+      }
+      return picker;
+    });
+    const beside = renderHook(() => useTimeZoneSelect({}));
+
+    expect(straddling.result.current.selected.timeLabel).toBe(
+      beside.result.current.selected.timeLabel,
+    );
+  });
+
+  it("refreshes the list on a picker nobody has opened", () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() => useTimeZoneSelect({}));
+    const atMount = result.current.items.at(0)?.timeLabel;
+
+    act(() => jest.advanceTimersByTime(A_MINUTE));
+
+    expect(result.current.items.at(0)?.timeLabel).not.toBe(atMount);
+  });
+
+  it("renders on a server, which has no timer to subscribe to", () => {
+    const Picker = () =>
+      createElement("span", null, useTimeZoneSelect({}).selected.timeLabel);
+
+    expect(renderToString(createElement(Picker))).toMatch(/\d:\d\d/);
+  });
+
+  it("runs one timer however many pickers a feed mounts", () => {
+    jest.useFakeTimers();
+    const pickers = [1, 2, 3].map(() =>
+      renderHook(() => useTimeZoneSelect({})),
+    );
+
+    expect(jest.getTimerCount()).toBe(1);
+
+    for (const picker of pickers) picker.unmount();
+
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it("arms a fresh timer for the picker that follows the last unmount", () => {
+    jest.useFakeTimers();
+    renderHook(() => useTimeZoneSelect({})).unmount();
+
+    const { result } = renderHook(() => useTimeZoneSelect({}));
+    const atMount = result.current.selected.timeLabel;
+
+    act(() => jest.advanceTimersByTime(A_MINUTE));
+
+    expect(result.current.selected.timeLabel).not.toBe(atMount);
+  });
+
+  it("keeps the timer for the pickers a feed has left mounted", () => {
+    jest.useFakeTimers();
+    const leaving = renderHook(() => useTimeZoneSelect({}));
+    const staying = renderHook(() => useTimeZoneSelect({}));
+    const atMount = staying.result.current.selected.timeLabel;
+
+    leaving.unmount();
+    expect(jest.getTimerCount()).toBe(1);
+
+    act(() => jest.advanceTimersByTime(A_MINUTE));
+
+    expect(staying.result.current.selected.timeLabel).not.toBe(atMount);
+  });
+});
+
 describe("the offset a zone sorts by", () => {
   const january = new Date(Date.UTC(2026, 0, 15, 12));
   const july = new Date(Date.UTC(2026, 6, 15, 12));
@@ -124,6 +249,20 @@ describe("the offset a zone sorts by", () => {
   it("follows a zone across its own DST boundary", () => {
     expect(getOffsetMinutes("America/Los_Angeles", january)).toBe(-480);
     expect(getOffsetMinutes("America/Los_Angeles", july)).toBe(-420);
+  });
+
+  it("follows one a picker sat mounted through", () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(Date.UTC(2026, 2, 8, 9, 30)));
+    const { result } = renderHook(() => useTimeZoneSelect({}));
+
+    jest.setSystemTime(new Date(Date.UTC(2026, 2, 8, 10, 30)));
+    act(() => jest.advanceTimersByTime(60_000));
+
+    expect(
+      result.current.items.find((i) => i.tz === "America/Los_Angeles")
+        ?.offsetMins,
+    ).toBe(-420);
   });
 });
 
