@@ -1,29 +1,17 @@
 import { actionPartnershipsCreateResponse } from "@alliance/shared/client";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { cn } from "@alliance/shared/styles/util";
-import { Check } from "lucide-react";
-import React, { useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import { CONTACT_EMAIL } from "../../site/content";
-import { BandHeading, PageBand, PageShell } from "../../site/PageShell";
+import { PageBand, PageShell } from "../../site/PageShell";
 import {
   OUTREACH_CHANNELS,
   PARTNER_AUDIENCE_LABEL,
   PARTNER_CHANNELS_LABEL,
   PARTNER_FORM_BODY,
   PARTNER_FORM_TITLE,
-  PARTNER_OFFERS_BODY,
-  PARTNER_OFFERS_TITLE,
-  PARTNER_RELY_TITLE,
-  PARTNER_TASKS_BODY,
-  PARTNER_TASKS_TITLE,
   PARTNER_TITLE,
-  partnerOffers,
-  partnerReliance,
-  partnerTasks,
-  partnerTrade,
-  pastPartners,
-  type PartnerTask,
 } from "../../site/partnerContent";
 import {
   SectionSubtitle,
@@ -31,7 +19,6 @@ import {
   SITE_INPUT_STYLE,
   SITE_SUBMIT,
   SiteField,
-  TexturedPanel,
 } from "../../site/ui";
 
 export function meta() {
@@ -43,173 +30,173 @@ export function meta() {
   });
 }
 
-/**
- * The promise a mailing list can make, beside the one we can. The second box
- * carries the link-blue stroke, so the difference reads before the words do.
- */
-function Reliance() {
-  return (
-    <PageBand className="flex flex-col gap-7 pb-8 lg:pb-10">
-      <BandHeading>{PARTNER_RELY_TITLE}</BandHeading>
-      <div className="grid gap-5 sm:grid-cols-2 sm:gap-8">
-        {partnerReliance.map((pledge, index) => {
-          const ours = index === partnerReliance.length - 1;
-          return (
-            <blockquote
-              key={pledge.label}
-              className={cn(
-                "bg-white px-5 py-4 text-[1.05rem] leading-snug",
-                ours
-                  ? "border-2 border-[var(--site-link)] font-medium text-[var(--site-ink)]"
-                  : "border border-[var(--site-ink)]/20 text-[var(--site-ink)]/70",
-              )}
-              style={{ borderRadius: "var(--site-radius-card)" }}
-            >
-              {`“${pledge.quote}”`}
-            </blockquote>
-          );
-        })}
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        {partnerTrade.map((half) => (
-          <article
-            key={half.title}
-            className="flex flex-col gap-2 border border-[var(--site-ink)]/15 bg-white p-6"
-            style={{ borderRadius: "var(--site-radius-card)" }}
-          >
-            <h3 className="text-[1.15rem] font-medium text-[var(--site-primary)]">
-              {half.title}
-            </h3>
-            <p className="text-[1rem] leading-snug text-[var(--site-ink)]/70">
-              {half.body}
-            </p>
-          </article>
-        ))}
-      </div>
-    </PageBand>
-  );
-}
-
-/** One green panel holding the four things a partnership can be. */
-function Offers() {
-  return (
-    <PageBand className="py-0">
-      <TexturedPanel tint="var(--site-panel)">
-        <div className="mb-8 flex flex-col gap-3">
-          <h2 className="site-display text-[1.9rem] leading-tight text-white sm:text-[2.4rem]">
-            {PARTNER_OFFERS_TITLE}
-          </h2>
-          <SectionSubtitle onDark>{PARTNER_OFFERS_BODY}</SectionSubtitle>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {partnerOffers.map((offer) => (
-            <article
-              key={offer.title}
-              className="flex flex-col gap-2 bg-white/10 p-6"
-              style={{ borderRadius: "var(--site-radius-card)" }}
-            >
-              <h3 className="text-[1.15rem] font-medium text-white">
-                {offer.title}
-              </h3>
-              <p className="text-[1rem] leading-snug text-white/70">
-                {offer.body}
-              </p>
-            </article>
-          ))}
-        </div>
-      </TexturedPanel>
-    </PageBand>
-  );
-}
-
-/** The task as members receive it, so the ask is concrete. */
-function TaskMock({ task }: { task: PartnerTask }) {
-  const percent = Math.round((task.done / task.total) * 100);
-
-  return (
-    <article
-      className="flex flex-col gap-4 border border-[var(--site-ink)]/15 bg-white px-5 py-5"
-      style={{ borderRadius: "var(--site-radius-card)" }}
-    >
-      <div className="flex flex-col gap-1">
-        <a
-          href={task.href}
-          target="_blank"
-          rel="noreferrer"
-          className="w-fit text-[0.8rem] font-medium tracking-[0.12em] text-[var(--site-link)] uppercase hover:underline"
-        >
-          {task.partner}
-        </a>
-        <h3 className="text-[1.05rem] leading-snug font-semibold text-[var(--site-ink)]">
-          {task.title}
-        </h3>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <div className="h-2 overflow-hidden rounded-full bg-[var(--site-ink)]/12">
-          <div
-            className="h-full rounded-full bg-[var(--site-primary)]"
-            style={{ width: `${percent}%` }}
-          />
-        </div>
-        <p className="text-[0.78rem] text-[var(--site-ink)]/55">
-          {`${task.done}/${task.total} members completed the task`}
-        </p>
-      </div>
-
-      <ul className="flex flex-col gap-1">
-        {task.steps.map((step) => (
-          <li
-            key={step}
-            className="flex items-start gap-2.5 rounded bg-[var(--site-ink)]/[0.06] px-2 py-1.5 text-[0.85rem] leading-snug text-[var(--site-ink)]"
-          >
-            <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-[var(--site-primary)] text-white">
-              <Check className="size-2.5" strokeWidth={3.5} aria-hidden />
-            </span>
-            {step}
-          </li>
-        ))}
-      </ul>
-    </article>
-  );
-}
-
-function PartnerTasks() {
-  return (
-    <PageBand className="flex flex-col gap-8 pt-12 lg:pt-16">
-      <div className="flex flex-col gap-3">
-        <BandHeading>{PARTNER_TASKS_TITLE}</BandHeading>
-        <SectionSubtitle>{PARTNER_TASKS_BODY}</SectionSubtitle>
-        <SectionSubtitle>
-          {"We have previously worked with organizations like "}
-          {pastPartners.map((partner, index) => (
-            <React.Fragment key={partner.name}>
-              {index === 0
-                ? ""
-                : index === pastPartners.length - 1
-                  ? ", and "
-                  : ", "}
-              <a
-                href={partner.href}
-                target="_blank"
-                rel="noreferrer"
-                className="underline decoration-[var(--site-primary)]/35 underline-offset-2 hover:decoration-[var(--site-primary)]"
-              >
-                {partner.name}
-              </a>
-            </React.Fragment>
-          ))}
-          .
-        </SectionSubtitle>
-      </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        {partnerTasks.map((task) => (
-          <TaskMock key={task.partner} task={task} />
-        ))}
-      </div>
-    </PageBand>
-  );
-}
+// /**
+//  * The promise a mailing list can make, beside the one we can. The second box
+//  * carries the link-blue stroke, so the difference reads before the words do.
+//  */
+// function Reliance() {
+//   return (
+//     <PageBand className="flex flex-col gap-7 pb-8 lg:pb-10">
+//       <BandHeading>{PARTNER_RELY_TITLE}</BandHeading>
+//       <div className="grid gap-5 sm:grid-cols-2 sm:gap-8">
+//         {partnerReliance.map((pledge, index) => {
+//           const ours = index === partnerReliance.length - 1;
+//           return (
+//             <blockquote
+//               key={pledge.label}
+//               className={cn(
+//                 "bg-white px-5 py-4 text-[1.05rem] leading-snug",
+//                 ours
+//                   ? "border-2 border-[var(--site-link)] font-medium text-[var(--site-ink)]"
+//                   : "border border-[var(--site-ink)]/20 text-[var(--site-ink)]/70",
+//               )}
+//               style={{ borderRadius: "var(--site-radius-card)" }}
+//             >
+//               {`“${pledge.quote}”`}
+//             </blockquote>
+//           );
+//         })}
+//       </div>
+//       <div className="grid gap-4 sm:grid-cols-2">
+//         {partnerTrade.map((half) => (
+//           <article
+//             key={half.title}
+//             className="flex flex-col gap-2 border border-[var(--site-ink)]/15 bg-white p-6"
+//             style={{ borderRadius: "var(--site-radius-card)" }}
+//           >
+//             <h3 className="text-[1.15rem] font-medium text-[var(--site-primary)]">
+//               {half.title}
+//             </h3>
+//             <p className="text-[1rem] leading-snug text-[var(--site-ink)]/70">
+//               {half.body}
+//             </p>
+//           </article>
+//         ))}
+//       </div>
+//     </PageBand>
+//   );
+// }
+//
+// /** One green panel holding the four things a partnership can be. */
+// function Offers() {
+//   return (
+//     <PageBand className="py-0">
+//       <TexturedPanel tint="var(--site-panel)">
+//         <div className="mb-8 flex flex-col gap-3">
+//           <h2 className="site-display text-[1.9rem] leading-tight text-white sm:text-[2.4rem]">
+//             {PARTNER_OFFERS_TITLE}
+//           </h2>
+//           <SectionSubtitle onDark>{PARTNER_OFFERS_BODY}</SectionSubtitle>
+//         </div>
+//         <div className="grid gap-4 sm:grid-cols-2">
+//           {partnerOffers.map((offer) => (
+//             <article
+//               key={offer.title}
+//               className="flex flex-col gap-2 bg-white/10 p-6"
+//               style={{ borderRadius: "var(--site-radius-card)" }}
+//             >
+//               <h3 className="text-[1.15rem] font-medium text-white">
+//                 {offer.title}
+//               </h3>
+//               <p className="text-[1rem] leading-snug text-white/70">
+//                 {offer.body}
+//               </p>
+//             </article>
+//           ))}
+//         </div>
+//       </TexturedPanel>
+//     </PageBand>
+//   );
+// }
+//
+// /** The task as members receive it, so the ask is concrete. */
+// function TaskMock({ task }: { task: PartnerTask }) {
+//   const percent = Math.round((task.done / task.total) * 100);
+//
+//   return (
+//     <article
+//       className="flex flex-col gap-4 border border-[var(--site-ink)]/15 bg-white px-5 py-5"
+//       style={{ borderRadius: "var(--site-radius-card)" }}
+//     >
+//       <div className="flex flex-col gap-1">
+//         <a
+//           href={task.href}
+//           target="_blank"
+//           rel="noreferrer"
+//           className="w-fit text-[0.8rem] font-medium tracking-[0.12em] text-[var(--site-link)] uppercase hover:underline"
+//         >
+//           {task.partner}
+//         </a>
+//         <h3 className="text-[1.05rem] leading-snug font-semibold text-[var(--site-ink)]">
+//           {task.title}
+//         </h3>
+//       </div>
+//
+//       <div className="flex flex-col gap-1.5">
+//         <div className="h-2 overflow-hidden rounded-full bg-[var(--site-ink)]/12">
+//           <div
+//             className="h-full rounded-full bg-[var(--site-primary)]"
+//             style={{ width: `${percent}%` }}
+//           />
+//         </div>
+//         <p className="text-[0.78rem] text-[var(--site-ink)]/55">
+//           {`${task.done}/${task.total} members completed the task`}
+//         </p>
+//       </div>
+//
+//       <ul className="flex flex-col gap-1">
+//         {task.steps.map((step) => (
+//           <li
+//             key={step}
+//             className="flex items-start gap-2.5 rounded bg-[var(--site-ink)]/[0.06] px-2 py-1.5 text-[0.85rem] leading-snug text-[var(--site-ink)]"
+//           >
+//             <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-[var(--site-primary)] text-white">
+//               <Check className="size-2.5" strokeWidth={3.5} aria-hidden />
+//             </span>
+//             {step}
+//           </li>
+//         ))}
+//       </ul>
+//     </article>
+//   );
+// }
+//
+// function PartnerTasks() {
+//   return (
+//     <PageBand className="flex flex-col gap-8 pt-12 lg:pt-16">
+//       <div className="flex flex-col gap-3">
+//         <BandHeading>{PARTNER_TASKS_TITLE}</BandHeading>
+//         <SectionSubtitle>{PARTNER_TASKS_BODY}</SectionSubtitle>
+//         <SectionSubtitle>
+//           {"We have previously worked with organizations like "}
+//           {pastPartners.map((partner, index) => (
+//             <React.Fragment key={partner.name}>
+//               {index === 0
+//                 ? ""
+//                 : index === pastPartners.length - 1
+//                   ? ", and "
+//                   : ", "}
+//               <a
+//                 href={partner.href}
+//                 target="_blank"
+//                 rel="noreferrer"
+//                 className="underline decoration-[var(--site-primary)]/35 underline-offset-2 hover:decoration-[var(--site-primary)]"
+//               >
+//                 {partner.name}
+//               </a>
+//             </React.Fragment>
+//           ))}
+//           .
+//         </SectionSubtitle>
+//       </div>
+//       <div className="grid gap-4 md:grid-cols-3">
+//         {partnerTasks.map((task) => (
+//           <TaskMock key={task.partner} task={task} />
+//         ))}
+//       </div>
+//     </PageBand>
+//   );
+// }
 
 /** Flattened onto one screen, with the heading inside the card. */
 function PartnerForm() {
