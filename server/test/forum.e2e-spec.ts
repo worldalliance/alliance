@@ -232,6 +232,38 @@ describe("Forum (e2e)", () => {
       expect(response.body[0].actionId).toBe(testAction.id);
     });
 
+    it("should show authors their own scheduled posts on an action", async () => {
+      const futureVisibleAt = new Date(Date.now() + 1000 * 60 * 60);
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Future Action Post",
+          editableContent: {
+            body: "Scheduled in the future",
+            attachments: [],
+          },
+          actionId: testAction.id,
+          visibleAt: futureVisibleAt,
+        } satisfies CreatePostDto)
+        .expect(201);
+      const postId = createResponse.body.id;
+
+      const { token: visitorToken } = await createExtraUserAndToken();
+
+      const authorPosts = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/action/${testAction.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      expect(authorPosts.body.some((post) => post.id === postId)).toBe(true);
+
+      const visitorPosts = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/action/${testAction.id}`)
+        .set("Authorization", `Bearer ${visitorToken}`)
+        .expect(200);
+      expect(visitorPosts.body.some((post) => post.id === postId)).toBe(false);
+    });
+
     it("should get a post by id", async () => {
       await addTestPost();
 
@@ -284,6 +316,44 @@ describe("Forum (e2e)", () => {
         .get(`/forum/posts/${createResponse.body.id}`)
         .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(404);
+    });
+
+    it("should hide a member's future-scheduled posts from profile visitors", async () => {
+      const futureVisibleAt = new Date(Date.now() + 1000 * 60 * 60);
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Future Post On Profile",
+          editableContent: {
+            body: "Scheduled in the future",
+            attachments: [],
+          },
+          visibleAt: futureVisibleAt,
+        } satisfies CreatePostDto)
+        .expect(201);
+      const postId = createResponse.body.id;
+
+      const { token: visitorToken } = await createExtraUserAndToken();
+
+      const visitorPosts = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/user/${ctx.testUserId}`)
+        .set("Authorization", `Bearer ${visitorToken}`)
+        .expect(200);
+      expect(visitorPosts.body.some((post) => post.id === postId)).toBe(false);
+
+      const anonymousPosts = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/user/${ctx.testUserId}`)
+        .expect(200);
+      expect(anonymousPosts.body.some((post) => post.id === postId)).toBe(
+        false,
+      );
+
+      const ownPosts = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/user/${ctx.testUserId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      expect(ownPosts.body.some((post) => post.id === postId)).toBe(true);
     });
 
     it("should allow authors to see their own future-scheduled posts", async () => {

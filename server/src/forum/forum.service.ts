@@ -243,7 +243,11 @@ export class ForumService {
     }));
   }
 
-  async findPostsByAction(actionId: number): Promise<ParsedPost[]> {
+  async findPostsByAction(params: {
+    actionId: number;
+    requestingUserId?: number;
+  }): Promise<ParsedPost[]> {
+    const { actionId, requestingUserId } = params;
     const qb = this.postRepository
       .createQueryBuilder("post")
       .leftJoinAndSelect("post.author", "author")
@@ -254,7 +258,7 @@ export class ForumService {
       .leftJoinAndSelect("post.likes", "likes")
       .where("post.actionId = :actionId", { actionId })
       .orderBy("post.updatedAt", "DESC");
-    this.addPostVisibilityFilter(qb, "post");
+    this.addPostVisibilityFilter(qb, "post", requestingUserId);
     const posts = (await qb.getMany()).map(parsePost);
 
     const postsWithComments = await Promise.all(
@@ -1066,7 +1070,11 @@ export class ForumService {
     await this.commentRepository.update(id, { deleted: true });
   }
 
-  async findPostsByUser(userId: number): Promise<ParsedPost[]> {
+  async findPostsByUser(params: {
+    authorId: number;
+    requestingUserId?: number;
+  }): Promise<ParsedPost[]> {
+    const { authorId, requestingUserId } = params;
     const qb = this.postRepository
       .createQueryBuilder("post")
       .leftJoinAndSelect("post.author", "author")
@@ -1074,10 +1082,10 @@ export class ForumService {
       .leftJoinAndSelect("action.reviewers", "actionReviewer")
       .leftJoinAndSelect("post.editableContent", "editableContent")
       .leftJoin("post.authors", "coAuthor")
-      .andWhere("(post.authorId = :userId OR coAuthor.id = :userId)", {
-        userId,
+      .andWhere("(post.authorId = :authorId OR coAuthor.id = :authorId)", {
+        authorId,
       });
-    this.addPostVisibilityFilter(qb, "post", userId);
+    this.addPostVisibilityFilter(qb, "post", requestingUserId);
     return (await qb.getMany()).map(parsePost);
   }
 
