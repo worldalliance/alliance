@@ -22,13 +22,13 @@ import {
 } from "typeorm";
 import { ExternalShareTarget } from "./entities/external-share-target.entity";
 import { ShareUrl, ShareUrlKind } from "./entities/share-url.entity";
-import { shareUrlPublicUrl } from "./share-url-public-url";
 import {
   inviteAssignmentColumns,
   inviteAssignmentFromColumns,
   type StoredInviteAssignment,
   StoredInviteAssignmentKind,
 } from "./invite-assignment";
+import { shareUrlPublicUrl } from "./share-url-public-url";
 import type { ShareUrlMine, ShareUrlWithSignupCount } from "./share-url-views";
 
 const NOT_FOUND_MESSAGE: Record<ShareUrlKind, string> = {

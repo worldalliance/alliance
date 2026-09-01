@@ -1,8 +1,8 @@
 import { Hero } from "./sections/Hero";
-import { Nav } from "./sections/Nav";
 import { HowItWorks } from "./sections/HowItWorks";
 import { JoinCta } from "./sections/JoinCta";
 import { ModelSection } from "./sections/ModelSection";
+import { Nav } from "./sections/Nav";
 import { HeadlineIntro, Priorities } from "./sections/Priorities";
 import { SiteFooter } from "./sections/SiteFooter";
 import { Testimonial } from "./sections/Testimonial";

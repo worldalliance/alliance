@@ -89,7 +89,9 @@ function buildNetwork(params: {
   const random = mulberry32(seed);
   const step = stepFor(width);
   const directions = directionsFor(step);
-  const nodes: Node[] = [{ x: hubX, y: hubY, depth: 0, shape: NodeShape.Square }];
+  const nodes: Node[] = [
+    { x: hubX, y: hubY, depth: 0, shape: NodeShape.Square },
+  ];
   const edges: Edge[] = [];
 
   const tooClose = (x: number, y: number) =>

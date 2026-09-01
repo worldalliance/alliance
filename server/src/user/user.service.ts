@@ -72,9 +72,7 @@ import {
   getAmbassadorGoalHalfwayNotificationTime,
 } from "./ambassador-invite-goal-notification.utils";
 import { CreateAwayRangeDto, UpdateAwayRangeDto } from "./dto/away-range.dto";
-import {
-  RegisterDeviceDto,
-} from "./dto/device.dto";
+import { RegisterDeviceDto } from "./dto/device.dto";
 import {
   AmbassadorInviteDashboard,
   AmbassadorInviteGoalWithStats,

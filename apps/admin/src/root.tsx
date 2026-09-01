@@ -1,5 +1,4 @@
 import { client } from "@alliance/shared/client/client.gen";
-import { getApiUrl } from "./lib/config";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -13,6 +12,7 @@ import {
 } from "react-router";
 import { Route } from "../.react-router/types/src/+types/root";
 import { AuthProvider } from "./lib/AuthContext";
+import { getApiUrl } from "./lib/config";
 import { GroupAssignmentProvider } from "./lib/GroupAssignmentContext";
 
 const queryClient = new QueryClient({

@@ -216,12 +216,7 @@ function OverlapCardCta({ theme }: { theme: RedesignTheme }) {
           <p className="-mt-2 text-lg leading-snug font-light sm:text-[1.2rem]">
             {CTA_BODY}
           </p>
-          <RdButton
-            {...target}
-            tone="outlineLight"
-            className="w-fit"
-            withArrow
-          >
+          <RdButton {...target} tone="outlineLight" className="w-fit" withArrow>
             {CTA_BUTTON}
           </RdButton>
         </div>

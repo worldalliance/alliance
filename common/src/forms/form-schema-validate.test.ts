@@ -1,8 +1,4 @@
-import type {
-  AccordionBlock,
-  ImagesBlock,
-  LabelBlock,
-} from "./display-blocks";
+import type { AccordionBlock, ImagesBlock, LabelBlock } from "./display-blocks";
 import type {
   AnyField,
   FormSchema,
@@ -768,7 +764,9 @@ describe("validateFormSchema", () => {
 
   it("accepts an accordion whose sections are titled and hold a block", () => {
     const schema = baseSchema({
-      pages: [page("p1", [accordionBlock("blk-acc", [filledSection("First")])])],
+      pages: [
+        page("p1", [accordionBlock("blk-acc", [filledSection("First")])]),
+      ],
     });
     expect(validateFormSchema(schema)).toEqual([]);
   });

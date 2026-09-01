@@ -1,9 +1,9 @@
 import { errorMessage } from "@alliance/common/errorMessage";
 import type { VideoBlock } from "@alliance/common/forms/display-blocks";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
-import { getApiUrl } from "../../lib/config";
 import React, { useState } from "react";
 import { Link, href } from "react-router";
+import { getApiUrl } from "../../lib/config";
 import { VariableTextField } from "../VariableTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";

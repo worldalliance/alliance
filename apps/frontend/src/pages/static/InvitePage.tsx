@@ -79,7 +79,10 @@ const InvitePage: React.FC = () => {
               "flex flex-col items-center gap-4 pt-16 pb-20 text-center lg:pt-24",
             )}
           >
-            <DisplayHeading as="h1" className="text-4xl sm:text-5xl lg:text-6xl">
+            <DisplayHeading
+              as="h1"
+              className="text-4xl sm:text-5xl lg:text-6xl"
+            >
               Invalid invite
             </DisplayHeading>
             <DisplaySubtitle className="mx-auto text-center">
@@ -130,10 +133,15 @@ const InvitePage: React.FC = () => {
           )}
         >
           {inviterLine && (
-            <div className="text-lg text-[var(--site-ink)]/70">{inviterLine}</div>
+            <div className="text-lg text-[var(--site-ink)]/70">
+              {inviterLine}
+            </div>
           )}
           <div className="flex flex-col items-center gap-4">
-            <DisplayHeading as="h1" className="text-4xl sm:text-5xl lg:text-6xl">
+            <DisplayHeading
+              as="h1"
+              className="text-4xl sm:text-5xl lg:text-6xl"
+            >
               Invitation to the Alliance
             </DisplayHeading>
             <DisplaySubtitle className="mx-auto text-center">

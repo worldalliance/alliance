@@ -39,7 +39,6 @@ import {
 } from "@alliance/shared/client/types.gen";
 import { getMemberCount } from "@alliance/shared/lib/communityUtils";
 import { cn } from "@alliance/shared/styles/util";
-import { getApiUrl } from "../lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import FormInput from "@alliance/sharedweb/ui/FormInput";
@@ -68,6 +67,7 @@ import { Link, useLoaderData, useNavigate } from "react-router";
 import { Route } from "../../.react-router/types/src/pages/+types/UserDetailView";
 import CreateActivityControls from "../components/CreateActivityControls";
 import DeleteAccountModal from "../components/DeleteAccountModal";
+import { getApiUrl } from "../lib/config";
 
 const AWAY_REASON_OPTIONS = [
   { value: "vacation", label: "Vacation" },

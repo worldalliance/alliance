@@ -3,10 +3,10 @@ import { Check } from "lucide-react";
 import { useEffect, useState, type ReactNode, type RefObject } from "react";
 import {
   COMMIT_CTA,
+  COMMIT_PLACEHOLDER,
   COMMIT_PLEDGE,
   COMMIT_SIGNATURE,
   COMMIT_SIGNATURE_LABEL,
-  COMMIT_PLACEHOLDER,
   COMMIT_STATEMENT,
   COMMIT_TITLE,
   TASK_CTA,

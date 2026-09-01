@@ -19,10 +19,7 @@ export const ACTION_PRIORITY_LABELS: Record<ActionPriority, string> = {
   [ActionPriority.Technology]: "Technology",
 };
 
-export type ActionPriorityTags = readonly [
-  ActionPriority,
-  ...ActionPriority[],
-];
+export type ActionPriorityTags = readonly [ActionPriority, ...ActionPriority[]];
 
 export type FeaturedImpactAction = {
   actionId: number;

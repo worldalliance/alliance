@@ -198,7 +198,10 @@ function InlineFooter({ theme }: { theme: RedesignTheme }) {
     <Shell>
       <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
         <Brand theme={theme} />
-        <InlineLinks theme={theme} className="lg:max-w-[30rem] lg:justify-end" />
+        <InlineLinks
+          theme={theme}
+          className="lg:max-w-[30rem] lg:justify-end"
+        />
       </div>
       <LegalRow version={theme.version} />
     </Shell>

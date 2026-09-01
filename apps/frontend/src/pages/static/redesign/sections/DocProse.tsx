@@ -87,9 +87,7 @@ export function DocProse({
               {children}
             </RdTrigger>
           ),
-          hr: () => (
-            <hr className="mt-10 border-t border-[var(--rd-ink)]/12" />
-          ),
+          hr: () => <hr className="mt-10 border-t border-[var(--rd-ink)]/12" />,
         }}
       >
         {markdown}

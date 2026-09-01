@@ -3,10 +3,10 @@ import officePhoto from "../../../../assets/redesign/office.jpg";
 import { currentMemberCount } from "../content";
 import { RedesignPage } from "../links";
 import {
+  experts,
   EXPERTS_BODY,
   EXPERTS_NOTE,
   EXPERTS_TITLE,
-  experts,
   MEMBERS_INVITE_ONLY,
   MEMBERS_NOTE,
   MEMBERS_TITLE,

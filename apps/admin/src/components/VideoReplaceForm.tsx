@@ -1,9 +1,9 @@
 import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
-import { getApiUrl } from "../lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useCallback, useRef, useState } from "react";
+import { getApiUrl } from "../lib/config";
 
 interface VideoReplaceFormProps {
   videoId: number;

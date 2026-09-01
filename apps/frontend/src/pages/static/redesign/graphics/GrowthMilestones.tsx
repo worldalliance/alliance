@@ -44,26 +44,26 @@ function MilestoneTrack({
           gridTemplateColumns: `repeat(${milestones.length}, minmax(0, 1fr))`,
         }}
       >
-      {milestones.map((milestone, i) => (
-        <div key={milestone.members} className="flex flex-col gap-1.5">
-          <p className="text-right text-xs text-white tabular-nums sm:text-sm">
-            {milestone.members.toLocaleString("en-US")}
-            {showUnit && i === 0 && " Members"}
-          </p>
-          <div className="h-6 overflow-hidden rounded-[5px] bg-white/35 sm:h-[30px]">
-            <div
-              className="h-full origin-left rounded-[5px] bg-white ease-out"
-              style={{
-                transform: `scaleX(${inView ? Math.min(Math.max(progress - i, 0), 1) : 0})`,
-                transitionProperty: "transform",
-                transitionDuration: `${BAR_FILL_MS}ms`,
-                transitionDelay: `${i * BAR_FILL_MS}ms`,
-              }}
-            />
-          </div>
-          <p className="text-right text-[0.7rem] leading-tight text-white sm:text-sm">
-            {milestone.label}
-          </p>
+        {milestones.map((milestone, i) => (
+          <div key={milestone.members} className="flex flex-col gap-1.5">
+            <p className="text-right text-xs text-white tabular-nums sm:text-sm">
+              {milestone.members.toLocaleString("en-US")}
+              {showUnit && i === 0 && " Members"}
+            </p>
+            <div className="h-6 overflow-hidden rounded-[5px] bg-white/35 sm:h-[30px]">
+              <div
+                className="h-full origin-left rounded-[5px] bg-white ease-out"
+                style={{
+                  transform: `scaleX(${inView ? Math.min(Math.max(progress - i, 0), 1) : 0})`,
+                  transitionProperty: "transform",
+                  transitionDuration: `${BAR_FILL_MS}ms`,
+                  transitionDelay: `${i * BAR_FILL_MS}ms`,
+                }}
+              />
+            </div>
+            <p className="text-right text-[0.7rem] leading-tight text-white sm:text-sm">
+              {milestone.label}
+            </p>
           </div>
         ))}
       </div>

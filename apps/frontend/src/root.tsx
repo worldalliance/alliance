@@ -18,8 +18,8 @@ import { Route } from "../.react-router/types/src/+types/root";
 import { HtmlBackgroundManager } from "./components/HtmlBackgroundManager";
 import { AuthProvider } from "./lib/AuthContext";
 import { getApiUrl, getPosthogHost } from "./lib/config";
-import { socialPreviewMeta } from "./lib/socialPreviewMeta";
 import PosthogBuildTag from "./lib/PosthogBuildTag";
+import { socialPreviewMeta } from "./lib/socialPreviewMeta";
 
 const queryClient = new QueryClient({
   defaultOptions: {

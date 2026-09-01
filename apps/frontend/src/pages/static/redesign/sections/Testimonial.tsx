@@ -6,8 +6,8 @@ import {
   testimonials,
   type Testimonial as TestimonialData,
 } from "../content";
-import { TestimonialKind, type RedesignTheme } from "../theme";
 import { rdHref, RedesignPage } from "../links";
+import { TestimonialKind, type RedesignTheme } from "../theme";
 import { QuoteMarkKind, RD_COL, RdButton, RdQuoteMark } from "../ui";
 
 const primary = testimonials[0];
@@ -225,11 +225,11 @@ function SplitTestimonial({ theme }: { theme: RedesignTheme }) {
           <div className="flex flex-col items-start gap-6">
             <Attribution person={primary} />
             <RdButton
-          href={rdHref(theme.version, RedesignPage.People)}
-          tone="outline"
-          size="sm"
-          withArrow
-        >
+              href={rdHref(theme.version, RedesignPage.People)}
+              tone="outline"
+              size="sm"
+              withArrow
+            >
               {PEOPLE_CTA}
             </RdButton>
           </div>

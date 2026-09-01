@@ -39,35 +39,35 @@ export function HoursGrid() {
           className="grid min-w-[560px] gap-[3px] sm:min-w-0 sm:gap-1.5"
           style={{ gridTemplateColumns: `repeat(${COLUMNS}, minmax(0, 1fr))` }}
         >
-        {cells.map((i) => {
-          const row = Math.floor(i / COLUMNS);
-          const column = i % COLUMNS;
-          const isStart = i === 0;
-          const isEnd = i === cells.length - 1;
-          const isSpent = row === SPENT_ROW && column === SPENT_COLUMN;
+          {cells.map((i) => {
+            const row = Math.floor(i / COLUMNS);
+            const column = i % COLUMNS;
+            const isStart = i === 0;
+            const isEnd = i === cells.length - 1;
+            const isSpent = row === SPENT_ROW && column === SPENT_COLUMN;
 
-          return (
-            <div
-              key={i}
-              className={cn(
-                "relative aspect-square rounded-[4px] transition-opacity duration-500 sm:rounded-[7px]",
-                isStart || isEnd
-                  ? "border-[1.5px] border-white bg-transparent"
-                  : "bg-white/[0.22]",
-                inView ? "opacity-100" : "opacity-0",
-              )}
-              style={{ transitionDelay: `${column * 26 + row * 8}ms` }}
-            >
-              {isSpent && (
-                <span
-                  className="absolute inset-x-0 top-1/2 h-[24%] -translate-y-1/2 rounded-[2px] bg-white transition-transform duration-500 ease-out"
-                  style={{
-                    transitionDelay: `${COLUMNS * 26 + 260}ms`,
-                    transform: `translateY(-50%) scaleX(${inView ? 1 : 0})`,
-                  }}
-                />
-              )}
-            </div>
+            return (
+              <div
+                key={i}
+                className={cn(
+                  "relative aspect-square rounded-[4px] transition-opacity duration-500 sm:rounded-[7px]",
+                  isStart || isEnd
+                    ? "border-[1.5px] border-white bg-transparent"
+                    : "bg-white/[0.22]",
+                  inView ? "opacity-100" : "opacity-0",
+                )}
+                style={{ transitionDelay: `${column * 26 + row * 8}ms` }}
+              >
+                {isSpent && (
+                  <span
+                    className="absolute inset-x-0 top-1/2 h-[24%] -translate-y-1/2 rounded-[2px] bg-white transition-transform duration-500 ease-out"
+                    style={{
+                      transitionDelay: `${COLUMNS * 26 + 260}ms`,
+                      transform: `translateY(-50%) scaleX(${inView ? 1 : 0})`,
+                    }}
+                  />
+                )}
+              </div>
             );
           })}
         </div>

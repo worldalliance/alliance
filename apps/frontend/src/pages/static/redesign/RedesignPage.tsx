@@ -1,20 +1,17 @@
 import type { ReactNode } from "react";
 import { useParams, useSearchParams } from "react-router";
-import "./redesign.css";
 import { parsePage, RedesignPage } from "./links";
 import { RedesignFaqPage } from "./pages/FaqPage";
 import { RedesignFoundationPage } from "./pages/FoundationPage";
 import { RedesignGovernancePage } from "./pages/GovernancePage";
 import { RedesignGuidePage } from "./pages/GuidePage";
 import { RedesignJoinPage } from "./pages/JoinPage";
-import {
-  RedesignPrivacyPage,
-  RedesignTermsPage,
-} from "./pages/LegalPages";
+import { RedesignPrivacyPage, RedesignTermsPage } from "./pages/LegalPages";
 import { RedesignPartnerPage } from "./pages/PartnerPage";
 import { RedesignPeoplePage } from "./pages/PeoplePage";
 import { RedesignProgressPage } from "./pages/ProgressPage";
 import { RedesignSystemPage } from "./pages/SystemPage";
+import "./redesign.css";
 import { RedesignHome } from "./RedesignHome";
 import { JoinRequestProvider } from "./sections/JoinRequest";
 import {
