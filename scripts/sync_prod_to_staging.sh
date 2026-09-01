@@ -17,8 +17,17 @@ if ! command -v jq >/dev/null; then
   exit 1
 fi
 
+# The lock taken below lives on the open file description rather than the
+# process, so every child inherits it and an orphaned pg_dump would hold it
+# after a kill and skip every run that follows. Anything that can outlive the
+# shell runs through here. The two startup aborts below run before the lock
+# exists, where closing an fd nothing opened is a no-op.
+unlocked() {
+  "$@" 200>&-
+}
+
 notify_slack() {
-  curl --silent --show-error --fail --max-time 10 \
+  unlocked curl --silent --show-error --fail --max-time 10 \
     --retry 3 --retry-connrefused \
     --header 'Content-Type: application/json' \
     --data "$(jq -nc --arg text "$1" '{text: $text}')" \
@@ -35,15 +44,44 @@ notify_slack() {
 ping_healthcheck() {
   local base="${HEALTHCHECK_URL:-}"
   [ -n "$base" ] || return 0
-  curl --silent --show-error --fail --max-time 10 \
+  unlocked curl --silent --show-error --fail --max-time 10 \
     --retry 3 --retry-connrefused --retry-max-time 30 \
     "${base%/}${1:-}" >/dev/null \
     || echo "[$(date)] ==> WARNING: could not ping the healthcheck."
 }
 
+# The startup trap is installed below, so a failure up here reports for itself.
+abort_before_start() {
+  echo "[$(date)] ==> $1" >&2
+  notify_slack ":x: prod → staging: $1"
+  ping_healthcheck /fail
+  exit 1
+}
+
+if ! command -v flock >/dev/null; then
+  abort_before_start "flock is not installed; the sync needs it to stop two \
+runs from overlapping."
+fi
+
+LOCK_FILE=/home/ec2-user/sync_prod_to_staging.lock
+if ! true >>"$LOCK_FILE"; then
+  abort_before_start "cannot write ${LOCK_FILE}; the sync needs it to stop two \
+runs from overlapping."
+fi
+
+# Two runs share one scratch database and one staging database, so an overlap
+# corrupts both, and in the worst order one run renames the other's
+# half-restored, still unanonymized database into place as staging.
+exec 200>>"$LOCK_FILE"
+if ! flock -n 200; then
+  echo "[$(date)] ==> Another sync is already running; skipping this one."
+  notify_slack ":no_entry: prod → staging: another sync is already running; \
+skipping this one."
+  exit 0
+fi
+
 # cleanup reads paths built further down, so it can't be the trap yet. This one
-# reports the only startup failure that can reach Slack, a db-sync.env that
-# loads but is missing a variable.
+# reports a db-sync.env that loads but is missing a variable.
 report_startup_failure() {
   notify_slack ":x: prod → staging: FAILED during startup, before the sync \
 began. Check db-sync.env on the staging host. Staging still holds the data from \
@@ -88,8 +126,9 @@ cleanup() {
   rm -f "$DUMP_FILE"
 
   if [ "$SWAP_STARTED" -eq 0 ]; then
-    psql "$STAGING_ADMIN_URL" -q \
-      -c "DROP DATABASE IF EXISTS ${SCRATCH_DB} WITH (FORCE);" >/dev/null 2>&1 \
+    unlocked psql "$STAGING_ADMIN_URL" -q \
+      -c "DROP DATABASE IF EXISTS ${SCRATCH_DB} WITH (FORCE);" \
+      >/dev/null 2>&1 \
       || echo "[$(date)] ==> WARNING: could not drop ${SCRATCH_DB}; it may still" \
         "hold unanonymized prod data."
   fi
@@ -139,7 +178,7 @@ ping_healthcheck /start
 STAGE="dump"
 echo "[$(date)] ==> Dumping prod database to ${DUMP_FILE}..."
 
-pg_dump \
+unlocked pg_dump \
   --format=custom \
   --no-owner \
   --no-privileges \
@@ -149,7 +188,7 @@ pg_dump \
 STAGE="scratch database"
 echo "[$(date)] ==> Recreating scratch database ${SCRATCH_DB}..."
 
-psql "$STAGING_ADMIN_URL" -v ON_ERROR_STOP=1 <<SQL
+unlocked psql "$STAGING_ADMIN_URL" -v ON_ERROR_STOP=1 <<SQL
 DROP DATABASE IF EXISTS ${SCRATCH_DB} WITH (FORCE);
 CREATE DATABASE ${SCRATCH_DB} WITH TEMPLATE=template0 ENCODING='UTF8';
 SQL
@@ -157,7 +196,7 @@ SQL
 STAGE="restore"
 echo "[$(date)] ==> Restoring dump into ${SCRATCH_DB}..."
 
-pg_restore \
+unlocked pg_restore \
   --exit-on-error \
   --no-owner \
   --no-privileges \
@@ -167,7 +206,7 @@ pg_restore \
 STAGE="anonymize"
 echo "[$(date)] ==> Anonymizing ${SCRATCH_DB}..."
 
-psql "$SCRATCH_URL" -v ON_ERROR_STOP=1 --single-transaction \
+unlocked psql "$SCRATCH_URL" -v ON_ERROR_STOP=1 --single-transaction \
   -v password_hash="$STAGING_PASSWORD_HASH" <<'SQL'
 -- ============================================================================
 -- Anonymize members.
@@ -312,7 +351,7 @@ STAGE="swap"
 echo "[$(date)] ==> Swapping ${SCRATCH_DB} into place as ${STAGING_DB_NAME}..."
 
 SWAP_STARTED=1
-psql "$STAGING_ADMIN_URL" -v ON_ERROR_STOP=1 <<SQL
+unlocked psql "$STAGING_ADMIN_URL" -v ON_ERROR_STOP=1 <<SQL
 SELECT pg_terminate_backend(pid)
 FROM pg_stat_activity
 WHERE datname = '${SCRATCH_DB}'
@@ -325,7 +364,7 @@ SQL
 STAGE="s3 sync"
 echo "[$(date)] ==> S3 sync s3://$PROD_ASSETS_BUCKET -> s3://$STAGING_ASSETS_BUCKET"
 
-aws s3 sync \
+unlocked aws s3 sync \
   "s3://${PROD_ASSETS_BUCKET}/" \
   "s3://${STAGING_ASSETS_BUCKET}/" \
   --only-show-errors \

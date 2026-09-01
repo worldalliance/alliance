@@ -182,3 +182,5 @@ Slack covers the runs that live long enough to post. The switch covers the ones 
 Use a healthchecks.io check and set `HEALTHCHECK_URL` in `/home/ec2-user/db-sync.env` to its bare ping URL. The script appends `/start` and `/fail` itself, so don't include either, and a trailing slash is fine. Give the check a period of a day and a grace window longer than a full sync takes. A Better Stack heartbeat is not a drop-in replacement. It takes the bare URL and `/fail`, with no `/start`.
 
 The sync refuses to start without `HEALTHCHECK_URL` and posts an `:x:` to Slack saying so. That is on purpose. A monitor that turns itself off when someone forgets a variable is worse than no monitor. It does mean a freshly provisioned staging host needs the variable in `db-sync.env` before the first run, not after.
+
+Runs serialize on `/home/ec2-user/sync_prod_to_staging.lock`, so a manual re-run that collides with the nightly cron posts a `:no_entry:` and exits 0 instead of racing it over the same databases. The host needs `flock` for that. Without it the sync refuses to start and says so in Slack.
