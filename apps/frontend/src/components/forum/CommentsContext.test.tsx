@@ -9,12 +9,21 @@ let createResponse: { data?: { id: number }; error?: unknown } = {
   data: { id: 7 },
 };
 
+let deleteFails = false;
+
+afterEach(() => {
+  deleteFails = false;
+});
+
 jest.mock("@alliance/shared/client", () => ({
   forumCreateComment: async () => createResponse,
   forumFindCommentsForPost: noComments,
   forumFindCommentsForActivity: noComments,
   forumFindCommentsForAction: noComments,
-  forumDeleteComment: async () => ({}),
+  forumDeleteComment: async () => {
+    if (deleteFails) throw new Error("the request never landed");
+    return {};
+  },
   forumUpdateComment: async () => ({}),
   forumPinCommentAdmin: async () => ({}),
   forumLikeComment: async () => ({}),
@@ -111,4 +120,24 @@ it("keeps a rejection that landed while its own form was closed", async () => {
   });
 
   expect(result.current.submitErrorFor(null)).toBe("Nothing to reply to");
+});
+
+it("keeps a failed delete out of the thread's error", async () => {
+  const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
+
+  deleteFails = true;
+  const confirm = jest.spyOn(window, "confirm").mockReturnValue(true);
+  await act(async () => {
+    await result.current.handleDeleteReply(5);
+  });
+  confirm.mockRestore();
+
+  expect(result.current.deleteErrorFor(5)).toBe("Failed to delete reply");
+  expect(result.current.error).toBeNull();
+
+  await act(async () => {
+    await result.current.fetchComments();
+  });
+
+  expect(result.current.deleteErrorFor(5)).toBe("Failed to delete reply");
 });
