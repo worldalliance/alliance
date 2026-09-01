@@ -8,6 +8,35 @@ umask 077
 
 source /home/ec2-user/db-sync.env
 
+# Checked ahead of the traps below, and of every other variable, because a trap
+# has no way to report its own failure without these two.
+: "${SLACK_WEBHOOK_URL:?missing in db-sync.env}"
+
+if ! command -v jq >/dev/null; then
+  echo "jq is not installed; the sync needs it to post results to Slack." >&2
+  exit 1
+fi
+
+notify_slack() {
+  curl --silent --show-error --fail --max-time 10 \
+    --retry 3 --retry-connrefused \
+    --header 'Content-Type: application/json' \
+    --data "$(jq -nc --arg text "$1" '{text: $text}')" \
+    "$SLACK_WEBHOOK_URL" >/dev/null \
+    || echo "[$(date)] ==> WARNING: could not post to Slack."
+}
+
+# cleanup reads paths built further down, so it can't be the trap yet. This one
+# reports the only startup failure that can reach Slack, a db-sync.env that
+# loads but is missing a variable.
+report_startup_failure() {
+  notify_slack ":x: prod → staging: FAILED during startup, before the sync \
+began. Check db-sync.env on the staging host. Staging still holds the data from \
+its previous successful sync."
+  exit 1
+}
+trap report_startup_failure EXIT
+
 : "${PROD_DB_USER:?missing in db-sync.env}" \
   "${PROD_DB_PASSWORD:?missing in db-sync.env}" \
   "${PROD_DB_HOST:?missing in db-sync.env}" \
@@ -20,13 +49,6 @@ source /home/ec2-user/db-sync.env
   "${PROD_ASSETS_BUCKET:?missing in db-sync.env}" \
   "${STAGING_ASSETS_BUCKET:?missing in db-sync.env}"
 
-BCRYPT_PATTERN='^\$2[aby]\$[0-9]{2}\$[./A-Za-z0-9]{53}$'
-if [[ ! $STAGING_PASSWORD_HASH =~ $BCRYPT_PATTERN ]]; then
-  echo "STAGING_PASSWORD_HASH is not a bcrypt hash — single-quote it in" \
-    "db-sync.env so the shell doesn't expand the \$-delimited fields." >&2
-  exit 1
-fi
-
 PROD_URL="postgresql://${PROD_DB_USER}:${PROD_DB_PASSWORD}@${PROD_DB_HOST}:5432/${PROD_DB_NAME}"
 
 STAGING_ADMIN_URL="postgresql://${STAGING_DB_USER}:${STAGING_DB_PASSWORD}@${STAGING_DB_HOST}:5432/postgres"
@@ -38,6 +60,7 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 DUMP_FILE="/home/ec2-user/prod_dump_${TIMESTAMP}.pgcustom"
 
 SWAP_STARTED=0
+STAGE="startup"
 
 # The dump file and the scratch database both hold unanonymized prod data, so
 # every exit path has to take them with it — until the swap starts, after which
@@ -54,16 +77,24 @@ cleanup() {
         "hold unanonymized prod data."
   fi
 
-  if [ "$status" -ne 0 ]; then
-    if [ "$SWAP_STARTED" -eq 1 ]; then
-      echo "[$(date)] ==> FAILED (exit ${status}) at or after the swap." \
-        "If ${STAGING_DB_NAME} no longer exists, recover with:" \
-        "ALTER DATABASE ${SCRATCH_DB} RENAME TO ${STAGING_DB_NAME};"
-    else
-      echo "[$(date)] ==> FAILED (exit ${status}). Staging still holds the data" \
-        "from its previous successful sync."
-    fi
+  local emoji outcome
+
+  if [ "$status" -eq 0 ]; then
+    emoji=":white_check_mark:"
+    outcome="Sync completed successfully."
+  elif [ "$SWAP_STARTED" -eq 1 ]; then
+    emoji=":x:"
+    outcome="FAILED during ${STAGE} (exit ${status}) at or after the swap. \
+If ${STAGING_DB_NAME} no longer exists, recover with: \
+ALTER DATABASE ${SCRATCH_DB} RENAME TO ${STAGING_DB_NAME};"
+  else
+    emoji=":x:"
+    outcome="FAILED during ${STAGE} (exit ${status}). Staging still holds the \
+data from its previous successful sync."
   fi
+
+  echo "[$(date)] ==> ${outcome}"
+  notify_slack "${emoji} prod → staging: ${outcome}"
 }
 trap cleanup EXIT
 
@@ -71,7 +102,15 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 trap 'exit 129' HUP
 
+BCRYPT_PATTERN='^\$2[aby]\$[0-9]{2}\$[./A-Za-z0-9]{53}$'
+if [[ ! $STAGING_PASSWORD_HASH =~ $BCRYPT_PATTERN ]]; then
+  echo "STAGING_PASSWORD_HASH is not a bcrypt hash — single-quote it in" \
+    "db-sync.env so the shell doesn't expand the \$-delimited fields." >&2
+  exit 1
+fi
+
 echo "[$(date)] ==> Starting prod → staging sync"
+STAGE="dump"
 echo "[$(date)] ==> Dumping prod database to ${DUMP_FILE}..."
 
 pg_dump \
@@ -81,6 +120,7 @@ pg_dump \
   "$PROD_URL" \
   --file="$DUMP_FILE"
 
+STAGE="scratch database"
 echo "[$(date)] ==> Recreating scratch database ${SCRATCH_DB}..."
 
 psql "$STAGING_ADMIN_URL" -v ON_ERROR_STOP=1 <<SQL
@@ -88,6 +128,7 @@ DROP DATABASE IF EXISTS ${SCRATCH_DB} WITH (FORCE);
 CREATE DATABASE ${SCRATCH_DB} WITH TEMPLATE=template0 ENCODING='UTF8';
 SQL
 
+STAGE="restore"
 echo "[$(date)] ==> Restoring dump into ${SCRATCH_DB}..."
 
 pg_restore \
@@ -97,6 +138,7 @@ pg_restore \
   --dbname="$SCRATCH_URL" \
   "$DUMP_FILE"
 
+STAGE="anonymize"
 echo "[$(date)] ==> Anonymizing ${SCRATCH_DB}..."
 
 psql "$SCRATCH_URL" -v ON_ERROR_STOP=1 --single-transaction \
@@ -240,6 +282,7 @@ UPDATE "push" SET "expoPushToken" = 'pruned';
 
 SQL
 
+STAGE="swap"
 echo "[$(date)] ==> Swapping ${SCRATCH_DB} into place as ${STAGING_DB_NAME}..."
 
 SWAP_STARTED=1
@@ -253,6 +296,7 @@ DROP DATABASE IF EXISTS ${STAGING_DB_NAME} WITH (FORCE);
 ALTER DATABASE ${SCRATCH_DB} RENAME TO ${STAGING_DB_NAME};
 SQL
 
+STAGE="s3 sync"
 echo "[$(date)] ==> S3 sync s3://$PROD_ASSETS_BUCKET -> s3://$STAGING_ASSETS_BUCKET"
 
 aws s3 sync \
@@ -268,5 +312,3 @@ if [ $SYNC_EXIT -ne 0 ]; then
 fi
 
 echo "[$(date)] ==> S3 sync complete."
-
-echo "[$(date)] ==> Sync completed successfully."
