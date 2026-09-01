@@ -291,6 +291,7 @@ jobs:
     needs:
       - checks
       - deploy-nest-backend
+      - deploy-react-app
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
       - name: Checkout Code
