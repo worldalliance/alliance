@@ -11,9 +11,6 @@ import {
   UserDto,
   forumCreateComment,
   forumDeleteComment,
-  forumFindCommentsForAction,
-  forumFindCommentsForActivity,
-  forumFindCommentsForPost,
   forumUpdateComment,
 } from "@alliance/shared/client";
 import {
@@ -34,6 +31,7 @@ import {
 } from "@alliance/shared/lib/commentTags";
 import { uploadDraftAttachments } from "@alliance/shared/lib/uploadAttachments";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
+import { useLoadComments } from "@alliance/shared/lib/useLoadComments";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
@@ -725,10 +723,8 @@ export default function Comments({
     new Set(),
   );
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
-  const [comments, setComments] = useState<CommentDto[] | null>(
-    initialComments ?? null,
-  );
-  const [error, setError] = useState<string | null>(null);
+  const { comments, setComments, error, setError, fetchComments } =
+    useLoadComments({ objectId, type, initialComments });
   // Keyed by the form that produced it, so a nested reply's rejection shows
   // under that reply rather than at the top of the thread.
   const [submitError, setSubmitError] = useState<{
@@ -760,32 +756,6 @@ export default function Comments({
   useEffect(() => {
     setShowForm(showFormProp);
   }, [showFormProp]);
-
-  const fetchComments = useCallback(async () => {
-    let response;
-    if (type === "post") {
-      response = await forumFindCommentsForPost({
-        path: { id: objectId.toString() },
-      });
-    } else if (type === "activity") {
-      response = await forumFindCommentsForActivity({
-        path: { id: objectId.toString() },
-      });
-    } else {
-      response = await forumFindCommentsForAction({
-        path: { id: objectId.toString() },
-      });
-    }
-    setComments(response.data ?? null);
-  }, [objectId, type]);
-
-  useEffect(() => {
-    if (initialComments) {
-      setComments(initialComments);
-      return;
-    }
-    fetchComments();
-  }, [initialComments, fetchComments]);
 
   useEffect(() => {
     if (highlightedReplyId) {
@@ -880,7 +850,7 @@ export default function Comments({
         ],
       );
     },
-    [fetchComments],
+    [fetchComments, setError],
   );
 
   const handleUpdateReply = useCallback(
@@ -913,8 +883,6 @@ export default function Comments({
       }
 
       setComments((prevComments) => {
-        if (!prevComments) return null;
-
         const updateRecursively = (items: CommentDto[]): CommentDto[] => {
           return items.map((item) => {
             if (item.id === replyId) {
@@ -938,7 +906,7 @@ export default function Comments({
 
       return R.success(undefined);
     },
-    [],
+    [setComments],
   );
 
   const submitErrorFor = useCallback(

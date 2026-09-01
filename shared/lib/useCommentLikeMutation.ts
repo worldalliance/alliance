@@ -8,7 +8,7 @@ import { useCallback } from "react";
 
 interface UseCommentLikeMutationOptions {
   userId: number | undefined;
-  setComments: (fn: (prev: CommentDto[] | null) => CommentDto[] | null) => void;
+  setComments: (update: (prev: CommentDto[]) => CommentDto[]) => void;
   fetchComments: () => void;
 }
 
@@ -52,13 +52,13 @@ export function useCommentLikeMutation({
       let previousComments: CommentDto[] | null = null;
       setComments((prev) => {
         previousComments = prev;
-        return prev ? updateRecursively(prev) : prev;
+        return updateRecursively(prev);
       });
       return { previousComments };
     },
     onError: (_err, _vars, context) => {
-      if (context?.previousComments)
-        setComments(() => context.previousComments);
+      const previous = context?.previousComments;
+      if (previous) setComments(() => previous);
     },
     onSettled: () => {
       fetchComments();
