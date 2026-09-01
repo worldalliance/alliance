@@ -28,7 +28,6 @@ import {
 import { isForeignKeyViolation, isUniqueViolation } from "src/utils/db-errors";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import {
-  ILike,
   In,
   Not,
   type EntityManager,
@@ -1150,10 +1149,16 @@ export class ForumService {
     });
   }
 
-  async findPostsByTitle(title: string): Promise<Post[]> {
-    return this.postRepository.find({
-      where: { title: ILike(`%${title}%`), deleted: false },
-    });
+  async findPostsByTitle(params: {
+    title: string;
+    requestingUserId: number;
+  }): Promise<Post[]> {
+    const { title, requestingUserId } = params;
+    const qb = this.postRepository
+      .createQueryBuilder("post")
+      .where("post.title ILIKE :title", { title: `%${title}%` });
+    this.addPostVisibilityFilter(qb, "post", requestingUserId);
+    return qb.getMany();
   }
 
   /** Targets the join rows, so a concurrent write to the post's other half

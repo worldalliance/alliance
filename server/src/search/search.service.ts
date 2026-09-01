@@ -96,7 +96,10 @@ export class SearchService {
       .slice(0, maxItemsPerType)
       .map((action) => this.actionToSearchItem(action));
 
-    const posts = await this.forumService.findPostsByTitle(query);
+    const posts = await this.forumService.findPostsByTitle({
+      title: query,
+      requestingUserId: userId,
+    });
     const postItems = posts
       .slice(0, maxItemsPerType)
       .map((post) => this.postToSearchItem(post));
