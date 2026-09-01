@@ -58,6 +58,7 @@ import EditableContentRenderer from "./EditableContentRenderer";
 import { LikeActionButton } from "./LikeFooter";
 import LikeSummary from "./LikeSummary";
 import ProfileImage from "./ProfileImage";
+import InlineError from "./system/InlineError";
 import Text from "./system/Text";
 import TagChips from "./TagChips";
 import UserDisplayName from "./UserDisplayName";
@@ -222,6 +223,7 @@ const ReplyForm = ({
   // Local, so posting one comment leaves every other composer live.
   const [isPosting, setIsPosting] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const formError = uploadError ?? error;
 
   const post = async () => {
     onDismissError?.();
@@ -290,11 +292,7 @@ const ReplyForm = ({
         isSubmitting={isPosting}
         submitDisabled={needsTag && selectedTagId === undefined}
       />
-      {(uploadError ?? error) && (
-        <Text className="mt-2 text-sm text-red-500">
-          {uploadError ?? error}
-        </Text>
-      )}
+      <InlineError message={formError} className="mt-2" />
     </View>
   );
 };
@@ -579,9 +577,7 @@ const ReplyItem = memo(function ReplyItemView({
                 setIsEditing(false);
               }}
             />
-            {editError && (
-              <Text className="text-sm text-red-500">{editError}</Text>
-            )}
+            <InlineError message={editError} />
           </View>
         ) : (
           <EditableContentRenderer
@@ -1078,7 +1074,7 @@ export default function Comments({
         </View>
       ) : null}
 
-      {error && <Text className="text-red-500">{error}</Text>}
+      <InlineError message={error} />
 
       {isPostComments && topLevelComments.length > 0 && (
         <View className="flex-row items-center justify-between">
