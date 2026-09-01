@@ -55,11 +55,7 @@ type TaskNavigatorItem =
   | { kind: "followUpForm"; followUpForm: FollowUpFormDto; actionId: number };
 
 function TaskNavigatorListShell({ children }: { children: ReactNode }) {
-  return (
-    <div className="overflow-hidden">
-      <div className="flex flex-col gap-y-2">{children}</div>
-    </div>
-  );
+  return <div className="flex flex-col gap-y-2">{children}</div>;
 }
 
 const HomePage = () => {
@@ -296,7 +292,7 @@ const HomePage = () => {
               })}
               {nextWeekTodoActions.length > 0 && (
                 <>
-                  <div className="pt-2">
+                  <div className="pt-2 pl-4">
                     <p className="text-zinc-500 font-medium">Upcoming</p>
                   </div>
                   {nextWeekTodoActions.map((action) => {
@@ -393,170 +389,169 @@ const HomePage = () => {
         ? getTaskDismissInfo(selectedTaskNavigatorItem.action)
         : undefined;
 
+    // The gutter matches the task rows' overhang, so their icons never clip.
     return (
-      <div
-        className={
-          "flex flex-col gap-y-8 sm:gap-y-12 lg:gap-y-16 py-4 sm:py-8 px-4 xl:px-0 max-w-3xl mx-auto relative"
-        }
-      >
-        {!hasOnboardingTasks && (
-          <div className="flex flex-col gap-4">
-            {isLargeScreen && (
-              <>
-                <div className="flex flex-row justify-between items-center px-1">
-                  <p className="text-title">Updates</p>
-                  <SeeAll link="/action-updates" size="lg" />
-                </div>
-                <HomeUpdatesRow />
-                {sortedGeneralUpdates.length > 0 && (
-                  <div className="flex flex-col gap-3">
-                    {sortedGeneralUpdates.map((generalUpdate) => (
-                      <LargeGeneralUpdateCard
-                        key={generalUpdate.id}
-                        title={generalUpdate.name}
-                        schema={generalUpdate.schema}
-                        onDismiss={() =>
-                          handleDismissGeneralUpdate(generalUpdate.id)
-                        }
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-
-            {!isLargeScreen && <div>{sidebarProgressActionProgressBars}</div>}
-          </div>
-        )}
-
-        <div className="flex flex-col gap-4 flex-1">
-          <p className="text-title">Tasks</p>
-          {taskNavigatorListContent}
-
-          {selectedTaskNavigatorItem?.kind === "action" ? (
-            <LargeActionCard
-              action={selectedTaskNavigatorItem.action}
-              dismissProps={
-                taskDismissInfo
-                  ? {
-                      ...taskDismissInfo,
-                      onDismiss: () =>
-                        handleDismissAction(
-                          selectedTaskNavigatorItem.action.id,
-                        ),
-                    }
-                  : undefined
-              }
-              userRelation={
-                selectedTaskNavigatorItem.action.userRelation ?? "none"
-              }
-              onCompleteAction={() => {
-                queryClient.setQueryData<ActionDto[] | undefined>(
-                  ["actions"],
-                  (prev) =>
-                    prev?.map((action) =>
-                      action.id === selectedTaskNavigatorItem.action.id
-                        ? withOptimisticRelation(action, "completed")
-                        : action,
-                    ),
-                );
-                queryClient.invalidateQueries({ queryKey: ["actions"] });
-                resetHomeFeed(queryClient);
-              }}
-              onUpdateActionState={() => {
-                queryClient.invalidateQueries({ queryKey: ["actions"] });
-                mainScrollRef.current?.scrollTo({
-                  top: 0,
-                  behavior: "instant",
-                });
-                document.scrollingElement?.scrollTo({
-                  top: 0,
-                  behavior: "instant",
-                });
-                window.scrollTo({ top: 0, behavior: "instant" });
-              }}
-              scrollContainerRef={mainScrollRef}
-            />
-          ) : selectedTaskNavigatorItem?.kind === "followUpForm" ? (
-            <div className="w-full mx-auto">
-              <FollowUpFormPanel
-                key={selectedTaskNavigatorItem.followUpForm.id}
-                followUpForm={selectedTaskNavigatorItem.followUpForm}
-                actionId={selectedTaskNavigatorItem.actionId}
-                onSubmitted={() => {
-                  queryClient.invalidateQueries({
-                    queryKey: ["actions"],
-                  });
-                  resetHomeFeed(queryClient);
-                }}
-              />
-            </div>
-          ) : (
-            <div className="w-full flex flex-col items-center">
-              {user && !user.hasActiveContract ? (
-                <p className="text-center text-zinc-500">
-                  {noTasksContractSuspended}
-                </p>
-              ) : (
+      <div className="px-8 sm:px-[calc(1rem+21px)]">
+        <div className="flex flex-col gap-y-8 sm:gap-y-12 lg:gap-y-16 py-4 sm:py-8 max-w-3xl mx-auto relative">
+          {!hasOnboardingTasks && (
+            <div className="flex flex-col gap-4">
+              {isLargeScreen && (
                 <>
-                  <div className="flex flex-col items-center w-full flex-8 gap-y-4">
-                    {activeCompletableFollowUpForms.length > 0 ? (
-                      <div className="flex flex-col gap-y-4 w-full max-w-2xl">
-                        {activeCompletableFollowUpForms.map(
-                          ({ followUpForm, actionId }) => (
-                            <FollowUpFormPanel
-                              key={followUpForm.id}
-                              followUpForm={followUpForm}
-                              actionId={actionId}
-                              onSubmitted={() => {
-                                queryClient.invalidateQueries({
-                                  queryKey: ["actions"],
-                                });
-                              }}
-                            />
-                          ),
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-y-4 rounded border border-grey-2 w-full py-8 lg:py-12 px-8">
-                        <CheckIcon size={32} />
-                        <p className="text-center text-zinc-500 text-lg lg:text-xl">
-                          {noTasksToDoRightNow}
-                        </p>
-                      </div>
-                    )}
+                  <div className="flex flex-row justify-between items-center px-1">
+                    <p className="text-title">Updates</p>
+                    <SeeAll link="/action-updates" size="lg" />
                   </div>
+                  <HomeUpdatesRow />
+                  {sortedGeneralUpdates.length > 0 && (
+                    <div className="flex flex-col gap-3">
+                      {sortedGeneralUpdates.map((generalUpdate) => (
+                        <LargeGeneralUpdateCard
+                          key={generalUpdate.id}
+                          title={generalUpdate.name}
+                          schema={generalUpdate.schema}
+                          onDismiss={() =>
+                            handleDismissGeneralUpdate(generalUpdate.id)
+                          }
+                        />
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
+
+              {!isLargeScreen && <div>{sidebarProgressActionProgressBars}</div>}
             </div>
           )}
-        </div>
 
-        {!isLargeScreen && (
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-row justify-between items-center px-1">
-              <p className="text-title">Updates</p>
-              <SeeAll link="/action-updates" size="lg" />
-            </div>
-            <HomeUpdatesRow />
-            {sortedGeneralUpdates.length > 0 && (
-              <div className="flex flex-col gap-3">
-                {sortedGeneralUpdates.map((generalUpdate) => (
-                  <LargeGeneralUpdateCard
-                    key={generalUpdate.id}
-                    title={generalUpdate.name}
-                    schema={generalUpdate.schema}
-                    onDismiss={() =>
-                      handleDismissGeneralUpdate(generalUpdate.id)
-                    }
-                  />
-                ))}
+          <div className="flex flex-col gap-4 flex-1">
+            <p className="text-title">Tasks</p>
+            {taskNavigatorListContent}
+
+            {selectedTaskNavigatorItem?.kind === "action" ? (
+              <LargeActionCard
+                action={selectedTaskNavigatorItem.action}
+                dismissProps={
+                  taskDismissInfo
+                    ? {
+                        ...taskDismissInfo,
+                        onDismiss: () =>
+                          handleDismissAction(
+                            selectedTaskNavigatorItem.action.id,
+                          ),
+                      }
+                    : undefined
+                }
+                userRelation={
+                  selectedTaskNavigatorItem.action.userRelation ?? "none"
+                }
+                onCompleteAction={() => {
+                  queryClient.setQueryData<ActionDto[] | undefined>(
+                    ["actions"],
+                    (prev) =>
+                      prev?.map((action) =>
+                        action.id === selectedTaskNavigatorItem.action.id
+                          ? withOptimisticRelation(action, "completed")
+                          : action,
+                      ),
+                  );
+                  queryClient.invalidateQueries({ queryKey: ["actions"] });
+                  resetHomeFeed(queryClient);
+                }}
+                onUpdateActionState={() => {
+                  queryClient.invalidateQueries({ queryKey: ["actions"] });
+                  mainScrollRef.current?.scrollTo({
+                    top: 0,
+                    behavior: "instant",
+                  });
+                  document.scrollingElement?.scrollTo({
+                    top: 0,
+                    behavior: "instant",
+                  });
+                  window.scrollTo({ top: 0, behavior: "instant" });
+                }}
+                scrollContainerRef={mainScrollRef}
+              />
+            ) : selectedTaskNavigatorItem?.kind === "followUpForm" ? (
+              <div className="w-full mx-auto">
+                <FollowUpFormPanel
+                  key={selectedTaskNavigatorItem.followUpForm.id}
+                  followUpForm={selectedTaskNavigatorItem.followUpForm}
+                  actionId={selectedTaskNavigatorItem.actionId}
+                  onSubmitted={() => {
+                    queryClient.invalidateQueries({
+                      queryKey: ["actions"],
+                    });
+                    resetHomeFeed(queryClient);
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="w-full flex flex-col items-center">
+                {user && !user.hasActiveContract ? (
+                  <p className="text-center text-zinc-500">
+                    {noTasksContractSuspended}
+                  </p>
+                ) : (
+                  <>
+                    <div className="flex flex-col items-center w-full flex-8 gap-y-4">
+                      {activeCompletableFollowUpForms.length > 0 ? (
+                        <div className="flex flex-col gap-y-4 w-full max-w-2xl">
+                          {activeCompletableFollowUpForms.map(
+                            ({ followUpForm, actionId }) => (
+                              <FollowUpFormPanel
+                                key={followUpForm.id}
+                                followUpForm={followUpForm}
+                                actionId={actionId}
+                                onSubmitted={() => {
+                                  queryClient.invalidateQueries({
+                                    queryKey: ["actions"],
+                                  });
+                                }}
+                              />
+                            ),
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-y-4 rounded border border-grey-2 w-full py-8 lg:py-12 px-8">
+                          <CheckIcon size={32} />
+                          <p className="text-center text-zinc-500 text-lg lg:text-xl">
+                            {noTasksToDoRightNow}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
-        )}
 
-        <HomeFeed />
+          {!isLargeScreen && (
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-row justify-between items-center px-1">
+                <p className="text-title">Updates</p>
+                <SeeAll link="/action-updates" size="lg" />
+              </div>
+              <HomeUpdatesRow />
+              {sortedGeneralUpdates.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  {sortedGeneralUpdates.map((generalUpdate) => (
+                    <LargeGeneralUpdateCard
+                      key={generalUpdate.id}
+                      title={generalUpdate.name}
+                      schema={generalUpdate.schema}
+                      onDismiss={() =>
+                        handleDismissGeneralUpdate(generalUpdate.id)
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <HomeFeed />
+        </div>
       </div>
     );
   }, [

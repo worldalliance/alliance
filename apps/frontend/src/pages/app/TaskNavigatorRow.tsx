@@ -20,7 +20,11 @@ import { Link, href } from "react-router";
 import ShareButton from "../../components/ShareButton";
 import { useAuth } from "../../lib/AuthContext";
 
-const ICON_SIZE = 16;
+const ICON_CLASS = "size-4 sm:size-[21px]";
+
+// Icon hangs in the left margin; the extra width keeps the row's right edge on the column.
+const ROW_OVERHANG =
+  "-ml-8 w-[calc(100%+2rem)] sm:-ml-[calc(1rem+21px)] sm:w-[calc(100%+1rem+21px)]";
 
 function TaskNavigatorRow({
   icon,
@@ -42,8 +46,9 @@ function TaskNavigatorRow({
   className?: string;
 }) {
   const rowClass = cn(
-    "flex items-center gap-x-2 rounded-lg py-1 w-full text-left font-inherit",
-    indent ? "pl-8 pr-2" : "px-2",
+    "flex items-center gap-x-6 rounded-lg py-2 text-left font-inherit",
+    ROW_OVERHANG,
+    indent ? "pl-8 sm:pl-[calc(1rem+21px)] pr-2" : "px-2",
     isActive ? activeBg : "hover:bg-grey-2",
     className,
   );
@@ -99,9 +104,9 @@ export function TaskNavigatorTodoActionRow({
       onClick={onSelect}
       icon={
         <Circle
-          size={ICON_SIZE}
           className={cn(
             "shrink-0",
+            ICON_CLASS,
             isActive
               ? action.optional
                 ? "text-blue-400"
@@ -140,8 +145,7 @@ export function TaskNavigatorFollowUpRows({
         indent
         icon={
           <CircleChevronRight
-            size={ICON_SIZE}
-            className="shrink-0 text-blue-400"
+            className={cn("shrink-0 text-blue-400", ICON_CLASS)}
             aria-hidden
           />
         }
@@ -188,8 +192,13 @@ export function TaskNavigatorCompletedRow({
   };
   return (
     <div className="flex flex-col gap-y-1">
-      <div className="flex items-center gap-x-2 rounded-lg py-1 px-2 w-full hover:bg-grey-2">
-        <CheckIcon size={ICON_SIZE} />
+      <div
+        className={cn(
+          "flex items-center gap-x-6 rounded-lg py-2 px-2 hover:bg-grey-2",
+          ROW_OVERHANG,
+        )}
+      >
+        <CheckIcon className={ICON_CLASS} />
         <Link
           to={href("/actions/:id", { id: action.id.toString() })}
           className="text-zinc-400 line-through grow hover:text-zinc-500"
