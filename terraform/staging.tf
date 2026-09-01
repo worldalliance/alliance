@@ -193,7 +193,12 @@ resource "aws_cloudfront_response_headers_policy" "staging_cors" {
 
   cors_config {
     access_control_allow_origins {
-      items = ["https://staging.worldalliance.org", "https://admin.staging.worldalliance.org"]
+      items = [
+        "https://staging.thealliance.org",
+        "https://admin.staging.thealliance.org",
+        "https://staging.worldalliance.org",
+        "https://admin.staging.worldalliance.org",
+      ]
     }
     access_control_allow_methods {
       items = ["GET", "HEAD", "OPTIONS"]
