@@ -1,4 +1,7 @@
-import { useTimeZoneSelect } from "@alliance/shared/forms/timeZoneSelect";
+import {
+  NO_TIME_LABEL,
+  useTimeZoneSelect,
+} from "@alliance/shared/forms/timeZoneSelect";
 import { cn } from "@alliance/shared/styles/util";
 import { ChevronDown, Clock } from "lucide-react-native";
 import { ScrollView, TextInput, TouchableOpacity, View } from "react-native";
@@ -59,7 +62,7 @@ export default function TimeZoneSelect({
             {selected.labelLeft || placeholder}
           </Text>
           <Text className="text-xs text-zinc-500 mt-0.5">
-            {selected.timeLabel}
+            {selected.timeLabel ?? NO_TIME_LABEL}
           </Text>
         </View>
         <ChevronDown size={18} color={colors.text.icon} />
@@ -133,7 +136,7 @@ export default function TimeZoneSelect({
                     {item.labelLeft}
                   </Text>
                   <Text className="text-xs text-zinc-600 mt-1 shrink-0">
-                    {item.timeLabel}
+                    {item.timeLabel ?? NO_TIME_LABEL}
                   </Text>
                 </TouchableOpacity>
               );

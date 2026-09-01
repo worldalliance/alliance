@@ -3,6 +3,8 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { resetClock } from "../lib/useClockMinute";
 import {
+  TZ_OPTIONS,
+  formatNowTimeInTz,
   getOffsetMinutes,
   resetTimeZoneCaches,
   useTimeZoneSelect,
@@ -72,11 +74,67 @@ const hidingDayPeriod = (body: () => void) => {
   }, body);
 };
 
+const blankingTheZoneName = (body: () => void) => {
+  const real = Intl.DateTimeFormat;
+
+  standingInFor((locales, options) => {
+    const fmt = new real(locales, options);
+    const formatToParts = fmt.formatToParts.bind(fmt);
+    fmt.formatToParts = (date) =>
+      formatToParts(date).map((p) =>
+        p.type === "timeZoneName" ? { ...p, value: "" } : p,
+      );
+    return fmt;
+  }, body);
+};
+
 const rejecting = (style: string, body: () => void) =>
   patchingIntl((args) => {
     if (args.options?.timeZoneName === style) throw new RangeError("no data");
     return args;
   }, body);
+
+// formatToParts lives on the prototype, so the stand-in hides it on the
+// instance rather than deleting it.
+const writingNoParts = (body: () => void) => {
+  const real = Intl.DateTimeFormat;
+
+  standingInFor((locales, options) => {
+    const fmt = new real(locales, options);
+    Object.defineProperty(fmt, "formatToParts", { value: undefined });
+    return fmt;
+  }, body);
+};
+
+const writingPartsNoOneCanWalk = (body: () => void) => {
+  const real = Intl.DateTimeFormat;
+
+  standingInFor((locales, options) => {
+    const fmt = new real(locales, options);
+    Object.defineProperty(fmt, "formatToParts", {
+      value: () => ({ length: 3 }),
+    });
+    return fmt;
+  }, body);
+};
+
+// A runtime that builds a formatter and refuses at the read, which the guard on
+// the construction cannot see.
+const refusingAtRead = (error: Error, body: () => void) => {
+  const real = Intl.DateTimeFormat;
+
+  standingInFor((locales, options) => {
+    const fmt = new real(locales, options);
+    for (const read of ["format", "formatToParts", "resolvedOptions"]) {
+      Object.defineProperty(fmt, read, {
+        value: () => {
+          throw error;
+        },
+      });
+    }
+    return fmt;
+  }, body);
+};
 
 const fallingBackTo = (
   { locale, ignoring }: { locale: string; ignoring?: "calendar" },
@@ -103,6 +161,132 @@ const resolvingTo = (
     }),
     body,
   );
+
+describe("a zone Intl rejects", () => {
+  it("keeps its row, with no clock rather than no zone", () => {
+    TZ_OPTIONS.push({ group: "Asia", label: "Nowhere", tz: "Not/AZone" });
+    try {
+      const { result } = renderHook(() => useTimeZoneSelect({}));
+
+      expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
+      expect(
+        result.current.items.find(({ tz }) => tz === "Not/AZone"),
+      ).toMatchObject({ timeLabel: null, offsetMins: null });
+    } finally {
+      TZ_OPTIONS.pop();
+    }
+  });
+
+  it("keeps its place when it is the zone a member already saved", () => {
+    const { result } = renderHook(() =>
+      useTimeZoneSelect({ value: "Not/AZone" }),
+    );
+
+    expect(result.current.selected.tz).toBe("Not/AZone");
+    expect(result.current.selected.timeLabel).toBeNull();
+  });
+});
+
+describe("a runtime that rejects every zone", () => {
+  it("still offers a list a member can pick their zone from", () => {
+    const listed = TZ_OPTIONS.splice(0, TZ_OPTIONS.length, {
+      group: "Asia",
+      label: "Nowhere",
+      tz: "Not/AZone",
+    });
+    try {
+      const { result } = renderHook(() => useTimeZoneSelect({}));
+
+      expect(result.current.items).toEqual([
+        {
+          tz: "Not/AZone",
+          labelLeft: "Nowhere — AZone",
+          searchText: "nowhere — azone not/azone",
+          offsetMins: null,
+          timeLabel: null,
+        },
+      ]);
+    } finally {
+      TZ_OPTIONS.splice(0, TZ_OPTIONS.length, ...listed);
+    }
+  });
+});
+
+describe("a runtime that formats without writing parts", () => {
+  it("keeps the clocks it can format and gives up the offsets", () => {
+    writingNoParts(() => {
+      const { result } = renderHook(() => useTimeZoneSelect({}));
+
+      const row = result.current.items.find(
+        ({ tz }) => tz === "America/New_York",
+      );
+      expect(row?.timeLabel).not.toBeNull();
+      expect(row?.offsetMins).toBeNull();
+      expect(row?.labelLeft).toBe("Eastern Time — New York");
+    });
+  });
+
+  it("keeps its rows when the parts are not a list either", () => {
+    writingPartsNoOneCanWalk(() => {
+      expect(getOffsetMinutes("America/New_York")).toBeNull();
+
+      const { result } = renderHook(() => useTimeZoneSelect({}));
+
+      expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
+      expect(
+        result.current.items.find(({ tz }) => tz === "America/New_York"),
+      ).toMatchObject({
+        labelLeft: "Eastern Time — New York",
+        offsetMins: null,
+      });
+    });
+  });
+});
+
+describe("a runtime that refuses at the read rather than at the constructor", () => {
+  it("keeps its rows, with a curated name and no clock or offset", () => {
+    refusingAtRead(new RangeError("no data"), () => {
+      const { result } = renderHook(() => useTimeZoneSelect({}));
+
+      expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
+      expect(
+        result.current.items.find(({ tz }) => tz === "America/New_York"),
+      ).toMatchObject({
+        labelLeft: "Eastern Time — New York",
+        timeLabel: null,
+        offsetMins: null,
+      });
+    });
+  });
+
+  it("withholds the offset rather than throwing it at the caller", () => {
+    refusingAtRead(new RangeError("no data"), () => {
+      expect(getOffsetMinutes("America/New_York")).toBeNull();
+    });
+  });
+});
+
+describe("a runtime refusing with something other than a RangeError", () => {
+  it("costs the picker a clock rather than the whole list", () => {
+    patchingIntl(
+      () => {
+        throw new TypeError("not the error the spec names");
+      },
+      () => {
+        const { result } = renderHook(() => useTimeZoneSelect({}));
+
+        expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
+        expect(formatNowTimeInTz("America/New_York")).toBeNull();
+      },
+    );
+  });
+
+  it("withholds the offset rather than throwing it at the caller", () => {
+    refusingAtRead(new TypeError("not the error the spec names"), () => {
+      expect(getOffsetMinutes("America/New_York")).toBeNull();
+    });
+  });
+});
 
 describe("a zone sitting on UTC", () => {
   const UTC_ZONE = "Atlantic/Reykjavik";
@@ -286,6 +470,42 @@ describe("a runtime missing a timeZoneName style", () => {
 
       expect(offsets).toEqual([...offsets].sort((a, b) => a - b));
       expect(new Set(offsets).size).toBeGreaterThan(1);
+    });
+  });
+
+  it("falls back to the curated label when longGeneric is missing", () => {
+    rejecting("longGeneric", () => {
+      const { result } = renderHook(() => useTimeZoneSelect({}));
+
+      const row = result.current.items.find(
+        ({ tz }) => tz === "America/New_York",
+      );
+      expect(row?.labelLeft).toBe("Eastern Time — New York");
+      expect(row?.searchText).toContain("eastern");
+    });
+  });
+
+  it("names every zone rather than reading one back as a path", () => {
+    rejecting("longGeneric", () => {
+      const { result } = renderHook(() => useTimeZoneSelect({}));
+
+      for (const { labelLeft } of result.current.items) {
+        expect(labelLeft).not.toContain("/");
+      }
+    });
+  });
+});
+
+describe("a runtime that writes an empty zone name", () => {
+  it("falls back to the curated label rather than a bare dash", () => {
+    blankingTheZoneName(() => {
+      const { result } = renderHook(() => useTimeZoneSelect({}));
+
+      const row = result.current.items.find(
+        ({ tz }) => tz === "America/New_York",
+      );
+      expect(row?.labelLeft).toBe("Eastern Time — New York");
+      expect(row?.searchText).toContain("eastern");
     });
   });
 });
