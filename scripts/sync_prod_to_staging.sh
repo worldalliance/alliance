@@ -81,7 +81,7 @@ skipping this one."
 fi
 
 # cleanup reads paths built further down, so it can't be the trap yet. This one
-# reports a db-sync.env that loads but is missing a variable.
+# reports a db-sync.env that loads but doesn't hold what the sync needs.
 report_startup_failure() {
   notify_slack ":x: prod → staging: FAILED during startup, before the sync \
 began. Check db-sync.env on the staging host. Staging still holds the data from \
@@ -103,6 +103,13 @@ trap report_startup_failure EXIT
   "${PROD_ASSETS_BUCKET:?missing in db-sync.env}" \
   "${STAGING_ASSETS_BUCKET:?missing in db-sync.env}" \
   "${HEALTHCHECK_URL:?missing in db-sync.env}"
+
+BCRYPT_PATTERN='^\$2[aby]\$[0-9]{2}\$[./A-Za-z0-9]{53}$'
+if [[ ! $STAGING_PASSWORD_HASH =~ $BCRYPT_PATTERN ]]; then
+  echo "STAGING_PASSWORD_HASH is not a bcrypt hash — single-quote it in" \
+    "db-sync.env so the shell doesn't expand the \$-delimited fields." >&2
+  exit 1
+fi
 
 PROD_URL="postgresql://${PROD_DB_USER}:${PROD_DB_PASSWORD}@${PROD_DB_HOST}:5432/${PROD_DB_NAME}"
 
@@ -150,7 +157,7 @@ data from its previous successful sync."
   fi
 
   echo "[$(date)] ==> ${outcome}"
-  notify_slack "${emoji} prod → staging: ${outcome}"
+  notify_slack "${emoji} prod → staging (${TIMESTAMP}): ${outcome}"
 
   if [ "$status" -eq 0 ]; then
     ping_healthcheck
@@ -164,15 +171,8 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 trap 'exit 129' HUP
 
-BCRYPT_PATTERN='^\$2[aby]\$[0-9]{2}\$[./A-Za-z0-9]{53}$'
-if [[ ! $STAGING_PASSWORD_HASH =~ $BCRYPT_PATTERN ]]; then
-  echo "STAGING_PASSWORD_HASH is not a bcrypt hash — single-quote it in" \
-    "db-sync.env so the shell doesn't expand the \$-delimited fields." >&2
-  exit 1
-fi
-
 echo "[$(date)] ==> Starting prod → staging sync"
-notify_slack ":hourglass_flowing_sand: prod → staging: sync started."
+notify_slack ":hourglass_flowing_sand: prod → staging (${TIMESTAMP}): sync started."
 ping_healthcheck /start
 
 STAGE="dump"
