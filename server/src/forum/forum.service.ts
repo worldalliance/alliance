@@ -123,7 +123,7 @@ export class ForumService {
     return parsePost(await this.postRepository.save(post));
   }
 
-  private addPostVisibilityFilter<T extends ObjectLiteral>(
+  addPostVisibilityFilter<T extends ObjectLiteral>(
     qb: SelectQueryBuilder<T>,
     postAlias: string,
     userId?: number,

@@ -4421,10 +4421,12 @@ export class ActionsService {
 
     const postIds = Array.from(commentGroups.keys());
     if (postIds.length > 0) {
-      const posts = await this.postRepository.find({
-        where: { id: In(postIds), deleted: false },
-        select: ["id", "title"],
-      });
+      const postsQuery = this.postRepository
+        .createQueryBuilder("post")
+        .select(["post.id", "post.title"])
+        .where("post.id IN (:...postIds)", { postIds });
+      this.forumService.addPostVisibilityFilter(postsQuery, "post");
+      const posts = await postsQuery.getMany();
 
       const postTitleMap = new Map<number, string>();
       for (const post of posts) {
