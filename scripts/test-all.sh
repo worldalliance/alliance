@@ -4,10 +4,10 @@
 # `bun test` at the repo root skips that preload and fails every DOM test.
 #
 # CI runs each package back through this script, so the skip rule below is the
-# same one locally and in CI. PACKAGES mirrors the test-unit matrix in
-# .github/workflows/ci.yaml, so a new workspace with tests goes in both. The
-# typecheck matrices in ci.yaml and deploy.yaml are a superset and can list
-# packages that are absent here; citesting is typechecked but has no tests.
+# same one locally and in CI. PACKAGES mirrors the test-unit matrices in
+# .github/workflows/ci.yaml and deploy.yaml, so a new workspace with tests goes
+# in all three. The typecheck matrices in those two files are a superset and can
+# list packages that are absent here; citesting is typechecked but has no tests.
 #
 #   scripts/test-all.sh              # every package below
 #   scripts/test-all.sh apps/admin   # only the named packages

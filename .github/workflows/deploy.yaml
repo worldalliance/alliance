@@ -35,10 +35,23 @@ jobs:
     with:
       environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
 
-  test-server-unit:
+  test-unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          [
+            server,
+            common,
+            shared,
+            sharedweb,
+            apps/frontend,
+            apps/admin,
+            apps/mobile,
+          ]
     uses: ./.github/workflows/test-unit.yaml
     with:
-      package: server
+      package: ${{ matrix.package }}
       environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
 
   build-react-app:
@@ -179,7 +192,7 @@ jobs:
       - build-react-app
       - build-admin-frontend
       - test-backend-e2e
-      - test-server-unit
+      - test-unit
       - migrations-drift-check
       - typecheck
       - format-check
