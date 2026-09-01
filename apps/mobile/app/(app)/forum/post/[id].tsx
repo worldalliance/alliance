@@ -131,7 +131,7 @@ export default function PostDetailScreen() {
         {isPrivateFuturePost && (
           <View className="bg-sky-100 border border-sky-300 rounded p-3 mb-3">
             <Text className="text-zinc-700 text-sm">
-              Only you can see this post. It is scheduled for{" "}
+              Not visible to members yet. This post is scheduled for{" "}
               {new Date(post.visibleAt!).toLocaleString()}.
             </Text>
           </View>
