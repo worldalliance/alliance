@@ -5,11 +5,7 @@ import { Check } from "lucide-react";
 import React, { useState, type FormEvent } from "react";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import { CONTACT_EMAIL } from "../../site/content";
-import {
-  BandHeading,
-  PageBand,
-  PageShell,
-} from "../../site/PageShell";
+import { BandHeading, PageBand, PageShell } from "../../site/PageShell";
 import {
   OUTREACH_CHANNELS,
   PARTNER_AUDIENCE_LABEL,
@@ -486,17 +482,17 @@ function PartnerForm() {
 
 export default function OutreachPartnerPage() {
   const { data: memberCount } = useAllianceMemberCount();
-  const lede = `Alliance members each spend 15 minutes a week taking actions on our online platform. For organizations working on our priorities, we can design a focused task in which ${
+  const lede = `We can design a focused task in which our ${
     memberCount
       ? `our ${memberCount.toLocaleString()} volunteer members`
       : "members"
-  } help you.`;
+  } help your organization advance its goals.`;
 
   return (
     <PageShell title={PARTNER_TITLE} subtitle={lede} showJoinCta={false}>
-      <Reliance />
-      <Offers />
-      <PartnerTasks />
+      {/* <Reliance /> */}
+      {/* <Offers /> */}
+      {/* <PartnerTasks /> */}
       <PartnerForm />
     </PageShell>
   );
