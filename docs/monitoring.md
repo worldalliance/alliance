@@ -172,3 +172,13 @@ sudo systemctl status node_exporter
 ```
 
 For node-exporter, we need to update `prometheus.yml` on the monitoring instance with the ips (local to the network) of all the instances we want to fetch node-exporter data from.
+
+## prod → staging sync
+
+`scripts/sync_prod_to_staging.sh` runs nightly from cron on the staging host, and the backend deploy reinstalls it as `~/sync_prod_to_staging.sh` on every non-production branch. It reports each run twice, to Slack and to a dead man's switch.
+
+Slack covers the runs that live long enough to post. The switch covers the ones that don't: a SIGKILL, a dead host, a cron that never fires, a `db-sync.env` that won't source. All of those send nothing, and the check alerts on the ping that never arrives.
+
+Use a healthchecks.io check and set `HEALTHCHECK_URL` in `/home/ec2-user/db-sync.env` to its bare ping URL. The script appends `/start` and `/fail` itself, so don't include either, and a trailing slash is fine. Give the check a period of a day and a grace window longer than a full sync takes. A Better Stack heartbeat is not a drop-in replacement. It takes the bare URL and `/fail`, with no `/start`.
+
+The sync refuses to start without `HEALTHCHECK_URL` and posts an `:x:` to Slack saying so. That is on purpose. A monitor that turns itself off when someone forgets a variable is worse than no monitor. It does mean a freshly provisioned staging host needs the variable in `db-sync.env` before the first run, not after.

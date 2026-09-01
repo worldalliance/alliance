@@ -26,6 +26,21 @@ notify_slack() {
     || echo "[$(date)] ==> WARNING: could not post to Slack."
 }
 
+# A Slack message only reports a run that lived long enough to send it. A
+# SIGKILL, a dead host, or a cron that never fires sends nothing at all, so the
+# ping that never arrives has to be what raises the alarm.
+#
+# The startup trap fires above the HEALTHCHECK_URL check, so an unset variable
+# is a no-op here instead of a curl error about a URL with no host.
+ping_healthcheck() {
+  local base="${HEALTHCHECK_URL:-}"
+  [ -n "$base" ] || return 0
+  curl --silent --show-error --fail --max-time 10 \
+    --retry 3 --retry-connrefused --retry-max-time 30 \
+    "${base%/}${1:-}" >/dev/null \
+    || echo "[$(date)] ==> WARNING: could not ping the healthcheck."
+}
+
 # cleanup reads paths built further down, so it can't be the trap yet. This one
 # reports the only startup failure that can reach Slack, a db-sync.env that
 # loads but is missing a variable.
@@ -33,6 +48,7 @@ report_startup_failure() {
   notify_slack ":x: prod → staging: FAILED during startup, before the sync \
 began. Check db-sync.env on the staging host. Staging still holds the data from \
 its previous successful sync."
+  ping_healthcheck /fail
   exit 1
 }
 trap report_startup_failure EXIT
@@ -47,7 +63,8 @@ trap report_startup_failure EXIT
   "${STAGING_DB_NAME:?missing in db-sync.env}" \
   "${STAGING_PASSWORD_HASH:?missing in db-sync.env}" \
   "${PROD_ASSETS_BUCKET:?missing in db-sync.env}" \
-  "${STAGING_ASSETS_BUCKET:?missing in db-sync.env}"
+  "${STAGING_ASSETS_BUCKET:?missing in db-sync.env}" \
+  "${HEALTHCHECK_URL:?missing in db-sync.env}"
 
 PROD_URL="postgresql://${PROD_DB_USER}:${PROD_DB_PASSWORD}@${PROD_DB_HOST}:5432/${PROD_DB_NAME}"
 
@@ -95,6 +112,12 @@ data from its previous successful sync."
 
   echo "[$(date)] ==> ${outcome}"
   notify_slack "${emoji} prod → staging: ${outcome}"
+
+  if [ "$status" -eq 0 ]; then
+    ping_healthcheck
+  else
+    ping_healthcheck /fail
+  fi
 }
 trap cleanup EXIT
 
@@ -111,6 +134,7 @@ fi
 
 echo "[$(date)] ==> Starting prod → staging sync"
 notify_slack ":hourglass_flowing_sand: prod → staging: sync started."
+ping_healthcheck /start
 
 STAGE="dump"
 echo "[$(date)] ==> Dumping prod database to ${DUMP_FILE}..."
