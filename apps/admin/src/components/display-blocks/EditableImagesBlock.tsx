@@ -35,7 +35,12 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { VariableTextField } from "../VariableTextField";
-import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
+import {
+  DisplayBlockWrapper,
+  type BlockWriteLanding,
+  type LandingFor,
+  type TargetLabel,
+} from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
 function newItemId(): string {
@@ -146,39 +151,72 @@ export function EditableImagesBlock(props: BaseDisplayBlockProps<ImagesBlock>) {
         block: activeBlock,
         onUpdate: handleUpdate,
         activeUserId,
+        targetLabel,
         updateFor,
+        landingFor,
       }) => (
         <ImagesEditor
           block={activeBlock}
           onUpdate={handleUpdate}
           activeUserId={activeUserId ?? null}
+          targetLabel={targetLabel}
           updateFor={updateFor}
+          landingFor={landingFor}
         />
       )}
     </DisplayBlockWrapper>
   );
 }
 
+type UploadFailure = {
+  targetUserId: string | null;
+  added: string | null;
+  reason: string;
+};
+
+// A count reads as a count of the list on screen, which is the wrong list once
+// the admin has paged away from the target the batch was picked for.
+function failureText({
+  failure,
+  activeUserId,
+  targetLabel,
+}: {
+  failure: UploadFailure;
+  activeUserId: string | null;
+  targetLabel: TargetLabel;
+}): string {
+  if (activeUserId === failure.targetUserId) {
+    return failure.added
+      ? `${failure.added}. ${failure.reason}`
+      : failure.reason;
+  }
+  return `${failure.added ?? "Nothing was added"} for ${targetLabel(failure.targetUserId)}. ${failure.reason}`;
+}
+
 function ImagesEditor({
   block,
   onUpdate,
   activeUserId,
+  targetLabel,
   updateFor,
+  landingFor,
 }: {
   block: ImagesBlock;
   onUpdate: (updates: Partial<ImagesBlock>) => void;
   activeUserId: string | null;
+  targetLabel: TargetLabel;
   updateFor: (
     userId: string | null,
     update: (current: ImagesBlock) => Partial<ImagesBlock>,
-  ) => boolean;
+  ) => BlockWriteLanding;
+  landingFor: LandingFor;
 }) {
-  const { warning } = useToast();
+  const { success, warning } = useToast();
   const images = block.images;
   const ids = dragIds(images);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<UploadFailure | null>(null);
   const activeImage = images[ids.indexOf(activeId ?? "")];
 
   // An upload outlives the render that started it, and a container hands its
@@ -186,9 +224,21 @@ function ImagesEditor({
   // form the handler was made with. A passive effect would leave the ref a
   // render behind between commit and flush, long enough for an upload to land
   // on the handler it replaces.
-  const latest = useRef({ onUpdate, updateFor });
+  const latest = useRef({
+    onUpdate,
+    updateFor,
+    landingFor,
+    activeUserId,
+    targetLabel,
+  });
   useLayoutEffect(() => {
-    latest.current = { onUpdate, updateFor };
+    latest.current = {
+      onUpdate,
+      updateFor,
+      landingFor,
+      activeUserId,
+      targetLabel,
+    };
   });
 
   const setImages = (next: ImagesItem[]) =>
@@ -197,8 +247,8 @@ function ImagesEditor({
   // The admin can page to another user's override, or back to the default,
   // while the pictures go up, so they land on the target the pick started on
   // rather than the one on screen when they arrive.
-  const appendImages = (userId: string | null, added: ImagesItem[]) =>
-    latest.current.updateFor(userId, (current) => ({
+  const appendImages = (targetUserId: string | null, added: ImagesItem[]) =>
+    latest.current.updateFor(targetUserId, (current) => ({
       images: withItemIds([...current.images, ...added]),
     }));
 
@@ -210,6 +260,7 @@ function ImagesEditor({
   };
 
   const uploadFiles = async (files: File[]) => {
+    const target = activeUserId;
     const batch = new AbortController();
     inFlight.current = batch;
     setIsUploading(true);
@@ -248,21 +299,43 @@ function ImagesEditor({
         inFlight.current = null;
         setIsUploading(false);
       }
+      // A block that stops holding per-user content mid-upload takes the write
+      // to the default, so the messages name where the pictures landed rather
+      // than the target they were picked for. A batch with nothing to write
+      // asks where one would have landed instead.
+      const landing = uploaded.length
+        ? appendImages(target, uploaded)
+        : latest.current.landingFor(target);
+      const where = landing?.userId ?? null;
       if (failures.length) {
-        const reason = failures[0] ?? imageUploadFailed;
         // The total a dropped batch would count against includes files it
         // never tried.
         const of = batch.signal.aborted ? "" : ` of ${files.length}`;
-        setUploadError(
-          uploaded.length ? `Added ${uploaded.length}${of}. ${reason}` : reason,
-        );
+        setUploadError({
+          targetUserId: where,
+          added: uploaded.length ? `Added ${uploaded.length}${of}` : null,
+          reason: failures[0] ?? imageUploadFailed,
+        });
       }
-      // A removed block takes the error box with it, so a picture that reached
-      // the server and found nothing to join has only this left to say so.
-      if (uploaded.length && !appendImages(activeUserId, uploaded)) {
-        warning(
-          `Dropped ${withCount(uploaded.length, "image")}. The block ${pickForCount(uploaded.length, "it was", "they were")} going into is gone.`,
-        );
+      if (uploaded.length) {
+        if (!landing) {
+          // A removed block takes the error box with it, so a picture that
+          // reached the server and found nothing to join has only this left to
+          // say so.
+          warning(
+            `Dropped ${withCount(uploaded.length, "image")}. The block ${pickForCount(uploaded.length, "it was", "they were")} going into is gone.`,
+          );
+        } else if (
+          // Landing somewhere the admin has paged away from changes nothing on
+          // screen, which reads as the upload having failed. A part-failed
+          // batch says so in its own error, which already names the target.
+          !failures.length &&
+          latest.current.activeUserId !== where
+        ) {
+          success(
+            `Added ${withCount(uploaded.length, "image")} for ${latest.current.targetLabel(where)}.`,
+          );
+        }
       }
     }
   };
@@ -311,7 +384,11 @@ function ImagesEditor({
         )}
       </div>
 
-      {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
+      {uploadError && (
+        <p className="text-xs text-red-600">
+          {failureText({ failure: uploadError, activeUserId, targetLabel })}
+        </p>
+      )}
 
       {images.length === 0 ? (
         <p className="text-xs text-gray-500">

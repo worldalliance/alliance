@@ -84,12 +84,12 @@ function Form() {
           }
           updateCurrent={(update) => {
             const current = latest.current.block;
-            if (!current) return false;
+            if (!current) return null;
             setForm({
               ...latest.current,
               block: { ...current, ...update(current) } as ImagesBlock,
             });
-            return true;
+            return current;
           }}
           onRemove={() => setForm({ ...form, block: null })}
         />
@@ -189,11 +189,12 @@ function PerUserForm({
           updateCurrent={
             addressed
               ? (update) => {
+                  const current = latest.current;
                   setBlock({
-                    ...latest.current,
-                    ...update(latest.current),
+                    ...current,
+                    ...update(current),
                   } as ImagesBlock);
-                  return true;
+                  return current;
                 }
               : undefined
           }
@@ -204,6 +205,13 @@ function PerUserForm({
   );
 }
 
+// The builder hands a block the addressed write; one inside a container gets
+// none. The landing comes off a different block on each.
+const wirings = [
+  { name: "onUpdate", addressed: false },
+  { name: "the addressed write", addressed: true },
+];
+
 const nextUser = async () => {
   const [pager] = screen.getAllByRole("button", { name: "Next" });
   if (!pager) throw new Error("no user pager");
@@ -212,14 +220,25 @@ const nextUser = async () => {
   });
 };
 
-const editDefault = async () => {
+const openBlockMenu = async () => {
   await act(async () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Display block options" }),
     );
   });
+};
+
+const editDefault = async () => {
+  await openBlockMenu();
   await act(async () => {
     fireEvent.click(screen.getByText("Edit default"));
+  });
+};
+
+const turnOffPerUser = async () => {
+  await openBlockMenu();
+  await act(async () => {
+    fireEvent.click(screen.getByLabelText("Manual content per user"));
   });
 };
 
@@ -281,6 +300,170 @@ describe("EditableImagesBlock", () => {
       images: [{ src: "alice.webp" }, { src: "uploads/a.webp" }],
     });
     expect(written.images).toMatchObject([{ src: "default.webp" }]);
+    expect(document.body.textContent).toContain("Added 1 image for User 1.");
+  });
+
+  for (const { name, addressed } of wirings) {
+    it(`names the target by the name the user list answers with, through ${name}`, async () => {
+      users = [{ id: 1, name: "Alice", hasActiveContract: true }];
+      render(<PerUserForm addressed={addressed} />);
+      await pick(["a.png"]);
+      await act(async () => {});
+      await editDefault();
+
+      await settle(reads, R.success("data:image/png;base64,aaa"));
+      await settle(uploads, R.success("uploads/a.webp"));
+
+      expect(document.body.textContent).toContain("Added 1 image for Alice.");
+    });
+  }
+
+  it("falls back to the id for a target the list gives no name", async () => {
+    users = [{ id: 1, name: "", hasActiveContract: true }];
+    render(<PerUserForm />);
+    await pick(["a.png"]);
+    await act(async () => {});
+    await editDefault();
+
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+    await settle(uploads, R.success("uploads/a.webp"));
+
+    expect(document.body.textContent).toContain("Added 1 image for User 1.");
+  });
+
+  it("names the target of a part-failed batch that landed off screen", async () => {
+    render(<PerUserForm />);
+    await act(async () => {});
+    await pick(["a.png", "b.png"]);
+    await editDefault();
+
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+    await settle(uploads, R.success("uploads/a.webp"));
+    await settle(reads, R.success("data:image/png;base64,bbb"));
+    await settle(uploads, R.failure("network is down"));
+
+    expect(document.body.textContent).toContain(
+      "Added 1 of 2 for User 1. network is down",
+    );
+    expect(document.body.textContent).not.toContain("Added 1 image");
+  });
+
+  it("names the target of a wholly failed batch once the admin pages", async () => {
+    users = [{ id: 1, name: "Alice", hasActiveContract: true }];
+    render(<PerUserForm />);
+    await act(async () => {});
+    await editDefault();
+    await pick(["a.png"]);
+
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+    await settle(uploads, R.failure("network is down"));
+    expect(document.body.textContent).toContain("network is down");
+
+    await nextUser();
+    expect(document.body.textContent).toContain(
+      "Nothing was added for the default content. network is down",
+    );
+  });
+
+  it("names the user a wholly failed batch was picked for", async () => {
+    users = [{ id: 1, name: "Alice", hasActiveContract: true }];
+    render(<PerUserForm />);
+    await act(async () => {});
+    await pick(["a.png"]);
+    await editDefault();
+
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+    await settle(uploads, R.failure("network is down"));
+
+    expect(document.body.textContent).toContain(
+      "Nothing was added for Alice. network is down",
+    );
+  });
+
+  it("keeps the failure when the admin pages back to its target", async () => {
+    users = [{ id: 1, name: "Alice", hasActiveContract: true }];
+    render(<PerUserForm />);
+    await act(async () => {});
+    await pick(["a.png", "b.png"]);
+    await editDefault();
+
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+    await settle(uploads, R.success("uploads/a.webp"));
+    await settle(reads, R.success("data:image/png;base64,bbb"));
+    await settle(uploads, R.failure("network is down"));
+    expect(document.body.textContent).toContain(
+      "Added 1 of 2 for Alice. network is down",
+    );
+
+    await nextUser();
+    expect(document.body.textContent).toContain(
+      "Added 1 of 2. network is down",
+    );
+  });
+
+  it("says nothing when the pictures land in view", async () => {
+    render(<PerUserForm />);
+    await act(async () => {});
+    await pick(["a.png"]);
+
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+    await settle(uploads, R.success("uploads/a.webp"));
+
+    expect(written.manualUserContent?.["1"]).toMatchObject({
+      images: [{ src: "alice.webp" }, { src: "uploads/a.webp" }],
+    });
+    expect(document.body.textContent).not.toContain("Added 1 image");
+  });
+
+  it("keeps quiet when per-user content goes away under a batch", async () => {
+    users = [{ id: 1, name: "Alice", hasActiveContract: true }];
+    render(<PerUserForm />);
+    await act(async () => {});
+    await pick(["a.png"]);
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+
+    await turnOffPerUser();
+    await settle(uploads, R.success("uploads/a.webp"));
+
+    expect(written.images).toMatchObject([
+      { src: "default.webp" },
+      { src: "uploads/a.webp" },
+    ]);
+    expect(document.body.textContent).not.toContain("Alice");
+  });
+
+  for (const { name, addressed } of wirings) {
+    it(`names the default a batch fell back to, not the user it was picked for, through ${name}`, async () => {
+      users = [{ id: 1, name: "Alice", hasActiveContract: true }];
+      render(<PerUserForm addressed={addressed} />);
+      await act(async () => {});
+      await pick(["a.png", "b.png"]);
+
+      await settle(reads, R.success("data:image/png;base64,aaa"));
+      await settle(uploads, R.success("uploads/a.webp"));
+      await turnOffPerUser();
+      await settle(reads, R.success("data:image/png;base64,bbb"));
+      await settle(uploads, R.failure("network is down"));
+
+      expect(document.body.textContent).toContain(
+        "Added 1 of 2. network is down",
+      );
+      expect(document.body.textContent).not.toContain("Alice");
+    });
+  }
+
+  it("stops naming a user a wholly failed batch would no longer have reached", async () => {
+    users = [{ id: 1, name: "Alice", hasActiveContract: true }];
+    render(<PerUserForm />);
+    await act(async () => {});
+    await pick(["a.png"]);
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+
+    await turnOffPerUser();
+    await settle(uploads, R.failure("network is down"));
+
+    expect(document.body.textContent).toContain("network is down");
+    expect(document.body.textContent).not.toContain("Alice");
   });
 
   it("lands the pictures on the default they were picked for", async () => {

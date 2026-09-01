@@ -26,78 +26,60 @@ const renderIn = (editor: ReactElement) =>
 const editors: {
   name: string;
   placeholder: string;
-  mount: (w: Wiring) => void;
+  mount: (w: Wiring) => DisplayBlock;
 }[] = [
   {
     name: "EditableBigLinkBlock",
     placeholder: "Link label",
     mount: (w) => {
-      renderIn(
-        <EditableBigLinkBlock
-          {...w}
-          block={createDisplayBlock("biglink", "block-1")}
-        />,
-      );
+      const block = createDisplayBlock("biglink", "block-1");
+      renderIn(<EditableBigLinkBlock {...w} block={block} />);
+      return block;
     },
   },
   {
     name: "EditableChatTranscriptBlock",
     placeholder: "Left user name",
     mount: (w) => {
-      renderIn(
-        <EditableChatTranscriptBlock
-          {...w}
-          block={createDisplayBlock("chatTranscript", "block-1")}
-        />,
-      );
+      const block = createDisplayBlock("chatTranscript", "block-1");
+      renderIn(<EditableChatTranscriptBlock {...w} block={block} />);
+      return block;
     },
   },
   {
     name: "EditableCopyTextBlock",
     placeholder: "Text to copy",
     mount: (w) => {
-      renderIn(
-        <EditableCopyTextBlock
-          {...w}
-          block={createDisplayBlock("copytext", "block-1")}
-        />,
-      );
+      const block = createDisplayBlock("copytext", "block-1");
+      renderIn(<EditableCopyTextBlock {...w} block={block} />);
+      return block;
     },
   },
   {
     name: "EditablePreviousAnswerBlock",
     placeholder: "Display title",
     mount: (w) => {
-      renderIn(
-        <EditablePreviousAnswerBlock
-          {...w}
-          block={createDisplayBlock("previousAnswer", "block-1")}
-        />,
-      );
+      const block = createDisplayBlock("previousAnswer", "block-1");
+      renderIn(<EditablePreviousAnswerBlock {...w} block={block} />);
+      return block;
     },
   },
   {
     name: "EditableUserLocationBlock",
     placeholder: "Your location",
     mount: (w) => {
-      renderIn(
-        <EditableUserLocationBlock
-          {...w}
-          block={createDisplayBlock("userLocation", "block-1")}
-        />,
-      );
+      const block = createDisplayBlock("userLocation", "block-1");
+      renderIn(<EditableUserLocationBlock {...w} block={block} />);
+      return block;
     },
   },
   {
     name: "EditableVideoBlock",
     placeholder: "Add an optional caption",
     mount: (w) => {
-      renderIn(
-        <EditableVideoBlock
-          {...w}
-          block={createDisplayBlock("video", "block-1")}
-        />,
-      );
+      const block = createDisplayBlock("video", "block-1");
+      renderIn(<EditableVideoBlock {...w} block={block} />);
+      return block;
     },
   },
 ];
@@ -108,11 +90,11 @@ describe("a block editor forwards the addressed write", () => {
   for (const { name, placeholder, mount } of editors) {
     it(name, () => {
       const wrote: string[] = [];
-      mount({
+      const block = mount({
         onUpdate: () => wrote.push("onUpdate"),
         updateCurrent: () => {
           wrote.push("updateCurrent");
-          return true;
+          return block;
         },
         onRemove: () => {},
       });

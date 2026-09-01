@@ -9,9 +9,16 @@ type SchemaItem = AnyField | DisplayBlock | OutputBlock;
 
 export type BlockUpdate = (current: DisplayBlock) => Partial<DisplayBlock>;
 
-export type AddressedWrite = (update: BlockUpdate) => boolean;
+/**
+ * The block the write handed the update, so a caller can read what the update
+ * saw. Null once the form no longer holds the block.
+ */
+export type AddressedWrite = (update: BlockUpdate) => DisplayBlock | null;
 
-export type BlockWriteById = (blockId: string, update: BlockUpdate) => boolean;
+export type BlockWriteById = (
+  blockId: string,
+  update: BlockUpdate,
+) => DisplayBlock | null;
 
 // An output field block carries an id but no `type` of its own.
 const isDisplayBlock = (item: SchemaItem): item is DisplayBlock =>
@@ -21,7 +28,7 @@ const isDisplayBlock = (item: SchemaItem): item is DisplayBlock =>
  * The write to hand a block editor, addressed by the id `findDisplayBlock`
  * answers to. Undefined for an element the form cannot address that way, whose
  * editor keeps writing through `onUpdate`, since an addressed write that always
- * answers false would drop the edit.
+ * answers null would drop the edit.
  */
 export function addressedWrite(
   item: SchemaItem,

@@ -58,6 +58,24 @@ const baseManualContentFromBlock = (
     }) as Record<string, unknown>,
   ) as ManualDisplayBlockContent;
 
+/**
+ * Where a write landed. `userId` is null for the default content, which is
+ * where a write meant for one user goes once the block stops holding per-user
+ * content. Null once the form no longer holds the block at all.
+ */
+export type BlockWriteLanding = { userId: string | null } | null;
+
+export type LandingFor = (userId: string | null) => BlockWriteLanding;
+
+const landingIn = (
+  current: DisplayBlock | null | undefined,
+  userId: string | null,
+): BlockWriteLanding =>
+  current ? { userId: current.manualPerUser && userId ? userId : null } : null;
+
+/** Names a write's target inside a sentence, null being the default content. */
+export type TargetLabel = (userId: string | null) => string;
+
 type DisplayBlockChildRenderProps<T extends DisplayBlock> = {
   block: T;
   onUpdate: (updates: Partial<T>) => void;
@@ -69,9 +87,11 @@ type DisplayBlockChildRenderProps<T extends DisplayBlock> = {
   updateFor: (
     userId: string | null,
     update: (current: T) => Partial<T>,
-  ) => boolean;
+  ) => BlockWriteLanding;
+  /** Where a write for `userId` would land, for work that has none to make. */
+  landingFor: LandingFor;
   activeUserId?: string | null;
-  activeUserName?: string;
+  targetLabel: TargetLabel;
   isDefaultContent: boolean;
   hasContentForUser: boolean;
 };
@@ -306,6 +326,17 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
         : undefined,
     [activeManualUserId, manualPerUserEnabled, manualUsers],
   );
+  const targetLabel = useCallback<TargetLabel>(
+    (userId) => {
+      if (!userId) return "the default content";
+      const name = manualUsers.find(
+        (candidate) => String(candidate.id) === userId,
+      )?.name;
+      // An empty name would otherwise leave the sentence naming nobody.
+      return name || `User ${userId}`;
+    },
+    [manualUsers],
+  );
   const usersWithContent = useMemo(
     () =>
       manualUsers.filter((candidate) =>
@@ -390,8 +421,11 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   };
 
   const updateBlockFor = useCallback(
-    (userId: string | null, update: (current: T) => Partial<T>) => {
-      if (!block) return false;
+    (
+      userId: string | null,
+      update: (current: T) => Partial<T>,
+    ): BlockWriteLanding => {
+      if (!block) return null;
 
       const updatesFor = (current: T): Partial<T> => {
         if (!current.manualPerUser || !userId) return update(current);
@@ -416,13 +450,19 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
       // `updateCurrent` addresses this same block by its id, so what it hands
       // back is the T this wrapper was rendered with.
       if (updateCurrent) {
-        return updateCurrent((current) => updatesFor(current as T));
+        const wrote = updateCurrent((current) => updatesFor(current as T));
+        return landingIn(wrote, userId);
       }
-      if (!onUpdate) return false;
+      if (!onUpdate) return null;
       onUpdate(updatesFor(block));
-      return true;
+      return landingIn(block, userId);
     },
     [block, onUpdate, updateCurrent],
+  );
+
+  const landingFor = useCallback<LandingFor>(
+    (userId) => landingIn(block, userId),
+    [block],
   );
 
   const handleBlockUpdate = useCallback(
@@ -546,8 +586,9 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
           block: (effectiveBlock ?? (block as T)) as T,
           onUpdate: handleBlockUpdate,
           updateFor: updateBlockFor,
+          landingFor,
           activeUserId: activeManualUserId,
-          activeUserName: activeUser?.name,
+          targetLabel,
           isDefaultContent: !manualPerUserEnabled || !activeManualUserId,
           hasContentForUser: hasContentForActiveUser,
         })
@@ -860,11 +901,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
             <div>
               <p className="text-sm font-semibold">
                 {activeManualUserId
-                  ? `Editing ${
-                      activeUser?.name
-                        ? `${activeUser.name}`
-                        : `User ${activeManualUserId}`
-                    }`
+                  ? `Editing ${targetLabel(activeManualUserId)}`
                   : "Editing default content"}
               </p>
               <p className="text-xs">

@@ -55,7 +55,10 @@ describe("useDisplayBlockWrite", () => {
       schema: form("edited since", [images("block-1", "one.webp", "two.webp")]),
     });
 
-    expect(write("block-1", appendImage("three.webp"))).toBe(true);
+    expect(write("block-1", appendImage("three.webp"))).toMatchObject({
+      id: "block-1",
+      images: [{ src: "one.webp" }, { src: "two.webp" }],
+    });
     expect(written).toHaveLength(1);
     const landed = written[0];
     if (!landed) throw new Error("the write never landed");
@@ -94,14 +97,14 @@ describe("useDisplayBlockWrite", () => {
     expect(blockIn(landed, 1)).toMatchObject({ images: [{ src: "two.webp" }] });
   });
 
-  it("is false, and writes nothing, once the form has dropped the block", () => {
+  it("is null, and writes nothing, once the form has dropped the block", () => {
     const { written, view, write } = mount(
       form("first draft", [images("block-1", "one.webp")]),
     );
 
     view.rerender({ schema: form("first draft", []) });
 
-    expect(write("block-1", appendImage("two.webp"))).toBe(false);
+    expect(write("block-1", appendImage("two.webp"))).toBeNull();
     expect(written).toEqual([]);
   });
 });

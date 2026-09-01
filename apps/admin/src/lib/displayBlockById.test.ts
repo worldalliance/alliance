@@ -44,7 +44,13 @@ const schema: FormSchema = {
 
 const record = () => {
   const calls: string[] = [];
-  return { calls, write: (blockId: string) => (calls.push(blockId), true) };
+  return {
+    calls,
+    write: (blockId: string) => (
+      calls.push(blockId),
+      findDisplayBlock(schema, blockId)
+    ),
+  };
 };
 
 describe("addressedWrite", () => {
@@ -53,7 +59,7 @@ describe("addressedWrite", () => {
     const update = addressedWrite(images("block-1", "one.webp"), write);
     if (!update) throw new Error("expected an addressed write");
 
-    expect(update(() => ({}))).toBe(true);
+    expect(update(() => ({}))).toMatchObject({ id: "block-1" });
     expect(calls).toEqual(["block-1"]);
   });
 

@@ -10,6 +10,7 @@ import {
 } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import { findDisplayBlock } from "../lib/displayBlockById";
 import { FormBuilder } from "./FormBuilder";
 import { OutputBuilder } from "./OutputBuilder";
 
@@ -45,7 +46,10 @@ describe("OutputBuilder hands a display block the addressed write", () => {
       <OutputBuilder
         schema={schema}
         onSchemaChange={(next) => spread.push(next)}
-        onUpdateBlockById={(blockId) => (addressed.push(blockId), true)}
+        onUpdateBlockById={(blockId) => (
+          addressed.push(blockId),
+          findDisplayBlock(schema, blockId)
+        )}
       />,
     );
 

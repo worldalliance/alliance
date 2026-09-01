@@ -8,7 +8,7 @@ export interface BaseDisplayBlockProps<T extends DisplayBlock> {
   onUpdate: (updates: Partial<T>) => void;
   /**
    * Write the block as the form holds it now, addressed by id, for a handler
-   * that outlives the render it was made in. False when the form no longer
+   * that outlives the render it was made in. Null when the form no longer
    * holds the block. Absent where the form cannot address the block by id,
    * such as one nested in a container.
    */
