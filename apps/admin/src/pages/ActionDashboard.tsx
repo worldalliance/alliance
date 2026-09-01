@@ -119,6 +119,8 @@ type Tab =
   | "follow-up-forms"
   | "responses";
 
+const imageUploadingMessage = "Wait for the cover image to finish uploading.";
+
 type ReadinessCheckItem = {
   id: string;
   label: string;
@@ -165,6 +167,7 @@ const ActionDashboard: React.FC = () => {
     key: imageKey,
     preview: imagePreview,
     error: imageError,
+    uploading: imageUploading,
     pick: pickCoverImage,
     reset: resetCoverImage,
   } = useCoverImage();
@@ -515,6 +518,11 @@ const ActionDashboard: React.FC = () => {
   );
 
   const handleDuplicate = useCallback(async () => {
+    if (imageUploading) {
+      setError(imageUploadingMessage);
+      return;
+    }
+
     let taskFormId = form.taskFormId;
     if (taskFormId) {
       const taskForm = await tasksGetForm({
@@ -551,6 +559,7 @@ const ActionDashboard: React.FC = () => {
     form,
     action,
     imageKey,
+    imageUploading,
     createAction,
     handleActionCreated,
     invalidateFormsIndex,
@@ -664,6 +673,11 @@ const ActionDashboard: React.FC = () => {
       setError(
         "Saving is disabled: the stored cohort expression could not be parsed.",
       );
+      return;
+    }
+
+    if (imageUploading) {
+      setError(imageUploadingMessage);
       return;
     }
 
@@ -958,6 +972,7 @@ const ActionDashboard: React.FC = () => {
             saving={saving}
             imagePreview={imagePreview}
             imageError={imageError}
+            imageUploading={imageUploading}
             isNew={true}
             onCancel={handleCancel}
             availableTags={availableTags}
@@ -1028,6 +1043,8 @@ const ActionDashboard: React.FC = () => {
                   )}
                   <Button
                     onClick={() => handleDuplicate()}
+                    disabled={imageUploading}
+                    title={imageUploading ? imageUploadingMessage : undefined}
                     color={ButtonColor.White}
                     className="!px-3 !text-sm gap-x-1"
                   >
@@ -1514,6 +1531,7 @@ const ActionDashboard: React.FC = () => {
                   saveDisabled={cohortParseFailed}
                   imagePreview={imagePreview}
                   imageError={imageError}
+                  imageUploading={imageUploading}
                   isNew={false}
                   actionId={action?.id}
                   onDelete={handleDelete}

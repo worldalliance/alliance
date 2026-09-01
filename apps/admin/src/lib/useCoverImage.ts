@@ -9,6 +9,7 @@ export type CoverImage = {
   key: string | null;
   preview: string | null;
   error: string | null;
+  uploading: boolean;
   /** Never rejects: a failure comes back as `error`. */
   pick: (file: File) => Promise<void>;
   /** Seeds the preview from a stored image and drops any pick in flight. */
@@ -19,6 +20,9 @@ export function useCoverImage(): CoverImage {
   const [key, setKeyState] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The pick a save waits on, or 0. A flag would free the save when an earlier
+  // pick settles; a count would hold it for a pick the draft has dropped.
+  const [pendingPick, setPendingPick] = useState(0);
   // Which pick owns the key and the preview. Bumping it drops the result of a
   // pick still in flight, whether a later pick replaced it or the draft
   // reseeded from another action.
@@ -33,6 +37,7 @@ export function useCoverImage(): CoverImage {
 
   const reset = useCallback((next: string | null) => {
     latestPick.current++;
+    setPendingPick(0);
     storedImage.current = next;
     setKey(null);
     setPreview(next);
@@ -49,6 +54,7 @@ export function useCoverImage(): CoverImage {
     // Cleared as the pick starts, so a retry that fails the same way still
     // reads as a retry rather than as the message already on screen.
     setError(null);
+    setPendingPick(pickNumber);
 
     try {
       const dataUri = await readFileDataUri(file);
@@ -78,8 +84,10 @@ export function useCoverImage(): CoverImage {
       if (superseded()) return;
       setError(imageUploadFailed);
       setPreview(savedPreview());
+    } finally {
+      setPendingPick((pending) => (pending === pickNumber ? 0 : pending));
     }
   }, []);
 
-  return { key, preview, error, pick, reset };
+  return { key, preview, error, uploading: pendingPick !== 0, pick, reset };
 }

@@ -31,6 +31,7 @@ interface ActionFormProps {
   saveDisabled?: boolean;
   imagePreview: string | null;
   imageError?: string | null;
+  imageUploading?: boolean;
   isNew: boolean;
   onCancel?: () => void;
   onDelete?: () => void;
@@ -101,6 +102,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
   saveDisabled = false,
   imagePreview,
   imageError = null,
+  imageUploading = false,
   isNew,
   onCancel,
   //   onDelete,
@@ -408,6 +410,9 @@ const ActionForm: React.FC<ActionFormProps> = ({
             ref={fileInputRef}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
           />
+          {imageUploading && (
+            <p className="mt-1 text-sm text-blue-600">Uploading...</p>
+          )}
           {imageError && <p className="mt-1 text-red-600">{imageError}</p>}
           {imagePreview && (
             <div className="mt-3">
@@ -788,15 +793,17 @@ const ActionForm: React.FC<ActionFormProps> = ({
         <button
           type="submit"
           className="px-4 py-2 mr-3 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green focus:ring-offset-2 text-sm font-medium disabled:opacity-50 disabled:hover:scale-100"
-          disabled={saving || saveDisabled}
+          disabled={saving || saveDisabled || imageUploading}
         >
-          {saving
-            ? isNew
-              ? "Creating..."
-              : "Saving..."
-            : isNew
-              ? "Create Action"
-              : "Save Changes"}
+          {imageUploading
+            ? "Uploading image..."
+            : saving
+              ? isNew
+                ? "Creating..."
+                : "Saving..."
+              : isNew
+                ? "Create Action"
+                : "Save Changes"}
         </button>
       </div>
     </form>

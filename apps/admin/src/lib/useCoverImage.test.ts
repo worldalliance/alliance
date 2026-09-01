@@ -81,6 +81,48 @@ describe("useCoverImage", () => {
     expect(cover.state().error).toBeNull();
   });
 
+  it("holds the gate from the pick until the upload settles", async () => {
+    const cover = mount();
+    expect(cover.state().uploading).toBe(false);
+
+    cover.pick("a.png");
+    expect(cover.state().uploading).toBe(true);
+
+    await cover.read(0, R.success("data:image/png;base64,aaa"));
+    expect(cover.state().uploading).toBe(true);
+
+    await cover.upload(0, R.failure("That file is too large"));
+    expect(cover.state().uploading).toBe(false);
+  });
+
+  it("frees the gate when a read fails", async () => {
+    const cover = mount();
+    cover.pick("a.png");
+
+    await cover.read(0, R.failure(new Error("Could not read a.png")));
+
+    expect(cover.state().uploading).toBe(false);
+  });
+
+  it("frees the gate when the pick throws", async () => {
+    const cover = mount();
+    cover.pick("a.png");
+
+    await cover.throwOnRead(0);
+
+    expect(cover.state().uploading).toBe(false);
+  });
+
+  it("frees the gate when the draft reseeds", async () => {
+    const cover = mount();
+    cover.pick("a.png");
+    await cover.read(0, R.success("aaa"));
+
+    cover.reset("https://stored.test/other.webp");
+
+    expect(cover.state().uploading).toBe(false);
+  });
+
   it("reports a failed read and puts the stored image back", async () => {
     const cover = mount();
     cover.pick("a.png");
@@ -164,6 +206,17 @@ describe("two uploads in flight", () => {
     expect(uploads).toHaveLength(2);
     return cover;
   };
+
+  it("stays gated until both uploads settle", async () => {
+    const cover = await pickTwice();
+    expect(cover.state().uploading).toBe(true);
+
+    await cover.upload(0, R.success("first.webp"));
+    expect(cover.state().uploading).toBe(true);
+
+    await cover.upload(0, R.success("second.webp"));
+    expect(cover.state().uploading).toBe(false);
+  });
 
   it("keeps the later pick when the earlier upload lands last", async () => {
     const cover = await pickTwice();
