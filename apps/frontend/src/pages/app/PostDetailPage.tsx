@@ -120,7 +120,7 @@ const PostDetailPage: React.FC = () => {
           {post.visibleAt && new Date(post.visibleAt) > new Date() && (
             <Card style={CardStyle.Alert} className="mb-2 border-none">
               <span className="text-zinc-800">
-                Only you can see this post. it is scheduled for{" "}
+                Not visible to members yet. This post is scheduled for{" "}
                 {formatFullDateTime(new Date(post.visibleAt))}
               </span>
             </Card>
