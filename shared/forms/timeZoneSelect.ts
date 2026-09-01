@@ -116,28 +116,91 @@ export function formatNowTimeInTz(tz: string, hour12: boolean = true): string {
   }).format(new Date());
 }
 
-export function getOffsetMinutes(tz: string): number | null {
+const MAX_OFFSET_MINUTES = 16 * 60;
+
+// The offset comes off the wall clock because JavaScriptCore renders the
+// shortOffset of every zero-offset zone as a bare "GMT", which the parse below
+// cannot read at all.
+//
+// The calendar and the numbering system are named because an engine with no
+// en-US data falls back to its own locale and brings both with it; the range
+// check is what catches one that ignores them.
+function offsetFromWallClock(tz: string, when: Date): number | null {
   try {
-    const parts = getCachedFormatter(
+    const fmt = getCachedFormatter(
       `offset:${tz}`,
       {
         timeZone: tz,
-        timeZoneName: "shortOffset",
+        hour12: false,
+        hourCycle: "h23",
+        calendar: "gregory",
+        numberingSystem: "latn",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
         hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
       },
-      "en",
-    ).formatToParts(new Date());
+      "en-US",
+    );
+    // A 12-hour reading lands near enough to UTC for the range check below to
+    // take it, and an engine can answer for the cycle it resolved or for the
+    // dayPeriod without answering for both, so each is refused on its own.
+    if (fmt.resolvedOptions().hour12) return null;
+    const parts = fmt.formatToParts(when);
+    if (parts.some((p) => p.type === "dayPeriod")) return null;
 
-    const off = parts.find((p) => p.type === "timeZoneName")?.value ?? "";
-    const m = off.match(/([+-])(\d{1,2})(?::?(\d{2}))?/i);
-    if (!m) return null;
-    const sign = m[1] === "-" ? -1 : 1;
-    const hh = parseInt(m[2], 10);
-    const mm = m[3] ? parseInt(m[3], 10) : 0;
-    return sign * (hh * 60 + mm);
+    const at = (type: Intl.DateTimeFormatPartTypes) =>
+      Number(parts.find((p) => p.type === type)?.value);
+    const wall = Date.UTC(
+      at("year"),
+      at("month") - 1,
+      at("day"),
+      // h24 writes midnight as hour 24 on the date it belongs to.
+      at("hour") % 24,
+      at("minute"),
+      at("second"),
+    );
+    if (Number.isNaN(wall)) return null;
+    // The parts carry whole seconds, so the instant has to as well for the
+    // difference to be the offset rather than the offset less a stray -0.4ms.
+    const truncated = Math.floor(when.getTime() / 1000) * 1000;
+    const offset = Math.round((wall - truncated) / 60_000);
+    return Math.abs(offset) > MAX_OFFSET_MINUTES ? null : offset;
   } catch {
     return null;
   }
+}
+
+// The wall clock asks Intl for six fields and four options that shortOffset
+// does not, so an engine supporting fewer of them keeps the offset it already
+// had. Every zone this parse misses is one the wall clock reads, so the two
+// only ever meet on a runtime that would otherwise have no offset at all.
+function offsetFromShortOffset(tz: string, when: Date): number | null {
+  try {
+    const parts = getCachedFormatter(
+      `shortOffset:${tz}`,
+      { timeZone: tz, timeZoneName: "shortOffset", hour: "2-digit" },
+      "en",
+    ).formatToParts(when);
+
+    const m = parts
+      .find((p) => p.type === "timeZoneName")
+      ?.value.match(/([+-])(\d{1,2})(?::?(\d{2}))?/);
+    if (!m) return null;
+    const sign = m[1] === "-" ? -1 : 1;
+    return sign * (Number(m[2]) * 60 + Number(m[3] ?? 0));
+  } catch {
+    return null;
+  }
+}
+
+export function getOffsetMinutes(
+  tz: string,
+  when: Date = new Date(),
+): number | null {
+  return offsetFromWallClock(tz, when) ?? offsetFromShortOffset(tz, when);
 }
 
 export function getGenericLabelFromIntl(tz: string): string | null {
@@ -171,6 +234,11 @@ const OBSERVER_REFRESH_MS = 30_000;
 
 type BaseLabel = { tz: string; labelLeft: string; searchText: string };
 let cachedLabels: BaseLabel[] | null = null;
+
+export function resetTimeZoneCaches(): void {
+  formatterCache.clear();
+  cachedLabels = null;
+}
 
 function getBaseLabels(): BaseLabel[] {
   if (cachedLabels) return cachedLabels;
