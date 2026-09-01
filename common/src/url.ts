@@ -78,3 +78,27 @@ export const isAllianceAppHostname = (hostname: string): boolean => {
     ALLIANCE_APP_SUBDOMAINS.some((prefix) => host === `${prefix}${domain}`),
   );
 };
+
+/**
+ * An authored link, aimed at the domain the reader is already on: a link to one
+ * of the web app's own hosts comes back as a bare path, for the browser to
+ * resolve against the current one. Anything else is returned as authored.
+ */
+export const siteHref = (url: string): string => {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+  if (
+    (parsed.protocol !== "https:" && parsed.protocol !== "http:") ||
+    !isAllianceAppHostname(parsed.hostname)
+  ) {
+    return url;
+  }
+  const path = parsed.pathname + parsed.search + parsed.hash;
+  // A path opening with `//` reads as protocol-relative: the browser would
+  // resolve it against the host that follows, not the current one.
+  return path.startsWith("//") ? url : path;
+};

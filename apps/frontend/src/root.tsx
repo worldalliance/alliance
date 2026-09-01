@@ -1,6 +1,7 @@
 import { client } from "@alliance/shared/client/client.gen";
 import { registerAnalytics } from "@alliance/shared/lib/analytics";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
+import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import posthog, { PostHogConfig } from "posthog-js";
@@ -108,13 +109,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
   useNumberInputScrollGuard();
 
   const inner = (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider queryClient={queryClient}>
-        <ToastProvider>
-          <HtmlBackgroundManager>{children}</HtmlBackgroundManager>
-        </ToastProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <SiteAppProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider queryClient={queryClient}>
+          <ToastProvider>
+            <HtmlBackgroundManager>{children}</HtmlBackgroundManager>
+          </ToastProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </SiteAppProvider>
   );
 
   return (

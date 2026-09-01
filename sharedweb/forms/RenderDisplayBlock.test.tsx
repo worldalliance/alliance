@@ -1,5 +1,10 @@
-import type { AccordionBlock } from "@alliance/common/forms/display-blocks";
+import type {
+  AccordionBlock,
+  BigLinkBlock,
+} from "@alliance/common/forms/display-blocks";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
+import { AuthoredLinkProvider, SiteAppProvider } from "../ui/SiteAppProvider";
 import RenderDisplayBlock from "./RenderDisplayBlock";
 
 afterEach(cleanup);
@@ -50,5 +55,56 @@ describe("the accordion display block", () => {
 
     expect(screen.queryByText("Inside one")).toBeNull();
     expect(screen.getByText("Inside two")).toBeTruthy();
+  });
+});
+
+const biglink: BigLinkBlock = {
+  type: "display",
+  kind: "biglink",
+  id: "block-1",
+  text: "Read the post",
+  url: "https://worldalliance.org/forum/post/22",
+};
+
+const hrefOf = (node: React.ReactNode): string | null => {
+  render(<MemoryRouter>{node}</MemoryRouter>);
+  return screen.getByRole("link").getAttribute("href");
+};
+
+describe("the biglink display block", () => {
+  it("drops our own domain in the app that serves it", () => {
+    expect(
+      hrefOf(
+        <SiteAppProvider>
+          <RenderDisplayBlock block={biglink} />
+        </SiteAppProvider>,
+      ),
+    ).toBe("/forum/post/22");
+  });
+
+  it("shows the destination it links to", () => {
+    render(
+      <MemoryRouter>
+        <SiteAppProvider>
+          <RenderDisplayBlock block={biglink} />
+        </SiteAppProvider>
+      </MemoryRouter>,
+    );
+    expect(screen.queryByText(biglink.url)).toBeNull();
+    expect(screen.getByText("/forum/post/22")).toBeTruthy();
+  });
+
+  it("keeps the authored URL in an app that serves another domain", () => {
+    expect(
+      hrefOf(
+        <AuthoredLinkProvider>
+          <RenderDisplayBlock block={biglink} />
+        </AuthoredLinkProvider>,
+      ),
+    ).toBe("https://worldalliance.org/forum/post/22");
+  });
+
+  it("refuses to render in an app that has claimed neither", () => {
+    expect(() => hrefOf(<RenderDisplayBlock block={biglink} />)).toThrow();
   });
 });
