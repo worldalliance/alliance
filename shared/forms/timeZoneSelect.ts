@@ -327,6 +327,7 @@ function baseItems(minute: number): BaseItem[] {
 
   items.sort(
     (a, b) =>
+      Number(a.offsetMins === null) - Number(b.offsetMins === null) ||
       (a.offsetMins ?? 0) - (b.offsetMins ?? 0) ||
       a.labelLeft.localeCompare(b.labelLeft),
   );
