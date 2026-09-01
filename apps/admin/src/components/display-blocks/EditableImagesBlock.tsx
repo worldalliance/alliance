@@ -30,7 +30,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { VariableTextField } from "../VariableTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
@@ -139,8 +139,18 @@ function SortableImageRow({
 export function EditableImagesBlock(props: BaseDisplayBlockProps<ImagesBlock>) {
   return (
     <DisplayBlockWrapper {...props}>
-      {({ block: activeBlock, onUpdate: handleUpdate }) => (
-        <ImagesEditor block={activeBlock} onUpdate={handleUpdate} />
+      {({
+        block: activeBlock,
+        onUpdate: handleUpdate,
+        activeUserId,
+        updateFor,
+      }) => (
+        <ImagesEditor
+          block={activeBlock}
+          onUpdate={handleUpdate}
+          activeUserId={activeUserId ?? null}
+          updateFor={updateFor}
+        />
       )}
     </DisplayBlockWrapper>
   );
@@ -149,9 +159,16 @@ export function EditableImagesBlock(props: BaseDisplayBlockProps<ImagesBlock>) {
 function ImagesEditor({
   block,
   onUpdate,
+  activeUserId,
+  updateFor,
 }: {
   block: ImagesBlock;
   onUpdate: (updates: Partial<ImagesBlock>) => void;
+  activeUserId: string | null;
+  updateFor: (
+    userId: string | null,
+    update: (current: ImagesBlock) => Partial<ImagesBlock>,
+  ) => void;
 }) {
   const images = block.images;
   const ids = dragIds(images);
@@ -160,16 +177,27 @@ function ImagesEditor({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const activeImage = images[ids.indexOf(activeId ?? "")];
 
-  const setImages = (next: ImagesItem[]) =>
-    onUpdate({ images: withItemIds(next) });
-
-  // An upload outlives the render that started it, and rows stay reorderable
-  // and removable while it runs, so the list to append to is read once the
-  // uploads land rather than captured when they start.
-  const latestImages = useRef(images);
-  useEffect(() => {
-    latestImages.current = images;
+  // An upload outlives the render that started it, and every builder above
+  // writes a block update by spreading the whole form it rendered with, so a
+  // handler held past its render puts that form back over every edit since. A
+  // passive effect would leave the ref a render behind between commit and
+  // flush, which is long enough for an upload to land on the handler it
+  // replaces.
+  const latest = useRef({ onUpdate, updateFor });
+  useLayoutEffect(() => {
+    latest.current = { onUpdate, updateFor };
   });
+
+  const setImages = (next: ImagesItem[]) =>
+    latest.current.onUpdate({ images: withItemIds(next) });
+
+  // The admin can page to another user's override, or back to the default,
+  // while the pictures go up, so they land on the target the pick started on
+  // rather than the one on screen when they arrive.
+  const appendImages = (userId: string | null, added: ImagesItem[]) =>
+    latest.current.updateFor(userId, (current) => ({
+      images: withItemIds([...current.images, ...added]),
+    }));
 
   const uploadFiles = async (files: File[]) => {
     setIsUploading(true);
@@ -204,7 +232,7 @@ function ImagesEditor({
         );
       }
       if (uploaded.length) {
-        setImages([...latestImages.current, ...uploaded]);
+        appendImages(activeUserId, uploaded);
       }
     } finally {
       setIsUploading(false);

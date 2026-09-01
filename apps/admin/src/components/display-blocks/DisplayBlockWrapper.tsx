@@ -60,6 +60,15 @@ const baseManualContentFromBlock = (
 type DisplayBlockChildRenderProps<T extends DisplayBlock> = {
   block: T;
   onUpdate: (updates: Partial<T>) => void;
+  /**
+   * Write to one user's override rather than whichever is on screen now, for
+   * work started under a target the admin can navigate away from before it
+   * lands. `current` is that target's block, resolved when the write happens.
+   */
+  updateFor: (
+    userId: string | null,
+    update: (current: T) => Partial<T>,
+  ) => void;
   activeUserId?: string | null;
   activeUserName?: string;
   isDefaultContent: boolean;
@@ -377,21 +386,22 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     selectManualTarget(manualTargetList[nextIndex]);
   };
 
-  const handleBlockUpdate = useCallback(
-    (updates: Partial<T>) => {
+  const updateBlockFor = useCallback(
+    (userId: string | null, update: (current: T) => Partial<T>) => {
       if (!onUpdate || !block) {
         return;
       }
-      if (manualPerUserEnabled && activeManualUserId) {
+      if (manualPerUserEnabled && userId) {
         const existingContent =
-          manualUserContent[activeManualUserId] ??
-          baseManualContentFromBlock(block);
+          manualUserContent[userId] ?? baseManualContentFromBlock(block);
 
         const nextManualContent: Record<string, ManualDisplayBlockContent> = {
           ...manualUserContent,
-          [activeManualUserId]: stripIdentityFields({
+          [userId]: stripIdentityFields({
             ...existingContent,
-            ...(stripManualFields(updates) as Record<string, unknown>),
+            ...(stripManualFields(
+              update(resolveDisplayBlockForUser(block, userId)),
+            ) as Record<string, unknown>),
           }) as ManualDisplayBlockContent,
         };
 
@@ -401,15 +411,14 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
         return;
       }
 
-      onUpdate(updates);
+      onUpdate(update(block));
     },
-    [
-      activeManualUserId,
-      block,
-      manualPerUserEnabled,
-      manualUserContent,
-      onUpdate,
-    ],
+    [block, manualPerUserEnabled, manualUserContent, onUpdate],
+  );
+
+  const handleBlockUpdate = useCallback(
+    (updates: Partial<T>) => updateBlockFor(activeManualUserId, () => updates),
+    [activeManualUserId, updateBlockFor],
   );
 
   const handleImportFromClipboard = useCallback(async () => {
@@ -527,6 +536,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
       ? children({
           block: (effectiveBlock ?? (block as T)) as T,
           onUpdate: handleBlockUpdate,
+          updateFor: updateBlockFor,
           activeUserId: activeManualUserId,
           activeUserName: activeUser?.name,
           isDefaultContent: !manualPerUserEnabled || !activeManualUserId,
