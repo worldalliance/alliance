@@ -19,6 +19,7 @@ import { In, type Repository } from "typeorm";
 import { Action } from "../src/actions/entities/action.entity";
 import {
   CreatePostDto,
+  UpdatePostDto,
   UpdatePostSettingsDto,
 } from "../src/forum/dto/post.dto";
 import { createTestApp, TestContext } from "./e2e-test-utils";
@@ -315,6 +316,62 @@ describe("Forum (e2e)", () => {
       await request(ctx.app.getHttpServer())
         .get(`/forum/posts/${createResponse.body.id}`)
         .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(404);
+    });
+
+    it("should let admins see future-scheduled posts by other users", async () => {
+      const futureVisibleAt = new Date(Date.now() + 1000 * 60 * 60);
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Future Post Seen By Admin",
+          editableContent: {
+            body: "Scheduled in the future",
+            attachments: [],
+          },
+          visibleAt: futureVisibleAt,
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postsResponse = await request(ctx.app.getHttpServer())
+        .get("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const futurePost = postsResponse.body.find(
+        (post) => post.id === createResponse.body.id,
+      );
+      expect(futurePost).toBeDefined();
+
+      await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${createResponse.body.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const profilePosts = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/user/${ctx.testUserId}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      expect(
+        profilePosts.body.some((post) => post.id === createResponse.body.id),
+      ).toBe(true);
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/posts/${createResponse.body.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: "Edited By Admin",
+          editableContent: {
+            body: "Edited by an admin",
+            attachments: [],
+          },
+        } satisfies UpdatePostDto)
+        .expect(404);
+
+      await request(ctx.app.getHttpServer())
+        .delete(`/forum/posts/${createResponse.body.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .expect(404);
     });
 

@@ -145,8 +145,16 @@ export class ForumService {
         .where(`visPost.id = ${postAlias}.id`)
         .andWhere("visAuthor.id = :postVisibility_userId")
         .getQuery();
+      const adminSubQuery = qb
+        .subQuery()
+        .select("1")
+        .from(User, "visViewer")
+        .where("visViewer.id = :postVisibility_userId")
+        .andWhere("visViewer.admin = true")
+        .getQuery();
       clauses.push(`${postAlias}.authorId = :postVisibility_userId`);
       clauses.push(`EXISTS ${coAuthorSubQuery}`);
+      clauses.push(`EXISTS ${adminSubQuery}`);
       params.postVisibility_userId = userId;
     }
     qb.andWhere(`(${clauses.join(" OR ")})`, params);
