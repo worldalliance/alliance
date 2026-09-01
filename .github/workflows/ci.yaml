@@ -5,6 +5,9 @@ on:
     branches: [main, production]
 
 jobs:
+  format-check:
+    uses: ./.github/workflows/format-check.yaml
+
   typecheck:
     strategy:
       fail-fast: false

@@ -148,6 +148,9 @@ jobs:
           name: admin-build
           path: apps/admin/admin-build.zip
 
+  format-check:
+    uses: ./.github/workflows/format-check.yaml
+
   typecheck:
     strategy:
       fail-fast: false
@@ -176,6 +179,7 @@ jobs:
       - test-server-unit
       - migrations-drift-check
       - typecheck
+      - format-check
       - visual-regression
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
@@ -257,6 +261,7 @@ jobs:
     needs:
       - dirty-check
       - build-admin-frontend
+      - format-check
       - visual-regression
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
@@ -674,6 +679,7 @@ jobs:
       - build-react-app
       - migrations-drift-check
       - typecheck
+      - format-check
       - visual-regression
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
