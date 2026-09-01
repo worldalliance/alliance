@@ -8,9 +8,6 @@ import {
   CreateEditableContentDto,
   forumCreateComment,
   forumDeleteComment,
-  forumFindCommentsForAction,
-  forumFindCommentsForActivity,
-  forumFindCommentsForPost,
   forumPinCommentAdmin,
   forumUpdateComment,
   PostTagDto,
@@ -19,6 +16,7 @@ import {
 import { captureException } from "@alliance/shared/lib/analytics";
 import { TagFilter } from "@alliance/shared/lib/commentTags";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
+import { useLoadComments } from "@alliance/shared/lib/useLoadComments";
 import {
   createContext,
   useCallback,
@@ -101,10 +99,8 @@ export function useCommentTree(
   type: CommentParentObject,
   initialComments?: CommentDto[],
 ): UseCommentTreeResult {
-  const [comments, setComments] = useState<CommentDto[] | null>(
-    initialComments ?? null,
-  );
-  const [error, setError] = useState<string | null>(null);
+  const { comments, setComments, error, setError, fetchComments } =
+    useLoadComments({ objectId, type, initialComments });
   // Keyed by the form that produced it, so a nested reply's rejection shows
   // under that reply rather than at the top of the thread.
   const [submitError, setSubmitError] = useState<{
@@ -127,32 +123,6 @@ export function useCommentTree(
     null,
   );
   const [searchParams, setSearchParams] = useSearchParams();
-
-  const fetchComments = useCallback(async () => {
-    let response;
-    if (type === "post") {
-      response = await forumFindCommentsForPost({
-        path: { id: objectId.toString() },
-      });
-    } else if (type === "activity") {
-      response = await forumFindCommentsForActivity({
-        path: { id: objectId.toString() },
-      });
-    } else {
-      response = await forumFindCommentsForAction({
-        path: { id: objectId.toString() },
-      });
-    }
-    setComments(response.data ?? null);
-  }, [objectId, type]);
-
-  useEffect(() => {
-    if (initialComments) {
-      setComments(initialComments);
-      return;
-    }
-    fetchComments();
-  }, [initialComments, fetchComments]);
 
   // Handle highlighted reply from URL parameters
   useEffect(() => {
@@ -270,7 +240,7 @@ export function useCommentTree(
         }
       }
     },
-    [fetchComments],
+    [fetchComments, setError],
   );
 
   const handleUpdateReply = useCallback(
@@ -300,8 +270,6 @@ export function useCommentTree(
       }
 
       setComments((prevComments) => {
-        if (!prevComments) return null;
-
         const updateRecursively = (comments: CommentDto[]): CommentDto[] => {
           return comments.map((comment) => {
             if (comment.id === replyId) {
@@ -322,7 +290,7 @@ export function useCommentTree(
 
       return R.success(undefined);
     },
-    [],
+    [setComments],
   );
 
   const { user } = useAuth();

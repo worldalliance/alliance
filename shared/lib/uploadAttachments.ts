@@ -22,11 +22,31 @@ export async function uploadAttachments(
 }
 
 /**
+ * Uploads a draft's attachments and hands the keys back to the draft, leaving
+ * it untouched when the upload fails. Call this rather than uploadAttachments
+ * wherever a draft the user can still edit is being saved.
+ */
+export async function uploadDraftAttachments({
+  sources,
+  setAttachments,
+}: {
+  sources: string[];
+  setAttachments: (update: (current: string[]) => string[]) => void;
+}): Promise<Result<string[], string>> {
+  const uploaded = await uploadAttachments(sources);
+  if (!uploaded.ok) return uploaded;
+  setAttachments((current) =>
+    withUploadedKeys({ current, sources, keys: uploaded.value }),
+  );
+  return uploaded;
+}
+
+/**
  * Swaps each attachment that was uploaded for the key it came back as, leaving
  * whatever the draft gained or dropped meanwhile alone. A rejected save retries
  * from the draft, so it sends keys rather than the base64 they came from.
  */
-export function withUploadedKeys({
+function withUploadedKeys({
   current,
   sources,
   keys,
