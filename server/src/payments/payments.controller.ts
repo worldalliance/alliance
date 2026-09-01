@@ -127,7 +127,7 @@ export class PaymentsController {
     if (process.env.STRIPE_ENDPOINT_SECRET) {
       const signature = request.headers["stripe-signature"];
       try {
-        parsedEvent = this.stripe.webhooks.constructEvent(
+        parsedEvent = await this.stripe.webhooks.constructEventAsync(
           event,
           signature,
           process.env.STRIPE_ENDPOINT_SECRET,
