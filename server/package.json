@@ -55,6 +55,7 @@
     "dotenv": "^17.2.3",
     "es-toolkit": "^1.49.0",
     "expo-server-sdk": "^4.0.0",
+    "express": "^5.2.1",
     "heic-convert": "^2.1.0",
     "html-encoding-sniffer": "^4.0.0",
     "iconv-lite": "^0.7.0",

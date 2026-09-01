@@ -5,7 +5,6 @@ import { HttpAdapterHost, NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { IoAdapter } from "@nestjs/platform-socket.io";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
-import bodyParser from "body-parser";
 import { useContainer } from "class-validator";
 import cookieParser from "cookie-parser";
 import { randomUUID } from "node:crypto";
@@ -16,6 +15,7 @@ import { MetricsInterceptor } from "./metrics";
 import { twilioSignatureEnforced } from "./mms/twilio-signature.guard";
 import { injectResponseSchemas } from "./openapi-errors";
 import { PosthogExceptionFilter } from "./posthog.filter";
+import { configureBodyParsers } from "./utils/body-parsers";
 import { socketCorsOrigins } from "./utils/cors-origins";
 import { requestContext } from "./utils/request-context";
 import { RouteContextGuard } from "./utils/request-context.guard";
@@ -102,12 +102,10 @@ async function bootstrap() {
   }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    rawBody: true,
     bodyParser: false,
   });
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
-  app.use(bodyParser.json({ limit: "50mb" }));
-  app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
+  configureBodyParsers(app);
   app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE_OPTIONS));
   app.useGlobalGuards(new RouteContextGuard());
   app.useGlobalInterceptors(new MetricsInterceptor());
