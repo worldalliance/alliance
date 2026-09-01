@@ -177,6 +177,22 @@ describe("a zone Intl rejects", () => {
     }
   });
 
+  it("sorts after every zone that has an offset", () => {
+    TZ_OPTIONS.push({ group: "Asia", label: "Nowhere", tz: "Not/AZone" });
+    try {
+      const { result } = renderHook(() => useTimeZoneSelect({}));
+      const offsets = result.current.items.map(({ offsetMins }) => offsetMins);
+      const firstMissing = offsets.indexOf(null);
+
+      expect(firstMissing).toBeGreaterThan(-1);
+      expect(offsets.filter((o) => o !== null)).toEqual(
+        offsets.slice(0, firstMissing),
+      );
+    } finally {
+      TZ_OPTIONS.pop();
+    }
+  });
+
   it("keeps its place when it is the zone a member already saved", () => {
     const { result } = renderHook(() =>
       useTimeZoneSelect({ value: "Not/AZone" }),
@@ -205,6 +221,27 @@ describe("a runtime that rejects every zone", () => {
           offsetMins: null,
           timeLabel: null,
         },
+      ]);
+    } finally {
+      TZ_OPTIONS.splice(0, TZ_OPTIONS.length, ...listed);
+    }
+  });
+
+  it("sorts the list by name, since no zone has an offset to sort by", () => {
+    const listed = TZ_OPTIONS.splice(
+      0,
+      TZ_OPTIONS.length,
+      { group: "Asia", label: "Zed", tz: "Not/AZone" },
+      { group: "Asia", label: "Mid", tz: "Not/BZone" },
+      { group: "Asia", label: "Alpha", tz: "Not/CZone" },
+    );
+    try {
+      const { result } = renderHook(() => useTimeZoneSelect({}));
+
+      expect(result.current.items.map(({ tz }) => tz)).toEqual([
+        "Not/CZone",
+        "Not/BZone",
+        "Not/AZone",
       ]);
     } finally {
       TZ_OPTIONS.splice(0, TZ_OPTIONS.length, ...listed);
@@ -293,6 +330,26 @@ describe("a zone sitting on UTC", () => {
 
   it("reads as offset zero, not as an offset the runtime withheld", () => {
     expect(getOffsetMinutes(UTC_ZONE)).toBe(0);
+  });
+
+  it("sorts among the zones it shares an offset with", () => {
+    // The unplaceable row is labelled to sort ahead of "Greenwich Mean Time",
+    // so the offset is the only thing that can put it behind.
+    TZ_OPTIONS.push(
+      { group: "Atlantic", label: "Iceland", tz: UTC_ZONE },
+      { group: "Asia", label: "Anywhere", tz: "Not/AZone" },
+    );
+    try {
+      const { result } = renderHook(() => useTimeZoneSelect({}));
+      const place = (tz: string) =>
+        result.current.items.findIndex((i) => i.tz === tz);
+
+      expect(place(UTC_ZONE)).toBeGreaterThan(place("America/New_York"));
+      expect(place(UTC_ZONE)).toBeLessThan(place("Europe/Paris"));
+      expect(place(UTC_ZONE)).toBeLessThan(place("Not/AZone"));
+    } finally {
+      TZ_OPTIONS.splice(-2);
+    }
   });
 });
 
