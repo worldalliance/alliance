@@ -170,17 +170,27 @@ jobs:
     with:
       package: ${{ matrix.package }}
 
-  deploy-react-app:
+  # The deploy jobs gate on this one job, so a check added here gates all of
+  # them and they cannot drift apart.
+  checks:
     runs-on: ubuntu-latest
     needs:
-      - build-react-app
       - dirty-check
+      - build-react-app
+      - build-admin-frontend
       - test-backend-e2e
       - test-server-unit
       - migrations-drift-check
       - typecheck
       - format-check
       - visual-regression
+    steps:
+      - run: echo "all checks passed"
+
+  deploy-react-app:
+    runs-on: ubuntu-latest
+    needs:
+      - checks
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
       - name: Checkout Code
@@ -259,11 +269,7 @@ jobs:
   deploy-admin-app:
     runs-on: ubuntu-latest
     needs:
-      - dirty-check
-      - build-admin-frontend
-      - typecheck
-      - format-check
-      - visual-regression
+      - checks
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
       - name: Checkout Code
@@ -674,14 +680,7 @@ jobs:
   deploy-nest-backend:
     runs-on: ubuntu-latest
     needs:
-      - dirty-check
-      - test-backend-e2e
-      - test-server-unit
-      - build-react-app
-      - migrations-drift-check
-      - typecheck
-      - format-check
-      - visual-regression
+      - checks
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
       - name: Checkout Code
