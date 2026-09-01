@@ -830,7 +830,9 @@ jobs:
             pm2 save
 
             sleep 10
-            curl --silent --fail --show-error "https://${{vars.DOMAIN_NAME}}/api/" > /dev/null
+            # The public /api/ path goes through the nginx vhost
+            # deploy-react-app owns, not this job; verify-api covers it.
+            curl --silent --fail --show-error --max-time 10 http://localhost:3005/ > /dev/null
 
             # The prod → staging sync runs from this box, outside the app, so
             # ship its script with the deploy. Staging only. Never fails the
