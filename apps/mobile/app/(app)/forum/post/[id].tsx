@@ -208,10 +208,10 @@ export default function PostDetailScreen() {
             scrollViewRef={scrollViewRef}
             repliesAsCards={false}
             qaMode={post.qaMode}
-            expertIds={post.expertIds ?? []}
+            expertIds={post.expertIds}
             expertLabel={post.expertLabel ?? undefined}
             showClusterTags={post.showClusterTags}
-            tags={post.tags ?? []}
+            tags={post.tags}
           />
         </View>
       </View>

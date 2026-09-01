@@ -40,6 +40,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUpDown, ListFilter, Pin } from "lucide-react-native";
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -63,6 +64,7 @@ import TagChips from "./TagChips";
 import UserDisplayName from "./UserDisplayName";
 
 const NO_TAGS: readonly PostTagDto[] = [];
+const NO_EXPERTS: number[] = [];
 
 export interface CommentsProps {
   objectId: number;
@@ -211,7 +213,7 @@ const ReplyForm = ({
   objectId,
   error,
   onDismissError,
-  tags = [],
+  tags = NO_TAGS,
   selectedTagId,
   setSelectedTagId,
   onSubmit,
@@ -404,7 +406,11 @@ type ReplyItemProps = ReplyItemSharedProps & {
   depth?: number;
 };
 
-const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
+const ReplyItem = memo(function ReplyItemView({
+  reply,
+  depth = 0,
+  ...shared
+}: ReplyItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -683,7 +689,7 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
       )}
     </View>
   );
-};
+});
 
 export default function Comments({
   objectId,
@@ -697,7 +703,7 @@ export default function Comments({
   scrollViewRef,
   repliesAsCards = false,
   qaMode = false,
-  expertIds: expertIdsProp = [],
+  expertIds: expertIdsProp = NO_EXPERTS,
   expertLabel,
   showClusterTags = false,
   tags = NO_TAGS,
@@ -1104,7 +1110,7 @@ export default function Comments({
           objectId={objectId}
           error={submitErrorFor(null)}
           onDismissError={clearSubmitError}
-          tags={isPostComments ? tags : []}
+          tags={isPostComments ? tags : NO_TAGS}
           selectedTagId={selectedTagId}
           setSelectedTagId={setSelectedTagId}
           onSubmit={handleSubmitReply}
