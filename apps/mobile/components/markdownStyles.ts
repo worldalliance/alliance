@@ -121,13 +121,15 @@ export function useMarkdownTextStyles(): MarkdownTextStyles {
 }
 
 /**
- * The library's full-width paragraph stretches chat bubbles, while its default
- * flexWrap disables flexShrink in Yoga. Each paragraph has one textgroup, so
- * nowrap preserves layout while allowing the bubble to shrink to fit.
+ * The library's full-width paragraph stretches chat bubbles, so width auto lets
+ * the bubble hug its text. A hardbreak splits the paragraph into one textgroup
+ * per line, which a column stacks and a row collapses to zero width. Nowrap
+ * because Yoga's wrap disables flexShrink.
  */
 export const MARKDOWN_HUG_WIDTH_STYLE = {
   paragraph: {
     width: "auto",
+    flexDirection: "column",
     flexWrap: "nowrap",
     flexShrink: 1,
   },
