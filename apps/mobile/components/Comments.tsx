@@ -29,6 +29,7 @@ import {
   countCommentsByTag,
   matchesTagFilter,
 } from "@alliance/shared/lib/commentTags";
+import { updateCommentInTree } from "@alliance/shared/lib/commentTree";
 import { uploadDraftAttachments } from "@alliance/shared/lib/uploadAttachments";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
 import { useLoadComments } from "@alliance/shared/lib/useLoadComments";
@@ -882,27 +883,13 @@ export default function Comments({
         );
       }
 
-      setComments((prevComments) => {
-        const updateRecursively = (items: CommentDto[]): CommentDto[] => {
-          return items.map((item) => {
-            if (item.id === replyId) {
-              return {
-                ...item,
-                editableContent: content,
-              };
-            }
-            if (item.children) {
-              return {
-                ...item,
-                children: updateRecursively(item.children),
-              };
-            }
-            return item;
-          });
-        };
-
-        return updateRecursively(prevComments);
-      });
+      setComments((prevComments) =>
+        updateCommentInTree({
+          comments: prevComments,
+          id: replyId,
+          update: (comment) => ({ ...comment, editableContent: content }),
+        }),
+      );
 
       return R.success(undefined);
     },

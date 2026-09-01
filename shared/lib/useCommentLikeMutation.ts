@@ -3,6 +3,7 @@ import {
   forumLikeComment,
   forumUnlikeComment,
 } from "@alliance/shared/client";
+import { updateCommentInTree } from "@alliance/shared/lib/commentTree";
 import { useMutation } from "@tanstack/react-query";
 import { useCallback } from "react";
 
@@ -34,25 +35,18 @@ export function useCommentLikeMutation({
     onMutate: ({ replyId, unlike }) => {
       if (!userId) return;
 
-      const updateRecursively = (items: CommentDto[]): CommentDto[] =>
-        items.map((item) => {
-          if (item.id === replyId) {
-            return {
-              ...item,
-              likedByMe: !unlike,
-              likesCount: Math.max(0, item.likesCount + (unlike ? -1 : 1)),
-            };
-          }
-          if (item.children?.length) {
-            return { ...item, children: updateRecursively(item.children) };
-          }
-          return item;
-        });
-
       let previousComments: CommentDto[] | null = null;
       setComments((prev) => {
         previousComments = prev;
-        return updateRecursively(prev);
+        return updateCommentInTree({
+          comments: prev,
+          id: replyId,
+          update: (comment) => ({
+            ...comment,
+            likedByMe: !unlike,
+            likesCount: Math.max(0, comment.likesCount + (unlike ? -1 : 1)),
+          }),
+        });
       });
       return { previousComments };
     },

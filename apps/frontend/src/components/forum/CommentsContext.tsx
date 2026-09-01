@@ -15,6 +15,7 @@ import {
 } from "@alliance/shared/client";
 import { captureException } from "@alliance/shared/lib/analytics";
 import { TagFilter } from "@alliance/shared/lib/commentTags";
+import { updateCommentInTree } from "@alliance/shared/lib/commentTree";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
 import { useLoadComments } from "@alliance/shared/lib/useLoadComments";
 import {
@@ -269,24 +270,16 @@ export function useCommentTree(
         );
       }
 
-      setComments((prevComments) => {
-        const updateRecursively = (comments: CommentDto[]): CommentDto[] => {
-          return comments.map((comment) => {
-            if (comment.id === replyId) {
-              return { ...comment, editableContent: { ...content, id: -1 } };
-            }
-            if (comment.children) {
-              return {
-                ...comment,
-                children: updateRecursively(comment.children),
-              };
-            }
-            return comment;
-          });
-        };
-
-        return updateRecursively(prevComments);
-      });
+      setComments((prevComments) =>
+        updateCommentInTree({
+          comments: prevComments,
+          id: replyId,
+          update: (comment) => ({
+            ...comment,
+            editableContent: { ...content, id: -1 },
+          }),
+        }),
+      );
 
       return R.success(undefined);
     },
