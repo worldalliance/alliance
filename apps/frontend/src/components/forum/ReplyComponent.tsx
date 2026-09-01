@@ -8,7 +8,7 @@ import EditableContentForm from "@alliance/sharedweb/ui/EditableContentForm";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
 import { formatDistanceToNow } from "date-fns";
-import { ChevronDown, Pin } from "lucide-react";
+import { ChevronDown, Pin, X } from "lucide-react";
 import { memo, useState } from "react";
 import { Link, href } from "react-router";
 import { useCommentEditing } from "../../hooks/useCommentEditing";
@@ -55,6 +55,7 @@ const ReplyContent = ({
     showClusterTags = false,
   } = ctx;
   const isExpert = expertIds.includes(reply.author.id);
+  const deleteError = ctx.deleteErrorFor(reply.id);
   const tag = ctx.tags.find((candidate) => candidate.id === reply.tagId);
   const editing = useCommentEditing(reply, ctx.onUpdateReply);
 
@@ -230,6 +231,24 @@ const ReplyContent = ({
                 />
               )}
             </div>
+          </div>
+        )}
+
+        {deleteError && (
+          <div
+            role="alert"
+            className="mt-2 flex items-center gap-2 text-sm text-red-500"
+          >
+            <span>{deleteError}</span>
+            <button
+              type="button"
+              onClick={() => ctx.clearDeleteError(reply.id)}
+              aria-label="Dismiss this message"
+              title="Dismiss this message"
+              className="p-1 hover:text-red-700"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
       </div>
