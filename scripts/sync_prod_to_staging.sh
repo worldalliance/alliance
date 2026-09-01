@@ -235,10 +235,7 @@ END $$;
 UPDATE "mail" SET "to" = 'user'||id||'@example.com';
 
 -- Clear push tokens so staging can never reach real devices
-UPDATE "user_device"
-SET "expoPushToken" = NULL,
-    "liveActivityPushToStartToken" = NULL;
-UPDATE "live_activity_registration" SET "updateToken" = NULL;
+UPDATE "user_device" SET "expoPushToken" = NULL;
 UPDATE "push" SET "expoPushToken" = 'pruned';
 
 SQL
