@@ -110,6 +110,8 @@ if [[ ! $STAGING_PASSWORD_HASH =~ $BCRYPT_PATTERN ]]; then
 fi
 
 echo "[$(date)] ==> Starting prod → staging sync"
+notify_slack ":hourglass_flowing_sand: prod → staging: sync started."
+
 STAGE="dump"
 echo "[$(date)] ==> Dumping prod database to ${DUMP_FILE}..."
 
