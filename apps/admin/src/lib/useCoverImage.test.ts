@@ -7,7 +7,8 @@ type Pending<T> = {
 };
 
 let reads: Pending<Result<string, Error>>[] = [];
-let uploads: Pending<Result<string, string>>[] = [];
+let uploads: (Pending<Result<string, string>> & { signal?: AbortSignal })[] =
+  [];
 
 jest.mock("@alliance/sharedweb/lib/readFileDataUri", () => ({
   readFileDataUri: () =>
@@ -17,9 +18,9 @@ jest.mock("@alliance/sharedweb/lib/readFileDataUri", () => ({
 }));
 
 jest.mock("@alliance/shared/lib/uploadImageDataUri", () => ({
-  uploadImageDataUri: () =>
+  uploadImageDataUri: (_dataUri: string, signal?: AbortSignal) =>
     new Promise<Result<string, string>>((resolve, reject) => {
-      uploads.push({ resolve, reject });
+      uploads.push({ resolve, reject, signal });
     }),
 }));
 
@@ -41,6 +42,7 @@ function mount(storedImage: string | null = "https://stored.test/old.webp") {
         void view.result.current.pick(file(name));
       });
     },
+    cancel: () => act(() => view.result.current.cancel()),
     reset: (next: string | null) => act(() => view.result.current.reset(next)),
     read: async (index: number, result: Result<string, Error>) => {
       const [next] = reads.splice(index, 1);
@@ -52,6 +54,7 @@ function mount(storedImage: string | null = "https://stored.test/old.webp") {
       if (!next) throw new Error(`no upload in flight at ${index}`);
       await act(async () => next.resolve(result));
     },
+    signalOf: (index: number) => uploads[index]?.signal,
     throwOnRead: async (index: number) => {
       const [next] = reads.splice(index, 1);
       if (!next) throw new Error(`no read in flight at ${index}`);
@@ -306,5 +309,57 @@ describe("reset", () => {
     await cover.upload(0, R.failure("That file is too large"));
 
     expect(cover.state().preview).toBe("https://stored.test/other.webp");
+  });
+});
+
+describe("cancel", () => {
+  it("frees the gate and puts the stored image back", async () => {
+    const cover = mount();
+    cover.pick("a.png");
+    await cover.read(0, R.success("aaa"));
+
+    cover.cancel();
+
+    expect(cover.state().uploading).toBe(false);
+    expect(cover.state().preview).toBe("https://stored.test/old.webp");
+    expect(cover.state().key).toBeNull();
+  });
+
+  it("keeps an upload that already landed", async () => {
+    const cover = mount();
+    cover.pick("a.png");
+    await cover.read(0, R.success("aaa"));
+    await cover.upload(0, R.success("abc.webp"));
+
+    cover.pick("b.png");
+    await cover.read(0, R.success("bbb"));
+    cover.cancel();
+
+    expect(cover.state().key).toBe("abc.webp");
+    expect(cover.state().preview).toBe("https://uploads.test/abc.webp");
+  });
+
+  it("drops the cancelled upload when it lands", async () => {
+    const cover = mount();
+    cover.pick("a.png");
+    await cover.read(0, R.success("aaa"));
+
+    cover.cancel();
+    await cover.upload(0, R.success("abc.webp"));
+
+    expect(cover.state().key).toBeNull();
+    expect(cover.state().uploading).toBe(false);
+    expect(cover.state().preview).toBe("https://stored.test/old.webp");
+  });
+
+  it("aborts the request the cancelled upload is still sending", async () => {
+    const cover = mount();
+    cover.pick("a.png");
+    await cover.read(0, R.success("aaa"));
+    expect(cover.signalOf(0)?.aborted).toBe(false);
+
+    cover.cancel();
+
+    expect(cover.signalOf(0)?.aborted).toBe(true);
   });
 });

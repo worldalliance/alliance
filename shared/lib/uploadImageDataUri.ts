@@ -6,12 +6,14 @@ import { imageUploadFailed } from "./copy";
 /** Failure messages are ready to display to users. */
 export async function uploadImageDataUri(
   dataUri: string,
+  signal?: AbortSignal,
 ): Promise<Result<string, string>> {
   const response = await R.fromPromise(
-    imagesUploadImage({ body: { file: dataUri } }),
+    imagesUploadImage({ body: { file: dataUri }, signal }),
   );
   if (!response.ok) {
-    console.error("Failed to upload image:", response.error);
+    if (!signal?.aborted)
+      console.error("Failed to upload image:", response.error);
     return R.failure(imageUploadFailed);
   }
   const { data, error } = response.value;

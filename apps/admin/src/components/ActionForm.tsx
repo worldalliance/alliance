@@ -10,6 +10,7 @@ import {
   VisibilityMode,
 } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
+import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import React, { useMemo, useRef } from "react";
@@ -32,6 +33,7 @@ interface ActionFormProps {
   imagePreview: string | null;
   imageError?: string | null;
   imageUploading?: boolean;
+  onCancelImageUpload: () => void;
   isNew: boolean;
   onCancel?: () => void;
   onDelete?: () => void;
@@ -103,6 +105,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
   imagePreview,
   imageError = null,
   imageUploading = false,
+  onCancelImageUpload,
   isNew,
   onCancel,
   //   onDelete,
@@ -411,7 +414,12 @@ const ActionForm: React.FC<ActionFormProps> = ({
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
           />
           {imageUploading && (
-            <p className="mt-1 text-sm text-blue-600">Uploading...</p>
+            <UploadingWithCancel
+              label="Uploading..."
+              cancelLabel="Cancel the upload and keep the current image"
+              onCancel={onCancelImageUpload}
+              className="mt-1 text-sm text-blue-600"
+            />
           )}
           {imageError && <p className="mt-1 text-red-600">{imageError}</p>}
           {imagePreview && (

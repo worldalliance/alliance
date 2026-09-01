@@ -169,6 +169,7 @@ const ActionDashboard: React.FC = () => {
     error: imageError,
     uploading: imageUploading,
     pick: pickCoverImage,
+    cancel: cancelCoverImage,
     reset: resetCoverImage,
   } = useCoverImage();
   const { tags: availableTags, isLoading: tagsLoading } = useTagsAdmin();
@@ -973,6 +974,7 @@ const ActionDashboard: React.FC = () => {
             imagePreview={imagePreview}
             imageError={imageError}
             imageUploading={imageUploading}
+            onCancelImageUpload={cancelCoverImage}
             isNew={true}
             onCancel={handleCancel}
             availableTags={availableTags}
@@ -1532,6 +1534,7 @@ const ActionDashboard: React.FC = () => {
                   imagePreview={imagePreview}
                   imageError={imageError}
                   imageUploading={imageUploading}
+                  onCancelImageUpload={cancelCoverImage}
                   isNew={false}
                   actionId={action?.id}
                   onDelete={handleDelete}
