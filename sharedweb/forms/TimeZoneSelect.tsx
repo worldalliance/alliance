@@ -1,4 +1,7 @@
-import { useTimeZoneSelect } from "@alliance/shared/forms/timeZoneSelect";
+import {
+  NO_TIME_LABEL,
+  useTimeZoneSelect,
+} from "@alliance/shared/forms/timeZoneSelect";
 import { cn } from "@alliance/shared/styles/util";
 import { Check } from "lucide-react";
 import type React from "react";
@@ -102,7 +105,9 @@ export default function TimeZoneSelectPretty({
               </div>
             </div>
             <div className="flex items-center gap-3 shrink-0">
-              <div className="text-sm">{selected.timeLabel}</div>
+              <div className="text-sm">
+                {selected.timeLabel ?? NO_TIME_LABEL}
+              </div>
               <svg
                 width="16"
                 height="16"
@@ -147,7 +152,7 @@ export default function TimeZoneSelectPretty({
                 filtered.map((item, idx) => {
                   const isActive = idx === activeIndex;
                   const isSelected = item.tz === selected.tz;
-                  const time = item.timeLabel;
+                  const time = item.timeLabel ?? NO_TIME_LABEL;
 
                   return (
                     <button
