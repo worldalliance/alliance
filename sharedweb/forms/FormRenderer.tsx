@@ -38,6 +38,7 @@ import {
 import { stripCardIds } from "@alliance/shared/forms/listCards";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import {
+  cancelAllImageUploads,
   guestReferral,
   outputFieldPublicToggle,
   waitingForImageUpload,
@@ -55,6 +56,7 @@ import {
   useRandomizationKey,
   useVisibilityValidatorResults,
 } from "@alliance/shared/useFormRenderer";
+import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
 import {
   CircleDashed,
   Clock,
@@ -1089,7 +1091,12 @@ const FormRenderer = ({
               </>
             )}
             {uploadingAny && !readOnly && (
-              <p className="text-zinc-500">{waitingForImageUpload}</p>
+              <UploadingWithCancel
+                label={waitingForImageUpload}
+                cancelLabel={cancelAllImageUploads}
+                onCancel={imageUpload.cancelAll}
+                className="text-zinc-500"
+              />
             )}
           </div>
 

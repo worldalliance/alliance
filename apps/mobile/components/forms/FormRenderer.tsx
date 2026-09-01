@@ -48,6 +48,7 @@ import {
 import { stripCardIds } from "@alliance/shared/forms/listCards";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import {
+  cancelAllImageUploads,
   outputFieldPublicToggle,
   waitingForImageUpload,
 } from "@alliance/shared/lib/copy";
@@ -79,6 +80,7 @@ import {
   FileText,
   MessagesSquare,
   Signature,
+  X,
 } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -1239,9 +1241,19 @@ const FormRenderer = ({
             </View>
           </View>
           {imageUpload.uploadingAny && (
-            <Text className="text-zinc-500 text-base p-2">
-              {waitingForImageUpload}
-            </Text>
+            <View className="flex-row items-center gap-1 p-2">
+              <Text className="text-zinc-500 text-base">
+                {waitingForImageUpload}
+              </Text>
+              <TouchableOpacity
+                onPress={imageUpload.cancelAll}
+                accessibilityLabel={cancelAllImageUploads}
+                hitSlop={8}
+                className="p-1"
+              >
+                <X size={20} color={colors.text.icon} />
+              </TouchableOpacity>
+            </View>
           )}
           {Object.keys(fieldErrors).length > 0 && (
             <Text className="text-red-500 text-base p-2">

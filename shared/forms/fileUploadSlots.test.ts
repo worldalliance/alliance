@@ -5,6 +5,7 @@ import type {
 import {
   applyUploadedImage,
   fileUploadSlotId,
+  resolvePickedPreview,
   resolveUploadSlot,
   setListCardValue,
 } from "./fileUploadSlots";
@@ -32,6 +33,7 @@ describe("fileUploadSlotId", () => {
 describe("resolveUploadSlot", () => {
   const fileUpload = {
     onFileSelected: async () => {},
+    cancelUpload: () => {},
     uploadingSlotIds: new Set(["photo"]),
     uploadErrors: { avatar: "Too large" },
   };
@@ -227,5 +229,57 @@ describe("applyUploadedImage", () => {
         ],
       },
     ]);
+  });
+});
+
+describe("resolvePickedPreview", () => {
+  it("shows the stored answer when nothing has been picked", () => {
+    expect(
+      resolvePickedPreview({
+        pick: null,
+        value: "stored.webp",
+        uploading: true,
+      }),
+    ).toBeNull();
+  });
+
+  it("stands in for the answer while the pick uploads", () => {
+    expect(
+      resolvePickedPreview({
+        pick: { uri: "file://new", replaces: "stored.webp" },
+        value: "stored.webp",
+        uploading: true,
+      }),
+    ).toBe("file://new");
+  });
+
+  it("keeps standing in once the answer points at what the pick stored", () => {
+    expect(
+      resolvePickedPreview({
+        pick: { uri: "file://new", replaces: "stored.webp" },
+        value: "new.webp",
+        uploading: false,
+      }),
+    ).toBe("file://new");
+  });
+
+  it("falls back to the answer the cancelled pick was replacing", () => {
+    expect(
+      resolvePickedPreview({
+        pick: { uri: "file://new", replaces: "stored.webp" },
+        value: "stored.webp",
+        uploading: false,
+      }),
+    ).toBeNull();
+  });
+
+  it("shows nothing when the cancelled pick had no answer to fall back on", () => {
+    expect(
+      resolvePickedPreview({
+        pick: { uri: "file://new", replaces: undefined },
+        value: undefined,
+        uploading: false,
+      }),
+    ).toBeNull();
   });
 });

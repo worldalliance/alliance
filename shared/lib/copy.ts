@@ -233,6 +233,10 @@ export const suspendContractConfirmation =
 export const waitingForImageUpload =
   "Waiting for your photo to finish uploading.";
 
+export const cancelImageUpload = "Stop uploading this photo";
+
+export const cancelAllImageUploads = "Stop uploading";
+
 export const imageUploadFailed = "Failed to upload image";
 
 export const photoPickFailed = "Couldn't open your photo library.";
