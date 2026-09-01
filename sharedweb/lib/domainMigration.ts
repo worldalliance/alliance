@@ -1,13 +1,15 @@
+import {
+  ALLIANCE_LEGACY_DOMAIN as LEGACY_DOMAIN,
+  ALLIANCE_DOMAIN as NEW_DOMAIN,
+  hostnameMatchesDomain,
+} from "@alliance/common/url";
 import { addDays, isAfter } from "date-fns";
-
-const LEGACY_DOMAIN = "worldalliance.org";
-const NEW_DOMAIN = "thealliance.org";
 
 const SNOOZE_KEY = "domain-migration-snoozed-at";
 const SNOOZE_DAYS = 5;
 
 export const isLegacyDomain = (hostname: string): boolean =>
-  hostname === LEGACY_DOMAIN || hostname.endsWith(`.${LEGACY_DOMAIN}`);
+  hostnameMatchesDomain(hostname, LEGACY_DOMAIN);
 
 /**
  * The same page on the new domain, keeping any subdomain:

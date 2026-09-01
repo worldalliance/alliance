@@ -12,6 +12,10 @@ import {
 } from "react-native";
 import Markdown, { ASTNode, RenderRules } from "react-native-markdown-display";
 import { getApiUrl } from "../lib/config";
+import {
+  extractPathFromInternalUrl,
+  getInternalRoute,
+} from "../lib/internalLinks";
 import { ImageLightboxModal } from "./ImageLightbox";
 import { renderListItem } from "./markdownListItem";
 import {
@@ -22,128 +26,6 @@ import {
   type MarkdownLayoutStyle,
 } from "./markdownStyles";
 import Text from "./system/Text";
-
-/**
- * Route patterns that can be handled internally by the mobile app.
- * Each pattern is a regex that matches a relative URL path.
- * Use capturing groups to extract route parameters.
- */
-const INTERNAL_ROUTE_PATTERNS: {
-  pattern: RegExp;
-  getRoute: (match: RegExpMatchArray) => string;
-}[] = [
-  // Action activity detail: /actions/123/activity/456
-  {
-    pattern: /^\/actions?\/(\d+)\/activity\/(\d+)\/?$/,
-    getRoute: (match) => `/actions/${match[1]}/activity/${match[2]}`,
-  },
-  // Action pages: /actions/123 or /action/123
-  {
-    pattern: /^\/actions?\/(\d+)\/?$/,
-    getRoute: (match) => `/actions/${match[1]}`,
-  },
-  // Actions list: /actions
-  {
-    pattern: /^\/actions\/?$/,
-    getRoute: () => "/actions",
-  },
-  // Forum index: /forum
-  {
-    pattern: /^\/forum\/?$/,
-    getRoute: () => "/forum",
-  },
-  // Forum post: /forum/post/123 or /forum/123
-  {
-    pattern: /^\/forum\/(?:post\/)?(\d+)\/?$/,
-    getRoute: (match) => `/forum/post/${match[1]}`,
-  },
-  // Member profile: /member/123
-  {
-    pattern: /^\/member\/(\d+)\/?$/,
-    getRoute: (match) => `/member/${match[1]}`,
-  },
-  // Messages list: /messages
-  {
-    pattern: /^\/messages\/?$/,
-    getRoute: () => "/messages",
-  },
-  // Activity feed: /feed
-  {
-    pattern: /^\/feed\/?$/,
-    getRoute: () => "/feed",
-  },
-  // User profile: /profile
-  {
-    pattern: /^\/profile\/?$/,
-    getRoute: () => "/profile",
-  },
-  // Settings: /settings
-  {
-    pattern: /^\/settings\/?$/,
-    getRoute: () => "/settings",
-  },
-  // Notifications: /notifications
-  {
-    pattern: /^\/notifications\/?$/,
-    getRoute: () => "/notifications",
-  },
-  // Membership: /membership or /contract
-  {
-    pattern: /^\/(?:membership|contract)\/?$/,
-    getRoute: () => "/membership",
-  },
-  // Groups: /groups
-  {
-    pattern: /^\/groups\/?$/,
-    getRoute: () => "/groups",
-  },
-  // Invites: /invites
-  {
-    pattern: /^\/invites\/?$/,
-    getRoute: () => "/invites",
-  },
-  // Information: /information
-  {
-    pattern: /^\/information\/?$/,
-    getRoute: () => "/information",
-  },
-  // Search: /search
-  {
-    pattern: /^\/search\/?$/,
-    getRoute: () => "/search",
-  },
-];
-
-/**
- * Check if a URL is a relative path that can be handled internally
- */
-function getInternalRoute(url: string): string | null {
-  // Only process relative URLs (starting with /)
-  if (!url.startsWith("/")) {
-    return null;
-  }
-
-  // Extract query string and hash to preserve them
-  const queryIndex = url.indexOf("?");
-  const hashIndex = url.indexOf("#");
-  const suffixStart =
-    queryIndex >= 0 && hashIndex >= 0
-      ? Math.min(queryIndex, hashIndex)
-      : queryIndex >= 0
-        ? queryIndex
-        : hashIndex;
-  const pathOnly = suffixStart >= 0 ? url.slice(0, suffixStart) : url;
-  const suffix = suffixStart >= 0 ? url.slice(suffixStart) : "";
-
-  for (const { pattern, getRoute } of INTERNAL_ROUTE_PATTERNS) {
-    const match = pathOnly.match(pattern);
-    if (match) {
-      return getRoute(match) + suffix;
-    }
-  }
-
-  return null;
-}
 
 function useHandleLinkPress() {
   return useCallback((url: string): boolean => {
@@ -188,28 +70,6 @@ function useHandleLinkPress() {
     });
     return false;
   }, []);
-}
-
-/**
- * Domains that should be treated as "our" website for internal route matching
- */
-const INTERNAL_DOMAINS = ["worldalliance.org", "www.worldalliance.org"];
-
-/**
- * Extract the path from a URL if it's from one of our internal domains
- * Returns null if the URL is not from an internal domain
- */
-function extractPathFromInternalUrl(url: string): string | null {
-  try {
-    const parsed = new URL(url);
-    const hostname = parsed.hostname.toLowerCase();
-    if (INTERNAL_DOMAINS.includes(hostname)) {
-      return parsed.pathname + parsed.search + parsed.hash;
-    }
-  } catch {
-    // Not a valid URL, ignore
-  }
-  return null;
 }
 
 /**
@@ -645,11 +505,4 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
 
 export default AppMarkdownWrapper;
 
-export {
-  extractPathFromInternalUrl,
-  getInternalRoute,
-  INTERNAL_DOMAINS,
-  INTERNAL_ROUTE_PATTERNS,
-  transformImageUrl,
-  useHandleLinkPress,
-};
+export { transformImageUrl, useHandleLinkPress };

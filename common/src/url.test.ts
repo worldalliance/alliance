@@ -1,4 +1,4 @@
-import { urlMatchesDomain } from "./url";
+import { isAllianceAppHostname, urlMatchesDomain } from "./url";
 
 describe("urlMatchesDomain", () => {
   it("matches the domain itself and its subdomains", () => {
@@ -31,5 +31,30 @@ describe("urlMatchesDomain", () => {
     expect(urlMatchesDomain("https://example.com", "linkedin.com")).toBe(false);
     expect(urlMatchesDomain("", "linkedin.com")).toBe(false);
     expect(urlMatchesDomain("   ", "linkedin.com")).toBe(false);
+  });
+});
+
+describe("isAllianceAppHostname", () => {
+  it("accepts the web app's hosts on both domains", () => {
+    expect(isAllianceAppHostname("worldalliance.org")).toBe(true);
+    expect(isAllianceAppHostname("thealliance.org")).toBe(true);
+    expect(isAllianceAppHostname("www.thealliance.org")).toBe(true);
+    expect(isAllianceAppHostname("staging.thealliance.org")).toBe(true);
+    expect(isAllianceAppHostname("www.staging.worldalliance.org")).toBe(true);
+    expect(isAllianceAppHostname("TheAlliance.org")).toBe(true);
+  });
+
+  it("rejects hosts that are not the web app", () => {
+    expect(isAllianceAppHostname("admin.thealliance.org")).toBe(false);
+    expect(isAllianceAppHostname("admin.staging.worldalliance.org")).toBe(
+      false,
+    );
+    expect(isAllianceAppHostname("help.thealliance.org")).toBe(false);
+  });
+
+  it("rejects lookalikes and other hosts", () => {
+    expect(isAllianceAppHostname("thealliance.org.evil.com")).toBe(false);
+    expect(isAllianceAppHostname("notthealliance.org")).toBe(false);
+    expect(isAllianceAppHostname("example.com")).toBe(false);
   });
 });

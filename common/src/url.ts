@@ -21,6 +21,18 @@ export const ensureHttpProtocol = (url: string): string => {
 };
 
 /**
+ * Whether `hostname` is `domain` or a subdomain of it — so "www.linkedin.com"
+ * matches "linkedin.com" but "linkedin.com.evil.com" doesn't.
+ */
+export const hostnameMatchesDomain = (
+  hostname: string,
+  domain: string,
+): boolean => {
+  const host = hostname.toLowerCase();
+  return host === domain || host.endsWith(`.${domain}`);
+};
+
+/**
  * Whether `url`'s host is `domain` or a subdomain of it — so
  * "www.linkedin.com/in/x" matches "linkedin.com" but
  * "evil.com/linkedin.com" and "linkedin.com.evil.com" don't. Tolerates
@@ -29,7 +41,7 @@ export const ensureHttpProtocol = (url: string): string => {
 export function urlMatchesDomain(url: string, domain: string): boolean {
   try {
     const { hostname } = new URL(ensureHttpProtocol(url.trim()));
-    return hostname === domain || hostname.endsWith(`.${domain}`);
+    return hostnameMatchesDomain(hostname, domain);
   } catch {
     return false;
   }
@@ -49,3 +61,20 @@ export function appendQueryParam(
     return `${url}${sep}${encodeURIComponent(paramName)}=${encodeURIComponent(value)}`;
   }
 }
+
+/** The site is served on both domains while the move to the new one finishes. */
+export const ALLIANCE_LEGACY_DOMAIN = "worldalliance.org";
+export const ALLIANCE_DOMAIN = "thealliance.org";
+
+/**
+ * The hosts the web app answers on, per deploy/nginx/alliance.conf. A host
+ * outside this list — `admin.`, or one added later — is not the web app.
+ */
+const ALLIANCE_APP_SUBDOMAINS = ["", "www.", "staging.", "www.staging."];
+
+export const isAllianceAppHostname = (hostname: string): boolean => {
+  const host = hostname.toLowerCase();
+  return [ALLIANCE_LEGACY_DOMAIN, ALLIANCE_DOMAIN].some((domain) =>
+    ALLIANCE_APP_SUBDOMAINS.some((prefix) => host === `${prefix}${domain}`),
+  );
+};
