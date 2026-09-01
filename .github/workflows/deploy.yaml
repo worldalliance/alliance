@@ -261,6 +261,7 @@ jobs:
     needs:
       - dirty-check
       - build-admin-frontend
+      - typecheck
       - format-check
       - visual-regression
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
