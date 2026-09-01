@@ -625,6 +625,15 @@ describe("Forum (e2e)", () => {
       expect(reply.body.deleted).toBe(true);
     });
 
+    it("should say a missing reply is gone", async () => {
+      const response = await request(ctx.app.getHttpServer())
+        .delete("/forum/comments/999999")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(404);
+
+      expect(response.body.message).toBe("That reply is no longer here");
+    });
+
     it("should not allow updating another user's reply", async () => {
       // Create a second user
       const anotherUser = userRepo.create({

@@ -1063,7 +1063,7 @@ export class ForumService {
     });
 
     if (!reply) {
-      throw new NotFoundException(`Reply with ID "${id}" not found`);
+      throw new NotFoundException("That reply is no longer here");
     }
 
     if (reply.authorId !== userId) {
