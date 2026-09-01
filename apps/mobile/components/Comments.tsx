@@ -39,7 +39,15 @@ import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUpDown, ListFilter, Pin } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { Alert, TouchableOpacity, View } from "react-native";
 import type { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useAuth } from "../lib/AuthContext";
@@ -169,10 +177,18 @@ const FilterPicker = ({
   );
 };
 
+type SubmitReplyInput = {
+  content: CreateEditableContentDto;
+  parentId: number | null;
+  onSuccess: () => void;
+};
+
+type SubmitReply = (input: SubmitReplyInput) => void | Promise<void>;
+
 type ReplyFormProps = {
   parentId: number | null;
   content: CreateEditableContentDto;
-  setContent: (next: CreateEditableContentDto) => void;
+  setContent: Dispatch<SetStateAction<CreateEditableContentDto>>;
   onCancel?: () => void;
   autofocus?: boolean;
   objectId: number;
@@ -181,10 +197,7 @@ type ReplyFormProps = {
   tags?: readonly PostTagDto[];
   selectedTagId?: number;
   setSelectedTagId?: (id: number | undefined) => void;
-  onSubmit: (
-    content: CreateEditableContentDto,
-    parentId?: number | null,
-  ) => void | Promise<void>;
+  onSubmit: SubmitReply;
   focusOnMount: boolean;
 };
 
@@ -207,11 +220,30 @@ const ReplyForm = ({
   const expanded = autofocus || parentId !== null;
   // Local, so posting one comment leaves every other composer live.
   const [isPosting, setIsPosting] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const post = async () => {
+    onDismissError?.();
+    setUploadError(null);
     setIsPosting(true);
     try {
-      await onSubmit(content, parentId);
+      const uploaded = await uploadDraftAttachments({
+        sources: content.attachments,
+        setAttachments: (update) =>
+          setContent((prev) => ({
+            ...prev,
+            attachments: update(prev.attachments),
+          })),
+      });
+      if (!uploaded.ok) {
+        setUploadError(uploaded.error);
+        return;
+      }
+      await onSubmit({
+        content: { ...content, attachments: uploaded.value },
+        parentId,
+        onSuccess: () => setContent({ body: "", attachments: [] }),
+      });
     } finally {
       setIsPosting(false);
     }
@@ -244,6 +276,7 @@ const ReplyForm = ({
         value={content}
         onChange={(next) => {
           onDismissError?.();
+          setUploadError(null);
           setContent(next);
         }}
         placeholder="Add a comment..."
@@ -256,8 +289,86 @@ const ReplyForm = ({
         isSubmitting={isPosting}
         submitDisabled={needsTag && selectedTagId === undefined}
       />
-      {error && <Text className="mt-2 text-sm text-red-500">{error}</Text>}
+      {(uploadError ?? error) && (
+        <Text className="mt-2 text-sm text-red-500">
+          {uploadError ?? error}
+        </Text>
+      )}
     </View>
+  );
+};
+
+type TopLevelComposerProps = {
+  replyingTo: number | null;
+  isComposing: boolean;
+  setIsComposing: (composing: boolean) => void;
+  focusComposer: boolean;
+  setFocusComposer: (focus: boolean) => void;
+  objectId: number;
+  error?: string | null;
+  onDismissError?: () => void;
+  tags: readonly PostTagDto[];
+  selectedTagId?: number;
+  setSelectedTagId: (id: number | undefined) => void;
+  onSubmit: SubmitReply;
+};
+
+/**
+ * The thread's own composer. The draft lives here rather than beside the
+ * comment tree, so a keystroke re-renders the form and nothing else.
+ */
+const TopLevelComposer = ({
+  replyingTo,
+  isComposing,
+  setIsComposing,
+  focusComposer,
+  setFocusComposer,
+  objectId,
+  error,
+  onDismissError,
+  tags,
+  selectedTagId,
+  setSelectedTagId,
+  onSubmit,
+}: TopLevelComposerProps) => {
+  const [content, setContent] = useState<CreateEditableContentDto>({
+    body: "",
+    attachments: [],
+  });
+
+  if (replyingTo) return null;
+
+  if (!isComposing) {
+    return (
+      <TouchableOpacity
+        onPress={() => {
+          setIsComposing(true);
+          setFocusComposer(true);
+        }}
+        activeOpacity={0.7}
+        className="p-3 bg-zinc-100 rounded"
+      >
+        <Text className="text-zinc-500">Add a comment...</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <ReplyForm
+      parentId={null}
+      content={content}
+      setContent={setContent}
+      autofocus
+      focusOnMount={focusComposer}
+      onCancel={() => setIsComposing(false)}
+      objectId={objectId}
+      error={error}
+      onDismissError={onDismissError}
+      tags={tags}
+      selectedTagId={selectedTagId}
+      setSelectedTagId={setSelectedTagId}
+      onSubmit={onSubmit}
+    />
   );
 };
 
@@ -269,8 +380,6 @@ type ReplyItemSharedProps = {
   repliesAsCards: boolean;
   replyingTo: number | null;
   setReplyingTo: (id: number | null) => void;
-  nestedDraft: CreateEditableContentDto;
-  setNestedDraft: (next: CreateEditableContentDto) => void;
   highlightedId: number | null;
   scrollViewRef?: React.RefObject<KeyboardAwareScrollViewRef | null>;
   newlyAddedReplies: Set<number>;
@@ -279,10 +388,7 @@ type ReplyItemSharedProps = {
   expertLabel?: string;
   showClusterTags: boolean;
   tags: readonly PostTagDto[];
-  onSubmitReply: (
-    content: CreateEditableContentDto,
-    parentId?: number | null,
-  ) => void;
+  onSubmitReply: SubmitReply;
   onUpdateReply: (
     replyId: number,
     content: CreateEditableContentDto,
@@ -307,6 +413,10 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
     attachments: reply.editableContent.attachments ?? [],
   });
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [nestedDraft, setNestedDraft] = useState<CreateEditableContentDto>({
+    body: "",
+    attachments: [],
+  });
   const viewRef = useRef<View>(null);
   const maxDepth = 6;
   const canNest = depth < maxDepth;
@@ -546,8 +656,8 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
         <View className="mt-3">
           <ReplyForm
             parentId={reply.id}
-            content={shared.nestedDraft}
-            setContent={shared.setNestedDraft}
+            content={nestedDraft}
+            setContent={setNestedDraft}
             onCancel={() => shared.setReplyingTo(null)}
             autofocus={shared.autofocus}
             focusOnMount
@@ -600,8 +710,6 @@ export default function Comments({
   const queryClient = useQueryClient();
   const isPostComments = type === "post";
   const activeQaMode = isPostComments && qaMode;
-  const [editableContent, setEditableContent] =
-    useState<CreateEditableContentDto>({ body: "", attachments: [] });
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [selectedTagId, setSelectedTagId] = useState<number | undefined>(
     undefined,
@@ -621,10 +729,6 @@ export default function Comments({
     parentId: number | null;
     message: string;
   } | null>(null);
-  const [nestedDraft, setNestedDraft] = useState<CreateEditableContentDto>({
-    body: "",
-    attachments: [],
-  });
   const [showForm, setShowForm] = useState(showFormProp);
   const [isComposing, setIsComposing] = useState(!!autofocus);
   // The composer takes the keyboard when the user opened it, not when it comes
@@ -687,33 +791,14 @@ export default function Comments({
   }, [highlightedReplyId]);
 
   const handleSubmitReply = useCallback(
-    async (contentDto: CreateEditableContentDto, parentId?: number | null) => {
+    async ({ content, parentId, onSuccess }: SubmitReplyInput) => {
       try {
         setSubmitError(null);
-        const setDraft = parentId ? setNestedDraft : setEditableContent;
-        const uploaded = await uploadDraftAttachments({
-          sources: contentDto.attachments,
-          setAttachments: (update) =>
-            setDraft((prev) => ({
-              ...prev,
-              attachments: update(prev.attachments),
-            })),
-        });
-        if (!uploaded.ok) {
-          setSubmitError({
-            parentId: parentId ?? null,
-            message: uploaded.error,
-          });
-          return;
-        }
         const commentDto: CreateCommentDto = {
           parentObjectId: Number(objectId),
           parentId: parentId ?? undefined,
           parentObjectType: type,
-          editableContent: {
-            body: contentDto.body,
-            attachments: uploaded.value,
-          },
+          editableContent: content,
           tagId: parentId ? undefined : selectedTagId,
         };
 
@@ -721,7 +806,7 @@ export default function Comments({
 
         if (response.error) {
           setSubmitError({
-            parentId: parentId ?? null,
+            parentId,
             message: errorMessage({
               error: response.error,
               fallback: "Failed to submit reply",
@@ -746,7 +831,7 @@ export default function Comments({
         }
 
         await fetchComments();
-        setDraft({ body: "", attachments: [] });
+        onSuccess();
         setReplyingTo(null);
         if (!parentId) {
           setTagFilter(selectedTagId);
@@ -758,7 +843,7 @@ export default function Comments({
       } catch (err) {
         console.error("Error posting reply:", err);
         setSubmitError({
-          parentId: parentId ?? null,
+          parentId,
           message: "Failed to submit reply",
         });
       }
@@ -1009,35 +1094,21 @@ export default function Comments({
 
   return (
     <View className="gap-y-3">
-      {user && !replyingTo && showForm ? (
-        isComposing ? (
-          <ReplyForm
-            parentId={null}
-            content={editableContent}
-            setContent={setEditableContent}
-            autofocus
-            focusOnMount={focusComposer}
-            onCancel={() => setIsComposing(false)}
-            objectId={objectId}
-            error={submitErrorFor(null)}
-            onDismissError={clearSubmitError}
-            tags={isPostComments ? tags : []}
-            selectedTagId={selectedTagId}
-            setSelectedTagId={setSelectedTagId}
-            onSubmit={handleSubmitReply}
-          />
-        ) : (
-          <TouchableOpacity
-            onPress={() => {
-              setIsComposing(true);
-              setFocusComposer(true);
-            }}
-            activeOpacity={0.7}
-            className="p-3 bg-zinc-100 rounded"
-          >
-            <Text className="text-zinc-500">Add a comment...</Text>
-          </TouchableOpacity>
-        )
+      {user && showForm ? (
+        <TopLevelComposer
+          replyingTo={replyingTo}
+          isComposing={isComposing}
+          setIsComposing={setIsComposing}
+          focusComposer={focusComposer}
+          setFocusComposer={setFocusComposer}
+          objectId={objectId}
+          error={submitErrorFor(null)}
+          onDismissError={clearSubmitError}
+          tags={isPostComments ? tags : []}
+          selectedTagId={selectedTagId}
+          setSelectedTagId={setSelectedTagId}
+          onSubmit={handleSubmitReply}
+        />
       ) : !user && !compact ? (
         <View className="py-6 bg-zinc-50 rounded border border-zinc-100">
           <Text className="text-zinc-600 text-center">
@@ -1086,8 +1157,6 @@ export default function Comments({
               repliesAsCards={repliesAsCards}
               replyingTo={replyingTo}
               setReplyingTo={setReplyingTo}
-              nestedDraft={nestedDraft}
-              setNestedDraft={setNestedDraft}
               highlightedId={highlightedId}
               scrollViewRef={scrollViewRef}
               newlyAddedReplies={newlyAddedReplies}
