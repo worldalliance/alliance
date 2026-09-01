@@ -32,10 +32,7 @@ import {
   countCommentsByTag,
   matchesTagFilter,
 } from "@alliance/shared/lib/commentTags";
-import {
-  uploadAttachments,
-  withUploadedKeys,
-} from "@alliance/shared/lib/uploadAttachments";
+import { uploadDraftAttachments } from "@alliance/shared/lib/uploadAttachments";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
 import { formatTime } from "@alliance/shared/lib/utils";
@@ -354,20 +351,18 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
   const saveEdit = async () => {
     setIsSavingEdit(true);
     try {
-      const sources = editContent.attachments;
-      const uploaded = await uploadAttachments(sources);
+      const uploaded = await uploadDraftAttachments({
+        sources: editContent.attachments,
+        setAttachments: (update) =>
+          setEditContent((prev) => ({
+            ...prev,
+            attachments: update(prev.attachments),
+          })),
+      });
       if (!uploaded.ok) {
         setEditError(uploaded.error);
         return;
       }
-      setEditContent((prev) => ({
-        ...prev,
-        attachments: withUploadedKeys({
-          current: prev.attachments,
-          sources,
-          keys: uploaded.value,
-        }),
-      }));
       R.match(
         await shared.onUpdateReply(reply.id, {
           ...editContent,
@@ -695,8 +690,15 @@ export default function Comments({
     async (contentDto: CreateEditableContentDto, parentId?: number | null) => {
       try {
         setSubmitError(null);
-        const sources = contentDto.attachments;
-        const uploaded = await uploadAttachments(sources);
+        const setDraft = parentId ? setNestedDraft : setEditableContent;
+        const uploaded = await uploadDraftAttachments({
+          sources: contentDto.attachments,
+          setAttachments: (update) =>
+            setDraft((prev) => ({
+              ...prev,
+              attachments: update(prev.attachments),
+            })),
+        });
         if (!uploaded.ok) {
           setSubmitError({
             parentId: parentId ?? null,
@@ -704,15 +706,6 @@ export default function Comments({
           });
           return;
         }
-        const setDraft = parentId ? setNestedDraft : setEditableContent;
-        setDraft((prev) => ({
-          ...prev,
-          attachments: withUploadedKeys({
-            current: prev.attachments,
-            sources,
-            keys: uploaded.value,
-          }),
-        }));
         const commentDto: CreateCommentDto = {
           parentObjectId: Number(objectId),
           parentId: parentId ?? undefined,

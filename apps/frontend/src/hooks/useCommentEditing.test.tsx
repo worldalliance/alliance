@@ -2,16 +2,14 @@ import { R } from "@alliance/common/result";
 import { CommentDto } from "@alliance/shared/client";
 import { act, renderHook } from "@testing-library/react";
 
-import { withUploadedKeys } from "@alliance/shared/lib/uploadAttachments";
 import {
   resetUploads,
-  uploadAttachments,
+  uploadImageDataUri,
   uploads,
-} from "../testing/uploadAttachmentsMock";
+} from "../testing/uploadImageDataUriMock";
 
-jest.mock("@alliance/shared/lib/uploadAttachments", () => ({
-  uploadAttachments,
-  withUploadedKeys,
+jest.mock("@alliance/shared/lib/uploadImageDataUri", () => ({
+  uploadImageDataUri,
 }));
 
 import { useCommentEditing } from "./useCommentEditing";
@@ -76,7 +74,7 @@ describe("useCommentEditing", () => {
     expect(result.current.editAttachments).toEqual(["key-0"]);
 
     await act(() => result.current.saveEdit());
-    expect(uploads).toEqual(["data:image/png;base64,AAAA", "key-0"]);
+    expect(uploads).toEqual(["data:image/png;base64,AAAA"]);
   });
 
   it("closes the editor once the save lands", async () => {

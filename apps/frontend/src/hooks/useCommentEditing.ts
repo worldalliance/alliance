@@ -1,9 +1,6 @@
 import { R, type Result } from "@alliance/common/result";
 import { CommentDto, CreateEditableContentDto } from "@alliance/shared/client";
-import {
-  uploadAttachments,
-  withUploadedKeys,
-} from "@alliance/shared/lib/uploadAttachments";
+import { uploadDraftAttachments } from "@alliance/shared/lib/uploadAttachments";
 import { useState } from "react";
 
 export interface CommentEditingResult {
@@ -52,12 +49,11 @@ export function useCommentEditing(
     setIsUpdating(true);
     setEditError(null);
     const saved = await R.fromPromiseFn(async () => {
-      const sources = editAttachments;
-      const uploaded = await uploadAttachments(sources);
+      const uploaded = await uploadDraftAttachments({
+        sources: editAttachments,
+        setAttachments: setEditAttachments,
+      });
       if (!uploaded.ok) return R.failure(uploaded.error);
-      setEditAttachments((current) =>
-        withUploadedKeys({ current, sources, keys: uploaded.value }),
-      );
       return onUpdateReply(reply.id, {
         body: editContent.trim(),
         attachments: uploaded.value,
