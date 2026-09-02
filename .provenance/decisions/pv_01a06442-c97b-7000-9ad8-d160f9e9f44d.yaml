@@ -1,0 +1,10 @@
+id: pv_01a06442-c97b-7000-9ad8-d160f9e9f44d
+kind: decision
+created_at: 2026-09-02T22:34:53.691Z
+change: pv_01a0641a-a23f-7000-9b3a-698fcac3e98d
+summary: Match approval-only quotes word by word against a vocabulary, not against whole phrases
+authority: agent-judgment
+applies_to:
+  - provenance
+supersedes: []
+detail: 'The phrasings are endless: an exact-phrase list took "sounds good" and let "sounds good to me", "yeah sounds good" and "ok go ahead" through, which is the whole rule failing open. Every clause has to reduce to approval words once filler is dropped, so "yes. use SQLite, not Postgres" still lands in human evidence.'

@@ -1,0 +1,10 @@
+id: pv_01a0645c-6e32-7000-9e63-964f6c998622
+kind: decision
+created_at: 2026-09-02T23:02:54.258Z
+change: pv_01a0641a-a23f-7000-9b3a-698fcac3e98d
+summary: Check for deleted human records against every path the history ever held, not against HEAD's tree
+authority: delegated-discretion
+applies_to:
+  - provenance
+supersedes: []
+detail: A deletion is gone from HEAD the moment it is committed, so the ls-tree read passed exactly the tamper CI exists to catch. One git log --name-only pass over .provenance/human answers both the deletion check and the per-record commit counts, replacing a full-history git log per record.

@@ -1,0 +1,14 @@
+id: pv_01a0641b-145e-7000-9c7f-d4a53a676fc8
+kind: decision
+created_at: 2026-09-02T21:51:31.422Z
+change: pv_01a0641a-a23f-7000-9b3a-698fcac3e98d
+summary: Record a baseline commit rather than backfilling provenance for existing code
+authority: delegated-discretion
+applies_to:
+  - provenance
+supersedes: []
+detail: |-
+  Everything at or before 73c61a81 reports as unknown provenance. That is real
+  information: it says nobody has verified the constraint, rather than implying a
+  human asked for it. Backfill lazily with prov note when a legacy behaviour
+  turns out to matter.

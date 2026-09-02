@@ -1,0 +1,10 @@
+id: pv_01a06471-58ad-7000-a71a-a0ae83c643a3
+kind: decision
+created_at: 2026-09-02T23:25:45.005Z
+change: pv_01a0641a-a23f-7000-9b3a-698fcac3e98d
+summary: Keep prettier off .provenance/human
+authority: agent-judgment
+applies_to:
+  - provenance
+supersedes: []
+detail: format-check and prov lint would otherwise both own the file, and a formatter divergence would demand a rewrite that lint refuses.

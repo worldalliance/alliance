@@ -1,0 +1,9 @@
+id: pv_01a06471-58e2-7000-b3d7-bfe5b92710b4
+kind: decision
+created_at: 2026-09-02T23:25:45.058Z
+change: pv_01a0641a-a23f-7000-9b3a-698fcac3e98d
+summary: Name a quote already printed rather than repeating it in prov context
+authority: agent-judgment
+applies_to:
+  - provenance
+supersedes: []

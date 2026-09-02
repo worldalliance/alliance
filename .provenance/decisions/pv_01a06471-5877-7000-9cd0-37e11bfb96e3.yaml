@@ -1,0 +1,10 @@
+id: pv_01a06471-5877-7000-9cd0-37e11bfb96e3
+kind: decision
+created_at: 2026-09-02T23:25:44.951Z
+change: pv_01a0641a-a23f-7000-9b3a-698fcac3e98d
+summary: Re-check quotes in prov lint only where they are still uncommitted
+authority: agent-judgment
+applies_to:
+  - provenance
+supersedes: []
+detail: The approval vocabulary is meant to grow. Judging frozen records by today's list would fail the build the day somebody adds a word.

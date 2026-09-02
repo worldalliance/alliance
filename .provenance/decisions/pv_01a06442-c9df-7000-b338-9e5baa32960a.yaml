@@ -1,0 +1,10 @@
+id: pv_01a06442-c9df-7000-b338-9e5baa32960a
+kind: decision
+created_at: 2026-09-02T22:34:53.791Z
+change: pv_01a0641a-a23f-7000-9b3a-698fcac3e98d
+summary: Read stdin only when the caller spells it, as --detail -
+authority: agent-judgment
+applies_to:
+  - provenance
+supersedes: []
+detail: An optional field that reads stdin unconditionally hangs forever whenever stdin is an inherited pipe, which is how an agent's shell runs a command. prov human still reads stdin outright, because the quote is mandatory there and every documented call pipes into it.

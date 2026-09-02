@@ -1,0 +1,10 @@
+id: pv_01a06471-57d2-7000-b48c-653bcdc2b5fa
+kind: decision
+created_at: 2026-09-02T23:25:44.786Z
+change: pv_01a0641a-a23f-7000-9b3a-698fcac3e98d
+summary: Keep the approval check a pure function rather than an LLM call
+authority: agent-judgment
+applies_to:
+  - provenance
+supersedes: []
+detail: prov lint is a required CI check that re-reads the store, so a network call there would make a required build non-deterministic, key-bound, and offline-hostile. Moving the call to record-creation only would put the invariant back on trust, which is what the store replaces.

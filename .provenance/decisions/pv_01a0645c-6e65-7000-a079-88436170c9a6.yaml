@@ -1,0 +1,10 @@
+id: pv_01a0645c-6e65-7000-a079-88436170c9a6
+kind: decision
+created_at: 2026-09-02T23:02:54.309Z
+change: pv_01a0641a-a23f-7000-9b3a-698fcac3e98d
+summary: Mark a superseded record where it prints rather than dropping it
+authority: delegated-discretion
+applies_to:
+  - provenance
+supersedes: []
+detail: console.log() with no arguments prints nothing under Bun, so every blank line meant to separate one quote from the next was missing too. Both defects made two humans' words read as one.

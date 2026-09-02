@@ -1,0 +1,11 @@
+introduced_at_commit: 73c61a811a1eff5a66f7706cbf0786c61c302cd3
+policy: |
+  Code and decisions at or before this commit have unknown provenance. Nothing
+  was backfilled. `prov context` reports those commits as predating the
+  baseline, which is itself useful: it says the constraint is unverified, not
+  that a human asked for it.
+
+  Backfill lazily and only where it pays. An agent that works out why some
+  legacy behaviour exists records it with `prov note`, as a reconstruction with
+  a confidence level. A reconstruction never becomes human evidence, however
+  strongly the code implies somebody wanted it.

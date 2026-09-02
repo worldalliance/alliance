@@ -31,6 +31,14 @@ Read before the matching task:
 - Verifying a change in the browser, driving the mobile app, calling the API, or authenticating as an admin → `(root)/skills/playwright/SKILL.md`
 - Writing or editing any doc an agent reads (`SKILL.md`, `AGENTS.md`, `CLAUDE.md`, docs those point at) → `(root)/skills/writing-for-agents/SKILL.md`
 
+## Provenance
+
+`.provenance/` keeps what a human explicitly asked for apart from what an agent decided. Every task records both, and every commit carries a `Provenance: <change-id>` trailer. `bun run prov context <path>` first, for what already applies to the code you are about to change.
+
+Human evidence is the human's own words, verbatim, and append-only. Approving a choice does not state one, so anything the human waved through stays an agent decision. Write a human record with `bun run prov human`, never by hand: `bun run prov lint` runs in CI and fails on a record edited or deleted after it was committed.
+
+Mechanics, schemas, reviewing a diff, and code that predates the store → `(root)/.provenance/SPEC.md`.
+
 ## Typechecking
 
 `bun run typecheck` — per-package, not at the repo root; resolves the right config per package (`tsconfig.typecheck.json` where shared sources need pulling in directly). Never bare `tsc`, even with `--noEmit`.

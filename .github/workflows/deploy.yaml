@@ -48,6 +48,7 @@ jobs:
             apps/frontend,
             apps/admin,
             apps/mobile,
+            scripts,
           ]
     uses: ./.github/workflows/test-unit.yaml
     with:
@@ -164,6 +165,9 @@ jobs:
   format-check:
     uses: ./.github/workflows/format-check.yaml
 
+  provenance-lint:
+    uses: ./.github/workflows/provenance-lint.yaml
+
   typecheck:
     strategy:
       fail-fast: false
@@ -196,6 +200,7 @@ jobs:
       - migrations-drift-check
       - typecheck
       - format-check
+      - provenance-lint
       - visual-regression
     steps:
       - run: echo "all checks passed"
