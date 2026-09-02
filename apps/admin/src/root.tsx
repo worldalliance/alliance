@@ -1,5 +1,6 @@
 import { client } from "@alliance/shared/client/client.gen";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
+import { AuthoredLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -78,13 +79,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <GroupAssignmentProvider>
-              <ToastProvider>{children}</ToastProvider>
-            </GroupAssignmentProvider>
-          </AuthProvider>
-        </QueryClientProvider>
+        <AuthoredLinkProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <GroupAssignmentProvider>
+                <ToastProvider>{children}</ToastProvider>
+              </GroupAssignmentProvider>
+            </AuthProvider>
+          </QueryClientProvider>
+        </AuthoredLinkProvider>
         <ScrollRestoration />
         <Scripts />
       </body>

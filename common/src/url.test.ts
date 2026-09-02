@@ -1,4 +1,4 @@
-import { isAllianceAppHostname, urlMatchesDomain } from "./url";
+import { isAllianceAppHostname, siteHref, urlMatchesDomain } from "./url";
 
 describe("urlMatchesDomain", () => {
   it("matches the domain itself and its subdomains", () => {
@@ -56,5 +56,48 @@ describe("isAllianceAppHostname", () => {
     expect(isAllianceAppHostname("thealliance.org.evil.com")).toBe(false);
     expect(isAllianceAppHostname("notthealliance.org")).toBe(false);
     expect(isAllianceAppHostname("example.com")).toBe(false);
+  });
+});
+
+describe("siteHref", () => {
+  it("strips the web app's own hosts down to a path", () => {
+    expect(siteHref("https://worldalliance.org/forum/post/22")).toBe(
+      "/forum/post/22",
+    );
+    expect(siteHref("https://www.thealliance.org/actions/5")).toBe(
+      "/actions/5",
+    );
+    expect(siteHref("https://www.staging.thealliance.org/actions/5")).toBe(
+      "/actions/5",
+    );
+  });
+
+  it("keeps the query and hash", () => {
+    expect(
+      siteHref("https://worldalliance.org/actions/5?tab=tasks#comments"),
+    ).toBe("/actions/5?tab=tasks#comments");
+  });
+
+  it("leaves paths alone", () => {
+    expect(siteHref("/forum/post/22")).toBe("/forum/post/22");
+    expect(siteHref("#comments")).toBe("#comments");
+  });
+
+  it("keeps a path that would resolve against another host absolute", () => {
+    expect(siteHref("https://worldalliance.org//evil.com/x")).toBe(
+      "https://worldalliance.org//evil.com/x",
+    );
+  });
+
+  it("leaves everywhere else as authored", () => {
+    expect(siteHref("https://admin.worldalliance.org/actions/5")).toBe(
+      "https://admin.worldalliance.org/actions/5",
+    );
+    expect(siteHref("https://www.regulations.gov/document/FS-1")).toBe(
+      "https://www.regulations.gov/document/FS-1",
+    );
+    expect(siteHref("mailto:contact@worldalliance.org")).toBe(
+      "mailto:contact@worldalliance.org",
+    );
   });
 });

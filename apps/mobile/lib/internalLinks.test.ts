@@ -54,7 +54,37 @@ describe("getInternalRoute", () => {
     expect(getInternalRoute("/feed")).toBe("/feed");
   });
 
+  it("routes a path written without a leading slash", () => {
+    expect(getInternalRoute("forum/post/22")).toBe("/forum/post/22");
+    expect(getInternalRoute("actions/5")).toBe("/actions/5");
+    expect(getInternalRoute("search")).toBe("/search");
+    expect(getInternalRoute("feed/146?ref=email")).toBe(
+      "/actions/146?tab=activity&ref=email",
+    );
+  });
+
+  it("keeps the query string and hash on a schemeless path", () => {
+    expect(getInternalRoute("forum/post/22#c3")).toBe("/forum/post/22#c3");
+    expect(getInternalRoute("member/7?tab=posts")).toBe("/member/7?tab=posts");
+  });
+
+  it("declines a URL that carries a scheme", () => {
+    expect(getInternalRoute("mailto:a@b.org")).toBeNull();
+    expect(getInternalRoute("tel:+15551234567")).toBeNull();
+    expect(
+      getInternalRoute("https://worldalliance.org/forum/post/22"),
+    ).toBeNull();
+    expect(getInternalRoute("JAVASCRIPT:alert(1)")).toBeNull();
+  });
+
+  it("declines a protocol-relative URL", () => {
+    expect(getInternalRoute("//worldalliance.org/forum/post/22")).toBeNull();
+  });
+
   it("is null for a path with no screen", () => {
     expect(getInternalRoute("/api/images/1765.webp")).toBeNull();
+    expect(getInternalRoute("faq")).toBeNull();
+    expect(getInternalRoute("#intro")).toBeNull();
+    expect(getInternalRoute("?q=hi")).toBeNull();
   });
 });
