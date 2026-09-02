@@ -11,7 +11,9 @@ import type {
 import { withCount } from "@alliance/common/plural";
 import type { UserDto } from "@alliance/shared/client";
 import {
+  resolvePickedPreview,
   resolveUploadSlot,
+  type FilePick,
   type FileUploadSlot,
   type FileUploadSlots,
 } from "@alliance/shared/forms/fileUploadSlots";
@@ -27,9 +29,10 @@ import {
   formatTimeForDisplay,
   parseTimeInput,
 } from "@alliance/shared/forms/timeUtils";
+import { cancelImageUpload } from "@alliance/shared/lib/copy";
 import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
 import { cn } from "@alliance/shared/styles/util";
-import { ChevronDown } from "lucide-react-native";
+import { ChevronDown, X } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
@@ -184,7 +187,7 @@ export function RenderField({
     return shuffleWithSeed(options, randomizationSeedBase);
   }, [field, randomizationSeedBase, disableOptionRandomization]);
 
-  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [filePreview, setFilePreview] = useState<FilePick | null>(null);
   const [pickerError, setPickerError] = useState<string | null>(null);
   // The library sheet is open across an await, before any upload has started,
   // so `uploading` cannot keep a second tap out.
@@ -195,12 +198,6 @@ export function RenderField({
     uploading,
     uploadError,
   } = resolveUploadSlot({ fileUpload, fileUploadSlot, fieldId: field.id });
-
-  useEffect(() => {
-    if (uploadError) {
-      setFilePreview(null);
-    }
-  }, [uploadError]);
 
   switch (field.kind) {
     case "text":
@@ -672,7 +669,7 @@ export function RenderField({
 
     case "file": {
       const currentPreview =
-        filePreview ||
+        resolvePickedPreview({ pick: filePreview, value, uploading }) ??
         (typeof value === "string" && value ? getImageSource(value) : null);
 
       const pickImage = async () => {
@@ -690,7 +687,7 @@ export function RenderField({
           if (!picked.value) {
             return;
           }
-          setFilePreview(picked.value.uri);
+          setFilePreview({ uri: picked.value.uri, replaces: value });
           void fileUpload.onFileSelected(uploadSlot, picked.value.dataUri);
         } finally {
           pickingRef.current = false;
@@ -724,6 +721,16 @@ export function RenderField({
                 <Text className="text-base">Choose photo</Text>
               )}
             </TouchableOpacity>
+            {uploading && (
+              <TouchableOpacity
+                onPress={() => fileUpload?.cancelUpload(uploadSlot)}
+                accessibilityLabel={cancelImageUpload}
+                hitSlop={8}
+                className="p-2"
+              >
+                <X size={20} color="#71717a" />
+              </TouchableOpacity>
+            )}
           </View>
           {pickerError || uploadError ? (
             <Text className="text-xs text-red-500 mt-2">

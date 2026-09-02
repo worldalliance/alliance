@@ -13,6 +13,7 @@ import type { BaseDisplayBlockProps } from "./types";
 export function EditableChatTranscriptBlock({
   block,
   onUpdate,
+  updateCurrent,
   onRemove,
   onDragStart,
   onDragEnd,
@@ -29,6 +30,7 @@ export function EditableChatTranscriptBlock({
       isDragging={isDragging}
       block={block}
       onUpdate={onUpdate}
+      updateCurrent={updateCurrent}
       previousFields={previousFields}
     >
       {({ block: activeBlock, onUpdate: handleUpdate }) => {

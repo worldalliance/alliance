@@ -16,7 +16,6 @@ import {
   analyticsGetActionStatsByIdAdmin,
   CreateActionDto,
   FormResponseDto,
-  imagesUploadImage,
   tasksCreateFormAdmin,
   tasksGetForm,
   tasksGetFormResponsesAdmin,
@@ -76,6 +75,7 @@ import {
   duplicatedActionImages,
 } from "../lib/actionImages";
 import { makeTempId } from "../lib/tempId";
+import { useCoverImage } from "../lib/useCoverImage";
 
 // Status color mapping
 export const getStatusColor = (status: ActionDto["status"]) => {
@@ -119,6 +119,8 @@ type Tab =
   | "follow-up-forms"
   | "responses";
 
+const imageUploadingMessage = "Wait for the cover image to finish uploading.";
+
 type ReadinessCheckItem = {
   id: string;
   label: string;
@@ -161,8 +163,15 @@ const ActionDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const errorMessage =
     error ?? (actionLoadFailed ? "Failed to load action" : null);
-  const [imageKey, setImageKey] = useState<string | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const {
+    key: imageKey,
+    preview: imagePreview,
+    error: imageError,
+    uploading: imageUploading,
+    pick: pickCoverImage,
+    cancel: cancelCoverImage,
+    reset: resetCoverImage,
+  } = useCoverImage();
   const { tags: availableTags, isLoading: tagsLoading } = useTagsAdmin();
   const invalidateFormsIndex = useInvalidateFormsIndex();
   const [availableSuites, setAvailableSuites] = useState<ActionSuiteDto[]>([]);
@@ -342,13 +351,12 @@ const ActionDashboard: React.FC = () => {
         onboarding: false,
       });
       setReviewerRows([]);
-      setImageKey(null);
-      setImagePreview(null);
+      resetCoverImage(null);
       setError(null);
       setCohortExpression(null);
       setSeededActionId(null);
     }
-  }, [isNew, searchParams]);
+  }, [isNew, searchParams, resetCoverImage]);
 
   const setTaskFormId = async (formId: number) => {
     setForm((prev) => ({ ...prev, taskFormId: formId }));
@@ -396,9 +404,8 @@ const ActionDashboard: React.FC = () => {
 
     setCohortExpression(parsedAction.cohortExpression ?? null);
 
-    setImageKey(null);
-    setImagePreview(parsedAction.image ?? null);
-  }, [action, actionFetching, seededActionId]);
+    resetCoverImage(parsedAction.image ?? null);
+  }, [action, actionFetching, seededActionId, resetCoverImage]);
 
   // Load share URL stats for publicOnly actions
   useEffect(() => {
@@ -512,6 +519,11 @@ const ActionDashboard: React.FC = () => {
   );
 
   const handleDuplicate = useCallback(async () => {
+    if (imageUploading) {
+      setError(imageUploadingMessage);
+      return;
+    }
+
     let taskFormId = form.taskFormId;
     if (taskFormId) {
       const taskForm = await tasksGetForm({
@@ -548,6 +560,7 @@ const ActionDashboard: React.FC = () => {
     form,
     action,
     imageKey,
+    imageUploading,
     createAction,
     handleActionCreated,
     invalidateFormsIndex,
@@ -645,23 +658,10 @@ const ActionDashboard: React.FC = () => {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        setImagePreview(reader.result as string);
-
-        const uploadResp = await imagesUploadImage({
-          body: { file: reader.result as string },
-        });
-        if (uploadResp.data) {
-          console.log(uploadResp.data);
-          setImagePreview(uploadResp.data.url);
-          setImageKey(uploadResp.data.key);
-        }
-      };
-
-      reader.readAsDataURL(file);
-    }
+    // Clear the input so re-picking the same file after a failure still fires a
+    // change event.
+    e.target.value = "";
+    if (file) void pickCoverImage(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -674,6 +674,11 @@ const ActionDashboard: React.FC = () => {
       setError(
         "Saving is disabled: the stored cohort expression could not be parsed.",
       );
+      return;
+    }
+
+    if (imageUploading) {
+      setError(imageUploadingMessage);
       return;
     }
 
@@ -967,6 +972,9 @@ const ActionDashboard: React.FC = () => {
             onSubmit={handleSubmit}
             saving={saving}
             imagePreview={imagePreview}
+            imageError={imageError}
+            imageUploading={imageUploading}
+            onCancelImageUpload={cancelCoverImage}
             isNew={true}
             onCancel={handleCancel}
             availableTags={availableTags}
@@ -1037,6 +1045,8 @@ const ActionDashboard: React.FC = () => {
                   )}
                   <Button
                     onClick={() => handleDuplicate()}
+                    disabled={imageUploading}
+                    title={imageUploading ? imageUploadingMessage : undefined}
                     color={ButtonColor.White}
                     className="!px-3 !text-sm gap-x-1"
                   >
@@ -1522,6 +1532,9 @@ const ActionDashboard: React.FC = () => {
                   saving={saving}
                   saveDisabled={cohortParseFailed}
                   imagePreview={imagePreview}
+                  imageError={imageError}
+                  imageUploading={imageUploading}
+                  onCancelImageUpload={cancelCoverImage}
                   isNew={false}
                   actionId={action?.id}
                   onDelete={handleDelete}

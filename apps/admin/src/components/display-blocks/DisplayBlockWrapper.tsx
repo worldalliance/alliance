@@ -20,6 +20,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { AddressedWrite } from "../../lib/displayBlockById";
 import {
   ConditionalVisibility,
   type OutputBlockOption,
@@ -60,6 +61,15 @@ const baseManualContentFromBlock = (
 type DisplayBlockChildRenderProps<T extends DisplayBlock> = {
   block: T;
   onUpdate: (updates: Partial<T>) => void;
+  /**
+   * Write to one user's override rather than whichever is on screen now, for
+   * work started under a target the admin can navigate away from before it
+   * lands. `current` is that target's block, resolved when the write happens.
+   */
+  updateFor: (
+    userId: string | null,
+    update: (current: T) => Partial<T>,
+  ) => boolean;
   activeUserId?: string | null;
   activeUserName?: string;
   isDefaultContent: boolean;
@@ -74,6 +84,7 @@ interface DisplayBlockWrapperProps<T extends DisplayBlock = DisplayBlock> {
   isDragging?: boolean;
   block?: T;
   onUpdate?: (updates: Partial<T>) => void;
+  updateCurrent?: AddressedWrite;
   previousFields?: AnyField[];
   outputBlocks?: OutputBlockOption[];
   /** A container block's content lives in its children, so it has none to override. */
@@ -88,6 +99,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   isDragging,
   block,
   onUpdate,
+  updateCurrent,
   previousFields,
   outputBlocks,
   perUserContent = true,
@@ -377,39 +389,45 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     selectManualTarget(manualTargetList[nextIndex]);
   };
 
-  const handleBlockUpdate = useCallback(
-    (updates: Partial<T>) => {
-      if (!onUpdate || !block) {
-        return;
-      }
-      if (manualPerUserEnabled && activeManualUserId) {
+  const updateBlockFor = useCallback(
+    (userId: string | null, update: (current: T) => Partial<T>) => {
+      if (!block) return false;
+
+      const updatesFor = (current: T): Partial<T> => {
+        if (!current.manualPerUser || !userId) return update(current);
+
+        const existingManualContent = current.manualUserContent ?? {};
         const existingContent =
-          manualUserContent[activeManualUserId] ??
-          baseManualContentFromBlock(block);
+          existingManualContent[userId] ?? baseManualContentFromBlock(current);
 
         const nextManualContent: Record<string, ManualDisplayBlockContent> = {
-          ...manualUserContent,
-          [activeManualUserId]: stripIdentityFields({
+          ...existingManualContent,
+          [userId]: stripIdentityFields({
             ...existingContent,
-            ...(stripManualFields(updates) as Record<string, unknown>),
+            ...(stripManualFields(
+              update(resolveDisplayBlockForUser(current, userId)),
+            ) as Record<string, unknown>),
           }) as ManualDisplayBlockContent,
         };
 
-        onUpdate({
-          manualUserContent: nextManualContent,
-        } as Partial<T>);
-        return;
-      }
+        return { manualUserContent: nextManualContent } as Partial<T>;
+      };
 
-      onUpdate(updates);
+      // `updateCurrent` addresses this same block by its id, so what it hands
+      // back is the T this wrapper was rendered with.
+      if (updateCurrent) {
+        return updateCurrent((current) => updatesFor(current as T));
+      }
+      if (!onUpdate) return false;
+      onUpdate(updatesFor(block));
+      return true;
     },
-    [
-      activeManualUserId,
-      block,
-      manualPerUserEnabled,
-      manualUserContent,
-      onUpdate,
-    ],
+    [block, onUpdate, updateCurrent],
+  );
+
+  const handleBlockUpdate = useCallback(
+    (updates: Partial<T>) => updateBlockFor(activeManualUserId, () => updates),
+    [activeManualUserId, updateBlockFor],
   );
 
   const handleImportFromClipboard = useCallback(async () => {
@@ -527,6 +545,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
       ? children({
           block: (effectiveBlock ?? (block as T)) as T,
           onUpdate: handleBlockUpdate,
+          updateFor: updateBlockFor,
           activeUserId: activeManualUserId,
           activeUserName: activeUser?.name,
           isDefaultContent: !manualPerUserEnabled || !activeManualUserId,

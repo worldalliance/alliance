@@ -6,6 +6,7 @@ import type { BaseDisplayBlockProps } from "./types";
 export function EditableCopyTextBlock({
   block,
   onUpdate,
+  updateCurrent,
   onRemove,
   onDragStart,
   onDragEnd,
@@ -20,6 +21,7 @@ export function EditableCopyTextBlock({
       isDragging={isDragging}
       block={block}
       onUpdate={onUpdate}
+      updateCurrent={updateCurrent}
       previousFields={previousFields}
     >
       {({ block: activeBlock, onUpdate: handleUpdate }) => (

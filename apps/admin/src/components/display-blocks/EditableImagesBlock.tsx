@@ -2,12 +2,15 @@ import type {
   ImagesBlock,
   ImagesItem,
 } from "@alliance/common/forms/display-blocks";
+import { pickForCount, withCount } from "@alliance/common/plural";
 import { imageUploadFailed } from "@alliance/shared/lib/copy";
 import { uploadImageDataUri } from "@alliance/shared/lib/uploadImageDataUri";
 import { cn } from "@alliance/shared/styles/util";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { resolveImageSrc } from "@alliance/sharedweb/lib/imageSrc";
 import { readFileDataUri } from "@alliance/sharedweb/lib/readFileDataUri";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
 import {
   closestCenter,
   DndContext,
@@ -30,7 +33,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { VariableTextField } from "../VariableTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
@@ -139,8 +142,18 @@ function SortableImageRow({
 export function EditableImagesBlock(props: BaseDisplayBlockProps<ImagesBlock>) {
   return (
     <DisplayBlockWrapper {...props}>
-      {({ block: activeBlock, onUpdate: handleUpdate }) => (
-        <ImagesEditor block={activeBlock} onUpdate={handleUpdate} />
+      {({
+        block: activeBlock,
+        onUpdate: handleUpdate,
+        activeUserId,
+        updateFor,
+      }) => (
+        <ImagesEditor
+          block={activeBlock}
+          onUpdate={handleUpdate}
+          activeUserId={activeUserId ?? null}
+          updateFor={updateFor}
+        />
       )}
     </DisplayBlockWrapper>
   );
@@ -149,10 +162,18 @@ export function EditableImagesBlock(props: BaseDisplayBlockProps<ImagesBlock>) {
 function ImagesEditor({
   block,
   onUpdate,
+  activeUserId,
+  updateFor,
 }: {
   block: ImagesBlock;
   onUpdate: (updates: Partial<ImagesBlock>) => void;
+  activeUserId: string | null;
+  updateFor: (
+    userId: string | null,
+    update: (current: ImagesBlock) => Partial<ImagesBlock>,
+  ) => boolean;
 }) {
+  const { warning } = useToast();
   const images = block.images;
   const ids = dragIds(images);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -160,18 +181,37 @@ function ImagesEditor({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const activeImage = images[ids.indexOf(activeId ?? "")];
 
-  const setImages = (next: ImagesItem[]) =>
-    onUpdate({ images: withItemIds(next) });
-
-  // An upload outlives the render that started it, and rows stay reorderable
-  // and removable while it runs, so the list to append to is read once the
-  // uploads land rather than captured when they start.
-  const latestImages = useRef(images);
-  useEffect(() => {
-    latestImages.current = images;
+  // An upload outlives the render that started it, and a container hands its
+  // nested blocks no id-addressed write, so there the update still spreads the
+  // form the handler was made with. A passive effect would leave the ref a
+  // render behind between commit and flush, long enough for an upload to land
+  // on the handler it replaces.
+  const latest = useRef({ onUpdate, updateFor });
+  useLayoutEffect(() => {
+    latest.current = { onUpdate, updateFor };
   });
 
+  const setImages = (next: ImagesItem[]) =>
+    latest.current.onUpdate({ images: withItemIds(next) });
+
+  // The admin can page to another user's override, or back to the default,
+  // while the pictures go up, so they land on the target the pick started on
+  // rather than the one on screen when they arrive.
+  const appendImages = (userId: string | null, added: ImagesItem[]) =>
+    latest.current.updateFor(userId, (current) => ({
+      images: withItemIds([...current.images, ...added]),
+    }));
+
+  const inFlight = useRef<AbortController | null>(null);
+  const cancelUpload = () => {
+    inFlight.current?.abort();
+    inFlight.current = null;
+    setIsUploading(false);
+  };
+
   const uploadFiles = async (files: File[]) => {
+    const batch = new AbortController();
+    inFlight.current = batch;
     setIsUploading(true);
     setUploadError(null);
     const uploaded: ImagesItem[] = [];
@@ -182,32 +222,48 @@ function ImagesEditor({
       // whole picked batch in flight at once is a burst of multi-megabyte
       // request bodies at the image endpoint.
       for (const file of files) {
-        const dataUri = await readFileDataUri(file);
+        const dataUri = await readFileDataUri(file, batch.signal);
+        if (batch.signal.aborted) break;
         if (!dataUri.ok) {
           failures.push(dataUri.error.message);
           continue;
         }
-        const upload = await uploadImageDataUri(dataUri.value);
+        const upload = await uploadImageDataUri(dataUri.value, batch.signal);
+        if (batch.signal.aborted) break;
         if (upload.ok) {
           uploaded.push({ id: newItemId(), src: upload.value });
         } else {
           failures.push(upload.error);
         }
       }
-
+    } catch (thrown) {
+      // The change handler fires this without awaiting, so a throw would
+      // otherwise surface as an unhandled rejection with nothing on screen.
+      console.error("Failed to upload images:", thrown);
+      failures.push(imageUploadFailed);
+    } finally {
+      // Freeing the block comes first: anything that throws below it would
+      // otherwise leave the file input disabled with the cancel gone.
+      if (inFlight.current === batch) {
+        inFlight.current = null;
+        setIsUploading(false);
+      }
       if (failures.length) {
         const reason = failures[0] ?? imageUploadFailed;
+        // The total a dropped batch would count against includes files it
+        // never tried.
+        const of = batch.signal.aborted ? "" : ` of ${files.length}`;
         setUploadError(
-          uploaded.length
-            ? `Added ${uploaded.length} of ${files.length}. ${reason}`
-            : reason,
+          uploaded.length ? `Added ${uploaded.length}${of}. ${reason}` : reason,
         );
       }
-      if (uploaded.length) {
-        setImages([...latestImages.current, ...uploaded]);
+      // A removed block takes the error box with it, so a picture that reached
+      // the server and found nothing to join has only this left to say so.
+      if (uploaded.length && !appendImages(activeUserId, uploaded)) {
+        warning(
+          `Dropped ${withCount(uploaded.length, "image")}. The block ${pickForCount(uploaded.length, "it was", "they were")} going into is gone.`,
+        );
       }
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -246,7 +302,12 @@ function ImagesEditor({
           className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
         />
         {isUploading && (
-          <span className="text-xs text-blue-600">Uploading...</span>
+          <UploadingWithCancel
+            label="Uploading..."
+            cancelLabel="Cancel the upload and keep the images already added"
+            onCancel={cancelUpload}
+            className="text-xs text-blue-600"
+          />
         )}
       </div>
 

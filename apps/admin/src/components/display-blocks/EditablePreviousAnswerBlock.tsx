@@ -15,6 +15,7 @@ import type { BaseDisplayBlockProps } from "./types";
 export function EditablePreviousAnswerBlock({
   block,
   onUpdate,
+  updateCurrent,
   onRemove,
   onDragStart,
   onDragEnd,
@@ -39,6 +40,7 @@ export function EditablePreviousAnswerBlock({
       isDragging={isDragging}
       block={block}
       onUpdate={onUpdate}
+      updateCurrent={updateCurrent}
       previousFields={previousFields}
     >
       {({ block: activeBlock, onUpdate: handleUpdate }) => (
