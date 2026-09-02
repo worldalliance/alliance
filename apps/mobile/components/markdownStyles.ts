@@ -36,12 +36,14 @@ export type MarkdownLayoutStyle = {
 // These flex styles only apply when paragraph renders a View; wrappers that
 // render paragraph as Text nest textgroup inline, where flex props do nothing.
 // A hardbreak splits a paragraph into several textgroups alongside the
-// library's own `width: '100%'` hardbreak, so the basis must be 100% rather
-// than `flex: 1`'s 0: at basis 0 every textgroup shares the hardbreak's line,
-// which leaves the hardbreak holding the full width and each textgroup zero,
-// rendering the text invisible but still tall.
+// library's own `width: '100%'` hardbreak, so the basis must not be `flex: 1`'s
+// 0: at basis 0 every textgroup shares the hardbreak's line, which leaves the
+// hardbreak holding the full width and each textgroup zero, rendering the text
+// invisible but still tall. Not a percentage either: inside a list item's
+// `flex: 1` content column it resolves before the column has a definite width,
+// measuring every row at a single line.
 export const MARKDOWN_FILL_WIDTH_STYLE = {
-  textgroup: { flexGrow: 1, flexShrink: 1, flexBasis: "100%" },
+  textgroup: { flexGrow: 1, flexShrink: 1, flexBasis: "auto" },
 } satisfies MarkdownLayoutStyle;
 
 export enum MarkdownTone {
