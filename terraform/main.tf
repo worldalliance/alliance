@@ -292,6 +292,10 @@ resource "aws_cloudfront_response_headers_policy" "cors" {
         "https://admin.thealliance.org",
         "https://worldalliance.org",
         "https://admin.worldalliance.org",
+        "https://staging.thealliance.org",
+        "https://admin.staging.thealliance.org",
+        "https://staging.worldalliance.org",
+        "https://admin.staging.worldalliance.org",
       ]
     }
     access_control_allow_methods {
