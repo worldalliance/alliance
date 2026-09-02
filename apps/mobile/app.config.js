@@ -32,8 +32,6 @@ export default {
       associatedDomains: [
         "applinks:worldalliance.org",
         "webcredentials:worldalliance.org",
-        "applinks:thealliance.org",
-        "webcredentials:thealliance.org",
       ],
     },
     android: {
