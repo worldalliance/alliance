@@ -3,6 +3,14 @@
 # Only works from outside the worktree being removed.
 #
 # Usage: scripts/rm-worktree.sh <name>
+#        scripts/rm-worktree.sh --list
+#
+# --list prints the removable worktrees, one 'name<tab>branch' line each. It is
+# what backs <name> tab-completing in zsh, once ~/.zshrc puts scripts/completions
+# on fpath ahead of compinit:
+#
+#   fpath=("${path_to_repo}/scripts/completions" $fpath)
+#   autoload -Uz compinit && compinit
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -12,6 +20,7 @@ source "$repo_root/scripts/lib/env-value.sh"
 
 git_common_dir="$(git -C "$repo_root" rev-parse --path-format=absolute --git-common-dir)"
 main_root="$(cd "$(dirname "$git_common_dir")" && pwd)"
+worktree_root="$(dirname "$main_root")"
 
 die() { echo "error: $*" >&2; exit 1; }
 
@@ -19,29 +28,67 @@ usage() {
   awk 'NR == 1 { next } !/^#/ { exit } { sub(/^# ?/, ""); print }' "$0"
 }
 
+valid_name() { [[ "$1" =~ ^[a-z0-9][a-z0-9-]*$ ]]; }
+
+# A half-removed worktree is already deregistered, so the .git pointer, not
+# 'git worktree list', is what says this tree is ours for rm -rf to delete.
+is_our_worktree() {
+  [[ "$(cat "$1/.git" 2>/dev/null)" == "gitdir: $git_common_dir/worktrees/"* ]]
+}
+
+is_current_checkout() { [[ "$PWD" == "$1" || "$PWD" == "$1"/* ]]; }
+
+# HEAD does not resolve through a half-removed worktree's dangling .git pointer.
+head_label() {
+  git -C "$1" symbolic-ref --short -q HEAD 2>/dev/null ||
+    git -C "$1" rev-parse --short HEAD 2>/dev/null ||
+    echo half-removed
+}
+
+# Every worktree this script would accept a name for, so the completion offers
+# exactly those and nothing else.
+list_worktrees() {
+  local dir dir_name
+  for dir in "$worktree_root"/alliance-*/; do
+    dir="${dir%/}"
+    [[ -d "$dir" ]] || continue
+    dir_name="${dir##*/alliance-}"
+    valid_name "$dir_name" || continue
+    is_our_worktree "$dir" || continue
+    is_current_checkout "$dir" && continue
+    printf '%s\t%s\n' "$dir_name" "$(head_label "$dir")"
+  done
+}
+
 name=""
+list=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
+    --list) list=1; shift ;;
     -*) die "unknown option: $1" ;;
     *) [[ -n "$name" ]] && die "unexpected argument: $1"; name="$1"; shift ;;
   esac
 done
 
-[[ -n "$name" ]] || die "usage: scripts/rm-worktree.sh <name>"
-[[ "$name" =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "name must be lowercase letters, digits and dashes"
+if [[ -n "$list" ]]; then
+  [[ -z "$name" ]] || die "--list takes no name"
+  list_worktrees
+  exit 0
+fi
 
-worktree_dir="$(dirname "$main_root")/alliance-$name"
+[[ -n "$name" ]] || die "usage: scripts/rm-worktree.sh <name>"
+valid_name "$name" || die "name must be lowercase letters, digits and dashes"
+
+worktree_dir="$worktree_root/alliance-$name"
 [[ -d "$worktree_dir" ]] || die "$worktree_dir not found"
 [[ "$worktree_dir" == "$main_root" ]] && die "refusing to remove the main checkout"
 
-[[ "$PWD" != "$worktree_dir" && "$PWD" != "$worktree_dir"/* ]] ||
+! is_current_checkout "$worktree_dir" ||
   die "$worktree_dir is the checkout you are working in, so removing it would delete the ground under you. Report this rather than working around it."
 
-# A half-removed worktree is already deregistered, so the .git pointer, not
-# 'git worktree list', is what says this tree is ours for rm -rf to delete.
-[[ "$(cat "$worktree_dir/.git" 2>/dev/null)" == "gitdir: $git_common_dir/worktrees/"* ]] ||
+is_our_worktree "$worktree_dir" ||
   die "$worktree_dir is not a worktree of $main_root, so it will not be removed"
 
 worktree_ports="$worktree_dir/.worktree/ports.json"

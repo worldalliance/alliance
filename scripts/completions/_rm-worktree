@@ -1,0 +1,11 @@
+#compdef rm-worktree.sh
+
+# Not ${words[1]}: a typed '~' never expands, and it would run whatever
+# scripts/rm-worktree.sh the cwd happens to hold.
+local script=${functions_source[_rm-worktree]:h:h}/rm-worktree.sh
+
+local -a worktrees
+worktrees=(${${(f)"$($script --list 2>/dev/null)"}//$'\t'/:})
+worktrees=(${worktrees:#})
+
+_describe -t worktrees 'worktree' worktrees
