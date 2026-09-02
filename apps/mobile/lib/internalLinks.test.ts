@@ -46,6 +46,14 @@ describe("getInternalRoute", () => {
     expect(path && getInternalRoute(path)).toBe("/actions/12?ref=email");
   });
 
+  it("routes one action's activity feed to the action's activity tab", () => {
+    expect(getInternalRoute("/feed/146")).toBe("/actions/146?tab=activity");
+    expect(getInternalRoute("/feed/146?ref=email")).toBe(
+      "/actions/146?tab=activity&ref=email",
+    );
+    expect(getInternalRoute("/feed")).toBe("/feed");
+  });
+
   it("is null for a path with no screen", () => {
     expect(getInternalRoute("/api/images/1765.webp")).toBeNull();
   });

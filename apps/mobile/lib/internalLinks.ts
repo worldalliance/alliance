@@ -49,6 +49,11 @@ const INTERNAL_ROUTE_PATTERNS: {
     pattern: /^\/feed\/?$/,
     getRoute: () => "/feed",
   },
+  // One action's activity feed: /feed/123
+  {
+    pattern: /^\/feed\/(\d+)\/?$/,
+    getRoute: (match) => `/actions/${match[1]}?tab=activity`,
+  },
   // User profile: /profile
   {
     pattern: /^\/profile\/?$/,
@@ -115,7 +120,11 @@ export function getInternalRoute(url: string): string | null {
   for (const { pattern, getRoute } of INTERNAL_ROUTE_PATTERNS) {
     const match = pathOnly.match(pattern);
     if (match) {
-      return getRoute(match) + suffix;
+      const route = getRoute(match);
+      if (route.includes("?") && suffix.startsWith("?")) {
+        return `${route}&${suffix.slice(1)}`;
+      }
+      return route + suffix;
     }
   }
 
