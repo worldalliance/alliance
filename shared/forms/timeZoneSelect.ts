@@ -293,6 +293,10 @@ export function resetTimeZoneCaches(): void {
 
 // A zone this runtime cannot format is still one the server schedules in, so
 // its row stays, under the curated label when Intl has no name for it.
+//
+// It stays searchable where Intl's name displaces it, since it is the only
+// place a zone's other countries are named: Intl calls Asia/Kolkata "India
+// Standard Time", which answers nobody searching for Sri Lanka.
 function getBaseLabels(): BaseLabel[] {
   if (cachedLabels) return cachedLabels;
 
@@ -300,10 +304,11 @@ function getBaseLabels(): BaseLabel[] {
     const generic = getGenericLabelFromIntl(tz);
     const city = prettyCityFromIana(tz);
     const left = `${generic ?? label} — ${city}`;
+    const searchable = generic ? [left, label, tz] : [left, tz];
     return {
       tz,
       labelLeft: left,
-      searchText: `${left} ${tz}`.toLowerCase(),
+      searchText: searchable.join(" ").toLowerCase(),
     };
   });
 

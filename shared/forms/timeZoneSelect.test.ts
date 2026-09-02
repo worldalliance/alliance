@@ -522,6 +522,29 @@ describe("the offset a zone sorts by", () => {
   });
 });
 
+describe("searching the zone list", () => {
+  const zonesMatching = (query: string) => {
+    const { result } = renderHook(() => useTimeZoneSelect({}));
+    act(() => result.current.setQuery(query));
+    return result.current.filtered.map(({ tz }) => tz);
+  };
+
+  it("finds a zone by a country only its curated label names", () => {
+    expect(zonesMatching("sri lanka")).toEqual(["Asia/Kolkata"]);
+    expect(zonesMatching("maldives")).toEqual(["Asia/Karachi"]);
+  });
+
+  it("finds that country on a runtime with no name for the zone", () => {
+    rejecting("longGeneric", () => {
+      expect(zonesMatching("sri lanka")).toEqual(["Asia/Kolkata"]);
+    });
+  });
+
+  it("still finds a zone by the name Intl gives it", () => {
+    expect(zonesMatching("india standard")).toEqual(["Asia/Kolkata"]);
+  });
+});
+
 describe("a runtime missing a timeZoneName style", () => {
   it("keeps every clock and every offset when shortOffset is missing", () => {
     rejecting("shortOffset", () => {
