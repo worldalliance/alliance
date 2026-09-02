@@ -222,7 +222,15 @@ function ImagesEditor({
           failures.push(upload.error);
         }
       }
-
+    } catch (thrown) {
+      // The change handler fires this without awaiting, so a throw would
+      // otherwise surface as an unhandled rejection with nothing on screen.
+      console.error("Failed to upload images:", thrown);
+      failures.push(imageUploadFailed);
+    } finally {
+      // Freeing the block comes first: anything that throws below it would
+      // otherwise leave the file input disabled.
+      setIsUploading(false);
       if (failures.length) {
         const reason = failures[0] ?? imageUploadFailed;
         setUploadError(
@@ -234,8 +242,6 @@ function ImagesEditor({
       if (uploaded.length) {
         appendImages(activeUserId, uploaded);
       }
-    } finally {
-      setIsUploading(false);
     }
   };
 

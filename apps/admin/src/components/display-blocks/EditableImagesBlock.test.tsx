@@ -9,7 +9,10 @@ import {
 } from "@testing-library/react";
 import { useState } from "react";
 
-type Pending<T> = { resolve: (value: T) => void };
+type Pending<T> = {
+  resolve: (value: T) => void;
+  reject: (error: Error) => void;
+};
 
 let reads: Pending<Result<string, Error>>[] = [];
 let uploads: Pending<Result<string, string>>[] = [];
@@ -17,8 +20,8 @@ let users: { id: number; name: string; hasActiveContract: boolean }[] = [];
 
 jest.mock("@alliance/sharedweb/lib/readFileDataUri", () => ({
   readFileDataUri: () =>
-    new Promise<Result<string, Error>>((resolve) => {
-      reads.push({ resolve });
+    new Promise<Result<string, Error>>((resolve, reject) => {
+      reads.push({ resolve, reject });
     }),
 }));
 
@@ -28,8 +31,8 @@ jest.mock("@alliance/shared/client", () => ({
 
 jest.mock("@alliance/shared/lib/uploadImageDataUri", () => ({
   uploadImageDataUri: () =>
-    new Promise<Result<string, string>>((resolve) => {
-      uploads.push({ resolve });
+    new Promise<Result<string, string>>((resolve, reject) => {
+      uploads.push({ resolve, reject });
     }),
 }));
 
@@ -68,9 +71,14 @@ function Form() {
   );
 }
 
-const pick = async (names: string[]) => {
+const fileInput = () => {
   const input = document.querySelector('input[type="file"]');
   if (!(input instanceof HTMLInputElement)) throw new Error("no file input");
+  return input;
+};
+
+const pick = async (names: string[]) => {
+  const input = fileInput();
   await act(async () => {
     fireEvent.change(input, {
       target: {
@@ -86,6 +94,12 @@ const settle = async <T,>(pending: Pending<T>[], value: T) => {
   const [next] = pending.splice(0, 1);
   if (!next) throw new Error("nothing in flight");
   await act(async () => next.resolve(value));
+};
+
+const throwOn = async <T,>(pending: Pending<T>[], error: Error) => {
+  const [next] = pending.splice(0, 1);
+  if (!next) throw new Error("nothing in flight");
+  await act(async () => next.reject(error));
 };
 
 // The default and the override start from different pictures, so a write that
@@ -210,5 +224,17 @@ describe("EditableImagesBlock", () => {
       images: [{ src: "default.webp" }, { src: "uploads/a.webp" }],
     });
     expect(written.images).toMatchObject([{ src: "default.webp" }]);
+  });
+
+  it("frees the block and says so when an upload throws", async () => {
+    render(<Form />);
+    await pick(["a.png"]);
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+
+    await throwOn(uploads, new Error("boom"));
+
+    expect(screen.queryByText("Uploading...")).toBeNull();
+    expect(fileInput().disabled).toBe(false);
+    expect(screen.getByText("Failed to upload image")).toBeTruthy();
   });
 });
