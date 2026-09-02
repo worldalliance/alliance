@@ -60,6 +60,9 @@ export function useLoadComments({
       setThread(initialComments);
       return;
     }
+    // Swapping the object drops the thread on screen rather than leaving it
+    // under the new object's heading until the request lands.
+    setThread(null);
     fetchComments();
   }, [initialComments, fetchComments]);
 

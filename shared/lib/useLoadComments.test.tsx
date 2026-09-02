@@ -134,3 +134,23 @@ it("keeps the thread when a refetch never reaches the server", async () => {
   expect(logged).toHaveBeenCalledWith(expect.any(String), expect.any(Error));
   logged.mockRestore();
 });
+
+it("drops the thread when the caller asks about another object", async () => {
+  served = [comment(3)];
+  const { result, rerender } = renderHook(
+    ({ objectId }: { objectId: number }) =>
+      useLoadComments({ objectId, type: "post" }),
+    { initialProps: { objectId: 7 } },
+  );
+  await waitFor(() => expect(result.current.comments).toHaveLength(1));
+
+  served = [comment(3), comment(4)];
+  rerender({ objectId: 8 });
+  expect(result.current.comments).toBeNull();
+
+  await waitFor(() => expect(result.current.comments).toHaveLength(2));
+  expect(requests).toEqual([
+    { endpoint: "post", id: "7" },
+    { endpoint: "post", id: "8" },
+  ]);
+});
