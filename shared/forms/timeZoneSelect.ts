@@ -273,6 +273,9 @@ export function prettyCityFromIana(tz: string): string {
 export type TimeZoneSelectItem = {
   tz: string;
   labelLeft: string;
+  /** The curated label, where it names a place the name does not. A search
+   * matches on it, so the row shows it. */
+  labelSub: string | null;
   searchText: string;
   offsetMins: number | null;
   timeLabel: string | null;
@@ -282,13 +285,49 @@ export const NO_TIME_LABEL = "—";
 
 export const DEFAULT_TIMEZONE = "America/Los_Angeles";
 
-type BaseLabel = { tz: string; labelLeft: string; searchText: string };
+type BaseLabel = {
+  tz: string;
+  labelLeft: string;
+  labelSub: string | null;
+  searchText: string;
+};
 let cachedLabels: BaseLabel[] | null = null;
 
 export function resetTimeZoneCaches(): void {
   formatterCache.clear();
   cachedLabels = null;
   cachedBase = null;
+}
+
+// Accents fold out first, so a name arriving as "Türkiye" reads as one word
+// rather than as "t" and "rkiye".
+const wordsOf = (text: string) =>
+  text
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .match(/\p{L}+/gu) ?? [];
+
+// "Australian Western Standard Time" already says "Western Australia Time" and
+// "Türkiye Time" says "Turkey Time", so two words on a shared stem count as one
+// word said.
+const sameWord = (a: string, b: string) =>
+  a === b ||
+  (a.length >= 4 && b.length >= 4 && a.slice(0, 4) === b.slice(0, 4));
+
+// Most of the list would carry a second line otherwise, and most of those
+// would repeat the first: "Gulf Standard Time — Dubai" over "Dubai Time".
+function namesMoreThan({
+  label,
+  shown,
+}: {
+  label: string;
+  shown: string;
+}): boolean {
+  const said = wordsOf(shown);
+  return wordsOf(label).some(
+    (word) => word !== "time" && !said.some((seen) => sameWord(word, seen)),
+  );
 }
 
 // A zone this runtime cannot format is still one the server schedules in, so
@@ -308,6 +347,7 @@ function getBaseLabels(): BaseLabel[] {
     return {
       tz,
       labelLeft: left,
+      labelSub: generic && namesMoreThan({ label, shown: left }) ? label : null,
       searchText: searchable.join(" ").toLowerCase(),
     };
   });
@@ -386,6 +426,7 @@ export function useTimeZoneSelect({
       items.find((i) => i.tz === internalValue) ?? {
         tz: internalValue,
         labelLeft: internalValue,
+        labelSub: null,
         searchText: internalValue.toLowerCase(),
         offsetMins: getOffsetMinutes(internalValue, when),
         timeLabel: formatTimeInTz(internalValue, hour12, when),
