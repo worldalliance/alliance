@@ -107,10 +107,9 @@ type FormatterRequest = {
   locale?: string;
 };
 
-// ECMA-402 says a runtime short of data for a zone or a style refuses with a
-// RangeError, but Hermes is what this guard exists for and nobody has run it on
-// Android, so no error out of Intl is worth taking the picker down over. An
-// engine that substitutes a zone rather than refusing is still not covered.
+// Intl refuses a zone or a style it has no data for with a RangeError, and no
+// error out of it is worth taking the picker down over. An engine that
+// substitutes a zone rather than refusing is still not covered.
 function askIntl<T>(ask: () => T): T | null {
   return R.toNullable(R.fromThrowable(ask));
 }
