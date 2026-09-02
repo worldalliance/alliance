@@ -8,6 +8,7 @@ import { cn } from "@alliance/shared/styles/util";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { resolveImageSrc } from "@alliance/sharedweb/lib/imageSrc";
 import { readFileDataUri } from "@alliance/sharedweb/lib/readFileDataUri";
+import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
 import {
   closestCenter,
   DndContext,
@@ -199,7 +200,16 @@ function ImagesEditor({
       images: withItemIds([...current.images, ...added]),
     }));
 
+  const inFlight = useRef<AbortController | null>(null);
+  const cancelUpload = () => {
+    inFlight.current?.abort();
+    inFlight.current = null;
+    setIsUploading(false);
+  };
+
   const uploadFiles = async (files: File[]) => {
+    const batch = new AbortController();
+    inFlight.current = batch;
     setIsUploading(true);
     setUploadError(null);
     const uploaded: ImagesItem[] = [];
@@ -210,12 +220,14 @@ function ImagesEditor({
       // whole picked batch in flight at once is a burst of multi-megabyte
       // request bodies at the image endpoint.
       for (const file of files) {
-        const dataUri = await readFileDataUri(file);
+        const dataUri = await readFileDataUri(file, batch.signal);
+        if (batch.signal.aborted) break;
         if (!dataUri.ok) {
           failures.push(dataUri.error.message);
           continue;
         }
-        const upload = await uploadImageDataUri(dataUri.value);
+        const upload = await uploadImageDataUri(dataUri.value, batch.signal);
+        if (batch.signal.aborted) break;
         if (upload.ok) {
           uploaded.push({ id: newItemId(), src: upload.value });
         } else {
@@ -229,19 +241,21 @@ function ImagesEditor({
       failures.push(imageUploadFailed);
     } finally {
       // Freeing the block comes first: anything that throws below it would
-      // otherwise leave the file input disabled.
-      setIsUploading(false);
+      // otherwise leave the file input disabled with the cancel gone.
+      if (inFlight.current === batch) {
+        inFlight.current = null;
+        setIsUploading(false);
+      }
       if (failures.length) {
         const reason = failures[0] ?? imageUploadFailed;
+        // The total a dropped batch would count against includes files it
+        // never tried.
+        const of = batch.signal.aborted ? "" : ` of ${files.length}`;
         setUploadError(
-          uploaded.length
-            ? `Added ${uploaded.length} of ${files.length}. ${reason}`
-            : reason,
+          uploaded.length ? `Added ${uploaded.length}${of}. ${reason}` : reason,
         );
       }
-      if (uploaded.length) {
-        appendImages(activeUserId, uploaded);
-      }
+      if (uploaded.length) appendImages(activeUserId, uploaded);
     }
   };
 
@@ -280,7 +294,12 @@ function ImagesEditor({
           className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
         />
         {isUploading && (
-          <span className="text-xs text-blue-600">Uploading...</span>
+          <UploadingWithCancel
+            label="Uploading..."
+            cancelLabel="Cancel the upload and keep the images already added"
+            onCancel={cancelUpload}
+            className="text-xs text-blue-600"
+          />
         )}
       </div>
 

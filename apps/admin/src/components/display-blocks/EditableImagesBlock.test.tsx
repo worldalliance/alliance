@@ -12,6 +12,7 @@ import { useState } from "react";
 type Pending<T> = {
   resolve: (value: T) => void;
   reject: (error: Error) => void;
+  signal?: AbortSignal;
 };
 
 let reads: Pending<Result<string, Error>>[] = [];
@@ -19,9 +20,9 @@ let uploads: Pending<Result<string, string>>[] = [];
 let users: { id: number; name: string; hasActiveContract: boolean }[] = [];
 
 jest.mock("@alliance/sharedweb/lib/readFileDataUri", () => ({
-  readFileDataUri: () =>
+  readFileDataUri: (_file: File, signal?: AbortSignal) =>
     new Promise<Result<string, Error>>((resolve, reject) => {
-      reads.push({ resolve, reject });
+      reads.push({ resolve, reject, signal });
     }),
 }));
 
@@ -30,9 +31,9 @@ jest.mock("@alliance/shared/client", () => ({
 }));
 
 jest.mock("@alliance/shared/lib/uploadImageDataUri", () => ({
-  uploadImageDataUri: () =>
+  uploadImageDataUri: (_dataUri: string, signal?: AbortSignal) =>
     new Promise<Result<string, string>>((resolve, reject) => {
-      uploads.push({ resolve, reject });
+      uploads.push({ resolve, reject, signal });
     }),
 }));
 
@@ -151,6 +152,15 @@ const editDefault = async () => {
   });
 };
 
+const cancel = async () => {
+  const button = screen.getByLabelText(
+    "Cancel the upload and keep the images already added",
+  );
+  await act(async () => {
+    fireEvent.click(button);
+  });
+};
+
 afterEach(() => {
   reads = [];
   uploads = [];
@@ -226,6 +236,103 @@ describe("EditableImagesBlock", () => {
     expect(written.images).toMatchObject([{ src: "default.webp" }]);
   });
 
+  it("cancels the batch and keeps the pictures that landed", async () => {
+    render(<Form />);
+    await pick(["a.png", "b.png"]);
+
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+    await settle(uploads, R.success("uploads/a.webp"));
+    await settle(reads, R.success("data:image/png;base64,bbb"));
+
+    const second = uploads[0];
+    await cancel();
+    expect(second?.signal?.aborted).toBe(true);
+
+    await settle(uploads, R.failure("Failed to upload image."));
+
+    expect(screen.queryByText("Uploading...")).toBeNull();
+    expect(screen.getByText("images: 1")).toBeTruthy();
+    expect(document.body.textContent).not.toContain("Failed to upload image.");
+  });
+
+  it("drops a picture that lands after the click", async () => {
+    render(<Form />);
+    await pick(["a.png"]);
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+
+    await cancel();
+    await settle(uploads, R.success("uploads/a.webp"));
+
+    expect(screen.getByText("images: 0")).toBeTruthy();
+  });
+
+  it("counts a dropped batch against the files it tried", async () => {
+    render(<Form />);
+    await pick(["a.png", "b.png", "c.png"]);
+
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+    await settle(uploads, R.success("uploads/a.webp"));
+    await settle(reads, R.success("data:image/png;base64,bbb"));
+    await settle(uploads, R.failure("network is down"));
+
+    await cancel();
+    await settle(reads, R.failure(new Error("Cancelled reading c.png")));
+
+    expect(screen.getByText("Added 1. network is down")).toBeTruthy();
+    expect(document.body.textContent).not.toContain("of 3");
+    expect(screen.getByText("images: 1")).toBeTruthy();
+  });
+
+  it("clears what the dropped batch said when the admin picks again", async () => {
+    render(<Form />);
+    await pick(["a.png", "b.png"]);
+
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+    await settle(uploads, R.failure("network is down"));
+
+    await cancel();
+    await settle(reads, R.failure(new Error("Cancelled reading b.png")));
+    expect(document.body.textContent).toContain("network is down");
+
+    await pick(["c.png"]);
+
+    expect(document.body.textContent).not.toContain("network is down");
+  });
+
+  it("frees the block on the click, before the read it is waiting on", async () => {
+    render(<Form />);
+    await pick(["a.png"]);
+
+    await cancel();
+
+    expect(reads).toHaveLength(1);
+    expect(screen.queryByText("Uploading...")).toBeNull();
+    expect(fileInput().disabled).toBe(false);
+  });
+
+  it("drops a file the cancel beat, read and all", async () => {
+    render(<Form />);
+    await pick(["a.png", "b.png"]);
+
+    await cancel();
+    await settle(reads, R.failure(new Error("Could not read the file.")));
+
+    expect(uploads).toHaveLength(0);
+    expect(reads).toHaveLength(0);
+    expect(screen.queryByText("Uploading...")).toBeNull();
+    expect(document.body.textContent).not.toContain("Could not read the file.");
+  });
+
+  it("cuts the read the cancel could otherwise not reach", async () => {
+    render(<Form />);
+    await pick(["a.png"]);
+
+    const read = reads[0];
+    await cancel();
+
+    expect(read?.signal?.aborted).toBe(true);
+  });
+
   it("frees the block and says so when an upload throws", async () => {
     render(<Form />);
     await pick(["a.png"]);
@@ -236,5 +343,17 @@ describe("EditableImagesBlock", () => {
     expect(screen.queryByText("Uploading...")).toBeNull();
     expect(fileInput().disabled).toBe(false);
     expect(screen.getByText("Failed to upload image")).toBeTruthy();
+  });
+
+  it("leaves the batch picked after the cancel alone when the dropped one unwinds", async () => {
+    render(<Form />);
+    await pick(["a.png", "b.png"]);
+    await cancel();
+
+    await pick(["c.png"]);
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+
+    expect(screen.getByText("Uploading...")).toBeTruthy();
+    expect(fileInput().disabled).toBe(true);
   });
 });
