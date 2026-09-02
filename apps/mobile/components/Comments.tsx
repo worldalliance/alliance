@@ -10,7 +10,6 @@ import {
   PostTagDto,
   UserDto,
   forumCreateComment,
-  forumDeleteComment,
   forumUpdateComment,
 } from "@alliance/shared/client";
 import {
@@ -32,12 +31,13 @@ import {
 import { updateCommentInTree } from "@alliance/shared/lib/commentTree";
 import { uploadDraftAttachments } from "@alliance/shared/lib/uploadAttachments";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
+import { useDeleteComment } from "@alliance/shared/lib/useDeleteComment";
 import { useLoadComments } from "@alliance/shared/lib/useLoadComments";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowUpDown, ListFilter, Pin } from "lucide-react-native";
+import { ArrowUpDown, ListFilter, Pin, X } from "lucide-react-native";
 import {
   memo,
   useCallback,
@@ -58,6 +58,7 @@ import EditableContentRenderer from "./EditableContentRenderer";
 import { LikeActionButton } from "./LikeFooter";
 import LikeSummary from "./LikeSummary";
 import ProfileImage from "./ProfileImage";
+import InlineError from "./system/InlineError";
 import Text from "./system/Text";
 import TagChips from "./TagChips";
 import UserDisplayName from "./UserDisplayName";
@@ -222,6 +223,7 @@ const ReplyForm = ({
   // Local, so posting one comment leaves every other composer live.
   const [isPosting, setIsPosting] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const formError = uploadError ?? error;
 
   const post = async () => {
     onDismissError?.();
@@ -290,11 +292,7 @@ const ReplyForm = ({
         isSubmitting={isPosting}
         submitDisabled={needsTag && selectedTagId === undefined}
       />
-      {(uploadError ?? error) && (
-        <Text className="mt-2 text-sm text-red-500">
-          {uploadError ?? error}
-        </Text>
-      )}
+      <InlineError message={formError} className="mt-2" />
     </View>
   );
 };
@@ -396,6 +394,8 @@ type ReplyItemSharedProps = {
   ) => Promise<Result<void, string>>;
   submitErrorFor: (parentId: number | null) => string | null;
   clearSubmitError: () => void;
+  deleteErrorFor: (replyId: number) => string | null;
+  clearDeleteError: (replyId: number) => void;
   onDeleteReply: (replyId: number) => void;
   onLikeReply: (replyId: number, unlike?: boolean) => Promise<unknown>;
 };
@@ -422,6 +422,7 @@ const ReplyItem = memo(function ReplyItemView({
     body: "",
     attachments: [],
   });
+  const deleteError = shared.deleteErrorFor(reply.id);
   const viewRef = useRef<View>(null);
   const maxDepth = 6;
   const canNest = depth < maxDepth;
@@ -579,9 +580,7 @@ const ReplyItem = memo(function ReplyItemView({
                 setIsEditing(false);
               }}
             />
-            {editError && (
-              <Text className="text-sm text-red-500">{editError}</Text>
-            )}
+            <InlineError message={editError} />
           </View>
         ) : (
           <EditableContentRenderer
@@ -657,6 +656,17 @@ const ReplyItem = memo(function ReplyItemView({
         </View>
       )}
 
+      <InlineError message={deleteError} className="mt-2">
+        <TouchableOpacity
+          onPress={() => shared.clearDeleteError(reply.id)}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss this message"
+          hitSlop={8}
+        >
+          <X size={14} color={colors.error} />
+        </TouchableOpacity>
+      </InlineError>
+
       {shared.user && isReplyingToThis && !isCollapsed && (
         <View className="mt-3">
           <ReplyForm
@@ -724,14 +734,28 @@ export default function Comments({
     new Set(),
   );
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
-  const { comments, setComments, error, setError, fetchComments } =
-    useLoadComments({ objectId, type, initialComments });
+  const { comments, setComments, error, fetchComments } = useLoadComments({
+    objectId,
+    type,
+    initialComments,
+  });
+  const { deleteReply, deleteErrorFor, clearDeleteError } = useDeleteComment({
+    comments,
+    fetchComments,
+  });
   // Keyed by the form that produced it, so a nested reply's rejection shows
   // under that reply rather than at the top of the thread.
   const [submitError, setSubmitError] = useState<{
     parentId: number | null;
     message: string;
   } | null>(null);
+  // A rejection shows only under the form that produced it, so opening any
+  // other form drops it. One that landed while its form was closed waits for
+  // that form to open again.
+  const openReplyForm = useCallback((id: number | null) => {
+    setSubmitError((prev) => (prev?.parentId === id ? prev : null));
+    setReplyingTo(id);
+  }, []);
   const [showForm, setShowForm] = useState(showFormProp);
   const [isComposing, setIsComposing] = useState(!!autofocus);
   // The composer takes the keyboard when the user opened it, not when it comes
@@ -809,7 +833,7 @@ export default function Comments({
 
         await fetchComments();
         onSuccess();
-        setReplyingTo(null);
+        openReplyForm(null);
         if (!parentId) {
           setTagFilter(selectedTagId);
           setSelectedTagId(undefined);
@@ -825,7 +849,7 @@ export default function Comments({
         });
       }
     },
-    [fetchComments, objectId, selectedTagId, type],
+    [fetchComments, objectId, openReplyForm, selectedTagId, type],
   );
 
   const handleDeleteReply = useCallback(
@@ -838,20 +862,12 @@ export default function Comments({
           {
             text: "Delete",
             style: "destructive",
-            onPress: async () => {
-              try {
-                await forumDeleteComment({ path: { id: replyId } });
-                await fetchComments();
-              } catch (err) {
-                console.error("Error deleting reply:", err);
-                setError("Failed to delete reply");
-              }
-            },
+            onPress: () => deleteReply(replyId),
           },
         ],
       );
     },
-    [fetchComments, setError],
+    [deleteReply],
   );
 
   const handleUpdateReply = useCallback(
@@ -1078,7 +1094,7 @@ export default function Comments({
         </View>
       ) : null}
 
-      {error && <Text className="text-red-500">{error}</Text>}
+      <InlineError message={error} />
 
       {isPostComments && topLevelComments.length > 0 && (
         <View className="flex-row items-center justify-between">
@@ -1117,7 +1133,7 @@ export default function Comments({
               objectId={objectId}
               repliesAsCards={repliesAsCards}
               replyingTo={replyingTo}
-              setReplyingTo={setReplyingTo}
+              setReplyingTo={openReplyForm}
               highlightedId={highlightedId}
               scrollViewRef={scrollViewRef}
               newlyAddedReplies={newlyAddedReplies}
@@ -1130,6 +1146,8 @@ export default function Comments({
               onUpdateReply={handleUpdateReply}
               submitErrorFor={submitErrorFor}
               clearSubmitError={clearSubmitError}
+              deleteErrorFor={deleteErrorFor}
+              clearDeleteError={clearDeleteError}
               onDeleteReply={handleDeleteReply}
               onLikeReply={handleLikeReply}
             />

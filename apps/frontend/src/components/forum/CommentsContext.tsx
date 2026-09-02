@@ -7,7 +7,6 @@ import {
   CreateCommentDto,
   CreateEditableContentDto,
   forumCreateComment,
-  forumDeleteComment,
   forumPinCommentAdmin,
   forumUpdateComment,
   PostTagDto,
@@ -17,6 +16,7 @@ import { captureException } from "@alliance/shared/lib/analytics";
 import { TagFilter } from "@alliance/shared/lib/commentTags";
 import { updateCommentInTree } from "@alliance/shared/lib/commentTree";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
+import { useDeleteComment } from "@alliance/shared/lib/useDeleteComment";
 import { useLoadComments } from "@alliance/shared/lib/useLoadComments";
 import {
   createContext,
@@ -43,6 +43,8 @@ interface CommentsContextValue {
   ) => Promise<Result<void, string>>;
   submitErrorFor: (parentId: number | null) => string | null;
   clearSubmitError: () => void;
+  deleteErrorFor: (replyId: number) => string | null;
+  clearDeleteError: (replyId: number) => void;
   onLikeReply: (id: number, unlike?: boolean) => Promise<unknown>;
   onPinReply: (id: number) => Promise<void>;
   newlyAddedReplies: Set<number>;
@@ -70,6 +72,8 @@ export function useCommentsContext(): CommentsContextValue {
 export interface UseCommentTreeResult {
   comments: CommentDto[] | null;
   error: string | null;
+  deleteErrorFor: (replyId: number) => string | null;
+  clearDeleteError: (replyId: number) => void;
   fetchComments: () => Promise<void>;
   handleSubmitReply: (
     content: CreateEditableContentDto,
@@ -100,8 +104,15 @@ export function useCommentTree(
   type: CommentParentObject,
   initialComments?: CommentDto[],
 ): UseCommentTreeResult {
-  const { comments, setComments, error, setError, fetchComments } =
-    useLoadComments({ objectId, type, initialComments });
+  const { comments, setComments, error, fetchComments } = useLoadComments({
+    objectId,
+    type,
+    initialComments,
+  });
+  const { deleteReply, deleteErrorFor, clearDeleteError } = useDeleteComment({
+    comments,
+    fetchComments,
+  });
   // Keyed by the form that produced it, so a nested reply's rejection shows
   // under that reply rather than at the top of the thread.
   const [submitError, setSubmitError] = useState<{
@@ -109,6 +120,13 @@ export function useCommentTree(
     message: string;
   } | null>(null);
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  // A rejection shows only under the form that produced it, so opening any
+  // other form drops it. One that landed while its form was closed waits for
+  // that form to open again.
+  const openReplyForm = useCallback((id: number | null) => {
+    setSubmitError((prev) => (prev?.parentId === id ? prev : null));
+    setReplyingTo(id);
+  }, []);
   // The composer takes the caret when the user asked for it, not when it comes
   // back after a reply posted further down the thread.
   const [focusComposer, setFocusComposer] = useState(true);
@@ -232,16 +250,10 @@ export function useCommentTree(
   const handleDeleteReply = useCallback(
     async (replyId: number) => {
       if (window.confirm("Are you sure you want to delete this reply?")) {
-        try {
-          await forumDeleteComment({ path: { id: replyId } });
-          fetchComments();
-        } catch (err) {
-          console.error("Error deleting reply:", err);
-          setError("Failed to delete reply");
-        }
+        await deleteReply(replyId);
       }
     },
-    [fetchComments, setError],
+    [deleteReply],
   );
 
   const handleUpdateReply = useCallback(
@@ -313,6 +325,8 @@ export function useCommentTree(
   return {
     comments,
     error,
+    deleteErrorFor,
+    clearDeleteError,
     fetchComments,
     handleSubmitReply,
     handleDeleteReply,
@@ -322,7 +336,7 @@ export function useCommentTree(
     handleLikeReply,
     handlePinReply,
     replyingTo,
-    setReplyingTo,
+    setReplyingTo: openReplyForm,
     focusComposer,
     newlyAddedReplies,
     highlightedReplyId,
