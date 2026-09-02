@@ -4,12 +4,18 @@ import type { CommentDto, CommentParentObject } from "../client";
 const requests: { endpoint: string; id: string }[] = [];
 let served: CommentDto[] = [];
 let unreachable = false;
+// While set, a request parks its resolver here instead of answering, so a test
+// can land two of them out of order.
+let inFlight: ((thread: CommentDto[]) => void)[] | null = null;
 
 const record =
   (endpoint: string) => async (options: { path: { id: string } }) => {
     requests.push({ endpoint, id: options.path.id });
     if (unreachable) throw new TypeError("Failed to fetch");
-    return { data: served };
+    const thread = inFlight
+      ? await new Promise<CommentDto[]>((resolve) => inFlight?.push(resolve))
+      : served;
+    return { data: thread };
   };
 
 jest.mock("@alliance/shared/client", () => ({
@@ -51,6 +57,7 @@ afterEach(() => {
   requests.length = 0;
   served = [];
   unreachable = false;
+  inFlight = null;
   cleanup();
 });
 
@@ -153,4 +160,50 @@ it("drops the thread when the caller asks about another object", async () => {
     { endpoint: "post", id: "7" },
     { endpoint: "post", id: "8" },
   ]);
+});
+
+it("takes the newest of two requests that overlap", async () => {
+  inFlight = [];
+  const initialComments = [comment(3)];
+  const { result } = renderHook(() =>
+    useLoadComments({ objectId: 7, type: "post", initialComments }),
+  );
+
+  const older = result.current.fetchComments();
+  const newer = result.current.fetchComments();
+  expect(inFlight).toHaveLength(2);
+
+  await act(async () => {
+    inFlight?.[1]([comment(3), comment(4)]);
+    inFlight?.[0]([comment(3), comment(9)]);
+    await Promise.all([older, newer]);
+  });
+
+  expect(result.current.comments?.map((c) => c.id)).toEqual([3, 4]);
+});
+
+it("drops a request the caller left behind by swapping the object", async () => {
+  inFlight = [];
+  const { result, rerender } = renderHook(
+    ({
+      objectId,
+      initialComments,
+    }: {
+      objectId: number;
+      initialComments: CommentDto[];
+    }) => useLoadComments({ objectId, type: "post", initialComments }),
+    { initialProps: { objectId: 7, initialComments: [comment(3)] } },
+  );
+
+  const pending = result.current.fetchComments();
+  expect(inFlight).toHaveLength(1);
+
+  rerender({ objectId: 8, initialComments: [comment(80)] });
+
+  await act(async () => {
+    inFlight?.[0]([comment(3), comment(4)]);
+    await pending;
+  });
+
+  expect(result.current.comments?.map((c) => c.id)).toEqual([80]);
 });
