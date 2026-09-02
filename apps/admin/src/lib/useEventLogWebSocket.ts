@@ -19,6 +19,7 @@ export const useEventLogWebSocket = () => {
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const onNewEventRef = useRef<((event: EventLogWsEvent) => void) | null>(null);
+  const onInviteCreatedRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const socket = io(getWebSocketUrl() + "/event-log", {
@@ -43,6 +44,10 @@ export const useEventLogWebSocket = () => {
       onNewEventRef.current?.(data);
     });
 
+    socket.on("onetime-invite-created", () => {
+      onInviteCreatedRef.current?.();
+    });
+
     return () => {
       socket.disconnect();
     };
@@ -55,8 +60,13 @@ export const useEventLogWebSocket = () => {
     [],
   );
 
+  const setOnInviteCreated = useCallback((handler: (() => void) | null) => {
+    onInviteCreatedRef.current = handler;
+  }, []);
+
   return {
     isConnected,
     setOnNewEvent,
+    setOnInviteCreated,
   };
 };

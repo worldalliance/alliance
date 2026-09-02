@@ -124,7 +124,11 @@ import {
   sqlUserHasActiveContractAt,
   User,
 } from "./entities/user.entity";
-import { type FriendsAcceptedPayload, UserEvents } from "./user.events";
+import {
+  type FriendsAcceptedPayload,
+  type OnetimeInviteCreatedPayload,
+  UserEvents,
+} from "./user.events";
 import { referralLabel } from "./user.utils";
 
 export interface PWResetJwtPayload {
@@ -1750,7 +1754,12 @@ export class UserService {
       community,
       status: OnetimeInviteStatus.LINK_UNUSED,
     });
-    return await this.onetimeInviteRepository.save(invite);
+    const savedInvite = await this.onetimeInviteRepository.save(invite);
+    const payload = {
+      inviteId: savedInvite.id,
+    } satisfies OnetimeInviteCreatedPayload;
+    this.eventEmitter.emit(UserEvents.OnetimeInviteCreated, payload);
+    return savedInvite;
   }
 
   async createAmbassadorInviteGoal(

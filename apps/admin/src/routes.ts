@@ -2,6 +2,7 @@ import { type RouteConfig, layout, route } from "@react-router/dev/routes";
 
 export default [
   layout("adminlayout.tsx", [
+    route("/invite-feed", "pages/InviteFeedPage.tsx"),
     layout("sidebar.tsx", [
       route("/actions", "pages/Actions.tsx"),
       route("/timeline", "pages/NewTimelinePage.tsx"),
