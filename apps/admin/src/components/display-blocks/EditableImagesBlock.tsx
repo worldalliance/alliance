@@ -2,12 +2,14 @@ import type {
   ImagesBlock,
   ImagesItem,
 } from "@alliance/common/forms/display-blocks";
+import { pickForCount, withCount } from "@alliance/common/plural";
 import { imageUploadFailed } from "@alliance/shared/lib/copy";
 import { uploadImageDataUri } from "@alliance/shared/lib/uploadImageDataUri";
 import { cn } from "@alliance/shared/styles/util";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { resolveImageSrc } from "@alliance/sharedweb/lib/imageSrc";
 import { readFileDataUri } from "@alliance/sharedweb/lib/readFileDataUri";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
 import {
   closestCenter,
@@ -169,8 +171,9 @@ function ImagesEditor({
   updateFor: (
     userId: string | null,
     update: (current: ImagesBlock) => Partial<ImagesBlock>,
-  ) => void;
+  ) => boolean;
 }) {
+  const { warning } = useToast();
   const images = block.images;
   const ids = dragIds(images);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -254,7 +257,13 @@ function ImagesEditor({
           uploaded.length ? `Added ${uploaded.length}${of}. ${reason}` : reason,
         );
       }
-      if (uploaded.length) appendImages(activeUserId, uploaded);
+      // A removed block takes the error box with it, so a picture that reached
+      // the server and found nothing to join has only this left to say so.
+      if (uploaded.length && !appendImages(activeUserId, uploaded)) {
+        warning(
+          `Dropped ${withCount(uploaded.length, "image")}. The block ${pickForCount(uploaded.length, "it was", "they were")} going into is gone.`,
+        );
+      }
     }
   };
 

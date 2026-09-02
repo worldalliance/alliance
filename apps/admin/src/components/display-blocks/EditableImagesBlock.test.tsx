@@ -450,6 +450,48 @@ describe("EditableImagesBlock", () => {
     expect(screen.queryByTitle("Remove field")).toBeNull();
   });
 
+  it("says the pictures were dropped when the block is gone", async () => {
+    render(<Form />);
+    await pick(["a.png", "b.png"]);
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+    await settle(uploads, R.success("uploads/a.webp"));
+
+    await removeBlock();
+    await settle(reads, R.success("data:image/png;base64,bbb"));
+    await settle(uploads, R.success("uploads/b.webp"));
+
+    expect(document.body.textContent).toContain(
+      "Dropped 2 images. The block they were going into is gone.",
+    );
+  });
+
+  it("counts what a dropped batch got as far as the server", async () => {
+    render(<Form />);
+    await pick(["a.png", "b.png"]);
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+    await settle(uploads, R.success("uploads/a.webp"));
+
+    await cancel();
+    await removeBlock();
+    await settle(reads, R.failure(new Error("Cancelled reading b.png")));
+
+    expect(document.body.textContent).toContain(
+      "Dropped 1 image. The block it was going into is gone.",
+    );
+  });
+
+  it("says nothing when the block only left the screen", async () => {
+    render(<Form />);
+    await pick(["a.png"]);
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+
+    await pageAway();
+    await settle(uploads, R.success("uploads/a.webp"));
+
+    expect(screen.getByText("images: 1")).toBeTruthy();
+    expect(document.body.textContent).not.toContain("Dropped");
+  });
+
   it("drops a file the cancel beat, read and all", async () => {
     render(<Form />);
     await pick(["a.png", "b.png"]);
