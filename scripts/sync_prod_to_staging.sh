@@ -8,6 +8,89 @@ umask 077
 
 source /home/ec2-user/db-sync.env
 
+# Checked ahead of the traps below, and of every other variable, because a trap
+# has no way to report its own failure without these two.
+: "${SLACK_WEBHOOK_URL:?missing in db-sync.env}"
+
+if ! command -v jq >/dev/null; then
+  echo "jq is not installed; the sync needs it to post results to Slack." >&2
+  exit 1
+fi
+
+# The lock taken below lives on the open file description rather than the
+# process, so every child inherits it and an orphaned pg_dump would hold it
+# after a kill and skip every run that follows. Anything that can outlive the
+# shell runs through here. The two startup aborts below run before the lock
+# exists, where closing an fd nothing opened is a no-op.
+unlocked() {
+  "$@" 200>&-
+}
+
+notify_slack() {
+  unlocked curl --silent --show-error --fail --max-time 10 \
+    --retry 3 --retry-connrefused \
+    --header 'Content-Type: application/json' \
+    --data "$(jq -nc --arg text "$1" '{text: $text}')" \
+    "$SLACK_WEBHOOK_URL" >/dev/null \
+    || echo "[$(date)] ==> WARNING: could not post to Slack."
+}
+
+# A Slack message only reports a run that lived long enough to send it. A
+# SIGKILL, a dead host, or a cron that never fires sends nothing at all, so the
+# ping that never arrives has to be what raises the alarm.
+#
+# The startup trap fires above the HEALTHCHECK_URL check, so an unset variable
+# is a no-op here instead of a curl error about a URL with no host.
+ping_healthcheck() {
+  local base="${HEALTHCHECK_URL:-}"
+  [ -n "$base" ] || return 0
+  unlocked curl --silent --show-error --fail --max-time 10 \
+    --retry 3 --retry-connrefused --retry-max-time 30 \
+    "${base%/}${1:-}" >/dev/null \
+    || echo "[$(date)] ==> WARNING: could not ping the healthcheck."
+}
+
+# The startup trap is installed below, so a failure up here reports for itself.
+abort_before_start() {
+  echo "[$(date)] ==> $1" >&2
+  notify_slack ":x: prod → staging: $1"
+  ping_healthcheck /fail
+  exit 1
+}
+
+if ! command -v flock >/dev/null; then
+  abort_before_start "flock is not installed; the sync needs it to stop two \
+runs from overlapping."
+fi
+
+LOCK_FILE=/home/ec2-user/sync_prod_to_staging.lock
+if ! true >>"$LOCK_FILE"; then
+  abort_before_start "cannot write ${LOCK_FILE}; the sync needs it to stop two \
+runs from overlapping."
+fi
+
+# Two runs share one scratch database and one staging database, so an overlap
+# corrupts both, and in the worst order one run renames the other's
+# half-restored, still unanonymized database into place as staging.
+exec 200>>"$LOCK_FILE"
+if ! flock -n 200; then
+  echo "[$(date)] ==> Another sync is already running; skipping this one."
+  notify_slack ":no_entry: prod → staging: another sync is already running; \
+skipping this one."
+  exit 0
+fi
+
+# cleanup reads paths built further down, so it can't be the trap yet. This one
+# reports a db-sync.env that loads but doesn't hold what the sync needs.
+report_startup_failure() {
+  notify_slack ":x: prod → staging: FAILED during startup, before the sync \
+began. Check db-sync.env on the staging host. Staging still holds the data from \
+its previous successful sync."
+  ping_healthcheck /fail
+  exit 1
+}
+trap report_startup_failure EXIT
+
 : "${PROD_DB_USER:?missing in db-sync.env}" \
   "${PROD_DB_PASSWORD:?missing in db-sync.env}" \
   "${PROD_DB_HOST:?missing in db-sync.env}" \
@@ -18,7 +101,8 @@ source /home/ec2-user/db-sync.env
   "${STAGING_DB_NAME:?missing in db-sync.env}" \
   "${STAGING_PASSWORD_HASH:?missing in db-sync.env}" \
   "${PROD_ASSETS_BUCKET:?missing in db-sync.env}" \
-  "${STAGING_ASSETS_BUCKET:?missing in db-sync.env}"
+  "${STAGING_ASSETS_BUCKET:?missing in db-sync.env}" \
+  "${HEALTHCHECK_URL:?missing in db-sync.env}"
 
 BCRYPT_PATTERN='^\$2[aby]\$[0-9]{2}\$[./A-Za-z0-9]{53}$'
 if [[ ! $STAGING_PASSWORD_HASH =~ $BCRYPT_PATTERN ]]; then
@@ -38,6 +122,7 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 DUMP_FILE="/home/ec2-user/prod_dump_${TIMESTAMP}.pgcustom"
 
 SWAP_STARTED=0
+STAGE="startup"
 
 # The dump file and the scratch database both hold unanonymized prod data, so
 # every exit path has to take them with it — until the swap starts, after which
@@ -48,21 +133,36 @@ cleanup() {
   rm -f "$DUMP_FILE"
 
   if [ "$SWAP_STARTED" -eq 0 ]; then
-    psql "$STAGING_ADMIN_URL" -q \
-      -c "DROP DATABASE IF EXISTS ${SCRATCH_DB} WITH (FORCE);" >/dev/null 2>&1 \
+    unlocked psql "$STAGING_ADMIN_URL" -q \
+      -c "DROP DATABASE IF EXISTS ${SCRATCH_DB} WITH (FORCE);" \
+      >/dev/null 2>&1 \
       || echo "[$(date)] ==> WARNING: could not drop ${SCRATCH_DB}; it may still" \
         "hold unanonymized prod data."
   fi
 
-  if [ "$status" -ne 0 ]; then
-    if [ "$SWAP_STARTED" -eq 1 ]; then
-      echo "[$(date)] ==> FAILED (exit ${status}) at or after the swap." \
-        "If ${STAGING_DB_NAME} no longer exists, recover with:" \
-        "ALTER DATABASE ${SCRATCH_DB} RENAME TO ${STAGING_DB_NAME};"
-    else
-      echo "[$(date)] ==> FAILED (exit ${status}). Staging still holds the data" \
-        "from its previous successful sync."
-    fi
+  local emoji outcome
+
+  if [ "$status" -eq 0 ]; then
+    emoji=":white_check_mark:"
+    outcome="Sync completed successfully."
+  elif [ "$SWAP_STARTED" -eq 1 ]; then
+    emoji=":x:"
+    outcome="FAILED during ${STAGE} (exit ${status}) at or after the swap. \
+If ${STAGING_DB_NAME} no longer exists, recover with: \
+ALTER DATABASE ${SCRATCH_DB} RENAME TO ${STAGING_DB_NAME};"
+  else
+    emoji=":x:"
+    outcome="FAILED during ${STAGE} (exit ${status}). Staging still holds the \
+data from its previous successful sync."
+  fi
+
+  echo "[$(date)] ==> ${outcome}"
+  notify_slack "${emoji} prod → staging (${TIMESTAMP}): ${outcome}"
+
+  if [ "$status" -eq 0 ]; then
+    ping_healthcheck
+  else
+    ping_healthcheck /fail
   fi
 }
 trap cleanup EXIT
@@ -72,34 +172,41 @@ trap 'exit 143' TERM
 trap 'exit 129' HUP
 
 echo "[$(date)] ==> Starting prod → staging sync"
+notify_slack ":hourglass_flowing_sand: prod → staging (${TIMESTAMP}): sync started."
+ping_healthcheck /start
+
+STAGE="dump"
 echo "[$(date)] ==> Dumping prod database to ${DUMP_FILE}..."
 
-pg_dump \
+unlocked pg_dump \
   --format=custom \
   --no-owner \
   --no-privileges \
   "$PROD_URL" \
   --file="$DUMP_FILE"
 
+STAGE="scratch database"
 echo "[$(date)] ==> Recreating scratch database ${SCRATCH_DB}..."
 
-psql "$STAGING_ADMIN_URL" -v ON_ERROR_STOP=1 <<SQL
+unlocked psql "$STAGING_ADMIN_URL" -v ON_ERROR_STOP=1 <<SQL
 DROP DATABASE IF EXISTS ${SCRATCH_DB} WITH (FORCE);
 CREATE DATABASE ${SCRATCH_DB} WITH TEMPLATE=template0 ENCODING='UTF8';
 SQL
 
+STAGE="restore"
 echo "[$(date)] ==> Restoring dump into ${SCRATCH_DB}..."
 
-pg_restore \
+unlocked pg_restore \
   --exit-on-error \
   --no-owner \
   --no-privileges \
   --dbname="$SCRATCH_URL" \
   "$DUMP_FILE"
 
+STAGE="anonymize"
 echo "[$(date)] ==> Anonymizing ${SCRATCH_DB}..."
 
-psql "$SCRATCH_URL" -v ON_ERROR_STOP=1 --single-transaction \
+unlocked psql "$SCRATCH_URL" -v ON_ERROR_STOP=1 --single-transaction \
   -v password_hash="$STAGING_PASSWORD_HASH" <<'SQL'
 -- ============================================================================
 -- Anonymize members.
@@ -240,10 +347,11 @@ UPDATE "push" SET "expoPushToken" = 'pruned';
 
 SQL
 
+STAGE="swap"
 echo "[$(date)] ==> Swapping ${SCRATCH_DB} into place as ${STAGING_DB_NAME}..."
 
 SWAP_STARTED=1
-psql "$STAGING_ADMIN_URL" -v ON_ERROR_STOP=1 <<SQL
+unlocked psql "$STAGING_ADMIN_URL" -v ON_ERROR_STOP=1 <<SQL
 SELECT pg_terminate_backend(pid)
 FROM pg_stat_activity
 WHERE datname = '${SCRATCH_DB}'
@@ -253,9 +361,10 @@ DROP DATABASE IF EXISTS ${STAGING_DB_NAME} WITH (FORCE);
 ALTER DATABASE ${SCRATCH_DB} RENAME TO ${STAGING_DB_NAME};
 SQL
 
+STAGE="s3 sync"
 echo "[$(date)] ==> S3 sync s3://$PROD_ASSETS_BUCKET -> s3://$STAGING_ASSETS_BUCKET"
 
-aws s3 sync \
+unlocked aws s3 sync \
   "s3://${PROD_ASSETS_BUCKET}/" \
   "s3://${STAGING_ASSETS_BUCKET}/" \
   --only-show-errors \
@@ -268,5 +377,3 @@ if [ $SYNC_EXIT -ne 0 ]; then
 fi
 
 echo "[$(date)] ==> S3 sync complete."
-
-echo "[$(date)] ==> Sync completed successfully."
