@@ -113,6 +113,7 @@ export enum ExceptionEvent {
   FormSubmitError = "form_submit_error",
   FollowUpFormSubmitError = "follow_up_form_submit_error",
   PostReplyError = "post_reply_error",
+  LoadCommentsError = "load_comments_error",
   OtaGateCrashed = "ota_gate_crashed",
 }
 
@@ -200,5 +201,6 @@ export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   [ExceptionEvent.FormSubmitError]: false,
   [ExceptionEvent.FollowUpFormSubmitError]: false,
   [ExceptionEvent.PostReplyError]: false,
+  [ExceptionEvent.LoadCommentsError]: false,
   [ExceptionEvent.OtaGateCrashed]: true,
 };
