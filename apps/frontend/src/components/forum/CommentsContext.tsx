@@ -109,6 +109,13 @@ export function useCommentTree(
     message: string;
   } | null>(null);
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  // A rejection shows only under the form that produced it, so opening any
+  // other form drops it. One that landed while its form was closed waits for
+  // that form to open again.
+  const openReplyForm = useCallback((id: number | null) => {
+    setSubmitError((prev) => (prev?.parentId === id ? prev : null));
+    setReplyingTo(id);
+  }, []);
   // The composer takes the caret when the user asked for it, not when it comes
   // back after a reply posted further down the thread.
   const [focusComposer, setFocusComposer] = useState(true);
@@ -322,7 +329,7 @@ export function useCommentTree(
     handleLikeReply,
     handlePinReply,
     replyingTo,
-    setReplyingTo,
+    setReplyingTo: openReplyForm,
     focusComposer,
     newlyAddedReplies,
     highlightedReplyId,

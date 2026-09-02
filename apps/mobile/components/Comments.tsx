@@ -728,6 +728,13 @@ export default function Comments({
     parentId: number | null;
     message: string;
   } | null>(null);
+  // A rejection shows only under the form that produced it, so opening any
+  // other form drops it. One that landed while its form was closed waits for
+  // that form to open again.
+  const openReplyForm = useCallback((id: number | null) => {
+    setSubmitError((prev) => (prev?.parentId === id ? prev : null));
+    setReplyingTo(id);
+  }, []);
   const [showForm, setShowForm] = useState(showFormProp);
   const [isComposing, setIsComposing] = useState(!!autofocus);
   // The composer takes the keyboard when the user opened it, not when it comes
@@ -805,7 +812,7 @@ export default function Comments({
 
         await fetchComments();
         onSuccess();
-        setReplyingTo(null);
+        openReplyForm(null);
         if (!parentId) {
           setTagFilter(selectedTagId);
           setSelectedTagId(undefined);
@@ -821,7 +828,7 @@ export default function Comments({
         });
       }
     },
-    [fetchComments, objectId, selectedTagId, type],
+    [fetchComments, objectId, openReplyForm, selectedTagId, type],
   );
 
   const handleDeleteReply = useCallback(
@@ -1113,7 +1120,7 @@ export default function Comments({
               objectId={objectId}
               repliesAsCards={repliesAsCards}
               replyingTo={replyingTo}
-              setReplyingTo={setReplyingTo}
+              setReplyingTo={openReplyForm}
               highlightedId={highlightedId}
               scrollViewRef={scrollViewRef}
               newlyAddedReplies={newlyAddedReplies}
