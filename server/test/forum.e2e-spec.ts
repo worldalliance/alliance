@@ -591,6 +591,21 @@ describe("Forum (e2e)", () => {
       expect(response.body.editableContent.body).toBe("Updated reply");
     });
 
+    it("should say a missing reply is gone when editing it", async () => {
+      const response = await request(ctx.app.getHttpServer())
+        .patch("/forum/comments/999999")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: {
+            body: "Edit of a reply that is not there",
+            attachments: [],
+          },
+        } satisfies UpdateCommentDto)
+        .expect(404);
+
+      expect(response.body.message).toBe("That reply is no longer here");
+    });
+
     it("should delete a reply", async () => {
       // Create a reply to delete
       const createResponse = await request(ctx.app.getHttpServer())
