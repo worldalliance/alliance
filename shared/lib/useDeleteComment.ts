@@ -1,9 +1,12 @@
+import { refusalMessage } from "@alliance/common/errorMessage";
 import { R } from "@alliance/common/result";
 import { CommentDto, forumDeleteComment } from "@alliance/shared/client";
 import { omit } from "es-toolkit";
 import { useCallback, useEffect, useState } from "react";
 
 const DELETE_FAILED = "Failed to delete reply";
+const SESSION_EXPIRED =
+  "Your session has expired. Sign in again to delete this reply.";
 
 interface UseDeleteCommentInput {
   comments: CommentDto[] | null;
@@ -48,15 +51,35 @@ export function useDeleteComment({
     async (replyId: number) => {
       clearDeleteError(replyId);
       // The generated client leaves its fetch call unguarded, so a request
-      // that never reaches the server rejects rather than answering.
+      // that never reaches the server rejects, while one the server refused
+      // answers with an error. Mobile configures the client to throw on a
+      // refusal, which loses the response the status below is read off.
       const sent = await R.fromPromise(
-        forumDeleteComment({ path: { id: replyId } }),
+        forumDeleteComment({ path: { id: replyId }, throwOnError: false }),
       );
       if (!sent.ok) {
         console.error("Error deleting reply:", sent.error);
         setFailures((prev) => ({ ...prev, [replyId]: DELETE_FAILED }));
         return;
       }
+      const { error, response } = sent.value;
+      if (error) {
+        console.error("The server refused the delete:", error);
+        setFailures((prev) => ({
+          ...prev,
+          [replyId]: refusalMessage({
+            status: response.status,
+            error,
+            fallback: DELETE_FAILED,
+            sessionExpired: SESSION_EXPIRED,
+          }),
+        }));
+        // The reload meets the same expired session, and the thread ends up
+        // carrying a second copy of the sentence the reply already has.
+        if (response.status === 401) return;
+      }
+      // A refused delete can mean the reply is already gone, so the reload
+      // takes it off screen.
       await fetchComments();
     },
     [clearDeleteError, fetchComments],
