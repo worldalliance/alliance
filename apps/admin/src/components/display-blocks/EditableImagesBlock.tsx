@@ -178,12 +178,11 @@ function ImagesEditor({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const activeImage = images[ids.indexOf(activeId ?? "")];
 
-  // An upload outlives the render that started it, and every builder above
-  // writes a block update by spreading the whole form it rendered with, so a
-  // handler held past its render puts that form back over every edit since. A
-  // passive effect would leave the ref a render behind between commit and
-  // flush, which is long enough for an upload to land on the handler it
-  // replaces.
+  // An upload outlives the render that started it, and a container hands its
+  // nested blocks no id-addressed write, so there the update still spreads the
+  // form the handler was made with. A passive effect would leave the ref a
+  // render behind between commit and flush, long enough for an upload to land
+  // on the handler it replaces.
   const latest = useRef({ onUpdate, updateFor });
   useLayoutEffect(() => {
     latest.current = { onUpdate, updateFor };

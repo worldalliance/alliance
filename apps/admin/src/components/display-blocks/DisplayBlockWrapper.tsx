@@ -20,6 +20,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { AddressedWrite } from "../../lib/displayBlockById";
 import {
   ConditionalVisibility,
   type OutputBlockOption,
@@ -68,7 +69,7 @@ type DisplayBlockChildRenderProps<T extends DisplayBlock> = {
   updateFor: (
     userId: string | null,
     update: (current: T) => Partial<T>,
-  ) => void;
+  ) => boolean;
   activeUserId?: string | null;
   activeUserName?: string;
   isDefaultContent: boolean;
@@ -83,6 +84,7 @@ interface DisplayBlockWrapperProps<T extends DisplayBlock = DisplayBlock> {
   isDragging?: boolean;
   block?: T;
   onUpdate?: (updates: Partial<T>) => void;
+  updateCurrent?: AddressedWrite;
   previousFields?: AnyField[];
   outputBlocks?: OutputBlockOption[];
   /** A container block's content lives in its children, so it has none to override. */
@@ -97,6 +99,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   isDragging,
   block,
   onUpdate,
+  updateCurrent,
   previousFields,
   outputBlocks,
   perUserContent = true,
@@ -388,32 +391,38 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
 
   const updateBlockFor = useCallback(
     (userId: string | null, update: (current: T) => Partial<T>) => {
-      if (!onUpdate || !block) {
-        return;
-      }
-      if (manualPerUserEnabled && userId) {
+      if (!block) return false;
+
+      const updatesFor = (current: T): Partial<T> => {
+        if (!current.manualPerUser || !userId) return update(current);
+
+        const existingManualContent = current.manualUserContent ?? {};
         const existingContent =
-          manualUserContent[userId] ?? baseManualContentFromBlock(block);
+          existingManualContent[userId] ?? baseManualContentFromBlock(current);
 
         const nextManualContent: Record<string, ManualDisplayBlockContent> = {
-          ...manualUserContent,
+          ...existingManualContent,
           [userId]: stripIdentityFields({
             ...existingContent,
             ...(stripManualFields(
-              update(resolveDisplayBlockForUser(block, userId)),
+              update(resolveDisplayBlockForUser(current, userId)),
             ) as Record<string, unknown>),
           }) as ManualDisplayBlockContent,
         };
 
-        onUpdate({
-          manualUserContent: nextManualContent,
-        } as Partial<T>);
-        return;
-      }
+        return { manualUserContent: nextManualContent } as Partial<T>;
+      };
 
-      onUpdate(update(block));
+      // `updateCurrent` addresses this same block by its id, so what it hands
+      // back is the T this wrapper was rendered with.
+      if (updateCurrent) {
+        return updateCurrent((current) => updatesFor(current as T));
+      }
+      if (!onUpdate) return false;
+      onUpdate(updatesFor(block));
+      return true;
     },
-    [block, manualPerUserEnabled, manualUserContent, onUpdate],
+    [block, onUpdate, updateCurrent],
   );
 
   const handleBlockUpdate = useCallback(

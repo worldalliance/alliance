@@ -7,7 +7,7 @@ import {
   render,
   screen,
 } from "@testing-library/react";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 type Pending<T> = {
   resolve: (value: T) => void;
@@ -47,10 +47,20 @@ const emptyBlock: ImagesBlock = {
   images: [],
 };
 
-// The form builders all commit a block update by spreading the whole form they
-// rendered with, so a handler held past its render puts that form back.
+// `onUpdate` spreads the whole form it rendered with, as the builders' own
+// handler does, and `updateCurrent` reads the form as it stands. Paging the
+// builder takes the block off the screen without taking it out of the form.
 function Form() {
-  const [form, setForm] = useState({ title: "", block: emptyBlock });
+  const [form, setForm] = useState<{
+    title: string;
+    block: ImagesBlock | null;
+    onScreen: boolean;
+  }>({ title: "", block: emptyBlock, onScreen: true });
+  const latest = useRef(form);
+  useLayoutEffect(() => {
+    latest.current = form;
+  });
+  const block = form.block;
   return (
     <ToastProvider>
       <input
@@ -60,14 +70,31 @@ function Form() {
           setForm({ ...form, title: event.currentTarget.value })
         }
       />
-      <EditableImagesBlock
-        block={form.block}
-        onUpdate={(updates) =>
-          setForm({ ...form, block: { ...form.block, ...updates } })
-        }
-        onRemove={() => {}}
-      />
-      <span>images: {form.block.images.length}</span>
+      <button
+        aria-label="Next page"
+        onClick={() => setForm({ ...form, onScreen: false })}
+      >
+        page
+      </button>
+      {block && form.onScreen && (
+        <EditableImagesBlock
+          block={block}
+          onUpdate={(updates) =>
+            setForm({ ...form, block: { ...block, ...updates } })
+          }
+          updateCurrent={(update) => {
+            const current = latest.current.block;
+            if (!current) return false;
+            setForm({
+              ...latest.current,
+              block: { ...current, ...update(current) } as ImagesBlock,
+            });
+            return true;
+          }}
+          onRemove={() => setForm({ ...form, block: null })}
+        />
+      )}
+      <span>images: {form.block?.images.length ?? 0}</span>
     </ToastProvider>
   );
 }
@@ -119,16 +146,60 @@ const noOverrideBlock: ImagesBlock = { ...perUserBlock, manualUserContent: {} };
 
 let written: ImagesBlock = perUserBlock;
 
-function PerUserForm({ initial = perUserBlock }: { initial?: ImagesBlock }) {
+// A nested block gets no addressed write, so `addressed` covers both paths the
+// per-user branch has to answer for: the spread of the block it rendered with,
+// and the block as the form holds it now.
+function PerUserForm({
+  initial = perUserBlock,
+  addressed = false,
+}: {
+  initial?: ImagesBlock;
+  addressed?: boolean;
+}) {
   const [block, setBlock] = useState<ImagesBlock>(initial);
+  const [onScreen, setOnScreen] = useState(true);
   written = block;
+  const latest = useRef(block);
+  useLayoutEffect(() => {
+    latest.current = block;
+  });
   return (
     <ToastProvider>
-      <EditableImagesBlock
-        block={block}
-        onUpdate={(updates) => setBlock({ ...block, ...updates })}
-        onRemove={() => {}}
-      />
+      <button aria-label="Next page" onClick={() => setOnScreen(false)}>
+        page
+      </button>
+      <button
+        aria-label="Give Bob his own pictures"
+        onClick={() =>
+          setBlock({
+            ...latest.current,
+            manualUserContent: {
+              ...latest.current.manualUserContent,
+              "2": { images: [{ id: "bob-1", src: "bob.webp" }] },
+            },
+          })
+        }
+      >
+        bob
+      </button>
+      {onScreen && (
+        <EditableImagesBlock
+          block={block}
+          onUpdate={(updates) => setBlock({ ...block, ...updates })}
+          updateCurrent={
+            addressed
+              ? (update) => {
+                  setBlock({
+                    ...latest.current,
+                    ...update(latest.current),
+                  } as ImagesBlock);
+                  return true;
+                }
+              : undefined
+          }
+          onRemove={() => {}}
+        />
+      )}
     </ToastProvider>
   );
 }
@@ -149,6 +220,18 @@ const editDefault = async () => {
   });
   await act(async () => {
     fireEvent.click(screen.getByText("Edit default"));
+  });
+};
+
+const removeBlock = async () => {
+  await act(async () => {
+    fireEvent.click(screen.getByTitle("Remove field"));
+  });
+};
+
+const pageAway = async () => {
+  await act(async () => {
+    fireEvent.click(screen.getByLabelText("Next page"));
   });
 };
 
@@ -218,6 +301,28 @@ describe("EditableImagesBlock", () => {
     expect(written.manualUserContent?.["1"]).toMatchObject({
       images: [{ src: "alice.webp" }],
     });
+  });
+
+  it("keeps an override written after the row left the screen", async () => {
+    render(<PerUserForm addressed />);
+    await act(async () => {});
+    await pick(["a.png"]);
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+
+    await pageAway();
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText("Give Bob his own pictures"));
+    });
+
+    await settle(uploads, R.success("uploads/a.webp"));
+
+    expect(written.manualUserContent?.["1"]).toMatchObject({
+      images: [{ src: "alice.webp" }, { src: "uploads/a.webp" }],
+    });
+    expect(written.manualUserContent?.["2"]).toMatchObject({
+      images: [{ src: "bob.webp" }],
+    });
+    expect(written.images).toMatchObject([{ src: "default.webp" }]);
   });
 
   it("starts a user's first override from the default", async () => {
@@ -308,6 +413,41 @@ describe("EditableImagesBlock", () => {
     expect(reads).toHaveLength(1);
     expect(screen.queryByText("Uploading...")).toBeNull();
     expect(fileInput().disabled).toBe(false);
+  });
+
+  it("lands the pictures after the row leaves the screen", async () => {
+    render(<Form />);
+    await pick(["a.png"]);
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+
+    await pageAway();
+    const title = screen.getByLabelText<HTMLInputElement>("Form title");
+    fireEvent.change(title, { target: { value: "Signup" } });
+
+    await settle(uploads, R.success("uploads/a.webp"));
+
+    expect(screen.getByLabelText<HTMLInputElement>("Form title").value).toBe(
+      "Signup",
+    );
+    expect(screen.getByText("images: 1")).toBeTruthy();
+  });
+
+  it("leaves the form alone when the block is removed mid-upload", async () => {
+    render(<Form />);
+    await pick(["a.png"]);
+    await settle(reads, R.success("data:image/png;base64,aaa"));
+
+    await removeBlock();
+    const title = screen.getByLabelText<HTMLInputElement>("Form title");
+    fireEvent.change(title, { target: { value: "Signup" } });
+
+    await settle(uploads, R.success("uploads/a.webp"));
+
+    expect(screen.getByLabelText<HTMLInputElement>("Form title").value).toBe(
+      "Signup",
+    );
+    expect(screen.getByText("images: 0")).toBeTruthy();
+    expect(screen.queryByTitle("Remove field")).toBeNull();
   });
 
   it("drops a file the cancel beat, read and all", async () => {

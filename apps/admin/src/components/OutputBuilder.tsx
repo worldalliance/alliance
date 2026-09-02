@@ -21,6 +21,7 @@ import OutputRenderer from "@alliance/sharedweb/forms/OutputRenderer";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { addressedWrite, type BlockWriteById } from "../lib/displayBlockById";
 import {
   createDisplayBlock,
   EditableDividerBlock,
@@ -133,9 +134,15 @@ const buildNewView = (schema: FormSchema): OutputViewSchema => ({
 interface OutputBuilderProps {
   schema: FormSchema;
   onSchemaChange: (schema: FormSchema) => void;
+  /** Owned by the builder above, which outlives a view switch. */
+  onUpdateBlockById: BlockWriteById;
 }
 
-export function OutputBuilder({ schema, onSchemaChange }: OutputBuilderProps) {
+export function OutputBuilder({
+  schema,
+  onSchemaChange,
+  onUpdateBlockById,
+}: OutputBuilderProps) {
   const [selectedViewId, setSelectedViewId] = useState<string | null>(
     () => schema.outputViews?.[0]?.id ?? null,
   );
@@ -367,6 +374,7 @@ export function OutputBuilder({ schema, onSchemaChange }: OutputBuilderProps) {
     };
     const handleDisplayUpdate = (updates: Partial<DisplayBlock>) =>
       updateBlockAtIndex(index, updates);
+    const updateCurrent = addressedWrite(block, onUpdateBlockById);
 
     return (
       <div key={key} className="relative">
@@ -385,6 +393,7 @@ export function OutputBuilder({ schema, onSchemaChange }: OutputBuilderProps) {
               const displayBlock = block as DisplayBlock;
               const sharedProps = {
                 onUpdate: handleDisplayUpdate,
+                updateCurrent,
                 onRemove: () => removeBlockAtIndex(index),
                 previousFields: outputFields,
                 outputBlocks,
