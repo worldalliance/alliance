@@ -45,7 +45,7 @@ function MilestoneTrack({
     >
       {milestones.map((milestone, i) => (
         <div key={milestone.members} className="flex flex-col gap-1 md:gap-1.5">
-          <p className="text-sm text-white tabular-nums md:text-right md:text-base">
+          <p className="text-right text-sm text-white tabular-nums md:text-base">
             {milestone.members.toLocaleString("en-US")}
             {showUnit && i === 0 && " members"}
           </p>

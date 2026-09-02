@@ -103,7 +103,7 @@ export const partnerTasks: PartnerTask[] = [
   },
 ];
 
-export const PARTNER_FORM_TITLE = "Sign up as a potential outreach partner";
+export const PARTNER_FORM_TITLE = "Propose a partnership";
 export const PARTNER_FORM_BODY =
   "Tell us what you are working on, what kind of action would help you, and how you could help people discover the Alliance.";
 
