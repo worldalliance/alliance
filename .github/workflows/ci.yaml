@@ -8,6 +8,9 @@ jobs:
   format-check:
     uses: ./.github/workflows/format-check.yaml
 
+  provenance-lint:
+    uses: ./.github/workflows/provenance-lint.yaml
+
   typecheck:
     strategy:
       fail-fast: false
@@ -40,6 +43,7 @@ jobs:
             apps/frontend,
             apps/admin,
             apps/mobile,
+            scripts,
           ]
     uses: ./.github/workflows/test-unit.yaml
     with:

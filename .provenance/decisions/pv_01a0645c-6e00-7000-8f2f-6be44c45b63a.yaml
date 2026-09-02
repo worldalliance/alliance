@@ -1,0 +1,10 @@
+id: pv_01a0645c-6e00-7000-8f2f-6be44c45b63a
+kind: decision
+created_at: 2026-09-02T23:02:54.208Z
+change: pv_01a0641a-a23f-7000-9b3a-698fcac3e98d
+summary: Scope human evidence into prov context through the decisions it produced
+authority: delegated-discretion
+applies_to:
+  - provenance
+supersedes: []
+detail: Applies now was decisions only, so a requirement reached the answer solely through blame and dropped out once those lines were rewritten. Human records still carry no paths of their own, so they stay append-only and never need repointing when code moves.

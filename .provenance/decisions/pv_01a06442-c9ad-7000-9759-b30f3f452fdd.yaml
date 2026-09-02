@@ -1,0 +1,10 @@
+id: pv_01a06442-c9ad-7000-9759-b30f3f452fdd
+kind: decision
+created_at: 2026-09-02T22:34:53.741Z
+change: pv_01a0641a-a23f-7000-9b3a-698fcac3e98d
+summary: A record supersedes its own kind only, enforced when written and again by prov lint
+authority: agent-judgment
+applies_to:
+  - provenance
+supersedes: []
+detail: The two agent kinds count as one, so a decision may replace a reconstruction. Nothing may supersede human evidence, which is the boundary the store exists to hold.

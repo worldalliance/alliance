@@ -1,0 +1,52 @@
+# Component -> the paths it currently occupies. Agent-owned and mutable: when
+# code moves, repoint the glob here rather than rewriting historical records.
+server:
+  description: NestJS backend, including migrations and e2e tests
+  paths:
+    - server/**
+frontend:
+  description: Public React web app
+  paths:
+    - apps/frontend/**
+admin:
+  description: Admin panel
+  paths:
+    - apps/admin/**
+mobile:
+  description: React Native app
+  paths:
+    - apps/mobile/**
+sharedweb:
+  description: Shared by admin + frontend
+  paths:
+    - sharedweb/**
+shared:
+  description: Shared by admin + frontend + mobile, including the generated API client
+  paths:
+    - shared/**
+common:
+  description: Shared by every app and the server
+  paths:
+    - common/**
+tooling:
+  description: Repo scripts, CI, deploy, terraform
+  paths:
+    - scripts/**
+    - deploy/**
+    - terraform/**
+    - .github/**
+    - citesting/**
+agent-docs:
+  description: AGENTS.md, skills, and the other docs agents read
+  paths:
+    - AGENTS.md
+    - CLAUDE.md
+    - "**/AGENTS.md"
+    - skills/**
+    - docs/**
+provenance:
+  description: The provenance store and its CLI
+  paths:
+    - .provenance/**
+    - scripts/prov.ts
+    - scripts/lib/provenance*.ts

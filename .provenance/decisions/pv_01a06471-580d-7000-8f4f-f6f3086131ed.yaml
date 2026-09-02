@@ -1,0 +1,10 @@
+id: pv_01a06471-580d-7000-8f4f-f6f3086131ed
+kind: decision
+created_at: 2026-09-02T23:25:44.845Z
+change: pv_01a0641a-a23f-7000-9b3a-698fcac3e98d
+summary: Refuse a quote carrying fewer than two words of its own, so an incomplete approval vocabulary fails closed
+authority: agent-judgment
+applies_to:
+  - provenance
+supersedes: []
+detail: "No word list separates approval from statement. Approval is short, so a floor catches the phrasings the vocabulary has never heard of. Human records are append-only: a refused requirement costs one retry, a recorded approval stands as a requirement forever."

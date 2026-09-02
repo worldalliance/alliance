@@ -6,14 +6,15 @@
 # CI runs each package back through this script, so the skip rule below is the
 # same one locally and in CI. PACKAGES mirrors the test-unit matrices in
 # .github/workflows/ci.yaml and deploy.yaml, so a new workspace with tests goes
-# in all three. The typecheck matrices in those two files are a superset and can
-# list packages that are absent here; citesting is typechecked but has no tests.
+# in all three. The typecheck matrices in those two files list workspaces
+# instead: citesting is typechecked but has no tests, and scripts has tests but
+# is typechecked inside common, whose config pulls it in.
 #
 #   scripts/test-all.sh              # every package below
 #   scripts/test-all.sh apps/admin   # only the named packages
 set -u
 
-PACKAGES=(server common shared sharedweb apps/frontend apps/admin apps/mobile)
+PACKAGES=(server common shared sharedweb apps/frontend apps/admin apps/mobile scripts)
 
 script_dir="$(cd "$(dirname "$0")" && pwd)" || exit 1
 cd "$script_dir/.." || exit 1

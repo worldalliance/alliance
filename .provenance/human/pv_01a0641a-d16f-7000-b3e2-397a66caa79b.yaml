@@ -1,0 +1,29 @@
+id: pv_01a0641a-d16f-7000-b3e2-397a66caa79b
+kind: human
+created_at: 2026-09-02T21:51:14.287Z
+change: pv_01a0641a-a23f-7000-9b3a-698fcac3e98d
+source: conversation
+supersedes: []
+quote: |-
+  i'd like agents working on my repo to have a general idea of: "this is what users have explicitly asked for" (human info) and "this is what an agent has decided" (agent info). we can call it a "provenance" system
+
+  if a question was answered with "do whatever you prescribe" or "go with your recommendation", don't add it to the "human info" doc. it should have explicitly been typed out by a user. maybe we could keep documentation somewhere?
+
+  could you help me design a system for this? (i assume we can add stuff to AGENTS.md or add a skill, informing the agent of stuff is not really too hard)
+
+  and anything that has been decided by an agent can be rewritten freely by other agents. and the core of what humans have decided can only be "changed" by humans.
+  - it's also good to keep in mind that most to all of the code in the repo will be written by agents, with the decisions having come from a human upstream somehow. this is relevant because humans probably won't actually manually ever touch a "human info" document. (so they can be appended freely by agents if it's quoting or summarizing a human, and they can also be edited by agents if that's what the human told it to do)
+
+  also, what should i do about all the existing code? it will be unlabeled, because some of it is important and some of it is not
+
+  one question is, how does the agent access the relevant provenance for a given piece of code or decision?
+
+  the entire repo is ~10mb of code (not counting node_modules and generated files), so it shouldn't all go in a single doc probably? the repo is quite large (but not completely unmanageable), so not sure if we should put everything alongside the files or in its own directory
+
+  a lot of these are also relevant for temporal locality as well, e.g. if i said "there's this bug, xyz, fix that" and then the agent makes a ton of code changes. and then later a reviewer agent reads the code, they don't know exactly what i said and what was decided by the agent either. so it would be good if the reviewer had access to "ok the human explicitly said this, all the other things were decided by the implementer agent"
+
+  all the provenances can live in a .provenance/ directory
+
+  one question we should also ask is what happens when files are deleted, moved, or edited? the editing agent would also probably need to re-point the appropriate provenances
+
+  we have worktrees, so the provenances probably shouldn't be sequential, lest we have to deal with merge conflicts. maybe we add a script that generates them based on the unix timestamp along with a randomly generated prefix? (not sure about this though, i feel like this is a common systems design issue? could also just be fully randomly generated what do systems normally do?)

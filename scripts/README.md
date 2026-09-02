@@ -27,6 +27,9 @@ Drops and recreates the local db named by `server/.env`, then restores the dump.
 
 ## Other
 
+`prov.ts <start|human|decide|note|context|review|show|lint>`
+The provenance store: human evidence, agent decisions, and the change episodes tying both to commits. Run it as `bun run prov`. See `.provenance/SPEC.md`.
+
 `test-all.sh [package...]`
 Runs unit tests from inside each workspace so its `bunfig.toml` applies. No arguments runs every package. Prefer `bun run test`, which calls this; CI calls it per package.
 

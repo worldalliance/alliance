@@ -1,0 +1,9 @@
+id: pv_01a0641b-138d-7000-aef9-7f92291f52df
+kind: decision
+created_at: 2026-09-02T21:51:31.213Z
+change: pv_01a0641a-a23f-7000-9b3a-698fcac3e98d
+summary: "Split provenance into three record kinds: human evidence (verbatim quote), agent decision, and a change episode each of them names"
+authority: delegated-discretion
+applies_to:
+  - provenance
+supersedes: []

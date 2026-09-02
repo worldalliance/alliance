@@ -1,0 +1,27 @@
+name: Provenance Lint
+
+on:
+  workflow_call:
+
+jobs:
+  provenance-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        # The append-only check counts the commits that touched each file in
+        # .provenance/human, which a shallow clone reports as one whatever
+        # happened.
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint Provenance Store
+        run: bun run prov lint

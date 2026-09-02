@@ -23,6 +23,10 @@ apps/mobile/android
 .react-router
 expo-env.d.ts
 
+# Append-only and machine-written: reformatting one fails `prov lint`, and the
+# record cannot be edited back
+.provenance/human
+
 # Consumed verbatim by external tooling, or a data blob with no reason to reflow
 apps/mobile/google-services-dev.json
 apps/*/public/.well-known
