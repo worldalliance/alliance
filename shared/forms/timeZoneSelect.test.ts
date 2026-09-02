@@ -232,6 +232,7 @@ describe("a runtime that rejects every zone", () => {
         {
           tz: "Not/AZone",
           labelLeft: "Nowhere — AZone",
+          labelSub: null,
           searchText: "nowhere — azone not/azone",
           offsetMins: null,
           timeLabel: null,
@@ -542,6 +543,70 @@ describe("searching the zone list", () => {
 
   it("still finds a zone by the name Intl gives it", () => {
     expect(zonesMatching("india standard")).toEqual(["Asia/Kolkata"]);
+  });
+
+  const labelSubOf = (tz: string) => {
+    const { result } = renderHook(() => useTimeZoneSelect({}));
+    return result.current.items.find((i) => i.tz === tz)?.labelSub;
+  };
+
+  it("carries the label it matched on for the row to show", () => {
+    expect(labelSubOf("Asia/Kolkata")).toBe("India, Sri Lanka Time");
+  });
+
+  it("carries nothing where Intl's name is the curated one", () => {
+    expect(labelSubOf("America/Chicago")).toBeNull();
+  });
+
+  it("carries nothing where the row already names everywhere it names", () => {
+    expect(labelSubOf("Asia/Dubai")).toBeNull();
+    expect(labelSubOf("Europe/Moscow")).toBeNull();
+    expect(labelSubOf("Australia/Perth")).toBeNull();
+    expect(labelSubOf("Europe/Istanbul")).toBeNull();
+  });
+
+  // Accents fold here as they do in the label, or a row reading "Türkiye" would
+  // pass a sweep looking for "Turkey".
+  const fold = (text: string) =>
+    text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+
+  it("carries nothing any row already says", () => {
+    const { result } = renderHook(() => useTimeZoneSelect({}));
+
+    const saidTwice: string[] = [];
+    for (const { tz, labelLeft, labelSub } of result.current.items) {
+      if (!labelSub) continue;
+      const shown = fold(labelLeft);
+      const words = fold(labelSub).match(/\p{L}+/gu) ?? [];
+      if (words.every((w) => w === "time" || shown.includes(w.slice(0, 4)))) {
+        saidTwice.push(tz);
+      }
+    }
+
+    expect(saidTwice).toEqual([]);
+  });
+
+  it("carries every place its row leaves unnamed", () => {
+    const { result } = renderHook(() => useTimeZoneSelect({}));
+    const curated = new Map(TZ_OPTIONS.map(({ tz, label }) => [tz, label]));
+
+    const leftOut: string[] = [];
+    for (const { tz, labelLeft, labelSub } of result.current.items) {
+      if (labelSub) continue;
+      const shown = fold(labelLeft);
+      const words = fold(curated.get(tz) ?? "").match(/\p{L}+/gu) ?? [];
+      if (words.some((w) => w !== "time" && !shown.includes(w.slice(0, 4)))) {
+        leftOut.push(tz);
+      }
+    }
+
+    expect(leftOut).toEqual([]);
+  });
+
+  it("carries nothing on a runtime with no name for the zone", () => {
+    rejecting("longGeneric", () => {
+      expect(labelSubOf("Asia/Kolkata")).toBeNull();
+    });
   });
 });
 

@@ -46,6 +46,12 @@ export default function TimeZoneSelect({
     disabled,
   });
 
+  // The trigger has one line under the name, so the label shares it with the
+  // clock.
+  const underName = [selected.labelSub, selected.timeLabel ?? NO_TIME_LABEL]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <View>
       <TouchableOpacity
@@ -61,8 +67,8 @@ export default function TimeZoneSelect({
           <Text className="text-base text-zinc-900" numberOfLines={1}>
             {selected.labelLeft || placeholder}
           </Text>
-          <Text className="text-xs text-zinc-500 mt-0.5">
-            {selected.timeLabel ?? NO_TIME_LABEL}
+          <Text className="text-xs text-zinc-500 mt-0.5" numberOfLines={1}>
+            {underName}
           </Text>
         </View>
         <ChevronDown size={18} color={colors.text.icon} />
@@ -132,9 +138,16 @@ export default function TimeZoneSelect({
                       : "border-zinc-200 bg-white",
                   )}
                 >
-                  <Text className="text-base text-zinc-900">
-                    {item.labelLeft}
-                  </Text>
+                  <View className="flex-1 pr-3">
+                    <Text className="text-base text-zinc-900">
+                      {item.labelLeft}
+                    </Text>
+                    {item.labelSub ? (
+                      <Text className="text-xs text-zinc-500">
+                        {item.labelSub}
+                      </Text>
+                    ) : null}
+                  </View>
                   <Text className="text-xs text-zinc-600 mt-1 shrink-0">
                     {item.timeLabel ?? NO_TIME_LABEL}
                   </Text>

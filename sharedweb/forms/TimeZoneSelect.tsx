@@ -103,6 +103,11 @@ export default function TimeZoneSelectPretty({
               <div className="truncate text-zinc-900">
                 {selected.labelLeft || placeholder}
               </div>
+              {selected.labelSub && (
+                <div className="truncate text-[13px] text-zinc-500">
+                  {selected.labelSub}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <div className="text-sm">
@@ -169,8 +174,15 @@ export default function TimeZoneSelectPretty({
                           : "",
                       ].join(" ")}
                     >
-                      <div className="truncate text-zinc-900">
-                        {item.labelLeft}
+                      <div className="min-w-0">
+                        <div className="truncate text-zinc-900">
+                          {item.labelLeft}
+                        </div>
+                        {item.labelSub && (
+                          <div className="truncate text-[13px] text-zinc-500">
+                            {item.labelSub}
+                          </div>
+                        )}
                       </div>
                       <div className="shrink-0 flex items-center gap-2">
                         <div className="text-[14px] tabular-nums text-zinc-800">
