@@ -13,12 +13,9 @@ import {
 import { Server, Socket } from "socket.io";
 import { Repository } from "typeorm";
 import type { JwtPayload } from "../auth/guards/jwtreq";
+import { InviteFeedEvents } from "../invite-feed.events";
 import { extractTokenFromSocket } from "../messaging/gateway.utils";
 import { User } from "../user/entities/user.entity";
-import {
-  type OnetimeInviteCreatedPayload,
-  UserEvents,
-} from "../user/user.events";
 import type { EventLogDto } from "./dto/event-log.dto";
 import { EventLogEvents } from "./eventlog.events";
 
@@ -48,8 +45,8 @@ export class EventLogGateway
       this.handleEventLogCreated.bind(this),
     );
     this.eventEmitter.on(
-      UserEvents.OnetimeInviteCreated,
-      this.handleOnetimeInviteCreated.bind(this),
+      InviteFeedEvents.Created,
+      this.handleInviteCreated.bind(this),
     );
   }
 
@@ -106,7 +103,7 @@ export class EventLogGateway
     this.logger.log(`Broadcast new event log: ${eventLog.event}`);
   }
 
-  private handleOnetimeInviteCreated(payload: OnetimeInviteCreatedPayload) {
-    this.server.to("event-log-feed").emit("onetime-invite-created", payload);
+  private handleInviteCreated() {
+    this.server.to("event-log-feed").emit("invite-created");
   }
 }

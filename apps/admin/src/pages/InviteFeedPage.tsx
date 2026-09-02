@@ -1,5 +1,11 @@
-import { userGetOnetimeInvitesAdmin } from "@alliance/shared/client";
-import type { OnetimeInviteDto } from "@alliance/shared/client/types.gen";
+import {
+  shareUrlsFindInviteFeedAdmin,
+  userGetOnetimeInvitesAdmin,
+} from "@alliance/shared/client";
+import type {
+  OnetimeInviteDto,
+  ReusableInviteFeedItemDto,
+} from "@alliance/shared/client/types.gen";
 import { useQuery } from "@tanstack/react-query";
 import { Settings2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -11,6 +17,20 @@ const STORAGE_KEY = "alliance-admin-invite-feed-settings";
 type FeedSettings = {
   numbered: boolean;
   startAt: string;
+};
+
+enum InviteFeedKind {
+  Alliance = "alliance",
+  Group = "group",
+  MultiUse = "multi-use",
+  MultiUseGroup = "multi-use-group",
+}
+
+type InviteFeedItem = {
+  id: string;
+  createdAt: string;
+  invitingUserDisplayName: string;
+  kind: InviteFeedKind;
 };
 
 function toLocalInputValue(date: Date): string {
@@ -56,7 +76,9 @@ function isCreatedInvite(invite: OnetimeInviteDto): boolean {
   return invite.status === "link_unused" || invite.status === "link_used";
 }
 
-async function getInvitesSince(startAt: string): Promise<OnetimeInviteDto[]> {
+async function getOnetimeInvitesSince(
+  startAt: string,
+): Promise<InviteFeedItem[]> {
   const startTime = new Date(startAt).getTime();
   const invites: OnetimeInviteDto[] = [];
   let page = 1;
@@ -87,12 +109,48 @@ async function getInvitesSince(startAt: string): Promise<OnetimeInviteDto[]> {
     page += 1;
   } while (page <= totalPages);
 
-  return invites;
+  return invites.map((invite) => ({
+    id: `onetime-${invite.id}`,
+    createdAt: invite.createdAt,
+    invitingUserDisplayName: invite.invitingUser?.displayName ?? "Someone",
+    kind: invite.community ? InviteFeedKind.Group : InviteFeedKind.Alliance,
+  }));
 }
 
-function inviteType(invite: OnetimeInviteDto): string {
-  return invite.community ? "group invite" : "Alliance invite";
+function reusableInviteFeedItem(
+  invite: ReusableInviteFeedItemDto,
+): InviteFeedItem {
+  return {
+    id: `reusable-${invite.id}`,
+    createdAt: invite.createdAt,
+    invitingUserDisplayName: invite.invitingUserDisplayName,
+    kind:
+      invite.communityId === null
+        ? InviteFeedKind.MultiUse
+        : InviteFeedKind.MultiUseGroup,
+  };
 }
+
+async function getInvitesSince(startAt: string): Promise<InviteFeedItem[]> {
+  const [onetimeInvites, reusableInvitesResponse] = await Promise.all([
+    getOnetimeInvitesSince(startAt),
+    shareUrlsFindInviteFeedAdmin({
+      query: { startAt: new Date(startAt).toISOString() },
+      throwOnError: true,
+    }),
+  ]);
+  return [
+    ...onetimeInvites,
+    ...reusableInvitesResponse.data.items.map(reusableInviteFeedItem),
+  ];
+}
+
+const INVITE_TYPE_LABEL: Record<InviteFeedKind, string> = {
+  [InviteFeedKind.Alliance]: "Alliance invite",
+  [InviteFeedKind.Group]: "group invite",
+  [InviteFeedKind.MultiUse]: "multi-use invite",
+  [InviteFeedKind.MultiUseGroup]: "multi-use group invite",
+};
 
 function formatStartTime(startAt: string): string {
   return new Intl.DateTimeFormat(undefined, {
@@ -150,7 +208,7 @@ export default function InviteFeedPage() {
         const dateDifference =
           new Date(right.createdAt).getTime() -
           new Date(left.createdAt).getTime();
-        return dateDifference || right.id - left.id;
+        return dateDifference || right.id.localeCompare(left.id);
       }),
     [invites],
   );
@@ -237,7 +295,7 @@ export default function InviteFeedPage() {
           </section>
         )}
 
-        <section aria-live="polite" className="pt-8">
+        <section aria-live="polite" className={settingsOpen ? "pt-6" : ""}>
           {isError ? (
             <div className="rounded-lg border border-[#a85b45]/30 bg-white px-5 py-8 text-center">
               <p>Could not load the invite feed.</p>
@@ -263,7 +321,7 @@ export default function InviteFeedPage() {
               </p>
             </div>
           ) : (
-            <ol className="divide-y divide-[#081e40]/12 border-y border-[#081e40]/15">
+            <ol className="divide-y divide-[#081e40]/12 border-b border-[#081e40]/15">
               {sortedInvites.map((invite, index) => (
                 <li
                   key={invite.id}
@@ -278,10 +336,12 @@ export default function InviteFeedPage() {
                     className={`font-[Newsreader,Georgia,serif] text-2xl leading-tight text-[#081e40] sm:text-3xl ${settings.numbered ? "" : "col-start-1"}`}
                   >
                     <span className="font-semibold">
-                      {invite.invitingUser?.displayName ?? "Someone"}
+                      {invite.invitingUserDisplayName}
                     </span>{" "}
                     created a{" "}
-                    <em className="font-normal">{inviteType(invite)}</em>
+                    <em className="font-normal">
+                      {INVITE_TYPE_LABEL[invite.kind]}
+                    </em>
                   </p>
                   <time
                     dateTime={invite.createdAt}

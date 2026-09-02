@@ -1373,6 +1373,17 @@ export type CreateInviteDuplicateDto = {
     communityId: number | null;
 };
 
+export type ReusableInviteFeedItemDto = {
+    id: string;
+    createdAt: string;
+    invitingUserDisplayName: string;
+    communityId: number | null;
+};
+
+export type ReusableInviteFeedDto = {
+    items: Array<ReusableInviteFeedItemDto>;
+};
+
 export type UpdateInviteDto = {
     /**
      * Omit to leave the label as it is; send an empty string to clear it.
@@ -1829,14 +1840,14 @@ export type FormResponseOutputDto = {
     answers: {
         [key: string]: unknown;
     };
-    visibilityValidatorResults: {
-        [key: string]: unknown;
-    };
     publicAnswers: {
         [key: string]: unknown;
     };
     deviceType?: string;
     schemaSnapshot: {
+        [key: string]: unknown;
+    };
+    visibilityValidatorResults: {
         [key: string]: unknown;
     };
 };
@@ -3432,9 +3443,6 @@ export type FormResponseDto = {
     answers: {
         [key: string]: unknown;
     };
-    visibilityValidatorResults: {
-        [key: string]: unknown;
-    };
     publicAnswers: {
         [key: string]: unknown;
     };
@@ -3445,6 +3453,9 @@ export type FormResponseDto = {
     formSnapshotId: number;
     sid?: string;
     schemaSnapshot: {
+        [key: string]: unknown;
+    };
+    visibilityValidatorResults: {
         [key: string]: unknown;
     };
     user?: UserDto;
@@ -6085,6 +6096,30 @@ export type ShareUrlsCreateInviteDuplicateResponses = {
 };
 
 export type ShareUrlsCreateInviteDuplicateResponse = ShareUrlsCreateInviteDuplicateResponses[keyof ShareUrlsCreateInviteDuplicateResponses];
+
+export type ShareUrlsFindInviteFeedAdminData = {
+    body?: never;
+    path?: never;
+    query: {
+        startAt: string;
+    };
+    url: '/share-urls/invite-feed';
+};
+
+export type ShareUrlsFindInviteFeedAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ShareUrlsFindInviteFeedAdminError = ShareUrlsFindInviteFeedAdminErrors[keyof ShareUrlsFindInviteFeedAdminErrors];
+
+export type ShareUrlsFindInviteFeedAdminResponses = {
+    200: ReusableInviteFeedDto;
+};
+
+export type ShareUrlsFindInviteFeedAdminResponse = ShareUrlsFindInviteFeedAdminResponses[keyof ShareUrlsFindInviteFeedAdminResponses];
 
 export type ShareUrlsDeleteMyInviteData = {
     body?: never;

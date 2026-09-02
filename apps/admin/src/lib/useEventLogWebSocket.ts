@@ -44,7 +44,7 @@ export const useEventLogWebSocket = () => {
       onNewEventRef.current?.(data);
     });
 
-    socket.on("onetime-invite-created", () => {
+    socket.on("invite-created", () => {
       onInviteCreatedRef.current?.();
     });
 

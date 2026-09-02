@@ -5,9 +5,11 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Action } from "src/actions/entities/action.entity";
 import { Community } from "src/community/entities/community.entity";
+import { InviteFeedEvents } from "src/invite-feed.events";
 import { generateCIDForShareUrl } from "src/notifs/notif-utils";
 import { actionUrl, signupUrl, withRef, withSid } from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
@@ -16,6 +18,7 @@ import {
   type FindOptionsWhere,
   In,
   IsNull,
+  MoreThanOrEqual,
   Not,
   QueryFailedError,
   Repository,
@@ -29,7 +32,11 @@ import {
   StoredInviteAssignmentKind,
 } from "./invite-assignment";
 import { shareUrlPublicUrl } from "./share-url-public-url";
-import type { ShareUrlMine, ShareUrlWithSignupCount } from "./share-url-views";
+import type {
+  ReusableInviteFeedItem,
+  ShareUrlMine,
+  ShareUrlWithSignupCount,
+} from "./share-url-views";
 
 const NOT_FOUND_MESSAGE: Record<ShareUrlKind, string> = {
   [ShareUrlKind.Action]: "specified action not found",
@@ -140,6 +147,7 @@ export class ShareUrlsService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Community)
     private readonly communityRepository: Repository<Community>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async getShareLink(params: {
@@ -210,13 +218,18 @@ export class ShareUrlsService {
     label: string | null,
     inviteAssignment?: StoredInviteAssignment,
   ): Promise<ShareUrl> {
-    return this.buildAndSaveRow(this.shareUrlRepository.manager, {
-      kind: ShareUrlKind.Invite,
-      owner,
-      duplicate: true,
-      label,
-      inviteAssignment,
-    });
+    const shareUrl = await this.buildAndSaveRow(
+      this.shareUrlRepository.manager,
+      {
+        kind: ShareUrlKind.Invite,
+        owner,
+        duplicate: true,
+        label,
+        inviteAssignment,
+      },
+    );
+    this.eventEmitter.emit(InviteFeedEvents.Created);
+    return shareUrl;
   }
 
   async getOrCreateForInvite(owner: ShareUrlOwner): Promise<ShareUrl> {
@@ -342,6 +355,36 @@ export class ShareUrlsService {
       order: { duplicate: "ASC", createdAt: "DESC" },
     });
     return this.withInviteDestinations(shareUrls);
+  }
+
+  async findReusableInviteFeed(
+    startAt: Date,
+  ): Promise<ReusableInviteFeedItem[]> {
+    const shareUrls = await this.shareUrlRepository.find({
+      where: {
+        kind: ShareUrlKind.Invite,
+        duplicate: true,
+        userId: Not(IsNull()),
+        createdAt: MoreThanOrEqual(startAt),
+      },
+      relations: { user: true },
+      order: { createdAt: "DESC", id: "DESC" },
+    });
+
+    return shareUrls.flatMap((shareUrl) => {
+      if (!shareUrl.user) return [];
+      return {
+        id: shareUrl.id,
+        createdAt: shareUrl.createdAt,
+        invitingUserDisplayName: shareUrl.user.anonymous
+          ? "Someone"
+          : shareUrl.user.name,
+        communityId:
+          shareUrl.inviteAssignmentKind === StoredInviteAssignmentKind.Community
+            ? shareUrl.inviteAssignmentCommunityId
+            : null,
+      };
+    });
   }
 
   private async assertLeadsCommunity(

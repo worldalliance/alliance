@@ -29,6 +29,7 @@ import { EventLogService } from "src/eventlog/eventlog.service";
 import { escapeSlackText } from "src/eventlog/slack-format";
 import { City } from "src/geo/city.entity";
 import { getImageSource, ImagesService } from "src/images/images.service";
+import { InviteFeedEvents } from "src/invite-feed.events";
 import { MailService } from "src/mail/mail.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
@@ -124,11 +125,7 @@ import {
   sqlUserHasActiveContractAt,
   User,
 } from "./entities/user.entity";
-import {
-  type FriendsAcceptedPayload,
-  type OnetimeInviteCreatedPayload,
-  UserEvents,
-} from "./user.events";
+import { type FriendsAcceptedPayload, UserEvents } from "./user.events";
 import { referralLabel } from "./user.utils";
 
 export interface PWResetJwtPayload {
@@ -1755,10 +1752,7 @@ export class UserService {
       status: OnetimeInviteStatus.LINK_UNUSED,
     });
     const savedInvite = await this.onetimeInviteRepository.save(invite);
-    const payload = {
-      inviteId: savedInvite.id,
-    } satisfies OnetimeInviteCreatedPayload;
-    this.eventEmitter.emit(UserEvents.OnetimeInviteCreated, payload);
+    this.eventEmitter.emit(InviteFeedEvents.Created);
     return savedInvite;
   }
 
