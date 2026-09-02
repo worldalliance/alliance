@@ -1,3 +1,4 @@
+import { R } from "@alliance/common/result";
 import {
   CommentDto,
   CommentParentObject,
@@ -42,8 +43,16 @@ export function useLoadComments({
   );
 
   const fetchComments = useCallback(async () => {
-    const { data } = await THREAD_FETCHERS[type](objectId.toString());
-    setThread(data ?? null);
+    // The generated client leaves its fetch call unguarded, so a request that
+    // never reaches the server rejects rather than answering with an error.
+    const response = await R.fromPromise(
+      THREAD_FETCHERS[type](objectId.toString()),
+    );
+    if (!response.ok) {
+      console.error("Failed to load comments:", response.error);
+      return;
+    }
+    setThread(response.value.data ?? null);
   }, [objectId, type]);
 
   useEffect(() => {

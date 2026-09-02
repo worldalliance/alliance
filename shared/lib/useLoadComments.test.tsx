@@ -1,12 +1,14 @@
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { CommentDto, CommentParentObject } from "../client";
 
 const requests: { endpoint: string; id: string }[] = [];
 let served: CommentDto[] = [];
+let unreachable = false;
 
 const record =
   (endpoint: string) => async (options: { path: { id: string } }) => {
     requests.push({ endpoint, id: options.path.id });
+    if (unreachable) throw new TypeError("Failed to fetch");
     return { data: served };
   };
 
@@ -48,6 +50,7 @@ const comment = (id: number): CommentDto => ({
 afterEach(() => {
   requests.length = 0;
   served = [];
+  unreachable = false;
   cleanup();
 });
 
@@ -112,4 +115,22 @@ it("keeps one caller's thread out of another's", async () => {
     expect(card.result.current.comments?.map((c) => c.id)).toEqual([3, 9]),
   );
   expect(screen.result.current.comments).toHaveLength(2);
+});
+
+it("keeps the thread when a refetch never reaches the server", async () => {
+  const initialComments = [comment(3)];
+  const { result } = renderHook(() =>
+    useLoadComments({ objectId: 7, type: "post", initialComments }),
+  );
+  await waitFor(() => expect(result.current.comments).toHaveLength(1));
+
+  unreachable = true;
+  const logged = jest.spyOn(console, "error").mockImplementation(() => {});
+  await act(async () => {
+    await result.current.fetchComments();
+  });
+
+  expect(result.current.comments).toHaveLength(1);
+  expect(logged).toHaveBeenCalledWith(expect.any(String), expect.any(Error));
+  logged.mockRestore();
 });
