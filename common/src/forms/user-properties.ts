@@ -15,6 +15,7 @@ export enum UserValueProperty {
   StaffTitle = "staffTitle",
   SwitchedDomainAt = "switchedDomainAt",
   ReferredById = "referredById",
+  ShareInfoPublicly = "shareInfoPublicly",
 }
 
 export const USER_VALUE_PROPERTY_LABELS = {
@@ -32,6 +33,7 @@ export const USER_VALUE_PROPERTY_LABELS = {
   [UserValueProperty.StaffTitle]: "Staff title",
   [UserValueProperty.SwitchedDomainAt]: "Switched domain at",
   [UserValueProperty.ReferredById]: "Referred by",
+  [UserValueProperty.ShareInfoPublicly]: "Public profile",
 } as const satisfies Record<UserValueProperty, string>;
 
 export const USER_VALUE_PROPERTIES = Object.values(
@@ -53,6 +55,7 @@ export type UserValuePropertyBag = {
   staffTitle: string | null | undefined;
   switchedDomainAt: Date | string | null | undefined;
   referredById: number | null | undefined;
+  shareInfoPublicly: boolean | null | undefined;
 };
 
 type _bagKeys = Assert<
@@ -86,6 +89,7 @@ const EMPTY_PRESENCE: UserPropertyPresence = {
   [UserValueProperty.StaffTitle]: false,
   [UserValueProperty.SwitchedDomainAt]: false,
   [UserValueProperty.ReferredById]: false,
+  [UserValueProperty.ShareInfoPublicly]: false,
 };
 
 export function emptyUserPropertyPresence(): UserPropertyPresence {
@@ -113,5 +117,6 @@ export function userValuePropertyPresence(
     [UserValueProperty.StaffTitle]: isPresent(bag.staffTitle),
     [UserValueProperty.SwitchedDomainAt]: isPresent(bag.switchedDomainAt),
     [UserValueProperty.ReferredById]: bag.referredById != null,
+    [UserValueProperty.ShareInfoPublicly]: bag.shareInfoPublicly === true,
   };
 }

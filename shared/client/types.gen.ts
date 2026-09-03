@@ -935,6 +935,7 @@ export type UserPropertyPresenceDto = {
     staffTitle: boolean;
     switchedDomainAt: boolean;
     referredById: boolean;
+    shareInfoPublicly: boolean;
 };
 
 export type MyVisibilityContextDto = {

@@ -1134,6 +1134,7 @@ export class UserService {
       staffTitle: user.staffTitle,
       switchedDomainAt: user.switchedDomainAt,
       referredById: user.referredById,
+      shareInfoPublicly: user.shareInfoPublicly,
     });
   }
 

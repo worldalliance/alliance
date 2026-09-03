@@ -19,6 +19,7 @@ const emptyBag = {
   staffTitle: null,
   switchedDomainAt: null,
   referredById: null,
+  shareInfoPublicly: null,
 };
 
 describe("userValuePropertyPresence", () => {
@@ -55,6 +56,18 @@ describe("userValuePropertyPresence", () => {
     expect(
       userValuePropertyPresence({ ...emptyBag, phoneNumber: "555" })
         .phoneNumber,
+    ).toBe(true);
+  });
+
+  it("treats shareInfoPublicly as set only when it is true", () => {
+    expect(userValuePropertyPresence(emptyBag).shareInfoPublicly).toBe(false);
+    expect(
+      userValuePropertyPresence({ ...emptyBag, shareInfoPublicly: false })
+        .shareInfoPublicly,
+    ).toBe(false);
+    expect(
+      userValuePropertyPresence({ ...emptyBag, shareInfoPublicly: true })
+        .shareInfoPublicly,
     ).toBe(true);
   });
 

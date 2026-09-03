@@ -724,7 +724,7 @@ export class NMembersResponseDto {
   }
 }
 
-export class UserPropertyPresenceDto {
+export class UserPropertyPresenceDto implements UserPropertyPresence {
   @ApiProperty() name: boolean;
   @ApiProperty() email: boolean;
   @ApiProperty() phoneNumber: boolean;
@@ -739,6 +739,7 @@ export class UserPropertyPresenceDto {
   @ApiProperty() staffTitle: boolean;
   @ApiProperty() switchedDomainAt: boolean;
   @ApiProperty() referredById: boolean;
+  @ApiProperty() shareInfoPublicly: boolean;
 
   constructor(input: UserPropertyPresence) {
     this.name = input.name;
@@ -755,6 +756,7 @@ export class UserPropertyPresenceDto {
     this.staffTitle = input.staffTitle;
     this.switchedDomainAt = input.switchedDomainAt;
     this.referredById = input.referredById;
+    this.shareInfoPublicly = input.shareInfoPublicly;
   }
 }
 
