@@ -2721,6 +2721,61 @@ describe("Tasks (e2e)", () => {
       },
     );
 
+    it("does not extract city when autoExtractUserData is off", async () => {
+      const initialCity = "Existing City";
+      await userRepo.update(ctx.testUserId, {
+        customCityString: initialCity,
+        cityId: null,
+      });
+
+      const schema: FormSchema = {
+        pages: [
+          {
+            id: "page-1",
+            fields: [
+              {
+                id: "city-field",
+                type: "input",
+                kind: "city",
+                label: "City",
+              },
+            ],
+          },
+        ],
+        outputViews: [],
+        aggregateViews: [],
+      };
+
+      const action = await createAction("City No Extraction Action");
+      const formResponse = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "City No Extraction Form", schema })
+        .expect(201);
+      await actionRepo.update(action.id, {
+        taskFormId: formResponse.body.id as number,
+      });
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formResponse.body.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            "city-field": "Should Not Extract",
+          },
+          formSnapshotId: formResponse.body.formSnapshotId as number,
+          actionId: action.id,
+          deviceType: "desktop" as const,
+        })
+        .expect(201);
+
+      const updatedUser = await userRepo.findOne({
+        where: { id: ctx.testUserId },
+      });
+
+      expect(updatedUser?.customCityString).toBe(initialCity);
+    });
+
     it("does not update user fields when form has no auto-extract fields", async () => {
       const initialDescription = "Description that must not change";
       const initialPhone = "+14155559999";

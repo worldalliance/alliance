@@ -1279,6 +1279,7 @@ export function FormBuilder(props: FormBuilderProps) {
           required: false,
           placeholder: "Search for a city",
           minLength: 1,
+          autoExtractUserData: false,
         };
         break;
       case "file":

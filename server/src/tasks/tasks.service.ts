@@ -1162,6 +1162,9 @@ export class TasksService {
       }
       for (const field of flattenPageItems(page.fields)) {
         if (kind === "city" && field.kind === "city") {
+          if (!field.autoExtractUserData) {
+            continue;
+          }
           const answer = answers[field.id];
           if (
             answer &&
@@ -1172,7 +1175,13 @@ export class TasksService {
           ) {
             return (answer as CityFieldValue).id.toString();
           }
-          return answer as string;
+          if (typeof answer === "string") {
+            const value = answer.trim();
+            if (value) {
+              return value;
+            }
+          }
+          continue;
         }
         if (
           field.kind === kind &&
