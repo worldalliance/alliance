@@ -25,13 +25,16 @@ import {
 } from "@alliance/common/forms/visibility";
 import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { R } from "@alliance/common/result";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   tasksGetForm,
+  tasksGetFormDraft,
   tasksGetFormResponsesAdmin,
   tasksGetMyFormResponse,
   tasksRunValidator,
+  tasksSaveFormDraft,
   userMyLocation,
+  type FormDraftDto,
   type UserDto,
 } from "./client";
 import {
@@ -941,4 +944,100 @@ export function useFormValidation(args: {
   }, [schema.pages.length, validatePage]);
 
   return { validatePage, validateAllPages };
+}
+
+const DRAFT_SAVE_DEBOUNCE_MS = 1500;
+
+/**
+ * Keeps a member's in-progress answers on the server so they can finish the
+ * form on another device. The saved draft is not a submission: it creates no
+ * action activity, so nothing about it reaches feeds, counts or reminders.
+ *
+ * The local (localStorage / AsyncStorage) copy stays the fast path. This is
+ * the slow, cross-device one, so a failed save costs the member nothing on
+ * the device they are typing on.
+ */
+export function useFormDraftSync(args: {
+  enabled: boolean;
+  formId: number;
+  actionId: number;
+  formSnapshotId: number | null;
+  answers: Record<string, FormValue>;
+  publicAnswers: Record<string, boolean>;
+  currentPageIndex: number;
+  /** Saving starts once the member has edited something, so opening a form leaves no draft. */
+  edited: boolean;
+}): {
+  /** The stored draft, or null until the fetch lands. */
+  serverDraft: FormDraftDto | null;
+  saveFailed: boolean;
+  /** Call once the form is submitted or withdrawn from: the server deletes the draft, and a queued save would write it back. */
+  stopSyncing: () => void;
+} {
+  const {
+    enabled,
+    formId,
+    actionId,
+    formSnapshotId,
+    answers,
+    publicAnswers,
+    currentPageIndex,
+    edited,
+  } = args;
+  const [serverDraft, setServerDraft] = useState<FormDraftDto | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
+  const stoppedRef = useRef(false);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    tasksGetFormDraft({ path: { id: formId } })
+      .then((response) => {
+        if (cancelled) return;
+        setServerDraft(response.data?.draft ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, formId]);
+
+  useEffect(() => {
+    if (!enabled || !edited || formSnapshotId === null) return;
+    const timer = setTimeout(() => {
+      if (stoppedRef.current) return;
+      tasksSaveFormDraft({
+        path: { id: formId },
+        body: {
+          actionId,
+          formSnapshotId,
+          answers,
+          publicAnswers,
+          currentPageIndex,
+        },
+      })
+        .then((response) => {
+          setSaveFailed(!response.response.ok);
+        })
+        .catch(() => {
+          setSaveFailed(true);
+        });
+    }, DRAFT_SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [
+    enabled,
+    edited,
+    formId,
+    actionId,
+    formSnapshotId,
+    answers,
+    publicAnswers,
+    currentPageIndex,
+  ]);
+
+  const stopSyncing = useCallback(() => {
+    stoppedRef.current = true;
+  }, []);
+
+  return { serverDraft, saveFailed, stopSyncing };
 }

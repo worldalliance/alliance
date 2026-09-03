@@ -3575,6 +3575,36 @@ export type LinkedGuestDraftDto = {
     draft?: FormResponseDto;
 };
 
+export type SaveFormDraftDto = {
+    actionId: number;
+    formSnapshotId: number;
+    answers: {
+        [key: string]: unknown;
+    };
+    publicAnswers?: {
+        [key: string]: unknown;
+    };
+    currentPageIndex?: number;
+};
+
+export type FormDraftDto = {
+    formId: number;
+    actionId: number;
+    formSnapshotId: number;
+    publicAnswers: {
+        [key: string]: unknown;
+    };
+    currentPageIndex: number;
+    updatedAt: string;
+    answers: {
+        [key: string]: unknown;
+    };
+};
+
+export type MaybeFormDraftDto = {
+    draft?: FormDraftDto;
+};
+
 export type FormAggregateViewsDto = {
     aggregateViews: Array<{
         [key: string]: unknown;
@@ -11509,6 +11539,54 @@ export type TasksGetLinkedGuestDraftResponses = {
 };
 
 export type TasksGetLinkedGuestDraftResponse = TasksGetLinkedGuestDraftResponses[keyof TasksGetLinkedGuestDraftResponses];
+
+export type TasksGetFormDraftData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/tasks/formDraft/{id}';
+};
+
+export type TasksGetFormDraftErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type TasksGetFormDraftError = TasksGetFormDraftErrors[keyof TasksGetFormDraftErrors];
+
+export type TasksGetFormDraftResponses = {
+    200: MaybeFormDraftDto;
+};
+
+export type TasksGetFormDraftResponse = TasksGetFormDraftResponses[keyof TasksGetFormDraftResponses];
+
+export type TasksSaveFormDraftData = {
+    body: SaveFormDraftDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/tasks/formDraft/{id}';
+};
+
+export type TasksSaveFormDraftErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type TasksSaveFormDraftError = TasksSaveFormDraftErrors[keyof TasksSaveFormDraftErrors];
+
+export type TasksSaveFormDraftResponses = {
+    200: FormDraftDto;
+};
+
+export type TasksSaveFormDraftResponse = TasksSaveFormDraftResponses[keyof TasksSaveFormDraftResponses];
 
 export type TasksGetFormData = {
     body?: never;

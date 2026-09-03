@@ -169,6 +169,7 @@ const ActionTaskPanelForm = ({
         userId={user?.id}
         user={user}
         loadCurrentUserLocation={!!user && isAuthenticated}
+        syncDraftToServer={isAuthenticated}
         scrollPageTo={scrollPageTo}
         scrollToEnd={scrollToEnd}
         renderFormAsCompleted={disabled}

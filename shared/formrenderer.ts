@@ -464,6 +464,26 @@ export function restorableAnswers(
   );
 }
 
+/**
+ * The public/private choices a renderer should restore: only fields the schema
+ * still publishes, and only genuine booleans.
+ */
+export function restorablePublicAnswers(
+  publicAnswers: Record<string, unknown> | null | undefined,
+  outputFieldIds: Set<string>,
+): Record<string, boolean> {
+  const restorable: Record<string, boolean> = {};
+  if (!publicAnswers) {
+    return restorable;
+  }
+  for (const [fieldId, value] of Object.entries(publicAnswers)) {
+    if (outputFieldIds.has(fieldId) && typeof value === "boolean") {
+      restorable[fieldId] = value;
+    }
+  }
+  return restorable;
+}
+
 export function validateFieldValue(
   field: AnyField,
   fieldValue: FormValue | undefined,

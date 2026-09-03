@@ -3,7 +3,10 @@ import {
   DEVICE_VISIBILITY_TARGETS,
   type DeviceVisibilityTarget,
 } from "@alliance/common/forms/device";
-import { FORM_RESPONSES_BY_FORMS_MAX_BATCH } from "@alliance/common/forms/form-responses";
+import {
+  FORM_RESPONSES_BY_FORMS_MAX_BATCH,
+  type FormAnswers,
+} from "@alliance/common/forms/form-responses";
 import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
 import { MIGRATE_RESPONSE_SNAPSHOTS_MAX_BATCH } from "@alliance/common/forms/snapshot-migration";
 import type { VisibilityValidatorResults } from "@alliance/common/forms/visibility";
@@ -34,6 +37,10 @@ import {
   FormResponse,
   type ParsedFormResponse,
 } from "./entities/formresponse.entity";
+import {
+  FormResponseDraft,
+  type ParsedFormResponseDraft,
+} from "./entities/formresponsedraft.entity";
 import { FormSnapshot } from "./entities/formsnapshot.entity";
 
 export class CreateFormDto extends PickType(Form, ["title"]) {
@@ -269,6 +276,73 @@ export class LinkedGuestDraftDto {
 
   constructor(draft?: ParsedFormResponse | null) {
     this.draft = draft ? new FormResponseDto({ response: draft }) : undefined;
+  }
+}
+
+export class SaveFormDraftDto extends PickType(FormResponseDraft, [
+  "actionId",
+  "formSnapshotId",
+]) {
+  @ApiProperty({ type: Object })
+  @IsDefined()
+  @Type(() => Object)
+  answers: Record<string, unknown>;
+
+  @ApiPropertyOptional({ type: Object })
+  @IsOptional()
+  @Type(() => Object)
+  publicAnswers?: Record<string, boolean>;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  currentPageIndex?: number;
+}
+
+export type FormDraft = Pick<
+  ParsedFormResponseDraft,
+  | "formId"
+  | "actionId"
+  | "formSnapshotId"
+  | "answers"
+  | "publicAnswers"
+  | "currentPageIndex"
+  | "updatedAt"
+>;
+
+export class FormDraftDto extends PickType(FormResponseDraft, [
+  "formId",
+  "actionId",
+  "formSnapshotId",
+  "publicAnswers",
+  "currentPageIndex",
+  "updatedAt",
+]) {
+  @ApiProperty({ type: Object })
+  @IsDefined()
+  @Type(() => Object)
+  answers: FormAnswers;
+
+  constructor(draft: FormDraft) {
+    super();
+    this.formId = draft.formId;
+    this.actionId = draft.actionId;
+    this.formSnapshotId = draft.formSnapshotId;
+    this.answers = draft.answers;
+    this.publicAnswers = draft.publicAnswers;
+    this.currentPageIndex = draft.currentPageIndex;
+    this.updatedAt = draft.updatedAt;
+  }
+}
+
+export class MaybeFormDraftDto {
+  @ApiPropertyOptional({ type: () => FormDraftDto })
+  @IsOptional()
+  @Type(() => FormDraftDto)
+  draft?: FormDraftDto;
+
+  constructor(draft: FormDraft | null) {
+    this.draft = draft ? new FormDraftDto(draft) : undefined;
   }
 }
 

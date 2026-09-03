@@ -218,6 +218,7 @@ const ActionTaskPanelForm = ({
           renderFormAsCompleted={disabled}
           publicAction={publicAction}
           draftFormResponse={draftFormResponse}
+          syncDraftToServer={isAuthenticated && !publicAction}
           phDistinctId={distinctId}
           sessionReplayUrl={sessionReplayUrl}
           scrollContainerRef={scrollContainerRef}

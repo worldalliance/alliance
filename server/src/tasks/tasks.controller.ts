@@ -38,6 +38,7 @@ import {
 import {
   CreateFormDto,
   FormAggregateViewsDto,
+  FormDraftDto,
   FormDto,
   FormResponseCountDto,
   FormResponseDto,
@@ -46,8 +47,10 @@ import {
   FormSummaryDto,
   GuestFormResponseDto,
   LinkedGuestDraftDto,
+  MaybeFormDraftDto,
   MigrateResponseSnapshotsDto,
   MigrateResponseSnapshotsResultDto,
+  SaveFormDraftDto,
   SubmitFollowUpFormDto,
   SubmitFormDto,
   UpdateFormDto,
@@ -242,6 +245,35 @@ export class TasksController {
   ): Promise<LinkedGuestDraftDto> {
     return new LinkedGuestDraftDto(
       await this.tasksService.getLinkedGuestDraftFormResponse(req.user.sub, id),
+    );
+  }
+
+  @Put("formDraft/:id")
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: FormDraftDto })
+  async saveFormDraft(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: SaveFormDraftDto,
+    @Request() req: JwtRequest,
+  ): Promise<FormDraftDto> {
+    return new FormDraftDto(
+      await this.tasksService.saveFormDraft({
+        userId: req.user.sub,
+        formId: id,
+        dto: body,
+      }),
+    );
+  }
+
+  @Get("formDraft/:id")
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: MaybeFormDraftDto })
+  async getFormDraft(
+    @Param("id", ParseIntPipe) id: number,
+    @Request() req: JwtRequest,
+  ): Promise<MaybeFormDraftDto> {
+    return new MaybeFormDraftDto(
+      await this.tasksService.getFormDraft(req.user.sub, id),
     );
   }
 

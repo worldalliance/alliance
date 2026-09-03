@@ -29,6 +29,7 @@ import {
   filterAnswersByFieldIds,
   resolveDisplayBlockForUser,
   restorableAnswers,
+  restorablePublicAnswers,
 } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
 import {
@@ -38,6 +39,7 @@ import {
 import { stripCardIds } from "@alliance/shared/forms/listCards";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import {
+  draftSaveFailed,
   guestReferral,
   outputFieldPublicToggle,
   waitingForImageUpload,
@@ -48,6 +50,7 @@ import { cn } from "@alliance/shared/styles/util";
 import {
   useCurrentUserLocation,
   useFieldErrors,
+  useFormDraftSync,
   useFormSchemaMaps,
   useFormValidation,
   useFormVisibility,
@@ -113,6 +116,8 @@ type FormRendererProps = {
   completedFormResponse?: FormResponseDto;
   /** Prefill form with these answers when there is no locally-persisted draft. Used to restore a guest's answers after signup. */
   draftFormResponse?: FormResponseDto | null;
+  /** Save progress to the member's account as well as this device, so the form can be finished elsewhere. */
+  syncDraftToServer?: boolean;
   fieldLabelRightContent?: Record<string, React.ReactNode>;
   /** When set, previousAnswer blocks fetch this user's responses via the admin all-responses endpoint. */
   adminPreviewUserId?: string | number;
@@ -158,6 +163,7 @@ const FormRenderer = ({
   followUp,
   completedFormResponse,
   draftFormResponse,
+  syncDraftToServer,
   fieldLabelRightContent,
   adminPreviewUserId,
   loadCurrentUserLocation,
@@ -306,6 +312,61 @@ const FormRenderer = ({
     detectDeviceType(),
   );
   const [submitting, setSubmitting] = useState(false);
+
+  // Read during render, before the persist effect below rewrites the entry
+  // with this mount's timestamp. Read any later and the local copy always
+  // looks newer than the stored draft.
+  const localDraftUpdatedAt = useMemo(() => {
+    if (readOnly || typeof window === "undefined" || !persistKey) return 0;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) return 0;
+      const parsed = JSON.parse(raw);
+      return typeof parsed?.updatedAt === "number" ? parsed.updatedAt : 0;
+    } catch {
+      return 0;
+    }
+  }, [storageKey, readOnly, persistKey]);
+
+  const draftSyncEnabled =
+    !!syncDraftToServer && !readOnly && !!persistKey && formSnapshotId !== null;
+
+  const { serverDraft, saveFailed, stopSyncing } = useFormDraftSync({
+    enabled: draftSyncEnabled,
+    formId: id,
+    actionId,
+    formSnapshotId,
+    answers: formData,
+    publicAnswers: resolvedPublicAnswers,
+    currentPageIndex,
+    edited: hasEmittedStart,
+  });
+
+  useEffect(() => {
+    if (!draftSyncEnabled || hasEmittedStart || !serverDraft) return;
+    if (new Date(serverDraft.updatedAt).getTime() <= localDraftUpdatedAt) {
+      return;
+    }
+    const answers = restorableAnswers(
+      serverDraft.answers as Record<string, FormValue>,
+      fieldLookup,
+    );
+    draftLockedRef.current = true;
+    setFormData(applyDefaultValues(answers, defaultValueMap));
+    setPublicAnswerOverrides((prev) => ({
+      ...prev,
+      ...restorablePublicAnswers(serverDraft.publicAnswers, outputFieldIds),
+    }));
+    setCurrentPageIndex(clampPageIndex(serverDraft.currentPageIndex));
+  }, [
+    serverDraft,
+    draftSyncEnabled,
+    hasEmittedStart,
+    localDraftUpdatedAt,
+    fieldLookup,
+    defaultValueMap,
+    outputFieldIds,
+  ]);
 
   // Dropdown state for "decline to participate" options
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -651,7 +712,11 @@ const FormRenderer = ({
     };
 
     try {
-      return await onSubmit(submissionPayload);
+      const submitted = await onSubmit(submissionPayload);
+      if (submitted) {
+        stopSyncing();
+      }
+      return submitted;
     } catch {
       return false;
     } finally {
@@ -678,6 +743,7 @@ const FormRenderer = ({
     validateAllPages,
     validatePage,
     visibilityValidatorResults,
+    stopSyncing,
   ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -710,6 +776,7 @@ const FormRenderer = ({
       publicAnswers: resolvedPublicAnswers,
     };
 
+    stopSyncing();
     onAbandonAction?.({
       ...withdrawalFlagsFromOption(option),
       reason: customReason.trim(),
@@ -754,14 +821,10 @@ const FormRenderer = ({
       setFormData(applyDefaultValues(filtered, defaultValueMap));
     }
     if (parsed?.publicAnswers && typeof parsed.publicAnswers === "object") {
-      const overrides: Record<string, boolean> = {};
-      for (const [fieldId, value] of Object.entries(
+      const overrides = restorablePublicAnswers(
         parsed.publicAnswers as Record<string, unknown>,
-      )) {
-        if (outputFieldIds.has(fieldId) && typeof value === "boolean") {
-          overrides[fieldId] = value;
-        }
-      }
+        outputFieldIds,
+      );
       if (Object.keys(overrides).length > 0) {
         setPublicAnswerOverrides((prev) => ({
           ...prev,
@@ -1091,6 +1154,7 @@ const FormRenderer = ({
             {uploadingAny && !readOnly && (
               <p className="text-zinc-500">{waitingForImageUpload}</p>
             )}
+            {saveFailed && <p className="text-amber-600">{draftSaveFailed}</p>}
           </div>
 
           {onAbandonAction && !readOnly && !publicAction && !followUp && (
