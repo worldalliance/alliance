@@ -2339,6 +2339,202 @@ describe("Actions (e2e)", () => {
     });
   });
 
+  describe("Participating-groups visibility in activity surfaces", () => {
+    const activityGroupNames = (
+      body: {
+        type: string;
+        activityGroup?: { actionName: string };
+      }[],
+    ) =>
+      body
+        .filter((item) => item.type === GlobalFeedItemType.ActivityGroup)
+        .map((item) => item.activityGroup?.actionName);
+
+    it("hides associated activity from users outside the cohort", async () => {
+      const { action } = await createPublishedAction(
+        `Hidden Cohort Activity ${Date.now()}`,
+        {
+          status: ActionStatus.MemberAction,
+          actionOverrides: {
+            visibilityMode: VisibilityMode.ParticipatingGroups,
+            cohortExpression: {
+              type: "Tag",
+              tagId: ctx.defaultTag.id,
+            },
+          },
+        },
+      );
+
+      const complete = await request(ctx.app.getHttpServer())
+        .post(`/actions/complete/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(201);
+
+      const outsiderGlobal = await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed")
+        .query({ limit: 50 })
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(200);
+      expect(activityGroupNames(outsiderGlobal.body)).not.toContain(
+        action.name,
+      );
+
+      const anonymousGlobal = await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed")
+        .query({ limit: 50 })
+        .expect(200);
+      expect(activityGroupNames(anonymousGlobal.body)).not.toContain(
+        action.name,
+      );
+
+      const memberGlobal = await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed")
+        .query({ limit: 50 })
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      expect(activityGroupNames(memberGlobal.body)).toContain(action.name);
+
+      const outsiderFeed = await request(ctx.app.getHttpServer())
+        .get("/actions/activities/feed")
+        .query({ limit: 50 })
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(200);
+      expect(
+        outsiderFeed.body.some(
+          (activity: { actionName: string }) =>
+            activity.actionName === action.name,
+        ),
+      ).toBe(false);
+
+      const memberFeed = await request(ctx.app.getHttpServer())
+        .get("/actions/activities/feed")
+        .query({ limit: 50 })
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      expect(
+        memberFeed.body.some(
+          (activity: { actionName: string }) =>
+            activity.actionName === action.name,
+        ),
+      ).toBe(true);
+
+      const outsiderUserFeed = await request(ctx.app.getHttpServer())
+        .get(`/actions/userFeed/${ctx.testUserId}`)
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(200);
+      expect(
+        outsiderUserFeed.body.some(
+          (item: { activity?: { actionName: string } }) =>
+            item.activity?.actionName === action.name,
+        ),
+      ).toBe(false);
+
+      const outsiderCompleted = await request(ctx.app.getHttpServer())
+        .get(`/actions/completed/${ctx.testUserId}`)
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(200);
+      expect(
+        outsiderCompleted.body.some(
+          (activity: { actionName: string }) =>
+            activity.actionName === action.name,
+        ),
+      ).toBe(false);
+
+      await request(ctx.app.getHttpServer())
+        .get(`/actions/activities/${complete.body.id}`)
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(404);
+
+      await request(ctx.app.getHttpServer())
+        .get(`/actions/${action.id}/activities`)
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(404);
+
+      await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed/activityGroupMembers")
+        .query({ actionId: action.id, activityType: "user_completed" })
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(404);
+
+      await actionRepo.delete(action.id);
+    });
+
+    it("hides action updates from users outside the cohort", async () => {
+      const { action } = await createPublishedAction(
+        `Hidden Cohort Update ${Date.now()}`,
+        {
+          status: ActionStatus.MemberAction,
+          actionOverrides: {
+            visibilityMode: VisibilityMode.ParticipatingGroups,
+            cohortExpression: {
+              type: "Tag",
+              tagId: ctx.defaultTag.id,
+            },
+          },
+        },
+      );
+
+      const created = await request(ctx.app.getHttpServer())
+        .post(`/actions/createUpdate/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: "Restricted update",
+          shortNotifString: "something happened",
+          date: new Date().toISOString(),
+          notifyType: "none",
+        })
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/actions/updateUpdate/${created.body.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          schema: {
+            blocks: [
+              { type: "display", kind: "header", id: "b1", text: "Body" },
+            ],
+          },
+          expectedSchemaSnapshotId: created.body.schemaSnapshotId,
+        })
+        .expect(200);
+
+      const outsiderUpdates = await request(ctx.app.getHttpServer())
+        .get("/actions/updates")
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(200);
+      expect(
+        outsiderUpdates.body.some(
+          (update: { actionId: number }) => update.actionId === action.id,
+        ),
+      ).toBe(false);
+
+      const memberUpdates = await request(ctx.app.getHttpServer())
+        .get("/actions/updates")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      expect(
+        memberUpdates.body.some(
+          (update: { actionId: number }) => update.actionId === action.id,
+        ),
+      ).toBe(true);
+
+      const outsiderGlobal = await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed")
+        .query({ limit: 50 })
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(200);
+      expect(
+        outsiderGlobal.body.some(
+          (item: { type: string; actionUpdate?: { actionId: number } }) =>
+            item.type === GlobalFeedItemType.ActionUpdate &&
+            item.actionUpdate?.actionId === action.id,
+        ),
+      ).toBe(false);
+
+      await actionRepo.delete(action.id);
+    });
+  });
+
   describe("Global feed", () => {
     let activeUser: User | null = null;
     let suspendedUser: User | null = null;

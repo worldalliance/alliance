@@ -78,13 +78,19 @@ export class LikesController {
   @ApiQuery({ name: "afterId", required: false, type: Number })
   @ApiOkResponse({ type: [ProfileDto] })
   async getActivityUsers(
+    @ReqUser() user: JwtPayload,
     @Param("id", ParseIntPipe) id: number,
     @Query("limit", new DefaultValuePipe(DEFAULT_LIMIT), ParseIntPipe)
     limit: number,
     @Query("afterId", new ParseIntPipe({ optional: true })) afterId?: number,
   ): Promise<ProfileDto[]> {
     return (
-      await this.likesService.getActivityLikers(id, capLimit(limit), afterId)
+      await this.likesService.getActivityLikers(
+        id,
+        capLimit(limit),
+        afterId,
+        user.sub,
+      )
     ).map((user) => new ProfileDto(user));
   }
 }

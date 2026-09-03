@@ -1,6 +1,12 @@
 import { LIKE_ORDER_RANK_FN, likeOrderRank } from "@alliance/common/likeOrder";
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  forwardRef,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { ActionsService } from "src/actions/actions.service";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   Comment,
@@ -19,8 +25,12 @@ export class LikesService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Comment)
     private readonly commentRepository: Repository<Comment>,
+    @InjectRepository(ActionActivity)
+    private readonly actionActivityRepository: Repository<ActionActivity>,
     private readonly forumService: ForumService,
     private readonly facepileService: FacepileService,
+    @Inject(forwardRef(() => ActionsService))
+    private readonly actionsService: ActionsService,
   ) {}
 
   async getPostLikers(
@@ -44,19 +54,26 @@ export class LikesService {
     return this.getLikers(Comment, commentId, limit, afterId);
   }
 
-  getActivityLikers(
+  async getActivityLikers(
     activityId: number,
     limit: number,
-    afterId?: number,
+    afterId: number | undefined,
+    requestingUserId: number | undefined,
   ): Promise<User[]> {
-    // Match activity detail/feed visibility; both expose cross-cohort likers.
+    const activity = await this.actionActivityRepository.findOne({
+      where: { id: activityId },
+      select: { id: true, actionId: true },
+    });
+    if (!activity) {
+      throw new NotFoundException("Activity not found");
+    }
+    await this.actionsService.findOneOrFail({
+      id: activity.actionId,
+      userId: requestingUserId,
+    });
     return this.getLikers(ActionActivity, activityId, limit, afterId);
   }
 
-  /**
-   * Comment liker visibility follows the parent: post parents reuse post-detail
-   * gating; action/activity parents match their open canonical endpoints.
-   */
   private async assertCommentVisible(
     commentId: number,
     requestingUserId: number | undefined,
@@ -82,8 +99,27 @@ export class LikesService {
         );
         break;
       case CommentParentObject.Action:
-      case CommentParentObject.Activity:
+        await this.actionsService.findOneOrFail({
+          id: comment.parentObjectId,
+          userId: requestingUserId,
+        });
         break;
+      case CommentParentObject.Activity: {
+        const activity = await this.actionActivityRepository.findOne({
+          where: { id: comment.parentObjectId },
+          select: { id: true, actionId: true },
+        });
+        if (!activity) {
+          throw new NotFoundException(
+            `Comment with ID "${commentId}" not found`,
+          );
+        }
+        await this.actionsService.findOneOrFail({
+          id: activity.actionId,
+          userId: requestingUserId,
+        });
+        break;
+      }
       default:
         comment.parentObjectType satisfies never;
     }

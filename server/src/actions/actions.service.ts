@@ -1028,6 +1028,56 @@ export class ActionsService {
     });
   }
 
+  private async loadUserForActionVisibility(
+    userId?: number,
+  ): Promise<User | null> {
+    if (userId == null) {
+      return null;
+    }
+    return this.userService.findOne(userId, {
+      tags: true,
+      contractEvents: true,
+      awayRanges: true,
+    });
+  }
+
+  private async visibleActionIdsForUser(params: {
+    actionIds: Iterable<number>;
+    user?: User | null;
+    userId?: number;
+    session?: CohortResolutionSession;
+  }): Promise<Set<number>> {
+    const uniqueIds = [...new Set(params.actionIds)];
+    if (uniqueIds.length === 0) {
+      return new Set();
+    }
+
+    const session = params.session ?? new CohortResolutionSession();
+    const user =
+      params.user !== undefined
+        ? params.user
+        : await this.loadUserForActionVisibility(params.userId);
+
+    const actions = await this.actionRepository.find({
+      where: { id: In(uniqueIds) },
+      relations: { events: true },
+    });
+
+    const visible = new Set<number>();
+    for (const raw of actions) {
+      if (
+        await this.userCanSeeAction({
+          action: parseAction(raw),
+          user,
+          session,
+        })
+      ) {
+        visible.add(raw.id);
+      }
+    }
+    return visible;
+  }
+
   async findOneOrFail(params: {
     id: number;
     userId?: number;
@@ -1982,7 +2032,17 @@ export class ActionsService {
       },
     });
 
-    return this.toActivityDtos({ activities, requestingUserId, comments });
+    const visibleIds = await this.visibleActionIdsForUser({
+      actionIds: activities.map((activity) => activity.actionId),
+      userId: requestingUserId,
+    });
+    return this.toActivityDtos({
+      activities: activities.filter((activity) =>
+        visibleIds.has(activity.actionId),
+      ),
+      requestingUserId,
+      comments,
+    });
   }
 
   buildOutputFormResponse(
@@ -2042,6 +2102,7 @@ export class ActionsService {
     requestingUserId?: number,
     before?: Date,
   ): Promise<ActionActivityDto[]> {
+    await this.findOneOrFail({ id: actionId, userId: requestingUserId });
     const activities = await this.fetchActivityFeed({
       limit: limit ?? 20,
       actionId,
@@ -2210,15 +2271,73 @@ export class ActionsService {
     return qb.getMany();
   }
 
+  private async fetchVisibleActivityFeed(options: {
+    limit: number;
+    before?: Date;
+    userIds?: number[];
+    actionId?: number;
+    communityId?: number;
+    requireFormResponse?: boolean;
+    requestingUserId?: number;
+    user?: User | null;
+    session?: CohortResolutionSession;
+  }): Promise<ActionActivity[]> {
+    const session = options.session ?? new CohortResolutionSession();
+    const user =
+      options.user !== undefined
+        ? options.user
+        : await this.loadUserForActionVisibility(options.requestingUserId);
+
+    const collected: ActionActivity[] = [];
+    let cursor = options.before;
+    const batchSize = Math.max(options.limit * 3, 20);
+
+    while (collected.length < options.limit) {
+      const batch = await this.fetchActivityFeed({
+        limit: batchSize,
+        before: cursor,
+        userIds: options.userIds,
+        actionId: options.actionId,
+        communityId: options.communityId,
+        requireFormResponse: options.requireFormResponse,
+      });
+      if (batch.length === 0) {
+        break;
+      }
+
+      const visibleIds = await this.visibleActionIdsForUser({
+        actionIds: batch.map((activity) => activity.actionId),
+        user,
+        session,
+      });
+      for (const activity of batch) {
+        if (visibleIds.has(activity.actionId)) {
+          collected.push(activity);
+          if (collected.length >= options.limit) {
+            break;
+          }
+        }
+      }
+
+      if (batch.length < batchSize) {
+        break;
+      }
+      cursor = batch[batch.length - 1].createdAt;
+    }
+
+    return collected;
+  }
+
   async getActivityFeed(
     limit: number = 20,
     before?: Date,
     comments?: boolean,
     requestingUserId?: number,
   ): Promise<ActionActivityDto[]> {
-    const activities = await this.fetchActivityFeed({
+    const activities = await this.fetchVisibleActivityFeed({
       limit,
       before,
+      requestingUserId,
     });
 
     return this.toActivityDtos({ activities, requestingUserId, comments });
@@ -2272,10 +2391,11 @@ export class ActionsService {
       return [];
     }
 
-    const friendActivities = await this.fetchActivityFeed({
+    const friendActivities = await this.fetchVisibleActivityFeed({
       limit: limit ?? 20,
       before,
       userIds: friends.map((f) => f.id),
+      requestingUserId: userId,
     });
 
     return this.toActivityDtos({
@@ -2291,6 +2411,7 @@ export class ActionsService {
     comments?: boolean,
     limit?: number,
   ): Promise<ActionActivityDto[]> {
+    await this.findOneOrFail({ id: actionId, userId });
     const friends = await this.userService.findFriends(userId);
 
     if (friends.length === 0) {
@@ -2325,10 +2446,11 @@ export class ActionsService {
       return [];
     }
 
-    const memberActivities = await this.fetchActivityFeed({
+    const memberActivities = await this.fetchVisibleActivityFeed({
       limit: limitNum,
       before: beforeDate,
       userIds: members.map((m) => m.id),
+      requestingUserId,
     });
 
     return this.toActivityDtos({
@@ -2409,6 +2531,9 @@ export class ActionsService {
       ...new Set([...friendIds, ...communityMemberIds, userId]),
     ];
 
+    const visibilityUser = await this.loadUserForActionVisibility(userId);
+    const visibilitySession = new CohortResolutionSession();
+
     const forumComments = await this.forumService.findForumCommentsForFeed({
       userId,
       userClusterId,
@@ -2437,7 +2562,16 @@ export class ActionsService {
         requireFormResponse: true,
       });
 
+      const visibleIds = await this.visibleActionIdsForUser({
+        actionIds: batch.map((activity) => activity.actionId),
+        user: visibilityUser,
+        session: visibilitySession,
+      });
+
       for (const a of batch) {
+        if (!visibleIds.has(a.actionId)) {
+          continue;
+        }
         if (this.buildOutputFormResponse(a) !== undefined) {
           contentful.push(a);
           if (contentful.length >= limit) break;
@@ -2482,7 +2616,7 @@ export class ActionsService {
     before?: Date,
     comments?: boolean,
   ): Promise<HomeFeedItemDto[]> {
-    const [activities, forumComments] = await Promise.all([
+    const [rawActivities, forumComments] = await Promise.all([
       this.actionActivityRepository.find({
         where: {
           userId,
@@ -2498,7 +2632,7 @@ export class ActionsService {
           taskFormResponse: { formSnapshot: true },
         },
         order: { createdAt: "DESC" },
-        take: limit,
+        take: limit * 3,
       }),
       this.forumService.findForumCommentsByUserForFeed({
         authorId: userId,
@@ -2507,6 +2641,14 @@ export class ActionsService {
         before,
       }),
     ]);
+
+    const visibleIds = await this.visibleActionIdsForUser({
+      actionIds: rawActivities.map((activity) => activity.actionId),
+      userId: requestingUserId,
+    });
+    const activities = rawActivities
+      .filter((activity) => visibleIds.has(activity.actionId))
+      .slice(0, limit);
 
     const activityDtos = await this.toDetailedActivityDtos({
       activities,
@@ -2558,6 +2700,10 @@ export class ActionsService {
     if (!activity) {
       throw new NotFoundException("Activity not found");
     }
+    await this.findOneOrFail({
+      id: activity.actionId,
+      userId: requestingUserId,
+    });
     return new ActionActivityDto(activity, {
       formResponseOutput: this.buildOutputFormResponse(activity),
       likedByMe: requestingUserId
@@ -2583,6 +2729,7 @@ export class ActionsService {
     if (!activity) {
       throw new NotFoundException("Activity not found");
     }
+    await this.findOneOrFail({ id: activity.actionId, userId });
     if (
       !GlobalFeedActivityTypes.includes(activity.type as GlobalFeedActivityType)
     ) {
@@ -2950,9 +3097,11 @@ export class ActionsService {
     return actionUpdate;
   }
 
-  async getActionUpdates(limit?: number): Promise<ActionUpdate[]> {
-    return this.actionUpdateRepository.find({
-      take: limit,
+  async getActionUpdates(
+    limit?: number,
+    userId?: number,
+  ): Promise<ActionUpdate[]> {
+    const updates = await this.actionUpdateRepository.find({
       where: publishedActionUpdateWhere(new Date()),
       order: { date: "DESC" },
       relations: { action: true, schemaSnapshot: true },
@@ -2962,6 +3111,12 @@ export class ActionsService {
         },
       },
     });
+    const visibleIds = await this.visibleActionIdsForUser({
+      actionIds: updates.map((update) => update.actionId),
+      userId,
+    });
+    const visible = updates.filter((update) => visibleIds.has(update.actionId));
+    return limit != null ? visible.slice(0, limit) : visible;
   }
 
   private async findActionUpdateNotifRecipients(
@@ -4215,10 +4370,15 @@ export class ActionsService {
   }
 
   /** Unified feed of recent activity groups, action updates, joins, and comments. */
-  async getGlobalFeed(limit: number = 15): Promise<GlobalFeedItemDto[]> {
+  async getGlobalFeed(
+    limit: number = 15,
+    userId?: number,
+  ): Promise<GlobalFeedItemDto[]> {
     const feedItems: GlobalFeedItemDto[] = [];
     const now = new Date();
     const oneWeekAgo = this.globalFeedWindowStart();
+    const session = new CohortResolutionSession();
+    const user = await this.loadUserForActionVisibility(userId);
 
     const recentActivities = (await this.actionActivityRepository
       .createQueryBuilder("activity")
@@ -4251,6 +4411,26 @@ export class ActionsService {
       type: GlobalFeedActivityType;
     })[];
 
+    // The recency window runs on `visibleAt`, not `date`: an update backdated to
+    // when its subject happened would fall outside a one-week window on the day
+    // it was published.
+    const actionUpdates = await this.actionUpdateRepository.find({
+      where: {
+        visibleAt: MoreThan(oneWeekAgo),
+      },
+      relations: { action: true, schemaSnapshot: true },
+      order: { date: "DESC" },
+    });
+
+    const visibleActionIds = await this.visibleActionIdsForUser({
+      actionIds: [
+        ...recentActivities.map((activity) => activity.actionId),
+        ...actionUpdates.map((update) => update.actionId),
+      ],
+      user,
+      session,
+    });
+
     // Activity groups are action + type, not day buckets.
     const activityGroups = new Map<
       string,
@@ -4264,6 +4444,9 @@ export class ActionsService {
     >();
 
     for (const activity of recentActivities) {
+      if (!visibleActionIds.has(activity.actionId)) {
+        continue;
+      }
       const key = `${activity.actionId}-${activity.type}`;
 
       if (!activityGroups.has(key)) {
@@ -4308,19 +4491,10 @@ export class ActionsService {
       );
     }
 
-    // The recency window runs on `visibleAt`, not `date`: an update backdated to
-    // when its subject happened would fall outside a one-week window on the day
-    // it was published.
-    const actionUpdates = await this.actionUpdateRepository.find({
-      where: {
-        visibleAt: MoreThan(oneWeekAgo),
-      },
-      relations: { action: true, schemaSnapshot: true },
-      order: { date: "DESC" },
-      take: 10,
-    });
-
     for (const update of actionUpdates) {
+      if (!visibleActionIds.has(update.actionId)) {
+        continue;
+      }
       if (isActionUpdatePublished(update, now) && update.schemaSnapshot) {
         const actionUpdateDto: GlobalFeedActionUpdateDto = {
           id: update.id,
@@ -4633,7 +4807,9 @@ export class ActionsService {
     activityType: GlobalFeedActivityType,
     limit: number,
     afterId?: number,
+    requestingUserId?: number,
   ): Promise<ProfileDto[]> {
+    await this.findOneOrFail({ id: actionId, userId: requestingUserId });
     const oneWeekAgo = this.globalFeedWindowStart();
     const rankedSql = `
       SELECT "userId", "latestAt", "latestId"
@@ -4708,7 +4884,10 @@ export class ActionsService {
     return this.hydrateFeedMemberProfiles(pageIds);
   }
 
-  async getTimelineFeed(limit: number = 15): Promise<TimelineFeedItemDto[]> {
+  async getTimelineFeed(
+    limit: number = 15,
+    userId?: number,
+  ): Promise<TimelineFeedItemDto[]> {
     const feedItems: TimelineFeedItemDto[] = [];
 
     const now = new Date();
@@ -4732,7 +4911,18 @@ export class ActionsService {
       actionUpdatesQuery,
     ]);
 
+    const visibleActionIds = await this.visibleActionIdsForUser({
+      actionIds: [
+        ...events.map((event) => event.action.id),
+        ...actionUpdates.map((update) => update.actionId),
+      ],
+      userId,
+    });
+
     for (const event of events) {
+      if (!visibleActionIds.has(event.action.id)) {
+        continue;
+      }
       feedItems.push(
         new TimelineFeedItemDto({
           type: TimelineFeedItemType.ActionEvent,
@@ -4744,6 +4934,9 @@ export class ActionsService {
     }
 
     for (const actionUpdate of actionUpdates) {
+      if (!visibleActionIds.has(actionUpdate.actionId)) {
+        continue;
+      }
       feedItems.push(
         new TimelineFeedItemDto({
           type: TimelineFeedItemType.ActionUpdate,
