@@ -25,6 +25,21 @@ Pulls a `pg_dump` of staging over SSH into `./db_dumps`. Override `SSH_HOST_ALIA
 `restore_staging_data.sh <dump-file>`
 Drops and recreates the local db named by `server/.env`, then restores the dump. `RESET_LOCAL_DB=0` skips the drop; `LOCAL_DB_NAME` and the `LOCAL_PG*` vars override the target.
 
+`bun list-actions.ts`
+Prints every released action with a participation rate, ordered by release date. Reads the local db.
+
+`bun get-action-form.ts <actionId>`
+Prints the action's task form, form variants and follow-up forms as text. Reads the local db.
+
+`bun ordered-action-ids.ts`
+Prints the ids of every released action, most recently released first, one per line. `| head -n5` gives the five most recent.
+
+`bun list-popular-action-ids.ts`
+Prints action ids from most to least popular, one per line, excluding onboarding actions. Popularity averages each action's percentile rank for completion rate and for completion count.
+
+`bun export-actions.ts <actionId...> [--out <dir>]`
+Writes one YAML file per action into `misc/action-exports` (override with `--out`), holding the attributes the admin panel's create form assigns. `action-export.schema.yml` is the JSON Schema those files match.
+
 ## Other
 
 `test-all.sh [package...]`

@@ -1,0 +1,183 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://worldalliance.org/schemas/action-export.yml
+title: Action export
+description: >-
+  One action, holding the attributes the admin panel assigns when an action is
+  created at /actions/new. Mirrors the server's CreateActionDto, plus the
+  read-only id.
+type: object
+additionalProperties: false
+required:
+  - id
+  - name
+  - body
+  - shortDescription
+  - category
+  - type
+  - visibilityMode
+
+properties:
+  id:
+    type: integer
+    readOnly: true
+    description: Database id of the exported action. Assigned by the server, not by the create form.
+
+  name:
+    type: string
+    description: Action name, shown as the title everywhere the action appears.
+
+  shortDescription:
+    type: [string, "null"]
+    description: One or two lines shown on the task card and in listings.
+
+  body:
+    type: string
+    description: Markdown body of the action detail page.
+
+  category:
+    type: string
+    description: Free-text tag used to group actions. Existing categories are offered as suggestions in the admin panel.
+
+  type:
+    description: >-
+      Funding — giving money to a cause. Activity — a one-time action taking a
+      limited amount of time. Ongoing — a recurring behaviour change.
+    enum: [Activity, Funding, Ongoing]
+
+  image:
+    type: [string, "null"]
+    description: Cover image for the action detail page.
+
+  squareThumbnailImage:
+    type: [string, "null"]
+    description: Square thumbnail used where a 1:1 crop is needed.
+
+  squareThumbnailImageAlt:
+    type: [string, "null"]
+    description: Alt text for the square thumbnail. Left empty, the thumbnail is announced as the action name.
+
+  donationAmount:
+    type: [integer, "null"]
+    description: Suggested donation amount per person, in cents. Only used by Funding actions.
+
+  timeEstimate:
+    type: [integer, "null"]
+    description: Estimated time to complete, in minutes.
+
+  visibilityMode:
+    description: >-
+      public — visible to anyone. all_members — visible to every member.
+      participating_groups — visible only to the groups taking part.
+    enum: [public, all_members, participating_groups]
+
+  suiteId:
+    type: [integer, "null"]
+    description: Action suite this action belongs to, if any.
+
+  taskFormId:
+    type: [integer, "null"]
+    description: Form members fill in to complete the action. At most one action may point at a given form.
+
+  isContractSigningAction:
+    type: boolean
+    description: Marks the membership contract action, which blocks other onboarding actions until it is done.
+
+  onboarding:
+    type: boolean
+    description: Prevent completion by members who signed their contracts before the action.
+
+  optional:
+    type: boolean
+    description: Shows a prominent dismiss dialog above the task card.
+
+  preventCompletion:
+    type: boolean
+    description: Prevents members from completing the action even on the detail page.
+
+  publicOnly:
+    type: boolean
+    description: For actions completed by non-members and not by members.
+
+  shouldCompleteAfterDeadline:
+    type: boolean
+    description: Show in the tasks view after the deadline passes.
+
+  isForumParticipationAction:
+    type: boolean
+    description: Autocomplete the action for users who leave a comment but don't hit complete.
+
+  forumParticipationPostId:
+    type: [integer, "null"]
+    description: >-
+      Autocomplete based on replies to this forum post, ignoring any forum
+      validator on the form. Null uses the form's validator.
+
+  forumParticipationIncludeChildren:
+    type: [boolean, "null"]
+    description: Also count replies to nested child posts of the override post.
+
+  customStatType:
+    description: Source of the extra statistic shown on the action page. Null or none shows no custom stat.
+    enum: [none, users_invited, null]
+
+  customStatLabel:
+    type: [string, "null"]
+    description: Label displayed beside the custom stat.
+
+  customStatValue:
+    type: [integer, "null"]
+    description: Current value of the custom stat. Recomputed by the server for derived stat types.
+
+  customStatGoal:
+    type: [integer, "null"]
+    description: Target the custom stat counts towards.
+
+  computedAutocompleteAt:
+    type: [string, "null"]
+    format: date-time
+    description: When autocompletion was last computed for this action. Set by the server.
+
+  cohortExpression:
+    type: [object, "null"]
+    description: >-
+      Condition tree deciding which users participate, as built by the
+      "Participating users" editor. Null means everyone the visibility mode
+      allows.
+
+  authorIds:
+    type: array
+    description: User ids credited as authors of the action.
+    items:
+      type: integer
+
+  form:
+    type: [string, "null"]
+    description: >-
+      Plain-text rendering of every form attached to the action — task form,
+      form variants and follow-up forms — as printed by
+      scripts/get-action-form.ts. Null when the action has no forms. Derived
+      from the forms themselves, so editing it here changes nothing.
+
+  reviewers:
+    type: array
+    description: Non-users credited with reviewing the action, in display order.
+    maxItems: 50
+    items:
+      type: object
+      additionalProperties: false
+      required: [name, position]
+      properties:
+        name:
+          type: string
+          maxLength: 200
+          description: Display name of the reviewer.
+        url:
+          type: [string, "null"]
+          maxLength: 2048
+          description: Optional link opened from the reviewer name.
+        icon:
+          description: Icon shown next to the reviewer name.
+          enum: [linkedin, null]
+        position:
+          type: integer
+          description: Sort order within the reviewer list.
