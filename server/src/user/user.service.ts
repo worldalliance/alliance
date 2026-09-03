@@ -1,4 +1,9 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import {
+  emptyUserPropertyPresence,
+  type UserPropertyPresence,
+  userValuePropertyPresence,
+} from "@alliance/common/forms/user-properties";
 import type { AccountDerivedConditionKind } from "@alliance/common/forms/visible-if-formula";
 import { forCount } from "@alliance/common/plural";
 import type { Result } from "@alliance/common/result";
@@ -1103,6 +1108,36 @@ export class UserService {
   }
 
   /**
+   * Whether each listed user-table property currently has a value. City matches
+   * `userHasCitySet`: a structured city or a non-empty custom city string.
+   */
+  async userPropertyPresence(userId: number): Promise<UserPropertyPresence> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: { city: true },
+    });
+    if (!user) {
+      return emptyUserPropertyPresence();
+    }
+    return userValuePropertyPresence({
+      name: user.name,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      preferredReminderTime: user.preferredReminderTime,
+      timeZone: user.timeZone,
+      profilePicture: user.profilePicture,
+      profileDescription: user.profileDescription,
+      city: user.city,
+      customCityString: user.customCityString,
+      over18: user.over18,
+      clusterId: user.clusterId,
+      staffTitle: user.staffTitle,
+      switchedDomainAt: user.switchedDomainAt,
+      referredById: user.referredById,
+    });
+  }
+
+  /**
    * User-account-derived values for form visibility conditions. Keep in sync
    * with the condition kinds evaluated in `common/src/forms/visibility.ts`.
    *
@@ -1115,12 +1150,21 @@ export class UserService {
     userId: number,
     kinds?: ReadonlySet<AccountDerivedConditionKind>,
   ): Promise<MyVisibilityContext> {
+    let presence: UserPropertyPresence | undefined;
+    const loadPresence = async () => {
+      presence ??= await this.userPropertyPresence(userId);
+      return presence;
+    };
+
     const fetchers: Record<
       AccountDerivedConditionKind,
       () => Promise<Partial<MyVisibilityContext>>
     > = {
       userHasCity: async () => ({
-        userHasCity: await this.userHasCitySet(userId),
+        userHasCity: (await loadPresence()).city,
+      }),
+      userPropertyHasValue: async () => ({
+        userPropertyHasValue: await loadPresence(),
       }),
       firstContractSigned: async () => ({
         firstContractSignedAt: await this.getFirstContractSignedAt(userId),
@@ -1141,6 +1185,7 @@ export class UserService {
       (context, slice) => ({ ...context, ...slice }),
       {
         userHasCity: false,
+        userPropertyHasValue: emptyUserPropertyPresence(),
         firstContractSignedAt: null,
         completedActionCount: 0,
       },

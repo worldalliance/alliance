@@ -1,13 +1,16 @@
 import type { DisplayBlock } from "./display-blocks";
 import {
   collectVariableInputFields,
+  isFieldGroup,
   isQuestionField,
   variableInputFieldsById,
   type AnyField,
+  type FieldGroup,
   type FormSchema,
   type ListField,
   type OutputFieldBlock,
   type OutputViewSchema,
+  type PageItem,
 } from "./form-schema";
 import { compileVariableExpression } from "./variable-expression";
 import { checkVariableFormulaType } from "./variable-formula-check";
@@ -58,7 +61,7 @@ export function validateFormSchema(
       }
     }
     for (const item of page.fields ?? []) {
-      collectInputErrors(item, errors);
+      collectPageItemErrors(item, errors);
       collectDisplayContentErrors(item, undefined, errors);
       collectQuestionFieldIds(item, earlierFieldIds);
     }
@@ -104,13 +107,7 @@ function collectFieldKinds(schema: FormSchema): Map<string, CollectedField> {
   const fields = new Map<string, CollectedField>();
   for (const page of schema.pages ?? []) {
     for (const item of page.fields ?? []) {
-      if (!isQuestionField(item)) continue;
-      fields.set(item.id, { kind: item.kind, insideList: false });
-      if (item.kind === "list") {
-        for (const sub of (item as ListField).fields ?? []) {
-          fields.set(sub.id, { kind: sub.kind, insideList: true });
-        }
-      }
+      collectFieldKindsFromItem(item, fields);
     }
   }
   return fields;
@@ -274,6 +271,7 @@ function getLocalFieldReference(cond: Condition): string | null {
     case "deviceType":
     case "outputBlockVisible":
     case "userHasCity":
+    case "userPropertyHasValue":
     case "firstContractSigned":
     case "completedActionCount":
       return null;
@@ -283,10 +281,13 @@ function getLocalFieldReference(cond: Condition): string | null {
   }
 }
 
-function collectQuestionFieldIds(
-  item: AnyField | DisplayBlock,
-  into: Set<string>,
-): void {
+function collectQuestionFieldIds(item: PageItem, into: Set<string>): void {
+  if (isFieldGroup(item)) {
+    for (const child of item.fields) {
+      collectQuestionFieldIds(child, into);
+    }
+    return;
+  }
   if (!isQuestionField(item)) return;
   into.add(item.id);
   if (item.kind === "list") {
@@ -296,13 +297,62 @@ function collectQuestionFieldIds(
   }
 }
 
+function collectFieldKindsFromItem(
+  item: PageItem,
+  fields: Map<string, CollectedField>,
+): void {
+  if (isFieldGroup(item)) {
+    for (const child of item.fields) {
+      collectFieldKindsFromItem(child, fields);
+    }
+    return;
+  }
+  if (!isQuestionField(item)) return;
+  fields.set(item.id, { kind: item.kind, insideList: false });
+  if (item.kind === "list") {
+    for (const sub of (item as ListField).fields ?? []) {
+      fields.set(sub.id, { kind: sub.kind, insideList: true });
+    }
+  }
+}
+
+function collectPageItemErrors(
+  item: PageItem,
+  errors: FormSchemaValidationError[],
+): void {
+  if (isFieldGroup(item)) {
+    const blockId = item.id ?? "<unnamed>";
+    checkConditions(
+      item.visibleIfFormula,
+      { context: "input", blockId },
+      errors,
+    );
+    checkConditions(
+      item.requiredIfFormula,
+      { context: "input", blockId },
+      errors,
+    );
+    for (const child of item.fields) {
+      collectInputErrors(child, errors);
+    }
+    return;
+  }
+  collectInputErrors(item, errors);
+}
+
 // The schema permits an empty display block, so save-time validation is the
 // last chance to warn the author before the block renders nothing.
 function collectDisplayContentErrors(
-  item: AnyField | DisplayBlock | OutputFieldBlock,
+  item: AnyField | DisplayBlock | OutputFieldBlock | FieldGroup,
   viewId: string | undefined,
   errors: FormSchemaValidationError[],
 ): void {
+  if (isFieldGroup(item)) {
+    for (const child of item.fields) {
+      collectDisplayContentErrors(child, viewId, errors);
+    }
+    return;
+  }
   if (!("type" in item) || item.type !== "display") return;
   const blockId = item.id ?? "<unnamed>";
   if (item.kind === "images" && item.images.length === 0) {

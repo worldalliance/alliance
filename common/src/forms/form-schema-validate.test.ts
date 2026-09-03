@@ -1,14 +1,16 @@
 import type { AccordionBlock, ImagesBlock, LabelBlock } from "./display-blocks";
 import type {
-  AnyField,
+  FieldGroup,
   FormSchema,
   ListField,
   OutputBlock,
   OutputFieldBlock,
   Page,
+  PageItem,
   TextField,
 } from "./form-schema";
 import { validateFormSchema } from "./form-schema-validate";
+import { UserValueProperty } from "./user-properties";
 import type { Condition, VisibleIfFormula } from "./visible-if-formula";
 
 const formula = (conditions: Record<string, Condition>): VisibleIfFormula => ({
@@ -54,10 +56,7 @@ const fieldBlock = (
   overrides: Partial<OutputFieldBlock> = {},
 ): OutputFieldBlock => ({ id, fieldId, ...overrides });
 
-const page = (
-  id: string,
-  fields: Array<AnyField | LabelBlock | ImagesBlock | AccordionBlock>,
-): Page => ({
+const page = (id: string, fields: PageItem[]): Page => ({
   id,
   fields,
 });
@@ -767,6 +766,66 @@ describe("validateFormSchema", () => {
       pages: [
         page("p1", [accordionBlock("blk-acc", [filledSection("First")])]),
       ],
+    });
+    expect(validateFormSchema(schema)).toEqual([]);
+  });
+
+  it("flags an empty images block nested in a group", () => {
+    const group: FieldGroup = {
+      id: "g1",
+      type: "group",
+      kind: "group",
+      fields: [imagesBlock("blk-images", [])],
+    };
+    const schema = baseSchema({
+      pages: [page("p1", [group])],
+    });
+    expect(validateFormSchema(schema)).toEqual([
+      {
+        viewId: undefined,
+        blockId: "blk-images",
+        message: "Images block has no images. Add one or remove the block",
+      },
+    ]);
+  });
+
+  it("allows a later page to reference a field inside a group", () => {
+    const group: FieldGroup = {
+      id: "g1",
+      type: "group",
+      kind: "group",
+      fields: [textField("inside")],
+    };
+    const schema = baseSchema({
+      pages: [
+        page("p1", [group]),
+        {
+          ...page("p2", [textField("f2")]),
+          visibleIfFormula: formula({
+            c1: { kind: "equals", when: "inside", equals: "yes" },
+          }),
+        },
+      ],
+    });
+    expect(validateFormSchema(schema)).toEqual([]);
+  });
+
+  it("allows userPropertyHasValue on a group's visibleIfFormula", () => {
+    const group: FieldGroup = {
+      id: "g1",
+      type: "group",
+      kind: "group",
+      visibleIfFormula: formula({
+        c1: {
+          kind: "userPropertyHasValue",
+          property: UserValueProperty.PhoneNumber,
+          hasValue: true,
+        },
+      }),
+      fields: [textField("inside")],
+    };
+    const schema = baseSchema({
+      pages: [page("p1", [group])],
     });
     expect(validateFormSchema(schema)).toEqual([]);
   });

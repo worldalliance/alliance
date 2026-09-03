@@ -1,5 +1,10 @@
-import type { Page, TextField } from "./form-schema";
+import type { FieldGroup, Page, TextField } from "./form-schema";
 import {
+  emptyUserPropertyPresence,
+  UserValueProperty,
+} from "./user-properties";
+import {
+  isElementCurrentlyVisible,
   isFieldConditionallyRequired,
   isPageCurrentlyVisible,
   stripHiddenAnswers,
@@ -424,5 +429,158 @@ describe("stripHiddenAnswers", () => {
     expect(
       stripHiddenAnswers(pages, answers, { ...extras, readOnly: true }),
     ).toBe(answers);
+  });
+});
+
+describe("field groups", () => {
+  const grouped = (
+    overrides: Partial<FieldGroup> = {},
+    child: TextField = textField("child"),
+  ): FieldGroup => ({
+    id: "g1",
+    type: "group",
+    kind: "group",
+    fields: [child],
+    ...overrides,
+  });
+
+  it("hides a child when the group formula is false", () => {
+    const group = grouped({
+      visibleIfFormula: formula({
+        c1: { kind: "equals", when: "gate", equals: "yes" },
+      }),
+    });
+    const groupByFieldId = new Map([["child", group]]);
+    expect(
+      isElementCurrentlyVisible(
+        group.fields[0],
+        { gate: "no" },
+        {
+          ...extras,
+          groupByFieldId,
+        },
+      ),
+    ).toBe(false);
+    expect(
+      isElementCurrentlyVisible(
+        group.fields[0],
+        { gate: "yes" },
+        {
+          ...extras,
+          groupByFieldId,
+        },
+      ),
+    ).toBe(true);
+  });
+
+  it("hides a child when either the group or the child formula is false", () => {
+    const child = textField("child", {
+      visibleIfFormula: formula({
+        c1: { kind: "equals", when: "inner", equals: "yes" },
+      }),
+    });
+    const group = grouped(
+      {
+        visibleIfFormula: formula({
+          c1: { kind: "equals", when: "gate", equals: "yes" },
+        }),
+      },
+      child,
+    );
+    const groupByFieldId = new Map([["child", group]]);
+    const ctx = { ...extras, groupByFieldId };
+    expect(
+      isElementCurrentlyVisible(child, { gate: "yes", inner: "yes" }, ctx),
+    ).toBe(true);
+    expect(
+      isElementCurrentlyVisible(child, { gate: "yes", inner: "no" }, ctx),
+    ).toBe(false);
+    expect(
+      isElementCurrentlyVisible(child, { gate: "no", inner: "yes" }, ctx),
+    ).toBe(false);
+  });
+
+  it("makes a child required when the group is required", () => {
+    const group = grouped({ required: true });
+    const child = textField("child");
+    const ctx = { ...extras, groupByFieldId: new Map([["child", group]]) };
+    expect(isFieldConditionallyRequired(child, {}, extras)).toBe(false);
+    expect(isFieldConditionallyRequired(child, {}, ctx)).toBe(true);
+  });
+
+  it("keeps a child required when either the group or the child is", () => {
+    const group = grouped({ required: true });
+    const child = textField("child", { required: true });
+    const ctx = { ...extras, groupByFieldId: new Map([["child", group]]) };
+    expect(isFieldConditionallyRequired(child, {}, ctx)).toBe(true);
+    expect(
+      isFieldConditionallyRequired(
+        textField("child", { required: true }),
+        {},
+        extras,
+      ),
+    ).toBe(true);
+  });
+
+  it("strips answers inside a hidden group", () => {
+    const group = grouped({
+      visibleIfFormula: formula({
+        c1: { kind: "equals", when: "gate", equals: "yes" },
+      }),
+    });
+    const pages = [page("p1", { fields: [textField("gate"), group] })];
+    expect(
+      stripHiddenAnswers(pages, { gate: "no", child: "stale" }, extras),
+    ).toEqual({ gate: "no" });
+    expect(
+      stripHiddenAnswers(pages, { gate: "yes", child: "kept" }, extras),
+    ).toEqual({ gate: "yes", child: "kept" });
+  });
+});
+
+describe("userPropertyHasValue", () => {
+  const gated = page("p1", {
+    fields: [textField("f1")],
+    visibleIfFormula: formula({
+      c1: {
+        kind: "userPropertyHasValue",
+        property: UserValueProperty.PhoneNumber,
+        hasValue: true,
+      },
+    }),
+  });
+
+  it("is true when the named property is present", () => {
+    expect(
+      isPageCurrentlyVisible(
+        gated,
+        {},
+        {
+          ...extras,
+          userPropertyHasValue: {
+            ...emptyUserPropertyPresence(),
+            [UserValueProperty.PhoneNumber]: true,
+          },
+        },
+      ),
+    ).toBe(true);
+  });
+
+  it("is false when the property is missing, including the guest default", () => {
+    expect(isPageCurrentlyVisible(gated, {}, extras)).toBe(false);
+  });
+
+  it("inverts when hasValue is false", () => {
+    const absent = page("p1", {
+      fields: [textField("f1")],
+      visibleIfFormula: formula({
+        c1: {
+          kind: "userPropertyHasValue",
+          property: UserValueProperty.PhoneNumber,
+          hasValue: false,
+        },
+      }),
+    });
+    expect(isPageCurrentlyVisible(absent, {}, extras)).toBe(true);
   });
 });

@@ -16,7 +16,10 @@ import {
   emptyDisplayOnlySchema,
   type DisplayOnlySchema,
 } from "@alliance/common/forms/display-only-schema";
-import type { FormSchema } from "@alliance/common/forms/form-schema";
+import {
+  flattenPageItems,
+  type FormSchema,
+} from "@alliance/common/forms/form-schema";
 import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
 import { echoesStoredKey } from "@alliance/common/image-src";
 import { run } from "@alliance/common/run";
@@ -2000,7 +2003,7 @@ export class ActionsService {
         return false;
       }
       return schema.pages.some((page) =>
-        page.fields.some(
+        flattenPageItems(page.fields).some(
           (field) =>
             field.id === answer &&
             "label" in field &&

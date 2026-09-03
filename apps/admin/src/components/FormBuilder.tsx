@@ -13,14 +13,18 @@ import {
 } from "@alliance/common/forms/element-descriptors";
 import {
   fieldHasOptions,
+  flattenPageItems,
+  isFieldGroup,
   isQuestionField,
   type AnyField,
+  type FieldGroup,
   type FieldKind,
   type FormSchema,
   type ListField,
   type ListSubField,
   type OptionField,
   type Page,
+  type PageItem,
 } from "@alliance/common/forms/form-schema";
 import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
 import {
@@ -101,6 +105,7 @@ import {
   CustomValidatorDraftsContext,
   isDraftValidatorId,
 } from "./form-fields/customValidatorDrafts";
+import { EditableFieldGroup } from "./form-fields/EditableFieldGroup";
 import { FormConflictModal } from "./FormConflictModal";
 import { FormVariablesProvider } from "./FormVariablesContext";
 import { OutputBuilder } from "./OutputBuilder";
@@ -133,9 +138,11 @@ function describeUnresolvedReferences(
 type AvailableElement =
   | { id: FieldKind; name: string; type: "field" }
   | { id: DisplayKind; name: string; type: "block"; kind: DisplayKind }
-  | { id: "copy-existing"; name: "Copy Existing Element"; type: "copy" };
+  | { id: "copy-existing"; name: "Copy Existing Element"; type: "copy" }
+  | { id: "group"; name: "Group"; type: "group" };
 
 const AVAILABLE_ELEMENTS: AvailableElement[] = [
+  { id: "group", name: "Group", type: "group" },
   ...ADDABLE_FIELD_KINDS.map((kind) => ({
     id: kind,
     name: FIELD_KIND_NAMES[kind],
@@ -161,6 +168,7 @@ const ELEMENT_TYPE_BADGES: Record<
   field: { label: "Field", className: "bg-blue-100 text-blue-800" },
   block: { label: "Block", className: "bg-green-100 text-green-800" },
   copy: { label: "Copy", className: "bg-purple-100 text-purple-800" },
+  group: { label: "Group", className: "bg-amber-100 text-amber-800" },
 };
 
 export type DisplayOnlySaveConflict = {
@@ -319,6 +327,7 @@ const mapConditionForOptionValue = (
     case "hasValue":
     case "outputBlockVisible":
     case "userHasCity":
+    case "userPropertyHasValue":
     case "validator":
       return { condition, updated: false };
     default:
@@ -362,15 +371,48 @@ const getUpdatedVisibilityFormula = (
 };
 
 const applyOptionValueToConditionalVisibility = (
-  fields: Array<AnyField | DisplayBlock>,
+  fields: PageItem[],
   controllerId: string,
   previousValue: string,
   nextValue: string,
   startIndex: number,
-) => {
+): PageItem[] => {
   let hasChanges = false;
 
   const nextFields = fields.map((candidate, idx) => {
+    if (isFieldGroup(candidate)) {
+      if (idx <= startIndex) {
+        return candidate;
+      }
+      const ownResult = getUpdatedVisibilityFormula(
+        candidate.visibleIfFormula,
+        controllerId,
+        previousValue,
+        nextValue,
+      );
+      const childFields = applyOptionValueToConditionalVisibility(
+        candidate.fields,
+        controllerId,
+        previousValue,
+        nextValue,
+        -1,
+      );
+      const childrenChanged = childFields !== candidate.fields;
+      if (!ownResult.changed && !childrenChanged) {
+        return candidate;
+      }
+      hasChanges = true;
+      return {
+        ...candidate,
+        ...(ownResult.visibleIfFormula != null
+          ? { visibleIfFormula: ownResult.visibleIfFormula }
+          : {}),
+        fields: childrenChanged
+          ? (childFields as FieldGroup["fields"])
+          : candidate.fields,
+      } as FieldGroup;
+    }
+
     if (idx <= startIndex) {
       return candidate;
     }
@@ -399,7 +441,7 @@ const applyOptionValueToConditionalVisibility = (
 };
 
 const createUniqueFormBuilderId = (
-  prefix: "block" | "field" | "page",
+  prefix: "block" | "field" | "page" | "group",
   usedIds: Set<string>,
 ) => {
   let id = "";
@@ -410,13 +452,14 @@ const createUniqueFormBuilderId = (
   return id;
 };
 
-const collectFormElementIds = (
-  elements: Array<AnyField | DisplayBlock>,
-  usedIds: Set<string>,
-) => {
+const collectFormElementIds = (elements: PageItem[], usedIds: Set<string>) => {
   elements.forEach((element) => {
     if (element.id) {
       usedIds.add(element.id);
+    }
+    if (isFieldGroup(element)) {
+      collectFormElementIds(element.fields, usedIds);
+      return;
     }
     if (isQuestionField(element)) {
       if ("fields" in element) collectFormElementIds(element.fields, usedIds);
@@ -468,6 +511,7 @@ const remapConditionFieldReferences = (
     case "deviceType":
     case "outputBlockVisible":
     case "userHasCity":
+    case "userPropertyHasValue":
     case "firstContractSigned":
     case "completedActionCount":
       return condition;
@@ -579,11 +623,29 @@ const remapCopiedPageReferences = (
   idMap: ReadonlyMap<string, string>,
 ): Page => ({
   ...page,
-  fields: page.fields.map((element) =>
-    isQuestionField(element)
+  fields: page.fields.map((element) => {
+    if (isFieldGroup(element)) {
+      return {
+        ...element,
+        visibleIfFormula: remapVisibleIfFormulaFieldReferences(
+          element.visibleIfFormula,
+          idMap,
+        ),
+        requiredIfFormula: remapVisibleIfFormulaFieldReferences(
+          element.requiredIfFormula,
+          idMap,
+        ),
+        fields: element.fields.map((child) =>
+          isQuestionField(child)
+            ? remapFieldReferences(child, idMap)
+            : remapDisplayBlockReferences(child, idMap),
+        ),
+      };
+    }
+    return isQuestionField(element)
       ? remapFieldReferences(element, idMap)
-      : remapDisplayBlockReferences(element, idMap),
-  ),
+      : remapDisplayBlockReferences(element, idMap);
+  }),
 });
 
 const assignCopiedFieldIds = <T extends AnyField>(
@@ -616,6 +678,17 @@ const copyPageWithUniqueIds = (page: Page, schema: FormSchema): Page => {
 
   const assignCopiedElementIds = (elements: Page["fields"]): Page["fields"] =>
     elements.map((element) => {
+      if (isFieldGroup(element)) {
+        const nextId = createUniqueFormBuilderId("group", usedIds);
+        idMap.set(element.id, nextId);
+        return {
+          ...element,
+          id: nextId,
+          fields: assignCopiedElementIds(
+            element.fields,
+          ) as FieldGroup["fields"],
+        };
+      }
       if (isQuestionField(element)) {
         return assignCopiedFieldIds(element, usedIds, idMap);
       }
@@ -638,12 +711,45 @@ const copyPageWithUniqueIds = (page: Page, schema: FormSchema): Page => {
 };
 
 const copyElementWithUniqueIds = (
-  element: AnyField | DisplayBlock,
+  element: PageItem,
   schema: FormSchema,
-): AnyField | DisplayBlock => {
+): PageItem => {
   const usedIds = collectSchemaIds(schema);
   const idMap = new Map<string, string>();
   const cloned = structuredClone(element);
+
+  if (isFieldGroup(cloned)) {
+    const nextId = createUniqueFormBuilderId("group", usedIds);
+    idMap.set(cloned.id, nextId);
+    const withIds: FieldGroup = {
+      ...cloned,
+      id: nextId,
+      fields: cloned.fields.map((child) => {
+        if (isQuestionField(child)) {
+          return assignCopiedFieldIds(child, usedIds, idMap);
+        }
+        const nextChildId = createUniqueFormBuilderId("block", usedIds);
+        if (child.id) idMap.set(child.id, nextChildId);
+        return copyNestedBlockIds({ ...child, id: nextChildId }, usedIds);
+      }),
+    };
+    return {
+      ...withIds,
+      visibleIfFormula: remapVisibleIfFormulaFieldReferences(
+        withIds.visibleIfFormula,
+        idMap,
+      ),
+      requiredIfFormula: remapVisibleIfFormulaFieldReferences(
+        withIds.requiredIfFormula,
+        idMap,
+      ),
+      fields: withIds.fields.map((child) =>
+        isQuestionField(child)
+          ? remapFieldReferences(child, idMap)
+          : remapDisplayBlockReferences(child, idMap),
+      ),
+    };
+  }
 
   if (isQuestionField(cloned)) {
     // Only ids inside the copied field (itself + list sub-fields) are
@@ -660,11 +766,38 @@ const copyElementWithUniqueIds = (
   );
 };
 
-const describeCopyableElement = (element: AnyField | DisplayBlock): string =>
+const describeCopyableElement = (element: PageItem): string =>
   elementInternalDescriptor(element, {
     typeQualified: true,
     maxTextLength: 40,
   });
+
+type InsertLoc = { groupId: string | null; index: number };
+
+function sameInsertLoc(a: InsertLoc | null, b: InsertLoc): boolean {
+  return a != null && a.groupId === b.groupId && a.index === b.index;
+}
+
+function insertIntoPageItems(
+  items: PageItem[],
+  loc: InsertLoc,
+  item: PageItem,
+): PageItem[] {
+  if (loc.groupId == null) {
+    const next = [...items];
+    next.splice(loc.index, 0, item);
+    return next;
+  }
+  if (isFieldGroup(item)) {
+    return items;
+  }
+  return items.map((el) => {
+    if (!isFieldGroup(el) || el.id !== loc.groupId) return el;
+    const fields = [...el.fields];
+    fields.splice(loc.index, 0, item as AnyField | DisplayBlock);
+    return { ...el, fields };
+  });
+}
 
 export function FormBuilder(props: FormBuilderProps) {
   const { initialSchema, setFormId } = props;
@@ -739,8 +872,10 @@ export function FormBuilder(props: FormBuilderProps) {
   const [draggedItem, setDraggedItem] = useState<{
     index: number;
     pageIndex: number;
+    groupId: string | null;
   } | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<"before" | "after" | null>(
     null,
   );
@@ -762,14 +897,12 @@ export function FormBuilder(props: FormBuilderProps) {
   const [previewUserId, setPreviewUserId] = useState<string>("preview");
   const [isLoadingPreviewUsers, setIsLoadingPreviewUsers] = useState(false);
   const [previewUserError, setPreviewUserError] = useState<string | null>(null);
-  const [activeSearchIndex, setActiveSearchIndex] = useState<number | null>(
-    null,
-  );
+  const [activeSearch, setActiveSearch] = useState<InsertLoc | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Array<AvailableElement>>(
     [],
   );
-  const [copyPickerIndex, setCopyPickerIndex] = useState<number | null>(null);
+  const [copyPicker, setCopyPicker] = useState<InsertLoc | null>(null);
   const [customValidatorDrafts, setCustomValidatorDrafts] = useState<
     Record<number, CustomValidatorDraft>
   >({});
@@ -808,6 +941,20 @@ export function FormBuilder(props: FormBuilderProps) {
 
   const currentPage = schema.pages[selectedPageIndex] ??
     schema.pages?.[0] ?? { id: "page-1", title: "Page 1", fields: [] };
+
+  const applyInsert = (item: PageItem, loc?: InsertLoc) => {
+    const target: InsertLoc = loc ?? {
+      groupId: null,
+      index: currentPage.fields.length,
+    };
+    const newFields = insertIntoPageItems(currentPage.fields, target, item);
+    updateSchema({
+      ...schema,
+      pages: schema.pages.map((page, idx) =>
+        idx === selectedPageIndex ? { ...page, fields: newFields } : page,
+      ),
+    });
+  };
   const resolvedPreviewUser = useMemo(() => {
     if (previewUserId === "preview") {
       return FORM_BUILDER_PREVIEW_USER;
@@ -847,13 +994,19 @@ export function FormBuilder(props: FormBuilderProps) {
 
     schema.pages.forEach((page) => {
       collectFromVisibleIfFormula(page.visibleIfFormula);
-      page.fields.forEach((field) => {
+      flattenPageItems(page.fields).forEach((field) => {
         if (isQuestionField(field)) {
           if (isDraftValidatorId(field.customValidatorId)) {
             activeDraftIds.add(field.customValidatorId);
           }
         }
         collectFromVisibleIfFormula(field.visibleIfFormula);
+      });
+      page.fields.forEach((field) => {
+        if (isFieldGroup(field)) {
+          collectFromVisibleIfFormula(field.visibleIfFormula);
+          collectFromVisibleIfFormula(field.requiredIfFormula);
+        }
       });
     });
 
@@ -878,69 +1031,72 @@ export function FormBuilder(props: FormBuilderProps) {
     });
   }, [customValidatorDrafts, schema]);
 
-  // Search functionality
   useEffect(() => {
     if (searchQuery.trim()) {
-      const filtered = availableElements.filter((element) =>
+      const pool =
+        activeSearch?.groupId != null
+          ? availableElements.filter((element) => element.type !== "group")
+          : availableElements;
+      const filtered = pool.filter((element) =>
         element.name.toLowerCase().includes(searchQuery.toLowerCase()),
       );
       setSearchResults(filtered);
     } else {
       setSearchResults([]);
     }
-  }, [availableElements, searchQuery]);
+  }, [activeSearch?.groupId, availableElements, searchQuery]);
 
-  const handleSearchSelect = (
-    element: AvailableElement,
-    insertIndex: number,
-  ) => {
+  const handleSearchSelect = (element: AvailableElement, loc: InsertLoc) => {
     switch (element.type) {
       case "field":
-        addField(element.id, insertIndex);
+        addField(element.id, loc);
         break;
       case "block":
-        addDisplayBlock(element.kind, insertIndex);
+        addDisplayBlock(element.kind, loc);
         break;
       case "copy":
-        setCopyPickerIndex(insertIndex);
+        setCopyPicker(loc);
+        break;
+      case "group":
+        addGroup(loc);
         break;
       default:
         throw new Error(
           `Unknown element type: ${(element satisfies never as AvailableElement).type}`,
         );
     }
-    setActiveSearchIndex(null);
+    setActiveSearch(null);
     setSearchQuery("");
     setSearchResults([]);
   };
 
-  const handleSearchKeyDown = (e: React.KeyboardEvent, insertIndex: number) => {
+  const handleSearchKeyDown = (e: React.KeyboardEvent, loc: InsertLoc) => {
     if (e.key === "Escape") {
-      setActiveSearchIndex(null);
+      setActiveSearch(null);
       setSearchQuery("");
       setSearchResults([]);
     } else if (e.key === "Enter" && searchResults.length > 0) {
       e.preventDefault();
-      handleSearchSelect(searchResults[0], insertIndex);
+      handleSearchSelect(searchResults[0], loc);
     }
   };
 
   // Click outside handler
   const handleClickOutside = () => {
-    if (activeSearchIndex !== null) {
-      setActiveSearchIndex(null);
+    if (activeSearch !== null) {
+      setActiveSearch(null);
       setSearchQuery("");
       setSearchResults([]);
     }
-    if (copyPickerIndex !== null) {
-      setCopyPickerIndex(null);
+    if (copyPicker !== null) {
+      setCopyPicker(null);
     }
   };
 
   // The copy picker's insert index is relative to the current page, so it
   // can't survive a page switch.
   useEffect(() => {
-    setCopyPickerIndex(null);
+    setCopyPicker(null);
   }, [selectedPageIndex]);
 
   // Load form data when formId changes
@@ -980,7 +1136,7 @@ export function FormBuilder(props: FormBuilderProps) {
       });
   }, [displayOnly, formId, initialSchema]);
 
-  const addField = (kind: FieldKind, insertIndex?: number) => {
+  const addField = (kind: FieldKind, loc?: InsertLoc) => {
     const fieldId = `field-${Date.now()}`;
     let newField: AnyField;
 
@@ -1190,47 +1346,32 @@ export function FormBuilder(props: FormBuilderProps) {
         return;
     }
 
-    const targetIndex = insertIndex ?? currentPage.fields.length;
-    const newFields = [...currentPage.fields];
-    newFields.splice(targetIndex, 0, newField);
-
-    updateSchema({
-      ...schema,
-      pages: schema.pages.map((page, idx) =>
-        idx === selectedPageIndex ? { ...page, fields: newFields } : page,
-      ),
-    });
+    applyInsert(newField, loc);
   };
 
-  const addDisplayBlock = (kind: DisplayKind, insertIndex?: number) => {
+  const addGroup = (loc?: InsertLoc) => {
+    const newGroup: FieldGroup = {
+      id: createUniqueFormBuilderId("group", collectSchemaIds(schema)),
+      type: "group",
+      kind: "group",
+      fields: [],
+    };
+    applyInsert(newGroup, loc?.groupId != null ? undefined : loc);
+  };
+
+  const addDisplayBlock = (kind: DisplayKind, loc?: InsertLoc) => {
     const newBlock = createDisplayBlock(kind, `block-${Date.now()}`);
-    const targetIndex = insertIndex ?? currentPage.fields.length;
-    const newFields = [...currentPage.fields];
-    newFields.splice(targetIndex, 0, newBlock);
-
-    updateSchema({
-      ...schema,
-      pages: schema.pages.map((page, idx) =>
-        idx === selectedPageIndex ? { ...page, fields: newFields } : page,
-      ),
-    });
+    applyInsert(newBlock, loc);
   };
 
-  const insertCopiedElement = (
-    source: AnyField | DisplayBlock,
-    insertIndex: number,
-  ) => {
+  const insertCopiedElement = (source: PageItem, loc: InsertLoc) => {
     const copied = copyElementWithUniqueIds(source, schema);
-    const newFields = [...currentPage.fields];
-    newFields.splice(insertIndex, 0, copied);
-
-    updateSchema({
-      ...schema,
-      pages: schema.pages.map((page, idx) =>
-        idx === selectedPageIndex ? { ...page, fields: newFields } : page,
-      ),
-    });
-    setCopyPickerIndex(null);
+    const target =
+      loc.groupId != null && isFieldGroup(copied)
+        ? { groupId: null, index: currentPage.fields.length }
+        : loc;
+    applyInsert(copied, target);
+    setCopyPicker(null);
   };
 
   const updateSchema = (newSchema: FormSchema) => {
@@ -1258,6 +1399,20 @@ export function FormBuilder(props: FormBuilderProps) {
       schemaToSave.pages.forEach((page) => {
         collectFromVisibleIfFormula(page.visibleIfFormula);
         page.fields.forEach((field) => {
+          if (isFieldGroup(field)) {
+            collectFromVisibleIfFormula(field.visibleIfFormula);
+            collectFromVisibleIfFormula(field.requiredIfFormula);
+            field.fields.forEach((child) => {
+              if (
+                isQuestionField(child) &&
+                isDraftValidatorId(child.customValidatorId)
+              ) {
+                draftIds.add(child.customValidatorId);
+              }
+              collectFromVisibleIfFormula(child.visibleIfFormula);
+            });
+            return;
+          }
           if (
             isQuestionField(field) &&
             isDraftValidatorId(field.customValidatorId)
@@ -1335,6 +1490,35 @@ export function FormBuilder(props: FormBuilderProps) {
           ...page,
           visibleIfFormula: mapVisibleIfFormula(page.visibleIfFormula),
           fields: page.fields.map((field) => {
+            if (isFieldGroup(field)) {
+              return {
+                ...field,
+                visibleIfFormula: mapVisibleIfFormula(field.visibleIfFormula),
+                requiredIfFormula: mapVisibleIfFormula(field.requiredIfFormula),
+                fields: field.fields.map((child) => {
+                  const nextVisibleIfFormula = mapVisibleIfFormula(
+                    child.visibleIfFormula,
+                  );
+                  if (isQuestionField(child)) {
+                    const nextValidatorId = isDraftValidatorId(
+                      child.customValidatorId,
+                    )
+                      ? (resolvedIds.get(child.customValidatorId) ??
+                        child.customValidatorId)
+                      : child.customValidatorId;
+                    return {
+                      ...child,
+                      customValidatorId: nextValidatorId,
+                      visibleIfFormula: nextVisibleIfFormula,
+                    };
+                  }
+                  return {
+                    ...child,
+                    visibleIfFormula: nextVisibleIfFormula,
+                  };
+                }),
+              };
+            }
             const nextVisibleIfFormula = mapVisibleIfFormula(
               field.visibleIfFormula,
             );
@@ -1498,7 +1682,7 @@ export function FormBuilder(props: FormBuilderProps) {
     () =>
       schema.pages
         .slice(0, selectedPageIndex)
-        .flatMap((page) => page.fields)
+        .flatMap((page) => flattenPageItems(page.fields))
         .filter(isQuestionField),
     [schema.pages, selectedPageIndex],
   );
@@ -1851,17 +2035,21 @@ export function FormBuilder(props: FormBuilderProps) {
     };
   }, [handleSaveForm, hasUnsavedChanges, isLoading, isSaving]);
 
-  const handleDragStart = (index: number) => (e: React.DragEvent) => {
-    setDraggedItem({
-      index,
-      pageIndex: selectedPageIndex,
-    });
-    e.dataTransfer.effectAllowed = "move";
-  };
+  const handleDragStart =
+    (index: number, groupId: string | null = null) =>
+    (e: React.DragEvent) => {
+      setDraggedItem({
+        index,
+        pageIndex: selectedPageIndex,
+        groupId,
+      });
+      e.dataTransfer.effectAllowed = "move";
+    };
 
   const handleDragEnd = () => {
     setDraggedItem(null);
     setDragOverIndex(null);
+    setDragOverGroupId(null);
     setDropPosition(null);
   };
 
@@ -1945,72 +2133,126 @@ export function FormBuilder(props: FormBuilderProps) {
     handlePageDragEnd();
   };
 
-  const handleDragOver = (index: number) => (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
+  const handleDragOver =
+    (index: number, groupId: string | null = null) =>
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
 
-    if (!draggedItem || draggedItem.pageIndex !== selectedPageIndex) {
-      return;
-    }
+      if (!draggedItem || draggedItem.pageIndex !== selectedPageIndex) {
+        return;
+      }
 
-    const rect = e.currentTarget.getBoundingClientRect();
-    const midpoint = rect.top + rect.height / 2;
-    const position = e.clientY < midpoint ? "before" : "after";
+      const rect = e.currentTarget.getBoundingClientRect();
+      const midpoint = rect.top + rect.height / 2;
+      const position = e.clientY < midpoint ? "before" : "after";
 
-    setDragOverIndex(index);
-    setDropPosition(position);
-  };
+      setDragOverIndex(index);
+      setDragOverGroupId(groupId);
+      setDropPosition(position);
+    };
 
-  const handleDrop = (dropIndex: number) => (e: React.DragEvent) => {
-    e.preventDefault();
+  const handleDrop =
+    (dropIndex: number, groupId: string | null = null) =>
+    (e: React.DragEvent) => {
+      e.preventDefault();
 
-    if (
-      !draggedItem ||
-      draggedItem.pageIndex !== selectedPageIndex ||
-      !dropPosition
-    ) {
-      return;
-    }
+      if (
+        !draggedItem ||
+        draggedItem.pageIndex !== selectedPageIndex ||
+        !dropPosition
+      ) {
+        return;
+      }
 
-    const { index: dragIndex } = draggedItem;
+      const fromGroupId = draggedItem.groupId;
+      const dragIndex = draggedItem.index;
 
-    // Calculate the actual insertion index
-    let insertionIndex = dropIndex;
-    if (dropPosition === "after") {
-      insertionIndex = dropIndex + 1;
-    }
+      let insertionIndex = dropIndex;
+      if (dropPosition === "after") {
+        insertionIndex = dropIndex + 1;
+      }
 
-    // Adjust for the fact that we're removing the dragged item first
-    if (dragIndex < insertionIndex) {
-      insertionIndex -= 1;
-    }
+      const sameParent = fromGroupId === groupId;
+      if (sameParent && dragIndex < insertionIndex) {
+        insertionIndex -= 1;
+      }
 
-    if (dragIndex === insertionIndex) {
+      if (sameParent && dragIndex === insertionIndex) {
+        setDraggedItem(null);
+        setDragOverIndex(null);
+        setDragOverGroupId(null);
+        setDropPosition(null);
+        return;
+      }
+
+      const sourceItems =
+        fromGroupId == null
+          ? currentPage.fields
+          : currentPage.fields.find(
+              (item): item is FieldGroup =>
+                isFieldGroup(item) && item.id === fromGroupId,
+            )?.fields;
+      const draggedField = sourceItems?.[dragIndex];
+      if (!draggedField) {
+        setDraggedItem(null);
+        setDragOverIndex(null);
+        setDragOverGroupId(null);
+        setDropPosition(null);
+        return;
+      }
+
+      if (groupId != null && isFieldGroup(draggedField)) {
+        setDraggedItem(null);
+        setDragOverIndex(null);
+        setDragOverGroupId(null);
+        setDropPosition(null);
+        return;
+      }
+
+      let nextFields = [...currentPage.fields];
+      if (fromGroupId == null) {
+        nextFields.splice(dragIndex, 1);
+      } else {
+        nextFields = nextFields.map((item) => {
+          if (!isFieldGroup(item) || item.id !== fromGroupId) return item;
+          const fields = [...item.fields];
+          fields.splice(dragIndex, 1);
+          return { ...item, fields };
+        });
+      }
+
+      if (groupId == null) {
+        nextFields.splice(insertionIndex, 0, draggedField);
+      } else {
+        nextFields = nextFields.map((item) => {
+          if (!isFieldGroup(item) || item.id !== groupId) return item;
+          const fields = [...item.fields];
+          fields.splice(
+            insertionIndex,
+            0,
+            draggedField as AnyField | DisplayBlock,
+          );
+          return { ...item, fields };
+        });
+      }
+
+      updateSchema({
+        ...schema,
+        pages: schema.pages.map((page, idx) =>
+          idx === selectedPageIndex ? { ...page, fields: nextFields } : page,
+        ),
+      });
+
       setDraggedItem(null);
       setDragOverIndex(null);
+      setDragOverGroupId(null);
       setDropPosition(null);
-      return;
-    }
-
-    const currentFields = [...currentPage.fields];
-    const [draggedField] = currentFields.splice(dragIndex, 1);
-    currentFields.splice(insertionIndex, 0, draggedField);
-
-    updateSchema({
-      ...schema,
-      pages: schema.pages.map((page, idx) =>
-        idx === selectedPageIndex ? { ...page, fields: currentFields } : page,
-      ),
-    });
-
-    setDraggedItem(null);
-    setDragOverIndex(null);
-    setDropPosition(null);
-  };
+    };
 
   // Inline search component - small hover target
-  const InlineSearch = ({ insertIndex }: { insertIndex: number }) => {
-    const isActive = activeSearchIndex === insertIndex;
+  const InlineSearch = ({ loc }: { loc: InsertLoc }) => {
+    const isActive = sameInsertLoc(activeSearch, loc);
 
     if (isActive) {
       return (
@@ -2020,7 +2262,7 @@ export function FormBuilder(props: FormBuilderProps) {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => handleSearchKeyDown(e, insertIndex)}
+              onKeyDown={(e) => handleSearchKeyDown(e, loc)}
               placeholder="Type to search for elements (text, header, divider...)"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
               autoFocus
@@ -2031,7 +2273,7 @@ export function FormBuilder(props: FormBuilderProps) {
                 {searchResults.map((element) => (
                   <button
                     key={`${element.type}-${element.id}`}
-                    onClick={() => handleSearchSelect(element, insertIndex)}
+                    onClick={() => handleSearchSelect(element, loc)}
                     className="w-full text-left px-3 py-2 hover:bg-blue-50 focus:bg-blue-50 focus:outline-none first:rounded-t-md last:rounded-b-md"
                   >
                     <div className="flex items-center justify-between">
@@ -2056,16 +2298,12 @@ export function FormBuilder(props: FormBuilderProps) {
       );
     }
 
-    // Larger hover target - only visible on hover, no spacing when not hovering
     return (
       <div className="relative group">
-        {/* Larger invisible hover area */}
         <div className="w-full h-6 absolute -top-3 left-0 z-10"></div>
-
-        {/* Visible button on hover - positioned absolutely to not affect layout */}
         <div className="absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none group-hover:pointer-events-auto pb-4">
           <button
-            onClick={() => setActiveSearchIndex(insertIndex)}
+            onClick={() => setActiveSearch(loc)}
             className="pb-[1px] w-8 h-8 bg-white border border-blue-500 hover:bg-blue-200 text-blue-500 rounded-full shadow-lg flex items-center justify-center text-sm font-bold transition-colors"
             title="Add element here"
           >
@@ -2078,7 +2316,7 @@ export function FormBuilder(props: FormBuilderProps) {
 
   // Inline picker for inserting a copy of an existing element. Kept as UI
   // state (not a schema element) so an in-progress pick never gets saved.
-  const InlineCopyPicker = ({ insertIndex }: { insertIndex: number }) => {
+  const InlineCopyPicker = ({ loc }: { loc: InsertLoc }) => {
     const selectRef = useRef<HTMLSelectElement | null>(null);
     const [hasSelection, setHasSelection] = useState(false);
     const hasCopyableElements = schema.pages.some(
@@ -2091,7 +2329,7 @@ export function FormBuilder(props: FormBuilderProps) {
       const [pageIndex, elementIndex] = value.split(":").map(Number);
       const source = schema.pages[pageIndex]?.fields[elementIndex];
       if (source) {
-        insertCopiedElement(source, insertIndex);
+        insertCopiedElement(source, loc);
       }
     };
 
@@ -2105,7 +2343,7 @@ export function FormBuilder(props: FormBuilderProps) {
             onChange={() => setHasSelection(true)}
             onKeyDown={(e) => {
               if (e.key === "Escape") {
-                setCopyPickerIndex(null);
+                setCopyPicker(null);
               } else if (e.key === "Enter") {
                 e.preventDefault();
                 commitSelection();
@@ -2147,7 +2385,7 @@ export function FormBuilder(props: FormBuilderProps) {
           </button>
           <button
             type="button"
-            onClick={() => setCopyPickerIndex(null)}
+            onClick={() => setCopyPicker(null)}
             className="text-gray-400 hover:text-gray-600"
             title="Cancel"
             aria-label="Cancel copy"
@@ -2159,15 +2397,33 @@ export function FormBuilder(props: FormBuilderProps) {
     );
   };
 
-  const InsertPoint = ({ insertIndex }: { insertIndex: number }) =>
-    copyPickerIndex === insertIndex ? (
-      <InlineCopyPicker insertIndex={insertIndex} />
+  const InsertPoint = ({ loc }: { loc: InsertLoc }) =>
+    copyPicker != null && sameInsertLoc(copyPicker, loc) ? (
+      <InlineCopyPicker loc={loc} />
     ) : (
-      <InlineSearch insertIndex={insertIndex} />
+      <InlineSearch loc={loc} />
     );
 
-  const renderField = (field: AnyField | DisplayBlock, index: number) => {
-    const updateField = (updates: Partial<AnyField | DisplayBlock>) => {
+  const renderField = (
+    field: PageItem,
+    index: number,
+    parentId: string | null = null,
+  ) => {
+    const mapAtParent = (
+      items: PageItem[],
+      mapItem: (item: PageItem, i: number) => PageItem,
+    ): PageItem[] => {
+      if (parentId == null) return items.map(mapItem);
+      return items.map((item) => {
+        if (!isFieldGroup(item) || item.id !== parentId) return item;
+        return {
+          ...item,
+          fields: item.fields.map(mapItem) as FieldGroup["fields"],
+        };
+      });
+    };
+
+    const updateField = (updates: Partial<PageItem>) => {
       const optionValueChange =
         isQuestionField(field) &&
         fieldHasOptions(field) &&
@@ -2178,21 +2434,27 @@ export function FormBuilder(props: FormBuilderProps) {
 
       const nextPages = schema.pages.map((page, pageIndex) => {
         if (pageIndex === selectedPageIndex) {
-          const updatedFields = page.fields.map((f, i) =>
-            i === index ? ({ ...f, ...updates } as AnyField | DisplayBlock) : f,
+          const updatedFields = mapAtParent(page.fields, (f, i) =>
+            i === index ? ({ ...f, ...updates } as PageItem) : f,
           );
 
           if (!optionValueChange) {
             return { ...page, fields: updatedFields };
           }
 
+          const groupIndex =
+            parentId == null
+              ? index
+              : page.fields.findIndex(
+                  (item) => isFieldGroup(item) && item.id === parentId,
+                );
           const fieldsWithUpdatedConditions =
             applyOptionValueToConditionalVisibility(
               updatedFields,
               (field as AnyField).id,
               optionValueChange.previousValue,
               optionValueChange.nextValue,
-              index,
+              parentId == null ? index : groupIndex,
             );
 
           return { ...page, fields: fieldsWithUpdatedConditions };
@@ -2240,308 +2502,398 @@ export function FormBuilder(props: FormBuilderProps) {
     const removeField = () => {
       updateSchema({
         ...schema,
-        pages: schema.pages.map((page, idx) =>
-          idx === selectedPageIndex
-            ? { ...page, fields: page.fields.filter((_, i) => i !== index) }
-            : page,
-        ),
+        pages: schema.pages.map((page, idx) => {
+          if (idx !== selectedPageIndex) return page;
+          if (parentId == null) {
+            return {
+              ...page,
+              fields: page.fields.filter((_, i) => i !== index),
+            };
+          }
+          return {
+            ...page,
+            fields: page.fields.map((item) => {
+              if (!isFieldGroup(item) || item.id !== parentId) return item;
+              return {
+                ...item,
+                fields: item.fields.filter((_, i) => i !== index),
+              };
+            }),
+          };
+        }),
       });
     };
 
     const isDragging =
       draggedItem?.index === index &&
-      draggedItem?.pageIndex === selectedPageIndex;
+      draggedItem?.pageIndex === selectedPageIndex &&
+      draggedItem?.groupId === parentId;
     const showInsertionBar =
-      dragOverIndex === index && dropPosition && !isDragging;
+      dragOverIndex === index &&
+      dragOverGroupId === parentId &&
+      dropPosition &&
+      !isDragging;
 
-    // Build previous answer fields for conditional visibility controls.
     const previousFields = [
       ...schema.pages
         .slice(0, selectedPageIndex)
-        .flatMap((page) => page.fields),
-      ...currentPage.fields.slice(0, index),
-    ].filter(
-      (f): f is AnyField => (f as any)?.kind && (f as any)?.label !== undefined,
-    );
+        .flatMap((page) => flattenPageItems(page.fields)),
+      ...(parentId == null
+        ? flattenPageItems(currentPage.fields.slice(0, index))
+        : [
+            ...flattenPageItems(
+              currentPage.fields.slice(
+                0,
+                currentPage.fields.findIndex(
+                  (item) => isFieldGroup(item) && item.id === parentId,
+                ),
+              ),
+            ),
+            ...((
+              currentPage.fields.find(
+                (item): item is FieldGroup =>
+                  isFieldGroup(item) && item.id === parentId,
+              )?.fields ?? []
+            ).slice(0, index) as Array<AnyField | DisplayBlock>),
+          ]),
+    ].filter(isQuestionField);
 
     const commonProps = {
       onUpdate: updateField,
       onRemove: removeField,
-      onDragStart: handleDragStart(index),
+      onDragStart: handleDragStart(index, parentId),
       onDragEnd: handleDragEnd,
       isDragging: isDragging,
       previousFields,
     };
 
-    // Render the element with insertion bar indicators
     return (
-      <div key={index} className="relative">
-        {/* Insertion bar before */}
+      <div key={field.id || index} className="relative">
         {showInsertionBar && dropPosition === "before" && (
           <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
             <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
           </div>
         )}
 
-        {/* The actual element */}
         <div
           className="transition-all"
-          onDragOver={handleDragOver(index)}
-          onDrop={handleDrop(index)}
+          onDragOver={handleDragOver(index, parentId)}
+          onDrop={handleDrop(index, parentId)}
         >
-          {isQuestionField(field)
+          {isFieldGroup(field)
             ? (() => {
-                const formField = field;
-                switch (formField.kind) {
-                  case "text":
-                    return (
-                      <EditableTextField
-                        field={formField as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "textarea":
-                    return (
-                      <EditableTextareaField
-                        field={formField as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "email":
-                    return (
-                      <EditableEmailField
-                        field={formField as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "phone":
-                    return (
-                      <EditablePhoneField
-                        field={formField as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "number":
-                    return (
-                      <EditableNumberField
-                        field={formField as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "range":
-                    return (
-                      <EditableRangeField
-                        field={formField as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "checkbox":
-                    return (
-                      <EditableCheckboxField
-                        field={formField as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "radio":
-                    return (
-                      <EditableRadioField
-                        field={formField as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "select":
-                    return (
-                      <EditableSelectField
-                        field={formField as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "multiselect":
-                    return (
-                      <EditableMultiSelectField
-                        field={formField as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "ranking":
-                    return (
-                      <EditableRankingField
-                        field={formField}
-                        {...commonProps}
-                      />
-                    );
-                  case "date":
-                    return (
-                      <EditableDateField
-                        field={formField as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "time":
-                    return (
-                      <EditableTimeField
-                        field={formField as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "timezone":
-                    return (
-                      <EditableTimezoneField
-                        field={formField as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "city":
-                    return (
-                      <EditableCityField
-                        field={formField as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "file":
-                    return (
-                      <EditableFileField
-                        field={formField as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "contract":
-                    return (
-                      <EditableContractField
-                        field={formField as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "list":
-                    return (
-                      <EditableListField
-                        field={formField as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "custom":
-                    return (
-                      <EditableCustomComponentField
-                        field={formField as any}
-                        {...commonProps}
-                      />
-                    );
-                  default:
-                    return null;
-                }
+                const group = field;
+                const ungroup = () => {
+                  updateSchema({
+                    ...schema,
+                    pages: schema.pages.map((page, idx) => {
+                      if (idx !== selectedPageIndex) return page;
+                      const next: PageItem[] = [];
+                      for (const item of page.fields) {
+                        if (item.id === group.id && isFieldGroup(item)) {
+                          next.push(...item.fields);
+                        } else {
+                          next.push(item);
+                        }
+                      }
+                      return { ...page, fields: next };
+                    }),
+                  });
+                };
+                return (
+                  <EditableFieldGroup
+                    group={group}
+                    onUpdate={updateField}
+                    onRemove={removeField}
+                    onUngroup={ungroup}
+                    onDragStart={handleDragStart(index, parentId)}
+                    onDragEnd={handleDragEnd}
+                    isDragging={isDragging}
+                    previousFields={previousFields}
+                  >
+                    {group.fields.length === 0 && (
+                      <InsertPoint loc={{ groupId: group.id, index: 0 }} />
+                    )}
+                    {group.fields.map((child, childIndex) => (
+                      <div key={child.id || childIndex}>
+                        {childIndex > 0 && (
+                          <InsertPoint
+                            loc={{ groupId: group.id, index: childIndex }}
+                          />
+                        )}
+                        {childIndex === 0 && (
+                          <InsertPoint loc={{ groupId: group.id, index: 0 }} />
+                        )}
+                        {renderField(child, childIndex, group.id)}
+                        {childIndex === group.fields.length - 1 && (
+                          <InsertPoint
+                            loc={{
+                              groupId: group.id,
+                              index: childIndex + 1,
+                            }}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </EditableFieldGroup>
+                );
               })()
-            : (() => {
-                const block = field as DisplayBlock;
-                switch (block.kind) {
-                  case "header":
-                    return (
-                      <EditableHeaderBlock
-                        block={block as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "text":
-                    return (
-                      <EditableTextBlock
-                        block={block as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "label":
-                    return (
-                      <EditableLabelBlock
-                        block={block as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "divider":
-                    return (
-                      <EditableDividerBlock
-                        block={block as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "spacer":
-                    return (
-                      <EditableSpacerBlock
-                        block={block as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "html":
-                    return (
-                      <EditableHtmlBlock
-                        block={block as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "images":
-                    return (
-                      <EditableImagesBlock
-                        block={block as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "video":
-                    return (
-                      <EditableVideoBlock
-                        block={block as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "quote":
-                    return (
-                      <EditableQuoteBlock
-                        block={block as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "biglink":
-                    return (
-                      <EditableBigLinkBlock
-                        block={block as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "copytext":
-                    return (
-                      <EditableCopyTextBlock
-                        block={block as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "previousAnswer":
-                    return (
-                      <EditablePreviousAnswerBlock
-                        block={block as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "userLocation":
-                    return (
-                      <EditableUserLocationBlock
-                        block={block as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "chatTranscript":
-                    return (
-                      <EditableChatTranscriptBlock
-                        block={block as any}
-                        {...commonProps}
-                      />
-                    );
-                  case "accordion":
-                    return (
-                      <EditableAccordionBlock block={block} {...commonProps} />
-                    );
-                  default:
-                    console.error(
-                      `Unknown block kind: ${block satisfies never}`,
-                    );
-                    return null;
-                }
-              })()}
+            : isQuestionField(field)
+              ? (() => {
+                  const formField = field;
+                  switch (formField.kind) {
+                    case "text":
+                      return (
+                        <EditableTextField
+                          field={formField as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "textarea":
+                      return (
+                        <EditableTextareaField
+                          field={formField as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "email":
+                      return (
+                        <EditableEmailField
+                          field={formField as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "phone":
+                      return (
+                        <EditablePhoneField
+                          field={formField as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "number":
+                      return (
+                        <EditableNumberField
+                          field={formField as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "range":
+                      return (
+                        <EditableRangeField
+                          field={formField as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "checkbox":
+                      return (
+                        <EditableCheckboxField
+                          field={formField as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "radio":
+                      return (
+                        <EditableRadioField
+                          field={formField as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "select":
+                      return (
+                        <EditableSelectField
+                          field={formField as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "multiselect":
+                      return (
+                        <EditableMultiSelectField
+                          field={formField as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "ranking":
+                      return (
+                        <EditableRankingField
+                          field={formField}
+                          {...commonProps}
+                        />
+                      );
+                    case "date":
+                      return (
+                        <EditableDateField
+                          field={formField as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "time":
+                      return (
+                        <EditableTimeField
+                          field={formField as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "timezone":
+                      return (
+                        <EditableTimezoneField
+                          field={formField as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "city":
+                      return (
+                        <EditableCityField
+                          field={formField as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "file":
+                      return (
+                        <EditableFileField
+                          field={formField as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "contract":
+                      return (
+                        <EditableContractField
+                          field={formField as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "list":
+                      return (
+                        <EditableListField
+                          field={formField as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "custom":
+                      return (
+                        <EditableCustomComponentField
+                          field={formField as any}
+                          {...commonProps}
+                        />
+                      );
+                    default:
+                      return null;
+                  }
+                })()
+              : (() => {
+                  const block = field as DisplayBlock;
+                  switch (block.kind) {
+                    case "header":
+                      return (
+                        <EditableHeaderBlock
+                          block={block as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "text":
+                      return (
+                        <EditableTextBlock
+                          block={block as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "label":
+                      return (
+                        <EditableLabelBlock
+                          block={block as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "divider":
+                      return (
+                        <EditableDividerBlock
+                          block={block as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "spacer":
+                      return (
+                        <EditableSpacerBlock
+                          block={block as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "html":
+                      return (
+                        <EditableHtmlBlock
+                          block={block as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "images":
+                      return (
+                        <EditableImagesBlock
+                          block={block as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "video":
+                      return (
+                        <EditableVideoBlock
+                          block={block as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "quote":
+                      return (
+                        <EditableQuoteBlock
+                          block={block as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "biglink":
+                      return (
+                        <EditableBigLinkBlock
+                          block={block as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "copytext":
+                      return (
+                        <EditableCopyTextBlock
+                          block={block as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "previousAnswer":
+                      return (
+                        <EditablePreviousAnswerBlock
+                          block={block as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "userLocation":
+                      return (
+                        <EditableUserLocationBlock
+                          block={block as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "chatTranscript":
+                      return (
+                        <EditableChatTranscriptBlock
+                          block={block as any}
+                          {...commonProps}
+                        />
+                      );
+                    case "accordion":
+                      return (
+                        <EditableAccordionBlock
+                          block={block}
+                          {...commonProps}
+                        />
+                      );
+                    default:
+                      console.error(
+                        `Unknown block kind: ${block satisfies never}`,
+                      );
+                      return null;
+                  }
+                })()}
         </div>
 
         {/* Insertion bar after */}
@@ -2586,11 +2938,15 @@ export function FormBuilder(props: FormBuilderProps) {
             <ElementSelect
               onAddField={addField}
               onAddDisplayBlock={addDisplayBlock}
+              onAddGroup={() => addGroup()}
               onCopyExisting={() => {
-                setActiveSearchIndex(null);
+                setActiveSearch(null);
                 setSearchQuery("");
                 setSearchResults([]);
-                setCopyPickerIndex(currentPage.fields.length);
+                setCopyPicker({
+                  groupId: null,
+                  index: currentPage.fields.length,
+                });
               }}
               displayOnly={displayOnly}
             />
@@ -2987,18 +3343,24 @@ export function FormBuilder(props: FormBuilderProps) {
                   <PerViewerOptions allowed={!displayOnly}>
                     <div className="space-y-4">
                       {currentPage.fields.length === 0 && (
-                        <InsertPoint insertIndex={0} />
+                        <InsertPoint loc={{ groupId: null, index: 0 }} />
                       )}
 
                       {currentPage.fields.map((field, index) => (
                         <div key={field.id || index}>
-                          {index > 0 && <InsertPoint insertIndex={index} />}
-                          {index === 0 && <InsertPoint insertIndex={0} />}
+                          {index > 0 && (
+                            <InsertPoint loc={{ groupId: null, index }} />
+                          )}
+                          {index === 0 && (
+                            <InsertPoint loc={{ groupId: null, index: 0 }} />
+                          )}
 
                           {renderField(field, index)}
 
                           {index === currentPage.fields.length - 1 && (
-                            <InsertPoint insertIndex={index + 1} />
+                            <InsertPoint
+                              loc={{ groupId: null, index: index + 1 }}
+                            />
                           )}
                         </div>
                       ))}
@@ -3010,55 +3372,11 @@ export function FormBuilder(props: FormBuilderProps) {
                             e.preventDefault();
                             e.dataTransfer.dropEffect = "move";
                             setDragOverIndex(currentPage.fields.length);
+                            setDragOverGroupId(null);
                             setDropPosition("before");
                           }}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            if (
-                              !draggedItem ||
-                              draggedItem.pageIndex !== selectedPageIndex
-                            )
-                              return;
-
-                            const { index: dragIndex } = draggedItem;
-                            const insertionIndex =
-                              currentPage.fields.length -
-                              (dragIndex < currentPage.fields.length ? 1 : 0);
-
-                            if (dragIndex === insertionIndex) {
-                              setDraggedItem(null);
-                              setDragOverIndex(null);
-                              setDropPosition(null);
-                              return;
-                            }
-
-                            const currentFields = [...currentPage.fields];
-                            const [draggedField] = currentFields.splice(
-                              dragIndex,
-                              1,
-                            );
-                            currentFields.push(draggedField);
-
-                            updateSchema({
-                              ...schema,
-                              pages: schema.pages.map((page, idx) =>
-                                idx === selectedPageIndex
-                                  ? { ...page, fields: currentFields }
-                                  : page,
-                              ),
-                            });
-
-                            setDraggedItem(null);
-                            setDragOverIndex(null);
-                            setDropPosition(null);
-                          }}
-                        >
-                          {dragOverIndex === currentPage.fields.length && (
-                            <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
-                              <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                            </div>
-                          )}
-                        </div>
+                          onDrop={handleDrop(currentPage.fields.length, null)}
+                        />
                       )}
 
                       {currentPage.fields.length === 0 && (

@@ -1,5 +1,8 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import { isQuestionField } from "@alliance/common/forms/form-schema";
+import {
+  flattenPageItems,
+  isQuestionField,
+} from "@alliance/common/forms/form-schema";
 import { actionsGetActionReferralCode } from "../client/sdk.gen";
 import type { FormResponseDto } from "../client/types.gen";
 
@@ -106,17 +109,15 @@ const resolveAnswerValue = (value: unknown): string | null => {
 
 const findSchemaField = (schema: FormSchema, token: string) => {
   const normalizedToken = token.trim().toLowerCase();
-  return schema.pages
-    .flatMap((page) => page.fields)
-    .find(
-      (field) =>
-        "id" in field &&
-        ((typeof field.id === "string" &&
-          field.id.trim().toLowerCase() === normalizedToken) ||
-          (isQuestionField(field) &&
-            typeof field.label === "string" &&
-            field.label.trim().toLowerCase() === normalizedToken)),
-    );
+  return flattenPageItems(schema.pages.flatMap((page) => page.fields)).find(
+    (field) =>
+      "id" in field &&
+      ((typeof field.id === "string" &&
+        field.id.trim().toLowerCase() === normalizedToken) ||
+        (isQuestionField(field) &&
+          typeof field.label === "string" &&
+          field.label.trim().toLowerCase() === normalizedToken)),
+  );
 };
 
 export function getShareableTextTemplate(

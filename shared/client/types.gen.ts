@@ -920,8 +920,26 @@ export type MaybeUserLocationDto = {
     city?: City;
 };
 
+export type UserPropertyPresenceDto = {
+    name: boolean;
+    email: boolean;
+    phoneNumber: boolean;
+    preferredReminderTime: boolean;
+    timeZone: boolean;
+    profilePicture: boolean;
+    profileDescription: boolean;
+    city: boolean;
+    customCityString: boolean;
+    over18: boolean;
+    clusterId: boolean;
+    staffTitle: boolean;
+    switchedDomainAt: boolean;
+    referredById: boolean;
+};
+
 export type MyVisibilityContextDto = {
     userHasCity: boolean;
+    userPropertyHasValue: UserPropertyPresenceDto;
     firstContractSignedAt?: string;
     completedActionCount: number;
 };

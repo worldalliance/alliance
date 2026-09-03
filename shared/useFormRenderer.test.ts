@@ -1,4 +1,5 @@
 import {
+  flattenPageItems,
   isQuestionField,
   type AnyField,
   type FormSchema,
@@ -237,7 +238,7 @@ const twoPageSchema: FormSchema = {
 function lookupFor(schema: FormSchema): Map<string, AnyField> {
   return new Map(
     schema.pages
-      .flatMap((page) => page.fields)
+      .flatMap((page) => flattenPageItems(page.fields))
       .filter(isQuestionField)
       .map((field) => [field.id, field]),
   );

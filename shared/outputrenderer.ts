@@ -13,6 +13,7 @@ import type {
 } from "@alliance/common/forms/form-schema";
 import {
   collectVariableInputFields,
+  flattenPageItems,
   isQuestionField,
   variableInputFieldsById,
 } from "@alliance/common/forms/form-schema";
@@ -77,7 +78,7 @@ export const collectOutputFieldMap = (
 ): Map<string, AnyField> => {
   const map = new Map<string, AnyField>();
   schema.pages.forEach((page) => {
-    page.fields.forEach((field) => {
+    flattenPageItems(page.fields).forEach((field) => {
       if (isQuestionField(field)) {
         map.set(field.id, field);
       }

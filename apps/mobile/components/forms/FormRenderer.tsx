@@ -16,6 +16,7 @@ import {
   type ImagesItem,
 } from "@alliance/common/forms/display-blocks";
 import {
+  flattenPageItems,
   isQuestionField,
   type AnyField,
   type FormSchema,
@@ -724,6 +725,7 @@ const FormRenderer = ({
 
   const {
     userHasCity,
+    userPropertyHasValue,
     firstContractSignedAt,
     completedActionCount,
     isLoading: visibilityContextLoading,
@@ -870,6 +872,7 @@ const FormRenderer = ({
     fieldLookup,
     previousAnswerData,
     userHasCity,
+    userPropertyHasValue,
     firstContractSignedAt,
     completedActionCount,
   });
@@ -1052,7 +1055,9 @@ const FormRenderer = ({
     visiblePageIndices.indexOf(currentPageIndex) + 1,
   );
 
-  const pageFields = currentPage?.fields;
+  const pageFields = currentPage
+    ? flattenPageItems(currentPage.fields)
+    : undefined;
   const resolvedPageElements = useMemo(
     () =>
       (pageFields ?? []).map((element) =>
@@ -1105,7 +1110,7 @@ const FormRenderer = ({
   return (
     <View className="flex flex-col gap-y-8">
       <View className="gap-y-4">
-        {currentPage?.fields.map((element, idx) => {
+        {pageFields?.map((element, idx) => {
           if (!pageElementVisible[idx]) {
             return null;
           }
