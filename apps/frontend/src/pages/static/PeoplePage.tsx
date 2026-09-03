@@ -22,8 +22,7 @@ import { SectionSubtitle } from "../../site/ui";
 export function meta() {
   return socialPreviewMeta({
     title: "People — The Alliance",
-    description:
-      "A full-time office plans the actions. Members carry them out. Experts tell us where we are wrong.",
+    description: "The staff, experts, and members of the Alliance.",
     url: "/people",
   });
 }
