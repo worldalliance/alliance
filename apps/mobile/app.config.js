@@ -1,5 +1,11 @@
 const IS_DEV = process.env.APP_VARIANT === "development";
 
+// Metro inlines `EXPO_PUBLIC_*` into the bundle, so this reaches the app while
+// staying out of `extra`, which would change the fingerprint every commit and
+// strand each build on its own OTA runtime version.
+process.env.EXPO_PUBLIC_GIT_COMMIT ||=
+  process.env.EAS_BUILD_GIT_COMMIT_HASH ?? "";
+
 export default {
   expo: {
     name: IS_DEV ? "Alliance (Dev)" : "Alliance",
