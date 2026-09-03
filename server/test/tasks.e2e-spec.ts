@@ -2725,7 +2725,7 @@ describe("Tasks (e2e)", () => {
       const initialCity = "Existing City";
       await userRepo.update(ctx.testUserId, {
         customCityString: initialCity,
-        cityId: null,
+        city: null,
       });
 
       const schema: FormSchema = {
