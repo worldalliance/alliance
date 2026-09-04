@@ -1,0 +1,74 @@
+name: Change User Email
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment whose database to change"
+        required: true
+        type: choice
+        options:
+          - production
+          - staging
+        default: staging
+      oldEmail:
+        description: "Current email address of the account"
+        required: true
+        type: string
+      newEmail:
+        description: "Email address to change it to"
+        required: true
+        type: string
+
+concurrency:
+  group: change-user-email-${{ inputs.environment }}
+
+jobs:
+  change-user-email:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      OLD_EMAIL: ${{ inputs.oldEmail }}
+      NEW_EMAIL: ${{ inputs.newEmail }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Upload script to EC2
+        uses: appleboy/scp-action@v0.1.3
+        with:
+          host: ${{ secrets.INSTANCE_IP }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "server/scripts/change-user-email.ts"
+          strip_components: 2
+          target: "~/nest-backend/server/scripts/"
+
+      - name: SSH and change the email
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          # v1.2.5 defaults to drone-ssh 1.8.2, which stops forwarding output
+          # for good once one line outgrows its scanner. 1.8.3+ has no limit.
+          version: 1.8.4
+          host: ${{ secrets.INSTANCE_IP }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          # The addresses are dispatch inputs, so they reach the remote shell as
+          # environment variables rather than interpolated into the script text.
+          envs: OLD_EMAIL,NEW_EMAIL
+          script: |
+            set -Eeuo pipefail
+
+            export PATH="$HOME/.bun/bin:$PATH"
+            command -v bun >/dev/null || { echo "bun missing on this host"; exit 1; }
+
+            export DB_HOST=${{ secrets.RDS_HOSTNAME }}
+            export DB_PORT=${{ secrets.RDS_PORT }}
+            export DB_USERNAME=${{ secrets.RDS_USERNAME }}
+            export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            export DB_NAME="alliance"
+            export DB_CA_CERT="${{ secrets.DB_CA_CERT }}"
+            export NODE_ENV=${{ inputs.environment }}
+
+            cd ~/nest-backend/server
+            bun scripts/change-user-email.ts "$OLD_EMAIL" "$NEW_EMAIL"
