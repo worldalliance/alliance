@@ -8,6 +8,7 @@ import { useCallback, useState } from "react";
 import { Link, href, useNavigate } from "react-router";
 import { useAuth } from "../lib/AuthContext";
 import { useMediaQuery } from "../lib/useMediaQuery";
+import { WalkthroughAnchor } from "../onboarding/walkthrough/steps";
 
 const ProfileDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -33,6 +34,7 @@ const ProfileDropdown = () => {
   return (
     <div
       ref={ref}
+      data-walkthrough={WalkthroughAnchor.ProfileMenu}
       onMouseEnter={!isMobile ? () => setIsOpen(true) : undefined}
       onMouseLeave={!isMobile ? () => setIsOpen(false) : undefined}
       className="relative flex items-center gap-x-1.5"

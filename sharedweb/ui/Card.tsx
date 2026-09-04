@@ -10,6 +10,7 @@ export interface CardProps extends PropsWithChildren {
   ref?: React.RefObject<HTMLDivElement | null>;
   flex?: boolean;
   id?: string;
+  "data-walkthrough"?: string;
 }
 
 const Card: React.FC<CardProps> = ({
@@ -21,12 +22,14 @@ const Card: React.FC<CardProps> = ({
   ref,
   flex = true,
   id,
+  "data-walkthrough": dataWalkthrough,
 }: CardProps) => {
   const cardStyle = style ?? CardStyle.White;
 
   return (
     <div
       id={id || undefined}
+      data-walkthrough={dataWalkthrough}
       className={cn(
         flex && "flex flex-col",
         cardStyleClasses[cardStyle],

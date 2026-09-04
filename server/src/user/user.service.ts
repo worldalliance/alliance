@@ -849,7 +849,7 @@ export class UserService {
 
   /**
    * Up to 5 member profiles with avatars for the signup page.
-   * Prefer accepted friends of the referrer (from invite or referral code), then random members with photos.
+   * Prefer accepted friends of the referrer, then random members with photos.
    */
   async getSignupSocialProof(referralCode?: string): Promise<User[]> {
     const minProfiles = 5;
@@ -857,18 +857,16 @@ export class UserService {
     const usedIds: number[] = [];
 
     const trimmed = referralCode?.trim();
-    let inviterId: number | null = null;
-    if (trimmed) {
-      const invite = await this.findInviteByCode(trimmed);
-      if (invite?.invitingUser) {
-        inviterId = invite.invitingUser.id;
-      } else {
-        const refUser = await this.findOneByReferralCode(trimmed);
-        inviterId = refUser?.id ?? null;
-      }
-    }
+    // Same resolution the sign-up screen names its inviter by, so a reusable
+    // share link gets that person's friends rather than falling back to random
+    // members while the screen beside it says who invited you.
+    const referrer = trimmed ? await this.resolveReferrer(trimmed) : null;
+    const inviterId = referrer?.kind === "user" ? referrer.user.id : null;
 
     if (inviterId != null) {
+      // The caller renders the inviter's own avatar first, so leave them out of
+      // the fill rather than showing the same face twice.
+      usedIds.push(inviterId);
       const friends = await this.findFriendUsersWithProfilePictures(inviterId);
       for (const u of friends) {
         if (users.length >= minProfiles) {

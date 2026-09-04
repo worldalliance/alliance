@@ -1,0 +1,243 @@
+.ob-root {
+  --ob-gap: clamp(1rem, 6.4vh, 5rem);
+  /* The agreement's body is tall enough that the standard gap pushes it into
+     the footer buttons. */
+  --ob-gap-tight: clamp(0.5rem, 2.4vh, 1.6rem);
+  /* Separates the eyebrow from the headline and the footer from the body. */
+  --ob-band-gap: clamp(1.5rem, 3.4vh, 3rem);
+  --ob-pad-top: clamp(0.85rem, 3vh, 2.6rem);
+  --ob-pad-bottom: clamp(2.5rem, 6.7vh, 5.5rem);
+  --ob-progress-bottom: clamp(1rem, 3.1vh, 2.6rem);
+  font-family: var(--site-font-body);
+}
+
+/* On `:root` because the walkthrough overlay uses these after the flow's own
+   root has unmounted.
+
+   The type scale is six sizes and nothing outside them. Each is traced from
+   the 1728x1117 Figma frame: the vh term hits the design's pixel size at that
+   height, the vw term caps it on a phone. */
+:root {
+  --ob-eyebrow: clamp(0.8rem, min(1.8vh, 3.6vw), 1.4rem);
+  --ob-h1: clamp(1.15rem, min(3.55vh, 5.6vw), 2.75rem);
+  --ob-h2: clamp(0.95rem, min(2.5vh, 4.4vw), 2rem);
+  --ob-body: clamp(0.8rem, min(2.2vh, 3.9vw), 1.75rem);
+  --ob-ui: clamp(0.78rem, min(1.62vh, 3.2vw), 1.25rem);
+  --ob-caption: clamp(0.68rem, min(1.36vh, 2.7vw), 1.05rem);
+
+  --ob-margin: 0px;
+  --ob-radius: 0px;
+  --ob-bleed: 5rem;
+  --ob-navy: var(--site-primary);
+  --ob-green: #24491d;
+  --ob-swap: cubic-bezier(0.65, 0, 0.35, 1);
+  --ob-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The flow owns the whole viewport, so nothing may put a scrollbar on html and
+   leave a gutter beside the panel. */
+html.ob-locked,
+html.ob-locked body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.ob-root .ob-priorities h3 {
+  font-size: var(--ob-h2);
+}
+
+.ob-root .ob-priorities .site-priority-body p {
+  font-size: var(--ob-caption);
+  line-height: 1.35;
+}
+
+/* The agreement card must fit whole and must not scroll, so the promise beside
+   it yields on any viewport too short to hold both. */
+.ob-promise {
+  display: none;
+}
+
+@media (min-width: 640px) and (min-height: 760px) {
+  .ob-promise {
+    display: flex;
+  }
+}
+
+/* The public site opens every description on touch. These cards are too short
+   for that, and the Figma shows titles alone. */
+@media (hover: none) {
+  .ob-root .ob-priorities .site-priority-body > .grid {
+    grid-template-rows: 0fr !important;
+  }
+
+  .ob-root .ob-priorities .site-priority-body p {
+    opacity: 0 !important;
+  }
+}
+
+@media (min-width: 640px) {
+  :root {
+    --ob-margin: 1.25rem;
+    --ob-radius: 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --ob-margin: 1.75rem;
+  }
+}
+
+.ob-root .ob-display {
+  font-family: var(--site-font-display);
+}
+
+/* The reused product miniatures set actions in the site's link blue. */
+.ob-mocks {
+  --site-link: var(--color-green);
+}
+
+/* One element carries the whole flow. It starts as the panel bleeding off the
+   right of the sign-up screen, then grows to hold every screen after it. */
+.ob-panel {
+  position: fixed;
+  overflow: hidden;
+  border-radius: var(--ob-radius);
+  transition:
+    top 900ms var(--ob-swap),
+    width 900ms var(--ob-swap),
+    bottom 900ms var(--ob-swap),
+    left 900ms var(--ob-swap),
+    border-radius 900ms var(--ob-swap),
+    background-color 800ms ease;
+}
+
+/* Width and left off `vw` rather than `right`/`%`, because `vw` counts a
+   classic scrollbar and the alternatives stop short of it, leaving a strip of
+   page beside the panel.
+
+   Absolute, not fixed: the account screen scrolls, and the panel belongs to
+   its first viewport rather than following the site content down. Its offsets
+   resolve against the `h-dvh` hero, so at the top of the page this paints
+   exactly where the fixed `--full` state starts its morph. */
+.ob-panel--intro {
+  position: absolute;
+  top: 8.5rem;
+  bottom: 3.5rem;
+  left: 50vw;
+  width: calc(50vw + var(--ob-bleed));
+  border-radius: 1rem;
+}
+
+.ob-panel--full {
+  top: var(--ob-margin);
+  bottom: var(--ob-margin);
+  left: var(--ob-margin);
+  width: calc(100vw - 2 * var(--ob-margin));
+}
+
+@keyframes ob-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ob-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ob-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ob-rise {
+  animation: ob-rise 720ms var(--ob-out) both;
+}
+
+.ob-fade {
+  animation: ob-fade 720ms var(--ob-out) both;
+}
+
+.ob-scale-in {
+  animation: ob-scale-in 760ms var(--ob-out) both;
+}
+
+/* The contract's green confirmation bar, grown from where it sits under the
+   card until it covers the panel and hands over to the welcome screen. */
+@keyframes ob-flood {
+  from {
+    top: var(--ob-flood-top);
+    left: var(--ob-flood-left);
+    width: var(--ob-flood-width);
+    height: var(--ob-flood-height);
+  }
+  to {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.ob-flood {
+  position: absolute;
+  background-color: var(--color-green);
+  transition: opacity 620ms ease;
+  animation: ob-flood 720ms var(--ob-swap) both;
+}
+
+.ob-flood--out {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ob-root *,
+  .ob-root *::before,
+  .ob-root *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* The onboarding panel shrinking into the walkthrough's dialogue, so the two
+   halves of onboarding read as one continuous surface. */
+@keyframes ob-tour-shrink {
+  from {
+    top: var(--ob-margin);
+    left: var(--ob-margin);
+    width: calc(100vw - 2 * var(--ob-margin));
+    height: calc(100dvh - 2 * var(--ob-margin));
+    border-radius: var(--ob-radius);
+  }
+  to {
+    top: var(--ob-tour-top);
+    left: var(--ob-tour-left);
+    width: var(--ob-tour-width);
+    height: var(--ob-tour-height);
+    border-radius: 0.75rem;
+  }
+}
+
+.ob-tour-shrink {
+  position: fixed;
+  background-color: var(--ob-green);
+  animation: ob-tour-shrink 780ms var(--ob-swap) both;
+}

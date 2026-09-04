@@ -21,10 +21,15 @@ export const queryKeys = {
   myAwayRanges: () => ["userGetAwayRanges"] as const,
   myReusableInvites: () => ["shareUrlsMyInvites"] as const,
   myVisibilityContext: () => ["userMyVisibilityContext"] as const,
+  onetimeInvite: (code: string | null) => ["userOnetimeInvite", code] as const,
   onetimeInvitesOverview: () => ["userGetOnetimeInvitesOverview"] as const,
   publicCommunities: () => ["communityGetPublicCommunities"] as const,
   publicMembers: () => ["userMembersPublic"] as const,
   publicProfile: (userId: number) => ["userFindOne", userId] as const,
+  referrerProfile: (code: string | null) =>
+    ["userReferrerProfile", code] as const,
+  signupSocialProof: (referralCode: string | null) =>
+    ["userSignupSocialProof", referralCode] as const,
   staffDirectory: () => ["userStaffDirectory"] as const,
 
   // Admin

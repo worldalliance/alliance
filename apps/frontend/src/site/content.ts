@@ -183,6 +183,11 @@ export const GROWTH_HEADLINE_FAR_PARTS = {
 export const GROWTH_FOOTNOTE =
   "With millions of members, we could make enormous progress on global crises by strategically coordinating our time, money, and votes.";
 
+export const HOURS_START_LABEL = "Action arrives";
+export const HOURS_END_LABEL = "Deadline";
+export const HOURS_LEGEND_TOTAL = "Hours in the week";
+export const HOURS_LEGEND_SPENT = "Time spent completing actions";
+
 export type Milestone = { members: number; label: string };
 
 export const nearMilestones: Milestone[] = [

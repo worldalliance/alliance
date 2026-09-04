@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { HoursGrid } from "../../../../site/graphics/HoursGrid";
 import {
   currentMemberCount,
   farMilestones,
@@ -9,7 +10,6 @@ import {
   nearMilestones,
 } from "../content";
 import { GrowthMilestones } from "../graphics/GrowthMilestones";
-import { HoursGrid } from "../graphics/HoursGrid";
 import { rdHref, RedesignPage } from "../links";
 import { ModelGraphicKind, type RedesignTheme } from "../theme";
 import { RD_COL, RdArrow, RdTexturedPanel } from "../ui";
@@ -18,7 +18,7 @@ const graphicByKind: Record<
   ModelGraphicKind,
   (props: { theme: RedesignTheme }) => ReactNode
 > = {
-  [ModelGraphicKind.HoursGrid]: HoursGrid,
+  [ModelGraphicKind.HoursGrid]: () => <HoursGrid />,
   [ModelGraphicKind.GrowthMilestones]: ({ theme }) => (
     <GrowthMilestones
       farHeadline={
