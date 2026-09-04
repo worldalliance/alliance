@@ -945,11 +945,11 @@ const ActionDashboard: React.FC = () => {
         Please see{" "}
         <a
           className="text-green underline"
-          href="https://www.notion.so/Action-public-preparation-guide-28b6915bb8fa80f19306f016ff13ba5d?source=copy_link"
+          href="https://docs.google.com/document/d/1vxeA31milcWRhpkGjGWHp1RQbpDFRjS541E9SzdKkFc/edit?usp=sharing"
           target="_blank"
           rel="noreferrer"
         >
-          Action public preparation guide
+          Action copy guidelines
         </a>
       </p>
       {errorMessage && (
