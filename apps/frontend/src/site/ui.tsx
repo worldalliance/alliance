@@ -153,7 +153,10 @@ const toneClasses: Record<ButtonTone, string> = {
  * A control that either navigates or does something in place, so a call to
  * action can be either without its caller knowing which.
  */
-export type LinkTarget = { to: string } | { href: string } | { onClick: () => void };
+export type LinkTarget =
+  | { to: string }
+  | { href: string }
+  | { onClick: () => void };
 
 export function SiteButton({
   children,
