@@ -153,7 +153,7 @@ const toneClasses: Record<ButtonTone, string> = {
  * A control that either navigates or does something in place, so a call to
  * action can be either without its caller knowing which.
  */
-export type LinkTarget = { to: string } | { onClick: () => void };
+export type LinkTarget = { to: string } | { href: string } | { onClick: () => void };
 
 export function SiteButton({
   children,
@@ -161,6 +161,7 @@ export function SiteButton({
   className,
   size = "base",
   withArrow = false,
+  lift = true,
   ...target
 }: {
   children: ReactNode;
@@ -168,11 +169,13 @@ export function SiteButton({
   className?: string;
   size?: "sm" | "base";
   withArrow?: boolean;
+  lift?: boolean;
 } & LinkTarget) {
   const classes = cn(
     "group/btn inline-flex items-center gap-2 font-medium",
     "transition-[background-color,border-color,transform,box-shadow] duration-300 ease-out",
-    "hover:-translate-y-0.5 hover:shadow-[0_10px_22px_-12px_rgba(0,0,0,0.55)]",
+    lift &&
+      "hover:-translate-y-0.5 hover:shadow-[0_10px_22px_-12px_rgba(0,0,0,0.55)]",
     size === "sm"
       ? "min-h-11 px-4 py-2 text-sm"
       : "min-h-12 px-5 py-2.5 text-base",
@@ -183,17 +186,33 @@ export function SiteButton({
     <>
       {children}
       {withArrow && (
-        <SiteArrow className="size-2.5 transition-transform duration-300 ease-out group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
+        <SiteArrow
+          className={cn(
+            "size-2.5",
+            lift &&
+              "transition-transform duration-300 ease-out group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5",
+          )}
+        />
       )}
     </>
   );
   const style = { borderRadius: "var(--site-radius-button)" };
 
-  return "to" in target ? (
-    <Link to={target.to} className={classes} style={style}>
-      {body}
-    </Link>
-  ) : (
+  if ("to" in target) {
+    return (
+      <Link to={target.to} className={classes} style={style}>
+        {body}
+      </Link>
+    );
+  }
+  if ("href" in target) {
+    return (
+      <a href={target.href} className={classes} style={style}>
+        {body}
+      </a>
+    );
+  }
+  return (
     <button
       type="button"
       onClick={target.onClick}
