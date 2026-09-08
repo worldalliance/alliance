@@ -20,10 +20,8 @@ type FeedSettings = {
 };
 
 enum InviteFeedKind {
-  Alliance = "alliance",
+  Individual = "individual",
   Group = "group",
-  MultiUse = "multi-use",
-  MultiUseGroup = "multi-use-group",
 }
 
 type InviteFeedItem = {
@@ -113,7 +111,7 @@ async function getOnetimeInvitesSince(
     id: `onetime-${invite.id}`,
     createdAt: invite.createdAt,
     invitingUserDisplayName: invite.invitingUser?.displayName ?? "Someone",
-    kind: invite.community ? InviteFeedKind.Group : InviteFeedKind.Alliance,
+    kind: InviteFeedKind.Individual,
   }));
 }
 
@@ -124,10 +122,7 @@ function reusableInviteFeedItem(
     id: `reusable-${invite.id}`,
     createdAt: invite.createdAt,
     invitingUserDisplayName: invite.invitingUserDisplayName,
-    kind:
-      invite.communityId === null
-        ? InviteFeedKind.MultiUse
-        : InviteFeedKind.MultiUseGroup,
+    kind: InviteFeedKind.Group,
   };
 }
 
@@ -146,10 +141,8 @@ async function getInvitesSince(startAt: string): Promise<InviteFeedItem[]> {
 }
 
 const INVITE_TYPE_LABEL: Record<InviteFeedKind, string> = {
-  [InviteFeedKind.Alliance]: "Alliance invite",
+  [InviteFeedKind.Individual]: "individual invite",
   [InviteFeedKind.Group]: "group invite",
-  [InviteFeedKind.MultiUse]: "multi-use invite",
-  [InviteFeedKind.MultiUseGroup]: "multi-use group invite",
 };
 
 function formatStartTime(startAt: string): string {
