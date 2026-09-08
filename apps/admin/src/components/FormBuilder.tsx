@@ -53,8 +53,10 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Copy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBeforeUnload, useBlocker, useSearchParams } from "react-router";
+import { addressedWrite } from "../lib/displayBlockById";
 import { mergeFormSchemas } from "../lib/formSchemaMerge";
 import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
+import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
 import { AggregateBuilder } from "./AggregateBuilder";
 import ConfirmDialog from "./ConfirmDialog";
 import {
@@ -1379,6 +1381,8 @@ export function FormBuilder(props: FormBuilderProps) {
     setSchema(ensureSchemaViews(newSchema));
   };
 
+  const updateBlockById = useDisplayBlockWrite(schema, updateSchema);
+
   const resolveCustomValidatorDrafts = useCallback(
     async (schemaToSave: FormSchema) => {
       const draftIds = new Set<number>();
@@ -2561,6 +2565,7 @@ export function FormBuilder(props: FormBuilderProps) {
 
     const commonProps = {
       onUpdate: updateField,
+      updateCurrent: addressedWrite(field, updateBlockById),
       onRemove: removeField,
       onDragStart: handleDragStart(index, parentId),
       onDragEnd: handleDragEnd,
@@ -3241,7 +3246,11 @@ export function FormBuilder(props: FormBuilderProps) {
                   onSchemaChange={updateSchema}
                 />
               ) : activeEditor === "outputs" ? (
-                <OutputBuilder schema={schema} onSchemaChange={updateSchema} />
+                <OutputBuilder
+                  schema={schema}
+                  onSchemaChange={updateSchema}
+                  onUpdateBlockById={updateBlockById}
+                />
               ) : activeEditor === "aggregates" ? (
                 <AggregateBuilder
                   schema={schema}

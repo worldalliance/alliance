@@ -31,6 +31,7 @@ const iconOptions: {
 export function EditableBigLinkBlock({
   block,
   onUpdate,
+  updateCurrent,
   onRemove,
   onDragStart,
   onDragEnd,
@@ -47,6 +48,7 @@ export function EditableBigLinkBlock({
       isDragging={isDragging}
       block={block}
       onUpdate={onUpdate}
+      updateCurrent={updateCurrent}
       previousFields={previousFields}
     >
       {({ block: activeBlock, onUpdate: handleUpdate }) => (

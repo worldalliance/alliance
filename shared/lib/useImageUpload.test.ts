@@ -7,6 +7,7 @@ import {
 
 type Pending = {
   dataUri: string;
+  signal?: AbortSignal;
   resolve: (result: Result<string, string>) => void;
   reject: (error: unknown) => void;
 };
@@ -14,9 +15,9 @@ type Pending = {
 let pending: Pending[] = [];
 
 jest.mock("./uploadImageDataUri", () => ({
-  uploadImageDataUri: (dataUri: string) =>
+  uploadImageDataUri: (dataUri: string, signal?: AbortSignal) =>
     new Promise<Result<string, string>>((resolve, reject) => {
-      pending.push({ dataUri, resolve, reject });
+      pending.push({ dataUri, signal, resolve, reject });
     }),
 }));
 
@@ -61,6 +62,10 @@ function mountUpload() {
         next.resolve(result);
       });
     },
+    cancel: (slot: FileUploadSlot) =>
+      act(() => view.result.current.cancelUpload(slot)),
+    cancelAll: () => act(() => view.result.current.cancelAll()),
+    signalAt: (index: number) => pending[index]?.signal,
   };
 }
 
@@ -188,6 +193,14 @@ describe("two picks for the same slot", () => {
     ]);
   });
 
+  it("aborts the request the earlier pick is still sending", () => {
+    const upload = pickTwice();
+
+    expect(upload.signalAt(0)?.aborted).toBe(true);
+    expect(upload.signalAt(1)?.aborted).toBe(false);
+    expect(upload.state().uploadingAny).toBe(true);
+  });
+
   it("drops a superseded upload's failure", async () => {
     const upload = pickTwice();
 
@@ -195,6 +208,89 @@ describe("two picks for the same slot", () => {
     await upload.settleAt(0, R.failure("That file is too large"));
 
     expect(upload.state().uploadErrors).toEqual({});
+    expect(upload.uploaded).toEqual([
+      { slotId: "photo", imageKey: "second.webp" },
+    ]);
+  });
+});
+
+describe("cancelUpload", () => {
+  it("frees the gate and aborts the request still sending", () => {
+    const upload = mountUpload();
+    upload.select(field("photo"));
+    expect(upload.signalAt(0)?.aborted).toBe(false);
+
+    upload.cancel(field("photo"));
+
+    expect(upload.state().uploadingAny).toBe(false);
+    expect(upload.signalAt(0)?.aborted).toBe(true);
+  });
+
+  it("drops the cancelled upload when it lands", async () => {
+    const upload = mountUpload();
+    upload.select(field("photo"));
+
+    upload.cancel(field("photo"));
+    await upload.settle(R.success("abc.webp"));
+
+    expect(upload.uploaded).toEqual([]);
+    expect(upload.state().uploadErrors).toEqual({});
+    expect(upload.state().uploadingAny).toBe(false);
+  });
+
+  it("leaves the other slots alone", () => {
+    const upload = mountUpload();
+    upload.select(field("front"));
+    upload.select(field("back"));
+
+    upload.cancel(field("front"));
+
+    expect([...upload.state().uploadingSlotIds]).toEqual(["back"]);
+    expect(upload.signalAt(1)?.aborted).toBe(false);
+  });
+
+  it("drops every slot at once", () => {
+    const upload = mountUpload();
+    upload.select(field("front"));
+    upload.select(field("back"));
+
+    upload.cancelAll();
+
+    expect(upload.state().uploadingAny).toBe(false);
+    expect(upload.signalAt(0)?.aborted).toBe(true);
+    expect(upload.signalAt(1)?.aborted).toBe(true);
+  });
+
+  it("holds the gate for a pick made after cancelling every slot", async () => {
+    const upload = mountUpload();
+    upload.select(field("photo"), "first");
+    upload.cancelAll();
+    upload.select(field("photo"), "second");
+
+    await upload.settleAt(0, R.success("first.webp"));
+    expect(upload.state().uploadingAny).toBe(true);
+
+    await upload.settleAt(0, R.success("second.webp"));
+    expect(upload.state().uploadingAny).toBe(false);
+    expect(upload.uploaded).toEqual([
+      { slotId: "photo", imageKey: "second.webp" },
+    ]);
+  });
+
+  it("holds the gate for a pick made after the cancel", async () => {
+    const upload = mountUpload();
+    upload.select(field("photo"), "first");
+    upload.cancel(field("photo"));
+    upload.select(field("photo"), "second");
+
+    await upload.settleAt(0, R.success("first.webp"));
+
+    expect(upload.state().uploadingAny).toBe(true);
+    expect(upload.uploaded).toEqual([]);
+
+    await upload.settleAt(0, R.success("second.webp"));
+
+    expect(upload.state().uploadingAny).toBe(false);
     expect(upload.uploaded).toEqual([
       { slotId: "photo", imageKey: "second.webp" },
     ]);

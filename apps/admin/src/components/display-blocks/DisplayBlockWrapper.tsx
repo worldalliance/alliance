@@ -20,6 +20,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { AddressedWrite } from "../../lib/displayBlockById";
 import {
   ConditionalVisibility,
   type OutputBlockOption,
@@ -57,11 +58,40 @@ const baseManualContentFromBlock = (
     }) as Record<string, unknown>,
   ) as ManualDisplayBlockContent;
 
+/**
+ * Where a write landed. `userId` is null for the default content, which is
+ * where a write meant for one user goes once the block stops holding per-user
+ * content. Null once the form no longer holds the block at all.
+ */
+export type BlockWriteLanding = { userId: string | null } | null;
+
+export type LandingFor = (userId: string | null) => BlockWriteLanding;
+
+const landingIn = (
+  current: DisplayBlock | null | undefined,
+  userId: string | null,
+): BlockWriteLanding =>
+  current ? { userId: current.manualPerUser && userId ? userId : null } : null;
+
+/** Names a write's target inside a sentence, null being the default content. */
+export type TargetLabel = (userId: string | null) => string;
+
 type DisplayBlockChildRenderProps<T extends DisplayBlock> = {
   block: T;
   onUpdate: (updates: Partial<T>) => void;
+  /**
+   * Write to one user's override rather than whichever is on screen now, for
+   * work started under a target the admin can navigate away from before it
+   * lands. `current` is that target's block, resolved when the write happens.
+   */
+  updateFor: (
+    userId: string | null,
+    update: (current: T) => Partial<T>,
+  ) => BlockWriteLanding;
+  /** Where a write for `userId` would land, for work that has none to make. */
+  landingFor: LandingFor;
   activeUserId?: string | null;
-  activeUserName?: string;
+  targetLabel: TargetLabel;
   isDefaultContent: boolean;
   hasContentForUser: boolean;
 };
@@ -74,6 +104,7 @@ interface DisplayBlockWrapperProps<T extends DisplayBlock = DisplayBlock> {
   isDragging?: boolean;
   block?: T;
   onUpdate?: (updates: Partial<T>) => void;
+  updateCurrent?: AddressedWrite;
   previousFields?: AnyField[];
   outputBlocks?: OutputBlockOption[];
   /** A container block's content lives in its children, so it has none to override. */
@@ -88,6 +119,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   isDragging,
   block,
   onUpdate,
+  updateCurrent,
   previousFields,
   outputBlocks,
   perUserContent = true,
@@ -294,6 +326,17 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
         : undefined,
     [activeManualUserId, manualPerUserEnabled, manualUsers],
   );
+  const targetLabel = useCallback<TargetLabel>(
+    (userId) => {
+      if (!userId) return "the default content";
+      const name = manualUsers.find(
+        (candidate) => String(candidate.id) === userId,
+      )?.name;
+      // An empty name would otherwise leave the sentence naming nobody.
+      return name || `User ${userId}`;
+    },
+    [manualUsers],
+  );
   const usersWithContent = useMemo(
     () =>
       manualUsers.filter((candidate) =>
@@ -377,39 +420,54 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     selectManualTarget(manualTargetList[nextIndex]);
   };
 
-  const handleBlockUpdate = useCallback(
-    (updates: Partial<T>) => {
-      if (!onUpdate || !block) {
-        return;
-      }
-      if (manualPerUserEnabled && activeManualUserId) {
+  const updateBlockFor = useCallback(
+    (
+      userId: string | null,
+      update: (current: T) => Partial<T>,
+    ): BlockWriteLanding => {
+      if (!block) return null;
+
+      const updatesFor = (current: T): Partial<T> => {
+        if (!current.manualPerUser || !userId) return update(current);
+
+        const existingManualContent = current.manualUserContent ?? {};
         const existingContent =
-          manualUserContent[activeManualUserId] ??
-          baseManualContentFromBlock(block);
+          existingManualContent[userId] ?? baseManualContentFromBlock(current);
 
         const nextManualContent: Record<string, ManualDisplayBlockContent> = {
-          ...manualUserContent,
-          [activeManualUserId]: stripIdentityFields({
+          ...existingManualContent,
+          [userId]: stripIdentityFields({
             ...existingContent,
-            ...(stripManualFields(updates) as Record<string, unknown>),
+            ...(stripManualFields(
+              update(resolveDisplayBlockForUser(current, userId)),
+            ) as Record<string, unknown>),
           }) as ManualDisplayBlockContent,
         };
 
-        onUpdate({
-          manualUserContent: nextManualContent,
-        } as Partial<T>);
-        return;
-      }
+        return { manualUserContent: nextManualContent } as Partial<T>;
+      };
 
-      onUpdate(updates);
+      // `updateCurrent` addresses this same block by its id, so what it hands
+      // back is the T this wrapper was rendered with.
+      if (updateCurrent) {
+        const wrote = updateCurrent((current) => updatesFor(current as T));
+        return landingIn(wrote, userId);
+      }
+      if (!onUpdate) return null;
+      onUpdate(updatesFor(block));
+      return landingIn(block, userId);
     },
-    [
-      activeManualUserId,
-      block,
-      manualPerUserEnabled,
-      manualUserContent,
-      onUpdate,
-    ],
+    [block, onUpdate, updateCurrent],
+  );
+
+  const landingFor = useCallback<LandingFor>(
+    (userId) => landingIn(block, userId),
+    [block],
+  );
+
+  const handleBlockUpdate = useCallback(
+    (updates: Partial<T>) => updateBlockFor(activeManualUserId, () => updates),
+    [activeManualUserId, updateBlockFor],
   );
 
   const handleImportFromClipboard = useCallback(async () => {
@@ -527,8 +585,10 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
       ? children({
           block: (effectiveBlock ?? (block as T)) as T,
           onUpdate: handleBlockUpdate,
+          updateFor: updateBlockFor,
+          landingFor,
           activeUserId: activeManualUserId,
-          activeUserName: activeUser?.name,
+          targetLabel,
           isDefaultContent: !manualPerUserEnabled || !activeManualUserId,
           hasContentForUser: hasContentForActiveUser,
         })
@@ -841,11 +901,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
             <div>
               <p className="text-sm font-semibold">
                 {activeManualUserId
-                  ? `Editing ${
-                      activeUser?.name
-                        ? `${activeUser.name}`
-                        : `User ${activeManualUserId}`
-                    }`
+                  ? `Editing ${targetLabel(activeManualUserId)}`
                   : "Editing default content"}
               </p>
               <p className="text-xs">

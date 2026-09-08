@@ -26,10 +26,12 @@ import {
   formatTimeForDisplay,
   parseTimeInput,
 } from "@alliance/shared/forms/timeUtils";
+import { cancelImageUpload } from "@alliance/shared/lib/copy";
 import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
 import { isOutputValueMissing } from "@alliance/shared/outputrenderer";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
+import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
 import { ChevronDown, Plus, X } from "lucide-react";
 import {
   useEffect,
@@ -857,7 +859,12 @@ export function RenderField({
                 )}
               />
               {uploading && (
-                <span className=" text-blue-600">Uploading...</span>
+                <UploadingWithCancel
+                  label="Uploading..."
+                  cancelLabel={cancelImageUpload}
+                  onCancel={() => fileUpload?.cancelUpload(uploadSlot)}
+                  className="text-blue-600"
+                />
               )}
             </div>
           )}
