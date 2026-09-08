@@ -48,7 +48,10 @@ export function useLoadComments({
   const [comments, setThread] = useState<CommentDto[] | null>(
     initialComments ?? null,
   );
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<{
+    message: string;
+    canRetry: boolean;
+  } | null>(null);
 
   const setComments = useCallback(
     (update: (prev: CommentDto[]) => CommentDto[]) =>
@@ -85,7 +88,7 @@ export function useLoadComments({
         type,
         objectId,
       });
-      if (reportsFailure) setError(LOAD_FAILED);
+      if (reportsFailure) setFailure({ message: LOAD_FAILED, canRetry: true });
       return;
     }
     const { data, error, response } = sent.value;
@@ -97,21 +100,24 @@ export function useLoadComments({
         status: response.status,
       });
       if (reportsFailure) {
-        setError(
-          refusalMessage({
+        setFailure({
+          message: refusalMessage({
             status: response.status,
             error,
             fallback: LOAD_FAILED,
             sessionExpired: SESSION_EXPIRED,
           }),
-        );
+          // A refusal the reader has to act on, a sign-in or a route saying
+          // no, answers a second request the same way.
+          canRetry: response.status >= 500,
+        });
       }
       return;
     }
     // A comment the request left equal keeps its object, so the memos
     // downstream hit.
     setThread((prev) => replaceEqualDeep(prev, data));
-    setError(null);
+    setFailure(null);
   }, [objectId, type, target]);
 
   // Kept per object. Matched against another object's array, an equal rebuild
@@ -130,7 +136,7 @@ export function useLoadComments({
     const previous = held && held.target === target ? held.comments : null;
     handedDown.current = { target, comments: initialComments };
     outran.current = newestRequest.current;
-    setError(null);
+    setFailure(null);
     if (previous && replaceEqualDeep(previous, initialComments) === previous) {
       return;
     }
@@ -143,14 +149,15 @@ export function useLoadComments({
     if (initialComments) return;
     handedDown.current = null;
     setThread(null);
-    setError(null);
+    setFailure(null);
     fetchComments();
   }, [initialComments, fetchComments]);
 
   return {
     comments,
     setComments,
-    error,
+    error: failure?.message ?? null,
+    canRetry: failure?.canRetry ?? false,
     fetchComments,
   };
 }

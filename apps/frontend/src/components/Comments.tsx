@@ -28,8 +28,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@alliance/sharedweb/ui/DropdownMenu";
+import InlineError from "@alliance/sharedweb/ui/InlineError";
 import { Menu } from "@base-ui/react/menu";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, href } from "react-router";
 import { useAuth } from "../lib/AuthContext";
@@ -369,7 +370,19 @@ const Comments = ({
             counts={tagCounts}
           />
         )}
-        {tree.error && <div className="text-red-500">{tree.error}</div>}
+        <InlineError message={tree.error}>
+          {tree.canRetry && (
+            <button
+              type="button"
+              onClick={() => tree.fetchComments()}
+              aria-label="Try loading the comments again"
+              title="Try loading the comments again"
+              className="p-1 hover:text-red-700"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          )}
+        </InlineError>
         {topLevelComments.length > 0 ? (
           <div className="mt-3">
             {filteredComments.map((reply) => (

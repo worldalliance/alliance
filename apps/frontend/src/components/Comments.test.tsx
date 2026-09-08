@@ -1,8 +1,18 @@
+import * as realClient from "@alliance/shared/client";
 import { CommentDto } from "@alliance/shared/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React, { useState } from "react";
 import { MemoryRouter } from "react-router";
+
+let loadAttempts = 0;
+let loadSucceeds = false;
+
+afterEach(() => {
+  loadAttempts = 0;
+  loadSucceeds = false;
+});
 
 let markdownParses = 0;
 let commentRenders = 0;
@@ -12,6 +22,18 @@ jest.mock("@alliance/sharedweb/ui/AppMarkdownWrapper", () => ({
   default: ({ markdownContent }: { markdownContent: string }) => {
     markdownParses++;
     return <div>{markdownContent}</div>;
+  },
+}));
+
+jest.mock("@alliance/shared/client", () => ({
+  ...realClient,
+  forumFindCommentsForPost: async () => {
+    loadAttempts++;
+    if (loadSucceeds) return { data: [] };
+    return {
+      error: { statusCode: 500, message: "no" },
+      response: new Response(null, { status: 500 }),
+    };
   },
 }));
 
@@ -102,4 +124,28 @@ it("leaves the comment tree alone when something above it renders", async () => 
 
   expect(markdownParses).toBe(parsesOnMount);
   expect(commentRenders).toBe(rendersOnMount);
+});
+
+it("loads the thread again when the reader asks", async () => {
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter>
+        <AuthContext.Provider value={loggedOut}>
+          <Comments objectId={1} type="post" />
+        </AuthContext.Provider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  await screen.findByText("Failed to load comments");
+  expect(loadAttempts).toBe(1);
+
+  loadSucceeds = true;
+  await userEvent.click(
+    screen.getByRole("button", { name: "Try loading the comments again" }),
+  );
+
+  expect(loadAttempts).toBe(2);
+  await waitFor(() =>
+    expect(screen.queryByText("Failed to load comments")).toBeNull(),
+  );
 });

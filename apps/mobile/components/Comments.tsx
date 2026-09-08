@@ -37,7 +37,13 @@ import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentR
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowUpDown, ListFilter, Pin, X } from "lucide-react-native";
+import {
+  ArrowUpDown,
+  ListFilter,
+  Pin,
+  RefreshCw,
+  X,
+} from "lucide-react-native";
 import {
   memo,
   useCallback,
@@ -734,11 +740,12 @@ export default function Comments({
     new Set(),
   );
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
-  const { comments, setComments, error, fetchComments } = useLoadComments({
-    objectId,
-    type,
-    initialComments,
-  });
+  const { comments, setComments, error, canRetry, fetchComments } =
+    useLoadComments({
+      objectId,
+      type,
+      initialComments,
+    });
   const { deleteReply, deleteErrorFor, clearDeleteError } = useDeleteComment({
     comments,
     fetchComments,
@@ -1094,7 +1101,18 @@ export default function Comments({
         </View>
       ) : null}
 
-      <InlineError message={error} />
+      <InlineError message={error}>
+        {canRetry ? (
+          <TouchableOpacity
+            onPress={() => fetchComments()}
+            accessibilityRole="button"
+            accessibilityLabel="Try loading the comments again"
+            hitSlop={8}
+          >
+            <RefreshCw size={14} color={colors.error} />
+          </TouchableOpacity>
+        ) : null}
+      </InlineError>
 
       {isPostComments && topLevelComments.length > 0 && (
         <View className="flex-row items-center justify-between">

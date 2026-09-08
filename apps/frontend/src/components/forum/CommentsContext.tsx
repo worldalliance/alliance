@@ -72,6 +72,7 @@ export function useCommentsContext(): CommentsContextValue {
 export interface UseCommentTreeResult {
   comments: CommentDto[] | null;
   error: string | null;
+  canRetry: boolean;
   deleteErrorFor: (replyId: number) => string | null;
   clearDeleteError: (replyId: number) => void;
   fetchComments: () => Promise<void>;
@@ -104,11 +105,12 @@ export function useCommentTree(
   type: CommentParentObject,
   initialComments?: CommentDto[],
 ): UseCommentTreeResult {
-  const { comments, setComments, error, fetchComments } = useLoadComments({
-    objectId,
-    type,
-    initialComments,
-  });
+  const { comments, setComments, error, canRetry, fetchComments } =
+    useLoadComments({
+      objectId,
+      type,
+      initialComments,
+    });
   const { deleteReply, deleteErrorFor, clearDeleteError } = useDeleteComment({
     comments,
     fetchComments,
@@ -325,6 +327,7 @@ export function useCommentTree(
   return {
     comments,
     error,
+    canRetry,
     deleteErrorFor,
     clearDeleteError,
     fetchComments,

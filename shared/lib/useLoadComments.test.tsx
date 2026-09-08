@@ -258,6 +258,36 @@ it("keeps the server's own fault out of the reader's message", async () => {
   );
 });
 
+it("offers a second try for a refusal the server was at fault for", async () => {
+  served = null;
+  refusal = {
+    status: 500,
+    body: { statusCode: 500, message: "Internal Server Error" },
+  };
+
+  const { result } = renderHook(() =>
+    useLoadComments({ objectId: 7, type: "post" }),
+  );
+
+  await waitFor(() => expect(result.current.canRetry).toBe(true));
+});
+
+it("offers none where a second request would be refused the same way", async () => {
+  served = null;
+  refusal = { status: 401, body: { statusCode: 401, message: "Unauthorized" } };
+
+  const { result } = renderHook(() =>
+    useLoadComments({ objectId: 7, type: "post" }),
+  );
+
+  await waitFor(() =>
+    expect(result.current.error).toBe(
+      "Your session has expired. Sign in again to load the replies.",
+    ),
+  );
+  expect(result.current.canRetry).toBe(false);
+});
+
 // Mobile configures the client like this. Throwing hands the hook a body with
 // no response, and so no status to read.
 it("reads a refusal the client is configured to throw", async () => {
@@ -342,6 +372,7 @@ it("keeps the thread when a refetch never reaches the server", async () => {
   });
 
   expect(result.current.error).toBe("Failed to load comments");
+  expect(result.current.canRetry).toBe(true);
   expect(result.current.comments).toHaveLength(1);
   expect(logged).toHaveBeenCalledWith(expect.any(String), expect.any(Error));
   logged.mockRestore();
