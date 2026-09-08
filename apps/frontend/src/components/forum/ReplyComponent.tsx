@@ -6,6 +6,7 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import ClusterTag from "@alliance/sharedweb/ui/ClusterTag";
 import EditableContentForm from "@alliance/sharedweb/ui/EditableContentForm";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
+import InlineError from "@alliance/sharedweb/ui/InlineError";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
 import { formatDistanceToNow } from "date-fns";
 import { ChevronDown, Pin, X } from "lucide-react";
@@ -234,23 +235,17 @@ const ReplyContent = ({
           </div>
         )}
 
-        {deleteError && (
-          <div
-            role="alert"
-            className="mt-2 flex items-center gap-2 text-sm text-red-500"
+        <InlineError message={deleteError} className="mt-2">
+          <button
+            type="button"
+            onClick={() => ctx.clearDeleteError(reply.id)}
+            aria-label="Dismiss this message"
+            title="Dismiss this message"
+            className="p-1 hover:text-red-700"
           >
-            <span>{deleteError}</span>
-            <button
-              type="button"
-              onClick={() => ctx.clearDeleteError(reply.id)}
-              aria-label="Dismiss this message"
-              title="Dismiss this message"
-              className="p-1 hover:text-red-700"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+            <X className="w-4 h-4" />
+          </button>
+        </InlineError>
       </div>
     </div>
   );
