@@ -47,3 +47,12 @@ it("holds on from the newest raise rather than the first", async () => {
   expect(result.current).toBe(true);
   await waitFor(() => expect(result.current).toBe(false));
 });
+
+it("arms nothing for a flag that was never raised", () => {
+  const timer = jest.spyOn(globalThis, "setTimeout");
+
+  renderHook(() => useHeldOn(false, 50));
+
+  expect(timer).not.toHaveBeenCalled();
+  timer.mockRestore();
+});

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 /** Stays true for at least `ms` past the moment `active` last went true. */
 export function useHeldOn(active: boolean, ms: number): boolean {
   const [held, setHeld] = useState(false);
-  const raisedAt = useRef(Date.now());
+  const raisedAt = useRef(0);
 
   useEffect(() => {
     if (active) {
