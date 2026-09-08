@@ -88,6 +88,19 @@ const blankingTheZoneName = (body: () => void) => {
   }, body);
 };
 
+const namingTheLocale = (locale: unknown, body: () => void) => {
+  const real = Intl.DateTimeFormat;
+
+  standingInFor((locales, options) => {
+    const fmt = new real(locales, options);
+    const resolvedOptions = fmt.resolvedOptions.bind(fmt);
+    Object.defineProperty(fmt, "resolvedOptions", {
+      value: () => ({ ...resolvedOptions(), locale }),
+    });
+    return fmt;
+  }, body);
+};
+
 const rejecting = (style: string, body: () => void) =>
   patchingIntl((args) => {
     if (args.options?.timeZoneName === style) throw new RangeError("no data");
@@ -161,6 +174,11 @@ const resolvingTo = (
     }),
     body,
   );
+
+const labelIn = (tz: string) => {
+  const { result } = renderHook(() => useTimeZoneSelect({}));
+  return result.current.items.find((i) => i.tz === tz)?.labelLeft;
+};
 
 describe("TZ_OPTIONS", () => {
   it("offers only zones this runtime can format", () => {
@@ -656,6 +674,17 @@ describe("a runtime missing a timeZoneName style", () => {
   });
 });
 
+describe("a runtime naming its locale as something other than a string", () => {
+  it("keeps its rows rather than throwing at the guard", () => {
+    namingTheLocale(Symbol("vi"), () => {
+      const { result } = renderHook(() => useTimeZoneSelect({}));
+
+      expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
+      expect(labelIn("Asia/Kolkata")).toBe("India, Sri Lanka Time — Kolkata");
+    });
+  });
+});
+
 describe("a runtime that writes an empty zone name", () => {
   it("falls back to the curated label rather than a bare dash", () => {
     blankingTheZoneName(() => {
@@ -671,6 +700,27 @@ describe("a runtime that writes an empty zone name", () => {
 });
 
 describe("a runtime with no en-US data", () => {
+  it("leaves the row its curated label when the fallback is not English", () => {
+    // Against a runtime short of Vietnamese data this would pass on an en-US
+    // name it never meant to read.
+    expect(new Intl.DateTimeFormat("vi").resolvedOptions().locale).toBe("vi");
+    fallingBackTo({ locale: "vi" }, () => {
+      expect(labelIn("Europe/London")).toBe(
+        "UK, Ireland, Lisbon Time — London",
+      );
+      expect(labelIn("Asia/Kolkata")).toBe("India, Sri Lanka Time — Kolkata");
+    });
+  });
+
+  it("labels the row with the name a plain en fallback wrote", () => {
+    // Against a runtime that resolved en-US anyway this would pass without
+    // reaching the English the guard admits beside en-US.
+    expect(new Intl.DateTimeFormat("en").resolvedOptions().locale).toBe("en");
+    fallingBackTo({ locale: "en" }, () => {
+      expect(labelIn("Asia/Kolkata")).toBe("India Standard Time — Kolkata");
+    });
+  });
+
   it("reads the offset under a fallback whose year and digits are its own", () => {
     fallingBackTo({ locale: "th-TH-u-nu-thai" }, () => {
       expect(getOffsetMinutes("Asia/Tokyo")).toBe(540);

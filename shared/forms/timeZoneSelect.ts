@@ -249,18 +249,23 @@ export function getOffsetMinutes(
   return offsetFromWallClock(tz, when) ?? offsetFromShortOffset(tz, when);
 }
 
+// An engine with no en-US data answers in its own language rather than
+// refusing, which would put a Vietnamese name in a row whose second line,
+// search and sort are all English.
 export function getGenericLabelFromIntl(tz: string): string | null {
-  const parts = partsOf(
-    getFormatter({
-      key: `generic:${tz}`,
-      opts: {
-        timeZone: tz,
-        timeZoneName: "longGeneric",
-      },
-      locale: "en-US",
-    }),
-    new Date(),
-  );
+  const fmt = getFormatter({
+    key: `generic:${tz}`,
+    opts: {
+      timeZone: tz,
+      timeZoneName: "longGeneric",
+    },
+    locale: "en-US",
+  });
+
+  const locale = fmt && askIntl(() => fmt.resolvedOptions().locale);
+  if (typeof locale !== "string" || !/^en(-|$)/.test(locale)) return null;
+
+  const parts = partsOf(fmt, new Date());
   return parts?.find((p) => p.type === "timeZoneName")?.value || null;
 }
 
