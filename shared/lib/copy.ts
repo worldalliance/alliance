@@ -290,3 +290,14 @@ export const forgotPassword = {
       "A link to reset your password has been sent to your email address.",
   },
 } as const;
+
+/**
+ * The 1,000-member milestone, named in four places: the onboarding Scale screen
+ * on web and mobile, and the milestone tracks on the site and redesign pages.
+ * One object so a change to the roadmap does not have to be made four times.
+ */
+export const nextMilestone = {
+  members: 1000,
+  action: "Democratically decide where to donate $100,000",
+  body: "An expert panel and a thousand members choose the recipients together, launching October 2026. If the process holds up, we can run it on much larger sums.",
+};

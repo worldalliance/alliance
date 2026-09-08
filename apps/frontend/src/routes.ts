@@ -16,6 +16,10 @@ export default [
   route("/description", "pages/static/ExpertDescriptionPage.tsx"),
   route("/faq", "pages/static/FAQPage.tsx"),
   route("/invite", "pages/static/InvitePage.tsx"),
+  route(
+    "/projects/democratic-grantmaking-26",
+    "components/projects/democratic-grantmaking-26/DemocraticGrantmaking26.tsx",
+  ),
   route("/outreach-partner", "pages/static/OutreachPartnerPage.tsx"),
   route("/privacypolicy", "pages/static/PrivacyPolicyPage.tsx"),
   route("/childsafety", "pages/static/ChildSafetyPage.tsx"),
@@ -62,6 +66,10 @@ export default [
 
       route("/tasks", "pages/app/HomePage.tsx"),
       route("/groups", "pages/app/CommunityRoute.tsx"),
+      route(
+        "/platform-walkthrough",
+        "onboarding/walkthrough/WalkthroughEntry.tsx",
+      ),
 
       // Info pages
       route("/groups-guide", "pages/app/GroupsGuidePage.tsx"),
@@ -88,8 +96,9 @@ export default [
     ]),
   ]),
   layout("loggedoutonly.tsx", [
-    route("/login", "pages/app/LoginPage.tsx"),
-    route("/signup", "pages/app/SignupPage.tsx"),
+    route("/onboarding", "onboarding/OnboardingPage.tsx"),
+    route("/login", "onboarding/OnboardingPage.tsx", { id: "login" }),
+    route("/signup", "onboarding/OnboardingPage.tsx", { id: "signup" }),
     route("/resetpassword", "pages/app/ResetPasswordPage.tsx"),
   ]),
 ] satisfies RouteConfig;

@@ -12,6 +12,7 @@ import { useSharedValue, withSpring } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 import AnimatedSidebar from "../../components/AnimatedSidebar";
+import { Walkthrough } from "../../components/onboarding/Walkthrough";
 import Sidebar from "../../components/Sidebar";
 import TabBar from "../../components/TabBar";
 import {
@@ -24,6 +25,7 @@ import {
 } from "../../lib/appDrawerConfig";
 import { AppDrawerProvider, useAppDrawer } from "../../lib/AppDrawerContext";
 import { useAuth } from "../../lib/AuthContext";
+import { WalkthroughAnchorProvider } from "../../lib/onboarding/walkthrough";
 import { colors } from "../../lib/style/colors";
 import { isVisualTestMode } from "../../lib/visualTest";
 
@@ -158,14 +160,17 @@ export default function AppLayout() {
         </View>
       );
     }
-    return <Redirect href="/auth/login" />;
+    return <Redirect href="/onboarding" />;
   }
 
   return (
     <AppDrawerProvider isPermanent={dimensions.width >= 1024}>
-      <View className="flex-1" testID="vr-app-shell-ready">
-        <AppContent />
-      </View>
+      <WalkthroughAnchorProvider>
+        <View className="flex-1" testID="vr-app-shell-ready">
+          <AppContent />
+          <Walkthrough />
+        </View>
+      </WalkthroughAnchorProvider>
     </AppDrawerProvider>
   );
 }

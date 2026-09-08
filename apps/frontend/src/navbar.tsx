@@ -9,6 +9,7 @@ import NavbarTopBar from "./components/NavbarTopBar";
 import NavbarVertical from "./components/NavbarVertical";
 import { NavbarOptionsProvider } from "./lib/NavbarOptionsContext";
 import { useTaskActionsData } from "./lib/useTaskActionsData";
+import { Walkthrough } from "./onboarding/walkthrough/Walkthrough";
 
 function Navbar() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -67,6 +68,7 @@ function Navbar() {
               </div>
             )}
           </main>
+          <Walkthrough onDrawerOpenChange={setMobileNavOpen} />
         </IncomingCommunityInvitesProvider>
       </NotificationsProvider>
     </NavbarOptionsProvider>

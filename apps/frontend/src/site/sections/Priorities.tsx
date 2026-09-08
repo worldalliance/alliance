@@ -1,17 +1,26 @@
+import { cn } from "@alliance/shared/styles/util";
 import { PRIORITIES_NOTE, priorities, type Priority } from "../content";
 import { SITE_COL } from "../ui";
 
-function PriorityCard({
+const CARD_SIZE = "aspect-auto min-h-[13.5rem] md:aspect-[5/4] md:min-h-0";
+
+export function PriorityCard({
   priority,
   index,
+  className = CARD_SIZE,
 }: {
   priority: Priority;
   index: number;
+  /** Replaces the card's own sizing where it has to fit a fixed height. */
+  className?: string;
 }) {
   return (
     <article
       tabIndex={0}
-      className="group relative isolate flex aspect-auto min-h-[13.5rem] flex-col overflow-hidden focus:outline-none md:aspect-[5/4] md:min-h-0"
+      className={cn(
+        "group relative isolate flex flex-col overflow-hidden focus:outline-none",
+        className,
+      )}
       style={{
         borderRadius: "var(--site-radius-card)",
         backgroundColor:
@@ -41,7 +50,7 @@ function PriorityCard({
       />
 
       <div className="site-priority-body relative z-10 mt-auto flex flex-col px-6 pt-6 pb-5 md:absolute md:inset-x-6 md:bottom-5 md:mt-0 md:px-0 md:pt-0 md:pb-0">
-        <h3 className="text-xl sm:text-2xl lg:text-3xl leading-[1.16] font-normal whitespace-normal text-white md:whitespace-pre-line ">
+        <h3 className="text-xl leading-[1.16] font-normal whitespace-normal text-white sm:text-2xl md:whitespace-pre-line lg:text-3xl">
           {priority.title}
         </h3>
         <div className="grid min-h-0 grid-rows-[0fr] transition-[grid-template-rows] duration-500 ease-out group-hover:grid-rows-[1fr] group-focus-visible:grid-rows-[1fr]">

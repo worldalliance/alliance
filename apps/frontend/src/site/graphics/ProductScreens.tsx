@@ -4,6 +4,7 @@ import {
   pickFaces,
   useMemberFaces,
   usePublicProfile,
+  type SiteAuthor,
 } from "../data";
 import { PostCard } from "./PostCard";
 
@@ -79,8 +80,16 @@ function ActivityLine({
 }
 
 /** The member feed, as it looks inside the product. */
-export function FeedCard() {
-  const faces = useMemberFaces();
+export function FeedCard({
+  rows = activityRows,
+  faces: authoredFaces,
+}: {
+  rows?: ActivityRow[];
+  /** Overrides the live member roll, for a graphic that must not vary. */
+  faces?: string[];
+} = {}) {
+  const liveFaces = useMemberFaces();
+  const faces = authoredFaces ?? liveFaces;
 
   return (
     <div
@@ -94,7 +103,7 @@ export function FeedCard() {
           maskImage: "linear-gradient(to bottom, #000 90%, transparent 100%)",
         }}
       >
-        {activityRows.map((row, index) => (
+        {rows.map((row, index) => (
           <ActivityLine
             key={row.id}
             row={row}
@@ -107,27 +116,35 @@ export function FeedCard() {
 }
 
 /** A single post opened from the feed, so the pair reads as one product. */
-export function PostDetailCard() {
+export function PostDetailCard({
+  title = DETAIL_TITLE,
+  author: authoredAuthor,
+}: {
+  title?: string;
+  /** Overrides the live profile, for a graphic that must not vary. */
+  author?: SiteAuthor;
+} = {}) {
   const authorId = 38;
-  const { data: author } = usePublicProfile(authorId);
+  const { data: liveAuthor } = usePublicProfile(authorId);
+  const author =
+    authoredAuthor ??
+    (liveAuthor
+      ? {
+          name: liveAuthor.displayName,
+          avatar: liveAuthor.profilePicture ?? FALLBACK_FACE,
+        }
+      : undefined);
 
   return (
     <div
       className="flex h-full flex-col overflow-hidden bg-white shadow-[0_15px_22px_0px_rgba(0,0,0,0.04)]"
       style={{ borderRadius: "var(--site-radius-card)" }}
     >
-      <CardTitleBar>{DETAIL_TITLE}</CardTitleBar>
+      <CardTitleBar>{title}</CardTitleBar>
       <div className="min-h-0 flex-1">
         <PostCard
           post={openedPost}
-          author={
-            author
-              ? {
-                  name: author.displayName,
-                  avatar: author.profilePicture ?? FALLBACK_FACE,
-                }
-              : undefined
-          }
+          author={author}
           className="border-0 shadow-none"
         />
       </div>

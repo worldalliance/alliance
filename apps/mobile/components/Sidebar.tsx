@@ -14,6 +14,7 @@ import {
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { useAppDrawer } from "../lib/AppDrawerContext";
 import { isPathActive } from "../lib/isPathActive";
+import { Anchor, WalkthroughAnchor } from "../lib/onboarding/walkthrough";
 import { colors } from "../lib/style/colors";
 import Text, { FontWeight } from "./system/Text";
 
@@ -118,9 +119,8 @@ export default function Sidebar() {
           {navItems.map((item) => {
             const active = isPathActive(pathname, item.matchPaths);
             const Icon = item.icon;
-            return (
+            const row = (
               <TouchableOpacity
-                key={item.name}
                 onPress={() => handleNavigate(item.href)}
                 className="flex-row items-center px-3 py-2.5 rounded-lg mb-0.5"
                 style={active ? { backgroundColor: colors.grey[2] } : undefined}
@@ -138,6 +138,14 @@ export default function Sidebar() {
                   {item.name}
                 </Text>
               </TouchableOpacity>
+            );
+
+            return item.href === "/membership" ? (
+              <Anchor key={item.name} name={WalkthroughAnchor.MembershipLink}>
+                {row}
+              </Anchor>
+            ) : (
+              <View key={item.name}>{row}</View>
             );
           })}
         </View>

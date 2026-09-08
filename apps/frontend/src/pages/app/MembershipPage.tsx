@@ -25,6 +25,7 @@ import { useLocation } from "react-router";
 import AwayRangesSection from "../../components/AwayRangesSection";
 import { useAuth } from "../../lib/AuthContext";
 import { useContract } from "../../lib/useContract";
+import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
 
 const WEEKLY_COMMITMENT_CONFIRMATION =
   "I commit to complete each task to the best of my ability.";
@@ -78,7 +79,7 @@ function ContractDescriptionList({
         <ol className="flex flex-col gap-y-5 list-none pl-0">
           {items.map((item, index) => (
             <li key={index} className="flex gap-x-4">
-              <span className="shrink-0 size-8 md:size-9 flex items-center justify-center rounded bg-black text-white text-lg md:text-xl font-semibold leading-none tabular-nums">
+              <span className="shrink-0 size-8 md:size-9 flex items-center justify-center rounded bg-[var(--site-primary)] text-white text-lg md:text-xl font-semibold leading-none tabular-nums">
                 {index + 1}
               </span>
               <div className="min-w-0 flex flex-col">
@@ -332,6 +333,7 @@ const MembershipPage: React.FC = () => {
 
         <Card
           id="away-periods"
+          data-walkthrough={WalkthroughAnchor.AwayRanges}
           style={CardStyle.White}
           className="p-6 scroll-mt-[calc(var(--navbar-top-bar-height)+1rem)]"
         >

@@ -53,7 +53,7 @@ const LoginScreen = () => {
 
     setIsSubmitting(true);
     try {
-      await login(email, password);
+      await login({ email, password });
       router.replace("/");
     } catch (error) {
       const errorMessage = (error as any)?.message

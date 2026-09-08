@@ -125,11 +125,10 @@ export function Logotype({
   return (
     <span
       className={cn(
-        "site-display leading-none whitespace-nowrap",
+        "font-logotype leading-none whitespace-nowrap",
         onDark ? "text-white" : "text-black",
         className,
       )}
-      style={{ fontWeight: 500, letterSpacing: "0.02em" }}
     >
       The Alliance
     </span>
@@ -172,6 +171,7 @@ export function SiteButton({
   className?: string;
   size?: "sm" | "base";
   withArrow?: boolean;
+  /** Off where the button wraps to several lines and the hop reads as jitter. */
   lift?: boolean;
 } & LinkTarget) {
   const classes = cn(
@@ -208,19 +208,21 @@ export function SiteButton({
       </Link>
     );
   }
+
   if ("href" in target) {
     return (
       <a
         href={target.href}
-        className={classes}
-        style={style}
         target="_blank"
         rel="noreferrer"
+        className={classes}
+        style={style}
       >
         {body}
       </a>
     );
   }
+
   return (
     <button
       type="button"

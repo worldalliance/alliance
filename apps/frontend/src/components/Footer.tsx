@@ -48,9 +48,7 @@ const Footer: React.FC<FooterProps> = ({ className }) => {
       <div className={cn(LANDING_QUOTES_COL, "py-10 md:py-12")}>
         <div className="flex flex-col gap-10 md:flex-row md:items-start md:justify-between">
           <div className="flex max-w-sm flex-col gap-3">
-            <p className="font-berlingske text-lg font-bold tracking-wide md:text-xl">
-              THE ALLIANCE
-            </p>
+            <p className="font-logotype text-lg md:text-xl">The Alliance</p>
             <p className="text-base leading-relaxed text-white/70 sm:text-lg">
               A global group of people cooperating to improve the world.
             </p>

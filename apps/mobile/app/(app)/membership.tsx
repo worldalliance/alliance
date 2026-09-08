@@ -31,6 +31,11 @@ import Card, { CardStyle } from "../../components/system/Card";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
+import {
+  Anchor,
+  useWalkthroughScroll,
+  WalkthroughAnchor,
+} from "../../lib/onboarding/walkthrough";
 import { colors } from "../../lib/style/colors";
 
 const WEEKLY_COMMITMENT_CONFIRMATION =
@@ -135,6 +140,7 @@ const isConfirmationLengthCloseEnough = (confirmation: string) =>
 export default function MembershipScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const walkthroughScroll = useWalkthroughScroll();
 
   const [editName, setEditName] = useState("");
   const [weeklyCommitmentConfirmation, setWeeklyCommitmentConfirmation] =
@@ -277,7 +283,10 @@ export default function MembershipScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: colors.grey[0] }}>
       <SimplePageTitle title="Membership" />
-      <KeyboardAwareScrollView testID="vr-membership-ready">
+      <KeyboardAwareScrollView
+        testID="vr-membership-ready"
+        {...walkthroughScroll}
+      >
         <View className="px-2 pb-8 pt-2 flex flex-col gap-2">
           {lastContractEvent?.type === "suspended" && (
             <Card cardStyle={CardStyle.Red}>
@@ -390,9 +399,11 @@ export default function MembershipScreen() {
             </Card>
           )}
 
-          <Card cardStyle={CardStyle.White}>
-            <AwayRangesSection />
-          </Card>
+          <Anchor name={WalkthroughAnchor.AwayRanges}>
+            <Card cardStyle={CardStyle.White}>
+              <AwayRangesSection />
+            </Card>
+          </Anchor>
 
           <Card cardStyle={CardStyle.White}>
             <Text className="text-2xl mb-4" weight={FontWeight.Semibold}>

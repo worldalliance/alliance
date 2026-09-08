@@ -1,3 +1,4 @@
+import { nextMilestone } from "@alliance/shared/lib/copy";
 import democracy from "../assets/redesign/priority-democracy.jpg";
 import environment from "../assets/redesign/priority-environment.jpg";
 import poverty from "../assets/redesign/priority-poverty.jpg";
@@ -183,6 +184,11 @@ export const GROWTH_HEADLINE_FAR_PARTS = {
 export const GROWTH_FOOTNOTE =
   "With millions of members, we could make enormous progress on global crises by strategically coordinating our time, money, and votes.";
 
+export const HOURS_START_LABEL = "Action arrives";
+export const HOURS_END_LABEL = "Deadline";
+export const HOURS_LEGEND_TOTAL = "Hours in the week";
+export const HOURS_LEGEND_SPENT = "Time spent completing actions";
+
 export type Milestone = { members: number; label: string };
 
 export const nearMilestones: Milestone[] = [
@@ -194,7 +200,7 @@ export const nearMilestones: Milestone[] = [
   { members: 300, label: "Conduct a large-scale citizen science project" },
   {
     members: 1000,
-    label: "Be a committed test audience for a green product alternative",
+    label: nextMilestone.action,
   },
 ];
 
