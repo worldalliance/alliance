@@ -268,7 +268,7 @@ export function getOffsetMinutes(
 // search and sort are all English. The slice gives that guard a second job:
 // what a locale writes after the name is its own, and the slice takes it. vi
 // puts the whole date there, eu closes a bracket.
-export function getGenericLabelFromIntl(tz: string): string | null {
+function getGenericLabelFromIntl(tz: string): string | null {
   const fmt = getFormatter({
     key: `generic:${tz}`,
     opts: {
@@ -298,7 +298,7 @@ export function getGenericLabelFromIntl(tz: string): string | null {
   );
 }
 
-export function prettyCityFromIana(tz: string): string {
+function prettyCityFromIana(tz: string): string {
   const seg = tz.split("/").pop() ?? tz;
   return seg.replace(/_/g, " ");
 }
