@@ -11,7 +11,13 @@ import {
 import { replaceEqualDeep } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { captureException } from "./analytics";
+import { useHeldOn } from "./useHeldOn";
 
+const MIN_SPIN_MS = 400;
+
+const STATUS_LOADING = "Loading comments";
+const STATUS_LOADED = "Comments loaded";
+const STATUS_FAILED = "Loading comments failed";
 const LOAD_FAILED = "Failed to load comments";
 const SESSION_EXPIRED =
   "Your session has expired. Sign in again to load the replies.";
@@ -52,6 +58,15 @@ export function useLoadComments({
     message: string;
     canRetry: boolean;
   } | null>(null);
+  // A thread loads on mount, and after a like, a reply, a delete, whether or
+  // not anyone asked. Narrating those is noise, so only a press opens this.
+  const [asked, setAsked] = useState<{ ended: string | null } | null>(null);
+
+  const settle = useCallback(
+    (ended: string) =>
+      setAsked((prev) => (prev && !prev.ended ? { ended } : prev)),
+    [],
+  );
 
   const setComments = useCallback(
     (update: (prev: CommentDto[]) => CommentDto[]) =>
@@ -82,6 +97,7 @@ export function useLoadComments({
     // the one it asked for, so its failure has nothing left to say about what
     // is on screen. Its comments still do, since they come from a later read.
     const reportsFailure = request > outran.current;
+    const outcome = reportsFailure ? STATUS_FAILED : STATUS_LOADED;
     if (!sent.ok) {
       console.error("Failed to load comments:", sent.error);
       captureException(ExceptionEvent.LoadCommentsError, sent.error, {
@@ -89,6 +105,7 @@ export function useLoadComments({
         objectId,
       });
       if (reportsFailure) setFailure({ message: LOAD_FAILED, canRetry: true });
+      settle(outcome);
       return;
     }
     const { data, error, response } = sent.value;
@@ -112,13 +129,15 @@ export function useLoadComments({
           canRetry: response.status >= 500,
         });
       }
+      settle(outcome);
       return;
     }
     // A comment the request left equal keeps its object, so the memos
     // downstream hit.
     setThread((prev) => replaceEqualDeep(prev, data));
     setFailure(null);
-  }, [objectId, type, target]);
+    settle(STATUS_LOADED);
+  }, [objectId, type, target, settle]);
 
   // Kept per object. Matched against another object's array, an equal rebuild
   // would skip the write and leave that object's comments on screen.
@@ -153,11 +172,28 @@ export function useLoadComments({
     fetchComments();
   }, [initialComments, fetchComments]);
 
+  // A thread swapped in under the reader answers no press of theirs.
+  useEffect(() => setAsked(null), [target]);
+
+  // A press is never turned away. The hook drops every answer but the newest
+  // one's, and a request that hangs would leave this row's one control dead.
+  const retry = useCallback(() => {
+    setAsked({ ended: null });
+    void fetchComments();
+  }, [fetchComments]);
+
+  const spinning = useHeldOn(asked?.ended === null, MIN_SPIN_MS);
+
   return {
     comments,
     setComments,
     error: failure?.message ?? null,
     canRetry: failure?.canRetry ?? false,
+    spinning,
+    // A second failure puts the same words in the error row, so its live region
+    // announces nothing. This changes on every settle.
+    status: !asked ? null : spinning ? STATUS_LOADING : asked.ended,
     fetchComments,
+    retry,
   };
 }

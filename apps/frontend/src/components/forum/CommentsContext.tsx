@@ -73,9 +73,12 @@ export interface UseCommentTreeResult {
   comments: CommentDto[] | null;
   error: string | null;
   canRetry: boolean;
+  spinning: boolean;
+  status: string | null;
   deleteErrorFor: (replyId: number) => string | null;
   clearDeleteError: (replyId: number) => void;
   fetchComments: () => Promise<void>;
+  retry: () => void;
   handleSubmitReply: (
     content: CreateEditableContentDto,
     onSuccess?: () => void,
@@ -105,12 +108,16 @@ export function useCommentTree(
   type: CommentParentObject,
   initialComments?: CommentDto[],
 ): UseCommentTreeResult {
-  const { comments, setComments, error, canRetry, fetchComments } =
-    useLoadComments({
-      objectId,
-      type,
-      initialComments,
-    });
+  const {
+    comments,
+    setComments,
+    error,
+    canRetry,
+    spinning,
+    status,
+    fetchComments,
+    retry,
+  } = useLoadComments({ objectId, type, initialComments });
   const { deleteReply, deleteErrorFor, clearDeleteError } = useDeleteComment({
     comments,
     fetchComments,
@@ -328,9 +335,12 @@ export function useCommentTree(
     comments,
     error,
     canRetry,
+    spinning,
+    status,
     deleteErrorFor,
     clearDeleteError,
     fetchComments,
+    retry,
     handleSubmitReply,
     handleDeleteReply,
     handleUpdateReply,

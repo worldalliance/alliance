@@ -54,10 +54,11 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
-import { Alert, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, TouchableOpacity, View } from "react-native";
 import type { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/style/colors";
+import { useAnnounceOnIos } from "../lib/useAnnounceOnIos";
 import BottomSheetOptionPicker from "./BottomSheetOptionPicker";
 import EditableContentForm from "./EditableContentForm";
 import EditableContentRenderer from "./EditableContentRenderer";
@@ -740,12 +741,17 @@ export default function Comments({
     new Set(),
   );
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
-  const { comments, setComments, error, canRetry, fetchComments } =
-    useLoadComments({
-      objectId,
-      type,
-      initialComments,
-    });
+  const {
+    comments,
+    setComments,
+    error,
+    canRetry,
+    spinning,
+    status,
+    fetchComments,
+    retry,
+  } = useLoadComments({ objectId, type, initialComments });
+  useAnnounceOnIos(status);
   const { deleteReply, deleteErrorFor, clearDeleteError } = useDeleteComment({
     comments,
     fetchComments,
@@ -1104,15 +1110,30 @@ export default function Comments({
       <InlineError message={error}>
         {canRetry ? (
           <TouchableOpacity
-            onPress={() => fetchComments()}
+            onPress={retry}
             accessibilityRole="button"
+            accessibilityState={{ busy: spinning }}
             accessibilityLabel="Try loading the comments again"
             hitSlop={8}
           >
-            <RefreshCw size={14} color={colors.error} />
+            {spinning ? (
+              <ActivityIndicator size="small" color={colors.error} />
+            ) : (
+              <RefreshCw size={14} color={colors.error} />
+            )}
           </TouchableOpacity>
         ) : null}
       </InlineError>
+
+      {/* accessibilityState busy has no iOS trait behind it, so the spinner
+          alone reaches nobody who cannot see it. Android reads the line here
+          and iOS off the announcement above, so this stays off screen. */}
+      <View
+        accessibilityLiveRegion="polite"
+        style={{ position: "absolute", left: -9999 }}
+      >
+        <Text>{status ?? ""}</Text>
+      </View>
 
       {isPostComments && topLevelComments.length > 0 && (
         <View className="flex-row items-center justify-between">

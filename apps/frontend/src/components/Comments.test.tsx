@@ -1,17 +1,32 @@
 import * as realClient from "@alliance/shared/client";
 import { CommentDto } from "@alliance/shared/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React, { useState } from "react";
 import { MemoryRouter } from "react-router";
 
 let loadAttempts = 0;
 let loadSucceeds = false;
+// While set, a load parks its resolver here instead of answering, so a test can
+// read the row while the request is out.
+let inFlight: (() => void)[] | null = null;
+
+// Auto-cleanup registers once, in whichever file imports the library first, so
+// a file that renders has to ask for its own.
+afterEach(cleanup);
 
 afterEach(() => {
   loadAttempts = 0;
   loadSucceeds = false;
+  inFlight = null;
 });
 
 let markdownParses = 0;
@@ -29,6 +44,7 @@ jest.mock("@alliance/shared/client", () => ({
   ...realClient,
   forumFindCommentsForPost: async () => {
     loadAttempts++;
+    if (inFlight) await new Promise<void>((resolve) => inFlight?.push(resolve));
     if (loadSucceeds) return { data: [] };
     return {
       error: { statusCode: 500, message: "no" },
@@ -148,4 +164,80 @@ it("loads the thread again when the reader asks", async () => {
   await waitFor(() =>
     expect(screen.queryByText("Failed to load comments")).toBeNull(),
   );
+});
+
+it("keeps the retry button under the reader while the load is out", async () => {
+  const { container } = render(
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter>
+        <AuthContext.Provider value={loggedOut}>
+          <Comments objectId={1} type="post" />
+        </AuthContext.Provider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  await screen.findByText("Failed to load comments");
+  const retry = screen.getByRole("button", {
+    name: "Try loading the comments again",
+  });
+  retry.focus();
+
+  inFlight = [];
+  await userEvent.click(retry);
+
+  expect(document.activeElement).toBe(retry);
+  expect(retry.getAttribute("aria-busy")).toBe("true");
+  expect(within(container).getByRole("status").textContent).toBe(
+    "Loading comments",
+  );
+
+  await userEvent.click(retry);
+  expect(loadAttempts).toBe(3);
+
+  await act(async () => {
+    inFlight?.forEach((resolve) => resolve());
+  });
+  await waitFor(() => expect(retry.getAttribute("aria-busy")).toBe("false"));
+  expect(within(container).getByRole("status").textContent).toBe(
+    "Loading comments failed",
+  );
+});
+
+it("says nothing about a load the reader never asked for", async () => {
+  const { container } = render(
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter>
+        <AuthContext.Provider value={loggedOut}>
+          <Comments objectId={1} type="post" />
+        </AuthContext.Provider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  await screen.findByText("Failed to load comments");
+
+  expect(within(container).getByRole("status").textContent).toBe("");
+});
+
+it("tells the reader how the load they asked for ended", async () => {
+  const { container } = render(
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter>
+        <AuthContext.Provider value={loggedOut}>
+          <Comments objectId={1} type="post" />
+        </AuthContext.Provider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  await screen.findByText("Failed to load comments");
+  const status = within(container).getByRole("status");
+
+  loadSucceeds = true;
+  await userEvent.click(
+    screen.getByRole("button", { name: "Try loading the comments again" }),
+  );
+
+  await waitFor(() => expect(status.textContent).toBe("Comments loaded"));
+  // The region the reader listens to has to be the one that was already there,
+  // since a live region announces a change rather than its arrival.
+  expect(within(container).getByRole("status")).toBe(status);
 });

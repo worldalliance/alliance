@@ -520,6 +520,156 @@ it("keeps a stale request's failure off the thread that landed", async () => {
   expect(result.current.comments).toHaveLength(2);
 });
 
+it("spins until the request the reader asked for lands", async () => {
+  inFlight = [];
+  const initialComments = [comment(3)];
+  const { result } = renderHook(() =>
+    useLoadComments({ objectId: 7, type: "post", initialComments }),
+  );
+  expect(result.current.spinning).toBe(false);
+
+  act(() => result.current.retry());
+  expect(result.current.spinning).toBe(true);
+
+  await act(async () => {
+    inFlight?.[0](null);
+  });
+
+  await waitFor(() => expect(result.current.error).toBe("the server said no"));
+  await waitFor(() => expect(result.current.spinning).toBe(false));
+});
+
+it("keeps quiet about a load the reader never asked for", async () => {
+  const { result } = renderHook(() =>
+    useLoadComments({ objectId: 7, type: "post" }),
+  );
+  await waitFor(() => expect(result.current.comments).toEqual([]));
+
+  expect(result.current.status).toBeNull();
+});
+
+it("says how the load the reader asked for ended", async () => {
+  served = null;
+  const initialComments = [comment(3)];
+  const { result } = renderHook(() =>
+    useLoadComments({ objectId: 7, type: "post", initialComments }),
+  );
+
+  act(() => result.current.retry());
+  expect(result.current.status).toBe("Loading comments");
+
+  await waitFor(() =>
+    expect(result.current.status).toBe("Loading comments failed"),
+  );
+
+  served = [comment(3)];
+  act(() => result.current.retry());
+  await waitFor(() => expect(result.current.status).toBe("Comments loaded"));
+});
+
+it("leaves the failure's own words to the row that carries them", async () => {
+  served = null;
+  refusal = {
+    status: 401,
+    body: { statusCode: 401, message: "unauthorized" },
+  };
+  const initialComments = [comment(3)];
+  const { result } = renderHook(() =>
+    useLoadComments({ objectId: 7, type: "post", initialComments }),
+  );
+
+  act(() => result.current.retry());
+  await waitFor(() =>
+    expect(result.current.status).toBe("Loading comments failed"),
+  );
+
+  expect(result.current.error).toBe(
+    "Your session has expired. Sign in again to load the replies.",
+  );
+});
+
+it("lets the reader press again while the request is out", async () => {
+  inFlight = [];
+  const initialComments = [comment(3)];
+  const { result } = renderHook(() =>
+    useLoadComments({ objectId: 7, type: "post", initialComments }),
+  );
+
+  act(() => result.current.retry());
+  act(() => result.current.retry());
+
+  expect(requests).toHaveLength(2);
+  await act(async () => {
+    inFlight?.[0]([comment(3)]);
+    inFlight?.[1]([comment(3)]);
+  });
+  await waitFor(() => expect(result.current.status).toBe("Comments loaded"));
+});
+
+it("says nothing about a refetch the reader never asked for", async () => {
+  const initialComments = [comment(3)];
+  const { result } = renderHook(() =>
+    useLoadComments({ objectId: 7, type: "post", initialComments }),
+  );
+
+  act(() => result.current.retry());
+  await waitFor(() => expect(result.current.status).toBe("Comments loaded"));
+
+  inFlight = [];
+  let refetch: Promise<void> = Promise.resolve();
+  act(() => {
+    refetch = result.current.fetchComments();
+  });
+  expect(result.current.status).toBe("Comments loaded");
+
+  await act(async () => {
+    inFlight?.[0]([comment(3), comment(4)]);
+    await refetch;
+  });
+  expect(result.current.status).toBe("Comments loaded");
+});
+
+it("says nothing about a thread swapped in after a press", async () => {
+  const { result, rerender } = renderHook(
+    ({ objectId }: { objectId: number }) =>
+      useLoadComments({ objectId, type: "post" }),
+    { initialProps: { objectId: 7 } },
+  );
+
+  act(() => result.current.retry());
+  await waitFor(() => expect(result.current.status).toBe("Comments loaded"));
+
+  rerender({ objectId: 9 });
+
+  expect(result.current.status).toBeNull();
+});
+
+it("keeps spinning when a request the newer one outran answers", async () => {
+  inFlight = [];
+  const initialComments = [comment(3)];
+  const { result } = renderHook(() =>
+    useLoadComments({ objectId: 7, type: "post", initialComments }),
+  );
+
+  act(() => result.current.retry());
+  let newer: Promise<void> = Promise.resolve();
+  act(() => {
+    newer = result.current.fetchComments();
+  });
+
+  await act(async () => {
+    inFlight?.[0]([comment(3)]);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+  });
+  expect(result.current.spinning).toBe(true);
+
+  await act(async () => {
+    inFlight?.[1]([comment(3), comment(4)]);
+    await newer;
+  });
+  await waitFor(() => expect(result.current.spinning).toBe(false));
+});
+
 it("takes the newest of two requests that overlap", async () => {
   inFlight = [];
   const initialComments = [comment(3)];

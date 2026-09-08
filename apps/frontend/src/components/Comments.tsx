@@ -374,15 +374,21 @@ const Comments = ({
           {tree.canRetry && (
             <button
               type="button"
-              onClick={() => tree.fetchComments()}
+              onClick={tree.retry}
+              aria-busy={tree.spinning}
               aria-label="Try loading the comments again"
               title="Try loading the comments again"
               className="p-1 hover:text-red-700"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw
+                className={cn("w-4 h-4", tree.spinning && "animate-spin")}
+              />
             </button>
           )}
         </InlineError>
+        <span role="status" className="sr-only">
+          {tree.status ?? ""}
+        </span>
         {topLevelComments.length > 0 ? (
           <div className="mt-3">
             {filteredComments.map((reply) => (
