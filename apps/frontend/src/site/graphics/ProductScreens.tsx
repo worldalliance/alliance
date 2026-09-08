@@ -1,3 +1,4 @@
+import { thumbnailSrc } from "@alliance/common/image-src";
 import { activityRows, openedPost, type ActivityRow } from "../content";
 import {
   FALLBACK_FACE,
@@ -37,8 +38,10 @@ function AvatarStrip({ avatars }: { avatars: string[] }) {
       {avatars.map((src, i) => (
         <img
           key={`${src}-${i}`}
-          src={src}
+          src={thumbnailSrc(src)}
           alt=""
+          loading="lazy"
+          decoding="async"
           className="h-full w-[17px] object-cover"
         />
       ))}

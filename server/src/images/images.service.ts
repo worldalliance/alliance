@@ -1,5 +1,11 @@
 import { devPorts, PortCaller } from "@alliance/common/dev-ports";
-import { isUploadKey, uploadKeyInUrl } from "@alliance/common/image-src";
+import {
+  IMAGE_CACHE_CONTROL,
+  isUploadKey,
+  THUMBNAIL_WIDTH,
+  thumbnailKey,
+  uploadKeyInUrl,
+} from "@alliance/common/image-src";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
   BadRequestException,
@@ -47,24 +53,39 @@ export class ImagesService {
     return imgBuffer;
   }
 
-  async processAndUploadProfileImage(image: string): Promise<string> {
-    const imgBuffer = await this.normalizeToSharpBuffer(image);
-    const processed = await sharp(imgBuffer)
-      .rotate()
-      .resize({ width: 400 })
-      .webp({ effort: 3 })
-      .toBuffer();
-
-    const key = this.newImageKey();
-
+  private async putImage(key: string, body: Buffer): Promise<void> {
     await this.s3.send(
       new PutObjectCommand({
         Bucket: this.bucket,
         Key: key,
-        Body: processed,
+        Body: body,
         ContentType: "image/webp",
+        CacheControl: IMAGE_CACHE_CONTROL,
       }),
     );
+  }
+
+  async processAndUploadProfileImage(image: string): Promise<string> {
+    const imgBuffer = await this.normalizeToSharpBuffer(image);
+    const [processed, thumbnail] = await Promise.all([
+      sharp(imgBuffer)
+        .rotate()
+        .resize({ width: 400 })
+        .webp({ effort: 3 })
+        .toBuffer(),
+      sharp(imgBuffer)
+        .rotate()
+        .resize({ width: THUMBNAIL_WIDTH })
+        .webp({ effort: 3 })
+        .toBuffer(),
+    ]);
+
+    const key = this.newImageKey();
+
+    await Promise.all([
+      this.putImage(key, processed),
+      this.putImage(thumbnailKey(key), thumbnail),
+    ]);
 
     return key;
   }
@@ -105,14 +126,7 @@ export class ImagesService {
       const buffer = await processed.toBuffer();
 
       const key = this.newImageKey();
-      await this.s3.send(
-        new PutObjectCommand({
-          Bucket: this.bucket,
-          Key: key,
-          Body: buffer,
-          ContentType: "image/webp",
-        }),
-      );
+      await this.putImage(key, buffer);
       return key;
     } catch {
       throw new BadRequestException(

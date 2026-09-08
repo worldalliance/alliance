@@ -1,3 +1,4 @@
+import { thumbnailSrc } from "@alliance/common/image-src";
 import { cn } from "@alliance/shared/styles/util";
 import type { CSSProperties, ReactNode } from "react";
 import { PostBlockKind, type PostBlock, type PostUpdate } from "../content";
@@ -89,9 +90,11 @@ export function PostCard({
         {author && (
           <div className="flex items-center gap-2">
             <img
-              src={author.avatar}
+              src={thumbnailSrc(author.avatar)}
               alt=""
               aria-hidden
+              loading="lazy"
+              decoding="async"
               className="size-5 shrink-0 rounded-[5px] object-cover"
             />
             <span className="text-[12.5px] font-medium text-[var(--site-ink)]">

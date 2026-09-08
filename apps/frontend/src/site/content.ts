@@ -1,7 +1,8 @@
-import democracy from "../assets/redesign/priority-democracy.jpg";
-import environment from "../assets/redesign/priority-environment.jpg";
-import poverty from "../assets/redesign/priority-poverty.jpg";
-import technology from "../assets/redesign/priority-technology.jpg";
+import type { Picture } from "vite-imagetools";
+import democracy from "../assets/redesign/priority-democracy.jpg?w=400;800&format=avif;webp;jpg&as=picture";
+import environment from "../assets/redesign/priority-environment.jpg?w=400;800&format=avif;webp;jpg&as=picture";
+import poverty from "../assets/redesign/priority-poverty.jpg?w=400;800&format=avif;webp;jpg&as=picture";
+import technology from "../assets/redesign/priority-technology.jpg?w=400;800&format=avif;webp;jpg&as=picture";
 
 export const HERO_HEADLINE =
   "We’re assembling people who can count on each other";
@@ -13,7 +14,7 @@ export type Priority = {
   /** Line breaks are authored, so the four titles stay visually balanced. */
   title: string;
   description: string;
-  image: string;
+  image: Picture;
 };
 
 export const priorities: Priority[] = [

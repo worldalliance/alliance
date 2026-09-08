@@ -1,10 +1,58 @@
 import { cn } from "@alliance/shared/styles/util";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Link } from "react-router";
-import texture from "../assets/redesign/priority-environment.jpg";
+import type { Picture } from "vite-imagetools";
+import texture from "../assets/redesign/priority-environment.jpg?w=400;800&format=avif;webp;jpg&as=picture";
 
 export const SITE_COL =
   "mx-auto w-full max-w-[1600px] px-5 sm:px-8 lg:px-[68px]";
+
+/**
+ * `display: contents` on the wrapper so the img stays a direct visual child of
+ * the card it is absolutely positioned against.
+ */
+export function SitePicture({
+  image,
+  alt,
+  sizes,
+  className,
+  style,
+  loading = "lazy",
+  fetchPriority,
+}: {
+  image: Picture;
+  alt: string;
+  sizes: string;
+  className?: string;
+  style?: CSSProperties;
+  loading?: "eager" | "lazy";
+  fetchPriority?: "high" | "low" | "auto";
+}) {
+  return (
+    <picture className="contents">
+      {Object.entries(image.sources).map(([format, srcset]) => (
+        <source
+          key={format}
+          type={`image/${format}`}
+          srcSet={srcset}
+          sizes={sizes}
+        />
+      ))}
+      <img
+        src={image.img.src}
+        width={image.img.w}
+        height={image.img.h}
+        alt={alt}
+        sizes={sizes}
+        loading={loading}
+        fetchPriority={fetchPriority}
+        decoding="async"
+        className={className}
+        style={style}
+      />
+    </picture>
+  );
+}
 
 /**
  * The h1 size, shared by the hero and every page header behind the nav. Steps
@@ -17,10 +65,10 @@ export const SITE_SUBMIT =
 
 export function TexturedFill() {
   return (
-    <img
-      src={texture}
+    <SitePicture
+      image={texture}
       alt=""
-      aria-hidden
+      sizes="100vw"
       className="absolute inset-0 size-full object-cover"
       style={{
         mixBlendMode: "screen",
