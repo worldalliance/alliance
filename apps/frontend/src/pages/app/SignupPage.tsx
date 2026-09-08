@@ -67,7 +67,7 @@ export function meta() {
 const INFO_SESSION_HREF =
   "https://calendar.google.com/calendar/event?action=TEMPLATE&tmeid=MmUxZ3FxMmhtcWExbHQ3ODU4dHE5YjF2ODggZ3JhbnRAd29ybGRhbGxpYW5jZS5vcmc&tmsrc=grant%40worldalliance.org";
 
-const INFO_SESSION_STARTS_AT = new Date("2026-09-15T17:00:00-07:00");
+const INFO_SESSION_STARTS_AT = new Date("2026-09-14T09:00:00-07:00");
 
 const INFO_SESSION_WHEN = new Intl.DateTimeFormat("en-US", {
   weekday: "long",
