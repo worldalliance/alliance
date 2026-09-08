@@ -1,7 +1,7 @@
 import { ActionDto } from "@alliance/shared/client";
 import { guestReferral } from "@alliance/shared/lib/copy";
 import { CardStyle } from "@alliance/shared/styles/card";
-import { transformMarkdownUrl } from "@alliance/sharedweb/lib/markdownUrl";
+import { useMarkdownUrlTransform } from "@alliance/sharedweb/lib/markdownUrl";
 import Button from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import ConfettiWrapper from "@alliance/sharedweb/ui/ConfettiWrapper";
@@ -22,6 +22,7 @@ const ActionTaskPanelActivity = ({
   disabled = false,
   createAccountHref,
 }: ActionTaskPanelActivityProps) => {
+  const urlTransform = useMarkdownUrlTransform();
   return (
     <Card style={CardStyle.White}>
       <div className="flex flex-col gap-y-2">
@@ -32,7 +33,7 @@ const ActionTaskPanelActivity = ({
           <p className="text-lg font-semibold">Steps</p>
           <ReactMarkdown
             components={{ a: ExternalLinkPreview }}
-            urlTransform={transformMarkdownUrl}
+            urlTransform={urlTransform}
           >
             {action.taskContents}
           </ReactMarkdown>

@@ -1,5 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
-import { transformMarkdownUrl } from "@alliance/sharedweb/lib/markdownUrl";
+import { useMarkdownUrlTransform } from "@alliance/sharedweb/lib/markdownUrl";
 import ExternalLinkPreview from "@alliance/sharedweb/ui/ExternalLinkPreview";
 import React from "react";
 import ReactMarkdown from "react-markdown";
@@ -17,6 +17,7 @@ const MarkdownWrapper: React.FC<MarkdownWrapperProps> = ({
   maxWidth = "max-w-4xl",
   className = "",
 }) => {
+  const urlTransform = useMarkdownUrlTransform();
   return (
     <div
       className={cn("markdown-wrapper w-full mx-auto", maxWidth, className)}
@@ -62,7 +63,7 @@ const MarkdownWrapper: React.FC<MarkdownWrapperProps> = ({
           ),
           a: ({ ...props }) => <ExternalLinkPreview {...props} />,
         }}
-        urlTransform={transformMarkdownUrl}
+        urlTransform={urlTransform}
       >
         {markdownContent}
       </ReactMarkdown>

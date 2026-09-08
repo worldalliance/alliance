@@ -1,7 +1,7 @@
 import { cn } from "@alliance/shared/styles/util";
 import React from "react";
 import ReactMarkdown from "react-markdown";
-import { transformMarkdownUrl } from "../lib/markdownUrl";
+import { useMarkdownUrlTransform } from "../lib/markdownUrl";
 import ActionLink, { getActionIdFromHref } from "./ActionLink";
 import ExternalLinkPreview from "./ExternalLinkPreview";
 
@@ -20,6 +20,7 @@ const FormMarkdownWrapper: React.FC<FormMarkdownWrapper> = ({
   const inlineClass = inline ? "inline" : "";
   const textClass = inverted ? "text-white" : "text-zinc-800";
   const codeBgClass = inverted ? "bg-white/20" : "bg-zinc-100";
+  const urlTransform = useMarkdownUrlTransform();
   return (
     <ReactMarkdown
       components={{
@@ -121,7 +122,7 @@ const FormMarkdownWrapper: React.FC<FormMarkdownWrapper> = ({
           />
         ),
       }}
-      urlTransform={transformMarkdownUrl}
+      urlTransform={urlTransform}
     >
       {markdownContent}
     </ReactMarkdown>

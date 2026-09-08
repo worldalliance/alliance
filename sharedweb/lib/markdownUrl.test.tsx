@@ -1,7 +1,14 @@
+import { renderHook } from "@testing-library/react";
 import type { Element } from "hast";
+import React from "react";
 import { defaultUrlTransform } from "react-markdown";
+import { AuthoredLinkProvider, SiteAppProvider } from "../ui/SiteAppProvider";
 import { imageSrcFromKey } from "./imageSrc";
-import { resolveMarkdownImageSrc, transformMarkdownUrl } from "./markdownUrl";
+import {
+  resolveMarkdownImageSrc,
+  transformMarkdownUrl,
+  useMarkdownUrlTransform,
+} from "./markdownUrl";
 
 const element = (tagName: string): Element => ({
   type: "element",
@@ -103,5 +110,58 @@ describe("resolveMarkdownImageSrc", () => {
 
   test("does not turn a rejected URL into an images request", () => {
     expect(resolveMarkdownImageSrc("javascript:alert(1)")).toBe("");
+  });
+});
+
+describe("useMarkdownUrlTransform", () => {
+  const hrefIn = (wrapper: React.FC<React.PropsWithChildren>, url: string) =>
+    renderHook(() => useMarkdownUrlTransform(), { wrapper }).result.current(
+      url,
+      "href",
+      ANCHOR,
+    );
+
+  test("reduces a link to our own domain to a path", () => {
+    expect(
+      hrefIn(SiteAppProvider, "https://worldalliance.org/actions/135"),
+    ).toBe("/actions/135");
+  });
+
+  test("leaves a link elsewhere absolute", () => {
+    const url = "https://www.regulations.gov/document/FS-1";
+
+    expect(hrefIn(SiteAppProvider, url)).toBe(url);
+  });
+
+  test("keeps the authored URL in an app that serves another domain", () => {
+    const url = "https://worldalliance.org/actions/135";
+
+    expect(hrefIn(AuthoredLinkProvider, url)).toBe(url);
+  });
+
+  test("fetches an image on our domain from the one being read", () => {
+    expect(
+      renderHook(() => useMarkdownUrlTransform(), {
+        wrapper: SiteAppProvider,
+      }).result.current(
+        "https://worldalliance.org/api/images/1765308908685.webp",
+        "src",
+        IMG,
+      ),
+    ).toBe("/api/images/1765308908685.webp");
+  });
+
+  test("leaves an image hosted elsewhere alone", () => {
+    const url = "https://dj92mxbdjuclo.cloudfront.net/1770253183572.webp";
+
+    expect(
+      renderHook(() => useMarkdownUrlTransform(), {
+        wrapper: SiteAppProvider,
+      }).result.current(url, "src", IMG),
+    ).toBe(url);
+  });
+
+  test("still strips a dangerous protocol", () => {
+    expect(hrefIn(SiteAppProvider, "javascript:alert(1)")).toBe("");
   });
 });
