@@ -653,7 +653,8 @@ export const CTA_BUTTON = "Request an invite";
 
 export const FOOTER_TAGLINE =
   "A global group of people cooperating to improve the world.";
-export const FOOTER_COPYRIGHT = "© 2026 Alliance Foundation";
+export const FOOTER_COPYRIGHT =
+  "© 2026 Alliance Foundation, a 501(c)(3) nonprofit organization";
 
 /**
  * Links name the mockup page they open, not a path: the version has to survive

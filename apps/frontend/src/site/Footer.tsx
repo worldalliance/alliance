@@ -42,7 +42,7 @@ function LegalRow() {
   return (
     <div className="mt-14 border-t border-white/15 pt-6">
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-white/60">
-        <span>{`© ${new Date().getFullYear()} Alliance Foundation`}</span>
+        <span>{`© ${new Date().getFullYear()} Alliance Foundation, a 501(c)(3) nonprofit organization`}</span>
         {FOOTER_LEGAL_LINKS.map((link) => (
           <Fragment key={link.to}>
             <span aria-hidden>·</span>
