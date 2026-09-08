@@ -551,3 +551,108 @@ it("hands back the comments a request left alone", async () => {
   await waitFor(() => expect(result.current.comments).toHaveLength(2));
   expect(result.current.comments?.[0]).toBe(before);
 });
+
+it("keeps a refetched thread when the caller rebuilds its array", async () => {
+  const { result, rerender } = renderHook(
+    ({ initialComments }: { initialComments: CommentDto[] }) =>
+      useLoadComments({ objectId: 7, type: "post", initialComments }),
+    { initialProps: { initialComments: [comment(3)] } },
+  );
+  await waitFor(() => expect(result.current.comments).toHaveLength(1));
+
+  served = [comment(3), comment(4)];
+  await act(async () => {
+    await result.current.fetchComments();
+  });
+  await waitFor(() => expect(result.current.comments).toHaveLength(2));
+
+  rerender({ initialComments: [comment(3)] });
+
+  expect(result.current.comments).toHaveLength(2);
+});
+
+it("takes the caller's thread back on an object it fetched in between", async () => {
+  const handedIn = [comment(1)];
+  const { result, rerender } = renderHook(
+    (props: { objectId: number; initialComments?: CommentDto[] }) =>
+      useLoadComments({ ...props, type: "post" }),
+    {
+      initialProps: { objectId: 7, initialComments: handedIn } as {
+        objectId: number;
+        initialComments?: CommentDto[];
+      },
+    },
+  );
+  await waitFor(() => expect(result.current.comments).toBe(handedIn));
+
+  served = [comment(4), comment(5)];
+  rerender({ objectId: 8, initialComments: undefined });
+  await waitFor(() => expect(result.current.comments).toHaveLength(2));
+
+  rerender({ objectId: 7, initialComments: [comment(1)] });
+
+  await waitFor(() =>
+    expect(result.current.comments?.map((c) => c.id)).toEqual([1]),
+  );
+});
+
+it("keeps a request outrun by an equal thread from reporting its failure", async () => {
+  inFlight = [];
+  const { result, rerender } = renderHook(
+    ({ initialComments }: { initialComments: CommentDto[] }) =>
+      useLoadComments({ objectId: 7, type: "post", initialComments }),
+    { initialProps: { initialComments: [comment(3)] } },
+  );
+  await waitFor(() => expect(result.current.comments).toHaveLength(1));
+
+  const pending = result.current.fetchComments();
+  rerender({ initialComments: [comment(3)] });
+
+  await act(async () => {
+    inFlight?.[0](null);
+    await pending;
+  });
+
+  expect(result.current.error).toBeNull();
+  expect(result.current.comments).toHaveLength(1);
+});
+
+it("clears a stale error when the caller hands an equal thread down", async () => {
+  const { result, rerender } = renderHook(
+    ({ initialComments }: { initialComments: CommentDto[] }) =>
+      useLoadComments({ objectId: 7, type: "post", initialComments }),
+    { initialProps: { initialComments: [comment(3)] } },
+  );
+  await waitFor(() => expect(result.current.comments).toHaveLength(1));
+
+  served = null;
+  await act(async () => {
+    await result.current.fetchComments();
+  });
+  expect(result.current.error).toBe("the server said no");
+
+  rerender({ initialComments: [comment(3)] });
+
+  await waitFor(() => expect(result.current.error).toBeNull());
+  expect(result.current.comments).toHaveLength(1);
+});
+
+it("asks for a thread when the caller stops handing one down", async () => {
+  const { result, rerender } = renderHook(
+    (props: { initialComments?: CommentDto[] }) =>
+      useLoadComments({ objectId: 7, type: "post", ...props }),
+    {
+      initialProps: { initialComments: [comment(3)] } as {
+        initialComments?: CommentDto[];
+      },
+    },
+  );
+  await waitFor(() => expect(result.current.comments).toHaveLength(1));
+  expect(requests).toEqual([]);
+
+  served = [comment(3), comment(4)];
+  rerender({ initialComments: undefined });
+
+  await waitFor(() => expect(result.current.comments).toHaveLength(2));
+  expect(requests).toEqual([{ endpoint: "post", id: "7" }]);
+});

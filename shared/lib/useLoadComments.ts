@@ -114,15 +114,34 @@ export function useLoadComments({
     setError(null);
   }, [objectId, type, target]);
 
+  // Kept per object. Matched against another object's array, an equal rebuild
+  // would skip the write and leave that object's comments on screen.
+  const handedDown = useRef<{ target: string; comments: CommentDto[] } | null>(
+    null,
+  );
+
+  // A card follows the feed that seeded it. A re-render that rebuilt an equal
+  // array is not news, and writing it back would undo a refetch the card had
+  // already done. Only the write is skipped: an equal array still outruns a
+  // request that is out, and clears the message a failed one left.
   useEffect(() => {
-    if (initialComments) {
-      outran.current = newestRequest.current;
-      setThread(initialComments);
-      setError(null);
+    if (!initialComments) return;
+    const held = handedDown.current;
+    const previous = held && held.target === target ? held.comments : null;
+    handedDown.current = { target, comments: initialComments };
+    outran.current = newestRequest.current;
+    setError(null);
+    if (previous && replaceEqualDeep(previous, initialComments) === previous) {
       return;
     }
-    // Swapping the object drops the thread on screen rather than leaving it
-    // under the new object's heading until the request lands.
+    setThread((prev) => replaceEqualDeep(prev, initialComments));
+  }, [initialComments, target]);
+
+  // Swapping the object drops the thread on screen rather than leaving it
+  // under the new object's heading until the request lands.
+  useEffect(() => {
+    if (initialComments) return;
+    handedDown.current = null;
     setThread(null);
     setError(null);
     fetchComments();
