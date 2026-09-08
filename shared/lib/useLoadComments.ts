@@ -18,6 +18,20 @@ const MIN_SPIN_MS = 400;
 const STATUS_LOADING = "Loading comments";
 const STATUS_LOADED = "Comments loaded";
 const STATUS_FAILED = "Loading comments failed";
+
+enum AskedOutcome {
+  Loaded = "loaded",
+  Failed = "failed",
+}
+
+const ASKED_END: Record<
+  AskedOutcome,
+  { status: string; movesReader: boolean }
+> = {
+  [AskedOutcome.Loaded]: { status: STATUS_LOADED, movesReader: true },
+  [AskedOutcome.Failed]: { status: STATUS_FAILED, movesReader: false },
+};
+
 const LOAD_FAILED = "Failed to load comments";
 const SESSION_EXPIRED =
   "Your session has expired. Sign in again to load the replies.";
@@ -60,10 +74,12 @@ export function useLoadComments({
   } | null>(null);
   // A thread loads on mount, and after a like, a reply, a delete, whether or
   // not anyone asked. Narrating those is noise, so only a press opens this.
-  const [asked, setAsked] = useState<{ ended: string | null } | null>(null);
+  const [asked, setAsked] = useState<{ ended: AskedOutcome | null } | null>(
+    null,
+  );
 
   const settle = useCallback(
-    (ended: string) =>
+    (ended: AskedOutcome) =>
       setAsked((prev) => (prev && !prev.ended ? { ended } : prev)),
     [],
   );
@@ -94,18 +110,20 @@ export function useLoadComments({
     );
     if (request !== newestRequest.current || target !== shown.current) return;
     // A thread the caller handed down while this was out is at least as new as
-    // the one it asked for, so its failure has nothing left to say about what
-    // is on screen. Its comments still do, since they come from a later read.
+    // the one it asked for, so a failure here has nothing left to say. The row
+    // it would write is gone, and the hand-down answered the press. Its
+    // comments still land, since they come from a later read.
     const reportsFailure = request > outran.current;
-    const outcome = reportsFailure ? STATUS_FAILED : STATUS_LOADED;
     if (!sent.ok) {
       console.error("Failed to load comments:", sent.error);
       captureException(ExceptionEvent.LoadCommentsError, sent.error, {
         type,
         objectId,
       });
-      if (reportsFailure) setFailure({ message: LOAD_FAILED, canRetry: true });
-      settle(outcome);
+      if (reportsFailure) {
+        setFailure({ message: LOAD_FAILED, canRetry: true });
+        settle(AskedOutcome.Failed);
+      }
       return;
     }
     const { data, error, response } = sent.value;
@@ -128,15 +146,15 @@ export function useLoadComments({
           // no, answers a second request the same way.
           canRetry: response.status >= 500,
         });
+        settle(AskedOutcome.Failed);
       }
-      settle(outcome);
       return;
     }
     // A comment the request left equal keeps its object, so the memos
     // downstream hit.
     setThread((prev) => replaceEqualDeep(prev, data));
     setFailure(null);
-    settle(STATUS_LOADED);
+    settle(AskedOutcome.Loaded);
   }, [objectId, type, target, settle]);
 
   // Kept per object. Matched against another object's array, an equal rebuild
@@ -156,11 +174,15 @@ export function useLoadComments({
     handedDown.current = { target, comments: initialComments };
     outran.current = newestRequest.current;
     setFailure(null);
+    // The thread going up takes the error row, and the control a press was on,
+    // with it. So the hand-down answers that press here, where the reader can
+    // see it land, rather than leaving it open until the load it beat gives up.
+    settle(AskedOutcome.Loaded);
     if (previous && replaceEqualDeep(previous, initialComments) === previous) {
       return;
     }
     setThread((prev) => replaceEqualDeep(prev, initialComments));
-  }, [initialComments, target]);
+  }, [initialComments, target, settle]);
 
   // Swapping the object drops the thread on screen rather than leaving it
   // under the new object's heading until the request lands.
@@ -182,7 +204,8 @@ export function useLoadComments({
     void fetchComments();
   }, [fetchComments]);
 
-  const spinning = useHeldOn(asked?.ended === null, MIN_SPIN_MS);
+  const ended = asked?.ended;
+  const spinning = useHeldOn(ended === null, MIN_SPIN_MS);
 
   return {
     comments,
@@ -192,7 +215,12 @@ export function useLoadComments({
     spinning,
     // A second failure puts the same words in the error row, so its live region
     // announces nothing. This changes on every settle.
-    status: !asked ? null : spinning ? STATUS_LOADING : asked.ended,
+    status: !asked
+      ? null
+      : ended && !spinning
+        ? ASKED_END[ended].status
+        : STATUS_LOADING,
+    movesReader: ended ? ASKED_END[ended].movesReader : false,
     fetchComments,
     retry,
   };

@@ -29,6 +29,7 @@ import {
   matchesTagFilter,
 } from "@alliance/shared/lib/commentTags";
 import { updateCommentInTree } from "@alliance/shared/lib/commentTree";
+import { commentThreadLanding } from "@alliance/shared/lib/copy";
 import { uploadDraftAttachments } from "@alliance/shared/lib/uploadAttachments";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
 import { useDeleteComment } from "@alliance/shared/lib/useDeleteComment";
@@ -51,10 +52,17 @@ import {
   useMemo,
   useRef,
   useState,
+  type ComponentRef,
   type Dispatch,
   type SetStateAction,
 } from "react";
-import { ActivityIndicator, Alert, TouchableOpacity, View } from "react-native";
+import {
+  AccessibilityInfo,
+  ActivityIndicator,
+  Alert,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import type { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/style/colors";
@@ -748,10 +756,28 @@ export default function Comments({
     canRetry,
     spinning,
     status,
+    movesReader,
     fetchComments,
     retry,
   } = useLoadComments({ objectId, type, initialComments });
   useAnnounceOnIos(status);
+  const thread = useRef<ComponentRef<typeof View>>(null);
+  const moved = useRef(false);
+
+  useEffect(() => {
+    if (!movesReader) moved.current = false;
+  }, [movesReader]);
+
+  // The retry control unmounts with the row that carries the message, so a
+  // press that works leaves the reader's cursor on nothing. The event lands
+  // only on a view the UI thread has framed, so it goes out from the anchor's
+  // own layout, and every layout after leaves the cursor where the first put
+  // it.
+  const landReader = useCallback(() => {
+    if (moved.current || !thread.current) return;
+    moved.current = true;
+    AccessibilityInfo.sendAccessibilityEvent(thread.current, "focus");
+  }, []);
   const { deleteReply, deleteErrorFor, clearDeleteError } = useDeleteComment({
     comments,
     fetchComments,
@@ -1160,8 +1186,43 @@ export default function Comments({
         />
       )}
 
-      {sortedComments && sortedComments.length > 0 ? (
-        <View className="gap-y-3">
+      {sortedComments ? (
+        // Empty it drops out of the flow, so the gap above keeps no row for
+        // it, and keeps a point of frame, since Android will not stop on an
+        // anchor lying outside its parent's bounds.
+        <View
+          className={cn(
+            "gap-y-3",
+            sortedComments.length === 0 && "absolute w-px h-px",
+          )}
+        >
+          {/* Naming the thread itself would fold every comment in it into one
+              element, so the cursor lands here instead, first so the swipe
+              after it goes into the thread rather than past it. A named element
+              is a stop every reader swipes through, so it goes up only once a
+              press has earned it and stays up from there: taking out the
+              element the cursor sits on drops the cursor to the top of the
+              screen. */}
+          {movesReader ? (
+            <View
+              ref={thread}
+              onLayout={landReader}
+              accessible
+              accessibilityLabel={commentThreadLanding({
+                shown: sortedComments.length,
+                total: topLevelComments.length,
+              })}
+              collapsable={false}
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: 1,
+                height: 1,
+              }}
+            />
+          ) : null}
           {sortedComments.map((reply) => (
             <ReplyItem
               key={reply.id}

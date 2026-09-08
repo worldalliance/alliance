@@ -75,6 +75,7 @@ export interface UseCommentTreeResult {
   canRetry: boolean;
   spinning: boolean;
   status: string | null;
+  movesReader: boolean;
   deleteErrorFor: (replyId: number) => string | null;
   clearDeleteError: (replyId: number) => void;
   fetchComments: () => Promise<void>;
@@ -115,6 +116,7 @@ export function useCommentTree(
     canRetry,
     spinning,
     status,
+    movesReader,
     fetchComments,
     retry,
   } = useLoadComments({ objectId, type, initialComments });
@@ -337,6 +339,7 @@ export function useCommentTree(
     canRetry,
     spinning,
     status,
+    movesReader,
     deleteErrorFor,
     clearDeleteError,
     fetchComments,

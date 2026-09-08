@@ -567,6 +567,76 @@ it("says how the load the reader asked for ended", async () => {
   await waitFor(() => expect(result.current.status).toBe("Comments loaded"));
 });
 
+it("moves nobody for a load the reader never asked for", async () => {
+  const { result } = renderHook(() =>
+    useLoadComments({ objectId: 7, type: "post" }),
+  );
+  await waitFor(() => expect(result.current.comments).toEqual([]));
+
+  expect(result.current.movesReader).toBe(false);
+});
+
+it("moves the reader once the load they asked for lands", async () => {
+  served = null;
+  const initialComments = [comment(3)];
+  const { result } = renderHook(() =>
+    useLoadComments({ objectId: 7, type: "post", initialComments }),
+  );
+
+  act(() => result.current.retry());
+  expect(result.current.movesReader).toBe(false);
+
+  await waitFor(() => expect(result.current.error).toBeTruthy());
+  expect(result.current.movesReader).toBe(false);
+
+  served = [comment(3)];
+  act(() => result.current.retry());
+  await waitFor(() => expect(result.current.movesReader).toBe(true));
+});
+
+it("moves the reader onto the thread the caller hands down over their press", async () => {
+  inFlight = [];
+  const { result, rerender } = renderHook(
+    ({ initialComments }: { initialComments: CommentDto[] }) =>
+      useLoadComments({ objectId: 7, type: "post", initialComments }),
+    { initialProps: { initialComments: [comment(3)] } },
+  );
+
+  act(() => result.current.retry());
+  // The thread going up takes the control the press was on with it, so the
+  // hand-down is what answers the press.
+  rerender({ initialComments: [comment(3), comment(4)] });
+  await waitFor(() => expect(result.current.movesReader).toBe(true));
+
+  await act(async () => {
+    inFlight?.[0](null);
+  });
+
+  await waitFor(() => expect(result.current.status).toBe("Comments loaded"));
+  expect(result.current.movesReader).toBe(true);
+});
+
+it("leaves the answer alone when an outrun load lands a thread of its own", async () => {
+  inFlight = [];
+  const { result, rerender } = renderHook(
+    ({ initialComments }: { initialComments: CommentDto[] }) =>
+      useLoadComments({ objectId: 7, type: "post", initialComments }),
+    { initialProps: { initialComments: [comment(3)] } },
+  );
+
+  act(() => result.current.retry());
+  rerender({ initialComments: [comment(3), comment(4)] });
+  await waitFor(() => expect(result.current.movesReader).toBe(true));
+
+  await act(async () => {
+    inFlight?.[0]([comment(3)]);
+  });
+
+  await waitFor(() => expect(result.current.comments).toHaveLength(1));
+  await waitFor(() => expect(result.current.status).toBe("Comments loaded"));
+  expect(result.current.movesReader).toBe(true);
+});
+
 it("leaves the failure's own words to the row that carries them", async () => {
   served = null;
   refusal = {
