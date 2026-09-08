@@ -44,10 +44,12 @@ const storedThread: CommentDto[] = [
 
 let postCommentsFail = false;
 let deleteFails = false;
+let extraRoots: CommentDto[] = [];
 
 afterEach(() => {
   postCommentsFail = false;
   deleteFails = false;
+  extraRoots = [];
 });
 
 jest.mock("@alliance/shared/client", () => ({
@@ -58,7 +60,7 @@ jest.mock("@alliance/shared/client", () => ({
           error: { statusCode: 403, message: "the server said no" },
           response: new Response(null, { status: 403 }),
         }
-      : { data: storedThread },
+      : { data: structuredClone([...storedThread, ...extraRoots]) },
   forumFindCommentsForActivity: noComments,
   forumFindCommentsForAction: noComments,
   forumDeleteComment: async () => {
@@ -202,4 +204,21 @@ it("keeps the thread and reports the failure when a refetch fails", async () => 
   });
 
   await waitFor(() => expect(result.current.error).toBeNull());
+});
+
+it("hands back the comment objects a refetch left alone", async () => {
+  const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
+
+  await waitFor(() => expect(result.current.comments).toHaveLength(2));
+  const [before] = result.current.comments ?? [];
+
+  // The added root is the only signal that the refetch reached the render the
+  // assertion below reads.
+  extraRoots = [{ ...storedComment, id: 6 }];
+  await act(async () => {
+    await result.current.fetchComments();
+  });
+  await waitFor(() => expect(result.current.comments).toHaveLength(3));
+
+  expect(result.current.comments?.[0]).toBe(before);
 });

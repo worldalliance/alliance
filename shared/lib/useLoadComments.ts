@@ -8,6 +8,7 @@ import {
   forumFindCommentsForActivity,
   forumFindCommentsForPost,
 } from "@alliance/shared/client";
+import { replaceEqualDeep } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { captureException } from "./analytics";
 
@@ -107,7 +108,9 @@ export function useLoadComments({
       }
       return;
     }
-    setThread(data);
+    // A comment the request left equal keeps its object, so the memos
+    // downstream hit.
+    setThread((prev) => replaceEqualDeep(prev, data));
     setError(null);
   }, [objectId, type, target]);
 

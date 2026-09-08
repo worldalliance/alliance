@@ -534,3 +534,20 @@ it("drops a request the caller left behind by swapping the object", async () => 
 
   expect(result.current.comments?.map((c) => c.id)).toEqual([80]);
 });
+
+it("hands back the comments a request left alone", async () => {
+  served = [comment(3)];
+  const { result } = renderHook(() =>
+    useLoadComments({ objectId: 7, type: "post" }),
+  );
+  await waitFor(() => expect(result.current.comments).toHaveLength(1));
+  const before = result.current.comments?.[0];
+
+  served = [comment(3), comment(4)];
+  await act(async () => {
+    await result.current.fetchComments();
+  });
+
+  await waitFor(() => expect(result.current.comments).toHaveLength(2));
+  expect(result.current.comments?.[0]).toBe(before);
+});
