@@ -1,8 +1,10 @@
+import { ExceptionEvent } from "@alliance/common/analytics";
 import { refusalMessage } from "@alliance/common/errorMessage";
 import { R } from "@alliance/common/result";
 import { CommentDto, forumDeleteComment } from "@alliance/shared/client";
 import { omit } from "es-toolkit";
 import { useCallback, useEffect, useState } from "react";
+import { captureException } from "./analytics";
 
 const DELETE_FAILED = "Failed to delete reply";
 const SESSION_EXPIRED =
@@ -59,12 +61,19 @@ export function useDeleteComment({
       );
       if (!sent.ok) {
         console.error("Error deleting reply:", sent.error);
+        captureException(ExceptionEvent.DeleteCommentError, sent.error, {
+          replyId,
+        });
         setFailures((prev) => ({ ...prev, [replyId]: DELETE_FAILED }));
         return;
       }
       const { error, response } = sent.value;
       if (error) {
         console.error("The server refused the delete:", error);
+        captureException(ExceptionEvent.DeleteCommentError, error, {
+          replyId,
+          status: response.status,
+        });
         setFailures((prev) => ({
           ...prev,
           [replyId]: refusalMessage({

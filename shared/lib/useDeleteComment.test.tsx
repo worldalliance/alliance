@@ -1,3 +1,4 @@
+import { ExceptionEvent } from "@alliance/common/analytics";
 import { CommentDto } from "@alliance/shared/client";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { client } from "../client/client.gen";
@@ -10,6 +11,22 @@ const deleted: number[] = [];
 // answer below, which is the only way to see how a refusal really arrives.
 let throughRealClient = false;
 const clientConfig = client.getConfig();
+
+const reported: {
+  event: ExceptionEvent;
+  error: unknown;
+  properties: unknown;
+}[] = [];
+
+jest.mock("./analytics", () => ({
+  captureException: (
+    event: ExceptionEvent,
+    error: unknown,
+    properties: unknown,
+  ) => {
+    reported.push({ event, error, properties });
+  },
+}));
 
 jest.mock("@alliance/shared/client", () => {
   // Read before the mock takes the name over, or real(options) lands back in
@@ -37,6 +54,7 @@ afterEach(() => {
   unreachable = false;
   refused = null;
   deleted.length = 0;
+  reported.length = 0;
   throughRealClient = false;
   client.setConfig({ ...clientConfig, fetch: undefined, throwOnError: false });
   cleanup();
@@ -280,4 +298,42 @@ it("reads a refusal the client is configured to throw", async () => {
     "You can only delete your own replies",
   );
   expect(reloads).toHaveBeenCalledTimes(1);
+});
+
+it("reports a refusal with the status it came back with", async () => {
+  const { deleteReply } = renderDelete();
+
+  refused = { statusCode: 404, message: "That reply is no longer here" };
+  await deleteReply(5);
+
+  expect(reported).toEqual([
+    {
+      event: ExceptionEvent.DeleteCommentError,
+      error: { statusCode: 404, message: "That reply is no longer here" },
+      properties: { replyId: 5, status: 404 },
+    },
+  ]);
+});
+
+it("reports a request that never reached the server", async () => {
+  const { deleteReply } = renderDelete();
+
+  unreachable = true;
+  await deleteReply(5);
+
+  expect(reported).toEqual([
+    {
+      event: ExceptionEvent.DeleteCommentError,
+      error: expect.any(TypeError),
+      properties: { replyId: 5 },
+    },
+  ]);
+});
+
+it("reports nothing for a delete the server took", async () => {
+  const { deleteReply } = renderDelete();
+
+  await deleteReply(5);
+
+  expect(reported).toEqual([]);
 });
