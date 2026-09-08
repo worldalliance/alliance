@@ -1,7 +1,8 @@
 import { useMemo } from "react";
-import { TextStyle, ViewStyle } from "react-native";
+import { TextStyle, useWindowDimensions, ViewStyle } from "react-native";
 import { useResolveClassNames } from "uniwind";
 import { colors } from "../lib/style/colors";
+import { useWholePointClassNames } from "../lib/style/useWholePointClassNames";
 import { FontFamily, FontWeight, resolveFontFamily } from "./system/Text";
 
 // The library renders leaf text with react-native's Text rather than our
@@ -83,16 +84,23 @@ export type MarkdownTextStyles = {
 };
 
 export function useMarkdownTextStyles(): MarkdownTextStyles {
-  const body = useResolveClassNames("text-base leading-normal");
-  const bodySmall = useResolveClassNames("text-sm leading-normal");
+  const { fontScale } = useWindowDimensions();
+  const body = useWholePointClassNames("text-base leading-normal", fontScale);
+  const bodySmall = useWholePointClassNames(
+    "text-sm leading-normal",
+    fontScale,
+  );
   // Set heading line height explicitly because the renderer otherwise cascades
   // the body's looser line height into them.
-  const heading1 = useResolveClassNames("text-xl leading-tight");
-  const heading2 = useResolveClassNames("text-lg leading-tight");
+  const heading1 = useWholePointClassNames("text-xl leading-tight", fontScale);
+  const heading2 = useWholePointClassNames("text-lg leading-tight", fontScale);
   // Body size is the floor for headings. The renderer's own defaults put h4-h6
   // below it, which inverts the hierarchy, so h3 down all sit at body size and
   // are distinguished by weight alone.
-  const headingFloor = useResolveClassNames("text-base leading-tight");
+  const headingFloor = useWholePointClassNames(
+    "text-base leading-tight",
+    fontScale,
+  );
   const code = useResolveClassNames("text-sm");
   const caption = useResolveClassNames("text-xs");
 
