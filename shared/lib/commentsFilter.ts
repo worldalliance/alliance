@@ -60,6 +60,13 @@ export function countAllReplies(replies: CommentDto[]): number {
   return count;
 }
 
+export function latestActivityAt(comment: CommentDto): number {
+  return (comment.children ?? []).reduce(
+    (latest, child) => Math.max(latest, latestActivityAt(child)),
+    new Date(comment.createdAt).getTime(),
+  );
+}
+
 export function hasExpertReply(
   comment: CommentDto,
   expertIds: number[],
@@ -167,6 +174,7 @@ export function sortComments(
     case CommentSort.Newest:
       return [...comments].sort((a, b) => {
         if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+        if (a.pinned) return latestActivityAt(b) - latestActivityAt(a);
         return (
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
