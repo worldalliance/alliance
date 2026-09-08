@@ -6,7 +6,6 @@ import {
   StyleProp,
   TextStyle,
   TouchableOpacity,
-  useWindowDimensions,
   View,
   ViewStyle,
 } from "react-native";
@@ -16,6 +15,7 @@ import {
   extractPathFromInternalUrl,
   getInternalRoute,
 } from "../lib/internalLinks";
+import { useFontScale } from "../lib/style/useFontScale";
 import { ImageLightboxModal } from "./ImageLightbox";
 import { renderListItem } from "./markdownListItem";
 import {
@@ -174,7 +174,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
   const handleLinkPress = useHandleLinkPress();
   const textStyles = useMarkdownTextStyles();
   const palette = MARKDOWN_PALETTES[tone];
-  const { fontScale } = useWindowDimensions();
+  const fontScale = useFontScale();
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
 
   const wrapImage = useCallback(
