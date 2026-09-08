@@ -432,7 +432,7 @@ const InviteForm = ({
           ? onetimeInviteCreation.responsible.leader.newGroup.createButtonText
           : multipleUseInvite
             ? "Create invite link"
-            : "Copy New Invite Link";
+            : "Copy new invite link";
       default:
         throw new Error(`unknown step: ${step satisfies never}`);
     }
