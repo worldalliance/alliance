@@ -1,6 +1,8 @@
 import { resolveSafeUploadSrc } from "@alliance/common/image-src";
 import { safeUrl } from "@alliance/common/url-safety";
+import { useCallback } from "react";
 import { type UrlTransform } from "react-markdown";
+import { useSiteHref } from "../ui/SiteAppProvider";
 import { getApiUrl } from "./config";
 
 /**
@@ -22,3 +24,17 @@ export const transformMarkdownUrl: UrlTransform = (url, key, node) =>
   key === "src" && node.tagName === "img"
     ? resolveMarkdownImageSrc(url)
     : safeUrl(url);
+
+/**
+ * {@link transformMarkdownUrl} against the site's own hosts, so a link keeps
+ * the reader on the domain they arrived on and an image is fetched from it.
+ * One vhost serves both domains and proxies /api on each, so the path a URL on
+ * either one reduces to resolves the same from the other.
+ */
+export function useMarkdownUrlTransform(): UrlTransform {
+  const siteHref = useSiteHref();
+  return useCallback<UrlTransform>(
+    (url, key, node) => siteHref(transformMarkdownUrl(url, key, node) ?? ""),
+    [siteHref],
+  );
+}
