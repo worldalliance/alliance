@@ -1,6 +1,8 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import {
+  flattenPageItems,
   forEachCondition,
+  isQuestionField,
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
 import { Injectable, Logger } from "@nestjs/common";
@@ -301,8 +303,8 @@ export class ForumActionCompleterWorker {
     // Field-level validators hang off the field itself rather than a condition,
     // so they aren't part of the condition walk.
     for (const page of schema.pages ?? []) {
-      for (const element of page.fields ?? []) {
-        if ("customValidatorId" in element && element.customValidatorId) {
+      for (const element of flattenPageItems(page.fields ?? [])) {
+        if (isQuestionField(element) && element.customValidatorId) {
           validatorIds.add(element.customValidatorId);
         }
       }

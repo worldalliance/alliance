@@ -2,13 +2,15 @@
 // drift and leave an accepted reference visible as a raw token.
 
 import type { DisplayBlock, DisplayKind } from "./display-blocks";
-import type {
-  AnyField,
-  FieldKind,
-  FormSchema,
-  OutputFieldBlock,
+import {
+  isFieldGroup,
+  isQuestionField,
+  type AnyField,
+  type FieldKind,
+  type FormSchema,
+  type OutputFieldBlock,
+  type PageItem,
 } from "./form-schema";
-import { isQuestionField } from "./form-schema";
 import { collectVariableReferences, interpolateVariables } from "./variables";
 
 // HTML is excluded because `dangerouslySetInnerHTML` would turn an interpolated
@@ -205,7 +207,11 @@ export function forEachInterpolatableText(
     }
   };
 
-  const visitElement = (element: AnyField | DisplayBlock): void => {
+  const visitElement = (element: PageItem): void => {
+    if (isFieldGroup(element)) {
+      for (const child of element.fields) visitElement(child);
+      return;
+    }
     const location = element.id ?? `<${element.kind}>`;
     if (isQuestionField(element)) {
       visitProps(element, INTERPOLATED_FIELD_PROPS, location);

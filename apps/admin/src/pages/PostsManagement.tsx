@@ -20,6 +20,26 @@ type TagDraft = { id?: number; name: string };
 const toTagDrafts = (post: PostDto): TagDraft[] =>
   (post.tags ?? []).map((tag) => ({ id: tag.id, name: tag.name }));
 
+const SettingToggle: React.FC<{
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}> = ({ label, description, checked, onChange }) => (
+  <div>
+    <label className="flex items-center gap-2 cursor-pointer w-fit">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="w-4 h-4 rounded border-zinc-300"
+      />
+      <span className="text-sm font-medium">{label}</span>
+    </label>
+    <p className="text-xs text-zinc-500 mt-1">{description}</p>
+  </div>
+);
+
 const PostsManagementPage: React.FC = () => {
   const { postId } = useParams();
   const navigate = useNavigate();
@@ -237,7 +257,7 @@ const PostsManagementPage: React.FC = () => {
                             {post.authorIds?.length} authors
                           </span>
                         )}
-                        {(post.expertIds?.length ?? 0) > 0 && (
+                        {post.qaMode && (post.expertIds?.length ?? 0) > 0 && (
                           <span className="text-xs text-blue">
                             {post.expertIds?.length} expert(s) assigned
                           </span>
@@ -276,87 +296,55 @@ const PostsManagementPage: React.FC = () => {
                     post.
                   </p>
 
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={qaMode}
-                        onChange={(e) => setQaMode(e.target.checked)}
-                        className="w-4 h-4 rounded border-zinc-300"
+                  <SettingToggle
+                    label="Enable Q&A Mode"
+                    description="Designated experts get a badge on their replies, and readers can filter comments by answered/unanswered."
+                    checked={qaMode}
+                    onChange={setQaMode}
+                  />
+                  {qaMode && (
+                    <div className="flex flex-col gap-4 border-l-2 border-zinc-200 pl-4">
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-700 mb-1">
+                          Expert Badge Label
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={64}
+                          value={expertLabel}
+                          onChange={(e) => setExpertLabel(e.target.value)}
+                          placeholder="Expert"
+                          className="w-full border border-zinc-300 rounded px-3 py-2 text-sm"
+                        />
+                        <p className="text-xs text-zinc-500 mt-1">
+                          Custom badge label (e.g., &quot;AMA Guest&quot;,
+                          &quot;Specialist&quot;). Leave empty for default
+                          &quot;Expert&quot;.
+                        </p>
+                      </div>
+
+                      <UserSelect
+                        users={users}
+                        selectedUserIds={expertSelection}
+                        onChange={setExpertSelection}
+                        loading={usersLoading}
+                        label="Designated Experts"
                       />
-                      <span className="text-sm font-medium">
-                        Enable Q&A Mode
-                      </span>
-                    </label>
-                  </div>
-                  <p className="text-xs text-zinc-500">
-                    When enabled, designated experts will have a special badge
-                    on their replies and users can filter comments by
-                    answered/unanswered.
-                  </p>
+                    </div>
+                  )}
 
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={notifyForReplies}
-                        onChange={(e) => setNotifyForReplies(e.target.checked)}
-                        className="w-4 h-4 rounded border-zinc-300"
-                      />
-                      <span className="text-sm font-medium">
-                        Notify for Replies
-                      </span>
-                    </label>
-                  </div>
-                  <p className="text-xs text-zinc-500">
-                    When enabled, commenters will receive text/email
-                    notifications when someone replies to their comment.
-                  </p>
+                  <SettingToggle
+                    label="Notify for Replies"
+                    description="Commenters receive text/email notifications when someone replies to their comment."
+                    checked={notifyForReplies}
+                    onChange={setNotifyForReplies}
+                  />
 
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={showClusterTags}
-                        onChange={(e) => setShowClusterTags(e.target.checked)}
-                        className="w-4 h-4 rounded border-zinc-300"
-                      />
-                      <span className="text-sm font-medium">
-                        Show Cluster Tags
-                      </span>
-                    </label>
-                  </div>
-                  <p className="text-xs text-zinc-500">
-                    When enabled, each author&apos;s cluster name appears as a
-                    tag next to their name on this post. Tags are green when the
-                    viewer shares the author&apos;s cluster, grey otherwise.
-                  </p>
-
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">
-                      Expert Badge Label
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={64}
-                      value={expertLabel}
-                      onChange={(e) => setExpertLabel(e.target.value)}
-                      placeholder="Expert"
-                      className="w-full border border-zinc-300 rounded px-3 py-2 text-sm"
-                    />
-                    <p className="text-xs text-zinc-500 mt-1">
-                      Custom badge label (e.g., &quot;AMA Guest&quot;,
-                      &quot;Specialist&quot;). Leave empty for default
-                      &quot;Expert&quot;.
-                    </p>
-                  </div>
-
-                  <UserSelect
-                    users={users}
-                    selectedUserIds={expertSelection}
-                    onChange={setExpertSelection}
-                    loading={usersLoading}
-                    label="Designated Experts"
+                  <SettingToggle
+                    label="Show Cluster Tags"
+                    description="Each author's cluster name appears as a tag next to their name on this post. Tags are green when the viewer shares the author's cluster, grey otherwise."
+                    checked={showClusterTags}
+                    onChange={setShowClusterTags}
                   />
 
                   <div>

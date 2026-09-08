@@ -1,9 +1,6 @@
 import { hasContent } from "@alliance/common/editableContent";
 import { CreateEditableContentDto, PostTagDto } from "@alliance/shared/client";
-import {
-  uploadAttachments,
-  withUploadedKeys,
-} from "@alliance/shared/lib/uploadAttachments";
+import { uploadDraftAttachments } from "@alliance/shared/lib/uploadAttachments";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import EditableContentForm, {
@@ -80,20 +77,18 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
     isPostingRef.current = true;
     setIsPosting(true);
     try {
-      const sources = editableContent.attachments;
-      const uploaded = await uploadAttachments(sources);
+      const uploaded = await uploadDraftAttachments({
+        sources: editableContent.attachments,
+        setAttachments: (update) =>
+          setEditableContent((prev) => ({
+            ...prev,
+            attachments: update(prev.attachments),
+          })),
+      });
       if (!uploaded.ok) {
         setUploadError(uploaded.error);
         return;
       }
-      setEditableContent((prev) => ({
-        ...prev,
-        attachments: withUploadedKeys({
-          current: prev.attachments,
-          sources,
-          keys: uploaded.value,
-        }),
-      }));
       // Clear the draft only once the server accepts, so a rejected comment
       // keeps its text.
       await onSubmit(

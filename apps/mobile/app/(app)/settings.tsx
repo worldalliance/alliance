@@ -9,7 +9,15 @@ import { useSettingsAutosave } from "@alliance/shared/lib/useSettingsAutosave";
 import { cn } from "@alliance/shared/styles/util";
 import { useMutation } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Switch, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  Switch,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import BuildInfoCard from "../../components/BuildInfoCard";
 import PhoneNumberInput from "../../components/forms/PhoneNumberInput";
 import ReminderTimeSelect from "../../components/forms/ReminderTimeSelect";
 import TimeZoneSelect from "../../components/forms/TimeZoneSelect";
@@ -23,6 +31,8 @@ import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
 import { colors } from "../../lib/style/colors";
+
+const BUILD_INFO_TAPS = 5;
 
 type SettingsToggleRowProps = {
   label: string;
@@ -82,6 +92,7 @@ export default function SettingsPage() {
   } = useSettingsAutosave(user?.id, location?.countryCode);
 
   const [loading, setLoading] = useState(true);
+  const [statusTaps, setStatusTaps] = useState(0);
 
   const [passwordResetMessage, setPasswordResetMessage] = useState<
     string | null
@@ -164,14 +175,16 @@ export default function SettingsPage() {
   return (
     <View className="flex-1" testID="vr-settings-ready">
       <SimplePageTitle title="Settings">
-        <Text
-          className={cn(
-            "text-sm mr-4",
-            saveStatus === "failed" ? "text-red-600" : "text-zinc-500",
-          )}
-        >
-          {saveStatusText}
-        </Text>
+        <Pressable onPress={() => setStatusTaps((taps) => taps + 1)}>
+          <Text
+            className={cn(
+              "text-sm mr-4",
+              saveStatus === "failed" ? "text-red-600" : "text-zinc-500",
+            )}
+          >
+            {saveStatusText}
+          </Text>
+        </Pressable>
       </SimplePageTitle>
       <KeyboardAwareScrollView className="flex-1">
         <View className=" px-2 pb-8 pt-2 flex flex-col gap-2">
@@ -477,6 +490,8 @@ export default function SettingsPage() {
               )}
             </View>
           </Card>
+
+          {statusTaps >= BUILD_INFO_TAPS && <BuildInfoCard />}
 
           {/* Logout */}
           <Button

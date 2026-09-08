@@ -102,6 +102,27 @@ describe("forEachCondition", () => {
               }),
             ],
           },
+          {
+            id: "g1",
+            type: "group",
+            kind: "group",
+            visibleIfFormula: {
+              conditions: { c1: marker("group-formula") },
+              formula: "c1",
+            },
+            requiredIfFormula: {
+              conditions: { c1: marker("group-requiredIf") },
+              formula: "c1",
+            },
+            fields: [
+              textField("g1f", {
+                visibleIfFormula: {
+                  conditions: { c1: marker("group-child-formula") },
+                  formula: "c1",
+                },
+              }),
+            ],
+          },
         ],
       },
     ],
@@ -126,6 +147,9 @@ describe("forEachCondition", () => {
       "field-requiredIf",
       "sub-formula",
       "sub-requiredIf",
+      "group-formula",
+      "group-requiredIf",
+      "group-child-formula",
     ]);
   });
 

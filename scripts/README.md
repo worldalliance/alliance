@@ -9,6 +9,7 @@ Creates a git worktree with its own ports and database. Main checkout only. Also
 
 `rm-worktree.sh <name>`
 Removes a worktree created above and drops its databases. Run it from outside that worktree. Also `bun run worktree:rm`.
+`--list` prints the names it accepts. Those names tab-complete in zsh once `scripts/completions` is on `fpath` ahead of `compinit`; the script's header has the two lines to paste into `~/.zshrc`.
 
 `with-env.sh [command...]`
 Runs a command with this checkout's worktree env sourced. No arguments prints the resolved ports and database names, which is what `bun run ports` does.

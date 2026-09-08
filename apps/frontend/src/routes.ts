@@ -24,6 +24,10 @@ export default [
   route("/progress", "pages/static/ProgressListPage.tsx"),
   route("/progress/projects/:slug", "pages/static/ProgressProjectRedirect.tsx"),
   route("/progress/:slug", "pages/static/ProgressPostPage.tsx"),
+  route(
+    "/projects/democratic-grantmaking-26",
+    "components/projects/democratic-grantmaking-26/DemocraticGrantmaking26.tsx",
+  ),
   route("/projects/:slug", "pages/static/ProgressProjectPage.tsx"),
 
   route("/utensilinitiative", "pages/static/oneoff/UtensilWastePage.tsx"),

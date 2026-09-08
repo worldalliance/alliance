@@ -1,6 +1,7 @@
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
 import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import {
+  flattenPageItems,
   isQuestionField,
   type AnyField,
   type FieldKind,
@@ -402,7 +403,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
   const { fieldLabels, orderedFieldIds } = useMemo(() => {
     const labels = new Map<string, string>();
     form?.schema?.pages?.forEach((page) => {
-      page.fields.forEach((field) => {
+      flattenPageItems(page.fields).forEach((field) => {
         if (!isAnswerField(field) || labels.has(field.id)) return;
         labels.set(field.id, elementInternalDescriptor(field));
       });
@@ -413,7 +414,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
   const fieldsById = useMemo(() => {
     const fields = new Map<string, AnyField>();
     form?.schema?.pages?.forEach((page) => {
-      page.fields.forEach((field) => {
+      flattenPageItems(page.fields).forEach((field) => {
         if (isQuestionField(field)) fields.set(field.id, field);
       });
     });

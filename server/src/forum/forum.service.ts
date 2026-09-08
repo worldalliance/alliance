@@ -28,7 +28,6 @@ import {
 import { isForeignKeyViolation, isUniqueViolation } from "src/utils/db-errors";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import {
-  ILike,
   In,
   Not,
   type EntityManager,
@@ -123,7 +122,7 @@ export class ForumService {
     return parsePost(await this.postRepository.save(post));
   }
 
-  private addPostVisibilityFilter<T extends ObjectLiteral>(
+  addPostVisibilityFilter<T extends ObjectLiteral>(
     qb: SelectQueryBuilder<T>,
     postAlias: string,
     userId?: number,
@@ -145,8 +144,16 @@ export class ForumService {
         .where(`visPost.id = ${postAlias}.id`)
         .andWhere("visAuthor.id = :postVisibility_userId")
         .getQuery();
+      const adminSubQuery = qb
+        .subQuery()
+        .select("1")
+        .from(User, "visViewer")
+        .where("visViewer.id = :postVisibility_userId")
+        .andWhere("visViewer.admin = true")
+        .getQuery();
       clauses.push(`${postAlias}.authorId = :postVisibility_userId`);
       clauses.push(`EXISTS ${coAuthorSubQuery}`);
+      clauses.push(`EXISTS ${adminSubQuery}`);
       params.postVisibility_userId = userId;
     }
     qb.andWhere(`(${clauses.join(" OR ")})`, params);
@@ -243,7 +250,11 @@ export class ForumService {
     }));
   }
 
-  async findPostsByAction(actionId: number): Promise<ParsedPost[]> {
+  async findPostsByAction(params: {
+    actionId: number;
+    requestingUserId?: number;
+  }): Promise<ParsedPost[]> {
+    const { actionId, requestingUserId } = params;
     const qb = this.postRepository
       .createQueryBuilder("post")
       .leftJoinAndSelect("post.author", "author")
@@ -254,7 +265,7 @@ export class ForumService {
       .leftJoinAndSelect("post.likes", "likes")
       .where("post.actionId = :actionId", { actionId })
       .orderBy("post.updatedAt", "DESC");
-    this.addPostVisibilityFilter(qb, "post");
+    this.addPostVisibilityFilter(qb, "post", requestingUserId);
     const posts = (await qb.getMany()).map(parsePost);
 
     const postsWithComments = await Promise.all(
@@ -849,7 +860,7 @@ export class ForumService {
     });
 
     if (!reply) {
-      throw new NotFoundException(`Reply with ID "${id}" not found`);
+      throw new NotFoundException("That reply is no longer here");
     }
 
     if (reply.authorId !== userId) {
@@ -873,9 +884,7 @@ export class ForumService {
     });
 
     if (!updatedReply) {
-      throw new NotFoundException(
-        `Reply with ID "${id}" not found after update`,
-      );
+      throw new NotFoundException("That reply is no longer here");
     }
     await this.aiDetectionQueueService.addDetectJob({
       entityType: DetectableEntity.Comment,
@@ -1052,7 +1061,7 @@ export class ForumService {
     });
 
     if (!reply) {
-      throw new NotFoundException(`Reply with ID "${id}" not found`);
+      throw new NotFoundException("That reply is no longer here");
     }
 
     if (reply.authorId !== userId) {
@@ -1066,7 +1075,11 @@ export class ForumService {
     await this.commentRepository.update(id, { deleted: true });
   }
 
-  async findPostsByUser(userId: number): Promise<ParsedPost[]> {
+  async findPostsByUser(params: {
+    authorId: number;
+    requestingUserId?: number;
+  }): Promise<ParsedPost[]> {
+    const { authorId, requestingUserId } = params;
     const qb = this.postRepository
       .createQueryBuilder("post")
       .leftJoinAndSelect("post.author", "author")
@@ -1074,10 +1087,10 @@ export class ForumService {
       .leftJoinAndSelect("action.reviewers", "actionReviewer")
       .leftJoinAndSelect("post.editableContent", "editableContent")
       .leftJoin("post.authors", "coAuthor")
-      .andWhere("(post.authorId = :userId OR coAuthor.id = :userId)", {
-        userId,
+      .andWhere("(post.authorId = :authorId OR coAuthor.id = :authorId)", {
+        authorId,
       });
-    this.addPostVisibilityFilter(qb, "post", userId);
+    this.addPostVisibilityFilter(qb, "post", requestingUserId);
     return (await qb.getMany()).map(parsePost);
   }
 
@@ -1134,10 +1147,16 @@ export class ForumService {
     });
   }
 
-  async findPostsByTitle(title: string): Promise<Post[]> {
-    return this.postRepository.find({
-      where: { title: ILike(`%${title}%`), deleted: false },
-    });
+  async findPostsByTitle(params: {
+    title: string;
+    requestingUserId: number;
+  }): Promise<Post[]> {
+    const { title, requestingUserId } = params;
+    const qb = this.postRepository
+      .createQueryBuilder("post")
+      .where("post.title ILIKE :title", { title: `%${title}%` });
+    this.addPostVisibilityFilter(qb, "post", requestingUserId);
+    return qb.getMany();
   }
 
   /** Targets the join rows, so a concurrent write to the post's other half

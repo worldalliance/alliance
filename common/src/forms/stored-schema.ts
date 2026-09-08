@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { R, type Result } from "../result";
-import { anyFieldSchema, type AnyField } from "./form-schema";
+import { anyFieldSchema, fieldGroupSchema, type AnyField } from "./form-schema";
 
 /**
  * A stored snapshot read element by element. `formSchema` is strict and its
@@ -25,10 +25,15 @@ export function storedQuestionFields(
   if (!parsed.success) return R.failure(parsed.error);
   return R.success(
     parsed.data.pages.flatMap((page) =>
-      (page.fields ?? []).flatMap((element) => {
-        const field = anyFieldSchema.safeParse(element);
-        return field.success ? [field.data] : [];
-      }),
+      (page.fields ?? []).flatMap(storedQuestionFieldsFromElement),
     ),
   );
+}
+
+function storedQuestionFieldsFromElement(element: unknown): AnyField[] {
+  const field = anyFieldSchema.safeParse(element);
+  if (field.success) return [field.data];
+  const group = fieldGroupSchema.safeParse(element);
+  if (!group.success) return [];
+  return group.data.fields.flatMap(storedQuestionFieldsFromElement);
 }

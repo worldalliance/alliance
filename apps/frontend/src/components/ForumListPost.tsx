@@ -69,7 +69,7 @@ const ForumListPost = ({
             </div>
             {isPrivateFuturePost && (
               <span className="text-sm text-blue">
-                Only you can see this - will be posted{" "}
+                Not visible to members yet - will be posted{" "}
                 {formatTime(new Date(post.visibleAt!), {
                   addSuffix: true,
                 })}

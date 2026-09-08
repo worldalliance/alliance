@@ -284,9 +284,10 @@ export class ActionsController {
       "Get unified global feed with activities, updates, and new members",
   })
   async getGlobalFeed(
+    @Request() req: JwtRequest,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ): Promise<GlobalFeedItemDto[]> {
-    return this.actionsService.getGlobalFeed(limit ?? 15);
+    return this.actionsService.getGlobalFeed(limit ?? 15, req.user?.sub);
   }
 
   @Get("globalFeed/activityGroupMembers")
@@ -298,6 +299,7 @@ export class ActionsController {
   @ApiQuery({ name: "limit", required: false, type: Number })
   @ApiQuery({ name: "afterId", required: false, type: Number })
   async getGlobalFeedActivityMembers(
+    @Request() req: JwtRequest,
     @Query("actionId", ParseIntPipe) actionId: number,
     @Query("activityType") activityType: string,
     @Query(
@@ -313,6 +315,7 @@ export class ActionsController {
       parseFeedActivityType(activityType),
       capGlobalFeedMembersLimit(limit),
       afterId,
+      req.user.sub,
     );
   }
 
@@ -1103,8 +1106,11 @@ export class ActionsController {
   @Get("allUpdates")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ActionUpdateDto, isArray: true })
-  async allUpdates(): Promise<ActionUpdateDto[]> {
-    const updates = await this.actionsService.getActionUpdates();
+  async allUpdates(@Request() req: JwtRequest): Promise<ActionUpdateDto[]> {
+    const updates = await this.actionsService.getActionUpdates(
+      undefined,
+      req.user.sub,
+    );
     return updates.map((update) => new ActionUpdateDto(update));
   }
 
@@ -1112,9 +1118,13 @@ export class ActionsController {
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ActionUpdateDto, isArray: true })
   async recentUpdates(
+    @Request() req: JwtRequest,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ): Promise<ActionUpdateDto[]> {
-    const updates = await this.actionsService.getActionUpdates(limit ?? 20);
+    const updates = await this.actionsService.getActionUpdates(
+      limit ?? 20,
+      req.user.sub,
+    );
     return updates.map((update) => new ActionUpdateDto(update));
   }
 
@@ -1344,8 +1354,9 @@ export class ActionsController {
   @UseGuards(AuthOptionalGuard)
   @ApiOkResponse({ type: [TimelineFeedItemDto] })
   async getTimelineFeed(
+    @Request() req: JwtRequest,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ): Promise<TimelineFeedItemDto[]> {
-    return this.actionsService.getTimelineFeed(limit ?? 15);
+    return this.actionsService.getTimelineFeed(limit ?? 15, req.user?.sub);
   }
 }

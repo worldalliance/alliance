@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   Request,
   UseGuards,
 } from "@nestjs/common";
@@ -19,6 +20,8 @@ import {
   CreateDuplicateShareLinkDto,
   CreateInviteDuplicateDto,
   GetShareLinkDto,
+  ReusableInviteFeedDto,
+  ReusableInviteFeedQueryDto,
   ShareLinkDto,
   ShareUrlAdminDto,
   ShareUrlMineDto,
@@ -82,6 +85,19 @@ export class ShareUrlsController {
     );
     const [result] = await this.shareUrlsService.withInviteDestinations([row]);
     return new ShareUrlMineDto(result);
+  }
+
+  @Get("invite-feed")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: ReusableInviteFeedDto })
+  async findInviteFeedAdmin(
+    @Query() query: ReusableInviteFeedQueryDto,
+  ): Promise<ReusableInviteFeedDto> {
+    return new ReusableInviteFeedDto(
+      await this.shareUrlsService.findReusableInviteFeed(
+        new Date(query.startAt),
+      ),
+    );
   }
 
   @Patch("mine/invites/:id")

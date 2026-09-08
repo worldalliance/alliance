@@ -1,5 +1,4 @@
 import { CreateEditableContentDto, PostTagDto } from "@alliance/shared/client";
-import { withUploadedKeys } from "@alliance/shared/lib/uploadAttachments";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
@@ -14,13 +13,12 @@ import {
   deferUpload,
   failUploads,
   resetUploads,
-  uploadAttachments,
+  uploadImageDataUri,
   uploads,
-} from "../../testing/uploadAttachmentsMock";
+} from "../../testing/uploadImageDataUriMock";
 
-jest.mock("@alliance/shared/lib/uploadAttachments", () => ({
-  uploadAttachments,
-  withUploadedKeys,
+jest.mock("@alliance/shared/lib/uploadImageDataUri", () => ({
+  uploadImageDataUri,
 }));
 
 import ReplyForm from "./ReplyForm";
@@ -216,7 +214,7 @@ describe("ReplyForm", () => {
     await post();
     await post();
 
-    expect(uploads).toEqual(["data:image/png;base64,AAAA", "key-0"]);
+    expect(uploads).toEqual(["data:image/png;base64,AAAA"]);
     expect(sent.map((content) => content.attachments)).toEqual([
       ["key-0"],
       ["key-0"],

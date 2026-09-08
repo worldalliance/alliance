@@ -17,12 +17,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { getInternalRoute } from "../../components/AppMarkdownWrapper";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 import ProfileImage from "../../components/ProfileImage";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../components/system/Text";
 import { getImageSource } from "../../lib/config";
+import { getInternalRoute } from "../../lib/internalLinks";
 
 const resolveItemImage = (image?: string): string | null => {
   if (!image) return null;

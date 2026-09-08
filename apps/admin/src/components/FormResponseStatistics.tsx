@@ -4,7 +4,10 @@ import type {
   FieldKind,
   RangeField,
 } from "@alliance/common/forms/form-schema";
-import { isQuestionField } from "@alliance/common/forms/form-schema";
+import {
+  flattenPageItems,
+  isQuestionField,
+} from "@alliance/common/forms/form-schema";
 import { FormResponseDto } from "@alliance/shared/client";
 import Card from "@alliance/sharedweb/ui/Card";
 import FormMarkdownWrapper from "@alliance/sharedweb/ui/FormMarkdownWrapper";
@@ -547,7 +550,7 @@ const FormResponseStatistics: React.FC<FormResponseStatisticsProps> = ({
     const fields: AnyField[] = [];
     const seen = new Set<string>();
     form.schema.pages.forEach((page) => {
-      page.fields.forEach((field) => {
+      flattenPageItems(page.fields).forEach((field) => {
         if (
           isQuestionField(field) &&
           typeof field.id === "string" &&

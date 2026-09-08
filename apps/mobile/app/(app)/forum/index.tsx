@@ -130,7 +130,7 @@ export default function ForumScreen() {
                         </View>
                         {isPrivateFuturePost && post.visibleAt && (
                           <Text className="text-sm text-blue-600 mt-1">
-                            Only you can see this - will be posted{" "}
+                            Not visible to members yet - will be posted{" "}
                             {formatTime(new Date(post.visibleAt), {
                               addSuffix: true,
                             })}

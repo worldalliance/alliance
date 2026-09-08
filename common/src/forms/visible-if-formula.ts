@@ -1,5 +1,6 @@
 import z from "zod";
 import { deviceVisibilityTargetSchema } from "./device";
+import { UserValueProperty } from "./user-properties";
 
 const conditionEqualsSchema = z.strictObject({
   kind: z.literal("equals"),
@@ -51,6 +52,12 @@ const conditionUserHasCitySchema = z.strictObject({
   userHasCity: z.boolean(),
 });
 
+const conditionUserPropertyHasValueSchema = z.strictObject({
+  kind: z.literal("userPropertyHasValue"),
+  property: z.enum(UserValueProperty),
+  hasValue: z.boolean(),
+});
+
 /**
  * True when the user's first contract signing (their earliest `signed`
  * contract event) falls `before` / `onOrAfter` `date`. Users who have never
@@ -79,6 +86,7 @@ export const conditionSchema = z.discriminatedUnion("kind", [
   conditionDeviceTypeSchema,
   conditionOutputBlockVisibleSchema,
   conditionUserHasCitySchema,
+  conditionUserPropertyHasValueSchema,
   conditionFirstContractSignedSchema,
   conditionCompletedActionCountSchema,
 ]);
@@ -102,6 +110,7 @@ export const CONDITION_KIND_IS_ACCOUNT_DERIVED = {
   deviceType: false,
   outputBlockVisible: false,
   userHasCity: true,
+  userPropertyHasValue: true,
   firstContractSigned: true,
   completedActionCount: true,
 } as const satisfies Record<ConditionKind, boolean>;

@@ -920,8 +920,27 @@ export type MaybeUserLocationDto = {
     city?: City;
 };
 
+export type UserPropertyPresenceDto = {
+    name: boolean;
+    email: boolean;
+    phoneNumber: boolean;
+    preferredReminderTime: boolean;
+    timeZone: boolean;
+    profilePicture: boolean;
+    profileDescription: boolean;
+    city: boolean;
+    customCityString: boolean;
+    over18: boolean;
+    clusterId: boolean;
+    staffTitle: boolean;
+    switchedDomainAt: boolean;
+    referredById: boolean;
+    shareInfoPublicly: boolean;
+};
+
 export type MyVisibilityContextDto = {
     userHasCity: boolean;
+    userPropertyHasValue: UserPropertyPresenceDto;
     firstContractSignedAt?: string;
     completedActionCount: number;
 };
@@ -1371,6 +1390,17 @@ export type CreateInviteDuplicateDto = {
      */
     label?: string;
     communityId: number | null;
+};
+
+export type ReusableInviteFeedItemDto = {
+    id: string;
+    createdAt: string;
+    invitingUserDisplayName: string;
+    communityId: number | null;
+};
+
+export type ReusableInviteFeedDto = {
+    items: Array<ReusableInviteFeedItemDto>;
 };
 
 export type UpdateInviteDto = {
@@ -1829,14 +1859,14 @@ export type FormResponseOutputDto = {
     answers: {
         [key: string]: unknown;
     };
-    visibilityValidatorResults: {
-        [key: string]: unknown;
-    };
     publicAnswers: {
         [key: string]: unknown;
     };
     deviceType?: string;
     schemaSnapshot: {
+        [key: string]: unknown;
+    };
+    visibilityValidatorResults: {
         [key: string]: unknown;
     };
 };
@@ -3432,9 +3462,6 @@ export type FormResponseDto = {
     answers: {
         [key: string]: unknown;
     };
-    visibilityValidatorResults: {
-        [key: string]: unknown;
-    };
     publicAnswers: {
         [key: string]: unknown;
     };
@@ -3445,6 +3472,9 @@ export type FormResponseDto = {
     formSnapshotId: number;
     sid?: string;
     schemaSnapshot: {
+        [key: string]: unknown;
+    };
+    visibilityValidatorResults: {
         [key: string]: unknown;
     };
     user?: UserDto;
@@ -6085,6 +6115,30 @@ export type ShareUrlsCreateInviteDuplicateResponses = {
 };
 
 export type ShareUrlsCreateInviteDuplicateResponse = ShareUrlsCreateInviteDuplicateResponses[keyof ShareUrlsCreateInviteDuplicateResponses];
+
+export type ShareUrlsFindInviteFeedAdminData = {
+    body?: never;
+    path?: never;
+    query: {
+        startAt: string;
+    };
+    url: '/share-urls/invite-feed';
+};
+
+export type ShareUrlsFindInviteFeedAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ShareUrlsFindInviteFeedAdminError = ShareUrlsFindInviteFeedAdminErrors[keyof ShareUrlsFindInviteFeedAdminErrors];
+
+export type ShareUrlsFindInviteFeedAdminResponses = {
+    200: ReusableInviteFeedDto;
+};
+
+export type ShareUrlsFindInviteFeedAdminResponse = ShareUrlsFindInviteFeedAdminResponses[keyof ShareUrlsFindInviteFeedAdminResponses];
 
 export type ShareUrlsDeleteMyInviteData = {
     body?: never;

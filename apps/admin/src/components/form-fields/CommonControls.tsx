@@ -9,6 +9,7 @@ import {
   type CheckboxField,
   type ContractField,
   type EmailField,
+  type FieldGroup,
   type MultiSelectField,
   type NumberField,
   type Page,
@@ -19,6 +20,11 @@ import {
   type TextareaField,
   type TextField,
 } from "@alliance/common/forms/form-schema";
+import {
+  USER_VALUE_PROPERTIES,
+  USER_VALUE_PROPERTY_LABELS,
+  UserValueProperty,
+} from "@alliance/common/forms/user-properties";
 import {
   type Condition,
   type VisibleIfFormula,
@@ -226,7 +232,7 @@ export function OutputPrivateByDefaultToggle({
 export type OutputBlockOption = { id: string; label: string };
 
 type ConditionalVisibilityProps = {
-  field: (AnyField | DisplayBlock | Page) & {
+  field: (AnyField | DisplayBlock | Page | FieldGroup) & {
     visibleIfFormula?: VisibleIfFormula;
   };
   previousFields: AnyField[];
@@ -301,6 +307,10 @@ type OutputBlockVisibleCondition = Extract<
   { kind: "outputBlockVisible" }
 >;
 type UserHasCityCondition = Extract<Condition, { kind: "userHasCity" }>;
+type UserPropertyHasValueCondition = Extract<
+  Condition,
+  { kind: "userPropertyHasValue" }
+>;
 type FirstContractSignedCondition = Extract<
   Condition,
   { kind: "firstContractSigned" }
@@ -335,6 +345,12 @@ function isOutputBlockVisibleCondition(
 
 function isUserHasCityCondition(cond: Condition): cond is UserHasCityCondition {
   return cond.kind === "userHasCity";
+}
+
+function isUserPropertyHasValueCondition(
+  cond: Condition,
+): cond is UserPropertyHasValueCondition {
+  return cond.kind === "userPropertyHasValue";
 }
 
 function isFirstContractSignedCondition(
@@ -816,13 +832,30 @@ export function ConditionalVisibility({
     updateConditions(next);
   }, [conditions, updateConditions]);
 
-  const addUserHasCityCondition = useCallback(() => {
-    const defaultCondition: UserHasCityCondition = {
-      kind: "userHasCity",
-      userHasCity: true,
+  const addUserPropertyHasValueCondition = useCallback(() => {
+    const defaultCondition: UserPropertyHasValueCondition = {
+      kind: "userPropertyHasValue",
+      property: UserValueProperty.City,
+      hasValue: true,
     };
     updateConditions([...conditions, defaultCondition]);
   }, [conditions, updateConditions]);
+
+  const handleUserPropertyHasValueChange = useCallback(
+    (
+      index: number,
+      updates: Partial<
+        Pick<UserPropertyHasValueCondition, "property" | "hasValue">
+      >,
+    ) => {
+      const next = [...conditions];
+      const current = next[index];
+      if (!isUserPropertyHasValueCondition(current)) return;
+      next[index] = { ...current, ...updates };
+      updateConditions(next, true);
+    },
+    [conditions, updateConditions],
+  );
 
   const handleUserHasCityChange = useCallback(
     (index: number, userHasCity: boolean) => {
@@ -1537,6 +1570,50 @@ export function ConditionalVisibility({
     );
   };
 
+  const renderUserPropertyHasValueCondition = (
+    condition: UserPropertyHasValueCondition,
+    index: number,
+  ) => {
+    return (
+      <div className="space-y-2">
+        <div>
+          <label className="block text-xs text-gray-700 mb-1">
+            Show when this user property
+          </label>
+          <select
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            value={condition.property}
+            onChange={(event) => {
+              const property = USER_VALUE_PROPERTIES.find(
+                (value) => value === event.target.value,
+              );
+              if (!property) return;
+              handleUserPropertyHasValueChange(index, { property });
+            }}
+          >
+            {USER_VALUE_PROPERTIES.map((property) => (
+              <option key={property} value={property}>
+                {USER_VALUE_PROPERTY_LABELS[property]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <select
+          className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          value={String(condition.hasValue)}
+          onChange={(event) =>
+            handleUserPropertyHasValueChange(index, {
+              hasValue: event.target.value === "true",
+            })
+          }
+        >
+          <option value="true">is set</option>
+          <option value="false">is not set</option>
+        </select>
+      </div>
+    );
+  };
+
   const renderFirstContractSignedCondition = (
     condition: FirstContractSignedCondition,
     index: number,
@@ -1736,6 +1813,8 @@ export function ConditionalVisibility({
               renderOutputBlockVisibleCondition(condition, index)
             ) : isUserHasCityCondition(condition) ? (
               renderUserHasCityCondition(condition, index)
+            ) : isUserPropertyHasValueCondition(condition) ? (
+              renderUserPropertyHasValueCondition(condition, index)
             ) : isFirstContractSignedCondition(condition) ? (
               renderFirstContractSignedCondition(condition, index)
             ) : isCompletedActionCountCondition(condition) ? (
@@ -1802,9 +1881,9 @@ export function ConditionalVisibility({
               <button
                 type="button"
                 className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
-                onClick={addUserHasCityCondition}
+                onClick={addUserPropertyHasValueCondition}
               >
-                + User has city condition
+                + User property has value
               </button>
               <button
                 type="button"

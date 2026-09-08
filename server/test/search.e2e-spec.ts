@@ -97,6 +97,50 @@ describe("Search (e2e)", () => {
     expect(ids).toContain(`p${targetPost.id}`);
   });
 
+  it("keeps a scheduled post out of search until it goes live", async () => {
+    const scheduledPost = await postRepo.save(
+      postRepo.create({
+        title: "Target Post Scheduled For Later",
+        editableContent: {
+          body: "Not live yet",
+          attachments: [],
+        },
+        author: targetUser,
+        authorId: targetUser.id,
+        visibleAt: new Date(Date.now() + 1000 * 60 * 60),
+      }),
+    );
+
+    const search = (token?: string) => {
+      const req = request(ctx.app.getHttpServer())
+        .get("/search/all")
+        .query({ query: "Target Post Scheduled" });
+      return (token ? req.set("Authorization", `Bearer ${token}`) : req).expect(
+        200,
+      );
+    };
+
+    const authorToken = ctx.jwtService.sign(
+      { sub: targetUser.id, email: targetUser.email },
+      { secret: process.env.JWT_SECRET },
+    );
+
+    const visitorResponse = await search(ctx.accessToken);
+    expect(visitorResponse.body.map((item) => item.id)).not.toContain(
+      `p${scheduledPost.id}`,
+    );
+
+    const authorResponse = await search(authorToken);
+    expect(authorResponse.body.map((item) => item.id)).toContain(
+      `p${scheduledPost.id}`,
+    );
+
+    const adminResponse = await search(ctx.adminAccessToken);
+    expect(adminResponse.body.map((item) => item.id)).toContain(
+      `p${scheduledPost.id}`,
+    );
+  });
+
   it("persists and returns recent selections when query is empty", async () => {
     await request(ctx.app.getHttpServer())
       .post("/search/selected")

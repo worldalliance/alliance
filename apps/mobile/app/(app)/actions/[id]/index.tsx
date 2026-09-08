@@ -206,8 +206,10 @@ function ActivityTabContent({ actionId }: ActivityTabContentProps) {
 }
 
 export default function ActionDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const [activeTab, setActiveTab] = useState<TabId>("task");
+  const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
+  const [activeTab, setActiveTab] = useState<TabId>(
+    tabs.find((t) => t.id === tab)?.id ?? "task",
+  );
   const [refreshing, setRefreshing] = useState(false);
   const queryClient = useQueryClient();
 

@@ -7,9 +7,11 @@ import {
   forEachOutputViewCondition,
   type FormSchema,
   type FormValue,
+  isFieldGroup,
   type ListField,
   type NumberField,
   type Page,
+  type PageItem,
   type RangeField,
 } from "@alliance/common/forms/form-schema";
 import {
@@ -144,6 +146,7 @@ const KNOWN_FORM_ELEMENT_KINDS_RECORD = {
   userLocation: true,
   chatTranscript: true,
   accordion: true,
+  group: true,
 } as const satisfies Record<FormElementKind, true>;
 
 const KNOWN_FORM_ELEMENT_KINDS = new Set(
@@ -158,11 +161,16 @@ const KNOWN_FORM_ELEMENT_KINDS = new Set(
 export function findUnknownFormElementKind(
   schema: FormSchema,
 ): FormElementKind | null {
-  const findUnknown = (
-    element: AnyField | DisplayBlock,
-  ): FormElementKind | null => {
+  const findUnknown = (element: PageItem): FormElementKind | null => {
     if (!KNOWN_FORM_ELEMENT_KINDS.has(element.kind)) {
       return element.kind;
+    }
+    if (isFieldGroup(element)) {
+      for (const child of element.fields) {
+        const unknown = findUnknown(child);
+        if (unknown) return unknown;
+      }
+      return null;
     }
     if (element.kind !== "accordion") {
       return null;

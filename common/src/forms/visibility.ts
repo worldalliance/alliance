@@ -4,11 +4,19 @@ import type { DeviceVisibilityTarget } from "./device";
 import type { DisplayBlock } from "./display-blocks";
 import {
   type AnyField,
+  type FieldGroup,
   type FormValue,
   type OutputFieldBlock,
   type Page,
+  collectGroupByFieldId,
+  flattenPageItems,
+  isFieldGroup,
   isQuestionField,
 } from "./form-schema";
+import {
+  type UserPropertyPresence,
+  emptyUserPropertyPresence,
+} from "./user-properties";
 import {
   type Condition,
   type VisibleIfFormula,
@@ -93,6 +101,8 @@ export type ConditionExtras = {
   previousAnswerData?: Record<number, Record<string, unknown>>;
   outputBlockVisibility?: Map<string, boolean>;
   userHasCity?: boolean;
+  userPropertyHasValue?: UserPropertyPresence;
+  groupByFieldId?: Map<string, FieldGroup>;
   /**
    * ISO datetime of the user's earliest `signed` contract event;
    * null/undefined when they have never signed.
@@ -204,6 +214,12 @@ export function evaluateCondition(
       const present = extras.userHasCity ?? false;
       return cond.userHasCity ? present : !present;
     }
+    case "userPropertyHasValue": {
+      const presence =
+        extras.userPropertyHasValue ?? emptyUserPropertyPresence();
+      const present = presence[cond.property] ?? false;
+      return cond.hasValue ? present : !present;
+    }
     case "firstContractSigned": {
       if (!extras.firstContractSignedAt) {
         return false;
@@ -252,15 +268,29 @@ export function evaluateCondition(
  * A `requiredIfFormula` replaces `required` rather than adding to it, so it can
  * make a statically-required field optional as well as the other way round.
  */
+export function isRequiredFromFlags(
+  flags: {
+    required?: boolean;
+    requiredIfFormula?: VisibleIfFormula;
+  },
+  data: Record<string, FormValue>,
+  extras: ConditionExtras,
+): boolean {
+  if (hasEvaluableFormula(flags.requiredIfFormula)) {
+    return evaluateVisibleIfFormula(flags.requiredIfFormula, data, extras);
+  }
+  return !!flags.required;
+}
+
 export function isFieldConditionallyRequired(
   field: AnyField,
   data: Record<string, FormValue>,
   extras: ConditionExtras,
 ): boolean {
-  if (hasEvaluableFormula(field.requiredIfFormula)) {
-    return evaluateVisibleIfFormula(field.requiredIfFormula, data, extras);
-  }
-  return !!field.required;
+  const own = isRequiredFromFlags(field, data, extras);
+  const group = extras.groupByFieldId?.get(field.id);
+  if (!group) return own;
+  return own || isRequiredFromFlags(group, data, extras);
 }
 
 function hasEvaluableFormula(
@@ -274,13 +304,33 @@ function hasEvaluableFormula(
 }
 
 export function isElementCurrentlyVisible(
-  element: AnyField | DisplayBlock | OutputFieldBlock,
+  element: AnyField | DisplayBlock | OutputFieldBlock | FieldGroup,
+  data: Record<string, FormValue>,
+  extras: ConditionExtras & { readOnly?: boolean },
+): boolean {
+  const own = isOwnElementCurrentlyVisible(element, data, extras);
+  if (!own) return false;
+  const group = element.id ? extras.groupByFieldId?.get(element.id) : undefined;
+  if (!group) return true;
+  return isOwnElementCurrentlyVisible(group, data, extras);
+}
+
+function isOwnElementCurrentlyVisible(
+  element: AnyField | DisplayBlock | OutputFieldBlock | FieldGroup,
   data: Record<string, FormValue>,
   extras: ConditionExtras & { readOnly?: boolean },
 ): boolean {
   const formula = element.visibleIfFormula;
   if (!hasEvaluableFormula(formula)) {
     return true;
+  }
+  if (extras.readOnly && isFieldGroup(element)) {
+    const anyFieldAnswered = element.fields.some(
+      (field) => isQuestionField(field) && hasContent(data[field.id]),
+    );
+    if (anyFieldAnswered) {
+      return true;
+    }
   }
   if (extras.readOnly && element.id) {
     const existing = data[element.id];
@@ -309,7 +359,7 @@ export function isPageCurrentlyVisible(
   // always replay when reviewing a completed response (e.g. validator results
   // missing from older submissions), so never hide a page the user answered.
   if (extras.readOnly) {
-    const anyFieldAnswered = page.fields.some(
+    const anyFieldAnswered = flattenPageItems(page.fields).some(
       (field) => isQuestionField(field) && hasContent(data[field.id]),
     );
     if (anyFieldAnswered) {
@@ -340,11 +390,12 @@ export function stripHiddenAnswers(
     extras.fieldLookup ??
     new Map(
       pages.flatMap((page) =>
-        page.fields
+        flattenPageItems(page.fields)
           .filter(isQuestionField)
           .map((field) => [field.id, field] as const),
       ),
     );
+  const groupByFieldId = extras.groupByFieldId ?? collectGroupByFieldId(pages);
 
   let data = answers;
   for (;;) {
@@ -353,12 +404,13 @@ export function stripHiddenAnswers(
     const passExtras = {
       ...extras,
       fieldLookup,
+      groupByFieldId,
       visibilityMemo: new Map<string, boolean>(),
       visibilityEvaluationStack: new Set<string>(),
     };
     const hiddenAnsweredIds = pages.flatMap((page) => {
       const pageVisible = isPageCurrentlyVisible(page, data, passExtras);
-      return page.fields
+      return flattenPageItems(page.fields)
         .filter(isQuestionField)
         .filter((field) => field.id in data)
         .filter(
@@ -434,6 +486,7 @@ function evaluateVisibleIfFormula(
       case "validator":
       case "outputBlockVisible":
       case "userHasCity":
+      case "userPropertyHasValue":
       case "firstContractSigned":
       case "completedActionCount":
         results[name] = evaluateCondition(cond, data, extras);

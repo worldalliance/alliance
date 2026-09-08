@@ -28,6 +28,7 @@ import {
   Network,
   Newspaper,
   PanelLeft,
+  Radio,
   ScrollText,
   Share2,
   SquareActivity,
@@ -318,6 +319,11 @@ const Sidebar: React.FC = () => {
                     to: "/event-log",
                     label: "Event Log",
                     icon: <ScrollText size={16} />,
+                  },
+                  {
+                    to: "/invite-feed",
+                    label: "Live Invite Feed",
+                    icon: <Radio size={16} />,
                   },
                   {
                     to: "/welcome-queue",

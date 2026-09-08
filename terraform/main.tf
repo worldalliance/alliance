@@ -287,7 +287,16 @@ resource "aws_cloudfront_response_headers_policy" "cors" {
 
   cors_config {
     access_control_allow_origins {
-      items = ["https://worldalliance.org", "https://admin.worldalliance.org"]
+      items = [
+        "https://thealliance.org",
+        "https://admin.thealliance.org",
+        "https://worldalliance.org",
+        "https://admin.worldalliance.org",
+        "https://staging.thealliance.org",
+        "https://admin.staging.thealliance.org",
+        "https://staging.worldalliance.org",
+        "https://admin.staging.worldalliance.org",
+      ]
     }
     access_control_allow_methods {
       items = ["GET", "HEAD", "OPTIONS"]
@@ -416,7 +425,12 @@ resource "aws_s3_bucket_cors_configuration" "assets" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["GET", "HEAD", "PUT"]
-    allowed_origins = ["https://worldalliance.org", "https://admin.worldalliance.org"]
+    allowed_origins = [
+      "https://thealliance.org",
+      "https://admin.thealliance.org",
+      "https://worldalliance.org",
+      "https://admin.worldalliance.org",
+    ]
     expose_headers  = ["ETag"]
     max_age_seconds = 3000
   }

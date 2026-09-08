@@ -3,12 +3,13 @@ import {
   forumLikeComment,
   forumUnlikeComment,
 } from "@alliance/shared/client";
+import { updateCommentInTree } from "@alliance/shared/lib/commentTree";
 import { useMutation } from "@tanstack/react-query";
 import { useCallback } from "react";
 
 interface UseCommentLikeMutationOptions {
   userId: number | undefined;
-  setComments: (fn: (prev: CommentDto[] | null) => CommentDto[] | null) => void;
+  setComments: (update: (prev: CommentDto[]) => CommentDto[]) => void;
   fetchComments: () => void;
 }
 
@@ -34,31 +35,24 @@ export function useCommentLikeMutation({
     onMutate: ({ replyId, unlike }) => {
       if (!userId) return;
 
-      const updateRecursively = (items: CommentDto[]): CommentDto[] =>
-        items.map((item) => {
-          if (item.id === replyId) {
-            return {
-              ...item,
-              likedByMe: !unlike,
-              likesCount: Math.max(0, item.likesCount + (unlike ? -1 : 1)),
-            };
-          }
-          if (item.children?.length) {
-            return { ...item, children: updateRecursively(item.children) };
-          }
-          return item;
-        });
-
       let previousComments: CommentDto[] | null = null;
       setComments((prev) => {
         previousComments = prev;
-        return prev ? updateRecursively(prev) : prev;
+        return updateCommentInTree({
+          comments: prev,
+          id: replyId,
+          update: (comment) => ({
+            ...comment,
+            likedByMe: !unlike,
+            likesCount: Math.max(0, comment.likesCount + (unlike ? -1 : 1)),
+          }),
+        });
       });
       return { previousComments };
     },
     onError: (_err, _vars, context) => {
-      if (context?.previousComments)
-        setComments(() => context.previousComments);
+      const previous = context?.previousComments;
+      if (previous) setComments(() => previous);
     },
     onSettled: () => {
       fetchComments();

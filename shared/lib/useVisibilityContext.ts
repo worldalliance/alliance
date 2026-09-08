@@ -1,4 +1,8 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
+import {
+  emptyUserPropertyPresence,
+  type UserPropertyPresence,
+} from "@alliance/common/forms/user-properties";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef } from "react";
 import { userMyVisibilityContext } from "../client";
@@ -7,6 +11,7 @@ import { queryKeys } from "./queryKeys";
 
 export type VisibilityContext = {
   userHasCity: boolean;
+  userPropertyHasValue: UserPropertyPresence;
   firstContractSignedAt: string | null;
   completedActionCount: number;
   isLoading: boolean;
@@ -44,7 +49,8 @@ export function hasSettledSinceMount(
 
 /**
  * The viewer's account-derived values consumed by form visibility conditions
- * (`userHasCity`, `firstContractSigned`, `completedActionCount`), fetched from
+ * (`userHasCity`, `userPropertyHasValue`, `firstContractSigned`,
+ * `completedActionCount`), fetched from
  * `GET /user/myvisibilitycontext` — the same values the server uses when
  * stripping hidden answers at submission. Only fetches when the schema
  * actually contains such a condition and `enabled` is true (pass the presence
@@ -88,6 +94,8 @@ export function useVisibilityContext(
   return useMemo(
     () => ({
       userHasCity: data?.userHasCity ?? false,
+      userPropertyHasValue:
+        data?.userPropertyHasValue ?? emptyUserPropertyPresence(),
       firstContractSignedAt: data?.firstContractSignedAt ?? null,
       completedActionCount: data?.completedActionCount ?? 0,
       isLoading,

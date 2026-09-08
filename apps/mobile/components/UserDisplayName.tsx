@@ -38,7 +38,7 @@ const UserDisplayName: React.FC<UserDisplayNameProps> = ({
   const iconSize = small ? 12 : 14;
   const hasRoleBadges = ambassador || grouplead || expert;
   return (
-    <View className={cn("flex-row items-center gap-x-1", className)}>
+    <View className={cn("flex-row items-center gap-x-1 shrink", className)}>
       <Text
         className={cn("text-zinc-700", nameTextClass, nameClassName)}
         weight={FontWeight.Medium}

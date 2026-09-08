@@ -2,6 +2,7 @@ import {
   CHAT_TRANSCRIPT_SIZE_UNIT_PX,
   groupChatTranscriptMessages,
   type AccordionBlock,
+  type BigLinkBlock,
   type BigLinkIcon,
   type DisplayBlock,
   type ImagesItem,
@@ -33,6 +34,7 @@ import { AvatarProfile } from "../ui/Avatar";
 import Card from "../ui/Card";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import ImageLightbox from "../ui/ImageLightbox";
+import { useSiteHref } from "../ui/SiteAppProvider";
 import RenderPreviousAnswer from "./RenderPreviousAnswer";
 import VideoPlayer from "./VideoPlayer";
 
@@ -224,6 +226,34 @@ function ImagesDisplay({ images }: { images: ImagesItem[] }) {
   );
 }
 
+function BigLinkDisplay({ block }: { block: BigLinkBlock }) {
+  const siteHref = useSiteHref();
+  const IconComponent = bigLinkIcons[block.icon || "messages-square"];
+  const href = siteHref(block.url);
+
+  return (
+    <Link
+      to={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block group text-black "
+    >
+      <Card
+        className="flex flex-row items-center gap-3 hover:bg-zinc-100"
+        style={CardStyle.Grey}
+      >
+        <IconComponent size={20} />
+        <div>
+          <p className="text-base" style={{ fontWeight: 450 }}>
+            {block.text}
+          </p>
+          <p className="text-sm text-green">{href}</p>
+        </div>
+      </Card>
+    </Link>
+  );
+}
+
 function AccordionDisplay({ block }: { block: AccordionBlock }) {
   return (
     <Accordion.Root
@@ -359,30 +389,8 @@ export default function RenderDisplayBlock({
         </div>
       );
 
-    case "biglink": {
-      const IconComponent = bigLinkIcons[block.icon || "messages-square"];
-      return (
-        <Link
-          to={block.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block group text-black "
-        >
-          <Card
-            className="flex flex-row items-center gap-3 hover:bg-zinc-100"
-            style={CardStyle.Grey}
-          >
-            <IconComponent size={20} />
-            <div>
-              <p className="text-base" style={{ fontWeight: 450 }}>
-                {block.text}
-              </p>
-              <p className="text-sm text-green">{block.url}</p>
-            </div>
-          </Card>
-        </Link>
-      );
-    }
+    case "biglink":
+      return <BigLinkDisplay block={block} />;
 
     case "copytext":
       return <CopyTextDisplay text={block.text} title={block.title} />;

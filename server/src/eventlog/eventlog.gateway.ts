@@ -13,6 +13,7 @@ import {
 import { Server, Socket } from "socket.io";
 import { Repository } from "typeorm";
 import type { JwtPayload } from "../auth/guards/jwtreq";
+import { InviteFeedEvents } from "../invite-feed.events";
 import { extractTokenFromSocket } from "../messaging/gateway.utils";
 import { User } from "../user/entities/user.entity";
 import type { EventLogDto } from "./dto/event-log.dto";
@@ -42,6 +43,10 @@ export class EventLogGateway
     this.eventEmitter.on(
       EventLogEvents.Created,
       this.handleEventLogCreated.bind(this),
+    );
+    this.eventEmitter.on(
+      InviteFeedEvents.Created,
+      this.handleInviteCreated.bind(this),
     );
   }
 
@@ -96,5 +101,9 @@ export class EventLogGateway
   private handleEventLogCreated(eventLog: EventLogDto) {
     this.server.to("event-log-feed").emit("event-log-new", eventLog);
     this.logger.log(`Broadcast new event log: ${eventLog.event}`);
+  }
+
+  private handleInviteCreated() {
+    this.server.to("event-log-feed").emit("invite-created");
   }
 }

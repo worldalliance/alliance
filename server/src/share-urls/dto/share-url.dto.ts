@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
   IsBoolean,
+  IsDateString,
   IsInt,
   IsOptional,
   IsString,
@@ -16,7 +17,47 @@ import {
   StoredInviteAssignmentKind,
 } from "../invite-assignment";
 import { shareUrlPublicUrl } from "../share-url-public-url";
-import type { ShareUrlMine, ShareUrlWithSignupCount } from "../share-url-views";
+import type {
+  ReusableInviteFeedItem,
+  ShareUrlMine,
+  ShareUrlWithSignupCount,
+} from "../share-url-views";
+
+export class ReusableInviteFeedQueryDto {
+  @ApiProperty({ type: String, format: "date-time" })
+  @IsDateString()
+  startAt: string;
+}
+
+export class ReusableInviteFeedItemDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty({ type: Date })
+  createdAt: Date;
+
+  @ApiProperty()
+  invitingUserDisplayName: string;
+
+  @ApiProperty({ type: Number, nullable: true })
+  communityId: number | null;
+
+  constructor(input: ReusableInviteFeedItem) {
+    this.id = input.id;
+    this.createdAt = input.createdAt;
+    this.invitingUserDisplayName = input.invitingUserDisplayName;
+    this.communityId = input.communityId;
+  }
+}
+
+export class ReusableInviteFeedDto {
+  @ApiProperty({ type: () => ReusableInviteFeedItemDto, isArray: true })
+  items: ReusableInviteFeedItemDto[];
+
+  constructor(items: ReusableInviteFeedItem[]) {
+    this.items = items.map((item) => new ReusableInviteFeedItemDto(item));
+  }
+}
 
 type InviteAssignmentDetails = {
   assignmentKind: InviteAssignmentKind;

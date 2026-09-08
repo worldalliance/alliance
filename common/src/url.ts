@@ -21,6 +21,18 @@ export const ensureHttpProtocol = (url: string): string => {
 };
 
 /**
+ * Whether `hostname` is `domain` or a subdomain of it — so "www.linkedin.com"
+ * matches "linkedin.com" but "linkedin.com.evil.com" doesn't.
+ */
+export const hostnameMatchesDomain = (
+  hostname: string,
+  domain: string,
+): boolean => {
+  const host = hostname.toLowerCase();
+  return host === domain || host.endsWith(`.${domain}`);
+};
+
+/**
  * Whether `url`'s host is `domain` or a subdomain of it — so
  * "www.linkedin.com/in/x" matches "linkedin.com" but
  * "evil.com/linkedin.com" and "linkedin.com.evil.com" don't. Tolerates
@@ -29,7 +41,7 @@ export const ensureHttpProtocol = (url: string): string => {
 export function urlMatchesDomain(url: string, domain: string): boolean {
   try {
     const { hostname } = new URL(ensureHttpProtocol(url.trim()));
-    return hostname === domain || hostname.endsWith(`.${domain}`);
+    return hostnameMatchesDomain(hostname, domain);
   } catch {
     return false;
   }
@@ -49,3 +61,44 @@ export function appendQueryParam(
     return `${url}${sep}${encodeURIComponent(paramName)}=${encodeURIComponent(value)}`;
   }
 }
+
+/** The site is served on both domains while the move to the new one finishes. */
+export const ALLIANCE_LEGACY_DOMAIN = "worldalliance.org";
+export const ALLIANCE_DOMAIN = "thealliance.org";
+
+/**
+ * The hosts the web app answers on, per deploy/nginx/alliance.conf. A host
+ * outside this list — `admin.`, or one added later — is not the web app.
+ */
+const ALLIANCE_APP_SUBDOMAINS = ["", "www.", "staging.", "www.staging."];
+
+export const isAllianceAppHostname = (hostname: string): boolean => {
+  const host = hostname.toLowerCase();
+  return [ALLIANCE_LEGACY_DOMAIN, ALLIANCE_DOMAIN].some((domain) =>
+    ALLIANCE_APP_SUBDOMAINS.some((prefix) => host === `${prefix}${domain}`),
+  );
+};
+
+/**
+ * An authored link, aimed at the domain the reader is already on: a link to one
+ * of the web app's own hosts comes back as a bare path, for the browser to
+ * resolve against the current one. Anything else is returned as authored.
+ */
+export const siteHref = (url: string): string => {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+  if (
+    (parsed.protocol !== "https:" && parsed.protocol !== "http:") ||
+    !isAllianceAppHostname(parsed.hostname)
+  ) {
+    return url;
+  }
+  const path = parsed.pathname + parsed.search + parsed.hash;
+  // A path opening with `//` reads as protocol-relative: the browser would
+  // resolve it against the host that follows, not the current one.
+  return path.startsWith("//") ? url : path;
+};

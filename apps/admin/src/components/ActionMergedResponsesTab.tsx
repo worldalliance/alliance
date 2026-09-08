@@ -15,8 +15,26 @@ import FormResponsesView, {
   type ResponseVariantOption,
 } from "./FormResponsesView";
 
-type SchemaField = { id?: string; kind?: string; label?: string };
+type SchemaField = {
+  id?: string;
+  kind?: string;
+  label?: string;
+  type?: string;
+  fields?: SchemaField[];
+};
 type SchemaShape = { pages?: Array<{ fields?: SchemaField[] }> };
+
+function flattenSchemaFields(fields: SchemaField[] | undefined): SchemaField[] {
+  const out: SchemaField[] = [];
+  for (const field of fields ?? []) {
+    if (field.type === "group") {
+      out.push(...flattenSchemaFields(field.fields));
+    } else {
+      out.push(field);
+    }
+  }
+  return out;
+}
 
 /**
  * Union the fields across every variant form so the merged view's CSV export,
@@ -34,8 +52,8 @@ const mergeVariantFields = (
   const baseSchema = defaultForm.schema as unknown as SchemaShape;
   const seen = new Set<string>();
   for (const page of baseSchema.pages ?? []) {
-    for (const field of page.fields ?? []) {
-      if (typeof field?.id === "string") seen.add(field.id);
+    for (const field of flattenSchemaFields(page.fields)) {
+      if (typeof field.id === "string") seen.add(field.id);
     }
   }
 
@@ -44,8 +62,8 @@ const mergeVariantFields = (
     if (form.id === defaultForm.id) continue;
     const schema = form.schema as unknown as SchemaShape;
     for (const page of schema.pages ?? []) {
-      for (const field of page.fields ?? []) {
-        if (typeof field?.id === "string" && !seen.has(field.id)) {
+      for (const field of flattenSchemaFields(page.fields)) {
+        if (typeof field.id === "string" && !seen.has(field.id)) {
           seen.add(field.id);
           extraFields.push(field);
         }

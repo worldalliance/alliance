@@ -79,7 +79,10 @@ export class ForumController {
     @Request() req: JwtRequest,
   ): Promise<PostDto[]> {
     return this.forumService
-      .findPostsByAction(+actionId)
+      .findPostsByAction({
+        actionId: +actionId,
+        requestingUserId: req.user?.sub,
+      })
       .then((posts) =>
         posts.map(
           (post) => new PostDto({ post, requestingUserId: req.user?.sub }),
@@ -164,7 +167,7 @@ export class ForumController {
     @Request() req: JwtRequest,
   ): Promise<PostDto[]> {
     return this.forumService
-      .findPostsByUser(id)
+      .findPostsByUser({ authorId: id, requestingUserId: req.user?.sub })
       .then((posts) =>
         posts.map(
           (post) => new PostDto({ post, requestingUserId: req.user?.sub }),

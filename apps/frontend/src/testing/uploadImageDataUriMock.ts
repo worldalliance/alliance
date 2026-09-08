@@ -24,14 +24,11 @@ export const resetUploads = () => {
   failure = null;
 };
 
-/** Mirrors uploadAttachments: a data url becomes a key, anything else passes through. */
-export const uploadAttachments = async (attachments: string[]) => {
-  uploads.push(...attachments);
+/** Mirrors uploadImageDataUri: a data url becomes a key. */
+export const uploadImageDataUri = async (dataUri: string) => {
+  const key = `key-${uploads.length}`;
+  uploads.push(dataUri);
   if (pending) await pending;
   if (failure) return R.failure(failure);
-  return R.success(
-    attachments.map((attachment, idx) =>
-      attachment.startsWith("data:") ? `key-${idx}` : attachment,
-    ),
-  );
+  return R.success(key);
 };

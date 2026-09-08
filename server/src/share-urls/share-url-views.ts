@@ -21,3 +21,10 @@ export type ShareUrlMine = ShareUrlWithSignupCount & {
    */
   assignmentCommunityName: string | null;
 };
+
+export type ReusableInviteFeedItem = {
+  id: string;
+  createdAt: Date;
+  invitingUserDisplayName: string;
+  communityId: number | null;
+};

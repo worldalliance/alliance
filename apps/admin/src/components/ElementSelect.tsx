@@ -11,6 +11,7 @@ import type { FieldKind } from "@alliance/common/forms/form-schema";
 interface ElementSelectProps {
   onAddField: (kind: FieldKind) => void;
   onAddDisplayBlock: (kind: DisplayKind) => void;
+  onAddGroup?: () => void;
   /** Opens an inline picker to insert a copy of an existing element. */
   onCopyExisting: () => void;
   displayOnly?: boolean;
@@ -21,6 +22,7 @@ const DISPLAY_ONLY_BLOCK_TYPES = DISPLAY_KINDS.filter(isDisplayOnlyBlockKind);
 export function ElementSelect({
   onAddField,
   onAddDisplayBlock,
+  onAddGroup,
   onCopyExisting,
   displayOnly = false,
 }: ElementSelectProps) {
@@ -60,6 +62,18 @@ export function ElementSelect({
               ))}
             </div>
           </div>
+
+          {!displayOnly && (
+            <div>
+              <h4 className="font-medium mb-2">Layout</h4>
+              <button
+                onClick={() => onAddGroup?.()}
+                className="w-full text-left px-3 py-2 text-sm bg-amber-50 hover:bg-amber-100 rounded-md border border-amber-200 transition-colors"
+              >
+                Group
+              </button>
+            </div>
+          )}
 
           {!displayOnly && (
             <div>

@@ -35,8 +35,15 @@ export type MarkdownLayoutStyle = {
 // The library's textgroup bypasses our Text primitive and its shrink default.
 // These flex styles only apply when paragraph renders a View; wrappers that
 // render paragraph as Text nest textgroup inline, where flex props do nothing.
+// A hardbreak splits a paragraph into several textgroups alongside the
+// library's own `width: '100%'` hardbreak, so the basis must not be `flex: 1`'s
+// 0: at basis 0 every textgroup shares the hardbreak's line, which leaves the
+// hardbreak holding the full width and each textgroup zero, rendering the text
+// invisible but still tall. Not a percentage either: inside a list item's
+// `flex: 1` content column it resolves before the column has a definite width,
+// measuring every row at a single line.
 export const MARKDOWN_FILL_WIDTH_STYLE = {
-  textgroup: { flex: 1 },
+  textgroup: { flexGrow: 1, flexShrink: 1, flexBasis: "auto" },
 } satisfies MarkdownLayoutStyle;
 
 export enum MarkdownTone {
@@ -116,13 +123,15 @@ export function useMarkdownTextStyles(): MarkdownTextStyles {
 }
 
 /**
- * The library's full-width paragraph stretches chat bubbles, while its default
- * flexWrap disables flexShrink in Yoga. Each paragraph has one textgroup, so
- * nowrap preserves layout while allowing the bubble to shrink to fit.
+ * The library's full-width paragraph stretches chat bubbles, so width auto lets
+ * the bubble hug its text. A hardbreak splits the paragraph into one textgroup
+ * per line, which a column stacks and a row collapses to zero width. Nowrap
+ * because Yoga's wrap disables flexShrink.
  */
 export const MARKDOWN_HUG_WIDTH_STYLE = {
   paragraph: {
     width: "auto",
+    flexDirection: "column",
     flexWrap: "nowrap",
     flexShrink: 1,
   },
