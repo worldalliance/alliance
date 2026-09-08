@@ -45,6 +45,8 @@ import {
 import { getImageSource } from "../../lib/config";
 import { pickImageDataUri } from "../../lib/pickImageDataUri";
 import { colors } from "../../lib/style/colors";
+import { lineHeightForWholePoints } from "../../lib/style/lineHeight";
+import { useFontScale } from "../../lib/style/useFontScale";
 import AppMarkdownWrapper from "../AppMarkdownWrapper";
 import BottomSheetOptionPicker from "../BottomSheetOptionPicker";
 import InlineLabelMarkdownWrapper from "../InlineLabelMarkdownWrapper";
@@ -156,6 +158,7 @@ export function RenderField({
   isFieldRequired,
 }: RenderFieldProps) {
   const [selectOpen, setSelectOpen] = useState(false);
+  const fontScale = useFontScale();
   const required = isFieldRequired ? isFieldRequired(field) : !!field.required;
   const errorMessage =
     typeof error === "string" && error.trim().length > 0 ? error : null;
@@ -224,6 +227,10 @@ export function RenderField({
 
     case "textarea": {
       const rows = disabled ? 1 : field.rows || 3;
+      const lineHeight = lineHeightForWholePoints({
+        lineHeight: TEXTAREA_LINE_HEIGHT,
+        fontScale,
+      });
       return (
         <View>
           <RenderLabel
@@ -235,10 +242,12 @@ export function RenderField({
           <TextInput
             className={cn(inputBase, "text-base")}
             style={{
-              lineHeight: TEXTAREA_LINE_HEIGHT,
+              lineHeight,
               paddingVertical: TEXTAREA_VERTICAL_PADDING,
+              // minHeight is plain points; the rows lay out at
+              // `lineHeight * fontScale`.
               minHeight:
-                rows * TEXTAREA_LINE_HEIGHT + TEXTAREA_VERTICAL_PADDING * 2,
+                rows * lineHeight * fontScale + TEXTAREA_VERTICAL_PADDING * 2,
             }}
             value={(value as string) ?? ""}
             onChangeText={(text) => onChange?.(text)}
