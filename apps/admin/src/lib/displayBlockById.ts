@@ -1,11 +1,13 @@
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
-import type {
-  AnyField,
-  FormSchema,
-  OutputBlock,
+import {
+  flattenPageItems,
+  mapPageItems,
+  type FormSchema,
+  type OutputBlock,
+  type PageItem,
 } from "@alliance/common/forms/form-schema";
 
-type SchemaItem = AnyField | DisplayBlock | OutputBlock;
+type SchemaItem = PageItem | OutputBlock;
 
 export type BlockUpdate = (current: DisplayBlock) => Partial<DisplayBlock>;
 
@@ -40,7 +42,8 @@ export function addressedWrite(
 }
 
 /**
- * Null for a block nested in a container, which is addressed through the
+ * Descends into field groups, whose children the builder edits as page items.
+ * Null for a block nested in a container block, which is addressed through the
  * container that holds it rather than from here.
  */
 export function findDisplayBlock(
@@ -48,7 +51,7 @@ export function findDisplayBlock(
   blockId: string,
 ): DisplayBlock | null {
   const items: SchemaItem[] = [
-    ...schema.pages.flatMap((page) => page.fields),
+    ...schema.pages.flatMap((page) => flattenPageItems(page.fields)),
     ...(schema.outputViews ?? []).flatMap((view) => view.blocks),
   ];
   for (const item of items) {
@@ -77,7 +80,7 @@ export function replaceDisplayBlock({
     ...schema,
     pages: schema.pages.map((page) => ({
       ...page,
-      fields: page.fields.map(swap),
+      fields: mapPageItems(page.fields, swap),
     })),
     outputViews: (schema.outputViews ?? []).map((view) => ({
       ...view,

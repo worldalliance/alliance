@@ -1,5 +1,8 @@
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
-import type { FormSchema } from "@alliance/common/forms/form-schema";
+import {
+  flattenPageItems,
+  type FormSchema,
+} from "@alliance/common/forms/form-schema";
 import {
   addressedWrite,
   findDisplayBlock,
@@ -27,6 +30,15 @@ const schema: FormSchema = {
           label: "Name",
         },
         images("block-2", "two.webp"),
+        {
+          type: "group",
+          kind: "group",
+          id: "group-1",
+          fields: [
+            { type: "input", kind: "text", id: "field-2", label: "Nickname" },
+            images("block-4", "four.webp"),
+          ],
+        },
       ],
     },
   ],
@@ -75,6 +87,12 @@ describe("addressedWrite", () => {
     expect(addressedWrite(block, record().write)).toBeUndefined();
   });
 
+  it("leaves a field group unaddressed", () => {
+    const group = schema.pages[1]?.fields[2];
+    if (!group) throw new Error("missing group");
+    expect(addressedWrite(group, record().write)).toBeUndefined();
+  });
+
   it("leaves a block stored without an id unaddressed", () => {
     const { id: _id, ...withoutId } = images("block-1", "one.webp");
     expect(addressedWrite(withoutId, record().write)).toBeUndefined();
@@ -82,8 +100,10 @@ describe("addressedWrite", () => {
 
   it("addresses every block findDisplayBlock answers to, and no other", () => {
     const { calls, write } = record();
+    // What the builder renders an editor for, groups flattened the way it
+    // renders their children.
     const items = [
-      ...schema.pages.flatMap((page) => page.fields),
+      ...schema.pages.flatMap((page) => flattenPageItems(page.fields)),
       ...schema.outputViews.flatMap((view) => view.blocks),
     ];
     const addressed = items.flatMap((item) => {
@@ -91,7 +111,7 @@ describe("addressedWrite", () => {
       return update ? [{ update, item }] : [];
     });
 
-    expect(addressed).toHaveLength(3);
+    expect(addressed).toHaveLength(4);
     for (const { update, item } of addressed) {
       update(() => ({}));
       const id = calls[calls.length - 1];
@@ -111,6 +131,12 @@ describe("findDisplayBlock", () => {
   it("finds a block in an output view", () => {
     expect(findDisplayBlock(schema, "block-3")).toMatchObject({
       images: [{ src: "three.webp" }],
+    });
+  });
+
+  it("finds a block inside a field group", () => {
+    expect(findDisplayBlock(schema, "block-4")).toMatchObject({
+      images: [{ src: "four.webp" }],
     });
   });
 
@@ -157,6 +183,21 @@ describe("replaceDisplayBlock", () => {
     expect(next.outputViews[0]?.blocks[1]).toMatchObject({
       images: [{ src: "swapped.webp" }],
     });
+  });
+
+  it("swaps a block inside a field group", () => {
+    const next = replaceDisplayBlock({
+      schema,
+      target: held("block-4"),
+      next: images("block-4", "swapped.webp"),
+    });
+
+    const group = next.pages[1]?.fields[2];
+    if (!group || group.type !== "group") throw new Error("missing group");
+    expect(group.fields[1]).toMatchObject({
+      images: [{ src: "swapped.webp" }],
+    });
+    expect(group.fields[0]).toMatchObject({ id: "field-2" });
   });
 
   it("leaves a second block stored under the same id alone", () => {
