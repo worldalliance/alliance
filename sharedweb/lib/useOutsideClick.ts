@@ -5,7 +5,10 @@ export const useOutsideClick = (onClickOutside: () => void) => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
+      // composedPath, not contains: React can detach the clicked node — an icon
+      // swapped on click — before this listener runs, and a detached node is
+      // contained by nothing.
+      if (ref.current && !event.composedPath().includes(ref.current)) {
         onClickOutside();
       }
     };
