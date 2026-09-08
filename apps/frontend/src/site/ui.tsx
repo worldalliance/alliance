@@ -210,7 +210,13 @@ export function SiteButton({
   }
   if ("href" in target) {
     return (
-      <a href={target.href} className={classes} style={style}>
+      <a
+        href={target.href}
+        className={classes}
+        style={style}
+        target="_blank"
+        rel="noreferrer"
+      >
         {body}
       </a>
     );
