@@ -80,6 +80,51 @@
 }
 
 @font-face {
+  font-family: "Libre Caslon Condensed";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/LibreCaslonCondensed-Regular.otf")
+    format("opentype");
+}
+
+@font-face {
+  font-family: "Libre Caslon Condensed";
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/LibreCaslonCondensed-Italic.otf")
+    format("opentype");
+}
+
+@font-face {
+  font-family: "Libre Caslon Condensed";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/LibreCaslonCondensed-Medium.otf")
+    format("opentype");
+}
+
+@font-face {
+  font-family: "Libre Caslon Condensed";
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/LibreCaslonCondensed-SemiBold.otf")
+    format("opentype");
+}
+
+@font-face {
+  font-family: "Libre Caslon Condensed";
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/LibreCaslonCondensed-Bold.otf")
+    format("opentype");
+}
+
+@font-face {
   font-family: "TT Neoris";
   font-weight: 300;
   font-style: normal;
@@ -160,7 +205,8 @@
   --site-surface-alt: #e4e5e3;
   --site-ink: #14181d;
   --site-font-body: "TT Neoris", system-ui, sans-serif;
-  --site-font-display: "Libre Caslon Text", Georgia, serif;
+  --site-font-display: "Libre Caslon Condensed", Georgia, serif;
+  --site-font-logotype: "Libre Caslon Text", Georgia, serif;
   --site-radius-button: 0.375rem;
   --site-radius-card: 0.5rem;
   --site-radius-input: 0.375rem;
@@ -254,12 +300,11 @@ select {
 }
 
 /*
- * The wordmark keeps the public site's display face; everything else is TT
- * Neoris. Libre Caslon Text ships 400 and 700 only, so anything in between
- * silently resolves down to 400.
+ * The wordmark is the only place set in Libre Caslon Text. Every other serif on
+ * the site and the platform takes the condensed cut.
  */
 .font-logotype {
-  font-family: var(--site-font-display);
+  font-family: var(--site-font-logotype);
   font-weight: 700;
   letter-spacing: 0.02em;
 }
