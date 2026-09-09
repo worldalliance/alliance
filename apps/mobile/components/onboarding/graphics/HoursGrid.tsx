@@ -32,8 +32,8 @@ function Swatch({ solid }: { solid: boolean }) {
     <View
       className={
         solid
-          ? "size-3 rounded-[3px] bg-white"
-          : "size-3 rounded-[3px] bg-white/25"
+          ? "h-3 w-3 rounded-[3px] bg-green"
+          : "h-3 w-3 rounded-[3px] bg-white/25"
       }
     />
   );
@@ -97,7 +97,7 @@ export function HoursGrid() {
                       entering={ZoomIn.delay(SPENT_DELAY_MS)
                         .springify()
                         .damping(9)}
-                      className="mx-px h-[24%] rounded-[2px] bg-white"
+                      className="mx-px h-[24%] rounded-[2px] bg-green"
                     />
                   )}
                 </Animated.View>

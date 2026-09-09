@@ -56,7 +56,10 @@ const swatchClasses: Record<HoursGridSize, string> = {
 function Swatch({ solid, size }: { solid: boolean; size: HoursGridSize }) {
   return (
     <span
-      className={cn(swatchClasses[size], solid ? "bg-white" : "bg-white/25")}
+      className={cn(
+        swatchClasses[size],
+        solid ? "bg-[var(--color-green)]" : "bg-white/25",
+      )}
       aria-hidden
     />
   );
@@ -113,7 +116,7 @@ function Grid({
           >
             {i === spent && (
               <span
-                className="absolute inset-x-0 top-1/2 h-[24%] -translate-y-1/2 rounded-[2px] bg-white transition-transform duration-500 ease-out"
+                className="absolute inset-x-0 top-1/2 h-[24%] -translate-y-1/2 rounded-[2px] bg-[var(--color-green)] transition-transform duration-500 ease-out"
                 style={{
                   transitionDelay: `${columns * 26 + 260}ms`,
                   transform: `translateY(-50%) scaleX(${inView ? 1 : 0})`,
