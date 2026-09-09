@@ -1,5 +1,6 @@
 import { cn } from "@alliance/shared/styles/util";
 import type { ReactNode } from "react";
+import { FitStage } from "../../components/FitStage";
 import {
   DETAIL_HEIGHT,
   DETAIL_WIDTH,
@@ -40,20 +41,10 @@ function ScaledStage({
   children: ReactNode;
 }) {
   return (
-    <div
-      className="relative"
-      style={{ height: `calc(100cqi * ${height} / ${width})` }}
-    >
-      <div
-        className="absolute top-0 left-0 origin-top-left"
-        style={{
-          width,
-          height,
-          transform: `scale(calc(100cqi / ${width}px))`,
-        }}
-      >
+    <div className="w-full" style={{ aspectRatio: `${width} / ${height}` }}>
+      <FitStage width={width} height={height} className="h-full w-full">
         {children}
-      </div>
+      </FitStage>
     </div>
   );
 }
@@ -92,16 +83,13 @@ export function ProductPair({ className }: { className?: string }) {
       className={cn("min-w-0 w-full", className)}
       aria-label="Recent member activity"
     >
-      <div
-        className="hidden w-full @container md:block"
-        style={{ maxWidth: STAGE_WIDTH }}
-      >
+      <div className="hidden w-full md:block" style={{ maxWidth: STAGE_WIDTH }}>
         <ScaledStage width={STAGE_WIDTH} height={STAGE_HEIGHT}>
           <Pair offsetX={DETAIL_X} offsetY={DETAIL_Y} />
         </ScaledStage>
       </div>
       <div
-        className="w-full @container md:hidden"
+        className="w-full md:hidden"
         style={{ maxWidth: COMPACT_STAGE_WIDTH }}
       >
         <ScaledStage width={COMPACT_STAGE_WIDTH} height={COMPACT_STAGE_HEIGHT}>

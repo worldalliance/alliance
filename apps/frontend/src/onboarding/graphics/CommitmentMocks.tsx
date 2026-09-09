@@ -1,5 +1,6 @@
 import { cn } from "@alliance/shared/styles/util";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
+import { FitStage } from "../../components/FitStage";
 import { MEMBER_FACES } from "../memberFaces";
 import {
   ActionExampleCard,
@@ -125,41 +126,6 @@ const ROW_MAX_WIDTH = `calc(${
   (ROW_ORDER.length * CARD_WIDTH) / CARD_HEIGHT
 } * ${ROW_HEIGHT} + ${(ROW_ORDER.length - 1) * ROW_GAP_REM}rem)`;
 
-/**
- * Scales a card from its authored pixel size by whichever axis runs out first,
- * so nothing is ever cropped at the foot. Reading `cqh` is what forces a size
- * container here rather than an inline one.
- */
-function FitStage({
-  width,
-  height,
-  className,
-  children,
-}: {
-  width: number;
-  height: number;
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      className={cn("relative min-h-0 w-full flex-1 @container", className)}
-      style={{ containerType: "size" }}
-    >
-      <div
-        className="absolute top-1/2 left-1/2"
-        style={{
-          width,
-          height,
-          transform: `translate(-50%, -50%) scale(min(calc(100cqw / ${width}px), calc(100cqh / ${height}px)))`,
-        }}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
 /** How far back each card behind the front one sits, in the deck's own pixels. */
 const DECK_STEP_Y = 18;
 const DECK_SCALE_STEP = 0.05;
@@ -177,7 +143,11 @@ function Deck({ className }: { className?: string }) {
   const cycle = () => setOrder(([first, ...rest]) => [...rest, first]);
 
   return (
-    <FitStage width={DECK_WIDTH} height={DECK_HEIGHT} className={className}>
+    <FitStage
+      width={DECK_WIDTH}
+      height={DECK_HEIGHT}
+      className={cn("min-h-0 w-full flex-1", className)}
+    >
       <button
         type="button"
         onClick={cycle}
@@ -221,6 +191,7 @@ export function CommitmentMocks() {
             key={ACTIONS[index].id}
             width={CARD_WIDTH}
             height={CARD_HEIGHT}
+            className="min-h-0 w-full flex-1"
           >
             <ActionExampleCard action={ACTIONS[index]} />
           </FitStage>

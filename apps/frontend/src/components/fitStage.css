@@ -1,0 +1,26 @@
+.fit-stage {
+  position: relative;
+  container-type: size;
+  overflow: clip;
+}
+
+.fit-stage__box {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%)
+    scale(min(calc(100cqw / var(--fit-w)), calc(100cqh / var(--fit-h))));
+}
+
+/* Firefox cannot divide two lengths in `calc()`, so it drops the declaration
+   above entirely, centring included, and the measured scale stands in.
+
+   The default has to be 1, not 0, because a prerendered page paints it before
+   `useFitScale` runs and 0 paints nothing. Every stage is authored at its own
+   wrapper's max width, so 1 is exact wherever the wrapper is at that width,
+   and `overflow: clip` bounds the crop below it. */
+@supports not (transform: scale(calc(1px / 1px))) {
+  .fit-stage__box {
+    transform: translate(-50%, -50%) scale(var(--fit-scale, 1));
+  }
+}
