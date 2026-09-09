@@ -1,5 +1,6 @@
 import { R } from "@alliance/common/result";
 import { CommentDto } from "@alliance/shared/client";
+import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
@@ -63,9 +64,11 @@ const renderReply = (deleteErrorFor: (replyId: number) => string | null) => {
   render(
     <QueryClientProvider client={new QueryClient()}>
       <MemoryRouter>
-        <CommentsProvider value={ctx}>
-          <ReplyComponent reply={reply(5, [reply(6)])} />
-        </CommentsProvider>
+        <SiteAppProvider>
+          <CommentsProvider value={ctx}>
+            <ReplyComponent reply={reply(5, [reply(6)])} />
+          </CommentsProvider>
+        </SiteAppProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   );
