@@ -1,34 +1,26 @@
 import { R, type Result } from "@alliance/common/result";
+import { pending, type Pending } from "@alliance/shared/lib/testing/pending";
+import * as uploadModule from "@alliance/shared/lib/uploadImageDataUri";
+import * as imageSrcModule from "@alliance/sharedweb/lib/imageSrc";
+import * as readFileDataUriModule from "@alliance/sharedweb/lib/readFileDataUri";
 import { act, cleanup, renderHook } from "@testing-library/react";
 
-type Pending<T> = {
-  resolve: (value: T) => void;
-  reject: (error: unknown) => void;
-};
-
 let reads: Pending<Result<string, Error>>[] = [];
-let uploads: (Pending<Result<string, string>> & { signal?: AbortSignal })[] =
-  [];
-
-jest.mock("@alliance/sharedweb/lib/readFileDataUri", () => ({
-  readFileDataUri: () =>
-    new Promise<Result<string, Error>>((resolve, reject) => {
-      reads.push({ resolve, reject });
-    }),
-}));
-
-jest.mock("@alliance/shared/lib/uploadImageDataUri", () => ({
-  uploadImageDataUri: (_dataUri: string, signal?: AbortSignal) =>
-    new Promise<Result<string, string>>((resolve, reject) => {
-      uploads.push({ resolve, reject, signal });
-    }),
-}));
-
-jest.mock("@alliance/sharedweb/lib/imageSrc", () => ({
-  imageSrcFromKey: (key: string) => `https://uploads.test/${key}`,
-}));
+let uploads: Pending<Result<string, string>>[] = [];
 
 import { useCoverImage } from "./useCoverImage";
+
+beforeEach(() => {
+  jest
+    .spyOn(readFileDataUriModule, "readFileDataUri")
+    .mockImplementation(() => pending(reads));
+  jest
+    .spyOn(uploadModule, "uploadImageDataUri")
+    .mockImplementation((_dataUri, signal) => pending(uploads, signal));
+  jest
+    .spyOn(imageSrcModule, "imageSrcFromKey")
+    .mockImplementation((key) => `https://uploads.test/${key}`);
+});
 
 const file = (name: string) => new File(["x"], name, { type: "image/png" });
 
