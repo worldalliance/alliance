@@ -1,3 +1,4 @@
+import { formatInviteMessage } from "@alliance/common/inviteMessage";
 import { withCount } from "@alliance/common/plural";
 import { OnetimeInviteDto } from "@alliance/shared/client";
 import { MEMBER_GOAL } from "@alliance/shared/lib/constants";
@@ -15,6 +16,7 @@ import {
 } from "@alliance/shared/lib/inviteUtils";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { useAmbassadorInviteDashboard } from "@alliance/shared/lib/useAmbassadorInviteDashboard";
+import { useInviteMessageTemplate } from "@alliance/shared/lib/useInviteMessageTemplate";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useOnetimeInvitesOverview } from "@alliance/shared/lib/useOnetimeInvitesOverview";
 import { useReusableInvites } from "@alliance/shared/lib/useReusableInvites";
@@ -22,6 +24,7 @@ import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
+import { copyToClipboard as writeToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -102,6 +105,9 @@ const inviteGoalErrorMessage = (err: Error) => {
 const InvitesPage = () => {
   const { user } = useAuth();
   const { error: errorToast, confirm } = useToast();
+  const { data: inviteMessageTemplate } = useInviteMessageTemplate({
+    enabled: Boolean(user),
+  });
   const {
     invites,
     isLoading: loadingInvites,
@@ -118,6 +124,9 @@ const InvitesPage = () => {
   });
   const [settingsInviteId, setSettingsInviteId] = useState<number | null>(null);
   const [copiedInviteId, setCopiedInviteId] = useState<number | null>(null);
+  const [messageCopiedInviteId, setMessageCopiedInviteId] = useState<
+    number | null
+  >(null);
   const [inviteListTab, setInviteListTab] = useState(InviteListTab.Individual);
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [goalTarget, setGoalTarget] = useState("");
@@ -313,13 +322,44 @@ const InvitesPage = () => {
     );
   }, []);
 
+  const copyMessageToClipboard = useCallback(
+    async (code: string) => {
+      if (!inviteMessageTemplate) {
+        errorToast("The invitation message is not available yet.");
+        return false;
+      }
+      const inviteLink = getOnetimeInviteSignupUrl(getInviteBaseUrl(), code);
+      const copied = await writeToClipboard(
+        formatInviteMessage(inviteMessageTemplate, inviteLink),
+      );
+      if (!copied) {
+        errorToast("Could not copy the invitation message.");
+      }
+      return copied;
+    },
+    [errorToast, inviteMessageTemplate],
+  );
+
   const handleCopied = useCallback((inviteId: number) => {
     if (copiedTimeoutRef.current) {
       clearTimeout(copiedTimeoutRef.current);
     }
     setCopiedInviteId(inviteId);
+    setMessageCopiedInviteId(null);
     copiedTimeoutRef.current = setTimeout(() => {
       setCopiedInviteId(null);
+      copiedTimeoutRef.current = null;
+    }, 2000);
+  }, []);
+
+  const handleMessageCopied = useCallback((inviteId: number) => {
+    if (copiedTimeoutRef.current) {
+      clearTimeout(copiedTimeoutRef.current);
+    }
+    setCopiedInviteId(null);
+    setMessageCopiedInviteId(inviteId);
+    copiedTimeoutRef.current = setTimeout(() => {
+      setMessageCopiedInviteId(null);
       copiedTimeoutRef.current = null;
     }, 2000);
   }, []);
@@ -983,6 +1023,7 @@ const InvitesPage = () => {
                           communityLabel={invite.community?.name}
                           selfInvited={user.id === invite.invitingUser?.id}
                           copied={copiedInviteId === invite.id}
+                          messageCopied={messageCopiedInviteId === invite.id}
                           onDelete={handleDeleteInvite}
                           onOpenSettings={
                             user.id === invite.invitingUser?.id
@@ -990,7 +1031,9 @@ const InvitesPage = () => {
                               : undefined
                           }
                           onCopy={copyToClipboard}
+                          onCopyMessage={copyMessageToClipboard}
                           onCopied={handleCopied}
+                          onMessageCopied={handleMessageCopied}
                         />
                       ))}
                     </ExpandableList>
@@ -1041,9 +1084,12 @@ const InvitesPage = () => {
                           communityLabel={invite.community?.name}
                           selfInvited={user.id === invite.invitingUser?.id}
                           copied={copiedInviteId === invite.id}
+                          messageCopied={messageCopiedInviteId === invite.id}
                           onDelete={handleDeleteInvite}
                           onCopy={copyToClipboard}
+                          onCopyMessage={copyMessageToClipboard}
                           onCopied={handleCopied}
+                          onMessageCopied={handleMessageCopied}
                         />
                       ))}
                     </ExpandableList>

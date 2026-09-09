@@ -1,3 +1,4 @@
+import { DEFAULT_INVITE_MESSAGE_TEMPLATE } from "@alliance/common/inviteMessage";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import {
@@ -8,6 +9,7 @@ import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
 import { Campaign } from "../src/campaign/entities/campaign.entity";
 import { Community } from "../src/community/entities/community.entity";
 import { ExternalShareTarget } from "../src/share-urls/entities/external-share-target.entity";
+import { InviteMessageTemplate } from "../src/share-urls/entities/invite-message-template.entity";
 import {
   ShareUrl,
   ShareUrlKind,
@@ -23,6 +25,7 @@ describe("Share URLs (e2e)", () => {
   let eventRepo: Repository<ActionEvent>;
   let targetRepo: Repository<ExternalShareTarget>;
   let shareUrlRepo: Repository<ShareUrl>;
+  let inviteMessageTemplateRepo: Repository<InviteMessageTemplate>;
   let campaignRepo: Repository<Campaign>;
   let communityRepo: Repository<Community>;
   let userRepo: Repository<User>;
@@ -36,6 +39,9 @@ describe("Share URLs (e2e)", () => {
     eventRepo = ctx.dataSource.getRepository(ActionEvent);
     targetRepo = ctx.dataSource.getRepository(ExternalShareTarget);
     shareUrlRepo = ctx.dataSource.getRepository(ShareUrl);
+    inviteMessageTemplateRepo = ctx.dataSource.getRepository(
+      InviteMessageTemplate,
+    );
     campaignRepo = ctx.dataSource.getRepository(Campaign);
     communityRepo = ctx.dataSource.getRepository(Community);
     userRepo = ctx.dataSource.getRepository(User);
@@ -67,6 +73,7 @@ describe("Share URLs (e2e)", () => {
     await shareUrlRepo.query("DELETE FROM share_url");
     await targetRepo.query("DELETE FROM external_share_target");
     await campaignRepo.query("DELETE FROM campaign");
+    await inviteMessageTemplateRepo.clear();
     target = await targetRepo.save(
       targetRepo.create({
         name: "Test target",
@@ -74,6 +81,47 @@ describe("Share URLs (e2e)", () => {
         paramName: "code",
       }),
     );
+  });
+
+  describe("invite message template", () => {
+    it("returns the default and lets an admin replace it", async () => {
+      const initial = await request(ctx.app.getHttpServer())
+        .get("/share-urls/invite-message-template")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      expect(initial.body.template).toBe(DEFAULT_INVITE_MESSAGE_TEMPLATE);
+
+      await request(ctx.app.getHttpServer())
+        .patch("/share-urls/invite-message-template")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ template: "Join us here: {invite_link}" })
+        .expect(200)
+        .expect({ template: "Join us here: {invite_link}" });
+
+      const updated = await request(ctx.app.getHttpServer())
+        .get("/share-urls/invite-message-template")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      expect(updated.body.template).toBe("Join us here: {invite_link}");
+    });
+
+    it("rejects a template without an invite link token", async () => {
+      await request(ctx.app.getHttpServer())
+        .patch("/share-urls/invite-message-template")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ template: "Join us" })
+        .expect(400);
+    });
+
+    it("does not let a regular member update the template", async () => {
+      await request(ctx.app.getHttpServer())
+        .patch("/share-urls/invite-message-template")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ template: "Join us here: {invite_link}" })
+        .expect(401);
+    });
   });
 
   describe("GET /share-urls/mine/invites", () => {

@@ -1392,6 +1392,17 @@ export type CreateInviteDuplicateDto = {
     communityId: number | null;
 };
 
+export type InviteMessageTemplateDto = {
+    template: string;
+};
+
+export type UpdateInviteMessageTemplateDto = {
+    /**
+     * Invitation message containing the {invite_link} token.
+     */
+    template: string;
+};
+
 export type ReusableInviteFeedItemDto = {
     id: string;
     createdAt: string;
@@ -6115,6 +6126,50 @@ export type ShareUrlsCreateInviteDuplicateResponses = {
 };
 
 export type ShareUrlsCreateInviteDuplicateResponse = ShareUrlsCreateInviteDuplicateResponses[keyof ShareUrlsCreateInviteDuplicateResponses];
+
+export type ShareUrlsGetInviteMessageTemplateData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/share-urls/invite-message-template';
+};
+
+export type ShareUrlsGetInviteMessageTemplateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ShareUrlsGetInviteMessageTemplateError = ShareUrlsGetInviteMessageTemplateErrors[keyof ShareUrlsGetInviteMessageTemplateErrors];
+
+export type ShareUrlsGetInviteMessageTemplateResponses = {
+    200: InviteMessageTemplateDto;
+};
+
+export type ShareUrlsGetInviteMessageTemplateResponse = ShareUrlsGetInviteMessageTemplateResponses[keyof ShareUrlsGetInviteMessageTemplateResponses];
+
+export type ShareUrlsUpdateInviteMessageTemplateData = {
+    body: UpdateInviteMessageTemplateDto;
+    path?: never;
+    query?: never;
+    url: '/share-urls/invite-message-template';
+};
+
+export type ShareUrlsUpdateInviteMessageTemplateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ShareUrlsUpdateInviteMessageTemplateError = ShareUrlsUpdateInviteMessageTemplateErrors[keyof ShareUrlsUpdateInviteMessageTemplateErrors];
+
+export type ShareUrlsUpdateInviteMessageTemplateResponses = {
+    200: InviteMessageTemplateDto;
+};
+
+export type ShareUrlsUpdateInviteMessageTemplateResponse = ShareUrlsUpdateInviteMessageTemplateResponses[keyof ShareUrlsUpdateInviteMessageTemplateResponses];
 
 export type ShareUrlsFindInviteFeedAdminData = {
     body?: never;

@@ -20,12 +20,14 @@ import {
   CreateDuplicateShareLinkDto,
   CreateInviteDuplicateDto,
   GetShareLinkDto,
+  InviteMessageTemplateDto,
   ReusableInviteFeedDto,
   ReusableInviteFeedQueryDto,
   ShareLinkDto,
   ShareUrlAdminDto,
   ShareUrlMineDto,
   UpdateInviteDto,
+  UpdateInviteMessageTemplateDto,
   UpdateShareLinkLabelDto,
 } from "./dto/share-url.dto";
 import { type ShareUrlOwner, ShareUrlsService } from "./share-urls.service";
@@ -85,6 +87,26 @@ export class ShareUrlsController {
     );
     const [result] = await this.shareUrlsService.withInviteDestinations([row]);
     return new ShareUrlMineDto(result);
+  }
+
+  @Get("invite-message-template")
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: InviteMessageTemplateDto })
+  async getInviteMessageTemplate(): Promise<InviteMessageTemplateDto> {
+    return new InviteMessageTemplateDto(
+      await this.shareUrlsService.getInviteMessageTemplate(),
+    );
+  }
+
+  @Patch("invite-message-template")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: InviteMessageTemplateDto })
+  async updateInviteMessageTemplate(
+    @Body() body: UpdateInviteMessageTemplateDto,
+  ): Promise<InviteMessageTemplateDto> {
+    return new InviteMessageTemplateDto(
+      await this.shareUrlsService.updateInviteMessageTemplate(body.template),
+    );
   }
 
   @Get("invite-feed")

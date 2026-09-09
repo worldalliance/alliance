@@ -1,3 +1,7 @@
+import {
+  INVITE_LINK_TOKEN,
+  INVITE_MESSAGE_TEMPLATE_MAX_LENGTH,
+} from "@alliance/common/inviteMessage";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
@@ -6,6 +10,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   Min,
   ValidateIf,
@@ -27,6 +32,27 @@ export class ReusableInviteFeedQueryDto {
   @ApiProperty({ type: String, format: "date-time" })
   @IsDateString()
   startAt: string;
+}
+
+export class InviteMessageTemplateDto {
+  @ApiProperty()
+  template: string;
+
+  constructor(template: string) {
+    this.template = template;
+  }
+}
+
+export class UpdateInviteMessageTemplateDto {
+  @ApiProperty({
+    description: `Invitation message containing the ${INVITE_LINK_TOKEN} token.`,
+  })
+  @IsString()
+  @MaxLength(INVITE_MESSAGE_TEMPLATE_MAX_LENGTH)
+  @Matches(/\{invite_link\}/, {
+    message: `template must contain ${INVITE_LINK_TOKEN}`,
+  })
+  template: string;
 }
 
 export class ReusableInviteFeedItemDto {

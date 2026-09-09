@@ -1,3 +1,4 @@
+import { DEFAULT_INVITE_MESSAGE_TEMPLATE } from "@alliance/common/inviteMessage";
 import { run } from "@alliance/common/run";
 import { appendQueryParam } from "@alliance/common/url";
 import {
@@ -24,6 +25,7 @@ import {
   Repository,
 } from "typeorm";
 import { ExternalShareTarget } from "./entities/external-share-target.entity";
+import { InviteMessageTemplate } from "./entities/invite-message-template.entity";
 import { ShareUrl, ShareUrlKind } from "./entities/share-url.entity";
 import {
   inviteAssignmentColumns,
@@ -43,6 +45,8 @@ const NOT_FOUND_MESSAGE: Record<ShareUrlKind, string> = {
   [ShareUrlKind.ExternalTarget]: "specified share target not found",
   [ShareUrlKind.Invite]: "invite share link could not be created",
 } as const;
+
+const INVITE_MESSAGE_TEMPLATE_ID = "default";
 
 export type ShareUrlOwner =
   | { type: "user"; userId: number }
@@ -147,8 +151,25 @@ export class ShareUrlsService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Community)
     private readonly communityRepository: Repository<Community>,
+    @InjectRepository(InviteMessageTemplate)
+    private readonly inviteMessageTemplateRepository: Repository<InviteMessageTemplate>,
     private readonly eventEmitter: EventEmitter2,
   ) {}
+
+  async getInviteMessageTemplate(): Promise<string> {
+    const setting = await this.inviteMessageTemplateRepository.findOneBy({
+      id: INVITE_MESSAGE_TEMPLATE_ID,
+    });
+    return setting?.template ?? DEFAULT_INVITE_MESSAGE_TEMPLATE;
+  }
+
+  async updateInviteMessageTemplate(template: string): Promise<string> {
+    await this.inviteMessageTemplateRepository.upsert(
+      { id: INVITE_MESSAGE_TEMPLATE_ID, template },
+      ["id"],
+    );
+    return template;
+  }
 
   async getShareLink(params: {
     userId: number;

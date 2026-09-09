@@ -6,7 +6,7 @@ import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { interactiveListRowClass } from "@alliance/sharedweb/ui/List";
 import NewButton, { ButtonColor } from "@alliance/sharedweb/ui/NewButton";
-import { Copy as CopyIcon } from "lucide-react";
+import { Copy as CopyIcon, MessageSquareText } from "lucide-react";
 import { href, Link } from "react-router";
 
 type OnetimeInviteListItemProps = {
@@ -15,8 +15,11 @@ type OnetimeInviteListItemProps = {
   communityLabel?: string | null;
   selfInvited: boolean;
   copied?: boolean;
+  messageCopied?: boolean;
   onCopy?: (code: string) => void;
+  onCopyMessage?: (code: string) => Promise<boolean>;
   onCopied?: (inviteId: number) => void;
+  onMessageCopied?: (inviteId: number) => void;
   onDelete?: (inviteId: number, event: React.MouseEvent<HTMLElement>) => void;
   /** Given for invites that can still be edited; makes the whole row open settings. */
   onOpenSettings?: (inviteId: number) => void;
@@ -40,8 +43,11 @@ const OnetimeInviteListItem = ({
   communityLabel,
   selfInvited,
   copied = false,
+  messageCopied = false,
   onCopy,
+  onCopyMessage,
   onCopied,
+  onMessageCopied,
   onDelete,
   onOpenSettings,
   onApprove,
@@ -56,6 +62,15 @@ const OnetimeInviteListItem = ({
     event.stopPropagation();
     onCopy?.(invite.code);
     onCopied?.(invite.id);
+  };
+
+  const handleCopyMessage = (event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
+    void onCopyMessage?.(invite.code).then((copied) => {
+      if (copied) {
+        onMessageCopied?.(invite.id);
+      }
+    });
   };
 
   return (
@@ -146,7 +161,7 @@ const OnetimeInviteListItem = ({
             {statusLabel}
           </span>
         </div>
-        <div className="mt-2 flex flex-row items-center sm:justify-end gap-2">
+        <div className="mt-2 flex flex-row flex-wrap items-center sm:justify-end gap-2">
           {isRequest && onApprove && onReject ? (
             <>
               <NewButton
@@ -170,6 +185,16 @@ const OnetimeInviteListItem = ({
             </>
           ) : invite.status === "link_unused" ? (
             <>
+              {onCopyMessage && (
+                <NewButton
+                  color={messageCopied ? ButtonColor.Green : ButtonColor.White}
+                  disabled={messageCopied}
+                  onClick={handleCopyMessage}
+                  iconLeft={!messageCopied && MessageSquareText}
+                >
+                  {messageCopied ? "Copied!" : "Copy message"}
+                </NewButton>
+              )}
               {onCopy && (
                 <NewButton
                   color={copied ? ButtonColor.Green : ButtonColor.White}
