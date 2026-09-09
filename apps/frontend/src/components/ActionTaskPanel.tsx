@@ -181,6 +181,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
             onAbandonAction={onAbandonAction}
             card={card}
             actionId={action.id}
+            previewMode
           />
         )}
         {errorMessageNode}

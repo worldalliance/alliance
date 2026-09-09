@@ -18,6 +18,7 @@ import {
   interpolateDisplayBlock,
   interpolateFieldText,
 } from "@alliance/common/forms/variable-interpolation";
+import { isLocalPick } from "@alliance/common/image-src";
 import {
   FormResponseDto,
   SubmitFormDto,
@@ -32,14 +33,17 @@ import {
   restorableAnswers,
 } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
+import { FormMode } from "@alliance/shared/forms/formMode";
 import {
   resolveFormValue,
   type SetFieldValue,
 } from "@alliance/shared/forms/formValueUpdater";
 import { stripCardIds } from "@alliance/shared/forms/listCards";
+import { withFormMode } from "@alliance/shared/forms/withFormMode";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import {
   cancelAllImageUploads,
+  formPreviewSubmitSuffix,
   guestReferral,
   outputFieldPublicToggle,
   waitingForImageUpload,
@@ -72,6 +76,7 @@ import React, {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useOutsideClick } from "../../sharedweb/lib/useOutsideClick";
@@ -121,7 +126,9 @@ type FormRendererProps = {
   adminPreviewUserId?: string | number;
   /** When true, fetch the logged-in viewer's saved city for userLocation display blocks. */
   loadCurrentUserLocation?: boolean;
-  onSubmit: ((data: SubmitFormDto) => Promise<boolean>) | null; // null for admin preview
+  onSubmit: ((data: SubmitFormDto) => Promise<boolean>) | null;
+  /** A form nobody submits: interactive, but storing nothing. Outranks `onSubmit`. */
+  previewMode?: boolean;
   scrollContainerRef?: React.RefObject<HTMLElement | null>;
 };
 
@@ -143,13 +150,19 @@ const detectDeviceType = (): DeviceVisibilityTarget => {
   return "desktop";
 };
 
-const FormRenderer = ({
+type FormRendererInnerProps = Omit<
+  FormRendererProps,
+  "renderFormAsCompleted" | "previewMode"
+> & { mode: FormMode };
+
+const FormRendererInner = ({
   form,
   id,
   formSnapshotId,
   publicAction,
   createAccountHref,
   onSubmit,
+  mode,
   persistKey,
   userId,
   user,
@@ -157,7 +170,6 @@ const FormRenderer = ({
   onFormStarted,
   phDistinctId,
   onAbandonAction,
-  renderFormAsCompleted,
   followUp,
   completedFormResponse,
   draftFormResponse,
@@ -168,10 +180,11 @@ const FormRenderer = ({
   initialPageIndex,
   sessionReplayUrl,
   scrollContainerRef,
-}: FormRendererProps) => {
+}: FormRendererInnerProps) => {
   // Compute schema and a namespaced storage key for persistence (if enabled)
   const schema = form as unknown as FormSchema;
-  const readOnly = !!renderFormAsCompleted;
+  const readOnly = mode === FormMode.Completed;
+  const preview = mode === FormMode.Preview;
   const baseStorageKey = computeFormStorageKey({
     formId: id,
   });
@@ -179,6 +192,8 @@ const FormRenderer = ({
     formId: id,
     instanceId: persistKey ?? undefined,
   });
+  const usesDraft = !preview && !!persistKey;
+  const onAbandon = preview ? undefined : onAbandonAction;
   const activeUserKey = useMemo(
     () => computeActiveUserKey(user?.id, userId),
     [user?.id, userId],
@@ -212,11 +227,11 @@ const FormRenderer = ({
   };
 
   const [currentPageIndex, setCurrentPageIndex] = useState<number>(() => {
-    if (initialPageIndex !== undefined && !persistKey) {
+    if (initialPageIndex !== undefined && !usesDraft) {
       return clampPageIndex(initialPageIndex);
     }
     if (readOnly) return 0;
-    if (typeof window === "undefined" || !persistKey) return 0;
+    if (typeof window === "undefined" || !usesDraft) return 0;
     try {
       const raw = window.localStorage.getItem(storageKey);
       if (!raw) return 0;
@@ -246,7 +261,7 @@ const FormRenderer = ({
     }
 
     const readLocalStorageAnswers = (): Record<string, FormValue> | null => {
-      if (typeof window === "undefined" || !persistKey) return null;
+      if (typeof window === "undefined" || !usesDraft) return null;
       try {
         const raw = window.localStorage.getItem(storageKey);
         if (!raw) return null;
@@ -269,12 +284,13 @@ const FormRenderer = ({
       return applyDefaultValues(localAnswers, defaultValueMap);
     }
 
-    const draftAnswers = draftFormResponse?.answers
-      ? restorableAnswers(
-          draftFormResponse.answers as Record<string, FormValue>,
-          fieldLookup,
-        )
-      : null;
+    const draftAnswers =
+      !preview && draftFormResponse?.answers
+        ? restorableAnswers(
+            draftFormResponse.answers as Record<string, FormValue>,
+            fieldLookup,
+          )
+        : null;
     if (draftAnswers && Object.keys(draftAnswers).length > 0) {
       draftLockedRef.current = true;
       return applyDefaultValues(draftAnswers, defaultValueMap);
@@ -369,7 +385,7 @@ const FormRenderer = ({
   // block paint on it; apply it here if the user hasn't started editing and
   // localStorage didn't already win the initial-state race.
   useEffect(() => {
-    if (readOnly) return;
+    if (readOnly || preview) return;
     if (draftLockedRef.current) return;
     if (!draftFormResponse?.answers) return;
     const draftAnswers = restorableAnswers(
@@ -379,12 +395,17 @@ const FormRenderer = ({
     if (Object.keys(draftAnswers).length === 0) return;
     draftLockedRef.current = true;
     setFormData(applyDefaultValues(draftAnswers, defaultValueMap));
-  }, [draftFormResponse, readOnly, fieldLookup, defaultValueMap]);
+  }, [draftFormResponse, readOnly, preview, fieldLookup, defaultValueMap]);
 
   // --- Prefill list fields from previous answer data ---
   useEffect(() => {
     if (readOnly) return;
     if (Object.keys(previousAnswerData).length === 0) return;
+
+    // A previewed field renders a local pick as itself, so a stored answer
+    // shaped like one would render whatever a submission put in it.
+    const prefillable = (value: unknown) =>
+      !preview || typeof value !== "string" || !isLocalPick(value);
 
     setFormData((prev) => {
       const next = { ...prev };
@@ -426,7 +447,7 @@ const FormRenderer = ({
             (srcCard: Record<string, unknown>) => {
               const card: Record<string, FormValue> = {};
               const val = srcCard[prefill.sourceSubFieldId];
-              if (val !== undefined && val !== null) {
+              if (val !== undefined && val !== null && prefillable(val)) {
                 card[prefill.targetSubFieldId] = val as FormValue;
               }
               return card;
@@ -439,7 +460,7 @@ const FormRenderer = ({
       }
       return didUpdate ? next : prev;
     });
-  }, [previousAnswerData, schema, readOnly]);
+  }, [previousAnswerData, schema, readOnly, preview]);
 
   const {
     visibilityExtras,
@@ -481,7 +502,7 @@ const FormRenderer = ({
   const ensureStarted = () => {
     if (readOnly) return;
     draftLockedRef.current = true;
-    if (!hasEmittedStart) {
+    if (!preview && !hasEmittedStart) {
       try {
         onFormStarted?.();
       } finally {
@@ -543,6 +564,7 @@ const FormRenderer = ({
     onUploaded: (slot, imageKey) =>
       applyUploadedImage({ slot, imageKey, setFieldValue: updateField }),
     onStart: ensureStarted,
+    skipUpload: preview,
   });
   const { uploadingAny } = imageUpload;
 
@@ -584,7 +606,7 @@ const FormRenderer = ({
     actionId,
     currentPageIndex,
     pageCount: schema.pages.length,
-    enabled: !!onSubmit && !readOnly,
+    enabled: mode === FormMode.Live,
   };
 
   useFormPageDurationTracking(formTrackingParams);
@@ -604,7 +626,7 @@ const FormRenderer = ({
       return result;
     };
 
-    if (readOnly || !onSubmit || uploadingAny) {
+    if (mode !== FormMode.Live || !onSubmit || uploadingAny) {
       return finishSubmit(false);
     }
 
@@ -671,10 +693,10 @@ const FormRenderer = ({
     fieldLookup,
     form,
     formSnapshotId,
+    mode,
     nextVisiblePageIndex,
     onSubmit,
     phDistinctId,
-    readOnly,
     resolvedPublicAnswers,
     searchParams,
     sessionReplayUrl,
@@ -715,7 +737,7 @@ const FormRenderer = ({
       publicAnswers: resolvedPublicAnswers,
     };
 
-    onAbandonAction?.({
+    onAbandon?.({
       ...withdrawalFlagsFromOption(option),
       reason: customReason.trim(),
       partialFormData: submissionPayload,
@@ -726,7 +748,7 @@ const FormRenderer = ({
   // Persist progress when enabled
   useEffect(() => {
     if (readOnly) return;
-    if (!persistKey || typeof window === "undefined") return;
+    if (!usesDraft || typeof window === "undefined") return;
     window.localStorage.setItem(
       storageKey,
       JSON.stringify({
@@ -740,14 +762,14 @@ const FormRenderer = ({
     formData,
     publicAnswerOverrides,
     currentPageIndex,
-    persistKey,
+    usesDraft,
     storageKey,
     readOnly,
   ]);
 
   useEffect(() => {
     if (readOnly) return;
-    if (!persistKey || typeof window === "undefined") return;
+    if (!usesDraft || typeof window === "undefined") return;
     const raw = window.localStorage.getItem(storageKey);
     if (!raw) return;
     const parsed = JSON.parse(raw);
@@ -780,7 +802,7 @@ const FormRenderer = ({
       setCurrentPageIndex(idx);
     }
   }, [
-    persistKey,
+    usesDraft,
     baseStorageKey,
     readOnly,
     fieldLookup,
@@ -807,7 +829,7 @@ const FormRenderer = ({
     if (
       initialPageIndex === undefined ||
       readOnly ||
-      persistKey ||
+      usesDraft ||
       typeof initialPageIndex !== "number"
     ) {
       return;
@@ -816,7 +838,7 @@ const FormRenderer = ({
     const normalized = Math.floor(initialPageIndex);
     const clamped = Math.min(Math.max(0, normalized), maxIdx);
     setCurrentPageIndex(clamped);
-  }, [initialPageIndex, persistKey, readOnly, pageCount]);
+  }, [initialPageIndex, usesDraft, readOnly, pageCount]);
 
   const prevPageIndexRef = useRef(currentPageIndex);
   useEffect(() => {
@@ -982,6 +1004,65 @@ const FormRenderer = ({
     );
   }
 
+  const submitLabel =
+    schema.submit?.label || (followUp ? "Submit" : "Complete");
+
+  const submitControl: Record<FormMode, () => ReactNode> = {
+    [FormMode.Completed]: () => null,
+    [FormMode.Live]: () => (
+      <div className="w-full">
+        {createAccountHref ? (
+          <a
+            href={createAccountHref}
+            className="flex w-full items-center justify-center rounded bg-green px-4 py-2 text-base font-medium text-white hover:bg-[#4d8c1d]"
+            style={{ fontWeight: 450 }}
+          >
+            {guestReferral.createAccountToSubmit}
+          </a>
+        ) : (
+          <div className="w-full">
+            <ConfettiWrapper
+              burstPlacement="local"
+              onTrigger={submitCurrentPage}
+              className="w-full"
+            >
+              {({
+                disabled: confettiDisabled,
+                onClick,
+                onKeyDown,
+                onPointerDown,
+              }) => (
+                <BaseButton
+                  variant={BaseButtonVariant.Black}
+                  className="w-full"
+                  disabled={submitting || confettiDisabled || uploadingAny}
+                  type="submit"
+                  onClick={onClick}
+                  onKeyDown={onKeyDown}
+                  onPointerDown={onPointerDown}
+                >
+                  {submitLabel}
+                </BaseButton>
+              )}
+            </ConfettiWrapper>
+          </div>
+        )}
+      </div>
+    ),
+    [FormMode.Preview]: () => (
+      <div className="w-full">
+        <BaseButton
+          variant={BaseButtonVariant.Black}
+          className="!cursor-not-allowed w-full"
+          onClick={validateForPreview}
+        >
+          {submitLabel}
+          {formPreviewSubmitSuffix}
+        </BaseButton>
+      </div>
+    ),
+  };
+
   return (
     <div ref={formTopRef} className="mx-auto scroll-mt-24">
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -1034,65 +1115,7 @@ const FormRenderer = ({
               </div>
             )}
 
-            {isLastPage && (
-              <>
-                {readOnly ? null : onSubmit ? (
-                  <div className="w-full">
-                    {createAccountHref ? (
-                      <a
-                        href={createAccountHref}
-                        className="flex w-full items-center justify-center rounded bg-green px-4 py-2 text-base font-medium text-white hover:bg-[#4d8c1d]"
-                        style={{ fontWeight: 450 }}
-                      >
-                        {guestReferral.createAccountToSubmit}
-                      </a>
-                    ) : (
-                      <div className="w-full">
-                        <ConfettiWrapper
-                          burstPlacement="local"
-                          onTrigger={submitCurrentPage}
-                          className="w-full"
-                        >
-                          {({
-                            disabled: confettiDisabled,
-                            onClick,
-                            onKeyDown,
-                            onPointerDown,
-                          }) => (
-                            <BaseButton
-                              variant={BaseButtonVariant.Black}
-                              className="w-full"
-                              disabled={
-                                submitting || confettiDisabled || uploadingAny
-                              }
-                              type="submit"
-                              onClick={onClick}
-                              onKeyDown={onKeyDown}
-                              onPointerDown={onPointerDown}
-                            >
-                              {schema.submit?.label ||
-                                (followUp ? "Submit" : "Complete")}
-                            </BaseButton>
-                          )}
-                        </ConfettiWrapper>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="w-full">
-                    <BaseButton
-                      variant={BaseButtonVariant.Black}
-                      className="!cursor-not-allowed w-full"
-                      onClick={validateForPreview}
-                    >
-                      {schema.submit?.label ||
-                        (followUp ? "Submit" : "Complete")}
-                      {" (Preview Mode)"}
-                    </BaseButton>
-                  </div>
-                )}
-              </>
-            )}
+            {isLastPage && submitControl[mode]()}
             {uploadingAny && !readOnly && (
               <UploadingWithCancel
                 label={waitingForImageUpload}
@@ -1103,7 +1126,7 @@ const FormRenderer = ({
             )}
           </div>
 
-          {onAbandonAction && !readOnly && !publicAction && !followUp && (
+          {onAbandon && !readOnly && !publicAction && !followUp && (
             <div className="relative">
               <BaseButton onClick={() => setDropdownOpen(!dropdownOpen)}>
                 <Ellipsis size={15} />
@@ -1165,5 +1188,7 @@ const FormRenderer = ({
     </div>
   );
 };
+
+const FormRenderer = withFormMode<FormRendererProps>(FormRendererInner);
 
 export default FormRenderer;

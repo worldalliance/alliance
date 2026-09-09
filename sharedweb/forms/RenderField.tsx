@@ -22,6 +22,7 @@ import {
   listCardWriters,
   resolveCards,
 } from "@alliance/shared/forms/listCards";
+import { usePreviewMode } from "@alliance/shared/forms/previewMode";
 import {
   formatTimeForDisplay,
   parseTimeInput,
@@ -42,7 +43,7 @@ import {
   type ReactNode,
 } from "react";
 import TextareaAutosize from "react-textarea-autosize";
-import { getApiUrl } from "../lib/config";
+import { fileFieldImageSrc } from "../lib/imageSrc";
 import { readFileDataUri } from "../lib/readFileDataUri";
 import AppMarkdownWrapper from "../ui/AppMarkdownWrapper";
 import Card from "../ui/Card";
@@ -170,6 +171,7 @@ export function RenderField({
   isOutputView,
   hideLabel,
 }: RenderFieldProps) {
+  const previewMode = usePreviewMode();
   const instanceId = useId();
   const fieldName = `${field.id}-${instanceId}`;
   const {
@@ -796,7 +798,7 @@ export function RenderField({
       const fileValue = value;
       const imageUrl =
         typeof fileValue === "string" && fileValue
-          ? getApiUrl() + "/images/" + fileValue
+          ? fileFieldImageSrc({ src: fileValue, previewMode })
           : null;
       return (
         <div className="space-y-2">

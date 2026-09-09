@@ -1,3 +1,4 @@
+import { usePreviewMode } from "@alliance/shared/forms/previewMode";
 import { useVideoAnalytics } from "@alliance/shared/lib/useVideoAnalytics";
 import {
   SHOWS_SPINNER,
@@ -26,12 +27,13 @@ type VideoPlayerProps = {
 };
 
 const VideoPlayer = ({ src, videoId, caption }: VideoPlayerProps) => {
+  const previewMode = usePreviewMode();
   const { manifestUrl, state, attempt, onReady, onError, retry } =
     useVideoSource({ src, videoId, apiUrl: getApiUrl() });
   const { trackPlay, trackComplete, trackTimeUpdate } = useVideoAnalytics({
     src,
     videoId,
-    enabled: manifestUrl !== null,
+    enabled: manifestUrl !== null && !previewMode,
   });
 
   const source = useMemo(

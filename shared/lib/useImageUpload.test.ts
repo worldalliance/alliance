@@ -25,7 +25,7 @@ import { useImageUpload } from "./useImageUpload";
 
 const field = (fieldId: string): FileUploadSlot => ({ kind: "field", fieldId });
 
-function mountUpload() {
+function mountUpload(options?: { skipUpload?: boolean }) {
   const uploaded: { slotId: string; imageKey: string }[] = [];
   let startCount = 0;
   const view = renderHook(() =>
@@ -35,6 +35,7 @@ function mountUpload() {
       onStart: () => {
         startCount += 1;
       },
+      skipUpload: options?.skipUpload,
     }),
   );
   return {
@@ -88,6 +89,22 @@ describe("useImageUpload", () => {
 
     expect(upload.uploaded).toEqual([
       { slotId: "photo", imageKey: "abc.webp" },
+    ]);
+    expect(upload.state().uploadingAny).toBe(false);
+    expect(upload.state().uploadErrors).toEqual({});
+  });
+
+  it("stores nothing under skipUpload, keeping the data uri as the value", async () => {
+    const upload = mountUpload({ skipUpload: true });
+    await act(async () => {
+      await upload
+        .state()
+        .onFileSelected(field("photo"), "data:image/png;base64,bbb");
+    });
+
+    expect(pending).toEqual([]);
+    expect(upload.uploaded).toEqual([
+      { slotId: "photo", imageKey: "data:image/png;base64,bbb" },
     ]);
     expect(upload.state().uploadingAny).toBe(false);
     expect(upload.state().uploadErrors).toEqual({});

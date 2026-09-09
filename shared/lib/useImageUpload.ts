@@ -1,3 +1,4 @@
+import { R } from "@alliance/common/result";
 import { useRef, useState } from "react";
 import {
   fileUploadSlotId,
@@ -16,8 +17,10 @@ export type ImageUpload = FileUploadSlots & {
 export function useImageUpload(params: {
   onUploaded: (slot: FileUploadSlot, imageKey: string) => void;
   onStart?: () => void;
+  /** Keep the picked file in the form value as its data uri, storing nothing. */
+  skipUpload?: boolean;
 }): ImageUpload {
-  const { onUploaded, onStart } = params;
+  const { onUploaded, onStart, skipUpload } = params;
   const [uploadingSlotIds, setUploadingSlotIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -87,7 +90,9 @@ export function useImageUpload(params: {
     };
 
     try {
-      const uploaded = await uploadImageDataUri(dataUri, upload.signal);
+      const uploaded = skipUpload
+        ? R.success(dataUri)
+        : await uploadImageDataUri(dataUri, upload.signal);
       if (superseded()) {
         return;
       }

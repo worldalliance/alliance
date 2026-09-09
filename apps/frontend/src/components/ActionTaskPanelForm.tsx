@@ -32,6 +32,7 @@ interface ActionTaskPanelFormProps {
   card?: boolean;
   actionId: number;
   disabled?: boolean;
+  previewMode?: boolean;
   publicAction?: boolean;
   formResponse?: FormResponseDto;
   redirectOnComplete?: boolean;
@@ -47,6 +48,7 @@ const ActionTaskPanelForm = ({
   card = false,
   actionId,
   disabled = false,
+  previewMode = false,
   publicAction = false,
   formResponse,
   redirectOnComplete = publicAction,
@@ -209,6 +211,7 @@ const ActionTaskPanelForm = ({
           formSnapshotId={form.formSnapshotId}
           actionId={actionId}
           onSubmit={handleSubmitForm}
+          previewMode={previewMode}
           persistKey={String(taskFormId)}
           userId={user?.id}
           user={user}

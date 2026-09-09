@@ -42,14 +42,17 @@ import {
   type UserLocationDisplayValue,
 } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
+import { FormMode } from "@alliance/shared/forms/formMode";
 import {
   resolveFormValue,
   type SetFieldValue,
 } from "@alliance/shared/forms/formValueUpdater";
 import { stripCardIds } from "@alliance/shared/forms/listCards";
+import { withFormMode } from "@alliance/shared/forms/withFormMode";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import {
   cancelAllImageUploads,
+  formPreviewSubmitSuffix,
   outputFieldPublicToggle,
   waitingForImageUpload,
 } from "@alliance/shared/lib/copy";
@@ -128,6 +131,8 @@ type FormRendererProps = {
   renderFormAsCompleted?: boolean;
   completedFormResponse?: FormResponseDto;
   onSubmit: ((data: SubmitFormDto) => Promise<void>) | null;
+  /** A form nobody submits: interactive, but storing nothing. Outranks `onSubmit`. */
+  previewMode?: boolean;
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
 };
@@ -616,11 +621,17 @@ export function RenderDisplayBlockMobile({
   }
 }
 
-const FormRenderer = ({
+type FormRendererInnerProps = Omit<
+  FormRendererProps,
+  "renderFormAsCompleted" | "previewMode"
+> & { mode: FormMode };
+
+const FormRendererInner = ({
   form,
   id,
   formSnapshotId,
   onSubmit,
+  mode,
   persistKey,
   userId,
   user,
@@ -628,7 +639,6 @@ const FormRenderer = ({
   loadCurrentUserLocation,
   onFormStarted,
   onAbandonAction,
-  renderFormAsCompleted,
   completedFormResponse,
   actionId,
   initialPageIndex,
@@ -636,9 +646,12 @@ const FormRenderer = ({
   sessionReplayUrl,
   scrollPageTo,
   scrollToEnd,
-}: FormRendererProps) => {
+}: FormRendererInnerProps) => {
   const schema = form as unknown as FormSchema;
-  const readOnly = !!renderFormAsCompleted || !onSubmit;
+  const readOnly = mode === FormMode.Completed;
+  const preview = mode === FormMode.Preview;
+  const usesDraft = !preview && !!persistKey;
+  const onAbandon = preview ? undefined : onAbandonAction;
 
   const storageKey = useMemo(
     () =>
@@ -742,7 +755,7 @@ const FormRenderer = ({
 
   // Restore draft from AsyncStorage on mount
   useEffect(() => {
-    if (readOnly || !persistKey) {
+    if (readOnly || !usesDraft) {
       draftLoaded.current = true;
       return;
     }
@@ -797,7 +810,7 @@ const FormRenderer = ({
 
   // Save draft to AsyncStorage when form state changes
   useEffect(() => {
-    if (readOnly || !persistKey || !draftLoaded.current) return;
+    if (readOnly || !usesDraft || !draftLoaded.current) return;
 
     const timeout = setTimeout(() => {
       AsyncStorage.setItem(
@@ -819,7 +832,7 @@ const FormRenderer = ({
     formData,
     publicAnswers,
     currentPageIndex,
-    persistKey,
+    usesDraft,
     storageKey,
     readOnly,
   ]);
@@ -892,7 +905,7 @@ const FormRenderer = ({
   });
 
   const markFormStarted = () => {
-    if (hasEmittedStart) return;
+    if (preview || hasEmittedStart) return;
     setHasEmittedStart(true);
     onFormStarted?.();
   };
@@ -914,6 +927,7 @@ const FormRenderer = ({
     onUploaded: (slot, imageKey) =>
       applyUploadedImage({ slot, imageKey, setFieldValue: handleFieldChange }),
     onStart: markFormStarted,
+    skipUpload: preview,
   });
 
   const handlePublicToggleChange = (fieldId: string, nextPublic: boolean) => {
@@ -965,8 +979,17 @@ const FormRenderer = ({
     setImmediate(() => scrollToEnd(false));
   };
 
+  const validateForPreview = async () => {
+    await validatePage(currentPageIndex, true);
+  };
+
   const handleSubmit = async () => {
-    if (submitting || readOnly || !onSubmit || imageUpload.uploadingAny) {
+    if (
+      submitting ||
+      mode !== FormMode.Live ||
+      !onSubmit ||
+      imageUpload.uploadingAny
+    ) {
       return;
     }
     if (formSnapshotId === null) {
@@ -1015,13 +1038,19 @@ const FormRenderer = ({
 
     onSubmit(submissionPayload)
       .then(() => {
-        if (persistKey) {
+        if (usesDraft) {
           AsyncStorage.removeItem(storageKey).catch(() => {});
         }
       })
       .finally(() => {
         setSubmitting(false);
       });
+  };
+
+  const lastPageAction: Record<FormMode, () => void> = {
+    [FormMode.Completed]: () => {},
+    [FormMode.Live]: () => void handleSubmit(),
+    [FormMode.Preview]: () => void validateForPreview(),
   };
 
   const handleAbandon = (option: WithdrawalOption) => {
@@ -1039,7 +1068,7 @@ const FormRenderer = ({
       publicAnswers,
     };
 
-    onAbandonAction?.({
+    onAbandon?.({
       ...withdrawalFlagsFromOption(option),
       reason: customReason.trim(),
       partialFormData: submissionPayload,
@@ -1213,7 +1242,7 @@ const FormRenderer = ({
                 />
               )}
               <Button
-                onPress={isLastPage ? handleSubmit : handleNextPage}
+                onPress={isLastPage ? lastPageAction[mode] : handleNextPage}
                 color={ButtonColor.Black}
                 size={ButtonSize.Medium}
                 className="flex-2 py-4! gap-x-1"
@@ -1230,12 +1259,14 @@ const FormRenderer = ({
                       className="text-white text-base"
                       weight={FontWeight.Medium}
                     >
-                      {isLastPage ? "Complete" : "Next"}
+                      {isLastPage
+                        ? `Complete${preview ? formPreviewSubmitSuffix : ""}`
+                        : "Next"}
                     </Text>
                   </>
                 )}
               </Button>
-              {onAbandonAction && (
+              {onAbandon && (
                 <Button
                   onPress={() => setWithdrawOpen(true)}
                   color={ButtonColor.Outline}
@@ -1269,7 +1300,7 @@ const FormRenderer = ({
         </View>
       )}
 
-      {onAbandonAction && (
+      {onAbandon && (
         <FormModal
           visible={withdrawOpen}
           onClose={() => setWithdrawOpen(false)}
@@ -1346,5 +1377,7 @@ const FormRenderer = ({
     </View>
   );
 };
+
+const FormRenderer = withFormMode<FormRendererProps>(FormRendererInner);
 
 export default FormRenderer;

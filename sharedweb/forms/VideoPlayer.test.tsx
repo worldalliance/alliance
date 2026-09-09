@@ -1,4 +1,5 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
+import { PreviewModeProvider } from "@alliance/shared/forms/previewMode";
 import {
   registerAnalytics,
   type AnalyticsBackend,
@@ -123,6 +124,20 @@ describe("VideoPlayer", () => {
     fireEvent.play(retried);
 
     expect(startsTracked()).toBe(1);
+  });
+
+  it("tracks nothing for a video a preview is showing", () => {
+    render(
+      <PreviewModeProvider value={true}>
+        <VideoPlayer src={SRC} />
+      </PreviewModeProvider>,
+    );
+
+    const video = videoElement();
+    fireEvent.loadedData(video);
+    fireEvent.play(video);
+
+    expect(captured).toEqual([]);
   });
 
   it("tracks a start once, however often playback resumes", () => {
