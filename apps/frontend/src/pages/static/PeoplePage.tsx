@@ -136,7 +136,7 @@ function Office() {
           Alliance.
         </SectionSubtitle>
       </div>
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-16">
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-16">
         <figure className="flex flex-col gap-3">
           <SitePicture
             image={officePhoto}
