@@ -220,6 +220,7 @@ const HomePage = () => {
         : null;
     const hasTaskSectionContent =
       currentWeekTodoActions.length > 0 ||
+      nextWeekTodoActions.length > 0 ||
       completedActions.length > 0 ||
       followUpParentActionsNotInCompletedList.length > 0;
     return (
