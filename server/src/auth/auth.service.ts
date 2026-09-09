@@ -20,13 +20,13 @@ import { type PWResetJwtPayload, UserService } from "../user/user.service";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { Guest } from "./entities/guest.entity";
 import {
-  extractAccessTokenFromCookie,
-  extractTokenFromHeader,
-} from "./guards/auth.guard";
-import {
+  ACCESS_COOKIE,
+  GUEST_COOKIE,
   type GuestJwtPayload,
   type JwtPayload,
   JWTTokenType,
+  REFRESH_COOKIE,
+  sessionFromRequest,
 } from "./guards/jwtreq";
 
 @Injectable()
@@ -39,15 +39,12 @@ export class AuthService {
     private guestRepository: Repository<Guest>,
   ) {}
 
-  public static ACCESS_COOKIE = "access_token";
-  public static REFRESH_COOKIE = "refresh_token";
-  public static GUEST_COOKIE = "guest_token";
   private static GUEST_COOKIE_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 
   setAuthCookies(res: Response, access: string, refresh?: string) {
     const prod = process.env.NODE_ENV === "production";
 
-    res.cookie(AuthService.ACCESS_COOKIE, access, {
+    res.cookie(ACCESS_COOKIE, access, {
       httpOnly: true,
       secure: prod,
       path: "/",
@@ -55,7 +52,7 @@ export class AuthService {
       maxAge: 1000 * 60 * 30, // 30 min
     });
     if (refresh) {
-      res.cookie(AuthService.REFRESH_COOKIE, refresh, {
+      res.cookie(REFRESH_COOKIE, refresh, {
         httpOnly: true,
         secure: prod,
         sameSite: "strict",
@@ -66,13 +63,13 @@ export class AuthService {
   }
 
   clearAuthCookies(res: Response) {
-    res.clearCookie(AuthService.ACCESS_COOKIE, { path: "/" });
-    res.clearCookie(AuthService.REFRESH_COOKIE, { path: "/" });
+    res.clearCookie(ACCESS_COOKIE, { path: "/" });
+    res.clearCookie(REFRESH_COOKIE, { path: "/" });
   }
 
   setGuestCookie(res: Response, token: string) {
     const prod = process.env.NODE_ENV === "production";
-    res.cookie(AuthService.GUEST_COOKIE, token, {
+    res.cookie(GUEST_COOKIE, token, {
       httpOnly: true,
       secure: prod,
       sameSite: "lax",
@@ -82,7 +79,7 @@ export class AuthService {
   }
 
   clearGuestCookie(res: Response) {
-    res.clearCookie(AuthService.GUEST_COOKIE, { path: "/" });
+    res.clearCookie(GUEST_COOKIE, { path: "/" });
   }
 
   async createGuestSession(
@@ -120,13 +117,8 @@ export class AuthService {
   };
 
   async getAuthenticatedUserId(req: Request): Promise<number | null> {
-    const token =
-      extractTokenFromHeader(req) ?? extractAccessTokenFromCookie(req);
-    if (!token) return null;
     try {
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-        secret: process.env.JWT_SECRET,
-      });
+      const payload = await sessionFromRequest(this.jwtService, req);
       if (!AuthService.TOKEN_TYPE_IS_AUTHENTICATED[payload.tokenType]) {
         return null;
       }

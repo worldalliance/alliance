@@ -38,12 +38,10 @@ import { SignInDto, SignInResponseDto, type TokenMode } from "./dto/signin.dto";
 import { AdminGuard } from "./guards/admin.guard";
 import {
   AuthGuard,
-  extractAccessTokenFromCookie,
   extractGuestTokenFromCookie,
   extractRefreshTokenFromCookie,
-  extractTokenFromHeader,
 } from "./guards/auth.guard";
-import type { JwtPayload, JwtRequest } from "./guards/jwtreq";
+import { type JwtRequest, sessionFromRequest } from "./guards/jwtreq";
 import { RefreshTokenGuard } from "./guards/refresh.guard";
 import { Public } from "./public.decorator";
 import { SIGNUP_THROTTLE } from "./signup-throttle.config";
@@ -229,20 +227,14 @@ export class AuthController {
 
     // Logout is unauthenticated; best-effort resolve the user from a still-valid
     // access token so we can attribute the event.
-    const token =
-      extractTokenFromHeader(req) ?? extractAccessTokenFromCookie(req);
-    if (token) {
-      try {
-        const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-          secret: process.env.JWT_SECRET,
-        });
-        this.posthog.capture({
-          event: AnalyticsEvent.Logout,
-          distinctId: String(payload.sub),
-        });
-      } catch {
-        // expired/invalid token — nothing to attribute
-      }
+    try {
+      const payload = await sessionFromRequest(this.jwtService, req);
+      this.posthog.capture({
+        event: AnalyticsEvent.Logout,
+        distinctId: String(payload.sub),
+      });
+    } catch {
+      // missing or invalid token, nothing to attribute
     }
   }
 

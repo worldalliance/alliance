@@ -9,7 +9,12 @@ import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
 import { requestContext } from "src/utils/request-context";
 import { IS_PUBLIC_KEY } from "../public.decorator";
-import { JWTTokenType, type JwtPayload } from "./jwtreq";
+import {
+  GUEST_COOKIE,
+  JWTTokenType,
+  REFRESH_COOKIE,
+  sessionFromRequest,
+} from "./jwtreq";
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -30,19 +35,8 @@ export class AuthGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<Request>();
 
-    let token = extractTokenFromHeader(request);
-
-    if (!token) {
-      token = extractAccessTokenFromCookie(request);
-      if (!token) {
-        throw new UnauthorizedException();
-      }
-    }
-
     try {
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-        secret: process.env.JWT_SECRET,
-      });
+      const payload = await sessionFromRequest(this.jwtService, request);
       if (payload.tokenType === JWTTokenType.guest) {
         throw new UnauthorizedException();
       }
@@ -57,22 +51,17 @@ export class AuthGuard implements CanActivate {
     return true;
   }
 }
-export function extractAccessTokenFromCookie(
-  request: Request,
-): string | undefined {
-  return request.cookies?.access_token;
-}
 
 export function extractRefreshTokenFromCookie(
   request: Request,
 ): string | undefined {
-  return request.cookies?.refresh_token;
+  return request.cookies?.[REFRESH_COOKIE];
 }
 
 export function extractGuestTokenFromCookie(
   request: Request,
 ): string | undefined {
-  return request.cookies?.guest_token;
+  return request.cookies?.[GUEST_COOKIE];
 }
 
 export function extractGuestTokenFromHeader(
@@ -83,9 +72,4 @@ export function extractGuestTokenFromHeader(
     return undefined;
   }
   return header;
-}
-
-export function extractTokenFromHeader(request: Request): string | undefined {
-  const [type, token] = request.headers.authorization?.split(" ") ?? [];
-  return type === "Bearer" ? token : undefined;
 }

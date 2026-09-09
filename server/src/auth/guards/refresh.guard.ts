@@ -6,8 +6,7 @@ import {
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
-import { AuthService } from "../auth.service";
-import { type JwtPayload, JWTTokenType } from "./jwtreq";
+import { type JwtPayload, JWTTokenType, REFRESH_COOKIE } from "./jwtreq";
 
 @Injectable()
 export class RefreshTokenGuard implements CanActivate {
@@ -46,7 +45,7 @@ export class RefreshTokenGuard implements CanActivate {
   }
 
   private extractTokenFromCookie(request: Request): string | undefined {
-    return request.cookies?.[AuthService.REFRESH_COOKIE];
+    return request.cookies?.[REFRESH_COOKIE];
   }
 
   private extractTokenFromHeader(request: Request): string | undefined {

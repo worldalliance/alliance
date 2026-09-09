@@ -9,7 +9,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import type { Request } from "express";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
-import type { JwtPayload } from "./jwtreq";
+import { sessionFromRequest } from "./jwtreq";
 
 @Injectable()
 export class AdminGuard implements CanActivate {
@@ -22,17 +22,8 @@ export class AdminGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
 
-    const token =
-      this.extractTokenFromCookie(request) ??
-      this.extractTokenFromHeader(request);
-
-    if (!token) {
-      throw new UnauthorizedException();
-    }
     try {
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-        secret: process.env.JWT_SECRET,
-      });
+      const payload = await sessionFromRequest(this.jwtService, request);
       request["user"] = payload;
 
       const user = await this.userRepository.findOne({
@@ -51,14 +42,5 @@ export class AdminGuard implements CanActivate {
     } catch {
       throw new UnauthorizedException();
     }
-  }
-
-  private extractTokenFromCookie(request: Request): string | undefined {
-    return request.cookies?.access_token;
-  }
-
-  private extractTokenFromHeader(request: Request): string | undefined {
-    const [type, token] = request.headers.authorization?.split(" ") ?? [];
-    return type === "Bearer" ? token : undefined;
   }
 }

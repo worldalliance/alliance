@@ -1,5 +1,5 @@
 import { Socket } from "socket.io";
-import { AuthService } from "src/auth/auth.service";
+import { ACCESS_COOKIE } from "src/auth/guards/jwtreq";
 
 export function parseCookies(cookieHeader: string): Record<string, string> {
   return cookieHeader.split(";").reduce<Record<string, string>>((acc, part) => {
@@ -29,7 +29,7 @@ export function extractTokenFromSocket(client: Socket): string | undefined {
   const cookieHeader = client.handshake?.headers?.cookie;
   if (typeof cookieHeader === "string") {
     const cookies = parseCookies(cookieHeader);
-    const cookieToken = cookies[AuthService.ACCESS_COOKIE];
+    const cookieToken = cookies[ACCESS_COOKIE];
     if (cookieToken) {
       return cookieToken;
     }
