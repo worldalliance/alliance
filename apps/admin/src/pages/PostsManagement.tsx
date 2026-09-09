@@ -11,9 +11,10 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
-import { Plus, Trash2 } from "lucide-react";
+import { Download, Plus, Trash2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { href, useNavigate, useParams } from "react-router";
+import { getApiUrl } from "../lib/config";
 
 type TagDraft = { id?: number; name: string };
 
@@ -57,6 +58,9 @@ const PostsManagementPage: React.FC = () => {
   const [notifyForReplies, setNotifyForReplies] = useState(false);
   const [showClusterTags, setShowClusterTags] = useState(false);
   const [tagDrafts, setTagDrafts] = useState<TagDraft[]>([]);
+  const [downloadingPostId, setDownloadingPostId] = useState<number | null>(
+    null,
+  );
   const { success, error: pushError, confirm } = useToast();
 
   useEffect(() => {
@@ -109,6 +113,38 @@ const PostsManagementPage: React.FC = () => {
       })
       .finally(() => setUsersLoading(false));
   }, []);
+
+  const handleDownload = async (post: PostDto) => {
+    setDownloadingPostId(post.id);
+    try {
+      const response = await fetch(
+        `${getApiUrl()}/forum/admin/posts/${post.id}/export`,
+        { credentials: "include" },
+      );
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.status}`);
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download =
+        /filename="([^"]+)"/.exec(
+          response.headers.get("content-disposition") ?? "",
+        )?.[1] ?? `post-${post.id}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to download post", err);
+      pushError(
+        errorMessage({ error: err, fallback: "Failed to download post" }),
+      );
+    } finally {
+      setDownloadingPostId(null);
+    }
+  };
 
   const handleSelectPost = (post: PostDto) => {
     setSelectedPost(post);
@@ -405,6 +441,20 @@ const PostsManagementPage: React.FC = () => {
                       used it.
                     </p>
                   </div>
+
+                  <Button
+                    type="button"
+                    color={ButtonColor.White}
+                    onClick={() => void handleDownload(selectedPost)}
+                    disabled={downloadingPostId === selectedPost.id}
+                    title="The post, its comments and their attachments, as a single web page"
+                    className="self-start flex items-center gap-2"
+                  >
+                    <Download size={16} />
+                    {downloadingPostId === selectedPost.id
+                      ? "Preparing..."
+                      : "Download as .html"}
+                  </Button>
 
                   <Button
                     type="button"

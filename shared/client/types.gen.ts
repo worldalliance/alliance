@@ -10788,6 +10788,30 @@ export type ForumGetPostsForAdminResponses = {
 
 export type ForumGetPostsForAdminResponse = ForumGetPostsForAdminResponses[keyof ForumGetPostsForAdminResponses];
 
+export type ForumExportPostAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/forum/admin/posts/{id}/export';
+};
+
+export type ForumExportPostAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ForumExportPostAdminError = ForumExportPostAdminErrors[keyof ForumExportPostAdminErrors];
+
+export type ForumExportPostAdminResponses = {
+    200: StreamableFile;
+};
+
+export type ForumExportPostAdminResponse = ForumExportPostAdminResponses[keyof ForumExportPostAdminResponses];
+
 export type ForumUpdatePostSettingsAdminData = {
     body: UpdatePostSettingsDto;
     path: {
