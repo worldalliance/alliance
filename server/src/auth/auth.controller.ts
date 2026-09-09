@@ -36,12 +36,13 @@ import ForgotPasswordDto, { ResetPasswordDto } from "./dto/forgotpassword.dto";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { SignInDto, SignInResponseDto, type TokenMode } from "./dto/signin.dto";
 import { AdminGuard } from "./guards/admin.guard";
+import { AuthGuard } from "./guards/auth.guard";
 import {
-  AuthGuard,
   extractGuestTokenFromCookie,
   extractRefreshTokenFromCookie,
-} from "./guards/auth.guard";
-import { type JwtRequest, sessionFromRequest } from "./guards/jwtreq";
+  type JwtRequest,
+  sessionFromRequest,
+} from "./guards/jwtreq";
 import { RefreshTokenGuard } from "./guards/refresh.guard";
 import { Public } from "./public.decorator";
 import { SIGNUP_THROTTLE } from "./signup-throttle.config";
@@ -129,6 +130,7 @@ export class AuthController {
     res: Response,
     userId: number,
   ): Promise<void> {
+    // Mobile sends the guest token in the body, web in the cookie.
     const guestToken = bodyToken ?? extractGuestTokenFromCookie(req);
     if (!guestToken) {
       return;

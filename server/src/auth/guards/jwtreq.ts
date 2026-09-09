@@ -34,6 +34,32 @@ export function extractAccessToken(request: Request): string | undefined {
   return request.cookies?.[ACCESS_COOKIE];
 }
 
+export function extractRefreshTokenFromCookie(
+  request: Request,
+): string | undefined {
+  return request.cookies?.[REFRESH_COOKIE];
+}
+
+export function extractGuestTokenFromCookie(
+  request: Request,
+): string | undefined {
+  return request.cookies?.[GUEST_COOKIE];
+}
+
+function extractGuestTokenFromHeader(request: Request): string | undefined {
+  const header = request.headers["x-guest-token"];
+  if (typeof header !== "string" || header.length === 0) {
+    return undefined;
+  }
+  return header;
+}
+
+export function extractGuestToken(request: Request): string | undefined {
+  return (
+    extractGuestTokenFromHeader(request) ?? extractGuestTokenFromCookie(request)
+  );
+}
+
 /**
  * The mailed and guest tokens share JWT_SECRET with access tokens, so a valid
  * signature alone does not make a session.

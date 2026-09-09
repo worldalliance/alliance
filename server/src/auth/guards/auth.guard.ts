@@ -9,7 +9,7 @@ import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
 import { requestContext } from "src/utils/request-context";
 import { IS_PUBLIC_KEY } from "../public.decorator";
-import { GUEST_COOKIE, REFRESH_COOKIE, sessionFromRequest } from "./jwtreq";
+import { sessionFromRequest } from "./jwtreq";
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -42,26 +42,4 @@ export class AuthGuard implements CanActivate {
     }
     return true;
   }
-}
-
-export function extractRefreshTokenFromCookie(
-  request: Request,
-): string | undefined {
-  return request.cookies?.[REFRESH_COOKIE];
-}
-
-export function extractGuestTokenFromCookie(
-  request: Request,
-): string | undefined {
-  return request.cookies?.[GUEST_COOKIE];
-}
-
-export function extractGuestTokenFromHeader(
-  request: Request,
-): string | undefined {
-  const header = request.headers["x-guest-token"];
-  if (typeof header !== "string" || header.length === 0) {
-    return undefined;
-  }
-  return header;
 }

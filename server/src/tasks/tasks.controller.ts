@@ -18,12 +18,8 @@ import type { Request as ExpressRequest, Response } from "express";
 import { ActionActivityDto, OptOutActionDto } from "src/actions/dto/action.dto";
 import { AuthService } from "src/auth/auth.service";
 import { AdminGuard } from "src/auth/guards/admin.guard";
-import {
-  AuthGuard,
-  extractGuestTokenFromCookie,
-  extractGuestTokenFromHeader,
-} from "src/auth/guards/auth.guard";
-import type { JwtRequest } from "src/auth/guards/jwtreq";
+import { AuthGuard } from "src/auth/guards/auth.guard";
+import { extractGuestToken, type JwtRequest } from "src/auth/guards/jwtreq";
 import { Public } from "src/auth/public.decorator";
 import {
   CreateCustomValidatorDto,
@@ -92,8 +88,7 @@ export class TasksController {
         "Authenticated users must use /tasks/submitForm/:id",
       );
     }
-    const incomingToken =
-      extractGuestTokenFromHeader(req) ?? extractGuestTokenFromCookie(req);
+    const incomingToken = extractGuestToken(req);
     const { guestId, guestToken } =
       await this.authService.createGuestSession(incomingToken);
     this.authService.setGuestCookie(res, guestToken);
@@ -220,8 +215,7 @@ export class TasksController {
     @Request() req: ExpressRequest,
     @Param("id", ParseIntPipe) id: number,
   ): Promise<GuestFormResponseDto> {
-    const token =
-      extractGuestTokenFromHeader(req) ?? extractGuestTokenFromCookie(req);
+    const token = extractGuestToken(req);
     const guestPayload = token
       ? await this.authService.verifyGuestToken(token)
       : null;
