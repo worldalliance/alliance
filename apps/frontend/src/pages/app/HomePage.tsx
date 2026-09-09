@@ -1,4 +1,5 @@
 import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
+import { withCount } from "@alliance/common/plural";
 import { ActionDto, FollowUpFormDto } from "@alliance/shared/client";
 import {
   ActionWithAwayStatus,
@@ -243,7 +244,10 @@ const HomePage = () => {
                 </span>
                 {numTodo > 0 &&
                   remainingTasksEstimatedTimeCurrentWeek > 0 &&
-                  ` for a total of ${remainingTasksEstimatedTimeCurrentWeek} minutes`}
+                  ` (${withCount(
+                    remainingTasksEstimatedTimeCurrentWeek,
+                    "minute",
+                  )} required)`}
               </p>
             )}
 
