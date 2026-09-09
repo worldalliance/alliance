@@ -1,29 +1,17 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
-
-let schemas: Record<number, unknown> = {};
-let fetched: number[] = [];
-
-jest.mock("../client", () => ({
-  tasksGetForm: (options: { path: { id: number } }) => {
-    const id = options.path.id;
-    fetched.push(id);
-    const schema = schemas[id];
-    if (schema === undefined) return Promise.reject(new Error("no such form"));
-    return Promise.resolve({
-      data: { id, title: `Form ${id}`, formSnapshotId: id, schema },
-    });
-  },
-}));
-
 import { queryKeys } from "./queryKeys";
+import { routes, serveApi } from "./testing/serveApi";
 import {
   FormFieldsStatus,
   useFormQuestionFields,
   useFormQuestionFieldsMap,
   useFormQuestionFieldsPeek,
 } from "./useFormSchema";
+
+let schemas: Record<number, unknown> = {};
+let fetched: number[] = [];
 
 const schemaWith = (...labels: string[]) => ({
   pages: [
@@ -55,6 +43,27 @@ function mount<T>(hook: () => T) {
   const view = renderHook(hook, { wrapper: makeWrapper() });
   return { state: () => view.result.current };
 }
+
+serveApi(
+  routes({
+    "GET /tasks/slug/:id": ({ params }) => {
+      const id = Number(params.id);
+      fetched.push(id);
+      const schema = schemas[id];
+      return schema === undefined
+        ? Response.json(
+            { statusCode: 404, message: "no such form" },
+            { status: 404 },
+          )
+        : Response.json({
+            id,
+            title: `Form ${id}`,
+            formSnapshotId: id,
+            schema,
+          });
+    },
+  }),
+);
 
 beforeEach(() => {
   schemas = {};

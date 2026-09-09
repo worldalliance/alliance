@@ -1,7 +1,16 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
-import type { FormResponseCounts } from "./useFormsAdmin";
+import { queryKeys } from "./queryKeys";
+import { routes, serveApi } from "./testing/serveApi";
+import {
+  ResponseCountStatus,
+  useFormResponseCountsAdmin,
+  useFormsAdmin,
+  useInvalidateFormsAdmin,
+  useInvalidateFormsIndex,
+  type FormResponseCounts,
+} from "./useFormsAdmin";
 
 type CountRow = { formId: number; count: number };
 
@@ -13,32 +22,9 @@ type FormRow = {
 };
 
 let batches: number[][] = [];
-let respond: (formIds: number[]) => Promise<{ data: CountRow[] }>;
+let respond: (formIds: number[]) => Promise<CountRow[]>;
 let listCalls = 0;
 let listed: FormRow[] = [];
-
-jest.mock("../client", () => ({
-  tasksGetFormResponseCountsAdmin: (options: {
-    body: { formIds: number[] };
-  }) => {
-    batches.push(options.body.formIds);
-    return respond(options.body.formIds);
-  },
-  tasksListFormsAdmin: () => {
-    listCalls++;
-    return Promise.resolve({ data: listed });
-  },
-  tasksDeleteFormAdmin: () => Promise.resolve({ data: undefined }),
-}));
-
-import { queryKeys } from "./queryKeys";
-import {
-  ResponseCountStatus,
-  useFormResponseCountsAdmin,
-  useFormsAdmin,
-  useInvalidateFormsAdmin,
-  useInvalidateFormsIndex,
-} from "./useFormsAdmin";
 
 const formRow = (id: number, title: string): FormRow => ({
   id,
@@ -48,12 +34,9 @@ const formRow = (id: number, title: string): FormRow => ({
 });
 
 const respondWith = (counted: Map<number, number>) => (formIds: number[]) =>
-  Promise.resolve({
-    data: formIds.map((formId) => ({
-      formId,
-      count: counted.get(formId) ?? 0,
-    })),
-  });
+  Promise.resolve(
+    formIds.map((formId) => ({ formId, count: counted.get(formId) ?? 0 })),
+  );
 
 function mountCounts(formIds: number[]) {
   const client = new QueryClient({
@@ -65,6 +48,21 @@ function mountCounts(formIds: number[]) {
   });
   return { state: () => view.result.current, client };
 }
+
+serveApi(
+  routes({
+    "POST /tasks/responses/counts": async ({ request }) => {
+      const { formIds } = (await request.json()) as { formIds: number[] };
+      batches.push(formIds);
+      return Response.json(await respond(formIds));
+    },
+    "GET /tasks/listForms": () => {
+      listCalls++;
+      return Response.json(listed);
+    },
+    "DELETE /tasks/:id": () => new Response(null, { status: 204 }),
+  }),
+);
 
 beforeEach(() => {
   batches = [];
@@ -116,7 +114,7 @@ test("keeps counts unknown rather than zero while a batch is in flight", async (
   let release!: (rows: CountRow[]) => void;
   respond = () =>
     new Promise((resolve) => {
-      release = (rows) => resolve({ data: rows });
+      release = resolve;
     });
 
   const { state } = mountCounts([1, 2]);

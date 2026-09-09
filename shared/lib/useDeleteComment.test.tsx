@@ -1,17 +1,13 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { CommentDto } from "@alliance/shared/client";
 import { act, cleanup, renderHook } from "@testing-library/react";
-import { client } from "../client/client.gen";
-import * as realSdk from "../client/sdk.gen";
 import { registerAnalytics, type AnalyticsBackend } from "./analytics";
+import { routes, serveApi } from "./testing/serveApi";
+import { useDeleteComment } from "./useDeleteComment";
 
 let unreachable = false;
 let refused: { statusCode: number; message: string } | null = null;
 const deleted: number[] = [];
-// While set, the call goes to the generated client rather than the canned
-// answer below, which is the only way to see how a refusal really arrives.
-let throughRealClient = false;
-const clientConfig = client.getConfig();
 
 const reported: {
   event: unknown;
@@ -33,27 +29,18 @@ const recorder: AnalyticsBackend = {
   },
 };
 
-jest.mock("@alliance/shared/client", () => {
-  // Read before the mock takes the name over, or real(options) lands back in
-  // here.
-  const real = realSdk.forumDeleteComment;
-  return {
-    forumDeleteComment: async (options: Parameters<typeof real>[0]) => {
-      if (throughRealClient) return real(options);
+const api = serveApi(
+  routes({
+    "DELETE /forum/comments/:id": ({ params }) => {
       if (unreachable) throw new TypeError("Failed to fetch");
       if (refused) {
-        return {
-          error: refused,
-          response: new Response(null, { status: refused.statusCode }),
-        };
+        return Response.json(refused, { status: refused.statusCode });
       }
-      deleted.push(options.path.id);
-      return {};
+      deleted.push(Number(params.id));
+      return new Response(null, { status: 204 });
     },
-  };
-});
-
-import { useDeleteComment } from "./useDeleteComment";
+  }),
+);
 
 beforeEach(() => {
   registerAnalytics(recorder);
@@ -64,8 +51,6 @@ afterEach(() => {
   unreachable = false;
   refused = null;
   deleted.length = 0;
-  throughRealClient = false;
-  client.setConfig({ ...clientConfig, fetch: undefined, throwOnError: false });
   cleanup();
 });
 
@@ -282,20 +267,14 @@ it("keeps the server's own fault out of the reader's message", async () => {
   expect(result.current.deleteErrorFor(5)).toBe("Failed to delete reply");
 });
 
-// Mobile configures the client like this. Throwing hands the hook a rejection
-// with no response, and so no status or reason to read.
+// The hook's own throwOnError: false overrides mobile's config, so it still has
+// a response to read the status and the reason off.
 it("reads a refusal the client is configured to throw", async () => {
-  throughRealClient = true;
-  client.setConfig({
-    baseUrl: "https://comments.test",
-    throwOnError: true,
-    fetch: async () =>
-      new Response(
-        JSON.stringify({
-          statusCode: 404,
-          message: "You can only delete your own replies",
-        }),
-        { status: 404, headers: { "Content-Type": "application/json" } },
+  api.throwingOnRefusal({
+    "DELETE /forum/comments/:id": () =>
+      Response.json(
+        { statusCode: 404, message: "You can only delete your own replies" },
+        { status: 404 },
       ),
   });
 

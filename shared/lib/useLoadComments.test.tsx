@@ -1,9 +1,9 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { CommentDto, CommentParentObject } from "../client";
-import { client } from "../client/client.gen";
-import * as realSdk from "../client/sdk.gen";
 import { registerAnalytics, type AnalyticsBackend } from "./analytics";
+import { routes, serveApi, type RouteHandler } from "./testing/serveApi";
+import { useLoadComments } from "./useLoadComments";
 
 const requests: { endpoint: string; id: string }[] = [];
 // A null thread stands for a request the server refused, answered with the
@@ -18,33 +18,11 @@ let unreachable = false;
 // While set, a request parks its resolver here instead of answering, so a test
 // can land two of them out of order.
 let inFlight: ((thread: CommentDto[] | null) => void)[] | null = null;
-// While set, the call goes to the generated client rather than the canned
-// answer below, which is the only way to see how a refusal really arrives.
-let throughRealClient = false;
-const clientConfig = client.getConfig();
-
-const record =
-  <O extends { path: { id: string } }, T>(
-    endpoint: string,
-    real: (options: O) => T,
-  ) =>
-  async (options: O) => {
-    if (throughRealClient) return real(options);
-    requests.push({ endpoint, id: options.path.id });
-    if (unreachable) throw new TypeError("Failed to fetch");
-    const thread = inFlight
-      ? await new Promise<CommentDto[] | null>((resolve) =>
-          inFlight?.push(resolve),
-        )
-      : served;
-    if (!thread) {
-      return {
-        error: refusal.body,
-        response: new Response(null, { status: refusal.status }),
-      };
-    }
-    return { data: thread };
-  };
+const THREAD_ROUTE: Record<CommentParentObject, string> = {
+  post: "GET /forum/posts/:id/comments",
+  activity: "GET /forum/activity/:id/comments",
+  action: "GET /forum/actions/:id/comments",
+};
 
 const reported: {
   event: unknown;
@@ -65,20 +43,6 @@ const recorder: AnalyticsBackend = {
     });
   },
 };
-
-jest.mock("@alliance/shared/client", () => ({
-  forumFindCommentsForPost: record("post", realSdk.forumFindCommentsForPost),
-  forumFindCommentsForActivity: record(
-    "activity",
-    realSdk.forumFindCommentsForActivity,
-  ),
-  forumFindCommentsForAction: record(
-    "action",
-    realSdk.forumFindCommentsForAction,
-  ),
-}));
-
-import { useLoadComments } from "./useLoadComments";
 
 const comment = (id: number): CommentDto => ({
   id,
@@ -107,6 +71,29 @@ const comment = (id: number): CommentDto => ({
   editableContent: { body: "a comment", attachments: [] },
 });
 
+const answerThread =
+  (endpoint: CommentParentObject): RouteHandler =>
+  async ({ params }) => {
+    requests.push({ endpoint, id: params.id });
+    if (unreachable) throw new TypeError("Failed to fetch");
+    const thread = inFlight
+      ? await new Promise<CommentDto[] | null>((resolve) =>
+          inFlight?.push(resolve),
+        )
+      : served;
+    return thread
+      ? Response.json(thread)
+      : Response.json(refusal.body, { status: refusal.status });
+  };
+
+const api = serveApi(
+  routes({
+    [THREAD_ROUTE.post]: answerThread("post"),
+    [THREAD_ROUTE.activity]: answerThread("activity"),
+    [THREAD_ROUTE.action]: answerThread("action"),
+  }),
+);
+
 beforeEach(() => {
   registerAnalytics(recorder);
   reported.length = 0;
@@ -118,23 +105,15 @@ afterEach(() => {
   refusal = DEFAULT_REFUSAL;
   unreachable = false;
   inFlight = null;
-  throughRealClient = false;
-  client.setConfig({ ...clientConfig, fetch: undefined, throwOnError: false });
   cleanup();
 });
 
-const endpointFor: Record<CommentParentObject, string> = {
-  post: "post",
-  activity: "activity",
-  action: "action",
-};
-
-for (const type of Object.keys(endpointFor) as CommentParentObject[]) {
+for (const type of Object.keys(THREAD_ROUTE) as CommentParentObject[]) {
   it(`asks the ${type} endpoint for a ${type} thread`, async () => {
     renderHook(() => useLoadComments({ objectId: 7, type }));
 
     await waitFor(() => expect(requests).toHaveLength(1));
-    expect(requests).toEqual([{ endpoint: endpointFor[type], id: "7" }]);
+    expect(requests).toEqual([{ endpoint: type, id: "7" }]);
   });
 }
 
@@ -297,20 +276,14 @@ it("offers none where a second request would be refused the same way", async () 
   expect(result.current.canRetry).toBe(false);
 });
 
-// Mobile configures the client like this. Throwing hands the hook a body with
-// no response, and so no status to read.
+// The hook's own throwOnError: false overrides mobile's config, so it still has
+// a response to read the status off.
 it("reads a refusal the client is configured to throw", async () => {
-  throughRealClient = true;
-  client.setConfig({
-    baseUrl: "https://comments.test",
-    throwOnError: true,
-    fetch: async () =>
-      new Response(
-        JSON.stringify({ statusCode: 401, message: "Unauthorized" }),
-        {
-          status: 401,
-          headers: { "Content-Type": "application/json" },
-        },
+  api.throwingOnRefusal({
+    [THREAD_ROUTE.post]: () =>
+      Response.json(
+        { statusCode: 401, message: "Unauthorized" },
+        { status: 401 },
       ),
   });
   const logged = jest.spyOn(console, "error").mockImplementation(() => {});
