@@ -8,10 +8,14 @@ import {
   calculateAllCompletionData,
   calculateCompletionData,
   canCompleteAction,
+  canToggleLike,
   deadlineHasPassed,
   isCurrentlyCompletedAction,
+  isDiscussionClosed,
   shouldCompleteAction,
   showActionInSidebarList,
+  staffPreviewOffersTask,
+  taskFormIdToRender,
   withOptimisticDismissal,
   withOptimisticRelation,
 } from "./actionUtils";
@@ -125,6 +129,101 @@ describe("viewer-based action predicates", () => {
     expect(shouldCompleteAction(action)).toBe(true);
     // ...but the sidebar still drops it once the deadline passed.
     expect(showActionInSidebarList(action)).toBe(false);
+  });
+
+  it("lists a staff preview as a todo without calling it completable", () => {
+    const action = makeAction({
+      status: "draft",
+      viewer: makeViewer({
+        assigned: false,
+        canComplete: false,
+        memberActionStarted: false,
+        display: "not_required",
+        preview: true,
+      }),
+    });
+    expect(shouldCompleteAction(action)).toBe(true);
+    expect(showActionInSidebarList(action)).toBe(true);
+    expect(deadlineHasPassed(action)).toBe(false);
+    expect(canCompleteAction(action)).toBe(false);
+    expect(isCurrentlyCompletedAction(action)).toBe(false);
+  });
+
+  it("stops listing a preview the viewer already acted on", () => {
+    const previewed = (overrides: Parameters<typeof makeViewer>[0]) =>
+      makeAction({
+        status: "draft",
+        viewer: makeViewer({
+          assigned: false,
+          canComplete: false,
+          memberActionStarted: false,
+          display: "not_required",
+          preview: true,
+          ...overrides,
+        }),
+      });
+
+    expect(shouldCompleteAction(previewed({ relation: "completed" }))).toBe(
+      false,
+    );
+    expect(shouldCompleteAction(previewed({ relation: "withdrawn" }))).toBe(
+      false,
+    );
+    expect(shouldCompleteAction(previewed({ dismissed: true }))).toBe(false);
+    expect(staffPreviewOffersTask(previewed({ relation: "completed" }))).toBe(
+      false,
+    );
+    expect(staffPreviewOffersTask(previewed({}))).toBe(true);
+  });
+
+  it("closes the discussion only where the server says so", () => {
+    expect(
+      isDiscussionClosed(
+        makeAction({
+          viewer: makeViewer({ preview: true, discussionClosed: true }),
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      isDiscussionClosed(makeAction({ viewer: makeViewer({ preview: true }) })),
+    ).toBe(false);
+    expect(isDiscussionClosed(makeLegacyAction())).toBe(false);
+  });
+
+  it("keeps the like a closed discussion already holds, offering no new one", () => {
+    expect(canToggleLike({ discussionClosed: true, liked: true })).toBe(true);
+    expect(canToggleLike({ discussionClosed: true, liked: false })).toBe(false);
+    expect(canToggleLike({ discussionClosed: false, liked: false })).toBe(true);
+  });
+
+  it("fills the task panel with the form for a funding action, previewing", () => {
+    const funding = (preview: boolean) =>
+      makeAction({
+        type: "Funding",
+        taskFormId: 4,
+        viewer: makeViewer({ preview }),
+      });
+
+    expect(taskFormIdToRender(funding(true))).toBe(4);
+    expect(taskFormIdToRender(funding(false))).toBeUndefined();
+    expect(taskFormIdToRender(makeAction({ taskFormId: 4 }))).toBe(4);
+    expect(
+      taskFormIdToRender(
+        makeAction({ type: "Funding", viewer: makeViewer({ preview: true }) }),
+      ),
+    ).toBeUndefined();
+  });
+
+  it("leaves an ongoing action its own panel, previewing or not", () => {
+    const ongoing = (preview: boolean) =>
+      makeAction({
+        type: "Ongoing",
+        taskFormId: 4,
+        viewer: makeViewer({ preview }),
+      });
+
+    expect(taskFormIdToRender(ongoing(true))).toBeUndefined();
+    expect(taskFormIdToRender(ongoing(false))).toBeUndefined();
   });
 
   it("matches the legacy fallback on dismissal semantics", () => {

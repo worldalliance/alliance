@@ -5,6 +5,7 @@ import {
   actionsLikeActivity,
   actionsUnlikeActivity,
 } from "@alliance/shared/client";
+import { canToggleLike } from "@alliance/shared/lib/actionUtils";
 import {
   InfiniteActivityData,
   mapInfiniteActivities,
@@ -304,7 +305,14 @@ export default function ActivityDetailScreen() {
               liked={activity.likedByMe ?? false}
               likesCount={activity.likesCount}
               likers={activity.likes}
-              onLike={handleLike}
+              onLike={
+                canToggleLike({
+                  discussionClosed: activity.discussionClosed,
+                  liked: activity.likedByMe ?? false,
+                })
+                  ? handleLike
+                  : undefined
+              }
               align="right"
             />
           </View>
@@ -312,7 +320,11 @@ export default function ActivityDetailScreen() {
           <Text className="text-zinc-900 mb-3" weight={FontWeight.Medium}>
             Comments
           </Text>
-          <Comments objectId={activity.id} type="activity" />
+          <Comments
+            objectId={activity.id}
+            type="activity"
+            discussionClosed={activity.discussionClosed}
+          />
         </View>
       </ScrollView>
     </KeyboardStickyView>

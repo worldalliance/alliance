@@ -1,5 +1,9 @@
 import { ActionDto, ActionEventDto, type TaskAwayStatus } from "../client";
-import { ActionWithAwayStatus, deadlineHasPassed } from "./actionUtils";
+import {
+  ActionWithAwayStatus,
+  deadlineHasPassed,
+  isStaffPreview,
+} from "./actionUtils";
 import { taskHeaders } from "./copy";
 
 export interface LargeActionCardPropsShared {
@@ -8,7 +12,8 @@ export interface LargeActionCardPropsShared {
   dismissProps?: {
     header: string;
     message: string;
-    onDismiss: () => void;
+    /** Omitted when the banner is informational only, as on a staff preview. */
+    onDismiss?: () => void;
   };
 }
 
@@ -21,12 +26,15 @@ const AWAY_STATUS_MESSAGES = {
 /**
  * Pure data computation — returns the banner header/message for a task that can
  * be dismissed (away, deadline passed, or optional).  The caller is responsible
- * for attaching the `onDismiss` callback before passing to a component.
+ * for attaching the `onDismiss` callback before passing to a component, and
+ * only when `canDismiss`.
  */
 export function getTaskDismissInfo(
   action: ActionWithAwayStatus,
-): { header: string; message: string } | undefined {
+): { header: string; message: string; canDismiss: boolean } | undefined {
   if (action.onboarding) return undefined;
+
+  const canDismiss = !isStaffPreview(action);
 
   // Viewer-first with the legacy flat-field fallback (see the note in
   // actionUtils.ts). Both carry the same 4-valued TaskAwayStatus.
@@ -38,6 +46,7 @@ export function getTaskDismissInfo(
       return {
         header: taskHeaders.homePage.away.title,
         message: AWAY_STATUS_MESSAGES[away],
+        canDismiss,
       };
     case "not_away":
       break;
@@ -50,6 +59,7 @@ export function getTaskDismissInfo(
     return {
       header: taskHeaders.homePage.deadline.title,
       message: taskHeaders.homePage.deadline.description,
+      canDismiss,
     };
   }
 
@@ -57,6 +67,7 @@ export function getTaskDismissInfo(
     return {
       header: taskHeaders.homePage.optional.title,
       message: taskHeaders.homePage.optional.description,
+      canDismiss,
     };
   }
 

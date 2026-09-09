@@ -15,8 +15,10 @@ import {
 import { UserActionRelationPillStatus } from "../user/dto/user-action-relations.dto";
 import { findLatestTerminalActivity } from "./action-activity-status";
 import type { ActionActivity } from "./entities/action-activity.entity";
+import { ActionEvent, ActionStatus } from "./entities/action-event.entity";
 import type { Action } from "./entities/action.entity";
 import { resolveUserActionPillStatus } from "./user-action-pill-status";
+import { actionStatusAt } from "./utils/action-event";
 
 /**
  * The viewer's full status on one action — the single composition point for
@@ -78,6 +80,18 @@ export type UserActionStatus = {
    * leader/admin member tables show as pills).
    */
   display: UserActionRelationPillStatus;
+  /**
+   * Is the viewer someone {@link canSeeStaffPreview} lets in, seeing this
+   * action before it opens? Every other field still describes the action as it
+   * really is, unstarted and not completable.
+   */
+  preview: boolean;
+  /**
+   * Is the action's discussion shut to the viewer, so no comment and no like?
+   * A preview shuts it only where members cannot read the action at all. On
+   * one they can, it leaves the thread as it found it.
+   */
+  discussionClosed: boolean;
 };
 
 export enum ViewerActionRelation {
@@ -91,6 +105,93 @@ export type UserActionWithdrawal = {
   /** Free-text reason; required for `moral`/`other`, absent for `out_of_time`. */
   note: string | null;
 };
+
+/** The line `userCanSeeAction` turns members away on, as of `at`. */
+export function actionHiddenFromMembers(
+  action: Pick<Action, "archived" | "events">,
+  at: Date,
+): boolean {
+  return (
+    actionStatusAt(action.events, at) === ActionStatus.Draft || action.archived
+  );
+}
+
+const launchHasHappenedIn = {
+  [ActionStatus.Draft]: false,
+  [ActionStatus.Planned]: false,
+  [ActionStatus.OfficeAction]: false,
+  [ActionStatus.MemberAction]: true,
+  [ActionStatus.Resolution]: true,
+  [ActionStatus.Completed]: true,
+  [ActionStatus.Failed]: true,
+  [ActionStatus.Abandoned]: true,
+} as const satisfies Record<ActionStatus, boolean>;
+
+/**
+ * Has the launch a preview previews already happened, as of `at`? Reading the
+ * status as well as the member-action event covers an action that reaches a
+ * later status without one, which a preview would otherwise run on for good,
+ * since nothing else lowers the flag. The event still counts on its own, so an
+ * action that opened and was then walked back to an earlier status stays spent
+ * rather than re-arming.
+ */
+export function memberActionHasOpened(
+  events: Pick<ActionEvent, "date" | "newStatus">[] | undefined,
+  at: Date,
+): boolean {
+  if (!events) {
+    throw new Error("memberActionHasOpened needs the events relation loaded");
+  }
+  return (
+    hasMemberActionStarted(events, at) ||
+    launchHasHappenedIn[actionStatusAt(events, at)]
+  );
+}
+
+/**
+ * A preview runs until the launch it previews, and archiving retires it early:
+ * an abandoned one would otherwise sit on its viewers' home pages for good,
+ * since only a launch clears the flag. What members can already read of the
+ * action in the meantime — a planned one sits on the actions list — is
+ * untouched: the flag only ever adds a viewer.
+ */
+export function isStaffPreviewActive(
+  action: Pick<Action, "archived" | "events" | "staffPreview">,
+  now: Date,
+): boolean {
+  // Ordered before the flag check, so a caller that skipped the events relation
+  // fails on every action rather than on the day someone arms a preview.
+  return (
+    !memberActionHasOpened(action.events, now) &&
+    action.staffPreview &&
+    !action.archived
+  );
+}
+
+/**
+ * Is this viewer one a preview is up for? Admins are, as well as staff: they
+ * keep every admin-facing view through `userCanSeeAction`, which answers them
+ * before this rule.
+ */
+export function canSeeStaffPreview(
+  user: Pick<User, "admin" | "staff"> | null,
+): boolean {
+  return !!user && (user.admin || user.staff);
+}
+
+/**
+ * Is a preview up, and is this the viewer it is up for? The single spelling of
+ * the pair, so no caller writes half of it, and every caller inherits the
+ * ordering {@link isStaffPreviewActive} needs.
+ */
+export function isStaffPreviewFor(params: {
+  action: Pick<Action, "archived" | "events" | "staffPreview">;
+  user: Pick<User, "admin" | "staff"> | null;
+  now: Date;
+}): boolean {
+  const { action, user, now } = params;
+  return isStaffPreviewActive(action, now) && canSeeStaffPreview(user);
+}
 
 /**
  * Completion-permission rule — the pure core of
@@ -106,14 +207,22 @@ export type UserActionWithdrawal = {
 export function computeCanCompleteAction(params: {
   action: Pick<
     Action,
-    "preventCompletion" | "onboarding" | "memberActionPhase"
+    | "archived"
+    | "preventCompletion"
+    | "onboarding"
+    | "memberActionPhase"
+    | "staffPreview"
+    | "events"
   >;
-  user: Pick<User, "contractEvents">;
+  user: Pick<User, "admin" | "contractEvents" | "staff">;
   inCohort: boolean;
+  now: Date;
 }): boolean {
-  const { action, user, inCohort } = params;
+  const { action, user, inCohort, now } = params;
 
-  if (action.preventCompletion) {
+  // The same line `StaffPreviewService.assertWritable` draws, so the wire field
+  // and the refusal behind it agree on who is turned away.
+  if (action.preventCompletion || isStaffPreviewFor({ action, user, now })) {
     return false;
   }
   if (!inCohort) {
@@ -142,18 +251,22 @@ export function computeCanCompleteAction(params: {
 export function resolveUserActionStatus(params: {
   action: Pick<
     Action,
+    | "archived"
     | "events"
     | "memberActionPhase"
     | "onboarding"
     | "optional"
     | "preventCompletion"
+    | "staffPreview"
   >;
   user: Pick<
     User,
+    | "admin"
     | "contractEvents"
     | "hasActiveContractInFullRange"
     | "awayRanges"
     | "isAwayAtAnyPointInRange"
+    | "staff"
   >;
   inCohort: boolean;
   activities: Pick<
@@ -218,10 +331,11 @@ export function resolveUserActionStatus(params: {
 
   const deadlineAt = action.memberActionPhase.deadlineEvent?.date ?? null;
   const deadlinePassed = !!deadlineAt && deadlineAt <= now;
+  const preview = isStaffPreviewFor({ action, user, now });
 
   return {
     assigned,
-    canComplete: computeCanCompleteAction({ action, user, inCohort }),
+    canComplete: computeCanCompleteAction({ action, user, inCohort, now }),
     relation,
     withdrawal,
     dismissed,
@@ -236,5 +350,7 @@ export function resolveUserActionStatus(params: {
       deadlinePassed,
       activityStatus,
     }),
+    preview,
+    discussionClosed: preview && actionHiddenFromMembers(action, now),
   };
 }

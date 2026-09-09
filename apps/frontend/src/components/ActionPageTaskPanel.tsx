@@ -12,6 +12,7 @@ import {
   useGuestTaskForm,
   useTaskForm,
 } from "@alliance/shared/lib/actionTaskPanelCompleted";
+import { isStaffPreview } from "@alliance/shared/lib/actionUtils";
 import {
   clipboardCopy,
   guestReferral,
@@ -71,6 +72,16 @@ const taskPanelHeaderByState: Record<
   ActionPageTaskPanelState,
   React.ReactNode
 > = {
+  [ActionPageTaskPanelState.StaffPreview]: (
+    <div>
+      <p className="font-medium text-amber-600">
+        {taskHeaders.actionPage.staffPreview.title}
+      </p>
+      <p className="text-zinc-500">
+        {taskHeaders.actionPage.staffPreview.description}
+      </p>
+    </div>
+  ),
   [ActionPageTaskPanelState.PublicOnlyAuthenticated]: (
     <p>{taskHeaders.actionPage.externalOnly}</p>
   ),
@@ -209,7 +220,7 @@ const ActionPageTaskPanel = () => {
         <CheckIcon size={24} />
         <p>{taskHeaders.actionPage.completed}</p>
       </div>
-      {isAuthenticated && (
+      {isAuthenticated && !isStaffPreview(action) && (
         <ShareButton
           onClick={handleShareCopy}
           icon={Link2}
@@ -368,6 +379,7 @@ const ActionPageTaskPanel = () => {
           missedDeadline
         />,
       );
+    case ActionPageTaskPanelState.StaffPreview:
     case ActionPageTaskPanelState.Optional:
     case ActionPageTaskPanelState.ShowTask:
       return renderStackedCard(

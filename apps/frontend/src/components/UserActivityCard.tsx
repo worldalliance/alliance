@@ -4,6 +4,7 @@ import {
 } from "@alliance/common/actionActivity";
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import { FeedActionActivityDto } from "@alliance/shared/lib/actionActivity";
+import { canToggleLike } from "@alliance/shared/lib/actionUtils";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import OutputRenderer from "@alliance/sharedweb/forms/OutputRenderer";
@@ -104,9 +105,16 @@ const UserActivityCard = ({ activity, handleLike }: UserActivityCardProps) => {
             liked={activity.likedByMe ?? false}
             likesCount={activity.likesCount}
             likers={activity.likes}
-            onLike={() => handleLike(activity.id)}
+            onLike={
+              canToggleLike({
+                discussionClosed: activity.discussionClosed,
+                liked: activity.likedByMe ?? false,
+              })
+                ? () => handleLike(activity.id)
+                : undefined
+            }
           >
-            {commentable && (
+            {commentable && !activity.discussionClosed && (
               <LikeBarButton
                 icon={MessageCircle}
                 label="Comment"
@@ -128,6 +136,7 @@ const UserActivityCard = ({ activity, handleLike }: UserActivityCardProps) => {
           showForm={showCommentForm}
           autofocus={showCommentForm}
           showUserBadges={false}
+          discussionClosed={activity.discussionClosed}
         />
       )}
     </div>

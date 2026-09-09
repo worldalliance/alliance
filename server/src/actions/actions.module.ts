@@ -48,9 +48,11 @@ import { GeneralUpdate } from "./entities/general-update.entity";
 import { ReminderGroup } from "./entities/reminder-group.entity";
 import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
 import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
+import { StaffPreviewModule } from "./staff-preview.module";
 
 @Module({
   imports: [
+    StaffPreviewModule,
     TypeOrmModule.forFeature([
       User,
       Action,

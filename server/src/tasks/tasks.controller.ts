@@ -360,6 +360,7 @@ export class TasksController {
         },
         body.partialFormData,
       ),
+      { discussionClosed: false },
     );
   }
 

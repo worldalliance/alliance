@@ -2,6 +2,8 @@ import {
   ActionItemCardPropsShared,
   showCompletedBar,
 } from "@alliance/shared/lib/actionItemCard";
+import { isStaffPreview } from "@alliance/shared/lib/actionUtils";
+import { taskHeaders } from "@alliance/shared/lib/copy";
 import { Check } from "lucide-react-native";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -21,6 +23,16 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
     <TouchableOpacity onPress={onPress} className="p-4" activeOpacity={0.7}>
       <View className="flex-row items-start justify-between gap-x-2">
         <View className="flex-1">
+          {isStaffPreview(action) && (
+            <View className="self-start mb-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5">
+              <Text
+                className="text-xs text-amber-700"
+                weight={FontWeight.Medium}
+              >
+                {taskHeaders.homePage.staffPreview.title}
+              </Text>
+            </View>
+          )}
           <View className="flex-row items-start gap-x-2 mb-1">
             <Text
               className="text-black flex-1"

@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { Action } from "src/actions/entities/action.entity";
+import { StaffPreviewService } from "src/actions/staff-preview.service";
 import { AiDetectionQueueService } from "src/ai-detection/ai-detection-queue.service";
 import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.entity";
 import { EventType } from "src/eventlog/event-log.entity";
@@ -89,6 +90,7 @@ export class ForumService {
     private readonly mailService: MailService,
     private readonly mmsService: MmsService,
     private readonly facepileService: FacepileService,
+    private readonly staffPreviewService: StaffPreviewService,
   ) {}
 
   async createPost(
@@ -660,6 +662,12 @@ export class ForumService {
     createCommentDto: CreateCommentDto,
     userId: number,
   ): Promise<Comment> {
+    await this.staffPreviewService.assertWritableForComment({
+      parentObjectType: createCommentDto.parentObjectType,
+      parentObjectId: createCommentDto.parentObjectId,
+      userId,
+    });
+
     // Validate parent reply if provided
     let parentReply: Comment | null = null;
     if (createCommentDto.parentId) {
@@ -924,6 +932,14 @@ export class ForumService {
 
     if (!object) {
       throw new NotFoundException(`${type} with ID "${id}" not found`);
+    }
+
+    if (object instanceof Comment && !unlike) {
+      await this.staffPreviewService.assertWritableForComment({
+        parentObjectType: object.parentObjectType,
+        parentObjectId: object.parentObjectId,
+        userId,
+      });
     }
 
     const user = await this.userRepository.findOneOrFail({

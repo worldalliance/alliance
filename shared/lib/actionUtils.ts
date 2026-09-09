@@ -140,6 +140,59 @@ export function getDeadlineTimestamp(
   return new Date(nextEvent.date).getTime();
 }
 
+export function isStaffPreview(action: Pick<ActionDto, "viewer">): boolean {
+  return action.viewer?.preview ?? false;
+}
+
+/**
+ * A preview offers the task only while the viewer has done nothing with the
+ * action. What they already did outranks it.
+ */
+export function staffPreviewOffersTask(
+  action: Pick<ActionDto, "viewer">,
+): boolean {
+  return isStaffPreview(action) && action.viewer?.relation === "none";
+}
+
+export function isDiscussionClosed(action: Pick<ActionDto, "viewer">): boolean {
+  return action.viewer?.discussionClosed ?? false;
+}
+
+/**
+ * A closed discussion refuses a new like and takes back one already there, so
+ * the button stays rather than going away.
+ */
+export function canToggleLike(params: {
+  discussionClosed: boolean;
+  liked: boolean;
+}): boolean {
+  return !params.discussionClosed || params.liked;
+}
+
+/**
+ * A preview answers for a funding action too: the only other branch that would
+ * render one is the draft fallback, which leaves a previewed planned action
+ * with no panel at all. An ongoing action keeps its own mark-complete panel,
+ * which is what its members get.
+ */
+const rendersTaskForm = {
+  Activity: { previewed: true, live: true },
+  Funding: { previewed: true, live: false },
+  Ongoing: { previewed: false, live: false },
+} as const satisfies Record<
+  ActionDto["type"],
+  { previewed: boolean; live: boolean }
+>;
+
+export function taskFormIdToRender(
+  action: Pick<ActionDto, "taskFormId" | "type" | "viewer">,
+): number | undefined {
+  const renders = rendersTaskForm[action.type];
+  return (isStaffPreview(action) ? renders.previewed : renders.live)
+    ? action.taskFormId
+    : undefined;
+}
+
 // Each predicate below reads the server-computed `action.viewer` status when
 // present and falls back to the legacy flat fields + events date math when
 // not: guest payloads (`viewer` is only sent to authenticated users),
@@ -167,6 +220,11 @@ export function canCompleteAction(action: ActionDto): boolean {
 }
 
 export function shouldCompleteAction(action: ActionDto): boolean {
+  // The rest of `viewer` describes the unstarted action, so the flag alone lists
+  // it, and only until the viewer acts on it.
+  if (action.viewer?.preview) {
+    return action.viewer.relation === "none" && !action.viewer.dismissed;
+  }
   if (
     !canCompleteAction(action) ||
     action.publicOnly ||

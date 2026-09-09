@@ -306,6 +306,12 @@ export class UserActionStatusDto {
   })
   display: UserActionRelationPillStatus;
 
+  @ApiProperty()
+  preview: boolean;
+
+  @ApiProperty()
+  discussionClosed: boolean;
+
   constructor(input: UserActionStatus) {
     this.assigned = input.assigned;
     this.canComplete = input.canComplete;
@@ -319,6 +325,8 @@ export class UserActionStatusDto {
     this.deadlineAt = input.deadlineAt;
     this.deadlinePassed = input.deadlinePassed;
     this.display = input.display;
+    this.preview = input.preview;
+    this.discussionClosed = input.discussionClosed;
   }
 }
 
@@ -399,6 +407,7 @@ export class ActionDto extends PickType(Action, [
   "optional",
   "preventCompletion",
   "publicOnly",
+  "staffPreview",
   "shouldCompleteAfterDeadline",
   "isForumParticipationAction",
   "forumParticipationPostId",
@@ -490,6 +499,7 @@ export class ActionDto extends PickType(Action, [
     this.optional = action.optional;
     this.preventCompletion = action.preventCompletion;
     this.publicOnly = action.publicOnly;
+    this.staffPreview = action.staffPreview;
     this.shouldCompleteAfterDeadline = action.shouldCompleteAfterDeadline;
     this.isForumParticipationAction = action.isForumParticipationAction;
     this.forumParticipationPostId = action.forumParticipationPostId;
@@ -589,6 +599,7 @@ export class CreateActionDto extends IntersectionType(
     "optional",
     "preventCompletion",
     "publicOnly",
+    "staffPreview",
     "shouldCompleteAfterDeadline",
     "isForumParticipationAction",
     "forumParticipationPostId",
@@ -750,14 +761,23 @@ export class ActionActivityDto extends PickType(ActionActivity, [
   @Allow()
   editableContent: EditableContentDto;
 
+  @ApiProperty({
+    description:
+      "The viewer may not comment on this activity or like it, because a staff preview is holding its action back from members.",
+  })
+  @Allow()
+  discussionClosed: boolean;
+
   constructor(
     actionActivity: ActionActivity,
-    extra?: {
+    extra: {
       comments?: Comment[];
       formResponseOutput?: ParsedFormResponse;
       likedByMe?: boolean;
       requestingUserId?: number;
       facepile?: User[];
+      /** Required, so a new read path answers rather than defaulting open. */
+      discussionClosed: boolean;
     },
   ) {
     super();
@@ -768,28 +788,46 @@ export class ActionActivityDto extends PickType(ActionActivity, [
     this.likesCount = actionActivity.likesCount;
     this.actionName = actionActivity.action?.name;
     this.user = new ProfileDto(actionActivity.user);
-    const likers = extra?.facepile ?? actionActivity.likes;
+    const likers = extra.facepile ?? actionActivity.likes;
     if (likers !== undefined) {
       this.likes = likers
         .map((like) => new ProfileDto(like))
         .sort(byLikeOrder(actionActivity.id))
         .slice(0, LIKE_FACEPILE_LIMIT);
     }
-    this.likedByMe = extra?.likedByMe;
+    this.likedByMe = extra.likedByMe;
     this.comments =
-      extra?.comments?.map(
+      extra.comments?.map(
         (comment) =>
           new CommentDto(comment, {
-            requestingUserId: extra?.requestingUserId,
+            requestingUserId: extra.requestingUserId,
           }),
       ) ?? [];
-    this.formResponseOutput = extra?.formResponseOutput
+    this.formResponseOutput = extra.formResponseOutput
       ? new FormResponseOutputDto(extra.formResponseOutput)
       : undefined;
     this.editableContent = actionActivity.editableContent
       ? new EditableContentDto(actionActivity.editableContent)
       : { body: "", attachments: [], id: -1 };
+    this.discussionClosed = extra.discussionClosed;
   }
+}
+
+/**
+ * Goes to a room rather than to one viewer, so there is nobody for
+ * `discussionClosed` to answer for and it is left off.
+ */
+export type BroadcastActionActivityDto = Omit<
+  ActionActivityDto,
+  "discussionClosed"
+>;
+
+export function broadcastActionActivityDto(
+  activity: ActionActivity,
+): BroadcastActionActivityDto {
+  const { discussionClosed: _discussionClosed, ...broadcast } =
+    new ActionActivityDto(activity, { discussionClosed: false });
+  return broadcast;
 }
 
 export type UnwelcomedSignedContractMember = {

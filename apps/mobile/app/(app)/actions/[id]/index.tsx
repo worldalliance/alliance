@@ -7,6 +7,10 @@ import {
 } from "@alliance/shared/client";
 import { actionActivityDtoIsVisibleInFeed } from "@alliance/shared/lib/actionActivity";
 import { useActionHandlers } from "@alliance/shared/lib/actionPage";
+import {
+  isDiscussionClosed,
+  isStaffPreview,
+} from "@alliance/shared/lib/actionUtils";
 import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
 import { nameListSeparator } from "@alliance/shared/lib/nameList";
 import { cn } from "@alliance/shared/styles/util";
@@ -276,7 +280,7 @@ export default function ActionDetailScreen() {
       case "task":
         return (
           <View>
-            {action.status !== "planned" ? (
+            {action.status !== "planned" || isStaffPreview(action) ? (
               <View>
                 <View className="mb-4 flex flex-col gap-1 w-full">
                   <Text
@@ -323,7 +327,13 @@ export default function ActionDetailScreen() {
         );
 
       case "comments":
-        return <Comments objectId={action.id} type="action" />;
+        return (
+          <Comments
+            objectId={action.id}
+            type="action"
+            discussionClosed={isDiscussionClosed(action)}
+          />
+        );
 
       default:
         return null;

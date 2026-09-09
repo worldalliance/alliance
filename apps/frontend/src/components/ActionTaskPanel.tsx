@@ -9,7 +9,12 @@ import {
   ActionTaskPanelPropsShared,
   useTaskFormHandlers,
 } from "@alliance/shared/lib/actionTaskPanel";
-import { canCompleteAction } from "@alliance/shared/lib/actionUtils";
+import {
+  canCompleteAction,
+  isStaffPreview,
+  staffPreviewOffersTask,
+  taskFormIdToRender,
+} from "@alliance/shared/lib/actionUtils";
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import { useCallback, useMemo, type RefObject } from "react";
@@ -45,6 +50,8 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
   staticTaskFormSchema,
   staticTaskInitialPageIndex,
 }: ActionTaskPanelProps) => {
+  const preview = isStaffPreview(action);
+
   const handleCompleteAction = useCallback(async () => {
     const didSucceed = await onCompleteAction();
     if (didSucceed === false) {
@@ -58,8 +65,9 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
       actionId: action.id,
       actionType: action.type,
       actionName: action.name,
+      preview,
     });
-  }, [action]);
+  }, [action, preview]);
 
   const { handleCompleteWithTracking, actionError, handleAbandonAction } =
     useTaskFormHandlers({
@@ -70,9 +78,8 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
     });
 
   // Contract signing actions cannot be withdrawn from.
-  const onAbandonAction = action.isContractSigningAction
-    ? undefined
-    : handleAbandonAction;
+  const onAbandonAction =
+    action.isContractSigningAction || preview ? undefined : handleAbandonAction;
 
   const handleStaticSubmit = useCallback(
     async (_data: SubmitFormDto): Promise<boolean> => {
@@ -110,6 +117,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
   }
 
   const canSubmit = canCompleteAction(action) || forceRenderTask;
+  const panelTaskFormId = taskFormIdToRender(action);
 
   let completionElement = null;
   if (staticTaskFormSchema) {
@@ -127,12 +135,14 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
       />
     );
   }
-  if (!completionElement && action.type === "Activity" && action.taskFormId) {
+  if (!completionElement && panelTaskFormId !== undefined) {
     completionElement = (
       <ActionTaskPanelForm
         publicAction={action.publicOnly || guestMode}
-        taskFormId={action.taskFormId}
-        onCompleteAction={canSubmit ? handleCompleteWithTracking : null}
+        taskFormId={panelTaskFormId}
+        onCompleteAction={
+          canSubmit && !preview ? handleCompleteWithTracking : null
+        }
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
         card={card}
@@ -140,7 +150,8 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
         redirectOnComplete={redirectOnComplete}
         onSubmitted={onFormSubmitted}
         scrollContainerRef={scrollContainerRef}
-        disabled={disabled || !canSubmit}
+        disabled={!preview && (disabled || !canSubmit)}
+        previewMode={preview}
       />
     );
   }
@@ -150,13 +161,14 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
   if (
     !completionElement &&
     action.type === "Ongoing" &&
-    (canSubmit || forceRenderTask)
+    (canSubmit || forceRenderTask || staffPreviewOffersTask(action))
   ) {
     completionElement = (
       <ActionTaskPanelActivity
         action={action}
         onCompleteAction={handleCompleteWithTracking}
-        disabled={disabled || !canSubmit}
+        disabled={!preview && (disabled || !canSubmit)}
+        previewMode={preview}
         createAccountHref={guestMode ? createAccountHref : undefined}
       />
     );

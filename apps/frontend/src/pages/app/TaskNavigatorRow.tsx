@@ -3,7 +3,10 @@ import {
   useCompletedTaskForm,
   useTaskForm,
 } from "@alliance/shared/lib/actionTaskPanelCompleted";
-import type { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
+import {
+  isStaffPreview,
+  type ActionWithAwayStatus,
+} from "@alliance/shared/lib/actionUtils";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
 import {
   buildActionShareUrl,
@@ -197,15 +200,17 @@ export function TaskNavigatorCompletedRow({
           {action.optional && "(Optional) "}
           {action.name}
         </Link>
-        <ShareButton
-          onClick={handleShare}
-          icon={Link2}
-          label={clipboardCopy.share}
-          copiedLabel={clipboardCopy.copiedToClipboard}
-          className="shrink-0 text-zinc-400 hover:text-zinc-600"
-          iconClassName="w-3 h-3"
-          labelClassName="text-xs"
-        />
+        {!isStaffPreview(action) && (
+          <ShareButton
+            onClick={handleShare}
+            icon={Link2}
+            label={clipboardCopy.share}
+            copiedLabel={clipboardCopy.copiedToClipboard}
+            className="shrink-0 text-zinc-400 hover:text-zinc-600"
+            iconClassName="w-3 h-3"
+            labelClassName="text-xs"
+          />
+        )}
       </div>
       <TaskNavigatorFollowUpRows
         forms={followUpForms}

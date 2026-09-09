@@ -3,6 +3,7 @@ import {
   ActionTaskPanelPropsShared,
   useTaskFormHandlers,
 } from "@alliance/shared/lib/actionTaskPanel";
+import { isStaffPreview } from "@alliance/shared/lib/actionUtils";
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import { noop } from "@alliance/shared/lib/constants";
 import { useCallback } from "react";
@@ -31,18 +32,20 @@ const ActionTaskPanel = ({
       onOptOutAction,
     });
 
+  const preview = isStaffPreview(action);
+
   // Contract signing actions cannot be withdrawn from.
-  const onAbandonAction = action.isContractSigningAction
-    ? undefined
-    : handleAbandonAction;
+  const onAbandonAction =
+    action.isContractSigningAction || preview ? undefined : handleAbandonAction;
 
   const handleFormStarted = useCallback(() => {
     captureEvent(AnalyticsEvent.FormStarted, {
       actionId: action.id,
       actionType: action.type,
       actionName: action.name,
+      preview,
     });
-  }, [action]);
+  }, [action, preview]);
 
   if ((disabled || formResponse) && action.taskFormId !== undefined) {
     return (
@@ -67,12 +70,13 @@ const ActionTaskPanel = ({
         taskFormId={action.taskFormId}
         scrollPageTo={scrollPageTo}
         scrollToEnd={scrollToEnd}
-        onCompleteAction={handleCompleteWithTracking}
+        onCompleteAction={preview ? null : handleCompleteWithTracking}
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
         actionId={action.id}
         onSubmitSuccess={onSubmitSuccess}
         disabled={disabled}
+        previewMode={preview}
       />
     );
   }

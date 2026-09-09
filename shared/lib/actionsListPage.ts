@@ -1,6 +1,6 @@
 import { UseQueryResult, useQuery } from "@tanstack/react-query";
 import { ActionDto, actionsFindAllLoggedIn } from "../client";
-import { FilterMode } from "./actionUtils";
+import { FilterMode, isStaffPreview } from "./actionUtils";
 
 export const useActionsQuery = (options?: {
   refetchInterval?: number | false;
@@ -10,7 +10,10 @@ export const useActionsQuery = (options?: {
     queryFn: () =>
       actionsFindAllLoggedIn({ query: { sorted: true } }).then(
         (response) =>
-          response.data?.filter((action) => action.status !== "draft") ?? [],
+          response.data?.filter(
+            // The one draft its viewer is meant to see.
+            (action) => action.status !== "draft" || isStaffPreview(action),
+          ) ?? [],
       ),
     refetchInterval: options?.refetchInterval,
   });

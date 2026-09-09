@@ -24,6 +24,13 @@ export const taskHeaders = {
       description:
         "You are not required to complete the task, but can if you would like.",
     },
+    staffPreview: {
+      title: "Staff preview",
+      // The flag can be armed on an action members and the public already
+      // reach, so this cannot claim they can't see it.
+      description:
+        "This action isn't live yet. Nothing you complete here is recorded.",
+    },
     withdrew: "You withdrew from this action.",
   },
   homePage: {
@@ -46,6 +53,11 @@ export const taskHeaders = {
     optional: {
       title: "This action is optional.",
       description: "You can complete the task as usual or dismiss it.",
+    },
+    staffPreview: {
+      title: "Staff preview",
+      description:
+        "This action isn't live. It's on your list so you can see what members will get.",
     },
   },
 } as const;

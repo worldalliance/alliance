@@ -1,6 +1,7 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { UserActionRelation } from "@alliance/shared/client";
 import { mustSignContractFirst } from "@alliance/shared/lib/actionPageTaskPanel";
+import { isStaffPreview } from "@alliance/shared/lib/actionUtils";
 import { taskHeaders } from "@alliance/shared/lib/copy";
 import {
   getNextEvent,
@@ -102,17 +103,29 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
           className,
         )}
       >
+        {isStaffPreview(action) && (
+          <div className="mb-3 rounded-md border border-amber-300 bg-amber-50 p-4">
+            <p className="font-semibold text-amber-700">
+              {taskHeaders.homePage.staffPreview.title}
+            </p>
+            <p>{taskHeaders.homePage.staffPreview.description}</p>
+          </div>
+        )}
         {dismissProps && (
           <Card style={CardStyle.Alert} className="mb-3 border-none rounded-md">
             <p className="font-semibold">{dismissProps.header}</p>
-            <p className="mb-3">{dismissProps.message}</p>
-            <Button
-              color={ButtonColor.WhiteBorderless}
-              onClick={dismissProps.onDismiss}
-              className="w-full"
-            >
-              Dismiss
-            </Button>
+            <p className={dismissProps.onDismiss ? "mb-3" : undefined}>
+              {dismissProps.message}
+            </p>
+            {dismissProps.onDismiss && (
+              <Button
+                color={ButtonColor.WhiteBorderless}
+                onClick={dismissProps.onDismiss}
+                className="w-full"
+              >
+                Dismiss
+              </Button>
+            )}
           </Card>
         )}
         <div className="p-0 sm:p-2">
