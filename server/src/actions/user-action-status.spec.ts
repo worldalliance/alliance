@@ -88,6 +88,7 @@ describe("resolveUserActionStatus", () => {
     const status = resolve();
     expect(status).toEqual({
       assigned: true,
+      optional: false,
       canComplete: true,
       relation: ViewerActionRelation.None,
       withdrawal: null,
@@ -248,6 +249,7 @@ describe("resolveUserActionStatus", () => {
         }),
       }),
     });
+    expect(status.optional).toBe(true);
     expect(status.display).toBe(UserActionRelationPillStatus.OptionalTask);
   });
 

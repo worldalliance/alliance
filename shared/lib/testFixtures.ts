@@ -12,6 +12,7 @@ export function makeViewer(
 ): UserActionStatusDto {
   return {
     assigned: true,
+    optional: false,
     canComplete: true,
     relation: "none",
     dismissed: false,

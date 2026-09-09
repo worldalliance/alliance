@@ -44,6 +44,11 @@ export type UserActionStatus = {
    */
   assigned: boolean;
   /**
+   * Is this action optional for the viewer? Viewer-facing copy reads this
+   * rather than `Action.optional`, which describes the action and its cohort.
+   */
+  optional: boolean;
+  /**
    * May the viewer complete this action? Deliberately looser than `assigned`:
    * members without an active contract may still complete regular actions —
    * they're just not expected to (no home-page listing, no reminders, no
@@ -221,6 +226,7 @@ export function resolveUserActionStatus(params: {
 
   return {
     assigned,
+    optional: action.optional,
     canComplete: computeCanCompleteAction({ action, user, inCohort }),
     relation,
     withdrawal,
