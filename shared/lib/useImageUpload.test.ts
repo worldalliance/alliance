@@ -14,14 +14,17 @@ type Pending = {
 
 let pending: Pending[] = [];
 
-jest.mock("./uploadImageDataUri", () => ({
-  uploadImageDataUri: (dataUri: string, signal?: AbortSignal) =>
-    new Promise<Result<string, string>>((resolve, reject) => {
-      pending.push({ dataUri, signal, resolve, reject });
-    }),
-}));
-
+import * as uploadModule from "./uploadImageDataUri";
 import { useImageUpload } from "./useImageUpload";
+
+beforeEach(() => {
+  jest.spyOn(uploadModule, "uploadImageDataUri").mockImplementation(
+    (dataUri, signal) =>
+      new Promise<Result<string, string>>((resolve, reject) => {
+        pending.push({ dataUri, signal, resolve, reject });
+      }),
+  );
+});
 
 const field = (fieldId: string): FileUploadSlot => ({ kind: "field", fieldId });
 
