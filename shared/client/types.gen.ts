@@ -2023,6 +2023,7 @@ export type UserActionRelationPillStatus = 'away' | 'completed' | 'missed_deadli
 
 export type UserActionStatusDto = {
     assigned: boolean;
+    optional: boolean;
     canComplete: boolean;
     relation: ViewerActionRelation;
     withdrawal?: UserActionWithdrawalDto;
