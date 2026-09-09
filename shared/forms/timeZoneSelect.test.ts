@@ -74,19 +74,30 @@ const hidingDayPeriod = (body: () => void) => {
   }, body);
 };
 
-const blankingTheZoneName = (body: () => void) => {
+const writingThePartAs = (
+  written: { type: Intl.DateTimeFormatPartTypes; value: unknown },
+  body: () => void,
+) => {
   const real = Intl.DateTimeFormat;
 
   standingInFor((locales, options) => {
     const fmt = new real(locales, options);
     const formatToParts = fmt.formatToParts.bind(fmt);
-    fmt.formatToParts = (date) =>
-      formatToParts(date).map((p) =>
-        p.type === "timeZoneName" ? { ...p, value: "" } : p,
-      );
+    Object.defineProperty(fmt, "formatToParts", {
+      value: (date?: Date) =>
+        formatToParts(date).map((p) =>
+          p.type === written.type ? { ...p, value: written.value } : p,
+        ),
+    });
     return fmt;
   }, body);
 };
+
+const writingTheZoneNameAs = (value: unknown, body: () => void) =>
+  writingThePartAs({ type: "timeZoneName", value }, body);
+
+const blankingTheZoneName = (body: () => void) =>
+  writingTheZoneNameAs("", body);
 
 const namingTheLocale = (locale: unknown, body: () => void) => {
   const real = Intl.DateTimeFormat;
@@ -100,6 +111,125 @@ const namingTheLocale = (locale: unknown, body: () => void) => {
     return fmt;
   }, body);
 };
+
+const literal = (value: string): Intl.DateTimeFormatPart => ({
+  type: "literal",
+  value,
+});
+
+const dateWritten = (parts: Intl.DateTimeFormatPart[]) => {
+  const at = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  return [
+    { type: "month", value: at("month") },
+    literal("/"),
+    { type: "day", value: at("day") },
+    literal("/"),
+    { type: "year", value: at("year") },
+  ] satisfies Intl.DateTimeFormatPart[];
+};
+
+type ZoneNameWritten = {
+  tz: string;
+  name: string;
+  date: Intl.DateTimeFormatPart[];
+};
+
+const layingOutTheZoneName = (
+  layout: (written: ZoneNameWritten) => Intl.DateTimeFormatPart[],
+  body: () => void,
+) => {
+  const real = Intl.DateTimeFormat;
+
+  standingInFor((locales, options) => {
+    const fmt = new real(locales, options);
+    if (options?.timeZoneName !== "longGeneric") return fmt;
+
+    const formatToParts = fmt.formatToParts.bind(fmt);
+    fmt.formatToParts = (date) => {
+      const parts = formatToParts(date);
+      const name = parts.find((p) => p.type === "timeZoneName");
+      return name
+        ? layout({
+            tz: options.timeZone ?? "",
+            name: name.value,
+            date: dateWritten(parts),
+          })
+        : parts;
+    };
+    return fmt;
+  }, body);
+};
+
+// What the Hermes in apps/mobile/ios/Pods wrote for these zones, read off its
+// own CLI. The name arrives in several parts, which of them come back typed
+// timeZoneName follows nothing the reader can lean on, and the separator
+// breaks into one part per character.
+const APPLE_HERMES_NAME: Record<
+  string,
+  [Intl.DateTimeFormatPartTypes, string][]
+> = {
+  "Asia/Kathmandu": [
+    ["timeZoneName", "Nepal"],
+    ["literal", " "],
+    ["literal", "Time"],
+  ],
+  "Asia/Kolkata": [
+    ["timeZoneName", "India"],
+    ["literal", " "],
+    ["literal", "Standard"],
+    ["literal", " "],
+    ["timeZoneName", "Time"],
+  ],
+  "Pacific/Auckland": [
+    ["timeZoneName", "New"],
+    ["literal", " "],
+    ["literal", "Zealand"],
+    ["literal", " "],
+    ["timeZoneName", "Time"],
+  ],
+  "Australia/Perth": [
+    ["timeZoneName", "Australian"],
+    ["literal", " "],
+    ["literal", "Western"],
+    ["literal", " "],
+    ["timeZoneName", "Standard"],
+    ["literal", " "],
+    ["timeZoneName", "Time"],
+  ],
+};
+
+// The zones this was not run against keep the one part a conforming engine
+// writes, since the rest of the list has to build for a row to read at all.
+const asAppleHermesWrote = ({
+  tz,
+  name,
+  date,
+}: ZoneNameWritten): Intl.DateTimeFormatPart[] => {
+  const written = APPLE_HERMES_NAME[tz];
+  if (!written) {
+    return [...date, literal(", "), { type: "timeZoneName", value: name }];
+  }
+  return [
+    ...date,
+    literal(","),
+    literal(" "),
+    ...written.map(([type, value]) => ({ type, value })),
+  ];
+};
+
+// An engine can resolve the calendar the device names rather than the gregory
+// one the locale implies, and it writes the year differently under each:
+// japanese puts an era after it, chinese replaces it with a relatedYear.
+// Neither moves the locale resolvedOptions answers with.
+const resolvingTheCalendar = (calendar: string, body: () => void) =>
+  patchingIntl(
+    (args) =>
+      args.options?.timeZoneName === "longGeneric"
+        ? { ...args, options: { ...args.options, calendar } }
+        : args,
+    body,
+  );
 
 const rejecting = (style: string, body: () => void) =>
   patchingIntl((args) => {
@@ -160,6 +290,27 @@ const fallingBackTo = (
     }),
     body,
   );
+
+// An engine can write a 12-hour clock under the cycle it says it resolved,
+// which leaves the dayPeriod beside the hour as the only sign of it.
+const writingA12HourClockUnderTheCycleItResolved = (body: () => void) => {
+  const real = Intl.DateTimeFormat;
+
+  standingInFor((locales, options) => {
+    const truthful = new real(locales, options);
+    if (options?.hourCycle !== "h23") return truthful;
+
+    const fmt = new real(locales, {
+      ...options,
+      hour12: undefined,
+      hourCycle: "h12",
+    });
+    Object.defineProperty(fmt, "resolvedOptions", {
+      value: () => truthful.resolvedOptions(),
+    });
+    return fmt;
+  }, body);
+};
 
 const resolvingTo = (
   hourCycle: Intl.DateTimeFormatOptions["hourCycle"],
@@ -674,6 +825,94 @@ describe("a runtime missing a timeZoneName style", () => {
   });
 });
 
+// de writes Europe/London as "Vereinigtes Königreich (Ortszeit)". Nothing off
+// the end of a name is the separator the date sits behind.
+const PUNCTUATED = "Vereinigtes Königreich (Ortszeit)";
+
+describe("a runtime writing a zone name as one part", () => {
+  const oneParted =
+    (override?: string) =>
+    ({ name, date }: ZoneNameWritten) => [
+      ...date,
+      literal(", "),
+      { type: "timeZoneName", value: override ?? name } as const,
+    ];
+
+  it("labels the row with the name and none of what surrounds it", () => {
+    layingOutTheZoneName(oneParted(), () => {
+      expect(labelIn("Asia/Kolkata")).toBe("India Standard Time — Kolkata");
+    });
+  });
+
+  it("labels the row with a name that ends in punctuation", () => {
+    layingOutTheZoneName(oneParted(PUNCTUATED), () => {
+      expect(labelIn("Europe/London")).toBe(`${PUNCTUATED} — London`);
+    });
+  });
+
+  it("labels the row with none of the glue behind the name", () => {
+    const trailed = ({ name, date }: ZoneNameWritten) => [
+      ...date,
+      literal(", "),
+      { type: "timeZoneName", value: name } as const,
+      literal(" "),
+    ];
+
+    layingOutTheZoneName(trailed, () => {
+      expect(labelIn("Asia/Kolkata")).toBe("India Standard Time — Kolkata");
+    });
+  });
+});
+
+describe("the Hermes that ships in apps/mobile/ios", () => {
+  const LABELLED: Record<string, string> = {
+    "Asia/Kathmandu": "Nepal Time — Kathmandu",
+    "Asia/Kolkata": "India Standard Time — Kolkata",
+    "Pacific/Auckland": "New Zealand Time — Auckland",
+    "Australia/Perth": "Australian Western Standard Time — Perth",
+  };
+
+  it("labels the row with the whole name", () => {
+    // A zone the parts dropped falls to the one part above, where the name
+    // arrives whole and the row reads right without the slice this covers.
+    expect(Object.keys(LABELLED)).toEqual(Object.keys(APPLE_HERMES_NAME));
+
+    layingOutTheZoneName(asAppleHermesWrote, () => {
+      for (const [tz, label] of Object.entries(LABELLED)) {
+        expect(labelIn(tz)).toBe(label);
+      }
+    });
+  });
+});
+
+describe.each(["japanese", "chinese"])(
+  "a runtime resolving the %s calendar",
+  (calendar) => {
+    it("labels the row with the name and none of the year in front of it", () => {
+      // Against a runtime short of the calendar's data this would pass on the
+      // gregory year it never meant to read.
+      expect(
+        new Intl.DateTimeFormat("en-US", { calendar }).resolvedOptions()
+          .calendar,
+      ).toBe(calendar);
+      resolvingTheCalendar(calendar, () => {
+        expect(labelIn("Asia/Kolkata")).toBe("India Standard Time — Kolkata");
+      });
+    });
+  },
+);
+
+describe("a runtime writing a zone name that is not a string", () => {
+  it("keeps its rows rather than throwing at the slice", () => {
+    writingTheZoneNameAs(undefined, () => {
+      const { result } = renderHook(() => useTimeZoneSelect({}));
+
+      expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
+      expect(labelIn("Asia/Kolkata")).toBe("India, Sri Lanka Time — Kolkata");
+    });
+  });
+});
+
 describe("a runtime naming its locale as something other than a string", () => {
   it("keeps its rows rather than throwing at the guard", () => {
     namingTheLocale(Symbol("vi"), () => {
@@ -697,20 +936,33 @@ describe("a runtime that writes an empty zone name", () => {
       expect(row?.searchText).toContain("eastern");
     });
   });
+
+  it("falls back on a runtime that also breaks a name into parts", () => {
+    layingOutTheZoneName(asAppleHermesWrote, () => {
+      blankingTheZoneName(() => {
+        expect(labelIn("Asia/Kolkata")).toBe("India, Sri Lanka Time — Kolkata");
+      });
+    });
+  });
 });
 
 describe("a runtime with no en-US data", () => {
-  it("leaves the row its curated label when the fallback is not English", () => {
-    // Against a runtime short of Vietnamese data this would pass on an en-US
-    // name it never meant to read.
-    expect(new Intl.DateTimeFormat("vi").resolvedOptions().locale).toBe("vi");
-    fallingBackTo({ locale: "vi" }, () => {
-      expect(labelIn("Europe/London")).toBe(
-        "UK, Ireland, Lisbon Time — London",
+  it.each(["eu", "vi"])(
+    "leaves the row its curated label when the fallback is %s",
+    (locale) => {
+      // Against a runtime short of that locale's data this would pass on an
+      // en-US name it never meant to read.
+      expect(new Intl.DateTimeFormat(locale).resolvedOptions().locale).toBe(
+        locale,
       );
-      expect(labelIn("Asia/Kolkata")).toBe("India, Sri Lanka Time — Kolkata");
-    });
-  });
+      fallingBackTo({ locale }, () => {
+        expect(labelIn("Europe/London")).toBe(
+          "UK, Ireland, Lisbon Time — London",
+        );
+        expect(labelIn("Asia/Kolkata")).toBe("India, Sri Lanka Time — Kolkata");
+      });
+    },
+  );
 
   it("labels the row with the name a plain en fallback wrote", () => {
     // Against a runtime that resolved en-US anyway this would pass without
@@ -745,6 +997,7 @@ describe("a runtime with no en-US data", () => {
 describe("a runtime that will not give a 24-hour clock", () => {
   const sixInTheEvening = new Date(Date.UTC(2026, 0, 16, 2));
   const midnight = new Date(Date.UTC(2026, 0, 15, 8));
+  const sixInTheEveningInTokyo = new Date(Date.UTC(2026, 0, 15, 9));
 
   it("falls back to shortOffset rather than reading 6 PM as 06:00", () => {
     resolvingTo("h12", () => {
@@ -775,11 +1028,23 @@ describe("a runtime that will not give a 24-hour clock", () => {
   // Tokyo at 6 PM read as 06:00 lands 3 hours behind UTC, inside the range
   // check, so the resolved cycle is the only thing left to catch it.
   it("withholds the offset when a 12-hour clock writes no dayPeriod", () => {
-    const sixInTheEveningInTokyo = new Date(Date.UTC(2026, 0, 15, 9));
-
     rejecting("shortOffset", () => {
       resolvingTo("h12", () => {
         hidingDayPeriod(() => {
+          expect(
+            getOffsetMinutes("Asia/Tokyo", sixInTheEveningInTokyo),
+          ).toBeNull();
+        });
+      });
+    });
+  });
+
+  // Reading the dayPeriod off the parts rather than dropping it is what keeps
+  // 6 PM from landing 3 hours behind UTC, inside the range check.
+  it("withholds it when that clock writes a dayPeriod that is not a string", () => {
+    rejecting("shortOffset", () => {
+      writingA12HourClockUnderTheCycleItResolved(() => {
+        writingThePartAs({ type: "dayPeriod", value: undefined }, () => {
           expect(
             getOffsetMinutes("Asia/Tokyo", sixInTheEveningInTokyo),
           ).toBeNull();

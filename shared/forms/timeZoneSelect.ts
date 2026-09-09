@@ -130,13 +130,21 @@ function getFormatter({
 // A runtime can build a formatter that formats and still not write parts, so
 // the parts are asked for at the reads that need them rather than at the
 // construction the clock shares. Anything but a list is a refusal too, and
-// answering with it would only move the throw to the callers walking it.
+// answering with it would only move the throw to the callers walking it. A
+// part whose value is not a string is a refusal too, for the same reason:
+// every reader below takes the value as one, and the throw would come out of
+// the hook the picker renders from. The whole list goes rather than that one
+// part, since a reader that finds a part missing reads the rest as if the
+// engine had meant it: the dayPeriod refusal below would take a 12-hour clock
+// for a 24-hour one and put the row half a day out.
 function partsOf(
   fmt: Intl.DateTimeFormat | null,
   when: Date,
 ): Intl.DateTimeFormatPart[] | null {
   const parts = fmt && askIntl(() => fmt.formatToParts(when));
-  return Array.isArray(parts) ? parts : null;
+  return Array.isArray(parts) && parts.every((p) => typeof p.value === "string")
+    ? parts
+    : null;
 }
 
 function formatTimeInTz(
@@ -249,9 +257,17 @@ export function getOffsetMinutes(
   return offsetFromWallClock(tz, when) ?? offsetFromShortOffset(tz, when);
 }
 
+// Hermes on iOS breaks a name into a part per word and types only some of them
+// timeZoneName, by no rule the reader can lean on: "Time" comes back
+// timeZoneName for Asia/Kolkata and literal for Asia/Kathmandu. Where a name
+// starts is the one boundary this engine gets right, and a name it writes
+// empty leaves only the separators between its words.
+//
 // An engine with no en-US data answers in its own language rather than
 // refusing, which would put a Vietnamese name in a row whose second line,
-// search and sort are all English.
+// search and sort are all English. The slice gives that guard a second job:
+// what a locale writes after the name is its own, and the slice takes it. vi
+// puts the whole date there, eu closes a bracket.
 export function getGenericLabelFromIntl(tz: string): string | null {
   const fmt = getFormatter({
     key: `generic:${tz}`,
@@ -266,7 +282,20 @@ export function getGenericLabelFromIntl(tz: string): string | null {
   if (typeof locale !== "string" || !/^en(-|$)/.test(locale)) return null;
 
   const parts = partsOf(fmt, new Date());
-  return parts?.find((p) => p.type === "timeZoneName")?.value || null;
+  if (!parts) return null;
+
+  const start = parts.findIndex(
+    (p) => p.type === "timeZoneName" && p.value.trim() !== "",
+  );
+  if (start < 0) return null;
+
+  return (
+    parts
+      .slice(start)
+      .map((p) => p.value)
+      .join("")
+      .trim() || null
+  );
 }
 
 export function prettyCityFromIana(tz: string): string {
