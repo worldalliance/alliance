@@ -1,5 +1,5 @@
 import { Socket } from "socket.io";
-import { ACCESS_COOKIE } from "src/auth/guards/jwtreq";
+import { ACCESS_COOKIE } from "src/auth/tokens";
 
 export function parseCookies(cookieHeader: string): Record<string, string> {
   return cookieHeader.split(";").reduce<Record<string, string>>((acc, part) => {

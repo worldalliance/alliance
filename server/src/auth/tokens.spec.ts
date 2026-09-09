@@ -1,6 +1,6 @@
 import type { Request } from "express";
 import type { IncomingHttpHeaders } from "node:http";
-import { extractGuestToken } from "./jwtreq";
+import { extractGuestToken } from "./tokens";
 
 // extractGuestToken reads only these two fields off the request.
 const request = (

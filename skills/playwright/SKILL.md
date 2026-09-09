@@ -17,7 +17,7 @@ Mobile is the exception. [`MOBILE.md`](MOBILE.md) has its start command, selecto
 
 ## Authenticating as admin
 
-Auth is a JWT in the `access_token` cookie (or `Authorization: Bearer`), signed with `JWT_SECRET` from `server/.env`, payload `{ sub: <userId>, email, tokenType: "access" }` — see `server/src/auth/guards/jwtreq.ts`. Get an id from the local db (`(root)/skills/local-db/SKILL.md`): `SELECT id, email FROM "user" WHERE admin = true LIMIT 1;`
+Auth is a JWT in the `access_token` cookie (or `Authorization: Bearer`), signed with `JWT_SECRET` from `server/.env`, payload `{ sub: <userId>, email, tokenType: "access" }` — see `server/src/auth/tokens.ts`. Get an id from the local db (`(root)/skills/local-db/SKILL.md`): `SELECT id, email FROM "user" WHERE admin = true LIMIT 1;`
 
 Mint it in a bun script with `jsonwebtoken` from the root `node_modules`. Keep `JWT_SECRET` and the minted token out of anything you print.
 

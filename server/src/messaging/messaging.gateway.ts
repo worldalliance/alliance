@@ -12,7 +12,7 @@ import {
   WebSocketServer,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
-import { verifyAccessToken } from "src/auth/guards/jwtreq";
+import { verifyAccessToken } from "src/auth/tokens";
 import { DetachedWorkTracker } from "src/utils/detached-work";
 import { ConversationService } from "./conversation.service";
 import { MessageDto } from "./dto/messaging.dto";

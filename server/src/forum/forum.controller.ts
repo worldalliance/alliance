@@ -12,7 +12,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
-import type { JwtPayload, JwtRequest } from "src/auth/guards/jwtreq";
+import type { JwtPayload, JwtRequest } from "src/auth/tokens";
 import { PosthogService } from "src/posthog/posthog.service";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { AuthGuard } from "../auth/guards/auth.guard";

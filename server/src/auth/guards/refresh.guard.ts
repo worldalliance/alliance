@@ -10,7 +10,7 @@ import {
   extractRefreshTokenFromCookie,
   type JwtPayload,
   JWTTokenType,
-} from "./jwtreq";
+} from "../tokens";
 
 @Injectable()
 export class RefreshTokenGuard implements CanActivate {

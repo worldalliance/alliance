@@ -27,7 +27,7 @@ import {
 import { IsNotEmpty, IsString } from "class-validator";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import { CommunityLeaderGuard } from "src/auth/guards/communityleader.guard";
-import type { JwtRequest } from "src/auth/guards/jwtreq";
+import type { JwtRequest } from "src/auth/tokens";
 import { MaybeUserLocationDto } from "src/geo/city.dto";
 import { PosthogService } from "src/posthog/posthog.service";
 import { PushDto } from "src/push/dto/push.dto";

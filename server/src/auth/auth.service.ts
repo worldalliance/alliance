@@ -28,7 +28,7 @@ import {
   JWTTokenType,
   REFRESH_COOKIE,
   sessionFromRequest,
-} from "./guards/jwtreq";
+} from "./tokens";
 
 @Injectable()
 export class AuthService {

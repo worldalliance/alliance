@@ -9,7 +9,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import type { Request } from "express";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
-import { sessionFromRequest } from "./jwtreq";
+import { sessionFromRequest } from "../tokens";
 
 @Injectable()
 export class AdminGuard implements CanActivate {

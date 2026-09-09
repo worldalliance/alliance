@@ -12,7 +12,7 @@ import {
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { Repository } from "typeorm";
-import { verifyAccessToken } from "../auth/guards/jwtreq";
+import { verifyAccessToken } from "../auth/tokens";
 import { InviteFeedEvents } from "../invite-feed.events";
 import { extractTokenFromSocket } from "../messaging/gateway.utils";
 import { User } from "../user/entities/user.entity";

@@ -11,7 +11,7 @@ import {
 } from "@nestjs/common";
 import { ApiOkResponse, ApiQuery } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
-import type { JwtRequest } from "src/auth/guards/jwtreq";
+import type { JwtRequest } from "src/auth/tokens";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { NotifClickDto, NotifClickResponseDto } from "./dto/notifclick.dto";
 import { NotificationDto } from "./dto/notification.dto";

@@ -16,7 +16,7 @@ import { ApiBody, ApiOkResponse } from "@nestjs/swagger";
 import { ActionsService } from "src/actions/actions.service";
 import { AuthGuard } from "src/auth/guards/auth.guard";
 import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
-import type { JwtRequest } from "src/auth/guards/jwtreq";
+import type { JwtRequest } from "src/auth/tokens";
 import Stripe from "stripe";
 import { ClientSecretDto } from "./dto/client-secret.dto";
 import { CreatePaymentIntentDto } from "./dto/create-payment-intent.dto";

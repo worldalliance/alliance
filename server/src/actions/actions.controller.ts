@@ -26,7 +26,7 @@ import {
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
 import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
-import type { JwtRequest } from "src/auth/guards/jwtreq";
+import type { JwtRequest } from "src/auth/tokens";
 import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
 import { PreviewNotificationPlanDto } from "src/notifs/dto/notification-plan.dto";
 import { ActionEventNotifDto } from "src/notifs/entities/action-event-notif.dto";

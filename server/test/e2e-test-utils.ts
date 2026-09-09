@@ -9,7 +9,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import cookieParser from "cookie-parser";
-import { accessTokenPayload } from "src/auth/guards/jwtreq";
+import { accessTokenPayload } from "src/auth/tokens";
 import { Contract } from "src/contract/entities/contract.entity";
 import { testConnectionOptions } from "src/datasources/dataSourceTest";
 import { ForumModule } from "src/forum/forum.module";

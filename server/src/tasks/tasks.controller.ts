@@ -19,8 +19,8 @@ import { ActionActivityDto, OptOutActionDto } from "src/actions/dto/action.dto";
 import { AuthService } from "src/auth/auth.service";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import { AuthGuard } from "src/auth/guards/auth.guard";
-import { extractGuestToken, type JwtRequest } from "src/auth/guards/jwtreq";
 import { Public } from "src/auth/public.decorator";
+import { extractGuestToken, type JwtRequest } from "src/auth/tokens";
 import {
   CreateCustomValidatorDto,
   CreateCustomValidatorResponseDto,

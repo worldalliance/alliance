@@ -7,7 +7,7 @@ import {
 import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
 import { UserService } from "../../user/user.service";
-import { sessionFromRequest } from "./jwtreq";
+import { sessionFromRequest } from "../tokens";
 
 @Injectable()
 export class CommunityLeaderGuard implements CanActivate {

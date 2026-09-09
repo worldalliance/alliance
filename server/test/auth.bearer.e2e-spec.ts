@@ -1,5 +1,5 @@
 import { SignUpDto } from "src/auth/dto/sign-up.dto";
-import { ACCESS_COOKIE, JWTTokenType } from "src/auth/guards/jwtreq";
+import { ACCESS_COOKIE, JWTTokenType } from "src/auth/tokens";
 import { UserService } from "src/user/user.service";
 import request from "supertest";
 import type { Repository } from "typeorm";

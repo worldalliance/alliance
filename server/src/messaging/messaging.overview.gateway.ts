@@ -11,7 +11,7 @@ import {
   WebSocketServer,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
-import { verifyAccessToken } from "src/auth/guards/jwtreq";
+import { verifyAccessToken } from "src/auth/tokens";
 import { DetachedWorkTracker } from "src/utils/detached-work";
 import type { Repository } from "typeorm";
 import { ConversationService } from "./conversation.service";
