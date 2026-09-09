@@ -12,25 +12,20 @@ import { useState } from "react";
 import {
   deferUpload,
   failUploads,
-  resetUploads,
-  uploadImageDataUri,
+  serveUploads,
   uploads,
-} from "../../testing/uploadImageDataUriMock";
-
-jest.mock("@alliance/shared/lib/uploadImageDataUri", () => ({
-  uploadImageDataUri,
-}));
-
+} from "../../testing/serveUploads";
 import ReplyForm from "./ReplyForm";
 
 // happy-dom leaves `location` where it is on `history.pushState`.
 declare const happyDOM: { setURL: (url: string) => void };
 const setUrl = (url: string) => happyDOM.setURL(url);
 
+serveUploads();
+
 afterEach(cleanup);
 
 beforeEach(() => {
-  resetUploads();
   sessionStorage.clear();
 });
 
@@ -469,7 +464,7 @@ describe("ReplyForm", () => {
   });
 
   it("shows the upload failure over the rejection before it", async () => {
-    failUploads("Failed to upload image");
+    failUploads("The image was too large");
     render(
       <Harness
         onSubmit={() => {}}
@@ -484,7 +479,7 @@ describe("ReplyForm", () => {
     await post();
 
     expect(screen.getByRole("alert").textContent).toBe(
-      "Failed to upload image",
+      "The image was too large",
     );
   });
 
