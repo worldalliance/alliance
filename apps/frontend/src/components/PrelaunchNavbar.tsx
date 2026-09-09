@@ -110,7 +110,7 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
             ? "py-1.5 px-2.5 text-sm sm:py-2 sm:px-3.5 sm:text-base"
             : "py-2 sm:py-2.5 px-3 sm:px-5",
           opts.onSolid
-            ? "bg-[#081e40] text-white hover:bg-[#0d2c5c]"
+            ? "bg-black text-white hover:bg-zinc-800"
             : "bg-white text-black hover:bg-zinc-100",
         )}
         onClick={() => setMenuOpen(false)}

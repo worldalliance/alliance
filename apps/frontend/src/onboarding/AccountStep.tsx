@@ -47,16 +47,29 @@ export function AccountStep({
 }) {
   const { onLogin } = useAuth();
   const navigate = useNavigate();
-  const { used: inviteUsed, inviter } = useInvite(referralCode);
+  const {
+    used: inviteUsed,
+    pending: invitePending,
+    inviter,
+  } = useInvite(referralCode);
   const inviteOnly =
     (!isFeatureEnabled(Features.PublicSignup) && !referralCode) || inviteUsed;
   const [loggingIn, setLoggingIn] = useState(startInLogin);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const showForm = loggingIn || (!inviteOnly && !invitePending);
 
   const emailValid = emailSchema.safeParse(email.trim()).success;
   const ready = emailValid && password.length > 0;
+
+  const heading = loggingIn
+    ? "Log into your account"
+    : inviteUsed
+      ? "This invite link has already been used."
+      : inviteOnly
+        ? "The Alliance is invite-only."
+        : "Create an account";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,6 +77,7 @@ export function AccountStep({
     setNotice(null);
 
     if (!loggingIn) {
+      if (inviteOnly) return;
       onCreateAccount();
       return;
     }
@@ -102,11 +116,11 @@ export function AccountStep({
     >
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-5 pt-24 pb-6 sm:px-8">
         <div className="ob-rise w-full max-w-[22rem]" style={riseStyle(0)}>
-          <h1 className="text-center text-2xl font-semibold text-black sm:text-[1.75rem]">
-            {loggingIn ? "Log in to your account" : "Create your account"}
+          <h1 className="text-center text-2xl font-semibold text-black sm:text-3xl">
+            {heading}
           </h1>
           {inviter && (
-            <div className="mt-2 flex flex-row items-center justify-center gap-x-2 text-sm text-zinc-500">
+            <div className="mt-3 flex flex-row items-center justify-center gap-x-2 text-base text-zinc-500">
               <AvatarProfile
                 pfp={inviter.profilePicture}
                 size="override"
@@ -121,68 +135,65 @@ export function AccountStep({
               </span>
             </div>
           )}
-          {inviteOnly && !loggingIn && !inviter && (
-            <p className="mt-2 text-center text-sm text-zinc-600">
-              {inviteUsed
-                ? "That invite link has already been used."
-                : "The Alliance is invite-only."}
-            </p>
-          )}
-          {GOOGLE_SIGN_IN_AVAILABLE && (
-            <div className="mt-4 flex flex-col gap-3">
-              <GoogleSignIn />
-              <EmailDivider />
+          {showForm && (
+            <div className="mt-8">
+              {GOOGLE_SIGN_IN_AVAILABLE && (
+                <div className="mb-3 flex flex-col gap-3">
+                  <GoogleSignIn />
+                  <EmailDivider />
+                </div>
+              )}
+              <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => onEmailChange(e.target.value)}
+                  className={FIELD}
+                  aria-label="Email"
+                />
+                <input
+                  name="password"
+                  type="password"
+                  required
+                  autoComplete={loggingIn ? "current-password" : "new-password"}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => onPasswordChange(e.target.value)}
+                  className={FIELD}
+                  aria-label="Password"
+                />
+                {error && (
+                  <p className="text-sm font-medium text-red-600" role="alert">
+                    {error}
+                  </p>
+                )}
+                {notice && <p className="text-sm text-zinc-600">{notice}</p>}
+                <Button
+                  type="submit"
+                  color={ButtonColor.Black}
+                  className={CARD_BUTTON}
+                  disabled={pending || !ready}
+                >
+                  {loggingIn ? "Log In" : "Get started"}
+                  <SiteArrow className="size-2.5" />
+                </Button>
+                {loggingIn && (
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    disabled={pending}
+                    className="text-sm text-[var(--site-link)] hover:underline disabled:opacity-60"
+                  >
+                    {forgotPasswordCopy.prompt}
+                  </button>
+                )}
+              </form>
             </div>
           )}
-          <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3">
-            <input
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => onEmailChange(e.target.value)}
-              className={FIELD}
-              aria-label="Email"
-            />
-            <input
-              name="password"
-              type="password"
-              required
-              autoComplete={loggingIn ? "current-password" : "new-password"}
-              placeholder="Password"
-              value={password}
-              onChange={(e) => onPasswordChange(e.target.value)}
-              className={FIELD}
-              aria-label="Password"
-            />
-            {error && (
-              <p className="text-sm font-medium text-red-600" role="alert">
-                {error}
-              </p>
-            )}
-            {notice && <p className="text-sm text-zinc-600">{notice}</p>}
-            <Button
-              type="submit"
-              color={ButtonColor.Black}
-              className={CARD_BUTTON}
-              disabled={pending || !ready}
-            >
-              {loggingIn ? "Log In" : "Get Started"}
-              <SiteArrow className="size-2.5" />
-            </Button>
-            {loggingIn && (
-              <button
-                type="button"
-                onClick={handleForgotPassword}
-                disabled={pending}
-                className="text-sm text-[var(--site-link)] hover:underline disabled:opacity-60"
-              >
-                {forgotPasswordCopy.prompt}
-              </button>
-            )}
-          </form>
           <p className="mt-4 text-center text-sm text-zinc-600">
             {loggingIn
               ? "Don’t have an account? "
@@ -200,7 +211,7 @@ export function AccountStep({
             </button>
           </p>
           {!loggingIn && (
-            <div className="mt-4 flex">
+            <div className="mt-8">
               <InfoSessionButton />
             </div>
           )}

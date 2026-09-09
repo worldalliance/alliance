@@ -94,7 +94,7 @@ export function Navbar({
               key={link.to}
               to={link.to}
               aria-current={location.pathname === link.to ? "page" : undefined}
-              className="inline-flex min-h-11 items-center hover:underline"
+              className="inline-flex min-h-11 items-center hover:underline font-medium"
             >
               {link.label}
             </Link>
@@ -103,25 +103,24 @@ export function Navbar({
 
         <Link
           to={HOME_HREF}
-          className="inline-flex min-h-11 items-center text-xl sm:text-2xl"
+          className="inline-flex min-h-11 items-center text-xl"
         >
           <Logotype onDark={light} />
         </Link>
 
-        <div className="flex items-center justify-end gap-2.5">
+        <div className="flex items-center justify-end gap-6">
           <Link
             to={PARTNER_HREF}
             className={cn(
-              "hidden min-h-11 items-center px-4 text-sm font-medium transition-colors md:inline-flex bg-zinc-200 text-black hover:bg-zinc-300",
+              "hidden md:inline-flex min-h-11 items-center hover:underline font-medium text-base text-black",
             )}
-            style={{ borderRadius: "var(--site-radius-button)" }}
           >
             {NAV_PARTNER}
           </Link>
           <Link
             to={accountHref}
             className={cn(
-              "inline-flex min-h-11 items-center gap-2 px-4 text-sm font-medium transition-colors",
+              "inline-flex min-h-11 items-center gap-2 px-4 text-base font-medium transition-colors",
               light
                 ? "bg-white text-[var(--site-primary)] hover:bg-white/85"
                 : "bg-[var(--site-primary)] text-white hover:bg-[var(--site-primary-hover)]",

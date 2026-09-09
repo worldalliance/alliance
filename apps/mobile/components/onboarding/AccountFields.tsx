@@ -54,8 +54,13 @@ export function AccountFields({
   const [showPassword, setShowPassword] = useState(false);
 
   const loggingIn = mode === AccountMode.LogIn;
+  const showForm = loggingIn || !inviteUsed;
   const emailValid = EMAIL_PATTERN.test(email.trim());
   const ready = emailValid && password.length > 0;
+  const heading =
+    !loggingIn && inviteUsed
+      ? "This invite link has already been used."
+      : ACCOUNT_HEADING[mode];
 
   return (
     <Animated.View
@@ -68,7 +73,7 @@ export function AccountFields({
         className="text-white"
         style={{ fontSize: scale.h1, lineHeight: scale.h1 * 1.2 }}
       >
-        {ACCOUNT_HEADING[mode]}
+        {heading}
       </Text>
 
       {inviter && (
@@ -87,80 +92,81 @@ export function AccountFields({
         </View>
       )}
 
-      {inviteUsed && !loggingIn && (
-        <Text className="text-white/80" style={{ fontSize: scale.caption }}>
-          That invite link has already been used.
-        </Text>
+      {showForm && (
+        <>
+          <TextInput
+            className={FIELD}
+            placeholder="Email"
+            placeholderTextColor="rgba(255,255,255,0.65)"
+            value={email}
+            onChangeText={onEmailChange}
+            textContentType="username"
+            autoComplete="email"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoFocus
+            accessibilityLabel="Email"
+          />
+
+          <View className="flex-row items-center rounded-lg border border-white/40 bg-white/12 px-3.5">
+            <TextInput
+              className="min-h-12 flex-1 text-base text-white"
+              placeholder="Password"
+              placeholderTextColor="rgba(255,255,255,0.65)"
+              value={password}
+              onChangeText={onPasswordChange}
+              secureTextEntry={!showPassword}
+              textContentType={loggingIn ? "password" : "newPassword"}
+              autoComplete={loggingIn ? "current-password" : "new-password"}
+              autoCapitalize="none"
+              autoCorrect={false}
+              accessibilityLabel="Password"
+            />
+            <PasswordVisibilityToggle
+              visible={showPassword}
+              onPress={() => setShowPassword((current) => !current)}
+            />
+          </View>
+
+          {error && (
+            <Text
+              className="text-red-300"
+              weight={FontWeight.Medium}
+              style={{ fontSize: scale.caption }}
+              accessibilityRole="alert"
+            >
+              {error}
+            </Text>
+          )}
+          {notice && (
+            <Text className="text-white/80" style={{ fontSize: scale.caption }}>
+              {notice}
+            </Text>
+          )}
+
+          <Button
+            color={ButtonColor.White}
+            size={ButtonSize.Custom}
+            className="min-h-12 gap-2 rounded-lg border-transparent py-3.5"
+            onPress={onSubmit}
+            disabled={!ready || submitting}
+            loading={submitting}
+            testID="vr-onboarding-account-submit"
+          >
+            <Text
+              weight={FontWeight.Medium}
+              style={{
+                color: onboardingColors.panelGreen,
+                fontSize: scale.button,
+              }}
+            >
+              {loggingIn ? "Log in" : "Continue"}
+            </Text>
+            <ArrowRight size={16} color={onboardingColors.panelGreen} />
+          </Button>
+        </>
       )}
-
-      <TextInput
-        className={FIELD}
-        placeholder="Email"
-        placeholderTextColor="rgba(255,255,255,0.65)"
-        value={email}
-        onChangeText={onEmailChange}
-        textContentType="username"
-        autoComplete="email"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-        autoFocus
-        accessibilityLabel="Email"
-      />
-
-      <View className="flex-row items-center rounded-lg border border-white/40 bg-white/12 px-3.5">
-        <TextInput
-          className="min-h-12 flex-1 text-base text-white"
-          placeholder="Password"
-          placeholderTextColor="rgba(255,255,255,0.65)"
-          value={password}
-          onChangeText={onPasswordChange}
-          secureTextEntry={!showPassword}
-          textContentType={loggingIn ? "password" : "newPassword"}
-          autoComplete={loggingIn ? "current-password" : "new-password"}
-          autoCapitalize="none"
-          autoCorrect={false}
-          accessibilityLabel="Password"
-        />
-        <PasswordVisibilityToggle
-          visible={showPassword}
-          onPress={() => setShowPassword((current) => !current)}
-        />
-      </View>
-
-      {error && (
-        <Text
-          className="text-red-300"
-          weight={FontWeight.Medium}
-          style={{ fontSize: scale.caption }}
-          accessibilityRole="alert"
-        >
-          {error}
-        </Text>
-      )}
-      {notice && (
-        <Text className="text-white/80" style={{ fontSize: scale.caption }}>
-          {notice}
-        </Text>
-      )}
-
-      <Button
-        color={ButtonColor.White}
-        size={ButtonSize.Custom}
-        className="min-h-12 gap-2 rounded-lg border-transparent py-3.5"
-        onPress={onSubmit}
-        disabled={!ready || submitting}
-        loading={submitting}
-        testID="vr-onboarding-account-submit"
-      >
-        <Text
-          weight={FontWeight.Medium}
-          style={{ color: onboardingColors.panelGreen, fontSize: scale.button }}
-        >
-          {loggingIn ? "Log in" : "Continue"}
-        </Text>
-        <ArrowRight size={16} color={onboardingColors.panelGreen} />
-      </Button>
 
       <View className="flex-row items-center gap-4">
         <Pressable

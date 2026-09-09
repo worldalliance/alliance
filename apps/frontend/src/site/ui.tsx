@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import texture from "../assets/redesign/priority-environment.jpg";
 
 export const SITE_COL =
-  "mx-auto w-full max-w-[1600px] px-5 sm:px-8 lg:px-[68px]";
+  "mx-auto w-full max-w-[1750px] px-5 sm:px-8 lg:px-[68px]";
 
 /**
  * The h1 size, shared by the hero and every page header behind the nav. Steps

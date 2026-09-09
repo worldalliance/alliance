@@ -131,6 +131,7 @@ const OnboardingScreen = () => {
     setNotice(null);
 
     if (accountMode === AccountMode.SignUp) {
+      if (inviteUsed) return;
       goNext();
       return;
     }
@@ -144,7 +145,7 @@ const OnboardingScreen = () => {
     } finally {
       setSubmitting(false);
     }
-  }, [accountMode, email, password, login, goNext, enterPlatform]);
+  }, [accountMode, email, password, login, goNext, enterPlatform, inviteUsed]);
 
   const forgotPassword = useCallback(async () => {
     if (submitting) return;

@@ -62,7 +62,7 @@ export function meta() {
   return socialPreviewMeta({
     title: "Join the Alliance",
     description:
-      "Join a global community cooperating to improve the world. Members spend 15 minutes a week completing thoughtfully designed actions for measurable impact.",
+      "Join a global community cooperating to improve the world. Members spend 15 minutes a week completing actions designed for measurable impact.",
     url: "/onboarding",
   });
 }
@@ -94,7 +94,7 @@ const OnboardingPage = () => {
   const isAccount = step === OnboardingStep.Account;
   const mobileWeb = useMediaQuery(MOBILE_WEB_QUERY);
   useLockedViewport(!isAccount);
-  const { inviter } = useInvite(referralCode);
+  const { inviter, used: inviteUsed } = useInvite(referralCode);
   const faces = useSignupFaces(referralCode, {
     enabled: step === OnboardingStep.Agreement,
   });
@@ -407,7 +407,10 @@ const OnboardingPage = () => {
             <GrantmakingCard className="min-h-80" />
           </section>
           <LandingBody />
-          <JoinCta to={ACCOUNT_ANCHOR} heading="Create an account" />
+          <JoinCta
+            to={inviteUsed ? undefined : ACCOUNT_ANCHOR}
+            heading={inviteUsed ? undefined : "Create an account"}
+          />
           <SiteFooter />
         </>
       )}

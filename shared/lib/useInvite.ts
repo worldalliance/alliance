@@ -23,7 +23,7 @@ export function useInvite(referralCode: string | null) {
     retry: false,
   });
 
-  const { data: invite } = useQuery({
+  const { data: invite, isPending: invitePending } = useQuery({
     queryKey: queryKeys.onetimeInvite(referralCode),
     queryFn: () =>
       userOnetimeInvite({ path: { code: referralCode! } }).then(
@@ -34,8 +34,13 @@ export function useInvite(referralCode: string | null) {
   });
 
   const used = invite?.status === "link_used";
+  const pending = Boolean(referralCode) && invitePending;
 
-  return { used, inviter: used ? null : namedInviter(referrer ?? null) };
+  return {
+    used,
+    pending,
+    inviter: used ? null : namedInviter(referrer ?? null),
+  };
 }
 
 /** A campaign signs nothing and invites nobody by name, so it gets no line. */

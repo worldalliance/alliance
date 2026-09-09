@@ -1,8 +1,8 @@
 import { cn } from "@alliance/shared/styles/util";
+import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
 import { Calendar, Clock } from "lucide-react";
 import grassField from "../assets/redesign/grass-field.jpg";
-import { SiteButton } from "../site/ui";
 
 const INFO_SESSION_HREF =
   "https://calendar.google.com/calendar/event?action=TEMPLATE&tmeid=MmUxZ3FxMmhtcWExbHQ3ODU4dHE5YjF2ODggZ3JhbnRAd29ybGRhbGxpYW5jZS5vcmc&tmsrc=grant%40worldalliance.org";
@@ -29,21 +29,19 @@ const TASK_REQUIRED = 1000;
 
 export function InfoSessionButton() {
   return (
-    <SiteButton
-      href={INFO_SESSION_HREF}
-      tone="outline"
-      size="sm"
-      lift={false}
-      className="h-auto max-w-full items-center self-start py-2.5 whitespace-normal hover:border-[var(--site-link)]/40 hover:bg-[var(--site-link)]/10"
+    <Button
+      color={ButtonColor.WhiteBorderless}
+      className="h-auto w-full justify-start gap-3 bg-zinc-50 py-3 whitespace-normal"
+      onClick={() => window.open(INFO_SESSION_HREF, "_blank", "noreferrer")}
     >
       <Calendar className="size-4 shrink-0" aria-hidden />
       <span className="flex flex-col items-start gap-0.5 text-left leading-snug">
-        <span>Come to our next info session for new members</span>
+        <span>Come to our next info session</span>
         <span className="font-normal text-[var(--site-ink)]/55">
           {INFO_SESSION_WHEN}
         </span>
       </span>
-    </SiteButton>
+    </Button>
   );
 }
 
@@ -95,10 +93,10 @@ export function GrantmakingCard({ className }: { className?: string }) {
 
       <div>
         <p className="text-base text-white/70 md:text-lg">
-          Upcoming project fall 2026
+          Upcoming project, fall 2026
         </p>
         {/* The standfirst voice the left column used to carry, moved onto the card. */}
-        <p className="mt-2 max-w-[33rem] text-[1.05rem] leading-[1.35] text-white sm:text-[1.3rem]">
+        <p className="mt-2 max-w-[33rem] leading-[1.35] text-white text-xl sm:text-2xl">
           Where should we donate $100,000?
         </p>
       </div>
