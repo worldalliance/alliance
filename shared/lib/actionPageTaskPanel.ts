@@ -1,6 +1,6 @@
 import { ActionDto } from "../client/types.gen";
 import { CardStyle } from "../styles/card";
-import { deadlineHasPassed } from "./actionUtils";
+import { deadlineHasPassed, isActionOptional } from "./actionUtils";
 
 export enum ActionPageTaskPanelState {
   PublicOnly = "public_only",
@@ -188,7 +188,7 @@ export function getActionPageTaskPanelState(params: {
     return ActionPageTaskPanelState.ShowTaskWithMissedDeadline;
   }
 
-  if (action.optional) {
+  if (isActionOptional(action)) {
     return ActionPageTaskPanelState.Optional;
   }
 

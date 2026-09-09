@@ -3,7 +3,10 @@ import {
   useCompletedTaskForm,
   useTaskForm,
 } from "@alliance/shared/lib/actionTaskPanelCompleted";
-import type { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
+import {
+  isActionOptional,
+  type ActionWithAwayStatus,
+} from "@alliance/shared/lib/actionUtils";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
 import {
   buildActionShareUrl,
@@ -92,10 +95,11 @@ export function TaskNavigatorTodoActionRow({
   onSelect: () => void;
   showOptionalPrefix: boolean;
 }) {
+  const optional = isActionOptional(action);
   return (
     <TaskNavigatorRow
       isActive={isActive}
-      activeBg={action.optional ? "bg-sky-100" : "bg-green/10"}
+      activeBg={optional ? "bg-sky-100" : "bg-green/10"}
       onClick={onSelect}
       icon={
         <Circle
@@ -103,7 +107,7 @@ export function TaskNavigatorTodoActionRow({
           className={cn(
             "shrink-0",
             isActive
-              ? action.optional
+              ? optional
                 ? "text-blue-400"
                 : "text-green"
               : "text-zinc-300",
@@ -112,7 +116,7 @@ export function TaskNavigatorTodoActionRow({
       }
       label={
         <>
-          {showOptionalPrefix && action.optional && "(Optional) "}
+          {showOptionalPrefix && optional && "(Optional) "}
           {action.name}
         </>
       }
@@ -194,7 +198,7 @@ export function TaskNavigatorCompletedRow({
           to={href("/actions/:id", { id: action.id.toString() })}
           className="text-zinc-400 line-through grow hover:text-zinc-500"
         >
-          {action.optional && "(Optional) "}
+          {isActionOptional(action) && "(Optional) "}
           {action.name}
         </Link>
         <ShareButton

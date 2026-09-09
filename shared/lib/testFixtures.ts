@@ -28,6 +28,10 @@ export function makeViewer(
 export function makeAction(
   overrides: Partial<ActionWithAwayStatus> = {},
 ): ActionWithAwayStatus {
+  // The server builds the viewer status from the action, so an `optional`
+  // override has to reach the default viewer or the fixture describes a
+  // payload no response can carry.
+  const optional = overrides.optional ?? false;
   return {
     id: 1,
     name: "Test action",
@@ -42,7 +46,7 @@ export function makeAction(
     usersJoined: 0,
     usersCompleted: 0,
     priority: 0,
-    optional: false,
+    optional,
     preventCompletion: false,
     isForumParticipationAction: false,
     archived: false,
@@ -57,7 +61,7 @@ export function makeAction(
     shouldCompleteAfterDeadline: false,
     awayStatus: "not_away",
     events: [],
-    viewer: makeViewer(),
+    viewer: makeViewer({ optional }),
     ...overrides,
   };
 }

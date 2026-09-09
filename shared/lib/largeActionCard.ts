@@ -1,5 +1,9 @@
 import { ActionDto, ActionEventDto, type TaskAwayStatus } from "../client";
-import { ActionWithAwayStatus, deadlineHasPassed } from "./actionUtils";
+import {
+  ActionWithAwayStatus,
+  deadlineHasPassed,
+  isActionOptional,
+} from "./actionUtils";
 import { taskHeaders } from "./copy";
 
 export interface LargeActionCardPropsShared {
@@ -53,7 +57,7 @@ export function getTaskDismissInfo(
     };
   }
 
-  if (action.optional) {
+  if (isActionOptional(action)) {
     return {
       header: taskHeaders.homePage.optional.title,
       message: taskHeaders.homePage.optional.description,

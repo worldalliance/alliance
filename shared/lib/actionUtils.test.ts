@@ -9,6 +9,7 @@ import {
   calculateCompletionData,
   canCompleteAction,
   deadlineHasPassed,
+  isActionOptional,
   isCurrentlyCompletedAction,
   shouldCompleteAction,
   showActionInSidebarList,
@@ -47,6 +48,14 @@ describe("viewer-based action predicates", () => {
       expect(showActionInSidebarList(action)).toBe(true);
       expect(isCurrentlyCompletedAction(action)).toBe(false);
     }
+  });
+
+  it("reads optional off the viewer, falling back to the action flag for guests", () => {
+    expect(isActionOptional(makeAction())).toBe(false);
+    expect(
+      isActionOptional(makeAction({ viewer: makeViewer({ optional: true }) })),
+    ).toBe(true);
+    expect(isActionOptional(makeLegacyAction({ optional: true }))).toBe(true);
   });
 
   it("keeps a dismissed action completable but out of home lists", () => {
