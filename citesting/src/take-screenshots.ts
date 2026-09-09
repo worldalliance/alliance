@@ -468,6 +468,24 @@ const startFrontend = async () => {
 /*  Screenshot capture                                                 */
 /* ------------------------------------------------------------------ */
 
+// fullPage capture never scrolls, so images below the fold stay outside the
+// lazy-loading threshold and would be captured blank.
+const settleImages = async (page: Page) => {
+  await page.evaluate(() => {
+    for (const img of document.querySelectorAll<HTMLImageElement>(
+      'img[loading="lazy"]',
+    )) {
+      img.loading = "eager";
+    }
+  });
+
+  await page.waitForFunction(
+    () => Array.from(document.images).every((img) => img.complete),
+    undefined,
+    { timeout: 30000 },
+  );
+};
+
 const takeScreenshots = async () => {
   await fs.mkdir(outputDir, { recursive: true });
   console.log(`${logPrefix} Output directory: ${outputDir}`);
@@ -535,6 +553,7 @@ const takeScreenshots = async () => {
                 // Some pages keep background requests open; ignore.
               });
           }
+          await settleImages(page);
           await page.waitForTimeout(100);
           await page.screenshot({ path: filePath, fullPage: true });
         } finally {
