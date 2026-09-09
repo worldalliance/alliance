@@ -176,6 +176,17 @@ export function isActionOptional(action: ActionDto): boolean {
   return viewer ? viewer.optional : action.optional;
 }
 
+/**
+ * Legacy `shouldParticipate` folds dismissal into assignment, so the fallback
+ * needs no dismissal test of its own.
+ */
+export function isActionAssignedAndNotDismissed(action: ActionDto): boolean {
+  const { viewer } = action;
+  return viewer
+    ? viewer.assigned && !viewer.dismissed
+    : !!action.shouldParticipate;
+}
+
 export function shouldCompleteAction(action: ActionDto): boolean {
   if (
     !canCompleteAction(action) ||
@@ -187,25 +198,21 @@ export function shouldCompleteAction(action: ActionDto): boolean {
   ) {
     return false;
   }
-  const { viewer } = action;
-  // Legacy `shouldParticipate` folds dismissal into assignment; `viewer`
-  // models dismissal as a separate overlay.
-  return viewer
-    ? viewer.assigned && !viewer.dismissed
-    : !!action.shouldParticipate;
+  return isActionAssignedAndNotDismissed(action);
 }
 
 export function isCurrentlyCompletedAction(action: ActionDto): boolean {
-  if (action.status !== "member_action" || action.onboarding) {
+  if (
+    action.status !== "member_action" ||
+    action.onboarding ||
+    !isActionAssignedAndNotDismissed(action)
+  ) {
     return false;
   }
   const { viewer } = action;
-  if (viewer) {
-    return (
-      viewer.assigned && !viewer.dismissed && viewer.relation === "completed"
-    );
-  }
-  return !!action.shouldParticipate && action.userRelation === "completed";
+  return viewer
+    ? viewer.relation === "completed"
+    : action.userRelation === "completed";
 }
 
 export function showActionInSidebarList(action: ActionWithAwayStatus): boolean {

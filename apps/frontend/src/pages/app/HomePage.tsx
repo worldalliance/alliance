@@ -39,6 +39,7 @@ import {
   fetchTaskFormProgressViewsByFormId,
   mapFormViewsToActionIds,
   sidebarProgressActionCandidates,
+  sidebarProgressBarActions,
 } from "../../lib/fetchTaskFormProgressViews";
 import { useMediaQuery } from "../../lib/useMediaQuery";
 import { useTaskActionsData } from "../../lib/useTaskActionsData";
@@ -144,21 +145,13 @@ const HomePage = () => {
     };
   }, [actions]);
 
-  const sidebarProgressActions = useMemo(() => {
+  const sidebarProgressBarEntries = useMemo(() => {
     if (!actions) {
       return [];
     }
-    return actions
-      .filter(
-        (action) =>
-          action.status === "member_action" &&
-          action.shouldParticipate &&
-          (actionProgressViews[action.id]?.some(
-            (v) => v.kind === "progressbar",
-          ) ??
-            false),
-      )
-      .sort(homePagePriorityComparator);
+    return sidebarProgressBarActions(actions, actionProgressViews).sort(
+      (a, b) => homePagePriorityComparator(a.action, b.action),
+    );
   }, [actionProgressViews, actions]);
 
   const followUpFormsByActionId = useMemo(() => {
@@ -340,14 +333,14 @@ const HomePage = () => {
   ]);
 
   const sidebarProgressActionProgressBars = useMemo(() => {
-    if (sidebarProgressActions.length === 0) {
+    if (sidebarProgressBarEntries.length === 0) {
       return <></>;
     }
     return (
       <>
         <div className="flex flex-col gap-y-3">
           <div className="flex flex-col gap-y-2">
-            {sidebarProgressActions.map((action) => (
+            {sidebarProgressBarEntries.map(({ action, progressBars }) => (
               <Link
                 key={action.id}
                 to={href("/actions/:id", { id: action.id.toString() })}
@@ -357,17 +350,15 @@ const HomePage = () => {
                   {action.name}
                 </p>
                 <div className="flex flex-col gap-y-2">
-                  {(actionProgressViews[action.id] ?? [])
-                    .filter((v) => v.kind === "progressbar")
-                    .map((view) => (
-                      <AggregateProgressBarBlock
-                        key={view.id}
-                        view={view}
-                        titleClassName="text-base font-medium text-black"
-                        captionClassName="text-sm text-zinc-600"
-                        className="flex flex-col gap-y-1"
-                      />
-                    ))}
+                  {progressBars.map((view) => (
+                    <AggregateProgressBarBlock
+                      key={view.id}
+                      view={view}
+                      titleClassName="text-base font-medium text-black"
+                      captionClassName="text-sm text-zinc-600"
+                      className="flex flex-col gap-y-1"
+                    />
+                  ))}
                 </div>
               </Link>
             ))}
@@ -375,7 +366,7 @@ const HomePage = () => {
         </div>
       </>
     );
-  }, [sidebarProgressActions, actionProgressViews]);
+  }, [sidebarProgressBarEntries]);
 
   const mainContent = useMemo(() => {
     if (actions === null) {

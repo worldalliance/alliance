@@ -1,7 +1,7 @@
 import type { ActionEventDto, UserActionStatusDto } from "../client/types.gen";
 import type { ActionWithAwayStatus } from "./actionUtils";
 
-// Test-only fixture builders shared by the shared/lib suites. The defaults
+// Test-only fixture builders shared by the unit suites. The defaults
 // describe a plain assigned todo in the member-action phase, expressed
 // through the server-computed `viewer` status; `makeLegacyAction` re-expresses
 // the same action through the legacy flat fields (no `viewer`) for the
