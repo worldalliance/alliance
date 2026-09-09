@@ -220,12 +220,7 @@ export function showActionInSidebarList(action: ActionWithAwayStatus): boolean {
     return false;
   }
   const { viewer } = action;
-  if (viewer) {
-    return viewer.away === "not_away" && !viewer.dismissed;
-  }
-  return (
-    action.awayStatus === "not_away" && action.userRelation !== "dismissed"
-  );
+  return viewer ? viewer.away === "not_away" : action.awayStatus === "not_away";
 }
 
 /**
