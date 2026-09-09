@@ -24,10 +24,6 @@ import {
   StepLayout,
 } from "../../components/onboarding/chrome";
 import {
-  MemberWelcomeBackdrop,
-  MemberWelcomeStep,
-} from "../../components/onboarding/MemberWelcomeStep";
-import {
   CommitmentStep,
   COMMUNITY_REVEAL,
   CommunityStep,
@@ -37,7 +33,7 @@ import {
 import { WelcomeGate } from "../../components/onboarding/WelcomeGate";
 import Text from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
-import { WELCOME_SECONDS } from "../../lib/onboarding/content";
+import { isCommitted } from "../../lib/onboarding/content";
 import {
   AccountMode,
   FILLED_SEGMENTS,
@@ -86,7 +82,7 @@ const OnboardingScreen = () => {
   const [accountMode, setAccountMode] = useState(AccountMode.LogIn);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [committed, setCommitted] = useState(false);
+  const [committed, setCommitted] = useState("");
   const [signedName, setSignedName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -128,16 +124,6 @@ const OnboardingScreen = () => {
     const previous = stepBefore(step);
     if (previous) setStep(previous);
   }, [step]);
-
-  const previewing = __DEV__ && isOnboardingStep(stepParam);
-
-  useEffect(() => {
-    // A previewed welcome screen holds, so it can be looked at for longer than
-    // the three seconds the real one gets.
-    if (step !== OnboardingStep.Welcome || previewing) return;
-    const timer = setTimeout(enterPlatform, WELCOME_SECONDS * 1000);
-    return () => clearTimeout(timer);
-  }, [step, enterPlatform, previewing]);
 
   /** A returning member skips the story and lands straight in the walkthrough. */
   const submitAccount = useCallback(async () => {
@@ -220,7 +206,7 @@ const OnboardingScreen = () => {
 
     setSubmitting(false);
     setReceived(true);
-    setTimeout(() => setStep(OnboardingStep.Welcome), 900);
+    setTimeout(enterPlatform, 900);
   }, [
     submitting,
     latestContract,
@@ -229,10 +215,13 @@ const OnboardingScreen = () => {
     password,
     referralCode,
     login,
+    enterPlatform,
   ]);
 
   const agreementSigned =
-    Boolean(latestContract) && committed && signedName.trim().length > 0;
+    Boolean(latestContract) &&
+    isCommitted(committed) &&
+    signedName.trim().length > 0;
 
   const tone = STEP_TONE[step];
   const filled = FILLED_SEGMENTS[step];
@@ -327,13 +316,6 @@ const OnboardingScreen = () => {
             )}
           </StepLayout>
         );
-      case OnboardingStep.Welcome:
-        return (
-          <MemberWelcomeStep
-            memberNumber={(memberCount ?? 0) + 1}
-            onContinue={enterPlatform}
-          />
-        );
       default:
         throw new Error(`unknown onboarding step: ${step satisfies never}`);
     }
@@ -347,7 +329,6 @@ const OnboardingScreen = () => {
         className="flex-1"
         style={{ backgroundColor: TONE_BACKGROUND[tone] }}
       >
-        {step === OnboardingStep.Welcome && <MemberWelcomeBackdrop />}
         {panelBody()}
         {filled > 0 && !isGate && <ProgressTrack filled={filled} />}
       </View>

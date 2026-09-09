@@ -2,14 +2,12 @@ import { WalkthroughAnchor } from "./walkthrough";
 
 export const WALKTHROUGH_PARAM = "walkthrough";
 
-export type WalkthroughContext = { groupName: string | null };
-
 export type WalkthroughStep = {
   /** Omitted by a step that introduces the tour rather than pointing into it. */
   anchor?: WalkthroughAnchor;
   path: "/" | "/groups" | "/membership";
-  title: (context: WalkthroughContext) => string;
-  body: (context: WalkthroughContext) => string;
+  title: () => string;
+  body: () => string;
   /**
    * Sits at the foot of the screen rather than above the tab bar. For a step
    * whose anchor is tall or behind the drawer, the room matters more than
@@ -29,7 +27,7 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     path: "/",
     title: () => "Welcome!",
     body: () =>
-      "This is your Alliance platform where we coordinate actions every week. Let’s take a tour.",
+      "You’re now a member of the Alliance. Let’s take a tour of your platform.",
     dockBottom: true,
   },
   {
@@ -40,25 +38,8 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
       "Your current task. Fifteen minutes, once a week — that is the whole commitment.",
   },
   {
-    anchor: WalkthroughAnchor.GroupsTab,
-    path: "/",
-    title: () => "Groups live here",
-    body: () =>
-      "Groups in the tab bar is how you reach the handful of members you joined alongside. Next takes you there.",
-  },
-  {
-    anchor: WalkthroughAnchor.Group,
-    path: "/groups",
-    title: ({ groupName }) =>
-      groupName ? `You’re in ${groupName}` : "Your group appears here",
-    body: ({ groupName }) =>
-      groupName
-        ? "Together you can discuss actions and keep track of each other’s progress. This is who notices when you show up."
-        : "You will be placed in a group of members who joined alongside you. This is who notices when you show up.",
-  },
-  {
     anchor: WalkthroughAnchor.MembershipLink,
-    path: "/groups",
+    path: "/",
     dockBottom: true,
     title: () => "Your membership is under here",
     body: () =>

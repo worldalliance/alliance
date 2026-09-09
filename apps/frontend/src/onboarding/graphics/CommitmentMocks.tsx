@@ -116,6 +116,15 @@ const ROW_ORDER = [1, 0, 2];
 const CARD_WIDTH = 380;
 const CARD_HEIGHT = 460;
 
+const ROW_HEIGHT = "46vh";
+
+const ROW_GAP_REM = 1.5;
+
+/** Each card is as wide as the row is tall, at the card's own aspect ratio. */
+const ROW_MAX_WIDTH = `calc(${
+  (ROW_ORDER.length * CARD_WIDTH) / CARD_HEIGHT
+} * ${ROW_HEIGHT} + ${(ROW_ORDER.length - 1) * ROW_GAP_REM}rem)`;
+
 /**
  * Scales a card from its authored pixel size by whichever axis runs out first,
  * so nothing is ever cropped at the foot. Reading `cqh` is what forces a size
@@ -200,7 +209,13 @@ function Deck({ className }: { className?: string }) {
 export function CommitmentMocks() {
   return (
     <div className="ob-mocks flex min-h-0 flex-1 flex-col justify-center lg:flex-none">
-      <div className="hidden min-h-0 gap-6 lg:flex lg:h-[46vh]">
+      {/* Capped at what the cards actually occupy once scaled to the row's
+          height. Left to grow, each stage takes an equal slice of an ultrawide
+          panel and the cards scatter to its edges. */}
+      <div
+        className="mx-auto hidden w-full min-h-0 gap-6 lg:flex"
+        style={{ height: ROW_HEIGHT, maxWidth: ROW_MAX_WIDTH }}
+      >
         {ROW_ORDER.map((index) => (
           <FitStage
             key={ACTIONS[index].id}

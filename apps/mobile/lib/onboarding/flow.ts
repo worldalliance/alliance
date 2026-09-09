@@ -5,7 +5,6 @@ export enum OnboardingStep {
   Scale = "scale",
   Minutes = "minutes",
   Agreement = "agreement",
-  Welcome = "welcome",
 }
 
 export enum PanelTone {
@@ -20,7 +19,6 @@ export const STEP_ORDER: OnboardingStep[] = [
   OnboardingStep.Scale,
   OnboardingStep.Minutes,
   OnboardingStep.Agreement,
-  OnboardingStep.Welcome,
 ];
 
 export const PROGRESS_SEGMENTS = 5;
@@ -33,7 +31,6 @@ export const FILLED_SEGMENTS: Record<OnboardingStep, number> = {
   [OnboardingStep.Scale]: 3,
   [OnboardingStep.Minutes]: 4,
   [OnboardingStep.Agreement]: 5,
-  [OnboardingStep.Welcome]: 5,
 };
 
 export const STEP_TONE: Record<OnboardingStep, PanelTone> = {
@@ -43,7 +40,6 @@ export const STEP_TONE: Record<OnboardingStep, PanelTone> = {
   [OnboardingStep.Scale]: PanelTone.Navy,
   [OnboardingStep.Minutes]: PanelTone.Navy,
   [OnboardingStep.Agreement]: PanelTone.Navy,
-  [OnboardingStep.Welcome]: PanelTone.Photo,
 };
 
 export const STEP_EYEBROW: Record<OnboardingStep, string | null> = {
@@ -53,7 +49,6 @@ export const STEP_EYEBROW: Record<OnboardingStep, string | null> = {
   [OnboardingStep.Scale]: "What is the Alliance?",
   [OnboardingStep.Minutes]: "What is the Alliance?",
   [OnboardingStep.Agreement]: "Membership Agreement",
-  [OnboardingStep.Welcome]: null,
 };
 
 export function isOnboardingStep(

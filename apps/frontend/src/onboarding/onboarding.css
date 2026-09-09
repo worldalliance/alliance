@@ -27,7 +27,7 @@
 
   --ob-margin: 0px;
   --ob-radius: 0px;
-  --ob-bleed: 5rem;
+  --ob-intro-inset: 2.5rem;
   --ob-navy: var(--site-primary);
   --ob-green: #24491d;
   --ob-swap: cubic-bezier(0.65, 0, 0.35, 1);
@@ -125,7 +125,9 @@ html.ob-locked body {
   top: 8.5rem;
   bottom: 3.5rem;
   left: 50vw;
-  width: calc(50vw + var(--ob-bleed));
+  /* Inset from the right rather than bled past it: the card carries its own
+     composition now, so anything running off the edge is just lost. */
+  width: calc(50vw - var(--ob-intro-inset));
   border-radius: 1rem;
 }
 
@@ -181,24 +183,29 @@ html.ob-locked body {
 
 /* The contract's green confirmation bar, grown from where it sits under the
    card until it covers the panel and hands over to the welcome screen. */
+/* Grows out of the "Agreement Received" bar and settles on the walkthrough's
+   own green, so the dialogue can shrink out of the same colour rather than the
+   handover cutting from one green to another. */
 @keyframes ob-flood {
   from {
     top: var(--ob-flood-top);
     left: var(--ob-flood-left);
     width: var(--ob-flood-width);
     height: var(--ob-flood-height);
+    background-color: var(--color-green);
   }
   to {
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
+    background-color: var(--ob-green);
   }
 }
 
 .ob-flood {
   position: absolute;
-  background-color: var(--color-green);
+  background-color: var(--ob-green);
   transition: opacity 620ms ease;
   animation: ob-flood 720ms var(--ob-swap) both;
 }

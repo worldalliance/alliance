@@ -33,6 +33,13 @@ export const HOURS_LEGEND_SPENT = "Time spent completing actions";
 
 export const AGREEMENT_HEADLINE = "Help us build a network of reliability.";
 
+/** Typed out rather than ticked, so agreeing takes a deliberate act. */
+export const COMMIT_PHRASE = "I commit";
+
+export function isCommitted(typed: string): boolean {
+  return typed.trim().toLowerCase() === COMMIT_PHRASE.toLowerCase();
+}
+
 export const COMMITMENT_STATEMENT =
   "I commit to complete each task to the best of my ability.";
 
@@ -40,9 +47,6 @@ export const DETAILS_LINK = "View more details";
 
 export const WELCOME_HEADLINE = "Welcome to The Alliance";
 export const WELCOME_SUBLINE = "Let’s build a cooperative future.";
-
-/** How long the join confirmation holds before the walkthrough takes over. */
-export const WELCOME_SECONDS = 3;
 
 export type Priority = {
   id: string;

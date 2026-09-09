@@ -68,7 +68,7 @@ function Navbar() {
               </div>
             )}
           </main>
-          <Walkthrough onDrawerOpenChange={setMobileNavOpen} />
+          <Walkthrough />
         </IncomingCommunityInvitesProvider>
       </NotificationsProvider>
     </NavbarOptionsProvider>

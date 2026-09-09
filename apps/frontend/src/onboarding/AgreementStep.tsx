@@ -8,15 +8,19 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { Check } from "lucide-react";
 import type { RefObject } from "react";
 import { href, Link } from "react-router";
-import { riseStyle, StepHeadline, StepNote } from "./chrome";
+import { riseStyle, StepHeadline } from "./chrome";
 
 export const AGREEMENT_HEADLINE = "Help us build a network of reliability.";
 
 export const COMMITMENT_STATEMENT =
   "I commit to complete each task to the best of my ability.";
 
-const SERIOUSNESS_NOTE =
-  "Every week is planned around the people who said they would be there, so an absence is felt. Nobody is asking you to be perfect: mark yourself away and we plan the week without you.";
+/** Typed out rather than ticked, so agreeing takes a deliberate act. */
+export const COMMIT_PHRASE = "I commit";
+
+export function isCommitted(typed: string): boolean {
+  return typed.trim().toLowerCase() === COMMIT_PHRASE.toLowerCase();
+}
 
 const DETAILS_LINK = "View more details";
 
@@ -82,39 +86,48 @@ function SignedBy({
 }
 
 function CommitControl({
-  committed,
-  onCommittedChange,
+  typed,
+  onTypedChange,
 }: {
-  committed: boolean;
-  onCommittedChange: (committed: boolean) => void;
+  typed: string;
+  onTypedChange: (value: string) => void;
 }) {
+  const done = isCommitted(typed);
+
   return (
-    <button
-      type="button"
-      aria-pressed={committed}
-      onClick={() => onCommittedChange(!committed)}
-      className={cn(
-        "flex shrink-0 cursor-pointer items-center gap-3 rounded-lg border-2 p-3 text-left transition-colors",
-        committed
-          ? "border-[var(--color-green)] bg-[var(--color-green)]/8"
-          : "border-zinc-200 bg-zinc-50 hover:border-zinc-300",
-      )}
-    >
-      <span
-        className={cn(
-          "flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-          committed
-            ? "border-[var(--color-green)] bg-[var(--color-green)] text-white"
-            : "border-zinc-300 bg-white",
-        )}
-        aria-hidden
+    <div className="flex shrink-0 flex-col gap-1.5">
+      <label
+        htmlFor="commit-phrase"
+        className="text-[length:var(--ob-ui)] leading-snug text-black"
       >
-        {committed && <Check className="size-3.5" strokeWidth={3.5} />}
-      </span>
-      <span className="text-[length:var(--ob-body)] leading-snug text-black lg:text-[length:var(--ob-ui)]">
-        {COMMITMENT_STATEMENT}
-      </span>
-    </button>
+        {COMMITMENT_STATEMENT} Type{" "}
+        <span className="font-semibold">{COMMIT_PHRASE}</span> to agree.
+      </label>
+      <div className="relative">
+        <input
+          id="commit-phrase"
+          name="commitPhrase"
+          type="text"
+          autoComplete="off"
+          placeholder={COMMIT_PHRASE}
+          value={typed}
+          onChange={(e) => onTypedChange(e.target.value)}
+          className={cn(
+            "h-[clamp(2.1rem,4.4vh,2.75rem)] w-full rounded-md border-2 bg-white px-3.5 pr-10 text-black outline-none transition-colors placeholder:text-zinc-400",
+            done
+              ? "border-[var(--color-green)]"
+              : "border-zinc-200 focus:border-[var(--ob-navy)]",
+          )}
+        />
+        {done && (
+          <Check
+            className="absolute top-1/2 right-3 size-5 -translate-y-1/2 text-[var(--color-green)]"
+            strokeWidth={3}
+            aria-hidden
+          />
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -135,8 +148,9 @@ export function AgreementStep({
   inviter: ReferrerProfileDto | null;
   faces: ProfileDto[];
   signedCount: number;
-  committed: boolean;
-  onCommittedChange: (committed: boolean) => void;
+  /** The raw text the member has typed into the commitment field. */
+  committed: string;
+  onCommittedChange: (value: string) => void;
   signedName: string;
   onSignedNameChange: (name: string) => void;
   error: string | null;
@@ -155,10 +169,10 @@ export function AgreementStep({
           inviter={inviter}
           faces={faces}
           signedCount={signedCount}
-          className="order-2 lg:order-1"
+          className="order-2"
         />
 
-        <div className="order-1 flex shrink-0 flex-col overflow-hidden rounded-lg bg-white lg:order-2">
+        <div className="order-1 flex shrink-0 flex-col overflow-hidden rounded-lg bg-white">
           <div className="flex min-h-0 flex-col gap-[clamp(0.4rem,1.15vh,0.85rem)] p-[clamp(0.75rem,1.9vh,1.35rem)] text-[length:var(--ob-ui)]">
             {contract.description.map((item) => (
               <div key={item.point} className="flex flex-col">
@@ -174,8 +188,8 @@ export function AgreementStep({
             ))}
 
             <CommitControl
-              committed={committed}
-              onCommittedChange={onCommittedChange}
+              typed={committed}
+              onTypedChange={onCommittedChange}
             />
 
             <Link
@@ -220,10 +234,6 @@ export function AgreementStep({
             </div>
           </div>
         </div>
-
-        <StepNote className="ob-promise order-3" index={3}>
-          {SERIOUSNESS_NOTE}
-        </StepNote>
       </div>
     </>
   );

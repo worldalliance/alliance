@@ -1,6 +1,8 @@
-import { Calendar } from "lucide-react";
-import { href, Link } from "react-router";
-import { DisplayHeading, SiteArrow, SiteButton } from "../site/ui";
+import { cn } from "@alliance/shared/styles/util";
+import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
+import { Calendar, Clock } from "lucide-react";
+import grassField from "../assets/redesign/grass-field.jpg";
+import { SiteButton } from "../site/ui";
 
 const INFO_SESSION_HREF =
   "https://calendar.google.com/calendar/event?action=TEMPLATE&tmeid=MmUxZ3FxMmhtcWExbHQ3ODU4dHE5YjF2ODggZ3JhbnRAd29ybGRhbGxpYW5jZS5vcmc&tmsrc=grant%40worldalliance.org";
@@ -16,6 +18,14 @@ const INFO_SESSION_WHEN = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/Los_Angeles",
   timeZoneName: "short",
 }).format(INFO_SESSION_STARTS_AT);
+
+const TASK_TITLE = "Choose between recipients of our $100,000 grant";
+
+const TASK_MINUTES = 15;
+
+const TASK_JOINED = 211;
+
+const TASK_REQUIRED = 1000;
 
 export function InfoSessionButton() {
   return (
@@ -37,32 +47,61 @@ export function InfoSessionButton() {
   );
 }
 
+/** A task from the grantmaking project, drawn the way the real task list draws one. */
+function GrantTaskMock() {
+  return (
+    <div className="w-full max-w-[26rem] rounded-xl bg-white p-5 shadow-[0_24px_60px_-18px_rgba(0,0,0,0.55)]">
+      <p className="text-[1.0625rem] leading-snug font-semibold text-balance text-black">
+        {TASK_TITLE}
+      </p>
+      <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-[var(--color-green)]">
+        <Clock className="size-3.5" aria-hidden />
+        {TASK_MINUTES} minutes
+      </p>
+      <div className="mt-4">
+        <p className="mb-1.5 text-sm text-zinc-600">
+          {TASK_JOINED.toLocaleString("en-US")} /{" "}
+          {TASK_REQUIRED.toLocaleString("en-US")} members required
+        </p>
+        <CompletedBar percentage={(TASK_JOINED / TASK_REQUIRED) * 100} />
+      </div>
+    </div>
+  );
+}
+
 export function GrantmakingCard({ className }: { className?: string }) {
   return (
-    <Link
-      to={href("/projects/democratic-grantmaking-26")}
-      className={`group flex flex-col justify-end bg-[var(--site-primary)] p-7 text-left text-white transition-colors hover:bg-[var(--site-primary-hover)] sm:p-9 ${className ?? ""}`}
+    <div
+      className={cn(
+        "relative isolate flex flex-col justify-between overflow-hidden p-7 text-left sm:p-9",
+        className,
+      )}
       style={{ borderRadius: "var(--site-radius-card)" }}
     >
-      <p className="text-base text-white/40 md:text-lg">
-        Upcoming project in fall 2026
-      </p>
-      <DisplayHeading
-        as="h2"
-        className="mt-4 text-4xl text-balance text-white sm:text-5xl lg:text-6xl"
-      >
-        Where should we donate <span className="text-green">$100,000</span>?
-      </DisplayHeading>
-      <p className="mt-6 text-lg leading-snug text-white/90 sm:text-xl">
-        As a member, you will be able to help us direct a significant grant.
-      </p>
-      <span className="mt-10 flex items-end justify-between gap-4">
-        <span className="text-lg text-white/80 sm:text-xl">
-          <span className="font-semibold text-green">$35,300</span> committed so
-          far
-        </span>
-        <SiteArrow className="mb-1 size-5 shrink-0 transition-transform duration-300 ease-out group-hover:translate-x-1 group-hover:-translate-y-1" />
-      </span>
-    </Link>
+      <img
+        src={grassField}
+        alt=""
+        className="absolute inset-0 -z-20 size-full object-cover"
+      />
+      {/* The type sits straight on the photo, so it needs its own floor of contrast. */}
+      <div
+        className="absolute inset-0 -z-10 bg-[var(--site-primary)]/72"
+        aria-hidden
+      />
+
+      <div className="flex flex-1 items-center justify-center py-6">
+        <GrantTaskMock />
+      </div>
+
+      <div>
+        <p className="text-base text-white/70 md:text-lg">
+          Upcoming project fall 2026
+        </p>
+        {/* The standfirst voice the left column used to carry, moved onto the card. */}
+        <p className="mt-2 max-w-[33rem] text-[1.05rem] leading-[1.35] text-white sm:text-[1.3rem]">
+          Where should we donate $100,000?
+        </p>
+      </div>
+    </div>
   );
 }

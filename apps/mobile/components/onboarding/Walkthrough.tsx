@@ -1,4 +1,3 @@
-import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useGlobalSearchParams, usePathname, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { useWindowDimensions, View } from "react-native";
@@ -23,7 +22,6 @@ import {
   WALKTHROUGH_ENTRY_PARAM,
   WALKTHROUGH_PARAM,
   WALKTHROUGH_STEPS,
-  type WalkthroughContext,
 } from "../../lib/onboarding/walkthroughSteps";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Text, { FontWeight } from "../system/Text";
@@ -161,7 +159,6 @@ export function Walkthrough() {
   const router = useRouter();
   const scale = useOnboardingScale();
   const insets = useSafeAreaInsets();
-  const { selectedCommunity } = useMyCommunities();
   const { boxes, activeAnchor, setActiveAnchor, scrollBy, chromeBottom } =
     useWalkthroughAnchors();
   const { height: windowHeight } = useWindowDimensions();
@@ -224,10 +221,6 @@ export function Walkthrough() {
   }, [needsDrawer, openDrawer, closeDrawer]);
 
   if (!step || !onStepPath) return null;
-
-  const context: WalkthroughContext = {
-    groupName: selectedCommunity?.name ?? null,
-  };
   // An anchor still off-screen loses the spotlight rather than drawing a
   // degenerate one; the step keeps its say either way.
   const onScreen =
@@ -280,7 +273,7 @@ export function Walkthrough() {
             className="flex-1 text-white"
             style={{ fontSize: scale.body }}
           >
-            {step.title(context)}
+            {step.title()}
           </Text>
           <Text className="text-white/60" style={{ fontSize: scale.caption }}>
             {index + 1} of {WALKTHROUGH_STEPS.length}
@@ -290,7 +283,7 @@ export function Walkthrough() {
           className="mt-1 text-white/85"
           style={{ fontSize: scale.ui, lineHeight: scale.ui * 1.35 }}
         >
-          {step.body(context)}
+          {step.body()}
         </Text>
         <View className="mt-3 flex-row gap-3">
           <Button

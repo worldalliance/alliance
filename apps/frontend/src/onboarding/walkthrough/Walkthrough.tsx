@@ -1,11 +1,9 @@
-import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import type { StyleWithVars } from "@alliance/sharedweb/ui/cssVars";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
-import { useMediaQuery } from "../../lib/useMediaQuery";
 import "../onboarding.css";
 import { MOCK_PARAM } from "../useMockTasks";
 import {
@@ -13,7 +11,6 @@ import {
   WALKTHROUGH_PARAM,
   WALKTHROUGH_STEPS,
   type WalkthroughAnchor,
-  type WalkthroughContext,
 } from "./steps";
 
 /** How long a step waits for its anchor before settling for no spotlight. */
@@ -33,9 +30,6 @@ const SAFE_GAP = 16;
 const MAX_SCROLLS = 6;
 
 const SCROLL_SETTLE_MS = 420;
-
-/** A query that matches nothing, for a step with no variant to subscribe to. */
-const NEVER_QUERY = "(max-width: 0px)";
 
 const TOUR_BUTTON = "min-h-11 w-full rounded-lg";
 
@@ -112,11 +106,36 @@ function scrollParent(el: Element): Element | Window {
 }
 
 /**
- * How far to scroll to bring `box` inside the band above the dialogue. An
- * anchor taller than the band gets its head pinned to the top instead.
+ * The lowest edge of anything pinned across the top of the viewport. Scrolling
+ * an anchor to a flat offset puts its head under the app bar, which reads as
+ * the spotlight being cut off.
  */
-function scrollDelta(box: Box, safeBottom: number): number {
-  const top = SAFE_GAP;
+function pinnedHeaderBottom(): number {
+  let bottom = 0;
+  for (const node of document.querySelectorAll<HTMLElement>("body *")) {
+    if (node.closest("[data-ob-tour]")) continue;
+    const style = getComputedStyle(node);
+    if (style.position !== "fixed" && style.position !== "sticky") continue;
+    const box = node.getBoundingClientRect();
+    const spansTop = box.top <= 0 && box.width > window.innerWidth * 0.5;
+    if (spansTop && box.height > 0 && box.height < window.innerHeight / 3) {
+      bottom = Math.max(bottom, box.bottom);
+    }
+  }
+  return bottom;
+}
+
+/**
+ * How far to scroll to bring `box` inside the band between the pinned header
+ * and the dialogue. An anchor taller than the band gets its head pinned to the
+ * band's top instead.
+ */
+function scrollDelta(
+  box: Box,
+  safeBottom: number,
+  headerBottom: number,
+): number {
+  const top = headerBottom + SAFE_GAP;
   const bottom = safeBottom - SAFE_GAP;
   if (box.height > bottom - top || box.top < top) return box.top - top;
   if (box.top + box.height > bottom) return box.top + box.height - bottom;
@@ -132,23 +151,16 @@ function shrinkStyle(box: Box): StyleWithVars {
   };
 }
 
-export function Walkthrough({
-  onDrawerOpenChange,
-}: {
-  onDrawerOpenChange?: (open: boolean) => void;
-}) {
+export function Walkthrough() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { selectedCommunity } = useMyCommunities();
 
   const raw = searchParams.get(WALKTHROUGH_PARAM);
   const index = raw === null ? -1 : Number(raw);
   const step = WALKTHROUGH_STEPS[index];
 
-  const variantApplies = useMediaQuery(step?.variant?.query ?? NEVER_QUERY);
-  const variant = variantApplies ? step?.variant : undefined;
-  const anchor = variant?.anchor ?? step?.anchor;
+  const anchor = step?.anchor;
 
   const [measured, setMeasured] = useState<Measurement | null>(null);
   const [dialogue, setDialogue] = useState<HTMLDivElement | null>(null);
@@ -192,14 +204,6 @@ export function Walkthrough({
     navigate(stepHref(index), { replace: true });
   }, [step, onStepPath, navigate, index, stepHref]);
 
-  const opensDrawer = Boolean(variant?.opensDrawer);
-
-  useEffect(() => {
-    if (!opensDrawer || !onDrawerOpenChange) return;
-    onDrawerOpenChange(true);
-    return () => onDrawerOpenChange(false);
-  }, [opensDrawer, onDrawerOpenChange, index]);
-
   useLayoutEffect(() => {
     if (!dialogue) return;
     const r = dialogue.getBoundingClientRect();
@@ -239,6 +243,15 @@ export function Walkthrough({
     let lastScroll = 0;
     const deadline = Date.now() + ANCHOR_TIMEOUT_MS;
 
+    // Measured per step and on resize, never per frame: the scan walks every
+    // element in the page, and the bar it finds does not move while a step is
+    // on screen.
+    let headerBottom = pinnedHeaderBottom();
+    const remeasureHeader = () => {
+      headerBottom = pinnedHeaderBottom();
+    };
+    window.addEventListener("resize", remeasureHeader);
+
     const tick = () => {
       const el = document.querySelector<HTMLElement>(
         `[data-walkthrough="${anchor}"]`,
@@ -251,7 +264,7 @@ export function Walkthrough({
         // The dialogue covers the foot of the screen, so the anchor is scrolled
         // into what is left above it rather than to the viewport's own middle.
         const safeBottom = dialogueBox?.top ?? window.innerHeight;
-        const delta = scrollDelta(r, safeBottom);
+        const delta = scrollDelta(r, safeBottom, headerBottom);
         if (
           Math.abs(delta) > 8 &&
           scrolls < MAX_SCROLLS &&
@@ -282,21 +295,24 @@ export function Walkthrough({
     };
 
     tick();
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", remeasureHeader);
+    };
   }, [step, onStepPath, anchor, dialogueBox]);
 
   useEffect(() => setMeasured(null), [index]);
 
   if (!step || !onStepPath) return null;
 
-  const context: WalkthroughContext = {
-    groupName: selectedCommunity?.name ?? null,
-  };
   const spotlight = measured?.anchor === anchor ? measured : null;
   const isLast = index + 1 === WALKTHROUGH_STEPS.length;
 
   return (
-    <div className={cn("pointer-events-none fixed inset-0", zIndex.modal)}>
+    <div
+      data-ob-tour
+      className={cn("pointer-events-none fixed inset-0", zIndex.modal)}
+    >
       {spotlight ? (
         <Spotlight box={spotlight} />
       ) : (
@@ -324,14 +340,14 @@ export function Walkthrough({
       >
         <div className="flex items-start justify-between gap-4">
           <p className="text-[length:var(--ob-body)] font-semibold">
-            {step.title(context)}
+            {step.title()}
           </p>
           <span className="shrink-0 text-[length:var(--ob-caption)] text-white/60 tabular-nums">
             {index + 1} of {WALKTHROUGH_STEPS.length}
           </span>
         </div>
         <p className="mt-1 text-[length:var(--ob-ui)] leading-snug text-pretty text-white/85">
-          {(variant?.body ?? step.body)(context)}
+          {step.body()}
         </p>
         <div className="mt-3 sm:mt-4">
           <div className="grid grid-cols-2 gap-3">

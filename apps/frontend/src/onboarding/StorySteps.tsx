@@ -28,6 +28,9 @@ export const MINUTES_NOTE =
 export const SCALE_HEADLINE =
   "The larger we are, the more impact we can have. Every new member is vital to us at this experimental stage.";
 
+/** Separates the illustrative milestone bars from the one real commitment. */
+export const SCALE_EXAMPLES_LABEL = "Examples of what each size makes possible";
+
 export const SCALE_NOTE =
   "Our work is advised by scientists, analysts, and other experts for rigor and effectiveness.";
 
@@ -115,9 +118,13 @@ export function MinutesStep() {
 
 function NextMilestone() {
   return (
-    <div className="mx-auto flex w-full max-w-[38rem] flex-col gap-1.5 rounded-lg bg-white/10 p-[clamp(0.8rem,2.2vh,1.5rem)]">
-      <p className="text-[length:var(--ob-ui)] text-white/60">
-        At {nextMilestone.members.toLocaleString("en-US")} members
+    <div className="mx-auto flex w-full max-w-[38rem] flex-col gap-1.5 rounded-lg border border-[var(--color-green)]/45 bg-[var(--color-green)]/12 p-[clamp(0.8rem,2.2vh,1.5rem)]">
+      <p className="flex items-center gap-2 text-[length:var(--ob-caption)] tracking-wide text-white/70 uppercase">
+        <span
+          className="size-1.5 rounded-full bg-[var(--color-green)]"
+          aria-hidden
+        />
+        Plan - {nextMilestone.members.toLocaleString("en-US")} Members
       </p>
       <p className="text-[length:var(--ob-h2)] leading-tight font-medium text-balance text-white">
         {nextMilestone.action}
@@ -140,7 +147,13 @@ export function ScaleStep() {
         className="mx-auto flex min-h-0 w-full flex-col lg:w-[81%] lg:flex-none"
         style={{ gap: "clamp(0.6rem, 2.6vh, 2rem)" }}
       >
-        <div className="ob-rise min-h-0" style={riseStyle(2)}>
+        <div
+          className="ob-rise flex min-h-0 flex-col gap-2"
+          style={riseStyle(2)}
+        >
+          <p className="text-[length:var(--ob-caption)] tracking-wide text-white/50 uppercase">
+            {SCALE_EXAMPLES_LABEL}
+          </p>
           <GrowthMilestones
             near={wideTrack ? REACHED_MILESTONES : REACHED_MILESTONES.slice(1)}
             members={memberCount ?? 0}

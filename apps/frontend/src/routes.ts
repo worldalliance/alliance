@@ -16,10 +16,6 @@ export default [
   route("/description", "pages/static/ExpertDescriptionPage.tsx"),
   route("/faq", "pages/static/FAQPage.tsx"),
   route("/invite", "pages/static/InvitePage.tsx"),
-  route(
-    "/projects/democratic-grantmaking-26",
-    "components/projects/democratic-grantmaking-26/DemocraticGrantmaking26.tsx",
-  ),
   route("/outreach-partner", "pages/static/OutreachPartnerPage.tsx"),
   route("/privacypolicy", "pages/static/PrivacyPolicyPage.tsx"),
   route("/childsafety", "pages/static/ChildSafetyPage.tsx"),

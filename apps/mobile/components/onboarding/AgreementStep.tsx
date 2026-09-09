@@ -9,8 +9,10 @@ import { Pressable, TextInput, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import {
   AGREEMENT_HEADLINE,
+  COMMIT_PHRASE,
   COMMITMENT_STATEMENT,
   DETAILS_LINK,
+  isCommitted,
 } from "../../lib/onboarding/content";
 import {
   motion,
@@ -84,42 +86,57 @@ function SignedBy({
 }
 
 function CommitControl({
-  committed,
-  onCommittedChange,
+  typed,
+  onTypedChange,
 }: {
-  committed: boolean;
-  onCommittedChange: (committed: boolean) => void;
+  typed: string;
+  onTypedChange: (value: string) => void;
 }) {
   const scale = useOnboardingScale();
+  const done = isCommitted(typed);
 
   return (
-    <Pressable
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: committed }}
-      onPress={() => onCommittedChange(!committed)}
-      className="flex-row items-center gap-3 rounded-lg border-2 p-3"
-      style={{
-        borderColor: committed ? onboardingColors.accentGreen : "#e4e4e7",
-        backgroundColor: committed ? "rgba(98,161,36,0.08)" : "#fafafa",
-      }}
-      testID="vr-onboarding-commit"
-    >
-      <View
-        className="size-6 items-center justify-center rounded-full border-2"
-        style={{
-          borderColor: committed ? onboardingColors.accentGreen : "#d4d4d8",
-          backgroundColor: committed ? onboardingColors.accentGreen : "#fff",
-        }}
-      >
-        {committed && <Check size={14} color="#fff" strokeWidth={3.5} />}
-      </View>
+    <View className="gap-1.5">
       <Text
-        className="flex-1 text-black"
-        style={{ fontSize: scale.body, lineHeight: scale.body * 1.3 }}
+        className="text-black"
+        style={{ fontSize: scale.ui, lineHeight: scale.ui * 1.3 }}
       >
-        {COMMITMENT_STATEMENT}
+        {COMMITMENT_STATEMENT} Type{" "}
+        <Text
+          weight={FontWeight.Semibold}
+          className="text-black"
+          style={{ fontSize: scale.ui }}
+        >
+          {COMMIT_PHRASE}
+        </Text>{" "}
+        to agree.
       </Text>
-    </Pressable>
+      <View className="justify-center">
+        <TextInput
+          className="min-h-11 rounded-md border-2 bg-white px-3.5 text-base text-black"
+          style={{
+            borderColor: done ? onboardingColors.accentGreen : "#e4e4e7",
+          }}
+          placeholder={COMMIT_PHRASE}
+          placeholderTextColor="#a1a1aa"
+          value={typed}
+          onChangeText={onTypedChange}
+          autoCapitalize="none"
+          autoCorrect={false}
+          accessibilityLabel={`Type ${COMMIT_PHRASE} to agree`}
+          testID="vr-onboarding-commit"
+        />
+        {done && (
+          <View className="absolute right-3">
+            <Check
+              size={18}
+              color={onboardingColors.accentGreen}
+              strokeWidth={3}
+            />
+          </View>
+        )}
+      </View>
+    </View>
   );
 }
 
@@ -139,8 +156,9 @@ export function AgreementStep({
   inviter: ReferrerProfileDto | null;
   faces: ProfileDto[];
   signedCount: number;
-  committed: boolean;
-  onCommittedChange: (committed: boolean) => void;
+  /** The raw text the member has typed into the commitment field. */
+  committed: string;
+  onCommittedChange: (value: string) => void;
   signedName: string;
   onSignedNameChange: (name: string) => void;
   error: string | null;
@@ -181,8 +199,8 @@ export function AgreementStep({
               ))}
 
               <CommitControl
-                committed={committed}
-                onCommittedChange={onCommittedChange}
+                typed={committed}
+                onTypedChange={onCommittedChange}
               />
 
               <Pressable

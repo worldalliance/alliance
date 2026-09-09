@@ -2,10 +2,8 @@ import { authForgotPassword, authLogin } from "@alliance/shared/client";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
 import { Features } from "@alliance/shared/lib/features";
 import { useInvite } from "@alliance/shared/lib/useInvite";
-import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { z } from "zod";
@@ -20,11 +18,8 @@ import {
 } from "./GoogleSignIn";
 import { InfoSessionButton } from "./GrantmakingCard";
 
-const STANDFIRST =
-  "To combat global problems, we commit 15 minutes each week to projects that depend on everyone’s participation.";
-
 const FIELD =
-  "h-11 w-full rounded-md border border-zinc-300/80 bg-zinc-100! px-3.5 text-sm text-black outline-none transition-colors placeholder:text-zinc-500 focus:border-[var(--ob-navy)] focus:bg-white!";
+  "h-11 w-full rounded-md border border-zinc-300 bg-white px-3.5 text-sm text-black outline-none transition-colors placeholder:text-zinc-500 focus:border-[var(--ob-navy)]";
 
 const CARD_BUTTON = "w-full gap-2 py-2.5";
 
@@ -107,8 +102,8 @@ export function AccountStep({
     >
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-5 pt-24 pb-6 sm:px-8">
         <div className="ob-rise w-full max-w-[22rem]" style={riseStyle(0)}>
-          <h1 className="text-center text-lg font-semibold text-black">
-            {loggingIn ? "Log In" : "Create an Account"}
+          <h1 className="text-center text-2xl font-semibold text-black sm:text-[1.75rem]">
+            {loggingIn ? "Log in to your account" : "Create your account"}
           </h1>
           {inviter && (
             <div className="mt-2 flex flex-row items-center justify-center gap-x-2 text-sm text-zinc-500">
@@ -151,23 +146,17 @@ export function AccountStep({
               className={FIELD}
               aria-label="Email"
             />
-            {/* Held back until the email is valid, so the card opens on one
-                decision rather than two. */}
-            {emailValid && (
-              <input
-                name="password"
-                type="password"
-                required
-                autoFocus
-                autoComplete={loggingIn ? "current-password" : "new-password"}
-                placeholder="Password"
-                value={password}
-                onChange={(e) => onPasswordChange(e.target.value)}
-                className={cn(FIELD, "ob-rise")}
-                style={{ animationDuration: "380ms" }}
-                aria-label="Password"
-              />
-            )}
+            <input
+              name="password"
+              type="password"
+              required
+              autoComplete={loggingIn ? "current-password" : "new-password"}
+              placeholder="Password"
+              value={password}
+              onChange={(e) => onPasswordChange(e.target.value)}
+              className={FIELD}
+              aria-label="Password"
+            />
             {error && (
               <p className="text-sm font-medium text-red-600" role="alert">
                 {error}
@@ -183,18 +172,6 @@ export function AccountStep({
               {loggingIn ? "Log In" : "Get Started"}
               <SiteArrow className="size-2.5" />
             </Button>
-            <Button
-              color={ButtonColor.Grey}
-              className={CARD_BUTTON}
-              onClick={() => {
-                setLoggingIn((value) => !value);
-                setError(null);
-                setNotice(null);
-              }}
-            >
-              {loggingIn ? "Create an account" : "I already have an account"}
-              <ArrowRight className="size-4" aria-hidden />
-            </Button>
             {loggingIn && (
               <button
                 type="button"
@@ -206,6 +183,22 @@ export function AccountStep({
               </button>
             )}
           </form>
+          <p className="mt-4 text-center text-sm text-zinc-600">
+            {loggingIn
+              ? "Don’t have an account? "
+              : "Already have an account? "}
+            <button
+              type="button"
+              onClick={() => {
+                setLoggingIn((value) => !value);
+                setError(null);
+                setNotice(null);
+              }}
+              className="font-medium text-black underline underline-offset-2"
+            >
+              {loggingIn ? "Sign up" : "Log in"}
+            </button>
+          </p>
           {!loggingIn && (
             <div className="mt-4 flex">
               <InfoSessionButton />
@@ -213,12 +206,6 @@ export function AccountStep({
           )}
         </div>
       </div>
-      <p
-        className="ob-rise max-w-[33rem] px-5 pb-8 text-[1.05rem] leading-[1.35] text-black sm:px-8 sm:pb-10 sm:text-[1.3rem]"
-        style={riseStyle(2)}
-      >
-        {STANDFIRST}
-      </p>
     </div>
   );
 }

@@ -19,17 +19,19 @@ import { useSiteBackground } from "../components/HtmlBackgroundManager";
 import { useAuth } from "../lib/AuthContext";
 import { socialPreviewMeta } from "../lib/socialPreviewMeta";
 import { useContract } from "../lib/useContract";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import { SiteFooter } from "../site/Footer";
 import { JoinCta } from "../site/JoinCta";
 import { Navbar } from "../site/Navbar";
 import { LandingBody } from "../site/sections/LandingBody";
 import "../site/site.css";
 import { AccountStep } from "./AccountStep";
-import { AgreementStep } from "./AgreementStep";
+import { AgreementStep, isCommitted } from "./AgreementStep";
 import { FooterNav, ProgressTrack, StepLayout } from "./chrome";
 import {
   FILLED_SEGMENTS,
   isOnboardingStep,
+  MOBILE_WEB_QUERY,
   OnboardingStep,
   PanelTone,
   STEP_EYEBROW,
@@ -48,8 +50,12 @@ import {
   ScaleStep,
 } from "./StorySteps";
 import { useLockedViewport } from "./useLockedViewport";
-import { walkthroughStartHref, WELCOME_SECONDS } from "./walkthrough/steps";
-import { WelcomeBackdrop, WelcomeStep } from "./WelcomeStep";
+import {
+  clearDraft,
+  useDraftWriter,
+  useInitialDraft,
+} from "./useOnboardingDraft";
+import { walkthroughStartHref } from "./walkthrough/steps";
 
 export function meta() {
   return socialPreviewMeta({
@@ -66,7 +72,6 @@ const ACCOUNT_ANCHOR = "#create-account";
 /** `--ob-tone-ink` is the colour the footer's white primary button letters in. */
 const TONE_CLASS: Record<PanelTone, string> = {
   [PanelTone.Navy]: "bg-[var(--ob-navy)] [--ob-tone-ink:var(--ob-navy)]",
-  [PanelTone.Photo]: "bg-[#2d5a22] [--ob-tone-ink:var(--ob-green)]",
   [PanelTone.Green]: "bg-[var(--ob-green)] [--ob-tone-ink:var(--ob-green)]",
 };
 
@@ -91,6 +96,7 @@ const OnboardingPage = () => {
   const step = isOnboardingStep(stepParam) ? stepParam : OnboardingStep.Account;
   const referralCode = searchParams.get("ref");
   const isAccount = step === OnboardingStep.Account;
+  const mobileWeb = useMediaQuery(MOBILE_WEB_QUERY);
   useLockedViewport(!isAccount);
   const { inviter } = useInvite(referralCode);
   const faces = useSignupFaces(referralCode, {
@@ -103,9 +109,10 @@ const OnboardingPage = () => {
     return target?.startsWith("/") ? target : href("/tasks");
   }, [searchParams]);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [committed, setCommitted] = useState(false);
+  const draft = useInitialDraft(referralCode);
+  const [email, setEmail] = useState(draft?.email ?? "");
+  const [password, setPassword] = useState(draft?.password ?? "");
+  const [committed, setCommitted] = useState("");
   const [signedName, setSignedName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -131,13 +138,26 @@ const OnboardingPage = () => {
     [setSearchParams],
   );
 
-  // A reload drops everything the later screens need, so the flow restarts
-  // rather than submitting a half-filled account.
+  useDraftWriter(
+    { email, password, step, referralCode },
+    !registeredRef.current,
+  );
+
+  // A reload with nothing saved cannot submit a half-filled account, so it
+  // restarts rather than stranding the member on a later screen.
   useEffect(() => {
     if (step !== OnboardingStep.Account && !email && !registeredRef.current) {
       goTo(OnboardingStep.Account);
     }
   }, [step, email, goTo]);
+
+  // Land back on the screen the draft left off at, once per load.
+  const resumedRef = useRef(false);
+  useEffect(() => {
+    if (resumedRef.current) return;
+    resumedRef.current = true;
+    if (draft && draft.step !== step) goTo(draft.step);
+  }, [draft, step, goTo]);
 
   useEffect(() => {
     if (!referralCode) return;
@@ -148,7 +168,9 @@ const OnboardingPage = () => {
   }, [referralCode]);
 
   const agreementSigned =
-    latestContract !== null && committed && signedName.trim().length > 0;
+    latestContract !== null &&
+    isCommitted(committed) &&
+    signedName.trim().length > 0;
 
   const goNext = useCallback(() => {
     const next = stepAfter(step);
@@ -164,12 +186,6 @@ const OnboardingPage = () => {
     await onLogin();
     navigate(walkthroughStartHref());
   }, [onLogin, navigate]);
-
-  useEffect(() => {
-    if (step !== OnboardingStep.Welcome) return;
-    const timer = setTimeout(goNext, WELCOME_SECONDS * 1000);
-    return () => clearTimeout(timer);
-  }, [step, goNext]);
 
   useEffect(() => {
     const hold = (run: () => void) => {
@@ -195,9 +211,15 @@ const OnboardingPage = () => {
           setJoinPhase(JoinPhase.Flooding);
         });
       case JoinPhase.Flooding:
+        // The flood is already the walkthrough's green, so handing straight
+        // over lets the dialogue shrink out of it rather than cutting.
         return hold(() => {
-          goTo(OnboardingStep.Welcome);
-          setJoinPhase(JoinPhase.Settling);
+          if (mobileWeb) {
+            goTo(OnboardingStep.MobileApp);
+            setJoinPhase(JoinPhase.Settling);
+            return;
+          }
+          void enterPlatform();
         });
       case JoinPhase.Settling:
         return hold(() => {
@@ -207,7 +229,7 @@ const OnboardingPage = () => {
       default:
         throw new Error(`unknown join phase: ${joinPhase satisfies never}`);
     }
-  }, [joinPhase, goTo]);
+  }, [joinPhase, goTo, mobileWeb, enterPlatform]);
 
   // Registration waits until Join, so an account only ever exists alongside a
   // signed agreement.
@@ -242,6 +264,7 @@ const OnboardingPage = () => {
         return;
       }
       registeredRef.current = true;
+      clearDraft();
 
       const me = await authMe();
       const user = me.data?.user;
@@ -294,11 +317,7 @@ const OnboardingPage = () => {
   const panelBody = () => {
     switch (step) {
       case OnboardingStep.Account:
-        // Padded past `--ob-bleed`, which runs the panel off the right edge of
-        // the viewport, so the card's own right column stays on screen.
-        return (
-          <GrantmakingCard className="absolute inset-0 justify-end rounded-none pr-[calc(1.75rem+var(--ob-bleed))] sm:pr-[calc(2.25rem+var(--ob-bleed))]" />
-        );
+        return <GrantmakingCard className="absolute inset-0 rounded-none" />;
       case OnboardingStep.Community:
         return storyStep(<CommunityStep />);
       case OnboardingStep.Commitment:
@@ -349,13 +368,6 @@ const OnboardingPage = () => {
             )}
           </StepLayout>
         );
-      case OnboardingStep.Welcome:
-        return (
-          <WelcomeStep
-            memberNumber={(memberCount ?? 0) + 1}
-            onContinue={goNext}
-          />
-        );
       case OnboardingStep.MobileApp:
         return (
           <StepLayout
@@ -405,7 +417,6 @@ const OnboardingPage = () => {
             TONE_CLASS[STEP_TONE[step]],
           )}
         >
-          {step === OnboardingStep.Welcome && <WelcomeBackdrop />}
           <div key={step} className="relative size-full">
             {panelBody()}
           </div>
