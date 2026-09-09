@@ -46,7 +46,7 @@ export default function DemocraticGrantmaking26() {
                   1,000 members will work together to make a significant grant.
                 </p>
                 <p className="text-xl text-white/80 md:text-2xl">
-                  <span className="font-semibold text-green">$35,300</span>{" "}
+                  <span className="font-semibold text-green">$36,300</span>{" "}
                   committed by funders so far
                 </p>
               </div>
