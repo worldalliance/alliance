@@ -1,5 +1,7 @@
-import * as realClient from "@alliance/shared/client";
 import { CommentDto } from "@alliance/shared/client";
+import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import * as AppMarkdownWrapperModule from "@alliance/sharedweb/ui/AppMarkdownWrapper";
+import * as UserDisplayNameModule from "@alliance/sharedweb/ui/UserDisplayName";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
@@ -11,7 +13,7 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import React, { useState } from "react";
+import { useState } from "react";
 import { MemoryRouter } from "react-router";
 
 let loadAttempts = 0;
@@ -35,34 +37,35 @@ afterEach(() => {
 let markdownParses = 0;
 let commentRenders = 0;
 
-jest.mock("@alliance/sharedweb/ui/AppMarkdownWrapper", () => ({
-  __esModule: true,
-  default: ({ markdownContent }: { markdownContent: string }) => {
-    markdownParses++;
-    return <div>{markdownContent}</div>;
-  },
-}));
+serveApi(
+  routes({
+    "GET /forum/posts/:id/comments": async () => {
+      loadAttempts++;
+      if (inFlight)
+        await new Promise<void>((resolve) => inFlight?.push(resolve));
+      return loadSucceeds
+        ? Response.json(loadedThread)
+        : Response.json({ statusCode: 500, message: "no" }, { status: 500 });
+    },
+  }),
+);
 
-jest.mock("@alliance/shared/client", () => ({
-  ...realClient,
-  forumFindCommentsForPost: async () => {
-    loadAttempts++;
-    if (inFlight) await new Promise<void>((resolve) => inFlight?.push(resolve));
-    if (loadSucceeds) return { data: loadedThread };
-    return {
-      error: { statusCode: 500, message: "no" },
-      response: new Response(null, { status: 500 }),
-    };
-  },
-}));
-
-jest.mock("@alliance/sharedweb/ui/UserDisplayName", () => ({
-  __esModule: true,
-  default: ({ children }: { children: React.ReactNode }) => {
-    commentRenders++;
-    return <span>{children}</span>;
-  },
-}));
+beforeEach(() => {
+  markdownParses = 0;
+  commentRenders = 0;
+  jest
+    .spyOn(AppMarkdownWrapperModule, "default")
+    .mockImplementation(({ markdownContent }) => {
+      markdownParses++;
+      return <div>{markdownContent}</div>;
+    });
+  jest
+    .spyOn(UserDisplayNameModule, "default")
+    .mockImplementation(({ children }) => {
+      commentRenders++;
+      return <span>{children}</span>;
+    });
+});
 
 import { AuthContext, type AuthContextType } from "../lib/AuthContext";
 import Comments from "./Comments";

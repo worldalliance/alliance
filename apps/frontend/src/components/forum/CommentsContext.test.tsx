@@ -1,14 +1,11 @@
 import type { CommentDto } from "@alliance/shared/client";
+import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { MemoryRouter } from "react-router";
 
-const noComments = async () => ({ data: [] });
-
-let createResponse: { data?: { id: number }; error?: unknown } = {
-  data: { id: 7 },
-};
+let createError: { message: string } | null = null;
 
 const storedComment: CommentDto = {
   id: 3,
@@ -46,32 +43,31 @@ let postCommentsFail = false;
 let deleteFails = false;
 let extraRoots: CommentDto[] = [];
 
+serveApi(
+  routes({
+    "POST /forum/comments": () =>
+      createError
+        ? Response.json(createError, { status: 400 })
+        : Response.json({ id: 7 }),
+    "GET /forum/posts/:id/comments": () =>
+      postCommentsFail
+        ? Response.json(
+            { statusCode: 403, message: "the server said no" },
+            { status: 403 },
+          )
+        : Response.json([...storedThread, ...extraRoots]),
+    "DELETE /forum/comments/:id": () => {
+      if (deleteFails) throw new Error("the request never landed");
+      return new Response(null, { status: 204 });
+    },
+  }),
+);
+
 afterEach(() => {
   postCommentsFail = false;
   deleteFails = false;
   extraRoots = [];
 });
-
-jest.mock("@alliance/shared/client", () => ({
-  forumCreateComment: async () => createResponse,
-  forumFindCommentsForPost: async () =>
-    postCommentsFail
-      ? {
-          error: { statusCode: 403, message: "the server said no" },
-          response: new Response(null, { status: 403 }),
-        }
-      : { data: structuredClone([...storedThread, ...extraRoots]) },
-  forumFindCommentsForActivity: noComments,
-  forumFindCommentsForAction: noComments,
-  forumDeleteComment: async () => {
-    if (deleteFails) throw new Error("the request never landed");
-    return {};
-  },
-  forumUpdateComment: async () => ({}),
-  forumPinCommentAdmin: async () => ({}),
-  forumLikeComment: async () => ({}),
-  forumUnlikeComment: async () => ({}),
-}));
 
 import { useCommentTree } from "./CommentsContext";
 
@@ -82,7 +78,7 @@ const wrapper = ({ children }: PropsWithChildren) => (
 );
 
 afterEach(() => {
-  createResponse = { data: { id: 7 } };
+  createError = null;
 });
 
 it("leaves the reply target alone when a reply posts", async () => {
@@ -123,7 +119,7 @@ it("drops a rejected reply's message when another form opens", async () => {
     result.current.setReplyingTo(5);
   });
 
-  createResponse = { error: { message: "Nothing to reply to" } };
+  createError = { message: "Nothing to reply to" };
   await act(async () => {
     await result.current.handleSubmitReply({
       body: "a reply",
@@ -143,7 +139,7 @@ it("drops a rejected reply's message when another form opens", async () => {
 it("keeps a rejection that landed while its own form was closed", async () => {
   const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
 
-  createResponse = { error: { message: "Nothing to reply to" } };
+  createError = { message: "Nothing to reply to" };
   let pending: Promise<void> | undefined;
   act(() => {
     pending = result.current.handleSubmitReply({
