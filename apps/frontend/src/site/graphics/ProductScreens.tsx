@@ -1,4 +1,3 @@
-import { thumbnailSrc } from "@alliance/common/image-src";
 import { activityRows, openedPost, type ActivityRow } from "../content";
 import {
   FALLBACK_FACE,
@@ -6,6 +5,7 @@ import {
   useMemberFaces,
   usePublicProfile,
 } from "../data";
+import { ThumbnailImg } from "../ui";
 import { PostCard } from "./PostCard";
 
 const FEED_TITLE = "Activity";
@@ -36,9 +36,9 @@ function AvatarStrip({ avatars }: { avatars: string[] }) {
       aria-hidden
     >
       {avatars.map((src, i) => (
-        <img
+        <ThumbnailImg
           key={`${src}-${i}`}
-          src={thumbnailSrc(src)}
+          src={src}
           alt=""
           loading="lazy"
           decoding="async"

@@ -1,5 +1,11 @@
+import { thumbnailSrc } from "@alliance/common/image-src";
 import { cn } from "@alliance/shared/styles/util";
-import type { CSSProperties, ReactNode } from "react";
+import {
+  useState,
+  type ComponentProps,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { Link } from "react-router";
 import type { Picture } from "vite-imagetools";
 import texture from "../assets/redesign/priority-environment.jpg?w=400;800&format=avif;webp;jpg&as=picture";
@@ -62,6 +68,24 @@ export function SitePicture({
 /** Both form submits: one box, and the fill is all that separates them. */
 export const SITE_SUBMIT =
   "inline-flex min-h-12 w-fit items-center gap-2 px-5 text-base font-medium transition-colors disabled:opacity-60";
+
+/**
+ * A member photo at thumbnail size, falling back to the full-size upload when
+ * no thumbnail exists. Needs `key={src}` so the fallback resets per photo.
+ */
+export function ThumbnailImg({
+  src,
+  ...props
+}: Omit<ComponentProps<"img">, "src"> & { src: string }) {
+  const [missing, setMissing] = useState(false);
+  return (
+    <img
+      {...props}
+      src={missing ? src : thumbnailSrc(src)}
+      onError={() => setMissing(true)}
+    />
+  );
+}
 
 export function TexturedFill() {
   return (

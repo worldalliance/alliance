@@ -72,7 +72,42 @@ async function hasCacheControl(key: string): Promise<boolean> {
   return head.CacheControl === IMAGE_CACHE_CONTROL;
 }
 
-async function backfillOne(key: string, needsThumbnail: boolean) {
+type Task = {
+  key: string;
+  needsThumbnail: boolean;
+  needsCacheControl: boolean;
+};
+
+async function runPool<T>(items: T[], worker: (item: T) => Promise<void>) {
+  const queue = [...items];
+  await Promise.all(
+    Array.from({ length: CONCURRENCY }, async () => {
+      for (;;) {
+        const item = queue.pop();
+        if (item === undefined) return;
+        await worker(item);
+      }
+    }),
+  );
+}
+
+async function survey(): Promise<Task[]> {
+  const listed = await listImages();
+  const originals = [...listed].filter((key) => !isThumbnailKey(key));
+  const tasks: Task[] = [];
+
+  await runPool(originals, async (key) => {
+    tasks.push({
+      key,
+      needsThumbnail: !listed.has(thumbnailKey(key)),
+      needsCacheControl: !(await hasCacheControl(key)),
+    });
+  });
+
+  return tasks;
+}
+
+async function backfillOne({ key, needsThumbnail, needsCacheControl }: Task) {
   if (needsThumbnail) {
     const thumbnail = await sharp(await bodyOf(key))
       .resize({ width: THUMBNAIL_WIDTH })
@@ -89,7 +124,7 @@ async function backfillOne(key: string, needsThumbnail: boolean) {
     );
   }
 
-  if (!(await hasCacheControl(key))) {
+  if (needsCacheControl) {
     // Bucket versioning is on, so the pre-rewrite object stays recoverable.
     await s3.send(
       new CopyObjectCommand({
@@ -104,45 +139,50 @@ async function backfillOne(key: string, needsThumbnail: boolean) {
   }
 }
 
+function preview(verb: string, keys: string[]) {
+  for (const key of keys.slice(0, 10)) console.log(`  would ${verb} ${key}`);
+  if (keys.length > 10) console.log(`  ...and ${keys.length - 10} more`);
+}
+
 async function main() {
-  const listed = await listImages();
-  const originals = [...listed].filter((key) => !isThumbnailKey(key));
-  const missingThumbnail = originals.filter(
-    (key) => !listed.has(thumbnailKey(key)),
-  );
+  const tasks = await survey();
+  const thumbnails = tasks.filter((task) => task.needsThumbnail);
+  const restamps = tasks.filter((task) => task.needsCacheControl);
 
   console.log(`bucket ${bucket} (${region})`);
   console.log(
-    `${originals.length} images, ${missingThumbnail.length} without a thumbnail`,
+    `${tasks.length} images, ${thumbnails.length} without a thumbnail, ` +
+      `${restamps.length} without Cache-Control`,
   );
 
   if (!apply) {
     console.log("\ndry run, nothing written. re-run with --apply");
-    for (const key of missingThumbnail.slice(0, 10))
-      console.log(`  would write ${thumbnailKey(key)}`);
-    if (missingThumbnail.length > 10) {
-      console.log(`  ...and ${missingThumbnail.length - 10} more`);
-    }
+    preview(
+      "write",
+      thumbnails.map((task) => thumbnailKey(task.key)),
+    );
+    preview(
+      "restamp",
+      restamps.map((task) => task.key),
+    );
     return;
   }
 
-  const queue = [...originals];
+  const work = tasks.filter(
+    (task) => task.needsThumbnail || task.needsCacheControl,
+  );
   const failures: { key: string; error: string }[] = [];
   let done = 0;
 
-  await Promise.all(
-    Array.from({ length: CONCURRENCY }, async () => {
-      for (let key = queue.pop(); key; key = queue.pop()) {
-        try {
-          await backfillOne(key, !listed.has(thumbnailKey(key)));
-        } catch (error) {
-          failures.push({ key, error: String(error).slice(0, 200) });
-        }
-        done += 1;
-        if (done % 50 === 0) console.log(`${done}/${originals.length}`);
-      }
-    }),
-  );
+  await runPool(work, async (task) => {
+    try {
+      await backfillOne(task);
+    } catch (error) {
+      failures.push({ key: task.key, error: String(error).slice(0, 200) });
+    }
+    done += 1;
+    if (done % 50 === 0) console.log(`${done}/${work.length}`);
+  });
 
   console.log(
     `\ndone: ${done - failures.length} ok, ${failures.length} failed`,
