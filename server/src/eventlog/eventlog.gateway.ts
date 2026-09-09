@@ -12,7 +12,7 @@ import {
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { Repository } from "typeorm";
-import type { JwtPayload } from "../auth/guards/jwtreq";
+import { verifyAccessToken } from "../auth/guards/jwtreq";
 import { InviteFeedEvents } from "../invite-feed.events";
 import { extractTokenFromSocket } from "../messaging/gateway.utils";
 import { User } from "../user/entities/user.entity";
@@ -59,9 +59,7 @@ export class EventLogGateway
         return;
       }
 
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-        secret: process.env.JWT_SECRET,
-      });
+      const payload = await verifyAccessToken(this.jwtService, token);
 
       const user = await this.userRepository.findOne({
         where: { id: payload.sub },

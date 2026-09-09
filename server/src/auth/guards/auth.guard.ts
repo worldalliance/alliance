@@ -9,12 +9,7 @@ import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
 import { requestContext } from "src/utils/request-context";
 import { IS_PUBLIC_KEY } from "../public.decorator";
-import {
-  GUEST_COOKIE,
-  JWTTokenType,
-  REFRESH_COOKIE,
-  sessionFromRequest,
-} from "./jwtreq";
+import { GUEST_COOKIE, REFRESH_COOKIE, sessionFromRequest } from "./jwtreq";
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -37,9 +32,6 @@ export class AuthGuard implements CanActivate {
 
     try {
       const payload = await sessionFromRequest(this.jwtService, request);
-      if (payload.tokenType === JWTTokenType.guest) {
-        throw new UnauthorizedException();
-      }
       request["user"] = payload;
       const ctx = requestContext.getStore();
       if (ctx) {

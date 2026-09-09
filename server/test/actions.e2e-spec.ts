@@ -50,6 +50,7 @@ import { User } from "../src/user/entities/user.entity";
 import {
   createFormWithSnapshot,
   createTestApp,
+  signAccessToken,
   TestContext,
 } from "./e2e-test-utils";
 
@@ -182,10 +183,7 @@ describe("Actions (e2e)", () => {
       }),
     );
 
-    outsiderToken = ctx.jwtService.sign(
-      { sub: outsider.id, email: outsider.email, name: outsider.name },
-      { secret: process.env.JWT_SECRET },
-    );
+    outsiderToken = signAccessToken(ctx.jwtService, outsider);
 
     await createPublishedAction("Group Restricted Action", {
       status: ActionStatus.MemberAction,
@@ -499,23 +497,9 @@ describe("Actions (e2e)", () => {
         }),
       );
 
-      const cohortToken = ctx.jwtService.sign(
-        {
-          sub: cohortMember.id,
-          email: cohortMember.email,
-          name: cohortMember.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      const cohortToken = signAccessToken(ctx.jwtService, cohortMember);
 
-      const nonCohortToken = ctx.jwtService.sign(
-        {
-          sub: nonCohortUser.id,
-          email: nonCohortUser.email,
-          name: nonCohortUser.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      const nonCohortToken = signAccessToken(ctx.jwtService, nonCohortUser);
 
       const [cohortRes, nonCohortRes] = await Promise.all([
         request(ctx.app.getHttpServer())
@@ -601,10 +585,7 @@ describe("Actions (e2e)", () => {
       );
 
       const signToken = (user: { id: number; email: string; name: string }) =>
-        ctx.jwtService.sign(
-          { sub: user.id, email: user.email, name: user.name },
-          { secret: process.env.JWT_SECRET },
-        );
+        signAccessToken(ctx.jwtService, user);
 
       const [cohortRes, nonCohortRes, awayRes] = await Promise.all([
         request(ctx.app.getHttpServer())
@@ -690,14 +671,7 @@ describe("Actions (e2e)", () => {
         }),
       );
 
-      const token = ctx.jwtService.sign(
-        {
-          sub: cohortMember.id,
-          email: cohortMember.email,
-          name: cohortMember.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      const token = signAccessToken(ctx.jwtService, cohortMember);
 
       const res = await request(ctx.app.getHttpServer())
         .get(`/actions/slug/${plannedAction.id}`)
@@ -778,22 +752,8 @@ describe("Actions (e2e)", () => {
         }),
       );
 
-      const completedToken = ctx.jwtService.sign(
-        {
-          sub: completedUser.id,
-          email: completedUser.email,
-          name: completedUser.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
-      const incompleteToken = ctx.jwtService.sign(
-        {
-          sub: incompleteUser.id,
-          email: incompleteUser.email,
-          name: incompleteUser.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      const completedToken = signAccessToken(ctx.jwtService, completedUser);
+      const incompleteToken = signAccessToken(ctx.jwtService, incompleteUser);
 
       const [completedRes, incompleteRes] = await Promise.all([
         request(ctx.app.getHttpServer())
@@ -906,11 +866,7 @@ describe("Actions (e2e)", () => {
         }),
       );
 
-      const makeToken = (u: User) =>
-        ctx.jwtService.sign(
-          { sub: u.id, email: u.email, name: u.name },
-          { secret: process.env.JWT_SECRET },
-        );
+      const makeToken = (u: User) => signAccessToken(ctx.jwtService, u);
 
       const [inProgressRes, doneRes, neverJoinedRes] = await Promise.all([
         request(ctx.app.getHttpServer())
@@ -995,11 +951,7 @@ describe("Actions (e2e)", () => {
         }),
       );
 
-      const makeToken = (u: User) =>
-        ctx.jwtService.sign(
-          { sub: u.id, email: u.email, name: u.name },
-          { secret: process.env.JWT_SECRET },
-        );
+      const makeToken = (u: User) => signAccessToken(ctx.jwtService, u);
 
       const [leaderRes, nonLeaderRes] = await Promise.all([
         request(ctx.app.getHttpServer())
@@ -1241,11 +1193,7 @@ describe("Actions (e2e)", () => {
         }),
       );
 
-      const makeToken = (u: User) =>
-        ctx.jwtService.sign(
-          { sub: u.id, email: u.email, name: u.name },
-          { secret: process.env.JWT_SECRET },
-        );
+      const makeToken = (u: User) => signAccessToken(ctx.jwtService, u);
 
       const [respondedRes, wrongRes, noResponseRes] = await Promise.all([
         request(ctx.app.getHttpServer())
@@ -1359,11 +1307,7 @@ describe("Actions (e2e)", () => {
         }),
       );
 
-      const makeToken = (u: User) =>
-        ctx.jwtService.sign(
-          { sub: u.id, email: u.email, name: u.name },
-          { secret: process.env.JWT_SECRET },
-        );
+      const makeToken = (u: User) => signAccessToken(ctx.jwtService, u);
 
       const [respondedRes, noResponseRes] = await Promise.all([
         request(ctx.app.getHttpServer())
@@ -1463,11 +1407,7 @@ describe("Actions (e2e)", () => {
         }),
       );
 
-      const makeToken = (u: User) =>
-        ctx.jwtService.sign(
-          { sub: u.id, email: u.email, name: u.name },
-          { secret: process.env.JWT_SECRET },
-        );
+      const makeToken = (u: User) => signAccessToken(ctx.jwtService, u);
 
       const [bothRes, leaderOnlyRes] = await Promise.all([
         request(ctx.app.getHttpServer())
@@ -1544,32 +1484,11 @@ describe("Actions (e2e)", () => {
         tags: [ctx.defaultTag],
       });
 
-      const unsignedToken = ctx.jwtService.sign(
-        {
-          sub: unsignedUser.id,
-          email: unsignedUser.email,
-          name: unsignedUser.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      const unsignedToken = signAccessToken(ctx.jwtService, unsignedUser);
 
-      const lateToken = ctx.jwtService.sign(
-        {
-          sub: lateSigner.id,
-          email: lateSigner.email,
-          name: lateSigner.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      const lateToken = signAccessToken(ctx.jwtService, lateSigner);
 
-      const eligibleToken = ctx.jwtService.sign(
-        {
-          sub: eligibleUser.id,
-          email: eligibleUser.email,
-          name: eligibleUser.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      const eligibleToken = signAccessToken(ctx.jwtService, eligibleUser);
 
       const [unsignedRes, lateRes, eligibleRes] = await Promise.all([
         request(ctx.app.getHttpServer())
@@ -1621,13 +1540,9 @@ describe("Actions (e2e)", () => {
         tags: [ctx.defaultTag],
       });
 
-      const contractlessToken = ctx.jwtService.sign(
-        {
-          sub: contractlessUser.id,
-          email: contractlessUser.email,
-          name: contractlessUser.name,
-        },
-        { secret: process.env.JWT_SECRET },
+      const contractlessToken = signAccessToken(
+        ctx.jwtService,
+        contractlessUser,
       );
 
       const res = await request(ctx.app.getHttpServer())
@@ -2151,11 +2066,7 @@ describe("Actions (e2e)", () => {
 
       await userService.makeFriendsAutomated(ctx.testUserId, friend.id);
 
-      const friendToken = ctx.jwtService.sign({
-        sub: friend.id,
-        email: friend.email,
-        name: friend.name,
-      });
+      const friendToken = signAccessToken(ctx.jwtService, friend);
 
       await request(ctx.app.getHttpServer())
         .post(`/actions/complete/${action.id}`)
@@ -2293,14 +2204,7 @@ describe("Actions (e2e)", () => {
         name: "Second Liker",
         tags: [ctx.defaultTag],
       });
-      const secondLikerToken = ctx.jwtService.sign(
-        {
-          sub: secondLiker.id,
-          email: secondLiker.email,
-          name: secondLiker.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      const secondLikerToken = signAccessToken(ctx.jwtService, secondLiker);
 
       await request(ctx.app.getHttpServer())
         .post(`/actions/likeActivity/${activityId}`)
@@ -3052,23 +2956,9 @@ describe("Actions (e2e)", () => {
         tags: [ctx.defaultTag],
       });
 
-      existingUserToken = ctx.jwtService.sign(
-        {
-          sub: existingUser.id,
-          email: existingUser.email,
-          name: existingUser.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      existingUserToken = signAccessToken(ctx.jwtService, existingUser);
 
-      newUserToken = ctx.jwtService.sign(
-        {
-          sub: newUser.id,
-          email: newUser.email,
-          name: newUser.name,
-        },
-        { secret: process.env.JWT_SECRET },
-      );
+      newUserToken = signAccessToken(ctx.jwtService, newUser);
     });
 
     afterAll(async () => {

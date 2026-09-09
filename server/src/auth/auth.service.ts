@@ -21,6 +21,7 @@ import { SignUpDto } from "./dto/sign-up.dto";
 import { Guest } from "./entities/guest.entity";
 import {
   ACCESS_COOKIE,
+  accessTokenPayload,
   GUEST_COOKIE,
   type GuestJwtPayload,
   type JwtPayload,
@@ -110,18 +111,9 @@ export class AuthService {
     return { guestId: guest.id, guestToken };
   }
 
-  private static TOKEN_TYPE_IS_AUTHENTICATED: Record<JWTTokenType, boolean> = {
-    [JWTTokenType.access]: true,
-    [JWTTokenType.refresh]: false,
-    [JWTTokenType.guest]: false,
-  };
-
   async getAuthenticatedUserId(req: Request): Promise<number | null> {
     try {
       const payload = await sessionFromRequest(this.jwtService, req);
-      if (!AuthService.TOKEN_TYPE_IS_AUTHENTICATED[payload.tokenType]) {
-        return null;
-      }
       return payload.sub;
     } catch {
       return null;
@@ -341,12 +333,7 @@ export class AuthService {
     user: User,
     isImpersonation = false,
   ): Promise<string> {
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      tokenType: JWTTokenType.access,
-      ...(isImpersonation && { isImpersonation: true }),
-    };
+    const payload = accessTokenPayload({ user, isImpersonation });
     return this.jwtService.signAsync(payload, { expiresIn: "1d" });
   }
 

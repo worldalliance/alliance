@@ -22,7 +22,7 @@ import {
   UpdatePostDto,
   UpdatePostSettingsDto,
 } from "../src/forum/dto/post.dto";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
 
 describe("Forum (e2e)", () => {
   let ctx: TestContext;
@@ -44,16 +44,7 @@ describe("Forum (e2e)", () => {
       tags: [ctx.defaultTag],
     });
     await userRepo.save(extraUser);
-    const token = ctx.jwtService.sign(
-      {
-        sub: extraUser.id,
-        email: extraUser.email,
-        name: extraUser.name,
-      },
-      {
-        secret: process.env.JWT_SECRET,
-      },
-    );
+    const token = signAccessToken(ctx.jwtService, extraUser);
     return { user: extraUser, token };
   };
 
@@ -659,16 +650,7 @@ describe("Forum (e2e)", () => {
       await userRepo.save(anotherUser);
 
       // Create token for another user
-      const anotherToken = ctx.jwtService.sign(
-        {
-          sub: anotherUser.id,
-          email: anotherUser.email,
-          name: anotherUser.name,
-        },
-        {
-          secret: process.env.JWT_SECRET,
-        },
-      );
+      const anotherToken = signAccessToken(ctx.jwtService, anotherUser);
 
       // Create a reply as the first user
       const createResponse = await request(ctx.app.getHttpServer())

@@ -26,6 +26,7 @@ import { ReferralSource, User } from "../src/user/entities/user.entity";
 import {
   createTestApp,
   giveActiveContract,
+  signAccessToken,
   TestContext,
 } from "./e2e-test-utils";
 
@@ -66,10 +67,7 @@ describe("Users (e2e)", () => {
     });
     await userRepo.save(userA);
     userAId = userA.id;
-    userAToken = ctx.jwtService.sign(
-      { sub: userAId, email: userA.email, name: userA.name },
-      { secret: process.env.JWT_SECRET },
-    );
+    userAToken = signAccessToken(ctx.jwtService, userA);
 
     const userB = userRepo.create({
       name: "Friend B",
@@ -79,10 +77,7 @@ describe("Users (e2e)", () => {
 
     await userRepo.save(userB);
     userBId = userB.id;
-    userBToken = ctx.jwtService.sign(
-      { sub: userBId, email: userB.email, name: userB.name },
-      { secret: process.env.JWT_SECRET },
-    );
+    userBToken = signAccessToken(ctx.jwtService, userB);
 
     communityLedByUserA = await communityRepo.save(
       communityRepo.create({
@@ -102,14 +97,7 @@ describe("Users (e2e)", () => {
       }),
     );
     communityMemberId = communityMember.id;
-    communityMemberToken = ctx.jwtService.sign(
-      {
-        sub: communityMemberId,
-        email: communityMember.email,
-        name: communityMember.name,
-      },
-      { secret: process.env.JWT_SECRET },
-    );
+    communityMemberToken = signAccessToken(ctx.jwtService, communityMember);
 
     communityLedByUserB = await communityRepo.save(
       communityRepo.create({

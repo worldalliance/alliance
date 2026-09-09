@@ -10,7 +10,7 @@ import { SearchItemType } from "src/search/searchitem.dto";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
 
 describe("Search (e2e)", () => {
   let ctx: TestContext;
@@ -120,10 +120,7 @@ describe("Search (e2e)", () => {
       );
     };
 
-    const authorToken = ctx.jwtService.sign(
-      { sub: targetUser.id, email: targetUser.email },
-      { secret: process.env.JWT_SECRET },
-    );
+    const authorToken = signAccessToken(ctx.jwtService, targetUser);
 
     const visitorResponse = await search(ctx.accessToken);
     expect(visitorResponse.body.map((item) => item.id)).not.toContain(
