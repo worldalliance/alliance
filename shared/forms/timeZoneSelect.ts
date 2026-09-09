@@ -1,4 +1,5 @@
 import { R } from "@alliance/common/result";
+import { deburr } from "es-toolkit";
 import { useEffect, useMemo, useState } from "react";
 import { minuteStart, useClockMinute } from "../lib/useClockMinute";
 
@@ -341,14 +342,10 @@ export function resetTimeZoneCaches(): void {
   cachedBase = null;
 }
 
-// Accents fold out first, so a name arriving as "Türkiye" reads as one word
-// rather than as "t" and "rkiye".
-const wordsOf = (text: string) =>
-  text
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .match(/\p{L}+/gu) ?? [];
+// Both sides of a search fold, so "São Paulo" reaches a row spelled Sao Paulo.
+export const fold = (text: string) => deburr(text).toLowerCase();
+
+const wordsOf = (text: string) => fold(text).match(/\p{L}+/gu) ?? [];
 
 // "Australian Western Standard Time" already says "Western Australia Time" and
 // "Türkiye Time" says "Turkey Time", so two words on a shared stem count as one
@@ -390,7 +387,7 @@ function getBaseLabels(): BaseLabel[] {
       labelLeft: left,
       labelSub: generic && namesMoreThan({ label, shown: left }) ? label : null,
       searchTerms,
-      searchText: searchable.join(" ").toLowerCase(),
+      searchText: fold(searchable.join(" ")),
     };
   });
 
@@ -425,11 +422,14 @@ function baseItems(minute: number): BaseItem[] {
 
 // A row holding none of what was typed reads as a wrong answer, so a term that
 // matched off the row takes the second line while the query stands.
-function subForQuery(item: TimeZoneSelectItem, query: string): string | null {
-  const shown = `${item.labelLeft} ${item.labelSub ?? ""}`.toLowerCase();
-  if (shown.includes(query)) return item.labelSub;
+function subForQuery(
+  item: TimeZoneSelectItem,
+  foldedQuery: string,
+): string | null {
+  const shown = fold(`${item.labelLeft} ${item.labelSub ?? ""}`);
+  if (shown.includes(foldedQuery)) return item.labelSub;
   return (
-    item.searchTerms.find((term) => term.toLowerCase().includes(query)) ??
+    item.searchTerms.find((term) => fold(term).includes(foldedQuery)) ??
     item.labelSub
   );
 }
@@ -481,7 +481,7 @@ export function useTimeZoneSelect({
         labelLeft: internalValue,
         labelSub: null,
         searchTerms: [],
-        searchText: internalValue.toLowerCase(),
+        searchText: fold(internalValue),
         offsetMins: getOffsetMinutes(internalValue, when),
         timeLabel: formatTimeInTz(internalValue, hour12, when),
       }
@@ -489,7 +489,7 @@ export function useTimeZoneSelect({
   }, [items, internalValue, hour12, minute]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = fold(query.trim());
     if (!q) return items;
     return items
       .filter((i) => i.searchText.includes(q))

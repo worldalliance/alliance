@@ -4,6 +4,7 @@ import { renderToString } from "react-dom/server";
 import { resetClock } from "../lib/useClockMinute";
 import {
   TZ_OPTIONS,
+  fold,
   formatNowTimeInTz,
   getOffsetMinutes,
   resetTimeZoneCaches,
@@ -719,6 +720,14 @@ describe("searching the zone list", () => {
     expect(zonesMatching("greenwich")).toContain("Europe/London");
   });
 
+  it("finds a zone by a name spelled with the accents it carries", () => {
+    expect(zonesMatching("Bogotá")).toContain("America/Bogota");
+  });
+
+  it("finds a zone whose own name carries accents the query leaves out", () => {
+    expect(zonesMatching("turkiye")).toEqual(["Europe/Istanbul"]);
+  });
+
   const subMatching = (query: string, tz: string) => {
     const { result } = renderHook(() => useTimeZoneSelect({}));
     act(() => result.current.setQuery(query));
@@ -764,11 +773,8 @@ describe("searching the zone list", () => {
     expect(labelSubOf("Europe/Istanbul")).toBeNull();
   });
 
-  // Accents fold here as they do in the label, or a row reading "Türkiye" would
-  // pass a sweep looking for "Turkey".
-  const fold = (text: string) =>
-    text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
-
+  // The sweep folds as the search does, or a row reading "Türkiye" would pass a
+  // sweep looking for "Turkey".
   it("carries nothing any row already says", () => {
     const { result } = renderHook(() => useTimeZoneSelect({}));
 
