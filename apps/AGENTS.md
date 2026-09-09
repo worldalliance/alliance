@@ -20,3 +20,9 @@ export function parseValue(input: RawValueDto): ParsedValue {
 ## Web-mobile feature parity
 
 Any functionality added to the frontend should also be added to the mobile version (and vice versa). The UI/UX may be different; it should fit each platform separately.
+
+## The uniwind pin
+
+Code under `apps/mobile` reads how uniwind resolves a class string rather than a documented API, so uniwind is pinned exactly.
+
+Bumping uniwind in `apps/mobile`, bumping `tailwindcss` in any package, or a mobile CSS build that broke after a Tailwind release → `(root)/skills/uniwind-pin/SKILL.md`.

@@ -126,8 +126,8 @@ if (problems.length > 0) {
       "",
       "A warning naming a class means React Native cannot render it. Stop using",
       "the class, or add the warning to `acceptedLogs` in this file once you know",
-      "why it is harmless. Anything else is the two Tailwinds drifting apart:",
-      "bump uniwind, or pin `tailwindcss` to the version uniwind bundles.",
+      "why it is harmless. Anything else is the two Tailwinds drifting apart,",
+      "which `skills/uniwind-pin` walks through.",
     ].join("\n"),
   );
 }
