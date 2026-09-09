@@ -6,11 +6,7 @@ import {
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
-import {
-  extractRefreshTokenFromCookie,
-  type JwtPayload,
-  JWTTokenType,
-} from "../tokens";
+import { extractRefreshToken, type JwtPayload, JWTTokenType } from "../tokens";
 
 @Injectable()
 export class RefreshTokenGuard implements CanActivate {
@@ -19,9 +15,7 @@ export class RefreshTokenGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
 
-    const token =
-      extractRefreshTokenFromCookie(request) ??
-      this.extractTokenFromHeader(request);
+    const token = extractRefreshToken(request);
 
     if (!token) {
       throw new UnauthorizedException("Missing refresh token");
@@ -46,13 +40,5 @@ export class RefreshTokenGuard implements CanActivate {
       console.log("refresh token guard error: ", err);
       throw new UnauthorizedException("Invalid or expired refresh token");
     }
-  }
-
-  private extractTokenFromHeader(request: Request): string | undefined {
-    const authHeader = request.headers["authorization"] as string | undefined;
-    if (!authHeader) {
-      return undefined;
-    }
-    return authHeader.split(" ")[1];
   }
 }

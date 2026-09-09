@@ -27,18 +27,31 @@ const jwtPayloadSchema = z.object({
   isImpersonation: z.boolean().optional(),
 });
 
+export function extractBearerToken(
+  authorization: string | undefined,
+): string | undefined {
+  const [scheme, token] = authorization?.split(" ") ?? [];
+  return scheme === "Bearer" && token ? token : undefined;
+}
+
 export function extractAccessToken(request: Request): string | undefined {
-  const [type, token] = request.headers.authorization?.split(" ") ?? [];
-  if (type === "Bearer" && token) {
-    return token;
-  }
-  return request.cookies?.[ACCESS_COOKIE];
+  return (
+    extractBearerToken(request.headers.authorization) ??
+    request.cookies?.[ACCESS_COOKIE]
+  );
 }
 
 export function extractRefreshTokenFromCookie(
   request: Request,
 ): string | undefined {
   return request.cookies?.[REFRESH_COOKIE];
+}
+
+export function extractRefreshToken(request: Request): string | undefined {
+  return (
+    extractRefreshTokenFromCookie(request) ??
+    extractBearerToken(request.headers.authorization)
+  );
 }
 
 export function extractGuestTokenFromCookie(

@@ -69,22 +69,16 @@ describe("Auth (e2e)", () => {
   });
 
   describe("token refresh", () => {
-    it("returns 401 for invalid refresh token", () => {
-      return request(ctx.app.getHttpServer())
-        .post("/auth/refresh")
-        .send({ refresh_token: "invalid" })
-        .expect(401);
-    });
+    const login = async (): Promise<SignInResponseDto> => {
+      await userRepository.save(
+        userRepository.create({
+          email: "newusertest@test.com",
+          password: "password",
+          name: "Test User",
+        }),
+      );
 
-    it("returns a new access token for a valid refresh token", async () => {
-      const user = userRepository.create({
-        email: "newusertest@test.com",
-        password: "password",
-        name: "Test User",
-      });
-      await userRepository.save(user);
-
-      const loginResponse = await request(ctx.app.getHttpServer())
+      const response = await request(ctx.app.getHttpServer())
         .post("/auth/login")
         .send({
           email: "newusertest@test.com",
@@ -93,17 +87,40 @@ describe("Auth (e2e)", () => {
         })
         .expect(200);
 
-      const loginBody = loginResponse.body as SignInResponseDto;
+      return response.body as SignInResponseDto;
+    };
+
+    it("returns 401 for an invalid refresh token", () => {
+      return request(ctx.app.getHttpServer())
+        .post("/auth/refresh")
+        .set("Authorization", "Bearer invalid")
+        .expect(401);
+    });
+
+    it("returns a new access token for a valid refresh token", async () => {
+      const { refresh_token } = await login();
 
       const refreshResponse = await request(ctx.app.getHttpServer())
         .post("/auth/refresh")
-        .set("Authorization", `Bearer ${loginBody.refresh_token}`)
+        .set("Authorization", `Bearer ${refresh_token}`)
         .expect(200);
 
       const refreshBody = refreshResponse.body as RefreshTokensResponseDto;
 
       expect(refreshBody.access_token).toBeDefined();
     });
+
+    it.each(["Basic", "bearer"])(
+      "refuses a refresh token sent as %p",
+      async (scheme) => {
+        const { refresh_token } = await login();
+
+        await request(ctx.app.getHttpServer())
+          .post("/auth/refresh")
+          .set("Authorization", `${scheme} ${refresh_token}`)
+          .expect(401);
+      },
+    );
   });
 
   describe("signUp with invite codes", () => {
