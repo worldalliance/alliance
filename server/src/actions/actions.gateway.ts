@@ -11,7 +11,7 @@ import {
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { ActionsService } from "./actions.service";
-import { ActionActivityDto } from "./dto/action.dto";
+import { BroadcastActionActivityDto } from "./dto/action.dto";
 
 @WebSocketGateway({
   cors: {
@@ -114,7 +114,7 @@ export class ActionsGateway
 
   private async handleActionActivity(data: {
     actionId: number;
-    activity: ActionActivityDto;
+    activity: BroadcastActionActivityDto;
   }) {
     const { actionId, activity } = data;
 

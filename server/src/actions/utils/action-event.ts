@@ -29,3 +29,22 @@ export function memberActionPhase(events: ActionEvent[]): MemberActionPhase {
     ) ?? null;
   return { event, deadlineEvent };
 }
+
+/**
+ * The status the events put the action in at `at`. The `status` getter answers
+ * for the clock and caches, so a caller asking about another moment needs this.
+ */
+export function actionStatusAt(
+  events: Pick<ActionEvent, "date" | "newStatus">[] | undefined,
+  at: Date,
+): ActionStatus {
+  if (!events) {
+    throw new Error("`events` relation is not loaded");
+  }
+  const latestPastEvent = findLeast(
+    events,
+    (a, b) => b.date.getTime() - a.date.getTime(), // reverse order
+    (event) => event.date < at,
+  );
+  return latestPastEvent ? latestPastEvent.newStatus : ActionStatus.Draft;
+}

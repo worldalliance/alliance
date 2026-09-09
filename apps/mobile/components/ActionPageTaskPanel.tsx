@@ -9,6 +9,7 @@ import {
   useCompletedTaskForm,
   useTaskForm,
 } from "@alliance/shared/lib/actionTaskPanelCompleted";
+import { isStaffPreview } from "@alliance/shared/lib/actionUtils";
 import { clipboardCopy, taskHeaders } from "@alliance/shared/lib/copy";
 import {
   buildActionShareUrl,
@@ -41,6 +42,16 @@ export interface ActionPageTaskPanelProps {
 const taskPanelTopByState: Partial<
   Record<ActionPageTaskPanelState, ReactNode>
 > = {
+  [ActionPageTaskPanelState.StaffPreview]: (
+    <View className="gap-y-1">
+      <Text className="text-amber-600" weight={FontWeight.Medium}>
+        {taskHeaders.actionPage.staffPreview.title}
+      </Text>
+      <Text className="text-zinc-500">
+        {taskHeaders.actionPage.staffPreview.description}
+      </Text>
+    </View>
+  ),
   [ActionPageTaskPanelState.PublicOnlyAuthenticated]: (
     <Text>{taskHeaders.actionPage.externalOnly}</Text>
   ),
@@ -157,18 +168,20 @@ const ActionPageTaskPanel = ({
         <CheckIcon size={24} />
         <Text>{taskHeaders.actionPage.completed}</Text>
       </View>
-      <TouchableOpacity
-        onPress={handleShareCopy}
-        className="flex-row items-center gap-x-1"
-        activeOpacity={0.7}
-      >
-        <Link2 size={14} color={copied ? colors.green : "#71717a"} />
-        <Text
-          className={copied ? "text-green text-sm" : "text-zinc-500 text-sm"}
+      {!isStaffPreview(action) && (
+        <TouchableOpacity
+          onPress={handleShareCopy}
+          className="flex-row items-center gap-x-1"
+          activeOpacity={0.7}
         >
-          {copied ? clipboardCopy.copiedToClipboard : clipboardCopy.share}
-        </Text>
-      </TouchableOpacity>
+          <Link2 size={14} color={copied ? colors.green : "#71717a"} />
+          <Text
+            className={copied ? "text-green text-sm" : "text-zinc-500 text-sm"}
+          >
+            {copied ? clipboardCopy.copiedToClipboard : clipboardCopy.share}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -212,6 +225,7 @@ const ActionPageTaskPanel = ({
           bottomCardStyle={bodyStyle}
         />
       );
+    case ActionPageTaskPanelState.StaffPreview:
     case ActionPageTaskPanelState.PublicOnly:
     case ActionPageTaskPanelState.ShowTaskWithMissedDeadline:
     case ActionPageTaskPanelState.Optional:

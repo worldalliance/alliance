@@ -55,6 +55,8 @@ export interface CommentsProps {
   className?: string;
   showUserBadges?: boolean;
   tags?: readonly PostTagDto[];
+  /** No new comment and no new like. An edit, a delete and an unlike still go. */
+  discussionClosed?: boolean;
 }
 
 const collectCommentIds = (comments: CommentDto[]): number[] => {
@@ -118,6 +120,7 @@ const Comments = ({
   className,
   showUserBadges = true,
   tags = NO_TAGS,
+  discussionClosed = false,
 }: CommentsProps) => {
   const { user } = useAuth();
   // useAuth() is hydrated before this mounts in the common case, so the initializer
@@ -272,6 +275,7 @@ const Comments = ({
       compact,
       showUserBadges,
       tags,
+      discussionClosed,
     }),
     [
       user,
@@ -292,13 +296,14 @@ const Comments = ({
       compact,
       showUserBadges,
       tags,
+      discussionClosed,
     ],
   );
 
   return (
     <CommentsProvider value={ctxValue}>
       <div className={className}>
-        {user && showForm ? (
+        {user && showForm && !discussionClosed ? (
           <TopLevelComposer
             replyingTo={tree.replyingTo}
             onSubmit={tree.handleSubmitReply}

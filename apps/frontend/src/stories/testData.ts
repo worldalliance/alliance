@@ -50,6 +50,7 @@ export const testActions: ActionDto[] = [
     onboarding: false,
     optional: false,
     publicOnly: false,
+    staffPreview: false,
     shouldCompleteAfterDeadline: false,
     isForumParticipationAction: false,
     followUpForms: [],
@@ -81,6 +82,7 @@ export const testActions: ActionDto[] = [
     onboarding: false,
     optional: false,
     publicOnly: false,
+    staffPreview: false,
     shouldCompleteAfterDeadline: false,
     isForumParticipationAction: false,
     followUpForms: [],
@@ -296,6 +298,7 @@ export const testActivities: ActionActivityDto[] = [
     likes: [],
     likesCount: 0,
     comments: [],
+    discussionClosed: false,
     editableContent: {
       body: "",
       attachments: [],
@@ -322,6 +325,7 @@ export const testActivities: ActionActivityDto[] = [
     likes: [],
     likesCount: 0,
     comments: [],
+    discussionClosed: false,
     editableContent: {
       body: "",
       attachments: [],

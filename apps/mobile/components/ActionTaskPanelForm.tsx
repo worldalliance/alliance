@@ -31,6 +31,7 @@ interface ActionTaskPanelFormProps {
   scrollToEnd: (animated?: boolean) => void;
   onSubmitSuccess?: () => void;
   disabled?: boolean;
+  previewMode?: boolean;
   formResponse?: FormResponseDto;
 }
 
@@ -44,6 +45,7 @@ const ActionTaskPanelForm = ({
   scrollToEnd,
   onSubmitSuccess = noop,
   disabled,
+  previewMode,
   formResponse,
 }: ActionTaskPanelFormProps) => {
   const { user, isAuthenticated } = useAuth();
@@ -162,6 +164,7 @@ const ActionTaskPanelForm = ({
         formSnapshotId={form.formSnapshotId}
         form={form.schema as unknown as FormSchema}
         onSubmit={handleSubmitForm}
+        previewMode={previewMode}
         onFormStarted={onFormStarted}
         onAbandonAction={onAbandonAction}
         actionId={actionId}

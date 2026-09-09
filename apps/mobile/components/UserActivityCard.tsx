@@ -3,6 +3,7 @@ import {
   actionActivityTransitiveVerb,
 } from "@alliance/common/actionActivity";
 import { FeedActionActivityDto } from "@alliance/shared/lib/actionActivity";
+import { canToggleLike } from "@alliance/shared/lib/actionUtils";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { router } from "expo-router";
 import { MessageCircleIcon } from "lucide-react-native";
@@ -96,9 +97,16 @@ export default function UserActivityCard({
           liked={activity.likedByMe ?? false}
           likesCount={activity.likesCount}
           likers={activity.likes}
-          onLike={() => handleLike(activity.id)}
+          onLike={
+            canToggleLike({
+              discussionClosed: activity.discussionClosed,
+              liked: activity.likedByMe ?? false,
+            })
+              ? () => handleLike(activity.id)
+              : undefined
+          }
         >
-          {commentable && (
+          {commentable && !activity.discussionClosed && (
             <LikeBarButton
               icon={MessageCircleIcon}
               label="Comment"
@@ -118,6 +126,7 @@ export default function UserActivityCard({
             showForm={showCommentForm}
             autofocus={showCommentForm}
             small
+            discussionClosed={activity.discussionClosed}
           />
         </View>
       )}

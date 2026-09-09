@@ -44,6 +44,24 @@ describe("getTaskDismissInfo", () => {
     expect(info).toBeUndefined();
   });
 
+  it("keeps the banner on a staff preview but withholds the dismiss", () => {
+    const info = getTaskDismissInfo(
+      makeAction({
+        optional: true,
+        viewer: makeViewer({ preview: true }),
+      }),
+    );
+    expect(info?.header).toBe(taskHeaders.homePage.optional.title);
+    expect(info?.message).toBe(taskHeaders.homePage.optional.description);
+    expect(info?.canDismiss).toBe(false);
+  });
+
+  it("allows the dismiss on the same action once it is not a preview", () => {
+    expect(getTaskDismissInfo(makeAction({ optional: true }))?.canDismiss).toBe(
+      true,
+    );
+  });
+
   it("shows the deadline banner once the phase closed, then optional copy", () => {
     const missed = getTaskDismissInfo(makeAction({ status: "resolution" }));
     expect(missed?.header).toBe(taskHeaders.homePage.deadline.title);

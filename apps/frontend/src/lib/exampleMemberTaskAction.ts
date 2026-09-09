@@ -29,6 +29,7 @@ export const exampleMemberTaskAction: ActionWithAwayStatus = {
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   publicOnly: false,
+  staffPreview: false,
   updates: [],
   userRelation: "none" as const,
   canParticipate: true,

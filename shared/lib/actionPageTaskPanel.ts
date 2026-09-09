@@ -1,8 +1,9 @@
-import { ActionDto } from "../client/types.gen";
+import { ActionDto, ViewerActionRelation } from "../client/types.gen";
 import { CardStyle } from "../styles/card";
 import { deadlineHasPassed } from "./actionUtils";
 
 export enum ActionPageTaskPanelState {
+  StaffPreview = "staff_preview",
   PublicOnly = "public_only",
   PublicOnlyAuthenticated = "public_only_authenticated",
   NotAuthenticated = "not_authenticated",
@@ -25,6 +26,9 @@ enum ActionPageTaskPanelEnabled {
 }
 
 const stateIsDisabled = {
+  // Enabled so the fields stay interactive; the submit is cut off separately,
+  // by the null `onCompleteAction` both clients pass on a preview.
+  [ActionPageTaskPanelState.StaffPreview]: ActionPageTaskPanelEnabled.Enabled,
   [ActionPageTaskPanelState.PublicOnlyAuthenticated]:
     ActionPageTaskPanelEnabled.Disabled,
   [ActionPageTaskPanelState.PublicOnly]: ActionPageTaskPanelEnabled.Enabled,
@@ -58,6 +62,7 @@ export function isFormDisabledByState(
 }
 
 export const shouldLoadCompletedTaskFormByState = {
+  [ActionPageTaskPanelState.StaffPreview]: false,
   [ActionPageTaskPanelState.PublicOnlyAuthenticated]: false,
   [ActionPageTaskPanelState.PublicOnly]: false,
   [ActionPageTaskPanelState.NotAuthenticated]: false,
@@ -73,6 +78,12 @@ export const shouldLoadCompletedTaskFormByState = {
   [ActionPageTaskPanelState.Optional]: false,
   [ActionPageTaskPanelState.ShowTask]: false,
 } as const satisfies Record<ActionPageTaskPanelState, boolean>;
+
+const previewPanelStateByRelation = {
+  completed: ActionPageTaskPanelState.Completed,
+  withdrawn: ActionPageTaskPanelState.Declined,
+  none: ActionPageTaskPanelState.StaffPreview,
+} as const satisfies Record<ViewerActionRelation, ActionPageTaskPanelState>;
 
 type HeaderBodyStyles = {
   header: CardStyle;
@@ -145,6 +156,16 @@ export function getActionPageTaskPanelState(params: {
     return hasRefCode
       ? ActionPageTaskPanelState.GuestRef
       : ActionPageTaskPanelState.NotAuthenticated;
+  }
+
+  // A preview jumps the cannot-complete gate below, since the server refuses a
+  // previewer's completion and so reports `canComplete: false`. It jumps
+  // nothing else: a public-only action and an unsigned contract are what the
+  // office came here to look at.
+  if (action.viewer?.preview) {
+    return mustSignContractFirst(action, contractSigned)
+      ? ActionPageTaskPanelState.OnboardingSignContractFirst
+      : previewPanelStateByRelation[action.viewer.relation];
   }
 
   const canComplete = action.viewer

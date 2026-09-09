@@ -291,8 +291,11 @@ export default function HomeScreen() {
     const info = getTaskDismissInfo(currentItem.action);
     if (!info) return undefined;
     return {
-      ...info,
-      onDismiss: () => handleDismissAction(currentItem.action.id),
+      header: info.header,
+      message: info.message,
+      onDismiss: info.canDismiss
+        ? () => handleDismissAction(currentItem.action.id)
+        : undefined,
     };
   }, [currentItem, handleDismissAction]);
 

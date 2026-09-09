@@ -13,6 +13,7 @@ import {
   forumDeleteComment,
   forumUpdateComment,
 } from "@alliance/shared/client";
+import { canToggleLike } from "@alliance/shared/lib/actionUtils";
 import {
   CommentFilter,
   CommentSort,
@@ -80,6 +81,8 @@ export interface CommentsProps {
   expertIds?: number[];
   expertLabel?: string;
   showClusterTags?: boolean;
+  /** No new comment and no new like. An edit, a delete and an unlike still go. */
+  discussionClosed?: boolean;
   tags?: readonly PostTagDto[];
 }
 
@@ -398,6 +401,7 @@ type ReplyItemSharedProps = {
   clearSubmitError: () => void;
   onDeleteReply: (replyId: number) => void;
   onLikeReply: (replyId: number, unlike?: boolean) => Promise<unknown>;
+  discussionClosed: boolean;
 };
 
 type ReplyItemProps = ReplyItemSharedProps & {
@@ -608,12 +612,16 @@ const ReplyItem = memo(function ReplyItemView({
               compact
               liked={reply.likedByMe ?? false}
               onLike={
-                shared.user
+                shared.user &&
+                canToggleLike({
+                  discussionClosed: shared.discussionClosed,
+                  liked: reply.likedByMe ?? false,
+                })
                   ? () => shared.onLikeReply(reply.id, reply.likedByMe ?? false)
                   : undefined
               }
             />
-            {shared.user && canNest && (
+            {shared.user && canNest && !shared.discussionClosed && (
               <TouchableOpacity
                 onPress={() =>
                   shared.setReplyingTo(isReplyingToThis ? null : reply.id)
@@ -706,6 +714,7 @@ export default function Comments({
   expertLabel,
   showClusterTags = false,
   tags = NO_TAGS,
+  discussionClosed = false,
 }: CommentsProps) {
   const expertIds = useMemo(
     () => (qaMode ? expertIdsProp : []),
@@ -1055,7 +1064,7 @@ export default function Comments({
 
   return (
     <View className="gap-y-3">
-      {user && showForm ? (
+      {user && showForm && !discussionClosed ? (
         <TopLevelComposer
           replyingTo={replyingTo}
           isComposing={isComposing}
@@ -1132,6 +1141,7 @@ export default function Comments({
               clearSubmitError={clearSubmitError}
               onDeleteReply={handleDeleteReply}
               onLikeReply={handleLikeReply}
+              discussionClosed={discussionClosed}
             />
           ))}
         </View>

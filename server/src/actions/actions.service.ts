@@ -139,6 +139,7 @@ import {
   ActionDto,
   ActionReviewerDto,
   ActionSharePreview,
+  broadcastActionActivityDto,
   CreateActionActivityDto,
   CreateActionDto,
   CreateActionEventDto,
@@ -216,9 +217,16 @@ import {
   ReminderGroupTimingMode,
 } from "./entities/reminder-group.entity";
 import { SCHEMA_WRITE_TARGETS } from "./schema-write-target";
+import {
+  StaffPreviewService,
+  StaffPreviewWrite,
+} from "./staff-preview.service";
 import { resolveUserActionPillStatus } from "./user-action-pill-status";
 import {
+  actionHiddenFromMembers,
   computeCanCompleteAction,
+  isStaffPreviewActive,
+  isStaffPreviewFor,
   resolveUserActionStatus,
 } from "./user-action-status";
 
@@ -333,17 +341,25 @@ export class ActionsService {
     private readonly actionFormVariantService: ActionFormVariantService,
     private readonly facepileService: FacepileService,
     private readonly formSnapshotService: FormSnapshotService,
+    private readonly staffPreviewService: StaffPreviewService,
   ) {}
 
   async applyAssignedFormIds(
     actions: Action[],
-    userId: number | undefined,
+    user: User | null,
   ): Promise<void> {
-    if (!userId || actions.length === 0) return;
+    if (!user || actions.length === 0) return;
+    // Assigning a variant writes a row, and a staff preview records nothing, so
+    // its viewer gets the action's own form, the control arm.
+    const now = new Date();
+    const assignable = actions.filter(
+      (action) => !isStaffPreviewFor({ action, user, now }),
+    );
+    if (assignable.length === 0) return;
     const overrides =
       await this.actionFormVariantService.getOrCreateAssignedFormIdsForActions(
-        actions.map((a) => a.id),
-        userId,
+        assignable.map((a) => a.id),
+        user.id,
       );
     if (overrides.size === 0) return;
     for (const action of actions) {
@@ -918,7 +934,7 @@ export class ActionsService {
       }
     }
 
-    await this.applyAssignedFormIds(filtered, user?.id);
+    await this.applyAssignedFormIds(filtered, user);
 
     const actionsDismissed = new Set(
       (
@@ -961,7 +977,7 @@ export class ActionsService {
 
         return new ActionDto(action, {
           canParticipate: user
-            ? computeCanCompleteAction({ action, user, inCohort })
+            ? computeCanCompleteAction({ action, user, inCohort, now })
             : false,
           shouldParticipate,
           userRelation:
@@ -1003,7 +1019,11 @@ export class ActionsService {
     if (user?.admin) {
       return true;
     }
-    if (action.status === ActionStatus.Draft || action.archived) {
+    const now = new Date();
+    if (isStaffPreviewFor({ action, user, now })) {
+      return true;
+    }
+    if (actionHiddenFromMembers(action, now)) {
       return false;
     }
     if (action.visibilityMode === VisibilityMode.Public) {
@@ -1167,9 +1187,7 @@ export class ActionsService {
         session,
       });
     }
-    if (userId) {
-      await this.applyAssignedFormIds([action], userId);
-    }
+    await this.applyAssignedFormIds([action], user);
 
     const activities = user
       ? await this.actionActivityRepository.find({
@@ -1188,7 +1206,7 @@ export class ActionsService {
 
     return new ActionDto(action, {
       canParticipate: user
-        ? computeCanCompleteAction({ action, user, inCohort })
+        ? computeCanCompleteAction({ action, user, inCohort, now })
         : false,
       shouldParticipate: computeIsAssignedToAction({
         action,
@@ -1256,6 +1274,11 @@ export class ActionsService {
     actionId: number,
     userId: number,
   ): Promise<string> {
+    await this.staffPreviewService.assertWritable({
+      actionId,
+      userId,
+      write: StaffPreviewWrite.Participation,
+    });
     const shareUrl = await this.shareUrlsService.getOrCreateForAction(
       actionId,
       {
@@ -1692,6 +1715,14 @@ export class ActionsService {
       );
     }
 
+    if (!adminCreated) {
+      await this.staffPreviewService.assertWritable({
+        actionId,
+        userId,
+        write: StaffPreviewWrite.Participation,
+      });
+    }
+
     if (type === ActionActivityType.USER_COMPLETED && !adminCreated) {
       await this.ensureCompletionAllowed(action, userId);
     }
@@ -1756,7 +1787,7 @@ export class ActionsService {
 
     this.eventEmitter.emit("action.activity", {
       actionId,
-      activity: new ActionActivityDto(savedActivity),
+      activity: broadcastActionActivityDto(savedActivity),
     });
 
     await this.reloadUsersJoinedForAction(actionId);
@@ -1840,6 +1871,16 @@ export class ActionsService {
       rest.taskFormId !== action.taskFormId
     ) {
       await this.assertFormIdNotUsedAsVariant(rest.taskFormId);
+    }
+
+    // A flag set for a launch that already happened previews nothing, so it
+    // saves lowered. Refusing it instead would fail whatever edit the form
+    // carried it in beside, and only once the sweep had run.
+    if (
+      rest.staffPreview &&
+      (await this.staffPreviewService.memberActionOpened(id))
+    ) {
+      rest.staffPreview = false;
     }
 
     action.suite = {
@@ -2123,6 +2164,11 @@ export class ActionsService {
     comments: boolean;
   }): Promise<ActionActivityDto[]> {
     const { activities, requestingUserId, comments: includeComments } = params;
+    const discussionClosedIds =
+      await this.staffPreviewService.discussionClosedActionIds(
+        activities.map((activity) => activity.actionId),
+        requestingUserId,
+      );
     const activityIds = activities.map((activity) => activity.id);
     const likedIds = requestingUserId
       ? await this.getLikedActivityIds(activityIds, requestingUserId)
@@ -2146,6 +2192,7 @@ export class ActionsService {
         likedByMe: likedIds.has(activity.id),
         requestingUserId,
         facepile: facepiles(activity.id),
+        discussionClosed: discussionClosedIds.has(activity.actionId),
       });
     });
   }
@@ -2168,6 +2215,12 @@ export class ActionsService {
       });
     }
 
+    const discussionClosedIds =
+      await this.staffPreviewService.discussionClosedActionIds(
+        activities.map((activity) => activity.actionId),
+        requestingUserId,
+      );
+
     const activityIds = activities.map((activity) => activity.id);
     const likedIds = requestingUserId
       ? await this.getLikedActivityIds(activityIds, requestingUserId)
@@ -2182,6 +2235,7 @@ export class ActionsService {
         new ActionActivityDto(activity, {
           likedByMe: likedIds.has(activity.id),
           facepile: facepiles(activity.id),
+          discussionClosed: discussionClosedIds.has(activity.actionId),
         }),
     );
   }
@@ -2358,7 +2412,12 @@ export class ActionsService {
       cohortExpression: action.cohortExpression,
     });
 
-    return computeCanCompleteAction({ action, user, inCohort });
+    return computeCanCompleteAction({
+      action,
+      user,
+      inCohort,
+      now: new Date(),
+    });
   }
 
   async ensureCompletionAllowed(action: ParsedAction, userId: number) {
@@ -2675,12 +2734,26 @@ export class ActionsService {
     return merged.slice(0, limit).map((item) => new HomeFeedItemDto(item));
   }
 
-  async findByName(name: string): Promise<Action[]> {
+  async findByName(params: {
+    name: string;
+    userId?: number;
+  }): Promise<Action[]> {
+    const { name, userId } = params;
     const actions = await this.actionRepository.find({
       where: { name: ILike(`%${name}%`) },
       relations: { events: true },
     });
-    return actions.filter((action) => action.status !== ActionStatus.Draft);
+    const now = new Date();
+    // Almost no match is previewed, so the viewer lookup waits until one is.
+    const user =
+      userId && actions.some((action) => isStaffPreviewActive(action, now))
+        ? await this.userService.findOne(userId)
+        : null;
+    return actions.filter(
+      (action) =>
+        action.status !== ActionStatus.Draft ||
+        isStaffPreviewFor({ action, user, now }),
+    );
   }
 
   async getActivity(
@@ -2709,6 +2782,11 @@ export class ActionsService {
       likedByMe: requestingUserId
         ? activity.likes?.some((like) => like.id === requestingUserId)
         : undefined,
+      discussionClosed:
+        await this.staffPreviewService.discussionClosedForAction(
+          activity.actionId,
+          requestingUserId,
+        ),
     });
   }
 
@@ -2734,6 +2812,13 @@ export class ActionsService {
       !GlobalFeedActivityTypes.includes(activity.type as GlobalFeedActivityType)
     ) {
       throw new BadRequestException("Activity type is not supported");
+    }
+    if (!unlike) {
+      await this.staffPreviewService.assertWritable({
+        actionId: activity.actionId,
+        userId,
+        write: StaffPreviewWrite.Discussion,
+      });
     }
     const user = await this.userService.findOneOrFail(userId);
 
@@ -2799,11 +2884,27 @@ export class ActionsService {
 
     return new ActionActivityDto(updatedActivity, {
       likedByMe: !unlike,
+      // The unlike went through; this is what stops the client offering a new
+      // like the server would refuse.
+      discussionClosed:
+        await this.staffPreviewService.discussionClosedForAction(
+          activity.actionId,
+          userId,
+        ),
     });
   }
 
-  async getPaymentAmountForAction(id: number): Promise<number> {
-    const action = await this.findOneOrFail({ id, serverSide: true });
+  async getPaymentAmountForAction(params: {
+    actionId: number;
+    userId?: number;
+  }): Promise<number> {
+    const { actionId, userId } = params;
+    await this.staffPreviewService.assertWritable({
+      actionId,
+      userId,
+      write: StaffPreviewWrite.Participation,
+    });
+    const action = await this.findOneOrFail({ id: actionId, serverSide: true });
     if (action.type !== ActionTaskType.Funding) {
       throw new BadRequestException("Action is not a funding action");
     }
@@ -3379,6 +3480,11 @@ export class ActionsService {
     );
   }
 
+  /**
+   * What a reminder counts and names, so a staff preview is not one. It sits on
+   * its viewer's home page to be walked, and a message chasing a real task must
+   * not count an unlaunched action or print its name.
+   */
   async findUncompletedTasks(
     userId: number,
     suiteId?: number,
@@ -3387,6 +3493,7 @@ export class ActionsService {
       .filter(
         (action) =>
           action.shouldParticipate &&
+          !action.viewer?.preview &&
           action.userRelation !== UserActionRelation.Completed,
       )
       .sort((a, b) => b.priority - a.priority);

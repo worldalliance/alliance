@@ -6,7 +6,11 @@ import type {
 } from "@alliance/shared/client/types.gen";
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
 import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
-import { isFollowUpFormActive } from "@alliance/shared/lib/actionUtils";
+import {
+  isDiscussionClosed,
+  isFollowUpFormActive,
+  isStaffPreview,
+} from "@alliance/shared/lib/actionUtils";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
 import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
 import { nameListSeparator } from "@alliance/shared/lib/nameList";
@@ -182,15 +186,17 @@ const ActionContents = () => {
       <div className="flex flex-row justify-between items-start mb-6">
         {action !== undefined && (
           <div className="flex flex-col gap-y-3">
-            <ShareButton
-              onClick={handleShareAction}
-              icon={ExternalLinkIcon}
-              label={clipboardCopy.share}
-              copiedLabel={clipboardCopy.copiedToClipboard}
-              className="self-start text-zinc-500 hover:text-zinc-700"
-              iconClassName="w-3.5 h-3.5 shrink-0"
-              labelClassName="text-sm order-first"
-            />
+            {!isStaffPreview(action) && (
+              <ShareButton
+                onClick={handleShareAction}
+                icon={ExternalLinkIcon}
+                label={clipboardCopy.share}
+                copiedLabel={clipboardCopy.copiedToClipboard}
+                className="self-start text-zinc-500 hover:text-zinc-700"
+                iconClassName="w-3.5 h-3.5 shrink-0"
+                labelClassName="text-sm order-first"
+              />
+            )}
             <p className="text-title">{action.name}</p>
             {loggedInMode ? (
               <p className="text-base md:text-lg">{action.shortDescription}</p>
@@ -241,7 +247,7 @@ const ActionContents = () => {
             </Link>
           </div>
         )}
-        {action.status !== "planned" && (
+        {(action.status !== "planned" || isStaffPreview(action)) && (
           <div className="flex flex-col">
             {loggedInMode && activeFollowUpForms.length > 0 && (
               <div className="flex flex-col gap-y-4 mb-6">
@@ -340,7 +346,11 @@ const ActionContents = () => {
                   Questions and comments about this action that other members
                   would find helpful.
                 </p>
-                <Comments objectId={action.id} type={"action"} />
+                <Comments
+                  objectId={action.id}
+                  type={"action"}
+                  discussionClosed={isDiscussionClosed(action)}
+                />
               </div>
             )}
           </>

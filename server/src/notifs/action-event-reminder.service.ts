@@ -35,6 +35,10 @@ import {
   ActionEvent,
   ActionStatus,
 } from "../actions/entities/action-event.entity";
+import {
+  actionHiddenFromMembers,
+  isStaffPreviewActive,
+} from "../actions/user-action-status";
 import { memberActionPhase } from "../actions/utils/action-event";
 import { DEFAULT_TIME_ZONE, User } from "../user/entities/user.entity";
 import { ActionEventRecipientService } from "./action-event-recipient.service";
@@ -94,6 +98,22 @@ export class ActionEventReminderService {
       this.recipientService.findReminderGroupCohort(group),
       this.findAlreadyNotifiedUserIds(group),
     ]);
+    const previewScope = await this.findFullyPreviewedScope(group);
+    // Narrower than the preview itself, which runs until the launch. A preview
+    // over an action members are already reading takes nothing from them, and
+    // the reminder they are owed is part of that.
+    //
+    // Both halves read `at`. Asking either about now instead would hold a send
+    // scheduled for a day the action is public, which the tentative-plan
+    // preview looks weeks ahead to ask about.
+    const heldByStaffPreview = (at: Date) =>
+      previewScope.length > 0 &&
+      previewScope.every(
+        (action) =>
+          isStaffPreviewActive(action, at) &&
+          actionHiddenFromMembers(action, at),
+      );
+
     for (const user of users) {
       const reminderSendTime = getGroupSendTimeForUser(user, group);
 
@@ -103,6 +123,8 @@ export class ActionEventReminderService {
 
       if (await this.userService.isUserIdAway(user.id, reminderSendTime))
         continue;
+
+      if (heldByStaffPreview(reminderSendTime)) continue;
 
       if (reminderSendTime >= windowStart && reminderSendTime <= windowEnd) {
         plans.push({
@@ -114,6 +136,25 @@ export class ActionEventReminderService {
     }
 
     return plans;
+  }
+
+  /**
+   * The group's task scope when every action in it carries the staff-preview
+   * flag, else empty. A group with nothing else to name would remind members
+   * of a task none of them can reach. A suite group keeps sending while any of
+   * its actions is live: those are the tasks the message counts.
+   */
+  private async findFullyPreviewedScope(
+    group: ReminderGroup,
+  ): Promise<Action[]> {
+    const scope = groupTaskScopeActions(group);
+    if (!scope.every((action) => action.staffPreview)) return [];
+    // The flag is loaded with the group, the events a suite's actions need are
+    // not, so almost every group answers without reaching the db at all.
+    return this.actionRepository.find({
+      where: { id: In(scope.map((action) => action.id)) },
+      relations: { events: true },
+    });
   }
 
   /**
@@ -794,14 +835,16 @@ export function assertExcludePreviouslyNotifiedAllowed(
  * loaded (e.g. the preview's tentative group), which can only over-exclude
  * relative to the suite scope, never notify someone twice.
  */
-export function groupTaskScopeActionIds(group: ReminderGroup): number[] {
+export function groupTaskScopeActions(group: ReminderGroup): Action[] {
   const suiteActions =
     group.useSuiteTaskCount && group.actionSuite?.actions?.length
       ? group.actionSuite.actions
       : null;
-  return suiteActions
-    ? suiteActions.map((action) => action.id)
-    : [group.memberActionEvent.action.id];
+  return suiteActions ?? [group.memberActionEvent.action];
+}
+
+export function groupTaskScopeActionIds(group: ReminderGroup): number[] {
+  return groupTaskScopeActions(group).map((action) => action.id);
 }
 
 /**

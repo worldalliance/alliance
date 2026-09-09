@@ -451,6 +451,10 @@ export type Action = {
      */
     publicOnly: boolean;
     /**
+     * Staff preview. Until the member action opens, staff and admins also see the action, it sits on their home page as if assigned, and anything they do that would record them on it is refused. They keep the discussion wherever members can already read the action. Nobody else's visibility or writes change. Inert once the member action has opened, and cleared shortly after.
+     */
+    staffPreview: boolean;
+    /**
      * Whether the action shows up in the tasks page after the deadline
      */
     shouldCompleteAfterDeadline: boolean;
@@ -1887,6 +1891,10 @@ export type ActionActivityDto = {
     comments: Array<CommentDto>;
     formResponseOutput?: FormResponseOutputDto;
     editableContent: EditableContentDto;
+    /**
+     * The viewer may not comment on this activity or like it, because a staff preview is holding its action back from members.
+     */
+    discussionClosed: boolean;
 };
 
 export type ActionReviewerResponseDto = {
@@ -1998,6 +2006,8 @@ export type UserActionStatusDto = {
     deadlineAt: string | null;
     deadlinePassed: boolean;
     display: UserActionRelationPillStatus;
+    preview: boolean;
+    discussionClosed: boolean;
 };
 
 export type ActionDto = {
@@ -2085,6 +2095,10 @@ export type ActionDto = {
      * Whether the action is visible to and supposed to only be completed by non-members
      */
     publicOnly: boolean;
+    /**
+     * Staff preview. Until the member action opens, staff and admins also see the action, it sits on their home page as if assigned, and anything they do that would record them on it is refused. They keep the discussion wherever members can already read the action. Nobody else's visibility or writes change. Inert once the member action has opened, and cleared shortly after.
+     */
+    staffPreview: boolean;
     /**
      * Whether the action shows up in the tasks page after the deadline
      */
@@ -2419,6 +2433,10 @@ export type AdminActionDto = {
      */
     publicOnly: boolean;
     /**
+     * Staff preview. Until the member action opens, staff and admins also see the action, it sits on their home page as if assigned, and anything they do that would record them on it is refused. They keep the discussion wherever members can already read the action. Nobody else's visibility or writes change. Inert once the member action has opened, and cleared shortly after.
+     */
+    staffPreview: boolean;
+    /**
      * Whether the action shows up in the tasks page after the deadline
      */
     shouldCompleteAfterDeadline: boolean;
@@ -2652,6 +2670,10 @@ export type CreateActionDto = {
      */
     publicOnly: boolean;
     /**
+     * Staff preview. Until the member action opens, staff and admins also see the action, it sits on their home page as if assigned, and anything they do that would record them on it is refused. They keep the discussion wherever members can already read the action. Nobody else's visibility or writes change. Inert once the member action has opened, and cleared shortly after.
+     */
+    staffPreview: boolean;
+    /**
      * Whether the action shows up in the tasks page after the deadline
      */
     shouldCompleteAfterDeadline: boolean;
@@ -2749,6 +2771,10 @@ export type UpdateActionDto = {
      * Whether the action is visible to and supposed to only be completed by non-members
      */
     publicOnly?: boolean;
+    /**
+     * Staff preview. Until the member action opens, staff and admins also see the action, it sits on their home page as if assigned, and anything they do that would record them on it is refused. They keep the discussion wherever members can already read the action. Nobody else's visibility or writes change. Inert once the member action has opened, and cleared shortly after.
+     */
+    staffPreview?: boolean;
     /**
      * Whether the action shows up in the tasks page after the deadline
      */
@@ -3049,6 +3075,10 @@ export type ExportActionDto = {
      * Whether the action is visible to and supposed to only be completed by non-members
      */
     publicOnly: boolean;
+    /**
+     * Staff preview. Until the member action opens, staff and admins also see the action, it sits on their home page as if assigned, and anything they do that would record them on it is refused. They keep the discussion wherever members can already read the action. Nobody else's visibility or writes change. Inert once the member action has opened, and cleared shortly after.
+     */
+    staffPreview: boolean;
     /**
      * Whether the action shows up in the tasks page after the deadline
      */

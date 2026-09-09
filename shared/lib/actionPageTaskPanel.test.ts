@@ -2,6 +2,7 @@ import type { ActionDto } from "../client/types.gen";
 import {
   ActionPageTaskPanelState,
   getActionPageTaskPanelState,
+  isFormDisabledByState,
 } from "./actionPageTaskPanel";
 import {
   makeAction,
@@ -50,6 +51,53 @@ describe("getActionPageTaskPanelState", () => {
   it("shows the task for a plain assigned todo on both paths", () => {
     expect(stateOf(makeAction())).toBe(ActionPageTaskPanelState.ShowTask);
     expect(stateOf(makeLegacyAction())).toBe(ActionPageTaskPanelState.ShowTask);
+  });
+
+  it("takes a staff preview over the cohort it puts the viewer outside", () => {
+    const action = makeAction({
+      status: "draft",
+      viewer: makeViewer({ canComplete: false, preview: true }),
+    });
+    expect(stateOf(action)).toBe(ActionPageTaskPanelState.StaffPreview);
+    expect(isFormDisabledByState(ActionPageTaskPanelState.StaffPreview)).toBe(
+      false,
+    );
+  });
+
+  it("shows a preview the panel its members get, where they get another", () => {
+    expect(
+      stateOf(
+        makeAction({
+          status: "draft",
+          publicOnly: true,
+          viewer: makeViewer({ canComplete: false, preview: true }),
+        }),
+      ),
+    ).toBe(ActionPageTaskPanelState.PublicOnlyAuthenticated);
+    expect(
+      stateOf(
+        makeAction({
+          status: "draft",
+          onboarding: true,
+          viewer: makeViewer({ canComplete: false, preview: true }),
+        }),
+        { contractSigned: false },
+      ),
+    ).toBe(ActionPageTaskPanelState.OnboardingSignContractFirst);
+  });
+
+  it("still shows what the viewer already did on a preview", () => {
+    const previewed = (relation: "completed" | "withdrawn") =>
+      makeAction({
+        status: "draft",
+        viewer: makeViewer({ canComplete: false, preview: true, relation }),
+      });
+    expect(stateOf(previewed("completed"))).toBe(
+      ActionPageTaskPanelState.Completed,
+    );
+    expect(stateOf(previewed("withdrawn"))).toBe(
+      ActionPageTaskPanelState.Declined,
+    );
   });
 
   it("maps cannot-complete to NotAssigned unless completion is prevented", () => {

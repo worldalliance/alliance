@@ -18,6 +18,7 @@ import {
   ActionTaskType,
   VisibilityMode,
 } from "src/actions/entities/action.entity";
+import { FollowUpForm } from "src/actions/entities/follow-up-form.entity";
 import { Community } from "src/community/entities/community.entity";
 import {
   Comment,
@@ -96,6 +97,7 @@ describe("Tasks (e2e)", () => {
   let eventRepo: Repository<ActionEvent>;
   let userRepo: Repository<User>;
   let actionActivityRepo: Repository<ActionActivity>;
+  let followUpFormRepo: Repository<FollowUpForm>;
   let customValidatorRepo: Repository<CustomValidator>;
   let contractEventRepo: Repository<ContractEvent>;
   let communityRepo: Repository<Community>;
@@ -113,6 +115,7 @@ describe("Tasks (e2e)", () => {
     eventRepo = ctx.dataSource.getRepository(ActionEvent);
     userRepo = ctx.dataSource.getRepository(User);
     actionActivityRepo = ctx.dataSource.getRepository(ActionActivity);
+    followUpFormRepo = ctx.dataSource.getRepository(FollowUpForm);
     customValidatorRepo = ctx.dataSource.getRepository(CustomValidator);
     contractEventRepo = ctx.dataSource.getRepository(ContractEvent);
     communityRepo = ctx.dataSource.getRepository(Community);
@@ -165,6 +168,7 @@ describe("Tasks (e2e)", () => {
         preventCompletion: false,
         optional: false,
         publicOnly: false,
+        staffPreview: false,
         isContractSigningAction: false,
         onboarding: false,
         cohortExpression: {
@@ -214,6 +218,7 @@ describe("Tasks (e2e)", () => {
         preventCompletion: false,
         optional: false,
         publicOnly: false,
+        staffPreview: false,
         onboarding: false,
         isContractSigningAction: false,
         cohortExpression: {
@@ -319,6 +324,200 @@ describe("Tasks (e2e)", () => {
       .get(`/tasks/slug/${formId}`)
       .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .expect(404);
+  });
+
+  describe("Staff preview", () => {
+    const createPreviewForm = async (): Promise<{
+      id: number;
+      formSnapshotId: number;
+    }> => {
+      const res = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "Preview Form", schema: sampleSchema })
+        .expect(201);
+      return res.body;
+    };
+
+    // Staff by default: they are the only ones who reach the refusal at all,
+    // everyone else gets the not-found the action itself gives them.
+    beforeEach(async () => {
+      await userRepo.update(ctx.testUserId, { staff: true });
+    });
+
+    afterAll(async () => {
+      await userRepo.update(ctx.testUserId, { staff: false });
+    });
+
+    /** No member-action event, so the preview is still active. */
+    const createPreviewAction = async (formId: number): Promise<Action> =>
+      actionRepo.save(
+        actionRepo.create({
+          name: "Preview Action",
+          category: "Community",
+          body: "Body copy",
+          shortDescription: "Short copy",
+          taskFormId: formId,
+          type: ActionTaskType.Activity,
+          isForumParticipationAction: false,
+          shouldCompleteAfterDeadline: false,
+          visibilityMode: VisibilityMode.Public,
+          preventCompletion: false,
+          optional: false,
+          publicOnly: false,
+          staffPreview: true,
+          onboarding: false,
+          isContractSigningAction: false,
+          cohortExpression: {
+            type: "Tag",
+            tagId: ctx.defaultTag.id,
+          },
+        } satisfies CreateActionDto),
+      );
+
+    it("refuses a submission, profile extraction included", async () => {
+      const form = await createPreviewForm();
+      const action = await createPreviewAction(form.id);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${form.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { "full-name": "Staffer", "phone-number": "+14155552671" },
+          formSnapshotId: form.formSnapshotId,
+          actionId: action.id,
+          deviceType: "desktop" as const,
+        })
+        .expect(403);
+
+      expect(await formResponseRepo.countBy({ formId: form.id })).toBe(0);
+      expect(
+        (await userRepo.findOneByOrFail({ id: ctx.testUserId })).phoneNumber,
+      ).toBeNull();
+    });
+
+    it("hides the action from a member who is not staff", async () => {
+      await userRepo.update(ctx.testUserId, { staff: false });
+      const form = await createPreviewForm();
+      const action = await createPreviewAction(form.id);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${form.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { "full-name": "Member" },
+          formSnapshotId: form.formSnapshotId,
+          actionId: action.id,
+          deviceType: "desktop" as const,
+        })
+        .expect(404);
+
+      expect(await formResponseRepo.countBy({ formId: form.id })).toBe(0);
+    });
+
+    it("refuses a guest submission, which has no viewer to be staff", async () => {
+      const form = await createPreviewForm();
+      const action = await createPreviewAction(form.id);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitPublicForm/${form.id}`)
+        .send({
+          answers: { "full-name": "A Guest" },
+          formSnapshotId: form.formSnapshotId,
+          actionId: action.id,
+          deviceType: "desktop" as const,
+        })
+        .expect(404);
+
+      expect(await formResponseRepo.countBy({ formId: form.id })).toBe(0);
+    });
+
+    it("refuses a withdrawal", async () => {
+      const form = await createPreviewForm();
+      const action = await createPreviewAction(form.id);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/optout/${form.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          actionId: action.id,
+          reason: "Just looking",
+          outOfTime: false,
+          isMoral: true,
+          partialFormData: {
+            answers: {},
+            formSnapshotId: form.formSnapshotId,
+            actionId: action.id,
+            deviceType: "desktop" as const,
+          },
+        })
+        .expect(403);
+
+      expect(await actionActivityRepo.countBy({ actionId: action.id })).toBe(0);
+    });
+
+    it("refuses a follow-up form", async () => {
+      const form = await createPreviewForm();
+      const action = await createPreviewAction(form.id);
+      // A follow-up form only opens to someone who completed the action, so
+      // reaching one on an active preview takes a completion that predates the
+      // flag, or a member-action date moved back after the fact.
+      await actionActivityRepo.save(
+        actionActivityRepo.create({
+          actionId: action.id,
+          userId: ctx.testUserId,
+          type: ActionActivityType.USER_COMPLETED,
+        }),
+      );
+      const followUpForm = await followUpFormRepo.save(
+        followUpFormRepo.create({
+          actionId: action.id,
+          formId: form.id,
+          name: "Follow up",
+          startDate: new Date(Date.now() - 1000),
+          cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+        }),
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitFollowUpForm/${followUpForm.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { "full-name": "Staffer" },
+          formSnapshotId: form.formSnapshotId,
+          deviceType: "desktop" as const,
+        })
+        .expect(403);
+
+      expect(await formResponseRepo.countBy({ formId: form.id })).toBe(0);
+    });
+
+    it("takes the same submission once the member action opens", async () => {
+      const form = await createPreviewForm();
+      const action = await createPreviewAction(form.id);
+      await eventRepo.save(
+        eventRepo.create({
+          title: "Members act",
+          description: "Go",
+          newStatus: ActionStatus.MemberAction,
+          date: new Date(Date.now() - 1000),
+          action,
+        }),
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${form.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { "full-name": "Member", "phone-number": "+14155552671" },
+          formSnapshotId: form.formSnapshotId,
+          actionId: action.id,
+          deviceType: "desktop" as const,
+        })
+        .expect(201);
+
+      expect(await formResponseRepo.countBy({ formId: form.id })).toBe(1);
+    });
   });
 
   describe("Forms index", () => {
@@ -635,6 +834,7 @@ describe("Tasks (e2e)", () => {
         preventCompletion: false,
         optional: false,
         publicOnly: false,
+        staffPreview: false,
         onboarding: false,
         isContractSigningAction: false,
         cohortExpression: {
@@ -744,6 +944,7 @@ describe("Tasks (e2e)", () => {
         preventCompletion: false,
         optional: false,
         publicOnly: false,
+        staffPreview: false,
         onboarding: false,
         isContractSigningAction: false,
         cohortExpression: {
@@ -883,6 +1084,7 @@ describe("Tasks (e2e)", () => {
           preventCompletion: false,
           optional: false,
           publicOnly: false,
+          staffPreview: false,
           isContractSigningAction: false,
           isForumParticipationAction: false,
           onboarding: false,

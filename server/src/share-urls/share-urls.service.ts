@@ -8,6 +8,10 @@ import {
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Action } from "src/actions/entities/action.entity";
+import {
+  StaffPreviewService,
+  StaffPreviewWrite,
+} from "src/actions/staff-preview.service";
 import { Community } from "src/community/entities/community.entity";
 import { InviteFeedEvents } from "src/invite-feed.events";
 import { generateCIDForShareUrl } from "src/notifs/notif-utils";
@@ -148,6 +152,7 @@ export class ShareUrlsService {
     @InjectRepository(Community)
     private readonly communityRepository: Repository<Community>,
     private readonly eventEmitter: EventEmitter2,
+    private readonly staffPreviewService: StaffPreviewService,
   ) {}
 
   async getShareLink(params: {
@@ -158,6 +163,13 @@ export class ShareUrlsService {
   }): Promise<string> {
     const { userId, actionId, externalTargetId, invite } = params;
     const target = resolveTarget({ actionId, externalTargetId, invite });
+    if (target.kind === ShareUrlKind.Action) {
+      await this.staffPreviewService.assertWritable({
+        actionId: target.actionId,
+        userId,
+        write: StaffPreviewWrite.Participation,
+      });
+    }
     const owner: ShareUrlOwner = { type: "user", userId };
     const shareUrl = await this.getOrCreateForTarget(target, owner);
     return shareUrlPublicUrl(shareUrl);

@@ -1,6 +1,7 @@
 import { Module, forwardRef } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Action } from "src/actions/entities/action.entity";
+import { StaffPreviewModule } from "src/actions/staff-preview.module";
 import { AiDetectionModule } from "src/ai-detection/ai-detection.module";
 import { EventLogModule } from "src/eventlog/eventlog.module";
 import { FacepileModule } from "src/likes/facepile.module";
@@ -22,6 +23,7 @@ import { ForumService } from "./forum.service";
 
 @Module({
   imports: [
+    StaffPreviewModule,
     TypeOrmModule.forFeature([
       Post,
       Comment,

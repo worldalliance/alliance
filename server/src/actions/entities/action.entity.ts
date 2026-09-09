@@ -16,7 +16,6 @@ import {
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
-import { findLeast } from "src/utils/filter";
 import type { Relation } from "src/utils/Repository";
 import {
   Column,
@@ -29,6 +28,7 @@ import {
   Unique,
 } from "typeorm";
 import {
+  actionStatusAt,
   memberActionPhase,
   type MemberActionPhase,
 } from "../utils/action-event";
@@ -252,6 +252,14 @@ export class Action {
   @Column({ default: false })
   @ApiProperty({
     description:
+      "Staff preview. Until the member action opens, staff and admins also see the action, it sits on their home page as if assigned, and anything they do that would record them on it is refused. They keep the discussion wherever members can already read the action. Nobody else's visibility or writes change. Inert once the member action has opened, and cleared shortly after.",
+  })
+  @Allow()
+  staffPreview: boolean;
+
+  @Column({ default: false })
+  @ApiProperty({
+    description:
       "Whether the action shows up in the tasks page after the deadline",
   })
   @Allow()
@@ -408,18 +416,8 @@ export class Action {
   @Expose()
   @ApiProperty({ enum: ActionStatus, enumName: "ActionStatus" })
   get status(): ActionStatus {
-    if (!this.events) {
-      throw new Error("`events` relation is not loaded");
-    }
     if (this._status === null) {
-      const latestPastEvent = findLeast(
-        this.events,
-        (a, b) => b.date.getTime() - a.date.getTime(), // reverse order
-        (event) => event.date < new Date(),
-      );
-      this._status = latestPastEvent
-        ? latestPastEvent.newStatus
-        : ActionStatus.Draft;
+      this._status = actionStatusAt(this.events, new Date());
     }
     return this._status;
   }

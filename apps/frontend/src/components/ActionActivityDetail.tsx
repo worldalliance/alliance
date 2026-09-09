@@ -4,6 +4,7 @@ import {
   ActionDto,
   actionsGetActivity,
 } from "@alliance/shared/client";
+import { canToggleLike } from "@alliance/shared/lib/actionUtils";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { OutputRenderer } from "@alliance/sharedweb/forms/OutputRenderer";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -190,11 +191,22 @@ const ActionActivityDetail = () => {
               liked={isLiked}
               likesCount={activity.likesCount}
               likers={activity.likes}
-              onLike={handleLike}
+              onLike={
+                canToggleLike({
+                  discussionClosed: activity.discussionClosed,
+                  liked: isLiked,
+                })
+                  ? handleLike
+                  : undefined
+              }
               align="right"
             />
             <div id="comments">
-              <Comments objectId={activity.id} type={"activity"} />
+              <Comments
+                objectId={activity.id}
+                type={"activity"}
+                discussionClosed={activity.discussionClosed}
+              />
             </div>
           </>
         )}

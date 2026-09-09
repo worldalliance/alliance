@@ -66,6 +66,10 @@ import {
   FollowUpForm,
   parseFollowUpForm,
 } from "src/actions/entities/follow-up-form.entity";
+import {
+  StaffPreviewService,
+  StaffPreviewWrite,
+} from "src/actions/staff-preview.service";
 import { AiDetectionQueryService } from "src/ai-detection/ai-detection-query.service";
 import { AiDetectionQueueService } from "src/ai-detection/ai-detection-queue.service";
 import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.entity";
@@ -186,6 +190,7 @@ export class TasksService {
     private aiDetectionQueryService: AiDetectionQueryService,
     private formSnapshotService: FormSnapshotService,
     private actionFormVariantService: ActionFormVariantService,
+    private staffPreviewService: StaffPreviewService,
   ) {}
 
   /** Returns true if value satisfies required validation for the field. Used for both top-level and list sub-field validation. */
@@ -726,6 +731,13 @@ export class TasksService {
     userId: number,
     submitFormDto: SubmitFormDto,
   ): Promise<ParsedFormResponse> {
+    // Refuse ahead of the writes below: this method updates the user's profile
+    // and signs contracts on the way to completing the action.
+    await this.staffPreviewService.assertWritable({
+      actionId: submitFormDto.actionId,
+      userId,
+      write: StaffPreviewWrite.Participation,
+    });
     const form = await this.getForm(formId);
     const user = await this.userService.findOneOrFail(userId, {
       optInMms: true,
@@ -960,6 +972,11 @@ export class TasksService {
         "User is not in the target cohort for this follow-up form",
       );
     }
+    await this.staffPreviewService.assertWritable({
+      actionId: followUpForm.actionId,
+      userId,
+      write: StaffPreviewWrite.Participation,
+    });
     const form = followUpForm.form;
     const user = await this.userService.findOneOrFail(userId);
 
@@ -1002,6 +1019,10 @@ export class TasksService {
     submitFormDto: SubmitFormDto;
     guestId?: string;
   }): Promise<ParsedFormResponse> {
+    await this.staffPreviewService.assertWritable({
+      actionId: submitFormDto.actionId,
+      write: StaffPreviewWrite.Participation,
+    });
     const form = await this.getForm(formId);
 
     if (guestId) {
@@ -1034,6 +1055,11 @@ export class TasksService {
     if (!withdrawalHasRequiredReason(withdrawal)) {
       throw new BadRequestException("A withdrawal reason is required");
     }
+    await this.staffPreviewService.assertWritable({
+      actionId,
+      userId,
+      write: StaffPreviewWrite.Participation,
+    });
     const form = await this.getForm(formId);
     const user = await this.userService.findOneOrFail(userId);
 

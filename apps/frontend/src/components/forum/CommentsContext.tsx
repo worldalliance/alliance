@@ -53,6 +53,7 @@ interface CommentsContextValue {
   compact?: boolean;
   showUserBadges?: boolean;
   tags: readonly PostTagDto[];
+  discussionClosed?: boolean;
 }
 
 const CommentsContext = createContext<CommentsContextValue | null>(null);

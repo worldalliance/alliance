@@ -2,7 +2,8 @@ import {
   ActionItemCardPropsShared,
   showCompletedBar,
 } from "@alliance/shared/lib/actionItemCard";
-import { clipboardCopy } from "@alliance/shared/lib/copy";
+import { isStaffPreview } from "@alliance/shared/lib/actionUtils";
+import { clipboardCopy, taskHeaders } from "@alliance/shared/lib/copy";
 import { buildActionShareUrl } from "@alliance/shared/lib/shareText";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
@@ -24,6 +25,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
   friendCommitmentActivities,
 }) => {
   const shouldShowCompletedBar = showCompletedBar(action);
+  const preview = isStaffPreview(action);
 
   const handleShareAction = useCallback(async () => {
     const url = await buildActionShareUrl({
@@ -44,6 +46,11 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
           <div className="flex flex-col justify-between flex-1">
             <div className="flex flex-row items-start gap-x-8">
               <div className="flex-1 flex flex-col">
+                {preview && (
+                  <p className="mb-1 w-fit rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700">
+                    {taskHeaders.homePage.staffPreview.title}
+                  </p>
+                )}
                 <div className="flex flex-row items-center justify-between gap-x-2">
                   <p className="font-medium text-black">{action.name}</p>
                   {action.userRelation === "completed" && (
@@ -74,7 +81,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
           }
         />
       )}
-      {!shouldShowCompletedBar && (
+      {!shouldShowCompletedBar && !preview && (
         <div className="mt-4 flex justify-start">
           <ShareButton
             onClick={handleShareAction}

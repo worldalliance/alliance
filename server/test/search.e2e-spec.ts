@@ -141,6 +141,78 @@ describe("Search (e2e)", () => {
     );
   });
 
+  it("leaves a past-draft action in search for members, flag and all", async () => {
+    const previewAction = await actionRepo.save(
+      actionRepo.create({
+        name: "Target Action In Staff Preview",
+        category: "Environment",
+        body: "Not live yet",
+        shortDescription: "Not live yet",
+        staffPreview: true,
+      }),
+    );
+    // Past draft, so search returned it before the flag went on.
+    await eventRepo.save(
+      eventRepo.create({
+        title: "Office action",
+        description: "Office working on it",
+        newStatus: ActionStatus.OfficeAction,
+        date: new Date(Date.now() - 1000),
+        action: previewAction,
+      }),
+    );
+
+    const search = () =>
+      request(ctx.app.getHttpServer())
+        .get("/search/all")
+        .query({ query: "Target Action In Staff Preview" })
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+    expect((await search()).body.map((item) => item.id)).toContain(
+      `a${previewAction.id}`,
+    );
+
+    await actionRepo.update(previewAction.id, { staffPreview: false });
+    expect((await search()).body.map((item) => item.id)).toContain(
+      `a${previewAction.id}`,
+    );
+  });
+
+  it("hands the preview to the staff it is for, draft status and all", async () => {
+    const draftPreview = await actionRepo.save(
+      actionRepo.create({
+        name: "Target Action Still Drafted",
+        category: "Environment",
+        body: "Not live yet",
+        shortDescription: "Not live yet",
+        staffPreview: true,
+      }),
+    );
+
+    const search = () =>
+      request(ctx.app.getHttpServer())
+        .get("/search/all")
+        .query({ query: "Target Action Still Drafted" })
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+    expect((await search()).body.map((item) => item.id)).not.toContain(
+      `a${draftPreview.id}`,
+    );
+
+    await userRepo.update(ctx.testUserId, { staff: true });
+    expect((await search()).body.map((item) => item.id)).toContain(
+      `a${draftPreview.id}`,
+    );
+
+    await actionRepo.update(draftPreview.id, { archived: true });
+    expect((await search()).body.map((item) => item.id)).not.toContain(
+      `a${draftPreview.id}`,
+    );
+    await userRepo.update(ctx.testUserId, { staff: false });
+  });
+
   it("persists and returns recent selections when query is empty", async () => {
     await request(ctx.app.getHttpServer())
       .post("/search/selected")

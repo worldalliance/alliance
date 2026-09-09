@@ -439,11 +439,14 @@ const HomePage = () => {
               dismissProps={
                 taskDismissInfo
                   ? {
-                      ...taskDismissInfo,
-                      onDismiss: () =>
-                        handleDismissAction(
-                          selectedTaskNavigatorItem.action.id,
-                        ),
+                      header: taskDismissInfo.header,
+                      message: taskDismissInfo.message,
+                      onDismiss: taskDismissInfo.canDismiss
+                        ? () =>
+                            handleDismissAction(
+                              selectedTaskNavigatorItem.action.id,
+                            )
+                        : undefined,
                     }
                   : undefined
               }

@@ -274,6 +274,253 @@ describe("ActionEventNotifWorker (e2e)", () => {
     expect(notifs[0].mms).toBeTruthy();
   });
 
+  /**
+   * A reminder group whose whole task scope is a still-previewed draft, plus a
+   * live task of the recipient's own — without one the reminder is dropped for
+   * counting nothing, before the preview check ever matters.
+   */
+  const createHeldPreviewGroupFixture = async (now: number) => {
+    const { action, memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName("preview-action"),
+      eventDate: new Date(now + 24 * 60 * 60 * 1000),
+    });
+    await actionRepo.update(action.id, { staffPreview: true });
+
+    await createActionWithMemberEvent({
+      name: uniqueName("live-action"),
+      eventDate: new Date(now - 60 * 60 * 1000),
+    });
+
+    return { action, memberEvent };
+  };
+
+  it("keeps sending on an action members can already see, flag and all", async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+
+    const { action, memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName("announced-preview-action"),
+      eventDate: new Date(now + 24 * 60 * 60 * 1000),
+    });
+    // Announced, so members are reading it and are owed the reminder. The flag
+    // shows them nothing new here, so it must take nothing away either.
+    await eventRepo.save(
+      eventRepo.create({
+        title: "Announced",
+        description: "desc",
+        newStatus: ActionStatus.OfficeAction,
+        date: new Date(now - 60 * 60 * 1000),
+        action,
+      }),
+    );
+    await actionRepo.update(action.id, { staffPreview: true });
+
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+    expect(await fetchNotifsForGroup(reminderGroup)).toHaveLength(1);
+  });
+
+  // Counting it here would put an unlaunched action into the count and the task
+  // list of a message chasing a real one.
+  it("leaves a staff preview out of the tasks a reminder counts", async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+    await userRepo.update(ctx.testUserId, { staff: true });
+    const actionsService = ctx.app.get(ActionsService);
+
+    const { action } = await createActionWithMemberEvent({
+      name: uniqueName("uncounted-preview-action"),
+      eventDate: new Date(now + 24 * 60 * 60 * 1000),
+    });
+    await actionRepo.update(action.id, { staffPreview: true });
+
+    const seen = (await actionsService.findMemberPublic(ctx.testUserId)).find(
+      (a) => a.id === action.id,
+    );
+    expect(seen?.viewer?.preview).toBe(true);
+    expect(seen?.shouldParticipate).toBe(true);
+
+    const counted = await actionsService.findUncompletedTasks(ctx.testUserId);
+    expect(counted.some((task) => task.id === action.id)).toBe(false);
+
+    await userRepo.update(ctx.testUserId, { staff: false });
+  });
+
+  it("holds reminders while the action is still a staff preview", async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+
+    const { action, memberEvent } = await createHeldPreviewGroupFixture(now);
+
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+    expect(await fetchNotifsForGroup(reminderGroup)).toHaveLength(0);
+
+    await actionRepo.update(action.id, { staffPreview: false });
+    await worker.dispatchDueNotifs();
+    expect(await fetchNotifsForGroup(reminderGroup)).toHaveLength(1);
+  });
+
+  it("lifts the hold once archiving retires the preview", async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+
+    const { action, memberEvent } = await createHeldPreviewGroupFixture(now);
+
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+      },
+    );
+
+    await actionRepo.update(action.id, { archived: true });
+    await worker.dispatchDueNotifs();
+    expect(await fetchNotifsForGroup(reminderGroup)).toHaveLength(1);
+  });
+
+  it("drops the reminder for good when the preview outlives the lookback window", async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+
+    const { action, memberEvent } = await createHeldPreviewGroupFixture(now);
+
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 6 * 60 * 60 * 1000),
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+    expect(await fetchNotifsForGroup(reminderGroup)).toHaveLength(0);
+
+    // Clearing the flag can't bring it back: the send time is outside the
+    // lookback window the worker considers.
+    await actionRepo.update(action.id, { staffPreview: false });
+    await worker.dispatchDueNotifs();
+    expect(await fetchNotifsForGroup(reminderGroup)).toHaveLength(0);
+  });
+
+  it("decides the hold at the send time, not at the moment it is asked", async () => {
+    const day = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - day));
+    const reminderService = ctx.app.get(ActionEventReminderService);
+
+    const { action, memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName("announced-later-preview"),
+      eventDate: new Date(now + 30 * day),
+    });
+    const announcement = await eventRepo.save(
+      eventRepo.create({
+        title: "Announced",
+        description: "desc",
+        newStatus: ActionStatus.OfficeAction,
+        date: new Date(now + 5 * day),
+        action,
+      }),
+    );
+    await actionRepo.update(action.id, { staffPreview: true });
+
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now + 20 * day),
+      },
+    );
+
+    // A draft today, announced by the day it sends, so members can read it then
+    // and the reminder is theirs. Only the tentative-plan preview asks about a
+    // send time this far ahead; it looks 28 days out.
+    expect(
+      await reminderService.findNotificationPlansForGroup(reminderGroup.id),
+    ).not.toHaveLength(0);
+
+    // Push the announcement past the send time and the same group is held.
+    await eventRepo.update(announcement.id, {
+      date: new Date(now + 25 * day),
+    });
+    expect(
+      await reminderService.findNotificationPlansForGroup(reminderGroup.id),
+    ).toHaveLength(0);
+  });
+
+  it("keeps sending a suite reminder when only part of the scope is a preview", async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+
+    const suite = await actionSuiteRepo.save(
+      actionSuiteRepo.create({ name: uniqueName("preview-suite") }),
+    );
+    const { action: previewed, memberEvent } =
+      await createActionWithMemberEvent({
+        name: uniqueName("previewed-task"),
+        eventDate: new Date(now + 24 * 60 * 60 * 1000),
+        suite,
+        suiteManaged: true,
+      });
+    await actionRepo.update(previewed.id, { staffPreview: true });
+    const { action: live } = await createActionWithMemberEvent({
+      name: uniqueName("live-task"),
+      eventDate: new Date(now - 60 * 60 * 1000),
+      suite,
+      suiteManaged: true,
+    });
+    const suiteWithActions = await actionSuiteRepo.findOneOrFail({
+      where: { id: suite.id },
+      relations: { actions: true },
+    });
+
+    // Anchored on the previewed action, but the message counts the suite: the
+    // live task is what the recipient is being reminded about.
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        actionSuite: suiteWithActions,
+        useSuiteTaskCount: true,
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    expect(notifs).toHaveLength(1);
+    expect(notifs[0].notifiedActionIds).toEqual([live.id]);
+  });
+
   it("does not send reminders older than the 3 hour lookback window", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();

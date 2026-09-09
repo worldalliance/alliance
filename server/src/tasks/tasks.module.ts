@@ -3,6 +3,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { ActionsModule } from "src/actions/actions.module";
 import { Action } from "src/actions/entities/action.entity";
 import { FollowUpForm } from "src/actions/entities/follow-up-form.entity";
+import { StaffPreviewModule } from "src/actions/staff-preview.module";
 import { AiDetectionModule } from "src/ai-detection/ai-detection.module";
 import { AuthModule } from "src/auth/auth.module";
 import { Guest } from "src/auth/entities/guest.entity";
@@ -22,6 +23,7 @@ import { TasksService } from "./tasks.service";
 
 @Module({
   imports: [
+    StaffPreviewModule,
     TypeOrmModule.forFeature([
       Form,
       FormResponse,

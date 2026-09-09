@@ -5,6 +5,7 @@ import type { ActionEvent } from "./entities/action-event.entity";
 import { ActionStatus } from "./entities/action-event.entity";
 import {
   computeCanCompleteAction,
+  memberActionHasOpened,
   resolveUserActionStatus,
   ViewerActionRelation,
 } from "./user-action-status";
@@ -37,9 +38,11 @@ function makeAction(
 ): ResolveParams["action"] {
   const events = overrides.events ?? makeEvents();
   return {
+    archived: false,
     onboarding: false,
     optional: false,
     preventCompletion: false,
+    staffPreview: false,
     ...overrides,
     events,
     memberActionPhase: memberActionPhase(events),
@@ -50,10 +53,12 @@ function makeUser(
   overrides: Partial<ResolveParams["user"]> = {},
 ): ResolveParams["user"] {
   return {
+    admin: false,
     contractEvents: [],
     hasActiveContractInFullRange: () => true,
     awayRanges: [],
     isAwayAtAnyPointInRange: () => false,
+    staff: false,
     ...overrides,
   };
 }
@@ -97,7 +102,133 @@ describe("resolveUserActionStatus", () => {
       deadlineAt: DEADLINE,
       deadlinePassed: false,
       display: UserActionRelationPillStatus.Todo,
+      preview: false,
+      discussionClosed: false,
     });
+  });
+
+  it("flags a staff-preview action for staff, describing it as unstarted", () => {
+    const status = resolve({
+      action: makeAction({ staffPreview: true, events: [] }),
+      user: makeUser({ staff: true }),
+      inCohort: true,
+    });
+    expect(status).toEqual({
+      assigned: false,
+      canComplete: false,
+      relation: ViewerActionRelation.None,
+      withdrawal: null,
+      dismissed: false,
+      away: TaskAwayStatus.NotAway,
+      memberActionStarted: false,
+      deadlineAt: null,
+      deadlinePassed: false,
+      display: UserActionRelationPillStatus.NotRequired,
+      preview: true,
+      discussionClosed: true,
+    });
+  });
+
+  it("flags a preview for an admin who is not staff, as visibility does", () => {
+    const status = resolve({
+      action: makeAction({ staffPreview: true, events: [] }),
+      user: makeUser({ admin: true }),
+      inCohort: true,
+    });
+    expect(status.preview).toBe(true);
+    expect(status.canComplete).toBe(false);
+  });
+
+  it("withholds the flag from staff on an archived preview, as visibility does", () => {
+    const status = resolve({
+      action: makeAction({ staffPreview: true, archived: true, events: [] }),
+      user: makeUser({ staff: true }),
+      inCohort: true,
+    });
+    expect(status.preview).toBe(false);
+  });
+
+  it("withholds the flag from an admin on an archived preview too", () => {
+    const status = resolve({
+      action: makeAction({ staffPreview: true, archived: true, events: [] }),
+      user: makeUser({ admin: true }),
+      inCohort: true,
+    });
+    expect(status.preview).toBe(false);
+  });
+
+  it("leaves a non-staff viewer of a preview action with the completion they had", () => {
+    const status = resolve({
+      action: makeAction({ staffPreview: true, events: [] }),
+    });
+    expect(status.preview).toBe(false);
+    expect(status.canComplete).toBe(true);
+  });
+
+  it("ignores the preview flag once the member action has opened", () => {
+    const status = resolve({
+      action: makeAction({ staffPreview: true }),
+      user: makeUser({ staff: true }),
+    });
+    expect(status.preview).toBe(false);
+    expect(status.canComplete).toBe(true);
+    expect(status.deadlineAt).toEqual(DEADLINE);
+  });
+
+  it("retires a preview on an action that got past the launch without one", () => {
+    const status = resolve({
+      action: makeAction({
+        staffPreview: true,
+        events: [
+          {
+            date: new Date(NOW.getTime() - DAY_MS),
+            newStatus: ActionStatus.Resolution,
+          },
+        ] as ActionEvent[],
+      }),
+      user: makeUser({ staff: true }),
+    });
+    expect(status.preview).toBe(false);
+  });
+
+  it("flags a preview while the member action is still ahead", () => {
+    const status = resolve({
+      action: makeAction({
+        staffPreview: true,
+        events: [
+          {
+            date: new Date(NOW.getTime() + DAY_MS),
+            newStatus: ActionStatus.MemberAction,
+          },
+        ] as ActionEvent[],
+      }),
+      user: makeUser({ staff: true }),
+      inCohort: true,
+    });
+    expect(status.preview).toBe(true);
+    expect(status.canComplete).toBe(false);
+  });
+
+  it("leaves the discussion open on a preview members can already read", () => {
+    const status = resolve({
+      action: makeAction({
+        staffPreview: true,
+        events: [
+          {
+            date: new Date(NOW.getTime() - DAY_MS),
+            newStatus: ActionStatus.OfficeAction,
+          },
+          {
+            date: new Date(NOW.getTime() + DAY_MS),
+            newStatus: ActionStatus.MemberAction,
+          },
+        ] as ActionEvent[],
+      }),
+      user: makeUser({ staff: true }),
+      inCohort: true,
+    });
+    expect(status.preview).toBe(true);
+    expect(status.discussionClosed).toBe(false);
   });
 
   it("is entirely unassigned outside the cohort", () => {
@@ -287,6 +418,7 @@ describe("computeCanCompleteAction", () => {
         action: makeAction(),
         user: makeUser({ hasActiveContractInFullRange: () => false }),
         inCohort: true,
+        now: NOW,
       }),
     ).toBe(true);
   });
@@ -297,6 +429,7 @@ describe("computeCanCompleteAction", () => {
         action: makeAction(),
         user: makeUser(),
         inCohort: false,
+        now: NOW,
       }),
     ).toBe(false);
   });
@@ -311,6 +444,7 @@ describe("computeCanCompleteAction", () => {
           ] as ResolveParams["user"]["contractEvents"],
         }),
         inCohort: true,
+        now: NOW,
       }),
     ).toBe(false);
   });
@@ -321,7 +455,75 @@ describe("computeCanCompleteAction", () => {
         action: makeAction({ preventCompletion: true }),
         user: makeUser(),
         inCohort: true,
+        now: NOW,
       }),
     ).toBe(false);
+  });
+
+  it("refuses a staff-preview action for whoever the preview lets in", () => {
+    const canComplete = (user: ResolveParams["user"]) =>
+      computeCanCompleteAction({
+        action: makeAction({ staffPreview: true, events: [] }),
+        user,
+        inCohort: true,
+        now: NOW,
+      });
+    expect(canComplete(makeUser({ staff: true }))).toBe(false);
+    expect(canComplete(makeUser({ admin: true }))).toBe(false);
+    // A member the preview does not cover keeps the completion they had.
+    expect(canComplete(makeUser())).toBe(true);
+  });
+
+  it("ignores the preview flag once the member action has opened", () => {
+    expect(
+      computeCanCompleteAction({
+        action: makeAction({ staffPreview: true }),
+        user: makeUser({ staff: true }),
+        inCohort: true,
+        now: NOW,
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("memberActionHasOpened", () => {
+  const event = (offsetDays: number, newStatus: ActionStatus) =>
+    ({
+      date: new Date(NOW.getTime() + offsetDays * DAY_MS),
+      newStatus,
+    }) as ActionEvent;
+
+  it("counts a status the launch had to precede, event or no event", () => {
+    expect(
+      memberActionHasOpened([event(-1, ActionStatus.Resolution)], NOW),
+    ).toBe(true);
+    expect(
+      memberActionHasOpened([event(-1, ActionStatus.Abandoned)], NOW),
+    ).toBe(true);
+  });
+
+  it("says no on every status the launch is still ahead of", () => {
+    expect(memberActionHasOpened([], NOW)).toBe(false);
+    expect(memberActionHasOpened([event(-1, ActionStatus.Planned)], NOW)).toBe(
+      false,
+    );
+    expect(
+      memberActionHasOpened(
+        [
+          event(-1, ActionStatus.OfficeAction),
+          event(1, ActionStatus.MemberAction),
+        ],
+        NOW,
+      ),
+    ).toBe(false);
+  });
+
+  it("stays spent once the event is past, whatever the status reads now", () => {
+    expect(
+      memberActionHasOpened(
+        [event(-2, ActionStatus.MemberAction), event(-1, ActionStatus.Planned)],
+        NOW,
+      ),
+    ).toBe(true);
   });
 });

@@ -20,6 +20,8 @@ export function makeViewer(
     deadlineAt: null,
     deadlinePassed: false,
     display: "todo",
+    preview: false,
+    discussionClosed: false,
     ...overrides,
   };
 }
@@ -50,6 +52,7 @@ export function makeAction(
     updates: [],
     status: "member_action",
     publicOnly: false,
+    staffPreview: false,
     reqAuthenticated: true,
     canParticipate: true,
     onboarding: false,

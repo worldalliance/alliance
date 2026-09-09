@@ -61,9 +61,10 @@ export class PaymentsController {
       token = await this.paymentsService.createPaymentUserDataToken();
     }
 
-    const amount = await this.actionsService.getPaymentAmountForAction(
-      body.actionId,
-    );
+    const amount = await this.actionsService.getPaymentAmountForAction({
+      actionId: body.actionId,
+      userId: req.user?.sub,
+    });
 
     const paymentMethod = customer
       ? await this.paymentsService.getSavedPaymentForCustomer(customer)

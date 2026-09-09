@@ -1,5 +1,7 @@
 import { TouchableOpacity, View } from "react-native";
 
+import { isStaffPreview } from "@alliance/shared/lib/actionUtils";
+import { taskHeaders } from "@alliance/shared/lib/copy";
 import {
   getNextEvent,
   LargeActionCardPropsShared,
@@ -30,20 +32,26 @@ function DismissBanner({
 }: {
   header: string;
   message: string;
-  onDismiss: () => void;
+  onDismiss?: () => void;
 }) {
   return (
     <View className="-mx-4 -mt-4 mb-3 bg-sky-100 border-b border-sky-300 px-4 py-3">
       <Text className="text-sky-800" weight={FontWeight.Semibold}>
         {header}
       </Text>
-      <Text className="text-sky-700 mt-1 mb-3">{message}</Text>
-      <Button
-        color={ButtonColor.White}
-        onPress={onDismiss}
-        className="w-full"
-        title="Dismiss"
-      />
+      <Text
+        className={onDismiss ? "text-sky-700 mt-1 mb-3" : "text-sky-700 mt-1"}
+      >
+        {message}
+      </Text>
+      {onDismiss && (
+        <Button
+          color={ButtonColor.White}
+          onPress={onDismiss}
+          className="w-full"
+          title="Dismiss"
+        />
+      )}
     </View>
   );
 }
@@ -67,6 +75,16 @@ export default function LargeActionCard({
   return (
     <Card className="p-4!">
       <View>
+        {isStaffPreview(action) && (
+          <View className="-mx-4 -mt-4 mb-3 bg-amber-50 border-b border-amber-300 px-4 py-3">
+            <Text className="text-amber-700" weight={FontWeight.Semibold}>
+              {taskHeaders.homePage.staffPreview.title}
+            </Text>
+            <Text className="text-amber-700 mt-1">
+              {taskHeaders.homePage.staffPreview.description}
+            </Text>
+          </View>
+        )}
         {dismissProps && (
           <DismissBanner
             header={dismissProps.header}

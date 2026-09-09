@@ -21,6 +21,7 @@ export interface ActionItemCardPropsShared {
     | "squareThumbnailImage"
     | "squareThumbnailImageAlt"
     | "optional"
+    | "viewer"
   >;
   friendCommitmentActivities?: ActionActivityDto[];
 }

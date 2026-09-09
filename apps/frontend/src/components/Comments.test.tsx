@@ -1,6 +1,7 @@
 import { CommentDto } from "@alliance/shared/client";
+import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import React, { useState } from "react";
 import { MemoryRouter } from "react-router";
 
@@ -24,6 +25,7 @@ jest.mock("@alliance/sharedweb/ui/UserDisplayName", () => ({
 }));
 
 import { AuthContext, type AuthContextType } from "../lib/AuthContext";
+import { testAuthUser } from "../stories/testData";
 import Comments from "./Comments";
 
 const noop = () => Promise.resolve();
@@ -102,4 +104,70 @@ it("leaves the comment tree alone when something above it renders", async () => 
 
   expect(markdownParses).toBe(parsesOnMount);
   expect(commentRenders).toBe(rendersOnMount);
+});
+
+const loggedIn: AuthContextType = {
+  ...loggedOut,
+  isAuthenticated: true,
+  user: testAuthUser,
+};
+
+// Nothing else in this file cleans up, and a second thread carrying the same
+// comment bodies makes every query below ambiguous.
+const renderThread = (
+  discussionClosed: boolean,
+  thread: CommentDto[] = comments,
+) => {
+  cleanup();
+  return render(
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter>
+        <ToastProvider>
+          <AuthContext.Provider value={loggedIn}>
+            <Comments
+              objectId={1}
+              type="post"
+              initialComments={thread}
+              discussionClosed={discussionClosed}
+            />
+          </AuthContext.Provider>
+        </ToastProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+};
+
+it("takes away every way to say something new, keeping the thread", async () => {
+  const open = renderThread(false);
+  await open.findByText("comment 1");
+
+  expect(open.queryByRole("textbox")).not.toBeNull();
+  expect(open.queryAllByText("Reply")).toHaveLength(comments.length);
+
+  const closed = renderThread(true);
+  await closed.findByText("comment 1");
+
+  expect(closed.queryByRole("textbox")).toBeNull();
+  expect(closed.queryAllByText("Reply")).toHaveLength(0);
+});
+
+it("leaves an author the edit and delete the server still takes", async () => {
+  const closed = renderThread(true);
+  await closed.findByText("comment 1");
+
+  expect(closed.queryAllByLabelText("More options")).toHaveLength(
+    comments.length,
+  );
+});
+
+it("keeps a like already left on a closed thread, offering no new one", async () => {
+  const thread = renderThread(true, [
+    { ...comments[0], likedByMe: true },
+    { ...comments[1], likedByMe: false },
+  ]);
+  await thread.findByText("comment 1");
+
+  const [mine, theirs] = thread.getAllByRole("button", { name: "Like" });
+  expect((mine as HTMLButtonElement).disabled).toBe(false);
+  expect((theirs as HTMLButtonElement).disabled).toBe(true);
 });

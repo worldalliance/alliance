@@ -1,5 +1,6 @@
 import { withCount } from "@alliance/common/plural";
 import { CommentDto } from "@alliance/shared/client";
+import { canToggleLike } from "@alliance/shared/lib/actionUtils";
 import { countAllReplies } from "@alliance/shared/lib/commentsFilter";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -200,11 +201,17 @@ const ReplyContent = ({
                 <LikeActionButton
                   compact
                   liked={reply.likedByMe ?? false}
-                  onLike={() =>
-                    ctx.onLikeReply(reply.id, reply.likedByMe ?? false)
+                  onLike={
+                    canToggleLike({
+                      discussionClosed: !!ctx.discussionClosed,
+                      liked: reply.likedByMe ?? false,
+                    })
+                      ? () =>
+                          ctx.onLikeReply(reply.id, reply.likedByMe ?? false)
+                      : undefined
                   }
                 />
-                {user && canNest && (
+                {user && canNest && !ctx.discussionClosed && (
                   <button
                     onClick={() => {
                       ctx.setReplyingTo(reply.id);

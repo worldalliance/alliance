@@ -1,5 +1,8 @@
 import { ActionDto } from "@alliance/shared/client";
-import { guestReferral } from "@alliance/shared/lib/copy";
+import {
+  formPreviewSubmitSuffix,
+  guestReferral,
+} from "@alliance/shared/lib/copy";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { transformMarkdownUrl } from "@alliance/sharedweb/lib/markdownUrl";
 import Button from "@alliance/sharedweb/ui/Button";
@@ -13,6 +16,7 @@ interface ActionTaskPanelActivityProps {
   action: ActionDto;
   onCompleteAction: () => boolean | void | Promise<boolean | void>;
   disabled?: boolean;
+  previewMode?: boolean;
   createAccountHref?: string;
 }
 
@@ -20,6 +24,7 @@ const ActionTaskPanelActivity = ({
   action,
   onCompleteAction,
   disabled = false,
+  previewMode = false,
   createAccountHref,
 }: ActionTaskPanelActivityProps) => {
   return (
@@ -47,7 +52,7 @@ const ActionTaskPanelActivity = ({
             </Link>
           ) : (
             <ConfettiWrapper
-              disabled={disabled}
+              disabled={disabled || previewMode}
               onTrigger={onCompleteAction}
               burstPlacement="local"
             >
@@ -63,7 +68,11 @@ const ActionTaskPanelActivity = ({
                   onPointerDown={onPointerDown}
                   disabled={confettiDisabled}
                 >
-                  {disabled ? "Completed" : "Mark Complete"}
+                  {disabled
+                    ? "Completed"
+                    : previewMode
+                      ? `Mark Complete${formPreviewSubmitSuffix}`
+                      : "Mark Complete"}
                 </Button>
               )}
             </ConfettiWrapper>

@@ -151,7 +151,7 @@ export class ActionsController {
         actionName: activity.action?.name,
       },
     });
-    return new ActionActivityDto(activity);
+    return new ActionActivityDto(activity, { discussionClosed: false });
   }
 
   @Get("loggedIn")
@@ -949,6 +949,7 @@ export class ActionsController {
   ): Promise<ActionActivityDto> {
     return new ActionActivityDto(
       await this.actionsService.dismissAction(req.user.sub, id),
+      { discussionClosed: false },
     );
   }
 
@@ -960,6 +961,7 @@ export class ActionsController {
   ): Promise<ActionActivityDto> {
     return new ActionActivityDto(
       await this.actionsService.adminCreateActivity(activityDto),
+      { discussionClosed: false },
     );
   }
 

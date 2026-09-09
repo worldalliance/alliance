@@ -319,6 +319,7 @@ const ActionDashboard: React.FC = () => {
     isForumParticipationAction: false,
     shouldCompleteAfterDeadline: false,
     publicOnly: false,
+    staffPreview: false,
     suiteId: undefined,
     optional: false,
     authorIds: [],
@@ -342,6 +343,7 @@ const ActionDashboard: React.FC = () => {
         taskFormId: undefined,
         shouldCompleteAfterDeadline: false,
         publicOnly: false,
+        staffPreview: false,
         isForumParticipationAction: false,
         isContractSigningAction: false,
         suiteId: searchParams.get("suiteId")

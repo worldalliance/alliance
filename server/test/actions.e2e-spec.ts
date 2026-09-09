@@ -1,7 +1,15 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { ActionsService } from "src/actions/actions.service";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
+import { ActionFormAssignment } from "src/actions/entities/action-form-assignment.entity";
+import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
+import { StaffPreviewService } from "src/actions/staff-preview.service";
 import { ContractService } from "src/contract/contract.service";
+import { CreateCommentDto } from "src/forum/dto/comment.dto";
+import {
+  Comment,
+  CommentParentObject,
+} from "src/forum/entities/comment.entity";
 import { City } from "src/geo/city.entity";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import {
@@ -13,6 +21,7 @@ import {
   UnreadContentType,
 } from "src/notifs/entities/unread-content.entity";
 import { NotifsService } from "src/notifs/notifs.service";
+import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import type { Form } from "src/tasks/entities/form.entity";
 import type { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { ContractEventType } from "src/user/entities/contract-event.entity";
@@ -24,6 +33,7 @@ import { UserService } from "src/user/user.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import {
+  ActionActivityDto,
   ActionDto,
   ActionEventDto,
   CreateActionDto,
@@ -61,13 +71,19 @@ describe("Actions (e2e)", () => {
   let eventRepo: Repository<ActionEvent>;
   let userService: UserService;
   let contractService: ContractService;
+  let staffPreviewService: StaffPreviewService;
+  let actionsService: ActionsService;
   let userRepo: Repository<User>;
+  let commentRepo: Repository<Comment>;
   let notifRepo: Repository<Notification>;
   let unreadContentRepo: Repository<UnreadContent>;
   let activityRepo: Repository<ActionActivity>;
   let communityRepo: Repository<Community>;
   let formRepo: Repository<Form>;
   let formResponseRepo: Repository<FormResponse>;
+  let formVariantRepo: Repository<ActionFormVariant>;
+  let formAssignmentRepo: Repository<ActionFormAssignment>;
+  let shareUrlRepo: Repository<ShareUrl>;
   let outsiderToken: string;
 
   const createPublishedAction = async (
@@ -112,7 +128,10 @@ describe("Actions (e2e)", () => {
     eventRepo = ctx.dataSource.getRepository(ActionEvent);
     userService = ctx.app.get(UserService);
     contractService = ctx.app.get(ContractService);
+    staffPreviewService = ctx.app.get(StaffPreviewService);
+    actionsService = ctx.app.get(ActionsService);
     userRepo = ctx.dataSource.getRepository(User);
+    commentRepo = ctx.dataSource.getRepository(Comment);
     notifRepo = ctx.dataSource.getRepository(Notification);
     unreadContentRepo = ctx.dataSource.getRepository(UnreadContent);
     activityRepo = ctx.dataSource.getRepository(
@@ -125,6 +144,9 @@ describe("Actions (e2e)", () => {
     formResponseRepo = ctx.dataSource.getRepository(
       "FormResponse",
     ) as Repository<FormResponse>;
+    formVariantRepo = ctx.dataSource.getRepository(ActionFormVariant);
+    formAssignmentRepo = ctx.dataSource.getRepository(ActionFormAssignment);
+    shareUrlRepo = ctx.dataSource.getRepository(ShareUrl);
 
     // Create test action with MemberAction status
     testAction = actionRepo.create({
@@ -227,6 +249,7 @@ describe("Actions (e2e)", () => {
         optional: false,
         preventCompletion: false,
         publicOnly: false,
+        staffPreview: false,
         onboarding: false,
       };
 
@@ -269,6 +292,7 @@ describe("Actions (e2e)", () => {
         optional: false,
         preventCompletion: false,
         publicOnly: false,
+        staffPreview: false,
         onboarding: false,
       };
 
@@ -321,6 +345,7 @@ describe("Actions (e2e)", () => {
           optional: false,
           preventCompletion: false,
           publicOnly: false,
+          staffPreview: false,
           onboarding: false,
           cohortExpression: { type: "Manual", userIds: [1] },
         } satisfies CreateActionDto & { cohortExpression: unknown });
@@ -429,6 +454,1036 @@ describe("Actions (e2e)", () => {
       expect(res.status).toBe(200);
       expect(res.body.status).toBe(ActionStatus.Draft);
       expect(res.body.name).toBe("Test Draft Action");
+    });
+
+    describe("staff preview", () => {
+      let previewAction: Action;
+
+      beforeAll(async () => {
+        previewAction = await actionRepo.save(
+          actionRepo.create({
+            name: "Staff Preview Action",
+            category: "Test",
+            body: "Not live yet",
+            visibilityMode: VisibilityMode.Public,
+            cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+            staffPreview: true,
+          }),
+        );
+      });
+
+      beforeEach(async () => {
+        await userRepo.update(ctx.testUserId, { staff: false });
+      });
+
+      afterAll(async () => {
+        await userRepo.update(ctx.testUserId, { staff: false });
+        await actionRepo.update(previewAction.id, { archived: true });
+      });
+
+      const fetchFeed = async () =>
+        request(ctx.app.getHttpServer())
+          .get("/actions/loggedIn")
+          .set("Authorization", `Bearer ${ctx.accessToken}`);
+
+      const createFlaggedLiveAction = async (): Promise<Action> => {
+        const action = await actionRepo.save(
+          actionRepo.create({
+            name: "Flagged Live Action",
+            category: "Test",
+            body: "Already open",
+            visibilityMode: VisibilityMode.Public,
+            cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+            staffPreview: true,
+          }),
+        );
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/${action.id}/events`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({
+            title: "Members act",
+            description: "Go",
+            newStatus: ActionStatus.MemberAction,
+            date: new Date(Date.now() - 1000).toISOString(),
+          })
+          .expect(201);
+        return action;
+      };
+
+      it("hides the action from a member who is not staff", async () => {
+        const res = await fetchFeed();
+        expect(res.status).toBe(200);
+        expect(res.body.some((a: ActionDto) => a.id === previewAction.id)).toBe(
+          false,
+        );
+      });
+
+      // The inventory of member-facing writes that name an action. One added
+      // without a staff-preview guard is a missing row here rather than
+      // recorded member data on an unlaunched action.
+      describe("every member-facing write", () => {
+        let target: Action;
+        let commentId: number;
+        let activityId: number;
+
+        beforeAll(async () => {
+          target = await actionRepo.save(
+            actionRepo.create({
+              name: "Preview Write Target",
+              category: "Test",
+              body: "Not live yet",
+              visibilityMode: VisibilityMode.Public,
+              cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+            }),
+          );
+          // Written before the flag went on, so there is something to like.
+          const created = await request(ctx.app.getHttpServer())
+            .post("/forum/comments")
+            .set("Authorization", `Bearer ${ctx.accessToken}`)
+            .send({
+              parentObjectId: target.id,
+              parentObjectType: CommentParentObject.Action,
+              editableContent: { body: "Before the flag", attachments: [] },
+            } satisfies CreateCommentDto)
+            .expect(201);
+          commentId = created.body.id;
+          // Somebody else's, so the action carries an activity a comment can
+          // name without the viewer having written anything on it.
+          activityId = (
+            await activityRepo.save(
+              activityRepo.create({
+                actionId: target.id,
+                userId: ctx.adminUserId,
+                type: ActionActivityType.USER_COMPLETED,
+              }),
+            )
+          ).id;
+          await actionRepo.update(target.id, { staffPreview: true });
+        });
+
+        afterAll(async () => {
+          await actionRepo.update(target.id, { archived: true });
+        });
+
+        const noActivity = async () =>
+          expect(
+            await activityRepo.countBy({
+              actionId: target.id,
+              userId: ctx.testUserId,
+            }),
+          ).toBe(0);
+        const noShareUrl = async () =>
+          expect(
+            await shareUrlRepo.countBy({ action: { id: target.id } }),
+          ).toBe(0);
+
+        const writes: {
+          name: string;
+          send: () => request.Test;
+          nothingWritten: () => Promise<void>;
+        }[] = [
+          {
+            name: "completion",
+            send: () =>
+              request(ctx.app.getHttpServer())
+                .post(`/actions/complete/${target.id}`)
+                .set("Authorization", `Bearer ${ctx.accessToken}`),
+            nothingWritten: noActivity,
+          },
+          {
+            name: "dismissal",
+            send: () =>
+              request(ctx.app.getHttpServer())
+                .post(`/actions/dismiss/${target.id}`)
+                .set("Authorization", `Bearer ${ctx.accessToken}`),
+            nothingWritten: noActivity,
+          },
+          {
+            name: "a share code",
+            send: () =>
+              request(ctx.app.getHttpServer())
+                .post(`/actions/${target.id}/referralCode`)
+                .set("Authorization", `Bearer ${ctx.accessToken}`),
+            nothingWritten: noShareUrl,
+          },
+          {
+            name: "a share link, the other route to the same share code",
+            send: () =>
+              request(ctx.app.getHttpServer())
+                .post("/share-urls/get-share-link")
+                .set("Authorization", `Bearer ${ctx.accessToken}`)
+                .send({ actionId: target.id }),
+            nothingWritten: noShareUrl,
+          },
+          {
+            name: "a comment",
+            send: () =>
+              request(ctx.app.getHttpServer())
+                .post("/forum/comments")
+                .set("Authorization", `Bearer ${ctx.accessToken}`)
+                .send({
+                  parentObjectId: target.id,
+                  parentObjectType: CommentParentObject.Action,
+                  editableContent: {
+                    body: "Fix this copy before launch",
+                    attachments: [],
+                  },
+                } satisfies CreateCommentDto),
+            nothingWritten: async () =>
+              expect(
+                await commentRepo.countBy({
+                  parentObjectId: target.id,
+                  parentObjectType: CommentParentObject.Action,
+                }),
+              ).toBe(1),
+          },
+          {
+            name: "a comment on one of its activities",
+            send: () =>
+              request(ctx.app.getHttpServer())
+                .post("/forum/comments")
+                .set("Authorization", `Bearer ${ctx.accessToken}`)
+                .send({
+                  parentObjectId: activityId,
+                  parentObjectType: CommentParentObject.Activity,
+                  editableContent: {
+                    body: "Nice work on this one",
+                    attachments: [],
+                  },
+                } satisfies CreateCommentDto),
+            nothingWritten: async () =>
+              expect(
+                await commentRepo.countBy({
+                  parentObjectId: activityId,
+                  parentObjectType: CommentParentObject.Activity,
+                }),
+              ).toBe(0),
+          },
+          {
+            name: "a comment like",
+            send: () =>
+              request(ctx.app.getHttpServer())
+                .post(`/forum/comments/${commentId}/like`)
+                .set("Authorization", `Bearer ${ctx.accessToken}`),
+            nothingWritten: async () => {
+              const comment = await commentRepo.findOneOrFail({
+                where: { id: commentId },
+                relations: { likes: true },
+              });
+              expect(comment.likes).toHaveLength(0);
+            },
+          },
+        ];
+
+        for (const write of writes) {
+          it(`refuses ${write.name} for staff`, async () => {
+            await userRepo.update(ctx.testUserId, { staff: true });
+            await write.send().expect(403);
+            await write.nothingWritten();
+          });
+
+          it(`answers ${write.name} as not-found for a member`, async () => {
+            await write.send().expect(404);
+            await write.nothingWritten();
+          });
+        }
+
+        // Off the list above, because none of them adds anything to the
+        // discussion. Refusing them would strand what was written, or liked,
+        // before the flag.
+        it("keeps an author's edit, delete, and the like they take back", async () => {
+          await actionRepo.update(target.id, { staffPreview: false });
+          const own = await request(ctx.app.getHttpServer())
+            .post("/forum/comments")
+            .set("Authorization", `Bearer ${ctx.accessToken}`)
+            .send({
+              parentObjectId: target.id,
+              parentObjectType: CommentParentObject.Action,
+              editableContent: {
+                body: "Mine, before the flag",
+                attachments: [],
+              },
+            } satisfies CreateCommentDto)
+            .expect(201);
+          await request(ctx.app.getHttpServer())
+            .post(`/forum/comments/${own.body.id}/like`)
+            .set("Authorization", `Bearer ${ctx.accessToken}`)
+            .expect(201);
+          await actionRepo.update(target.id, { staffPreview: true });
+
+          await request(ctx.app.getHttpServer())
+            .patch(`/forum/comments/${own.body.id}`)
+            .set("Authorization", `Bearer ${ctx.accessToken}`)
+            .send({ editableContent: { body: "Rewritten", attachments: [] } })
+            .expect(200);
+
+          await userRepo.update(ctx.testUserId, { staff: true });
+          await request(ctx.app.getHttpServer())
+            .post(`/forum/comments/${own.body.id}/unlike`)
+            .set("Authorization", `Bearer ${ctx.accessToken}`)
+            .expect(201);
+          expect(
+            (
+              await commentRepo.findOneOrFail({
+                where: { id: own.body.id },
+                relations: { likes: true },
+              })
+            ).likes,
+          ).toHaveLength(0);
+
+          await request(ctx.app.getHttpServer())
+            .delete(`/forum/comments/${own.body.id}`)
+            .set("Authorization", `Bearer ${ctx.accessToken}`)
+            .expect(200);
+          expect(
+            (await commentRepo.findOneByOrFail({ id: own.body.id })).deleted,
+          ).toBe(true);
+        });
+      });
+
+      it("leaves the writes alone on an action members can already reach", async () => {
+        const { action } = await createPublishedAction("Preview Over Live", {
+          status: ActionStatus.OfficeAction,
+        });
+        const comment = () =>
+          request(ctx.app.getHttpServer())
+            .post("/forum/comments")
+            .set("Authorization", `Bearer ${ctx.accessToken}`)
+            .send({
+              parentObjectId: action.id,
+              parentObjectType: CommentParentObject.Action,
+              editableContent: { body: "Still talking", attachments: [] },
+            } satisfies CreateCommentDto);
+
+        const readAction = async () =>
+          (
+            await request(ctx.app.getHttpServer())
+              .get(`/actions/slug/${action.id}`)
+              .set("Authorization", `Bearer ${ctx.accessToken}`)
+              .expect(200)
+          ).body as ActionDto;
+
+        await comment().expect(201);
+        expect((await readAction()).canParticipate).toBe(true);
+        await actionRepo.update(action.id, { staffPreview: true });
+
+        const feed = await fetchFeed();
+        expect(feed.body.some((a: ActionDto) => a.id === action.id)).toBe(true);
+        await comment().expect(201);
+
+        const seen = await readAction();
+        expect(seen.canParticipate).toBe(true);
+        expect(seen.viewer).toMatchObject({
+          preview: false,
+          canComplete: true,
+        });
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/complete/${action.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .expect(201);
+
+        await actionRepo.update(action.id, { archived: true });
+      });
+
+      // The window is the launch, not the draft: an action members can already
+      // read still previews for staff until its member action opens.
+      it("keeps staff in the discussion where members can already reach the action", async () => {
+        const { action } = await createPublishedAction(
+          "Preview Over Published",
+          {
+            status: ActionStatus.OfficeAction,
+          },
+        );
+        const activity = await activityRepo.save(
+          activityRepo.create({
+            actionId: action.id,
+            userId: ctx.adminUserId,
+            type: ActionActivityType.USER_COMPLETED,
+          }),
+        );
+        await actionRepo.update(action.id, { staffPreview: true });
+        await userRepo.update(ctx.testUserId, { staff: true });
+
+        await request(ctx.app.getHttpServer())
+          .post("/forum/comments")
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({
+            parentObjectId: action.id,
+            parentObjectType: CommentParentObject.Action,
+            editableContent: { body: "Still talking", attachments: [] },
+          } satisfies CreateCommentDto)
+          .expect(201);
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/likeActivity/${activity.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .expect(201);
+
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/${action.id}/referralCode`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .expect(403);
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/complete/${action.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .expect(403);
+        expect(await shareUrlRepo.countBy({ action: { id: action.id } })).toBe(
+          0,
+        );
+        expect(
+          await activityRepo.countBy({
+            actionId: action.id,
+            userId: ctx.testUserId,
+          }),
+        ).toBe(0);
+
+        const seen = (
+          await request(ctx.app.getHttpServer())
+            .get(`/actions/slug/${action.id}`)
+            .set("Authorization", `Bearer ${ctx.accessToken}`)
+            .expect(200)
+        ).body as ActionDto;
+        expect(seen.viewer).toMatchObject({
+          preview: true,
+          canComplete: false,
+          discussionClosed: false,
+        });
+        const seenActivity = (
+          await request(ctx.app.getHttpServer())
+            .get(`/actions/activities/${activity.id}`)
+            .set("Authorization", `Bearer ${ctx.accessToken}`)
+            .expect(200)
+        ).body as ActionActivityDto;
+        expect(seenActivity.discussionClosed).toBe(false);
+
+        await actionRepo.update(action.id, { archived: true });
+      });
+
+      it("refuses an admin write, rather than answering not-found", async () => {
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/dismiss/${previewAction.id}`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .expect(403);
+        expect(
+          await activityRepo.countBy({
+            actionId: previewAction.id,
+            userId: ctx.adminUserId,
+          }),
+        ).toBe(0);
+      });
+
+      it("hands an admin their writes back once archiving retires it", async () => {
+        const action = await actionRepo.save(
+          actionRepo.create({
+            name: "Archived Preview Action",
+            category: "Test",
+            body: "Abandoned before launch",
+            visibilityMode: VisibilityMode.Public,
+            cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+            staffPreview: true,
+            archived: true,
+          }),
+        );
+
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/dismiss/${action.id}`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .expect(201);
+        expect(await activityRepo.countBy({ actionId: action.id })).toBe(1);
+
+        // Staff are shown nothing on an archived preview either, so they read
+        // it as the hidden action it is.
+        await userRepo.update(ctx.testUserId, { staff: true });
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/dismiss/${action.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .expect(404);
+        expect(await activityRepo.countBy({ actionId: action.id })).toBe(1);
+      });
+
+      it("refuses a like on an activity that predates the flag", async () => {
+        const action = await actionRepo.save(
+          actionRepo.create({
+            name: "Liked Before The Flag",
+            category: "Test",
+            body: "Not live yet",
+            visibilityMode: VisibilityMode.Public,
+            cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+          }),
+        );
+        const activity = await activityRepo.save(
+          activityRepo.create({
+            actionId: action.id,
+            userId: ctx.adminUserId,
+            type: ActionActivityType.USER_COMPLETED,
+          }),
+        );
+        await actionRepo.update(action.id, { staffPreview: true });
+
+        const like = () =>
+          request(ctx.app.getHttpServer())
+            .post(`/actions/likeActivity/${activity.id}`)
+            .set("Authorization", `Bearer ${ctx.accessToken}`);
+        const noLikes = async () =>
+          expect(
+            (
+              await activityRepo.findOneOrFail({
+                where: { id: activity.id },
+                relations: { likes: true },
+              })
+            ).likes,
+          ).toHaveLength(0);
+
+        await like().expect(404);
+        await noLikes();
+
+        await userRepo.update(ctx.testUserId, { staff: true });
+        await like().expect(403);
+        await noLikes();
+
+        await actionRepo.update(action.id, { archived: true });
+      });
+
+      // Reachable by moving the member-action date back out, the same edit the
+      // sweep exists to survive.
+      it("hands back a like left before the flag, refusing a new one", async () => {
+        const action = await actionRepo.save(
+          actionRepo.create({
+            name: "Liked While Live",
+            category: "Test",
+            body: "Back to a draft",
+            visibilityMode: VisibilityMode.Public,
+            cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+          }),
+        );
+        const activity = await activityRepo.save(
+          activityRepo.create({
+            actionId: action.id,
+            userId: ctx.adminUserId,
+            type: ActionActivityType.USER_COMPLETED,
+          }),
+        );
+        await userRepo.update(ctx.testUserId, { staff: true });
+        await activityRepo
+          .createQueryBuilder()
+          .relation("likes")
+          .of(activity.id)
+          .add(ctx.testUserId);
+        await actionRepo.update(action.id, { staffPreview: true });
+
+        const unliked = (
+          await request(ctx.app.getHttpServer())
+            .post(`/actions/unlikeActivity/${activity.id}`)
+            .set("Authorization", `Bearer ${ctx.accessToken}`)
+            .expect(201)
+        ).body as ActionActivityDto;
+        // What stops a client offering the like refused below.
+        expect(unliked.discussionClosed).toBe(true);
+        expect(
+          (
+            await activityRepo.findOneOrFail({
+              where: { id: activity.id },
+              relations: { likes: true },
+            })
+          ).likes,
+        ).toHaveLength(0);
+
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/likeActivity/${activity.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .expect(403);
+
+        await actionRepo.update(action.id, { archived: true });
+      });
+
+      // The refusal above only helps if the client knows not to offer the
+      // write, and an activity reaches feeds that carry no action.
+      it("closes the activity's discussion for staff, and for nobody else", async () => {
+        const action = await actionRepo.save(
+          actionRepo.create({
+            name: "Marked Activity Action",
+            category: "Test",
+            body: "Not live yet",
+            visibilityMode: VisibilityMode.Public,
+            cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+            staffPreview: true,
+          }),
+        );
+        const activity = await activityRepo.save(
+          activityRepo.create({
+            actionId: action.id,
+            userId: ctx.adminUserId,
+            type: ActionActivityType.USER_COMPLETED,
+          }),
+        );
+
+        const readActivity = (status: number) =>
+          request(ctx.app.getHttpServer())
+            .get(`/actions/activities/${activity.id}`)
+            .set("Authorization", `Bearer ${ctx.accessToken}`)
+            .expect(status);
+
+        // A member cannot reach an activity on an action they cannot see.
+        await readActivity(404);
+        await userRepo.update(ctx.testUserId, { staff: true });
+        expect(
+          ((await readActivity(200)).body as ActionActivityDto)
+            .discussionClosed,
+        ).toBe(true);
+
+        await eventRepo.save(
+          eventRepo.create({
+            title: "Members act",
+            description: "Go",
+            newStatus: ActionStatus.MemberAction,
+            date: new Date(Date.now() - 1000),
+            action,
+          }),
+        );
+        expect(
+          ((await readActivity(200)).body as ActionActivityDto)
+            .discussionClosed,
+        ).toBe(false);
+
+        await actionRepo.update(action.id, { archived: true });
+      });
+
+      it("reaches the timeline feed for its viewers and for nobody else", async () => {
+        const action = await actionRepo.save(
+          actionRepo.create({
+            name: "Timeline Preview Action",
+            category: "Test",
+            body: "Not live yet",
+            visibilityMode: VisibilityMode.Public,
+            staffPreview: true,
+          }),
+        );
+        // Latest event, so the feed's top-ten cut can't be what drops it.
+        await eventRepo.save(
+          eventRepo.create({
+            title: "Office action",
+            description: "Office working on it",
+            newStatus: ActionStatus.OfficeAction,
+            date: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            action,
+          }),
+        );
+
+        const timelineNames = async (token?: string) => {
+          const req = request(ctx.app.getHttpServer()).get(
+            "/actions/timeline-feed",
+          );
+          if (token) req.set("Authorization", `Bearer ${token}`);
+          return (await req.expect(200)).body.map(
+            (item: { action: ActionDto }) => item.action.name,
+          );
+        };
+
+        expect(await timelineNames()).not.toContain(action.name);
+        expect(await timelineNames(ctx.accessToken)).not.toContain(action.name);
+
+        await userRepo.update(ctx.testUserId, { staff: true });
+        expect(await timelineNames(ctx.accessToken)).toContain(action.name);
+
+        await actionRepo.update(action.id, { staffPreview: false });
+        expect(await timelineNames(ctx.accessToken)).not.toContain(action.name);
+
+        await actionRepo.update(action.id, { archived: true });
+      });
+
+      // Public-only skips the member gate on the way in, so it has to skip the
+      // matching not-found on the way out. Otherwise the flag takes a write the
+      // public already had, on a page that still loads for them.
+      it("leaves a public-only action public, flag and all", async () => {
+        const publicAction = await actionRepo.save(
+          actionRepo.create({
+            name: "Public Preview Action",
+            category: "Test",
+            body: "Not live yet",
+            visibilityMode: VisibilityMode.Public,
+            publicOnly: true,
+            type: ActionTaskType.Funding,
+            donationAmount: 500,
+            staffPreview: true,
+          }),
+        );
+        const guestDonation = () =>
+          actionsService.getPaymentAmountForAction({
+            actionId: publicAction.id,
+          });
+
+        await request(ctx.app.getHttpServer())
+          .get(`/actions/slug/${publicAction.id}`)
+          .expect(200);
+        expect(await guestDonation()).toBe(500);
+
+        await actionRepo.update(publicAction.id, { staffPreview: false });
+        await request(ctx.app.getHttpServer())
+          .get(`/actions/slug/${publicAction.id}`)
+          .expect(200);
+        expect(await guestDonation()).toBe(500);
+
+        await actionRepo.update(publicAction.id, { archived: true });
+      });
+
+      it("hands staff a todo they cannot complete", async () => {
+        await userRepo.update(ctx.testUserId, { staff: true });
+
+        const res = await fetchFeed();
+        const action = res.body.find(
+          (a: ActionDto) => a.id === previewAction.id,
+        );
+        expect(action).toBeDefined();
+        expect(action.viewer).toMatchObject({
+          preview: true,
+          canComplete: false,
+          memberActionStarted: false,
+        });
+      });
+
+      it("previews a planned action, the state most reach the flag in", async () => {
+        const action = await actionRepo.save(
+          actionRepo.create({
+            name: "Preview Over Planned",
+            category: "Test",
+            body: "Announced, not open",
+            visibilityMode: VisibilityMode.Public,
+            cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+            staffPreview: true,
+          }),
+        );
+        await eventRepo.save([
+          eventRepo.create({
+            title: "Announced",
+            description: "Last month",
+            newStatus: ActionStatus.Planned,
+            date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+            action,
+          }),
+          eventRepo.create({
+            title: "Members act",
+            description: "Next week",
+            newStatus: ActionStatus.MemberAction,
+            date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            action,
+          }),
+        ]);
+
+        await userRepo.update(ctx.testUserId, { staff: true });
+        const previewed = (await fetchFeed()).body.find(
+          (a: ActionDto) => a.id === action.id,
+        );
+        expect(previewed.viewer).toMatchObject({
+          preview: true,
+          canComplete: false,
+        });
+
+        await userRepo.update(ctx.testUserId, { staff: false });
+        const seen = (await fetchFeed()).body.find(
+          (a: ActionDto) => a.id === action.id,
+        );
+        expect(seen.viewer).toMatchObject({ preview: false });
+        await request(ctx.app.getHttpServer())
+          .post("/forum/comments")
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({
+            parentObjectId: action.id,
+            parentObjectType: CommentParentObject.Action,
+            editableContent: { body: "Looking forward", attachments: [] },
+          } satisfies CreateCommentDto)
+          .expect(201);
+
+        await actionRepo.update(action.id, { archived: true });
+      });
+
+      it("opens the action page for staff, flagged as a preview", async () => {
+        await userRepo.update(ctx.testUserId, { staff: true });
+
+        const res = await request(ctx.app.getHttpServer())
+          .get(`/actions/slug/${previewAction.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .expect(200);
+        expect(res.body.viewer).toMatchObject({
+          preview: true,
+          canComplete: false,
+        });
+      });
+
+      it("refuses the donation amount, masking the preview from a guest", async () => {
+        await expect(
+          actionsService.getPaymentAmountForAction({
+            actionId: previewAction.id,
+          }),
+        ).rejects.toMatchObject({ status: 404 });
+
+        await userRepo.update(ctx.testUserId, { staff: true });
+        await expect(
+          actionsService.getPaymentAmountForAction({
+            actionId: previewAction.id,
+            userId: ctx.testUserId,
+          }),
+        ).rejects.toMatchObject({ status: 403 });
+      });
+
+      it("answers a non-staff member as if the action were not there", async () => {
+        const notFound = await request(ctx.app.getHttpServer())
+          .get(`/actions/slug/${previewAction.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .expect(404);
+
+        // Same answer from the writes, so no member can tell a preview from an
+        // action that does not exist.
+        const commentRes = await request(ctx.app.getHttpServer())
+          .post("/forum/comments")
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({
+            parentObjectId: previewAction.id,
+            parentObjectType: CommentParentObject.Action,
+            editableContent: { body: "Can I see this?", attachments: [] },
+          } satisfies CreateCommentDto)
+          .expect(404);
+        expect(commentRes.body.message).toBe(notFound.body.message);
+      });
+
+      it("answers alike for a preview and for an action that is not there", async () => {
+        const missingId = previewAction.id + 100000;
+
+        const missing = await request(ctx.app.getHttpServer())
+          .post("/forum/comments")
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({
+            parentObjectId: missingId,
+            parentObjectType: CommentParentObject.Action,
+            editableContent: { body: "Is this one real?", attachments: [] },
+          } satisfies CreateCommentDto)
+          .expect(404);
+
+        const preview = await request(ctx.app.getHttpServer())
+          .post("/forum/comments")
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({
+            parentObjectId: previewAction.id,
+            parentObjectType: CommentParentObject.Action,
+            editableContent: { body: "Is this one real?", attachments: [] },
+          } satisfies CreateCommentDto)
+          .expect(404);
+
+        expect(preview.body.message).toBe(missing.body.message);
+        expect(await commentRepo.countBy({ parentObjectId: missingId })).toBe(
+          0,
+        );
+      });
+
+      it("hands staff the control arm, assigning no form variant", async () => {
+        await userRepo.update(ctx.testUserId, { staff: true });
+        const { form: controlForm } = await createFormWithSnapshot(
+          ctx.dataSource,
+          { title: "Preview Control Form", schema: { title: "c", pages: [] } },
+        );
+        const { form: variantForm } = await createFormWithSnapshot(
+          ctx.dataSource,
+          { title: "Preview Variant Form", schema: { title: "v", pages: [] } },
+        );
+        const action = await actionRepo.save(
+          actionRepo.create({
+            name: "Variant Preview Action",
+            category: "Test",
+            body: "Not live yet",
+            visibilityMode: VisibilityMode.Public,
+            cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+            taskFormId: controlForm.id,
+            staffPreview: true,
+          }),
+        );
+        // Everyone who gets assigned lands on the variant, so an assignment
+        // would be visible as a changed taskFormId rather than a coin flip.
+        await formVariantRepo.save(
+          formVariantRepo.create({
+            actionId: action.id,
+            formId: variantForm.id,
+            name: "Variant",
+            splitValue: 1,
+          }),
+        );
+
+        const previewed = (await fetchFeed()).body.find(
+          (a: ActionDto) => a.id === action.id,
+        );
+        expect(previewed.taskFormId).toBe(controlForm.id);
+        expect(
+          await formAssignmentRepo.countBy({
+            actionId: action.id,
+            userId: ctx.testUserId,
+          }),
+        ).toBe(0);
+
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/${action.id}/events`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({
+            title: "Members act",
+            description: "Go",
+            newStatus: ActionStatus.MemberAction,
+            date: new Date(Date.now() - 1000).toISOString(),
+          })
+          .expect(201);
+
+        const live = (await fetchFeed()).body.find(
+          (a: ActionDto) => a.id === action.id,
+        );
+        expect(live.taskFormId).toBe(variantForm.id);
+
+        await actionRepo.update(action.id, { archived: true });
+      });
+
+      it("assigns a member their variant on an action the preview only shadows", async () => {
+        const { form: controlForm } = await createFormWithSnapshot(
+          ctx.dataSource,
+          { title: "Shadowed Control", schema: { title: "c", pages: [] } },
+        );
+        const { form: variantForm } = await createFormWithSnapshot(
+          ctx.dataSource,
+          { title: "Shadowed Variant", schema: { title: "v", pages: [] } },
+        );
+        const action = await actionRepo.save(
+          actionRepo.create({
+            name: "Shadowed Variant Action",
+            category: "Test",
+            body: "Office is on it",
+            visibilityMode: VisibilityMode.Public,
+            taskFormId: controlForm.id,
+            staffPreview: true,
+          }),
+        );
+        // Past office action, so the member reads it whether or not the flag
+        // is on, and the preview is not what put it in front of them.
+        await eventRepo.save(
+          eventRepo.create({
+            title: "Office action",
+            description: "Office working on it",
+            newStatus: ActionStatus.OfficeAction,
+            date: new Date(Date.now() - 1000),
+            action,
+          }),
+        );
+        await formVariantRepo.save(
+          formVariantRepo.create({
+            actionId: action.id,
+            formId: variantForm.id,
+            name: "Variant",
+            splitValue: 1,
+          }),
+        );
+
+        const seen = (await fetchFeed()).body.find(
+          (a: ActionDto) => a.id === action.id,
+        );
+        expect(seen.taskFormId).toBe(variantForm.id);
+        expect(
+          await formAssignmentRepo.countBy({
+            actionId: action.id,
+            userId: ctx.testUserId,
+          }),
+        ).toBe(1);
+
+        await actionRepo.update(action.id, { archived: true });
+      });
+
+      it("turns inert once the member action opens, flag still on", async () => {
+        const openAction = await createFlaggedLiveAction();
+
+        const res = await fetchFeed();
+        const action = res.body.find((a: ActionDto) => a.id === openAction.id);
+        expect(action).toBeDefined();
+        expect(action.viewer).toMatchObject({
+          preview: false,
+          canComplete: true,
+        });
+
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/${openAction.id}/referralCode`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .expect(201);
+
+        await request(ctx.app.getHttpServer())
+          .post("/forum/comments")
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({
+            parentObjectId: openAction.id,
+            parentObjectType: CommentParentObject.Action,
+            editableContent: { body: "Nice one", attachments: [] },
+          } satisfies CreateCommentDto)
+          .expect(201);
+
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/complete/${openAction.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .expect(201);
+
+        expect(
+          (await actionRepo.findOneByOrFail({ id: openAction.id }))
+            .staffPreview,
+        ).toBe(true);
+
+        await actionRepo.update(openAction.id, { archived: true });
+      });
+
+      it("spends the flag once the member action opens, so it cannot re-arm", async () => {
+        const openAction = await createFlaggedLiveAction();
+
+        await staffPreviewService.clearOpenedPreviews();
+
+        expect(
+          (await actionRepo.findOneByOrFail({ id: openAction.id }))
+            .staffPreview,
+        ).toBe(false);
+        expect(
+          (await actionRepo.findOneByOrFail({ id: previewAction.id }))
+            .staffPreview,
+        ).toBe(true);
+
+        await actionRepo.update(openAction.id, { archived: true });
+      });
+
+      it("takes the flag through the admin API, changing nothing once live", async () => {
+        await userRepo.update(ctx.testUserId, { staff: true });
+        const openAction = await createFlaggedLiveAction();
+
+        // Saving the flag the sweep has not lowered yet is not arming it.
+        await request(ctx.app.getHttpServer())
+          .patch(`/actions/${openAction.id}`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({ staffPreview: true, body: "Already open, edited" })
+          .expect(200);
+
+        const res = await fetchFeed();
+        const action = res.body.find((a: ActionDto) => a.id === openAction.id);
+        expect(action).toBeDefined();
+        expect(action.viewer.preview).toBe(false);
+
+        await actionRepo.update(openAction.id, { archived: true });
+      });
+
+      it("saves a flag raised after the member action opens as lowered", async () => {
+        const openAction = await createFlaggedLiveAction();
+        await request(ctx.app.getHttpServer())
+          .patch(`/actions/${openAction.id}`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({ staffPreview: false })
+          .expect(200);
+
+        // What a form loaded before the launch sends, whether or not the sweep
+        // has run. The edit beside the flag still lands.
+        await request(ctx.app.getHttpServer())
+          .patch(`/actions/${openAction.id}`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({ staffPreview: true, body: "Already open, edited" })
+          .expect(200);
+        const saved = await actionRepo.findOneByOrFail({ id: openAction.id });
+        expect(saved.staffPreview).toBe(false);
+        expect(saved.body).toBe("Already open, edited");
+
+        await actionRepo.update(openAction.id, { archived: true });
+      });
     });
 
     it("shows actions to outsider if showToNonparticipating is true", async () => {
@@ -1031,7 +2086,6 @@ describe("Actions (e2e)", () => {
     it("splits members into US and non-US by city, falling back to time zone", async () => {
       const cityRepo = ctx.dataSource.getRepository(City);
       const recipientService = ctx.app.get(ActionEventRecipientService);
-      const actionsService = ctx.app.get(ActionsService);
       const stamp = Date.now();
 
       const [usCity, frenchCity] = await cityRepo.save([
@@ -3590,6 +4644,7 @@ describe("Actions (e2e)", () => {
       optional: false,
       preventCompletion: false,
       publicOnly: false,
+      staffPreview: false,
       onboarding: false,
       reviewers,
       ...extra,
@@ -3787,6 +4842,7 @@ describe("Actions (e2e)", () => {
           optional: false,
           preventCompletion: false,
           publicOnly: false,
+          staffPreview: false,
           onboarding: false,
           cohortExpression: manualCohort,
         })
