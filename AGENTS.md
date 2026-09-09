@@ -110,4 +110,14 @@ Everything stays inside the repo — scratch files, notes, scripts, logs, dumps,
 
 ## Less is more
 
-Follow YAGNI principles and prefer one-liner solutions.
+Follow YAGNI principles and prefer one-liner solutions. An abstraction earns its place at the second caller, a config option at the first person who sets it, an error branch at a state that can actually occur.
+
+## Surgical changes
+
+Every changed line traces to the request. Adjacent code keeps its style, its formatting, and its comments, even where you would write it differently.
+
+Delete what your change orphaned: the import, variable, or function nothing calls now. Dead code that was already there gets named in your response and left in the file.
+
+## Success criteria
+
+State the check that decides the task is done, then loop until it passes. A bug fix starts with a test that reproduces the bug. A refactor runs the suite green before and after. Adding validation means tests for the invalid inputs, then the code that passes them.
