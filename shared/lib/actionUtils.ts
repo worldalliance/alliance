@@ -166,6 +166,16 @@ export function canCompleteAction(action: ActionDto): boolean {
   );
 }
 
+/**
+ * Is the action optional for the viewer? The server may widen this past
+ * `action.optional`, which describes the action itself and stays the right
+ * read for admin views and cohort-wide stats.
+ */
+export function isActionOptional(action: ActionDto): boolean {
+  const { viewer } = action;
+  return viewer ? viewer.optional : action.optional;
+}
+
 export function shouldCompleteAction(action: ActionDto): boolean {
   if (
     !canCompleteAction(action) ||

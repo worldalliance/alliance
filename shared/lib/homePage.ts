@@ -3,6 +3,7 @@ import { ActionDto, FollowUpFormDto } from "../client";
 import {
   ActionWithAwayStatus,
   homePagePriorityComparator,
+  isActionOptional,
   isCurrentlyCompletedAction,
   isFollowUpFormActive,
   shouldCompleteAction,
@@ -71,7 +72,7 @@ export function useHomePageActions(actions: ActionWithAwayStatus[] | null) {
     (sum, action) => {
       if (
         showActionInSidebarList(action) &&
-        !action.optional &&
+        !isActionOptional(action) &&
         action.timeEstimate
       ) {
         return sum + action.timeEstimate;

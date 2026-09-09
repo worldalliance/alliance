@@ -50,4 +50,11 @@ describe("getTaskDismissInfo", () => {
     const optional = getTaskDismissInfo(makeAction({ optional: true }));
     expect(optional?.header).toBe(taskHeaders.homePage.optional.title);
   });
+
+  it("shows the optional banner for a viewer the action is optional for", () => {
+    const info = getTaskDismissInfo(
+      makeAction({ optional: false, viewer: makeViewer({ optional: true }) }),
+    );
+    expect(info?.header).toBe(taskHeaders.homePage.optional.title);
+  });
 });
