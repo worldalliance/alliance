@@ -5,6 +5,7 @@ import {
   Text as RNText,
   TextProps as RNTextProps,
 } from "react-native";
+import { useWholePointLineHeight } from "../../lib/style/useWholePointLineHeight";
 
 export enum TextStyle {
   Header = "header",
@@ -103,23 +104,29 @@ export default function Text({
   const resolvedFamily = family ?? FontFamily.Sans;
   const resolvedWeight =
     weight ?? typeWeights[type ?? TextStyle.Primary] ?? FontWeight.Regular;
+  const classNames = cn(
+    // Yoga defaults flexShrink to 0 (web CSS defaults to 1), so text in a
+    // flex-row overflows and clips instead of wrapping. Default to shrinking;
+    // callers pass `shrink-0` to opt out (twMerge resolves the conflict).
+    // This acts on the parent's main axis, so it also lets text compress
+    // vertically inside a height-bounded column instead of overflowing it.
+    "shrink",
+    // uniwind reads a unitless `leading-*` as `fontSize * lineHeight`, so a
+    // size on every branch keeps the height from coming back NaN.
+    "text-base",
+    type && typeClasses[type],
+    className,
+  );
+  const roundedLineHeight = useWholePointLineHeight(classNames);
 
   return (
     <RNText
-      // Yoga defaults flexShrink to 0 (web CSS defaults to 1), so text in a
-      // flex-row overflows and clips instead of wrapping. Default to shrinking;
-      // callers pass `shrink-0` to opt out (twMerge resolves the conflict).
-      // This acts on the parent's main axis, so it also lets text compress
-      // vertically inside a height-bounded column instead of overflowing it.
-      className={cn(
-        "shrink",
-        // uniwind reads a unitless `leading-*` as `fontSize * lineHeight`, so a
-        // size on every branch keeps the height from coming back NaN.
-        "text-base",
-        type && typeClasses[type],
-        className,
-      )}
-      style={[resolveFontFamily(resolvedFamily, resolvedWeight), style]}
+      className={classNames}
+      style={[
+        resolveFontFamily(resolvedFamily, resolvedWeight),
+        roundedLineHeight,
+        style,
+      ]}
       {...props}
     >
       {children}

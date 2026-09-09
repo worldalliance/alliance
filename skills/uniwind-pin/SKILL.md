@@ -27,7 +27,7 @@ The second dispatch is the bump's, from the pushed head. Green means the bump le
 
 Diff the `--text-*--line-height` names in that copy's `theme.css` against the ones `global.css` sets to `initial`. Add a line for each name Tailwind gained, drop each one Tailwind does not define.
 
-`global.css` spells one name per size, and that `initial` is the whole reason a bare `text-*` sets no line height. A size token it misses puts the height back.
+`global.css` spells one name per size, and that `initial` is the whole reason a bare `text-*` sets no line height. A size token it misses puts the height back, and `canSetLineHeight` never looks for one there.
 
 ## The Tailwind the pin reaches
 
