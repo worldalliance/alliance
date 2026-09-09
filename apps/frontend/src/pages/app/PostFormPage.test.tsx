@@ -1,3 +1,4 @@
+import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
   act,
   cleanup,
@@ -6,6 +7,8 @@ import {
   screen,
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
+import { AuthContext, type AuthContextType } from "../../lib/AuthContext";
+import PostFormPage from "./PostFormPage";
 
 let pendingCreate: Promise<void> | null = null;
 
@@ -18,26 +21,18 @@ const deferCreate = (): (() => void) => {
   return land;
 };
 
-// react-router pushes the new URL before it re-renders, so the create resolves
-// with the page already renamed under the form.
-const forumCreatePost = jest.fn(async () => {
-  if (pendingCreate) await pendingCreate;
-  setUrl("http://localhost/forum/post/42");
-  return { data: { id: 42 } };
-});
+const noop = () => Promise.resolve();
 
-jest.mock("@alliance/shared/client", () => ({
-  forumCreatePost,
-  forumFindOnePost: async () => ({ data: undefined }),
-  forumUpdatePost: async () => ({ data: undefined }),
-  imagesUploadImage: async () => ({ data: { key: "key" } }),
-}));
-
-jest.mock("../../lib/AuthContext", () => ({
-  useAuth: () => ({ isAuthenticated: true }),
-}));
-
-import PostFormPage from "./PostFormPage";
+const signedIn: AuthContextType = {
+  isAuthenticated: true,
+  user: undefined,
+  isImpersonation: false,
+  refreshUser: noop,
+  login: noop,
+  onLogin: noop,
+  logout: noop,
+  loading: false,
+};
 
 // happy-dom leaves `location` where it is on `history.pushState`.
 declare const happyDOM: { setURL: (url: string) => void };
@@ -46,6 +41,18 @@ const setUrl = (url: string) => happyDOM.setURL(url);
 const formUrl = "http://localhost/forum/edit/new";
 
 afterEach(cleanup);
+
+serveApi(
+  routes({
+    "POST /forum/posts": async () => {
+      if (pendingCreate) await pendingCreate;
+      // react-router pushes the new URL before it re-renders, so the create
+      // resolves with the page already renamed under the form.
+      setUrl("http://localhost/forum/post/42");
+      return Response.json({ id: 42 });
+    },
+  }),
+);
 
 beforeEach(() => {
   sessionStorage.clear();
@@ -66,12 +73,14 @@ const seedSavedDraft = () =>
 
 const renderNewThreadPage = () =>
   render(
-    <MemoryRouter initialEntries={["/forum/edit/new"]}>
-      <Routes>
-        <Route path="/forum/edit/:postId" element={<PostFormPage />} />
-        <Route path="/forum/post/:id" element={<p>the published thread</p>} />
-      </Routes>
-    </MemoryRouter>,
+    <AuthContext.Provider value={signedIn}>
+      <MemoryRouter initialEntries={["/forum/edit/new"]}>
+        <Routes>
+          <Route path="/forum/edit/:postId" element={<PostFormPage />} />
+          <Route path="/forum/post/:id" element={<p>the published thread</p>} />
+        </Routes>
+      </MemoryRouter>
+    </AuthContext.Provider>,
   );
 
 const schedulePicker = () =>
