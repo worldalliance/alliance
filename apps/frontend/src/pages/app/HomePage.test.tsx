@@ -91,3 +91,29 @@ describe("HomePage task list", () => {
     expect(screen.queryByText("Visible task")).not.toBeNull();
   });
 });
+
+describe("HomePage current-week summary", () => {
+  it("counts every current-week task but only the required minutes", () => {
+    actions = [
+      makeAction({
+        id: 4,
+        name: "Required task",
+        timeEstimate: 10,
+        events: deadlineInDays(3),
+      }),
+      makeAction({
+        id: 5,
+        name: "Optional task",
+        optional: true,
+        timeEstimate: 40,
+        events: deadlineInDays(3),
+      }),
+    ];
+
+    renderHomePage();
+
+    expect(screen.getByText(/left/).closest("p")?.textContent).toBe(
+      "2 left (10 minutes required)",
+    );
+  });
+});
