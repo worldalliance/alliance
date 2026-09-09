@@ -50,7 +50,7 @@ export function InfoSessionButton() {
 /** A task from the grantmaking project, drawn the way the real task list draws one. */
 function GrantTaskMock() {
   return (
-    <div className="w-full max-w-[26rem] rounded-xl bg-white p-5 shadow-[0_24px_60px_-18px_rgba(0,0,0,0.55)]">
+    <div className="w-full max-w-[31.2rem] rounded-xl bg-white p-5 shadow-[0_24px_60px_-18px_rgba(0,0,0,0.55)]">
       <p className="text-[1.0625rem] leading-snug font-semibold text-balance text-black">
         {TASK_TITLE}
       </p>
@@ -85,7 +85,7 @@ export function GrantmakingCard({ className }: { className?: string }) {
       />
       {/* The type sits straight on the photo, so it needs its own floor of contrast. */}
       <div
-        className="absolute inset-0 -z-10 bg-[var(--site-primary)]/72"
+        className="absolute inset-0 -z-10 bg-[var(--site-primary)]/58"
         aria-hidden
       />
 
