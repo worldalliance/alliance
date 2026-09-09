@@ -229,6 +229,7 @@ const HomePage = () => {
         : null;
     const hasTaskSectionContent =
       taskNavigatorCurrentWeekSidebarActions.length > 0 ||
+      nextWeekTodoActions.length > 0 ||
       completedActions.length > 0 ||
       followUpParentActionsNotInCompletedList.length > 0;
     return (
