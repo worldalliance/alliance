@@ -1,7 +1,6 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
-import { createElement, type ReactNode } from "react";
 import type { UpdateProfileDto } from "../client";
+import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import { deviceTimeZone } from "./timeZone";
 import { useBackfillTimeZone } from "./useBackfillTimeZone";
@@ -27,17 +26,13 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-function wrapper() {
-  const client = new QueryClient();
-  return ({ children }: { children: ReactNode }) =>
-    createElement(QueryClientProvider, { client }, children);
-}
-
 const settle = () => act(async () => {});
 
 describe("useBackfillTimeZone", () => {
   it("sends the device zone for a member who has none", async () => {
-    renderHook(() => useBackfillTimeZone({ id: 7 }), { wrapper: wrapper() });
+    renderHook(() => useBackfillTimeZone({ id: 7 }), {
+      wrapper: queryWrapper().wrapper,
+    });
 
     await waitFor(() =>
       expect(payloads).toEqual([{ timeZone: deviceTimeZone() }]),
@@ -48,7 +43,7 @@ describe("useBackfillTimeZone", () => {
     renderHook(
       () => useBackfillTimeZone({ id: 7, timeZone: "Europe/Berlin" }),
       {
-        wrapper: wrapper(),
+        wrapper: queryWrapper().wrapper,
       },
     );
 
@@ -59,7 +54,7 @@ describe("useBackfillTimeZone", () => {
   it("does nothing before the user loads", async () => {
     const view = renderHook(({ user }) => useBackfillTimeZone(user), {
       initialProps: { user: undefined as { id: number } | undefined },
-      wrapper: wrapper(),
+      wrapper: queryWrapper().wrapper,
     });
     await settle();
     expect(payloads).toEqual([]);
@@ -71,7 +66,7 @@ describe("useBackfillTimeZone", () => {
   it("sends once, however often the user object is replaced", async () => {
     const view = renderHook(({ user }) => useBackfillTimeZone(user), {
       initialProps: { user: { id: 7 } },
-      wrapper: wrapper(),
+      wrapper: queryWrapper().wrapper,
     });
     view.rerender({ user: { id: 7 } });
     view.rerender({ user: { id: 7 } });
@@ -83,7 +78,7 @@ describe("useBackfillTimeZone", () => {
   it("sends again for a different member on the same mount", async () => {
     const view = renderHook(({ user }) => useBackfillTimeZone(user), {
       initialProps: { user: { id: 7 } },
-      wrapper: wrapper(),
+      wrapper: queryWrapper().wrapper,
     });
     view.rerender({ user: { id: 8 } });
 
@@ -93,7 +88,7 @@ describe("useBackfillTimeZone", () => {
   it("writes nothing while disabled, and sends once enabled", async () => {
     const view = renderHook(
       ({ enabled }) => useBackfillTimeZone({ id: 7 }, { enabled }),
-      { initialProps: { enabled: false }, wrapper: wrapper() },
+      { initialProps: { enabled: false }, wrapper: queryWrapper().wrapper },
     );
     await settle();
     expect(payloads).toEqual([]);
@@ -108,7 +103,9 @@ describe("useBackfillTimeZone", () => {
     refused = true;
     const logged = jest.spyOn(console, "error").mockImplementation(() => {});
 
-    renderHook(() => useBackfillTimeZone({ id: 7 }), { wrapper: wrapper() });
+    renderHook(() => useBackfillTimeZone({ id: 7 }), {
+      wrapper: queryWrapper().wrapper,
+    });
 
     await waitFor(() =>
       expect(logged).toHaveBeenCalledWith(expect.any(String), {

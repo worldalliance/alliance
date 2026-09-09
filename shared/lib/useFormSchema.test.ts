@@ -1,7 +1,6 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
-import { createElement, type ReactNode } from "react";
 import { queryKeys } from "./queryKeys";
+import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import {
   FormFieldsStatus,
@@ -31,16 +30,8 @@ const schemaWith = (...labels: string[]) => ({
   outputViews: [],
 });
 
-function makeWrapper() {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return ({ children }: { children: ReactNode }) =>
-    createElement(QueryClientProvider, { client }, children);
-}
-
 function mount<T>(hook: () => T) {
-  const view = renderHook(hook, { wrapper: makeWrapper() });
+  const view = renderHook(hook, { wrapper: queryWrapper().wrapper });
   return { state: () => view.result.current };
 }
 
@@ -183,12 +174,10 @@ test("skips the sentinel id a picker sits on before a form is chosen", async () 
 });
 
 test("reports the form it could not load instead of an empty field list", async () => {
-  // Every retry is another 404 for a condition pointing at a deleted form.
-  const client = new QueryClient({ defaultOptions: { queries: { retry: 3 } } });
-  const view = renderHook(() => useFormQuestionFields(404), {
-    wrapper: ({ children }: { children: ReactNode }) =>
-      createElement(QueryClientProvider, { client }, children),
-  });
+  // retry: 3 so the single fetch below is the hook turning retries off, not
+  // queryWrapper's default.
+  const { wrapper } = queryWrapper({ retry: 3 });
+  const view = renderHook(() => useFormQuestionFields(404), { wrapper });
 
   await waitFor(() =>
     expect(view.result.current.status).toBe(FormFieldsStatus.LoadFailed),
@@ -200,7 +189,7 @@ test("reports the form it could not load instead of an empty field list", async 
 
 test("peeks what a picker already fetched, and never fetches itself", async () => {
   schemas[3] = schemaWith("Only");
-  const wrapper = makeWrapper();
+  const { wrapper } = queryWrapper();
 
   const peek = renderHook(() => useFormQuestionFieldsPeek(), { wrapper });
   expect(peek.result.current(3)).toBeUndefined();
@@ -217,7 +206,7 @@ test("peeks what a picker already fetched, and never fetches itself", async () =
 
 test("shares one request between the pickers that want the same form", async () => {
   schemas[5] = schemaWith("Shared");
-  const wrapper = makeWrapper();
+  const { wrapper } = queryWrapper();
 
   const view = renderHook(() => useFormQuestionFields(5), { wrapper });
   renderHook(() => useFormQuestionFields(5), { wrapper });
@@ -230,7 +219,7 @@ test("shares one request between the pickers that want the same form", async () 
 
 test("serves a remounted picker from cache instead of refetching", async () => {
   schemas[8] = schemaWith("Cached");
-  const wrapper = makeWrapper();
+  const { wrapper } = queryWrapper();
 
   const first = renderHook(() => useFormQuestionFields(8), { wrapper });
   await waitFor(() =>
@@ -251,11 +240,7 @@ test("serves a remounted picker from cache instead of refetching", async () => {
 
 test("keeps the fields it has when a refetch fails", async () => {
   schemas[12] = schemaWith("Still here");
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  const wrapper = ({ children }: { children: ReactNode }) =>
-    createElement(QueryClientProvider, { client }, children);
+  const { client, wrapper } = queryWrapper();
 
   const view = renderHook(() => useFormQuestionFields(12), { wrapper });
   await waitFor(() =>
