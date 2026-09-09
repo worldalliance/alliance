@@ -1,0 +1,1 @@
+we need to generate thumbnails before this deploys to production. if we want to push to production asap then revert commits in the `publicpages-3g-optimization` branch

@@ -141,6 +141,7 @@ export function Navbar({
               <AvatarProfile
                 pfp={user.profilePicture ?? null}
                 size="override"
+                thumbnail
                 alt={`${user.name} profile photo`}
                 className={cn(
                   "size-11 rounded-md",

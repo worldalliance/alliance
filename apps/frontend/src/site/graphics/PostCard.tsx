@@ -2,6 +2,7 @@ import { cn } from "@alliance/shared/styles/util";
 import type { CSSProperties, ReactNode } from "react";
 import { PostBlockKind, type PostBlock, type PostUpdate } from "../content";
 import type { SiteAuthor } from "../data";
+import { ThumbnailImg } from "../ui";
 
 function Block({ block }: { block: PostBlock }) {
   switch (block.kind) {
@@ -88,10 +89,13 @@ export function PostCard({
       >
         {author && (
           <div className="flex items-center gap-2">
-            <img
+            <ThumbnailImg
+              key={author.avatar}
               src={author.avatar}
               alt=""
               aria-hidden
+              loading="lazy"
+              decoding="async"
               className="size-5 shrink-0 rounded-[5px] object-cover"
             />
             <span className="text-[12.5px] font-medium text-[var(--site-ink)]">

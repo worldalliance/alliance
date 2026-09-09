@@ -296,6 +296,7 @@ const ActionContents = () => {
                           <AvatarProfile
                             pfp={author.profilePicture}
                             size="override"
+                            thumbnail
                             className="w-5 h-5 rounded"
                           />
                           <span>{author.displayName}</span>

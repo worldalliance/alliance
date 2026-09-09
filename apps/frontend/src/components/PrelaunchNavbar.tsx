@@ -130,6 +130,7 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
           <AvatarProfile
             pfp={user.profilePicture ?? null}
             size="override"
+            thumbnail
             className={cn(
               "rounded-md transition-[width,height] duration-300",
               opts.condensedStyle

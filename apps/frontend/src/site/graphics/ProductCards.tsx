@@ -268,6 +268,7 @@ export function UpdateCard() {
           <AvatarProfile
             pfp={author?.profilePicture ?? null}
             size="override"
+            thumbnail
             alt=""
             className="size-8 rounded"
           />

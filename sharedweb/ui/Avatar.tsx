@@ -1,3 +1,4 @@
+import { thumbnailSrc } from "@alliance/common/image-src";
 import { cn } from "@alliance/shared/styles/util";
 import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar";
 import type React from "react";
@@ -14,6 +15,20 @@ const sizeClasses = {
 } as const;
 
 export type AvatarSize = keyof typeof sizeClasses;
+
+/**
+ * The 128px thumbnail covers anything rendered up to ~42px on a 3x screen.
+ * `huge` is 116px. `override` takes its size from a caller's class and so has
+ * to be judged at the call site, with the `thumbnail` prop.
+ */
+const usesThumbnail: Record<AvatarSize, boolean> = {
+  mini: true,
+  small: true,
+  medium: true,
+  large: true,
+  huge: false,
+  override: false,
+};
 
 function Avatar({
   className,
@@ -71,17 +86,20 @@ function AvatarProfile({
   className,
   size = "large",
   alt = "Profile",
+  thumbnail = usesThumbnail[size],
 }: {
   pfp: string | null;
   className?: string;
   size?: AvatarSize;
   alt?: string;
+  /** Set alongside `size="override"` when the class renders under ~42px. */
+  thumbnail?: boolean;
 }) {
   return (
     <Avatar size={size} className={className} key={pfp ?? "default"}>
       {pfp ? (
         <>
-          <AvatarImage src={pfp} alt={alt} />
+          <AvatarImage src={thumbnail ? thumbnailSrc(pfp) : pfp} alt={alt} />
           <AvatarFallback>
             <img
               src={DEFAULT_USER_ICON_SRC}
