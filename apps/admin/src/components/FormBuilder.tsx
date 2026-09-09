@@ -3283,6 +3283,7 @@ export function FormBuilder(props: FormBuilderProps) {
                     actionId={0}
                     form={schema}
                     onSubmit={null}
+                    previewMode
                     renderFormAsCompleted={false}
                     userId={resolvedPreviewUserId}
                     user={resolvedPreviewUser}

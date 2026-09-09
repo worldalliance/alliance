@@ -90,6 +90,22 @@ describe("useVideoAnalytics", () => {
     expect(countOf(AnalyticsEvent.VideoFullyWatched)).toBe(0);
   });
 
+  it("reports nothing at all while disabled", () => {
+    const { result } = mountAnalytics({
+      src: "videos/abc",
+      videoId: 1,
+      enabled: false,
+    });
+
+    act(() => {
+      result.current.trackPlay();
+      result.current.trackTimeUpdate({ currentTime: 98, duration: 100 });
+      result.current.trackComplete();
+    });
+
+    expect(captured).toEqual([]);
+  });
+
   it("re-arms the guards when the source changes", () => {
     const { result, rerender } = mountAnalytics({
       src: "videos/abc",

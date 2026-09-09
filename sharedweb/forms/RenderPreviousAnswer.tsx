@@ -5,6 +5,7 @@ import type {
   ListField,
   ListFieldValue,
 } from "@alliance/common/forms/form-schema";
+import { StoredAnswer } from "@alliance/shared/forms/previewMode";
 import {
   findFieldInSchema,
   getVisiblePreviousAnswerSubFields,
@@ -66,12 +67,14 @@ export default function RenderPreviousAnswer({
           {block.title}
         </h3>
       )}
-      <RenderField
-        field={field}
-        value={value}
-        disabled={true}
-        hideLabel={block.showLabel === false}
-      />
+      <StoredAnswer>
+        <RenderField
+          field={field}
+          value={value}
+          disabled={true}
+          hideLabel={block.showLabel === false}
+        />
+      </StoredAnswer>
     </div>
   );
 }
@@ -105,13 +108,14 @@ function RenderPreviousAnswerList({
             className="rounded-md border border-gray-200 bg-gray-50 p-3 space-y-2"
           >
             {visibleSubFields.map((subField) => (
-              <RenderField
-                key={subField.id}
-                field={subField}
-                value={item[subField.id]}
-                disabled={true}
-                hideLabel={block.showLabel === false}
-              />
+              <StoredAnswer key={subField.id}>
+                <RenderField
+                  field={subField}
+                  value={item[subField.id]}
+                  disabled={true}
+                  hideLabel={block.showLabel === false}
+                />
+              </StoredAnswer>
             ))}
           </div>
         ))}

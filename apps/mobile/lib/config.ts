@@ -1,4 +1,8 @@
-import { resolveUploadSrc, uploadSrc } from "@alliance/common/image-src";
+import {
+  fileFieldSrc,
+  resolveUploadSrc,
+  uploadSrc,
+} from "@alliance/common/image-src";
 import { NativeModules, Platform } from "react-native";
 import { getVisualTestApiUrl } from "./visualTest";
 
@@ -50,6 +54,11 @@ export const getImageSource = (key: string) =>
 
 export const resolveImageSource = (src: string): string =>
   resolveUploadSrc({ src, apiUrl: getApiUrl() });
+
+export const fileFieldImageSource = (params: {
+  src: string;
+  previewMode?: boolean;
+}): string => fileFieldSrc({ ...params, apiUrl: getApiUrl() });
 
 export const getWebSocketUrl = (): string => {
   const baseUrl = getBaseUrl();

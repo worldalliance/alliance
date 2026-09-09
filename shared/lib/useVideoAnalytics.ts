@@ -33,22 +33,22 @@ export const useVideoAnalytics = ({
   }, [enabled, videoId]);
 
   const trackPlay = useCallback(() => {
-    if (hasTrackedPlayRef.current) return;
+    if (!enabled || hasTrackedPlayRef.current) return;
 
     hasTrackedPlayRef.current = true;
     captureEvent(AnalyticsEvent.VideoStarted, { videoId, src });
-  }, [videoId, src]);
+  }, [enabled, videoId, src]);
 
   const trackComplete = useCallback(() => {
-    if (hasTrackedCompleteRef.current) return;
+    if (!enabled || hasTrackedCompleteRef.current) return;
 
     hasTrackedCompleteRef.current = true;
     captureEvent(AnalyticsEvent.VideoFullyWatched, { videoId, src });
-  }, [videoId, src]);
+  }, [enabled, videoId, src]);
 
   const trackTimeUpdate = useCallback(
     ({ currentTime, duration }: { currentTime: number; duration: number }) => {
-      if (!Number.isFinite(duration) || duration <= 0) return;
+      if (!enabled || !Number.isFinite(duration) || duration <= 0) return;
 
       if (duration - currentTime <= COMPLETE_WITHIN_S) {
         trackComplete();
@@ -64,7 +64,7 @@ export const useVideoAnalytics = ({
         });
       }
     },
-    [videoId, src, trackComplete],
+    [enabled, videoId, src, trackComplete],
   );
 
   return { trackPlay, trackComplete, trackTimeUpdate };

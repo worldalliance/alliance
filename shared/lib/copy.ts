@@ -50,6 +50,11 @@ export const taskHeaders = {
   },
 } as const;
 
+export const formPreviewSubmitSuffix = " (Preview Mode)";
+
+export const sharePreviewPlaceholder =
+  "Your share link appears here once the action is live.";
+
 export const awayRangesDescription =
   "You can schedule a period of time when you won't be able to complete Alliance actions. This will let the office know not to expect you to complete tasks while you're away.";
 

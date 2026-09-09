@@ -24,6 +24,7 @@ import {
   listCardWriters,
   resolveCards,
 } from "@alliance/shared/forms/listCards";
+import { usePreviewMode } from "@alliance/shared/forms/previewMode";
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
 import {
   formatTimeForDisplay,
@@ -42,7 +43,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { getImageSource } from "../../lib/config";
+import { fileFieldImageSource } from "../../lib/config";
 import { pickImageDataUri } from "../../lib/pickImageDataUri";
 import { colors } from "../../lib/style/colors";
 import AppMarkdownWrapper from "../AppMarkdownWrapper";
@@ -155,6 +156,7 @@ export function RenderField({
   formData,
   isFieldRequired,
 }: RenderFieldProps) {
+  const previewMode = usePreviewMode();
   const [selectOpen, setSelectOpen] = useState(false);
   const required = isFieldRequired ? isFieldRequired(field) : !!field.required;
   const errorMessage =
@@ -670,7 +672,9 @@ export function RenderField({
     case "file": {
       const currentPreview =
         resolvePickedPreview({ pick: filePreview, value, uploading }) ??
-        (typeof value === "string" && value ? getImageSource(value) : null);
+        (typeof value === "string" && value
+          ? fileFieldImageSource({ src: value, previewMode })
+          : null);
 
       const pickImage = async () => {
         if (disabled || uploading || !fileUpload) return;

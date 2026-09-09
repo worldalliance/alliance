@@ -1,5 +1,8 @@
+import type { CustomComponentField } from "@alliance/common/forms/form-schema";
 import { useQuery } from "@tanstack/react-query";
 import { shareUrlsGetShareLink } from "../client";
+import { sharePreviewPlaceholder } from "../lib/copy";
+import { usePreviewMode } from "./previewMode";
 
 export enum ShareLinkTargetKind {
   Action = "action",
@@ -56,4 +59,36 @@ export function useShareLink(target: ShareLinkTarget | null | undefined) {
     },
     enabled: !!target,
   });
+}
+
+/**
+ * What a share field shows. Asking for a link mints and stores a share code,
+ * so a preview asks for none and says so instead.
+ */
+export function useShareUrlDisplay(field: CustomComponentField): {
+  isConfigured: boolean;
+  shareUrl: string | undefined;
+  message: string | undefined;
+  muted: boolean;
+} {
+  const previewMode = usePreviewMode();
+  const target = shareLinkTargetFromConfig(field.componentConfig);
+  const {
+    data: shareUrl,
+    isPending,
+    isError,
+  } = useShareLink(previewMode ? null : target);
+
+  return {
+    isConfigured: target !== null,
+    shareUrl,
+    message: previewMode
+      ? sharePreviewPlaceholder
+      : isError
+        ? "Unable to load share link"
+        : isPending
+          ? "Loading…"
+          : shareUrl,
+    muted: isPending || isError || !shareUrl,
+  };
 }

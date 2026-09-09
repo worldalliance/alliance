@@ -15,6 +15,30 @@ export function uploadSrc({
   return `${apiUrl}/images/${key}`;
 }
 
+/** A file the client holds itself, rather than a key the api can address. */
+export function isLocalPick(src: string): boolean {
+  return src.startsWith("data:");
+}
+
+/**
+ * What a form's file field renders. Only a preview renders a local pick as
+ * itself; a stored answer is whatever the client sent, so it stays a key under
+ * the api even there.
+ */
+export function fileFieldSrc({
+  src,
+  apiUrl,
+  previewMode,
+}: {
+  src: string;
+  apiUrl: string;
+  previewMode?: boolean;
+}): string {
+  return previewMode && isLocalPick(src)
+    ? src
+    : uploadSrc({ key: src, apiUrl });
+}
+
 /** Leaves anything already addressable — absolute URL, data uri, path — alone. */
 export function resolveUploadSrc({
   src,

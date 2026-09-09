@@ -1,8 +1,5 @@
 import type { CustomComponentProps } from "@alliance/shared/forms/customComponents";
-import {
-  shareLinkTargetFromConfig,
-  useShareLink,
-} from "@alliance/shared/forms/useShareLink";
+import { useShareUrlDisplay } from "@alliance/shared/forms/useShareLink";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { setStringAsync as setClipboardStringAsync } from "expo-clipboard";
@@ -14,10 +11,7 @@ import Text from "../system/Text";
 const ShareUrlComponent = ({ field }: CustomComponentProps) => {
   const [copied, setCopied] = useState(false);
 
-  const target = shareLinkTargetFromConfig(field.componentConfig);
-  const isConfigured = target !== null;
-
-  const { data: shareUrl, isPending, isError } = useShareLink(target);
+  const { isConfigured, shareUrl, message, muted } = useShareUrlDisplay(field);
 
   useEffect(() => {
     if (!copied) return;
@@ -41,17 +35,10 @@ const ShareUrlComponent = ({ field }: CustomComponentProps) => {
     );
   }
 
-  const isLoading = isPending;
-  const message = isError
-    ? "Unable to load share link"
-    : isLoading
-      ? "Loading…"
-      : shareUrl;
-  const showMuted = isLoading || isError || !shareUrl;
   return (
     <Card cardStyle={CardStyle.Grey} className="flex-row items-center !p-0">
       <Text
-        className={cn("flex-1 p-2 pl-3", showMuted && "text-zinc-500")}
+        className={cn("flex-1 p-2 pl-3", muted && "text-zinc-500")}
         numberOfLines={1}
         ellipsizeMode="middle"
       >
@@ -61,7 +48,7 @@ const ShareUrlComponent = ({ field }: CustomComponentProps) => {
         color={ButtonColor.Transparent}
         size={ButtonSize.Custom}
         onPress={handleCopy}
-        disabled={showMuted}
+        disabled={muted}
         className="px-3 py-3"
         title={copied ? "Copied!" : "Copy"}
       />

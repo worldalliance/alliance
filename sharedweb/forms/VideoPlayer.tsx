@@ -1,3 +1,4 @@
+import { usePreviewMode } from "@alliance/shared/forms/previewMode";
 import { useVideoAnalytics } from "@alliance/shared/lib/useVideoAnalytics";
 import {
   SHOWS_SPINNER,
@@ -22,6 +23,7 @@ export default function VideoPlayer({
   videoId,
   caption,
 }: VideoPlayerProps) {
+  const previewMode = usePreviewMode();
   // The element is in state, not a ref, so the attach effect re-runs against
   // whichever element is mounted, and `key={attempt}` mounts a fresh one per retry.
   const [video, setVideo] = useState<HTMLVideoElement | null>(null);
@@ -34,7 +36,7 @@ export default function VideoPlayer({
   const { trackPlay, trackComplete, trackTimeUpdate } = useVideoAnalytics({
     src,
     videoId,
-    enabled: manifestUrl !== null,
+    enabled: manifestUrl !== null && !previewMode,
   });
 
   useEffect(() => {

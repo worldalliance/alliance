@@ -1,6 +1,7 @@
 import {
   changedPhoto,
   echoesStoredKey,
+  fileFieldSrc,
   isUploadKey,
   resolveSafeUploadSrc,
   resolveUploadSrc,
@@ -35,6 +36,32 @@ describe("uploadSrc", () => {
     expect(
       uploadSrc({ key: "1770255651460.webp", apiUrl: "http://localhost:3000" }),
     ).toBe("http://localhost:3000/images/1770255651460.webp");
+  });
+});
+
+describe("fileFieldSrc", () => {
+  const at = (src: string, previewMode?: boolean) =>
+    fileFieldSrc({ src, apiUrl: "http://localhost:3000", previewMode });
+
+  it("renders an un-uploaded pick from its data uri, previewing", () => {
+    expect(at("data:image/webp;base64,UklGRg==", true)).toBe(
+      "data:image/webp;base64,UklGRg==",
+    );
+  });
+
+  it("keeps a stored data uri under the api, so a submitted one can't render", () => {
+    expect(at("data:image/webp;base64,UklGRg==")).toBe(
+      "http://localhost:3000/images/data:image/webp;base64,UklGRg==",
+    );
+  });
+
+  it("keeps every other answer under the api, off-origin urls included", () => {
+    expect(at("1770255651460.webp", true)).toBe(
+      "http://localhost:3000/images/1770255651460.webp",
+    );
+    expect(at("https://evil.example/beacon.png", true)).toBe(
+      "http://localhost:3000/images/https://evil.example/beacon.png",
+    );
   });
 });
 
