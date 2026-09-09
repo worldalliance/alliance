@@ -40,7 +40,7 @@ import {
   stepBefore,
 } from "./flow";
 import { GrantmakingCard } from "./GrantmakingCard";
-import { JOIN_PHASE_MS, JoinPhase, type FloodOrigin } from "./joinPhase";
+import { JOIN_PHASE_MS, JoinPhase } from "./joinPhase";
 import { MobileAppFooter, MobileAppStep } from "./MobileAppStep";
 import "./onboarding.css";
 import {
@@ -69,20 +69,15 @@ export function meta() {
 /** The closing CTA sends people back up to the form rather than off the page. */
 const ACCOUNT_ANCHOR = "#create-account";
 
+const PANEL_STYLE: StyleWithVars = {
+  "--ob-leave": `${JOIN_PHASE_MS[JoinPhase.Leaving]}ms`,
+};
+
 /** `--ob-tone-ink` is the colour the footer's white primary button letters in. */
 const TONE_CLASS: Record<PanelTone, string> = {
   [PanelTone.Navy]: "bg-[var(--ob-navy)] [--ob-tone-ink:var(--ob-navy)]",
   [PanelTone.Green]: "bg-[var(--ob-green)] [--ob-tone-ink:var(--ob-green)]",
 };
-
-function floodStyle(origin: FloodOrigin): StyleWithVars {
-  return {
-    "--ob-flood-top": `${origin.top}px`,
-    "--ob-flood-left": `${origin.left}px`,
-    "--ob-flood-width": `${origin.width}px`,
-    "--ob-flood-height": `${origin.height}px`,
-  };
-}
 
 const OnboardingPage = () => {
   useSiteBackground();
@@ -117,10 +112,7 @@ const OnboardingPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [joinPhase, setJoinPhase] = useState(JoinPhase.Idle);
-  const [floodOrigin, setFloodOrigin] = useState<FloodOrigin | null>(null);
   const registeredRef = useRef(false);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const receivedBarRef = useRef<HTMLDivElement>(null);
 
   const goTo = useCallback(
     (next: OnboardingStep) => {
@@ -198,34 +190,15 @@ const OnboardingPage = () => {
         return;
       case JoinPhase.Received:
         return hold(() => {
-          const panel = panelRef.current?.getBoundingClientRect();
-          const bar = receivedBarRef.current?.getBoundingClientRect();
-          if (panel && bar) {
-            setFloodOrigin({
-              top: bar.top - panel.top,
-              left: bar.left - panel.left,
-              width: bar.width,
-              height: bar.height,
-            });
-          }
-          setJoinPhase(JoinPhase.Flooding);
-        });
-      case JoinPhase.Flooding:
-        // The flood is already the walkthrough's green, so handing straight
-        // over lets the dialogue shrink out of it rather than cutting.
-        return hold(() => {
           if (mobileWeb) {
             goTo(OnboardingStep.MobileApp);
-            setJoinPhase(JoinPhase.Settling);
+            setJoinPhase(JoinPhase.Idle);
             return;
           }
-          void enterPlatform();
+          setJoinPhase(JoinPhase.Leaving);
         });
-      case JoinPhase.Settling:
-        return hold(() => {
-          setJoinPhase(JoinPhase.Idle);
-          setFloodOrigin(null);
-        });
+      case JoinPhase.Leaving:
+        return hold(() => void enterPlatform());
       default:
         throw new Error(`unknown join phase: ${joinPhase satisfies never}`);
     }
@@ -355,7 +328,6 @@ const OnboardingPage = () => {
                 onSignedNameChange={setSignedName}
                 error={error}
                 received={joinPhase !== JoinPhase.Idle}
-                receivedBarRef={receivedBarRef}
               />
             ) : (
               <p
@@ -410,26 +382,17 @@ const OnboardingPage = () => {
         </div>
 
         <div
-          ref={panelRef}
           className={cn(
             "ob-panel z-50",
             isAccount ? "ob-panel--intro hidden md:block" : "ob-panel--full",
+            joinPhase === JoinPhase.Leaving && "ob-panel--leaving",
             TONE_CLASS[STEP_TONE[step]],
           )}
+          style={PANEL_STYLE}
         >
           <div key={step} className="relative size-full">
             {panelBody()}
           </div>
-          {floodOrigin && (
-            <div
-              className={cn(
-                "ob-flood z-10",
-                joinPhase === JoinPhase.Settling && "ob-flood--out",
-              )}
-              style={floodStyle(floodOrigin)}
-              aria-hidden
-            />
-          )}
           {filled > 0 && <ProgressTrack filled={filled} />}
         </div>
       </div>

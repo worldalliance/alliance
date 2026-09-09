@@ -1,10 +1,9 @@
 import { href } from "react-router";
 
-/** How long the join confirmation holds before the platform takes over. */
 export const WALKTHROUGH_PARAM = "walkthrough";
 
-/** Present only on the hop out of the sign-up flow, which plays the shrink. */
-export const TOUR_ENTER_PARAM = "tour";
+/** Present only on the hop out of sign-up, which plays the white intro. */
+export const TOUR_INTRO_PARAM = "intro";
 
 /** Goes on the element a step points at, as `data-walkthrough`. */
 export enum WalkthroughAnchor {
@@ -71,5 +70,5 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
 ];
 
 export function walkthroughStartHref(): string {
-  return `${WALKTHROUGH_STEPS[0].path}?${WALKTHROUGH_PARAM}=0&${TOUR_ENTER_PARAM}=enter`;
+  return `${WALKTHROUGH_STEPS[0].path}?${WALKTHROUGH_PARAM}=0&${TOUR_INTRO_PARAM}=1`;
 }

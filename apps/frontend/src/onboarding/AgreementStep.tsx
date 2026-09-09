@@ -6,7 +6,6 @@ import type {
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { Check } from "lucide-react";
-import type { RefObject } from "react";
 import { href, Link } from "react-router";
 import { riseStyle, StepHeadline } from "./chrome";
 
@@ -142,7 +141,6 @@ export function AgreementStep({
   onSignedNameChange,
   error,
   received,
-  receivedBarRef,
 }: {
   contract: ContractDto;
   inviter: ReferrerProfileDto | null;
@@ -156,7 +154,6 @@ export function AgreementStep({
   error: string | null;
   /** Only after Join is pressed, which is what the bar confirms. */
   received: boolean;
-  receivedBarRef: RefObject<HTMLDivElement | null>;
 }) {
   return (
     <>
@@ -220,10 +217,10 @@ export function AgreementStep({
           </div>
 
           <div
-            className="grid transition-[grid-template-rows] duration-500 ease-out"
+            className="grid transition-[grid-template-rows] duration-[380ms] ease-out"
             style={{ gridTemplateRows: received ? "1fr" : "0fr" }}
           >
-            <div ref={receivedBarRef} className="overflow-hidden">
+            <div className="overflow-hidden">
               <p
                 className="flex items-center gap-2 bg-[var(--color-green)] px-6 py-2.5 text-[length:var(--ob-ui)] font-medium text-white sm:px-7"
                 role="status"

@@ -1,25 +1,23 @@
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import type { StyleWithVars } from "@alliance/sharedweb/ui/cssVars";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import "../onboarding.css";
 import { MOCK_PARAM } from "../useMockTasks";
 import {
-  TOUR_ENTER_PARAM,
+  TOUR_INTRO_PARAM,
   WALKTHROUGH_PARAM,
   WALKTHROUGH_STEPS,
   type WalkthroughAnchor,
 } from "./steps";
+import { WalkthroughIntro } from "./WalkthroughIntro";
 
 /** How long a step waits for its anchor before settling for no spotlight. */
 const ANCHOR_TIMEOUT_MS = 1800;
 
 /** Frames an anchor may go missing for mid-render before the spotlight drops. */
 const MISSES_BEFORE_DROP = 12;
-
-const SHRINK_MS = 780;
 
 const PADDING = 8;
 
@@ -142,15 +140,6 @@ function scrollDelta(
   return 0;
 }
 
-function shrinkStyle(box: Box): StyleWithVars {
-  return {
-    "--ob-tour-top": `${box.top}px`,
-    "--ob-tour-left": `${box.left}px`,
-    "--ob-tour-width": `${box.width}px`,
-    "--ob-tour-height": `${box.height}px`,
-  };
-}
-
 export function Walkthrough() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
@@ -165,7 +154,18 @@ export function Walkthrough() {
   const [measured, setMeasured] = useState<Measurement | null>(null);
   const [dialogue, setDialogue] = useState<HTMLDivElement | null>(null);
   const [dialogueBox, setDialogueBox] = useState<Box | null>(null);
-  const entering = searchParams.get(TOUR_ENTER_PARAM) !== null;
+
+  const intro = searchParams.get(TOUR_INTRO_PARAM) !== null;
+
+  const endIntro = useCallback(() => {
+    setSearchParams(
+      (params) => {
+        params.delete(TOUR_INTRO_PARAM);
+        return params;
+      },
+      { replace: true, preventScrollReset: true },
+    );
+  }, [setSearchParams]);
 
   const mocked = searchParams.get(MOCK_PARAM) === "1";
   const stepHref = useCallback(
@@ -181,7 +181,7 @@ export function Walkthrough() {
     setSearchParams(
       (params) => {
         params.delete(WALKTHROUGH_PARAM);
-        params.delete(TOUR_ENTER_PARAM);
+        params.delete(TOUR_INTRO_PARAM);
         return params;
       },
       { replace: true, preventScrollReset: true },
@@ -214,22 +214,6 @@ export function Walkthrough() {
       height: r.height,
     });
   }, [dialogue, index]);
-
-  useEffect(() => {
-    if (!entering) return;
-    const timer = setTimeout(
-      () =>
-        setSearchParams(
-          (params) => {
-            params.delete(TOUR_ENTER_PARAM);
-            return params;
-          },
-          { replace: true, preventScrollReset: true },
-        ),
-      SHRINK_MS,
-    );
-    return () => clearTimeout(timer);
-  }, [entering, setSearchParams]);
 
   // A step whose anchor never turns up still gets its say; it just loses the
   // spotlight rather than skipping and jumping the count.
@@ -313,61 +297,60 @@ export function Walkthrough() {
       data-ob-tour
       className={cn("pointer-events-none fixed inset-0", zIndex.modal)}
     >
-      {spotlight ? (
-        <Spotlight box={spotlight} />
-      ) : (
-        <div className="pointer-events-auto fixed inset-0 bg-black/60" />
-      )}
-
-      {entering && dialogueBox && (
-        <div
-          className="ob-tour-shrink z-10"
-          style={shrinkStyle(dialogueBox)}
-          aria-hidden
-        />
-      )}
-
+      {/* The dim and the dialogue wait for the platform to land, so the two
+          arrive together rather than under the white. */}
       <div
-        ref={setDialogue}
-        role="dialog"
-        aria-live="polite"
-        className={cn(
-          "pointer-events-auto fixed bottom-4 left-1/2 z-10 w-[min(30rem,calc(100vw-1.5rem))]",
-          "-translate-x-1/2 rounded-xl bg-[var(--ob-green)] p-4 text-white sm:bottom-8 sm:p-5",
-          "shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)] transition-opacity duration-300",
-          entering && "opacity-0",
-        )}
+        className={cn("transition-opacity duration-300", intro && "opacity-0")}
       >
-        <div className="flex items-start justify-between gap-4">
-          <p className="text-[length:var(--ob-body)] font-semibold">
-            {step.title()}
+        {spotlight ? (
+          <Spotlight box={spotlight} />
+        ) : (
+          <div className="pointer-events-auto fixed inset-0 bg-black/60" />
+        )}
+
+        <div
+          ref={setDialogue}
+          role="dialog"
+          aria-live="polite"
+          className={cn(
+            "pointer-events-auto fixed bottom-4 left-1/2 z-10 w-[min(30rem,calc(100vw-1.5rem))]",
+            "-translate-x-1/2 rounded-xl bg-[var(--ob-green)] p-4 text-white sm:bottom-8 sm:p-5",
+            "shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]",
+          )}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <p className="text-[length:var(--ob-body)] font-semibold">
+              {step.title()}
+            </p>
+            <span className="shrink-0 text-[length:var(--ob-caption)] text-white/60 tabular-nums">
+              {index + 1} of {WALKTHROUGH_STEPS.length}
+            </span>
+          </div>
+          <p className="mt-1 text-[length:var(--ob-ui)] leading-snug text-pretty text-white/85">
+            {step.body()}
           </p>
-          <span className="shrink-0 text-[length:var(--ob-caption)] text-white/60 tabular-nums">
-            {index + 1} of {WALKTHROUGH_STEPS.length}
-          </span>
-        </div>
-        <p className="mt-1 text-[length:var(--ob-ui)] leading-snug text-pretty text-white/85">
-          {step.body()}
-        </p>
-        <div className="mt-3 sm:mt-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              color={ButtonColor.Outline}
-              className={cn(TOUR_BUTTON, TOUR_SECONDARY)}
-              onClick={close}
-            >
-              Skip
-            </Button>
-            <Button
-              color={ButtonColor.WhiteBorderless}
-              className={cn(TOUR_BUTTON, TOUR_PRIMARY)}
-              onClick={advance}
-            >
-              {isLast ? "Get started" : "Next"}
-            </Button>
+          <div className="mt-3 sm:mt-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                color={ButtonColor.Outline}
+                className={cn(TOUR_BUTTON, TOUR_SECONDARY)}
+                onClick={close}
+              >
+                Skip
+              </Button>
+              <Button
+                color={ButtonColor.WhiteBorderless}
+                className={cn(TOUR_BUTTON, TOUR_PRIMARY)}
+                onClick={advance}
+              >
+                {isLast ? "Get started" : "Next"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
+
+      {intro && <WalkthroughIntro onDone={endIntro} />}
     </div>
   );
 }
