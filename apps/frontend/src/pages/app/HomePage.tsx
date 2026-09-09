@@ -3,7 +3,6 @@ import { ActionDto, FollowUpFormDto } from "@alliance/shared/client";
 import {
   ActionWithAwayStatus,
   homePagePriorityComparator,
-  showActionInSidebarList,
   withOptimisticRelation,
 } from "@alliance/shared/lib/actionUtils";
 import {
@@ -105,8 +104,6 @@ const HomePage = () => {
     completedActions,
     activeCompletableFollowUpForms,
   } = useHomePageActions(actions);
-
-  const numTodo = todoActions.filter(showActionInSidebarList).length;
 
   const hasOnboardingTasks = useMemo(
     () => todoActions.some((a) => a.onboarding),
@@ -213,8 +210,6 @@ const HomePage = () => {
     : taskNavigatorItems[taskNavigatorIndex];
 
   const taskNavigatorListContent = useMemo(() => {
-    const taskNavigatorCurrentWeekSidebarActions =
-      currentWeekTodoActions.filter(showActionInSidebarList);
     const activeActionId =
       selectedTaskNavigatorItem?.kind === "action"
         ? selectedTaskNavigatorItem.action.id
@@ -224,20 +219,19 @@ const HomePage = () => {
         ? selectedTaskNavigatorItem.followUpForm.id
         : null;
     const hasTaskSectionContent =
-      taskNavigatorCurrentWeekSidebarActions.length > 0 ||
+      currentWeekTodoActions.length > 0 ||
       completedActions.length > 0 ||
       followUpParentActionsNotInCompletedList.length > 0;
     return (
       <>
         {hasTaskSectionContent && (
           <TaskNavigatorListShell>
-            {taskNavigatorCurrentWeekSidebarActions.length > 0 && (
+            {currentWeekTodoActions.length > 0 && (
               <p className="text-zinc-600 mb-1">
                 <span className="text-green font-medium mr-0.5">
-                  {taskNavigatorCurrentWeekSidebarActions.length} left
+                  {currentWeekTodoActions.length} left
                 </span>
-                {numTodo > 0 &&
-                  remainingTasksEstimatedTimeCurrentWeek > 0 &&
+                {remainingTasksEstimatedTimeCurrentWeek > 0 &&
                   ` for a total of ${remainingTasksEstimatedTimeCurrentWeek} minutes`}
               </p>
             )}
@@ -325,7 +319,6 @@ const HomePage = () => {
     followUpFormsByActionId,
     followUpParentActionsNotInCompletedList,
     nextWeekTodoActions,
-    numTodo,
     selectedTaskNavigatorItem,
     setTaskNavigatorIndex,
     taskNavigatorItems,
