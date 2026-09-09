@@ -402,6 +402,7 @@ describe("a runtime that rejects every zone", () => {
           tz: "Not/AZone",
           labelLeft: "Nowhere — AZone",
           labelSub: null,
+          searchTerms: [],
           searchText: "nowhere — azone not/azone",
           offsetMins: null,
           timeLabel: null,
@@ -712,6 +713,35 @@ describe("searching the zone list", () => {
 
   it("still finds a zone by the name Intl gives it", () => {
     expect(zonesMatching("india standard")).toEqual(["Asia/Kolkata"]);
+  });
+
+  it("finds a zone by a name neither of its labels writes", () => {
+    expect(zonesMatching("greenwich")).toContain("Europe/London");
+  });
+
+  const subMatching = (query: string, tz: string) => {
+    const { result } = renderHook(() => useTimeZoneSelect({}));
+    act(() => result.current.setQuery(query));
+    return result.current.filtered.find((i) => i.tz === tz)?.labelSub;
+  };
+
+  it("shows the search term a query matched on", () => {
+    expect(subMatching("greenwich", "Europe/London")).toBe("Greenwich");
+  });
+
+  it("keeps the curated label where the query matched a line on show", () => {
+    expect(subMatching("sri lanka", "Asia/Kolkata")).toBe(
+      "India, Sri Lanka Time",
+    );
+  });
+
+  it("leaves the trigger alone, since nothing was typed to reach it", () => {
+    const { result } = renderHook(() =>
+      useTimeZoneSelect({ value: "Europe/London" }),
+    );
+    act(() => result.current.setQuery("greenwich"));
+
+    expect(result.current.selected.labelSub).toBe("UK, Ireland, Lisbon Time");
   });
 
   const labelSubOf = (tz: string) => {

@@ -6,6 +6,8 @@ export type TzOption = {
   group: string;
   label: string;
   tz: string;
+  /** Names a search matches the row on, beyond what its labels write. */
+  searchTerms?: string[];
 };
 
 export const TZ_OPTIONS: TzOption[] = [
@@ -47,7 +49,12 @@ export const TZ_OPTIONS: TzOption[] = [
   { group: "America", label: "Brasilia Time", tz: "America/Sao_Paulo" },
 
   // Europe
-  { group: "Europe", label: "UK, Ireland, Lisbon Time", tz: "Europe/London" },
+  {
+    group: "Europe",
+    label: "UK, Ireland, Lisbon Time",
+    tz: "Europe/London",
+    searchTerms: ["Greenwich"],
+  },
   { group: "Europe", label: "Central European Time", tz: "Europe/Paris" },
   { group: "Europe", label: "Eastern European Time", tz: "Europe/Athens" },
   { group: "Europe", label: "Turkey Time", tz: "Europe/Istanbul" },
@@ -306,9 +313,10 @@ function prettyCityFromIana(tz: string): string {
 export type TimeZoneSelectItem = {
   tz: string;
   labelLeft: string;
-  /** The curated label, where it names a place the name does not. A search
-   * matches on it, so the row shows it. */
+  /** The line under the name: the curated label where it names a place the
+   * name does not, or the search term the query matched. */
   labelSub: string | null;
+  searchTerms: string[];
   searchText: string;
   offsetMins: number | null;
   timeLabel: string | null;
@@ -322,6 +330,7 @@ type BaseLabel = {
   tz: string;
   labelLeft: string;
   labelSub: string | null;
+  searchTerms: string[];
   searchText: string;
 };
 let cachedLabels: BaseLabel[] | null = null;
@@ -366,21 +375,21 @@ function namesMoreThan({
 // A zone this runtime cannot format is still one the server schedules in, so
 // its row stays, under the curated label when Intl has no name for it.
 //
-// It stays searchable where Intl's name displaces it, since it is the only
-// place a zone's other countries are named: Intl calls Asia/Kolkata "India
-// Standard Time", which answers nobody searching for Sri Lanka.
+// It stays searchable where Intl's name displaces it: Intl calls Asia/Kolkata
+// "India Standard Time", which answers nobody searching for Sri Lanka.
 function getBaseLabels(): BaseLabel[] {
   if (cachedLabels) return cachedLabels;
 
-  cachedLabels = TZ_OPTIONS.map(({ tz, label }) => {
+  cachedLabels = TZ_OPTIONS.map(({ tz, label, searchTerms = [] }) => {
     const generic = getGenericLabelFromIntl(tz);
     const city = prettyCityFromIana(tz);
     const left = `${generic ?? label} — ${city}`;
-    const searchable = generic ? [left, label, tz] : [left, tz];
+    const searchable = [left, ...(generic ? [label] : []), ...searchTerms, tz];
     return {
       tz,
       labelLeft: left,
       labelSub: generic && namesMoreThan({ label, shown: left }) ? label : null,
+      searchTerms,
       searchText: searchable.join(" ").toLowerCase(),
     };
   });
@@ -412,6 +421,17 @@ function baseItems(minute: number): BaseItem[] {
 
   cachedBase = { minute, items };
   return items;
+}
+
+// A row holding none of what was typed reads as a wrong answer, so a term that
+// matched off the row takes the second line while the query stands.
+function subForQuery(item: TimeZoneSelectItem, query: string): string | null {
+  const shown = `${item.labelLeft} ${item.labelSub ?? ""}`.toLowerCase();
+  if (shown.includes(query)) return item.labelSub;
+  return (
+    item.searchTerms.find((term) => term.toLowerCase().includes(query)) ??
+    item.labelSub
+  );
 }
 
 export type UseTimeZoneSelectParams = {
@@ -460,6 +480,7 @@ export function useTimeZoneSelect({
         tz: internalValue,
         labelLeft: internalValue,
         labelSub: null,
+        searchTerms: [],
         searchText: internalValue.toLowerCase(),
         offsetMins: getOffsetMinutes(internalValue, when),
         timeLabel: formatTimeInTz(internalValue, hour12, when),
@@ -469,8 +490,10 @@ export function useTimeZoneSelect({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = q ? items.filter((i) => i.searchText.includes(q)) : items;
-    return list;
+    if (!q) return items;
+    return items
+      .filter((i) => i.searchText.includes(q))
+      .map((i) => ({ ...i, labelSub: subForQuery(i, q) }));
   }, [items, query]);
 
   useEffect(() => {
