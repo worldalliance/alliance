@@ -3,6 +3,7 @@ import { CommentDto } from "@alliance/shared/client";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { client } from "../client/client.gen";
 import * as realSdk from "../client/sdk.gen";
+import { registerAnalytics, type AnalyticsBackend } from "./analytics";
 
 let unreachable = false;
 let refused: { statusCode: number; message: string } | null = null;
@@ -13,20 +14,24 @@ let throughRealClient = false;
 const clientConfig = client.getConfig();
 
 const reported: {
-  event: ExceptionEvent;
+  event: unknown;
   error: unknown;
   properties: unknown;
 }[] = [];
 
-jest.mock("./analytics", () => ({
-  captureException: (
-    event: ExceptionEvent,
-    error: unknown,
-    properties: unknown,
-  ) => {
-    reported.push({ event, error, properties });
+// Recorded through the backend rather than a module mock of ./analytics: bun's
+// module mocks outlive the file that installs them, and analytics.test.ts tests
+// the real captureException.
+const recorder: AnalyticsBackend = {
+  capture: () => {},
+  captureException: (error, properties) => {
+    reported.push({
+      event: properties?.event,
+      error,
+      properties: properties?.properties,
+    });
   },
-}));
+};
 
 jest.mock("@alliance/shared/client", () => {
   // Read before the mock takes the name over, or real(options) lands back in
@@ -50,11 +55,15 @@ jest.mock("@alliance/shared/client", () => {
 
 import { useDeleteComment } from "./useDeleteComment";
 
+beforeEach(() => {
+  registerAnalytics(recorder);
+  reported.length = 0;
+});
+
 afterEach(() => {
   unreachable = false;
   refused = null;
   deleted.length = 0;
-  reported.length = 0;
   throughRealClient = false;
   client.setConfig({ ...clientConfig, fetch: undefined, throwOnError: false });
   cleanup();

@@ -3,6 +3,7 @@ import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { CommentDto, CommentParentObject } from "../client";
 import { client } from "../client/client.gen";
 import * as realSdk from "../client/sdk.gen";
+import { registerAnalytics, type AnalyticsBackend } from "./analytics";
 
 const requests: { endpoint: string; id: string }[] = [];
 // A null thread stands for a request the server refused, answered with the
@@ -46,20 +47,24 @@ const record =
   };
 
 const reported: {
-  event: ExceptionEvent;
+  event: unknown;
   error: unknown;
   properties: unknown;
 }[] = [];
 
-jest.mock("./analytics", () => ({
-  captureException: (
-    event: ExceptionEvent,
-    error: unknown,
-    properties: unknown,
-  ) => {
-    reported.push({ event, error, properties });
+// Recorded through the backend rather than a module mock of ./analytics: bun's
+// module mocks outlive the file that installs them, and analytics.test.ts tests
+// the real captureException.
+const recorder: AnalyticsBackend = {
+  capture: () => {},
+  captureException: (error, properties) => {
+    reported.push({
+      event: properties?.event,
+      error,
+      properties: properties?.properties,
+    });
   },
-}));
+};
 
 jest.mock("@alliance/shared/client", () => ({
   forumFindCommentsForPost: record("post", realSdk.forumFindCommentsForPost),
@@ -102,9 +107,13 @@ const comment = (id: number): CommentDto => ({
   editableContent: { body: "a comment", attachments: [] },
 });
 
+beforeEach(() => {
+  registerAnalytics(recorder);
+  reported.length = 0;
+});
+
 afterEach(() => {
   requests.length = 0;
-  reported.length = 0;
   served = [];
   refusal = DEFAULT_REFUSAL;
   unreachable = false;
