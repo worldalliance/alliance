@@ -290,3 +290,18 @@ export const forgotPassword = {
       "A link to reset your password has been sent to your email address.",
   },
 } as const;
+
+// Arriving is all that answers a retry, so the name has to separate a thread
+// holding nothing from one a filter emptied.
+export const commentThreadLanding = ({
+  shown,
+  total,
+}: {
+  shown: number;
+  total: number;
+}) =>
+  shown > 0
+    ? "Comments"
+    : total > 0
+      ? "Comments, none match the filter"
+      : "Comments, none yet";

@@ -67,6 +67,8 @@ const defaultCtx = {
   ) => Promise<Result<void, string>>,
   submitErrorFor: fn() as (parentId: number | null) => string | null,
   clearSubmitError: fn() as () => void,
+  deleteErrorFor: fn() as (replyId: number) => string | null,
+  clearDeleteError: fn() as (replyId: number) => void,
   onLikeReply: fn() as (id: number, unlike?: boolean) => Promise<void>,
   onPinReply: fn() as (id: number) => Promise<void>,
   newlyAddedReplies: new Set<number>(),

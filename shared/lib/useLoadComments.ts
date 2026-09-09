@@ -1,3 +1,6 @@
+import { ExceptionEvent } from "@alliance/common/analytics";
+import { refusalMessage } from "@alliance/common/errorMessage";
+import { R } from "@alliance/common/result";
 import {
   CommentDto,
   CommentParentObject,
@@ -5,14 +8,46 @@ import {
   forumFindCommentsForActivity,
   forumFindCommentsForPost,
 } from "@alliance/shared/client";
-import { useCallback, useEffect, useState } from "react";
+import { replaceEqualDeep } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { captureException } from "./analytics";
+import { useHeldOn } from "./useHeldOn";
 
-type ThreadFetcher = (id: string) => Promise<{ data?: CommentDto[] }>;
+const MIN_SPIN_MS = 400;
 
+const STATUS_LOADING = "Loading comments";
+const STATUS_LOADED = "Comments loaded";
+const STATUS_FAILED = "Loading comments failed";
+
+enum AskedOutcome {
+  Loaded = "loaded",
+  Failed = "failed",
+}
+
+const ASKED_END: Record<
+  AskedOutcome,
+  { status: string; movesReader: boolean }
+> = {
+  [AskedOutcome.Loaded]: { status: STATUS_LOADED, movesReader: true },
+  [AskedOutcome.Failed]: { status: STATUS_FAILED, movesReader: false },
+};
+
+const LOAD_FAILED = "Failed to load comments";
+const SESSION_EXPIRED =
+  "Your session has expired. Sign in again to load the replies.";
+
+type ThreadFetcher = (
+  id: string,
+) => Promise<{ data?: CommentDto[]; error?: unknown; response: Response }>;
+
+// Mobile configures the client to throw on a refusal, which loses the response
+// the status below is read off.
 const THREAD_FETCHERS: Record<CommentParentObject, ThreadFetcher> = {
-  post: (id) => forumFindCommentsForPost({ path: { id } }),
-  activity: (id) => forumFindCommentsForActivity({ path: { id } }),
-  action: (id) => forumFindCommentsForAction({ path: { id } }),
+  post: (id) => forumFindCommentsForPost({ path: { id }, throwOnError: false }),
+  activity: (id) =>
+    forumFindCommentsForActivity({ path: { id }, throwOnError: false }),
+  action: (id) =>
+    forumFindCommentsForAction({ path: { id }, throwOnError: false }),
 };
 
 interface UseLoadCommentsInput {
@@ -33,7 +68,21 @@ export function useLoadComments({
   const [comments, setThread] = useState<CommentDto[] | null>(
     initialComments ?? null,
   );
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<{
+    message: string;
+    canRetry: boolean;
+  } | null>(null);
+  // A thread loads on mount, and after a like, a reply, a delete, whether or
+  // not anyone asked. Narrating those is noise, so only a press opens this.
+  const [asked, setAsked] = useState<{ ended: AskedOutcome | null } | null>(
+    null,
+  );
+
+  const settle = useCallback(
+    (ended: AskedOutcome) =>
+      setAsked((prev) => (prev && !prev.ended ? { ended } : prev)),
+    [],
+  );
 
   const setComments = useCallback(
     (update: (prev: CommentDto[]) => CommentDto[]) =>
@@ -41,24 +90,138 @@ export function useLoadComments({
     [],
   );
 
-  const fetchComments = useCallback(async () => {
-    const { data } = await THREAD_FETCHERS[type](objectId.toString());
-    setThread(data ?? null);
-  }, [objectId, type]);
+  const newestRequest = useRef(0);
+  // The newest request the caller has handed a thread down over.
+  const outran = useRef(0);
 
-  useEffect(() => {
-    if (initialComments) {
-      setThread(initialComments);
+  const target = `${type}:${objectId}`;
+  // A caller can hand down a thread for another object without issuing a
+  // request, so the number alone would leave the one in flight free to answer
+  // under it.
+  const shown = useRef(target);
+  shown.current = target;
+
+  const fetchComments = useCallback(async () => {
+    const request = ++newestRequest.current;
+    // The generated client leaves its fetch call unguarded, so a request that
+    // never reaches the server rejects rather than answering with an error.
+    const sent = await R.fromPromise(
+      THREAD_FETCHERS[type](objectId.toString()),
+    );
+    if (request !== newestRequest.current || target !== shown.current) return;
+    // A thread the caller handed down while this was out is at least as new as
+    // the one it asked for, so a failure here has nothing left to say. The row
+    // it would write is gone, and the hand-down answered the press. Its
+    // comments still land, since they come from a later read.
+    const reportsFailure = request > outran.current;
+    if (!sent.ok) {
+      console.error("Failed to load comments:", sent.error);
+      captureException(ExceptionEvent.LoadCommentsError, sent.error, {
+        type,
+        objectId,
+      });
+      if (reportsFailure) {
+        setFailure({ message: LOAD_FAILED, canRetry: true });
+        settle(AskedOutcome.Failed);
+      }
       return;
     }
+    const { data, error, response } = sent.value;
+    if (!data) {
+      console.error("The server refused the comment load:", error);
+      captureException(ExceptionEvent.LoadCommentsError, error, {
+        type,
+        objectId,
+        status: response.status,
+      });
+      if (reportsFailure) {
+        setFailure({
+          message: refusalMessage({
+            status: response.status,
+            error,
+            fallback: LOAD_FAILED,
+            sessionExpired: SESSION_EXPIRED,
+          }),
+          // A refusal the reader has to act on, a sign-in or a route saying
+          // no, answers a second request the same way.
+          canRetry: response.status >= 500,
+        });
+        settle(AskedOutcome.Failed);
+      }
+      return;
+    }
+    // A comment the request left equal keeps its object, so the memos
+    // downstream hit.
+    setThread((prev) => replaceEqualDeep(prev, data));
+    setFailure(null);
+    settle(AskedOutcome.Loaded);
+  }, [objectId, type, target, settle]);
+
+  // Kept per object. Matched against another object's array, an equal rebuild
+  // would skip the write and leave that object's comments on screen.
+  const handedDown = useRef<{ target: string; comments: CommentDto[] } | null>(
+    null,
+  );
+
+  // A card follows the feed that seeded it. A re-render that rebuilt an equal
+  // array is not news, and writing it back would undo a refetch the card had
+  // already done. Only the write is skipped: an equal array still outruns a
+  // request that is out, and clears the message a failed one left.
+  useEffect(() => {
+    if (!initialComments) return;
+    const held = handedDown.current;
+    const previous = held && held.target === target ? held.comments : null;
+    handedDown.current = { target, comments: initialComments };
+    outran.current = newestRequest.current;
+    setFailure(null);
+    // The thread going up takes the error row, and the control a press was on,
+    // with it. So the hand-down answers that press here, where the reader can
+    // see it land, rather than leaving it open until the load it beat gives up.
+    settle(AskedOutcome.Loaded);
+    if (previous && replaceEqualDeep(previous, initialComments) === previous) {
+      return;
+    }
+    setThread((prev) => replaceEqualDeep(prev, initialComments));
+  }, [initialComments, target, settle]);
+
+  // Swapping the object drops the thread on screen rather than leaving it
+  // under the new object's heading until the request lands.
+  useEffect(() => {
+    if (initialComments) return;
+    handedDown.current = null;
+    setThread(null);
+    setFailure(null);
     fetchComments();
   }, [initialComments, fetchComments]);
+
+  // A thread swapped in under the reader answers no press of theirs.
+  useEffect(() => setAsked(null), [target]);
+
+  // A press is never turned away. The hook drops every answer but the newest
+  // one's, and a request that hangs would leave this row's one control dead.
+  const retry = useCallback(() => {
+    setAsked({ ended: null });
+    void fetchComments();
+  }, [fetchComments]);
+
+  const ended = asked?.ended;
+  const spinning = useHeldOn(ended === null, MIN_SPIN_MS);
 
   return {
     comments,
     setComments,
-    error,
-    setError,
+    error: failure?.message ?? null,
+    canRetry: failure?.canRetry ?? false,
+    spinning,
+    // A second failure puts the same words in the error row, so its live region
+    // announces nothing. This changes on every settle.
+    status: !asked
+      ? null
+      : ended && !spinning
+        ? ASKED_END[ended].status
+        : STATUS_LOADING,
+    movesReader: ended ? ASKED_END[ended].movesReader : false,
     fetchComments,
+    retry,
   };
 }

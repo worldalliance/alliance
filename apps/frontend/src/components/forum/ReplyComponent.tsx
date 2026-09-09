@@ -6,9 +6,10 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import ClusterTag from "@alliance/sharedweb/ui/ClusterTag";
 import EditableContentForm from "@alliance/sharedweb/ui/EditableContentForm";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
+import InlineError from "@alliance/sharedweb/ui/InlineError";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
 import { formatDistanceToNow } from "date-fns";
-import { ChevronDown, Pin } from "lucide-react";
+import { ChevronDown, Pin, X } from "lucide-react";
 import { memo, useState } from "react";
 import { Link, href } from "react-router";
 import { useCommentEditing } from "../../hooks/useCommentEditing";
@@ -55,6 +56,7 @@ const ReplyContent = ({
     showClusterTags = false,
   } = ctx;
   const isExpert = expertIds.includes(reply.author.id);
+  const deleteError = ctx.deleteErrorFor(reply.id);
   const tag = ctx.tags.find((candidate) => candidate.id === reply.tagId);
   const editing = useCommentEditing(reply, ctx.onUpdateReply);
 
@@ -232,6 +234,18 @@ const ReplyContent = ({
             </div>
           </div>
         )}
+
+        <InlineError message={deleteError} className="mt-2">
+          <button
+            type="button"
+            onClick={() => ctx.clearDeleteError(reply.id)}
+            aria-label="Dismiss this message"
+            title="Dismiss this message"
+            className="p-1 hover:text-red-700"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </InlineError>
       </div>
     </div>
   );

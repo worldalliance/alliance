@@ -18,6 +18,7 @@ import {
   countCommentsByTag,
   matchesTagFilter,
 } from "@alliance/shared/lib/commentTags";
+import { commentThreadLanding } from "@alliance/shared/lib/copy";
 import { useOptionalNotifications } from "@alliance/shared/lib/useNotifications";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
 import { cn } from "@alliance/shared/styles/util";
@@ -28,9 +29,17 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@alliance/sharedweb/ui/DropdownMenu";
+import InlineError from "@alliance/sharedweb/ui/InlineError";
 import { Menu } from "@base-ui/react/menu";
-import { ArrowUpDown } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ArrowUpDown, RefreshCw } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FocusEvent,
+} from "react";
 import { Link, href } from "react-router";
 import { useAuth } from "../lib/AuthContext";
 import { CommentsProvider, useCommentTree } from "./forum/CommentsContext";
@@ -40,6 +49,24 @@ import TopLevelComposer from "./forum/TopLevelComposer";
 
 const NO_TAGS: readonly PostTagDto[] = [];
 const NO_EXPERTS: number[] = [];
+
+enum Landing {
+  None = "none",
+  Made = "made",
+  Declined = "declined",
+  Left = "left",
+}
+
+// The name has to be up before the move is made, so the state a settled load
+// lands in carries it and a declined move takes it back down: a feed puts one
+// of these under every card, and a named group on each is a stop no press
+// opened. The landing is itself the answer, so the line stays quiet after it.
+const LANDINGS: Record<Landing, { names: boolean; narrates: boolean }> = {
+  [Landing.None]: { names: true, narrates: true },
+  [Landing.Made]: { names: true, narrates: false },
+  [Landing.Declined]: { names: false, narrates: true },
+  [Landing.Left]: { names: false, narrates: false },
+};
 
 export interface CommentsProps {
   objectId: number;
@@ -252,6 +279,57 @@ const Comments = ({
     ],
   );
 
+  const thread = useRef<HTMLDivElement>(null);
+  // Focus falls to the body when the control comes out from under the reader,
+  // and a click on plain page text leaves it there too. What separates them is
+  // whether the control still held it when it went, which React answers by
+  // detaching this ref before the node leaves the document.
+  const controlHeldFocus = useRef(false);
+  const holdControl = useCallback(
+    (node: HTMLButtonElement) => () => {
+      controlHeldFocus.current = document.activeElement === node;
+    },
+    [],
+  );
+  const [landing, setLanding] = useState(Landing.None);
+
+  // The retry control unmounts with the row that carries the message, so a
+  // press that works drops the reader on the body. Only then do they land on
+  // the thread they asked for, and only if nothing has taken focus since.
+  useEffect(() => {
+    if (!tree.movesReader) {
+      setLanding(Landing.None);
+      return;
+    }
+    // A reader still at the row can see the thread already, and one who
+    // scrolled off during the load keeps their place, so nothing scrolls.
+    const lands =
+      controlHeldFocus.current && document.activeElement === document.body;
+    controlHeldFocus.current = false;
+    if (!lands) {
+      setLanding(Landing.Declined);
+      return;
+    }
+    thread.current?.focus({ preventScroll: true });
+    setLanding(
+      document.activeElement === thread.current
+        ? Landing.Made
+        : Landing.Declined,
+    );
+  }, [tree.movesReader]);
+
+  // A reader nobody moved is still owed the line, and Left is silent, so only a
+  // landing that was made demotes to it.
+  const leaveThread = useCallback((event: FocusEvent<HTMLDivElement>) => {
+    if (event.currentTarget.contains(event.relatedTarget)) return;
+    setLanding((prev) => (prev === Landing.Made ? Landing.Left : prev));
+  }, []);
+
+  // The spin holds the words back long enough for the move above to answer
+  // first, and a reader it left where they were still gets the line.
+  const named = tree.movesReader && LANDINGS[landing].names;
+  const narrated = LANDINGS[landing].narrates ? tree.status : null;
+
   const ctxValue = useMemo(
     () => ({
       user,
@@ -262,6 +340,8 @@ const Comments = ({
       onUpdateReply: tree.handleUpdateReply,
       submitErrorFor: tree.submitErrorFor,
       clearSubmitError: tree.clearSubmitError,
+      deleteErrorFor: tree.deleteErrorFor,
+      clearDeleteError: tree.clearDeleteError,
       onLikeReply: tree.handleLikeReply,
       onPinReply: tree.handlePinReply,
       newlyAddedReplies: tree.newlyAddedReplies,
@@ -282,6 +362,8 @@ const Comments = ({
       tree.handleUpdateReply,
       tree.submitErrorFor,
       tree.clearSubmitError,
+      tree.deleteErrorFor,
+      tree.clearDeleteError,
       tree.handleLikeReply,
       tree.handlePinReply,
       tree.newlyAddedReplies,
@@ -365,14 +447,51 @@ const Comments = ({
             counts={tagCounts}
           />
         )}
-        {tree.error && <div className="text-red-500">{tree.error}</div>}
-        {topLevelComments.length > 0 ? (
-          <div className="mt-3">
-            {filteredComments.map((reply) => (
-              <ReplyComponent key={reply.id} reply={reply} />
-            ))}
-          </div>
-        ) : null}
+        <InlineError message={tree.error}>
+          {tree.canRetry && (
+            <button
+              type="button"
+              ref={holdControl}
+              onClick={tree.retry}
+              aria-busy={tree.spinning}
+              aria-label="Try loading the comments again"
+              title="Try loading the comments again"
+              className="p-1 hover:text-red-700"
+            >
+              <RefreshCw
+                className={cn("w-4 h-4", tree.spinning && "animate-spin")}
+              />
+            </button>
+          )}
+        </InlineError>
+        <span role="status" className="sr-only">
+          {narrated ?? ""}
+        </span>
+        <div
+          ref={thread}
+          tabIndex={-1}
+          onBlur={leaveThread}
+          // A screen reader reads a focused container with no name of its own
+          // out in full, so the landing names the thread instead of reciting
+          // it.
+          role={named ? "group" : undefined}
+          aria-label={
+            named
+              ? commentThreadLanding({
+                  shown: filteredComments.length,
+                  total: topLevelComments.length,
+                })
+              : undefined
+          }
+          className={cn(
+            "focus:outline-none",
+            topLevelComments.length > 0 && "mt-3",
+          )}
+        >
+          {filteredComments.map((reply) => (
+            <ReplyComponent key={reply.id} reply={reply} />
+          ))}
+        </div>
       </div>
     </CommentsProvider>
   );
