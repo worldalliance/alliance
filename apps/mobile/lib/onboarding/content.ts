@@ -1,3 +1,5 @@
+import { nextMilestone } from "@alliance/shared/lib/copy";
+import { MilestoneKind, type Milestone } from "@alliance/shared/lib/milestones";
 import type { ImageSourcePropType } from "react-native";
 
 export const GATE_TITLE = "The Alliance";
@@ -87,8 +89,6 @@ export const priorities: Priority[] = [
   },
 ];
 
-export type Milestone = { members: number; label: string };
-
 /** The reachable half of the track, which is all onboarding shows. */
 export const REACHED_MILESTONES: Milestone[] = [
   {
@@ -96,9 +96,12 @@ export const REACHED_MILESTONES: Milestone[] = [
     label: "Encourage a small business to adopt a sustainability policy",
   },
   { members: 300, label: "Conduct a large-scale citizen science project" },
+  {
+    members: nextMilestone.members,
+    label: nextMilestone.action,
+    kind: MilestoneKind.Plan,
+  },
 ];
-
-export { nextMilestone as NEXT_MILESTONE } from "@alliance/shared/lib/copy";
 
 /**
  * Faces inside the action mockups on the commitment screen. Bundled rather than

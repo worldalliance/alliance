@@ -1,24 +1,13 @@
+import {
+  filledSegments,
+  milestoneKind,
+  MilestoneKind,
+  type Milestone,
+} from "@alliance/shared/lib/milestones";
 import { cn } from "@alliance/shared/styles/util";
 import type { StyleWithVars } from "@alliance/sharedweb/ui/cssVars";
 import type { ReactNode } from "react";
-import type { Milestone } from "../content";
 import { useInView } from "../hooks";
-
-/** How many whole-plus-fraction segments the current membership fills. */
-function filledSegments(milestones: Milestone[], members: number) {
-  let filled = 0;
-  for (let i = 0; i < milestones.length; i++) {
-    const from = i === 0 ? 0 : milestones[i - 1].members;
-    const to = milestones[i].members;
-    if (members >= to) {
-      filled = i + 1;
-      continue;
-    }
-    if (members > from) filled = i + (members - from) / (to - from);
-    break;
-  }
-  return filled;
-}
 
 /** Each bar waits for the one before it to finish, so the track fills in turn. */
 const BAR_FILL_MS = 620;
@@ -32,7 +21,7 @@ export enum MilestoneSize {
 const trackClasses: Record<MilestoneSize, string> = {
   [MilestoneSize.Default]: "flex flex-col gap-4 md:grid md:gap-2.5",
   [MilestoneSize.Compact]:
-    "grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-[repeat(var(--milestone-count),minmax(0,1fr))] sm:gap-2",
+    "grid grid-cols-2 gap-x-3 gap-y-3 lg:grid-cols-[repeat(var(--milestone-count),minmax(0,1fr))] lg:gap-2",
 };
 
 const labelClasses: Record<MilestoneSize, string> = {
@@ -48,6 +37,25 @@ const barClasses: Record<MilestoneSize, string> = {
 const captionClasses: Record<MilestoneSize, string> = {
   [MilestoneSize.Default]: "text-base",
   [MilestoneSize.Compact]: "text-[length:var(--ob-ui)]",
+};
+
+/* Compact balances at full width rather than capping: a percentage starves the
+   narrow cells, which are the ones already tight. Reach for `text-balance`
+   over `text-pretty`, which Firefox does not have. */
+const labelWrapClasses: Record<MilestoneSize, string> = {
+  [MilestoneSize.Default]: "ml-auto max-w-[80%]",
+  [MilestoneSize.Compact]: "text-balance",
+};
+
+const planTagClasses: Record<MilestoneSize, string> = {
+  [MilestoneSize.Default]: "text-xs",
+  [MilestoneSize.Compact]: "text-[length:var(--ob-caption)]",
+};
+
+const barToneClasses: Record<MilestoneKind, string> = {
+  [MilestoneKind.Example]: "bg-white/35",
+  [MilestoneKind.Plan]:
+    "border border-[var(--color-green)]/45 bg-[var(--color-green)]/12",
 };
 
 /* Eight compact cells overrun a phone, so the aspirational half waits for the
@@ -80,8 +88,8 @@ function MilestoneTrack({
 }) {
   const progress = filledSegments(milestones, members);
 
-  // Compact stacks into two columns on a phone, so it takes its column count
-  // from a variable the class picks up at `sm` instead of a fixed inline grid.
+  // Compact stacks into two columns below `lg`, so it takes its column count
+  // from a variable the class picks up there instead of a fixed inline grid.
   const trackStyle: StyleWithVars =
     size === MilestoneSize.Compact
       ? { "--milestone-count": milestones.length }
@@ -91,43 +99,66 @@ function MilestoneTrack({
 
   return (
     <div className={cn(trackClasses[size], className)} style={trackStyle}>
-      {milestones.map((milestone, i) => (
-        <div key={milestone.members} className="flex flex-col gap-1 md:gap-1.5">
-          <p
-            className={cn(
-              "text-right text-white tabular-nums",
-              labelClasses[size],
-            )}
-          >
-            {milestone.members.toLocaleString("en-US")}
-            {showUnit && i === 0 && " members"}
-          </p>
+      {milestones.map((milestone, i) => {
+        const kind = milestoneKind(milestone);
+
+        return (
           <div
-            className={cn(
-              "overflow-hidden rounded-[5px] bg-white/35",
-              barClasses[size],
-            )}
+            key={milestone.members}
+            className="flex flex-col gap-1 md:gap-1.5"
           >
+            <p
+              className={cn(
+                "text-right text-white tabular-nums",
+                labelClasses[size],
+              )}
+            >
+              {milestone.members.toLocaleString("en-US")}
+              {showUnit && i === 0 && " members"}
+            </p>
             <div
-              className="h-full origin-left rounded-[5px] bg-white ease-out"
-              style={{
-                transform: `scaleX(${inView ? Math.min(Math.max(progress - i, 0), 1) : 0})`,
-                transitionProperty: "transform",
-                transitionDuration: `${BAR_FILL_MS}ms`,
-                transitionDelay: `${i * BAR_FILL_MS}ms`,
-              }}
-            />
-          </div>
-          <p
-            className={cn(
-              "text-right leading-tight text-white",
-              captionClasses[size],
+              className={cn(
+                "overflow-hidden rounded-[5px]",
+                barToneClasses[kind],
+                barClasses[size],
+              )}
+            >
+              <div
+                className="h-full origin-left rounded-[5px] bg-white ease-out"
+                style={{
+                  transform: `scaleX(${inView ? Math.min(Math.max(progress - i, 0), 1) : 0})`,
+                  transitionProperty: "transform",
+                  transitionDuration: `${BAR_FILL_MS}ms`,
+                  transitionDelay: `${i * BAR_FILL_MS}ms`,
+                }}
+              />
+            </div>
+            <p
+              className={cn(
+                "text-right leading-tight text-white",
+                labelWrapClasses[size],
+                captionClasses[size],
+              )}
+            >
+              {milestone.label}
+            </p>
+            {kind === MilestoneKind.Plan && (
+              <p
+                className={cn(
+                  "flex items-center justify-end gap-1.5 tracking-wide text-white/70 uppercase",
+                  planTagClasses[size],
+                )}
+              >
+                <span
+                  className="size-1.5 rounded-full bg-[var(--color-green)]"
+                  aria-hidden
+                />
+                Plan
+              </p>
             )}
-          >
-            {milestone.label}
-          </p>
-        </div>
-      ))}
+          </div>
+        );
+      })}
     </div>
   );
 }

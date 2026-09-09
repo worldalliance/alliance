@@ -6,7 +6,6 @@ import {
   COMMUNITY_HEADLINE,
   MINUTES_HEADLINE,
   MINUTES_NOTE,
-  NEXT_MILESTONE,
   priorities,
   PRIORITIES_NOTE,
   REACHED_MILESTONES,
@@ -14,7 +13,6 @@ import {
   SCALE_NOTE,
 } from "../../lib/onboarding/content";
 import { motion, useOnboardingScale } from "../../lib/onboarding/scale";
-import Text, { FontWeight } from "../system/Text";
 import { Rise, StepHeadline, StepNote } from "./chrome";
 import { CommitmentDeck } from "./graphics/CommitmentDeck";
 import { GrowthMilestones } from "./graphics/GrowthMilestones";
@@ -92,34 +90,6 @@ export function MinutesStep() {
   );
 }
 
-function NextMilestone() {
-  const scale = useOnboardingScale();
-
-  return (
-    <View
-      className="gap-1.5 rounded-lg bg-white/10"
-      style={{ padding: scale.cardPad }}
-    >
-      <Text className="text-white/60" style={{ fontSize: scale.ui }}>
-        At {NEXT_MILESTONE.members.toLocaleString("en-US")} members
-      </Text>
-      <Text
-        weight={FontWeight.Medium}
-        className="text-white"
-        style={{ fontSize: scale.h2, lineHeight: scale.h2 * 1.2 }}
-      >
-        {NEXT_MILESTONE.action}
-      </Text>
-      <Text
-        className="text-white/80"
-        style={{ fontSize: scale.ui, lineHeight: scale.ui * 1.35 }}
-      >
-        {NEXT_MILESTONE.body}
-      </Text>
-    </View>
-  );
-}
-
 export function ScaleStep() {
   const scale = useOnboardingScale();
   const { data: memberCount } = useAllianceMemberCount();
@@ -127,21 +97,14 @@ export function ScaleStep() {
   return (
     <>
       <StepHeadline>{SCALE_HEADLINE}</StepHeadline>
-      {/* The track and the milestone read as one block, held clear of the
-          headline above and the note below. */}
       <View style={{ gap: scale.gap }}>
-        <View style={{ gap: scale.trackGap }}>
-          <Rise index={2}>
-            <GrowthMilestones
-              near={REACHED_MILESTONES}
-              members={memberCount ?? 0}
-            />
-          </Rise>
-          <Rise index={3}>
-            <NextMilestone />
-          </Rise>
-        </View>
-        <StepNote index={4}>{SCALE_NOTE}</StepNote>
+        <Rise index={2}>
+          <GrowthMilestones
+            near={REACHED_MILESTONES}
+            members={memberCount ?? 0}
+          />
+        </Rise>
+        <StepNote index={3}>{SCALE_NOTE}</StepNote>
       </View>
     </>
   );

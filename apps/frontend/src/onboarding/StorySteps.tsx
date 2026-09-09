@@ -1,7 +1,7 @@
 import { nextMilestone } from "@alliance/shared/lib/copy";
+import { MilestoneKind, type Milestone } from "@alliance/shared/lib/milestones";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
-import { useMediaQuery } from "../lib/useMediaQuery";
-import { priorities, PRIORITIES_NOTE, type Milestone } from "../site/content";
+import { priorities, PRIORITIES_NOTE } from "../site/content";
 import {
   GrowthMilestones,
   MilestoneSize,
@@ -28,9 +28,6 @@ export const MINUTES_NOTE =
 export const SCALE_HEADLINE =
   "The larger we are, the more impact we can have. Every new member is vital to us at this experimental stage.";
 
-/** Separates the illustrative milestone bars from the one real commitment. */
-export const SCALE_EXAMPLES_LABEL = "Examples of what each size makes possible";
-
 export const SCALE_NOTE =
   "Our work is advised by scientists, analysts, and other experts for rigor and effectiveness.";
 
@@ -42,10 +39,12 @@ const REACHED_MILESTONES: Milestone[] = [
     label: "Encourage a small business to adopt a sustainability policy",
   },
   { members: 300, label: "Conduct a large-scale citizen science project" },
+  {
+    members: nextMilestone.members,
+    label: nextMilestone.action,
+    kind: MilestoneKind.Plan,
+  },
 ];
-
-/** Three bars crush a phone, so the one already behind us drops off there. */
-const WIDE_TRACK_QUERY = "(min-width: 1024px)";
 
 export function CommunityStep() {
   return (
@@ -116,29 +115,8 @@ export function MinutesStep() {
   );
 }
 
-function NextMilestone() {
-  return (
-    <div className="mx-auto flex w-full max-w-[38rem] flex-col gap-1.5 rounded-lg border border-[var(--color-green)]/45 bg-[var(--color-green)]/12 p-[clamp(0.8rem,2.2vh,1.5rem)]">
-      <p className="flex items-center gap-2 text-[length:var(--ob-caption)] tracking-wide text-white/70 uppercase">
-        <span
-          className="size-1.5 rounded-full bg-[var(--color-green)]"
-          aria-hidden
-        />
-        Plan - {nextMilestone.members.toLocaleString("en-US")} Members
-      </p>
-      <p className="text-[length:var(--ob-h2)] leading-tight font-medium text-balance text-white">
-        {nextMilestone.action}
-      </p>
-      <p className="text-[length:var(--ob-ui)] leading-snug text-pretty text-white/80">
-        {nextMilestone.body}
-      </p>
-    </div>
-  );
-}
-
 export function ScaleStep() {
   const { data: memberCount } = useAllianceMemberCount();
-  const wideTrack = useMediaQuery(WIDE_TRACK_QUERY);
 
   return (
     <>
@@ -147,23 +125,14 @@ export function ScaleStep() {
         className="mx-auto flex min-h-0 w-full flex-col lg:w-[81%] lg:flex-none"
         style={{ gap: "clamp(0.6rem, 2.6vh, 2rem)" }}
       >
-        <div
-          className="ob-rise flex min-h-0 flex-col gap-2"
-          style={riseStyle(2)}
-        >
-          <p className="text-[length:var(--ob-caption)] tracking-wide text-white/50 uppercase">
-            {SCALE_EXAMPLES_LABEL}
-          </p>
+        <div className="ob-rise flex min-h-0 flex-col" style={riseStyle(2)}>
           <GrowthMilestones
-            near={wideTrack ? REACHED_MILESTONES : REACHED_MILESTONES.slice(1)}
+            near={REACHED_MILESTONES}
             members={memberCount ?? 0}
             size={MilestoneSize.Compact}
           />
         </div>
-        <div className="ob-rise" style={riseStyle(3)}>
-          <NextMilestone />
-        </div>
-        <StepNote index={4}>{SCALE_NOTE}</StepNote>
+        <StepNote index={3}>{SCALE_NOTE}</StepNote>
       </div>
     </>
   );

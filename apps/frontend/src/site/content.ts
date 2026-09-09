@@ -1,4 +1,5 @@
 import { nextMilestone } from "@alliance/shared/lib/copy";
+import type { Milestone } from "@alliance/shared/lib/milestones";
 import democracy from "../assets/redesign/priority-democracy.jpg";
 import environment from "../assets/redesign/priority-environment.jpg";
 import poverty from "../assets/redesign/priority-poverty.jpg";
@@ -188,8 +189,6 @@ export const HOURS_START_LABEL = "Action arrives";
 export const HOURS_END_LABEL = "Deadline";
 export const HOURS_LEGEND_TOTAL = "Hours in the week";
 export const HOURS_LEGEND_SPENT = "Time spent completing actions";
-
-export type Milestone = { members: number; label: string };
 
 export const nearMilestones: Milestone[] = [
   { members: 30, label: "Jointly pitch the media on an underreported topic" },
