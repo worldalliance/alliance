@@ -36,7 +36,7 @@ const PEOPLE_TITLE = "People";
 
 const OFFICE_PHOTO_CAPTION = "The office in San Francisco, California";
 
-const MEMBER_ROWS = 2;
+const MEMBER_ROWS = 3;
 const MEMBER_GAP_PX = 8;
 const PROFILE_TILE_PX = 80;
 
