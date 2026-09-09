@@ -1,7 +1,6 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
-import { createElement, type ReactNode } from "react";
 import { queryKeys } from "./queryKeys";
+import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import {
   ResponseCountStatus,
@@ -39,14 +38,11 @@ const respondWith = (counted: Map<number, number>) => (formIds: number[]) =>
   );
 
 function mountCounts(formIds: number[]) {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
+  const { wrapper } = queryWrapper();
   const view = renderHook(() => useFormResponseCountsAdmin(formIds), {
-    wrapper: ({ children }: { children: ReactNode }) =>
-      createElement(QueryClientProvider, { client }, children),
+    wrapper,
   });
-  return { state: () => view.result.current, client };
+  return { state: () => view.result.current };
 }
 
 serveApi(
@@ -168,11 +164,7 @@ test("makes no request when there are no forms", async () => {
 
 test("serves the cached list within its stale time", async () => {
   listed = [formRow(1, "Before")];
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  const wrapper = ({ children }: { children: ReactNode }) =>
-    createElement(QueryClientProvider, { client }, children);
+  const { wrapper } = queryWrapper();
 
   const view = renderHook(() => useFormsAdmin(), { wrapper });
   await waitFor(() => expect(view.result.current.isLoading).toBe(false));
@@ -186,11 +178,7 @@ test("serves the cached list within its stale time", async () => {
 
 test("invalidating refetches the list a picker is already showing", async () => {
   listed = [formRow(1, "Before")];
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  const wrapper = ({ children }: { children: ReactNode }) =>
-    createElement(QueryClientProvider, { client }, children);
+  const { wrapper } = queryWrapper();
 
   const view = renderHook(
     () => ({ ...useFormsAdmin(), invalidate: useInvalidateFormsAdmin() }),
@@ -210,13 +198,8 @@ test("invalidating refetches the list a picker is already showing", async () => 
 
 test("deleting a form refetches the list it was deleted from", async () => {
   listed = [formRow(1, "Doomed"), formRow(2, "Kept")];
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  const view = renderHook(() => useFormsAdmin(), {
-    wrapper: ({ children }: { children: ReactNode }) =>
-      createElement(QueryClientProvider, { client }, children),
-  });
+  const { wrapper } = queryWrapper();
+  const view = renderHook(() => useFormsAdmin(), { wrapper });
   await waitFor(() => expect(view.result.current.forms).toHaveLength(2));
 
   listed = [formRow(2, "Kept")];
@@ -227,16 +210,7 @@ test("deleting a form refetches the list it was deleted from", async () => {
 
 test("gives back the same empty array while the list is loading", async () => {
   const { result, rerender } = renderHook(() => useFormsAdmin(), {
-    wrapper: ({ children }: { children: ReactNode }) =>
-      createElement(
-        QueryClientProvider,
-        {
-          client: new QueryClient({
-            defaultOptions: { queries: { retry: false } },
-          }),
-        },
-        children,
-      ),
+    wrapper: queryWrapper().wrapper,
   });
   const first = result.current.forms;
   rerender();
@@ -244,9 +218,7 @@ test("gives back the same empty array while the list is loading", async () => {
 });
 
 test("an action write leaves the cached field lists a builder is holding open", async () => {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
+  const { client, wrapper } = queryWrapper();
   const fieldsKey = queryKeys.formQuestionFieldsAdmin(1);
   client.setQueryData(fieldsKey, { formId: 1, fields: [] });
 
@@ -255,10 +227,7 @@ test("an action write leaves the cached field lists a builder is holding open", 
       index: useInvalidateFormsIndex(),
       everything: useInvalidateFormsAdmin(),
     }),
-    {
-      wrapper: ({ children }: { children: ReactNode }) =>
-        createElement(QueryClientProvider, { client }, children),
-    },
+    { wrapper },
   );
 
   // Renaming an action only moves usedInAction on the index.
@@ -272,11 +241,7 @@ test("an action write leaves the cached field lists a builder is holding open", 
 
 test("serves cached counts within their stale time", async () => {
   respond = respondWith(new Map([[1, 2]]));
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  const wrapper = ({ children }: { children: ReactNode }) =>
-    createElement(QueryClientProvider, { client }, children);
+  const { wrapper } = queryWrapper();
 
   const first = renderHook(() => useFormResponseCountsAdmin([1]), { wrapper });
   await waitFor(() =>
