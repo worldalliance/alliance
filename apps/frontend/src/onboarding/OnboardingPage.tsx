@@ -1,5 +1,6 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { errorMessage } from "@alliance/common/errorMessage";
+import { R } from "@alliance/common/result";
 import {
   authMe,
   authRegister,
@@ -175,8 +176,11 @@ const OnboardingPage = () => {
   }, [step, goTo]);
 
   const enterPlatform = useCallback(async () => {
-    await onLogin();
-    navigate(walkthroughStartHref());
+    const session = await R.fromPromise(onLogin());
+    // The account and the signature are already written, so a session that
+    // fails to establish goes to log in. Nothing here may leave the member on
+    // the white the panel uncovered, which has no way back.
+    navigate(session.ok ? walkthroughStartHref() : href("/login"));
   }, [onLogin, navigate]);
 
   useEffect(() => {
