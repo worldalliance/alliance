@@ -1,3 +1,4 @@
+import { GUEST_HEADER } from "@alliance/common/guest";
 import { UnauthorizedException } from "@nestjs/common";
 import type { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
@@ -47,7 +48,7 @@ export function extractGuestTokenFromCookie(
 }
 
 function extractGuestTokenFromHeader(request: Request): string | undefined {
-  const header = request.headers["x-guest-token"];
+  const header = request.headers[GUEST_HEADER];
   if (typeof header !== "string" || header.length === 0) {
     return undefined;
   }

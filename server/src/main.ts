@@ -1,4 +1,5 @@
 import { devPorts, PortCaller } from "@alliance/common/dev-ports";
+import { GUEST_HEADER } from "@alliance/common/guest";
 import { currentNodeEnv, isDeployed } from "@alliance/common/node-env";
 import { ValidationPipe } from "@nestjs/common";
 import { HttpAdapterHost, NestFactory } from "@nestjs/core";
@@ -124,7 +125,7 @@ async function bootstrap() {
     origin: true,
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
     credentials: true,
-    exposedHeaders: ["X-Guest-Token"],
+    exposedHeaders: [GUEST_HEADER],
   });
   app.useWebSocketAdapter(new SocketIoAdapter(app));
   app.set("trust proxy", "loopback");

@@ -1,3 +1,4 @@
+import { GUEST_HEADER } from "@alliance/common/guest";
 import {
   BadRequestException,
   Body,
@@ -50,8 +51,6 @@ import {
 } from "./form.dto";
 import { TasksService } from "./tasks.service";
 
-const GUEST_TOKEN_RESPONSE_HEADER = "X-Guest-Token";
-
 @Controller("tasks")
 export class TasksController {
   constructor(
@@ -92,7 +91,7 @@ export class TasksController {
     const { guestId, guestToken } =
       await this.authService.createGuestSession(incomingToken);
     this.authService.setGuestCookie(res, guestToken);
-    res.setHeader(GUEST_TOKEN_RESPONSE_HEADER, guestToken);
+    res.setHeader(GUEST_HEADER, guestToken);
     return new FormResponseDto({
       response: await this.tasksService.submitFormPublic({
         formId: +id,
