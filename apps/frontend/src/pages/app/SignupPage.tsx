@@ -120,7 +120,7 @@ function GrantmakingCard() {
       </p>
       <span className="mt-10 flex items-end justify-between gap-4">
         <span className="text-lg text-white/80 sm:text-xl">
-          <span className="font-semibold text-green">$35,300</span> committed so
+          <span className="font-semibold text-green">$36,300</span> committed so
           far
         </span>
         <SiteArrow className="mb-1 size-5 shrink-0 transition-transform duration-300 ease-out group-hover:translate-x-1 group-hover:-translate-y-1" />
