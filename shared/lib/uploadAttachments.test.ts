@@ -1,20 +1,22 @@
-import { R, type Result } from "@alliance/common/result";
+import { R } from "@alliance/common/result";
+import { uploadAttachments, uploadDraftAttachments } from "./uploadAttachments";
+import * as uploadModule from "./uploadImageDataUri";
 
 const uploads: string[] = [];
 let failOn: string | null = null;
 
-jest.mock("./uploadImageDataUri", () => ({
-  uploadImageDataUri: async (
-    dataUri: string,
-  ): Promise<Result<string, string>> => {
-    uploads.push(dataUri);
-    return dataUri === failOn
-      ? R.failure("Failed to upload image")
-      : R.success(`key-${uploads.length}`);
-  },
-}));
-
-import { uploadAttachments, uploadDraftAttachments } from "./uploadAttachments";
+beforeEach(() => {
+  uploads.length = 0;
+  failOn = null;
+  jest
+    .spyOn(uploadModule, "uploadImageDataUri")
+    .mockImplementation(async (dataUri) => {
+      uploads.push(dataUri);
+      return dataUri === failOn
+        ? R.failure("Failed to upload image")
+        : R.success(`key-${uploads.length}`);
+    });
+});
 
 const dataUri = (n: number) => `data:image/png;base64,AAAA${n}`;
 
@@ -28,7 +30,6 @@ it("passes an already-uploaded key through without re-uploading it", async () =>
 it("reports an attachment the server rejected instead of dropping it", async () => {
   failOn = dataUri(2);
   const uploaded = await uploadAttachments([dataUri(2), dataUri(3)]);
-  failOn = null;
 
   expect(uploaded.ok).toBe(false);
   expect(R.isFailure(uploaded) && uploaded.error).toBe(
@@ -69,7 +70,6 @@ it("leaves the draft alone when an attachment fails to upload", async () => {
       handedBack = true;
     },
   });
-  failOn = null;
 
   expect(uploaded.ok).toBe(false);
   expect(handedBack).toBe(false);
