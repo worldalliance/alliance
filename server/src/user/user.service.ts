@@ -1341,7 +1341,7 @@ export class UserService {
     return this.create({
       email: body.email,
       name: body.firstName + " " + body.lastName,
-      password: Math.random().toString(36).substring(2, 15), //TODO: they have to reset this but maybe do something better
+      password: null,
       isNotSignedUpPartialProfile: true,
       referralSource: ReferralSource.None,
     });

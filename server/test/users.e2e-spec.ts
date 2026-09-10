@@ -2454,6 +2454,29 @@ describe("Users (e2e)", () => {
     });
   });
 
+  describe("partial profile from a payment", () => {
+    it("has no password until the member follows the reset link", async () => {
+      const user = await userService.createPartialProfile({
+        email: "partialprofile@test.com",
+        firstName: "Partial",
+        lastName: "Profile",
+      });
+      expect(
+        (await userRepo.findOneByOrFail({ id: user.id })).password,
+      ).toBeNull();
+
+      const token = await userService.generatePasswordResetToken(user.id);
+      await request(ctx.app.getHttpServer())
+        .post("/auth/reset-password")
+        .send({ token, password: "FreshPassword123!" })
+        .expect(200);
+
+      const reset = await userRepo.findOneByOrFail({ id: user.id });
+      expect(await reset.checkPassword("FreshPassword123!")).toBe(true);
+      expect(reset.isNotSignedUpPartialProfile).toBe(false);
+    });
+  });
+
   afterAll(async () => {
     await ctx.app.close();
   });
