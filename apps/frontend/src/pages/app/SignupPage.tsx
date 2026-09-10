@@ -1,6 +1,6 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { errorMessage } from "@alliance/common/errorMessage";
-import { OAuthIntent } from "@alliance/common/oauth";
+import { OAuthIntent, OAuthOutcome } from "@alliance/common/oauth";
 import { withCount } from "@alliance/common/plural";
 import {
   authMe,
@@ -235,12 +235,17 @@ const SignupPage: React.FC = () => {
   const oauthMessage = oauthNotice && oauthNoticeMessage(oauthNotice);
 
   // The provider sends the member back here so an error lands beside the
-  // form; a success moves on to the app.
+  // form; a success moves on, by way of the name step for a new account.
   useEffect(() => {
     if (oauthNotice?.kind !== "outcome") {
       return;
     }
-    navigate(href("/tasks"), { replace: true });
+    navigate(
+      oauthNotice.outcome === OAuthOutcome.SignedUp
+        ? href("/welcome")
+        : href("/tasks"),
+      { replace: true },
+    );
   }, [oauthNotice, navigate]);
 
   // Whatever getApiUrl falls back to before hydration: /start sets the proof
