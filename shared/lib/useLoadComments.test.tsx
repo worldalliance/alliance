@@ -286,7 +286,7 @@ it("reads a refusal the client is configured to throw", async () => {
         { status: 401 },
       ),
   });
-  const logged = jest.spyOn(console, "error").mockImplementation(() => {});
+  jest.spyOn(console, "error").mockImplementation(() => {});
 
   const { result } = renderHook(() =>
     useLoadComments({ objectId: 7, type: "post" }),
@@ -297,12 +297,11 @@ it("reads a refusal the client is configured to throw", async () => {
       "Your session has expired. Sign in again to load the replies.",
     ),
   );
-  logged.mockRestore();
 });
 
 it("reports a refusal with the status it came back with", async () => {
   served = null;
-  const logged = jest.spyOn(console, "error").mockImplementation(() => {});
+  jest.spyOn(console, "error").mockImplementation(() => {});
 
   const { result } = renderHook(() =>
     useLoadComments({ objectId: 7, type: "post" }),
@@ -316,12 +315,11 @@ it("reports a refusal with the status it came back with", async () => {
       properties: { type: "post", objectId: 7, status: 403 },
     },
   ]);
-  logged.mockRestore();
 });
 
 it("reports a mount request that never reached the server", async () => {
   unreachable = true;
-  const logged = jest.spyOn(console, "error").mockImplementation(() => {});
+  jest.spyOn(console, "error").mockImplementation(() => {});
 
   const { result } = renderHook(() =>
     useLoadComments({ objectId: 7, type: "post" }),
@@ -337,7 +335,6 @@ it("reports a mount request that never reached the server", async () => {
       properties: { type: "post", objectId: 7 },
     },
   ]);
-  logged.mockRestore();
 });
 
 it("keeps the thread when a refetch never reaches the server", async () => {
@@ -357,7 +354,6 @@ it("keeps the thread when a refetch never reaches the server", async () => {
   expect(result.current.canRetry).toBe(true);
   expect(result.current.comments).toHaveLength(1);
   expect(logged).toHaveBeenCalledWith(expect.any(String), expect.any(Error));
-  logged.mockRestore();
 });
 
 it("takes its message back down when a later load lands", async () => {

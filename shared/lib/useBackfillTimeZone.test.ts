@@ -112,6 +112,5 @@ describe("useBackfillTimeZone", () => {
         message: "offline",
       }),
     );
-    logged.mockRestore();
   });
 });

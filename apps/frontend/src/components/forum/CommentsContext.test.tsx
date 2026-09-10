@@ -169,11 +169,10 @@ it("keeps a failed delete out of the thread's error", async () => {
   const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
 
   deleteFails = true;
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(true);
+  jest.spyOn(window, "confirm").mockReturnValue(true);
   await act(async () => {
     await result.current.handleDeleteReply(5);
   });
-  confirm.mockRestore();
 
   expect(result.current.deleteErrorFor(5)).toBe("Failed to delete reply");
   expect(result.current.error).toBeNull();
