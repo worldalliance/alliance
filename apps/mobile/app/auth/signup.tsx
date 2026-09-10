@@ -1,6 +1,6 @@
 import { authRegister } from "@alliance/shared/client";
 import { deviceTimeZone } from "@alliance/shared/lib/timeZone";
-import { Link, useRouter } from "expo-router";
+import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
@@ -12,6 +12,7 @@ import { clearGuestToken, getStoredGuestToken } from "../../lib/guestSession";
 
 const SignupScreen = () => {
   const router = useRouter();
+  const { ref } = useLocalSearchParams<{ ref?: string }>();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -67,6 +68,7 @@ const SignupScreen = () => {
           password,
           mode: "header",
           timeZone: deviceTimeZone(),
+          referralCode: ref,
           guestToken,
         },
       });

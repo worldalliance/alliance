@@ -7,7 +7,7 @@ import {
 import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
 import { UserService } from "../../user/user.service";
-import type { JwtPayload } from "./jwtreq";
+import { sessionFromRequest } from "../tokens";
 
 @Injectable()
 export class CommunityLeaderGuard implements CanActivate {
@@ -19,17 +19,8 @@ export class CommunityLeaderGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
 
-    const token =
-      this.extractTokenFromCookie(request) ??
-      this.extractTokenFromHeader(request);
-
-    if (!token) {
-      throw new UnauthorizedException();
-    }
     try {
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-        secret: process.env.JWT_SECRET,
-      });
+      const payload = await sessionFromRequest(this.jwtService, request);
       request["user"] = payload;
 
       const isLeader = await this.userService.isCommunityLeader(payload.email);
@@ -42,14 +33,5 @@ export class CommunityLeaderGuard implements CanActivate {
     } catch {
       throw new UnauthorizedException();
     }
-  }
-
-  private extractTokenFromCookie(request: Request): string | undefined {
-    return request.cookies?.access_token;
-  }
-
-  private extractTokenFromHeader(request: Request): string | undefined {
-    const [type, token] = request.headers.authorization?.split(" ") ?? [];
-    return type === "Bearer" ? token : undefined;
   }
 }

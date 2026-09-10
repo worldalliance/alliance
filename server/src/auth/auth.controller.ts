@@ -36,17 +36,16 @@ import ForgotPasswordDto, { ResetPasswordDto } from "./dto/forgotpassword.dto";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { SignInDto, SignInResponseDto, type TokenMode } from "./dto/signin.dto";
 import { AdminGuard } from "./guards/admin.guard";
-import {
-  AuthGuard,
-  extractAccessTokenFromCookie,
-  extractGuestTokenFromCookie,
-  extractRefreshTokenFromCookie,
-  extractTokenFromHeader,
-} from "./guards/auth.guard";
-import type { JwtPayload, JwtRequest } from "./guards/jwtreq";
+import { AuthGuard } from "./guards/auth.guard";
 import { RefreshTokenGuard } from "./guards/refresh.guard";
 import { Public } from "./public.decorator";
 import { SIGNUP_THROTTLE } from "./signup-throttle.config";
+import {
+  extractGuestTokenFromCookie,
+  extractRefreshTokenFromCookie,
+  type JwtRequest,
+  sessionFromRequest,
+} from "./tokens";
 
 class TokenModeQuery {
   @ApiPropertyOptional({ enum: ["cookie", "header"] })
@@ -131,6 +130,7 @@ export class AuthController {
     res: Response,
     userId: number,
   ): Promise<void> {
+    // Mobile sends the guest token in the body, web in the cookie.
     const guestToken = bodyToken ?? extractGuestTokenFromCookie(req);
     if (!guestToken) {
       return;
@@ -229,20 +229,14 @@ export class AuthController {
 
     // Logout is unauthenticated; best-effort resolve the user from a still-valid
     // access token so we can attribute the event.
-    const token =
-      extractTokenFromHeader(req) ?? extractAccessTokenFromCookie(req);
-    if (token) {
-      try {
-        const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-          secret: process.env.JWT_SECRET,
-        });
-        this.posthog.capture({
-          event: AnalyticsEvent.Logout,
-          distinctId: String(payload.sub),
-        });
-      } catch {
-        // expired/invalid token — nothing to attribute
-      }
+    try {
+      const payload = await sessionFromRequest(this.jwtService, req);
+      this.posthog.capture({
+        event: AnalyticsEvent.Logout,
+        distinctId: String(payload.sub),
+      });
+    } catch {
+      // missing or invalid token, nothing to attribute
     }
   }
 

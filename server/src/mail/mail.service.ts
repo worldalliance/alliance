@@ -188,6 +188,9 @@ export class MailService {
 
     const e = await this.mailerService.sendMail({
       to: recipient,
+      // Apple forwards to a Hide My Email relay only from senders registered
+      // under Sign in with Apple for Email Communication in the developer
+      // portal. Register a new address there before changing this one.
       from: "Alliance <alliance@worldalliance.org>",
       subject: subject ?? undefined,
       headers: {

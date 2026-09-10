@@ -1,6 +1,7 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { FormSchema } from "@alliance/common/forms/form-schema";
+import { GUEST_HEADER } from "@alliance/common/guest";
 import {
   FormResponseDto,
   SubmitFormDto,
@@ -91,7 +92,7 @@ const ActionTaskPanelForm = ({
               path: { id: taskFormId },
               body: data,
               headers: storedGuestToken
-                ? { "X-Guest-Token": storedGuestToken }
+                ? { [GUEST_HEADER]: storedGuestToken }
                 : undefined,
             });
         if (response.response.ok) {
@@ -101,7 +102,7 @@ const ActionTaskPanelForm = ({
             invalidateVisibilityContext();
           } else {
             const issuedGuestToken =
-              response.response.headers.get("x-guest-token");
+              response.response.headers.get(GUEST_HEADER);
             if (issuedGuestToken && issuedGuestToken !== storedGuestToken) {
               await setStoredGuestToken(issuedGuestToken);
             }

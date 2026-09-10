@@ -28,3 +28,13 @@ export const JOIN_REQUEST_THROTTLE: Record<string, ThrottlerOptions> = {
   joinRequestBurst: { limit: 3, ttl: 60 * 1000 }, // 3 per minute
   joinRequestSustained: { limit: 10, ttl: 60 * 60 * 1000 }, // 10 per hour
 };
+
+/**
+ * Sign-in through a provider. Looser than {@link SIGNUP_THROTTLE} because
+ * /start is one click of a login button, not a registration, and a roomful of
+ * members behind one NAT shares the bucket.
+ */
+export const OAUTH_THROTTLE: Record<string, ThrottlerOptions> = {
+  oauthBurst: { limit: 30, ttl: 60 * 1000 }, // 30 per minute
+  oauthSustained: { limit: 200, ttl: 60 * 60 * 1000 }, // 200 per hour
+};

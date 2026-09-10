@@ -6,7 +6,7 @@ import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
 
 describe("Message Push Notifications (e2e)", () => {
   let ctx: TestContext;
@@ -28,10 +28,7 @@ describe("Message Push Notifications (e2e)", () => {
       ...overrides,
     });
     await userRepo.save(user);
-    const token = ctx.jwtService.sign(
-      { sub: user.id, email: user.email, name: user.name },
-      { secret: process.env.JWT_SECRET },
-    );
+    const token = signAccessToken(ctx.jwtService, user);
     return { user, token };
   };
 
@@ -211,14 +208,8 @@ describe("Message Push Notifications (e2e)", () => {
       );
 
       // Members need to accept
-      const memberAToken = ctx.jwtService.sign(
-        { sub: memberA.id, email: memberA.email, name: memberA.name },
-        { secret: process.env.JWT_SECRET },
-      );
-      const memberBToken = ctx.jwtService.sign(
-        { sub: memberB.id, email: memberB.email, name: memberB.name },
-        { secret: process.env.JWT_SECRET },
-      );
+      const memberAToken = signAccessToken(ctx.jwtService, memberA);
+      const memberBToken = signAccessToken(ctx.jwtService, memberB);
       await request(ctx.app.getHttpServer())
         .post(`/messaging/conversations/${conversationId}/accept`)
         .set("Authorization", `Bearer ${memberAToken}`)

@@ -16,7 +16,7 @@ import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import { AuthGuard } from "src/auth/guards/auth.guard";
 import { CommunityLeaderGuard } from "src/auth/guards/communityleader.guard";
-import type { JwtRequest } from "src/auth/guards/jwtreq";
+import type { JwtRequest } from "src/auth/tokens";
 import { PosthogService } from "src/posthog/posthog.service";
 import {
   CommunityInviteDto,

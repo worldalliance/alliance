@@ -8,6 +8,11 @@ import { UserModule } from "../user/user.module";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { Guest } from "./entities/guest.entity";
+import { AppleOAuthClient } from "./oauth/apple-oauth.client";
+import { GoogleOAuthClient } from "./oauth/google-oauth.client";
+import { OAuthAccount } from "./oauth/oauth-account.entity";
+import { OAuthAuthService } from "./oauth/oauth-auth.service";
+import { OAuthController } from "./oauth/oauth.controller";
 
 @Module({
   imports: [
@@ -21,10 +26,15 @@ import { Guest } from "./entities/guest.entity";
         signOptions: { expiresIn: "1d" },
       }),
     }),
-    TypeOrmModule.forFeature([User, Guest]),
+    TypeOrmModule.forFeature([User, Guest, OAuthAccount]),
   ],
-  providers: [AuthService],
-  controllers: [AuthController],
+  providers: [
+    AuthService,
+    OAuthAuthService,
+    GoogleOAuthClient,
+    AppleOAuthClient,
+  ],
+  controllers: [AuthController, OAuthController],
   exports: [AuthService],
 })
 export class AuthModule {}

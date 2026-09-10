@@ -18,6 +18,7 @@ import { User } from "../src/user/entities/user.entity";
 import {
   createTestApp,
   giveActiveContract,
+  signAccessToken,
   TestContext,
 } from "./e2e-test-utils";
 
@@ -70,10 +71,7 @@ describe("Community (e2e)", () => {
         password: "Password123!",
       }),
     );
-    testUserToken = ctx.jwtService.sign(
-      { sub: testUser.id, email: testUser.email, name: testUser.name },
-      { secret: process.env.JWT_SECRET },
-    );
+    testUserToken = signAccessToken(ctx.jwtService, testUser);
 
     secondUser = await userRepo.save(
       userRepo.create({
@@ -82,10 +80,7 @@ describe("Community (e2e)", () => {
         password: "Password123!",
       }),
     );
-    secondUserToken = ctx.jwtService.sign(
-      { sub: secondUser.id, email: secondUser.email, name: secondUser.name },
-      { secret: process.env.JWT_SECRET },
-    );
+    secondUserToken = signAccessToken(ctx.jwtService, secondUser);
     // Both stand in for real members, who can only be in a group by way of a
     // signed contract.
     await Promise.all([

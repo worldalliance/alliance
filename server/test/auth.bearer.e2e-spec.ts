@@ -1,4 +1,6 @@
 import { SignUpDto } from "src/auth/dto/sign-up.dto";
+import { ACCESS_COOKIE, JWTTokenType } from "src/auth/tokens";
+import { UserService } from "src/user/user.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import { RefreshTokensResponseDto } from "../src/auth/dto/authtokens.dto";
@@ -10,7 +12,7 @@ import {
   OnetimeInviteStatus,
 } from "../src/user/entities/onetime-invite.entity";
 import { User } from "../src/user/entities/user.entity";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
 
 describe("Auth (e2e)", () => {
   let userRepository: Repository<User>;
@@ -27,6 +29,26 @@ describe("Auth (e2e)", () => {
     return request(ctx.app.getHttpServer())
       .post("/auth/login")
       .send({ email: "baduser@test.com", password: "password", mode: "header" })
+      .expect(401);
+  });
+
+  it("returns 401 for an account with no password", async () => {
+    const user = await userRepository.save(
+      userRepository.create({
+        email: "nopasswordtest@test.com",
+        password: null,
+        name: "Test User",
+      }),
+    );
+    expect(user.password).toBeNull();
+
+    await request(ctx.app.getHttpServer())
+      .post("/auth/login")
+      .send({
+        email: "nopasswordtest@test.com",
+        password: "password",
+        mode: "header",
+      })
       .expect(401);
   });
 
@@ -67,22 +89,16 @@ describe("Auth (e2e)", () => {
   });
 
   describe("token refresh", () => {
-    it("returns 401 for invalid refresh token", () => {
-      return request(ctx.app.getHttpServer())
-        .post("/auth/refresh")
-        .send({ refresh_token: "invalid" })
-        .expect(401);
-    });
+    const login = async (): Promise<SignInResponseDto> => {
+      await userRepository.save(
+        userRepository.create({
+          email: "newusertest@test.com",
+          password: "password",
+          name: "Test User",
+        }),
+      );
 
-    it("returns a new access token for a valid refresh token", async () => {
-      const user = userRepository.create({
-        email: "newusertest@test.com",
-        password: "password",
-        name: "Test User",
-      });
-      await userRepository.save(user);
-
-      const loginResponse = await request(ctx.app.getHttpServer())
+      const response = await request(ctx.app.getHttpServer())
         .post("/auth/login")
         .send({
           email: "newusertest@test.com",
@@ -91,17 +107,40 @@ describe("Auth (e2e)", () => {
         })
         .expect(200);
 
-      const loginBody = loginResponse.body as SignInResponseDto;
+      return response.body as SignInResponseDto;
+    };
+
+    it("returns 401 for an invalid refresh token", () => {
+      return request(ctx.app.getHttpServer())
+        .post("/auth/refresh")
+        .set("Authorization", "Bearer invalid")
+        .expect(401);
+    });
+
+    it("returns a new access token for a valid refresh token", async () => {
+      const { refresh_token } = await login();
 
       const refreshResponse = await request(ctx.app.getHttpServer())
         .post("/auth/refresh")
-        .set("Authorization", `Bearer ${loginBody.refresh_token}`)
+        .set("Authorization", `Bearer ${refresh_token}`)
         .expect(200);
 
       const refreshBody = refreshResponse.body as RefreshTokensResponseDto;
 
       expect(refreshBody.access_token).toBeDefined();
     });
+
+    it.each(["Basic", "bearer"])(
+      "refuses a refresh token sent as %p",
+      async (scheme) => {
+        const { refresh_token } = await login();
+
+        await request(ctx.app.getHttpServer())
+          .post("/auth/refresh")
+          .set("Authorization", `${scheme} ${refresh_token}`)
+          .expect(401);
+      },
+    );
   });
 
   describe("signUp with invite codes", () => {
@@ -391,6 +430,150 @@ describe("Auth (e2e)", () => {
             email: `bad-tz-${String(timeZone)}@test.com`,
           }),
         ).toBeNull();
+      },
+    );
+  });
+
+  describe("token type", () => {
+    const authenticatedRoutes = [
+      "/auth/me",
+      "/user/list",
+      "/user/onetimeInvites/1",
+      "/actions/activities/feed",
+    ];
+
+    it("refuses a mailed password-reset token wherever a session is read", async () => {
+      const admin = await userRepository.save(
+        userRepository.create({
+          email: "reset-admin@test.com",
+          password: "password",
+          name: "Reset Admin",
+          admin: true,
+        }),
+      );
+      const resetToken = await ctx.app
+        .get(UserService)
+        .generatePasswordResetToken(admin.id);
+      const accessToken = signAccessToken(ctx.jwtService, admin);
+
+      for (const route of authenticatedRoutes) {
+        const refused = await request(ctx.app.getHttpServer())
+          .get(route)
+          .set("Authorization", `Bearer ${resetToken}`);
+        expect([route, refused.status]).toEqual([route, 401]);
+
+        const allowed = await request(ctx.app.getHttpServer())
+          .get(route)
+          .set("Authorization", `Bearer ${accessToken}`);
+        expect([route, allowed.status]).toEqual([route, 200]);
+      }
+    });
+
+    it.each(
+      Object.values(JWTTokenType).filter(
+        (type) => type !== JWTTokenType.access,
+      ),
+    )("refuses a %s token on an authenticated route", async (tokenType) => {
+      const user = await userRepository.save(
+        userRepository.create({
+          email: `${tokenType}-token@test.com`,
+          password: "password",
+          name: "Typed Token",
+        }),
+      );
+      const token = ctx.jwtService.sign(
+        { sub: user.id, email: user.email, tokenType },
+        { secret: process.env.JWT_SECRET },
+      );
+
+      await request(ctx.app.getHttpServer())
+        .get("/auth/me")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(401);
+    });
+
+    it("refuses a mailed password-reset token in the access_token cookie", async () => {
+      const admin = await userRepository.save(
+        userRepository.create({
+          email: "reset-cookie@test.com",
+          password: "password",
+          name: "Reset Cookie",
+          admin: true,
+        }),
+      );
+      const resetToken = await ctx.app
+        .get(UserService)
+        .generatePasswordResetToken(admin.id);
+      const accessToken = signAccessToken(ctx.jwtService, admin);
+
+      for (const route of authenticatedRoutes) {
+        const refused = await request(ctx.app.getHttpServer())
+          .get(route)
+          .set("Cookie", [`${ACCESS_COOKIE}=${resetToken}`]);
+        expect([route, refused.status]).toEqual([route, 401]);
+
+        const allowed = await request(ctx.app.getHttpServer())
+          .get(route)
+          .set("Cookie", [`${ACCESS_COOKIE}=${accessToken}`]);
+        expect([route, allowed.status]).toEqual([route, 200]);
+      }
+    });
+
+    it("takes the Bearer header over the cookie when a request carries both", async () => {
+      const admin = await userRepository.save(
+        userRepository.create({
+          email: "both-tokens@test.com",
+          password: "password",
+          name: "Both Tokens",
+          admin: true,
+        }),
+      );
+      const accessToken = signAccessToken(ctx.jwtService, admin);
+      const guestToken = ctx.jwtService.sign(
+        { sub: "guest-id", tokenType: JWTTokenType.guest },
+        { secret: process.env.JWT_SECRET },
+      );
+
+      for (const route of authenticatedRoutes) {
+        const badHeader = await request(ctx.app.getHttpServer())
+          .get(route)
+          .set("Authorization", `Bearer ${guestToken}`)
+          .set("Cookie", [`${ACCESS_COOKIE}=${accessToken}`]);
+        expect([route, badHeader.status]).toEqual([route, 401]);
+
+        const badCookie = await request(ctx.app.getHttpServer())
+          .get(route)
+          .set("Authorization", `Bearer ${accessToken}`)
+          .set("Cookie", [`${ACCESS_COOKIE}=${guestToken}`]);
+        expect([route, badCookie.status]).toEqual([route, 200]);
+
+        const otherScheme = await request(ctx.app.getHttpServer())
+          .get(route)
+          .set("Authorization", "Basic dXNlcjpwYXNz")
+          .set("Cookie", [`${ACCESS_COOKIE}=${accessToken}`]);
+        expect([route, otherScheme.status]).toEqual([route, 200]);
+      }
+    });
+
+    it.each([{ tokenType: "toString" }, {}])(
+      "refuses a token whose tokenType we never issue (%o)",
+      async (claims) => {
+        const user = await userRepository.save(
+          userRepository.create({
+            email: "untyped-token@test.com",
+            password: "password",
+            name: "Untyped Token",
+          }),
+        );
+        const token = ctx.jwtService.sign(
+          { sub: user.id, email: user.email, ...claims },
+          { secret: process.env.JWT_SECRET },
+        );
+
+        await request(ctx.app.getHttpServer())
+          .get("/auth/me")
+          .set("Authorization", `Bearer ${token}`)
+          .expect(401);
       },
     );
   });

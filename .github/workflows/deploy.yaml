@@ -777,6 +777,13 @@ jobs:
             export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             export JWT_SECRET=${{ secrets.JWT_SECRET }}
             export JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
+            export GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }}
+            export GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            export APPLE_TEAM_ID=${{ vars.APPLE_TEAM_ID }}
+            export APPLE_KEY_ID=${{ vars.APPLE_KEY_ID }}
+            export APPLE_SERVICES_ID=${{ vars.APPLE_SERVICES_ID }}
+            export APPLE_BUNDLE_ID=${{ vars.APPLE_BUNDLE_ID }}
+            export APPLE_PRIVATE_KEY_BASE64=${{ secrets.APPLE_PRIVATE_KEY_BASE64 }}
             export NODE_ENV=${{ github.ref_name == 'production' && 'production' || 'staging' }}
             export DB_NAME="alliance"
             export SMTP_HOST=${{ secrets.SMTP_HOST }}

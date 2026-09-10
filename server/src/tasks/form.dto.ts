@@ -254,7 +254,7 @@ export class FormResponseDto extends PickType(FormResponse, [
     this.sid = response.sid;
     this.phDistinctId = response.phDistinctId;
     this.createdAt = response.createdAt;
-    this.user = response.user;
+    this.user = response.user ? new UserDto(response.user) : undefined;
     this.aiDetectionResults = aiDetectionResults?.map(
       (result) => new AiDetectionResultDto(result),
     );
