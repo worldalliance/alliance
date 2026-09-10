@@ -71,7 +71,6 @@
       },
       "devDependencies": {
         "@eslint/js": "^9.22.0",
-        "@happy-dom/global-registrator": "^20.11.1",
         "@storybook/addon-essentials": "^8.6.12",
         "@storybook/addon-interactions": "^8.6.12",
         "@storybook/blocks": "^8.6.12",
@@ -477,7 +476,6 @@
         "yet-another-react-lightbox": "^3.32.1",
       },
       "devDependencies": {
-        "@happy-dom/global-registrator": "^20.11.1",
         "@testing-library/dom": "^10.4.0",
         "@testing-library/react": "^16.3.2",
         "@types/jest": "^29.5.14",

@@ -4,6 +4,6 @@
 linker = "hoisted"
 
 # `bun test` ignores the package.json `test` script, so the DOM preload has to
-# live here for CI (which runs `bun test`) to pick it up.
+# be named here for CI (which runs `bun test`) to pick it up.
 [test]
-preload = ["./test-setup.ts"]
+preload = ["@alliance/shared/lib/testing/preload.ts"]
