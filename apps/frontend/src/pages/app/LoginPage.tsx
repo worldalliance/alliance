@@ -1,3 +1,4 @@
+import { OAuthIntent } from "@alliance/common/oauth";
 import {
   authForgotPassword,
   authLogin,
@@ -7,9 +8,17 @@ import {
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
 import { Features } from "@alliance/shared/lib/features";
 import { CardStyle } from "@alliance/shared/styles/card";
+import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import {
+  oauthNoticeMessage,
+  oauthStartUrl,
+  useAppOrigin,
+  useOAuthNotice,
+} from "@alliance/sharedweb/lib/oauth";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import FormInput from "@alliance/sharedweb/ui/FormInput";
+import OAuthButtons from "@alliance/sharedweb/ui/OAuthButtons";
 import { Eye, EyeOff } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -20,7 +29,7 @@ import {
   useSearchParams,
 } from "react-router";
 import { useAuth } from "../../lib/AuthContext";
-import { isFeatureEnabled } from "../../lib/config";
+import { getApiUrl, isFeatureEnabled } from "../../lib/config";
 
 const LoginPage: React.FC = () => {
   const location = useLocation();
@@ -46,6 +55,9 @@ const LoginPage: React.FC = () => {
     if (qp && qp.startsWith("/")) return qp;
     return href("/tasks");
   }, [searchParams]);
+
+  const oauthNotice = useOAuthNotice();
+  const oauthMessage = oauthNotice && oauthNoticeMessage(oauthNotice);
 
   useEffect(() => {
     authMe().then((res) => {
@@ -110,6 +122,11 @@ const LoginPage: React.FC = () => {
 
   const showRegisterLink = isFeatureEnabled(Features.PublicSignup);
 
+  const origin = useAppOrigin(getBaseUrl());
+  // Back here rather than straight to the app, so the outcome and any error
+  // land on a page that reads them.
+  const oauthReturnTo = `${origin}${href("/login")}?redirect=${encodeURIComponent(returnUrl)}`;
+
   return (
     <div className="min-h-screen flex flex-col bg-page">
       <div className="flex flex-col flex-grow items-center justify-center ">
@@ -128,7 +145,37 @@ const LoginPage: React.FC = () => {
               <span className="text-red-700">{error}</span>
             </Card>
           )}
+
+          {oauthMessage && (
+            <Card
+              style={CardStyle.Alert}
+              className={`mb-6 ${oauthNotice.kind === "error" ? "!border-red-400 !bg-red-50" : ""}`}
+            >
+              <span
+                className={oauthNotice.kind === "error" ? "text-red-700" : ""}
+              >
+                {oauthMessage}
+              </span>
+            </Card>
+          )}
           <Card className="p-6 sm:p-8 z-10 relative" style={CardStyle.White}>
+            <div className="mb-6">
+              <OAuthButtons
+                hrefFor={(provider) =>
+                  oauthStartUrl({
+                    apiUrl: getApiUrl(),
+                    provider,
+                    intent: OAuthIntent.Authenticate,
+                    returnTo: oauthReturnTo,
+                  })
+                }
+              />
+              <div className="mt-6 flex items-center gap-3">
+                <span className="h-px flex-1 bg-zinc-200" />
+                <span className="text-sm text-zinc-500">or</span>
+                <span className="h-px flex-1 bg-zinc-200" />
+              </div>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <FormInput

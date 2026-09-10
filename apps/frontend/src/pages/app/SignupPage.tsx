@@ -1,5 +1,6 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { errorMessage } from "@alliance/common/errorMessage";
+import { OAuthIntent } from "@alliance/common/oauth";
 import { withCount } from "@alliance/common/plural";
 import {
   authMe,
@@ -15,14 +16,22 @@ import { captureEvent } from "@alliance/shared/lib/analytics";
 import { Features } from "@alliance/shared/lib/features";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { cn } from "@alliance/shared/styles/util";
+import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import {
+  oauthNoticeMessage,
+  oauthStartUrl,
+  useAppOrigin,
+  useOAuthNotice,
+} from "@alliance/sharedweb/lib/oauth";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
+import OAuthButtons from "@alliance/sharedweb/ui/OAuthButtons";
 import { useQuery } from "@tanstack/react-query";
 import { Calendar } from "lucide-react";
 import posthog from "posthog-js";
 import React, { useEffect, useMemo, useState } from "react";
-import { href, Link, useSearchParams } from "react-router";
+import { href, Link, useNavigate, useSearchParams } from "react-router";
 import SignupForm from "../../components/SignupForm";
-import { isFeatureEnabled } from "../../lib/config";
+import { getApiUrl, isFeatureEnabled } from "../../lib/config";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import { HERO_SUBHEAD } from "../../site/content";
 import { SiteFooter } from "../../site/Footer";
@@ -221,6 +230,31 @@ const SignupPage: React.FC = () => {
 
   const inviteOnly = !isFeatureEnabled(Features.PublicSignup) && !referralCode;
 
+  const navigate = useNavigate();
+  const oauthNotice = useOAuthNotice();
+  const oauthMessage = oauthNotice && oauthNoticeMessage(oauthNotice);
+
+  // The provider sends the member back here so an error lands beside the
+  // form; a success moves on to the app.
+  useEffect(() => {
+    if (oauthNotice?.kind !== "outcome") {
+      return;
+    }
+    navigate(href("/tasks"), { replace: true });
+  }, [oauthNotice, navigate]);
+
+  // Whatever getApiUrl falls back to before hydration: /start sets the proof
+  // cookie on the API's host and the callback lands on returnTo's, so a click
+  // that early finishes only while the two are one host.
+  const origin = useAppOrigin(getBaseUrl());
+  const oauthReturnTo = (() => {
+    const url = new URL(`${origin}${href("/signup")}`);
+    if (referralCode) {
+      url.searchParams.set("ref", referralCode);
+    }
+    return url.toString();
+  })();
+
   let inviterLine: React.ReactNode = null;
   if (!inviteOnly && isInviteValid && inviterProfile) {
     switch (inviterProfile.kind) {
@@ -288,6 +322,19 @@ const SignupPage: React.FC = () => {
                   {error}
                 </p>
               )}
+              {oauthMessage && (
+                <p
+                  className={cn(
+                    "text-sm font-medium",
+                    oauthNotice.kind === "error"
+                      ? "text-red-600"
+                      : "text-[var(--site-ink)]/70",
+                  )}
+                  role="alert"
+                >
+                  {oauthMessage}
+                </p>
+              )}
               {!inviteOnly && isInviteValid && (
                 <>
                   {(signupSocialProofPending ||
@@ -329,6 +376,28 @@ const SignupPage: React.FC = () => {
                     className="w-full bg-zinc-100 p-7 text-left sm:p-9"
                     style={{ borderRadius: "var(--site-radius-card)" }}
                   >
+                    <div className="mb-6">
+                      <OAuthButtons
+                        hrefFor={(provider) =>
+                          oauthStartUrl({
+                            apiUrl: getApiUrl(),
+                            provider,
+                            intent: OAuthIntent.Authenticate,
+                            returnTo: oauthReturnTo,
+                            referralCode,
+                          })
+                        }
+                        verb="Sign up with"
+                        disabled={isPreviewMode}
+                      />
+                      <div className="mt-6 flex items-center gap-3">
+                        <span className="h-px flex-1 bg-zinc-300" />
+                        <span className="text-sm text-[var(--site-ink)]/50">
+                          or
+                        </span>
+                        <span className="h-px flex-1 bg-zinc-300" />
+                      </div>
+                    </div>
                     <SignupForm
                       onSubmit={handleSubmit}
                       loading={loading}

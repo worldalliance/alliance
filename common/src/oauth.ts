@@ -66,3 +66,27 @@ export function oauthErrorMessage(
 ): string {
   return ERROR_MESSAGE[error](OAUTH_PROVIDER_LABEL[provider]);
 }
+
+const oauthOutcomeSchema = z.enum(OAuthOutcome);
+
+export const parseOAuthOutcome = (value: unknown): OAuthOutcome | null =>
+  oauthOutcomeSchema.safeParse(value).data ?? null;
+export const parseOAuthError = (value: unknown): OAuthError | null =>
+  z.enum(OAuthError).safeParse(value).data ?? null;
+
+/** Null where the page the member lands on already says it. */
+const OUTCOME_MESSAGE: Record<
+  OAuthOutcome,
+  ((label: string) => string) | null
+> = {
+  [OAuthOutcome.SignedIn]: null,
+  [OAuthOutcome.SignedUp]: null,
+  [OAuthOutcome.Linked]: (label) => `Your ${label} account is now linked.`,
+};
+
+export function oauthOutcomeMessage(
+  provider: OAuthProvider,
+  outcome: OAuthOutcome,
+): string | null {
+  return OUTCOME_MESSAGE[outcome]?.(OAUTH_PROVIDER_LABEL[provider]) ?? null;
+}
