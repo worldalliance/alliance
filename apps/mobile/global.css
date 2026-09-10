@@ -27,7 +27,6 @@
   /* Strip lineHeight from font-size utilities — RN handles defaults well,
      and explicit lineHeight on TextInput causes bottom-clipping.
      Use leading-* utilities when explicit lineHeight is needed. */
-  --text-2xs--line-height: initial;
   --text-xs--line-height: initial;
   --text-sm--line-height: initial;
   --text-base--line-height: initial;
