@@ -4,6 +4,7 @@ import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { href, Link, useLocation } from "react-router";
 import { useAuth } from "../lib/AuthContext";
+import { hasSessionHint } from "../lib/sessionHint";
 import {
   HOME_HREF,
   LOGIN_HREF,
@@ -34,6 +35,11 @@ export function Navbar({
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sessionHinted, setSessionHinted] = useState(false);
+
+  useEffect(() => {
+    setSessionHinted(hasSessionHint());
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > SOLID_AFTER);
@@ -63,8 +69,11 @@ export function Navbar({
   const profileHref = user
     ? href("/member/:id", { id: user.id.toString() })
     : href("/profile");
-  const accountHref = isAuthenticated ? TASKS_HREF : LOGIN_HREF;
-  const accountLabel = isAuthenticated ? "My tasks" : "Log In";
+  // Never hide the account button while `loading`: the homepage is prerendered,
+  // so a hidden one ships in the static HTML and never comes back without JS.
+  const showAuthed = loading ? sessionHinted : isAuthenticated;
+  const accountHref = showAuthed ? TASKS_HREF : LOGIN_HREF;
+  const accountLabel = showAuthed ? "My tasks" : "Log In";
   // Light type only survives while the bar is still over the primary band.
   const light = overPrimary && !scrolled && !menuOpen;
 
@@ -109,36 +118,30 @@ export function Navbar({
         </Link>
 
         <div className="flex items-center justify-end gap-2.5">
-          <div
+          <Link
+            to={PARTNER_HREF}
             className={cn(
-              "flex items-center gap-2.5 transition-opacity duration-300",
-              loading && "pointer-events-none opacity-0",
+              "hidden min-h-11 items-center px-4 text-sm font-medium transition-colors md:inline-flex bg-zinc-200 text-black hover:bg-zinc-300",
             )}
-            aria-hidden={loading}
+            style={{ borderRadius: "var(--site-radius-button)" }}
           >
-            <Link
-              to={PARTNER_HREF}
-              className={cn(
-                "hidden min-h-11 items-center px-4 text-sm font-medium transition-colors md:inline-flex bg-zinc-200 text-black hover:bg-zinc-300",
-              )}
-              style={{ borderRadius: "var(--site-radius-button)" }}
-            >
-              {NAV_PARTNER}
-            </Link>
-            <Link
-              to={accountHref}
-              className={cn(
-                "inline-flex min-h-11 items-center gap-2 px-4 text-sm font-medium transition-colors",
-                light
-                  ? "bg-white text-[var(--site-primary)] hover:bg-white/85"
-                  : "bg-[var(--site-primary)] text-white hover:bg-[var(--site-primary-hover)]",
-              )}
-              style={{ borderRadius: "var(--site-radius-button)" }}
-            >
-              {accountLabel}
-              <SiteArrow className="size-2.5" />
-            </Link>
-            {isAuthenticated && user && (
+            {NAV_PARTNER}
+          </Link>
+          <Link
+            to={accountHref}
+            className={cn(
+              "inline-flex min-h-11 items-center gap-2 px-4 text-sm font-medium transition-colors",
+              light
+                ? "bg-white text-[var(--site-primary)] hover:bg-white/85"
+                : "bg-[var(--site-primary)] text-white hover:bg-[var(--site-primary-hover)]",
+            )}
+            style={{ borderRadius: "var(--site-radius-button)" }}
+          >
+            {accountLabel}
+            <SiteArrow className="size-2.5" />
+          </Link>
+          {showAuthed &&
+            (user ? (
               <Link
                 to={profileHref}
                 aria-label="Go to profile"
@@ -159,8 +162,10 @@ export function Navbar({
                   )}
                 />
               </Link>
-            )}
-          </div>
+            ) : (
+              // Reserves the avatar's box so the row doesn't shift when it arrives.
+              <div className="size-11 shrink-0" />
+            ))}
           <button
             type="button"
             className="-mr-2 inline-flex size-11 items-center justify-center md:hidden"
