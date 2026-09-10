@@ -67,21 +67,11 @@ beforeEach(() => {
     });
 });
 
-import { AuthContext, type AuthContextType } from "../lib/AuthContext";
+import { AuthContext } from "../lib/AuthContext";
+import { authValue } from "../testing/authValue";
 import Comments from "./Comments";
 
-const noop = () => Promise.resolve();
-
-const loggedOut: AuthContextType = {
-  isAuthenticated: false,
-  user: undefined,
-  isImpersonation: false,
-  refreshUser: noop,
-  login: noop,
-  onLogin: noop,
-  logout: noop,
-  loading: false,
-};
+const loggedOut = authValue();
 
 const withProviders = (ui: ReactNode) => (
   <QueryClientProvider client={new QueryClient()}>
