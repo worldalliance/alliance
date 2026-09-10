@@ -3,6 +3,7 @@ import {
   ActionWithAwayStatus,
   deadlineHasPassed,
   isActionOptional,
+  isActionOptionalForViewerOnly,
 } from "./actionUtils";
 import { taskHeaders } from "./copy";
 
@@ -48,6 +49,15 @@ export function getTaskDismissInfo(
     default:
       away satisfies never;
       return undefined;
+  }
+
+  // Ahead of the deadline branch, which would otherwise tell a viewer who was
+  // never held to the deadline that they missed it.
+  if (isActionOptionalForViewerOnly(action)) {
+    return {
+      header: taskHeaders.homePage.optionalForViewer.title,
+      message: taskHeaders.homePage.optionalForViewer.description,
+    };
   }
 
   if (deadlineHasPassed(action)) {

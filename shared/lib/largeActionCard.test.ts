@@ -51,10 +51,24 @@ describe("getTaskDismissInfo", () => {
     expect(optional?.header).toBe(taskHeaders.homePage.optional.title);
   });
 
-  it("shows the optional banner for a viewer the action is optional for", () => {
+  it("says optional for you where only the viewer's flag is set", () => {
     const info = getTaskDismissInfo(
       makeAction({ optional: false, viewer: makeViewer({ optional: true }) }),
     );
-    expect(info?.header).toBe(taskHeaders.homePage.optional.title);
+    expect(info?.header).toBe(taskHeaders.homePage.optionalForViewer.title);
+    expect(info?.message).toBe(
+      taskHeaders.homePage.optionalForViewer.description,
+    );
+  });
+
+  it("keeps that wording once the deadline has passed", () => {
+    const info = getTaskDismissInfo(
+      makeAction({
+        optional: false,
+        status: "resolution",
+        viewer: makeViewer({ optional: true }),
+      }),
+    );
+    expect(info?.header).toBe(taskHeaders.homePage.optionalForViewer.title);
   });
 });

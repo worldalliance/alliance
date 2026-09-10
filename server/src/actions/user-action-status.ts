@@ -46,6 +46,11 @@ export type UserActionStatus = {
   /**
    * Is this action optional for the viewer? Viewer-facing copy reads this
    * rather than `Action.optional`, which describes the action and its cohort.
+   *
+   * Client copy names a widening past `Action.optional` as the contract gap
+   * ("You weren't a member for all of this task"), off
+   * `optional && !action.optional`. That leaves room for exactly one reason to
+   * widen it; a second needs the reason on the wire instead.
    */
   optional: boolean;
   /**

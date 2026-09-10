@@ -139,8 +139,13 @@ describe("getActionPageTaskPanelState", () => {
     expect(stateOf(makeAction({ optional: true }))).toBe(
       ActionPageTaskPanelState.Optional,
     );
+  });
+
+  it("separates an action optional to this viewer alone", () => {
     expect(
-      stateOf(makeAction({ viewer: makeViewer({ optional: true }) })),
-    ).toBe(ActionPageTaskPanelState.Optional);
+      stateOf(
+        makeAction({ optional: false, viewer: makeViewer({ optional: true }) }),
+      ),
+    ).toBe(ActionPageTaskPanelState.OptionalForViewer);
   });
 });

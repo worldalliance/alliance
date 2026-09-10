@@ -177,6 +177,15 @@ export function isActionOptional(action: ActionDto): boolean {
 }
 
 /**
+ * Optional to this viewer and required for the rest of the cohort, so copy
+ * that calls the action itself optional would be wrong. `viewer.optional` is
+ * the server's per-member answer and may be wider than `action.optional`.
+ */
+export function isActionOptionalForViewerOnly(action: ActionDto): boolean {
+  return isActionOptional(action) && !action.optional;
+}
+
+/**
  * Legacy `shouldParticipate` folds dismissal into assignment, so the fallback
  * needs no dismissal test of its own.
  */

@@ -11,6 +11,7 @@ import {
   deadlineHasPassed,
   isActionAssignedAndNotDismissed,
   isActionOptional,
+  isActionOptionalForViewerOnly,
   isCurrentlyCompletedAction,
   shouldCompleteAction,
   showActionInSidebarList,
@@ -57,6 +58,20 @@ describe("viewer-based action predicates", () => {
       isActionOptional(makeAction({ viewer: makeViewer({ optional: true }) })),
     ).toBe(true);
     expect(isActionOptional(makeLegacyAction({ optional: true }))).toBe(true);
+  });
+
+  it("separates viewer-only optional from an action optional for everyone", () => {
+    expect(
+      isActionOptionalForViewerOnly(
+        makeAction({ optional: false, viewer: makeViewer({ optional: true }) }),
+      ),
+    ).toBe(true);
+    expect(isActionOptionalForViewerOnly(makeAction({ optional: true }))).toBe(
+      false,
+    );
+    expect(
+      isActionOptionalForViewerOnly(makeLegacyAction({ optional: true })),
+    ).toBe(false);
   });
 
   it("keeps a dismissed action completable but out of home lists", () => {

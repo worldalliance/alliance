@@ -119,6 +119,10 @@ const taskPanelHeaderByState: Record<
     taskHeaders.actionPage.optional,
     "text-sky-500",
   ),
+  [ActionPageTaskPanelState.OptionalForViewer]: renderTitledHeader(
+    taskHeaders.actionPage.optionalForViewer,
+    "text-sky-500",
+  ),
   [ActionPageTaskPanelState.ShowTask]: null,
 };
 
@@ -365,6 +369,7 @@ const ActionPageTaskPanel = () => {
         />,
       );
     case ActionPageTaskPanelState.Optional:
+    case ActionPageTaskPanelState.OptionalForViewer:
     case ActionPageTaskPanelState.ShowTask:
       return renderStackedCard(
         <ActionTaskPanel
