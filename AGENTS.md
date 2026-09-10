@@ -104,6 +104,10 @@ Icons and direct interaction over words: a `lucide-react` icon button (`lucide-r
 
 Icon-only controls carry a tooltip or `aria-label`, and destructive or irreversible actions say what they do in words.
 
+## Secrets
+
+Secrets stay in the environment, out of context. Redact values in `.env*` files when reading them or write a script that pipes them directly into a command, and read those files through a filter that redacts the values.
+
 ## Working files
 
 Everything stays inside the repo — scratch files, notes, scripts, logs, dumps, downloads. Never `/tmp` or `~`. Same when reading: prefer files in the repo over things stashed elsewhere on the machine.
