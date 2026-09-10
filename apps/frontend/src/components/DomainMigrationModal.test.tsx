@@ -1,8 +1,9 @@
 import type { UserDto } from "@alliance/shared/client";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { AuthContext, type AuthContextType } from "../lib/AuthContext";
+import { AuthContext } from "../lib/AuthContext";
 import { testAuthUser } from "../stories/testData";
+import { authValue } from "../testing/authValue";
 import DomainMigrationModal from "./DomainMigrationModal";
 
 declare global {
@@ -17,23 +18,10 @@ const TITLE = "We're moving to thealliance.org";
 // not read through.
 const title = () => screen.queryByRole("heading", { name: TITLE });
 
-const noop = () => Promise.resolve();
-
-const authValue = (user: UserDto | undefined): AuthContextType => ({
-  isAuthenticated: !!user,
-  user,
-  isImpersonation: false,
-  refreshUser: noop,
-  login: noop,
-  onLogin: noop,
-  logout: noop,
-  loading: false,
-});
-
 const visitAs = (url: string, user: UserDto | undefined) => {
   window.happyDOM.setURL(url);
   render(
-    <AuthContext.Provider value={authValue(user)}>
+    <AuthContext.Provider value={authValue({ user })}>
       <ToastProvider>
         <DomainMigrationModal />
       </ToastProvider>

@@ -7,7 +7,9 @@ import {
   screen,
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { AuthContext, type AuthContextType } from "../../lib/AuthContext";
+import { AuthContext } from "../../lib/AuthContext";
+import { testAuthUser } from "../../stories/testData";
+import { authValue } from "../../testing/authValue";
 import PostFormPage from "./PostFormPage";
 
 let pendingCreate: Promise<void> | null = null;
@@ -21,18 +23,7 @@ const deferCreate = (): (() => void) => {
   return land;
 };
 
-const noop = () => Promise.resolve();
-
-const signedIn: AuthContextType = {
-  isAuthenticated: true,
-  user: undefined,
-  isImpersonation: false,
-  refreshUser: noop,
-  login: noop,
-  onLogin: noop,
-  logout: noop,
-  loading: false,
-};
+const signedIn = authValue({ user: testAuthUser });
 
 // happy-dom leaves `location` where it is on `history.pushState`.
 declare const happyDOM: { setURL: (url: string) => void };
