@@ -11,6 +11,11 @@ import { Animated, Pressable, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { isPathActive } from "../lib/isPathActive";
 import { useMessagingUnread } from "../lib/messages";
+import {
+  Anchor,
+  useReportChromeBottom,
+  WalkthroughAnchor,
+} from "../lib/onboarding/walkthrough";
 import { colors } from "../lib/style/colors";
 import Text, { FontWeight } from "./system/Text";
 
@@ -95,6 +100,7 @@ export default function TabBar() {
   const iconSize = compactTabBar ? 22 : 26;
 
   const pathname = usePathname();
+  const reportChromeBottom = useReportChromeBottom();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: actions } = useActionsQuery();
@@ -149,6 +155,7 @@ export default function TabBar() {
   return (
     <View
       className="flex-row bg-white border-t border-zinc-100 px-2"
+      onLayout={reportChromeBottom}
       style={{
         paddingBottom: insets.bottom + (compactTabBar ? 10 : 0),
         borderTopColor: colors.borderLight,
@@ -161,9 +168,8 @@ export default function TabBar() {
         const badgeBackgroundColor =
           tab.href === "/" ? colors.error : colors.text.icon;
         const badgeLabel = getBadgeLabel(badgeCount);
-        return (
+        const button = (
           <AnimatedTabButton
-            key={tab.href}
             onPress={() => router.dismissTo(tab.href)}
             onPressIn={() => {
               impactAsync(ImpactFeedbackStyle.Light);
@@ -200,6 +206,22 @@ export default function TabBar() {
               </View>
             )}
           </AnimatedTabButton>
+        );
+
+        // Only the Groups tab is ever pointed at, and wrapping every tab would
+        // put a non-flexing view between the row and its buttons.
+        return tab.href === "/groups" ? (
+          <Anchor
+            key={tab.href}
+            name={WalkthroughAnchor.GroupsTab}
+            className="flex-1"
+          >
+            {button}
+          </Anchor>
+        ) : (
+          <View key={tab.href} className="flex-1">
+            {button}
+          </View>
         );
       })}
     </View>

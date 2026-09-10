@@ -11,7 +11,7 @@ import type { Picture } from "vite-imagetools";
 import texture from "../assets/redesign/priority-environment.jpg?w=400;800&format=avif;webp;jpg&as=picture";
 
 export const SITE_COL =
-  "mx-auto w-full max-w-[1600px] px-5 sm:px-8 lg:px-[68px]";
+  "mx-auto w-full max-w-[1750px] px-5 sm:px-8 lg:px-[68px]";
 
 /**
  * `display: contents` on the wrapper so the img stays a direct visual child of
@@ -197,11 +197,10 @@ export function Logotype({
   return (
     <span
       className={cn(
-        "site-display leading-none whitespace-nowrap",
+        "font-logotype leading-none whitespace-nowrap",
         onDark ? "text-white" : "text-black",
         className,
       )}
-      style={{ fontWeight: 500, letterSpacing: "0.02em" }}
     >
       The Alliance
     </span>
@@ -244,6 +243,7 @@ export function SiteButton({
   className?: string;
   size?: "sm" | "base";
   withArrow?: boolean;
+  /** Off where the button wraps to several lines and the hop reads as jitter. */
   lift?: boolean;
 } & LinkTarget) {
   const classes = cn(
@@ -280,19 +280,21 @@ export function SiteButton({
       </Link>
     );
   }
+
   if ("href" in target) {
     return (
       <a
         href={target.href}
-        className={classes}
-        style={style}
         target="_blank"
         rel="noreferrer"
+        className={classes}
+        style={style}
       >
         {body}
       </a>
     );
   }
+
   return (
     <button
       type="button"

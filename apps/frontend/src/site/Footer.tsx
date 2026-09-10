@@ -1,7 +1,7 @@
 import { cn } from "@alliance/shared/styles/util";
 import { Fragment } from "react";
 import { Link } from "react-router";
-import { CONTACT_EMAIL, FOOTER_TAGLINE } from "./content";
+import { CONTACT_EMAIL, FOOTER_TAGLINE, JOIN_MAILTO } from "./content";
 import {
   FOOTER_COLUMNS,
   FOOTER_LEGAL_LINKS,
@@ -9,8 +9,6 @@ import {
   type SiteLink,
 } from "./links";
 import { Logotype, SITE_COL, SiteArrow, TexturedFill } from "./ui";
-
-const JOIN_MAILTO = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("I'd like to join the Alliance")}`;
 
 function FooterAnchor({ link }: { link: SiteLink }) {
   const className =

@@ -3,55 +3,8 @@
 @source "../../../shared/";
 @source "../../../sharedweb/";
 
-@font-face {
-  font-family: "Berlingske";
-  font-display: swap;
-  src: url("/assets/fonts/BerlingskeSerif-Blk.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Source Sans 3";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("/assets/fonts/source-sans-3-v19-latin-regular.woff2")
-    format("woff2");
-}
-
-@font-face {
-  font-family: "Source Sans 3";
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url("/assets/fonts/source-sans-3-v19-latin-500.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Source Sans 3";
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("/assets/fonts/source-sans-3-v19-latin-600.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Source Sans 3";
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("/assets/fonts/source-sans-3-v19-latin-700.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Source Sans 3";
-  font-style: italic;
-  font-weight: 400;
-  font-display: swap;
-  src: url("/assets/fonts/source-sans-3-v19-latin-italic.woff2") format("woff2");
-}
-
 @theme {
-  --font-serif: "Literata", "Georgia", serif;
+  --font-serif: "TT Neoris", system-ui, sans-serif;
   --color-blue: #399ee6;
   --color-page: oklch(98% 0 0);
 
@@ -61,8 +14,8 @@
   --color-grey-3: oklch(90.5% 0 0);
 
   --color-green: rgb(98, 161, 36);
-  --color-green-bg: rgb(35, 74, 27);
-  --color-green-bg-card: rgb(48, 96, 40);
+  --color-green-bg: #081e40;
+  --color-green-bg-card: #0d2c5c;
   --color-navy: rgb(7, 30, 64);
   --color-staff: #399ee6;
   --color-ambassador: #bf5f45;
@@ -83,14 +36,15 @@
   --site-surface-alt: #e4e5e3;
   --site-ink: #14181d;
   --site-font-body: "TT Neoris", system-ui, sans-serif;
-  --site-font-display: "Libre Caslon Text", Georgia, serif;
+  --site-font-display: "Libre Caslon Condensed", Georgia, serif;
+  --site-font-logotype: "Libre Caslon Text", Georgia, serif;
   --site-radius-button: 0.375rem;
   --site-radius-card: 0.5rem;
   --site-radius-input: 0.375rem;
 }
 
 * {
-  font-family: "Source Sans 3", sans-serif;
+  font-family: "TT Neoris", sans-serif;
 }
 
 .none {
@@ -154,7 +108,7 @@ select {
 
 .font-sans {
   font-family:
-    "Source Sans 3",
+    "TT Neoris",
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
@@ -173,11 +127,17 @@ select {
 }
 
 .font-title {
-  @apply font-serif font-semibold;
+  @apply font-serif font-medium;
 }
 
-.font-berlingske {
-  font-family: "Berlingske";
+/*
+ * The wordmark is the only place set in Libre Caslon Text. Every other serif on
+ * the site and the platform takes the condensed cut.
+ */
+.font-logotype {
+  font-family: var(--site-font-logotype);
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .goob {
@@ -233,19 +193,19 @@ input[type="number"]:disabled {
 }
 
 .text-title {
-  @apply font-serif font-semibold text-2xl md:text-3xl;
+  @apply font-serif font-medium text-2xl md:text-3xl;
 }
 
 .text-title-medium {
-  @apply font-serif font-semibold text-3xl md:text-4xl;
+  @apply font-serif font-medium text-3xl md:text-4xl;
 }
 
 .text-title-large {
-  @apply font-serif font-semibold text-4xl md:text-5xl;
+  @apply font-serif font-medium text-4xl md:text-5xl;
 }
 
 .text-title-small {
-  @apply font-serif font-semibold text-xl md:text-2xl;
+  @apply font-serif font-medium text-xl md:text-2xl;
 }
 
 a,

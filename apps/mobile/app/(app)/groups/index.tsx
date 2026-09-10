@@ -56,6 +56,7 @@ import { SimplePageTitle } from "../../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../../components/system/Text";
 import UserActivityCard from "../../../components/UserActivityCard";
 import { useAuth } from "../../../lib/AuthContext";
+import { Anchor, WalkthroughAnchor } from "../../../lib/onboarding/walkthrough";
 import { pickImageDataUri } from "../../../lib/pickImageDataUri";
 import { colors } from "../../../lib/style/colors";
 
@@ -142,17 +143,22 @@ export default function GroupsScreen() {
           </TouchableOpacity>
         </SimplePageTitle>
         <View className="flex-1 px-4 py-8 items-center justify-center">
-          <Text className="text-sm text-zinc-500 text-center">
-            You are not in any groups yet.
-          </Text>
-          <TouchableOpacity
-            onPress={() => router.push("/groups/manage")}
-            className="mt-4 px-4 py-2 bg-zinc-900 rounded-lg"
+          <Anchor
+            name={WalkthroughAnchor.Group}
+            className="items-center rounded-lg p-4"
           >
-            <Text className="text-sm text-white" weight={FontWeight.Medium}>
-              Manage groups
+            <Text className="text-sm text-zinc-500 text-center">
+              You are not in any groups yet.
             </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/groups/manage")}
+              className="mt-4 px-4 py-2 bg-zinc-900 rounded-lg"
+            >
+              <Text className="text-sm text-white" weight={FontWeight.Medium}>
+                Manage groups
+              </Text>
+            </TouchableOpacity>
+          </Anchor>
         </View>
       </View>
     );
@@ -235,12 +241,14 @@ export default function GroupsScreen() {
             </FormModal>
           </>
         )}
-        <Text className="text-2xl text-zinc-900" weight={FontWeight.Semibold}>
-          {selectedCommunity?.name}
-        </Text>
-        <Text className="text-sm text-zinc-500">
-          {selectedCommunity?.description}
-        </Text>
+        <Anchor name={WalkthroughAnchor.Group}>
+          <Text className="text-2xl text-zinc-900" weight={FontWeight.Semibold}>
+            {selectedCommunity?.name}
+          </Text>
+          <Text className="text-sm text-zinc-500">
+            {selectedCommunity?.description}
+          </Text>
+        </Anchor>
       </View>
 
       <View className="px-4 pt-2 pb-4">

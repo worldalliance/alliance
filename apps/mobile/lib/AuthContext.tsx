@@ -27,11 +27,18 @@ import {
   isVisualTestMode,
 } from "./visualTest";
 
+export type LoginParams = {
+  email: string;
+  password: string;
+  /** Onboarding routes on from here itself, so it opts out of the jump home. */
+  navigateOnSuccess?: boolean;
+};
+
 interface AuthContextType {
   isAuthenticated: boolean;
   canConnectToServer: boolean;
   user: UserDto | undefined;
-  login: (email: string, password: string) => Promise<void>;
+  login: (params: LoginParams) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   isLoading: boolean;
@@ -66,15 +73,19 @@ export const AuthProvider: React.FC<
   const getAccessToken = useCallback(async () => {
     return await SecureStorage.getItem(SecureStorageKey.ACCESS_TOKEN);
   }, []);
-  const logout = useCallback(async () => {
+  const clearSession = useCallback(() => {
     authLogout();
     clearTokens();
     queryClient.clear();
     setUser(undefined);
+  }, [clearTokens, queryClient]);
+
+  const logout = useCallback(() => {
+    clearSession();
     if (!isVisualTestMode) {
-      router.replace("/auth/login");
+      router.replace("/onboarding");
     }
-  }, [router, clearTokens, queryClient]);
+  }, [router, clearSession]);
 
   const refreshUser = useCallback(async () => {
     try {
@@ -105,12 +116,14 @@ export const AuthProvider: React.FC<
         setUser(profile?.user);
       } catch {
         captureEvent(AnalyticsEvent.AuthFailedToRefresh);
-        logout();
+        // No redirect: a first launch has no session to lose, and the app
+        // layout already sends an unauthenticated visitor to onboarding.
+        clearSession();
       } finally {
         setIsLoading(false);
       }
     })();
-  }, [logout, getAccessToken]);
+  }, [clearSession, getAccessToken]);
 
   useEffect(() => {
     let cancelled = false;
@@ -132,7 +145,7 @@ export const AuthProvider: React.FC<
   }, []);
 
   const login = useCallback(
-    async (email: string, password: string) => {
+    async ({ email, password, navigateOnSuccess = true }: LoginParams) => {
       setIsLoading(true);
       try {
         const guestToken = (await getStoredGuestToken()) ?? undefined;
@@ -179,7 +192,7 @@ export const AuthProvider: React.FC<
           });
         }
 
-        if (!isVisualTestMode) {
+        if (!isVisualTestMode && navigateOnSuccess) {
           router.replace("/");
         }
       } catch (error) {
@@ -211,7 +224,7 @@ export const AuthProvider: React.FC<
       return;
     }
 
-    login(credentials.email, credentials.password)
+    login({ email: credentials.email, password: credentials.password })
       .then(() => {
         console.log("auto login successful");
       })

@@ -26,10 +26,22 @@ export const ALL_THROTTLES: Record<string, ThrottlerOptions> = {
   ...LINK_PREVIEW_THROTTLE,
 };
 
-/** Array form expected by `ThrottlerModule.forRoot()`. */
-export const ALL_THROTTLERS = Object.entries(ALL_THROTTLES).map(
-  ([name, options]) => ({ name, ...options }),
-);
+/**
+ * What a rate-limited caller is told. `ThrottlerGuard`'s own message is
+ * "ThrottlerException: Too Many Requests", which reaches the member verbatim:
+ * every client renders the server's `message` through `errorMessage`.
+ */
+export const THROTTLE_MESSAGE =
+  "Too many attempts from this connection. Please wait a few minutes and try again.";
+
+/** Options form expected by `ThrottlerModule.forRoot()`. */
+export const ALL_THROTTLERS = {
+  errorMessage: THROTTLE_MESSAGE,
+  throttlers: Object.entries(ALL_THROTTLES).map(([name, options]) => ({
+    name,
+    ...options,
+  })),
+};
 
 /**
  * Applies one throttle group to a route and skips every other registered

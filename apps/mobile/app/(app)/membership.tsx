@@ -10,6 +10,7 @@ import {
   getLastContractEvent,
   getSignedMessage,
   getSuspensionMessage,
+  isConfirmationCloseEnough,
 } from "@alliance/shared/lib/contract";
 import { suspendContractConfirmation } from "@alliance/shared/lib/copy";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
@@ -31,12 +32,15 @@ import Card, { CardStyle } from "../../components/system/Card";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
+import {
+  Anchor,
+  useWalkthroughScroll,
+  WalkthroughAnchor,
+} from "../../lib/onboarding/walkthrough";
 import { colors } from "../../lib/style/colors";
 
 const WEEKLY_COMMITMENT_CONFIRMATION =
   "I commit to complete each task to the best of my ability.";
-
-const COMMITMENT_CONFIRMATION_LENGTH_TOLERANCE = 10;
 
 function FormalTextDropdown({ markdown }: { markdown: string }) {
   const [open, setOpen] = useState(false);
@@ -127,14 +131,10 @@ function SignedContractActions({
   );
 }
 
-const isConfirmationLengthCloseEnough = (confirmation: string) =>
-  Math.abs(
-    confirmation.trim().length - WEEKLY_COMMITMENT_CONFIRMATION.length,
-  ) <= COMMITMENT_CONFIRMATION_LENGTH_TOLERANCE;
-
 export default function MembershipScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const walkthroughScroll = useWalkthroughScroll();
 
   const [editName, setEditName] = useState("");
   const [weeklyCommitmentConfirmation, setWeeklyCommitmentConfirmation] =
@@ -142,8 +142,9 @@ export default function MembershipScreen() {
   const [lastContractEvent, setLastContractEvent] =
     useState<ContractEventState>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const weeklyCommitmentConfirmed = isConfirmationLengthCloseEnough(
+  const weeklyCommitmentConfirmed = isConfirmationCloseEnough(
     weeklyCommitmentConfirmation,
+    WEEKLY_COMMITMENT_CONFIRMATION,
   );
 
   const { data: latestContract } = useQuery({
@@ -277,7 +278,10 @@ export default function MembershipScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: colors.grey[0] }}>
       <SimplePageTitle title="Membership" />
-      <KeyboardAwareScrollView testID="vr-membership-ready">
+      <KeyboardAwareScrollView
+        testID="vr-membership-ready"
+        {...walkthroughScroll}
+      >
         <View className="px-2 pb-8 pt-2 flex flex-col gap-2">
           {lastContractEvent?.type === "suspended" && (
             <Card cardStyle={CardStyle.Red}>
@@ -291,108 +295,113 @@ export default function MembershipScreen() {
           )}
 
           {(signedContract || latestContract) && (
-            <Card cardStyle={CardStyle.White}>
-              <Text className="text-2xl mb-4" weight={FontWeight.Semibold}>
-                Contract
-              </Text>
-              <View className="gap-y-4">
-                {signedContract && signedContractId !== latestContract?.id && (
-                  <ContractDescriptionList
-                    items={signedContract.description}
-                    markdown={signedContract.markdown}
-                  >
-                    {lastContractEvent?.type === "signed" && (
-                      <SignedContractActions
-                        message={signedContractMessage}
-                        onSuspend={handleContractSuspend}
-                        isSubmitting={isSubmitting}
-                      />
+            <Anchor name={WalkthroughAnchor.Contract}>
+              <Card cardStyle={CardStyle.White}>
+                <Text className="text-2xl mb-4" weight={FontWeight.Semibold}>
+                  Contract
+                </Text>
+                <View className="gap-y-4">
+                  {signedContract &&
+                    signedContractId !== latestContract?.id && (
+                      <ContractDescriptionList
+                        items={signedContract.description}
+                        markdown={signedContract.markdown}
+                      >
+                        {lastContractEvent?.type === "signed" && (
+                          <SignedContractActions
+                            message={signedContractMessage}
+                            onSuspend={handleContractSuspend}
+                            isSubmitting={isSubmitting}
+                          />
+                        )}
+                      </ContractDescriptionList>
                     )}
-                  </ContractDescriptionList>
-                )}
 
-                {latestContract && (
-                  <>
-                    {signedContractId &&
-                      signedContractId !== latestContract.id && (
-                        <Text weight={FontWeight.Semibold}>
-                          An updated contract is available.
-                        </Text>
-                      )}
-                    <ContractDescriptionList
-                      items={latestContract.description}
-                      markdown={latestContract.markdown}
-                    >
-                      {lastContractEvent?.type === "signed" &&
-                      lastContractEvent.contractId === latestContract.id ? (
-                        <SignedContractActions
-                          message={signedContractMessage}
-                          onSuspend={handleContractSuspend}
-                          isSubmitting={isSubmitting}
-                        />
-                      ) : (
-                        <View className="gap-y-4 border-t border-zinc-200 pt-5">
-                          <View className="gap-y-1">
-                            <Text
-                              className="text-zinc-900"
-                              weight={FontWeight.Semibold}
-                            >
-                              Signing
-                            </Text>
-                          </View>
-
-                          <View className="gap-y-2">
-                            <View className="rounded border border-l-4 border-zinc-200 border-l-green bg-zinc-50 px-4 py-3">
-                              <Text className="italic text-zinc-800">
-                                {WEEKLY_COMMITMENT_CONFIRMATION}
+                  {latestContract && (
+                    <>
+                      {signedContractId &&
+                        signedContractId !== latestContract.id && (
+                          <Text weight={FontWeight.Semibold}>
+                            An updated contract is available.
+                          </Text>
+                        )}
+                      <ContractDescriptionList
+                        items={latestContract.description}
+                        markdown={latestContract.markdown}
+                      >
+                        {lastContractEvent?.type === "signed" &&
+                        lastContractEvent.contractId === latestContract.id ? (
+                          <SignedContractActions
+                            message={signedContractMessage}
+                            onSuspend={handleContractSuspend}
+                            isSubmitting={isSubmitting}
+                          />
+                        ) : (
+                          <View className="gap-y-4 border-t border-zinc-200 pt-5">
+                            <View className="gap-y-1">
+                              <Text
+                                className="text-zinc-900"
+                                weight={FontWeight.Semibold}
+                              >
+                                Signing
                               </Text>
                             </View>
-                            <TextInput
-                              className={`${inputClasses} min-h-20`}
-                              value={weeklyCommitmentConfirmation}
-                              onChangeText={setWeeklyCommitmentConfirmation}
-                              placeholder="Type the statement here"
-                              placeholderTextColor="#9ca3af"
-                              accessibilityLabel="Weekly commitment confirmation"
-                              multiline
-                              scrollEnabled={false}
-                              textAlignVertical="top"
-                            />
-                          </View>
 
-                          <View className="flex-row items-start">
-                            <TextInput
-                              className={inputClasses}
-                              value={editName}
-                              onChangeText={setEditName}
-                              placeholder="Type your full name"
-                              placeholderTextColor="#9ca3af"
-                            />
-                            <Button
-                              onPress={handleContractSign}
-                              color={ButtonColor.Black}
-                              disabled={
-                                isSubmitting ||
-                                !editName ||
-                                !weeklyCommitmentConfirmed
-                              }
-                              loading={isSubmitting}
-                              title="Sign"
-                              className="ml-2 min-h-12"
-                            />
+                            <View className="gap-y-2">
+                              <View className="rounded border border-l-4 border-zinc-200 border-l-green bg-zinc-50 px-4 py-3">
+                                <Text className="italic text-zinc-800">
+                                  {WEEKLY_COMMITMENT_CONFIRMATION}
+                                </Text>
+                              </View>
+                              <TextInput
+                                className={`${inputClasses} min-h-20`}
+                                value={weeklyCommitmentConfirmation}
+                                onChangeText={setWeeklyCommitmentConfirmation}
+                                placeholder="Type the statement here"
+                                placeholderTextColor="#9ca3af"
+                                accessibilityLabel="Weekly commitment confirmation"
+                                multiline
+                                scrollEnabled={false}
+                                textAlignVertical="top"
+                              />
+                            </View>
+
+                            <View className="flex-row items-start">
+                              <TextInput
+                                className={inputClasses}
+                                value={editName}
+                                onChangeText={setEditName}
+                                placeholder="Type your full name"
+                                placeholderTextColor="#9ca3af"
+                              />
+                              <Button
+                                onPress={handleContractSign}
+                                color={ButtonColor.Black}
+                                disabled={
+                                  isSubmitting ||
+                                  !editName ||
+                                  !weeklyCommitmentConfirmed
+                                }
+                                loading={isSubmitting}
+                                title="Sign"
+                                className="ml-2 min-h-12"
+                              />
+                            </View>
                           </View>
-                        </View>
-                      )}
-                    </ContractDescriptionList>
-                  </>
-                )}
-              </View>
-            </Card>
+                        )}
+                      </ContractDescriptionList>
+                    </>
+                  )}
+                </View>
+              </Card>
+            </Anchor>
           )}
 
-          <Card cardStyle={CardStyle.White}>
-            <AwayRangesSection />
-          </Card>
+          <Anchor name={WalkthroughAnchor.AwayRanges}>
+            <Card cardStyle={CardStyle.White}>
+              <AwayRangesSection />
+            </Card>
+          </Anchor>
 
           <Card cardStyle={CardStyle.White}>
             <Text className="text-2xl mb-4" weight={FontWeight.Semibold}>

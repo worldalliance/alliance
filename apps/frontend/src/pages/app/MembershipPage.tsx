@@ -8,6 +8,7 @@ import {
   getLastContractEvent,
   getSignedMessage,
   getSuspensionMessage,
+  isConfirmationCloseEnough,
 } from "@alliance/shared/lib/contract";
 import { suspendContractConfirmation } from "@alliance/shared/lib/copy";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
@@ -25,11 +26,10 @@ import { useLocation } from "react-router";
 import AwayRangesSection from "../../components/AwayRangesSection";
 import { useAuth } from "../../lib/AuthContext";
 import { useContract } from "../../lib/useContract";
+import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
 
 const WEEKLY_COMMITMENT_CONFIRMATION =
   "I commit to complete each task to the best of my ability.";
-
-const COMMITMENT_CONFIRMATION_LENGTH_TOLERANCE = 10;
 
 function FormalTextDropdown({ markdown }: { markdown: string }) {
   const [open, setOpen] = useState(false);
@@ -78,7 +78,7 @@ function ContractDescriptionList({
         <ol className="flex flex-col gap-y-5 list-none pl-0">
           {items.map((item, index) => (
             <li key={index} className="flex gap-x-4">
-              <span className="shrink-0 size-8 md:size-9 flex items-center justify-center rounded bg-black text-white text-lg md:text-xl font-semibold leading-none tabular-nums">
+              <span className="shrink-0 size-8 md:size-9 flex items-center justify-center rounded bg-[var(--site-primary)] text-white text-lg md:text-xl font-semibold leading-none tabular-nums">
                 {index + 1}
               </span>
               <div className="min-w-0 flex flex-col">
@@ -118,11 +118,6 @@ function SignedContractActions({
   );
 }
 
-const isConfirmationLengthCloseEnough = (confirmation: string) =>
-  Math.abs(
-    confirmation.trim().length - WEEKLY_COMMITMENT_CONFIRMATION.length,
-  ) <= COMMITMENT_CONFIRMATION_LENGTH_TOLERANCE;
-
 const MembershipPage: React.FC = () => {
   const { user, refreshUser } = useAuth();
   const { latestContract } = useContract();
@@ -133,8 +128,9 @@ const MembershipPage: React.FC = () => {
     useState("");
   const [lastContractEvent, setLastContractEvent] =
     useState<ContractEventState>(null);
-  const weeklyCommitmentConfirmed = isConfirmationLengthCloseEnough(
+  const weeklyCommitmentConfirmed = isConfirmationCloseEnough(
     weeklyCommitmentConfirmation,
+    WEEKLY_COMMITMENT_CONFIRMATION,
   );
 
   const previousSignedContractId =
@@ -240,7 +236,11 @@ const MembershipPage: React.FC = () => {
         <h1 className="text-title">Membership</h1>
 
         {(previousSignedContract || latestContract) && (
-          <Card style={CardStyle.White} className="p-6">
+          <Card
+            style={CardStyle.White}
+            className="p-6"
+            data-walkthrough={WalkthroughAnchor.Contract}
+          >
             <h2 className="font-semibold! text-2xl! mb-4">Contract</h2>
             <div className="flex flex-col gap-y-4">
               {previousSignedContract && (
@@ -332,6 +332,7 @@ const MembershipPage: React.FC = () => {
 
         <Card
           id="away-periods"
+          data-walkthrough={WalkthroughAnchor.AwayRanges}
           style={CardStyle.White}
           className="p-6 scroll-mt-[calc(var(--navbar-top-bar-height)+1rem)]"
         >

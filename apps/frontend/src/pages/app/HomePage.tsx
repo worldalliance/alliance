@@ -25,14 +25,13 @@ import LargeGeneralUpdateCard from "@alliance/sharedweb/ui/LargeGeneralUpdateCar
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Link, href } from "react-router";
+import { href, Link } from "react-router";
 import BasicErrorMessage from "../../components/BasicErrorMessage";
 import FollowUpFormPanel from "../../components/FollowUpFormPanel";
 import GlobalFeed from "../../components/GlobalFeed";
 import HomeFeed from "../../components/HomeFeed";
 import HomeUpdatesRow from "../../components/HomeUpdatesRow";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
-import SeeAll from "../../components/SeeAll";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
 import { useAuth } from "../../lib/AuthContext";
 import {
@@ -43,6 +42,9 @@ import {
 import { useMediaQuery } from "../../lib/useMediaQuery";
 import { useTaskActionsData } from "../../lib/useTaskActionsData";
 import { useCIDFromParams } from "../../lib/utils";
+import { MOCK_TASK_FORMS, MOCK_TASKS } from "../../onboarding/mockTasks";
+import { useMockTasks } from "../../onboarding/useMockTasks";
+import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
 import LargeActionCard from "./LargeActionCard";
 import {
   TaskNavigatorCompletedRow,
@@ -56,7 +58,10 @@ type TaskNavigatorItem =
 
 function TaskNavigatorListShell({ children }: { children: ReactNode }) {
   return (
-    <div className="overflow-hidden">
+    <div
+      className="overflow-hidden"
+      data-walkthrough={WalkthroughAnchor.TaskList}
+    >
       <div className="flex flex-col gap-y-2">{children}</div>
     </div>
   );
@@ -66,7 +71,7 @@ const HomePage = () => {
   const queryClient = useQueryClient();
   const hasNoTasks = useRef(true);
   const {
-    actions,
+    actions: liveActions,
     generalUpdates,
     loading,
     handleDismissAction,
@@ -74,6 +79,9 @@ const HomePage = () => {
   } = useTaskActionsData({
     refetchInterval: hasNoTasks.current ? 60_000 : false,
   });
+
+  const mocked = useMockTasks();
+  const actions = mocked ? MOCK_TASKS : liveActions;
 
   const { user, refreshUser } = useAuth();
   const hasRefreshedForNoContract = useRef(false);
@@ -106,11 +114,6 @@ const HomePage = () => {
   } = useHomePageActions(actions);
 
   const numTodo = todoActions.filter(showActionInSidebarList).length;
-
-  const hasOnboardingTasks = useMemo(
-    () => todoActions.some((a) => a.onboarding),
-    [todoActions],
-  );
 
   const isLargeScreen = useMediaQuery("(min-width: 1150px)");
 
@@ -399,84 +402,85 @@ const HomePage = () => {
           "flex flex-col gap-y-8 sm:gap-y-12 lg:gap-y-16 py-4 sm:py-8 px-4 xl:px-0 max-w-3xl mx-auto relative"
         }
       >
-        {!hasOnboardingTasks && (
-          <div className="flex flex-col gap-4">
-            {isLargeScreen && (
-              <>
-                <div className="flex flex-row justify-between items-center px-1">
-                  <p className="text-title">Updates</p>
-                  <SeeAll link="/action-updates" size="lg" />
+        <div className="flex flex-col gap-4">
+          {isLargeScreen && (
+            <>
+              <HomeUpdatesRow />
+              {sortedGeneralUpdates.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  {sortedGeneralUpdates.map((generalUpdate) => (
+                    <LargeGeneralUpdateCard
+                      key={generalUpdate.id}
+                      title={generalUpdate.name}
+                      schema={generalUpdate.schema}
+                      onDismiss={() =>
+                        handleDismissGeneralUpdate(generalUpdate.id)
+                      }
+                    />
+                  ))}
                 </div>
-                <HomeUpdatesRow />
-                {sortedGeneralUpdates.length > 0 && (
-                  <div className="flex flex-col gap-3">
-                    {sortedGeneralUpdates.map((generalUpdate) => (
-                      <LargeGeneralUpdateCard
-                        key={generalUpdate.id}
-                        title={generalUpdate.name}
-                        schema={generalUpdate.schema}
-                        onDismiss={() =>
-                          handleDismissGeneralUpdate(generalUpdate.id)
-                        }
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+              )}
+            </>
+          )}
 
-            {!isLargeScreen && <div>{sidebarProgressActionProgressBars}</div>}
-          </div>
-        )}
+          {!isLargeScreen && <div>{sidebarProgressActionProgressBars}</div>}
+        </div>
 
         <div className="flex flex-col gap-4 flex-1">
           <p className="text-title">Tasks</p>
           {taskNavigatorListContent}
 
           {selectedTaskNavigatorItem?.kind === "action" ? (
-            <LargeActionCard
-              action={selectedTaskNavigatorItem.action}
-              dismissProps={
-                taskDismissInfo
-                  ? {
-                      ...taskDismissInfo,
-                      onDismiss: () =>
-                        handleDismissAction(
-                          selectedTaskNavigatorItem.action.id,
-                        ),
-                    }
-                  : undefined
-              }
-              userRelation={
-                selectedTaskNavigatorItem.action.userRelation ?? "none"
-              }
-              onCompleteAction={() => {
-                queryClient.setQueryData<ActionDto[] | undefined>(
-                  ["actions"],
-                  (prev) =>
-                    prev?.map((action) =>
-                      action.id === selectedTaskNavigatorItem.action.id
-                        ? withOptimisticRelation(action, "completed")
-                        : action,
-                    ),
-                );
-                queryClient.invalidateQueries({ queryKey: ["actions"] });
-                resetHomeFeed(queryClient);
-              }}
-              onUpdateActionState={() => {
-                queryClient.invalidateQueries({ queryKey: ["actions"] });
-                mainScrollRef.current?.scrollTo({
-                  top: 0,
-                  behavior: "instant",
-                });
-                document.scrollingElement?.scrollTo({
-                  top: 0,
-                  behavior: "instant",
-                });
-                window.scrollTo({ top: 0, behavior: "instant" });
-              }}
-              scrollContainerRef={mainScrollRef}
-            />
+            <div data-walkthrough={WalkthroughAnchor.CurrentTask}>
+              <LargeActionCard
+                action={selectedTaskNavigatorItem.action}
+                staticTaskFormSchema={
+                  mocked
+                    ? MOCK_TASK_FORMS[selectedTaskNavigatorItem.action.id]
+                    : undefined
+                }
+                dismissProps={
+                  taskDismissInfo
+                    ? {
+                        ...taskDismissInfo,
+                        onDismiss: () =>
+                          handleDismissAction(
+                            selectedTaskNavigatorItem.action.id,
+                          ),
+                      }
+                    : undefined
+                }
+                userRelation={
+                  selectedTaskNavigatorItem.action.userRelation ?? "none"
+                }
+                onCompleteAction={() => {
+                  queryClient.setQueryData<ActionDto[] | undefined>(
+                    ["actions"],
+                    (prev) =>
+                      prev?.map((action) =>
+                        action.id === selectedTaskNavigatorItem.action.id
+                          ? withOptimisticRelation(action, "completed")
+                          : action,
+                      ),
+                  );
+                  queryClient.invalidateQueries({ queryKey: ["actions"] });
+                  resetHomeFeed(queryClient);
+                }}
+                onUpdateActionState={() => {
+                  queryClient.invalidateQueries({ queryKey: ["actions"] });
+                  mainScrollRef.current?.scrollTo({
+                    top: 0,
+                    behavior: "instant",
+                  });
+                  document.scrollingElement?.scrollTo({
+                    top: 0,
+                    behavior: "instant",
+                  });
+                  window.scrollTo({ top: 0, behavior: "instant" });
+                }}
+                scrollContainerRef={mainScrollRef}
+              />
+            </div>
           ) : selectedTaskNavigatorItem?.kind === "followUpForm" ? (
             <div className="w-full mx-auto">
               <FollowUpFormPanel
@@ -534,10 +538,6 @@ const HomePage = () => {
 
         {!isLargeScreen && (
           <div className="flex flex-col gap-4">
-            <div className="flex flex-row justify-between items-center px-1">
-              <p className="text-title">Updates</p>
-              <SeeAll link="/action-updates" size="lg" />
-            </div>
             <HomeUpdatesRow />
             {sortedGeneralUpdates.length > 0 && (
               <div className="flex flex-col gap-3">
@@ -570,8 +570,8 @@ const HomePage = () => {
     taskNavigatorListContent,
     queryClient,
     activeCompletableFollowUpForms,
-    hasOnboardingTasks,
     isLargeScreen,
+    mocked,
     sidebarProgressActionProgressBars,
   ]);
 

@@ -65,3 +65,16 @@ export function getSignedMessage(date: string): string {
   const formattedDate = formatContractDate(date);
   return `You signed this contract on ${formattedDate}.`;
 }
+
+const CONFIRMATION_LENGTH_TOLERANCE = 10;
+
+/** Length-only, so a typo in the typed statement still counts. */
+export function isConfirmationCloseEnough(
+  typed: string,
+  expected: string,
+): boolean {
+  return (
+    Math.abs(typed.trim().length - expected.length) <=
+    CONFIRMATION_LENGTH_TOLERANCE
+  );
+}

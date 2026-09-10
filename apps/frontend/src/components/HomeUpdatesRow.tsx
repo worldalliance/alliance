@@ -2,11 +2,18 @@ import type { ActionsRecentUpdatesResponse } from "@alliance/shared/client";
 import { actionsRecentUpdates } from "@alliance/shared/client";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
+import {
+  BaseButtonSize,
+  BaseButtonVariant,
+  baseButtonVariants,
+} from "@alliance/sharedweb/ui/BaseButton";
 import { useQuery } from "@tanstack/react-query";
+import { ChevronRight } from "lucide-react";
 import { useMemo } from "react";
 
 import { useNotifications } from "@alliance/shared/lib/useNotifications";
-import { href, useNavigate } from "react-router";
+import { href, Link, useNavigate } from "react-router";
+import { WalkthroughAnchor } from "../onboarding/walkthrough/steps";
 
 const UPDATES_LIMIT = 3;
 
@@ -75,89 +82,110 @@ const HomeUpdatesRow = () => {
   }, [data]);
 
   return (
-    <div>
-      {isLoading && (
-        <p className="text-xs text-zinc-400 col-span-full">Loading updates…</p>
-      )}
-      {isError && !isLoading && (
-        <p className="text-xs text-red-400 col-span-full">
-          Could not load updates.
-        </p>
-      )}
-      {!isLoading && !isError && updates.length === 0 && (
-        <p className="text-xs text-zinc-400 col-span-full">
-          No recent updates yet.
-        </p>
-      )}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-1">
-        {!isLoading &&
-          !isError &&
-          updates.map((update) => {
-            const isUnread = unreadActionUpdateIds.has(update.id);
+    <div
+      className="flex flex-col gap-4"
+      data-walkthrough={WalkthroughAnchor.ActionUpdates}
+    >
+      <div className="flex flex-row justify-between items-center px-1">
+        <p className="text-title">Updates</p>
+        <Link
+          to={href("/action-updates")}
+          className={baseButtonVariants({
+            variant: BaseButtonVariant.Grey,
+            size: BaseButtonSize.Small,
+          })}
+        >
+          <span>See all updates</span>
+          <ChevronRight size={16} className="shrink-0" />
+        </Link>
+      </div>
 
-            const handleClick = (e: React.MouseEvent) => {
-              e.preventDefault();
-              e.stopPropagation();
+      <div>
+        {isLoading && (
+          <p className="text-xs text-zinc-400 col-span-full">
+            Loading updates…
+          </p>
+        )}
+        {isError && !isLoading && (
+          <p className="text-xs text-red-400 col-span-full">
+            Could not load updates.
+          </p>
+        )}
+        {!isLoading && !isError && updates.length === 0 && (
+          <p className="text-xs text-zinc-400 col-span-full">
+            No recent updates yet.
+          </p>
+        )}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-1">
+          {!isLoading &&
+            !isError &&
+            updates.map((update) => {
+              const isUnread = unreadActionUpdateIds.has(update.id);
 
-              // If it's a notification, handle the notification click, otherwise navigate to the action update
-              const correspondingNotification =
-                actionUpdateNotificationsByContentId.get(update.id);
+              const handleClick = (e: React.MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
 
-              if (correspondingNotification) {
-                handleNotifClick(correspondingNotification)();
-              } else {
-                navigate(
-                  href("/actions/:id", { id: update.actionId.toString() }),
-                );
-              }
-            };
+                // If it's a notification, handle the notification click, otherwise navigate to the action update
+                const correspondingNotification =
+                  actionUpdateNotificationsByContentId.get(update.id);
 
-            return (
-              <div
-                key={update.id}
-                className="hover:cursor-pointer relative"
-                onClick={handleClick}
-              >
+                if (correspondingNotification) {
+                  handleNotifClick(correspondingNotification)();
+                } else {
+                  navigate(
+                    href("/actions/:id", { id: update.actionId.toString() }),
+                  );
+                }
+              };
+
+              return (
                 <div
-                  className={cn(
-                    "flex flex-col justify-between rounded px-4 py-3 h-full bg-white hover:bg-green/5",
-                  )}
+                  key={update.id}
+                  className="hover:cursor-pointer relative"
+                  onClick={handleClick}
                 >
-                  <div>
-                    <p
-                      className={cn(
-                        "text-sm md:text-base font-medium mb-0.5 flex items-center gap-2 min-w-0",
-                        isUnread ? "text-green" : "text-green/60",
-                      )}
-                    >
-                      {isUnread && (
-                        <span
-                          className="size-2 shrink-0 rounded-full bg-green"
-                          aria-hidden
-                        />
-                      )}
-                      <span className="truncate min-w-0">
-                        {update.actionName}
-                      </span>
-                    </p>
-                    {update.title && (
+                  <div
+                    className={cn(
+                      "flex flex-col justify-between rounded px-4 py-3 h-full bg-white hover:bg-green/5",
+                    )}
+                  >
+                    <div>
                       <p
                         className={cn(
-                          "text-sm md:text-base leading-snug ",
-                          isUnread ? "text-zinc-800" : "text-zinc-400",
+                          "text-sm md:text-base font-medium mb-0.5 flex items-center gap-2 min-w-0",
+                          isUnread ? "text-green" : "text-green/60",
                         )}
                       >
-                        {update.title}
+                        {isUnread && (
+                          <span
+                            className="size-2 shrink-0 rounded-full bg-green"
+                            aria-hidden
+                          />
+                        )}
+                        <span className="truncate min-w-0">
+                          {update.actionName}
+                        </span>
                       </p>
-                    )}
+                      {update.title && (
+                        <p
+                          className={cn(
+                            "text-sm md:text-base leading-snug ",
+                            isUnread ? "text-zinc-800" : "text-zinc-400",
+                          )}
+                        >
+                          {update.title}
+                        </p>
+                      )}
+                    </div>
+                    <p className="text-sm md:text-base text-zinc-400 mt-1">
+                      {formatTime(new Date(update.date), { addSuffix: true })}
+                    </p>
                   </div>
-                  <p className="text-sm md:text-base text-zinc-400 mt-1">
-                    {formatTime(new Date(update.date), { addSuffix: true })}
-                  </p>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+        </div>
       </div>
     </div>
   );

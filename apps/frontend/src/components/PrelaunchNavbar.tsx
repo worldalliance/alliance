@@ -179,7 +179,7 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
       {showLogo && (
         <h1
           className={cn(
-            "font-bold font-berlingske text-lg sm:text-xl md:text-2xl cursor-pointer text-nowrap",
+            "font-logotype text-lg sm:text-xl md:text-2xl cursor-pointer text-nowrap",
             transparent && "text-white",
           )}
           onClick={() => {
@@ -187,7 +187,7 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
             navigate(href("/"));
           }}
         >
-          THE ALLIANCE
+          The Alliance
         </h1>
       )}
 
@@ -245,13 +245,13 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
           >
             {showLogo && (
               <h1
-                className="font-bold font-berlingske text-lg sm:text-xl cursor-pointer text-nowrap text-zinc-900"
+                className="font-logotype text-lg sm:text-xl cursor-pointer text-nowrap text-zinc-900"
                 onClick={() => {
                   setMenuOpen(false);
                   navigate(href("/"));
                 }}
               >
-                THE ALLIANCE
+                The Alliance
               </h1>
             )}
             <button

@@ -15,8 +15,6 @@ export function meta() {
 }
 
 const FAQ_TITLE = "Frequently asked questions";
-const FAQ_LEDE =
-  "If your question is not here, the guide covers the same ground at length.";
 
 export default function FAQPage() {
   const [searchParams] = useSearchParams();
@@ -24,7 +22,7 @@ export default function FAQPage() {
   const question = searchParams.get("question");
 
   return (
-    <PageShell title={FAQ_TITLE} subtitle={FAQ_LEDE}>
+    <PageShell title={FAQ_TITLE}>
       <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
         <div className="max-w-[52rem]">
           {FAQ_ITEMS.map((item) => (

@@ -39,6 +39,11 @@ import { TaskNavigatorStepper } from "../../components/system/TaskNavigatorStepp
 import Text from "../../components/system/Text";
 import UserActivityCard from "../../components/UserActivityCard";
 import { useAuth } from "../../lib/AuthContext";
+import {
+  Anchor,
+  useWalkthroughScroll,
+  WalkthroughAnchor,
+} from "../../lib/onboarding/walkthrough";
 import { colors } from "../../lib/style/colors";
 
 type HomeScreenItem =
@@ -158,6 +163,7 @@ export default function HomeScreen() {
 
   const scrollViewRef = useRef<KeyboardAwareScrollViewRef>(null);
   const legendListRef = useRef<LegendListRef>(null);
+  const walkthroughScroll = useWalkthroughScroll();
   const legendListHeightRef = useRef(0);
   const homeBodyHeightRef = useRef(0);
 
@@ -362,7 +368,10 @@ export default function HomeScreen() {
     return {
       title: "Current task",
       body: (
-        <View className="bg-white py-2 px-1">
+        <Anchor
+          name={WalkthroughAnchor.CurrentTask}
+          className="bg-white py-2 px-1"
+        >
           <LargeActionCard
             action={currentItem.action}
             dismissProps={dismissProps}
@@ -378,7 +387,7 @@ export default function HomeScreen() {
             scrollToEnd={scrollToEnd}
             onSubmitSuccess={handleSubmitSuccess}
           />
-        </View>
+        </Anchor>
       ),
       fullScreen: false,
     };
@@ -433,61 +442,72 @@ export default function HomeScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: colors.grey[0] }}>
       {header}
-      {showHomeFeedList ? (
-        <LegendList
-          ref={legendListRef}
-          className="flex-1"
-          onLayout={handleHomeFeedLayout}
-          data={homeFeedItems}
-          keyExtractor={(item) =>
-            item.type === "activity"
-              ? `activity-${item.activity?.id}`
-              : `comment-${item.forumComment?.comment.id}`
-          }
-          renderItem={renderHomeFeedItem}
-          onEndReached={onHomeFeedEndReached}
-          onEndReachedThreshold={0.3}
-          renderScrollComponent={renderKeyboardAwareScrollComponent}
-          recycleItems
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          contentContainerStyle={{
-            backgroundColor: "white",
-            paddingBottom: 40,
-          }}
-          ListHeaderComponent={
-            <>
-              <View onLayout={handleHomeBodyLayout}>{body}</View>
-              <View className="px-4 pt-4 pb-2 bg-white">
-                <Text className="text-xl">Activity</Text>
-              </View>
-            </>
-          }
-          ListFooterComponent={
-            homeFeedFetchingNextPage ? (
-              <View className="py-4 items-center">
-                <ActivityIndicator size="small" color={colors.green} />
-                <Text className="text-zinc-400 text-sm mt-2">
-                  Loading more...
-                </Text>
-              </View>
-            ) : null
-          }
-        />
-      ) : (
-        <KeyboardAwareScrollView
-          key={fullScreen ? "fullscreen" : "scroll"}
-          ref={scrollViewRef}
-          contentContainerStyle={fullScreen ? { flex: 1 } : undefined}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          testID="vr-home-ready"
-        >
-          {body}
-        </KeyboardAwareScrollView>
-      )}
+      <Anchor name={WalkthroughAnchor.TaskList} className="min-h-0 flex-1">
+        {showHomeFeedList ? (
+          <LegendList
+            ref={(node) => {
+              legendListRef.current = node;
+              walkthroughScroll.ref(node);
+            }}
+            className="flex-1"
+            onScroll={walkthroughScroll.onScroll}
+            onLayout={handleHomeFeedLayout}
+            data={homeFeedItems}
+            keyExtractor={(item) =>
+              item.type === "activity"
+                ? `activity-${item.activity?.id}`
+                : `comment-${item.forumComment?.comment.id}`
+            }
+            renderItem={renderHomeFeedItem}
+            onEndReached={onHomeFeedEndReached}
+            onEndReachedThreshold={0.3}
+            renderScrollComponent={renderKeyboardAwareScrollComponent}
+            recycleItems
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            contentContainerStyle={{
+              backgroundColor: "white",
+              paddingBottom: 40,
+            }}
+            ListHeaderComponent={
+              <>
+                <View onLayout={handleHomeBodyLayout}>{body}</View>
+                <View className="px-4 pt-4 pb-2 bg-white">
+                  <Text className="text-xl">Activity</Text>
+                </View>
+              </>
+            }
+            ListFooterComponent={
+              homeFeedFetchingNextPage ? (
+                <View className="py-4 items-center">
+                  <ActivityIndicator size="small" color={colors.green} />
+                  <Text className="text-zinc-400 text-sm mt-2">
+                    Loading more...
+                  </Text>
+                </View>
+              ) : null
+            }
+          />
+        ) : (
+          <KeyboardAwareScrollView
+            key={fullScreen ? "fullscreen" : "scroll"}
+            ref={(node) => {
+              scrollViewRef.current = node;
+              walkthroughScroll.ref(node);
+            }}
+            onScroll={walkthroughScroll.onScroll}
+            scrollEventThrottle={walkthroughScroll.scrollEventThrottle}
+            contentContainerStyle={fullScreen ? { flex: 1 } : undefined}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            testID="vr-home-ready"
+          >
+            {body}
+          </KeyboardAwareScrollView>
+        )}
+      </Anchor>
       <SuccessOverlay
         visible={showSuccess}
         onFadeInComplete={handleOverlayFadeIn}

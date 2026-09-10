@@ -1,3 +1,5 @@
+import { nextMilestone } from "@alliance/shared/lib/copy";
+import type { Milestone } from "@alliance/shared/lib/milestones";
 import type { Picture } from "vite-imagetools";
 import democracy from "../assets/redesign/priority-democracy.jpg?w=400;800&format=avif;webp;jpg&as=picture";
 import environment from "../assets/redesign/priority-environment.jpg?w=400;800&format=avif;webp;jpg&as=picture";
@@ -184,7 +186,10 @@ export const GROWTH_HEADLINE_FAR_PARTS = {
 export const GROWTH_FOOTNOTE =
   "With millions of members, we could make enormous progress on global crises by strategically coordinating our time, money, and votes.";
 
-export type Milestone = { members: number; label: string };
+export const HOURS_START_LABEL = "Action arrives";
+export const HOURS_END_LABEL = "Deadline";
+export const HOURS_LEGEND_TOTAL = "Hours in the week";
+export const HOURS_LEGEND_SPENT = "Time spent completing actions";
 
 export const nearMilestones: Milestone[] = [
   { members: 30, label: "Jointly pitch the media on an underreported topic" },
@@ -195,7 +200,7 @@ export const nearMilestones: Milestone[] = [
   { members: 300, label: "Conduct a large-scale citizen science project" },
   {
     members: 1000,
-    label: "Be a committed test audience for a green product alternative",
+    label: nextMilestone.action,
   },
 ];
 
@@ -233,3 +238,4 @@ export const CTA_BUTTON = "Request an invite";
 export const FOOTER_TAGLINE =
   "A global group of people cooperating to improve the world.";
 export const CONTACT_EMAIL = "contact@worldalliance.org";
+export const JOIN_MAILTO = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("I'd like to join the Alliance")}`;

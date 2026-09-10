@@ -23,6 +23,7 @@ import { Link, href, useLocation } from "react-router";
 import { useAuth } from "../lib/AuthContext";
 import { isFeatureEnabled } from "../lib/config";
 import { NavbarOptionsContext } from "../lib/NavbarOptionsContext";
+import { WalkthroughAnchor } from "../onboarding/walkthrough/steps";
 import { useMessagingUnread } from "../pages/app/messages";
 
 export enum NavbarPage {
@@ -256,9 +257,7 @@ const NavbarVertical: React.FC<{
 
         <div className="flex flex-col items-start px-4 py-4">
           <Link to={href("/")}>
-            <p className="p-3 font-berlingske uppercase text-xl mb-12 h-sm">
-              The Alliance
-            </p>
+            <p className="font-logotype p-3 text-xl mb-12 h-sm">The Alliance</p>
           </Link>
 
           <nav className="flex flex-col w-full py-4 gap-y-2 text-lg">
@@ -267,6 +266,11 @@ const NavbarVertical: React.FC<{
                 key={item.page}
                 to={item.destination}
                 prefetch="render"
+                data-walkthrough={
+                  item.page === NavbarPage.Groups
+                    ? WalkthroughAnchor.GroupsNav
+                    : undefined
+                }
                 className={cn(
                   "px-3 py-1.5 rounded-md flex items-center justify-between w-full pr-2",
                   currentLocation === item.page

@@ -5,14 +5,28 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { ChevronDown } from "lucide-react";
 import { useCallback, useState } from "react";
-import { Link, href, useNavigate } from "react-router";
+import { Link, href, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../lib/AuthContext";
 import { useMediaQuery } from "../lib/useMediaQuery";
+import { MOCK_PARAM } from "../onboarding/useMockTasks";
+import {
+  WALKTHROUGH_PARAM,
+  WALKTHROUGH_STEPS,
+  WalkthroughAnchor,
+  walkthroughStepHref,
+} from "../onboarding/walkthrough/steps";
 
 const ProfileDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useOutsideClick(() => setIsOpen(false));
   const isMobile = useMediaQuery("(max-width: 640px)");
+  const [searchParams] = useSearchParams();
+  const walkthrough = searchParams.get(WALKTHROUGH_PARAM);
+  const tourOpen =
+    walkthrough !== null &&
+    WALKTHROUGH_STEPS[Number(walkthrough)]?.anchor ===
+      WalkthroughAnchor.ProfileMenu;
+  const open = isOpen || tourOpen;
 
   const { logout, user } = useAuth();
   const navigate = useNavigate();
@@ -33,6 +47,7 @@ const ProfileDropdown = () => {
   return (
     <div
       ref={ref}
+      data-walkthrough={WalkthroughAnchor.ProfileMenu}
       onMouseEnter={!isMobile ? () => setIsOpen(true) : undefined}
       onMouseLeave={!isMobile ? () => setIsOpen(false) : undefined}
       className="relative flex items-center gap-x-1.5"
@@ -43,7 +58,7 @@ const ProfileDropdown = () => {
           onClick={toggle}
           className="flex items-center gap-x-1.5 rounded-md hover:bg-zinc-100 focus:outline-none"
           aria-label="Profile menu"
-          aria-expanded={isOpen}
+          aria-expanded={open}
         >
           <AvatarProfile
             pfp={profilePicture}
@@ -72,13 +87,13 @@ const ProfileDropdown = () => {
             onClick={toggle}
             className="rounded-md hover:bg-zinc-100 focus:outline-none p-0.5"
             aria-label="Profile menu"
-            aria-expanded={isOpen}
+            aria-expanded={open}
           >
             <ChevronDown className="h-3 w-3 text-black" />
           </button>
         </>
       )}
-      {isOpen && (
+      {open && (
         <div
           className={cn(
             zIndex.popover,
@@ -88,7 +103,17 @@ const ProfileDropdown = () => {
           <Link to={profileUrl} onClick={() => setIsOpen(false)}>
             Profile
           </Link>
-          <Link to={href("/membership")} onClick={() => setIsOpen(false)}>
+          <Link
+            to={
+              tourOpen
+                ? walkthroughStepHref(
+                    Number(walkthrough) + 1,
+                    searchParams.get(MOCK_PARAM) === "1",
+                  )
+                : href("/membership")
+            }
+            onClick={() => setIsOpen(false)}
+          >
             Membership
           </Link>
           <Link to={href("/settings")} onClick={() => setIsOpen(false)}>
