@@ -16,12 +16,14 @@ import {
   clipboardCopy,
   guestReferral,
   taskHeaders,
+  type TitledCopy,
 } from "@alliance/shared/lib/copy";
 import {
   buildActionShareUrl,
   buildShareText,
   getCompletedShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
+import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -67,6 +69,13 @@ export interface TaskPanelContext extends Omit<
   onGuestCompletionChange?: (completed: boolean) => void;
 }
 
+const renderTitledHeader = (copy: TitledCopy, titleClassName?: string) => (
+  <div>
+    <p className={cn("font-medium", titleClassName)}>{copy.title}</p>
+    <p className="text-zinc-500">{copy.description}</p>
+  </div>
+);
+
 const taskPanelHeaderByState: Record<
   ActionPageTaskPanelState,
   React.ReactNode
@@ -94,15 +103,8 @@ const taskPanelHeaderByState: Record<
     <p>{taskHeaders.actionPage.memberActionClosed}</p>
   ),
   [ActionPageTaskPanelState.MissingDataOrNotActive]: null,
-  [ActionPageTaskPanelState.ShowTaskWithMissedDeadline]: (
-    <div>
-      <p className="font-medium">
-        {taskHeaders.actionPage.deadlinePassed.title}
-      </p>
-      <p className="text-zinc-500">
-        {taskHeaders.actionPage.deadlinePassed.description}
-      </p>
-    </div>
+  [ActionPageTaskPanelState.ShowTaskWithMissedDeadline]: renderTitledHeader(
+    taskHeaders.actionPage.deadlinePassed,
   ),
   [ActionPageTaskPanelState.OnboardingSignContractFirst]: (
     <div className="flex flex-row justify-between items-center gap-x-2">
@@ -113,15 +115,13 @@ const taskPanelHeaderByState: Record<
       </Link>
     </div>
   ),
-  [ActionPageTaskPanelState.Optional]: (
-    <div>
-      <p className="font-medium text-sky-500">
-        {taskHeaders.actionPage.optional.title}
-      </p>
-      <p className="text-zinc-500">
-        {taskHeaders.actionPage.optional.description}
-      </p>
-    </div>
+  [ActionPageTaskPanelState.Optional]: renderTitledHeader(
+    taskHeaders.actionPage.optional,
+    "text-sky-500",
+  ),
+  [ActionPageTaskPanelState.OptionalForViewer]: renderTitledHeader(
+    taskHeaders.actionPage.optionalForViewer,
+    "text-sky-500",
   ),
   [ActionPageTaskPanelState.ShowTask]: null,
 };
@@ -369,6 +369,7 @@ const ActionPageTaskPanel = () => {
         />,
       );
     case ActionPageTaskPanelState.Optional:
+    case ActionPageTaskPanelState.OptionalForViewer:
     case ActionPageTaskPanelState.ShowTask:
       return renderStackedCard(
         <ActionTaskPanel

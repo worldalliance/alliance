@@ -1,9 +1,9 @@
 import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
+import { withCount } from "@alliance/common/plural";
 import { ActionDto, FollowUpFormDto } from "@alliance/shared/client";
 import {
   ActionWithAwayStatus,
   homePagePriorityComparator,
-  showActionInSidebarList,
   withOptimisticRelation,
 } from "@alliance/shared/lib/actionUtils";
 import {
@@ -39,6 +39,7 @@ import {
   fetchTaskFormProgressViewsByFormId,
   mapFormViewsToActionIds,
   sidebarProgressActionCandidates,
+  sidebarProgressBarActions,
 } from "../../lib/fetchTaskFormProgressViews";
 import { useMediaQuery } from "../../lib/useMediaQuery";
 import { useTaskActionsData } from "../../lib/useTaskActionsData";
@@ -105,8 +106,6 @@ const HomePage = () => {
     activeCompletableFollowUpForms,
   } = useHomePageActions(actions);
 
-  const numTodo = todoActions.filter(showActionInSidebarList).length;
-
   const hasOnboardingTasks = useMemo(
     () => todoActions.some((a) => a.onboarding),
     [todoActions],
@@ -144,21 +143,13 @@ const HomePage = () => {
     };
   }, [actions]);
 
-  const sidebarProgressActions = useMemo(() => {
+  const sidebarProgressBarEntries = useMemo(() => {
     if (!actions) {
       return [];
     }
-    return actions
-      .filter(
-        (action) =>
-          action.status === "member_action" &&
-          action.shouldParticipate &&
-          (actionProgressViews[action.id]?.some(
-            (v) => v.kind === "progressbar",
-          ) ??
-            false),
-      )
-      .sort(homePagePriorityComparator);
+    return sidebarProgressBarActions(actions, actionProgressViews).sort(
+      (a, b) => homePagePriorityComparator(a.action, b.action),
+    );
   }, [actionProgressViews, actions]);
 
   const followUpFormsByActionId = useMemo(() => {
@@ -220,8 +211,6 @@ const HomePage = () => {
     : taskNavigatorItems[taskNavigatorIndex];
 
   const taskNavigatorListContent = useMemo(() => {
-    const taskNavigatorCurrentWeekSidebarActions =
-      currentWeekTodoActions.filter(showActionInSidebarList);
     const activeActionId =
       selectedTaskNavigatorItem?.kind === "action"
         ? selectedTaskNavigatorItem.action.id
@@ -231,21 +220,24 @@ const HomePage = () => {
         ? selectedTaskNavigatorItem.followUpForm.id
         : null;
     const hasTaskSectionContent =
-      taskNavigatorCurrentWeekSidebarActions.length > 0 ||
+      currentWeekTodoActions.length > 0 ||
+      nextWeekTodoActions.length > 0 ||
       completedActions.length > 0 ||
       followUpParentActionsNotInCompletedList.length > 0;
     return (
       <>
         {hasTaskSectionContent && (
           <TaskNavigatorListShell>
-            {taskNavigatorCurrentWeekSidebarActions.length > 0 && (
+            {currentWeekTodoActions.length > 0 && (
               <p className="text-zinc-600 mb-1">
                 <span className="text-green font-medium mr-0.5">
-                  {taskNavigatorCurrentWeekSidebarActions.length} left
+                  {currentWeekTodoActions.length} left
                 </span>
-                {numTodo > 0 &&
-                  remainingTasksEstimatedTimeCurrentWeek > 0 &&
-                  ` for a total of ${remainingTasksEstimatedTimeCurrentWeek} minutes`}
+                {remainingTasksEstimatedTimeCurrentWeek > 0 &&
+                  ` (${withCount(
+                    remainingTasksEstimatedTimeCurrentWeek,
+                    "minute",
+                  )} required)`}
               </p>
             )}
 
@@ -332,7 +324,6 @@ const HomePage = () => {
     followUpFormsByActionId,
     followUpParentActionsNotInCompletedList,
     nextWeekTodoActions,
-    numTodo,
     selectedTaskNavigatorItem,
     setTaskNavigatorIndex,
     taskNavigatorItems,
@@ -340,14 +331,14 @@ const HomePage = () => {
   ]);
 
   const sidebarProgressActionProgressBars = useMemo(() => {
-    if (sidebarProgressActions.length === 0) {
+    if (sidebarProgressBarEntries.length === 0) {
       return <></>;
     }
     return (
       <>
         <div className="flex flex-col gap-y-3">
           <div className="flex flex-col gap-y-2">
-            {sidebarProgressActions.map((action) => (
+            {sidebarProgressBarEntries.map(({ action, progressBars }) => (
               <Link
                 key={action.id}
                 to={href("/actions/:id", { id: action.id.toString() })}
@@ -357,17 +348,15 @@ const HomePage = () => {
                   {action.name}
                 </p>
                 <div className="flex flex-col gap-y-2">
-                  {(actionProgressViews[action.id] ?? [])
-                    .filter((v) => v.kind === "progressbar")
-                    .map((view) => (
-                      <AggregateProgressBarBlock
-                        key={view.id}
-                        view={view}
-                        titleClassName="text-base font-medium text-black"
-                        captionClassName="text-sm text-zinc-600"
-                        className="flex flex-col gap-y-1"
-                      />
-                    ))}
+                  {progressBars.map((view) => (
+                    <AggregateProgressBarBlock
+                      key={view.id}
+                      view={view}
+                      titleClassName="text-base font-medium text-black"
+                      captionClassName="text-sm text-zinc-600"
+                      className="flex flex-col gap-y-1"
+                    />
+                  ))}
                 </div>
               </Link>
             ))}
@@ -375,7 +364,7 @@ const HomePage = () => {
         </div>
       </>
     );
-  }, [sidebarProgressActions, actionProgressViews]);
+  }, [sidebarProgressBarEntries]);
 
   const mainContent = useMemo(() => {
     if (actions === null) {

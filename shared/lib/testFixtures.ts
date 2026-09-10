@@ -1,7 +1,7 @@
 import type { ActionEventDto, UserActionStatusDto } from "../client/types.gen";
 import type { ActionWithAwayStatus } from "./actionUtils";
 
-// Test-only fixture builders shared by the shared/lib suites. The defaults
+// Test-only fixture builders shared by the unit suites. The defaults
 // describe a plain assigned todo in the member-action phase, expressed
 // through the server-computed `viewer` status; `makeLegacyAction` re-expresses
 // the same action through the legacy flat fields (no `viewer`) for the
@@ -12,6 +12,7 @@ export function makeViewer(
 ): UserActionStatusDto {
   return {
     assigned: true,
+    optional: false,
     canComplete: true,
     relation: "none",
     dismissed: false,
@@ -27,6 +28,10 @@ export function makeViewer(
 export function makeAction(
   overrides: Partial<ActionWithAwayStatus> = {},
 ): ActionWithAwayStatus {
+  // The server builds the viewer status from the action, so an `optional`
+  // override has to reach the default viewer or the fixture describes a
+  // payload no response can carry.
+  const optional = overrides.optional ?? false;
   return {
     id: 1,
     name: "Test action",
@@ -41,7 +46,7 @@ export function makeAction(
     usersJoined: 0,
     usersCompleted: 0,
     priority: 0,
-    optional: false,
+    optional,
     preventCompletion: false,
     isForumParticipationAction: false,
     archived: false,
@@ -56,7 +61,7 @@ export function makeAction(
     shouldCompleteAfterDeadline: false,
     awayStatus: "not_away",
     events: [],
-    viewer: makeViewer(),
+    viewer: makeViewer({ optional }),
     ...overrides,
   };
 }

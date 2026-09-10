@@ -2,6 +2,7 @@ import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
 import type { ActionDto } from "@alliance/shared/client";
 import { tasksGetFormAggregateViews } from "@alliance/shared/client";
 import { parseAggregateViewsPayload } from "@alliance/shared/lib/actionAggregates";
+import { isActionAssignedAndNotDismissed } from "@alliance/shared/lib/actionUtils";
 
 /** Fetches resolved aggregate views per form id (dedupes HTTP by unique form id). */
 export async function fetchTaskFormProgressViewsByFormId(
@@ -41,18 +42,39 @@ export function mapFormViewsToActionIds(
   ) as Record<number, AggregateViewSchema[]>;
 }
 
+function isSidebarProgressCandidate(
+  action: ActionDto,
+): action is ActionDto & { taskFormId: number } {
+  return (
+    action.status === "member_action" &&
+    isActionAssignedAndNotDismissed(action) &&
+    action.taskFormId != null
+  );
+}
+
 export function sidebarProgressActionCandidates(
   actions: ActionDto[],
 ): { actionId: number; formId: number }[] {
+  return actions.filter(isSidebarProgressCandidate).map((action) => ({
+    actionId: action.id,
+    formId: action.taskFormId,
+  }));
+}
+
+export type SidebarProgressBarEntry = {
+  action: ActionDto;
+  progressBars: AggregateViewSchema[];
+};
+
+export function sidebarProgressBarActions(
+  actions: ActionDto[],
+  viewsByActionId: Record<number, AggregateViewSchema[]>,
+): SidebarProgressBarEntry[] {
   return actions
-    .filter(
-      (action) =>
-        action.status === "member_action" &&
-        action.shouldParticipate &&
-        action.taskFormId != null,
-    )
+    .filter(isSidebarProgressCandidate)
     .map((action) => ({
-      actionId: action.id,
-      formId: action.taskFormId!,
-    }));
+      action,
+      progressBars: viewsByActionId[action.id] ?? [],
+    }))
+    .filter(({ progressBars }) => progressBars.length > 0);
 }

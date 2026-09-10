@@ -5,6 +5,11 @@ export const noTasksToDoRightNow = "No tasks to do right now";
 export const noTasksContractSuspended =
   "You will not be assigned tasks while you do not have a signed membership contract.";
 
+export interface TitledCopy {
+  title: string;
+  description: string;
+}
+
 export const taskHeaders = {
   actionPage: {
     completed: "You've completed this task.",
@@ -23,6 +28,11 @@ export const taskHeaders = {
       title: "This action is optional.",
       description:
         "You are not required to complete the task, but can if you would like.",
+    },
+    optionalForViewer: {
+      title: "This action is optional for you.",
+      description:
+        "You weren't a member for all of this task. You do not need to complete it, but you can if you would like.",
     },
     withdrew: "You withdrew from this action.",
   },
@@ -46,6 +56,11 @@ export const taskHeaders = {
     optional: {
       title: "This action is optional.",
       description: "You can complete the task as usual or dismiss it.",
+    },
+    optionalForViewer: {
+      title: "Optional for you",
+      description:
+        "You weren't a member for all of this task. You can either complete it or dismiss it.",
     },
   },
 } as const;

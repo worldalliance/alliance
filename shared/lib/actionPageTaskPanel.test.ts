@@ -140,4 +140,12 @@ describe("getActionPageTaskPanelState", () => {
       ActionPageTaskPanelState.Optional,
     );
   });
+
+  it("separates an action optional to this viewer alone", () => {
+    expect(
+      stateOf(
+        makeAction({ optional: false, viewer: makeViewer({ optional: true }) }),
+      ),
+    ).toBe(ActionPageTaskPanelState.OptionalForViewer);
+  });
 });

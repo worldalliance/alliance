@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { ActionDto, ActionEventDto } from "../client";
+import { isActionOptional } from "./actionUtils";
 
 export interface TaskTimeInfoPropsShared {
   action: ActionDto;
@@ -12,8 +13,8 @@ export function deadlineColor(
   action: ActionDto,
 ) {
   return !!nextEvent &&
-    new Date(nextEvent.date).getTime() - Date.now() < 172800000 &&
-    !action.optional // 2 days
+    new Date(nextEvent.date).getTime() - Date.now() < 172800000 && // 2 days
+    !isActionOptional(action)
     ? "#dc2626"
     : "#71717a";
 }

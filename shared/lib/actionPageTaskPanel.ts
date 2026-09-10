@@ -1,6 +1,10 @@
 import { ActionDto } from "../client/types.gen";
 import { CardStyle } from "../styles/card";
-import { deadlineHasPassed } from "./actionUtils";
+import {
+  deadlineHasPassed,
+  isActionOptional,
+  isActionOptionalForViewerOnly,
+} from "./actionUtils";
 
 export enum ActionPageTaskPanelState {
   PublicOnly = "public_only",
@@ -17,6 +21,7 @@ export enum ActionPageTaskPanelState {
   ShowTaskWithMissedDeadline = "show_task_with_missed_deadline",
   ShowTask = "show_task",
   Optional = "optional",
+  OptionalForViewer = "optional_for_viewer",
 }
 
 enum ActionPageTaskPanelEnabled {
@@ -45,6 +50,8 @@ const stateIsDisabled = {
   [ActionPageTaskPanelState.OnboardingSignContractFirst]:
     ActionPageTaskPanelEnabled.Disabled,
   [ActionPageTaskPanelState.Optional]: ActionPageTaskPanelEnabled.Enabled,
+  [ActionPageTaskPanelState.OptionalForViewer]:
+    ActionPageTaskPanelEnabled.Enabled,
   [ActionPageTaskPanelState.ShowTask]: ActionPageTaskPanelEnabled.Enabled,
 } as const satisfies Record<
   ActionPageTaskPanelState,
@@ -71,6 +78,7 @@ export const shouldLoadCompletedTaskFormByState = {
   [ActionPageTaskPanelState.ShowTaskWithMissedDeadline]: false,
   [ActionPageTaskPanelState.OnboardingSignContractFirst]: false,
   [ActionPageTaskPanelState.Optional]: false,
+  [ActionPageTaskPanelState.OptionalForViewer]: false,
   [ActionPageTaskPanelState.ShowTask]: false,
 } as const satisfies Record<ActionPageTaskPanelState, boolean>;
 
@@ -188,8 +196,10 @@ export function getActionPageTaskPanelState(params: {
     return ActionPageTaskPanelState.ShowTaskWithMissedDeadline;
   }
 
-  if (action.optional) {
-    return ActionPageTaskPanelState.Optional;
+  if (isActionOptional(action)) {
+    return isActionOptionalForViewerOnly(action)
+      ? ActionPageTaskPanelState.OptionalForViewer
+      : ActionPageTaskPanelState.Optional;
   }
 
   return ActionPageTaskPanelState.ShowTask;

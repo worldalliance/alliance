@@ -3,6 +3,7 @@ import { ActionDto, FollowUpFormDto } from "../client";
 import {
   ActionWithAwayStatus,
   homePagePriorityComparator,
+  isActionOptional,
   isCurrentlyCompletedAction,
   isFollowUpFormActive,
   shouldCompleteAction,
@@ -69,11 +70,7 @@ export function useHomePageActions(actions: ActionWithAwayStatus[] | null) {
 
   const remainingTasksEstimatedTimeCurrentWeek = currentWeekTodoActions.reduce(
     (sum, action) => {
-      if (
-        showActionInSidebarList(action) &&
-        !action.optional &&
-        action.timeEstimate
-      ) {
+      if (!isActionOptional(action) && action.timeEstimate) {
         return sum + action.timeEstimate;
       }
       return sum;

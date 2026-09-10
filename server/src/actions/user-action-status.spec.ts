@@ -1,4 +1,9 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import {
+  ContractEventType,
+  type ContractEvent,
+} from "src/user/entities/contract-event.entity";
+import { User } from "src/user/entities/user.entity";
 import { TaskAwayStatus } from "src/utils/action-user";
 import { UserActionRelationPillStatus } from "../user/dto/user-action-relations.dto";
 import type { ActionEvent } from "./entities/action-event.entity";
@@ -15,6 +20,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = new Date("2026-01-08T00:00:00Z");
 const PHASE_START = new Date(NOW.getTime() - 7 * DAY_MS);
 const DEADLINE = new Date(NOW.getTime() + 7 * DAY_MS);
+const LONG_BEFORE = new Date(PHASE_START.getTime() - 30 * DAY_MS);
 
 type ResolveParams = Parameters<typeof resolveUserActionStatus>[0];
 
@@ -46,16 +52,39 @@ function makeAction(
   };
 }
 
+let contractEventSeq = 0;
+function contractEvent(date: Date, type: ContractEventType): ContractEvent {
+  return { id: ++contractEventSeq, date, type } as ContractEvent;
+}
+
+const signed = (date: Date) => contractEvent(date, ContractEventType.SIGNED);
+const suspended = (date: Date) =>
+  contractEvent(date, ContractEventType.SUSPENDED);
+
+const AWAY_AROUND_NOW = [
+  {
+    startDate: new Date(NOW.getTime() - DAY_MS),
+    endDate: new Date(NOW.getTime() + DAY_MS),
+  },
+] as ResolveParams["user"]["awayRanges"];
+
 function makeUser(
-  overrides: Partial<ResolveParams["user"]> = {},
+  overrides: Partial<Pick<User, "contractEvents" | "awayRanges">> = {},
 ): ResolveParams["user"] {
-  return {
-    contractEvents: [],
-    hasActiveContractInFullRange: () => true,
+  return new User({
+    contractEvents: [signed(LONG_BEFORE)],
     awayRanges: [],
-    isAwayAtAnyPointInRange: () => false,
     ...overrides,
-  };
+  });
+}
+
+function makeLapsedUser(): ResolveParams["user"] {
+  return makeUser({
+    contractEvents: [
+      signed(LONG_BEFORE),
+      suspended(new Date(PHASE_START.getTime() - DAY_MS)),
+    ],
+  });
 }
 
 let activitySeq = 0;
@@ -88,6 +117,7 @@ describe("resolveUserActionStatus", () => {
     const status = resolve();
     expect(status).toEqual({
       assigned: true,
+      optional: false,
       canComplete: true,
       relation: ViewerActionRelation.None,
       withdrawal: null,
@@ -119,29 +149,23 @@ describe("resolveUserActionStatus", () => {
   });
 
   it("lets a lapsed-contract member complete a regular action without being assigned", () => {
-    const status = resolve({
-      user: makeUser({ hasActiveContractInFullRange: () => false }),
-    });
+    const status = resolve({ user: makeLapsedUser() });
     expect(status.assigned).toBe(false);
     expect(status.canComplete).toBe(true);
     expect(status.display).toBe(UserActionRelationPillStatus.NotRequired);
   });
 
   it("blocks both assignment and completion when an onboarding action predates the first contract", () => {
-    const status = resolve({
-      action: makeAction({ onboarding: true }),
-      user: makeUser({
-        contractEvents: [
-          { date: new Date(PHASE_START.getTime() - 30 * DAY_MS) },
-        ] as ResolveParams["user"]["contractEvents"],
-      }),
-    });
+    const status = resolve({ action: makeAction({ onboarding: true }) });
     expect(status.assigned).toBe(false);
     expect(status.canComplete).toBe(false);
   });
 
   it("assigns onboarding actions to brand-new signups with no contract yet", () => {
-    const status = resolve({ action: makeAction({ onboarding: true }) });
+    const status = resolve({
+      action: makeAction({ onboarding: true }),
+      user: makeUser({ contractEvents: [] }),
+    });
     expect(status.assigned).toBe(true);
     expect(status.canComplete).toBe(true);
   });
@@ -200,15 +224,7 @@ describe("resolveUserActionStatus", () => {
 
   it("shows away for an in-cohort user away during the window", () => {
     const status = resolve({
-      user: makeUser({
-        awayRanges: [
-          {
-            startDate: new Date(NOW.getTime() - DAY_MS),
-            endDate: new Date(NOW.getTime() + DAY_MS),
-          },
-        ] as ResolveParams["user"]["awayRanges"],
-        isAwayAtAnyPointInRange: () => true,
-      }),
+      user: makeUser({ awayRanges: AWAY_AROUND_NOW }),
     });
     expect(status.away).toBe(TaskAwayStatus.AwayCurrently);
     expect(status.assigned).toBe(true);
@@ -217,7 +233,7 @@ describe("resolveUserActionStatus", () => {
 
   it("shows completed over away (completions count regardless of absence)", () => {
     const status = resolve({
-      user: makeUser({ isAwayAtAnyPointInRange: () => true }),
+      user: makeUser({ awayRanges: AWAY_AROUND_NOW }),
       activities: [activity(ActionActivityType.USER_COMPLETED)],
     });
     expect(status.display).toBe(UserActionRelationPillStatus.Completed);
@@ -248,6 +264,7 @@ describe("resolveUserActionStatus", () => {
         }),
       }),
     });
+    expect(status.optional).toBe(true);
     expect(status.display).toBe(UserActionRelationPillStatus.OptionalTask);
   });
 
@@ -285,7 +302,7 @@ describe("computeCanCompleteAction", () => {
     expect(
       computeCanCompleteAction({
         action: makeAction(),
-        user: makeUser({ hasActiveContractInFullRange: () => false }),
+        user: makeLapsedUser(),
         inCohort: true,
       }),
     ).toBe(true);
@@ -305,11 +322,7 @@ describe("computeCanCompleteAction", () => {
     expect(
       computeCanCompleteAction({
         action: makeAction({ onboarding: true }),
-        user: makeUser({
-          contractEvents: [
-            { date: new Date(PHASE_START.getTime() - 30 * DAY_MS) },
-          ] as ResolveParams["user"]["contractEvents"],
-        }),
+        user: makeUser(),
         inCohort: true,
       }),
     ).toBe(false);
