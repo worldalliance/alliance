@@ -5,6 +5,11 @@ export const noTasksToDoRightNow = "No tasks to do right now";
 export const noTasksContractSuspended =
   "You will not be assigned tasks while you do not have a signed membership contract.";
 
+export interface TitledCopy {
+  title: string;
+  description: string;
+}
+
 export const taskHeaders = {
   actionPage: {
     completed: "You've completed this task.",

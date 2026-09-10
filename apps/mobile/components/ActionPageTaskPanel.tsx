@@ -9,7 +9,11 @@ import {
   useCompletedTaskForm,
   useTaskForm,
 } from "@alliance/shared/lib/actionTaskPanelCompleted";
-import { clipboardCopy, taskHeaders } from "@alliance/shared/lib/copy";
+import {
+  clipboardCopy,
+  taskHeaders,
+  type TitledCopy,
+} from "@alliance/shared/lib/copy";
 import {
   buildActionShareUrl,
   buildShareText,
@@ -35,6 +39,15 @@ export interface ActionPageTaskPanelProps {
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
 }
+
+const renderTitledHeader = (copy: TitledCopy, titleClassName?: string) => (
+  <View className="gap-y-1">
+    <Text className={titleClassName} weight={FontWeight.Medium}>
+      {copy.title}
+    </Text>
+    <Text className="text-zinc-500">{copy.description}</Text>
+  </View>
+);
 
 // Guest-completion states (GuestRef, GuestCompleted) are web-only; mobile
 // pins hasRefCode/hasGuestResponse to false below so they're never reached.
@@ -64,15 +77,8 @@ const taskPanelTopByState: Partial<
     <Text>{taskHeaders.actionPage.memberActionClosed}</Text>
   ),
   [ActionPageTaskPanelState.MissingDataOrNotActive]: null,
-  [ActionPageTaskPanelState.ShowTaskWithMissedDeadline]: (
-    <View className="gap-y-1">
-      <Text weight={FontWeight.Medium}>
-        {taskHeaders.actionPage.deadlinePassed.title}
-      </Text>
-      <Text className="text-zinc-500">
-        {taskHeaders.actionPage.deadlinePassed.description}
-      </Text>
-    </View>
+  [ActionPageTaskPanelState.ShowTaskWithMissedDeadline]: renderTitledHeader(
+    taskHeaders.actionPage.deadlinePassed,
   ),
   [ActionPageTaskPanelState.OnboardingSignContractFirst]: (
     <View className="flex-row items-center justify-between gap-x-2">
@@ -85,15 +91,9 @@ const taskPanelTopByState: Partial<
       </Link>
     </View>
   ),
-  [ActionPageTaskPanelState.Optional]: (
-    <View className="gap-y-1">
-      <Text className="text-sky-500" weight={FontWeight.Medium}>
-        {taskHeaders.actionPage.optional.title}
-      </Text>
-      <Text className="text-zinc-500">
-        {taskHeaders.actionPage.optional.description}
-      </Text>
-    </View>
+  [ActionPageTaskPanelState.Optional]: renderTitledHeader(
+    taskHeaders.actionPage.optional,
+    "text-sky-500",
   ),
   [ActionPageTaskPanelState.ShowTask]: null,
 };
