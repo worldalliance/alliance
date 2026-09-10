@@ -9,8 +9,21 @@ const platform = {
   select: (choices: Record<string, string>) => choices.ios,
 };
 
+// The stubs no test asserts on are there because uniwind's native runtime reads
+// them as it loads.
 export function mockReactNative() {
-  jest.mock("react-native", () => ({ Text: "RNText", Platform: platform }));
+  jest.mock("react-native", () => ({
+    Text: "RNText",
+    Platform: platform,
+    Appearance: { getColorScheme: () => "light" },
+    Dimensions: {
+      get: () => ({ width: 390, height: 844 }),
+      addEventListener: () => ({ remove: () => {} }),
+    },
+    I18nManager: { isRTL: false },
+    PixelRatio: { get: () => 3, getFontScale: () => 1 },
+    StyleSheet: { hairlineWidth: 1 },
+  }));
 
   return platform;
 }

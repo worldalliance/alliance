@@ -7,7 +7,7 @@ description: Read before bumping uniwind in apps/mobile or tailwindcss in any pa
 
 ## Bumping uniwind
 
-Write the new version into `apps/mobile/package.json` with no range, then `bun install`. Re-read every comment that names uniwind's behavior (`git grep -n uniwind apps/mobile`) against the new source.
+Write the new version into `apps/mobile/package.json` with no range, then `bun install`. Run `bun run test apps/mobile`, which asserts the resolve against uniwind's own source and goes red where a bump moved it. Re-read every comment that names uniwind's behavior (`git grep -n uniwind apps/mobile`) against the new source.
 
 Then run `Mobile Visual Regression iOS` twice, at the pre-bump commit and then at the bump's, pushing the bump between the two dispatches rather than before the first:
 
