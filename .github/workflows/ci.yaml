@@ -51,6 +51,9 @@ jobs:
   migrations-drift-check:
     uses: ./.github/workflows/migrations-drift-check.yaml
 
+  mobile-css-check:
+    uses: ./.github/workflows/mobile-css-check.yaml
+
   mobile-fingerprint-check:
     uses: ./.github/workflows/mobile-fingerprint-check.yaml
     secrets:

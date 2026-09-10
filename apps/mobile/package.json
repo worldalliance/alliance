@@ -11,6 +11,7 @@
     "ios": "apiPort=$(bun ../../scripts/ports.ts server) && metroPort=$(bun ../../scripts/ports.ts mobile) && expo prebuild -p ios && EXPO_PUBLIC_ALLIANCE_API_PORT=$apiPort expo run:ios --port $metroPort",
     "typecheck": "tsc -p tsconfig.typecheck.json && eslint .",
     "lint": "expo lint",
+    "css:check": "bun scripts/check-css.mjs",
     "eas-build-pre-install": "cd ../.. && bun install --frozen-lockfile",
     "build:simulator": "apiPort=$(bun ../../scripts/ports.ts server) && metroPort=$(bun ../../scripts/ports.ts mobile) && bunx expo prebuild && cd ios && pod install && cd .. && EXPO_PUBLIC_ALLIANCE_API_PORT=$apiPort bunx expo run:ios --port $metroPort",
     "build:simulator:clean": "apiPort=$(bun ../../scripts/ports.ts server) && metroPort=$(bun ../../scripts/ports.ts mobile) && bunx expo prebuild --clean && cd ios && pod install && cd .. && EXPO_PUBLIC_ALLIANCE_API_PORT=$apiPort bunx expo run:ios --port $metroPort",

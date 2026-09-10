@@ -1,0 +1,27 @@
+name: Mobile CSS Check
+
+# Compiles apps/mobile/global.css through uniwind's metro pipeline. The Tailwind
+# compiler uniwind bundles and the hoisted `tailwindcss` resolve separately, so
+# this is where the two drifting apart shows up.
+
+on:
+  workflow_call:
+
+jobs:
+  mobile-css-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Compile global.css
+        run: bun run css:check
+        working-directory: ./apps/mobile
