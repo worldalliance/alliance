@@ -6,7 +6,7 @@ import {
 import { addDays, isAfter } from "date-fns";
 
 const SNOOZE_KEY = "domain-migration-snoozed-at";
-const SNOOZE_DAYS = 5;
+const SNOOZE_DAYS = 2;
 
 export const isLegacyDomain = (hostname: string): boolean =>
   hostnameMatchesDomain(hostname, LEGACY_DOMAIN);

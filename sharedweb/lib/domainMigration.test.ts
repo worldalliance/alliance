@@ -54,16 +54,16 @@ describe("snooze", () => {
     expect(isSnoozed(new Date())).toBe(false);
   });
 
-  test("covers the four days after it is set", () => {
+  test("covers the day after it is set", () => {
     const now = new Date("2026-09-01T12:00:00Z");
     snooze(now);
-    expect(isSnoozed(addDays(now, 4))).toBe(true);
+    expect(isSnoozed(addDays(now, 1))).toBe(true);
   });
 
-  test("expires on the fifth day", () => {
+  test("expires on the second day", () => {
     const now = new Date("2026-09-01T12:00:00Z");
     snooze(now);
-    expect(isSnoozed(addDays(now, 5))).toBe(false);
+    expect(isSnoozed(addDays(now, 2))).toBe(false);
   });
 
   test("ignores a garbage value", () => {
