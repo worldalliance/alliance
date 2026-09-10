@@ -96,6 +96,14 @@ const taskPanelTopByState: Record<ActionPageTaskPanelState, ReactNode> = {
     taskHeaders.actionPage.optional,
     "text-sky-500",
   ),
+  [ActionPageTaskPanelState.OptionalForViewer]: renderTitledHeader(
+    taskHeaders.actionPage.optionalForViewer,
+    "text-sky-500",
+  ),
+  [ActionPageTaskPanelState.OptionalForContractGap]: renderTitledHeader(
+    taskHeaders.actionPage.optionalForContractGap,
+    "text-sky-500",
+  ),
   [ActionPageTaskPanelState.ShowTask]: null,
 };
 
@@ -216,6 +224,8 @@ const ActionPageTaskPanel = ({
     case ActionPageTaskPanelState.PublicOnly:
     case ActionPageTaskPanelState.ShowTaskWithMissedDeadline:
     case ActionPageTaskPanelState.Optional:
+    case ActionPageTaskPanelState.OptionalForViewer:
+    case ActionPageTaskPanelState.OptionalForContractGap:
     case ActionPageTaskPanelState.ShowTask:
       return (
         <StackedCard

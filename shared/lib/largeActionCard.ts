@@ -2,9 +2,11 @@ import { ActionDto, ActionEventDto, type TaskAwayStatus } from "../client";
 import {
   ActionWithAwayStatus,
   deadlineHasPassed,
+  getViewerOnlyOptionalReason,
   isActionOptional,
+  ViewerOnlyOptionalReason,
 } from "./actionUtils";
-import { taskHeaders } from "./copy";
+import { taskHeaders, type TitledCopy } from "./copy";
 
 export interface LargeActionCardPropsShared {
   action: ActionWithAwayStatus;
@@ -21,6 +23,12 @@ const AWAY_STATUS_MESSAGES = {
   away_later: taskHeaders.homePage.away.description.willBeAway,
   away_previously: taskHeaders.homePage.away.description.wasAway,
 } as const satisfies Record<Exclude<TaskAwayStatus, "not_away">, string>;
+
+const HOME_COPY_BY_VIEWER_ONLY_OPTIONAL_REASON = {
+  [ViewerOnlyOptionalReason.Unknown]: taskHeaders.homePage.optionalForViewer,
+  [ViewerOnlyOptionalReason.ContractGap]:
+    taskHeaders.homePage.optionalForContractGap,
+} as const satisfies Record<ViewerOnlyOptionalReason, TitledCopy>;
 
 /**
  * Pure data computation — returns the banner header/message for a task that can
@@ -52,6 +60,12 @@ export function getTaskDismissInfo(
 
   // Ahead of the deadline branch, whose banner would tell the member they
   // missed a deadline they were never held to.
+  const viewerOnlyReason = getViewerOnlyOptionalReason(action);
+  if (viewerOnlyReason) {
+    const copy = HOME_COPY_BY_VIEWER_ONLY_OPTIONAL_REASON[viewerOnlyReason];
+    return { header: copy.title, message: copy.description };
+  }
+
   if (isActionOptional(action)) {
     return {
       header: taskHeaders.homePage.optional.title,

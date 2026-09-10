@@ -1,6 +1,10 @@
 import { taskHeaders } from "./copy";
 import { getTaskDismissInfo } from "./largeActionCard";
-import { makeAction, makeViewer } from "./testFixtures";
+import {
+  makeAction,
+  makeViewer,
+  makeViewerWithUnknownOptionalReason,
+} from "./testFixtures";
 
 describe("getTaskDismissInfo", () => {
   it("returns nothing for a plain required task or an onboarding task", () => {
@@ -58,10 +62,57 @@ describe("getTaskDismissInfo", () => {
     expect(info?.header).toBe(taskHeaders.homePage.optional.title);
   });
 
-  it("shows the optional banner for a viewer the action is optional for", () => {
+  it("says optional for you where only the viewer's flag is set", () => {
     const info = getTaskDismissInfo(
       makeAction({ optional: false, viewer: makeViewer({ optional: true }) }),
     );
-    expect(info?.header).toBe(taskHeaders.homePage.optional.title);
+    expect(info?.header).toBe(taskHeaders.homePage.optionalForViewer.title);
+    expect(info?.message).toBe(
+      taskHeaders.homePage.optionalForViewer.description,
+    );
+  });
+
+  it("says optional for you without a reason this build doesn't know", () => {
+    const info = getTaskDismissInfo(
+      makeAction({
+        optional: false,
+        viewer: makeViewerWithUnknownOptionalReason(),
+      }),
+    );
+    expect(info?.header).toBe(taskHeaders.homePage.optionalForViewer.title);
+    expect(info?.message).toBe(
+      taskHeaders.homePage.optionalForViewer.description,
+    );
+  });
+
+  it("names the contract gap when the server gives it as the reason", () => {
+    const info = getTaskDismissInfo(
+      makeAction({
+        optional: false,
+        viewer: makeViewer({ optional: true, optionalReason: "contract_gap" }),
+      }),
+    );
+    expect(info?.header).toBe(
+      taskHeaders.homePage.optionalForContractGap.title,
+    );
+    expect(info?.message).toBe(
+      taskHeaders.homePage.optionalForContractGap.description,
+    );
+  });
+
+  it("keeps that wording once the deadline has passed", () => {
+    const info = getTaskDismissInfo(
+      makeAction({
+        optional: false,
+        status: "resolution",
+        viewer: makeViewer({ optional: true, optionalReason: "contract_gap" }),
+      }),
+    );
+    expect(info?.header).toBe(
+      taskHeaders.homePage.optionalForContractGap.title,
+    );
+    expect(info?.message).toBe(
+      taskHeaders.homePage.optionalForContractGap.description,
+    );
   });
 });

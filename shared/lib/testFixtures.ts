@@ -27,6 +27,14 @@ export function makeViewer(
   };
 }
 
+export function makeViewerWithUnknownOptionalReason(): UserActionStatusDto {
+  return makeViewer({
+    optional: true,
+    // @ts-expect-error: a reason from a server newer than this build
+    optionalReason: "from_a_newer_server",
+  });
+}
+
 export function makeAction(
   overrides: Partial<ActionWithAwayStatus> = {},
 ): ActionWithAwayStatus {

@@ -8,6 +8,7 @@ import {
   makeEvent,
   makeLegacyAction,
   makeViewer,
+  makeViewerWithUnknownOptionalReason,
 } from "./testFixtures";
 
 type StateParams = Parameters<typeof getActionPageTaskPanelState>[0];
@@ -139,8 +140,50 @@ describe("getActionPageTaskPanelState", () => {
     expect(stateOf(makeAction({ optional: true }))).toBe(
       ActionPageTaskPanelState.Optional,
     );
+    expect(stateOf(makeLegacyAction({ optional: true }))).toBe(
+      ActionPageTaskPanelState.Optional,
+    );
+  });
+
+  it("separates an action optional to this viewer alone", () => {
     expect(
-      stateOf(makeAction({ viewer: makeViewer({ optional: true }) })),
-    ).toBe(ActionPageTaskPanelState.Optional);
+      stateOf(
+        makeAction({ optional: false, viewer: makeViewer({ optional: true }) }),
+      ),
+    ).toBe(ActionPageTaskPanelState.OptionalForViewer);
+    expect(
+      stateOf(
+        makeAction({
+          optional: false,
+          viewer: makeViewer({
+            optional: true,
+            optionalReason: "contract_gap",
+          }),
+        }),
+      ),
+    ).toBe(ActionPageTaskPanelState.OptionalForContractGap);
+    expect(
+      stateOf(
+        makeAction({
+          optional: false,
+          viewer: makeViewerWithUnknownOptionalReason(),
+        }),
+      ),
+    ).toBe(ActionPageTaskPanelState.OptionalForViewer);
+  });
+
+  it("shows the missed deadline over optional for you", () => {
+    expect(
+      stateOf(
+        makeAction({
+          optional: false,
+          status: "resolution",
+          viewer: makeViewer({
+            optional: true,
+            optionalReason: "contract_gap",
+          }),
+        }),
+      ),
+    ).toBe(ActionPageTaskPanelState.ShowTaskWithMissedDeadline);
   });
 });
