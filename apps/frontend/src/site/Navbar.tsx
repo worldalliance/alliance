@@ -30,7 +30,7 @@ export function Navbar({
 }: {
   overPrimary?: boolean;
 } = {}) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, loading } = useAuth();
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -109,50 +109,58 @@ export function Navbar({
         </Link>
 
         <div className="flex items-center justify-end gap-2.5">
-          <Link
-            to={PARTNER_HREF}
+          <div
             className={cn(
-              "hidden min-h-11 items-center px-4 text-sm font-medium transition-colors md:inline-flex bg-zinc-200 text-black hover:bg-zinc-300",
+              "flex items-center gap-2.5 transition-opacity duration-300",
+              loading && "pointer-events-none opacity-0",
             )}
-            style={{ borderRadius: "var(--site-radius-button)" }}
+            aria-hidden={loading}
           >
-            {NAV_PARTNER}
-          </Link>
-          <Link
-            to={accountHref}
-            className={cn(
-              "inline-flex min-h-11 items-center gap-2 px-4 text-sm font-medium transition-colors",
-              light
-                ? "bg-white text-[var(--site-primary)] hover:bg-white/85"
-                : "bg-[var(--site-primary)] text-white hover:bg-[var(--site-primary-hover)]",
-            )}
-            style={{ borderRadius: "var(--site-radius-button)" }}
-          >
-            {accountLabel}
-            <SiteArrow className="size-2.5" />
-          </Link>
-          {isAuthenticated && user && (
             <Link
-              to={profileHref}
-              aria-label="Go to profile"
-              className="inline-flex shrink-0 focus:outline-none"
+              to={PARTNER_HREF}
+              className={cn(
+                "hidden min-h-11 items-center px-4 text-sm font-medium transition-colors md:inline-flex bg-zinc-200 text-black hover:bg-zinc-300",
+              )}
               style={{ borderRadius: "var(--site-radius-button)" }}
             >
-              <AvatarProfile
-                pfp={user.profilePicture ?? null}
-                size="override"
-                thumbnail
-                alt={`${user.name} profile photo`}
-                className={cn(
-                  "size-11 rounded-md",
-                  !user.profilePicture &&
-                    (light
-                      ? "ring-1 ring-white/60"
-                      : "ring-1 ring-[var(--site-ink)]/20"),
-                )}
-              />
+              {NAV_PARTNER}
             </Link>
-          )}
+            <Link
+              to={accountHref}
+              className={cn(
+                "inline-flex min-h-11 items-center gap-2 px-4 text-sm font-medium transition-colors",
+                light
+                  ? "bg-white text-[var(--site-primary)] hover:bg-white/85"
+                  : "bg-[var(--site-primary)] text-white hover:bg-[var(--site-primary-hover)]",
+              )}
+              style={{ borderRadius: "var(--site-radius-button)" }}
+            >
+              {accountLabel}
+              <SiteArrow className="size-2.5" />
+            </Link>
+            {isAuthenticated && user && (
+              <Link
+                to={profileHref}
+                aria-label="Go to profile"
+                className="inline-flex shrink-0 focus:outline-none"
+                style={{ borderRadius: "var(--site-radius-button)" }}
+              >
+                <AvatarProfile
+                  pfp={user.profilePicture ?? null}
+                  size="override"
+                  thumbnail
+                  alt={`${user.name} profile photo`}
+                  className={cn(
+                    "size-11 rounded-md",
+                    !user.profilePicture &&
+                      (light
+                        ? "ring-1 ring-white/60"
+                        : "ring-1 ring-[var(--site-ink)]/20"),
+                  )}
+                />
+              </Link>
+            )}
+          </div>
           <button
             type="button"
             className="-mr-2 inline-flex size-11 items-center justify-center md:hidden"
