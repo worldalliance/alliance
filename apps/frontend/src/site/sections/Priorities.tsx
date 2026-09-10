@@ -1,6 +1,6 @@
 import { cn } from "@alliance/shared/styles/util";
 import { PRIORITIES_NOTE, priorities, type Priority } from "../content";
-import { SITE_COL } from "../ui";
+import { SITE_COL, SitePicture } from "../ui";
 
 const CARD_SIZE = "aspect-auto min-h-[13.5rem] md:aspect-[5/4] md:min-h-0";
 
@@ -28,10 +28,10 @@ export function PriorityCard({
       }}
     >
       {/* Screening a desaturated photo over the tint gives the mockup's duotone. */}
-      <img
-        src={priority.image}
+      <SitePicture
+        image={priority.image}
         alt=""
-        aria-hidden
+        sizes="(min-width: 1024px) 25vw, (min-width: 768px) 50vw, 100vw"
         className="absolute inset-0 size-full object-cover"
         style={{
           mixBlendMode: "screen",

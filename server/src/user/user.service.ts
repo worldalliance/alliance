@@ -23,6 +23,7 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { countBy } from "es-toolkit";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
+import { JWTTokenType } from "src/auth/tokens";
 import { CampaignService } from "src/campaign/campaign.service";
 import { Campaign } from "src/campaign/entities/campaign.entity";
 import { CommunityService } from "src/community/community.service";
@@ -135,7 +136,17 @@ import { referralLabel } from "./user.utils";
 
 export interface PWResetJwtPayload {
   sub: number;
-  type: string;
+  tokenType: JWTTokenType.passwordReset;
+}
+
+export interface VerifyEmailJwtPayload {
+  sub: number;
+  tokenType: JWTTokenType.verifyEmail;
+}
+
+/** Mails sent before the tokens carried a tokenType. Drop once they expire. */
+export interface LegacyMailedJwtPayload {
+  type?: string;
 }
 
 export type ReferrerResolution =
@@ -632,16 +643,27 @@ export class UserService {
   }
 
   async verifyEmail(token: string) {
-    const payload = this.jwtService.verify(token, {
+    const payload = this.jwtService.verify<
+      VerifyEmailJwtPayload & LegacyMailedJwtPayload
+    >(token, {
       secret: process.env.JWT_SECRET,
     });
+    if (
+      payload.tokenType !== JWTTokenType.verifyEmail &&
+      payload.type !== "verify-email"
+    ) {
+      throw new UnauthorizedException();
+    }
     const user = await this.findOneOrFail(payload.sub);
     user.emailVerified = true;
     await this.userRepository.save(user);
   }
 
   async getVerifyEmailToken(userId: number) {
-    const payload = { sub: userId, type: "verify-email" };
+    const payload: VerifyEmailJwtPayload = {
+      sub: userId,
+      tokenType: JWTTokenType.verifyEmail,
+    };
     return this.jwtService.sign(payload, {
       expiresIn: `7d`,
       secret: process.env.JWT_SECRET,
@@ -1250,7 +1272,10 @@ export class UserService {
   }
 
   async generatePasswordResetToken(userId: number) {
-    const payload: PWResetJwtPayload = { sub: userId, type: "password-reset" };
+    const payload: PWResetJwtPayload = {
+      sub: userId,
+      tokenType: JWTTokenType.passwordReset,
+    };
     return this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET,
       expiresIn: `1d`,
@@ -1314,7 +1339,7 @@ export class UserService {
     return this.create({
       email: body.email,
       name: body.firstName + " " + body.lastName,
-      password: Math.random().toString(36).substring(2, 15), //TODO: they have to reset this but maybe do something better
+      password: null,
       isNotSignedUpPartialProfile: true,
       referralSource: ReferralSource.None,
     });

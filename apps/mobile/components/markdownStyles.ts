@@ -1,7 +1,8 @@
 import { useMemo } from "react";
-import { TextStyle, useWindowDimensions, ViewStyle } from "react-native";
+import { TextStyle, ViewStyle } from "react-native";
 import { useResolveClassNames } from "uniwind";
 import { colors } from "../lib/style/colors";
+import { useFontScale } from "../lib/style/useFontScale";
 import { useWholePointClassNames } from "../lib/style/useWholePointClassNames";
 import { FontFamily, FontWeight, resolveFontFamily } from "./system/Text";
 
@@ -84,7 +85,7 @@ export type MarkdownTextStyles = {
 };
 
 export function useMarkdownTextStyles(): MarkdownTextStyles {
-  const { fontScale } = useWindowDimensions();
+  const fontScale = useFontScale();
   const body = useWholePointClassNames("text-base leading-normal", fontScale);
   const bodySmall = useWholePointClassNames(
     "text-sm leading-normal",

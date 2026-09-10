@@ -17,6 +17,7 @@ import {
   IsString,
   ValidateNested,
 } from "class-validator";
+import { OAuthAccount } from "src/auth/oauth/oauth-account.entity";
 import { getImageSource } from "src/images/images.service";
 import { IsE164 } from "src/utils/phone";
 import { IsPlainTime, trimToPlainTime } from "src/utils/plain-time";
@@ -206,6 +207,17 @@ export class SignupSocialProofDto {
   }
 }
 
+export class OAuthAccountDto extends PickType(OAuthAccount, [
+  "provider",
+  "email",
+]) {
+  constructor(input: OAuthAccount) {
+    super();
+    this.provider = input.provider;
+    this.email = input.email;
+  }
+}
+
 export class UserDto extends PickType(User, [
   "name",
   "admin",
@@ -264,6 +276,15 @@ export class UserDto extends PickType(User, [
   @Type(() => ContractEventDto)
   contractEvents?: ContractEventDto[];
 
+  @ApiPropertyOptional({ type: () => OAuthAccountDto, isArray: true })
+  @IsOptional()
+  @Type(() => OAuthAccountDto)
+  oauthAccounts?: OAuthAccountDto[];
+
+  @ApiProperty()
+  @Allow()
+  hasPassword: boolean;
+
   constructor(user: User) {
     super();
     this.id = user.id;
@@ -314,6 +335,10 @@ export class UserDto extends PickType(User, [
     this.referredById = user.referredById;
     this.referredByCampaignId = user.referredByCampaignId;
     this.clusterId = user.clusterId;
+    this.oauthAccounts = user.oauthAccounts?.map(
+      (account) => new OAuthAccountDto(account),
+    );
+    this.hasPassword = Boolean(user.password);
   }
 }
 

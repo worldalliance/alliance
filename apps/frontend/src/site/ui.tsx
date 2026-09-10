@@ -1,10 +1,64 @@
+import { thumbnailSrc } from "@alliance/common/image-src";
 import { cn } from "@alliance/shared/styles/util";
-import type { ReactNode } from "react";
+import {
+  useState,
+  type ComponentProps,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { Link } from "react-router";
-import texture from "../assets/redesign/priority-environment.jpg";
+import type { Picture } from "vite-imagetools";
+import texture from "../assets/redesign/priority-environment.jpg?w=400;800&format=avif;webp;jpg&as=picture";
 
 export const SITE_COL =
   "mx-auto w-full max-w-[1750px] px-5 sm:px-8 lg:px-[68px]";
+
+/**
+ * `display: contents` on the wrapper so the img stays a direct visual child of
+ * the card it is absolutely positioned against.
+ */
+export function SitePicture({
+  image,
+  alt,
+  sizes,
+  className,
+  style,
+  loading = "lazy",
+  fetchPriority,
+}: {
+  image: Picture;
+  alt: string;
+  sizes: string;
+  className?: string;
+  style?: CSSProperties;
+  loading?: "eager" | "lazy";
+  fetchPriority?: "high" | "low" | "auto";
+}) {
+  return (
+    <picture className="contents">
+      {Object.entries(image.sources).map(([format, srcset]) => (
+        <source
+          key={format}
+          type={`image/${format}`}
+          srcSet={srcset}
+          sizes={sizes}
+        />
+      ))}
+      <img
+        src={image.img.src}
+        width={image.img.w}
+        height={image.img.h}
+        alt={alt}
+        sizes={sizes}
+        loading={loading}
+        fetchPriority={fetchPriority}
+        decoding="async"
+        className={className}
+        style={style}
+      />
+    </picture>
+  );
+}
 
 /**
  * The h1 size, shared by the hero and every page header behind the nav. Steps
@@ -15,12 +69,30 @@ export const SITE_COL =
 export const SITE_SUBMIT =
   "inline-flex min-h-12 w-fit items-center gap-2 px-5 text-base font-medium transition-colors disabled:opacity-60";
 
-export function TexturedFill() {
+/**
+ * A member photo at thumbnail size, falling back to the full-size upload when
+ * no thumbnail exists. Needs `key={src}` so the fallback resets per photo.
+ */
+export function ThumbnailImg({
+  src,
+  ...props
+}: Omit<ComponentProps<"img">, "src"> & { src: string }) {
+  const [missing, setMissing] = useState(false);
   return (
     <img
-      src={texture}
+      {...props}
+      src={missing ? src : thumbnailSrc(src)}
+      onError={() => setMissing(true)}
+    />
+  );
+}
+
+export function TexturedFill() {
+  return (
+    <SitePicture
+      image={texture}
       alt=""
-      aria-hidden
+      sizes="100vw"
       className="absolute inset-0 size-full object-cover"
       style={{
         mixBlendMode: "screen",

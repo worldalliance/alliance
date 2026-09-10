@@ -9,7 +9,7 @@ import {
 } from "@nestjs/common";
 import { ApiOkResponse } from "@nestjs/swagger";
 import { AuthGuard } from "src/auth/guards/auth.guard";
-import type { JwtRequest } from "src/auth/guards/jwtreq";
+import type { JwtRequest } from "src/auth/tokens";
 import { SearchService } from "./search.service";
 import { SaveSearchSelectionDto, SearchItemDto } from "./searchitem.dto";
 

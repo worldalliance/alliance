@@ -89,3 +89,34 @@ const RENDERED_KEY_URL =
 export function uploadKeyInUrl(src: string): string | undefined {
   return RENDERED_KEY_URL.exec(src)?.[1];
 }
+
+/** Upload keys are unique per upload and never rewritten. */
+export const IMAGE_CACHE_CONTROL = "public, max-age=31536000, immutable";
+
+/**
+ * Covers every avatar size but `huge` at 3x device pixel ratio. Baked into the
+ * key rather than negotiated, so changing it means regenerating every
+ * thumbnail with server/scripts/backfill-image-thumbnails.ts.
+ */
+export const THUMBNAIL_WIDTH = 128;
+
+const THUMBNAIL_SUFFIX = `-${THUMBNAIL_WIDTH}.webp`;
+
+/** `{timestamp}-{uuid}.webp` → `{timestamp}-{uuid}-128.webp`. */
+export function thumbnailKey(key: string): string {
+  return key.replace(/\.webp$/, THUMBNAIL_SUFFIX);
+}
+
+export function isThumbnailKey(key: string): boolean {
+  return key.endsWith(THUMBNAIL_SUFFIX);
+}
+
+/**
+ * The thumbnail url for a photo the api rendered, leaving anything else — an
+ * external url, a data uri, the default icon — alone. A key uploaded before
+ * thumbnails existed has none until the backfill script runs.
+ */
+export function thumbnailSrc(src: string): string {
+  const key = uploadKeyInUrl(src);
+  return key ? src.replace(key, thumbnailKey(key)) : src;
+}

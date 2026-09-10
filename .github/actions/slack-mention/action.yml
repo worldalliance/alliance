@@ -28,6 +28,7 @@ runs:
         case "$GITHUB_USERNAME" in
           CaseyManning) mention="<@U08P0THG741>" ;;
           charleslien)  mention="<@U0A0WQQM8HZ>" ;;
+          chonboncode)  mention="<@U0BSDDY7Y9F>" ;;
           dorey)        mention="<@U0BLD70L7DY>" ;;
           GrantHough)   mention="<@U0ACKHT60F4>" ;;
           markzxu)      mention="<@U08P0TJ283T>" ;;

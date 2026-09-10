@@ -1,5 +1,5 @@
 import { Socket } from "socket.io";
-import { AuthService } from "src/auth/auth.service";
+import { ACCESS_COOKIE, extractBearerToken } from "src/auth/tokens";
 
 export function parseCookies(cookieHeader: string): Record<string, string> {
   return cookieHeader.split(";").reduce<Record<string, string>>((acc, part) => {
@@ -18,18 +18,17 @@ export function extractTokenFromSocket(client: Socket): string | undefined {
     return authToken;
   }
 
-  const header = client.handshake?.headers?.authorization;
-  if (typeof header === "string") {
-    const [type, token] = header.split(" ");
-    if (type === "Bearer" && token) {
-      return token;
-    }
+  const bearerToken = extractBearerToken(
+    client.handshake?.headers?.authorization,
+  );
+  if (bearerToken) {
+    return bearerToken;
   }
 
   const cookieHeader = client.handshake?.headers?.cookie;
   if (typeof cookieHeader === "string") {
     const cookies = parseCookies(cookieHeader);
-    const cookieToken = cookies[AuthService.ACCESS_COOKIE];
+    const cookieToken = cookies[ACCESS_COOKIE];
     if (cookieToken) {
       return cookieToken;
     }

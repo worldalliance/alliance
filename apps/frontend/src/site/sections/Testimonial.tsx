@@ -36,6 +36,7 @@ export function Testimonial() {
             <AvatarProfile
               pfp={profile?.profilePicture ?? null}
               size="override"
+              thumbnail
               alt=""
               className={cn("size-12 rounded-[5px]")}
             />

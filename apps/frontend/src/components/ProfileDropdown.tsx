@@ -63,6 +63,7 @@ const ProfileDropdown = () => {
           <AvatarProfile
             pfp={profilePicture}
             size="override"
+            thumbnail
             className={`h-${NAV_BAR_CONTAINER_HEIGHT} w-${NAV_BAR_CONTAINER_HEIGHT}`}
           />
           <ChevronDown className="h-3 w-3 text-black" />
@@ -77,6 +78,7 @@ const ProfileDropdown = () => {
             <AvatarProfile
               pfp={profilePicture}
               size="override"
+              thumbnail
               className={`h-${NAV_BAR_CONTAINER_HEIGHT} w-${NAV_BAR_CONTAINER_HEIGHT}`}
             />
           </Link>

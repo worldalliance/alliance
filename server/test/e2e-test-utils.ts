@@ -9,6 +9,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import cookieParser from "cookie-parser";
+import { accessTokenPayload } from "src/auth/tokens";
 import { Contract } from "src/contract/entities/contract.entity";
 import { testConnectionOptions } from "src/datasources/dataSourceTest";
 import { ForumModule } from "src/forum/forum.module";
@@ -48,6 +49,15 @@ export interface TestContext {
   agent: TestAgent;
   defaultTag: Tag;
   defaultContractId: number;
+}
+
+export function signAccessToken(
+  jwtService: JwtService,
+  user: { id: number; email: string },
+): string {
+  return jwtService.sign(accessTokenPayload({ user }), {
+    secret: process.env.JWT_SECRET,
+  });
 }
 
 export async function createTestApp(
@@ -140,16 +150,9 @@ export async function createTestApp(
     }),
   );
 
-  // Generate tokens
-  const accessToken = jwtService.sign(
-    { sub: user.id, email: user.email, name: user.name },
-    { secret: process.env.JWT_SECRET },
-  );
+  const accessToken = signAccessToken(jwtService, user);
 
-  const adminAccessToken = jwtService.sign(
-    { sub: adminUser.id, email: adminUser.email, name: adminUser.name },
-    { secret: process.env.JWT_SECRET },
-  );
+  const adminAccessToken = signAccessToken(jwtService, adminUser);
 
   const agent = supertest.agent(app.getHttpServer());
 

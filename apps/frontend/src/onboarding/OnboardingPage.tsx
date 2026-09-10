@@ -1,5 +1,6 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { errorMessage } from "@alliance/common/errorMessage";
+import { OAuthOutcome } from "@alliance/common/oauth";
 import { R } from "@alliance/common/result";
 import {
   authMe,
@@ -12,6 +13,10 @@ import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCo
 import { useInvite } from "@alliance/shared/lib/useInvite";
 import { useSignupFaces } from "@alliance/shared/lib/useSignupFaces";
 import { cn } from "@alliance/shared/styles/util";
+import {
+  oauthNoticeMessage,
+  useOAuthNotice,
+} from "@alliance/sharedweb/lib/oauth";
 import type { StyleWithVars } from "@alliance/sharedweb/ui/cssVars";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import posthog from "posthog-js";
@@ -153,6 +158,32 @@ const OnboardingPage = () => {
     resumedRef.current = true;
     if (draft && draft.step !== step) goTo(draft.step);
   }, [draft, step, goTo]);
+
+  const oauthNotice = useOAuthNotice();
+  const oauthError =
+    oauthNotice?.kind === "error" ? oauthNoticeMessage(oauthNotice) : null;
+
+  // A provider creates the account up front, so a new member rejoins the flow
+  // at the story with registration already done and the agreement still owed.
+  useEffect(() => {
+    if (oauthNotice?.kind !== "outcome") return;
+    switch (oauthNotice.outcome) {
+      case OAuthOutcome.SignedUp:
+        registeredRef.current = true;
+        clearDraft();
+        goTo(OnboardingStep.Community);
+        return;
+      case OAuthOutcome.SignedIn:
+        onLogin().then(() => navigate(redirectAfterLogin));
+        return;
+      case OAuthOutcome.Linked:
+        return;
+      default:
+        throw new Error(
+          `unknown oauth outcome: ${oauthNotice.outcome satisfies never}`,
+        );
+    }
+  }, [oauthNotice, goTo, onLogin, navigate, redirectAfterLogin]);
 
   useEffect(() => {
     if (!referralCode) return;
@@ -387,6 +418,7 @@ const OnboardingPage = () => {
             redirectAfterLogin={redirectAfterLogin}
             startInLogin={location.pathname === href("/login")}
             referralCode={referralCode}
+            providerError={oauthError}
           />
         </div>
 

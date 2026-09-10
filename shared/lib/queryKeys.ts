@@ -20,6 +20,7 @@ export const queryKeys = {
   linkPreview: (url: string) => ["linkPreviewGetPreview", url] as const,
   myAwayRanges: () => ["userGetAwayRanges"] as const,
   myReusableInvites: () => ["shareUrlsMyInvites"] as const,
+  inviteMessageTemplate: () => ["shareUrlsInviteMessageTemplate"] as const,
   myVisibilityContext: () => ["userMyVisibilityContext"] as const,
   onetimeInvite: (code: string | null) => ["userOnetimeInvite", code] as const,
   onetimeInvitesOverview: () => ["userGetOnetimeInvitesOverview"] as const,

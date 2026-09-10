@@ -6,6 +6,7 @@ import {
   usePublicProfile,
   type SiteAuthor,
 } from "../data";
+import { ThumbnailImg } from "../ui";
 import { PostCard } from "./PostCard";
 
 const FEED_TITLE = "Activity";
@@ -36,10 +37,12 @@ function AvatarStrip({ avatars }: { avatars: string[] }) {
       aria-hidden
     >
       {avatars.map((src, i) => (
-        <img
+        <ThumbnailImg
           key={`${src}-${i}`}
           src={src}
           alt=""
+          loading="lazy"
+          decoding="async"
           className="h-full w-[17px] object-cover"
         />
       ))}

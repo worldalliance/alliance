@@ -11,7 +11,7 @@ import { MessagingModule } from "src/messaging/messaging.module";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
 
 describe("ConversationController (e2e)", () => {
   let ctx: TestContext;
@@ -32,10 +32,7 @@ describe("ConversationController (e2e)", () => {
       ...overrides,
     });
     await userRepo.save(user);
-    const token = ctx.jwtService.sign(
-      { sub: user.id, email: user.email, name: user.name },
-      { secret: process.env.JWT_SECRET },
-    );
+    const token = signAccessToken(ctx.jwtService, user);
     return { user, token };
   };
 

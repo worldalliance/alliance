@@ -6,7 +6,6 @@ import {
   StyleProp,
   TextStyle,
   TouchableOpacity,
-  useWindowDimensions,
   View,
   ViewStyle,
 } from "react-native";
@@ -16,6 +15,7 @@ import {
   extractPathFromInternalUrl,
   getInternalRoute,
 } from "../lib/internalLinks";
+import { useFontScale } from "../lib/style/useFontScale";
 import { ImageLightboxModal } from "./ImageLightbox";
 import { renderListItem } from "./markdownListItem";
 import {
@@ -174,7 +174,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
   const handleLinkPress = useHandleLinkPress();
   const textStyles = useMarkdownTextStyles();
   const palette = MARKDOWN_PALETTES[tone];
-  const { fontScale } = useWindowDimensions();
+  const fontScale = useFontScale();
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
 
   const wrapImage = useCallback(
@@ -473,10 +473,12 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
     [style, textStyles, bodyStyle, palette],
   );
 
-  // Undefined until the theme resolves, which leaves the preview unclamped for a
-  // frame rather than collapsing it to zero height.
+  // A View's height is unscaled points while the text renders at `lineHeight *
+  // fontScale`, so the clamp scales by hand. Undefined until the theme resolves,
+  // which leaves the preview unclamped for a frame rather than collapsing it to
+  // zero height.
   const truncatedMaxHeight = bodyStyle.lineHeight
-    ? bodyStyle.lineHeight * TRUNCATED_PREVIEW_LINES
+    ? bodyStyle.lineHeight * fontScale * TRUNCATED_PREVIEW_LINES
     : undefined;
 
   return (

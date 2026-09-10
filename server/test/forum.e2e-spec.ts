@@ -1,3 +1,8 @@
+import type {
+  GetObjectCommand,
+  GetObjectCommandOutput,
+} from "@aws-sdk/client-s3";
+import { sdkStreamMixin } from "@smithy/util-stream";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
@@ -14,6 +19,7 @@ import {
   UnreadContentType,
 } from "src/notifs/entities/unread-content.entity";
 import { User } from "src/user/entities/user.entity";
+import { Readable } from "stream";
 import request from "supertest";
 import { In, type Repository } from "typeorm";
 import { Action } from "../src/actions/entities/action.entity";
@@ -22,7 +28,7 @@ import {
   UpdatePostDto,
   UpdatePostSettingsDto,
 } from "../src/forum/dto/post.dto";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
 
 describe("Forum (e2e)", () => {
   let ctx: TestContext;
@@ -44,16 +50,7 @@ describe("Forum (e2e)", () => {
       tags: [ctx.defaultTag],
     });
     await userRepo.save(extraUser);
-    const token = ctx.jwtService.sign(
-      {
-        sub: extraUser.id,
-        email: extraUser.email,
-        name: extraUser.name,
-      },
-      {
-        secret: process.env.JWT_SECRET,
-      },
-    );
+    const token = signAccessToken(ctx.jwtService, extraUser);
     return { user: extraUser, token };
   };
 
@@ -659,16 +656,7 @@ describe("Forum (e2e)", () => {
       await userRepo.save(anotherUser);
 
       // Create token for another user
-      const anotherToken = ctx.jwtService.sign(
-        {
-          sub: anotherUser.id,
-          email: anotherUser.email,
-          name: anotherUser.name,
-        },
-        {
-          secret: process.env.JWT_SECRET,
-        },
-      );
+      const anotherToken = signAccessToken(ctx.jwtService, anotherUser);
 
       // Create a reply as the first user
       const createResponse = await request(ctx.app.getHttpServer())
@@ -2699,6 +2687,164 @@ describe("Forum (e2e)", () => {
 
       const created = await postComment(post.body.id, {}).expect(201);
       expect(created.body.tagId).toBeNull();
+    });
+  });
+
+  describe("Post export", () => {
+    const createPostWithThread = async () => {
+      const post = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Archived Post",
+          editableContent: {
+            body: "A post with **bold** text",
+            attachments: [],
+          },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const comment = await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "Top level comment", attachments: [] },
+          parentObjectId: post.body.id,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "Nested reply", attachments: [] },
+          parentObjectId: post.body.id,
+          parentId: comment.body.id,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+
+      return post.body.id as number;
+    };
+
+    const exportPage = async (postId: number) => {
+      const response = await request(ctx.app.getHttpServer())
+        .get(`/forum/admin/posts/${postId}/export`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      expect(response.headers["content-type"]).toBe("text/html; charset=utf-8");
+      expect(response.headers["content-disposition"]).toContain(
+        `filename="post-${postId}-archived-post.html"`,
+      );
+      return response.text;
+    };
+
+    it("puts the post and its comment thread on the page", async () => {
+      const postId = await createPostWithThread();
+
+      const page = await exportPage(postId);
+
+      expect(page).toContain("Archived Post");
+      expect(page).toContain("<strong>bold</strong>");
+      expect(page).toContain("2 comments");
+      expect(page).toContain("Top level comment");
+      expect(page).toContain("Nested reply");
+      expect(
+        page.indexOf("Nested reply") > page.indexOf("Top level comment"),
+      ).toBe(true);
+      expect(page).toContain("The Alliance");
+      expect(page).toContain("shared with Alliance members only");
+    });
+
+    it("shows a like count as a heart", async () => {
+      const postId = await createPostWithThread();
+      const comments = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${postId}/comments`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      await request(ctx.app.getHttpServer())
+        .post(`/forum/comments/${comments.body[0].id}/like`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(201);
+
+      const page = await exportPage(postId);
+
+      expect(page).toContain(`<span class="likes" title="1 like"><svg`);
+    });
+
+    it("marks a deleted comment that still has replies", async () => {
+      const postId = await createPostWithThread();
+      const comments = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${postId}/comments`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      await request(ctx.app.getHttpServer())
+        .delete(`/forum/comments/${comments.body[0].id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const page = await exportPage(postId);
+
+      expect(page).toContain("Content has been deleted");
+      expect(page).not.toContain("Top level comment");
+      expect(page).toContain("Nested reply");
+    });
+
+    it("embeds an attachment in the page", async () => {
+      const s3 = ctx.app.get<{
+        send: (command: GetObjectCommand) => Promise<GetObjectCommandOutput>;
+      }>("S3_CLIENT");
+      const send = jest.spyOn(s3, "send").mockResolvedValue({
+        $metadata: {},
+        Body: sdkStreamMixin(Readable.from(Buffer.from("image-bytes"))),
+      });
+      try {
+        const post = await request(ctx.app.getHttpServer())
+          .post("/forum/posts")
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({
+            title: "Archived Post",
+            editableContent: {
+              body: "Look at this",
+              attachments: ["archived.webp"],
+            },
+            visibleAt: new Date(),
+          } satisfies CreatePostDto)
+          .expect(201);
+
+        const response = await request(ctx.app.getHttpServer())
+          .get(`/forum/admin/posts/${post.body.id}/export`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .expect(200);
+
+        const encoded = Buffer.from("image-bytes").toString("base64");
+        expect(response.text).toContain(
+          `src="data:image/webp;base64,${encoded}"`,
+        );
+      } finally {
+        send.mockRestore();
+      }
+    });
+
+    it("ends with the edit-mode script", async () => {
+      const postId = await createPostWithThread();
+
+      const page = await exportPage(postId);
+
+      expect(page).toContain("Admin edit mode");
+      expect(page.trimEnd().endsWith("</script>\n</body>\n</html>")).toBe(true);
+    });
+
+    it("refuses a non-admin", async () => {
+      const postId = await createPostWithThread();
+
+      await request(ctx.app.getHttpServer())
+        .get(`/forum/admin/posts/${postId}/export`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(401);
     });
   });
 });

@@ -156,6 +156,7 @@ export const testAuthUser: UserDto = {
   pushesForMessages: true,
   pushesForActionUpdates: true,
   clusterId: null,
+  hasPassword: true,
 };
 
 export const testFriends: ProfileDto[] = [testUser, testUser, testUser];

@@ -14,7 +14,7 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { AuthGuard } from "../auth/guards/auth.guard";
-import type { JwtPayload } from "../auth/guards/jwtreq";
+import type { JwtPayload } from "../auth/tokens";
 import { ReqUser } from "../auth/user.decorator";
 import { ProfileDto } from "../user/dto/user.dto";
 import { LikesService } from "./likes.service";

@@ -40,6 +40,12 @@ const KIND: Record<MilestoneKind, KindPresentation> = {
     ownRow: true,
     tag: "Plan",
   },
+  [MilestoneKind.Completed]: {
+    bar: "bg-white/35",
+    label: "max-w-[80%] self-end text-right text-white",
+    ownRow: false,
+    tag: "Completed",
+  },
 };
 
 function Bar({

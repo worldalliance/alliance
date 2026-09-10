@@ -29,6 +29,7 @@ import tempfile
 # scripts/brand/youtube.py -> repo root
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 PUB = ROOT / "apps/frontend/public"
+FONTS_SRC = ROOT / "apps/frontend/fonts-src"
 OUT_DIR = ROOT / "brand"
 
 CHROME = os.environ.get(
@@ -48,7 +49,7 @@ def b64(path: pathlib.Path, mime: str) -> str:
 
 
 berlingske = b64(PUB / "assets/fonts/BerlingskeSerif-Blk.woff2", "font/woff2")
-literata = b64(PUB / "assets/fonts/Literata-VariableFont_opsz,wght.ttf", "font/ttf")
+literata = b64(FONTS_SRC / "Literata-VariableFont_opsz,wght.ttf", "font/ttf")
 sans_reg = b64(PUB / "assets/fonts/source-sans-3-v19-latin-regular.woff2", "font/woff2")
 sans_600 = b64(PUB / "assets/fonts/source-sans-3-v19-latin-600.woff2", "font/woff2")
 globe = b64(PUB / "planet-earth.png", "image/png")

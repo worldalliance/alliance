@@ -1,22 +1,21 @@
+import { OAuthIntent } from "@alliance/common/oauth";
 import { authForgotPassword, authLogin } from "@alliance/shared/client";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
 import { Features } from "@alliance/shared/lib/features";
 import { useInvite } from "@alliance/shared/lib/useInvite";
+import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { oauthStartUrl, useAppOrigin } from "@alliance/sharedweb/lib/oauth";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import OAuthButtons from "@alliance/sharedweb/ui/OAuthButtons";
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { href, useNavigate } from "react-router";
 import { z } from "zod";
 import { useAuth } from "../lib/AuthContext";
-import { isFeatureEnabled } from "../lib/config";
+import { getApiUrl, isFeatureEnabled } from "../lib/config";
 import { JOIN_MAILTO } from "../site/content";
 import { SiteArrow } from "../site/ui";
-import { riseStyle } from "./chrome";
-import {
-  EmailDivider,
-  GOOGLE_SIGN_IN_AVAILABLE,
-  GoogleSignIn,
-} from "./GoogleSignIn";
+import { EmailDivider, riseStyle } from "./chrome";
 import { InfoSessionButton } from "./GrantmakingCard";
 
 const FIELD =
@@ -35,6 +34,7 @@ export function AccountStep({
   redirectAfterLogin,
   startInLogin,
   referralCode,
+  providerError,
 }: {
   email: string;
   onEmailChange: (email: string) => void;
@@ -45,6 +45,7 @@ export function AccountStep({
   /** `/login` opens straight onto the password field. */
   startInLogin: boolean;
   referralCode: string | null;
+  providerError: string | null;
 }) {
   const { onLogin } = useAuth();
   const navigate = useNavigate();
@@ -63,6 +64,15 @@ export function AccountStep({
 
   const emailValid = emailSchema.safeParse(email.trim()).success;
   const ready = emailValid && password.length > 0;
+
+  // Back into the flow rather than to the app, so a new account still passes
+  // through the agreement.
+  const origin = useAppOrigin(getBaseUrl());
+  const oauthReturnTo = (() => {
+    const url = new URL(`${origin}${href("/onboarding")}`);
+    if (referralCode) url.searchParams.set("ref", referralCode);
+    return url.toString();
+  })();
 
   const heading = loggingIn
     ? "Log into your account"
@@ -136,14 +146,28 @@ export function AccountStep({
               </span>
             </div>
           )}
+          {providerError && (
+            <p className="mt-6 text-sm font-medium text-red-600" role="alert">
+              {providerError}
+            </p>
+          )}
           {showForm && (
             <div className="mt-8">
-              {GOOGLE_SIGN_IN_AVAILABLE && (
-                <div className="mb-3 flex flex-col gap-3">
-                  <GoogleSignIn />
-                  <EmailDivider />
-                </div>
-              )}
+              <div className="mb-3 flex flex-col gap-3">
+                <OAuthButtons
+                  verb={loggingIn ? "Log in with" : "Sign up with"}
+                  hrefFor={(provider) =>
+                    oauthStartUrl({
+                      apiUrl: getApiUrl(),
+                      provider,
+                      intent: OAuthIntent.Authenticate,
+                      returnTo: oauthReturnTo,
+                      referralCode,
+                    })
+                  }
+                />
+                <EmailDivider />
+              </div>
               <form onSubmit={handleSubmit} className="flex flex-col gap-3">
                 <input
                   name="email"

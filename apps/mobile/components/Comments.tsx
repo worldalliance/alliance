@@ -10,7 +10,6 @@ import {
   PostTagDto,
   UserDto,
   forumCreateComment,
-  forumDeleteComment,
   forumUpdateComment,
 } from "@alliance/shared/client";
 import {
@@ -30,14 +29,22 @@ import {
   matchesTagFilter,
 } from "@alliance/shared/lib/commentTags";
 import { updateCommentInTree } from "@alliance/shared/lib/commentTree";
+import { commentThreadLanding } from "@alliance/shared/lib/copy";
 import { uploadDraftAttachments } from "@alliance/shared/lib/uploadAttachments";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
+import { useDeleteComment } from "@alliance/shared/lib/useDeleteComment";
 import { useLoadComments } from "@alliance/shared/lib/useLoadComments";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowUpDown, ListFilter, Pin } from "lucide-react-native";
+import {
+  ArrowUpDown,
+  ListFilter,
+  Pin,
+  RefreshCw,
+  X,
+} from "lucide-react-native";
 import {
   memo,
   useCallback,
@@ -45,19 +52,28 @@ import {
   useMemo,
   useRef,
   useState,
+  type ComponentRef,
   type Dispatch,
   type SetStateAction,
 } from "react";
-import { Alert, TouchableOpacity, View } from "react-native";
+import {
+  AccessibilityInfo,
+  ActivityIndicator,
+  Alert,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import type { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/style/colors";
+import { useAnnounceOnIos } from "../lib/useAnnounceOnIos";
 import BottomSheetOptionPicker from "./BottomSheetOptionPicker";
 import EditableContentForm from "./EditableContentForm";
 import EditableContentRenderer from "./EditableContentRenderer";
 import { LikeActionButton } from "./LikeFooter";
 import LikeSummary from "./LikeSummary";
 import ProfileImage from "./ProfileImage";
+import InlineError from "./system/InlineError";
 import Text from "./system/Text";
 import TagChips from "./TagChips";
 import UserDisplayName from "./UserDisplayName";
@@ -222,6 +238,7 @@ const ReplyForm = ({
   // Local, so posting one comment leaves every other composer live.
   const [isPosting, setIsPosting] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const formError = uploadError ?? error;
 
   const post = async () => {
     onDismissError?.();
@@ -290,11 +307,7 @@ const ReplyForm = ({
         isSubmitting={isPosting}
         submitDisabled={needsTag && selectedTagId === undefined}
       />
-      {(uploadError ?? error) && (
-        <Text className="mt-2 text-sm text-red-500">
-          {uploadError ?? error}
-        </Text>
-      )}
+      <InlineError message={formError} className="mt-2" />
     </View>
   );
 };
@@ -396,6 +409,8 @@ type ReplyItemSharedProps = {
   ) => Promise<Result<void, string>>;
   submitErrorFor: (parentId: number | null) => string | null;
   clearSubmitError: () => void;
+  deleteErrorFor: (replyId: number) => string | null;
+  clearDeleteError: (replyId: number) => void;
   onDeleteReply: (replyId: number) => void;
   onLikeReply: (replyId: number, unlike?: boolean) => Promise<unknown>;
 };
@@ -422,6 +437,7 @@ const ReplyItem = memo(function ReplyItemView({
     body: "",
     attachments: [],
   });
+  const deleteError = shared.deleteErrorFor(reply.id);
   const viewRef = useRef<View>(null);
   const maxDepth = 6;
   const canNest = depth < maxDepth;
@@ -579,9 +595,7 @@ const ReplyItem = memo(function ReplyItemView({
                 setIsEditing(false);
               }}
             />
-            {editError && (
-              <Text className="text-sm text-red-500">{editError}</Text>
-            )}
+            <InlineError message={editError} />
           </View>
         ) : (
           <EditableContentRenderer
@@ -657,6 +671,17 @@ const ReplyItem = memo(function ReplyItemView({
         </View>
       )}
 
+      <InlineError message={deleteError} className="mt-2">
+        <TouchableOpacity
+          onPress={() => shared.clearDeleteError(reply.id)}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss this message"
+          hitSlop={8}
+        >
+          <X size={14} color={colors.error} />
+        </TouchableOpacity>
+      </InlineError>
+
       {shared.user && isReplyingToThis && !isCollapsed && (
         <View className="mt-3">
           <ReplyForm
@@ -724,14 +749,52 @@ export default function Comments({
     new Set(),
   );
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
-  const { comments, setComments, error, setError, fetchComments } =
-    useLoadComments({ objectId, type, initialComments });
+  const {
+    comments,
+    setComments,
+    error,
+    canRetry,
+    spinning,
+    status,
+    movesReader,
+    fetchComments,
+    retry,
+  } = useLoadComments({ objectId, type, initialComments });
+  useAnnounceOnIos(status);
+  const thread = useRef<ComponentRef<typeof View>>(null);
+  const moved = useRef(false);
+
+  useEffect(() => {
+    if (!movesReader) moved.current = false;
+  }, [movesReader]);
+
+  // The retry control unmounts with the row that carries the message, so a
+  // press that works leaves the reader's cursor on nothing. The event lands
+  // only on a view the UI thread has framed, so it goes out from the anchor's
+  // own layout, and every layout after leaves the cursor where the first put
+  // it.
+  const landReader = useCallback(() => {
+    if (moved.current || !thread.current) return;
+    moved.current = true;
+    AccessibilityInfo.sendAccessibilityEvent(thread.current, "focus");
+  }, []);
+  const { deleteReply, deleteErrorFor, clearDeleteError } = useDeleteComment({
+    comments,
+    fetchComments,
+  });
   // Keyed by the form that produced it, so a nested reply's rejection shows
   // under that reply rather than at the top of the thread.
   const [submitError, setSubmitError] = useState<{
     parentId: number | null;
     message: string;
   } | null>(null);
+  // A rejection shows only under the form that produced it, so opening any
+  // other form drops it. One that landed while its form was closed waits for
+  // that form to open again.
+  const openReplyForm = useCallback((id: number | null) => {
+    setSubmitError((prev) => (prev?.parentId === id ? prev : null));
+    setReplyingTo(id);
+  }, []);
   const [showForm, setShowForm] = useState(showFormProp);
   const [isComposing, setIsComposing] = useState(!!autofocus);
   // The composer takes the keyboard when the user opened it, not when it comes
@@ -809,7 +872,7 @@ export default function Comments({
 
         await fetchComments();
         onSuccess();
-        setReplyingTo(null);
+        openReplyForm(null);
         if (!parentId) {
           setTagFilter(selectedTagId);
           setSelectedTagId(undefined);
@@ -825,7 +888,7 @@ export default function Comments({
         });
       }
     },
-    [fetchComments, objectId, selectedTagId, type],
+    [fetchComments, objectId, openReplyForm, selectedTagId, type],
   );
 
   const handleDeleteReply = useCallback(
@@ -838,20 +901,12 @@ export default function Comments({
           {
             text: "Delete",
             style: "destructive",
-            onPress: async () => {
-              try {
-                await forumDeleteComment({ path: { id: replyId } });
-                await fetchComments();
-              } catch (err) {
-                console.error("Error deleting reply:", err);
-                setError("Failed to delete reply");
-              }
-            },
+            onPress: () => deleteReply(replyId),
           },
         ],
       );
     },
-    [fetchComments, setError],
+    [deleteReply],
   );
 
   const handleUpdateReply = useCallback(
@@ -1078,7 +1133,33 @@ export default function Comments({
         </View>
       ) : null}
 
-      {error && <Text className="text-red-500">{error}</Text>}
+      <InlineError message={error}>
+        {canRetry ? (
+          <TouchableOpacity
+            onPress={retry}
+            accessibilityRole="button"
+            accessibilityState={{ busy: spinning }}
+            accessibilityLabel="Try loading the comments again"
+            hitSlop={8}
+          >
+            {spinning ? (
+              <ActivityIndicator size="small" color={colors.error} />
+            ) : (
+              <RefreshCw size={14} color={colors.error} />
+            )}
+          </TouchableOpacity>
+        ) : null}
+      </InlineError>
+
+      {/* accessibilityState busy has no iOS trait behind it, so the spinner
+          alone reaches nobody who cannot see it. Android reads the line here
+          and iOS off the announcement above, so this stays off screen. */}
+      <View
+        accessibilityLiveRegion="polite"
+        style={{ position: "absolute", left: -9999 }}
+      >
+        <Text>{status ?? ""}</Text>
+      </View>
 
       {isPostComments && topLevelComments.length > 0 && (
         <View className="flex-row items-center justify-between">
@@ -1105,8 +1186,43 @@ export default function Comments({
         />
       )}
 
-      {sortedComments && sortedComments.length > 0 ? (
-        <View className="gap-y-3">
+      {sortedComments ? (
+        // Empty it drops out of the flow, so the gap above keeps no row for
+        // it, and keeps a point of frame, since Android will not stop on an
+        // anchor lying outside its parent's bounds.
+        <View
+          className={cn(
+            "gap-y-3",
+            sortedComments.length === 0 && "absolute w-px h-px",
+          )}
+        >
+          {/* Naming the thread itself would fold every comment in it into one
+              element, so the cursor lands here instead, first so the swipe
+              after it goes into the thread rather than past it. A named element
+              is a stop every reader swipes through, so it goes up only once a
+              press has earned it and stays up from there: taking out the
+              element the cursor sits on drops the cursor to the top of the
+              screen. */}
+          {movesReader ? (
+            <View
+              ref={thread}
+              onLayout={landReader}
+              accessible
+              accessibilityLabel={commentThreadLanding({
+                shown: sortedComments.length,
+                total: topLevelComments.length,
+              })}
+              collapsable={false}
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: 1,
+                height: 1,
+              }}
+            />
+          ) : null}
           {sortedComments.map((reply) => (
             <ReplyItem
               key={reply.id}
@@ -1117,7 +1233,7 @@ export default function Comments({
               objectId={objectId}
               repliesAsCards={repliesAsCards}
               replyingTo={replyingTo}
-              setReplyingTo={setReplyingTo}
+              setReplyingTo={openReplyForm}
               highlightedId={highlightedId}
               scrollViewRef={scrollViewRef}
               newlyAddedReplies={newlyAddedReplies}
@@ -1130,6 +1246,8 @@ export default function Comments({
               onUpdateReply={handleUpdateReply}
               submitErrorFor={submitErrorFor}
               clearSubmitError={clearSubmitError}
+              deleteErrorFor={deleteErrorFor}
+              clearDeleteError={clearDeleteError}
               onDeleteReply={handleDeleteReply}
               onLikeReply={handleLikeReply}
             />

@@ -26,6 +26,7 @@ import { ReferralSource, User } from "../src/user/entities/user.entity";
 import {
   createTestApp,
   giveActiveContract,
+  signAccessToken,
   TestContext,
 } from "./e2e-test-utils";
 
@@ -66,10 +67,7 @@ describe("Users (e2e)", () => {
     });
     await userRepo.save(userA);
     userAId = userA.id;
-    userAToken = ctx.jwtService.sign(
-      { sub: userAId, email: userA.email, name: userA.name },
-      { secret: process.env.JWT_SECRET },
-    );
+    userAToken = signAccessToken(ctx.jwtService, userA);
 
     const userB = userRepo.create({
       name: "Friend B",
@@ -79,10 +77,7 @@ describe("Users (e2e)", () => {
 
     await userRepo.save(userB);
     userBId = userB.id;
-    userBToken = ctx.jwtService.sign(
-      { sub: userBId, email: userB.email, name: userB.name },
-      { secret: process.env.JWT_SECRET },
-    );
+    userBToken = signAccessToken(ctx.jwtService, userB);
 
     communityLedByUserA = await communityRepo.save(
       communityRepo.create({
@@ -102,14 +97,7 @@ describe("Users (e2e)", () => {
       }),
     );
     communityMemberId = communityMember.id;
-    communityMemberToken = ctx.jwtService.sign(
-      {
-        sub: communityMemberId,
-        email: communityMember.email,
-        name: communityMember.name,
-      },
-      { secret: process.env.JWT_SECRET },
-    );
+    communityMemberToken = signAccessToken(ctx.jwtService, communityMember);
 
     communityLedByUserB = await communityRepo.save(
       communityRepo.create({
@@ -2393,6 +2381,99 @@ describe("Users (e2e)", () => {
       const memberIds = updatedCommunity.users.map((u) => u.id);
       expect(memberIds).toContain(reassignUser.id);
       expect(memberIds).toContain(leader.id);
+    });
+  });
+
+  describe("mailed tokens", () => {
+    const isVerified = async (userId: number) =>
+      (await userRepo.findOneByOrFail({ id: userId })).emailVerified;
+
+    it("refuses an access token as a verify-email token", async () => {
+      await request(ctx.app.getHttpServer())
+        .post("/user/verifyEmail")
+        .send({ token: userBToken })
+        .expect(401);
+
+      expect(await isVerified(userBId)).toBe(false);
+    });
+
+    it("accepts a verify-email token, minted before or after the type landed", async () => {
+      const legacyToken = ctx.jwtService.sign(
+        { sub: userBId, type: "verify-email" },
+        { secret: process.env.JWT_SECRET },
+      );
+      await request(ctx.app.getHttpServer())
+        .post("/user/verifyEmail")
+        .send({ token: legacyToken })
+        .expect(201);
+      expect(await isVerified(userBId)).toBe(true);
+
+      await userRepo.update(userBId, { emailVerified: false });
+      const token = await userService.getVerifyEmailToken(userBId);
+      await request(ctx.app.getHttpServer())
+        .post("/user/verifyEmail")
+        .send({ token })
+        .expect(201);
+      expect(await isVerified(userBId)).toBe(true);
+    });
+
+    it("resets the password with a reset token, minted before or after the type landed", async () => {
+      const token = await userService.generatePasswordResetToken(userBId);
+      await request(ctx.app.getHttpServer())
+        .post("/auth/reset-password")
+        .send({ token, password: "FreshPassword123!" })
+        .expect(200);
+      expect(
+        await (
+          await userRepo.findOneByOrFail({ id: userBId })
+        ).checkPassword("FreshPassword123!"),
+      ).toBe(true);
+
+      const legacyToken = ctx.jwtService.sign(
+        { sub: userBId, type: "password-reset" },
+        { secret: process.env.JWT_SECRET },
+      );
+      await request(ctx.app.getHttpServer())
+        .post("/auth/reset-password")
+        .send({ token: legacyToken, password: "SecondPassword123!" })
+        .expect(200);
+      expect(
+        await (
+          await userRepo.findOneByOrFail({ id: userBId })
+        ).checkPassword("SecondPassword123!"),
+      ).toBe(true);
+    });
+
+    it("refuses a verify-email token as a password reset", async () => {
+      const token = await userService.getVerifyEmailToken(userBId);
+
+      await request(ctx.app.getHttpServer())
+        .post("/auth/reset-password")
+        .send({ token, password: "NotTheirPassword123!" })
+        .expect(401);
+    });
+  });
+
+  describe("partial profile from a payment", () => {
+    it("has no password until the member follows the reset link", async () => {
+      const user = await userService.createPartialProfile({
+        email: "partialprofile@test.com",
+        firstName: "Partial",
+        lastName: "Profile",
+      });
+      expect(
+        (await userRepo.findOneByOrFail({ id: user.id })).password,
+      ).toBeNull();
+
+      const token = await userService.generatePasswordResetToken(user.id);
+      await request(ctx.app.getHttpServer())
+        .post("/auth/reset-password")
+        .send({ token, password: "FreshPassword123!" })
+        .expect(200);
+
+      const reset = await userRepo.findOneByOrFail({ id: user.id });
+      expect(await reset.checkPassword("FreshPassword123!")).toBe(true);
+      expect(reset.isNotSignedUpPartialProfile).toBe(false);
     });
   });
 

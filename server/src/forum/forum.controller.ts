@@ -9,10 +9,11 @@ import {
   Patch,
   Post,
   Request,
+  StreamableFile,
   UseGuards,
 } from "@nestjs/common";
 import { ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
-import type { JwtPayload, JwtRequest } from "src/auth/guards/jwtreq";
+import type { JwtPayload, JwtRequest } from "src/auth/tokens";
 import { PosthogService } from "src/posthog/posthog.service";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { AuthGuard } from "../auth/guards/auth.guard";
@@ -30,6 +31,7 @@ import {
   UpdatePostDto,
   UpdatePostSettingsDto,
 } from "./dto/post.dto";
+import { ForumExportService } from "./forum-export.service";
 import { ForumService } from "./forum.service";
 
 @ApiTags("forum")
@@ -37,6 +39,7 @@ import { ForumService } from "./forum.service";
 export class ForumController {
   constructor(
     private readonly forumService: ForumService,
+    private readonly forumExportService: ForumExportService,
     private readonly posthog: PosthogService,
   ) {}
 
@@ -363,6 +366,20 @@ export class ForumController {
   async getPostsForAdmin(): Promise<PostDto[]> {
     const posts = await this.forumService.getPostsForAdmin();
     return posts.map((post) => new PostDto({ post }));
+  }
+
+  @Get("admin/posts/:id/export")
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: "Download a post and its comments as a web page" })
+  @ApiOkResponse({ type: StreamableFile })
+  async exportPostAdmin(
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<StreamableFile> {
+    const page = await this.forumExportService.exportPost(id);
+    return new StreamableFile(Buffer.from(page.html), {
+      type: "text/html; charset=utf-8",
+      disposition: `attachment; filename="${page.filename}"`,
+    });
   }
 
   @Patch("admin/posts/:id/settings")

@@ -7,6 +7,7 @@ import { FacepileModule } from "src/likes/facepile.module";
 import { MailModule } from "src/mail/mail.module";
 import { MmsModule } from "src/mms/mms.module";
 import { NotifsModule } from "src/notifs/notifs.module";
+import { S3Module } from "src/s3/s3.module";
 import { UserModule } from "src/user/user.module";
 import { ActionActivity } from "../actions/entities/action-activity.entity";
 import { Notification } from "../notifs/entities/notification.entity";
@@ -17,6 +18,7 @@ import { ForumDigestLog } from "./entities/forum-digest-log.entity";
 import { PostTag } from "./entities/post-tag.entity";
 import { Post } from "./entities/post.entity";
 import { ForumDigestService } from "./forum-digest.service";
+import { ForumExportService } from "./forum-export.service";
 import { ForumController } from "./forum.controller";
 import { ForumService } from "./forum.service";
 
@@ -40,9 +42,10 @@ import { ForumService } from "./forum.service";
     forwardRef(() => UserModule),
     AiDetectionModule,
     FacepileModule,
+    S3Module,
   ],
   controllers: [ForumController],
-  providers: [ForumService, ForumDigestService],
+  providers: [ForumService, ForumDigestService, ForumExportService],
   exports: [ForumService],
 })
 export class ForumModule {}

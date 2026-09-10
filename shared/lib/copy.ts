@@ -301,3 +301,18 @@ export const nextMilestone = {
   action: "Democratically decide where to donate $100,000",
   body: "An expert panel and a thousand members choose the recipients together, launching October 2026. If the process holds up, we can run it on much larger sums.",
 };
+
+// Arriving is all that answers a retry, so the name has to separate a thread
+// holding nothing from one a filter emptied.
+export const commentThreadLanding = ({
+  shown,
+  total,
+}: {
+  shown: number;
+  total: number;
+}) =>
+  shown > 0
+    ? "Comments"
+    : total > 0
+      ? "Comments, none match the filter"
+      : "Comments, none yet";

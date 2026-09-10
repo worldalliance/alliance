@@ -22,6 +22,7 @@ import {
   Handshake,
   ImageUp,
   ListOrdered,
+  MailPlus,
   Map,
   MessageSquare,
   MoreHorizontal,
@@ -365,6 +366,11 @@ const Sidebar: React.FC = () => {
                     to: "/share-links",
                     label: "Share Links",
                     icon: <Share2 size={16} />,
+                  },
+                  {
+                    to: "/invite-message-template",
+                    label: "Invitation Message",
+                    icon: <MailPlus size={16} />,
                   },
                   {
                     to: "/clusters",

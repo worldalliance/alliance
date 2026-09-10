@@ -187,3 +187,14 @@ export function StepLayout({
     </div>
   );
 }
+
+export function EmailDivider() {
+  const rule = "h-px flex-1 bg-zinc-200";
+  return (
+    <p className="flex items-center gap-3 text-xs text-zinc-500">
+      <span className={rule} aria-hidden />
+      Or continue with email
+      <span className={rule} aria-hidden />
+    </p>
+  );
+}
