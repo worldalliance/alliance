@@ -9,6 +9,7 @@ import { useNavigate } from "react-router";
 import { z } from "zod";
 import { useAuth } from "../lib/AuthContext";
 import { isFeatureEnabled } from "../lib/config";
+import { JOIN_MAILTO } from "../site/content";
 import { SiteArrow } from "../site/ui";
 import { riseStyle } from "./chrome";
 import {
@@ -198,17 +199,26 @@ export function AccountStep({
             {loggingIn
               ? "Don’t have an account? "
               : "Already have an account? "}
-            <button
-              type="button"
-              onClick={() => {
-                setLoggingIn((value) => !value);
-                setError(null);
-                setNotice(null);
-              }}
-              className="font-medium text-black underline underline-offset-2"
-            >
-              {loggingIn ? "Sign up" : "Log in"}
-            </button>
+            {loggingIn ? (
+              <a
+                href={JOIN_MAILTO}
+                className="font-medium text-black underline underline-offset-2"
+              >
+                Request an invite
+              </a>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setLoggingIn(true);
+                  setError(null);
+                  setNotice(null);
+                }}
+                className="font-medium text-black underline underline-offset-2"
+              >
+                Log in
+              </button>
+            )}
           </p>
           {!loggingIn && (
             <div className="mt-8">

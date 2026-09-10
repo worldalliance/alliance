@@ -30,8 +30,8 @@ const TASK_REQUIRED = 1000;
 export function InfoSessionButton() {
   return (
     <Button
-      color={ButtonColor.WhiteBorderless}
-      className="h-auto w-full justify-start gap-3 bg-zinc-50 py-3 whitespace-normal"
+      color={ButtonColor.White}
+      className="h-auto w-full justify-start gap-3 py-3 whitespace-normal"
       onClick={() => window.open(INFO_SESSION_HREF, "_blank", "noreferrer")}
     >
       <Calendar className="size-4 shrink-0" aria-hidden />

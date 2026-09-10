@@ -237,3 +237,4 @@ export const CTA_BUTTON = "Request an invite";
 export const FOOTER_TAGLINE =
   "A global group of people cooperating to improve the world.";
 export const CONTACT_EMAIL = "contact@worldalliance.org";
+export const JOIN_MAILTO = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("I'd like to join the Alliance")}`;
