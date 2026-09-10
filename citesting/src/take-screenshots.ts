@@ -479,11 +479,22 @@ const settleImages = async (page: Page) => {
     }
   });
 
-  await page.waitForFunction(
-    () => Array.from(document.images).every((img) => img.complete),
-    undefined,
-    { timeout: 30000 },
-  );
+  try {
+    await page.waitForFunction(
+      () => Array.from(document.images).every((img) => img.complete),
+      undefined,
+      { timeout: 30000 },
+    );
+  } catch {
+    const pending = await page.evaluate(() =>
+      Array.from(document.images)
+        .filter((img) => !img.complete)
+        .map((img) => img.currentSrc || img.src),
+    );
+    throw new Error(
+      `${page.url()} still had images loading after 30s: ${pending.join(", ")}`,
+    );
+  }
 };
 
 const takeScreenshots = async () => {
