@@ -772,6 +772,13 @@ export type ContractEventDto = {
     contractId: number | null;
 };
 
+export type OAuthProvider = 'google' | 'apple';
+
+export type OAuthAccountDto = {
+    provider: OAuthProvider;
+    email: string;
+};
+
 export type UserDto = {
     id: number;
     name: string;
@@ -814,6 +821,8 @@ export type UserDto = {
     email: string;
     hasActiveContract: boolean;
     contractEvents?: Array<ContractEventDto>;
+    oauthAccounts?: Array<OAuthAccountDto>;
+    hasPassword: boolean;
 };
 
 export type AuthMeResponseDto = {
@@ -1022,6 +1031,8 @@ export type UserAdminDetailDto = {
     email: string;
     hasActiveContract: boolean;
     contractEvents?: Array<ContractEventDto>;
+    oauthAccounts?: Array<OAuthAccountDto>;
+    hasPassword: boolean;
     location: UserAdminLocationDto;
     invitedBy: UserAdminInvitedByDto | null;
 };

@@ -48,6 +48,7 @@ export const FORM_BUILDER_PREVIEW_USER: UserDto = {
   receiveReplyNotifications: false,
   pushesForActionUpdates: false,
   clusterId: null,
+  hasPassword: true,
 };
 
 export const testActions: CreateActionDto[] = [

@@ -8,6 +8,7 @@ import { UserModule } from "../user/user.module";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { Guest } from "./entities/guest.entity";
+import { OAuthAccount } from "./oauth/oauth-account.entity";
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { Guest } from "./entities/guest.entity";
         signOptions: { expiresIn: "1d" },
       }),
     }),
-    TypeOrmModule.forFeature([User, Guest]),
+    TypeOrmModule.forFeature([User, Guest, OAuthAccount]),
   ],
   providers: [AuthService],
   controllers: [AuthController],

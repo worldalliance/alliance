@@ -360,6 +360,7 @@ export class AuthService {
       communities: true,
       contractEvents: true,
       city: true,
+      oauthAccounts: true,
     });
     if (!user) {
       throw new UnauthorizedException();

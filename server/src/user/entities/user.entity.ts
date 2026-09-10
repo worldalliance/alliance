@@ -15,6 +15,7 @@ import {
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { Action } from "src/actions/entities/action.entity";
 import { GeneralUpdateActivity } from "src/actions/entities/general-update-activity.entity";
+import { OAuthAccount } from "src/auth/oauth/oauth-account.entity";
 import { Campaign } from "src/campaign/entities/campaign.entity";
 import { Cluster } from "src/cluster/entities/cluster.entity";
 import { CommunityInvite } from "src/community/entities/community-invite.entity";
@@ -225,9 +226,12 @@ export class User {
   @ApiProperty({ type: Date, nullable: true })
   switchedDomainAt: Date | null;
 
-  @Column()
-  @IsNotEmpty()
-  password: string;
+  @Column({ type: "varchar", nullable: true })
+  @IsOptional()
+  password: string | null;
+
+  @OneToMany(() => OAuthAccount, (account) => account.user)
+  oauthAccounts?: Relation<OAuthAccount>[];
 
   @CreateDateColumnTz()
   createdAt: Date;
@@ -574,6 +578,9 @@ export class User {
   @BeforeInsert()
   @BeforeUpdate()
   async hashPassword(): Promise<void> {
+    if (this.password === null) {
+      return;
+    }
     const salt = await bcrypt.genSalt();
     if (!/^\$2[abxy]?\$\d+\$/.test(this.password)) {
       this.password = await bcrypt.hash(this.password, salt);
@@ -586,6 +593,9 @@ export class User {
   }
 
   async checkPassword(plainPassword: string): Promise<boolean> {
+    if (this.password === null) {
+      return false;
+    }
     return await bcrypt.compare(plainPassword, this.password);
   }
 

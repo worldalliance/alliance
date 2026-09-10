@@ -32,6 +32,26 @@ describe("Auth (e2e)", () => {
       .expect(401);
   });
 
+  it("returns 401 for an account with no password", async () => {
+    const user = await userRepository.save(
+      userRepository.create({
+        email: "nopasswordtest@test.com",
+        password: null,
+        name: "Test User",
+      }),
+    );
+    expect(user.password).toBeNull();
+
+    await request(ctx.app.getHttpServer())
+      .post("/auth/login")
+      .send({
+        email: "nopasswordtest@test.com",
+        password: "password",
+        mode: "header",
+      })
+      .expect(401);
+  });
+
   it("registers a new user", () => {
     return request(ctx.app.getHttpServer())
       .post("/auth/register")
