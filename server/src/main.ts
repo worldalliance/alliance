@@ -125,7 +125,7 @@ async function bootstrap() {
     origin: true,
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
     credentials: true,
-    exposedHeaders: [GUEST_HEADER],
+    exposedHeaders: [GUEST_HEADER, "Content-Disposition"],
   });
   app.useWebSocketAdapter(new SocketIoAdapter(app));
   app.set("trust proxy", "loopback");

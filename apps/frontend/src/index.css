@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./site/fonts.css";
 @source "../../../shared/";
 @source "../../../sharedweb/";
 
@@ -47,13 +48,6 @@
   font-weight: 400;
   font-display: swap;
   src: url("/assets/fonts/source-sans-3-v19-latin-italic.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Literata";
-  font-display: swap;
-  src: url("/assets/fonts/Literata-VariableFont_opsz,wght.ttf")
-    format("truetype");
 }
 
 @theme {

@@ -7,7 +7,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { href, Link, useLoaderData } from "react-router";
-import officePhoto from "../../assets/redesign/office.jpg";
+import officePhoto from "../../assets/redesign/office.jpg?w=480;960;1200&format=avif;webp;jpg&as=picture";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import {
   BandHeading,
@@ -17,7 +17,7 @@ import {
 } from "../../site/PageShell";
 import { usePublicMembers, useStaffDirectory } from "../../site/data";
 import { experts } from "../../site/peopleContent";
-import { SectionSubtitle } from "../../site/ui";
+import { SectionSubtitle, SitePicture } from "../../site/ui";
 
 export function meta() {
   return socialPreviewMeta({
@@ -36,7 +36,7 @@ const PEOPLE_TITLE = "People";
 
 const OFFICE_PHOTO_CAPTION = "The office in San Francisco, California";
 
-const MEMBER_ROWS = 2;
+const MEMBER_ROWS = 3;
 const MEMBER_GAP_PX = 8;
 const PROFILE_TILE_PX = 80;
 
@@ -136,11 +136,14 @@ function Office() {
           Alliance.
         </SectionSubtitle>
       </div>
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-16">
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-16">
         <figure className="flex flex-col gap-3">
-          <img
-            src={officePhoto}
+          <SitePicture
+            image={officePhoto}
             alt={OFFICE_PHOTO_CAPTION}
+            sizes="(min-width: 1024px) 50vw, 100vw"
+            loading="eager"
+            fetchPriority="high"
             className="aspect-[4/3] w-full object-cover"
             style={{ borderRadius: "var(--site-radius-card)" }}
           />

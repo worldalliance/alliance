@@ -1208,7 +1208,7 @@ export class ForumService {
     return post;
   }
 
-  private async findPostForAdmin(postId: number): Promise<ParsedPost> {
+  async findPostForAdmin(postId: number): Promise<ParsedPost> {
     const post = await this.postRepository.findOne({
       where: { id: postId },
       relations: {

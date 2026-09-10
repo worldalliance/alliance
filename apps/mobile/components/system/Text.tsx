@@ -113,7 +113,10 @@ export default function Text({
       // vertically inside a height-bounded column instead of overflowing it.
       className={cn(
         "shrink",
-        type ? typeClasses[type] : "text-base",
+        // uniwind reads a unitless `leading-*` as `fontSize * lineHeight`, so a
+        // size on every branch keeps the height from coming back NaN.
+        "text-base",
+        type && typeClasses[type],
         className,
       )}
       style={[resolveFontFamily(resolvedFamily, resolvedWeight), style]}

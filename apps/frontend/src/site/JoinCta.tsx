@@ -1,9 +1,9 @@
 import { cn } from "@alliance/shared/styles/util";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import membersPhoto from "../assets/redesign/members-photo.webp";
+import membersPhoto from "../assets/redesign/members-photo.webp?w=480;960&format=avif;webp&as=picture";
 import { CONTACT_EMAIL, CTA_BODY, CTA_BUTTON } from "./content";
-import { SITE_COL, SiteArrow, TexturedFill } from "./ui";
+import { SITE_COL, SiteArrow, SitePicture, TexturedFill } from "./ui";
 
 /** How far the artwork hangs over the footer, measured off the Figma. */
 const FOOTER_OVERLAP = 54;
@@ -16,9 +16,10 @@ const cardStyle = { borderRadius: "var(--site-radius-card)" };
 function JoinCtaCard({ heading }: { heading: string }) {
   return (
     <>
-      <img
-        src={membersPhoto}
+      <SitePicture
+        image={membersPhoto}
         alt="Alliance members at a meetup"
+        sizes="100vw"
         className="absolute inset-0 -z-20 size-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.06]"
       />
       <div

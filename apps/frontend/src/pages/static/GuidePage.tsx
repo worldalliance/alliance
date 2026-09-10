@@ -17,7 +17,7 @@ import { FAQ_HREF, FOUNDATION_HREF, GOVERNANCE_HREF } from "../../site/links";
 import { NAV_HEIGHT } from "../../site/Navbar";
 import { ContractCard, ImpactCard } from "../../site/PageCards";
 import { PageShell } from "../../site/PageShell";
-import { SITE_COL, SiteArrow } from "../../site/ui";
+import { SITE_COL, SiteArrow, SitePicture } from "../../site/ui";
 
 export function meta() {
   return socialPreviewMeta({
@@ -64,10 +64,10 @@ function PriorityGrid() {
               index % 2 === 0 ? "var(--site-primary)" : "var(--site-panel)",
           }}
         >
-          <img
-            src={priority.image}
+          <SitePicture
+            image={priority.image}
             alt=""
-            aria-hidden
+            sizes="(min-width: 640px) 50vw, 100vw"
             className="absolute inset-0 -z-10 size-full object-cover"
             style={{
               mixBlendMode: "screen",

@@ -1,0 +1,103 @@
+import { ExceptionEvent } from "@alliance/common/analytics";
+import { refusalMessage } from "@alliance/common/errorMessage";
+import { R } from "@alliance/common/result";
+import { CommentDto, forumDeleteComment } from "@alliance/shared/client";
+import { omit } from "es-toolkit";
+import { useCallback, useEffect, useState } from "react";
+import { captureException } from "./analytics";
+
+const DELETE_FAILED = "Failed to delete reply";
+const SESSION_EXPIRED =
+  "Your session has expired. Sign in again to delete this reply.";
+
+interface UseDeleteCommentInput {
+  comments: CommentDto[] | null;
+  fetchComments: () => Promise<void>;
+}
+
+function isDeleted(comments: CommentDto[], replyId: number): boolean {
+  return comments.some(
+    (comment) =>
+      (comment.id === replyId && comment.deleted) ||
+      isDeleted(comment.children ?? [], replyId),
+  );
+}
+
+// Keyed by the reply the delete was asked of, so the message lands under the
+// comment still sitting there rather than at the top of the thread.
+export function useDeleteComment({
+  comments,
+  fetchComments,
+}: UseDeleteCommentInput) {
+  const [failures, setFailures] = useState<Record<number, string>>({});
+
+  // A delete whose answer never came back still landed on the server, and a
+  // reload brings that reply back deleted. The message under it is wrong by
+  // then, and a deleted reply has no Delete left to press to clear it.
+  useEffect(() => {
+    if (!comments) return;
+    setFailures((prev) => {
+      const stale = Object.keys(prev)
+        .map(Number)
+        .filter((replyId) => isDeleted(comments, replyId));
+      return stale.length > 0 ? omit(prev, stale) : prev;
+    });
+  }, [comments]);
+
+  const clearDeleteError = useCallback(
+    (replyId: number) => setFailures((prev) => omit(prev, [replyId])),
+    [],
+  );
+
+  const deleteReply = useCallback(
+    async (replyId: number) => {
+      clearDeleteError(replyId);
+      // The generated client leaves its fetch call unguarded, so a request
+      // that never reaches the server rejects, while one the server refused
+      // answers with an error. Mobile configures the client to throw on a
+      // refusal, which loses the response the status below is read off.
+      const sent = await R.fromPromise(
+        forumDeleteComment({ path: { id: replyId }, throwOnError: false }),
+      );
+      if (!sent.ok) {
+        console.error("Error deleting reply:", sent.error);
+        captureException(ExceptionEvent.DeleteCommentError, sent.error, {
+          replyId,
+        });
+        setFailures((prev) => ({ ...prev, [replyId]: DELETE_FAILED }));
+        return;
+      }
+      const { error, response } = sent.value;
+      if (error) {
+        console.error("The server refused the delete:", error);
+        captureException(ExceptionEvent.DeleteCommentError, error, {
+          replyId,
+          status: response.status,
+        });
+        setFailures((prev) => ({
+          ...prev,
+          [replyId]: refusalMessage({
+            status: response.status,
+            error,
+            fallback: DELETE_FAILED,
+            sessionExpired: SESSION_EXPIRED,
+          }),
+        }));
+        // The reload meets the same expired session, and the thread ends up
+        // carrying a second copy of the sentence the reply already has.
+        if (response.status === 401) return;
+      }
+      // A refused delete can mean the reply is already gone, so the reload
+      // takes it off screen.
+      await fetchComments();
+    },
+    [clearDeleteError, fetchComments],
+  );
+
+  const deleteErrorFor = useCallback(
+    (replyId: number): string | null => failures[replyId] ?? null,
+    [failures],
+  );
+
+  return { deleteReply, deleteErrorFor, clearDeleteError };
+}

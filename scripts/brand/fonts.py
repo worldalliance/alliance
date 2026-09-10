@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+"""Build the web font files the public site and the app load.
+
+Each source face in apps/frontend/fonts-src/ becomes two woff2 subsets: a Latin
+one, and an "ext" one holding every other codepoint the face supports. Paired
+@font-face rules give each subset a unicode-range, so a page in Latin script
+never downloads the rest. Cyrillic and Greek are most of TT Neoris, so its 247K
+TrueType per weight comes down to a 16K Latin woff2.
+
+Outputs, both overwritten on every run:
+
+  apps/frontend/public/assets/fonts/redesign/*.woff2
+  apps/frontend/src/site/fonts.css
+
+Usage:
+  python3 scripts/brand/fonts.py
+
+Requires fontTools and brotli:
+  pip3 install fonttools brotli
+"""
+
+import subprocess
+import sys
+from pathlib import Path
+
+from fontTools.ttLib import TTFont
+
+ROOT = Path(__file__).resolve().parents[2]
+SOURCE_DIR = ROOT / "apps/frontend/fonts-src"
+OUTPUT_DIR = ROOT / "apps/frontend/public/assets/fonts/redesign"
+CSS_PATH = ROOT / "apps/frontend/src/site/fonts.css"
+PUBLIC_URL = "/assets/fonts/redesign"
+
+# The range Google Fonts calls "latin".
+LATIN_RANGES = [
+    (0x0000, 0x00FF), (0x0131, 0x0131), (0x0152, 0x0153),
+    (0x02BB, 0x02BC), (0x02C6, 0x02C6), (0x02DA, 0x02DA),
+    (0x02DC, 0x02DC), (0x0304, 0x0304), (0x0308, 0x0308),
+    (0x0329, 0x0329), (0x2000, 0x206F), (0x2074, 0x2074),
+    (0x20AC, 0x20AC), (0x2122, 0x2122), (0x2191, 0x2191),
+    (0x2193, 0x2193), (0x2212, 0x2212), (0x2215, 0x2215),
+    (0xFEFF, 0xFEFF), (0xFFFD, 0xFFFD),
+]
+
+# None rather than a literal range on a variable face: the CSS then cannot
+# drift from the `wght` axis the font actually ships.
+FACES = [
+    ("Literata", None, "normal", "Literata-VariableFont_opsz,wght"),
+    ("Libre Caslon Text", 400, "normal", "LibreCaslonCondensed-Regular"),
+    ("Libre Caslon Text", 400, "italic", "LibreCaslonCondensed-Italic"),
+    ("Libre Caslon Text", 500, "normal", "LibreCaslonCondensed-Medium"),
+    ("Libre Caslon Text", 600, "normal", "LibreCaslonCondensed-SemiBold"),
+    ("Libre Caslon Text", 700, "normal", "LibreCaslonCondensed-Bold"),
+    ("Alex Brush", 400, "normal", "AlexBrush-Regular"),
+    ("Galdeano", 400, "normal", "Galdeano-Regular"),
+    ("TT Neoris", 300, "normal", "TTNeoris-Light"),
+    ("TT Neoris", 400, "normal", "TTNeoris-Regular"),
+    ("TT Neoris", 400, "italic", "TTNeoris-Italic"),
+    ("TT Neoris", 500, "normal", "TTNeoris-Medium"),
+    ("TT Neoris", 600, "normal", "TTNeoris-DemiBold"),
+    ("TT Neoris", 700, "normal", "TTNeoris-Bold"),
+]
+
+
+def source_for(stem):
+    for suffix in (".ttf", ".otf"):
+        candidate = SOURCE_DIR / f"{stem}{suffix}"
+        if candidate.exists():
+            return candidate
+    raise SystemExit(f"no source font for {stem} in {SOURCE_DIR}")
+
+
+def in_latin(codepoint):
+    return any(low <= codepoint <= high for low, high in LATIN_RANGES)
+
+
+def as_ranges(codepoints):
+    ranges = []
+    for codepoint in sorted(codepoints):
+        if ranges and codepoint == ranges[-1][1] + 1:
+            ranges[-1][1] = codepoint
+        else:
+            ranges.append([codepoint, codepoint])
+    return ranges
+
+
+def format_ranges(ranges):
+    return ", ".join(
+        f"U+{low:04X}" if low == high else f"U+{low:04X}-{high:04X}"
+        for low, high in ranges
+    )
+
+
+def subset(source, target, codepoints):
+    unicodes = ",".join(f"U+{codepoint:04X}" for codepoint in sorted(codepoints))
+    subprocess.run(
+        [
+            sys.executable, "-m", "fontTools.subset", str(source),
+            f"--unicodes={unicodes}",
+            "--flavor=woff2",
+            f"--output-file={target}",
+        ],
+        check=True,
+        capture_output=True,
+    )
+
+
+def face_rule(family, weight, style, filename, unicode_range):
+    return "\n".join([
+        "@font-face {",
+        f'  font-family: "{family}";',
+        f"  font-weight: {weight};",
+        f"  font-style: {style};",
+        "  font-display: swap;",
+        f'  src: url("{PUBLIC_URL}/{filename}") format("woff2");',
+        f"  unicode-range: {unicode_range};",
+        "}",
+    ])
+
+
+def main():
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    for stale in OUTPUT_DIR.glob("*.woff2"):
+        stale.unlink()
+
+    latin_range = format_ranges(as_ranges(
+        codepoint
+        for low, high in LATIN_RANGES
+        for codepoint in range(low, high + 1)
+    ))
+
+    rules = []
+    for family, weight, style, stem in FACES:
+        source = source_for(stem)
+        font = TTFont(source)
+        if weight is None:
+            axis = next(a for a in font["fvar"].axes if a.axisTag == "wght")
+            weight = f"{axis.minValue:.0f} {axis.maxValue:.0f}"
+        covered = set(font.getBestCmap())
+        latin = {c for c in covered if in_latin(c)}
+        ext = covered - latin
+
+        for label, codepoints, unicode_range in (
+            ("latin", latin, latin_range),
+            ("ext", ext, format_ranges(as_ranges(ext))),
+        ):
+            if not codepoints:
+                continue
+            filename = f"{stem}.{label}.woff2"
+            subset(source, OUTPUT_DIR / filename, codepoints)
+            rules.append(face_rule(family, weight, style, filename, unicode_range))
+            size = (OUTPUT_DIR / filename).stat().st_size
+            print(f"{filename:44} {size // 1024:4}K")
+
+    CSS_PATH.write_text(
+        "/* Generated by scripts/brand/fonts.py. Do not edit. */\n\n"
+        + "\n\n".join(rules)
+        + "\n"
+    )
+    print(f"\nwrote {CSS_PATH.relative_to(ROOT)} ({len(rules)} faces)")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,9 +1,12 @@
 import {
   changedPhoto,
   echoesStoredKey,
+  isThumbnailKey,
   isUploadKey,
   resolveSafeUploadSrc,
   resolveUploadSrc,
+  thumbnailKey,
+  thumbnailSrc,
   uploadKeyInUrl,
   uploadSrc,
 } from "./image-src";
@@ -180,5 +183,50 @@ describe("uploadKeyInUrl", () => {
     expect(
       uploadKeyInUrl("https://images.unsplash.com/images/1707862.webp"),
     ).toBe("1707862.webp");
+  });
+});
+
+describe("thumbnailKey", () => {
+  it("suffixes the width onto both key shapes", () => {
+    expect(thumbnailKey("1770253183572.webp")).toBe("1770253183572-128.webp");
+    expect(
+      thumbnailKey("1770253183572-4d1e3c2b-1a2b-3c4d-5e6f-7a8b9c0d1e2f.webp"),
+    ).toBe("1770253183572-4d1e3c2b-1a2b-3c4d-5e6f-7a8b9c0d1e2f-128.webp");
+  });
+
+  it("round-trips through isThumbnailKey", () => {
+    expect(isThumbnailKey(thumbnailKey("1770253183572.webp"))).toBe(true);
+    expect(isThumbnailKey("1770253183572.webp")).toBe(false);
+  });
+});
+
+describe("thumbnailSrc", () => {
+  it("rewrites each url shape the api renders", () => {
+    const key = "1770253183572-4d1e3c2b-1a2b-3c4d-5e6f-7a8b9c0d1e2f.webp";
+    const thumb = thumbnailKey(key);
+    expect(thumbnailSrc(`https://dj92mxbdjuclo.cloudfront.net/${key}`)).toBe(
+      `https://dj92mxbdjuclo.cloudfront.net/${thumb}`,
+    );
+    expect(thumbnailSrc(`https://worldalliance.org/api/images/${key}`)).toBe(
+      `https://worldalliance.org/api/images/${thumb}`,
+    );
+    expect(thumbnailSrc(`http://localhost:3000/images/${key}`)).toBe(
+      `http://localhost:3000/images/${thumb}`,
+    );
+  });
+
+  it("leaves anything that is not a rendered upload alone", () => {
+    expect(thumbnailSrc("/noun-user-icon.svg")).toBe("/noun-user-icon.svg");
+    expect(thumbnailSrc("https://example.com/promo.png")).toBe(
+      "https://example.com/promo.png",
+    );
+    expect(thumbnailSrc("data:image/webp;base64,AAAA")).toBe(
+      "data:image/webp;base64,AAAA",
+    );
+  });
+
+  it("does not re-suffix a thumbnail url", () => {
+    const thumb = "https://dj92mxbdjuclo.cloudfront.net/1770253183572-128.webp";
+    expect(thumbnailSrc(thumbnailSrc(thumb))).toBe(thumb);
   });
 });

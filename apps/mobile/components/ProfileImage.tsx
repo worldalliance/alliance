@@ -1,3 +1,4 @@
+import { thumbnailSrc } from "@alliance/common/image-src";
 import { cn } from "@alliance/shared/styles/util";
 import { User } from "lucide-react-native";
 import { Image, View } from "react-native";
@@ -28,6 +29,18 @@ const radiusMap: Record<ProfileImageSize, number> = {
   large: 4,
   larger: 6,
   huge: 8,
+};
+
+/**
+ * `huge` renders at 116px, past what the 128px thumbnail covers on a 2x screen.
+ */
+const usesThumbnail: Record<ProfileImageSize, boolean> = {
+  mini: true,
+  small: true,
+  medium: true,
+  large: true,
+  larger: true,
+  huge: false,
 };
 
 const iconSizeMap: Record<ProfileImageSize, number> = {
@@ -95,10 +108,12 @@ export default function ProfileImage({
     borderRadius: radius,
   };
 
-  if (pfp && resolveProfileImageUri(pfp)) {
+  const source = pfp && usesThumbnail[size] ? thumbnailSrc(pfp) : pfp;
+
+  if (source && resolveProfileImageUri(source)) {
     return (
       <Image
-        source={{ uri: resolveProfileImageUri(pfp) }}
+        source={{ uri: resolveProfileImageUri(source) }}
         resizeMode="cover"
         style={baseStyle}
         className={cn("bg-white shrink-0", className)}

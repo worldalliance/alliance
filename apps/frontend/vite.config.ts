@@ -2,6 +2,7 @@ import { reactRouter } from "@react-router/dev/vite";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 import { defineConfig } from "vite";
+import { imagetools } from "vite-imagetools";
 import {
   devPorts,
   devViteDefine,
@@ -24,7 +25,7 @@ const ports = devPorts(PortCaller.Tooling);
 // https://vite.dev/config/
 export default defineConfig({
   define: devViteDefine(),
-  plugins: [!isStorybook && reactRouter(), tailwindcss()],
+  plugins: [!isStorybook && reactRouter(), tailwindcss(), imagetools()],
   optimizeDeps: {
     exclude: ["@alliance/shared", "@alliance/sharedweb", "@alliance/common"],
   },
