@@ -16,7 +16,11 @@ import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
 import type { Repository } from "src/utils/Repository";
 import { MailService } from "../mail/mail.service";
 import { ReferralSource, User } from "../user/entities/user.entity";
-import { type PWResetJwtPayload, UserService } from "../user/user.service";
+import {
+  type LegacyMailedJwtPayload,
+  type PWResetJwtPayload,
+  UserService,
+} from "../user/user.service";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { Guest } from "./entities/guest.entity";
 import {
@@ -379,9 +383,11 @@ export class AuthService {
   }
 
   async resetPassword(token: string, password: string) {
-    let payload: PWResetJwtPayload;
+    let payload: PWResetJwtPayload & LegacyMailedJwtPayload;
     try {
-      payload = this.jwtService.verify<PWResetJwtPayload>(token, {
+      payload = this.jwtService.verify<
+        PWResetJwtPayload & LegacyMailedJwtPayload
+      >(token, {
         secret: process.env.JWT_SECRET,
       });
     } catch (error) {
@@ -389,7 +395,10 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    if (payload.type !== "password-reset") {
+    if (
+      payload.tokenType !== JWTTokenType.passwordReset &&
+      payload.type !== "password-reset"
+    ) {
       throw new UnauthorizedException();
     }
 

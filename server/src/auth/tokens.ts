@@ -12,12 +12,16 @@ export enum JWTTokenType {
   access = "access",
   refresh = "refresh",
   guest = "guest",
+  passwordReset = "password_reset",
+  verifyEmail = "verify_email",
 }
 
 const TOKEN_TYPE_IS_AUTHENTICATED: Record<JWTTokenType, boolean> = {
   [JWTTokenType.access]: true,
   [JWTTokenType.refresh]: false,
   [JWTTokenType.guest]: false,
+  [JWTTokenType.passwordReset]: false,
+  [JWTTokenType.verifyEmail]: false,
 };
 
 const jwtPayloadSchema = z.object({

@@ -2384,6 +2384,76 @@ describe("Users (e2e)", () => {
     });
   });
 
+  describe("mailed tokens", () => {
+    const isVerified = async (userId: number) =>
+      (await userRepo.findOneByOrFail({ id: userId })).emailVerified;
+
+    it("refuses an access token as a verify-email token", async () => {
+      await request(ctx.app.getHttpServer())
+        .post("/user/verifyEmail")
+        .send({ token: userBToken })
+        .expect(401);
+
+      expect(await isVerified(userBId)).toBe(false);
+    });
+
+    it("accepts a verify-email token, minted before or after the type landed", async () => {
+      const legacyToken = ctx.jwtService.sign(
+        { sub: userBId, type: "verify-email" },
+        { secret: process.env.JWT_SECRET },
+      );
+      await request(ctx.app.getHttpServer())
+        .post("/user/verifyEmail")
+        .send({ token: legacyToken })
+        .expect(201);
+      expect(await isVerified(userBId)).toBe(true);
+
+      await userRepo.update(userBId, { emailVerified: false });
+      const token = await userService.getVerifyEmailToken(userBId);
+      await request(ctx.app.getHttpServer())
+        .post("/user/verifyEmail")
+        .send({ token })
+        .expect(201);
+      expect(await isVerified(userBId)).toBe(true);
+    });
+
+    it("resets the password with a reset token, minted before or after the type landed", async () => {
+      const token = await userService.generatePasswordResetToken(userBId);
+      await request(ctx.app.getHttpServer())
+        .post("/auth/reset-password")
+        .send({ token, password: "FreshPassword123!" })
+        .expect(200);
+      expect(
+        await (
+          await userRepo.findOneByOrFail({ id: userBId })
+        ).checkPassword("FreshPassword123!"),
+      ).toBe(true);
+
+      const legacyToken = ctx.jwtService.sign(
+        { sub: userBId, type: "password-reset" },
+        { secret: process.env.JWT_SECRET },
+      );
+      await request(ctx.app.getHttpServer())
+        .post("/auth/reset-password")
+        .send({ token: legacyToken, password: "SecondPassword123!" })
+        .expect(200);
+      expect(
+        await (
+          await userRepo.findOneByOrFail({ id: userBId })
+        ).checkPassword("SecondPassword123!"),
+      ).toBe(true);
+    });
+
+    it("refuses a verify-email token as a password reset", async () => {
+      const token = await userService.getVerifyEmailToken(userBId);
+
+      await request(ctx.app.getHttpServer())
+        .post("/auth/reset-password")
+        .send({ token, password: "NotTheirPassword123!" })
+        .expect(401);
+    });
+  });
+
   afterAll(async () => {
     await ctx.app.close();
   });
