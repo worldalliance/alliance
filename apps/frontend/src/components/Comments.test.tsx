@@ -13,7 +13,7 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 
 let loadAttempts = 0;
@@ -83,6 +83,14 @@ const loggedOut: AuthContextType = {
   loading: false,
 };
 
+const withProviders = (ui: ReactNode) => (
+  <QueryClientProvider client={new QueryClient()}>
+    <MemoryRouter>
+      <AuthContext.Provider value={loggedOut}>{ui}</AuthContext.Provider>
+    </MemoryRouter>
+  </QueryClientProvider>
+);
+
 const author: CommentDto["author"] = {
   id: 1,
   displayName: "Jane Smith",
@@ -126,15 +134,7 @@ const Parent = () => {
 };
 
 it("leaves the comment tree alone when something above it renders", async () => {
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <Parent />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  render(withProviders(<Parent />));
   await screen.findByText("comment 1");
 
   const parsesOnMount = markdownParses;
@@ -149,15 +149,7 @@ it("leaves the comment tree alone when something above it renders", async () => 
 });
 
 it("loads the thread again when the reader asks", async () => {
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <Comments objectId={1} type="post" />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  render(withProviders(<Comments objectId={1} type="post" />));
   await screen.findByText("Failed to load comments");
   expect(loadAttempts).toBe(1);
 
@@ -174,13 +166,7 @@ it("loads the thread again when the reader asks", async () => {
 
 it("keeps the retry button under the reader while the load is out", async () => {
   const { container } = render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <Comments objectId={1} type="post" />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
+    withProviders(<Comments objectId={1} type="post" />),
   );
   await screen.findByText("Failed to load comments");
   const retry = screen.getByRole("button", {
@@ -211,13 +197,7 @@ it("keeps the retry button under the reader while the load is out", async () => 
 
 it("says nothing about a load the reader never asked for", async () => {
   const { container } = render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <Comments objectId={1} type="post" />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
+    withProviders(<Comments objectId={1} type="post" />),
   );
   await screen.findByText("Failed to load comments");
 
@@ -226,13 +206,7 @@ it("says nothing about a load the reader never asked for", async () => {
 
 it("tells a reader it left where they were how the load ended", async () => {
   const { container } = render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <Comments objectId={1} type="post" />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
+    withProviders(<Comments objectId={1} type="post" />),
   );
   await screen.findByText("Failed to load comments");
   const status = within(container).getByRole("status");
@@ -252,13 +226,7 @@ it("tells a reader it left where they were how the load ended", async () => {
 
 it("says nothing over the landing it just made", async () => {
   const { container } = render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <Comments objectId={1} type="post" />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
+    withProviders(<Comments objectId={1} type="post" />),
   );
   await screen.findByText("Failed to load comments");
   const status = within(container).getByRole("status");
@@ -284,15 +252,7 @@ it("says nothing over the landing it just made", async () => {
 });
 
 it("puts the reader on the thread their retry loaded", async () => {
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <Comments objectId={1} type="post" />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  render(withProviders(<Comments objectId={1} type="post" />));
   await screen.findByText("Failed to load comments");
   const retry = screen.getByRole("button", {
     name: "Try loading the comments again",
@@ -309,15 +269,7 @@ it("puts the reader on the thread their retry loaded", async () => {
 });
 
 it("leaves focus alone for a press that was never on the control", async () => {
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <Comments objectId={1} type="post" />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  render(withProviders(<Comments objectId={1} type="post" />));
   await screen.findByText("Failed to load comments");
 
   loadSucceeds = true;
@@ -337,13 +289,7 @@ it("leaves focus alone for a press that was never on the control", async () => {
 
 it("leaves focus alone once the retry the reader asked for has failed", async () => {
   const { rerender } = render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <Comments objectId={1} type="post" />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
+    withProviders(<Comments objectId={1} type="post" />),
   );
   await screen.findByText("Failed to load comments");
   const retry = screen.getByRole("button", {
@@ -359,13 +305,9 @@ it("leaves focus alone once the retry the reader asked for has failed", async ()
 
   // A thread the caller hands down answers no press of theirs.
   rerender(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <Comments objectId={1} type="post" initialComments={comments} />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
+    withProviders(
+      <Comments objectId={1} type="post" initialComments={comments} />,
+    ),
   );
   await screen.findByText("comment 1");
 
@@ -375,15 +317,7 @@ it("leaves focus alone once the retry the reader asked for has failed", async ()
 it("leaves focus alone for a load the reader never asked for", async () => {
   loadSucceeds = true;
   loadedThread = comments;
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <Comments objectId={1} type="post" />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  render(withProviders(<Comments objectId={1} type="post" />));
   await screen.findByText("comment 1");
 
   expect(document.activeElement).toBe(document.body);
@@ -391,14 +325,12 @@ it("leaves focus alone for a load the reader never asked for", async () => {
 
 it("keeps focus where the reader moved it during the load", async () => {
   render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <button type="button">somewhere else</button>
-          <Comments objectId={1} type="post" />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
+    withProviders(
+      <>
+        <button type="button">somewhere else</button>
+        <Comments objectId={1} type="post" />
+      </>,
+    ),
   );
   await screen.findByText("Failed to load comments");
   const retry = screen.getByRole("button", {
@@ -423,15 +355,7 @@ it("keeps focus where the reader moved it during the load", async () => {
 });
 
 it("keeps focus on the body the reader clicked onto during the load", async () => {
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <Comments objectId={1} type="post" />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  render(withProviders(<Comments objectId={1} type="post" />));
   await screen.findByText("Failed to load comments");
   const retry = screen.getByRole("button", {
     name: "Try loading the comments again",
@@ -456,15 +380,7 @@ it("keeps focus on the body the reader clicked onto during the load", async () =
 });
 
 it("lands on the named thread when the retry comes back empty", async () => {
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <Comments objectId={1} type="post" />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  render(withProviders(<Comments objectId={1} type="post" />));
   await screen.findByText("Failed to load comments");
   const retry = screen.getByRole("button", {
     name: "Try loading the comments again",
@@ -486,15 +402,7 @@ it("lands on the named thread when the retry comes back empty", async () => {
 it("names no thread for a reader who pressed nothing", async () => {
   loadSucceeds = true;
   loadedThread = comments;
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <Comments objectId={1} type="post" />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  render(withProviders(<Comments objectId={1} type="post" />));
   await screen.findByText("comment 1");
 
   expect(screen.queryByRole("group", { name: "Comments" })).toBeNull();
@@ -502,13 +410,7 @@ it("names no thread for a reader who pressed nothing", async () => {
 
 it("puts the reader on the thread a hand-down landed over their press", async () => {
   const { rerender } = render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <Comments objectId={1} type="post" />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
+    withProviders(<Comments objectId={1} type="post" />),
   );
   await screen.findByText("Failed to load comments");
   const retry = screen.getByRole("button", {
@@ -522,13 +424,9 @@ it("puts the reader on the thread a hand-down landed over their press", async ()
   // The feed hands its card down while the press is still out, which takes the
   // row the control sits in away and leaves the reader on the body.
   rerender(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <Comments objectId={1} type="post" initialComments={comments} />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
+    withProviders(
+      <Comments objectId={1} type="post" initialComments={comments} />,
+    ),
   );
   await screen.findByText("comment 1");
 
@@ -549,14 +447,12 @@ it("puts the reader on the thread a hand-down landed over their press", async ()
 
 it("takes the thread's name back down once the reader moves off it", async () => {
   render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <button type="button">somewhere else</button>
-          <Comments objectId={1} type="post" />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
+    withProviders(
+      <>
+        <button type="button">somewhere else</button>
+        <Comments objectId={1} type="post" />
+      </>,
+    ),
   );
   await screen.findByText("Failed to load comments");
   const retry = screen.getByRole("button", {
@@ -581,32 +477,20 @@ it("takes the thread's name back down once the reader moves off it", async () =>
 it("says a filter emptied the thread it landed the reader on", async () => {
   const tags = [{ id: 9, name: "Ideas", sortOrder: 0 }];
   const { rerender } = render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <Comments
-            objectId={1}
-            type="post"
-            initialComments={comments}
-            tags={tags}
-          />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
+    withProviders(
+      <Comments
+        objectId={1}
+        type="post"
+        initialComments={comments}
+        tags={tags}
+      />,
+    ),
   );
   await userEvent.click(screen.getByRole("button", { name: "Ideas (0)" }));
 
   // Taking the hand-down away sends the card back to a load of its own, which
   // fails with the filter the reader set still on.
-  rerender(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
-        <AuthContext.Provider value={loggedOut}>
-          <Comments objectId={1} type="post" tags={tags} />
-        </AuthContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  rerender(withProviders(<Comments objectId={1} type="post" tags={tags} />));
   await screen.findByText("Failed to load comments");
   const retry = screen.getByRole("button", {
     name: "Try loading the comments again",
