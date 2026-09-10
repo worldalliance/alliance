@@ -21,7 +21,6 @@ import { ViewerAuthenticationProvider } from "@alliance/sharedweb/ui/ViewerAuthe
 import type { QueryClient } from "@tanstack/react-query";
 import posthog from "posthog-js";
 import { testAuthUser } from "../stories/testData";
-import { clearSessionHint, setSessionHint } from "./sessionHint";
 
 export interface AuthContextType {
   isAuthenticated: boolean;
@@ -59,7 +58,6 @@ export const AuthProvider: React.FC<
 
         setUser(data.user);
         setIsImpersonation(data.isImpersonation ?? false);
-        setSessionHint();
       },
       [],
     );
@@ -135,7 +133,6 @@ export const AuthProvider: React.FC<
       await authLogout();
       queryClient.clear();
       posthog.reset();
-      clearSessionHint();
       setUser(undefined);
       window.location.href = "/login";
     }, [queryClient]);

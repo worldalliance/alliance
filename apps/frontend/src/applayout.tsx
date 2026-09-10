@@ -6,7 +6,6 @@ import { useEffect } from "react";
 import { href, Outlet, useNavigate, useNavigation } from "react-router";
 import DomainMigrationModal from "./components/DomainMigrationModal";
 import { useAuth } from "./lib/AuthContext";
-import { hasSessionHint } from "./lib/sessionHint";
 
 export function HydrateFallback() {
   return (
@@ -31,7 +30,12 @@ export function isAuthOnly() {
   return true;
 }
 export default function AppLayout() {
-  const { loading: authLoading, logout, isImpersonation } = useAuth();
+  const {
+    isAuthenticated,
+    loading: authLoading,
+    logout,
+    isImpersonation,
+  } = useAuth();
 
   const navigate = useNavigate();
   const navigation = useNavigation();
@@ -39,7 +43,11 @@ export default function AppLayout() {
   const isNavigating = Boolean(navigation.location);
 
   useEffect(() => {
-    const wasLoggedIn = hasSessionHint();
+    if (isAuthenticated) {
+      localStorage.setItem("was-logged-in", "true");
+    }
+
+    const wasLoggedIn = localStorage.getItem("was-logged-in") === "true";
 
     const handleUnauthorized = () => {
       if (
@@ -58,7 +66,7 @@ export default function AppLayout() {
     return () => {
       window.removeEventListener("auth:unauthorized", handleUnauthorized);
     };
-  }, [authLoading, navigate, isNavigating, logout]);
+  }, [isAuthenticated, authLoading, navigate, isNavigating, logout]);
 
   if (authLoading) {
     return (
