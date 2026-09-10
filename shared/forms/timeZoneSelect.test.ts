@@ -728,6 +728,20 @@ describe("searching the zone list", () => {
     expect(zonesMatching("turkiye")).toEqual(["Europe/Istanbul"]);
   });
 
+  it("leaves out a zone naming the query inside a longer word", () => {
+    const matched = zonesMatching("china");
+    expect(matched).not.toContain("Asia/Bangkok");
+    expect(matched).toContain("Asia/Shanghai");
+  });
+
+  it("finds a zone by a name only its IANA name writes", () => {
+    rejecting("longGeneric", () => {
+      expect(zonesMatching("argentina")).toEqual([
+        "America/Argentina/Buenos_Aires",
+      ]);
+    });
+  });
+
   const subMatching = (query: string, tz: string) => {
     const { result } = renderHook(() => useTimeZoneSelect({}));
     act(() => result.current.setQuery(query));

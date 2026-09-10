@@ -345,6 +345,27 @@ export function resetTimeZoneCaches(): void {
 // Both sides of a search fold, so "São Paulo" reaches a row spelled Sao Paulo.
 export const fold = (text: string) => deburr(text).toLowerCase();
 
+const WORD_CHAR = /[\p{L}\p{N}]/u;
+
+// A query lands on the start of a word, or "China" reaches Indochina Time and
+// the list opens on a row an hour out.
+function matchesQuery({
+  foldedText,
+  foldedQuery,
+}: {
+  foldedText: string;
+  foldedQuery: string;
+}): boolean {
+  for (
+    let at = foldedText.indexOf(foldedQuery);
+    at >= 0;
+    at = foldedText.indexOf(foldedQuery, at + 1)
+  ) {
+    if (at === 0 || !WORD_CHAR.test(foldedText[at - 1])) return true;
+  }
+  return false;
+}
+
 const wordsOf = (text: string) => fold(text).match(/\p{L}+/gu) ?? [];
 
 // "Australian Western Standard Time" already says "Western Australia Time" and
@@ -427,10 +448,11 @@ function subForQuery(
   foldedQuery: string,
 ): string | null {
   const shown = fold(`${item.labelLeft} ${item.labelSub ?? ""}`);
-  if (shown.includes(foldedQuery)) return item.labelSub;
+  if (matchesQuery({ foldedText: shown, foldedQuery })) return item.labelSub;
   return (
-    item.searchTerms.find((term) => fold(term).includes(foldedQuery)) ??
-    item.labelSub
+    item.searchTerms.find((term) =>
+      matchesQuery({ foldedText: fold(term), foldedQuery }),
+    ) ?? item.labelSub
   );
 }
 
@@ -492,7 +514,7 @@ export function useTimeZoneSelect({
     const q = fold(query.trim());
     if (!q) return items;
     return items
-      .filter((i) => i.searchText.includes(q))
+      .filter((i) => matchesQuery({ foldedText: i.searchText, foldedQuery: q }))
       .map((i) => ({ ...i, labelSub: subForQuery(i, q) }));
   }, [items, query]);
 
