@@ -27,6 +27,7 @@ import tempfile
 # scripts/brand/og.py -> repo root
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 PUB = ROOT / "apps/frontend/public"
+FONTS_SRC = ROOT / "apps/frontend/fonts-src"
 
 CHROME = os.environ.get(
     "CHROME", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
@@ -43,7 +44,7 @@ def b64(path: pathlib.Path, mime: str) -> str:
 
 # Inline the assets as data URIs so the HTML is self-contained for Chrome.
 berlingske = b64(PUB / "assets/fonts/BerlingskeSerif-Blk.woff2", "font/woff2")
-literata = b64(PUB / "assets/fonts/Literata-VariableFont_opsz,wght.ttf", "font/ttf")
+literata = b64(FONTS_SRC / "Literata-VariableFont_opsz,wght.ttf", "font/ttf")
 sans_reg = b64(PUB / "assets/fonts/source-sans-3-v19-latin-regular.woff2", "font/woff2")
 sans_600 = b64(PUB / "assets/fonts/source-sans-3-v19-latin-600.woff2", "font/woff2")
 globe = b64(PUB / "planet-earth.png", "image/png")

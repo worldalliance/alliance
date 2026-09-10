@@ -42,7 +42,10 @@ LATIN_RANGES = [
     (0xFEFF, 0xFEFF), (0xFFFD, 0xFFFD),
 ]
 
+# None rather than a literal range on a variable face: the CSS then cannot
+# drift from the `wght` axis the font actually ships.
 FACES = [
+    ("Literata", None, "normal", "Literata-VariableFont_opsz,wght"),
     ("Libre Caslon Text", 400, "normal", "LibreCaslonCondensed-Regular"),
     ("Libre Caslon Text", 400, "italic", "LibreCaslonCondensed-Italic"),
     ("Libre Caslon Text", 500, "normal", "LibreCaslonCondensed-Medium"),
@@ -129,7 +132,11 @@ def main():
     rules = []
     for family, weight, style, stem in FACES:
         source = source_for(stem)
-        covered = set(TTFont(source).getBestCmap())
+        font = TTFont(source)
+        if weight is None:
+            axis = next(a for a in font["fvar"].axes if a.axisTag == "wght")
+            weight = f"{axis.minValue:.0f} {axis.maxValue:.0f}"
+        covered = set(font.getBestCmap())
         latin = {c for c in covered if in_latin(c)}
         ext = covered - latin
 

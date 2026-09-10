@@ -1,5 +1,3 @@
-@import "../../../site/fonts.css";
-
 /*
  * The app sets `font-family` with a `*` selector in index.css, which outranks
  * Tailwind's layered utilities. These unlayered rules take the redesign tree
