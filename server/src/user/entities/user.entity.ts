@@ -230,7 +230,9 @@ export class User {
   @IsOptional()
   password: string | null;
 
-  @OneToMany(() => OAuthAccount, (account) => account.user)
+  @OneToMany(() => OAuthAccount, (account) => account.user, {
+    cascade: ["insert"],
+  })
   oauthAccounts?: Relation<OAuthAccount>[];
 
   @CreateDateColumnTz()

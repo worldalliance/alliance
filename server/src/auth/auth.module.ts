@@ -11,6 +11,8 @@ import { Guest } from "./entities/guest.entity";
 import { AppleOAuthClient } from "./oauth/apple-oauth.client";
 import { GoogleOAuthClient } from "./oauth/google-oauth.client";
 import { OAuthAccount } from "./oauth/oauth-account.entity";
+import { OAuthAuthService } from "./oauth/oauth-auth.service";
+import { OAuthController } from "./oauth/oauth.controller";
 
 @Module({
   imports: [
@@ -26,8 +28,13 @@ import { OAuthAccount } from "./oauth/oauth-account.entity";
     }),
     TypeOrmModule.forFeature([User, Guest, OAuthAccount]),
   ],
-  providers: [AuthService, GoogleOAuthClient, AppleOAuthClient],
-  controllers: [AuthController],
+  providers: [
+    AuthService,
+    OAuthAuthService,
+    GoogleOAuthClient,
+    AppleOAuthClient,
+  ],
+  controllers: [AuthController, OAuthController],
   exports: [AuthService],
 })
 export class AuthModule {}

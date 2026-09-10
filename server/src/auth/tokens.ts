@@ -7,6 +7,8 @@ import { z } from "zod";
 export const ACCESS_COOKIE = "access_token";
 export const REFRESH_COOKIE = "refresh_token";
 export const GUEST_COOKIE = "guest_token";
+export const OAUTH_STATE_COOKIE = "oauth_state";
+export const APPLE_USER_COOKIE = "oauth_apple_user";
 
 export enum JWTTokenType {
   access = "access",
@@ -14,6 +16,7 @@ export enum JWTTokenType {
   guest = "guest",
   passwordReset = "password_reset",
   verifyEmail = "verify_email",
+  oauthState = "oauth_state",
 }
 
 const TOKEN_TYPE_IS_AUTHENTICATED: Record<JWTTokenType, boolean> = {
@@ -22,6 +25,7 @@ const TOKEN_TYPE_IS_AUTHENTICATED: Record<JWTTokenType, boolean> = {
   [JWTTokenType.guest]: false,
   [JWTTokenType.passwordReset]: false,
   [JWTTokenType.verifyEmail]: false,
+  [JWTTokenType.oauthState]: false,
 };
 
 const jwtPayloadSchema = z.object({
@@ -62,6 +66,18 @@ export function extractGuestTokenFromCookie(
   request: Request,
 ): string | undefined {
   return request.cookies?.[GUEST_COOKIE];
+}
+
+export function extractOAuthStateFromCookie(
+  request: Request,
+): string | undefined {
+  return request.cookies?.[OAUTH_STATE_COOKIE];
+}
+
+export function extractAppleUserFromCookie(
+  request: Request,
+): string | undefined {
+  return request.cookies?.[APPLE_USER_COOKIE];
 }
 
 function extractGuestTokenFromHeader(request: Request): string | undefined {

@@ -839,6 +839,18 @@ export type ResetPasswordDto = {
     password: string;
 };
 
+export type OAuthIntent = 'authenticate' | 'link';
+
+export type OAuthCallbackDto = {
+    code?: string;
+    state?: string;
+    error?: string;
+    /**
+     * JSON Apple posts on the first authorization, holding the name.
+     */
+    user?: string;
+};
+
 export type ClusterSummaryDto = {
     id: number;
     displayName: string;
@@ -4239,6 +4251,124 @@ export type AuthImpersonateAdminResponses = {
 };
 
 export type AuthImpersonateAdminResponse = AuthImpersonateAdminResponses[keyof AuthImpersonateAdminResponses];
+
+export type OAuthRedirectToProviderData = {
+    body?: never;
+    path: {
+        provider: OAuthProvider;
+    };
+    query: {
+        intent: OAuthIntent;
+        returnTo: string;
+        referralCode?: string;
+        timeZone?: string;
+    };
+    url: '/auth/{provider}/start';
+};
+
+export type OAuthRedirectToProviderErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type OAuthRedirectToProviderError = OAuthRedirectToProviderErrors[keyof OAuthRedirectToProviderErrors];
+
+export type OAuthRedirectToProviderResponses = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type OAuthRedirectToProviderResponse = OAuthRedirectToProviderResponses[keyof OAuthRedirectToProviderResponses];
+
+export type OAuthCallbackData = {
+    body?: never;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: {
+        code?: string;
+        state?: string;
+        error?: string;
+        /**
+         * JSON Apple posts on the first authorization, holding the name.
+         */
+        user?: string;
+    };
+    url: '/auth/{provider}/callback';
+};
+
+export type OAuthCallbackErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type OAuthCallbackError = OAuthCallbackErrors[keyof OAuthCallbackErrors];
+
+export type OAuthCallbackResponses = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type OAuthCallbackResponse = OAuthCallbackResponses[keyof OAuthCallbackResponses];
+
+export type OAuthCallbackFormData = {
+    body: OAuthCallbackDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/callback';
+};
+
+export type OAuthCallbackFormErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type OAuthCallbackFormError = OAuthCallbackFormErrors[keyof OAuthCallbackFormErrors];
+
+export type OAuthCallbackFormResponses = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type OAuthCallbackFormResponse = OAuthCallbackFormResponses[keyof OAuthCallbackFormResponses];
+
+export type OAuthUnlinkData = {
+    body?: never;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/link';
+};
+
+export type OAuthUnlinkErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type OAuthUnlinkError = OAuthUnlinkErrors[keyof OAuthUnlinkErrors];
+
+export type OAuthUnlinkResponses = {
+    200: AuthMeResponseDto;
+};
+
+export type OAuthUnlinkResponse = OAuthUnlinkResponses[keyof OAuthUnlinkResponses];
 
 export type UserFindMeData = {
     body?: never;

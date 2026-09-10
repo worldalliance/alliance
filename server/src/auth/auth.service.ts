@@ -23,6 +23,7 @@ import {
 } from "../user/user.service";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { Guest } from "./entities/guest.entity";
+import type { OAuthProfile } from "./oauth/oauth-client";
 import {
   ACCESS_COOKIE,
   accessTokenPayload,
@@ -33,6 +34,16 @@ import {
   REFRESH_COOKIE,
   sessionFromRequest,
 } from "./tokens";
+
+export type ReferredUser = {
+  name: string;
+  email: string;
+  /** Null for an account created through a provider, which has no password yet. */
+  password: string | null;
+  timeZone: string;
+  referralCode: string | undefined;
+  oauth?: OAuthProfile;
+};
 
 @Injectable()
 export class AuthService {
@@ -243,11 +254,21 @@ export class AuthService {
   }
 
   async register(signUp: SignUpDto): Promise<User> {
-    if (await this.usersService.findOneByEmail(signUp.email)) {
+    return this.createReferredUser({
+      name: signUp.name,
+      email: signUp.email,
+      password: signUp.password,
+      timeZone: signUp.timeZone,
+      referralCode: signUp.referralCode,
+    });
+  }
+
+  async createReferredUser(input: ReferredUser): Promise<User> {
+    if (await this.usersService.findOneByEmail(input.email)) {
       throw new BadRequestException("User already exists");
     }
 
-    if (!signUp.referralCode) {
+    if (!input.referralCode) {
       throw new BadRequestException("No referral code provided");
     }
 
@@ -258,13 +279,26 @@ export class AuthService {
       referredByShareUrl,
       inviteAssignment,
       referralSource,
-    } = await this.resolveReferralCode(signUp.referralCode);
+    } = await this.resolveReferralCode(input.referralCode);
 
     const defaultTag = await this.usersService.findAllMembersTag();
 
     const user = await this.usersService.createWithInviteAssignment(
       {
-        ...signUp,
+        name: input.name,
+        email: input.email,
+        password: input.password,
+        timeZone: input.timeZone,
+        oauthAccounts: input.oauth
+          ? [
+              {
+                provider: input.oauth.provider,
+                subject: input.oauth.subject,
+                email: input.oauth.email,
+              },
+            ]
+          : [],
+        emailVerified: input.oauth?.emailVerified ?? false,
         referredBy: referringUser ?? null,
         referredByInvite: invite ?? null,
         referredByCampaign: referredByCampaign ?? null,
