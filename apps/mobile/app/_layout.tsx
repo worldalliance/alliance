@@ -65,7 +65,10 @@ export default function RootLayout() {
   useEffect(() => {
     const originalFetch = fetch.bind(globalThis);
 
-    const wrappedFetch: typeof fetch = async (input, init) => {
+    const wrappedFetch = async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ) => {
       const req = new Request(input, init);
       const retryReq = req.clone();
       const res = await originalFetch(req);

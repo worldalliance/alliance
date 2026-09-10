@@ -83,11 +83,14 @@ describe("FormBuilder hands a display block the addressed write", () => {
     // A module mock would outlive this file, so the upload hangs on
     // `global.fetch` instead.
     const realFetch = global.fetch;
-    global.fetch = (() =>
-      new Promise((resolve) => {
-        finish = (body) =>
-          resolve({ ok: true, json: async () => body } as Response);
-      })) as typeof fetch;
+    global.fetch = Object.assign(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = (body) =>
+            resolve({ ok: true, json: async () => body } as Response);
+        }),
+      { preconnect: () => {} },
+    );
 
     try {
       const router = createMemoryRouter([
