@@ -1,5 +1,6 @@
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { PROGRESS_SEGMENTS } from "./flow";
@@ -79,12 +80,14 @@ export function FooterNav({
   onNext,
   nextLabel,
   nextDisabled = false,
+  loading = false,
   index = 3,
 }: {
   onBack?: () => void;
   onNext: () => void;
   nextLabel: string;
   nextDisabled?: boolean;
+  loading?: boolean;
   index?: number;
 }) {
   return (
@@ -107,10 +110,16 @@ export function FooterNav({
         color={ButtonColor.WhiteBorderless}
         className={cn(NAV_BUTTON, NAV_PRIMARY)}
         onClick={onNext}
-        disabled={nextDisabled}
+        disabled={nextDisabled || loading}
       >
-        {nextLabel}
-        <ArrowRight className="size-4" aria-hidden />
+        {loading ? (
+          <Spinner size="small" color="fill-[var(--ob-tone-ink)]" />
+        ) : (
+          <>
+            {nextLabel}
+            <ArrowRight className="size-4" aria-hidden />
+          </>
+        )}
       </Button>
     </div>
   );
@@ -162,13 +171,17 @@ export function StepLayout({
     >
       {eyebrow && <StepEyebrow>{eyebrow}</StepEyebrow>}
       <div
-        className="flex min-h-0 flex-1 flex-col justify-center"
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
         style={{
-          gap: "var(--ob-gap)",
           marginTop: eyebrow ? "var(--ob-band-gap)" : undefined,
         }}
       >
-        {children}
+        <div
+          className="flex min-h-full flex-col justify-center"
+          style={{ gap: "var(--ob-gap)" }}
+        >
+          {children}
+        </div>
       </div>
       {footer}
     </div>

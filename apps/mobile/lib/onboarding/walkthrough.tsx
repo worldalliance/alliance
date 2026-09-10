@@ -21,6 +21,7 @@ export enum WalkthroughAnchor {
   GroupsTab = "groups-tab",
   Group = "group",
   MembershipLink = "membership-link",
+  Contract = "contract",
   AwayRanges = "away-ranges",
   TaskList = "task-list",
 }

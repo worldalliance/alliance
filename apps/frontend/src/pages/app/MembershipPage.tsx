@@ -8,6 +8,7 @@ import {
   getLastContractEvent,
   getSignedMessage,
   getSuspensionMessage,
+  isConfirmationCloseEnough,
 } from "@alliance/shared/lib/contract";
 import { suspendContractConfirmation } from "@alliance/shared/lib/copy";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
@@ -29,8 +30,6 @@ import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
 
 const WEEKLY_COMMITMENT_CONFIRMATION =
   "I commit to complete each task to the best of my ability.";
-
-const COMMITMENT_CONFIRMATION_LENGTH_TOLERANCE = 10;
 
 function FormalTextDropdown({ markdown }: { markdown: string }) {
   const [open, setOpen] = useState(false);
@@ -119,11 +118,6 @@ function SignedContractActions({
   );
 }
 
-const isConfirmationLengthCloseEnough = (confirmation: string) =>
-  Math.abs(
-    confirmation.trim().length - WEEKLY_COMMITMENT_CONFIRMATION.length,
-  ) <= COMMITMENT_CONFIRMATION_LENGTH_TOLERANCE;
-
 const MembershipPage: React.FC = () => {
   const { user, refreshUser } = useAuth();
   const { latestContract } = useContract();
@@ -134,8 +128,9 @@ const MembershipPage: React.FC = () => {
     useState("");
   const [lastContractEvent, setLastContractEvent] =
     useState<ContractEventState>(null);
-  const weeklyCommitmentConfirmed = isConfirmationLengthCloseEnough(
+  const weeklyCommitmentConfirmed = isConfirmationCloseEnough(
     weeklyCommitmentConfirmation,
+    WEEKLY_COMMITMENT_CONFIRMATION,
   );
 
   const previousSignedContractId =
@@ -241,7 +236,11 @@ const MembershipPage: React.FC = () => {
         <h1 className="text-title">Membership</h1>
 
         {(previousSignedContract || latestContract) && (
-          <Card style={CardStyle.White} className="p-6">
+          <Card
+            style={CardStyle.White}
+            className="p-6"
+            data-walkthrough={WalkthroughAnchor.Contract}
+          >
             <h2 className="font-semibold! text-2xl! mb-4">Contract</h2>
             <div className="flex flex-col gap-y-4">
               {previousSignedContract && (

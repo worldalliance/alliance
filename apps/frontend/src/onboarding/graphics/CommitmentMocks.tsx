@@ -36,7 +36,7 @@ const ACTIONS: ActionExample[] = [
     faces: MEMBER_FACES,
     body: [
       {
-        text: "In this action you’ll use a free online tool called Mozilla Monitor to determine whether your personal information has been leaked in a data breach and, if so, take steps to protect the compromised accounts.",
+        text: "You’ll use a free online tool called Mozilla Monitor to determine whether your personal information has been leaked in a data breach and, if so, take steps to protect the compromised accounts.",
       },
       {
         heading: "Background",
@@ -56,11 +56,6 @@ const ACTIONS: ActionExample[] = [
         title: "Members taking action",
         time: "2 days ago",
       },
-      {
-        kind: TimelineEntryKind.Event,
-        title: "Office taking action",
-        time: "9 days ago",
-      },
     ],
     barAtIndex: 0,
     completed: 133,
@@ -69,11 +64,11 @@ const ACTIONS: ActionExample[] = [
     faces: MEMBER_FACES,
     body: [
       {
-        text: "The Forest Service has opened a comment period on repealing the 2001 Roadless Rule. Comments in your own words carry more weight than a form letter, so we have drafted talking points for you to adapt rather than copy.",
+        text: "The Forest Service has opened a comment period on repealing the 2001 Roadless Rule. Comments in your own words carry more weight, so we have drafted talking points for you to adapt.",
       },
       {
         heading: "Talking points",
-        text: "Roadless areas supply drinking water to millions of people and cost far less to maintain than roaded forest. Repealing the rule shifts that cost onto taxpayers.",
+        text: "Experts argue that roadless areas supply drinking water to millions of people, cost far less to maintain than roaded forest, and reduce the risk of wildfires.",
       },
     ],
   },
@@ -84,9 +79,10 @@ const ACTIONS: ActionExample[] = [
       "Members log what they find on one short walk, so researchers get a picture of local waste no single survey could reach.",
     timeline: [
       {
-        kind: TimelineEntryKind.Event,
-        title: "Results published",
+        kind: TimelineEntryKind.Update,
+        title: "Members collected data on 1,022 pieces of trash",
         time: "5 days ago",
+        body: "We picked up and recorded a total of 1,022 pieces of trash. The most-documented item was a beverage bottle.",
       },
       {
         kind: TimelineEntryKind.Event,
@@ -101,7 +97,7 @@ const ACTIONS: ActionExample[] = [
     faces: MEMBER_FACES,
     body: [
       {
-        text: "Take one short walk you would have taken anyway and log every piece of litter you pass in the Marine Debris Tracker app. Fifteen minutes is enough for a usable transect.",
+        text: "Take one short walk you would have taken anyway and log every piece of litter you pass in the TrashBlitz app.",
       },
       {
         heading: "Background",

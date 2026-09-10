@@ -9,8 +9,8 @@ import { Pressable, TextInput, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import {
   AGREEMENT_HEADLINE,
+  AGREEMENT_NOTE,
   COMMIT_PHRASE,
-  COMMITMENT_STATEMENT,
   DETAILS_LINK,
   isCommitted,
 } from "../../lib/onboarding/content";
@@ -21,7 +21,7 @@ import {
 } from "../../lib/onboarding/scale";
 import ProfileImage from "../ProfileImage";
 import Text, { FontWeight } from "../system/Text";
-import { Rise, StepHeadline } from "./chrome";
+import { Rise, StepHeadline, StepNote } from "./chrome";
 
 /** Overlapping faces stop fitting the panel's width past this. */
 const FACE_COUNT = 5;
@@ -42,7 +42,7 @@ function SignedBy({
   ].slice(0, FACE_COUNT);
 
   return (
-    <View className="items-center gap-2">
+    <View className="items-start gap-2">
       <View className="flex-row">
         {pictures.map((pfp, i) => (
           <View
@@ -54,12 +54,12 @@ function SignedBy({
               borderRadius: 6,
             }}
           >
-            <ProfileImage pfp={pfp} size="medium" />
+            <ProfileImage pfp={pfp} size="small" />
           </View>
         ))}
       </View>
       <Text
-        className="text-center text-white"
+        className="text-white"
         style={{ fontSize: scale.ui, lineHeight: scale.ui * 1.35 }}
       >
         {inviter ? (
@@ -96,46 +96,32 @@ function CommitControl({
   const done = isCommitted(typed);
 
   return (
-    <View className="gap-1.5">
-      <Text
-        className="text-black"
-        style={{ fontSize: scale.ui, lineHeight: scale.ui * 1.3 }}
-      >
-        {COMMITMENT_STATEMENT} Type{" "}
-        <Text
-          weight={FontWeight.Semibold}
-          className="text-black"
-          style={{ fontSize: scale.ui }}
-        >
-          {COMMIT_PHRASE}
-        </Text>{" "}
-        to agree.
-      </Text>
-      <View className="justify-center">
-        <TextInput
-          className="min-h-11 rounded-md border-2 bg-white px-3.5 text-base text-black"
-          style={{
-            borderColor: done ? onboardingColors.accentGreen : "#e4e4e7",
-          }}
-          placeholder={COMMIT_PHRASE}
-          placeholderTextColor="#a1a1aa"
-          value={typed}
-          onChangeText={onTypedChange}
-          autoCapitalize="none"
-          autoCorrect={false}
-          accessibilityLabel={`Type ${COMMIT_PHRASE} to agree`}
-          testID="vr-onboarding-commit"
-        />
-        {done && (
-          <View className="absolute right-3">
-            <Check
-              size={18}
-              color={onboardingColors.accentGreen}
-              strokeWidth={3}
-            />
-          </View>
-        )}
-      </View>
+    <View className="justify-center">
+      <TextInput
+        className="min-h-11 rounded-md border-2 bg-white px-3.5 text-base text-black"
+        style={{
+          height: scale.signField,
+          fontSize: scale.ui,
+          borderColor: done ? onboardingColors.accentGreen : "#e4e4e7",
+        }}
+        placeholder={COMMIT_PHRASE}
+        placeholderTextColor="#a1a1aa"
+        value={typed}
+        onChangeText={onTypedChange}
+        autoCapitalize="none"
+        autoCorrect={false}
+        accessibilityLabel={`Type ${COMMIT_PHRASE} to agree`}
+        testID="vr-onboarding-commit"
+      />
+      {done && (
+        <View className="absolute right-3">
+          <Check
+            size={18}
+            color={onboardingColors.accentGreen}
+            strokeWidth={3}
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -171,37 +157,57 @@ export function AgreementStep({
   return (
     <>
       <StepHeadline>{AGREEMENT_HEADLINE}</StepHeadline>
-      <Rise index={2}>
+      <StepNote index={2}>{AGREEMENT_NOTE}</StepNote>
+      <Rise index={3}>
         <View style={{ gap: scale.cardGap }}>
-          <View className="overflow-hidden rounded-lg bg-white">
-            <View style={{ gap: scale.cardRowGap, padding: scale.cardPad }}>
-              {contract.description.map((item) => (
-                <View key={item.point}>
-                  <Text
-                    weight={FontWeight.Semibold}
-                    className="text-black"
-                    style={{ fontSize: scale.ui, lineHeight: scale.ui * 1.3 }}
+          <View className="overflow-hidden rounded-lg">
+            <View
+              className="bg-zinc-50"
+              style={{ gap: scale.cardRowGap, padding: scale.cardPad }}
+            >
+              {contract.description.map((item, index) => (
+                <View key={item.point} className="flex-row gap-x-3">
+                  <View
+                    className="shrink-0 items-center justify-center rounded"
+                    style={{
+                      width: scale.ui * 1.7,
+                      height: scale.ui * 1.7,
+                      backgroundColor: onboardingColors.navy,
+                    }}
                   >
-                    {item.point}
-                  </Text>
-                  {item.subtext.trim() !== "" && (
                     <Text
-                      className="text-zinc-700"
+                      weight={FontWeight.Semibold}
+                      className="text-white"
+                      style={{ fontSize: scale.ui * 0.9, lineHeight: scale.ui }}
+                    >
+                      {index + 1}
+                    </Text>
+                  </View>
+                  <View className="min-w-0 flex-1">
+                    <Text
+                      weight={FontWeight.Semibold}
+                      className="text-black"
                       style={{
-                        fontSize: scale.ui * 0.9,
-                        lineHeight: scale.ui * 1.2,
+                        fontSize: scale.ui,
+                        lineHeight: scale.ui * 1.3,
                       }}
                     >
-                      {item.subtext}
+                      {item.point}
                     </Text>
-                  )}
+                    {item.subtext.trim() !== "" && (
+                      <Text
+                        className="text-zinc-700"
+                        style={{
+                          fontSize: scale.ui * 0.9,
+                          lineHeight: scale.ui * 1.2,
+                        }}
+                      >
+                        {item.subtext}
+                      </Text>
+                    )}
+                  </View>
                 </View>
               ))}
-
-              <CommitControl
-                typed={committed}
-                onTypedChange={onCommittedChange}
-              />
 
               <Pressable
                 onPress={() => router.push("/information")}
@@ -216,18 +222,47 @@ export function AgreementStep({
                   {DETAILS_LINK}
                 </Text>
               </Pressable>
+            </View>
 
-              <TextInput
-                className="rounded-md border border-zinc-300 bg-zinc-100 px-3.5 text-black"
-                style={{ height: scale.signField, fontSize: scale.ui }}
-                placeholder="Sign your full name to agree"
-                placeholderTextColor="#71717a"
-                value={signedName}
-                onChangeText={onSignedNameChange}
-                autoComplete="name"
-                accessibilityLabel="Sign your full name to agree"
-                testID="vr-onboarding-signature"
-              />
+            <View
+              className="bg-white"
+              style={{ gap: scale.noteGap, padding: scale.cardPad }}
+            >
+              <Text
+                className="text-black"
+                style={{ fontSize: scale.ui, lineHeight: scale.ui * 1.3 }}
+              >
+                Type{" "}
+                <Text
+                  weight={FontWeight.Semibold}
+                  className="text-black"
+                  style={{ fontSize: scale.ui }}
+                >
+                  {COMMIT_PHRASE}
+                </Text>{" "}
+                to agree.
+              </Text>
+              <View style={{ gap: 6 }}>
+                <CommitControl
+                  typed={committed}
+                  onTypedChange={onCommittedChange}
+                />
+                <TextInput
+                  className="rounded-md border-2 bg-white px-3.5 text-black"
+                  style={{
+                    height: scale.signField,
+                    fontSize: scale.ui,
+                    borderColor: "#e4e4e7",
+                  }}
+                  placeholder="Sign your full name"
+                  placeholderTextColor="#a1a1aa"
+                  value={signedName}
+                  onChangeText={onSignedNameChange}
+                  autoComplete="name"
+                  accessibilityLabel="Sign your full name"
+                  testID="vr-onboarding-signature"
+                />
+              </View>
 
               {error && (
                 <Text

@@ -1,7 +1,7 @@
 import { cn } from "@alliance/shared/styles/util";
 import { ArrowLeft, ArrowRight } from "lucide-react-native";
 import type { ReactNode } from "react";
-import { View } from "react-native";
+import { ScrollView, View } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { PROGRESS_SEGMENTS } from "../../lib/onboarding/flow";
 import { motion, useOnboardingScale } from "../../lib/onboarding/scale";
@@ -218,15 +218,19 @@ export function StepLayout({
       style={{ paddingTop: scale.padTop, paddingBottom: scale.padBottom }}
     >
       {eyebrow && <StepEyebrow delayMs={eyebrowDelayMs}>{eyebrow}</StepEyebrow>}
-      <View
-        className="min-h-0 flex-1 justify-center"
-        style={{
+      <ScrollView
+        className="min-h-0 flex-1"
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: "center",
           gap: gap ?? scale.bodyGap,
           marginTop: eyebrow ? scale.bandGap : undefined,
         }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {children}
-      </View>
+      </ScrollView>
       {footer}
     </View>
   );

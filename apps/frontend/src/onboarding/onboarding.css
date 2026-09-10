@@ -110,28 +110,12 @@ html.ob-locked body {
     left 900ms var(--ob-swap),
     border-radius 900ms var(--ob-swap),
     background-color 800ms ease,
-    transform var(--ob-leave, 380ms) var(--ob-swap);
+    opacity var(--ob-leave, 300ms) var(--ob-swap);
 }
 
-/* Leaves to the left, uncovering the white the tour opens on. Its own margin
-   goes with it, so nothing is left showing down the left edge. */
 .ob-panel--leaving {
-  transform: translateX(calc(-100% - var(--ob-margin)));
-}
-
-@keyframes ob-logo-rise {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.ob-logo-rise {
-  animation: ob-logo-rise 320ms var(--ob-swap) both;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Width and left off `vw` rather than `right`/`%`, because `vw` counts a

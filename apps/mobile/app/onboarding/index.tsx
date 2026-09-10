@@ -17,6 +17,12 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { AgreementStep } from "../../components/onboarding/AgreementStep";
 import {
   FooterNav,
@@ -46,6 +52,7 @@ import {
   stepBefore,
 } from "../../lib/onboarding/flow";
 import {
+  motion,
   onboardingColors,
   useOnboardingScale,
 } from "../../lib/onboarding/scale";
@@ -89,6 +96,9 @@ const OnboardingScreen = () => {
   const [notice, setNotice] = useState<string | null>(null);
   const [received, setReceived] = useState(false);
   const registeredRef = useRef(false);
+  const leavingRef = useRef(false);
+  const fade = useSharedValue(1);
+  const fadeStyle = useAnimatedStyle(() => ({ opacity: fade.value }));
 
   const { data: memberCount } = useAllianceMemberCount();
   const faces = useSignupFaces(referralCode ?? null, {
@@ -112,8 +122,13 @@ const OnboardingScreen = () => {
   }, [referralCode]);
 
   const enterPlatform = useCallback(() => {
-    router.replace(walkthroughStart());
-  }, [router]);
+    if (leavingRef.current) return;
+    leavingRef.current = true;
+    const go = () => router.replace(walkthroughStart());
+    fade.value = withTiming(0, { duration: motion.stepFadeMs }, (done) => {
+      if (done) runOnJS(go)();
+    });
+  }, [router, fade]);
 
   const goNext = useCallback(() => {
     const next = stepAfter(step);
@@ -207,7 +222,7 @@ const OnboardingScreen = () => {
 
     setSubmitting(false);
     setReceived(true);
-    setTimeout(enterPlatform, 900);
+    enterPlatform();
   }, [
     submitting,
     latestContract,
@@ -326,13 +341,13 @@ const OnboardingScreen = () => {
 
   return (
     <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-      <View
+      <Animated.View
         className="flex-1"
-        style={{ backgroundColor: TONE_BACKGROUND[tone] }}
+        style={[{ backgroundColor: TONE_BACKGROUND[tone] }, fadeStyle]}
       >
         {panelBody()}
         {filled > 0 && !isGate && <ProgressTrack filled={filled} />}
-      </View>
+      </Animated.View>
     </KeyboardAvoidingView>
   );
 };

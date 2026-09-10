@@ -13,6 +13,7 @@ import { useInvite } from "@alliance/shared/lib/useInvite";
 import { useSignupFaces } from "@alliance/shared/lib/useSignupFaces";
 import { cn } from "@alliance/shared/styles/util";
 import type { StyleWithVars } from "@alliance/sharedweb/ui/cssVars";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import posthog from "posthog-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { href, useLocation, useNavigate, useSearchParams } from "react-router";
@@ -41,7 +42,7 @@ import {
   stepBefore,
 } from "./flow";
 import { GrantmakingCard } from "./GrantmakingCard";
-import { JOIN_PHASE_MS, JoinPhase } from "./joinPhase";
+import { JoinPhase, PANEL_FADE_MS } from "./joinPhase";
 import { MobileAppFooter, MobileAppStep } from "./MobileAppStep";
 import "./onboarding.css";
 import {
@@ -71,7 +72,7 @@ export function meta() {
 const ACCOUNT_ANCHOR = "#create-account";
 
 const PANEL_STYLE: StyleWithVars = {
-  "--ob-leave": `${JOIN_PHASE_MS[JoinPhase.Leaving]}ms`,
+  "--ob-leave": `${PANEL_FADE_MS}ms`,
 };
 
 /** `--ob-tone-ink` is the colour the footer's white primary button letters in. */
@@ -114,6 +115,7 @@ const OnboardingPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [joinPhase, setJoinPhase] = useState(JoinPhase.Idle);
   const registeredRef = useRef(false);
+  const leavingRef = useRef(false);
 
   const goTo = useCallback(
     (next: OnboardingStep) => {
@@ -176,37 +178,19 @@ const OnboardingPage = () => {
   }, [step, goTo]);
 
   const enterPlatform = useCallback(async () => {
-    const session = await R.fromPromise(onLogin());
-    // The account and the signature are already written, so a session that
-    // fails to establish goes to log in. Nothing here may leave the member on
-    // the white the panel uncovered, which has no way back.
+    if (leavingRef.current) return;
+    leavingRef.current = true;
+    setJoinPhase(JoinPhase.Leaving);
+    const fadeMs = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? 0
+      : PANEL_FADE_MS;
+    const fade = new Promise<void>((resolve) => {
+      window.setTimeout(resolve, fadeMs);
+    });
+    const sessionP = R.fromPromise(onLogin());
+    const [, session] = await Promise.all([fade, sessionP]);
     navigate(session.ok ? walkthroughStartHref() : href("/login"));
   }, [onLogin, navigate]);
-
-  useEffect(() => {
-    const hold = (run: () => void) => {
-      const timer = setTimeout(run, JOIN_PHASE_MS[joinPhase]);
-      return () => clearTimeout(timer);
-    };
-
-    switch (joinPhase) {
-      case JoinPhase.Idle:
-        return;
-      case JoinPhase.Received:
-        return hold(() => {
-          if (mobileWeb) {
-            goTo(OnboardingStep.MobileApp);
-            setJoinPhase(JoinPhase.Idle);
-            return;
-          }
-          setJoinPhase(JoinPhase.Leaving);
-        });
-      case JoinPhase.Leaving:
-        return hold(() => void enterPlatform());
-      default:
-        throw new Error(`unknown join phase: ${joinPhase satisfies never}`);
-    }
-  }, [joinPhase, goTo, mobileWeb, enterPlatform]);
 
   // Registration waits until Join, so an account only ever exists alongside a
   // signed agreement.
@@ -269,9 +253,24 @@ const OnboardingPage = () => {
       return;
     }
 
+    if (mobileWeb) {
+      setSubmitting(false);
+      goTo(OnboardingStep.MobileApp);
+      return;
+    }
+    await enterPlatform();
     setSubmitting(false);
-    setJoinPhase(JoinPhase.Received);
-  }, [submitting, signedName, email, password, referralCode, latestContract]);
+  }, [
+    submitting,
+    signedName,
+    email,
+    password,
+    referralCode,
+    latestContract,
+    mobileWeb,
+    goTo,
+    enterPlatform,
+  ]);
 
   const filled = FILLED_SEGMENTS[step];
 
@@ -316,6 +315,7 @@ const OnboardingPage = () => {
                 nextDisabled={
                   !agreementSigned || submitting || joinPhase !== JoinPhase.Idle
                 }
+                loading={submitting}
                 index={4}
               />
             }
@@ -366,6 +366,11 @@ const OnboardingPage = () => {
       )}
     >
       <div className="relative h-dvh">
+        {joinPhase === JoinPhase.Leaving && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-white">
+            <Spinner size="large" />
+          </div>
+        )}
         <div
           className={cn(
             "transition-opacity duration-500",

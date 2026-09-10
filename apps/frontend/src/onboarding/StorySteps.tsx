@@ -15,15 +15,15 @@ export const COMMUNITY_HEADLINE =
   "We’re assembling a community that works together to combat global problems by committing 15 minutes every week.";
 
 export const COMMITMENT_HEADLINE =
-  "Members commit to weekly participation, which allows us to plan actions in advance.";
+  "Members commit to weekly participation, which allows us to design projects with precision.";
 
 export const COMMITMENT_NOTE = "Tap to explore";
 
 export const MINUTES_HEADLINE =
-  "Every action takes about fifteen minutes of your week.";
+  "Project tasks take about fifteen minutes of your week.";
 
 export const MINUTES_NOTE =
-  "You can complete the action at any time during the week.";
+  "You can complete the task at any time during the week.";
 
 export const SCALE_HEADLINE =
   "The larger we are, the more impact we can have. Every new member is vital to us at this experimental stage.";
@@ -33,12 +33,21 @@ export const SCALE_NOTE =
 
 /** The reachable half of the track, which is all onboarding shows. */
 const REACHED_MILESTONES: Milestone[] = [
-  { members: 30, label: "Jointly pitch the media on an underreported topic" },
+  {
+    members: 30,
+    label: "Jointly pitch the media on an underreported topic",
+    kind: MilestoneKind.Completed,
+  },
   {
     members: 100,
     label: "Encourage a small business to adopt a sustainability policy",
+    kind: MilestoneKind.Completed,
   },
-  { members: 300, label: "Conduct a large-scale citizen science project" },
+  {
+    members: 300,
+    label: "Conduct a large-scale citizen science project",
+    kind: MilestoneKind.Completed,
+  },
   {
     members: nextMilestone.members,
     label: nextMilestone.action,

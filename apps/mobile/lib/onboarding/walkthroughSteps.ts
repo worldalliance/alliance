@@ -46,6 +46,14 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
       "The menu button holds the rest of your navigation. Membership is where your commitment lives — next opens it for you.",
   },
   {
+    anchor: WalkthroughAnchor.Contract,
+    path: "/membership",
+    dockBottom: true,
+    title: () => "Your agreement",
+    body: () =>
+      "This is what you signed to become a member. You can end your agreement here, and we’ll stop assigning you tasks.",
+  },
+  {
     anchor: WalkthroughAnchor.AwayRanges,
     path: "/membership",
     dockBottom: true,

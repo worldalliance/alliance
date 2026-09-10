@@ -179,7 +179,7 @@ export function AccountStep({
                   className={CARD_BUTTON}
                   disabled={pending || !ready}
                 >
-                  {loggingIn ? "Log In" : "Get started"}
+                  {loggingIn ? "Log in" : "Get started"}
                   <SiteArrow className="size-2.5" />
                 </Button>
                 {loggingIn && (

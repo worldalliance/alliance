@@ -2,6 +2,7 @@ export enum MilestoneKind {
   Example = "example",
   /** The one real commitment on the track, which the graphic makes stand out. */
   Plan = "plan",
+  Completed = "completed",
 }
 
 export type Milestone = {

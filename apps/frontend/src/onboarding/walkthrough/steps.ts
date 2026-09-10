@@ -1,4 +1,5 @@
 import { href } from "react-router";
+import { MOCK_PARAM } from "../useMockTasks";
 
 export const WALKTHROUGH_PARAM = "walkthrough";
 
@@ -12,6 +13,7 @@ export enum WalkthroughAnchor {
   GroupsNav = "groups-nav",
   Group = "group",
   ProfileMenu = "profile-menu",
+  Contract = "contract",
   AwayRanges = "away-ranges",
   TaskList = "task-list",
 }
@@ -30,45 +32,57 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     path: href("/tasks"),
     title: () => "Welcome!",
     body: () =>
-      "You’re now a member of the Alliance. Let’s take a tour of your platform.",
+      "You’re now a member of the Alliance. Let’s take a tour of the platform.",
   },
   {
     anchor: WalkthroughAnchor.CurrentTask,
     path: href("/tasks"),
-    title: () => "This is the part that matters",
+    title: () => "The most important part",
     body: () =>
-      "Your current task. Fifteen minutes, once a week — that is the whole commitment.",
+      "Here, you'll see any tasks you've been assigned. Tasks will take no more than 15 minutes per week.",
   },
   {
     anchor: WalkthroughAnchor.ActionUpdates,
     path: href("/tasks"),
-    title: () => "What came of the last one",
+    title: () => "Updates on our projects",
     body: () =>
-      "Action updates sit at the top: what the Alliance finished, and what it changed.",
+      "Here, we share updates about our projects, including the impact we've made together.",
   },
   {
     anchor: WalkthroughAnchor.ProfileMenu,
     path: href("/tasks"),
-    title: () => "Your membership is under here",
+    title: () => "Manage your membership",
+    body: () => "Choose Membership from the profile menu.",
+  },
+  {
+    anchor: WalkthroughAnchor.Contract,
+    path: href("/membership"),
+    title: () => "Your agreement",
     body: () =>
-      "Open the profile menu in the corner and choose Membership. Next opens it for you.",
+      "This is what you signed to become a member. You can end your agreement here, and we’ll stop assigning you tasks.",
   },
   {
     anchor: WalkthroughAnchor.AwayRanges,
     path: href("/membership"),
     title: () => "Weeks you can’t make",
     body: () =>
-      "Schedule time away and we plan the week without you. Tell us in advance and nothing is held against you.",
+      "Tell us in advance if you won't be able to complete tasks for a while, so that we can plan around your absence.",
   },
   {
     anchor: WalkthroughAnchor.TaskList,
     path: href("/tasks"),
     title: () => "Start at the top",
     body: () =>
-      "Back on your tasks. Set your reminders, then this week’s action, the one every member is working on at the same time.",
+      "Back to your tasks page, which now includes some onboarding tasks to get you started.",
   },
 ];
 
 export function walkthroughStartHref(): string {
   return `${WALKTHROUGH_STEPS[0].path}?${WALKTHROUGH_PARAM}=0&${TOUR_INTRO_PARAM}=1`;
+}
+
+export function walkthroughStepHref(at: number, mocked = false): string {
+  const query = new URLSearchParams({ [WALKTHROUGH_PARAM]: String(at) });
+  if (mocked) query.set(MOCK_PARAM, "1");
+  return `${WALKTHROUGH_STEPS[at].path}?${query}`;
 }

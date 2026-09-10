@@ -56,6 +56,7 @@ const barToneClasses: Record<MilestoneKind, string> = {
   [MilestoneKind.Example]: "bg-white/35",
   [MilestoneKind.Plan]:
     "border border-[var(--color-green)]/45 bg-[var(--color-green)]/12",
+  [MilestoneKind.Completed]: "bg-white/35",
 };
 
 /* Eight compact cells overrun a phone, so the aspirational half waits for the
@@ -145,7 +146,7 @@ function MilestoneTrack({
             {kind === MilestoneKind.Plan && (
               <p
                 className={cn(
-                  "flex items-center justify-end gap-1.5 tracking-wide text-white/70 uppercase",
+                  "flex items-center justify-end gap-1.5 tracking-wider text-white/60 uppercase",
                   planTagClasses[size],
                 )}
               >
@@ -153,7 +154,17 @@ function MilestoneTrack({
                   className="size-1.5 rounded-full bg-[var(--color-green)]"
                   aria-hidden
                 />
-                Plan
+                Upcoming
+              </p>
+            )}
+            {kind === MilestoneKind.Completed && (
+              <p
+                className={cn(
+                  "flex items-center justify-end gap-1.5 tracking-wider text-white/60 uppercase",
+                  planTagClasses[size],
+                )}
+              >
+                Completed
               </p>
             )}
           </div>

@@ -45,7 +45,7 @@ export function useOnboardingScale() {
     noteGap: clamp(0.25 * REM, 0.7 * vh, 0.6 * REM),
     trackGap: clamp(0.6 * REM, 2.6 * vh, 2 * REM),
     cardGap: clamp(0.55 * REM, 1.7 * vh, 1.15 * REM),
-    cardPad: clamp(0.75 * REM, 1.9 * vh, 1.35 * REM),
+    cardPad: clamp(1.15 * REM, 2.8 * vh, 2 * REM),
     cardRowGap: clamp(0.4 * REM, 1.15 * vh, 0.85 * REM),
     signField: clamp(2.1 * REM, 4.4 * vh, 2.75 * REM),
     face: clamp(1.75 * REM, 3.6 * vh, 2.5 * REM),

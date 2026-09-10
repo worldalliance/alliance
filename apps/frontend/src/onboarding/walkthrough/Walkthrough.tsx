@@ -9,6 +9,7 @@ import {
   TOUR_INTRO_PARAM,
   WALKTHROUGH_PARAM,
   WALKTHROUGH_STEPS,
+  walkthroughStepHref,
   type WalkthroughAnchor,
 } from "./steps";
 import { WalkthroughIntro } from "./WalkthroughIntro";
@@ -40,6 +41,25 @@ type Box = { top: number; left: number; width: number; height: number };
 
 /** Tagged with its anchor so a frame left over from the last step can't show. */
 type Measurement = Box & { anchor: WalkthroughAnchor };
+
+// Absolute children (the profile menu) sit outside the anchor's own box.
+function visibleBox(el: HTMLElement): Box {
+  let top = Infinity;
+  let left = Infinity;
+  let right = -Infinity;
+  let bottom = -Infinity;
+  const add = (node: Element) => {
+    const r = node.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) return;
+    top = Math.min(top, r.top);
+    left = Math.min(left, r.left);
+    right = Math.max(right, r.right);
+    bottom = Math.max(bottom, r.bottom);
+  };
+  add(el);
+  for (const child of el.children) add(child);
+  return { top, left, width: right - left, height: bottom - top };
+}
 
 function sameBox(a: Measurement | null, b: Measurement) {
   return (
@@ -169,11 +189,7 @@ export function Walkthrough() {
 
   const mocked = searchParams.get(MOCK_PARAM) === "1";
   const stepHref = useCallback(
-    (at: number) => {
-      const query = new URLSearchParams({ [WALKTHROUGH_PARAM]: String(at) });
-      if (mocked) query.set(MOCK_PARAM, "1");
-      return `${WALKTHROUGH_STEPS[at].path}?${query}`;
-    },
+    (at: number) => walkthroughStepHref(at, mocked),
     [mocked],
   );
 
@@ -201,8 +217,15 @@ export function Walkthrough() {
 
   useEffect(() => {
     if (!step || onStepPath) return;
-    navigate(stepHref(index), { replace: true });
-  }, [step, onStepPath, navigate, index, stepHref]);
+    const next = index + 1;
+    const followed =
+      next < WALKTHROUGH_STEPS.length &&
+      location.pathname === WALKTHROUGH_STEPS[next].path;
+    navigate(stepHref(followed ? next : index), {
+      replace: true,
+      preventScrollReset: true,
+    });
+  }, [step, onStepPath, navigate, index, stepHref, location.pathname]);
 
   useLayoutEffect(() => {
     if (!dialogue) return;
@@ -240,7 +263,7 @@ export function Walkthrough() {
       const el = document.querySelector<HTMLElement>(
         `[data-walkthrough="${anchor}"]`,
       );
-      const r = el?.getBoundingClientRect();
+      const r = el ? visibleBox(el) : null;
       if (el && r && r.height > 0) {
         found = true;
         misses = 0;
@@ -297,8 +320,6 @@ export function Walkthrough() {
       data-ob-tour
       className={cn("pointer-events-none fixed inset-0", zIndex.modal)}
     >
-      {/* The dim and the dialogue wait for the platform to land, so the two
-          arrive together rather than under the white. */}
       <div
         className={cn("transition-opacity duration-300", intro && "opacity-0")}
       >

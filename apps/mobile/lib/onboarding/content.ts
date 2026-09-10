@@ -1,3 +1,4 @@
+import { isConfirmationCloseEnough } from "@alliance/shared/lib/contract";
 import { nextMilestone } from "@alliance/shared/lib/copy";
 import { MilestoneKind, type Milestone } from "@alliance/shared/lib/milestones";
 import type { ImageSourcePropType } from "react-native";
@@ -35,15 +36,15 @@ export const HOURS_LEGEND_SPENT = "Time spent completing actions";
 
 export const AGREEMENT_HEADLINE = "Help us build a network of reliability.";
 
+export const AGREEMENT_NOTE =
+  "This agreement is core to the Alliance. Once you sign it, you become a member.";
+
 /** Typed out rather than ticked, so agreeing takes a deliberate act. */
-export const COMMIT_PHRASE = "I commit";
+export const COMMIT_PHRASE = "I commit to complete each task on time";
 
 export function isCommitted(typed: string): boolean {
-  return typed.trim().toLowerCase() === COMMIT_PHRASE.toLowerCase();
+  return isConfirmationCloseEnough(typed, COMMIT_PHRASE);
 }
-
-export const COMMITMENT_STATEMENT =
-  "I commit to complete each task to the best of my ability.";
 
 export const DETAILS_LINK = "View more details";
 
