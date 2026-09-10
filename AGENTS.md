@@ -28,6 +28,7 @@ Always read and apply:
 Read before the matching task:
 
 - Querying the local Postgres db → `(root)/skills/local-db/SKILL.md`
+- Using the Linear API → `(root)/skills/linear/SKILL.md`
 - Verifying a change in the browser, driving the mobile app, calling the API, or authenticating as an admin → `(root)/skills/playwright/SKILL.md`
 - Writing or editing any doc an agent reads (`SKILL.md`, `AGENTS.md`, `CLAUDE.md`, docs those point at) → `(root)/skills/writing-for-agents/SKILL.md`
 
@@ -48,6 +49,10 @@ Read before the matching task:
 Non-standard workspace: every web package installs from `apps/frontend/package.json`. A dependency used in `apps/admin`, `sharedweb`, `common`, … must also be declared there, same version range. `bun install` after editing.
 
 Reach for a maintained npm package over hand-rolling parsing, sanitization, date handling, retries. Same inside the repo — reuse or extract a shared util instead of duplicating one.
+
+## Issue tracking
+
+Issues live in Linear.
 
 # General
 

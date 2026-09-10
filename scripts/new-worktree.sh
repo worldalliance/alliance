@@ -280,7 +280,7 @@ strip_port_overrides() {
   grep -Ev '^[[:space:]]*(export[[:space:]]+)?(SERVER_PORT|PORT|FRONTEND_PORT|ADMIN_PORT|MOBILE_PORT|ALLIANCE_DEV_[A-Z_]+_URL|EXPO_PUBLIC_ALLIANCE_API_PORT)=' "$1" || true
 }
 
-for f in server/.env apps/frontend/.env.local apps/admin/.env.local apps/mobile/.env; do
+for f in .env.devtools server/.env apps/frontend/.env.local apps/admin/.env.local apps/mobile/.env; do
   if [[ -f "$main_root/$f" ]]; then
     mkdir -p "$worktree_dir/$(dirname "$f")"
     strip_port_overrides "$main_root/$f" > "$worktree_dir/$f"
