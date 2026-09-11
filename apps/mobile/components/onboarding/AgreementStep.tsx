@@ -72,11 +72,11 @@ function SignedBy({
               {inviter.displayName}
             </Text>{" "}
             and {Math.max(signedCount - 1, 0).toLocaleString("en-US")} others
-            have signed the agreement.
+            have entered the agreement.
           </>
         ) : (
           <>
-            {signedCount.toLocaleString("en-US")} members have signed the
+            {signedCount.toLocaleString("en-US")} members have entered the
             agreement.
           </>
         )}
