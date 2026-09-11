@@ -8,7 +8,7 @@ import {
 } from "react";
 import { Link } from "react-router";
 import type { Picture } from "vite-imagetools";
-import texture from "../assets/redesign/priority-environment.jpg?w=400;800&format=avif;webp;jpg&as=picture";
+import texture from "../assets/redesign/drought-image.png?w=800;1600;2400&format=avif;webp;jpg&as=picture";
 
 export const SITE_COL =
   "mx-auto w-full max-w-[1750px] px-5 sm:px-8 lg:px-[68px]";
@@ -97,7 +97,7 @@ export function TexturedFill() {
       style={{
         mixBlendMode: "screen",
         filter: "grayscale(1) contrast(1.05)",
-        opacity: 0.62,
+        opacity: 0.2,
       }}
     />
   );
@@ -380,17 +380,27 @@ export function DisplayHeading({
   children,
   className,
   as: Tag = "h2",
+  onDark = false,
 }: {
   children: ReactNode;
   className?: string;
   as?: "h1" | "h2";
+  onDark?: boolean;
 }) {
   return (
     <Tag
       className={cn(
-        "site-display font-medium text-black leading-[1.06]",
+        "site-display font-medium text-balance",
+        onDark ? "text-white" : "text-black",
         className,
       )}
+      /**
+       * `leading-*` is a Tailwind "font-size" utility as far as tailwind-merge is
+       * concerned, so any caller-supplied text-size className silently strips it.
+       * 1.35 is the tightest value that clears descender/ascender overlap between
+       * lines for this face, measured across the hero's full wrap range.
+       */
+      style={{ lineHeight: 1.35 }}
     >
       {children}
     </Tag>
@@ -430,7 +440,7 @@ export function SectionSubtitle({
   return (
     <p
       className={cn(
-        "max-w-2xl text-xl leading-snug sm:text-2xl",
+        "max-w-[50.4rem] text-xl leading-snug sm:text-2xl",
         onDark ? "text-white/75" : "text-(--site-ink)/90",
         className,
       )}
@@ -444,14 +454,17 @@ export function SectionSubtitle({
 export function PageShellSubtitle({
   children,
   className,
+  onDark = false,
 }: {
   children: ReactNode;
   className?: string;
+  onDark?: boolean;
 }) {
   return (
     <p
       className={cn(
-        "max-w-2xl text-lg sm:text-xl md:text-2xl text-(--site-ink)/90 ",
+        "max-w-2xl text-lg sm:text-xl md:text-2xl",
+        onDark ? "text-white/90" : "text-(--site-ink)/90",
         className,
       )}
     >
