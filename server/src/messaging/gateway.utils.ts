@@ -34,10 +34,5 @@ export function extractTokenFromSocket(client: Socket): string | undefined {
     }
   }
 
-  const queryToken = client.handshake?.query?.token;
-  if (typeof queryToken === "string") {
-    return queryToken;
-  }
-
   return undefined;
 }

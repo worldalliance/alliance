@@ -16,7 +16,6 @@ describe("extractTokenFromSocket", () => {
             authorization: "Bearer header",
             cookie: `${ACCESS_COOKIE}=cookie`,
           },
-          query: { token: "query" },
         }),
       ),
     ).toBe("auth");
@@ -30,7 +29,6 @@ describe("extractTokenFromSocket", () => {
             authorization: "Bearer header",
             cookie: `${ACCESS_COOKIE}=cookie`,
           },
-          query: { token: "query" },
         }),
       ),
     ).toBe("header");
@@ -54,13 +52,12 @@ describe("extractTokenFromSocket", () => {
       extractTokenFromSocket(
         socket({
           headers: { cookie: `${ACCESS_COOKIE}=cookie` },
-          query: { token: "query" },
         }),
       ),
     ).toBe("cookie");
   });
 
-  it("falls back to the query token", () => {
+  it("ignores a query token", () => {
     expect(
       extractTokenFromSocket(
         socket({
@@ -68,7 +65,7 @@ describe("extractTokenFromSocket", () => {
           query: { token: "query" },
         }),
       ),
-    ).toBe("query");
+    ).toBeUndefined();
   });
 
   it("returns undefined when the handshake carries nothing", () => {
