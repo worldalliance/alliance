@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import { useState } from "react";
 import { MemoryRouter } from "react-router";
+import { AuthContext, type AuthContextType } from "../lib/AuthContext";
 
 const authLogin = jest.fn(async () => ({ response: { ok: true } }));
 const onLogin = jest.fn(async () => {});
@@ -14,10 +15,6 @@ const onLogin = jest.fn(async () => {});
 jest.mock("@alliance/shared/client", () => ({
   authLogin,
   authForgotPassword: jest.fn(),
-}));
-
-jest.mock("../lib/AuthContext", () => ({
-  useAuth: () => ({ onLogin }),
 }));
 
 jest.mock("@alliance/shared/lib/useInvite", () => ({
@@ -53,6 +50,19 @@ jest.mock("@alliance/sharedweb/ui/OAuthButtons", () => ({
 
 import { AccountStep } from "./AccountStep";
 
+const noop = () => Promise.resolve();
+
+const authValue: AuthContextType = {
+  isAuthenticated: false,
+  user: undefined,
+  isImpersonation: false,
+  refreshUser: noop,
+  login: noop,
+  onLogin,
+  logout: noop,
+  loading: false,
+};
+
 afterEach(() => {
   cleanup();
   authLogin.mockClear();
@@ -65,21 +75,23 @@ const Harness = () => {
   const [tick, setTick] = useState(0);
   return (
     <MemoryRouter>
-      <button type="button" onClick={() => setTick((n) => n + 1)}>
-        parent update
-      </button>
-      <span data-testid="tick">{tick}</span>
-      <AccountStep
-        email={email}
-        onEmailChange={setEmail}
-        password={password}
-        onPasswordChange={setPassword}
-        onCreateAccount={() => {}}
-        redirectAfterLogin="/tasks"
-        startInLogin
-        referralCode={null}
-        providerError={null}
-      />
+      <AuthContext.Provider value={authValue}>
+        <button type="button" onClick={() => setTick((n) => n + 1)}>
+          parent update
+        </button>
+        <span data-testid="tick">{tick}</span>
+        <AccountStep
+          email={email}
+          onEmailChange={setEmail}
+          password={password}
+          onPasswordChange={setPassword}
+          onCreateAccount={() => {}}
+          redirectAfterLogin="/tasks"
+          startInLogin
+          referralCode={null}
+          providerError={null}
+        />
+      </AuthContext.Provider>
     </MemoryRouter>
   );
 };
