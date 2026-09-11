@@ -22,6 +22,7 @@ import PhoneNumberInput from "../../components/forms/PhoneNumberInput";
 import ReminderTimeSelect from "../../components/forms/ReminderTimeSelect";
 import TimeZoneSelect from "../../components/forms/TimeZoneSelect";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
+import OAuthAccountLinks from "../../components/OAuthAccountLinks";
 import Button, {
   ButtonColor,
   ButtonSize,
@@ -488,6 +489,7 @@ export default function SettingsPage() {
                   {forgotPassword.error?.message}
                 </Text>
               )}
+              <OAuthAccountLinks />
             </View>
           </Card>
 
