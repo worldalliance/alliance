@@ -52,7 +52,7 @@ function AvatarStrip({ avatars }: { avatars: string[] }) {
 
 /**
  * One line of activity, set as a sentence: bold subject, plain verb, then the
- * action in the link blue, and how long ago it closed.
+ * action in the accent green, and how long ago it closed.
  */
 function ActivityLine({
   row,
@@ -69,7 +69,7 @@ function ActivityLine({
         {row.action && (
           <>
             {" "}
-            <span className="font-semibold text-[var(--site-link)]">
+            <span className="font-semibold text-[var(--color-green)]">
               {row.action}
             </span>
           </>

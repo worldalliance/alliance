@@ -194,13 +194,12 @@ export function TaskCard() {
         <div className="flex flex-col gap-1.5 mb-4">
           <div className="h-3 overflow-hidden rounded-full bg-zinc-100">
             <div
-              className="h-full origin-left rounded-full bg-green transition-transform duration-[900ms] ease-out"
+              className="h-full origin-left rounded-full bg-[var(--color-green)] transition-transform duration-[900ms] ease-out"
               style={{ transform: `scaleX(${inView ? percent / 100 : 0})` }}
             />
           </div>
           <p className={cn(MOCK_COPY_SMALL, "text-zinc-500")}>
-            {TASK_PROGRESS_DONE}/{TASK_PROGRESS_TOTAL} members have completed
-            the week&apos;s tasks
+            {TASK_PROGRESS_DONE}/{TASK_PROGRESS_TOTAL} members completed
           </p>
         </div>
 
@@ -219,8 +218,8 @@ export function TaskCard() {
                   className={cn(
                     "flex size-6 shrink-0 items-center justify-center rounded-full",
                     isChecked
-                      ? "bg-green text-white border-none"
-                      : "border border-2 border-green",
+                      ? "bg-[var(--color-green)] text-white border-none"
+                      : "border border-2 border-[var(--color-green)]",
                   )}
                 >
                   {isChecked && (

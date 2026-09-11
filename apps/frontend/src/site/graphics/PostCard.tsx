@@ -77,7 +77,7 @@ export function PostCard({
             {post.timeAgo}
           </span>
         </p>
-        <span className="text-[12.5px] leading-tight text-[var(--site-link)] underline">
+        <span className="text-[12.5px] leading-tight text-[var(--color-green)] underline">
           {post.actionLabel}
         </span>
       </header>
