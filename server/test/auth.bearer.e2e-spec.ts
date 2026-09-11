@@ -1,9 +1,12 @@
 import { SignUpDto } from "src/auth/dto/sign-up.dto";
-import { ACCESS_COOKIE, JWTTokenType } from "src/auth/tokens";
+import { ACCESS_COOKIE, JWTTokenType, REFRESH_COOKIE } from "src/auth/tokens";
 import { UserService } from "src/user/user.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { RefreshTokensResponseDto } from "../src/auth/dto/authtokens.dto";
+import {
+  AuthMeResponseDto,
+  RefreshTokensResponseDto,
+} from "../src/auth/dto/authtokens.dto";
 import { SignInResponseDto } from "../src/auth/dto/signin.dto";
 import { Community } from "../src/community/entities/community.entity";
 import { Friend } from "../src/user/entities/friend.entity";
@@ -89,10 +92,12 @@ describe("Auth (e2e)", () => {
   });
 
   describe("token refresh", () => {
-    const login = async (): Promise<SignInResponseDto> => {
+    const login = async (
+      email = "newusertest@test.com",
+    ): Promise<SignInResponseDto> => {
       await userRepository.save(
         userRepository.create({
-          email: "newusertest@test.com",
+          email,
           password: "password",
           name: "Test User",
         }),
@@ -100,11 +105,7 @@ describe("Auth (e2e)", () => {
 
       const response = await request(ctx.app.getHttpServer())
         .post("/auth/login")
-        .send({
-          email: "newusertest@test.com",
-          password: "password",
-          mode: "header",
-        })
+        .send({ email, password: "password", mode: "header" })
         .expect(200);
 
       return response.body as SignInResponseDto;
@@ -128,6 +129,28 @@ describe("Auth (e2e)", () => {
       const refreshBody = refreshResponse.body as RefreshTokensResponseDto;
 
       expect(refreshBody.access_token).toBeDefined();
+    });
+
+    it("refreshes the session the Bearer header names, not the cookie's", async () => {
+      const stale = await login("stale-cookie@test.com");
+      const current = await login("current-header@test.com");
+
+      const refreshResponse = await request(ctx.app.getHttpServer())
+        .post("/auth/refresh?mode=header")
+        .set("Cookie", [`${REFRESH_COOKIE}=${stale.refresh_token}`])
+        .set("Authorization", `Bearer ${current.refresh_token}`)
+        .expect(200);
+
+      const { access_token } = refreshResponse.body as RefreshTokensResponseDto;
+
+      const meResponse = await request(ctx.app.getHttpServer())
+        .get("/auth/me")
+        .set("Authorization", `Bearer ${access_token}`)
+        .expect(200);
+
+      expect((meResponse.body as AuthMeResponseDto).user.email).toBe(
+        "current-header@test.com",
+      );
     });
 
     it.each(["Basic", "bearer"])(

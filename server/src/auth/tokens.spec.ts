@@ -26,7 +26,7 @@ const request = (
 ): Request => ({ headers, cookies }) as Request;
 
 describe("extractRefreshToken", () => {
-  it("prefers the cookie over the Bearer header", () => {
+  it("prefers the Bearer header over the cookie", () => {
     expect(
       extractRefreshToken(
         request(
@@ -34,19 +34,21 @@ describe("extractRefreshToken", () => {
           { refresh_token: "cookie" },
         ),
       ),
-    ).toBe("cookie");
-  });
-
-  it("falls back to the Bearer header", () => {
-    expect(
-      extractRefreshToken(request({ authorization: "Bearer header" }, {})),
     ).toBe("header");
   });
 
-  it("ignores a header carrying another scheme", () => {
+  it("falls back to the cookie", () => {
+    expect(extractRefreshToken(request({}, { refresh_token: "cookie" }))).toBe(
+      "cookie",
+    );
+  });
+
+  it("falls back to the cookie when the header carries another scheme", () => {
     expect(
-      extractRefreshToken(request({ authorization: "Basic header" }, {})),
-    ).toBeUndefined();
+      extractRefreshToken(
+        request({ authorization: "Basic header" }, { refresh_token: "cookie" }),
+      ),
+    ).toBe("cookie");
   });
 
   it("returns undefined when neither is set", () => {
