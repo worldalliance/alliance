@@ -2,7 +2,15 @@ import { cn } from "@alliance/shared/styles/util";
 import { PRIORITIES_NOTE, priorities, type Priority } from "../content";
 import { SITE_COL, SitePicture } from "../ui";
 
-const CARD_SIZE = "aspect-auto min-h-[13.5rem] md:aspect-[5/4] md:min-h-0";
+/**
+ * Below 1020px the card is a fixed 5:4 photo tile. From 1020px up, the header
+ * shrinks and the card grows taller in lockstep as the four-column row
+ * narrows the card, so the fixed height at any given width already has room
+ * for the header and the hover-revealed description — no dynamic resize on
+ * hover, so a longer description in one card never resizes its row-mates.
+ */
+const CARD_SIZE =
+  "aspect-auto min-h-[13.5rem] min-[768px]:aspect-[5/4] min-[768px]:min-h-0 min-[1020px]:aspect-auto min-[1020px]:h-[clamp(16.7rem,23.5rem-7.15vw,18.7rem)]";
 
 export function PriorityCard({
   priority,
@@ -50,7 +58,7 @@ export function PriorityCard({
       />
 
       <div className="site-priority-body relative z-10 mt-auto flex flex-col px-6 pt-6 pb-5 md:absolute md:inset-x-6 md:bottom-5 md:mt-0 md:px-0 md:pt-0 md:pb-0">
-        <h3 className="text-xl leading-[1.16] font-normal whitespace-normal text-white sm:text-2xl md:whitespace-pre-line lg:text-3xl">
+        <h3 className="text-xl leading-[1.16] font-normal whitespace-normal text-white min-[640px]:text-2xl min-[768px]:whitespace-pre-line min-[1020px]:text-[clamp(1.125rem,1.7vw,1.875rem)]">
           {priority.title}
         </h3>
         <div className="grid min-h-0 grid-rows-[0fr] transition-[grid-template-rows] duration-500 ease-out group-hover:grid-rows-[1fr] group-focus-visible:grid-rows-[1fr]">
@@ -69,7 +77,7 @@ export function Priorities() {
   return (
     <section className="bg-[var(--site-surface)]">
       <div className={SITE_COL}>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 min-[768px]:grid-cols-2 min-[1020px]:grid-cols-4">
           {priorities.map((priority, index) => (
             <PriorityCard key={priority.id} priority={priority} index={index} />
           ))}

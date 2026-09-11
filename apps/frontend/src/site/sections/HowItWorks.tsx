@@ -12,7 +12,7 @@ export function HowItWorks() {
           <BandHeading>{WORK_HEADLINE}</BandHeading>
           <SectionSubtitle>{WORK_SUBHEAD}</SectionSubtitle>
         </div>
-        <div className="grid gap-4 xl:grid-cols-3">
+        <div className="grid gap-4 min-[1020px]:grid-cols-3">
           <CommitCard />
           <TaskCard />
           <UpdateCard />
