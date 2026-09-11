@@ -65,3 +65,6 @@ scratch/
 # Agent working output
 .scratch/
 
+
+# Onboarding design exports: comps referenced by nothing, 9.4MB
+apps/frontend/src/assets/redesign/onboarding/

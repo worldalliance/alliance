@@ -333,7 +333,66 @@ function PartnerForm() {
           </SiteField>
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <div className="grid gap-5 lg:grid-cols-2">
+          <fieldset className="flex flex-col gap-2.5">
+            <legend className="mb-2.5 text-sm font-medium text-white/70">
+              {PARTNER_CHANNELS_LABEL}
+              <span className="text-white/50" aria-hidden>
+                {" *"}
+              </span>
+            </legend>
+            <div className="flex flex-wrap gap-2">
+              {OUTREACH_CHANNELS.map((channel) => (
+                <label
+                  key={channel}
+                  className="flex items-center gap-2 border border-white/25 px-3 py-2 text-sm text-white"
+                  style={SITE_INPUT_STYLE}
+                >
+                  <input
+                    type="checkbox"
+                    name="outreachChannels"
+                    value={channel}
+                    className="size-4 accent-[var(--site-link)]"
+                    disabled={submitting}
+                    onChange={(event) => {
+                      if (channel === "Other") {
+                        setOtherOutreachSelected(event.target.checked);
+                      }
+                      setOutreachError(null);
+                      setSubmitted(false);
+                      setSubmitError(null);
+                    }}
+                  />
+                  {channel}
+                </label>
+              ))}
+            </div>
+            {otherOutreachSelected && (
+              <SiteField
+                label="What other way could you share?"
+                name="outreachOtherDetails"
+                required
+                onDark
+                className="mt-2"
+              >
+                <textarea
+                  id="outreachOtherDetails"
+                  name="outreachOtherDetails"
+                  required
+                  rows={3}
+                  maxLength={1000}
+                  placeholder="Briefly describe the other channel or context."
+                  className={cn(SITE_INPUT, "resize-y")}
+                  style={SITE_INPUT_STYLE}
+                />
+              </SiteField>
+            )}
+            {outreachError && (
+              <p className="text-sm font-medium text-red-200" role="alert">
+                {outreachError}
+              </p>
+            )}
+          </fieldset>
           <SiteField
             label={PARTNER_AUDIENCE_LABEL}
             name="audienceSize"
@@ -350,6 +409,8 @@ function PartnerForm() {
               style={SITE_INPUT_STYLE}
             />
           </SiteField>
+        </div>
+        <div className="grid gap-5 lg:grid-cols-2">
           <SiteField
             label="What would you like Alliance members to do?"
             name="desiredCollaboration"
@@ -366,78 +427,17 @@ function PartnerForm() {
               style={SITE_INPUT_STYLE}
             />
           </SiteField>
+          <SiteField label="Other notes" name="notes" onDark>
+            <textarea
+              id="notes"
+              name="notes"
+              rows={3}
+              placeholder="Anything else we should know?"
+              className={cn(SITE_INPUT, "resize-y")}
+              style={SITE_INPUT_STYLE}
+            />
+          </SiteField>
         </div>
-
-        <fieldset className="flex flex-col gap-2.5">
-          <legend className="mb-2.5 text-sm font-medium text-white/70">
-            {PARTNER_CHANNELS_LABEL}
-            <span className="text-white/50" aria-hidden>
-              {" *"}
-            </span>
-          </legend>
-          <div className="flex flex-wrap gap-2">
-            {OUTREACH_CHANNELS.map((channel) => (
-              <label
-                key={channel}
-                className="flex items-center gap-2 border border-white/25 px-3 py-2 text-sm text-white"
-                style={SITE_INPUT_STYLE}
-              >
-                <input
-                  type="checkbox"
-                  name="outreachChannels"
-                  value={channel}
-                  className="size-4 accent-[var(--site-link)]"
-                  disabled={submitting}
-                  onChange={(event) => {
-                    if (channel === "Other") {
-                      setOtherOutreachSelected(event.target.checked);
-                    }
-                    setOutreachError(null);
-                    setSubmitted(false);
-                    setSubmitError(null);
-                  }}
-                />
-                {channel}
-              </label>
-            ))}
-          </div>
-          {otherOutreachSelected && (
-            <SiteField
-              label="What other way could you share?"
-              name="outreachOtherDetails"
-              required
-              onDark
-              className="mt-2"
-            >
-              <textarea
-                id="outreachOtherDetails"
-                name="outreachOtherDetails"
-                required
-                rows={3}
-                maxLength={1000}
-                placeholder="Briefly describe the other channel or context."
-                className={cn(SITE_INPUT, "resize-y")}
-                style={SITE_INPUT_STYLE}
-              />
-            </SiteField>
-          )}
-          {outreachError && (
-            <p className="text-sm font-medium text-red-200" role="alert">
-              {outreachError}
-            </p>
-          )}
-        </fieldset>
-
-        <SiteField label="Other notes" name="notes" onDark>
-          <textarea
-            id="notes"
-            name="notes"
-            rows={3}
-            placeholder="Anything else we should know?"
-            className={cn(SITE_INPUT, "resize-y")}
-            style={SITE_INPUT_STYLE}
-          />
-        </SiteField>
 
         <div className="flex flex-wrap items-center gap-4">
           <button

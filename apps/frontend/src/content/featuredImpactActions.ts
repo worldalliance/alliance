@@ -1,3 +1,8 @@
+import cupPhoto from "../assets/redesign/action-bringyourowncupimplemented.webp";
+import ewastePhoto from "../assets/redesign/action-ewasteall.webp";
+import donationPhoto from "../assets/redesign/action-helenkellerdonation.webp";
+import potholePhoto from "../assets/redesign/action-potholefilled.webp";
+
 export enum ActionPriority {
   Poverty = "poverty",
   Environment = "environment",
@@ -57,7 +62,7 @@ export const FEATURED_IMPACT_ACTIONS: readonly FeaturedImpactAction[] = [
     actionId: 84,
     emphasis: "We raised $2,702 for Helen Keller International",
     rest: "by making small adjustments to our personal spending habits.",
-    imageSrc: "https://dj92mxbdjuclo.cloudfront.net/1785969542083.webp",
+    imageSrc: donationPhoto,
     tags: [ActionPriority.Poverty],
   },
   {
@@ -77,7 +82,7 @@ export const FEATURED_IMPACT_ACTIONS: readonly FeaturedImpactAction[] = [
     emphasis:
       "We caused 11 cafe locations to adopt bring-your-own-cup policies",
     rest: "by helping them attain media recognition.",
-    imageSrc: "https://worldalliance.org/api/images/1759964091349.webp",
+    imageSrc: cupPhoto,
     tags: [ActionPriority.Environment],
   },
   {
@@ -116,7 +121,7 @@ export const FEATURED_IMPACT_ACTIONS: readonly FeaturedImpactAction[] = [
     actionId: 64,
     emphasis: "We collected and recycled 57 kg (126 lbs) of e-waste",
     rest: "from around our own homes.",
-    imageSrc: "https://dj92mxbdjuclo.cloudfront.net/1768418139810.webp",
+    imageSrc: ewastePhoto,
     tags: [ActionPriority.Environment],
   },
   {
@@ -142,7 +147,7 @@ export const FEATURED_IMPACT_ACTIONS: readonly FeaturedImpactAction[] = [
     actionId: 50,
     emphasis: "We filled up to 20 potholes",
     rest: "by reporting them to our local governments.",
-    imageSrc: "https://worldalliance.org/api/images/1762827853197.webp",
+    imageSrc: potholePhoto,
     tags: [ActionPriority.Democracy],
   },
   {
