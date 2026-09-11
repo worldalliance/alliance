@@ -62,6 +62,14 @@ export function oauthNoticeMessage(notice: OAuthNotice): string | null {
   }
 }
 
+/** Drops what the callback appended, so a later navigation cannot replay it. */
+export function clearOAuthParams(params: URLSearchParams) {
+  for (const provider of Object.values(OAuthProvider)) {
+    params.delete(oauthOutcomeParam(provider));
+    params.delete(oauthErrorParam(provider));
+  }
+}
+
 function readNotice(params: URLSearchParams): OAuthNotice | null {
   for (const provider of Object.values(OAuthProvider)) {
     const error = parseOAuthError(params.get(oauthErrorParam(provider)));
@@ -92,10 +100,7 @@ export function useOAuthNotice(): OAuthNotice | null {
     setSearchParams(
       (current) => {
         const next = new URLSearchParams(current);
-        for (const provider of Object.values(OAuthProvider)) {
-          next.delete(oauthOutcomeParam(provider));
-          next.delete(oauthErrorParam(provider));
-        }
+        clearOAuthParams(next);
         return next;
       },
       { replace: true },

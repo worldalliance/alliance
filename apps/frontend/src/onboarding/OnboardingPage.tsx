@@ -14,6 +14,7 @@ import { useInvite } from "@alliance/shared/lib/useInvite";
 import { useSignupFaces } from "@alliance/shared/lib/useSignupFaces";
 import { cn } from "@alliance/shared/styles/util";
 import {
+  clearOAuthParams,
   oauthNoticeMessage,
   useOAuthNotice,
 } from "@alliance/sharedweb/lib/oauth";
@@ -90,7 +91,7 @@ const OnboardingPage = () => {
   useSiteBackground();
   const navigate = useNavigate();
   const location = useLocation();
-  const { onLogin } = useAuth();
+  const { onLogin, isAuthenticated, loading: authLoading } = useAuth();
   const { latestContract } = useContract();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -121,6 +122,9 @@ const OnboardingPage = () => {
   const [joinPhase, setJoinPhase] = useState(JoinPhase.Idle);
   const registeredRef = useRef(false);
   const leavingRef = useRef(false);
+  // A provider signs the member in before the flow starts, so a session counts
+  // as an account the same way registering at Join does.
+  const registered = registeredRef.current || isAuthenticated;
 
   const goTo = useCallback(
     (next: OnboardingStep) => {
@@ -129,6 +133,7 @@ const OnboardingPage = () => {
       if (next !== OnboardingStep.Account) window.scrollTo({ top: 0 });
       setSearchParams(
         (params) => {
+          clearOAuthParams(params);
           params.set("step", next);
           return params;
         },
@@ -138,18 +143,16 @@ const OnboardingPage = () => {
     [setSearchParams],
   );
 
-  useDraftWriter(
-    { email, password, step, referralCode },
-    !registeredRef.current,
-  );
+  useDraftWriter({ email, password, step, referralCode }, !registered);
 
   // A reload with nothing saved cannot submit a half-filled account, so it
   // restarts rather than stranding the member on a later screen.
   useEffect(() => {
-    if (step !== OnboardingStep.Account && !email && !registeredRef.current) {
+    if (authLoading) return;
+    if (step !== OnboardingStep.Account && !email && !registered) {
       goTo(OnboardingStep.Account);
     }
-  }, [step, email, goTo]);
+  }, [step, email, goTo, registered, authLoading]);
 
   // Land back on the screen the draft left off at, once per load.
   const resumedRef = useRef(false);
@@ -165,8 +168,11 @@ const OnboardingPage = () => {
 
   // A provider creates the account up front, so a new member rejoins the flow
   // at the story with registration already done and the agreement still owed.
+  // Once only: the notice outlives the step change that rebuilds `goTo`.
+  const oauthHandledRef = useRef(false);
   useEffect(() => {
-    if (oauthNotice?.kind !== "outcome") return;
+    if (oauthNotice?.kind !== "outcome" || oauthHandledRef.current) return;
+    oauthHandledRef.current = true;
     switch (oauthNotice.outcome) {
       case OAuthOutcome.SignedUp:
         registeredRef.current = true;
@@ -234,7 +240,7 @@ const OnboardingPage = () => {
     setError(null);
     setSubmitting(true);
 
-    if (!registeredRef.current) {
+    if (!registered) {
       const registration = await authRegister({
         body: {
           name: signedName.trim(),
@@ -293,6 +299,7 @@ const OnboardingPage = () => {
     setSubmitting(false);
   }, [
     submitting,
+    registered,
     signedName,
     email,
     password,
