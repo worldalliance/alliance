@@ -38,7 +38,6 @@ import {
   scaleLinear,
   scaleTime,
 } from "d3";
-import { milliseconds } from "date-fns";
 import { millisecondsInDay, minutesInHour } from "date-fns/constants";
 import React, {
   useCallback,
@@ -50,12 +49,13 @@ import React, {
 import ActionCompletionCurveChart from "../components/ActionCompletionCurveChart";
 import {
   TimeSeriesChart,
-  formatDateAsLocal,
   fullDateFormatter,
   type ChartSeries,
   type DataPoint,
   type MultiLineSeries,
 } from "../components/TimeSeriesChart";
+import { defaultInviteFunnelRange } from "../lib/defaultInviteFunnelRange";
+import { formatDateAsLocal } from "../lib/formatDateAsLocal";
 
 type ParsedDailyStats = DailyStatsDto & { parsedDate: Date };
 type ActionStatsWithWithdrawals = ActionStatsWithOnboardingDto & {
@@ -381,12 +381,9 @@ const StatsPage: React.FC = () => {
   );
   const [inviteFunnelLoading, setInviteFunnelLoading] =
     useState<boolean>(false);
-  const [inviteFunnelRange, setInviteFunnelRange] = useState(() => {
-    const end = new Date(Date.now() + milliseconds({ days: 1 }));
-    const start = new Date();
-    start.setDate(end.getDate() - 14);
-    return { start: formatDateAsLocal(start), end: formatDateAsLocal(end) };
-  });
+  const [inviteFunnelRange, setInviteFunnelRange] = useState(() =>
+    defaultInviteFunnelRange(new Date()),
+  );
   const [assumedHourlyRate, setAssumedHourlyRate] = useState<number>(15);
   const [contractStatusHistory, setContractStatusHistory] = useState<
     ContractStatusPointDto[]
