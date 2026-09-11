@@ -17,6 +17,7 @@ export enum JWTTokenType {
   passwordReset = "password_reset",
   verifyEmail = "verify_email",
   oauthState = "oauth_state",
+  oauthHandoff = "oauth_handoff",
 }
 
 const TOKEN_TYPE_IS_AUTHENTICATED: Record<JWTTokenType, boolean> = {
@@ -26,6 +27,7 @@ const TOKEN_TYPE_IS_AUTHENTICATED: Record<JWTTokenType, boolean> = {
   [JWTTokenType.passwordReset]: false,
   [JWTTokenType.verifyEmail]: false,
   [JWTTokenType.oauthState]: false,
+  [JWTTokenType.oauthHandoff]: false,
 };
 
 const jwtPayloadSchema = z.object({

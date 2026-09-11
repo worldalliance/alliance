@@ -1,4 +1,5 @@
 import {
+  MOBILE_OAUTH_RETURN_URL,
   OAuthError,
   OAuthIntent,
   OAuthOutcome,
@@ -85,6 +86,24 @@ describe("OAuth sign-in (e2e)", () => {
       .get(path("callback"))
       .query({ code: "code", state: stateOf(started.headers.location) });
     return { agent, started, finished };
+  };
+
+  const signInNatively = async (params: { referralCode?: string } = {}) => {
+    const started = await client()
+      .post(path("start"))
+      .send({
+        intent: OAuthIntent.Authenticate,
+        returnTo: MOBILE_OAUTH_RETURN_URL,
+        ...(params.referralCode && { referralCode: params.referralCode }),
+      })
+      .expect(200);
+    const finished = await client()
+      .get(path("callback"))
+      .query({ code: "code", state: stateOf(started.body.consentUrl) });
+    return {
+      proof: started.body.proof,
+      handoff: new URL(finished.headers.location).searchParams.get("handoff"),
+    };
   };
 
   beforeAll(async () => {
@@ -292,7 +311,145 @@ describe("OAuth sign-in (e2e)", () => {
     });
   });
 
+  describe("the native browser flow", () => {
+    it("hands back a handoff the proof unlocks", async () => {
+      const { proof, handoff } = await signInNatively();
+
+      const exchanged = await client()
+        .post(path("exchange"))
+        .send({ handoff, proof, mode: "header" })
+        .expect(200);
+
+      expect(typeof exchanged.body.access_token).toBe("string");
+    });
+
+    // Any app registered for the scheme can read the deep link, so the handoff
+    // alone must not buy a session.
+    it("refuses a handoff presented without the proof", async () => {
+      const { handoff } = await signInNatively();
+
+      await client()
+        .post(path("exchange"))
+        .send({ handoff, proof: "guessed", mode: "header" })
+        .expect(401);
+    });
+
+    it("refuses an access token presented as a handoff", async () => {
+      const { proof } = await signInNatively();
+
+      await client()
+        .post(path("exchange"))
+        .send({ handoff: ctx.accessToken, proof, mode: "header" })
+        .expect(401);
+    });
+
+    it("cannot spend the same handoff twice", async () => {
+      const { proof, handoff } = await signInNatively();
+      const body = { handoff, proof, mode: "header" };
+
+      await client().post(path("exchange")).send(body).expect(200);
+      await client().post(path("exchange")).send(body).expect(401);
+    });
+  });
+
+  describe("the native SDK flow", () => {
+    it("trades a verified id token for a session and says what happened", async () => {
+      const member = await freshMember();
+      profile = { ...profile, subject: "native-sdk", email: member.email };
+      const signedIn = await client()
+        .post(path("native"))
+        .send({ identityToken: "valid", mode: "header" })
+        .expect(200);
+
+      expect(signedIn.body.outcome).toBe(OAuthOutcome.Linked);
+      expect(typeof signedIn.body.access_token).toBe("string");
+    });
+
+    it("refuses a token the provider does not vouch for", async () => {
+      await client()
+        .post(path("native"))
+        .send({ identityToken: "forged", mode: "header" })
+        .expect(401);
+    });
+
+    // Apple's token carries no name; the SDK hands it to the app separately.
+    it("signs up with the provider linked, named by the app", async () => {
+      profile = {
+        ...profile,
+        provider: OAuthProvider.Apple,
+        subject: "apple-newcomer",
+        email: "newcomer@example.com",
+        name: null,
+      };
+      const signedUp = await client()
+        .post(path("native"))
+        .send({
+          identityToken: "valid",
+          name: "Ada Lovelace",
+          referralCode: "any",
+          mode: "header",
+        })
+        .expect(200);
+      expect(signedUp.body.outcome).toBe(OAuthOutcome.SignedUp);
+
+      const me = await client()
+        .get("/auth/me")
+        .set("Authorization", `Bearer ${signedUp.body.access_token}`)
+        .expect(200);
+      expect(me.body.user.name).toBe("Ada Lovelace");
+      expect(linkedEmails(me.body.user)).toEqual({
+        [OAuthProvider.Apple]: "newcomer@example.com",
+      });
+      expect(me.body.user.hasPassword).toBe(false);
+    });
+
+    it("links over the member's own session", async () => {
+      const member = await freshMember();
+      profile = {
+        ...profile,
+        subject: "native-link",
+        email: "user@example.com",
+      };
+
+      const linked = await client()
+        .post(path("native/link"))
+        .set("Authorization", `Bearer ${member.accessToken}`)
+        .send({ identityToken: "valid" })
+        .expect(200);
+
+      expect(linkedEmails(linked.body.user)).toEqual({
+        google: "user@example.com",
+      });
+    });
+  });
+
   describe("linking", () => {
+    const linkNatively = async (accessToken: string) => {
+      const started = await client()
+        .post(path("start"))
+        .set("Authorization", `Bearer ${accessToken}`)
+        .send({ intent: OAuthIntent.Link, returnTo: MOBILE_OAUTH_RETURN_URL })
+        .expect(200);
+      const finished = await client()
+        .get(path("callback"))
+        .query({ code: "code", state: stateOf(started.body.consentUrl) });
+      return {
+        proof: started.body.proof,
+        handoff: new URL(finished.headers.location).searchParams.get("handoff"),
+        location: finished.headers.location,
+      };
+    };
+
+    const complete = (params: {
+      accessToken: string;
+      handoff: string | null;
+      proof: string;
+    }) =>
+      client()
+        .post(path("link"))
+        .set("Authorization", `Bearer ${params.accessToken}`)
+        .send({ handoff: params.handoff, proof: params.proof });
+
     let member: { id: number; email: string; accessToken: string };
 
     beforeEach(async () => {
@@ -323,6 +480,59 @@ describe("OAuth sign-in (e2e)", () => {
       expect(linkedEmails(me.body.user).google).toBe("user@example.com");
     });
 
+    // Nothing on the callback proves a native flow is the one that started it,
+    // so a leaked state must not be enough to attach an account.
+    it("writes nothing for a native flow until the app presents its proof", async () => {
+      profile = {
+        ...profile,
+        provider: OAuthProvider.Apple,
+        subject: `native-linkable-${member.id}`,
+      };
+      const { proof, handoff } = await linkNatively(member.accessToken);
+
+      const before = await client()
+        .get("/auth/me")
+        .set("Authorization", `Bearer ${member.accessToken}`)
+        .expect(200);
+      expect(linkedEmails(before.body.user).apple).toBeUndefined();
+
+      const linked = await complete({
+        accessToken: member.accessToken,
+        handoff,
+        proof,
+      }).expect(200);
+      expect(linkedEmails(linked.body.user).apple).toBe("user@example.com");
+    });
+
+    it("refuses a link handoff presented without the proof", async () => {
+      const { handoff } = await linkNatively(member.accessToken);
+
+      await complete({
+        accessToken: member.accessToken,
+        handoff,
+        proof: "guessed",
+      }).expect(401);
+    });
+
+    it("refuses a link handoff spent by another member", async () => {
+      const { proof, handoff } = await linkNatively(member.accessToken);
+
+      await complete({
+        accessToken: ctx.adminAccessToken,
+        handoff,
+        proof,
+      }).expect(401);
+    });
+
+    it("refuses a link handoff at the exchange, which would mint a session", async () => {
+      const { proof, handoff } = await linkNatively(member.accessToken);
+
+      await client()
+        .post(path("exchange"))
+        .send({ handoff, proof, mode: "header" })
+        .expect(401);
+    });
+
     // A throw would otherwise reach the member as an exception filter's JSON,
     // mid-navigation, with no way back to the app.
     it("sends the member back when the write throws", async () => {
@@ -346,6 +556,22 @@ describe("OAuth sign-in (e2e)", () => {
       } finally {
         oauth.link = link;
       }
+    });
+
+    it("says so on the deep link when another account claims the subject", async () => {
+      profile = { ...profile, subject: "spoken-for" };
+      const taken = await linkNatively(member.accessToken);
+      await complete({
+        accessToken: member.accessToken,
+        handoff: taken.handoff,
+        proof: taken.proof,
+      }).expect(200);
+
+      const other = await freshMember();
+      const { location, handoff } = await linkNatively(other.accessToken);
+
+      expect(errorOf(location)).toBe(OAuthError.ClaimedByAnotherAccount);
+      expect(handoff).toBeNull();
     });
   });
 
@@ -474,19 +700,22 @@ describe("OAuth sign-in (e2e)", () => {
   });
 
   describe("unlinking", () => {
-    /** Signed up through a provider, so the column holds no password. */
-    const passwordless = async (email: string): Promise<string> => {
-      profile = { ...profile, subject: `passwordless-${email}`, email };
-      await signIn({ referralCode: "any" });
-      const user = await ctx.dataSource
-        .getRepository(User)
-        .findOneByOrFail({ email });
-      expect(user.password).toBeNull();
-      return signAccessToken(ctx.jwtService, user);
+    const passwordless = async () => {
+      profile = {
+        ...profile,
+        subject: `passwordless-${profile.provider}`,
+        email: "passwordless@example.com",
+      };
+      const { proof, handoff } = await signInNatively({ referralCode: "any" });
+      const session = await client()
+        .post(path("exchange"))
+        .send({ handoff, proof, mode: "header" })
+        .expect(200);
+      return session.body.access_token as string;
     };
 
     it("refuses while the provider is the only way in", async () => {
-      const accessToken = await passwordless("only-way-in@example.com");
+      const accessToken = await passwordless();
 
       await client()
         .delete(path("link"))
@@ -495,30 +724,26 @@ describe("OAuth sign-in (e2e)", () => {
     });
 
     it("allows it once another provider is linked", async () => {
-      const email = "two-ways-in@example.com";
-      const accessToken = await passwordless(email);
-
-      const agent = client();
+      const accessToken = await passwordless();
       profile = {
         ...profile,
         provider: OAuthProvider.Apple,
         subject: "second-way-in",
       };
-      const started = await agent
-        .get(path("start"))
+      await client()
+        .post(path("native/link"))
         .set("Authorization", `Bearer ${accessToken}`)
-        .query({ intent: OAuthIntent.Link, returnTo: RETURN_TO });
-      await agent.get(path("callback")).query({
-        code: "code",
-        state: stateOf(started.headers.location),
-      });
+        .send({ identityToken: "valid" })
+        .expect(200);
 
       const unlinked = await client()
         .delete("/auth/google/link")
         .set("Authorization", `Bearer ${accessToken}`)
         .expect(200);
 
-      expect(linkedEmails(unlinked.body.user)).toEqual({ apple: email });
+      expect(linkedEmails(unlinked.body.user)).toEqual({
+        apple: "passwordless@example.com",
+      });
     });
   });
 });

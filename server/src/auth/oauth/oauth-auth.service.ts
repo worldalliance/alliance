@@ -1,7 +1,7 @@
 import {
   OAuthError,
+  OAuthIntent,
   OAuthOutcome,
-  type OAuthIntent,
   type OAuthProvider,
 } from "@alliance/common/oauth";
 import { R, type Result } from "@alliance/common/result";
@@ -45,6 +45,28 @@ export type OAuthAuthentication = {
 };
 
 const STATE_LIFETIME = "10m";
+
+/**
+ * Half of the proof that its holder is one user, handed to the app on a deep
+ * link any other app on the device may be listening for. Useless without the
+ * secret from the start call, and short-lived on top of that.
+ */
+const HANDOFF_LIFETIME_MS = 1000 * 60 * 2;
+
+/**
+ * What the callback still owes the app once the provider is done with. A
+ * native client takes no cookies, so a session and a link both come back as one.
+ */
+export type OAuthHandoffPurpose =
+  | { intent: OAuthIntent.Authenticate }
+  | { intent: OAuthIntent.Link; profile: OAuthProfile };
+
+export type OAuthHandoff = OAuthHandoffPurpose & {
+  sub: number;
+  tokenType: JWTTokenType.oauthHandoff;
+  proofHash: string;
+  jti: string;
+};
 
 export function mintProof(): OAuthProof {
   const proof = randomBytes(32).toString("base64url");
@@ -108,6 +130,8 @@ export class OAuthAuthService {
     private userRepository: Repository<User>,
   ) {}
 
+  private readonly spentHandoffs = new Map<string, number>();
+
   signState(state: Omit<OAuthState, "tokenType">): Promise<string> {
     return this.jwtService.signAsync(
       { ...state, tokenType: JWTTokenType.oauthState },
@@ -125,6 +149,63 @@ export class OAuthAuthService {
       return null;
     }
     return payload.value;
+  }
+
+  signHandoff(params: {
+    userId: number;
+    proofHash: string;
+    purpose: OAuthHandoffPurpose;
+  }): Promise<string> {
+    const payload: OAuthHandoff = {
+      ...params.purpose,
+      sub: params.userId,
+      tokenType: JWTTokenType.oauthHandoff,
+      proofHash: params.proofHash,
+      jti: randomBytes(16).toString("base64url"),
+    };
+    return this.jwtService.signAsync(payload, {
+      expiresIn: HANDOFF_LIFETIME_MS / 1000,
+    });
+  }
+
+  /** One shot: a handoff that verifies here cannot be presented again. */
+  async spendHandoff(params: {
+    token: string;
+    proof: string;
+  }): Promise<OAuthHandoff | null> {
+    const payload = await R.fromPromise(
+      this.jwtService.verifyAsync<OAuthHandoff>(params.token, {
+        secret: process.env.JWT_SECRET,
+      }),
+    );
+    if (
+      !payload.ok ||
+      payload.value.tokenType !== JWTTokenType.oauthHandoff ||
+      !proofMatches(params.proof, payload.value.proofHash) ||
+      !this.markSpent(payload.value.jti)
+    ) {
+      return null;
+    }
+    return payload.value;
+  }
+
+  /**
+   * False once the same handoff has been presented before. The set lives in
+   * this process, which is the one process pm2 runs; a second instance would
+   * let a handoff be spent once on each.
+   */
+  private markSpent(jti: string): boolean {
+    const now = Date.now();
+    for (const [spent, expiry] of this.spentHandoffs) {
+      if (expiry <= now) {
+        this.spentHandoffs.delete(spent);
+      }
+    }
+    if (this.spentHandoffs.has(jti)) {
+      return false;
+    }
+    this.spentHandoffs.set(jti, now + HANDOFF_LIFETIME_MS);
+    return true;
   }
 
   /**

@@ -841,6 +841,21 @@ export type ResetPasswordDto = {
 
 export type OAuthIntent = 'authenticate' | 'link';
 
+export type OAuthStartDto = {
+    intent: OAuthIntent;
+    returnTo: string;
+    referralCode?: string;
+    timeZone?: string;
+};
+
+export type OAuthConsentDto = {
+    consentUrl: string;
+    /**
+     * Present this at /auth/:provider/exchange to spend the handoff.
+     */
+    proof: string;
+};
+
 export type OAuthCallbackDto = {
     code?: string;
     state?: string;
@@ -849,6 +864,59 @@ export type OAuthCallbackDto = {
      * JSON Apple posts on the first authorization, holding the name.
      */
     user?: string;
+};
+
+export type OAuthExchangeDto = {
+    handoff: string;
+    /**
+     * The secret /auth/:provider/start handed back.
+     */
+    proof: string;
+    mode: TokenMode;
+    guestToken?: string;
+};
+
+export type OAuthNativeSignInDto = {
+    /**
+     * The id token the provider's native SDK returned.
+     */
+    identityToken: string;
+    /**
+     * Apple hands the name to the app beside the token rather than inside it.
+     */
+    name?: string;
+    mode: TokenMode;
+    referralCode?: string;
+    timeZone?: string;
+    guestToken?: string;
+};
+
+export type OAuthOutcome = 'signed_in' | 'signed_up' | 'linked';
+
+export type OAuthSignInResponseDto = {
+    outcome: OAuthOutcome;
+    isAdmin: boolean;
+    access_token?: string;
+    refresh_token?: string;
+};
+
+export type OAuthIdentityTokenDto = {
+    /**
+     * The id token the provider's native SDK returned.
+     */
+    identityToken: string;
+    /**
+     * Apple hands the name to the app beside the token rather than inside it.
+     */
+    name?: string;
+};
+
+export type OAuthHandoffDto = {
+    handoff: string;
+    /**
+     * The secret /auth/:provider/start handed back.
+     */
+    proof: string;
 };
 
 export type ClusterSummaryDto = {
@@ -4284,6 +4352,27 @@ export type OAuthRedirectToProviderResponses = {
 
 export type OAuthRedirectToProviderResponse = OAuthRedirectToProviderResponses[keyof OAuthRedirectToProviderResponses];
 
+export type OAuthStartData = {
+    body: OAuthStartDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/start';
+};
+
+export type OAuthStartErrors = {
+    401: HeyApiError;
+};
+
+export type OAuthStartError = OAuthStartErrors[keyof OAuthStartErrors];
+
+export type OAuthStartResponses = {
+    200: OAuthConsentDto;
+};
+
+export type OAuthStartResponse = OAuthStartResponses[keyof OAuthStartResponses];
+
 export type OAuthCallbackData = {
     body?: never;
     path: {
@@ -4346,6 +4435,69 @@ export type OAuthCallbackFormResponses = {
 
 export type OAuthCallbackFormResponse = OAuthCallbackFormResponses[keyof OAuthCallbackFormResponses];
 
+export type OAuthExchangeData = {
+    body: OAuthExchangeDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/exchange';
+};
+
+export type OAuthExchangeErrors = {
+    401: HeyApiError;
+};
+
+export type OAuthExchangeError = OAuthExchangeErrors[keyof OAuthExchangeErrors];
+
+export type OAuthExchangeResponses = {
+    200: SignInResponseDto;
+};
+
+export type OAuthExchangeResponse = OAuthExchangeResponses[keyof OAuthExchangeResponses];
+
+export type OAuthNativeSignInData = {
+    body: OAuthNativeSignInDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/native';
+};
+
+export type OAuthNativeSignInErrors = {
+    401: HeyApiError;
+};
+
+export type OAuthNativeSignInError = OAuthNativeSignInErrors[keyof OAuthNativeSignInErrors];
+
+export type OAuthNativeSignInResponses = {
+    200: OAuthSignInResponseDto;
+};
+
+export type OAuthNativeSignInResponse = OAuthNativeSignInResponses[keyof OAuthNativeSignInResponses];
+
+export type OAuthNativeLinkData = {
+    body: OAuthIdentityTokenDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/native/link';
+};
+
+export type OAuthNativeLinkErrors = {
+    401: HeyApiError;
+};
+
+export type OAuthNativeLinkError = OAuthNativeLinkErrors[keyof OAuthNativeLinkErrors];
+
+export type OAuthNativeLinkResponses = {
+    200: AuthMeResponseDto;
+};
+
+export type OAuthNativeLinkResponse = OAuthNativeLinkResponses[keyof OAuthNativeLinkResponses];
+
 export type OAuthUnlinkData = {
     body?: never;
     path: {
@@ -4369,6 +4521,27 @@ export type OAuthUnlinkResponses = {
 };
 
 export type OAuthUnlinkResponse = OAuthUnlinkResponses[keyof OAuthUnlinkResponses];
+
+export type OAuthCompleteLinkData = {
+    body: OAuthHandoffDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/link';
+};
+
+export type OAuthCompleteLinkErrors = {
+    401: HeyApiError;
+};
+
+export type OAuthCompleteLinkError = OAuthCompleteLinkErrors[keyof OAuthCompleteLinkErrors];
+
+export type OAuthCompleteLinkResponses = {
+    200: AuthMeResponseDto;
+};
+
+export type OAuthCompleteLinkResponse = OAuthCompleteLinkResponses[keyof OAuthCompleteLinkResponses];
 
 export type UserFindMeData = {
     body?: never;

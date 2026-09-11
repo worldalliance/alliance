@@ -30,15 +30,18 @@ import {
   ApiOkResponse,
   ApiParam,
   ApiResponse,
+  ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
 import { ThrottlerGuard } from "@nestjs/throttler";
 import type { Request as ExpressRequest, Response } from "express";
 import { OAUTH_THROTTLE } from "src/auth/signup-throttle.config";
 import { PosthogService } from "src/posthog/posthog.service";
 import { DEFAULT_TIME_ZONE, User } from "src/user/entities/user.entity";
+import { UserService } from "src/user/user.service";
 import { OnlyThrottle } from "src/utils/throttle";
 import { AuthService } from "../auth.service";
 import { AuthMeResponseDto } from "../dto/authtokens.dto";
+import { SignInResponseDto } from "../dto/signin.dto";
 import { AuthGuard } from "../guards/auth.guard";
 import { Public } from "../public.decorator";
 import {
@@ -58,15 +61,25 @@ import {
   spendProof,
   type OAuthState,
 } from "./oauth-auth.service";
-import type { OAuthClient } from "./oauth-client";
+import type { OAuthClient, OAuthProfile } from "./oauth-client";
 import {
   fallbackLoginUrl,
+  isNativeReturnTo,
   oauthRedirectUri,
   resolveReturnTo,
   returnUrlWithError,
   returnUrlWithOutcome,
 } from "./oauth-urls";
-import { OAuthCallbackDto, OAuthStartDto } from "./oauth.dto";
+import {
+  OAuthCallbackDto,
+  OAuthConsentDto,
+  OAuthExchangeDto,
+  OAuthHandoffDto,
+  OAuthIdentityTokenDto,
+  OAuthNativeSignInDto,
+  OAuthSignInResponseDto,
+  OAuthStartDto,
+} from "./oauth.dto";
 
 /** Outlives the state token it guards, so a slow consent screen still lands. */
 const STATE_COOKIE_MAX_AGE_MS = 1000 * 60 * 15;
@@ -109,6 +122,7 @@ export class OAuthController {
     apple: AppleOAuthClient,
     private oauth: OAuthAuthService,
     private authService: AuthService,
+    private usersService: UserService,
     private posthog: PosthogService,
   ) {
     this.clients = {
@@ -150,6 +164,34 @@ export class OAuthController {
       addProof({ proof, presented: extractOAuthStateFromCookie(req) }),
     );
     res.redirect(consentUrl);
+  }
+
+  /**
+   * The browser flow for a native client, which opens the same consent screen
+   * in the system browser and takes the secret in this response instead of a
+   * cookie. The app has to present it again to spend the handoff the callback
+   * deep-links back.
+   */
+  @Public()
+  @UseGuards(ThrottlerGuard)
+  @OnlyThrottle(OAUTH_THROTTLE)
+  @Post("start")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: OAuthConsentDto })
+  @ApiUnauthorizedResponse()
+  async start(
+    @ProviderParam() provider: OAuthProvider,
+    @Request() req: ExpressRequest,
+    @Body() body: OAuthStartDto,
+  ): Promise<OAuthConsentDto> {
+    const { proof, proofHash } = mintProof();
+    const consentUrl = await this.beginFlow({
+      provider,
+      req,
+      input: body,
+      proofHash,
+    });
+    return new OAuthConsentDto({ consentUrl, proof });
   }
 
   private async beginFlow(params: {
@@ -306,10 +348,32 @@ export class OAuthController {
         if (state.userId === undefined) {
           return fail(OAuthError.Failed);
         }
-        const linked = await this.oauth.link({
-          userId: state.userId,
-          profile: profile.value,
-        });
+        const link = { userId: state.userId, profile: profile.value };
+
+        // Nothing here proves a native flow is the one that started it, so
+        // the write waits for the app's secret at POST /auth/:provider/link.
+        if (isNativeReturnTo(new URL(returnTo))) {
+          const allowed = await this.oauth.linkable(link);
+          if (!allowed.ok) {
+            return fail(allowed.error);
+          }
+          const handoff = await this.oauth.signHandoff({
+            userId: state.userId,
+            proofHash: state.proofHash,
+            purpose: { intent: OAuthIntent.Link, profile: profile.value },
+          });
+          res.redirect(
+            returnUrlWithOutcome({
+              returnTo,
+              provider,
+              outcome: OAuthOutcome.Linked,
+              handoff,
+            }),
+          );
+          return;
+        }
+
+        const linked = await this.oauth.link(link);
         if (!linked.ok) {
           return fail(linked.error);
         }
@@ -335,6 +399,20 @@ export class OAuthController {
         const { user, outcome } = result.value;
         this.capture({ user, provider, outcome });
 
+        // A native client takes no cookies, so it gets a handoff token to
+        // trade for real ones over the API instead.
+        if (isNativeReturnTo(new URL(returnTo))) {
+          const handoff = await this.oauth.signHandoff({
+            userId: user.id,
+            proofHash: state.proofHash,
+            purpose: { intent: OAuthIntent.Authenticate },
+          });
+          res.redirect(
+            returnUrlWithOutcome({ returnTo, provider, outcome, handoff }),
+          );
+          return;
+        }
+
         const { access_token, refresh_token } = await this.issueTokens(user);
         this.authService.setAuthCookies(res, access_token, refresh_token);
         // The provider sends the member back to the origin they started on,
@@ -352,6 +430,166 @@ export class OAuthController {
           `unknown oauth intent: ${state.intent satisfies never}`,
         );
     }
+  }
+
+  @Public()
+  @Post("exchange")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: SignInResponseDto })
+  @ApiUnauthorizedResponse()
+  async exchange(
+    @ProviderParam() _provider: OAuthProvider,
+    @Body() body: OAuthExchangeDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<SignInResponseDto> {
+    const handoff = await this.oauth.spendHandoff({
+      token: body.handoff,
+      proof: body.proof,
+    });
+    if (handoff === null || handoff.intent !== OAuthIntent.Authenticate) {
+      throw new UnauthorizedException();
+    }
+    const user = await this.usersService.findOne(handoff.sub);
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    const tokens = await this.issueTokens(user);
+    this.authService.setAuthCookies(
+      res,
+      tokens.access_token,
+      tokens.refresh_token,
+    );
+    await this.authService.mergeGuestFromToken(body.guestToken, user.id);
+
+    return new SignInResponseDto({
+      isAdmin: user.admin,
+      ...(body.mode === "header" && tokens),
+    });
+  }
+
+  /** The native SDK path: the app already holds a signed id token. */
+  @Public()
+  @UseGuards(ThrottlerGuard)
+  @OnlyThrottle(OAUTH_THROTTLE)
+  @Post("native")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: OAuthSignInResponseDto })
+  @ApiUnauthorizedResponse()
+  async nativeSignIn(
+    @ProviderParam() provider: OAuthProvider,
+    @Body() body: OAuthNativeSignInDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<OAuthSignInResponseDto> {
+    const profile = await this.nativeProfile({ provider, body });
+    const result = await this.oauth.authenticate({
+      profile,
+      referralCode: body.referralCode,
+      timeZone: body.timeZone ?? DEFAULT_TIME_ZONE,
+    });
+    if (!result.ok) {
+      throw new UnauthorizedException(
+        oauthErrorMessage(provider, result.error),
+      );
+    }
+
+    const { user, outcome } = result.value;
+    this.capture({ user, provider, outcome });
+    const tokens = await this.issueTokens(user);
+    this.authService.setAuthCookies(
+      res,
+      tokens.access_token,
+      tokens.refresh_token,
+    );
+    await this.authService.mergeGuestFromToken(body.guestToken, user.id);
+
+    return new OAuthSignInResponseDto({
+      outcome,
+      isAdmin: user.admin,
+      ...(body.mode === "header" && tokens),
+    });
+  }
+
+  @Post("native/link")
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: AuthMeResponseDto })
+  @ApiUnauthorizedResponse()
+  async nativeLink(
+    @ProviderParam() provider: OAuthProvider,
+    @Request() req: JwtRequest,
+    @Body() body: OAuthIdentityTokenDto,
+  ): Promise<AuthMeResponseDto> {
+    const profile = await this.nativeProfile({ provider, body });
+    return this.completeLinkWith({ provider, userId: req.user.sub, profile });
+  }
+
+  private async nativeProfile(params: {
+    provider: OAuthProvider;
+    body: OAuthIdentityTokenDto;
+  }): Promise<OAuthProfile> {
+    const verified = await this.clients[params.provider].verifyIdentityToken(
+      params.body.identityToken,
+    );
+    if (!verified.ok) {
+      console.error("oauth identity token rejected", verified.error);
+      throw new UnauthorizedException();
+    }
+    return {
+      ...verified.value,
+      name: verified.value.name ?? params.body.name ?? null,
+    };
+  }
+
+  /**
+   * Where a native browser-flow link is actually written. The callback
+   * deep-links a handoff any app registered for the scheme may read, so the
+   * link only happens once the app presents the secret from its start call,
+   * over its own session.
+   */
+  @Post("link")
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: AuthMeResponseDto })
+  @ApiUnauthorizedResponse()
+  async completeLink(
+    @ProviderParam() provider: OAuthProvider,
+    @Request() req: JwtRequest,
+    @Body() body: OAuthHandoffDto,
+  ): Promise<AuthMeResponseDto> {
+    const handoff = await this.oauth.spendHandoff({
+      token: body.handoff,
+      proof: body.proof,
+    });
+    if (
+      handoff === null ||
+      handoff.intent !== OAuthIntent.Link ||
+      handoff.sub !== req.user.sub ||
+      handoff.profile.provider !== provider
+    ) {
+      throw new UnauthorizedException();
+    }
+    return this.completeLinkWith({
+      provider,
+      userId: handoff.sub,
+      profile: handoff.profile,
+    });
+  }
+
+  private async completeLinkWith(params: {
+    provider: OAuthProvider;
+    userId: number;
+    profile: OAuthProfile;
+  }): Promise<AuthMeResponseDto> {
+    const linked = await this.oauth.link(params);
+    if (!linked.ok) {
+      throw new BadRequestException(
+        oauthErrorMessage(params.provider, linked.error),
+      );
+    }
+    return new AuthMeResponseDto({
+      user: await this.authService.getProfile(linked.value.email),
+    });
   }
 
   @Delete("link")
@@ -376,11 +614,18 @@ export class OAuthController {
     });
   }
 
+  /**
+   * The native flow proves itself at /exchange instead, where the app presents
+   * the secret this response cannot hand it.
+   */
   private browserStartedFlow(
     req: ExpressRequest,
     res: Response,
     state: OAuthState,
   ): boolean {
+    if (isNativeReturnTo(new URL(state.returnTo))) {
+      return true;
+    }
     const remaining = spendProof({
       presented: extractOAuthStateFromCookie(req),
       proofHash: state.proofHash,
