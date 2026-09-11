@@ -15,7 +15,7 @@ import {
 } from "../../content/projects";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import { ImpactCard, ProgressLinkCard } from "../../site/PageCards";
-import { PageBand, PageShell } from "../../site/PageShell";
+import { BandTone, PageBand, PageShell } from "../../site/PageShell";
 
 export function meta() {
   return socialPreviewMeta({
@@ -220,7 +220,11 @@ function Projects() {
 
 export default function ProgressListPage() {
   return (
-    <PageShell title={PROGRESS_TITLE} subtitle={PROGRESS_LEDE}>
+    <PageShell
+      title={PROGRESS_TITLE}
+      subtitle={PROGRESS_LEDE}
+      headerTone={BandTone.Primary}
+    >
       {/* <Statistics /> */}
       <Projects />
     </PageShell>

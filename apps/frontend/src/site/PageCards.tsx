@@ -142,24 +142,19 @@ function ContractDescriptionList() {
   const items = latestContract?.description ?? [];
   if (items.length === 0) return null;
   return (
-    <ol className="flex list-none flex-col gap-5 pl-0">
+    <ol className="flex list-none flex-col gap-4 pl-0">
       {items.map((item, index) => (
-        <li key={index} className="flex gap-4">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded bg-(--site-primary) text-lg font-semibold leading-none text-white tabular-nums md:size-9 md:text-xl">
-            {index + 1}
-          </span>
-          <div className="flex min-w-0 flex-col">
+        <li key={index} className="flex min-w-0 flex-col">
+          <DocProse
+            markdown={item.point}
+            className="[&_p]:mt-0 [&_p]:leading-snug [&_p]:font-semibold [&_p]:text-black"
+          />
+          {item.subtext.trim() !== "" && (
             <DocProse
-              markdown={item.point}
-              className="[&_p]:mt-0 [&_p]:font-medium [&_p]:text-(--site-ink)"
+              markdown={item.subtext}
+              className="[&_p]:mt-0 [&_p]:text-[0.9em] [&_p]:leading-snug [&_p]:text-zinc-700"
             />
-            {item.subtext.trim() !== "" && (
-              <DocProse
-                markdown={item.subtext}
-                className="[&_p]:mt-0 [&_p]:text-(--site-ink)/75"
-              />
-            )}
-          </div>
+          )}
         </li>
       ))}
     </ol>
@@ -185,7 +180,10 @@ export function ContractCard({
     <figure className="flex flex-col gap-3">
       <div
         id="contract"
-        className="scroll-mt-32 bg-zinc-100 p-6 sm:p-8"
+        className={cn(
+          "scroll-mt-32 bg-zinc-100 p-6 sm:p-8",
+          terms && "ring-2 ring-[var(--color-green)]",
+        )}
         style={{ borderRadius: "var(--site-radius-card)" }}
       >
         {terms ? <ContractDescriptionList /> : <ContractMarkdown />}

@@ -75,7 +75,7 @@ export function BandHeading({
   return (
     <h2
       className={cn(
-        "site-display text-4xl sm:text-5xl md:text-6xl  leading-tight font-medium",
+        "site-display text-3xl leading-tight font-medium text-balance sm:text-4xl md:text-5xl",
         onDark ? "text-white" : "text-black",
         className,
       )}
@@ -89,26 +89,38 @@ function PageHeader({
   title,
   subtitle,
   titleClassName,
+  tone = BandTone.Surface,
 }: {
   title: string;
   subtitle?: ReactNode;
   titleClassName?: string;
+  tone?: BandTone;
 }) {
+  const onDark = tone === BandTone.Primary;
   return (
-    <header
-      className={cn(SITE_COL, "flex flex-col gap-4")}
-      style={{ paddingTop: NAV_HEIGHT + 64 }}
-    >
-      <DisplayHeading
-        as="h1"
+    <header className={bandClasses[tone]}>
+      <div
         className={cn(
-          "text-5xl sm:text-6xl lg:text-7xl font-medium",
-          titleClassName,
+          SITE_COL,
+          "flex flex-col gap-4",
+          onDark && "pb-16 lg:pb-24",
         )}
+        style={{ paddingTop: NAV_HEIGHT + 64 }}
       >
-        {title}
-      </DisplayHeading>
-      {subtitle && <PageShellSubtitle>{subtitle}</PageShellSubtitle>}
+        <DisplayHeading
+          as="h1"
+          onDark={onDark}
+          className={cn(
+            "text-5xl sm:text-6xl lg:text-7xl font-medium",
+            titleClassName,
+          )}
+        >
+          {title}
+        </DisplayHeading>
+        {subtitle && (
+          <PageShellSubtitle onDark={onDark}>{subtitle}</PageShellSubtitle>
+        )}
+      </div>
     </header>
   );
 }
@@ -124,20 +136,23 @@ export function PageShell({
   children,
   showJoinCta = true,
   titleClassName,
+  headerTone = BandTone.Surface,
 }: {
   title: string;
   subtitle?: ReactNode;
   children?: ReactNode;
   showJoinCta?: boolean;
   titleClassName?: string;
+  headerTone?: BandTone;
 }) {
   return (
     <SiteRoot>
-      <Navbar />
+      <Navbar overPrimary={headerTone === BandTone.Primary} />
       <PageHeader
         title={title}
         subtitle={subtitle}
         titleClassName={titleClassName}
+        tone={headerTone}
       />
       <main>{children}</main>
       {showJoinCta && <JoinCta />}

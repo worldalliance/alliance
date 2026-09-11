@@ -14,7 +14,7 @@ export function ApprovedBy({ what }: { what: string }) {
       >
         developed and approved
       </Link>
-      {" by 25 founding members of the Alliance."}
+      {" by 25 founding members."}
     </>
   );
 }

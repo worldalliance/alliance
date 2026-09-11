@@ -16,7 +16,7 @@ import { useActiveSection } from "../../site/hooks";
 import { FAQ_HREF, FOUNDATION_HREF, GOVERNANCE_HREF } from "../../site/links";
 import { NAV_HEIGHT } from "../../site/Navbar";
 import { ContractCard, ImpactCard } from "../../site/PageCards";
-import { PageShell } from "../../site/PageShell";
+import { BandTone, PageShell } from "../../site/PageShell";
 import { SITE_COL, SiteArrow, SitePicture } from "../../site/ui";
 
 export function meta() {
@@ -175,7 +175,11 @@ export default function GuidePage() {
   const active = useActiveSection(GUIDE_SECTION_ORDER);
 
   return (
-    <PageShell title={GUIDE_TITLE} subtitle={GUIDE_LEDE}>
+    <PageShell
+      title={GUIDE_TITLE}
+      subtitle={GUIDE_LEDE}
+      headerTone={BandTone.Primary}
+    >
       <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
         <div className="grid gap-12 lg:grid-cols-[minmax(0,46rem)_minmax(0,18rem)] lg:justify-between lg:gap-16">
           <div className="flex flex-col gap-16">
@@ -203,7 +207,7 @@ export default function GuidePage() {
           </div>
 
           <nav
-            className="hidden self-start bg-zinc-50 px-6 py-20 lg:block"
+            className="hidden self-start bg-zinc-50 px-6 py-7 lg:block"
             style={{
               position: "sticky",
               top: NAV_HEIGHT + 32,
