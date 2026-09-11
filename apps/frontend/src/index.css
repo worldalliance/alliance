@@ -3,8 +3,50 @@
 @source "../../../shared/";
 @source "../../../sharedweb/";
 
+@font-face {
+  font-family: "Source Sans 3";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/assets/fonts/source-sans-3-v19-latin-regular.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "Source Sans 3";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/assets/fonts/source-sans-3-v19-latin-500.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Source Sans 3";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/assets/fonts/source-sans-3-v19-latin-600.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Source Sans 3";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/assets/fonts/source-sans-3-v19-latin-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Source Sans 3";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/assets/fonts/source-sans-3-v19-latin-italic.woff2") format("woff2");
+}
+
 @theme {
-  --font-serif: "TT Neoris", system-ui, sans-serif;
+  --font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Literata", "Georgia", serif;
   --color-blue: #399ee6;
   --color-page: oklch(98% 0 0);
 
@@ -44,7 +86,7 @@
 }
 
 * {
-  font-family: "TT Neoris", sans-serif;
+  font-family: "Source Sans 3", sans-serif;
 }
 
 .none {
@@ -108,7 +150,7 @@ select {
 
 .font-sans {
   font-family:
-    "TT Neoris",
+    "Source Sans 3",
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
@@ -127,7 +169,7 @@ select {
 }
 
 .font-title {
-  @apply font-serif font-medium;
+  @apply font-serif font-semibold;
 }
 
 /*
@@ -193,19 +235,19 @@ input[type="number"]:disabled {
 }
 
 .text-title {
-  @apply font-serif font-medium text-2xl md:text-3xl;
+  @apply font-serif font-semibold text-2xl md:text-3xl;
 }
 
 .text-title-medium {
-  @apply font-serif font-medium text-3xl md:text-4xl;
+  @apply font-serif font-semibold text-3xl md:text-4xl;
 }
 
 .text-title-large {
-  @apply font-serif font-medium text-4xl md:text-5xl;
+  @apply font-serif font-semibold text-4xl md:text-5xl;
 }
 
 .text-title-small {
-  @apply font-serif font-medium text-xl md:text-2xl;
+  @apply font-serif font-semibold text-xl md:text-2xl;
 }
 
 a,
