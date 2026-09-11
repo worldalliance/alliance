@@ -10,9 +10,13 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/** The logotype and the oversized headings, which take the display face. */
+/** The oversized headings, which take the display face. */
 .site-root .site-display {
   font-family: var(--site-font-display);
+}
+
+.site-root .font-logotype {
+  font-family: var(--site-font-logotype);
 }
 
 @keyframes site-check-pop {
