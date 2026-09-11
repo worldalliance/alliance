@@ -13,7 +13,7 @@ export const AGREEMENT_HEADLINE =
   "Join a group of people who can count on each other.";
 
 export const AGREEMENT_NOTE =
-  "This agreement is core to planning ability. Once you enter it, you become a member.";
+  "This agreement is core to our planning ability. Once you enter it, you become a member.";
 
 /** Typed out rather than ticked, so agreeing takes a deliberate act. */
 export const COMMIT_PHRASE = "I commit to complete each task on time";
