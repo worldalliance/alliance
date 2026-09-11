@@ -8,9 +8,8 @@ import { oauthStartUrl, useAppOrigin } from "@alliance/sharedweb/lib/oauth";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import OAuthButtons from "@alliance/sharedweb/ui/OAuthButtons";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { href, useNavigate } from "react-router";
-import { z } from "zod";
 import { useAuth } from "../lib/AuthContext";
 import { getApiUrl, isFeatureEnabled } from "../lib/config";
 import { JOIN_MAILTO } from "../site/content";
@@ -23,7 +22,13 @@ const FIELD =
 
 const CARD_BUTTON = "w-full gap-2 py-2.5";
 
-const emailSchema = z.email();
+function credentialsFrom(form: HTMLFormElement) {
+  const data = new FormData(form);
+  return {
+    email: String(data.get("email") ?? ""),
+    password: String(data.get("password") ?? ""),
+  };
+}
 
 export function AccountStep({
   email,
@@ -62,9 +67,6 @@ export function AccountStep({
   const [pending, setPending] = useState(false);
   const showForm = loggingIn || (!inviteOnly && !invitePending);
 
-  const emailValid = emailSchema.safeParse(email.trim()).success;
-  const ready = emailValid && password.length > 0;
-
   // Back into the flow rather than to the app, so a new account still passes
   // through the agreement.
   const origin = useAppOrigin(getBaseUrl());
@@ -82,8 +84,18 @@ export function AccountStep({
         ? "The Alliance is invite-only."
         : "Create an account";
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Password managers write .value without React onChange, so the fields stay
+  // uncontrolled and submit reads the form instead of React state.
+  const syncFromForm = (form: HTMLFormElement) => {
+    const next = credentialsFrom(form);
+    onEmailChange(next.email);
+    onPasswordChange(next.password);
+    return next;
+  };
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const next = syncFromForm(e.currentTarget);
     setError(null);
     setNotice(null);
 
@@ -95,7 +107,7 @@ export function AccountStep({
 
     setPending(true);
     const res = await authLogin({
-      body: { email, password, mode: "cookie" },
+      body: { email: next.email, password: next.password, mode: "cookie" },
     });
     if (res.response.ok) {
       await onLogin();
@@ -106,15 +118,16 @@ export function AccountStep({
     setPending(false);
   };
 
-  const handleForgotPassword = async () => {
+  const handleForgotPassword = async (form: HTMLFormElement) => {
     if (pending) return;
-    if (!email) {
+    const nextEmail = syncFromForm(form).email;
+    if (!nextEmail) {
       setNotice(forgotPasswordCopy.emailRequired.message);
       return;
     }
     setError(null);
     setPending(true);
-    const res = await authForgotPassword({ body: { email } });
+    const res = await authForgotPassword({ body: { email: nextEmail } });
     setNotice(res.error ? null : forgotPasswordCopy.sendSuccess.message);
     if (res.error) setError(forgotPasswordCopy.sendError);
     setPending(false);
@@ -168,15 +181,20 @@ export function AccountStep({
                 />
                 <EmailDivider />
               </div>
-              <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+              <form
+                onSubmit={handleSubmit}
+                onInput={(e: FormEvent<HTMLFormElement>) =>
+                  syncFromForm(e.currentTarget)
+                }
+                className="flex flex-col gap-3"
+              >
                 <input
                   name="email"
                   type="email"
                   required
                   autoComplete="email"
                   placeholder="Email"
-                  value={email}
-                  onChange={(e) => onEmailChange(e.target.value)}
+                  defaultValue={email}
                   className={FIELD}
                   aria-label="Email"
                 />
@@ -186,8 +204,7 @@ export function AccountStep({
                   required
                   autoComplete={loggingIn ? "current-password" : "new-password"}
                   placeholder="Password"
-                  value={password}
-                  onChange={(e) => onPasswordChange(e.target.value)}
+                  defaultValue={password}
                   className={FIELD}
                   aria-label="Password"
                 />
@@ -201,7 +218,7 @@ export function AccountStep({
                   type="submit"
                   color={ButtonColor.Black}
                   className={CARD_BUTTON}
-                  disabled={pending || !ready}
+                  disabled={pending}
                 >
                   {loggingIn ? "Log in" : "Get started"}
                   <SiteArrow className="size-2.5" />
@@ -209,7 +226,10 @@ export function AccountStep({
                 {loggingIn && (
                   <button
                     type="button"
-                    onClick={handleForgotPassword}
+                    onClick={(e) => {
+                      const form = e.currentTarget.form;
+                      if (form) void handleForgotPassword(form);
+                    }}
                     disabled={pending}
                     className="text-sm text-[var(--site-link)] hover:underline disabled:opacity-60"
                   >
