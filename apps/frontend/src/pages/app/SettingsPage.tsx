@@ -1,12 +1,11 @@
 import {
   authForgotPassword,
-  authMe,
   City,
   CitySearchDto,
   PublicFormResponseDefault,
-  userMyLocation,
 } from "@alliance/shared/client";
 import { toTimeInputValue, toWireTime } from "@alliance/shared/forms/timeUtils";
+import { useSeedSettingsForm } from "@alliance/shared/lib/useSeedSettingsForm";
 import { useSettingsAutosave } from "@alliance/shared/lib/useSettingsAutosave";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -25,7 +24,6 @@ import { useAuth } from "../../lib/AuthContext";
 
 const SettingsPage: React.FC = () => {
   const { user, logout } = useAuth();
-  const [loading, setLoading] = useState(true);
 
   const [location, setLocation] = useState<City | null>(null);
   const {
@@ -128,34 +126,7 @@ const SettingsPage: React.FC = () => {
     }
   }, [user?.email]);
 
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    authMe()
-      .then((response) => {
-        if (response.data) {
-          setSavedProfile(response.data.user);
-        }
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-
-    // loadPaymentMethod();
-
-    userMyLocation().then((locationResponse) => {
-      const city = locationResponse.data?.city;
-      if (city) {
-        setLocation(city);
-        const cityId = city.id;
-        setSavedProfile((prev) =>
-          prev ? { ...prev, cityId } : { ...user, cityId },
-        );
-      }
-    });
-  }, [user, setSavedProfile]);
+  const loading = useSeedSettingsForm({ user, setSavedProfile, setLocation });
 
   // The page renders after an async load, so ScrollRestoration's hash
   // handling fires before the anchor exists.

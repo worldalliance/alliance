@@ -1,14 +1,9 @@
-import {
-  authForgotPassword,
-  authMe,
-  City,
-  UpdateProfileDto,
-  userMyLocation,
-} from "@alliance/shared/client";
+import { authForgotPassword, City } from "@alliance/shared/client";
+import { useSeedSettingsForm } from "@alliance/shared/lib/useSeedSettingsForm";
 import { useSettingsAutosave } from "@alliance/shared/lib/useSettingsAutosave";
 import { cn } from "@alliance/shared/styles/util";
 import { useMutation } from "@tanstack/react-query";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -91,7 +86,6 @@ export default function SettingsPage() {
     retrySave,
   } = useSettingsAutosave(user?.id, location?.countryCode);
 
-  const [loading, setLoading] = useState(true);
   const [statusTaps, setStatusTaps] = useState(0);
 
   const [passwordResetMessage, setPasswordResetMessage] = useState<
@@ -123,30 +117,7 @@ export default function SettingsPage() {
     forgotPassword.mutate(user.email);
   }, [user?.email, forgotPassword]);
 
-  useEffect(() => {
-    if (!user) return;
-
-    authMe()
-      .then((response: { data?: { user: UpdateProfileDto } }) => {
-        if (response.data) {
-          setSavedProfile(response.data.user);
-        }
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-
-    userMyLocation().then((locationResponse) => {
-      const city = locationResponse.data?.city;
-      if (city) {
-        setLocation(city);
-        const cityId = city.id;
-        setSavedProfile((prev: UpdateProfileDto | null) =>
-          prev ? { ...prev, cityId } : { ...user, cityId },
-        );
-      }
-    });
-  }, [user, setSavedProfile]);
+  const loading = useSeedSettingsForm({ user, setSavedProfile, setLocation });
 
   if (loading) {
     return (
