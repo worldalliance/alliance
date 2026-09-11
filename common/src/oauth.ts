@@ -77,7 +77,7 @@ export function oauthErrorMessage(
   return ERROR_MESSAGE[error](OAUTH_PROVIDER_LABEL[provider]);
 }
 
-const oauthOutcomeSchema = z.enum(OAuthOutcome);
+export const oauthOutcomeSchema = z.enum(OAuthOutcome);
 
 export const parseOAuthOutcome = (value: unknown): OAuthOutcome | null =>
   oauthOutcomeSchema.safeParse(value).data ?? null;

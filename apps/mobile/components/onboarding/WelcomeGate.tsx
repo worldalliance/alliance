@@ -1,3 +1,4 @@
+import { OAuthProvider } from "@alliance/common/oauth";
 import type { ReferrerProfileDto } from "@alliance/shared/client";
 import { Image } from "expo-image";
 import { View } from "react-native";
@@ -62,6 +63,8 @@ export function WelcomeGate({
   password,
   onPasswordChange,
   onSubmit,
+  onProviderPress,
+  providerBusy,
   error,
   notice,
   submitting,
@@ -75,6 +78,8 @@ export function WelcomeGate({
   password: string;
   onPasswordChange: (password: string) => void;
   onSubmit: () => void;
+  onProviderPress: (provider: OAuthProvider) => void;
+  providerBusy: OAuthProvider | null;
   error: string | null;
   notice: string | null;
   submitting: boolean;
@@ -129,6 +134,8 @@ export function WelcomeGate({
           password={password}
           onPasswordChange={onPasswordChange}
           onSubmit={onSubmit}
+          onProviderPress={onProviderPress}
+          providerBusy={providerBusy}
           error={error}
           notice={notice}
           submitting={submitting}

@@ -1,7 +1,16 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
+import { errorMessage } from "@alliance/common/errorMessage";
+import {
+  OAUTH_PROVIDER_LABEL,
+  OAuthIntent,
+  type OAuthOutcome,
+  oauthOutcomeSchema,
+  type OAuthProvider,
+} from "@alliance/common/oauth";
 import { run } from "@alliance/common/run";
 import { client } from "@alliance/shared/client/client.gen";
 import { captureEvent } from "@alliance/shared/lib/analytics";
+import { deviceTimeZone } from "@alliance/shared/lib/timeZone";
 import { useBackfillTimeZone } from "@alliance/shared/lib/useBackfillTimeZone";
 import type { QueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
@@ -18,9 +27,12 @@ import {
   authLogin,
   authLogout,
   authMe,
+  oAuthExchange,
+  oAuthNativeSignIn,
   UserDto,
 } from "../../../shared/client";
 import { clearGuestToken, getStoredGuestToken } from "./guestSession";
+import { OAuthSignInError, signInWith } from "./oauth";
 import { SecureStorage, SecureStorageKey } from "./SecureStorage";
 import {
   getVisualTestAutoLoginCredentials,
@@ -39,6 +51,12 @@ interface AuthContextType {
   canConnectToServer: boolean;
   user: UserDto | undefined;
   login: (params: LoginParams) => Promise<void>;
+  /** Resolves once signed in, with what the provider turned out to be doing. */
+  loginWithProvider: (params: {
+    provider: OAuthProvider;
+    referralCode?: string | null;
+    navigateOnSuccess?: boolean;
+  }) => Promise<OAuthOutcome>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   isLoading: boolean;
@@ -144,6 +162,42 @@ export const AuthProvider: React.FC<
     };
   }, []);
 
+  const completeSignIn = useCallback(
+    async (params: {
+      tokens: { access_token?: string; refresh_token?: string };
+      navigateOnSuccess: boolean;
+    }) => {
+      const { access_token, refresh_token } = params.tokens;
+      if (!access_token || !refresh_token) {
+        throw new Error("didn't receive tokens: something went wrong");
+      }
+
+      client.setConfig({
+        ...client.getConfig(),
+        headers: { Authorization: `Bearer ${access_token}` },
+      });
+      await saveTokens(access_token, refresh_token);
+      queryClient.clear();
+
+      const userProfile = await authMe();
+      if (!userProfile.data) {
+        throw new Error("Failed to fetch user profile");
+      }
+
+      const user = userProfile.data.user;
+      setUser(user);
+      posthog?.identify(user.id.toString(), {
+        email: user.email,
+        name: user.name,
+      });
+
+      if (!isVisualTestMode && params.navigateOnSuccess) {
+        router.replace("/");
+      }
+    },
+    [router, saveTokens, posthog, queryClient],
+  );
+
   const login = useCallback(
     async ({ email, password, navigateOnSuccess = true }: LoginParams) => {
       setIsLoading(true);
@@ -160,48 +214,98 @@ export const AuthProvider: React.FC<
           throw new Error("Login failed");
         }
 
-        client.setConfig({
-          ...client.getConfig(),
-          headers: {
-            Authorization: `Bearer ${response.data.access_token}`,
-          },
-        });
-
-        if (response.data.access_token && response.data.refresh_token) {
-          await saveTokens(
-            response.data.access_token,
-            response.data.refresh_token,
-          );
-        } else {
-          console.error("didn't recieve tokens: something went wrong");
-        }
-
-        queryClient.clear();
-
-        const userProfile = await authMe();
-        if (!userProfile.data) {
-          throw new Error("Failed to fetch user profile");
-        }
-
-        const user = userProfile.data?.user;
-        setUser(user);
-        if (user) {
-          posthog?.identify(user.id.toString(), {
-            email: user.email,
-            name: user.name,
-          });
-        }
-
-        if (!isVisualTestMode && navigateOnSuccess) {
-          router.replace("/");
-        }
-      } catch (error) {
-        throw error;
+        await completeSignIn({ tokens: response.data, navigateOnSuccess });
       } finally {
         setIsLoading(false);
       }
     },
-    [router, saveTokens, posthog, queryClient],
+    [completeSignIn],
+  );
+
+  /**
+   * The SDKs hand the app a token the server verifies; the browser flow hands
+   * it a deep link worth nothing without the secret from the start call. Either
+   * way the app trades what it has for a session of its own.
+   */
+  const loginWithProvider = useCallback(
+    async ({
+      provider,
+      referralCode,
+      navigateOnSuccess = true,
+    }: {
+      provider: OAuthProvider;
+      referralCode?: string | null;
+      navigateOnSuccess?: boolean;
+    }) => {
+      const result = await signInWith({
+        provider,
+        intent: OAuthIntent.Authenticate,
+        referralCode,
+      });
+      if (!result.ok) {
+        throw new OAuthSignInError(provider, result.error);
+      }
+      const signIn = result.value;
+
+      setIsLoading(true);
+      try {
+        const guestToken = (await getStoredGuestToken()) ?? undefined;
+        const unwrapTokens = <T,>(response: {
+          data?: T;
+          error?: unknown;
+        }): T => {
+          if (response.error || !response.data) {
+            throw new Error(
+              errorMessage({
+                error: response.error,
+                fallback: `${OAUTH_PROVIDER_LABEL[provider]} sign-in failed`,
+              }),
+            );
+          }
+          return response.data;
+        };
+        const session =
+          signIn.kind === "native"
+            ? await oAuthNativeSignIn({
+                path: { provider },
+                body: {
+                  identityToken: signIn.identityToken,
+                  name: signIn.name ?? undefined,
+                  referralCode: referralCode ?? undefined,
+                  timeZone: deviceTimeZone(),
+                  mode: "header",
+                  guestToken,
+                },
+              }).then((response) => {
+                const tokens = unwrapTokens(response);
+                return {
+                  tokens,
+                  outcome: oauthOutcomeSchema.parse(tokens.outcome),
+                };
+              })
+            : await oAuthExchange({
+                path: { provider },
+                body: {
+                  handoff: signIn.handoff,
+                  proof: signIn.proof,
+                  mode: "header",
+                  guestToken,
+                },
+              }).then((response) => ({
+                tokens: unwrapTokens(response),
+                outcome: signIn.outcome,
+              }));
+
+        if (guestToken) {
+          await clearGuestToken();
+        }
+        await completeSignIn({ tokens: session.tokens, navigateOnSuccess });
+        return session.outcome;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [completeSignIn],
   );
 
   useEffect(() => {
@@ -237,6 +341,7 @@ export const AuthProvider: React.FC<
     isAuthenticated: !!user,
     user,
     login,
+    loginWithProvider,
     logout,
     refreshUser,
     canConnectToServer,
