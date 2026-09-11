@@ -1,5 +1,16 @@
 const IS_DEV = process.env.APP_VARIANT === "development";
 
+// OAuth client ids from the Google Cloud console; public by design. The web
+// client is the server's audience, so both native SDKs name it as their
+// server client. The iOS client id also becomes the URL scheme Google's SDK
+// returns through, reversed.
+const GOOGLE_WEB_CLIENT_ID =
+  "498109422267-jla0nu3g91hpj838dj54di7hd09dmjgv.apps.googleusercontent.com";
+const GOOGLE_IOS_CLIENT_ID = IS_DEV
+  ? "498109422267-oure3ds53734t8bomo4bea4fglogpg80.apps.googleusercontent.com"
+  : "498109422267-a6im2d5qscd6g39nkbcvkaqp1miftvg6.apps.googleusercontent.com";
+const GOOGLE_IOS_URL_SCHEME = `com.googleusercontent.apps.${GOOGLE_IOS_CLIENT_ID.split(".")[0]}`;
+
 // Metro inlines `EXPO_PUBLIC_*` into the bundle, so this reaches the app while
 // staying out of `extra`, which would change the fingerprint every commit and
 // strand each build on its own OTA runtime version.
@@ -35,6 +46,7 @@ export default {
         },
       },
       appleTeamId: "629G87T7R5",
+      usesAppleSignIn: true,
       associatedDomains: [
         "applinks:worldalliance.org",
         "webcredentials:worldalliance.org",
@@ -105,11 +117,20 @@ export default {
         },
       ],
       "expo-video",
+      "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        { iosUrlScheme: GOOGLE_IOS_URL_SCHEME },
+      ],
     ],
     experiments: {
       typedRoutes: true,
     },
     extra: {
+      oauth: {
+        googleWebClientId: GOOGLE_WEB_CLIENT_ID,
+        googleIosClientId: GOOGLE_IOS_CLIENT_ID,
+      },
       router: {},
       eas: {
         projectId: "49c13cc4-9361-4e91-8de8-27108c7527a6",

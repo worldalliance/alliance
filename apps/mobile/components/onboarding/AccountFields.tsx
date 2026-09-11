@@ -1,3 +1,4 @@
+import { OAuthProvider } from "@alliance/common/oauth";
 import type { ReferrerProfileDto } from "@alliance/shared/client";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
 import { ArrowRight } from "lucide-react-native";
@@ -12,6 +13,7 @@ import {
 } from "../../lib/onboarding/scale";
 import ProfileImage from "../ProfileImage";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
+import OAuthButtons, { OAuthButtonVerb } from "../system/OAuthButtons";
 import PasswordVisibilityToggle from "../system/PasswordVisibilityToggle";
 import Text, { FontWeight } from "../system/Text";
 
@@ -29,6 +31,8 @@ export function AccountFields({
   password,
   onPasswordChange,
   onSubmit,
+  onProviderPress,
+  providerBusy,
   error,
   notice,
   submitting,
@@ -43,6 +47,9 @@ export function AccountFields({
   password: string;
   onPasswordChange: (password: string) => void;
   onSubmit: () => void;
+  onProviderPress: (provider: OAuthProvider) => void;
+  /** The provider whose sign-in is in flight; the others wait. */
+  providerBusy: OAuthProvider | null;
   error: string | null;
   notice: string | null;
   submitting: boolean;
@@ -94,6 +101,19 @@ export function AccountFields({
 
       {showForm && (
         <>
+          <OAuthButtons
+            onPress={onProviderPress}
+            verb={loggingIn ? OAuthButtonVerb.Continue : OAuthButtonVerb.SignUp}
+            busy={providerBusy}
+            disabled={submitting}
+          />
+          <View className="flex-row items-center gap-3">
+            <View className="h-px flex-1 bg-white/30" />
+            <Text className="text-white/70" style={{ fontSize: scale.caption }}>
+              or
+            </Text>
+            <View className="h-px flex-1 bg-white/30" />
+          </View>
           <TextInput
             className={FIELD}
             placeholder="Email"

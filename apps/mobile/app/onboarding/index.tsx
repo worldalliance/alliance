@@ -1,5 +1,6 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { errorMessage } from "@alliance/common/errorMessage";
+import { OAuthOutcome, type OAuthProvider } from "@alliance/common/oauth";
 import {
   authForgotPassword,
   authRegister,
@@ -72,7 +73,7 @@ const TONE_INK: Record<PanelTone, string> = {
 const OnboardingScreen = () => {
   const router = useRouter();
   const scale = useOnboardingScale();
-  const { login } = useAuth();
+  const { login, loginWithProvider } = useAuth();
   const { ref: referralCode, step: stepParam } = useLocalSearchParams<{
     ref?: string;
     step?: string;
@@ -92,6 +93,7 @@ const OnboardingScreen = () => {
   const [committed, setCommitted] = useState("");
   const [signedName, setSignedName] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [providerBusy, setProviderBusy] = useState<OAuthProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [received, setReceived] = useState(false);
@@ -161,6 +163,44 @@ const OnboardingScreen = () => {
       setSubmitting(false);
     }
   }, [accountMode, email, password, login, goNext, enterPlatform, inviteUsed]);
+
+  /**
+   * A provider creates the account up front, so a new member rejoins the flow
+   * at the story with registration already done and the agreement still owed.
+   */
+  const signInWithProvider = useCallback(
+    async (provider: OAuthProvider) => {
+      setError(null);
+      setNotice(null);
+      setProviderBusy(provider);
+      try {
+        const outcome = await loginWithProvider({
+          provider,
+          referralCode,
+          navigateOnSuccess: false,
+        });
+        switch (outcome) {
+          case OAuthOutcome.SignedUp:
+            registeredRef.current = true;
+            setStep(OnboardingStep.Community);
+            return;
+          case OAuthOutcome.SignedIn:
+          case OAuthOutcome.Linked:
+            enterPlatform();
+            return;
+          default:
+            throw new Error(
+              `unknown oauth outcome: ${outcome satisfies never}`,
+            );
+        }
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "Sign-in failed");
+      } finally {
+        setProviderBusy(null);
+      }
+    },
+    [loginWithProvider, referralCode, enterPlatform],
+  );
 
   const forgotPassword = useCallback(async () => {
     if (submitting) return;
@@ -278,6 +318,8 @@ const OnboardingScreen = () => {
             password={password}
             onPasswordChange={setPassword}
             onSubmit={submitAccount}
+            onProviderPress={signInWithProvider}
+            providerBusy={providerBusy}
             error={error}
             notice={notice}
             submitting={submitting}

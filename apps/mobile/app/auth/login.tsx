@@ -1,3 +1,8 @@
+import {
+  OAUTH_PROVIDER_LABEL,
+  OAuthError,
+  type OAuthProvider,
+} from "@alliance/common/oauth";
 import { authForgotPassword } from "@alliance/shared/client";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
 import { useRouter } from "expo-router";
@@ -6,18 +11,41 @@ import { Alert, Pressable, View } from "react-native";
 import Button from "../../components/system/Button";
 import Card, { CardStyle } from "../../components/system/Card";
 import Input from "../../components/system/Input";
+import OAuthButtons from "../../components/system/OAuthButtons";
 import PasswordVisibilityToggle from "../../components/system/PasswordVisibilityToggle";
 import Text, { FontWeight } from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
+import { OAuthSignInError } from "../../lib/oauth";
 
 const LoginScreen = () => {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, loginWithProvider } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSendingReset, setIsSendingReset] = useState(false);
+  const [providerBusy, setProviderBusy] = useState<OAuthProvider | null>(null);
+
+  const handleProviderLogin = async (provider: OAuthProvider) => {
+    setProviderBusy(provider);
+    try {
+      await loginWithProvider({ provider });
+    } catch (error) {
+      if (
+        error instanceof OAuthSignInError &&
+        error.error === OAuthError.Cancelled
+      ) {
+        return;
+      }
+      Alert.alert(
+        `${OAUTH_PROVIDER_LABEL[provider]} sign-in`,
+        error instanceof Error ? error.message : "Sign-in failed.",
+      );
+    } finally {
+      setProviderBusy(null);
+    }
+  };
 
   const handleForgotPassword = async () => {
     if (isSendingReset) return;
@@ -74,6 +102,16 @@ const LoginScreen = () => {
 
         <Card cardStyle={CardStyle.White}>
           <View className="flex flex-col gap-y-6">
+            <OAuthButtons
+              onPress={handleProviderLogin}
+              busy={providerBusy}
+              disabled={isSubmitting}
+            />
+            <View className="flex-row items-center gap-x-3">
+              <View className="h-px flex-1 bg-zinc-200" />
+              <Text className="text-sm text-zinc-500">or</Text>
+              <View className="h-px flex-1 bg-zinc-200" />
+            </View>
             <View>
               <Text className="mb-2">Email</Text>
               <Input
