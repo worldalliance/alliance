@@ -24,6 +24,7 @@ import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import LargeGeneralUpdateCard from "@alliance/sharedweb/ui/LargeGeneralUpdateCard";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useQueryClient } from "@tanstack/react-query";
+import { milliseconds } from "date-fns";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { href, Link } from "react-router";
 import BasicErrorMessage from "../../components/BasicErrorMessage";
@@ -77,7 +78,7 @@ const HomePage = () => {
     handleDismissAction,
     handleDismissGeneralUpdate,
   } = useTaskActionsData({
-    refetchInterval: hasNoTasks.current ? 60_000 : false,
+    refetchInterval: hasNoTasks.current ? milliseconds({ minutes: 1 }) : false,
   });
 
   const mocked = useMockTasks();

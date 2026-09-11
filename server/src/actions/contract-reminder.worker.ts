@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
 import { EmailType } from "src/mail/mail.entity";
 import { MailService } from "src/mail/mail.service";
 import { User } from "src/user/entities/user.entity";
@@ -9,7 +10,6 @@ import { LOCK_KEYS } from "../notifs/lock-keys";
 import { withPgAdvisoryLock } from "../notifs/lock-utils";
 
 const [LOCK_KEY1, LOCK_KEY2] = LOCK_KEYS.contractReminder;
-const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class ContractReminderWorker {
@@ -38,7 +38,7 @@ export class ContractReminderWorker {
       LOCK_KEY1,
       LOCK_KEY2,
       async () => {
-        const cutoff = new Date(Date.now() - TWENTY_FOUR_HOURS_MS);
+        const cutoff = new Date(Date.now() - milliseconds({ days: 1 }));
 
         // Find users who:
         // 1. Created their account more than 24 hours ago

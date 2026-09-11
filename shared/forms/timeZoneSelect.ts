@@ -1,4 +1,9 @@
 import { R } from "@alliance/common/result";
+import {
+  millisecondsInMinute,
+  millisecondsInSecond,
+  minutesInHour,
+} from "date-fns/constants";
 import { deburr } from "es-toolkit";
 import { useEffect, useMemo, useState } from "react";
 import { minuteStart, useClockMinute } from "../lib/useClockMinute";
@@ -179,7 +184,7 @@ export function formatNowTimeInTz(
   return formatTimeInTz(tz, hour12, new Date());
 }
 
-const MAX_OFFSET_MINUTES = 16 * 60;
+const MAX_OFFSET_MINUTES = 16 * minutesInHour;
 
 // The offset comes off the wall clock because JavaScriptCore renders the
 // shortOffset of every zero-offset zone as a bare "GMT", which the parse below
@@ -231,8 +236,9 @@ function offsetFromWallClock(tz: string, when: Date): number | null {
   if (Number.isNaN(wall)) return null;
   // The parts carry whole seconds, so the instant has to as well for the
   // difference to be the offset rather than the offset less a stray -0.4ms.
-  const truncated = Math.floor(when.getTime() / 1000) * 1000;
-  const offset = Math.round((wall - truncated) / 60_000);
+  const truncated =
+    Math.floor(when.getTime() / millisecondsInSecond) * millisecondsInSecond;
+  const offset = Math.round((wall - truncated) / millisecondsInMinute);
   return Math.abs(offset) > MAX_OFFSET_MINUTES ? null : offset;
 }
 
@@ -255,7 +261,7 @@ function offsetFromShortOffset(tz: string, when: Date): number | null {
     ?.value.match(/([+-])(\d{1,2})(?::?(\d{2}))?/);
   if (!m) return null;
   const sign = m[1] === "-" ? -1 : 1;
-  return sign * (Number(m[2]) * 60 + Number(m[3] ?? 0));
+  return sign * (Number(m[2]) * minutesInHour + Number(m[3] ?? 0));
 }
 
 export function getOffsetMinutes(

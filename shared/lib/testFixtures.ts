@@ -1,3 +1,4 @@
+import { milliseconds } from "date-fns";
 import type { ActionEventDto, UserActionStatusDto } from "../client/types.gen";
 import type { ActionWithAwayStatus } from "./actionUtils";
 
@@ -69,7 +70,7 @@ export function makeEvent(
     title: "",
     description: "",
     newStatus: "member_action",
-    date: new Date(Date.now() - 1000).toISOString(),
+    date: new Date(Date.now() - milliseconds({ seconds: 1 })).toISOString(),
     suiteManaged: false,
     ...overrides,
   };

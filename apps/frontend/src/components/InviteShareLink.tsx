@@ -15,6 +15,7 @@ import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { interactiveListRowClass } from "@alliance/sharedweb/ui/List";
 import NewButton, { ButtonColor } from "@alliance/sharedweb/ui/NewButton";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { milliseconds } from "date-fns";
 import {
   ChevronRight,
   Copy as CopyIcon,
@@ -67,10 +68,13 @@ const InviteShareLink = () => {
       if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
       setCopiedId(link.id);
       setMessageCopiedId(null);
-      copiedTimeoutRef.current = setTimeout(() => {
-        setCopiedId(null);
-        copiedTimeoutRef.current = null;
-      }, 2000);
+      copiedTimeoutRef.current = setTimeout(
+        () => {
+          setCopiedId(null);
+          copiedTimeoutRef.current = null;
+        },
+        milliseconds({ seconds: 2 }),
+      );
     },
     [errorToast],
   );
@@ -90,10 +94,13 @@ const InviteShareLink = () => {
       if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
       setCopiedId(null);
       setMessageCopiedId(link.id);
-      copiedTimeoutRef.current = setTimeout(() => {
-        setMessageCopiedId(null);
-        copiedTimeoutRef.current = null;
-      }, 2000);
+      copiedTimeoutRef.current = setTimeout(
+        () => {
+          setMessageCopiedId(null);
+          copiedTimeoutRef.current = null;
+        },
+        milliseconds({ seconds: 2 }),
+      );
     },
     [errorToast, messageTemplate],
   );

@@ -2,6 +2,7 @@ import type { CommunityDto } from "@alliance/shared/client";
 import { inviteDestination } from "@alliance/shared/lib/copy";
 import type { InviteNote } from "@alliance/shared/lib/inviteUtils";
 import { cn } from "@alliance/shared/styles/util";
+import { milliseconds } from "date-fns";
 import { setStringAsync as setClipboardStringAsync } from "expo-clipboard";
 import { Check, Trash2, Users } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
@@ -116,7 +117,7 @@ function InviteSettingsForm({
     try {
       await setClipboardStringAsync(target.url);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), milliseconds({ seconds: 2 }));
     } catch {
       Alert.alert("Error", "Could not copy the link to the clipboard.");
     }

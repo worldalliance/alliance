@@ -15,6 +15,7 @@ import {
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { Accordion } from "@base-ui/react/accordion";
+import { milliseconds } from "date-fns";
 import {
   Check,
   ChevronDown,
@@ -52,7 +53,7 @@ function CopyTextDisplay({ text, title }: { text: string; title?: string }) {
   const handleCopy = () => {
     navigator.clipboard.writeText(text);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), milliseconds({ seconds: 2 }));
   };
 
   return (

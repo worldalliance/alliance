@@ -7,6 +7,7 @@ import {
   useQueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
+import { milliseconds } from "date-fns";
 import { useMemo } from "react";
 import { tasksGetForm } from "../client";
 import { queryKeys } from "./queryKeys";
@@ -19,7 +20,7 @@ type FormQuestionFields = {
 // A form's fields only move when someone saves that form, and every save
 // invalidates this key through useInvalidateFormsAdmin. The window is what a
 // save in another tab costs us, not what staleness costs the builder.
-const FORM_FIELDS_STALE_TIME = 5 * 60 * 1000;
+const FORM_FIELDS_STALE_TIME = milliseconds({ minutes: 5 });
 
 const NO_FIELDS: readonly AnyField[] = [];
 

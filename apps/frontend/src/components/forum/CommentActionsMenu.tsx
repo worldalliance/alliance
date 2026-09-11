@@ -1,3 +1,4 @@
+import { milliseconds } from "date-fns";
 import { EllipsisVertical } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
@@ -47,9 +48,12 @@ const CommentActionsMenu: React.FC<CommentActionsMenuProps> = ({
     navigator.clipboard.writeText(url.toString());
     setShowDropdown(false);
     setCopied(true);
-    setTimeout(() => {
-      setCopied(false);
-    }, 1000);
+    setTimeout(
+      () => {
+        setCopied(false);
+      },
+      milliseconds({ seconds: 1 }),
+    );
   }, [replyId]);
 
   return (

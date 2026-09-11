@@ -21,6 +21,8 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { JwtService } from "@nestjs/jwt";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
+import { millisecondsInDay } from "date-fns/constants";
 import { countBy } from "es-toolkit";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { JWTTokenType } from "src/auth/tokens";
@@ -170,8 +172,7 @@ const REFERRAL_SOURCE_BY_SHARE_KIND: Record<
 };
 
 const AMBASSADOR_INVITES_URL = "/invites";
-const DAY_MS = 24 * 60 * 60 * 1000;
-const AMBASSADOR_GOAL_NOTIFICATION_LOOKBACK_MS = 60 * 60 * 1000;
+const AMBASSADOR_GOAL_NOTIFICATION_LOOKBACK_MS = milliseconds({ hours: 1 });
 const AMBASSADOR_PROJECTION_DAYS = [14, 30] as const;
 const AMBASSADOR_REFERRAL_SOURCE_ELIGIBILITY: Record<ReferralSource, boolean> =
   {
@@ -1373,7 +1374,7 @@ export class UserService {
     // buffer to let ranges start in the current day
     if (
       validateStartDate &&
-      startDate.getTime() + 1000 * 60 * 60 * 36 < now.getTime()
+      startDate.getTime() + milliseconds({ hours: 36 }) < now.getTime()
     ) {
       throw new BadRequestException("Start date must be in the future.");
     }
@@ -1958,7 +1959,7 @@ export class UserService {
     return {
       generatedAt: now.toISOString(),
       points: AMBASSADOR_PROJECTION_DAYS.map((days) => {
-        const date = new Date(now.getTime() + days * DAY_MS);
+        const date = new Date(now.getTime() + days * millisecondsInDay);
         const projectedSuccessfulRecruits = Math.round(
           goalsWithStats.reduce(
             (total, goalWithStats) =>

@@ -1,4 +1,5 @@
-const MINUTES_IN_DAY = 24 * 60;
+import { minutesInDay, minutesInHour } from "date-fns/constants";
+
 // Seconds are optional because a Postgres `time` column renders as `HH:MM:SS`,
 // while form answers and `<input type="time">` use `HH:MM`.
 const TIME_24H_REGEX = /^([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/;
@@ -30,14 +31,14 @@ export function parseTimeToMinutes(value?: string | null): number | null {
     return null;
   }
 
-  return hours * 60 + minutes;
+  return hours * minutesInHour + minutes;
 }
 
 export function formatMinutesAs24h(totalMinutes: number): string {
   const normalized =
-    ((totalMinutes % MINUTES_IN_DAY) + MINUTES_IN_DAY) % MINUTES_IN_DAY;
-  const hours = Math.floor(normalized / 60);
-  const minutes = normalized % 60;
+    ((totalMinutes % minutesInDay) + minutesInDay) % minutesInDay;
+  const hours = Math.floor(normalized / minutesInHour);
+  const minutes = normalized % minutesInHour;
   const hh = String(hours).padStart(2, "0");
   const mm = String(minutes).padStart(2, "0");
   return `${hh}:${mm}`;
@@ -45,9 +46,9 @@ export function formatMinutesAs24h(totalMinutes: number): string {
 
 export function formatMinutesAs12h(totalMinutes: number): string {
   const normalized =
-    ((totalMinutes % MINUTES_IN_DAY) + MINUTES_IN_DAY) % MINUTES_IN_DAY;
-  const hours = Math.floor(normalized / 60);
-  const minutes = normalized % 60;
+    ((totalMinutes % minutesInDay) + minutesInDay) % minutesInDay;
+  const hours = Math.floor(normalized / minutesInHour);
+  const minutes = normalized % minutesInHour;
   const period = hours >= 12 ? "PM" : "AM";
   const displayHour = hours % 12 === 0 ? 12 : hours % 12;
   const mm = String(minutes).padStart(2, "0");
@@ -77,7 +78,7 @@ export function parseTimeInput(raw: string): ParsedTime | null {
     normalizedHours += 12;
   }
 
-  const totalMinutes = normalizedHours * 60 + minutes;
+  const totalMinutes = normalizedHours * minutesInHour + minutes;
   return {
     minutes: totalMinutes,
     normalized: formatMinutesAs24h(totalMinutes),
@@ -120,7 +121,7 @@ export type TimeOfDayOption = {
 
 /** Every time of day on a `stepMinutes` grid, for a picker to list. */
 export function buildTimeOfDayOptions(stepMinutes: number): TimeOfDayOption[] {
-  return Array.from({ length: MINUTES_IN_DAY / stepMinutes }, (_, i) => {
+  return Array.from({ length: minutesInDay / stepMinutes }, (_, i) => {
     const minutes = i * stepMinutes;
     return {
       value: formatMinutesAsWireTime(minutes),

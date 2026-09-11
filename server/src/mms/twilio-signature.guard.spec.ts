@@ -1,6 +1,7 @@
 import { R } from "@alliance/common/result";
 import type { ExecutionContext } from "@nestjs/common";
 import { ForbiddenException } from "@nestjs/common";
+import { milliseconds } from "date-fns";
 import type { Request } from "express";
 import "reflect-metadata";
 import { EventType } from "src/eventlog/event-log.entity";
@@ -282,7 +283,7 @@ describe("TwilioSignatureGuard", () => {
 
     it("alerts once per window, reporting what it stood for", () => {
       const { guard, sendMessage } = alertingGuard();
-      const minutes = (n: number) => n * 60 * 1000;
+      const minutes = (n: number) => milliseconds({ minutes: n });
       const now = jest.spyOn(Date, "now").mockReturnValue(0);
 
       withEnv(enforcing(), () => {

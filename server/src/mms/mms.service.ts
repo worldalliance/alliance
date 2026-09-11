@@ -6,6 +6,7 @@ import {
   Logger,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import type { Repository } from "src/utils/Repository";
@@ -14,7 +15,7 @@ import Twilio from "twilio";
 import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
 import { Mms } from "./mms.entity";
 
-const SEND_TIMEOUT_MS = 10_000;
+const SEND_TIMEOUT_MS = milliseconds({ seconds: 10 });
 
 /**
  * The parts of a twilio message an {@link Mms} row is built from. Twilio types

@@ -3,6 +3,7 @@ import { BadRequestException, Body, Controller, Post } from "@nestjs/common";
 import { ApiOkResponse } from "@nestjs/swagger";
 import { InjectRepository } from "@nestjs/typeorm";
 import crypto from "crypto";
+import { millisecondsInSecond, secondsInMinute } from "date-fns/constants";
 import { PostHog } from "posthog-node";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
@@ -20,7 +21,8 @@ function verifyMailgunSignature(sig: {
     .digest("hex");
 
   const withinWindow =
-    Math.abs(Date.now() / 1000 - Number(sig.timestamp)) < 600; // 10 minutes
+    Math.abs(Date.now() / millisecondsInSecond - Number(sig.timestamp)) <
+    10 * secondsInMinute;
   return (
     withinWindow &&
     crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(sig.signature))
@@ -71,7 +73,9 @@ export class MailgunWebhookController {
     const e = body["event-data"];
     const event = toPostHogEvent(e.event);
     const email = e.recipient ?? "unknown";
-    const phTimestamp = e.timestamp ? new Date(e.timestamp * 1000) : undefined;
+    const phTimestamp = e.timestamp
+      ? new Date(e.timestamp * millisecondsInSecond)
+      : undefined;
 
     const user = await this.userRepository.findOneBy({ email });
     const distinctId = user?.id.toString() ?? email;

@@ -8,6 +8,7 @@ import {
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
+import { milliseconds } from "date-fns";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import ActionListCard from "../components/ActionListCard";
@@ -29,9 +30,12 @@ const ActionSuitePage = () => {
   );
   useEffect(() => {
     if (highlightedReminder) {
-      setTimeout(() => {
-        setHighlightedReminder(null);
-      }, 2000);
+      setTimeout(
+        () => {
+          setHighlightedReminder(null);
+        },
+        milliseconds({ seconds: 2 }),
+      );
     }
   }, [highlightedReminder]);
 

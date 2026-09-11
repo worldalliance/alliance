@@ -6,6 +6,7 @@ import {
   type CanActivate,
   type ExecutionContext,
 } from "@nestjs/common";
+import { milliseconds } from "date-fns";
 import type { Request } from "express";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
@@ -29,7 +30,7 @@ export function twilioWebhookUrl(): Result<string, Error> {
   );
 }
 
-const ALERT_INTERVAL_MS = 15 * 60 * 1000;
+const ALERT_INTERVAL_MS = milliseconds({ minutes: 15 });
 
 @Injectable()
 export class TwilioSignatureGuard implements CanActivate {

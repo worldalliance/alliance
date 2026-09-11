@@ -6,6 +6,7 @@ import type {
   RankingField,
 } from "@alliance/common/forms/form-schema";
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
+import { milliseconds } from "date-fns";
 import { CreateActionDto } from "src/actions/dto/action.dto";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
@@ -179,7 +180,7 @@ describe("Tasks (e2e)", () => {
         title: `${name} Event`,
         description: `${name} Event`,
         newStatus: ActionStatus.MemberAction,
-        date: new Date(Date.now() - 1000),
+        date: new Date(Date.now() - milliseconds({ seconds: 1 })),
         action,
       }),
     );
@@ -228,7 +229,7 @@ describe("Tasks (e2e)", () => {
         title: "Form Linked Action",
         description: "Make non-draft",
         newStatus: ActionStatus.MemberAction,
-        date: new Date(Date.now() - 1000),
+        date: new Date(Date.now() - milliseconds({ seconds: 1 })),
         action: testAction,
       }),
     );
@@ -649,7 +650,7 @@ describe("Tasks (e2e)", () => {
         title: "Aggregate Number Action",
         description: "Make non-draft",
         newStatus: ActionStatus.MemberAction,
-        date: new Date(Date.now() - 1000),
+        date: new Date(Date.now() - milliseconds({ seconds: 1 })),
         action: testAction,
       }),
     );
@@ -758,7 +759,7 @@ describe("Tasks (e2e)", () => {
         title: "Output Visibility Event",
         description: "Test Action",
         newStatus: ActionStatus.MemberAction,
-        date: new Date(Date.now() - 1000),
+        date: new Date(Date.now() - milliseconds({ seconds: 1 })),
         action,
       }),
     );
@@ -898,7 +899,7 @@ describe("Tasks (e2e)", () => {
           title: `${name} Event`,
           description: `${name} Event`,
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action,
         }),
       );
@@ -976,7 +977,7 @@ describe("Tasks (e2e)", () => {
       await contractEventRepo.save(
         contractEventRepo.create({
           type: ContractEventType.SIGNED,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           user,
           contractId: ctx.defaultContractId,
         }),

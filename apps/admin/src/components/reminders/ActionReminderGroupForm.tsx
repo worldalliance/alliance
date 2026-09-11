@@ -20,6 +20,8 @@ import Card from "@alliance/sharedweb/ui/Card";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
 import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
+import { milliseconds } from "date-fns";
+import { secondsInHour } from "date-fns/constants";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import TextareaWithHighlights from "../TextareaWithHighlights";
 import {
@@ -168,21 +170,21 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     initialGroup?.sendAtAbsolute ?? new Date().toISOString();
   const initialSendAtHours =
     initialGroup?.sendAtSecondsFromDeadline != null
-      ? initialGroup.sendAtSecondsFromDeadline / 3600
+      ? initialGroup.sendAtSecondsFromDeadline / secondsInHour
       : 0;
   const initialRelativeRangeStartHours =
     initialGroup?.relative_range_start_seconds_from_deadline != null
-      ? initialGroup.relative_range_start_seconds_from_deadline / 3600
+      ? initialGroup.relative_range_start_seconds_from_deadline / secondsInHour
       : 0;
   const initialRelativeRangeEndHours =
     initialGroup?.relative_range_end_seconds_from_deadline != null
-      ? initialGroup.relative_range_end_seconds_from_deadline / 3600
+      ? initialGroup.relative_range_end_seconds_from_deadline / secondsInHour
       : 0;
   const initialRangeStart =
     initialGroup?.send_range_start ?? new Date().toISOString();
   const initialRangeEnd =
     initialGroup?.send_range_end ??
-    new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    new Date(Date.now() + milliseconds({ hours: 1 })).toISOString();
   const [timingMode, setTimingMode] =
     useState<ReminderGroupTimingMode>(initialTimingMode);
   const [sendAtAbsolute, setSendAtAbsolute] = useState<string>(
@@ -350,9 +352,9 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       return;
     }
 
-    const sendAtSecondsFromDeadline = sendAtHoursFromDeadline * 3600;
-    const relativeRangeStartSeconds = relativeRangeStartHours * 3600;
-    const relativeRangeEndSeconds = relativeRangeEndHours * 3600;
+    const sendAtSecondsFromDeadline = sendAtHoursFromDeadline * secondsInHour;
+    const relativeRangeStartSeconds = relativeRangeStartHours * secondsInHour;
+    const relativeRangeEndSeconds = relativeRangeEndHours * secondsInHour;
 
     actionsTentativePlansForGroupAdmin({
       path: {
@@ -592,22 +594,22 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     setSendAtAbsolute(nextGroup?.sendAtAbsolute ?? new Date().toISOString());
     setSendAtHoursFromDeadline(
       nextGroup?.sendAtSecondsFromDeadline != null
-        ? nextGroup.sendAtSecondsFromDeadline / 3600
+        ? nextGroup.sendAtSecondsFromDeadline / secondsInHour
         : 0,
     );
     setSendRangeStart(nextGroup?.send_range_start ?? new Date().toISOString());
     setSendRangeEnd(
       nextGroup?.send_range_end ??
-        new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        new Date(Date.now() + milliseconds({ hours: 1 })).toISOString(),
     );
     setRelativeRangeStartHours(
       nextGroup?.relative_range_start_seconds_from_deadline != null
-        ? nextGroup.relative_range_start_seconds_from_deadline / 3600
+        ? nextGroup.relative_range_start_seconds_from_deadline / secondsInHour
         : 0,
     );
     setRelativeRangeEndHours(
       nextGroup?.relative_range_end_seconds_from_deadline != null
-        ? nextGroup.relative_range_end_seconds_from_deadline / 3600
+        ? nextGroup.relative_range_end_seconds_from_deadline / secondsInHour
         : 0,
     );
     setName(initialValues.reminderGroup?.name ?? "");
@@ -738,9 +740,9 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
     const userIds = cohortType === "custom" ? selectedUserIds : undefined;
 
-    const sendAtSecondsFromDeadline = sendAtHoursFromDeadline * 3600;
-    const relativeRangeStartSeconds = relativeRangeStartHours * 3600;
-    const relativeRangeEndSeconds = relativeRangeEndHours * 3600;
+    const sendAtSecondsFromDeadline = sendAtHoursFromDeadline * secondsInHour;
+    const relativeRangeStartSeconds = relativeRangeStartHours * secondsInHour;
+    const relativeRangeEndSeconds = relativeRangeEndHours * secondsInHour;
     const payload = {
       name,
       cohortType,

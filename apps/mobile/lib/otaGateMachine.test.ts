@@ -1,4 +1,5 @@
 import { OtaGateOutcome } from "@alliance/common/analytics";
+import { milliseconds } from "date-fns";
 import {
   deadlineFor,
   nextStep,
@@ -174,7 +175,7 @@ describe("deadlines", () => {
       (sum, deadline) => sum + deadline.ms,
       0,
     );
-    expect(total).toBeLessThanOrEqual(30_000);
+    expect(total).toBeLessThanOrEqual(milliseconds({ seconds: 30 }));
   });
 
   test("only the apply deadline corrects an outcome already reported", () => {

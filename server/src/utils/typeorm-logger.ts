@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { Logger as NestLogger } from "@nestjs/common";
+import { millisecondsInSecond } from "date-fns/constants";
 import { PostHog } from "posthog-node";
 import client from "prom-client";
 import { Logger as TypeOrmLogger } from "typeorm";
@@ -76,7 +77,9 @@ export class AppTypeOrmLogger implements TypeOrmLogger {
     const source = ctx ? (ctx.route ?? "http") : "background";
 
     const type = getQueryType(query);
-    dbSlowQueryDurationSeconds.labels(type, source).observe(time / 1000);
+    dbSlowQueryDurationSeconds
+      .labels(type, source)
+      .observe(time / millisecondsInSecond);
 
     if (!this.client) return;
     if (time < POSTHOG_SLOW_QUERY_MS) return;

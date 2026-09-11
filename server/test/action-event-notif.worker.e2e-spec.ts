@@ -1,5 +1,7 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { Temporal } from "@js-temporal/polyfill";
+import { milliseconds } from "date-fns";
+import { millisecondsInSecond, secondsInHour } from "date-fns/constants";
 import { ActionsService } from "src/actions/actions.service";
 import { CreateReminderGroupDto } from "src/actions/dto/action.dto";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
@@ -137,7 +139,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     });
     await setUserContractSigned(
       ctx.testUserId,
-      new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      new Date(Date.now() - milliseconds({ days: 3 })),
     );
   };
 
@@ -249,11 +251,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
   it("sends email reminders for absolute timing groups to eligible users", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("absolute-action"),
-      eventDate: new Date(now - 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
     });
 
     const reminderGroup = await createReminderGroup(
@@ -261,7 +266,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
       },
     );
 
@@ -277,11 +282,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
   it("does not send reminders older than the 3 hour lookback window", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("lookback-blocked"),
-      eventDate: new Date(now - 7 * 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 7 })),
     });
 
     const reminderGroup = await createReminderGroup(
@@ -289,7 +297,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 6 * 60 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ hours: 6 })),
       },
     );
 
@@ -302,11 +310,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
   it("sends reminders that are within the 3 hour lookback window", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("lookback-allowed"),
-      eventDate: new Date(now - 3 * 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 3 })),
     });
 
     const reminderGroup = await createReminderGroup(
@@ -314,7 +325,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 2 * 60 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ hours: 2 })),
       },
     );
 
@@ -328,11 +339,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
   it("guards against duplicate reminders via idempotency keys", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("duplicate-action"),
-      eventDate: new Date(now - 45 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ minutes: 45 })),
     });
 
     const reminderGroup = await createReminderGroup(
@@ -340,7 +354,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 10 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 10 })),
       },
     );
 
@@ -357,12 +371,12 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const user = await getPrimaryUser();
     await setUserContractSigned(
       user.id,
-      new Date(now - 7 * 24 * 60 * 60 * 1000),
+      new Date(now - milliseconds({ days: 7 })),
     );
 
     const { action, memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("completed-action"),
-      eventDate: new Date(now - 30 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ minutes: 30 })),
     });
 
     await activityRepo.save(
@@ -380,7 +394,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 15 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 15 })),
       },
     );
 
@@ -395,12 +409,12 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const user = await getPrimaryUser();
     await setUserContractSigned(
       user.id,
-      new Date(now - 5 * 24 * 60 * 60 * 1000),
+      new Date(now - milliseconds({ days: 5 })),
     );
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("uncompleted-action"),
-      eventDate: new Date(now - 50 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ minutes: 50 })),
     });
 
     const reminderGroup = await createReminderGroup(
@@ -408,7 +422,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 6 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 6 })),
       },
     );
 
@@ -425,7 +439,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("no-contract-action"),
-      eventDate: new Date(now - 20 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ minutes: 20 })),
     });
 
     const reminderGroup = await createReminderGroup(
@@ -433,7 +447,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
       },
     );
 
@@ -449,13 +463,13 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const now = Date.now();
     await setUserContractSuspended(
       ctx.testUserId,
-      new Date(now - 24 * 60 * 60 * 1000),
-      new Date(now - 60 * 60 * 1000),
+      new Date(now - milliseconds({ days: 1 })),
+      new Date(now - milliseconds({ hours: 1 })),
     );
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("suspended-action"),
-      eventDate: new Date(now - 30 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ minutes: 30 })),
     });
 
     const reminderGroup = await createReminderGroup(
@@ -463,7 +477,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 4 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 4 })),
       },
     );
 
@@ -483,13 +497,13 @@ describe("ActionEventNotifWorker (e2e)", () => {
     // The user was active at action launch but is now suspended
     await setUserContractSuspended(
       ctx.testUserId,
-      new Date(now - 7 * 24 * 60 * 60 * 1000), // signed 7 days ago
-      new Date(now - 30 * 60 * 1000), // suspended 30 minutes ago
+      new Date(now - milliseconds({ days: 7 })),
+      new Date(now - milliseconds({ minutes: 30 })),
     );
 
     const { action, memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("mid-action-suspend"),
-      eventDate: new Date(now - 2 * 60 * 60 * 1000), // action started 2 hours ago
+      eventDate: new Date(now - milliseconds({ hours: 2 })),
     });
 
     // Create a deadline event so the full range check is triggered
@@ -498,7 +512,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
         title: "Deadline",
         description: "desc",
         newStatus: ActionStatus.Resolution,
-        date: new Date(now + 60 * 60 * 1000), // deadline 1 hour from now
+        date: new Date(now + milliseconds({ hours: 1 })),
         action,
       }),
     );
@@ -508,7 +522,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         deadlineEvent,
       },
     );
@@ -533,13 +547,13 @@ describe("ActionEventNotifWorker (e2e)", () => {
         contractEvents: [
           {
             type: ContractEventType.SIGNED,
-            date: new Date(now - 7 * 24 * 60 * 60 * 1000), // signed 7 days ago
+            date: new Date(now - milliseconds({ days: 7 })),
             automatic: false,
             contractId: ctx.defaultContractId,
           } as ContractEvent,
           {
             type: ContractEventType.SUSPENDED,
-            date: new Date(now - 30 * 60 * 1000), // suspended 30 minutes ago
+            date: new Date(now - milliseconds({ minutes: 30 })),
             automatic: false,
           } as ContractEvent,
         ],
@@ -555,7 +569,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
     const { action, memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("custom-cohort-mid-suspend"),
-      eventDate: new Date(now - 2 * 60 * 60 * 1000), // action started 2 hours ago
+      eventDate: new Date(now - milliseconds({ hours: 2 })),
     });
 
     // Create a deadline event so the full range check is triggered
@@ -564,7 +578,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
         title: "Deadline",
         description: "desc",
         newStatus: ActionStatus.Resolution,
-        date: new Date(now + 60 * 60 * 1000), // deadline 1 hour from now
+        date: new Date(now + milliseconds({ hours: 1 })),
         action,
       }),
     );
@@ -575,7 +589,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderCohortType.Custom,
       {
         users: [suspendedUserWithTags],
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         deadlineEvent,
       },
     );
@@ -605,7 +619,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
         contractEvents: [
           {
             type: ContractEventType.SIGNED,
-            date: new Date(now - 7 * 24 * 60 * 60 * 1000),
+            date: new Date(now - milliseconds({ days: 7 })),
             automatic: false,
             contractId: ctx.defaultContractId,
           } as ContractEvent,
@@ -618,8 +632,8 @@ describe("ActionEventNotifWorker (e2e)", () => {
     await awayRangeRepo.save(
       awayRangeRepo.create({
         userId: awayUser.id,
-        startDate: new Date(now - 90 * 60 * 1000), // away 90min ago...
-        endDate: new Date(now - 30 * 60 * 1000), // ...until 30min ago
+        startDate: new Date(now - milliseconds({ minutes: 90 })),
+        endDate: new Date(now - milliseconds({ minutes: 30 })),
         reason: UserAwayRangeReason.VACATION,
       }),
     );
@@ -630,14 +644,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
     const { action, memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("custom-cohort-away-mid-phase"),
-      eventDate: new Date(now - 2 * 60 * 60 * 1000), // phase started 2 hours ago
+      eventDate: new Date(now - milliseconds({ hours: 2 })),
     });
     const deadlineEvent = await eventRepo.save(
       eventRepo.create({
         title: "Deadline",
         description: "desc",
         newStatus: ActionStatus.Resolution,
-        date: new Date(now + 60 * 60 * 1000), // deadline 1 hour from now
+        date: new Date(now + milliseconds({ hours: 1 })),
         action,
       }),
     );
@@ -648,7 +662,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderCohortType.Custom,
       {
         users: [awayUserWithTags],
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         deadlineEvent,
       },
     );
@@ -676,7 +690,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
         contractEvents: [
           {
             type: ContractEventType.SIGNED,
-            date: new Date(now - 7 * 24 * 60 * 60 * 1000),
+            date: new Date(now - milliseconds({ days: 7 })),
             automatic: false,
             contractId: ctx.defaultContractId,
           } as ContractEvent,
@@ -689,8 +703,8 @@ describe("ActionEventNotifWorker (e2e)", () => {
     await awayRangeRepo.save(
       awayRangeRepo.create({
         userId: previouslyAwayUser.id,
-        startDate: new Date(now - 5 * 24 * 60 * 60 * 1000), // away 5 days ago...
-        endDate: new Date(now - 4 * 24 * 60 * 60 * 1000), // ...until 4 days ago
+        startDate: new Date(now - milliseconds({ days: 5 })),
+        endDate: new Date(now - milliseconds({ days: 4 })),
         reason: UserAwayRangeReason.VACATION,
       }),
     );
@@ -701,14 +715,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
     const { action, memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("custom-cohort-away-before-phase"),
-      eventDate: new Date(now - 2 * 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 2 })),
     });
     const deadlineEvent = await eventRepo.save(
       eventRepo.create({
         title: "Deadline",
         description: "desc",
         newStatus: ActionStatus.Resolution,
-        date: new Date(now + 60 * 60 * 1000),
+        date: new Date(now + milliseconds({ hours: 1 })),
         action,
       }),
     );
@@ -719,7 +733,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderCohortType.Custom,
       {
         users: [userWithTags],
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         deadlineEvent,
       },
     );
@@ -738,7 +752,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const primaryUser = await getPrimaryUser();
     await setUserContractSigned(
       primaryUser.id,
-      new Date(now - 48 * 60 * 60 * 1000),
+      new Date(now - milliseconds({ hours: 48 })),
     );
 
     const customUser = await userRepo.save(
@@ -750,7 +764,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
         contractEvents: [
           {
             type: ContractEventType.SIGNED,
-            date: new Date(now - 48 * 60 * 60 * 1000),
+            date: new Date(now - milliseconds({ hours: 48 })),
             automatic: false,
             contractId: ctx.defaultContractId,
           } as ContractEvent,
@@ -767,7 +781,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("custom-cohort-action"),
-      eventDate: new Date(now - 40 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ minutes: 40 })),
     });
 
     const reminderGroup = await createReminderGroup(
@@ -776,7 +790,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderCohortType.Custom,
       {
         users: [customUserWithTags],
-        sendAtAbsolute: new Date(now - 8 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 8 })),
       },
     );
 
@@ -807,7 +821,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
         contractEvents: [
           {
             type: ContractEventType.SIGNED,
-            date: new Date(now - 48 * 60 * 60 * 1000),
+            date: new Date(now - milliseconds({ hours: 48 })),
             automatic: false,
             contractId: ctx.defaultContractId,
           } as ContractEvent,
@@ -824,7 +838,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("group-cohort-action"),
-      eventDate: new Date(now - 35 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ minutes: 35 })),
     });
 
     const reminderGroup = await createReminderGroup(
@@ -833,7 +847,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderCohortType.Tag,
       {
         userTag: tag,
-        sendAtAbsolute: new Date(now - 6 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 6 })),
       },
     );
 
@@ -851,12 +865,12 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const user = await getPrimaryUser();
     await setUserContractSigned(
       user.id,
-      new Date(now - 5 * 24 * 60 * 60 * 1000),
+      new Date(now - milliseconds({ days: 5 })),
     );
 
     const { action, memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("deadline-action"),
-      eventDate: new Date(now - 2 * 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 2 })),
     });
 
     const deadlineEvent = await eventRepo.save(
@@ -864,7 +878,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
         title: "Deadline event",
         description: "desc",
         newStatus: ActionStatus.Resolution,
-        date: new Date(now + 30 * 60 * 1000),
+        date: new Date(now + milliseconds({ minutes: 30 })),
         action,
       }),
     );
@@ -875,7 +889,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderCohortType.AllUncompleted,
       {
         deadlineEvent,
-        sendAtSecondsFromDeadline: 60 * 60,
+        sendAtSecondsFromDeadline: secondsInHour,
       },
     );
 
@@ -889,7 +903,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
   it("schedules reminders within ranges based on user preference", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    const preferredStart = new Date(now - 4 * 60 * 1000);
+    const preferredStart = new Date(now - milliseconds({ minutes: 4 }));
     const preferredInstant = Temporal.Instant.from(
       preferredStart.toISOString(),
     );
@@ -899,7 +913,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
     await setUserContractSigned(
       user.id,
-      new Date(now - 6 * 24 * 60 * 60 * 1000),
+      new Date(now - milliseconds({ days: 6 })),
     );
     await userRepo.update(user.id, {
       timeZone: "UTC",
@@ -908,7 +922,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("range-action"),
-      eventDate: new Date(now - 3 * 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 3 })),
     });
 
     const reminderGroup = await createReminderGroup(
@@ -917,7 +931,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderCohortType.AllUncompleted,
       {
         send_range_start: preferredStart,
-        send_range_end: new Date(now + 60 * 60 * 1000),
+        send_range_end: new Date(now + milliseconds({ hours: 1 })),
       },
     );
 
@@ -931,7 +945,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
   it("aligns relative range reminders with deadline offsets", async () => {
     const now = Date.now();
-    const sendTime = new Date(now - 5 * 60 * 1000);
+    const sendTime = new Date(now - milliseconds({ minutes: 5 }));
 
     const user = await getPrimaryUser();
     const preferredTime = Temporal.Instant.from(sendTime.toISOString())
@@ -940,7 +954,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
     await setUserContractSigned(
       user.id,
-      new Date(now - 7 * 24 * 60 * 60 * 1000),
+      new Date(now - milliseconds({ days: 7 })),
     );
     await userRepo.update(user.id, {
       timeZone: "UTC",
@@ -949,17 +963,19 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
     const { action, memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("relative-range-action"),
-      eventDate: new Date(now - 6 * 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 6 })),
     });
 
-    const offsetSeconds = 2 * 60 * 60;
+    const offsetSeconds = 2 * secondsInHour;
 
     const deadlineEvent = await eventRepo.save(
       eventRepo.create({
         title: "Relative deadline",
         description: "desc",
         newStatus: ActionStatus.Resolution,
-        date: new Date(sendTime.getTime() + offsetSeconds * 1000),
+        date: new Date(
+          sendTime.getTime() + offsetSeconds * millisecondsInSecond,
+        ),
         action,
       }),
     );
@@ -988,20 +1004,20 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const user = await getPrimaryUser();
     await setUserContractSigned(
       user.id,
-      new Date(now - 5 * 24 * 60 * 60 * 1000),
+      new Date(now - milliseconds({ days: 5 })),
     );
 
     // dependency action A whose deadline just passed
     const { action: dependencyAction } = await createActionWithMemberEvent({
       name: uniqueName("dependency-action"),
-      eventDate: new Date(now - 3 * 24 * 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ days: 3 })),
     });
     const dependencyDeadline = await eventRepo.save(
       eventRepo.create({
         title: "Dependency deadline",
         description: "desc",
         newStatus: ActionStatus.Resolution,
-        date: new Date(now - 5 * 60 * 1000),
+        date: new Date(now - milliseconds({ minutes: 5 })),
         action: dependencyAction,
       }),
     );
@@ -1009,14 +1025,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
     // action B with its own deadline far outside the send window
     const { action, memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("anchored-action"),
-      eventDate: new Date(now - 2 * 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 2 })),
     });
     const ownDeadline = await eventRepo.save(
       eventRepo.create({
         title: "Own deadline",
         description: "desc",
         newStatus: ActionStatus.Resolution,
-        date: new Date(now + 10 * 24 * 60 * 60 * 1000),
+        date: new Date(now + milliseconds({ days: 10 })),
         action,
       }),
     );
@@ -1041,7 +1057,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
   it("anchors relative range windows to timingAnchorEvent when set", async () => {
     const now = Date.now();
-    const sendTime = new Date(now - 5 * 60 * 1000);
+    const sendTime = new Date(now - milliseconds({ minutes: 5 }));
 
     const user = await getPrimaryUser();
     const preferredTime = Temporal.Instant.from(sendTime.toISOString())
@@ -1050,7 +1066,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
     await setUserContractSigned(
       user.id,
-      new Date(now - 7 * 24 * 60 * 60 * 1000),
+      new Date(now - milliseconds({ days: 7 })),
     );
     await userRepo.update(user.id, {
       timeZone: "UTC",
@@ -1059,30 +1075,32 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
     const { action: dependencyAction } = await createActionWithMemberEvent({
       name: uniqueName("anchor-range-dependency"),
-      eventDate: new Date(now - 3 * 24 * 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ days: 3 })),
     });
 
-    const offsetSeconds = 2 * 60 * 60;
+    const offsetSeconds = 2 * secondsInHour;
     const anchorEvent = await eventRepo.save(
       eventRepo.create({
         title: "Anchor deadline",
         description: "desc",
         newStatus: ActionStatus.Resolution,
-        date: new Date(sendTime.getTime() + offsetSeconds * 1000),
+        date: new Date(
+          sendTime.getTime() + offsetSeconds * millisecondsInSecond,
+        ),
         action: dependencyAction,
       }),
     );
 
     const { action, memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("anchor-range-action"),
-      eventDate: new Date(now - 6 * 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 6 })),
     });
     const ownDeadline = await eventRepo.save(
       eventRepo.create({
         title: "Own faraway deadline",
         description: "desc",
         newStatus: ActionStatus.Resolution,
-        date: new Date(now + 10 * 24 * 60 * 60 * 1000),
+        date: new Date(now + milliseconds({ days: 10 })),
         action,
       }),
     );
@@ -1109,11 +1127,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
   it("skips users already notified via any sibling group when excludePreviouslyNotified is set", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("exclude-notified-action"),
-      eventDate: new Date(now - 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
     });
 
     // sibling group that already notified the user (outside the send window)
@@ -1122,7 +1143,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 24 * 60 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ days: 1 })),
         allSent: true,
       },
     );
@@ -1141,7 +1162,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         excludePreviouslyNotified: true,
       },
     );
@@ -1155,11 +1176,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
   it("still skips previously notified users after the notifying group is deleted", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("deleted-group-action"),
-      eventDate: new Date(now - 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
     });
 
     const siblingGroup = await createReminderGroup(
@@ -1167,7 +1191,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 24 * 60 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ days: 1 })),
         allSent: true,
       },
     );
@@ -1189,7 +1213,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         excludePreviouslyNotified: true,
       },
     );
@@ -1203,11 +1227,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
   it("skips the catch-up when a sibling group sends in the same dispatch cycle", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("same-cycle-action"),
-      eventDate: new Date(now - 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
     });
 
     // both groups fall due in the same dispatch window; no notif exists yet
@@ -1215,14 +1242,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
       memberEvent,
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
-      { sendAtAbsolute: new Date(now - 10 * 60 * 1000) },
+      { sendAtAbsolute: new Date(now - milliseconds({ minutes: 10 })) },
     );
     const catchUpGroup = await createReminderGroup(
       memberEvent,
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         excludePreviouslyNotified: true,
       },
     );
@@ -1239,16 +1266,19 @@ describe("ActionEventNotifWorker (e2e)", () => {
   it("dispatches the sibling before the catch-up when both are due at the same instant", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("same-instant-action"),
-      eventDate: new Date(now - 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
     });
 
     // identical send times, catch-up created first (lower id) so that without
     // the deterministic tie-break it would be dispatched first and double-send
-    const sendAt = new Date(now - 5 * 60 * 1000);
+    const sendAt = new Date(now - milliseconds({ minutes: 5 }));
     const catchUpGroup = await createReminderGroup(
       memberEvent,
       ReminderGroupTimingMode.Absolute,
@@ -1277,11 +1307,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
   it("still sends the catch-up when the sibling plan in the same cycle never actually sent", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("failed-sibling-action"),
-      eventDate: new Date(now - 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
     });
 
     // sibling is due in the same window, but a previous attempt already
@@ -1291,7 +1324,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       memberEvent,
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
-      { sendAtAbsolute: new Date(now - 10 * 60 * 1000) },
+      { sendAtAbsolute: new Date(now - milliseconds({ minutes: 10 })) },
     );
     await notifRepo.save(
       notifRepo.create({
@@ -1308,7 +1341,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         excludePreviouslyNotified: true,
       },
     );
@@ -1339,7 +1372,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
           contractEvents: [
             {
               type: ContractEventType.SIGNED,
-              date: new Date(now - 7 * 24 * 60 * 60 * 1000),
+              date: new Date(now - milliseconds({ days: 7 })),
               automatic: false,
               contractId: ctx.defaultContractId,
             } as ContractEvent,
@@ -1369,21 +1402,21 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("group-leads-catch-up-action"),
-      eventDate: new Date(now - 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
     });
 
     const groupLeadsGroup = await createReminderGroup(
       memberEvent,
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.GroupLeadsWithUncompleted,
-      { sendAtAbsolute: new Date(now - 10 * 60 * 1000) },
+      { sendAtAbsolute: new Date(now - milliseconds({ minutes: 10 })) },
     );
     const catchUpGroup = await createReminderGroup(
       memberEvent,
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         excludePreviouslyNotified: true,
       },
     );
@@ -1409,18 +1442,21 @@ describe("ActionEventNotifWorker (e2e)", () => {
   it("still sends when the prior sent notif belongs to a different event and excludePreviouslyNotified is set", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
 
     const { memberEvent: otherEvent } = await createActionWithMemberEvent({
       name: uniqueName("other-event-action"),
-      eventDate: new Date(now - 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
     });
     const otherGroup = await createReminderGroup(
       otherEvent,
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 24 * 60 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ days: 1 })),
         allSent: true,
       },
     );
@@ -1436,14 +1472,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("unrelated-notified-action"),
-      eventDate: new Date(now - 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
     });
     const catchUpGroup = await createReminderGroup(
       memberEvent,
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         excludePreviouslyNotified: true,
       },
     );
@@ -1458,11 +1494,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
   it("does not skip sibling-group-notified users when excludePreviouslyNotified is false", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("flag-off-action"),
-      eventDate: new Date(now - 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
     });
 
     const siblingGroup = await createReminderGroup(
@@ -1470,7 +1509,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 24 * 60 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ days: 1 })),
         allSent: true,
       },
     );
@@ -1489,7 +1528,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         excludePreviouslyNotified: false,
       },
     );
@@ -1512,7 +1551,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     });
     const { action: formAction } = await createActionWithMemberEvent({
       name: uniqueName("form-owner-action"),
-      eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ days: 2 })),
     });
     await actionRepo.update(formAction.id, { taskFormId: form.id });
     const formActionDeadline = await eventRepo.save(
@@ -1520,7 +1559,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
         title: "Form action deadline",
         description: "desc",
         newStatus: ActionStatus.Resolution,
-        date: new Date(now + 24 * 60 * 60 * 1000),
+        date: new Date(now + milliseconds({ days: 1 })),
         action: formAction,
       }),
     );
@@ -1528,14 +1567,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
     // dependency B: referenced via CompletedAction, has a deadline
     const { action: completedDep } = await createActionWithMemberEvent({
       name: uniqueName("completed-dependency"),
-      eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ days: 2 })),
     });
     const completedDepDeadline = await eventRepo.save(
       eventRepo.create({
         title: "Completed dependency deadline",
         description: "desc",
         newStatus: ActionStatus.Resolution,
-        date: new Date(now + 2 * 24 * 60 * 60 * 1000),
+        date: new Date(now + milliseconds({ days: 2 })),
         action: completedDep,
       }),
     );
@@ -1543,7 +1582,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     // dependency C: referenced but has no deadline event → dropped
     const { action: noDeadlineDep } = await createActionWithMemberEvent({
       name: uniqueName("no-deadline-dependency"),
-      eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ days: 2 })),
     });
 
     // dependency D: owns its form via an action_form_variant, has a deadline
@@ -1553,7 +1592,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     });
     const { action: variantAction } = await createActionWithMemberEvent({
       name: uniqueName("variant-owner-action"),
-      eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ days: 2 })),
     });
     const variantRepo = ctx.dataSource.getRepository(ActionFormVariant);
     await variantRepo.save(
@@ -1569,7 +1608,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
         title: "Variant action deadline",
         description: "desc",
         newStatus: ActionStatus.Resolution,
-        date: new Date(now + 3 * 24 * 60 * 60 * 1000),
+        date: new Date(now + milliseconds({ days: 3 })),
         action: variantAction,
       }),
     );
@@ -1577,7 +1616,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const { action: dependentAction, memberEvent } =
       await createActionWithMemberEvent({
         name: uniqueName("dependent-action"),
-        eventDate: new Date(now - 60 * 60 * 1000),
+        eventDate: new Date(now - milliseconds({ hours: 1 })),
       });
     await actionRepo.update(dependentAction.id, {
       cohortExpression: {
@@ -1616,14 +1655,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
     const { action: dependencyAction } = await createActionWithMemberEvent({
       name: uniqueName("anchor-validate-dependency"),
-      eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ days: 2 })),
     });
     const dependencyDeadline = await eventRepo.save(
       eventRepo.create({
         title: "Dependency deadline",
         description: "desc",
         newStatus: ActionStatus.Resolution,
-        date: new Date(now + 24 * 60 * 60 * 1000),
+        date: new Date(now + milliseconds({ days: 1 })),
         action: dependencyAction,
       }),
     );
@@ -1631,14 +1670,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
     // real deadline event, but of an action the cohort doesn't depend on
     const { action: unrelatedAction } = await createActionWithMemberEvent({
       name: uniqueName("anchor-validate-unrelated"),
-      eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ days: 2 })),
     });
     const unrelatedDeadline = await eventRepo.save(
       eventRepo.create({
         title: "Unrelated deadline",
         description: "desc",
         newStatus: ActionStatus.Resolution,
-        date: new Date(now + 24 * 60 * 60 * 1000),
+        date: new Date(now + milliseconds({ days: 1 })),
         action: unrelatedAction,
       }),
     );
@@ -1646,7 +1685,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const { action: dependentAction, memberEvent } =
       await createActionWithMemberEvent({
         name: uniqueName("anchor-validate-action"),
-        eventDate: new Date(now - 60 * 60 * 1000),
+        eventDate: new Date(now - milliseconds({ hours: 1 })),
       });
     await actionRepo.update(dependentAction.id, {
       cohortExpression: {
@@ -1698,12 +1737,15 @@ describe("ActionEventNotifWorker (e2e)", () => {
   it("only notifies about the suite tasks the user has not been notified about yet", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
 
     const suite = await actionSuiteRepo.save(
       actionSuiteRepo.create({ name: uniqueName("catch-up-suite") }),
     );
-    const eventDate = new Date(now - 60 * 60 * 1000);
+    const eventDate = new Date(now - milliseconds({ hours: 1 }));
     const { action: actionA, memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("catch-up-task-a"),
       eventDate,
@@ -1734,7 +1776,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 24 * 60 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ days: 1 })),
         allSent: true,
         actionSuite: suiteWithActions,
       },
@@ -1755,7 +1797,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         actionSuite: suiteWithActions,
         useSuiteTaskCount: true,
         excludePreviouslyNotified: true,
@@ -1775,12 +1817,15 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const now = Date.now();
     const actionsService = ctx.app.get(ActionsService);
     const user = await getPrimaryUser();
-    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
 
     const suite = await actionSuiteRepo.save(
       actionSuiteRepo.create({ name: uniqueName("preview-scope-suite") }),
     );
-    const eventDate = new Date(now - 60 * 60 * 1000);
+    const eventDate = new Date(now - milliseconds({ hours: 1 }));
     const { action: actionA, memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("preview-scope-task-a"),
       eventDate,
@@ -1802,7 +1847,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 24 * 60 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ days: 1 })),
         allSent: true,
       },
     );
@@ -1820,7 +1865,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const catchUpDto = {
       name: "Tentative suite catch-up",
       timingMode: ReminderGroupTimingMode.Absolute,
-      sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+      sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
       cohortType: ReminderCohortType.AllUncompleted,
       emailMessage: "msg",
       emailSubject: "subject",
@@ -1854,12 +1899,15 @@ describe("ActionEventNotifWorker (e2e)", () => {
   it("records only in-scope tasks, so a targeted reminder does not suppress a later catch-up", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
 
     const suite = await actionSuiteRepo.save(
       actionSuiteRepo.create({ name: uniqueName("scope-suite") }),
     );
-    const eventDate = new Date(now - 60 * 60 * 1000);
+    const eventDate = new Date(now - milliseconds({ hours: 1 }));
     const { action: actionA, memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("scope-task-a"),
       eventDate,
@@ -1891,7 +1939,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 10 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 10 })),
         useSuiteTaskCount: false,
       },
     );
@@ -1900,7 +1948,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         actionSuite: suiteWithActions,
         useSuiteTaskCount: true,
         excludePreviouslyNotified: true,
@@ -1928,14 +1976,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
     // external dependency with a deadline
     const { action: externalDep } = await createActionWithMemberEvent({
       name: uniqueName("suite-external-dep"),
-      eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ days: 2 })),
     });
     const externalDepDeadline = await eventRepo.save(
       eventRepo.create({
         title: "External dependency deadline",
         description: "desc",
         newStatus: ActionStatus.Resolution,
-        date: new Date(now + 24 * 60 * 60 * 1000),
+        date: new Date(now + milliseconds({ days: 1 })),
         action: externalDep,
       }),
     );
@@ -1943,7 +1991,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const suite = await actionSuiteRepo.save(
       actionSuiteRepo.create({ name: uniqueName("anchor-suite") }),
     );
-    const eventDate = new Date(now - 60 * 60 * 1000);
+    const eventDate = new Date(now - milliseconds({ hours: 1 }));
     const { action: firstAction, memberEvent } =
       await createActionWithMemberEvent({
         name: uniqueName("anchor-suite-first"),
@@ -1963,7 +2011,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
         title: "First action deadline",
         description: "desc",
         newStatus: ActionStatus.Resolution,
-        date: new Date(now + 24 * 60 * 60 * 1000),
+        date: new Date(now + milliseconds({ days: 1 })),
         action: firstAction,
       }),
     );
@@ -2005,7 +2053,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       }),
     );
 
-    const eventDate = new Date(now - 60 * 60 * 1000);
+    const eventDate = new Date(now - milliseconds({ hours: 1 }));
 
     const { action: firstAction, memberEvent } =
       await createActionWithMemberEvent({
@@ -2040,7 +2088,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
           contractEvents: [
             {
               type: ContractEventType.SIGNED,
-              date: new Date(now - 72 * 60 * 60 * 1000),
+              date: new Date(now - milliseconds({ hours: 72 })),
               automatic: false,
               contractId: ctx.defaultContractId,
             } as ContractEvent,
@@ -2070,7 +2118,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         actionSuite: suiteWithActions,
       },
     );
@@ -2110,7 +2158,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     });
     const savedTag = await tagRepo.save(newtag);
 
-    const eventDate = new Date(now - 45 * 60 * 1000);
+    const eventDate = new Date(now - milliseconds({ minutes: 45 }));
 
     const { action: firstAction, memberEvent } =
       await createActionWithMemberEvent({
@@ -2141,7 +2189,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
         contractEvents: [
           {
             type: ContractEventType.SIGNED,
-            date: new Date(now - 6 * 24 * 60 * 60 * 1000),
+            date: new Date(now - milliseconds({ days: 6 })),
             automatic: false,
             contractId: ctx.defaultContractId,
           } as ContractEvent,
@@ -2161,7 +2209,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         actionSuite: suiteWithActions,
       },
     );
@@ -2183,7 +2231,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       }),
     );
 
-    const eventDate = new Date(now - 60 * 60 * 1000);
+    const eventDate = new Date(now - milliseconds({ hours: 1 }));
 
     const { action: firstAction, memberEvent } =
       await createActionWithMemberEvent({
@@ -2221,7 +2269,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
           contractEvents: [
             {
               type: ContractEventType.SIGNED,
-              date: new Date(now - 7 * 24 * 60 * 60 * 1000),
+              date: new Date(now - milliseconds({ days: 7 })),
               automatic: false,
               contractId: ctx.defaultContractId,
             } as ContractEvent,
@@ -2310,7 +2358,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.GroupLeadsWithUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         actionSuite: suiteWithActions,
         textMessage: "Leader reminder: #{nmembers} members need help.",
       },
@@ -2372,7 +2420,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       }),
     );
 
-    const eventDate = new Date(now - 60 * 60 * 1000);
+    const eventDate = new Date(now - milliseconds({ hours: 1 }));
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("leader-count-action"),
@@ -2409,7 +2457,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
           contractEvents: [
             {
               type: ContractEventType.SIGNED,
-              date: new Date(now - 7 * 24 * 60 * 60 * 1000),
+              date: new Date(now - milliseconds({ days: 7 })),
               automatic: false,
               contractId: ctx.defaultContractId,
             } as ContractEvent,
@@ -2443,7 +2491,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.GroupLeadsWithUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         actionSuite: suiteWithActions,
         textMessage: "Leaders need to help #{nmembers} members.",
       },
@@ -2486,7 +2534,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.GroupLeadsWithUncompleted,
       {
-        sendAtAbsolute: new Date(now - 4 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 4 })),
         actionSuite: suiteWithActions,
         textMessage: "Leaders need to help #{nmembers} members.",
       },
@@ -2519,7 +2567,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       }),
     );
 
-    const eventDate = new Date(now - 30 * 60 * 1000);
+    const eventDate = new Date(now - milliseconds({ minutes: 30 }));
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("suite-count-one"),
@@ -2555,7 +2603,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         actionSuite: suiteWithActions,
         useSuiteTaskCount: true,
         textMessage: "Suite reminder #{n} with #{tasktime}",
@@ -2584,7 +2632,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 4 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 4 })),
         actionSuite: suiteWithActions,
         useSuiteTaskCount: false,
         textMessage: "Total reminder #{n}",
@@ -2612,14 +2660,17 @@ describe("ActionEventNotifWorker (e2e)", () => {
   it("replaces placeholders in custom reminder text", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
     await userRepo.update(user.id, {
       name: "Reminder Tester",
     });
 
     const { action, memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("template-action"),
-      eventDate: new Date(now - 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
     });
 
     const reminderGroup = await createReminderGroup(
@@ -2627,7 +2678,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 10 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 10 })),
       },
     );
 
@@ -2688,7 +2739,10 @@ describe("ActionEventNotifWorker (e2e)", () => {
   it("excludes users not matching CompletedAction cohort from notifications", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await setUserContractSigned(user.id, new Date(now - 48 * 60 * 60 * 1000));
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ hours: 48 })),
+    );
 
     // Create a prerequisite action and mark user as completed
     const prereqAction = await actionRepo.save(
@@ -2715,13 +2769,13 @@ describe("ActionEventNotifWorker (e2e)", () => {
     );
     await setUserContractSigned(
       nonCompleter.id,
-      new Date(now - 48 * 60 * 60 * 1000),
+      new Date(now - milliseconds({ hours: 48 })),
     );
 
     // Action with CompletedAction cohort: only users who completed prereq
     const { memberEvent } = await createActionWithCohortExpression({
       name: uniqueName("completed-action-cohort"),
-      eventDate: new Date(now - 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
       cohortExpression: {
         type: "CompletedAction",
         actionId: prereqAction.id,
@@ -2732,7 +2786,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       memberEvent,
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
-      { sendAtAbsolute: new Date(now - 5 * 60 * 1000) },
+      { sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })) },
     );
 
     await worker.dispatchDueNotifs();
@@ -2747,7 +2801,10 @@ describe("ActionEventNotifWorker (e2e)", () => {
   it("excludes users not matching GroupLead cohort from notifications", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await setUserContractSigned(user.id, new Date(now - 48 * 60 * 60 * 1000));
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ hours: 48 })),
+    );
 
     // Create a community and make user a leader
     const community = await communityRepo.save(
@@ -2771,14 +2828,14 @@ describe("ActionEventNotifWorker (e2e)", () => {
     );
     await setUserContractSigned(
       nonLeader.id,
-      new Date(now - 48 * 60 * 60 * 1000),
+      new Date(now - milliseconds({ hours: 48 })),
     );
     community.users = [...(community.users ?? []), nonLeader];
     await communityRepo.save(community);
 
     const { memberEvent } = await createActionWithCohortExpression({
       name: uniqueName("group-lead-cohort"),
-      eventDate: new Date(now - 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
       cohortExpression: { type: "GroupLead" },
     });
 
@@ -2786,7 +2843,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       memberEvent,
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
-      { sendAtAbsolute: new Date(now - 5 * 60 * 1000) },
+      { sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })) },
     );
 
     await worker.dispatchDueNotifs();
@@ -2801,7 +2858,10 @@ describe("ActionEventNotifWorker (e2e)", () => {
   it("excludes users not matching FormFieldValue cohort from notifications", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await setUserContractSigned(user.id, new Date(now - 48 * 60 * 60 * 1000));
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ hours: 48 })),
+    );
 
     const { form, snapshot: cohortSnapshot } = await createFormWithSnapshot(
       ctx.dataSource,
@@ -2846,12 +2906,12 @@ describe("ActionEventNotifWorker (e2e)", () => {
     );
     await setUserContractSigned(
       nonResponder.id,
-      new Date(now - 48 * 60 * 60 * 1000),
+      new Date(now - milliseconds({ hours: 48 })),
     );
 
     const { memberEvent } = await createActionWithCohortExpression({
       name: uniqueName("form-field-cohort"),
-      eventDate: new Date(now - 60 * 60 * 1000),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
       cohortExpression: {
         type: "FormFieldValue",
         formId: form.id,
@@ -2864,7 +2924,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       memberEvent,
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
-      { sendAtAbsolute: new Date(now - 5 * 60 * 1000) },
+      { sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })) },
     );
 
     await worker.dispatchDueNotifs();
@@ -2888,7 +2948,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       }),
     );
 
-    const eventDate = new Date(now - 60 * 60 * 1000);
+    const eventDate = new Date(now - milliseconds({ hours: 1 }));
 
     const { action: optionalAction, memberEvent } =
       await createActionWithMemberEvent({
@@ -2915,7 +2975,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
         contractEvents: [
           {
             type: ContractEventType.SIGNED,
-            date: new Date(now - 72 * 60 * 60 * 1000),
+            date: new Date(now - milliseconds({ hours: 72 })),
             automatic: false,
             contractId: ctx.defaultContractId,
           } as ContractEvent,
@@ -2934,7 +2994,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         actionSuite: suiteWithActions,
         excludeOptionalActions: true,
       },
@@ -2958,7 +3018,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       }),
     );
 
-    const eventDate = new Date(now - 60 * 60 * 1000);
+    const eventDate = new Date(now - milliseconds({ hours: 1 }));
 
     const { action: requiredAction, memberEvent } =
       await createActionWithMemberEvent({
@@ -2996,7 +3056,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
           contractEvents: [
             {
               type: ContractEventType.SIGNED,
-              date: new Date(now - 72 * 60 * 60 * 1000),
+              date: new Date(now - milliseconds({ hours: 72 })),
               automatic: false,
               contractId: ctx.defaultContractId,
             } as ContractEvent,
@@ -3025,7 +3085,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.AllUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         actionSuite: suiteWithActions,
         excludeOptionalActions: true,
       },
@@ -3053,7 +3113,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       }),
     );
 
-    const eventDate = new Date(now - 60 * 60 * 1000);
+    const eventDate = new Date(now - milliseconds({ hours: 1 }));
 
     const { action: requiredAction, memberEvent } =
       await createActionWithMemberEvent({
@@ -3093,7 +3153,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
           contractEvents: [
             {
               type: ContractEventType.SIGNED,
-              date: new Date(now - 7 * 24 * 60 * 60 * 1000),
+              date: new Date(now - milliseconds({ days: 7 })),
               automatic: false,
               contractId: ctx.defaultContractId,
             } as ContractEvent,
@@ -3159,7 +3219,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.GroupLeadsWithUncompleted,
       {
-        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
         actionSuite: suiteWithActions,
         excludeOptionalActions: true,
         textMessage: "Leader reminder: #{nmembers} members need help.",

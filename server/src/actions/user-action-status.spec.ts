@@ -1,4 +1,6 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { milliseconds } from "date-fns";
+import { millisecondsInDay } from "date-fns/constants";
 import { TaskAwayStatus } from "src/utils/action-user";
 import { UserActionRelationPillStatus } from "../user/dto/user-action-relations.dto";
 import type { ActionEvent } from "./entities/action-event.entity";
@@ -10,11 +12,10 @@ import {
 } from "./user-action-status";
 import { memberActionPhase } from "./utils/action-event";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 /** Fixed "now": 7 days into a 14-day member-action window by default. */
 const NOW = new Date("2026-01-08T00:00:00Z");
-const PHASE_START = new Date(NOW.getTime() - 7 * DAY_MS);
-const DEADLINE = new Date(NOW.getTime() + 7 * DAY_MS);
+const PHASE_START = new Date(NOW.getTime() - 7 * millisecondsInDay);
+const DEADLINE = new Date(NOW.getTime() + 7 * millisecondsInDay);
 
 type ResolveParams = Parameters<typeof resolveUserActionStatus>[0];
 
@@ -65,7 +66,9 @@ function activity(
 ): ResolveParams["activities"][number] {
   return {
     type,
-    createdAt: new Date(PHASE_START.getTime() + ++activitySeq * 60_000),
+    createdAt: new Date(
+      PHASE_START.getTime() + ++activitySeq * milliseconds({ minutes: 1 }),
+    ),
     ...overrides,
   };
 }
@@ -132,7 +135,7 @@ describe("resolveUserActionStatus", () => {
       action: makeAction({ onboarding: true }),
       user: makeUser({
         contractEvents: [
-          { date: new Date(PHASE_START.getTime() - 30 * DAY_MS) },
+          { date: new Date(PHASE_START.getTime() - 30 * millisecondsInDay) },
         ] as ResolveParams["user"]["contractEvents"],
       }),
     });
@@ -203,8 +206,8 @@ describe("resolveUserActionStatus", () => {
       user: makeUser({
         awayRanges: [
           {
-            startDate: new Date(NOW.getTime() - DAY_MS),
-            endDate: new Date(NOW.getTime() + DAY_MS),
+            startDate: new Date(NOW.getTime() - millisecondsInDay),
+            endDate: new Date(NOW.getTime() + millisecondsInDay),
           },
         ] as ResolveParams["user"]["awayRanges"],
         isAwayAtAnyPointInRange: () => true,
@@ -224,11 +227,11 @@ describe("resolveUserActionStatus", () => {
   });
 
   it("flags a passed deadline", () => {
-    const pastDeadline = new Date(NOW.getTime() - DAY_MS);
+    const pastDeadline = new Date(NOW.getTime() - millisecondsInDay);
     const status = resolve({
       action: makeAction({
         events: makeEvents({
-          start: new Date(NOW.getTime() - 8 * DAY_MS),
+          start: new Date(NOW.getTime() - 8 * millisecondsInDay),
           deadline: pastDeadline,
         }),
       }),
@@ -243,8 +246,8 @@ describe("resolveUserActionStatus", () => {
       action: makeAction({
         optional: true,
         events: makeEvents({
-          start: new Date(NOW.getTime() - 8 * DAY_MS),
-          deadline: new Date(NOW.getTime() - DAY_MS),
+          start: new Date(NOW.getTime() - 8 * millisecondsInDay),
+          deadline: new Date(NOW.getTime() - millisecondsInDay),
         }),
       }),
     });
@@ -269,7 +272,7 @@ describe("resolveUserActionStatus", () => {
     const status = resolve({
       action: makeAction({
         events: makeEvents({
-          start: new Date(NOW.getTime() + DAY_MS),
+          start: new Date(NOW.getTime() + millisecondsInDay),
           deadline: null,
         }),
       }),
@@ -307,7 +310,7 @@ describe("computeCanCompleteAction", () => {
         action: makeAction({ onboarding: true }),
         user: makeUser({
           contractEvents: [
-            { date: new Date(PHASE_START.getTime() - 30 * DAY_MS) },
+            { date: new Date(PHASE_START.getTime() - 30 * millisecondsInDay) },
           ] as ResolveParams["user"]["contractEvents"],
         }),
         inCohort: true,

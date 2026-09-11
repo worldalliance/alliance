@@ -1,8 +1,9 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { captureEvent } from "@alliance/shared/lib/analytics";
+import { millisecondsInSecond, secondsInMinute } from "date-fns/constants";
 import { useCallback, useEffect, useRef } from "react";
 
-const MAX_PAGE_DURATION_SECONDS = 900; // 15 minute cap
+const MAX_PAGE_DURATION_SECONDS = 15 * secondsInMinute;
 
 interface FormTrackingParams {
   formId: number;
@@ -26,7 +27,9 @@ export function useFormPageDurationTracking({
     if (!isTrackingRef.current) return;
     isTrackingRef.current = false;
     const durationSeconds = Math.min(
-      Math.round((Date.now() - pageEnteredAtRef.current) / 1000),
+      Math.round(
+        (Date.now() - pageEnteredAtRef.current) / millisecondsInSecond,
+      ),
       MAX_PAGE_DURATION_SECONDS,
     );
     captureEvent(AnalyticsEvent.FormPageExited, {

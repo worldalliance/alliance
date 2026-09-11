@@ -1,4 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
+import { milliseconds } from "date-fns";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -12,7 +13,7 @@ export interface ShareButtonProps {
   labelClassName?: string;
 }
 
-const COPIED_LIFETIME_MS = 2000;
+const COPIED_LIFETIME_MS = milliseconds({ seconds: 2 });
 
 export default function ShareButton({
   onClick,

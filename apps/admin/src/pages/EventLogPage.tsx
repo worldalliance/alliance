@@ -1,9 +1,16 @@
+import { hoursInDay } from "@alliance/common/duration";
 import { eventLogFindAllAdmin } from "@alliance/shared/client";
 import type { EventLogDto, EventType } from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { usePaginatedQuery } from "@alliance/shared/lib/usePaginatedQuery";
 import { cn } from "@alliance/shared/styles/util";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
+import { milliseconds } from "date-fns";
+import {
+  millisecondsInSecond,
+  minutesInHour,
+  secondsInMinute,
+} from "date-fns/constants";
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import {
@@ -41,13 +48,15 @@ function formatEventType(type: string): string {
 }
 
 function timeAgo(dateStr: string): string {
-  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (seconds < 60) return `${seconds}s ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
+  const seconds = Math.floor(
+    (Date.now() - new Date(dateStr).getTime()) / millisecondsInSecond,
+  );
+  if (seconds < secondsInMinute) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / secondsInMinute);
+  if (minutes < minutesInHour) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / minutesInHour);
+  if (hours < hoursInDay) return `${hours}h ago`;
+  const days = Math.floor(hours / hoursInDay);
   return `${days}d ago`;
 }
 
@@ -94,13 +103,16 @@ const EventLogPage: React.FC = () => {
       if (page === 1 && !eventTypeFilter) {
         setLiveEvents((prev) => [event, ...prev]);
         setHighlightedIds((prev) => new Set(prev).add(event.id));
-        const timeout = setTimeout(() => {
-          setHighlightedIds((prev) => {
-            const next = new Set(prev);
-            next.delete(event.id);
-            return next;
-          });
-        }, 5000);
+        const timeout = setTimeout(
+          () => {
+            setHighlightedIds((prev) => {
+              const next = new Set(prev);
+              next.delete(event.id);
+              return next;
+            });
+          },
+          milliseconds({ seconds: 5 }),
+        );
         highlightTimeoutsRef.current.set(event.id, timeout);
       }
     });

@@ -14,6 +14,7 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import List from "@alliance/sharedweb/ui/List";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
+import { milliseconds } from "date-fns";
 import { ChevronLeft, ChevronRight, SquarePen, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { href, Link } from "react-router";
@@ -91,9 +92,12 @@ const ConversationInfoPanel = ({
 
   useEffect(() => {
     if (justAddedMember) {
-      setTimeout(() => {
-        setJustAddedMember(null);
-      }, 2000);
+      setTimeout(
+        () => {
+          setJustAddedMember(null);
+        },
+        milliseconds({ seconds: 2 }),
+      );
     }
   }, [justAddedMember]);
 

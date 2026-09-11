@@ -8,6 +8,7 @@ import {
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
+import { milliseconds } from "date-fns";
 import { ChevronLeft, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
@@ -92,9 +93,12 @@ const ConversationDetailPanel = ({
 
   useEffect(() => {
     if (focusedMessageId) {
-      setTimeout(() => {
-        setFocusedMessageId(null);
-      }, 1000);
+      setTimeout(
+        () => {
+          setFocusedMessageId(null);
+        },
+        milliseconds({ seconds: 1 }),
+      );
     }
   }, [focusedMessageId, convoMessages]);
 
@@ -493,8 +497,7 @@ const ConversationDetailPanel = ({
                       Math.abs(
                         new Date(message.createdAt).getTime() -
                           new Date(arr[idx - 1].createdAt).getTime(),
-                      ) >
-                        1000 * 60 * 60 * 3 // 3 hours
+                      ) > milliseconds({ hours: 3 })
                     }
                     isFirstInReplyGroup={
                       idx === 0 ||

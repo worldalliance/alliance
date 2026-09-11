@@ -1,5 +1,6 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
+import { addMinutes } from "date-fns";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
@@ -30,9 +31,6 @@ import {
   createTestApp,
   TestContext,
 } from "./e2e-test-utils";
-
-const addMinutes = (date: Date, minutes: number) =>
-  new Date(date.getTime() + minutes * 60 * 1000);
 
 describe("ForumActionCompleterWorker (e2e)", () => {
   let ctx: TestContext;

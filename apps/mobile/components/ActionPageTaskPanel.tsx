@@ -15,6 +15,7 @@ import {
   buildShareText,
   getCompletedShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
+import { milliseconds } from "date-fns";
 import * as Clipboard from "expo-clipboard";
 import { Link } from "expo-router";
 import { ArrowRight, Link2 } from "lucide-react-native";
@@ -148,7 +149,7 @@ const ActionPageTaskPanel = ({
       return;
     }
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), milliseconds({ seconds: 2 }));
   };
 
   const completedHeader = (

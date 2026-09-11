@@ -18,6 +18,7 @@ import { updateCommentInTree } from "@alliance/shared/lib/commentTree";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
 import { useDeleteComment } from "@alliance/shared/lib/useDeleteComment";
 import { useLoadComments } from "@alliance/shared/lib/useLoadComments";
+import { milliseconds } from "date-fns";
 import {
   createContext,
   useCallback,
@@ -178,9 +179,12 @@ export function useCommentTree(
           }
         }, 500);
 
-        setTimeout(() => {
-          setHighlightedReplyId(null);
-        }, 5000);
+        setTimeout(
+          () => {
+            setHighlightedReplyId(null);
+          },
+          milliseconds({ seconds: 5 }),
+        );
       }
     }
   }, [searchParams, setSearchParams]);
@@ -229,13 +233,16 @@ export function useCommentTree(
           setNewlyAddedReplies((prev) => new Set(prev).add(newReplyId));
           setLastAddedReplyId(newReplyId);
 
-          setTimeout(() => {
-            setNewlyAddedReplies((prev) => {
-              const newSet = new Set(prev);
-              newSet.delete(newReplyId);
-              return newSet;
-            });
-          }, 3000);
+          setTimeout(
+            () => {
+              setNewlyAddedReplies((prev) => {
+                const newSet = new Set(prev);
+                newSet.delete(newReplyId);
+                return newSet;
+              });
+            },
+            milliseconds({ seconds: 3 }),
+          );
 
           fetchComments();
           onSuccess?.();

@@ -1,3 +1,4 @@
+import { milliseconds } from "date-fns";
 import {
   ActionUpdate,
   ActionUpdateNotifyType,
@@ -219,7 +220,7 @@ describe("Notifications (e2e)", () => {
         user: testUser,
         contentType: UnreadContentType.ForumReply,
         contentId: comment.id,
-        sendTime: new Date(Date.now() - 1000),
+        sendTime: new Date(Date.now() - milliseconds({ seconds: 1 })),
         shouldPush: false,
       }),
     );
@@ -282,7 +283,7 @@ describe("Notifications (e2e)", () => {
         user: testUser,
         contentType: UnreadContentType.ActionUpdate,
         contentId: actionUpdate.id,
-        sendTime: new Date(Date.now() - 1000),
+        sendTime: new Date(Date.now() - milliseconds({ seconds: 1 })),
         shouldPush: false,
       }),
     );

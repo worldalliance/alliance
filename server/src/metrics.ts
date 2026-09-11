@@ -5,6 +5,7 @@ import {
   Injectable,
   NestInterceptor,
 } from "@nestjs/common";
+import { millisecondsInSecond } from "date-fns/constants";
 import client from "prom-client";
 import { Observable, tap } from "rxjs";
 
@@ -33,14 +34,14 @@ export class MetricsInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap({
         next: () => {
-          const ms = (performance.now() - start) / 1000; // seconds
+          const seconds = (performance.now() - start) / millisecondsInSecond;
           const route = req.route?.path || req.path;
           httpRequestDuration
             .labels(req.method, route, req.res.statusCode)
-            .observe(ms);
+            .observe(seconds);
         },
         error: (err: unknown) => {
-          const ms = (performance.now() - start) / 1000; // seconds
+          const seconds = (performance.now() - start) / millisecondsInSecond;
           const route = req.route?.path || req.path;
 
           let statusCode = req.res.statusCode;
@@ -51,7 +52,7 @@ export class MetricsInterceptor implements NestInterceptor {
 
           httpRequestDuration
             .labels(req.method, route, statusCode.toString())
-            .observe(ms);
+            .observe(seconds);
         },
       }),
     );

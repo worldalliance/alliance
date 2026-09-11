@@ -2,12 +2,13 @@ import { ActionDto } from "@alliance/shared/client";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import { Meta, StoryObj } from "@storybook/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { millisecondsInDay } from "date-fns/constants";
 import { Flag, Layers, Megaphone, Target } from "lucide-react";
 import React from "react";
 import { testActions } from "./testData";
 
 const inDays = (n: number) =>
-  new Date(Date.now() + n * 86_400_000).toISOString();
+  new Date(Date.now() + n * millisecondsInDay).toISOString();
 
 /** Actions tailored to exercise the preview: thumbnail, live deadline, completed state. */
 const previewActions: ActionDto[] = [

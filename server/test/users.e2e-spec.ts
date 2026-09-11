@@ -1,6 +1,7 @@
 import { toE164 } from "@alliance/common/phone";
 import { R } from "@alliance/common/result";
 import { Temporal } from "@js-temporal/polyfill";
+import { milliseconds } from "date-fns";
 import { AuthService } from "src/auth/auth.service";
 import { ContractService } from "src/contract/contract.service";
 import {
@@ -682,7 +683,9 @@ describe("Users (e2e)", () => {
       {
         targetSuccessfulRecruits: 3,
         startAt: now.toISOString(),
-        dueAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+        dueAt: new Date(
+          now.getTime() + milliseconds({ days: 1 }),
+        ).toISOString(),
       },
       ambassador.id,
     );

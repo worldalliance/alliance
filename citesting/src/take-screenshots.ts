@@ -1,5 +1,6 @@
 import { chromium, type Page } from "@playwright/test";
 import { spawn } from "child_process";
+import { milliseconds } from "date-fns";
 import { promises as fs } from "fs";
 import path from "path";
 import process from "process";
@@ -110,7 +111,7 @@ const killProcess = async (child: ChildProcessHandle) => {
 
 const shutdown = async (code: number) => {
   await Promise.all(childProcesses.map((child) => killProcess(child)));
-  await delay(1000);
+  await delay(milliseconds({ seconds: 1 }));
   await Promise.all(
     childProcesses.map(async (child) => {
       if (!child.killed) {
@@ -136,7 +137,7 @@ const waitForHttp = async (url: string, timeoutMs: number) => {
     } catch {
       // Ignore until timeout.
     }
-    await delay(1000);
+    await delay(milliseconds({ seconds: 1 }));
   }
   throw new Error(`Timed out waiting for ${url}`);
 };
@@ -328,7 +329,10 @@ const loginTestUser = async (page: Page): Promise<void> => {
   // login fetch from inside the browser.  This lets the backend's Set-Cookie
   // headers be stored naturally by the browser with the correct domain,
   // path, httpOnly, and sameSite attributes.
-  await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.goto(baseUrl, {
+    waitUntil: "domcontentloaded",
+    timeout: milliseconds({ minutes: 1 }),
+  });
 
   const apiUrl = `http://localhost:${backendPort}`;
   const ok = await page.evaluate(
@@ -483,7 +487,7 @@ const settleImages = async (page: Page) => {
     await page.waitForFunction(
       () => Array.from(document.images).every((img) => img.complete),
       undefined,
-      { timeout: 30000 },
+      { timeout: milliseconds({ seconds: 30 }) },
     );
   } catch {
     const pending = await page.evaluate(() =>
@@ -506,8 +510,11 @@ const takeScreenshots = async () => {
   startBackend();
   await startFrontend();
 
-  await waitForHttp(`http://localhost:${backendPort}/`, 60000);
-  await waitForHttp(baseUrl, 90000);
+  await waitForHttp(
+    `http://localhost:${backendPort}/`,
+    milliseconds({ minutes: 1 }),
+  );
+  await waitForHttp(baseUrl, milliseconds({ seconds: 90 }));
 
   const hasAuthTargets = screenshotTargets.some((t) => t.requiresAuth);
 
@@ -551,15 +558,17 @@ const takeScreenshots = async () => {
           console.log(`${logPrefix} Capturing ${url} -> ${fileName}`);
           await page.goto(url, {
             waitUntil: "domcontentloaded",
-            timeout: 60000,
+            timeout: milliseconds({ minutes: 1 }),
           });
           if (target.waitForSelector) {
             await page.waitForSelector(target.waitForSelector, {
-              timeout: target.waitForTimeoutMs ?? 20000,
+              timeout: target.waitForTimeoutMs ?? milliseconds({ seconds: 20 }),
             });
           } else {
             await page
-              .waitForLoadState("networkidle", { timeout: 20000 })
+              .waitForLoadState("networkidle", {
+                timeout: milliseconds({ seconds: 20 }),
+              })
               .catch(() => {
                 // Some pages keep background requests open; ignore.
               });

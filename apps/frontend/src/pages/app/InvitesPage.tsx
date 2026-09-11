@@ -31,6 +31,8 @@ import Card from "@alliance/sharedweb/ui/Card";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { milliseconds } from "date-fns";
+import { millisecondsInDay } from "date-fns/constants";
 import { MoreHorizontal, Trash2, UserCheck } from "lucide-react";
 import type { FormEvent, MouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -65,10 +67,8 @@ const formatDate = (value: string) =>
     year: "numeric",
   });
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 const daysUntil = (date: Date, now = new Date()) =>
-  Math.max(0, Math.ceil((date.getTime() - now.getTime()) / DAY_MS));
+  Math.max(0, Math.ceil((date.getTime() - now.getTime()) / millisecondsInDay));
 
 const dateInputToEndOfDayIso = (value: string) =>
   new Date(`${value}T23:59:59`).toISOString();
@@ -346,10 +346,13 @@ const InvitesPage = () => {
     }
     setCopiedInviteId(inviteId);
     setMessageCopiedInviteId(null);
-    copiedTimeoutRef.current = setTimeout(() => {
-      setCopiedInviteId(null);
-      copiedTimeoutRef.current = null;
-    }, 2000);
+    copiedTimeoutRef.current = setTimeout(
+      () => {
+        setCopiedInviteId(null);
+        copiedTimeoutRef.current = null;
+      },
+      milliseconds({ seconds: 2 }),
+    );
   }, []);
 
   const handleMessageCopied = useCallback((inviteId: number) => {
@@ -358,10 +361,13 @@ const InvitesPage = () => {
     }
     setCopiedInviteId(null);
     setMessageCopiedInviteId(inviteId);
-    copiedTimeoutRef.current = setTimeout(() => {
-      setMessageCopiedInviteId(null);
-      copiedTimeoutRef.current = null;
-    }, 2000);
+    copiedTimeoutRef.current = setTimeout(
+      () => {
+        setMessageCopiedInviteId(null);
+        copiedTimeoutRef.current = null;
+      },
+      milliseconds({ seconds: 2 }),
+    );
   }, []);
 
   const handleApproveInvite = useCallback(

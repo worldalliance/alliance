@@ -1,4 +1,5 @@
 import { R, type Result } from "@alliance/common/result";
+import { milliseconds } from "date-fns";
 import ipaddr from "ipaddr.js";
 import { lookup as dnsLookup } from "node:dns/promises";
 import {
@@ -20,7 +21,7 @@ import { createBrotliDecompress, createGunzip } from "node:zlib";
  * re-validated hop by hop.
  */
 
-const FETCH_TIMEOUT_MS = 5_000;
+const FETCH_TIMEOUT_MS = milliseconds({ seconds: 5 });
 // A hostname can resolve to arbitrarily many addresses; trying each costs up
 // to FETCH_TIMEOUT_MS, so only the first few get a connection attempt.
 const MAX_ADDRESSES_TRIED = 2;

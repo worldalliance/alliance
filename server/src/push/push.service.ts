@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { PickType } from "@nestjs/swagger";
 import { InjectRepository } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
 import { Expo, ExpoPushMessage, ExpoPushTicket } from "expo-server-sdk";
 import { randomUUID } from "node:crypto";
 import { UserDevice } from "src/user/entities/user-device.entity";
@@ -20,9 +21,9 @@ import { Push } from "./push.entity";
 export const EXPO_CLIENT = Symbol("EXPO_CLIENT");
 
 // Expo discards receipts ~24h after delivery, so a pending push older than
-// this will never get a receipt and must stop being re-checked. 48h = 24h
-// receipt TTL + generous slack for delivery lagging creation.
-const RECEIPT_MAX_AGE_MS = 1000 * 60 * 60 * 48;
+// this will never get a receipt and must stop being re-checked. Two days =
+// 24h receipt TTL + generous slack for delivery lagging creation.
+const RECEIPT_MAX_AGE_MS = milliseconds({ days: 2 });
 
 export class CreatePushMessage extends PickType(Push, [
   "expoPushToken",
@@ -177,9 +178,7 @@ export class PushService {
         receiptStatus: "pending",
         lastCheckedStatusAt: Or(
           IsNull(),
-          LessThan(
-            new Date(Date.now() - 1000 * 60 * 5), // 5 minutes ago
-          ),
+          LessThan(new Date(Date.now() - milliseconds({ minutes: 5 }))),
         ),
         receiptId: Not(IsNull()),
       },

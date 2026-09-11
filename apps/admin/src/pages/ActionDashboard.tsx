@@ -42,6 +42,8 @@ import Dropdown from "@alliance/sharedweb/ui/Dropdown";
 import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
+import { milliseconds } from "date-fns";
+import { secondsInMinute } from "date-fns/constants";
 import {
   AlertTriangle,
   CheckIcon,
@@ -743,10 +745,13 @@ const ActionDashboard: React.FC = () => {
       if (response.data) {
         navigator.clipboard.writeText(JSON.stringify(response.data));
         setJsonCopied(true);
-        setTimeout(() => {
-          setJsonCopied(false);
-          setExportActionOpen(false);
-        }, 2000);
+        setTimeout(
+          () => {
+            setJsonCopied(false);
+            setExportActionOpen(false);
+          },
+          milliseconds({ seconds: 2 }),
+        );
       }
     }
   };
@@ -896,15 +901,15 @@ const ActionDashboard: React.FC = () => {
 
     const totalWords = descriptionWords + formWords;
     const totalSeconds = Math.round(totalWords * 0.462);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
+    const minutes = Math.floor(totalSeconds / secondsInMinute);
+    const seconds = totalSeconds % secondsInMinute;
     const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
     const readingTimeLabel = `Total reading time: ${timeStr}  - (${descriptionWords} description words + ${formWords} form words)`;
 
     items.push({
       id: "readingTime",
       label: readingTimeLabel,
-      isReady: totalSeconds < 15 * 60,
+      isReady: totalSeconds < 15 * secondsInMinute,
     });
 
     return items;

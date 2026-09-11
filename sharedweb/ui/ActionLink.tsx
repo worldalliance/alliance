@@ -9,6 +9,7 @@ import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
 import { deadlineColor } from "@alliance/shared/lib/taskTimeInfo";
 import { cn } from "@alliance/shared/styles/util";
 import { useQuery } from "@tanstack/react-query";
+import { milliseconds } from "date-fns";
 import { CheckCircle2, Clock, Coins, Flag, Users } from "lucide-react";
 import React, { useState } from "react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./HoverCard";
@@ -93,7 +94,7 @@ export default function ActionLink({
     // Only fetch once the user actually hovers, so a page full of action
     // links doesn't fan out into a request per link on mount.
     enabled: open && actionId != null,
-    staleTime: 5 * 60 * 1000,
+    staleTime: milliseconds({ minutes: 5 }),
   });
 
   if (actionId == null) {

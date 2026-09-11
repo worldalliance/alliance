@@ -1,6 +1,8 @@
+import { hoursInDay } from "@alliance/common/duration";
 import { analyticsGetActionCompletionCurvesAdmin } from "@alliance/shared/client";
 import { ActionCompletionCurveDto } from "@alliance/shared/client/types.gen";
 import chroma from "chroma-js";
+import { millisecondsInDay, millisecondsInHour } from "date-fns/constants";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   TimeSeriesChart,
@@ -21,7 +23,7 @@ function computeMaxOffset(
   curves: ActionCompletionCurveDto[],
   isHourly: boolean,
 ): number {
-  const msPerUnit = isHourly ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+  const msPerUnit = isHourly ? millisecondsInHour : millisecondsInDay;
   let max = 0;
   for (const curve of curves) {
     if (isHourly) {
@@ -143,12 +145,11 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
       (c) => String(c.actionId) === effectiveActionId,
     );
     if (!curve) return;
-    const msPerDay = 24 * 60 * 60 * 1000;
     const start = new Date(curve.memberActionStartDate).getTime();
     const end = curve.memberActionEndDate
       ? new Date(curve.memberActionEndDate).getTime()
       : Date.now();
-    const durationDays = Math.ceil((end - start) / msPerDay);
+    const durationDays = Math.ceil((end - start) / millisecondsInDay);
     setMinDurationDays(String(Math.max(0, durationDays - 3)));
     setMaxDurationDays(String(durationDays + 3));
   }, [effectiveActionId, actionCompletionCurves]);
@@ -156,7 +157,6 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
   const isHourly = granularity === "hourly";
 
   const actionCompletionCurveChartData = useMemo(() => {
-    const msPerDay = 24 * 60 * 60 * 1000;
     const minDays = minDurationDays !== "" ? Number(minDurationDays) : null;
     const maxDays = maxDurationDays !== "" ? Number(maxDurationDays) : null;
 
@@ -165,7 +165,7 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
       const end = curve.memberActionEndDate
         ? new Date(curve.memberActionEndDate).getTime()
         : Date.now();
-      return Math.ceil((end - start) / msPerDay);
+      return Math.ceil((end - start) / millisecondsInDay);
     }
 
     function passesDurationFilter(curve: ActionCompletionCurveDto): boolean {
@@ -386,8 +386,8 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
   const showDropdown = showSelector && actionId === undefined;
 
   const formatHourLabel = (hours: number): string => {
-    const days = Math.floor(hours / 24);
-    const h = hours % 24;
+    const days = Math.floor(hours / hoursInDay);
+    const h = hours % hoursInDay;
     if (days === 0) return `${h}h`;
     if (h === 0) return `${days}d`;
     return `${days}d ${h}h`;

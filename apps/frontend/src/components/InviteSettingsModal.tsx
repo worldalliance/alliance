@@ -14,6 +14,7 @@ import Modal, {
 } from "@alliance/sharedweb/ui/Modal";
 import NewButton, { ButtonColor } from "@alliance/sharedweb/ui/NewButton";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { milliseconds } from "date-fns";
 import { Check, Copy as CopyIcon, Trash2, Users } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -86,7 +87,7 @@ const InviteSettingsModal = ({
   const handleCopy = useCallback(async () => {
     if (await copyToClipboard(target.url)) {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), milliseconds({ seconds: 2 }));
     } else {
       errorToast("Could not copy the link to the clipboard.");
     }

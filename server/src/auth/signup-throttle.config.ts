@@ -1,4 +1,5 @@
 import type { ThrottlerOptions } from "@nestjs/throttler";
+import { milliseconds } from "date-fns";
 
 /**
  * Rate limits for the public `/auth/register` endpoint.
@@ -12,21 +13,27 @@ import type { ThrottlerOptions } from "@nestjs/throttler";
  * so the other groups' limits don't stack onto it — see `src/utils/throttle`.
  */
 export const SIGNUP_THROTTLE: Record<string, ThrottlerOptions> = {
-  signupBurst: { limit: 5, ttl: 60 * 1000 }, // 5 per minute
-  signupSustained: { limit: 20, ttl: 60 * 60 * 1000 }, // 20 per hour
+  signupBurst: { limit: 5, ttl: milliseconds({ minutes: 1 }) },
+  signupSustained: { limit: 20, ttl: milliseconds({ hours: 1 }) },
 };
 
 export const ACTION_PARTNERSHIP_RESPONSE_THROTTLE: Record<
   string,
   ThrottlerOptions
 > = {
-  actionPartnershipResponseBurst: { limit: 3, ttl: 60 * 1000 }, // 3 per minute
-  actionPartnershipResponseSustained: { limit: 10, ttl: 60 * 60 * 1000 }, // 10 per hour
+  actionPartnershipResponseBurst: {
+    limit: 3,
+    ttl: milliseconds({ minutes: 1 }),
+  },
+  actionPartnershipResponseSustained: {
+    limit: 10,
+    ttl: milliseconds({ hours: 1 }),
+  },
 };
 
 export const JOIN_REQUEST_THROTTLE: Record<string, ThrottlerOptions> = {
-  joinRequestBurst: { limit: 3, ttl: 60 * 1000 }, // 3 per minute
-  joinRequestSustained: { limit: 10, ttl: 60 * 60 * 1000 }, // 10 per hour
+  joinRequestBurst: { limit: 3, ttl: milliseconds({ minutes: 1 }) },
+  joinRequestSustained: { limit: 10, ttl: milliseconds({ hours: 1 }) },
 };
 
 /**
@@ -35,6 +42,6 @@ export const JOIN_REQUEST_THROTTLE: Record<string, ThrottlerOptions> = {
  * members behind one NAT shares the bucket.
  */
 export const OAUTH_THROTTLE: Record<string, ThrottlerOptions> = {
-  oauthBurst: { limit: 30, ttl: 60 * 1000 }, // 30 per minute
-  oauthSustained: { limit: 200, ttl: 60 * 60 * 1000 }, // 200 per hour
+  oauthBurst: { limit: 30, ttl: milliseconds({ minutes: 1 }) },
+  oauthSustained: { limit: 200, ttl: milliseconds({ hours: 1 }) },
 };

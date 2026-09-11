@@ -1,5 +1,6 @@
 import { R } from "@alliance/common/result";
 import * as cheerio from "cheerio";
+import { milliseconds } from "date-fns";
 import { gzipSync } from "node:zlib";
 import { UnfetchableUrl } from "src/utils/safe-http";
 import {
@@ -448,7 +449,7 @@ describe("LinkPreviewService (pipeline)", () => {
     await getPreview(service, "https://example.com/flaky");
 
     // Past the short empty-preview TTL but inside the full preview TTL.
-    service["sweepExpired"](Date.now() + 30 * 60 * 1000);
+    service["sweepExpired"](Date.now() + milliseconds({ minutes: 30 }));
 
     await getPreview(service, "https://example.com/doc.pdf"); // still cached
     await getPreview(service, "https://example.com/flaky"); // re-fetched
@@ -495,7 +496,7 @@ describe("LinkPreviewService (pipeline)", () => {
     expect(service["faviconCache"].size).toBe(1);
 
     // Past every TTL (favicons keep the longest one), all entries go.
-    service["sweepExpired"](Date.now() + 25 * 60 * 60 * 1000);
+    service["sweepExpired"](Date.now() + milliseconds({ hours: 25 }));
     expect(service["cache"].size).toBe(0);
     expect(service["faviconCache"].size).toBe(0);
 

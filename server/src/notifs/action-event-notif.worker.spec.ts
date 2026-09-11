@@ -1,4 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
+import { secondsInDay, secondsInHour } from "date-fns/constants";
 import { ActionsService } from "src/actions/actions.service";
 import { ActionDto } from "src/actions/dto/action.dto";
 import {
@@ -300,8 +301,8 @@ describe("getGroupSendTimeForUser (relative range)", () => {
       user,
       buildGroup({
         deadlineEvent,
-        relative_range_start_seconds_from_deadline: 3 * 24 * 60 * 60,
-        relative_range_end_seconds_from_deadline: 1 * 24 * 60 * 60,
+        relative_range_start_seconds_from_deadline: 3 * secondsInDay,
+        relative_range_end_seconds_from_deadline: secondsInDay,
       }),
     );
 
@@ -326,8 +327,8 @@ describe("getGroupSendTimeForUser (relative range)", () => {
       user,
       buildGroup({
         deadlineEvent,
-        relative_range_start_seconds_from_deadline: 6 * 60 * 60,
-        relative_range_end_seconds_from_deadline: 4 * 60 * 60,
+        relative_range_start_seconds_from_deadline: 6 * secondsInHour,
+        relative_range_end_seconds_from_deadline: 4 * secondsInHour,
       }),
     );
 
@@ -347,8 +348,8 @@ describe("getGroupSendTimeForUser (relative range)", () => {
         user,
         buildGroup({
           deadlineEvent: undefined,
-          relative_range_start_seconds_from_deadline: 2 * 24 * 60 * 60,
-          relative_range_end_seconds_from_deadline: 24 * 60 * 60,
+          relative_range_start_seconds_from_deadline: 2 * secondsInDay,
+          relative_range_end_seconds_from_deadline: secondsInDay,
         }),
       ),
     ).toThrow(
@@ -380,8 +381,8 @@ describe("getGroupSendTimeForUser (relative range)", () => {
       buildGroup({
         deadlineEvent,
         timingAnchorEvent,
-        relative_range_start_seconds_from_deadline: 3 * 24 * 60 * 60,
-        relative_range_end_seconds_from_deadline: 1 * 24 * 60 * 60,
+        relative_range_start_seconds_from_deadline: 3 * secondsInDay,
+        relative_range_end_seconds_from_deadline: secondsInDay,
       }),
     );
 
@@ -440,7 +441,7 @@ describe("getGroupSendTimeForUser (from deadline)", () => {
       buildGroup({
         deadlineEvent,
         timingAnchorEvent,
-        sendAtSecondsFromDeadline: 3600,
+        sendAtSecondsFromDeadline: secondsInHour,
       }),
     );
 
@@ -450,7 +451,7 @@ describe("getGroupSendTimeForUser (from deadline)", () => {
   it("falls back to deadlineEvent when timingAnchorEvent is unset", () => {
     const sendTime = getGroupSendTimeForUser(
       user,
-      buildGroup({ deadlineEvent, sendAtSecondsFromDeadline: 3600 }),
+      buildGroup({ deadlineEvent, sendAtSecondsFromDeadline: secondsInHour }),
     );
 
     expect(sendTime?.toISOString()).toBe("2024-04-15T17:00:00.000Z");

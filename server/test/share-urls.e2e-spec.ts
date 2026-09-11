@@ -1,4 +1,5 @@
 import { DEFAULT_INVITE_MESSAGE_TEMPLATE } from "@alliance/common/inviteMessage";
+import { milliseconds } from "date-fns";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import {
@@ -63,7 +64,7 @@ describe("Share URLs (e2e)", () => {
         title: "launch",
         description: "live",
         newStatus: ActionStatus.MemberAction,
-        date: new Date(Date.now() - 1000),
+        date: new Date(Date.now() - milliseconds({ seconds: 1 })),
         action,
       }),
     );

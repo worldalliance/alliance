@@ -1,12 +1,12 @@
+import { millisecondsInMinute } from "date-fns/constants";
 import { useSyncExternalStore } from "react";
 
-const MINUTE_MS = 60_000;
-
-const currentMinute = (): number => Math.floor(Date.now() / MINUTE_MS);
+const currentMinute = (): number =>
+  Math.floor(Date.now() / millisecondsInMinute);
 
 /** The instant a minute names, which is what a clock label formats. */
 export const minuteStart = (minute: number): Date =>
-  new Date(minute * MINUTE_MS);
+  new Date(minute * millisecondsInMinute);
 
 const subscribers = new Set<() => void>();
 let timer: ReturnType<typeof setTimeout> | null = null;
@@ -22,7 +22,7 @@ function arm(): void {
       arm();
       for (const notify of subscribers) notify();
     },
-    MINUTE_MS - (Date.now() % MINUTE_MS),
+    millisecondsInMinute - (Date.now() % millisecondsInMinute),
   );
 }
 

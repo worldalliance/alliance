@@ -3,6 +3,7 @@ import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInpu
 import { AuthoredLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { milliseconds } from "date-fns";
 import {
   isRouteErrorResponse,
   Links,
@@ -19,7 +20,7 @@ import { GroupAssignmentProvider } from "./lib/GroupAssignmentContext";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      gcTime: 1000 * 60 * 60 * 24, // 24 hours
+      gcTime: milliseconds({ days: 1 }),
     },
   },
 });

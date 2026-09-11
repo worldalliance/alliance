@@ -1,5 +1,6 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
+import { milliseconds } from "date-fns";
 
 /**
  * The task list as the new onboarding flow should leave it, for design review.
@@ -8,7 +9,7 @@ import type { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
  */
 
 const hoursAgo = (hours: number) =>
-  new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+  new Date(Date.now() - milliseconds({ hours })).toISOString();
 
 function mockTask(
   fields: Pick<

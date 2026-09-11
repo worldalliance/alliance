@@ -1,6 +1,7 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
 import { collectCohortDependencies } from "src/actions/cohort-expression.evaluator";
 import {
   CreateReminderGroupDto,
@@ -59,7 +60,7 @@ export interface MissedDeadlineCandidate {
   resolutionDate: Date;
 }
 
-export const NOTIFICATION_LOOKBACK_WINDOW_MS = 3 * 60 * 60 * 1000; // 3 hours
+export const NOTIFICATION_LOOKBACK_WINDOW_MS = milliseconds({ hours: 3 });
 
 @Injectable()
 export class ActionEventReminderService {
@@ -390,7 +391,7 @@ export class ActionEventReminderService {
     const plans = await this.findPlansForGroup(
       group,
       new Date(Date.now() - NOTIFICATION_LOOKBACK_WINDOW_MS),
-      new Date(Date.now() + 28 * 24 * 60 * 60 * 1000),
+      new Date(Date.now() + milliseconds({ days: 28 })),
     );
     return plans.map((plan) => {
       const channels: NotificationChannel[] = [];

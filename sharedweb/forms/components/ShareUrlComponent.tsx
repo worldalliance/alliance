@@ -4,6 +4,7 @@ import {
   useShareLink,
 } from "@alliance/shared/forms/useShareLink";
 import { CardStyle } from "@alliance/shared/styles/card";
+import { milliseconds } from "date-fns";
 import { useEffect, useState } from "react";
 import Button, { ButtonColor } from "../../ui/Button";
 import Card from "../../ui/Card";
@@ -18,7 +19,10 @@ const ShareUrlComponent = ({ field }: CustomComponentProps) => {
 
   useEffect(() => {
     if (!copied) return;
-    const timer = setTimeout(() => setCopied(false), 1000);
+    const timer = setTimeout(
+      () => setCopied(false),
+      milliseconds({ seconds: 1 }),
+    );
     return () => clearTimeout(timer);
   }, [copied]);
 

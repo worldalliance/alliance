@@ -1,3 +1,4 @@
+import { milliseconds } from "date-fns";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { OnboardingStep } from "./flow";
@@ -9,7 +10,7 @@ const KEY = "alliance:onboarding-draft";
  * clear, so it expires on its own rather than sitting on disk until the member
  * happens to come back and finish.
  */
-const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const DRAFT_TTL_MS = milliseconds({ days: 7 });
 
 const draftSchema = z.object({
   email: z.string(),

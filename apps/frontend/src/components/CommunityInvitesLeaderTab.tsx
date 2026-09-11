@@ -29,6 +29,7 @@ import UserSelect, {
   UserSelectUser,
   useSelectableUserIds,
 } from "@alliance/sharedweb/ui/UserSelect";
+import { milliseconds } from "date-fns";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
 import CommunityInviteListItem from "./CommunityInviteListItem";
@@ -161,10 +162,13 @@ const CommunityInvitesLeaderTab = ({
       clearTimeout(copiedTimeoutRef.current);
     }
     setCopiedInviteId(inviteId);
-    copiedTimeoutRef.current = setTimeout(() => {
-      setCopiedInviteId(null);
-      copiedTimeoutRef.current = null;
-    }, 2000);
+    copiedTimeoutRef.current = setTimeout(
+      () => {
+        setCopiedInviteId(null);
+        copiedTimeoutRef.current = null;
+      },
+      milliseconds({ seconds: 2 }),
+    );
   }, []);
 
   const handleInvite = () => {

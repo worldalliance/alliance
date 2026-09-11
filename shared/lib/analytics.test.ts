@@ -1,4 +1,5 @@
 import { AnalyticsEvent, ExceptionEvent } from "@alliance/common/analytics";
+import { milliseconds } from "date-fns";
 import {
   __resetAnalyticsForTests,
   captureEvent,
@@ -28,13 +29,13 @@ describe("flushAnalytics", () => {
   it("says so when a backend can't be flushed, rather than reporting a send", async () => {
     registerAnalytics(inertBackend);
 
-    expect(await flushAnalytics(1000)).toEqual({
+    expect(await flushAnalytics(milliseconds({ seconds: 1 }))).toEqual({
       outcome: FlushOutcome.Unsupported,
     });
   });
 
   it("reports the missing backend when nothing has been registered", async () => {
-    expect(await flushAnalytics(1000)).toEqual({
+    expect(await flushAnalytics(milliseconds({ seconds: 1 }))).toEqual({
       outcome: FlushOutcome.NoBackend,
     });
   });
@@ -49,7 +50,7 @@ describe("flushAnalytics", () => {
       },
     });
 
-    expect(await flushAnalytics(1000)).toEqual({
+    expect(await flushAnalytics(milliseconds({ seconds: 1 }))).toEqual({
       outcome: FlushOutcome.Flushed,
     });
     expect(flushed).toBe(true);
@@ -82,7 +83,7 @@ describe("flushAnalytics", () => {
     const error = new Error("network down");
     registerAnalytics({ ...inertBackend, flush: () => Promise.reject(error) });
 
-    expect(await flushAnalytics(1000)).toEqual({
+    expect(await flushAnalytics(milliseconds({ seconds: 1 }))).toEqual({
       outcome: FlushOutcome.Failed,
       error,
     });
@@ -92,7 +93,7 @@ describe("flushAnalytics", () => {
   it("wraps a non-Error rejection, so the caller always gets an Error", async () => {
     registerAnalytics({ ...inertBackend, flush: () => Promise.reject("boom") });
 
-    const result = await flushAnalytics(1000);
+    const result = await flushAnalytics(milliseconds({ seconds: 1 }));
 
     expect(result.outcome).toBe(FlushOutcome.Failed);
     expect(result.error).toBeInstanceOf(Error);
@@ -107,7 +108,7 @@ describe("flushAnalytics", () => {
       },
     });
 
-    expect(await flushAnalytics(1000)).toEqual({
+    expect(await flushAnalytics(milliseconds({ seconds: 1 }))).toEqual({
       outcome: FlushOutcome.Failed,
       error,
     });
@@ -127,7 +128,7 @@ describe("flushAnalytics", () => {
     };
     registerAnalytics(backend);
 
-    expect(await flushAnalytics(1000)).toEqual({
+    expect(await flushAnalytics(milliseconds({ seconds: 1 }))).toEqual({
       outcome: FlushOutcome.Flushed,
     });
     expect(backend.queued).toBe(0);

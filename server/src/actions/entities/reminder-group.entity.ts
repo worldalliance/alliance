@@ -2,6 +2,7 @@ import { Temporal } from "@js-temporal/polyfill";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { Allow, IsDefined, IsOptional } from "class-validator";
+import { millisecondsInSecond } from "date-fns/constants";
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
 import { Tag } from "src/user/entities/tag.entity";
 import { DEFAULT_TIME_ZONE, User } from "src/user/entities/user.entity";
@@ -282,7 +283,7 @@ export function firstOccurrenceInRange(
 }
 
 function offsetTimeFromSeconds(time: Date, seconds: number): Date {
-  return new Date(time.getTime() - seconds * 1000);
+  return new Date(time.getTime() - seconds * millisecondsInSecond);
 }
 
 export function getGroupSendTimeForUser(

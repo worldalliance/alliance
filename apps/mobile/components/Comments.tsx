@@ -38,6 +38,7 @@ import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentR
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { useQueryClient } from "@tanstack/react-query";
+import { milliseconds } from "date-fns";
 import {
   ArrowUpDown,
   ListFilter,
@@ -824,7 +825,10 @@ export default function Comments({
   useEffect(() => {
     if (highlightedReplyId) {
       setHighlightedId(highlightedReplyId);
-      const timeout = setTimeout(() => setHighlightedId(null), 5000);
+      const timeout = setTimeout(
+        () => setHighlightedId(null),
+        milliseconds({ seconds: 5 }),
+      );
       return () => clearTimeout(timeout);
     }
     return;
@@ -861,13 +865,16 @@ export default function Comments({
             next.add(response.data!.id);
             return next;
           });
-          setTimeout(() => {
-            setNewlyAddedReplies((prev) => {
-              const next = new Set(prev);
-              next.delete(response.data!.id);
-              return next;
-            });
-          }, 3000);
+          setTimeout(
+            () => {
+              setNewlyAddedReplies((prev) => {
+                const next = new Set(prev);
+                next.delete(response.data!.id);
+                return next;
+              });
+            },
+            milliseconds({ seconds: 3 }),
+          );
         }
 
         await fetchComments();

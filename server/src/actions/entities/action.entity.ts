@@ -11,6 +11,7 @@ import {
   IsNotEmpty,
   IsOptional,
 } from "class-validator";
+import { millisecondsInWeek } from "date-fns/constants";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -60,8 +61,6 @@ export enum VisibilityMode {
   AllMembers = "all_members",
   ParticipatingGroups = "participating_groups",
 }
-
-const MS_IN_WEEK = 7 * 24 * 60 * 60 * 1000;
 
 @Entity()
 @Unique(["taskFormId"])
@@ -441,7 +440,7 @@ export class Action {
     if (!deadline) {
       return null;
     } else {
-      return Math.floor(deadline.getTime() / MS_IN_WEEK);
+      return Math.floor(deadline.getTime() / millisecondsInWeek);
     }
   }
 }

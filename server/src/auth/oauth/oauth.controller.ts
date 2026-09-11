@@ -32,6 +32,7 @@ import {
   ApiResponse,
 } from "@nestjs/swagger";
 import { ThrottlerGuard } from "@nestjs/throttler";
+import { milliseconds } from "date-fns";
 import type { Request as ExpressRequest, Response } from "express";
 import { OAUTH_THROTTLE } from "src/auth/signup-throttle.config";
 import { PosthogService } from "src/posthog/posthog.service";
@@ -69,10 +70,10 @@ import {
 import { OAuthCallbackDto, OAuthStartDto } from "./oauth.dto";
 
 /** Outlives the state token it guards, so a slow consent screen still lands. */
-const STATE_COOKIE_MAX_AGE_MS = 1000 * 60 * 15;
+const STATE_COOKIE_MAX_AGE_MS = milliseconds({ minutes: 15 });
 
 /** Only has to survive the bounce below, which is a single redirect. */
-const APPLE_USER_COOKIE_MAX_AGE_MS = 1000 * 60 * 5;
+const APPLE_USER_COOKIE_MAX_AGE_MS = milliseconds({ minutes: 5 });
 
 const OUTCOME_EVENT: Record<OAuthOutcome, AnalyticsEvent> = {
   [OAuthOutcome.SignedUp]: AnalyticsEvent.NewUser,

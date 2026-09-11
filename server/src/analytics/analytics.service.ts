@@ -2,6 +2,11 @@ import { ActionActivityType } from "@alliance/common/actionActivity";
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
+import {
+  millisecondsInDay,
+  millisecondsInHour,
+  millisecondsInWeek,
+} from "date-fns/constants";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
@@ -522,7 +527,6 @@ ORDER BY pp.total_session_duration_seconds DESC
       onboardingByActionId.set(action.id, action.onboarding);
     }
 
-    const msPerDay = 24 * 60 * 60 * 1000;
     const maxDurationDays = 21;
 
     const eligibleActions = actionStats.filter(
@@ -539,7 +543,7 @@ ORDER BY pp.total_session_duration_seconds DESC
         const plannedEnd = record.memberActionEndDate ?? now;
         const durationDays = Math.ceil(
           (plannedEnd.getTime() - record.memberActionStartDate.getTime()) /
-            msPerDay,
+            millisecondsInDay,
         );
         if (!Number.isFinite(durationDays) || durationDays <= 0) {
           return false;
@@ -570,7 +574,7 @@ ORDER BY pp.total_session_duration_seconds DESC
     }
 
     const isHourly = granularity === "hourly";
-    const msPerBucket = isHourly ? 60 * 60 * 1000 : msPerDay;
+    const msPerBucket = isHourly ? millisecondsInHour : millisecondsInDay;
 
     return eligibleActions.map((record) => {
       const startDate = new Date(record.memberActionStartDate);
@@ -1171,7 +1175,6 @@ ORDER BY pp.total_session_duration_seconds DESC
     weeksOnPlatform: number,
   ): Promise<PlatformTenureCohortStats> {
     const normalizedWeeks = Math.max(0, Math.floor(weeksOnPlatform));
-    const msPerWeek = 7 * 24 * 60 * 60 * 1000;
     const now = new Date();
 
     // Cohort membership needs a first SIGNED contract event, which partial
@@ -1194,7 +1197,7 @@ ORDER BY pp.total_session_duration_seconds DESC
       }
 
       const tenureWeeks = Math.floor(
-        (now.getTime() - signedAt.getTime()) / msPerWeek,
+        (now.getTime() - signedAt.getTime()) / millisecondsInWeek,
       );
       if (tenureWeeks === normalizedWeeks) {
         cohortUserIds.add(user.id);
@@ -1406,7 +1409,6 @@ ORDER BY pp.total_session_duration_seconds DESC
       lastCompletionByUserId.set(userId, lastCompletedAt);
     }
 
-    const msPerDay = 24 * 60 * 60 * 1000;
     const samples: number[] = [];
 
     for (const [userId, signedAt] of churnedUsers) {
@@ -1419,7 +1421,7 @@ ORDER BY pp.total_session_duration_seconds DESC
         continue;
       }
       const daysToChurn =
-        (lastCompletedAt.getTime() - signedAt.getTime()) / msPerDay;
+        (lastCompletedAt.getTime() - signedAt.getTime()) / millisecondsInDay;
       if (daysToChurn < 0) {
         continue;
       }

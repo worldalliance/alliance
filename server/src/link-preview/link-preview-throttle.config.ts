@@ -1,4 +1,5 @@
 import type { ThrottlerOptions } from "@nestjs/throttler";
+import { milliseconds } from "date-fns";
 
 /**
  * Registered in `ThrottlerModule.forRoot` via `ALL_THROTTLERS` and applied
@@ -6,6 +7,6 @@ import type { ThrottlerOptions } from "@nestjs/throttler";
  * `UserThrottlerGuard`, so the limits are per authenticated user.
  */
 export const LINK_PREVIEW_THROTTLE = {
-  linkPreviewBurst: { limit: 30, ttl: 60 * 1000 }, // 30 per minute per user
-  linkPreviewSustained: { limit: 300, ttl: 60 * 60 * 1000 }, // 300 per hour per user
+  linkPreviewBurst: { limit: 30, ttl: milliseconds({ minutes: 1 }) },
+  linkPreviewSustained: { limit: 300, ttl: milliseconds({ hours: 1 }) },
 } as const satisfies Record<string, ThrottlerOptions>;

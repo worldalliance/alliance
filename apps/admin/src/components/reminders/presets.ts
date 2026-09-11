@@ -1,4 +1,5 @@
 import { CreateReminderGroupDto } from "@alliance/shared/client";
+import { secondsInDay, secondsInHour } from "date-fns/constants";
 import {
   defaultAnnouncementEmailContents,
   defaultAnnouncementEmailSubject,
@@ -67,8 +68,8 @@ export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
   },
   "Two Day Range": {
     timingMode: "within_relative_range",
-    relative_range_start_seconds_from_deadline: 48 * 60 * 60,
-    relative_range_end_seconds_from_deadline: 24 * 60 * 60,
+    relative_range_start_seconds_from_deadline: 48 * secondsInHour,
+    relative_range_end_seconds_from_deadline: 24 * secondsInHour,
     cohortType: "all_uncompleted",
     textMessage: defaultTextMessage,
     emailSubject: defaultEmailSubject,
@@ -81,8 +82,8 @@ export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
   },
   "One Day Range": {
     timingMode: "within_relative_range",
-    relative_range_start_seconds_from_deadline: 24 * 60 * 60,
-    relative_range_end_seconds_from_deadline: 6 * 60 * 60,
+    relative_range_start_seconds_from_deadline: 24 * secondsInHour,
+    relative_range_end_seconds_from_deadline: 6 * secondsInHour,
     cohortType: "all_uncompleted",
     textMessage: defaultTextMessage,
     emailSubject: defaultEmailSubject,
@@ -95,7 +96,7 @@ export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
   },
   "Three Hour": {
     timingMode: "from_deadline",
-    sendAtSecondsFromDeadline: 3 * 60 * 60,
+    sendAtSecondsFromDeadline: 3 * secondsInHour,
     cohortType: "all_uncompleted",
     textMessage: defaultTextMessage,
     emailSubject: defaultEmailSubject,
@@ -121,8 +122,8 @@ export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
   },
   "Group Leads 3 days": {
     timingMode: "within_relative_range",
-    relative_range_start_seconds_from_deadline: 3 * 24 * 60 * 60,
-    relative_range_end_seconds_from_deadline: 2 * 24 * 60 * 60,
+    relative_range_start_seconds_from_deadline: 3 * secondsInDay,
+    relative_range_end_seconds_from_deadline: 2 * secondsInDay,
     cohortType: "group_leads_with_uncompleted",
     textMessage: defaultGroupLeadsTextMessage,
     emailSubject: defaultGroupLeadsEmailSubject,
@@ -135,8 +136,8 @@ export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
   },
   "Group Leads 2 days": {
     timingMode: "within_relative_range",
-    relative_range_start_seconds_from_deadline: 2 * 24 * 60 * 60,
-    relative_range_end_seconds_from_deadline: 1 * 24 * 60 * 60,
+    relative_range_start_seconds_from_deadline: 2 * secondsInDay,
+    relative_range_end_seconds_from_deadline: secondsInDay,
     cohortType: "group_leads_with_uncompleted",
     textMessage: defaultGroupLeadsTextMessage,
     emailSubject: defaultGroupLeadsEmailSubject,

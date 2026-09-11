@@ -1,4 +1,5 @@
 import { execFile, spawn } from "child_process";
+import { milliseconds } from "date-fns";
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
@@ -275,7 +276,7 @@ const killProcess = async (child: ChildProcessHandle) => {
 
 const shutdown = async (code: number) => {
   await Promise.all(childProcesses.map((child) => killProcess(child)));
-  await delay(1000);
+  await delay(milliseconds({ seconds: 1 }));
   await Promise.all(
     childProcesses.map(async (child) => {
       if (!child.killed) {
@@ -301,7 +302,7 @@ const waitForHttp = async (url: string, timeoutMs: number) => {
     } catch {
       // Ignore until timeout.
     }
-    await delay(1000);
+    await delay(milliseconds({ seconds: 1 }));
   }
   throw new Error(`Timed out waiting for ${url}`);
 };
@@ -708,7 +709,7 @@ const launchApp = async (udid: string) => {
     cwd: repoRoot,
     env: process.env,
   });
-  await delay(3000);
+  await delay(milliseconds({ seconds: 3 }));
 };
 
 const writeMaestroFlow = async (
@@ -726,7 +727,7 @@ const writeMaestroFlow = async (
 - openLink: "${deepLink}"
 - extendedWaitUntil:
     visible: "Open in .*Alliance.*"
-    timeout: 5000
+    timeout: ${milliseconds({ seconds: 5 })}
     optional: true
 - tapOn:
     text: "Open"
@@ -734,7 +735,7 @@ const writeMaestroFlow = async (
 - extendedWaitUntil:
     visible:
       id: "${readyTestId}"
-    timeout: 20000
+    timeout: ${milliseconds({ seconds: 20 })}
 - assertVisible:
     id: "${readyTestId}"
 - waitForAnimationToEnd
@@ -758,7 +759,10 @@ const captureScreenshots = async (udid: string, simulatorName: string) => {
 
   await setupDatabase();
   startBackend();
-  await waitForHttp(`http://127.0.0.1:${backendPort}/`, 60000);
+  await waitForHttp(
+    `http://127.0.0.1:${backendPort}/`,
+    milliseconds({ minutes: 1 }),
+  );
 
   await ensureIosWorkspace();
   await bootSimulator(udid, simulatorName);

@@ -5,6 +5,7 @@ import {
 } from "@alliance/shared/forms/useShareLink";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
+import { milliseconds } from "date-fns";
 import { setStringAsync as setClipboardStringAsync } from "expo-clipboard";
 import { useEffect, useState } from "react";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
@@ -21,7 +22,10 @@ const ShareUrlComponent = ({ field }: CustomComponentProps) => {
 
   useEffect(() => {
     if (!copied) return;
-    const timer = setTimeout(() => setCopied(false), 1000);
+    const timer = setTimeout(
+      () => setCopied(false),
+      milliseconds({ seconds: 1 }),
+    );
     return () => clearTimeout(timer);
   }, [copied]);
 

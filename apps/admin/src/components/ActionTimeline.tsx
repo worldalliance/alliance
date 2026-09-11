@@ -6,6 +6,8 @@ import {
   ReminderGroupTimingMode,
 } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
+import { milliseconds } from "date-fns";
+import { millisecondsInDay, millisecondsInSecond } from "date-fns/constants";
 import React, {
   useCallback,
   useEffect,
@@ -160,7 +162,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
 
             if (deadlineDate) {
               singleDate = new Date(
-                deadlineDate.getTime() - offsetSeconds * 1000,
+                deadlineDate.getTime() - offsetSeconds * millisecondsInSecond,
               );
             }
           } else if (timingMode === "event_launch") {
@@ -247,7 +249,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
           const phaseStartDate = new Date(event.date);
           const phaseEndDate = nextEvent
             ? new Date(nextEvent.date)
-            : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // Default to 7 days if no next event
+            : new Date(Date.now() + milliseconds({ days: 7 }));
 
           const duration = phaseEndDate.getTime() - phaseStartDate.getTime();
 
@@ -304,7 +306,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
       });
 
       // Calculate global timeline bounds with some padding
-      const defaultPadding = 24 * 60 * 60 * 1000;
+      const defaultPadding = milliseconds({ days: 1 });
       let minDate: Date;
       let maxDate: Date;
 
@@ -320,11 +322,11 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
       }
 
       const globalStartDate = new Date(
-        Math.min(minDate.getTime(), Date.now() - 2 * 24 * 60 * 60 * 1000),
+        Math.min(minDate.getTime(), Date.now() - milliseconds({ days: 2 })),
       );
 
       const span = maxDate.getTime() - globalStartDate.getTime();
-      const dayCount = Math.max(1, Math.ceil(span / (24 * 60 * 60 * 1000)));
+      const dayCount = Math.max(1, Math.ceil(span / millisecondsInDay));
 
       return {
         timelineData: sortedActions,
@@ -353,8 +355,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
       return;
     }
 
-    const millisecondsPerDay = 24 * 60 * 60 * 1000;
-    const pixelsPerMillisecond = pixelsPerDay / millisecondsPerDay;
+    const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
     const startTime = globalStartDate.getTime();
     const endTime = globalEndDate.getTime();
     const clampedTime = Math.min(Math.max(focusTimestamp, startTime), endTime);
@@ -374,11 +375,14 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
       id: indicatorId,
     });
 
-    const timeout = window.setTimeout(() => {
-      setFocusIndicator((prev) =>
-        prev && prev.id === indicatorId ? { ...prev, visible: false } : prev,
-      );
-    }, 1000);
+    const timeout = window.setTimeout(
+      () => {
+        setFocusIndicator((prev) =>
+          prev && prev.id === indicatorId ? { ...prev, visible: false } : prev,
+        );
+      },
+      milliseconds({ seconds: 1 }),
+    );
 
     return () => {
       window.clearTimeout(timeout);
@@ -410,8 +414,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
       const currentDate = new Date();
       if (currentDate >= globalStartDate && currentDate <= globalEndDate) {
         // Use precise timing for centering
-        const millisecondsPerDay = 24 * 60 * 60 * 1000;
-        const pixelsPerMillisecond = pixelsPerDay / millisecondsPerDay;
+        const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
         const millisecondsSinceStart =
           currentDate.getTime() - globalStartDate.getTime();
         const currentTimePosition =
@@ -553,9 +556,8 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                   }}
                 >
                   {normalizedReminders.map((reminder) => {
-                    const millisecondsPerDay = 24 * 60 * 60 * 1000;
                     const pixelsPerMillisecond =
-                      pixelsPerDay / millisecondsPerDay;
+                      pixelsPerDay / millisecondsInDay;
                     const startOffset =
                       reminder.startDate.getTime() - globalStartDate.getTime();
                     const left = startOffset * pixelsPerMillisecond;
@@ -632,9 +634,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                   currentDate <= globalEndDate
                 ) {
                   // Use precise timing for current time indicator
-                  const millisecondsPerDay = 24 * 60 * 60 * 1000;
-                  const pixelsPerMillisecond =
-                    pixelsPerDay / millisecondsPerDay;
+                  const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
                   const millisecondsSinceStart =
                     currentDate.getTime() - globalStartDate.getTime();
 
@@ -660,9 +660,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
 
               {focusIndicator?.visible &&
                 (() => {
-                  const millisecondsPerDay = 24 * 60 * 60 * 1000;
-                  const pixelsPerMillisecond =
-                    pixelsPerDay / millisecondsPerDay;
+                  const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
                   const offset =
                     focusIndicator.timestamp - globalStartDate.getTime();
 

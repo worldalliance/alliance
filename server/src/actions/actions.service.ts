@@ -36,6 +36,7 @@ import {
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
 import { CommunityService } from "src/community/community.service";
 import { Community } from "src/community/entities/community.entity";
 import { EventType } from "src/eventlog/event-log.entity";
@@ -3356,7 +3357,7 @@ export class ActionsService {
     const plans = await this.actionEventReminderService.findPlansForGroup(
       withDeadlineEvent,
       new Date(Date.now() - NOTIFICATION_LOOKBACK_WINDOW_MS),
-      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      new Date(Date.now() + milliseconds({ days: 30 })),
     );
 
     return plans.map((plan) => {
@@ -4269,7 +4270,7 @@ export class ActionsService {
     let date = rangeStart;
     const suspendedUsers = new Set<number>();
     const rangeEndMs = rangeEnd.getTime();
-    const stepMs = stepHours * 60 * 60 * 1000;
+    const stepMs = milliseconds({ hours: stepHours });
 
     while (date.getTime() <= rangeEndMs) {
       const notAlreadySuspended = this.computeUsersToSuspendFromContext(
@@ -4642,7 +4643,9 @@ export class ActionsService {
   }
 
   private globalFeedWindowStart(): Date {
-    return new Date(Date.now() - GLOBAL_FEED_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+    return new Date(
+      Date.now() - milliseconds({ days: GLOBAL_FEED_WINDOW_DAYS }),
+    );
   }
 
   private buildRecentNewMembersRankedQuery(

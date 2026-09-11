@@ -1,4 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
+import { milliseconds } from "date-fns";
 import {
   createContext,
   type CSSProperties,
@@ -100,7 +101,12 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }, []);
 
   const showToast = useCallback(
-    ({ variant = "info", title, message, durationMs = 4000 }: ToastOptions) => {
+    ({
+      variant = "info",
+      title,
+      message,
+      durationMs = milliseconds({ seconds: 4 }),
+    }: ToastOptions) => {
       const id = ++idRef.current;
       const toast: AnyToast = { id, variant, title, message };
       setToasts((prev) => [...prev, toast]);

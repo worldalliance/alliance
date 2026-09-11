@@ -38,6 +38,8 @@ import {
   scaleLinear,
   scaleTime,
 } from "d3";
+import { milliseconds } from "date-fns";
+import { millisecondsInDay, minutesInHour } from "date-fns/constants";
 import React, {
   useCallback,
   useEffect,
@@ -215,7 +217,7 @@ const findContractStatusPointDaysAgo = (
 
   const daysBetween =
     (latest.parsedDate.getTime() - closest.parsedDate.getTime()) /
-    (1000 * 60 * 60 * 24);
+    millisecondsInDay;
   if (daysBetween < daysAgo - 2) return null;
 
   return closest;
@@ -380,7 +382,7 @@ const StatsPage: React.FC = () => {
   const [inviteFunnelLoading, setInviteFunnelLoading] =
     useState<boolean>(false);
   const [inviteFunnelRange, setInviteFunnelRange] = useState(() => {
-    const end = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const end = new Date(Date.now() + milliseconds({ days: 1 }));
     const start = new Date();
     start.setDate(end.getDate() - 14);
     return { start: formatDateAsLocal(start), end: formatDateAsLocal(end) };
@@ -1609,8 +1611,10 @@ const StatsPage: React.FC = () => {
                   Total expected weekly member time
                 </div>
                 <div className="text-base font-semibold text-gray-900">
-                  {((aggregateStats.signedUsers * 15) / 60).toFixed(2)} hours /
-                  week
+                  {((aggregateStats.signedUsers * 15) / minutesInHour).toFixed(
+                    2,
+                  )}{" "}
+                  hours / week
                 </div>
               </div>
               <div className="flex flex-col">
@@ -1629,7 +1633,7 @@ const StatsPage: React.FC = () => {
                 <div className="text-base font-semibold text-gray-900">
                   $
                   {(
-                    ((aggregateStats.signedUsers * 15) / 60) *
+                    ((aggregateStats.signedUsers * 15) / minutesInHour) *
                     assumedHourlyRate *
                     52
                   ).toFixed(2)}

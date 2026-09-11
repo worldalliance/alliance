@@ -19,6 +19,8 @@ import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useOnetimeInvitesOverview } from "@alliance/shared/lib/useOnetimeInvitesOverview";
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
 import { formatTime } from "@alliance/shared/lib/utils";
+import { milliseconds } from "date-fns";
+import { millisecondsInDay } from "date-fns/constants";
 import {
   CalendarDays,
   ChevronDown,
@@ -87,10 +89,8 @@ const formatDate = (value: string | Date) =>
     year: "numeric",
   });
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 const daysUntil = (date: Date, now = new Date()) =>
-  Math.max(0, Math.ceil((date.getTime() - now.getTime()) / DAY_MS));
+  Math.max(0, Math.ceil((date.getTime() - now.getTime()) / millisecondsInDay));
 
 const dateInputToEndOfDayIso = (value: string) =>
   new Date(`${value}T23:59:59`).toISOString();
@@ -468,10 +468,13 @@ export default function InvitesScreen() {
       clearTimeout(sharedTimeoutRef.current);
     }
     setSharedInviteId(inviteId);
-    sharedTimeoutRef.current = setTimeout(() => {
-      setSharedInviteId(null);
-      sharedTimeoutRef.current = null;
-    }, 2000);
+    sharedTimeoutRef.current = setTimeout(
+      () => {
+        setSharedInviteId(null);
+        sharedTimeoutRef.current = null;
+      },
+      milliseconds({ seconds: 2 }),
+    );
   }, []);
 
   const handleApproveInvite = useCallback(

@@ -5,6 +5,7 @@ import {
   ProfileDto,
   UserDto,
 } from "@alliance/shared/client";
+import { milliseconds } from "date-fns";
 
 export const testActions: ActionDto[] = [
   {
@@ -25,7 +26,7 @@ export const testActions: ActionDto[] = [
         id: 1,
         title: "Event 1",
         description: "Event 1 description",
-        date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+        date: new Date(Date.now() - milliseconds({ days: 1 })).toISOString(),
         newStatus: "member_action",
         suiteManaged: false,
       },
@@ -33,7 +34,7 @@ export const testActions: ActionDto[] = [
         id: 2,
         title: "Event 2",
         description: "Event 2 description",
-        date: new Date(Date.now() - 1000 * 60 * 60 * 49).toISOString(),
+        date: new Date(Date.now() - milliseconds({ hours: 49 })).toISOString(),
         newStatus: "member_action",
         suiteManaged: false,
       },

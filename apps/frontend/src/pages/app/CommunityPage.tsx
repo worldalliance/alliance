@@ -35,6 +35,7 @@ import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable"
 import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { milliseconds } from "date-fns";
 import { keyBy } from "es-toolkit";
 import { MessageSquare } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -68,7 +69,7 @@ const SHOWN_TABS = {
   (keyof typeof TAB_DISPLAY_NAMES)[]
 >;
 
-const CURRENT_ACTION_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+const CURRENT_ACTION_WINDOW_MS = milliseconds({ days: 3 });
 
 const CommunityPage = () => {
   const [memberContactInfo, setMemberContactInfo] = useState<Record<

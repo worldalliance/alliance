@@ -1,3 +1,4 @@
+import { milliseconds } from "date-fns";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const MAX_INT32 = 2 ** 31 - 1;
@@ -93,7 +94,11 @@ export function actionEventRefetchTimestamps(
  * Escalating gaps tolerate client clocks up to ~a minute fast; beyond that we
  * stop rather than poll a clock that may be arbitrarily wrong.
  */
-export const STALE_EVENT_RETRY_DELAYS_MS = [5_000, 15_000, 45_000] as const;
+export const STALE_EVENT_RETRY_DELAYS_MS = [
+  milliseconds({ seconds: 5 }),
+  milliseconds({ seconds: 15 }),
+  milliseconds({ seconds: 45 }),
+] as const;
 
 type ActionWithEventBoundaries = {
   status: string;

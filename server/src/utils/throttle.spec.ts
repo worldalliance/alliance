@@ -1,3 +1,4 @@
+import { milliseconds } from "date-fns";
 import "reflect-metadata";
 import {
   ACTION_PARTNERSHIP_RESPONSE_THROTTLE,
@@ -48,7 +49,9 @@ describe("OnlyThrottle", () => {
   // at all — refuse it at decoration (i.e. boot) time instead.
   it("throws for a group not registered in ALL_THROTTLES", () => {
     expect(() =>
-      OnlyThrottle({ rogueBurst: { limit: 5, ttl: 60 * 1000 } }),
+      OnlyThrottle({
+        rogueBurst: { limit: 5, ttl: milliseconds({ minutes: 1 }) },
+      }),
     ).toThrow("Throttle group not registered in ALL_THROTTLES: rogueBurst");
   });
 });

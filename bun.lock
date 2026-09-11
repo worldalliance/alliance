@@ -232,6 +232,7 @@
         "@react-navigation/native": "^7.1.6",
         "@react-navigation/native-stack": "^7.3.10",
         "@tanstack/react-query": "^5.90.20",
+        "date-fns": "^4.1.0",
         "es-toolkit": "^1.49.0",
         "expo": "^55.0.6",
         "expo-application": "~55.0.9",
@@ -297,6 +298,7 @@
       "dependencies": {
         "@anthropic-ai/sdk": "^0.39.0",
         "@playwright/test": "^1.50.0",
+        "date-fns": "^4.1.0",
         "glob": "^11.0.0",
         "pixelmatch": "^5.3.0",
         "pngjs": "^7.0.0",
@@ -332,6 +334,7 @@
         "@types/jest": "^29.5.14",
         "@types/pluralize": "^0.0.33",
         "@types/validator": "^13.12.2",
+        "date-fns": "^4.1.0",
       },
     },
     "server": {
@@ -438,6 +441,7 @@
         "@alliance/common": "workspace:*",
         "@hey-api/client-fetch": "^0.10.0",
         "clsx": "^2.1.1",
+        "date-fns": "^4.1.0",
         "es-toolkit": "^1.49.0",
         "lucide-react": "^0.563.0",
         "react-router": "7.13.2",

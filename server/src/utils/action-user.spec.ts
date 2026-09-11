@@ -1,3 +1,4 @@
+import { millisecondsInSecond } from "date-fns/constants";
 import { ActionStatus } from "../actions/entities/action-event.entity";
 import type { User } from "../user/entities/user.entity";
 import {
@@ -116,7 +117,7 @@ describe("computeIsAssignedToAction", () => {
           input({
             action: makeAction({ onboarding: true }),
             user: userWithContractSignedAt(
-              new Date(PHASE_START.getTime() - 1000),
+              new Date(PHASE_START.getTime() - millisecondsInSecond),
             ),
           }),
         ),
@@ -129,7 +130,7 @@ describe("computeIsAssignedToAction", () => {
           input({
             action: makeAction({ onboarding: true }),
             user: userWithContractSignedAt(
-              new Date(PHASE_START.getTime() + 1000),
+              new Date(PHASE_START.getTime() + millisecondsInSecond),
             ),
           }),
         ),
@@ -249,7 +250,9 @@ describe("computeIsAssignedFromCohortSet", () => {
   describe("onboarding join timing", () => {
     it("excludes an existing member who joined before the event", () => {
       const { user } = makePopulationUser({
-        contractSignedAt: new Date(PHASE_START.getTime() - 1000),
+        contractSignedAt: new Date(
+          PHASE_START.getTime() - millisecondsInSecond,
+        ),
       });
       expect(
         computeIsAssignedFromCohortSet(
@@ -260,7 +263,9 @@ describe("computeIsAssignedFromCohortSet", () => {
 
     it("includes a new member who joined at/after the event", () => {
       const { user } = makePopulationUser({
-        contractSignedAt: new Date(PHASE_START.getTime() + 1000),
+        contractSignedAt: new Date(
+          PHASE_START.getTime() + millisecondsInSecond,
+        ),
       });
       expect(
         computeIsAssignedFromCohortSet(
@@ -284,7 +289,9 @@ describe("computeContractSignedAfterOnboardingStart", () => {
   it("is out of time when joined before the phase began", () => {
     expect(
       computeContractSignedAfterOnboardingStart({
-        user: userWithContractSignedAt(new Date(PHASE_START.getTime() - 1000)),
+        user: userWithContractSignedAt(
+          new Date(PHASE_START.getTime() - millisecondsInSecond),
+        ),
         memberActionPhaseStart: PHASE_START,
       }),
     ).toBe(false);

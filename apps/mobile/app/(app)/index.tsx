@@ -15,6 +15,7 @@ import { useUnreadGeneralUpdates } from "@alliance/shared/lib/useGeneralUpdates"
 import useHomeFeed, { resetHomeFeed } from "@alliance/shared/lib/useHomeFeed";
 import { LegendList, type LegendListRef } from "@legendapp/list";
 import { useQueryClient } from "@tanstack/react-query";
+import { milliseconds } from "date-fns";
 import { router } from "expo-router";
 import { Check } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -74,7 +75,7 @@ export default function HomeScreen() {
     isPending,
     refetch,
   } = useActionsQuery({
-    refetchInterval: hasNoTasks.current ? 60_000 : false,
+    refetchInterval: hasNoTasks.current ? milliseconds({ minutes: 1 }) : false,
   });
 
   const { user } = useAuth();

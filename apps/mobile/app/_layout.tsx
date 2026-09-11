@@ -1,6 +1,7 @@
 import { authRefreshTokens } from "@alliance/shared/client";
 import { client } from "@alliance/shared/client/client.gen";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { milliseconds } from "date-fns";
 import { useFonts } from "expo-font";
 import { setNotificationHandler } from "expo-notifications";
 import { Slot } from "expo-router";
@@ -26,14 +27,14 @@ import { hideSplash } from "../lib/splash";
 // outlive the first render.
 void SplashScreen.preventAutoHideAsync().catch(() => {});
 
-const SPLASH_WATCHDOG_MS = 30_000;
+const SPLASH_WATCHDOG_MS = milliseconds({ seconds: 30 });
 setTimeout(hideSplash, SPLASH_WATCHDOG_MS);
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 30,
+      staleTime: milliseconds({ minutes: 5 }),
+      gcTime: milliseconds({ minutes: 30 }),
       retry: 2,
       refetchOnWindowFocus: false,
     },

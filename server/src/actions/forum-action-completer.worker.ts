@@ -8,6 +8,7 @@ import {
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { ForumService } from "src/forum/forum.service";
@@ -40,8 +41,8 @@ import {
 
 const [PROCESS_ONE_LOCK_KEY1, PROCESS_ONE_LOCK_KEY2] =
   LOCK_KEYS.forumActionCompleter;
-const AUTOCOMPLETE_TARGET_OFFSET_MS = 5 * 60 * 1000;
-const AUTOCOMPLETE_WINDOW_MS = 5 * 60 * 1000;
+const AUTOCOMPLETE_TARGET_OFFSET_MS = milliseconds({ minutes: 5 });
+const AUTOCOMPLETE_WINDOW_MS = milliseconds({ minutes: 5 });
 
 @Injectable()
 export class ForumActionCompleterWorker {

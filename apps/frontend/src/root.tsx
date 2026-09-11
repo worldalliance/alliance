@@ -4,6 +4,7 @@ import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInpu
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { milliseconds } from "date-fns";
 import posthog, { PostHogConfig } from "posthog-js";
 import "posthog-js/dist/exception-autocapture";
 import { PostHogProvider } from "posthog-js/react";
@@ -25,7 +26,7 @@ import { socialPreviewMeta } from "./lib/socialPreviewMeta";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      gcTime: 1000 * 60 * 60 * 24, // 24 hours
+      gcTime: milliseconds({ days: 1 }),
     },
   },
 });

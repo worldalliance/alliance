@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
 import type { Request, Response } from "express";
 import { Campaign } from "src/campaign/entities/campaign.entity";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
@@ -55,7 +56,7 @@ export class AuthService {
     private guestRepository: Repository<Guest>,
   ) {}
 
-  private static GUEST_COOKIE_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
+  private static GUEST_COOKIE_MAX_AGE_MS = milliseconds({ days: 30 });
 
   setAuthCookies(res: Response, access: string, refresh?: string) {
     const prod = process.env.NODE_ENV === "production";
@@ -65,7 +66,7 @@ export class AuthService {
       secure: prod,
       path: "/",
       sameSite: "strict",
-      maxAge: 1000 * 60 * 30, // 30 min
+      maxAge: milliseconds({ minutes: 30 }),
     });
     if (refresh) {
       res.cookie(REFRESH_COOKIE, refresh, {
@@ -73,7 +74,7 @@ export class AuthService {
         secure: prod,
         sameSite: "strict",
         path: "/",
-        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+        maxAge: milliseconds({ days: 30 }),
       });
     }
   }

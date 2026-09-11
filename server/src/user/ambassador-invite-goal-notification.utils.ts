@@ -1,5 +1,6 @@
 import { forCount, withCount } from "@alliance/common/plural";
 import { Temporal } from "@js-temporal/polyfill";
+import { millisecondsInDay } from "date-fns/constants";
 import { DEFAULT_TIME_ZONE, type User } from "./entities/user.entity";
 
 type GoalWindow = {
@@ -14,7 +15,6 @@ type GoalProgress = Pick<GoalWindow, "dueAt"> & {
 type ReminderTimingUser = Pick<User, "preferredReminderTime" | "timeZone">;
 
 const DEFAULT_REMINDER_TIME = Temporal.PlainTime.from("19:00:00");
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * The first occurrence of the ambassador's preferred local reminder time at
@@ -63,7 +63,7 @@ export function getAmbassadorGoalHalfwayNotificationMessage(
 ): string {
   const daysRemaining = Math.max(
     0,
-    Math.ceil((goal.dueAt.getTime() - sendTime.getTime()) / DAY_MS),
+    Math.ceil((goal.dueAt.getTime() - sendTime.getTime()) / millisecondsInDay),
   );
   const remainingRecruits = Math.max(
     goal.targetSuccessfulRecruits - successfulRecruits,

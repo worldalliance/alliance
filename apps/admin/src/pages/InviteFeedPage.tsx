@@ -7,6 +7,7 @@ import type {
   ReusableInviteFeedItemDto,
 } from "@alliance/shared/client/types.gen";
 import { useQuery } from "@tanstack/react-query";
+import { milliseconds } from "date-fns";
 import { Settings2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useEventLogWebSocket } from "../lib/useEventLogWebSocket";
@@ -183,7 +184,7 @@ export default function InviteFeedPage() {
     queryKey: ["inviteFeed", settings?.startAt],
     queryFn: () => getInvitesSince(settings?.startAt ?? ""),
     enabled: settings !== null,
-    refetchInterval: 10_000,
+    refetchInterval: milliseconds({ seconds: 10 }),
   });
 
   const refreshFeed = useCallback(() => {

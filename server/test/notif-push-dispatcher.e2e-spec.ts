@@ -1,3 +1,4 @@
+import { milliseconds } from "date-fns";
 import { Expo } from "expo-server-sdk";
 import { MessagingModule } from "src/messaging/messaging.module";
 import {
@@ -113,7 +114,7 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
     it("sends to devices registered before the notification was created", async () => {
       const user = await createUser();
       const now = new Date();
-      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      const oneHourAgo = new Date(now.getTime() - milliseconds({ hours: 1 }));
 
       // Device registered 1 hour ago
       const device = await createDevice(user, oneHourAgo);
@@ -136,7 +137,7 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
     it("does not send to devices registered after the notification was created", async () => {
       const user = await createUser();
       const now = new Date();
-      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      const oneHourAgo = new Date(now.getTime() - milliseconds({ hours: 1 }));
 
       // Device registered now
       await createDevice(user, now);
@@ -158,8 +159,8 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
     it("sends to old device but not new device for an old notification", async () => {
       const user = await createUser();
       const now = new Date();
-      const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
-      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      const twoHoursAgo = new Date(now.getTime() - milliseconds({ hours: 2 }));
+      const oneHourAgo = new Date(now.getTime() - milliseconds({ hours: 1 }));
 
       // Old device registered 2 hours ago
       const oldDevice = await createDevice(user, twoHoursAgo);
@@ -205,7 +206,7 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
     it("does not push old notifications to a newly registered device", async () => {
       const user = await createUser();
       const now = new Date();
-      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      const oneHourAgo = new Date(now.getTime() - milliseconds({ hours: 1 }));
 
       // Notification created 1 hour ago
       await createNotification(user, oneHourAgo);
@@ -224,8 +225,10 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
     it("pushes notifications to devices that existed before the notification", async () => {
       const user = await createUser();
       const now = new Date();
-      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-      const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+      const oneHourAgo = new Date(now.getTime() - milliseconds({ hours: 1 }));
+      const fiveMinutesAgo = new Date(
+        now.getTime() - milliseconds({ minutes: 5 }),
+      );
 
       // Device registered 1 hour ago
       const device = await createDevice(user, oneHourAgo);
@@ -244,7 +247,7 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
     it("can send a second push when a grouped like notification is updated", async () => {
       const user = await createUser({ pushesForLikes: true });
       const now = new Date();
-      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      const oneHourAgo = new Date(now.getTime() - milliseconds({ hours: 1 }));
 
       await createDevice(user, oneHourAgo);
 
@@ -283,8 +286,10 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
     it("only pushes to the pre-existing device, not the new one", async () => {
       const user = await createUser();
       const now = new Date();
-      const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
-      const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+      const twoHoursAgo = new Date(now.getTime() - milliseconds({ hours: 2 }));
+      const thirtyMinutesAgo = new Date(
+        now.getTime() - milliseconds({ minutes: 30 }),
+      );
 
       // Old device registered 2 hours ago
       const oldDevice = await createDevice(user, twoHoursAgo);

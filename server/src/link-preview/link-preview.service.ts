@@ -7,6 +7,7 @@ import {
   Optional,
 } from "@nestjs/common";
 import * as cheerio from "cheerio";
+import { milliseconds } from "date-fns";
 import sniffHtmlEncoding from "html-encoding-sniffer";
 import iconv from "iconv-lite";
 import sharp from "sharp";
@@ -27,7 +28,7 @@ import { LinkPreview } from "./link-preview.dto";
 // Hard ceiling on one preview lookup end-to-end (all redirect hops, all
 // address attempts, page + favicon bodies). Without it, a crafted domain
 // with many black-holed addresses could pin a fetch slot for minutes.
-const OVERALL_DEADLINE_MS = 10_000;
+const OVERALL_DEADLINE_MS = milliseconds({ seconds: 10 });
 const MAX_HTML_BYTES = 512 * 1024;
 const FAVICON_ACCEPT = "image/webp,image/png,image/svg+xml,image/*";
 // Favicons over this size are dropped (not truncated — a cut-off image is
@@ -39,13 +40,13 @@ const FAVICON_RASTER_SIZE = 64;
 // A pathological SVG must not pin a fetch slot: libvips gets its own hard
 // stop well inside the lookup's overall deadline.
 const SVG_RASTERIZE_TIMEOUT_SECONDS = 2;
-const PREVIEW_CACHE_TTL_MS = 60 * 60 * 1000;
+const PREVIEW_CACHE_TTL_MS = milliseconds({ hours: 1 });
 // Failed/empty lookups are retried sooner so a transient outage on the target
 // site doesn't pin an empty preview for a full hour.
-const EMPTY_PREVIEW_CACHE_TTL_MS = 5 * 60 * 1000;
+const EMPTY_PREVIEW_CACHE_TTL_MS = milliseconds({ minutes: 5 });
 // Favicons rarely change and are keyed per origin, not per page.
-const FAVICON_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const EMPTY_FAVICON_CACHE_TTL_MS = 60 * 60 * 1000;
+const FAVICON_CACHE_TTL_MS = milliseconds({ days: 1 });
+const EMPTY_FAVICON_CACHE_TTL_MS = milliseconds({ hours: 1 });
 const MAX_CACHE_ENTRIES = 1000;
 // Bounds this cache only. Preview cache entries also hold favicon data URIs
 // (shared per origin, but kept alive even after eviction here) and capped
@@ -57,7 +58,7 @@ const MAX_QUEUED_FETCHES = 32;
 // Expired entries are also dropped on read, but only a sweep reclaims the
 // memory of entries nobody asks about again (a burst of unique URLs would
 // otherwise sit at the ~64MB worst case until the size caps push them out).
-const CACHE_SWEEP_INTERVAL_MS = 10 * 60 * 1000;
+const CACHE_SWEEP_INTERVAL_MS = milliseconds({ minutes: 10 });
 
 /** The lookup was never attempted: the fetch queue was full (load shed). */
 export enum PreviewUnavailable {

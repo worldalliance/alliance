@@ -1,3 +1,4 @@
+import { milliseconds } from "date-fns";
 import {
   ActionEvent,
   ActionStatus,
@@ -56,7 +57,7 @@ describe("Search (e2e)", () => {
         title: "Launch",
         description: "Action is live",
         newStatus: ActionStatus.MemberAction,
-        date: new Date(Date.now() - 1000),
+        date: new Date(Date.now() - milliseconds({ seconds: 1 })),
         action: targetAction,
       }),
     );
@@ -107,7 +108,7 @@ describe("Search (e2e)", () => {
         },
         author: targetUser,
         authorId: targetUser.id,
-        visibleAt: new Date(Date.now() + 1000 * 60 * 60),
+        visibleAt: new Date(Date.now() + milliseconds({ hours: 1 })),
       }),
     );
 

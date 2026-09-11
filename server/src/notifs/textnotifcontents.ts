@@ -1,4 +1,6 @@
+import { hoursInDay } from "@alliance/common/duration";
 import { withCount } from "@alliance/common/plural";
+import { millisecondsInDay, millisecondsInHour } from "date-fns/constants";
 import { ActionEvent } from "src/actions/entities/action-event.entity";
 
 export function getTimeLeftString(
@@ -10,16 +12,16 @@ export function getTimeLeftString(
     return withCount(0, mode === "days" ? "day" : "hour");
   }
   let days = Math.floor(
-    (deadlineEvent.date.getTime() - dateNow.getTime()) / (1000 * 60 * 60 * 24),
+    (deadlineEvent.date.getTime() - dateNow.getTime()) / millisecondsInDay,
   );
   let hours = Math.round(
     (deadlineEvent.date.getTime() -
       dateNow.getTime() -
-      days * 1000 * 60 * 60 * 24) /
-      (1000 * 60 * 60),
+      days * millisecondsInDay) /
+      millisecondsInHour,
   );
 
-  if (hours === 24) {
+  if (hours === hoursInDay) {
     days += 1;
     hours = 0;
   }

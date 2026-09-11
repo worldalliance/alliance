@@ -1,4 +1,5 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { milliseconds } from "date-fns";
 import { ActionsService } from "src/actions/actions.service";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { ContractService } from "src/contract/contract.service";
@@ -99,7 +100,7 @@ describe("Actions (e2e)", () => {
         title: `${name} launch`,
         description: "Action live",
         newStatus: options.status ?? ActionStatus.MemberAction,
-        date: new Date(Date.now() - 1000),
+        date: new Date(Date.now() - milliseconds({ seconds: 1 })),
         action,
       }),
     );
@@ -159,7 +160,7 @@ describe("Actions (e2e)", () => {
       title: "Action Started",
       description: "Action is now in gathering commitments phase",
       newStatus: ActionStatus.MemberAction,
-      date: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
+      date: new Date(Date.now() - milliseconds({ hours: 1 })),
       action: testAction,
     });
     await eventRepo.save(gatheringEvent);
@@ -492,7 +493,7 @@ describe("Actions (e2e)", () => {
           title: "Manual cohort launch",
           description: "Manual cohort action live",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action: manualAction,
         }),
       );
@@ -551,8 +552,8 @@ describe("Actions (e2e)", () => {
       });
       await ctx.dataSource.getRepository(UserAwayRange).save({
         userId: awayMember.id,
-        startDate: new Date(Date.now() - 60 * 60 * 1000),
-        endDate: new Date(Date.now() + 60 * 60 * 1000),
+        startDate: new Date(Date.now() - milliseconds({ hours: 1 })),
+        endDate: new Date(Date.now() + milliseconds({ hours: 1 })),
         reason: UserAwayRangeReason.VACATION,
       });
 
@@ -579,7 +580,7 @@ describe("Actions (e2e)", () => {
           title: "Manual cohort launch",
           description: "Manual cohort action live",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action: manualAction,
         }),
       );
@@ -666,7 +667,7 @@ describe("Actions (e2e)", () => {
           title: "Planned",
           description: "Member action not scheduled yet",
           newStatus: ActionStatus.Planned,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action: plannedAction,
         }),
       );
@@ -747,7 +748,7 @@ describe("Actions (e2e)", () => {
           title: "Launch",
           description: "Go",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action: targetAction,
         }),
       );
@@ -802,7 +803,7 @@ describe("Actions (e2e)", () => {
           title: "Prerequisite Launch",
           description: "Prerequisite",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action: prerequisiteAction,
         }),
       );
@@ -861,7 +862,7 @@ describe("Actions (e2e)", () => {
           title: "Launch",
           description: "Go",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action: targetAction,
         }),
       );
@@ -946,7 +947,7 @@ describe("Actions (e2e)", () => {
           title: "Launch",
           description: "Go",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action: targetAction,
         }),
       );
@@ -1188,7 +1189,7 @@ describe("Actions (e2e)", () => {
           title: "Launch",
           description: "Go",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action: targetAction,
         }),
       );
@@ -1302,7 +1303,7 @@ describe("Actions (e2e)", () => {
           title: "Launch",
           description: "Go",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action: targetAction,
         }),
       );
@@ -1402,7 +1403,7 @@ describe("Actions (e2e)", () => {
           title: "Launch",
           description: "Go",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
           action: targetAction,
         }),
       );
@@ -1639,7 +1640,7 @@ describe("Actions (e2e)", () => {
           title: "Launch Event",
           description: "Action is now gathering commitments",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000), // 1 second ago
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
         };
 
         res = await request(ctx.app.getHttpServer())
@@ -1673,7 +1674,7 @@ describe("Actions (e2e)", () => {
           title: "Launch",
           description: "Action launched",
           newStatus: ActionStatus.OfficeAction,
-          date: new Date(Date.now() - 3600000), // 1 hour ago
+          date: new Date(Date.now() - milliseconds({ hours: 1 })),
         };
 
         await request(ctx.app.getHttpServer())
@@ -1686,7 +1687,7 @@ describe("Actions (e2e)", () => {
           title: "Commitments Reached",
           description: "Action now in member action phase",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1800000), // 30 minutes ago
+          date: new Date(Date.now() - milliseconds({ minutes: 30 })),
         };
 
         await request(ctx.app.getHttpServer())
@@ -1720,7 +1721,7 @@ describe("Actions (e2e)", () => {
           title: "Launch",
           description: "Action launched",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 3600000), // 1 hour ago
+          date: new Date(Date.now() - milliseconds({ hours: 1 })),
         };
 
         await request(ctx.app.getHttpServer())
@@ -1733,7 +1734,7 @@ describe("Actions (e2e)", () => {
           title: "Future Completion",
           description: "Action will be completed",
           newStatus: ActionStatus.Completed,
-          date: new Date(Date.now() + 3600000), // 1 hour from now
+          date: new Date(Date.now() + milliseconds({ hours: 1 })),
         };
 
         await request(ctx.app.getHttpServer())
@@ -1815,22 +1816,22 @@ describe("Actions (e2e)", () => {
           {
             title: "Future Resolution",
             newStatus: ActionStatus.Resolution,
-            date: new Date(now + 7200000), // 2 hours from now
+            date: new Date(now + milliseconds({ hours: 2 })),
           },
           {
             title: "Launch",
             newStatus: ActionStatus.MemberAction,
-            date: new Date(now - 14400000), // 4 hours ago
+            date: new Date(now - milliseconds({ hours: 4 })),
           },
           {
             title: "Office Action Start",
             newStatus: ActionStatus.OfficeAction,
-            date: new Date(now - 3600000), // 1 hour ago (most recent past)
+            date: new Date(now - milliseconds({ hours: 1 })), // most recent past
           },
           {
             title: "Planned Phase",
             newStatus: ActionStatus.Planned,
-            date: new Date(now - 7200000), // 2 hours ago
+            date: new Date(now - milliseconds({ hours: 2 })),
           },
         ];
 
@@ -2465,7 +2466,7 @@ describe("Actions (e2e)", () => {
         contractEvents: [
           {
             type: ContractEventType.SIGNED,
-            date: new Date(now - 60_000),
+            date: new Date(now - milliseconds({ minutes: 1 })),
             automatic: false,
             contractId: ctx.defaultContractId,
           },
@@ -2480,13 +2481,13 @@ describe("Actions (e2e)", () => {
         contractEvents: [
           {
             type: ContractEventType.SIGNED,
-            date: new Date(now - 120_000),
+            date: new Date(now - milliseconds({ minutes: 2 })),
             automatic: false,
             contractId: ctx.defaultContractId,
           },
           {
             type: ContractEventType.SUSPENDED,
-            date: new Date(now - 30_000),
+            date: new Date(now - milliseconds({ seconds: 30 })),
             automatic: false,
           },
         ],
@@ -2572,15 +2573,24 @@ describe("Actions (e2e)", () => {
       // Action with no deadline (only past MemberAction, no event after it)
       const noDeadlineAction = await createOrderingAction("No Deadline", {
         events: [
-          { status: ActionStatus.MemberAction, date: new Date(now - 3600000) },
+          {
+            status: ActionStatus.MemberAction,
+            date: new Date(now - milliseconds({ hours: 1 })),
+          },
         ],
       });
 
       // Action with a deadline (MemberAction + Resolution event after it)
       const hasDeadlineAction = await createOrderingAction("Has Deadline", {
         events: [
-          { status: ActionStatus.MemberAction, date: new Date(now - 3600000) }, // past MemberAction
-          { status: ActionStatus.Resolution, date: new Date(now + 3600000) }, // future deadline
+          {
+            status: ActionStatus.MemberAction,
+            date: new Date(now - milliseconds({ hours: 1 })),
+          },
+          {
+            status: ActionStatus.Resolution,
+            date: new Date(now + milliseconds({ hours: 1 })),
+          },
         ],
       });
 
@@ -2607,8 +2617,14 @@ describe("Actions (e2e)", () => {
       // Action with later deadline
       const laterDeadlineAction = await createOrderingAction("Later Deadline", {
         events: [
-          { status: ActionStatus.MemberAction, date: new Date(now - 3600000) }, // past MemberAction
-          { status: ActionStatus.Resolution, date: new Date(now + 7200000) }, // deadline 2 hours from now
+          {
+            status: ActionStatus.MemberAction,
+            date: new Date(now - milliseconds({ hours: 1 })),
+          },
+          {
+            status: ActionStatus.Resolution,
+            date: new Date(now + milliseconds({ hours: 2 })),
+          },
         ],
       });
 
@@ -2619,9 +2635,12 @@ describe("Actions (e2e)", () => {
           events: [
             {
               status: ActionStatus.MemberAction,
-              date: new Date(now - 3600000),
-            }, // past MemberAction
-            { status: ActionStatus.Resolution, date: new Date(now + 1800000) }, // deadline 30 min from now
+              date: new Date(now - milliseconds({ hours: 1 })),
+            },
+            {
+              status: ActionStatus.Resolution,
+              date: new Date(now + milliseconds({ minutes: 30 })),
+            },
           ],
         },
       );
@@ -2653,7 +2672,7 @@ describe("Actions (e2e)", () => {
           events: [
             {
               status: ActionStatus.OfficeAction,
-              date: new Date(now - 3600000),
+              date: new Date(now - milliseconds({ hours: 1 })),
             },
           ],
         },
@@ -2666,7 +2685,7 @@ describe("Actions (e2e)", () => {
           events: [
             {
               status: ActionStatus.MemberAction,
-              date: new Date(now - 3600000),
+              date: new Date(now - milliseconds({ hours: 1 })),
             },
           ],
         },
@@ -2695,14 +2714,20 @@ describe("Actions (e2e)", () => {
       // Action with older member action event
       const olderAction = await createOrderingAction("Older Member Action", {
         events: [
-          { status: ActionStatus.MemberAction, date: new Date(now - 7200000) }, // 2 hours ago
+          {
+            status: ActionStatus.MemberAction,
+            date: new Date(now - milliseconds({ hours: 2 })),
+          },
         ],
       });
 
       // Action with more recent member action event
       const newerAction = await createOrderingAction("Newer Member Action", {
         events: [
-          { status: ActionStatus.MemberAction, date: new Date(now - 1800000) }, // 30 min ago
+          {
+            status: ActionStatus.MemberAction,
+            date: new Date(now - milliseconds({ minutes: 30 })),
+          },
         ],
       });
 
@@ -2725,7 +2750,7 @@ describe("Actions (e2e)", () => {
 
     it("uses priority as final tiebreaker (lower number = higher priority)", async () => {
       const now = Date.now();
-      const sameEventDate = new Date(now - 3600000);
+      const sameEventDate = new Date(now - milliseconds({ hours: 1 }));
 
       // Lower priority (higher number)
       const lowPriorityAction = await createOrderingAction("Low Priority", {
@@ -2762,8 +2787,14 @@ describe("Actions (e2e)", () => {
       // 1. Action with soonest deadline (should be first)
       const soonestDeadline = await createOrderingAction("Soonest Deadline", {
         events: [
-          { status: ActionStatus.MemberAction, date: new Date(now - 3600000) }, // past MemberAction
-          { status: ActionStatus.Resolution, date: new Date(now + 1800000) }, // deadline 30 min from now
+          {
+            status: ActionStatus.MemberAction,
+            date: new Date(now - milliseconds({ hours: 1 })),
+          },
+          {
+            status: ActionStatus.Resolution,
+            date: new Date(now + milliseconds({ minutes: 30 })),
+          },
         ],
         priority: 5,
       });
@@ -2771,8 +2802,14 @@ describe("Actions (e2e)", () => {
       // 2. Action with later deadline (should be second)
       const laterDeadline = await createOrderingAction("Later Deadline", {
         events: [
-          { status: ActionStatus.MemberAction, date: new Date(now - 3600000) }, // past MemberAction
-          { status: ActionStatus.Resolution, date: new Date(now + 3600000) }, // deadline 1 hour from now
+          {
+            status: ActionStatus.MemberAction,
+            date: new Date(now - milliseconds({ hours: 1 })),
+          },
+          {
+            status: ActionStatus.Resolution,
+            date: new Date(now + milliseconds({ hours: 1 })),
+          },
         ],
         priority: 1,
       });
@@ -2784,8 +2821,8 @@ describe("Actions (e2e)", () => {
           events: [
             {
               status: ActionStatus.MemberAction,
-              date: new Date(now - 1800000),
-            }, // 30 min ago
+              date: new Date(now - milliseconds({ minutes: 30 })),
+            },
           ],
           priority: 5,
         },
@@ -2798,8 +2835,8 @@ describe("Actions (e2e)", () => {
           events: [
             {
               status: ActionStatus.MemberAction,
-              date: new Date(now - 7200000),
-            }, // 2 hours ago
+              date: new Date(now - milliseconds({ hours: 2 })),
+            },
           ],
           priority: 1,
         },
@@ -2847,9 +2884,13 @@ describe("Actions (e2e)", () => {
           events: [
             {
               status: ActionStatus.MemberAction,
-              date: new Date(now - 10800000),
-            }, // 3h ago
-            { status: ActionStatus.Resolution, date: new Date(now - 1800000) }, // 30min ago (past, not a deadline)
+              date: new Date(now - milliseconds({ hours: 3 })),
+            },
+            // past, not a deadline
+            {
+              status: ActionStatus.Resolution,
+              date: new Date(now - milliseconds({ minutes: 30 })),
+            },
           ],
         },
       );
@@ -2861,8 +2902,8 @@ describe("Actions (e2e)", () => {
           events: [
             {
               status: ActionStatus.MemberAction,
-              date: new Date(now - 3600000),
-            }, // 1h ago
+              date: new Date(now - milliseconds({ hours: 1 })),
+            },
           ],
         },
       );
@@ -2893,7 +2934,7 @@ describe("Actions (e2e)", () => {
     let newUserToken: string;
 
     beforeAll(async () => {
-      const actionEventDate = new Date(Date.now() - 3600000); // 1 hour ago
+      const actionEventDate = new Date(Date.now() - milliseconds({ hours: 1 }));
 
       onboardingAction = await actionRepo.save(
         actionRepo.create({
@@ -2932,7 +2973,9 @@ describe("Actions (e2e)", () => {
         contractEvents: [
           {
             type: ContractEventType.SIGNED,
-            date: new Date(actionEventDate.getTime() - 86400000), // 1 day before action
+            date: new Date(
+              actionEventDate.getTime() - milliseconds({ days: 1 }),
+            ), // 1 day before action
             automatic: false,
             contractId: ctx.defaultContractId,
           },
@@ -3374,7 +3417,8 @@ describe("Actions (e2e)", () => {
           .post(`/actions/updates/${id}/publish-now`)
           .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
-      const futureDate = () => new Date(Date.now() + 60 * 60 * 1000);
+      const futureDate = () =>
+        new Date(Date.now() + milliseconds({ hours: 1 }));
 
       const publishedWithFutureDate = async (title: string) => {
         const update = await createUpdate(title);
@@ -3574,14 +3618,14 @@ describe("Actions (e2e)", () => {
           title: "Planned",
           description: "Planned",
           newStatus: ActionStatus.Planned,
-          date: new Date(Date.now() - 1000 * 60 * 60 * 2),
+          date: new Date(Date.now() - milliseconds({ hours: 2 })),
           action: entity,
         }),
         eventRepo.create({
           title: "Started",
           description: "Started",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000 * 60 * 60),
+          date: new Date(Date.now() - milliseconds({ hours: 1 })),
           action: entity,
         }),
       ]);
@@ -3702,7 +3746,7 @@ describe("Actions (e2e)", () => {
           title: "Started",
           description: "Started",
           newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000 * 60 * 60),
+          date: new Date(Date.now() - milliseconds({ hours: 1 })),
           action: await actionRepo.findOneOrFail({
             where: { id: targetedActionId },
           }),

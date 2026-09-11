@@ -1,4 +1,5 @@
 import { Action, ActionEventDto, ActionStatus } from "@alliance/shared/client";
+import { millisecondsInDay } from "date-fns/constants";
 import React from "react";
 
 interface PhaseSegment {
@@ -106,8 +107,7 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
       }}
     >
       {phases.map((phase, phaseIndex) => {
-        const millisecondsPerDay = 24 * 60 * 60 * 1000;
-        const pixelsPerMillisecond = pixelsPerDay / millisecondsPerDay;
+        const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
 
         const millisecondsSinceStart =
           phase.startDate.getTime() - globalStartDate.getTime();
@@ -140,8 +140,7 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
         let backgroundStyle = {};
         if (shouldFade) {
           // Calculate fade-out gradient starting from current time
-          const millisecondsPerDay = 24 * 60 * 60 * 1000;
-          const pixelsPerMillisecond = pixelsPerDay / millisecondsPerDay;
+          const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
           const currentTimeOffsetFromStart =
             currentTime.getTime() - phase.startDate.getTime();
           const currentTimePositionInBar =

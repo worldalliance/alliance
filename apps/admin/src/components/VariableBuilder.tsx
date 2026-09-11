@@ -30,6 +30,7 @@ import {
 import { R } from "@alliance/common/result";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import { milliseconds } from "date-fns";
 import { Check, Copy, Info, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -55,7 +56,10 @@ function CopyableReference({ name }: { name: string }) {
         navigator.clipboard.writeText(reference).then(
           () => {
             setCopied(true);
-            resetTimeout.current = setTimeout(() => setCopied(false), 2000);
+            resetTimeout.current = setTimeout(
+              () => setCopied(false),
+              milliseconds({ seconds: 2 }),
+            );
           },
           () => setCopied(false),
         );

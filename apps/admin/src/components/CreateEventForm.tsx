@@ -12,6 +12,7 @@ import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker, {
   DateTimePickerChange,
 } from "@alliance/sharedweb/ui/DateTimePicker";
+import { milliseconds } from "date-fns";
 import { useState } from "react";
 
 export type CreateEventFormProps = {
@@ -211,7 +212,10 @@ const CreateEventForm = (props: CreateEventFormProps) => {
 
         // Show success feedback
         setEventCreatedSuccess(true);
-        setTimeout(() => setEventCreatedSuccess(false), 3000);
+        setTimeout(
+          () => setEventCreatedSuccess(false),
+          milliseconds({ seconds: 3 }),
+        );
 
         // Reset form
         setEventForm({

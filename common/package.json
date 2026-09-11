@@ -24,6 +24,7 @@
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/pluralize": "^0.0.33",
-    "@types/validator": "^13.12.2"
+    "@types/validator": "^13.12.2",
+    "date-fns": "^4.1.0"
   }
 }

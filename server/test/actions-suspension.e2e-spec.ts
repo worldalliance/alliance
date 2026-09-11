@@ -1,4 +1,5 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { millisecondsInDay } from "date-fns/constants";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import { ActionsService } from "../src/actions/actions.service";
@@ -20,7 +21,7 @@ import { UserService } from "../src/user/user.service";
 import { createTestApp, TestContext } from "./e2e-test-utils";
 
 const addDays = (date: Date, days: number) =>
-  new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+  new Date(date.getTime() + days * millisecondsInDay);
 
 describe("findUsersToSuspend (e2e)", () => {
   let ctx: TestContext;

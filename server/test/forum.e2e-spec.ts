@@ -3,6 +3,7 @@ import type {
   GetObjectCommandOutput,
 } from "@aws-sdk/client-s3";
 import { sdkStreamMixin } from "@smithy/util-stream";
+import { milliseconds } from "date-fns";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
@@ -132,7 +133,7 @@ describe("Forum (e2e)", () => {
       title: "Action Started",
       description: "Action is now in member action phase",
       newStatus: ActionStatus.MemberAction,
-      date: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
+      date: new Date(Date.now() - milliseconds({ hours: 1 })),
       action: testAction,
     });
     await eventRepo.save(event);
@@ -231,7 +232,7 @@ describe("Forum (e2e)", () => {
     });
 
     it("should show authors their own scheduled posts on an action", async () => {
-      const futureVisibleAt = new Date(Date.now() + 1000 * 60 * 60);
+      const futureVisibleAt = new Date(Date.now() + milliseconds({ hours: 1 }));
       const createResponse = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
         .set("Authorization", `Bearer ${ctx.accessToken}`)
@@ -286,7 +287,7 @@ describe("Forum (e2e)", () => {
     });
 
     it("should hide future-scheduled posts created by other users", async () => {
-      const futureVisibleAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour from now
+      const futureVisibleAt = new Date(Date.now() + milliseconds({ hours: 1 }));
       const createResponse = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
@@ -317,7 +318,7 @@ describe("Forum (e2e)", () => {
     });
 
     it("should let admins see future-scheduled posts by other users", async () => {
-      const futureVisibleAt = new Date(Date.now() + 1000 * 60 * 60);
+      const futureVisibleAt = new Date(Date.now() + milliseconds({ hours: 1 }));
       const createResponse = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
         .set("Authorization", `Bearer ${ctx.accessToken}`)
@@ -373,7 +374,7 @@ describe("Forum (e2e)", () => {
     });
 
     it("should hide a member's future-scheduled posts from profile visitors", async () => {
-      const futureVisibleAt = new Date(Date.now() + 1000 * 60 * 60);
+      const futureVisibleAt = new Date(Date.now() + milliseconds({ hours: 1 }));
       const createResponse = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
         .set("Authorization", `Bearer ${ctx.accessToken}`)
@@ -411,7 +412,7 @@ describe("Forum (e2e)", () => {
     });
 
     it("should allow authors to see their own future-scheduled posts", async () => {
-      const futureVisibleAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour from now
+      const futureVisibleAt = new Date(Date.now() + milliseconds({ hours: 1 }));
       const createResponse = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
         .set("Authorization", `Bearer ${ctx.accessToken}`)

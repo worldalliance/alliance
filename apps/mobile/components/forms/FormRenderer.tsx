@@ -67,6 +67,7 @@ import {
   useVisibilityValidatorResults,
 } from "@alliance/shared/useFormRenderer";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { milliseconds } from "date-fns";
 import { setStringAsync as setClipboardStringAsync } from "expo-clipboard";
 import { DeviceType, deviceType as expoDeviceType } from "expo-device";
 import { router } from "expo-router";
@@ -162,7 +163,7 @@ function CopyTextDisplayMobile({
   const handleCopy = async () => {
     await setClipboardStringAsync(text);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), milliseconds({ seconds: 2 }));
   };
 
   return (

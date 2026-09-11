@@ -1,4 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
+import { millisecondsInMinute } from "date-fns/constants";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { resetClock } from "../lib/useClockMinute";
@@ -541,15 +542,12 @@ describe("a zone sitting on UTC", () => {
 });
 
 describe("the clock beside a zone", () => {
-  // A whole minute crosses exactly one boundary, whatever minute it starts in.
-  const A_MINUTE = 60_000;
-
   it("refreshes on a picker nobody has opened", () => {
     jest.useFakeTimers();
     const { result } = renderHook(() => useTimeZoneSelect({}));
     const atMount = result.current.selected.timeLabel;
 
-    act(() => jest.advanceTimersByTime(A_MINUTE));
+    act(() => jest.advanceTimersByTime(millisecondsInMinute));
 
     expect(result.current.selected.timeLabel).not.toBe(atMount);
   });
@@ -559,7 +557,11 @@ describe("the clock beside a zone", () => {
     const { result } = renderHook(() => useTimeZoneSelect({}));
     const atMount = result.current.selected.timeLabel;
 
-    act(() => jest.advanceTimersByTime(A_MINUTE - (Date.now() % A_MINUTE) - 1));
+    act(() =>
+      jest.advanceTimersByTime(
+        millisecondsInMinute - (Date.now() % millisecondsInMinute) - 1,
+      ),
+    );
     expect(result.current.selected.timeLabel).toBe(atMount);
 
     act(() => jest.advanceTimersByTime(1));
@@ -570,10 +572,14 @@ describe("the clock beside a zone", () => {
     jest.useFakeTimers();
     const { result } = renderHook(() => useTimeZoneSelect({}));
 
-    act(() => jest.advanceTimersByTime(A_MINUTE - (Date.now() % A_MINUTE)));
+    act(() =>
+      jest.advanceTimersByTime(
+        millisecondsInMinute - (Date.now() % millisecondsInMinute),
+      ),
+    );
     const atBoundary = result.current.selected.timeLabel;
 
-    act(() => jest.advanceTimersByTime(A_MINUTE - 1));
+    act(() => jest.advanceTimersByTime(millisecondsInMinute - 1));
     expect(result.current.selected.timeLabel).toBe(atBoundary);
 
     act(() => jest.advanceTimersByTime(1));
@@ -582,7 +588,11 @@ describe("the clock beside a zone", () => {
 
   it("shows the minute it committed in, not the one it rendered in", () => {
     jest.useFakeTimers();
-    jest.setSystemTime(Date.now() + (A_MINUTE - (Date.now() % A_MINUTE)) - 1);
+    jest.setSystemTime(
+      Date.now() +
+        (millisecondsInMinute - (Date.now() % millisecondsInMinute)) -
+        1,
+    );
 
     let crossed = false;
     const straddling = renderHook(() => {
@@ -606,7 +616,7 @@ describe("the clock beside a zone", () => {
     const { result } = renderHook(() => useTimeZoneSelect({}));
     const atMount = result.current.items.at(0)?.timeLabel;
 
-    act(() => jest.advanceTimersByTime(A_MINUTE));
+    act(() => jest.advanceTimersByTime(millisecondsInMinute));
 
     expect(result.current.items.at(0)?.timeLabel).not.toBe(atMount);
   });
@@ -638,7 +648,7 @@ describe("the clock beside a zone", () => {
     const { result } = renderHook(() => useTimeZoneSelect({}));
     const atMount = result.current.selected.timeLabel;
 
-    act(() => jest.advanceTimersByTime(A_MINUTE));
+    act(() => jest.advanceTimersByTime(millisecondsInMinute));
 
     expect(result.current.selected.timeLabel).not.toBe(atMount);
   });
@@ -652,7 +662,7 @@ describe("the clock beside a zone", () => {
     leaving.unmount();
     expect(jest.getTimerCount()).toBe(1);
 
-    act(() => jest.advanceTimersByTime(A_MINUTE));
+    act(() => jest.advanceTimersByTime(millisecondsInMinute));
 
     expect(staying.result.current.selected.timeLabel).not.toBe(atMount);
   });
@@ -685,7 +695,7 @@ describe("the offset a zone sorts by", () => {
     const { result } = renderHook(() => useTimeZoneSelect({}));
 
     jest.setSystemTime(new Date(Date.UTC(2026, 2, 8, 10, 30)));
-    act(() => jest.advanceTimersByTime(60_000));
+    act(() => jest.advanceTimersByTime(millisecondsInMinute));
 
     expect(
       result.current.items.find((i) => i.tz === "America/Los_Angeles")

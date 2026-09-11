@@ -8,6 +8,7 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Card from "@alliance/sharedweb/ui/Card";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
+import { milliseconds } from "date-fns";
 import { ChevronDown, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
@@ -30,7 +31,7 @@ const ScheduledPlansPage = () => {
           query: {
             rangeStart: new Date(Date.now()).toISOString(),
             rangeEnd: new Date(
-              Date.now() + 1000 * 60 * 60 * 24 * 7,
+              Date.now() + milliseconds({ days: 7 }),
             ).toISOString(),
           },
         });

@@ -1,4 +1,5 @@
 import { CreateActionDto, UserDto } from "@alliance/shared/client";
+import { milliseconds } from "date-fns";
 
 export const FORM_BUILDER_PREVIEW_USER: UserDto = {
   id: 0,
@@ -36,7 +37,7 @@ export const FORM_BUILDER_PREVIEW_USER: UserDto = {
   contractEvents: [
     {
       type: "signed",
-      date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
+      date: new Date(Date.now() - milliseconds({ days: 30 })).toISOString(),
       automatic: false,
       contractId: 1,
     },

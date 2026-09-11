@@ -27,6 +27,7 @@ import {
   parseISO,
   subSeconds,
 } from "date-fns";
+import { millisecondsInSecond } from "date-fns/constants";
 import React, {
   useCallback,
   useEffect,
@@ -505,7 +506,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
         }
         const distance = formatDistanceStrict(
           new Date(0),
-          new Date(Math.abs(seconds) * 1000),
+          new Date(Math.abs(seconds) * millisecondsInSecond),
           { roundingMethod: "floor" },
         );
         return `${distance} ${seconds >= 0 ? "before" : "after"}`;

@@ -9,6 +9,7 @@ import {
   ProfileDto,
 } from "@alliance/shared/client";
 import { LegendList, LegendListRef } from "@legendapp/list";
+import { milliseconds } from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";
 import { Info, Users } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -359,8 +360,7 @@ export default function ConversationScreen() {
                   Math.abs(
                     new Date(item.createdAt).getTime() -
                       new Date(prev.createdAt).getTime(),
-                  ) >
-                    1000 * 60 * 60 * 3;
+                  ) > milliseconds({ hours: 3 });
                 const isFirstInReplyGroup =
                   index === 0 || prev.replyTo?.id !== item.replyTo?.id;
 
