@@ -20,6 +20,16 @@ export const NAV_HEIGHT = 78;
 /** Past this many pixels the bar takes on a solid background. */
 const SOLID_AFTER = 24;
 
+/**
+ * Below 378px the account cluster sheds itself piece by piece so the menu
+ * button, the one control that must always reach the edge, never gets
+ * squeezed off. Profile picture first (`max-[378px]:hidden`), then the
+ * account button's arrow (`max-[344px]:hidden`), then the account button
+ * itself (`max-[310px]:hidden`). Tailwind's scanner needs each arbitrary
+ * variant written out in full in the JSX below — it cannot see one built
+ * from a template literal.
+ */
+
 export function Navbar({
   /**
    * Set where the bar floats over the primary band, as every page behind the
@@ -128,6 +138,7 @@ export function Navbar({
               to={accountHref}
               className={cn(
                 "inline-flex min-h-11 items-center gap-2 px-4 text-base font-medium transition-colors",
+                "max-[310px]:hidden",
                 light
                   ? "bg-white text-[var(--site-primary)] hover:bg-white/85"
                   : "bg-[var(--site-primary)] text-white hover:bg-[var(--site-primary-hover)]",
@@ -135,13 +146,16 @@ export function Navbar({
               style={{ borderRadius: "var(--site-radius-button)" }}
             >
               {accountLabel}
-              <SiteArrow className="size-2.5" />
+              <SiteArrow className={cn("size-2.5", "max-[344px]:hidden")} />
             </Link>
             {isAuthenticated && user && (
               <Link
                 to={profileHref}
                 aria-label="Go to profile"
-                className="inline-flex shrink-0 focus:outline-none"
+                className={cn(
+                  "inline-flex shrink-0 focus:outline-none",
+                  "max-[378px]:hidden",
+                )}
                 style={{ borderRadius: "var(--site-radius-button)" }}
               >
                 <AvatarProfile
@@ -162,7 +176,7 @@ export function Navbar({
           </div>
           <button
             type="button"
-            className="-mr-2 inline-flex size-11 items-center justify-center md:hidden"
+            className="-mr-2 inline-flex size-11 shrink-0 items-center justify-center text-black md:hidden"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}

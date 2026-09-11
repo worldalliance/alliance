@@ -1,8 +1,8 @@
 import { cn } from "@alliance/shared/styles/util";
-import type { ReactNode } from "react";
 import { Link } from "react-router";
 import membersPhoto from "../assets/redesign/members-photo.webp?w=480;960&format=avif;webp&as=picture";
-import { CONTACT_EMAIL, CTA_BODY, CTA_BUTTON } from "./content";
+import { CTA_BODY } from "./content";
+import { JOIN_HREF } from "./links";
 import { SITE_COL, SiteArrow, SitePicture, TexturedFill } from "./ui";
 
 /** How far the artwork hangs over the footer, measured off the Figma. */
@@ -30,7 +30,7 @@ function JoinCtaCard({ heading }: { heading: string }) {
         <h2 className="text-[2.25rem] leading-none font-normal sm:text-[3.1rem] lg:text-[3.6rem]">
           {heading}
         </h2>
-        <p className="mt-3 max-w-[40rem] text-lg leading-snug font-light sm:text-[1.35rem]">
+        <p className="mt-3 max-w-[40rem] text-lg leading-snug font-normal sm:text-[1.35rem]">
           {CTA_BODY}
         </p>
       </div>
@@ -42,27 +42,12 @@ function JoinCtaCard({ heading }: { heading: string }) {
 }
 
 export function JoinCta({
-  to,
+  to = JOIN_HREF,
   heading = JOIN_CTA_HEADING,
 }: {
   to?: string;
   heading?: string;
 } = {}) {
-  const card: ReactNode = to ? (
-    <Link to={to} aria-label={heading} className={cardClass} style={cardStyle}>
-      <JoinCtaCard heading={heading} />
-    </Link>
-  ) : (
-    <a
-      href={`mailto:${CONTACT_EMAIL}`}
-      aria-label={CTA_BUTTON}
-      className={cardClass}
-      style={cardStyle}
-    >
-      <JoinCtaCard heading={heading} />
-    </a>
-  );
-
   return (
     <section id="join" className="relative bg-[var(--site-surface)]">
       <div
@@ -72,7 +57,16 @@ export function JoinCta({
       >
         <TexturedFill />
       </div>
-      <div className={cn(SITE_COL, "relative")}>{card}</div>
+      <div className={cn(SITE_COL, "relative")}>
+        <Link
+          to={to}
+          aria-label={heading}
+          className={cardClass}
+          style={cardStyle}
+        >
+          <JoinCtaCard heading={heading} />
+        </Link>
+      </div>
     </section>
   );
 }
