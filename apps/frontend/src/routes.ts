@@ -37,7 +37,6 @@ export default [
 
   route("/actions/completed", "pages/app/PublicActionCompletedPage.tsx"),
   layout("applayout.tsx", [
-    route("/welcome", "pages/app/WelcomePage.tsx"),
     layout("navbar.tsx", [
       ...prefix("/actions", [
         route("/", "pages/app/ActionsListPage.tsx"),
