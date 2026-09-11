@@ -99,20 +99,18 @@ export class ActionEventReminderService {
       this.findAlreadyNotifiedUserIds(group),
     ]);
     const previewScope = await this.findFullyPreviewedScope(group);
-    // Narrower than the preview itself, which runs until the launch. A preview
-    // over an action members are already reading takes nothing from them, and
-    // the reminder they are owed is part of that.
-    //
-    // Both halves read `at`. Asking either about now instead would hold a send
-    // scheduled for a day the action is public, which the tentative-plan
-    // preview looks weeks ahead to ask about.
-    const heldByStaffPreview = (at: Date) =>
+    const now = new Date();
+    // The flag outlives the launch until `clearOpenedPreviews` clears it, so a
+    // launched action must hold nothing: ask about now. What members can read
+    // is asked about the send time instead, since the schedule preview
+    // evaluates sends weeks out and one falling on a day the action is public
+    // still goes out.
+    const previewStillUp =
       previewScope.length > 0 &&
-      previewScope.every(
-        (action) =>
-          isStaffPreviewActive(action, at) &&
-          actionHiddenFromMembers(action, at),
-      );
+      previewScope.every((action) => isStaffPreviewActive(action, now));
+    const heldByStaffPreview = (at: Date) =>
+      previewStillUp &&
+      previewScope.every((action) => actionHiddenFromMembers(action, at));
 
     for (const user of users) {
       const reminderSendTime = getGroupSendTimeForUser(user, group);

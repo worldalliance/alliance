@@ -329,6 +329,32 @@ describe("ActionEventNotifWorker (e2e)", () => {
     expect(await fetchNotifsForGroup(reminderGroup)).toHaveLength(1);
   });
 
+  it("sends a reminder the launch overtook, before the sweep clears the flag", async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+
+    // Opened five minutes ago and still flagged. The sweep lowers the flag on
+    // its own schedule, and a sweep that is down never lowers it at all.
+    const { action, memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName("just-opened-preview-action"),
+      eventDate: new Date(now - 5 * 60 * 1000),
+    });
+    await actionRepo.update(action.id, { staffPreview: true });
+
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 30 * 60 * 1000),
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+    expect(await fetchNotifsForGroup(reminderGroup)).toHaveLength(1);
+  });
+
   // Counting it here would put an unlaunched action into the count and the task
   // list of a message chasing a real one.
   it("leaves a staff preview out of the tasks a reminder counts", async () => {
@@ -427,7 +453,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     expect(await fetchNotifsForGroup(reminderGroup)).toHaveLength(0);
   });
 
-  it("decides the hold at the send time, not at the moment it is asked", async () => {
+  it("decides what members can read at the send time, not at the moment it is asked", async () => {
     const day = 24 * 60 * 60 * 1000;
     const now = Date.now();
     const user = await getPrimaryUser();
