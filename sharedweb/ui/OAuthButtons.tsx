@@ -2,6 +2,9 @@ import { OAUTH_PROVIDER_LABEL, OAuthProvider } from "@alliance/common/oauth";
 import { cn } from "@alliance/shared/styles/util";
 import OAuthProviderIcon from "./icons/OAuthProviderIcon";
 
+export const OAUTH_BUTTON =
+  "rounded border border-zinc-300 bg-white font-medium text-zinc-700 transition-colors hover:bg-zinc-50";
+
 export interface OAuthButtonsProps {
   hrefFor: (provider: OAuthProvider) => string;
   /** "Continue with" or "Sign up with"; the provider's name follows. */
@@ -24,7 +27,8 @@ const OAuthButtons = ({
         href={disabled ? undefined : hrefFor(provider)}
         aria-disabled={disabled || undefined}
         className={cn(
-          "inline-flex w-full items-center justify-center gap-3 rounded border border-zinc-300 bg-white px-4 py-3 text-[15px] font-medium text-zinc-700 transition-colors hover:bg-zinc-50",
+          OAUTH_BUTTON,
+          "inline-flex w-full items-center justify-center gap-3 px-4 py-3 text-[15px]",
           disabled && "pointer-events-none opacity-50",
         )}
       >

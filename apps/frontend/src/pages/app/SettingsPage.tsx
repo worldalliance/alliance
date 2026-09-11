@@ -20,6 +20,7 @@ import YesNoToggle from "@alliance/sharedweb/ui/YesNoToggle";
 import React, { useCallback, useEffect, useState } from "react";
 import { href, useLocation, useNavigate } from "react-router";
 import CityAutosuggest from "../../components/CityAutosuggest";
+import OAuthAccountLinks from "../../components/OAuthAccountLinks";
 import { useAuth } from "../../lib/AuthContext";
 
 const SettingsPage: React.FC = () => {
@@ -616,6 +617,9 @@ const SettingsPage: React.FC = () => {
                   {passwordResetError}
                 </p>
               )}
+              <div className="mt-4">
+                <OAuthAccountLinks />
+              </div>
             </div>
           </div>
         </Card>

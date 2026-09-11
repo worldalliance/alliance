@@ -44,6 +44,7 @@ const settings = (user: UserDto | undefined) => {
     user,
     isImpersonation: false,
     refreshUser: noop,
+    setUser: () => {},
     login: noop,
     onLogin: noop,
     logout: noop,

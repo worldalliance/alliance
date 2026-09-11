@@ -28,6 +28,7 @@ export interface AuthContextType {
   user: UserDto | undefined;
   isImpersonation: boolean;
   refreshUser: () => Promise<void>;
+  setUser: (user: UserDto) => void;
   login: (email: string, password: string) => Promise<void>;
   onLogin: () => Promise<void>;
   logout: () => Promise<void>;
@@ -164,6 +165,7 @@ export const AuthProvider: React.FC<
         login,
         onLogin,
         refreshUser,
+        setUser,
         logout,
         loading,
       }),
@@ -194,6 +196,7 @@ export const useAuth = (): AuthContextType => {
       onLogin: () => Promise.resolve(),
       logout: () => Promise.resolve(),
       refreshUser: () => Promise.resolve(),
+      setUser: () => {},
       loading: false,
     };
   }
@@ -209,6 +212,7 @@ export const useAuth = (): AuthContextType => {
       onLogin: () => Promise.resolve(),
       logout: () => Promise.resolve(),
       refreshUser: () => Promise.resolve(),
+      setUser: () => {},
       loading: false,
     };
   }

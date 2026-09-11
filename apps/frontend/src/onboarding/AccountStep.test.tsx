@@ -55,6 +55,7 @@ const authValue: AuthContextType = {
   user: undefined,
   isImpersonation: false,
   refreshUser: noop,
+  setUser: () => {},
   login: noop,
   onLogin,
   logout: noop,
