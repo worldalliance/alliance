@@ -103,7 +103,9 @@ export function useOAuthNotice(): OAuthNotice | null {
         clearOAuthParams(next);
         return next;
       },
-      { replace: true },
+      // Without this, ScrollRestoration answers the strip by scrolling the
+      // member to the top of whatever they were reading.
+      { replace: true, preventScrollReset: true },
     );
   }, [notice, setSearchParams]);
 
