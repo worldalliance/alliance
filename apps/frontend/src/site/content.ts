@@ -6,8 +6,11 @@ import environment from "../assets/redesign/priority-environment.jpg?w=400;800&f
 import poverty from "../assets/redesign/priority-poverty.jpg?w=400;800&format=avif;webp;jpg&as=picture";
 import technology from "../assets/redesign/priority-technology.jpg?w=400;800&format=avif;webp;jpg&as=picture";
 
-export const HERO_HEADLINE =
-  "We’re assembling people who can count on each other";
+/** The tail is set unbreakable, so the headline never orphans "other". */
+export const HERO_HEADLINE_PARTS = {
+  lead: "We’re assembling people who can count",
+  tail: "on each other",
+};
 export const HERO_SUBHEAD =
   "To combat global problems, we commit 15 minutes each week to projects that depend on everyone’s participation. We are in an experimental phase.";
 
@@ -233,7 +236,6 @@ export const HOME_TESTIMONIAL = {
 
 export const CTA_BODY =
   "Each new member makes every new project more impactful";
-export const CTA_BUTTON = "Request an invite";
 
 export const FOOTER_TAGLINE =
   "A global group of people cooperating to improve the world.";

@@ -14,12 +14,19 @@ import {
  * Where each card sits on the stage, in the cards' own pixels. The opened post
  * starts past the middle of the feed and well below it, so the two read as one
  * screen opening out of the other rather than a pair set side by side.
+ *
+ * The stage is padded past the pair's own bounding box, and both cards sit
+ * inset from its edges by that same margin, so the composition has room to
+ * breathe rather than pinning the feed to the stage's exact top-left corner
+ * and the opened post to its exact bottom-right.
  */
+const STAGE_MARGIN = 28;
+
 const DETAIL_X = 318;
 const DETAIL_Y = 172;
 
-const STAGE_WIDTH = DETAIL_X + DETAIL_WIDTH;
-const STAGE_HEIGHT = DETAIL_Y + DETAIL_HEIGHT;
+const STAGE_WIDTH = DETAIL_X + DETAIL_WIDTH + STAGE_MARGIN * 2;
+const STAGE_HEIGHT = DETAIL_Y + DETAIL_HEIGHT + STAGE_MARGIN * 2;
 
 /**
  * Phone column: the opened post overlaps most of the feed. The wide offset
@@ -28,8 +35,9 @@ const STAGE_HEIGHT = DETAIL_Y + DETAIL_HEIGHT;
 const COMPACT_DETAIL_X = 80;
 const COMPACT_DETAIL_Y = 84;
 
-const COMPACT_STAGE_WIDTH = COMPACT_DETAIL_X + DETAIL_WIDTH;
-const COMPACT_STAGE_HEIGHT = COMPACT_DETAIL_Y + DETAIL_HEIGHT;
+const COMPACT_STAGE_WIDTH = COMPACT_DETAIL_X + DETAIL_WIDTH + STAGE_MARGIN * 2;
+const COMPACT_STAGE_HEIGHT =
+  COMPACT_DETAIL_Y + DETAIL_HEIGHT + STAGE_MARGIN * 2;
 
 function ScaledStage({
   width,
@@ -53,16 +61,21 @@ function Pair({ offsetX, offsetY }: { offsetX: number; offsetY: number }) {
   return (
     <>
       <div
-        className="absolute top-0 left-0"
-        style={{ width: FEED_WIDTH, height: FEED_HEIGHT }}
+        className="absolute"
+        style={{
+          left: STAGE_MARGIN,
+          top: STAGE_MARGIN,
+          width: FEED_WIDTH,
+          height: FEED_HEIGHT,
+        }}
       >
         <FeedCard />
       </div>
       <div
         className="absolute"
         style={{
-          left: offsetX,
-          top: offsetY,
+          left: STAGE_MARGIN + offsetX,
+          top: STAGE_MARGIN + offsetY,
           width: DETAIL_WIDTH,
           height: DETAIL_HEIGHT,
         }}

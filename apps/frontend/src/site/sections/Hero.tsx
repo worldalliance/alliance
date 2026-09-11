@@ -1,5 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
-import { HERO_HEADLINE, HERO_SUBHEAD } from "../content";
+import { HERO_HEADLINE_PARTS, HERO_SUBHEAD } from "../content";
 import { ProductPair } from "../graphics/ProductPair";
 import { NAV_HEIGHT } from "../Navbar";
 import { DisplayHeading, DisplaySubtitle, SITE_COL } from "../ui";
@@ -19,19 +19,22 @@ export function Hero() {
         className={cn(
           SITE_COL,
           "flex flex-col gap-8 pt-10 pb-32",
-          "lg:flex-row lg:items-start lg:gap-16 lg:pt-[104px]",
+          "min-[1020px]:flex-row min-[1020px]:items-start min-[1020px]:gap-16 min-[1020px]:pt-[104px]",
         )}
       >
-        <div className="flex min-w-0 flex-col gap-5 lg:flex-1 lg:self-end">
+        <div className="flex min-w-0 flex-col gap-5 min-[1020px]:flex-1 min-[1020px]:self-end">
           <DisplayHeading
             as="h1"
-            className="text-5xl sm:text-6xl lg:text-[3.25rem] xl:text-[4.5rem] 2xl:text-[5.5rem]"
+            className="text-[clamp(2.5rem,7.5vw,3.75rem)] min-[1020px]:text-[clamp(3.25rem,4.7vw,5.25rem)]"
           >
-            {HERO_HEADLINE}
+            {HERO_HEADLINE_PARTS.lead}{" "}
+            <span className="site-display whitespace-nowrap">
+              {HERO_HEADLINE_PARTS.tail}
+            </span>
           </DisplayHeading>
           <DisplaySubtitle>{HERO_SUBHEAD}</DisplaySubtitle>
         </div>
-        <ProductPair className="lg:w-[46%] lg:shrink-0" />
+        <ProductPair className="min-[1020px]:w-[46%] min-[1020px]:shrink-0" />
       </div>
     </section>
   );

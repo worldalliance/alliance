@@ -5,9 +5,11 @@ import "./fitStage.css";
 
 type FitSize = { width: number; height: number };
 
-// Stands in for the container-query scale on Firefox, which drops it. Reads the
-// layout box rather than `getBoundingClientRect`, so an ancestor mid transform
-// does not feed its own scale back in.
+// Measured directly rather than via a CSS container-query calc(), since
+// container-query unit support is uneven enough across mobile engines
+// (Firefox for Android in particular) that a feature-detected CSS fallback
+// isn't reliable. Reads the layout box rather than `getBoundingClientRect`,
+// so an ancestor mid transform does not feed its own scale back in.
 function useFitScale({ width, height }: FitSize) {
   const ref = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState<number | null>(null);
@@ -49,8 +51,6 @@ export function FitStage({
   const style: StyleWithVars = {
     width,
     height,
-    "--fit-w": `${width}px`,
-    "--fit-h": `${height}px`,
     ...(scale !== null && { "--fit-scale": scale }),
   };
 
