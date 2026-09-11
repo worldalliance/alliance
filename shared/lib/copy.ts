@@ -51,7 +51,7 @@ export const taskHeaders = {
 } as const;
 
 export const awayRangesDescription =
-  "You can schedule a period of time when you won't be able to complete Alliance actions. This will let the office know not to expect you to complete tasks while you're away.";
+  "You can schedule a period of time when you won't be able to complete Alliance tasks. This will let us know to plan around your absence.";
 
 export const leaveGroupConfirmation =
   "Are you sure you want to leave this group? You will not be able to rejoin unless you are invited again.";

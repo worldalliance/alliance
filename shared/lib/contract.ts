@@ -37,7 +37,7 @@ export const CONTRACT_TERMS: readonly ContractTerm[] = [
     ],
   },
   {
-    text: "I understand that if I miss all assigned non-optional actions for 3 weeks in a row, my contract will be suspended automatically.",
+    text: "I understand that if I miss all assigned non-optional actions for 3 weeks in a row, my agreement will be suspended automatically.",
   },
 ];
 
@@ -57,13 +57,13 @@ export function formatContractDate(dateString: string): string {
 export function getSuspensionMessage(date: string, automatic: boolean): string {
   const formattedDate = formatContractDate(date);
   return automatic
-    ? `Your contract was suspended automatically on ${formattedDate}.`
-    : `You suspended your contract on ${formattedDate}.`;
+    ? `Your agreement was suspended automatically on ${formattedDate}.`
+    : `You suspended your agreement on ${formattedDate}.`;
 }
 
 export function getSignedMessage(date: string): string {
   const formattedDate = formatContractDate(date);
-  return `You signed this contract on ${formattedDate}.`;
+  return `You entered into this agreement on ${formattedDate}.`;
 }
 
 const CONFIRMATION_LENGTH_TOLERANCE = 10;

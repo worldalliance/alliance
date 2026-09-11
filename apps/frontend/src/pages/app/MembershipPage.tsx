@@ -112,7 +112,7 @@ function SignedContractActions({
     <div className="flex flex-col gap-y-3 sm:flex-row sm:items-center sm:justify-between border-t border-zinc-200 pt-5">
       {message}
       <Button onClick={onSuspend} color={ButtonColor.Red}>
-        Suspend contract
+        Suspend agreement
       </Button>
     </div>
   );
@@ -241,7 +241,7 @@ const MembershipPage: React.FC = () => {
             className="p-6"
             data-walkthrough={WalkthroughAnchor.Contract}
           >
-            <h2 className="font-semibold! text-2xl! mb-4">Contract</h2>
+            <h2 className="font-semibold! text-2xl! mb-4">Agreement</h2>
             <div className="flex flex-col gap-y-4">
               {previousSignedContract && (
                 <ContractDescriptionList
@@ -346,23 +346,24 @@ const MembershipPage: React.FC = () => {
           <div className="flex flex-col gap-y-5">
             <div className="flex flex-col gap-y-1">
               <h3 className="flex items-center gap-x-2 font-semibold text-black">
-                Why is there a contract?
+                Why is there an agreement?
               </h3>
               <p className="text-base">
-                The contract ensures that we can count on your participation,
-                which allows us to plan actions precisely. By signing, you are
-                also making a commitment to your peers to work together
-                consistently.
+                The membership agreement sets clear expectations for all members
+                of the Alliance. It ensures that we can count on your
+                participation, which allows us to plan actions precisely. By
+                signing, you are also making a commitment to your peers to work
+                together consistently.
               </p>
             </div>
             <div className="flex flex-col gap-y-1">
               <h3 className="flex items-center gap-x-2 font-semibold text-black">
-                What happens if I don&apos;t follow the contract?
+                What happens if I don&apos;t abide by the agreement?
               </h3>
               <p className="text-base">
                 If you miss all assigned non-optional actions for 3 weeks in a
-                row, your contract will be suspended automatically. You can
-                re-sign the contract to re-join the Alliance.
+                row, your agreement will be suspended automatically. You can
+                re-sign the agreement to re-join the Alliance.
               </p>
             </div>
             <div className="flex flex-col gap-y-1">
@@ -395,7 +396,7 @@ const MembershipPage: React.FC = () => {
               </h3>
               <p className="text-base">
                 You can end your membership at any time by suspending your
-                contract on this page.
+                agreement on this page.
               </p>
             </div>
           </div>
