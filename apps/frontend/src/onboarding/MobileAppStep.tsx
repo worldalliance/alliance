@@ -7,7 +7,7 @@ export const APP_HEADLINE_MOBILE = "Most members do this in the app.";
 export const APP_HEADLINE_DESKTOP = "Most members do this from their phone.";
 
 const APP_NOTE_MOBILE =
-  "The app is where reminders land, and it takes about a minute to install.";
+  "Our mobile app sends out notifications about projects and updates. It takes about a minute to install.";
 
 const APP_NOTE_DESKTOP =
   "Reminders land in the app, so look for the Alliance in the App Store or on Google Play next time you have your phone to hand.";
@@ -34,14 +34,16 @@ export function MobileAppStep() {
       >
         <Smartphone className="size-[55%]" />
       </span>
-      <StepHeadline index={2}>
-        <span className="sm:hidden">{APP_HEADLINE_MOBILE}</span>
-        <span className="hidden sm:inline">{APP_HEADLINE_DESKTOP}</span>
-      </StepHeadline>
-      <StepNote index={3}>
-        <span className="sm:hidden">{APP_NOTE_MOBILE}</span>
-        <span className="hidden sm:inline">{APP_NOTE_DESKTOP}</span>
-      </StepNote>
+      <div className="flex flex-col gap-[clamp(0.4rem,1.2vh,0.85rem)]">
+        <StepHeadline index={2}>
+          <span className="sm:hidden">{APP_HEADLINE_MOBILE}</span>
+          <span className="hidden sm:inline">{APP_HEADLINE_DESKTOP}</span>
+        </StepHeadline>
+        <StepNote index={3}>
+          <span className="sm:hidden">{APP_NOTE_MOBILE}</span>
+          <span className="hidden sm:inline">{APP_NOTE_DESKTOP}</span>
+        </StepNote>
+      </div>
     </>
   );
 }
