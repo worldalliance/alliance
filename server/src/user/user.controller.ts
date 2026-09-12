@@ -77,8 +77,10 @@ import {
   ProfileDto,
   ProfileDtoWithFriends,
   ReferrerProfileDto,
+  SetSwitchedDomainAdminDto,
   SignupSocialProofDto,
   StaffDirectoryEntryDto,
+  SwitchedDomainDto,
   UpdateProfileDto,
   UpdateStaffDirectoryDto,
   UpdateUserRolesAdminDto,
@@ -450,6 +452,21 @@ export class UserController {
   ): Promise<UserAdminDetailDto> {
     return new UserAdminDetailDto(
       await this.userService.updateRolesAdmin(id, body),
+    );
+  }
+
+  @Patch("userdetail/:id/switched-domain")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: SwitchedDomainDto })
+  async setSwitchedDomainAdmin(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: SetSwitchedDomainAdminDto,
+  ): Promise<SwitchedDomainDto> {
+    return new SwitchedDomainDto(
+      await this.userService.setDomainSwitchedAdmin({
+        id,
+        switched: body.switched,
+      }),
     );
   }
 

@@ -338,6 +338,20 @@ export class UserService {
     );
   }
 
+  async setDomainSwitchedAdmin(params: {
+    id: number;
+    switched: boolean;
+  }): Promise<Date | null> {
+    const switchedDomainAt = params.switched ? new Date() : null;
+    const { affected } = await this.userRepository.update(params.id, {
+      switchedDomainAt,
+    });
+    if (!affected) {
+      throw new NotFoundException("User not found");
+    }
+    return switchedDomainAt;
+  }
+
   async setPassword(id: number, password: string): Promise<User> {
     const user = await this.findOneOrFail(id);
     user.password = password;

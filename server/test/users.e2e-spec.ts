@@ -2477,6 +2477,98 @@ describe("Users (e2e)", () => {
     });
   });
 
+  describe("setSwitchedDomainAdmin", () => {
+    const patchSwitchedDomain = (params: {
+      userId: number;
+      switched: boolean;
+      token: string;
+    }) =>
+      request(ctx.app.getHttpServer())
+        .patch(`/user/userdetail/${params.userId}/switched-domain`)
+        .set("Authorization", `Bearer ${params.token}`)
+        .send({ switched: params.switched });
+
+    it("stamps the opt-in with the current time and clears it back to null", async () => {
+      const before = new Date();
+
+      const on = await patchSwitchedDomain({
+        userId: userAId,
+        switched: true,
+        token: ctx.adminAccessToken,
+      });
+      expect(on.status).toBe(200);
+      const stamped = (await userRepo.findOneByOrFail({ id: userAId }))
+        .switchedDomainAt;
+      expect(stamped).not.toBeNull();
+      expect(stamped!.getTime()).toBeGreaterThanOrEqual(before.getTime());
+      expect(on.body.switchedDomainAt).toBe(stamped!.toISOString());
+
+      const off = await patchSwitchedDomain({
+        userId: userAId,
+        switched: false,
+        token: ctx.adminAccessToken,
+      });
+      expect(off.status).toBe(200);
+      expect(off.body.switchedDomainAt).toBeNull();
+      expect(
+        (await userRepo.findOneByOrFail({ id: userAId })).switchedDomainAt,
+      ).toBeNull();
+    });
+
+    it("re-stamps with a fresh time after being cleared", async () => {
+      await patchSwitchedDomain({
+        userId: userBId,
+        switched: true,
+        token: ctx.adminAccessToken,
+      });
+      const first = (await userRepo.findOneByOrFail({ id: userBId }))
+        .switchedDomainAt;
+
+      await patchSwitchedDomain({
+        userId: userBId,
+        switched: false,
+        token: ctx.adminAccessToken,
+      });
+      await patchSwitchedDomain({
+        userId: userBId,
+        switched: true,
+        token: ctx.adminAccessToken,
+      });
+      const second = (await userRepo.findOneByOrFail({ id: userBId }))
+        .switchedDomainAt;
+
+      expect(second).not.toBeNull();
+      expect(second!.getTime()).toBeGreaterThanOrEqual(first!.getTime());
+
+      await patchSwitchedDomain({
+        userId: userBId,
+        switched: false,
+        token: ctx.adminAccessToken,
+      });
+    });
+
+    it("404s for a user that does not exist", async () => {
+      const res = await patchSwitchedDomain({
+        userId: 999999,
+        switched: true,
+        token: ctx.adminAccessToken,
+      });
+      expect(res.status).toBe(404);
+    });
+
+    it("rejects a non-admin", async () => {
+      const res = await patchSwitchedDomain({
+        userId: userBId,
+        switched: true,
+        token: userAToken,
+      });
+      expect(res.status).toBe(401);
+      expect(
+        (await userRepo.findOneByOrFail({ id: userBId })).switchedDomainAt,
+      ).toBeNull();
+    });
+  });
+
   afterAll(async () => {
     await ctx.app.close();
   });

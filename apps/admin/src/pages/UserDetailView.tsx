@@ -17,6 +17,7 @@ import {
   userGetTagSummariesAdmin,
   userListFriends,
   userRemoveUserFromTagAdmin,
+  userSetSwitchedDomainAdmin,
   userUpdateAwayRangeAdmin,
   userUpdateUserRolesAdmin,
   userUserDetailAdmin,
@@ -173,6 +174,10 @@ const UserDetailView: React.FC = () => {
   const [isAmbassadorPending, setIsAmbassadorPending] = useState(false);
   const [isStaffPending, setIsStaffPending] = useState(false);
   const [roleMutationError, setRoleMutationError] = useState<string | null>(
+    null,
+  );
+  const [isSwitchedDomainPending, setIsSwitchedDomainPending] = useState(false);
+  const [switchedDomainError, setSwitchedDomainError] = useState<string | null>(
     null,
   );
   const [isSuspendPending, setIsSuspendPending] = useState(false);
@@ -438,6 +443,29 @@ const UserDetailView: React.FC = () => {
         setRoleMutationError("Failed to update role. Try again.");
       } finally {
         setIsStaffPending(false);
+      }
+    },
+    [user.id],
+  );
+
+  const handleSwitchedDomainToggle = useCallback(
+    async (nextChecked: boolean) => {
+      setIsSwitchedDomainPending(true);
+      setSwitchedDomainError(null);
+      try {
+        const res = await userSetSwitchedDomainAdmin({
+          path: { id: user.id },
+          body: { switched: nextChecked },
+        });
+        if (res.data) {
+          const { switchedDomainAt } = res.data;
+          setUser((prev) => ({ ...prev, switchedDomainAt }));
+        }
+      } catch (error) {
+        console.error("Failed to update domain migration opt-in", error);
+        setSwitchedDomainError("Failed to update. Try again.");
+      } finally {
+        setIsSwitchedDomainPending(false);
       }
     },
     [user.id],
@@ -1191,6 +1219,43 @@ const UserDetailView: React.FC = () => {
                 </span>
               </label>
             </div>
+          </section>
+
+          <section className="border border-zinc-200 rounded p-3">
+            <h2 className="text-sm font-semibold text-zinc-700 mb-2">
+              Domain migration
+            </h2>
+            {switchedDomainError && (
+              <p className="text-xs text-red-500 mb-2">{switchedDomainError}</p>
+            )}
+            <label
+              className={cn(
+                "flex items-center gap-2 text-sm cursor-pointer hover:bg-zinc-50 px-1 py-0.5 rounded",
+                isSwitchedDomainPending && "opacity-50",
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={user.switchedDomainAt !== null}
+                disabled={isSwitchedDomainPending}
+                onChange={(e) => handleSwitchedDomainToggle(e.target.checked)}
+                className="rounded"
+              />
+              <span
+                className={
+                  user.switchedDomainAt !== null
+                    ? "text-zinc-900"
+                    : "text-zinc-500"
+                }
+              >
+                Switched to thealliance.org
+              </span>
+            </label>
+            <p className="text-xs text-zinc-500 mt-1 px-1">
+              {user.switchedDomainAt === null
+                ? "Still on worldalliance.org; they'll see the opt-in modal."
+                : `Opted in ${new Date(user.switchedDomainAt).toLocaleString()}.`}
+            </p>
           </section>
 
           {/* Tags */}

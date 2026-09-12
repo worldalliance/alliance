@@ -1054,6 +1054,14 @@ export type UpdateUserRolesAdminDto = {
     ambassador?: boolean;
 };
 
+export type SetSwitchedDomainAdminDto = {
+    switched: boolean;
+};
+
+export type SwitchedDomainDto = {
+    switchedDomainAt: string | null;
+};
+
 export type DeleteUserAdminDto = {
     /**
      * Posted to Slack; not stored on the account
@@ -5018,6 +5026,30 @@ export type UserUpdateUserRolesAdminResponses = {
 };
 
 export type UserUpdateUserRolesAdminResponse = UserUpdateUserRolesAdminResponses[keyof UserUpdateUserRolesAdminResponses];
+
+export type UserSetSwitchedDomainAdminData = {
+    body: SetSwitchedDomainAdminDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/userdetail/{id}/switched-domain';
+};
+
+export type UserSetSwitchedDomainAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserSetSwitchedDomainAdminError = UserSetSwitchedDomainAdminErrors[keyof UserSetSwitchedDomainAdminErrors];
+
+export type UserSetSwitchedDomainAdminResponses = {
+    200: SwitchedDomainDto;
+};
+
+export type UserSetSwitchedDomainAdminResponse = UserSetSwitchedDomainAdminResponses[keyof UserSetSwitchedDomainAdminResponses];
 
 export type UserListPublicAdminData = {
     body?: never;

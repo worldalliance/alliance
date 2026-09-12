@@ -573,6 +573,21 @@ export class UpdateUserRolesAdminDto extends PartialType(
   staff?: boolean;
 }
 
+export class SetSwitchedDomainAdminDto {
+  @ApiProperty()
+  @IsBoolean()
+  switched: boolean;
+}
+
+export class SwitchedDomainDto {
+  @ApiProperty({ type: Date, nullable: true })
+  switchedDomainAt: Date | null;
+
+  constructor(switchedDomainAt: Date | null) {
+    this.switchedDomainAt = switchedDomainAt;
+  }
+}
+
 export class DeleteUserAdminDto {
   @ApiProperty({ description: "Posted to Slack; not stored on the account" })
   @IsString()
