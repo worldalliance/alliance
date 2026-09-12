@@ -18,7 +18,6 @@ const NARROW_COLUMNS = 12;
 
 export enum HoursGridSize {
   Default = "default",
-  /** For the onboarding panel, which has a fixed height and never scrolls. */
   Compact = "compact",
 }
 
@@ -70,30 +69,19 @@ function Grid({
   size,
   inView,
   className,
-  fill = false,
 }: {
   columns: number;
   size: HoursGridSize;
   inView: boolean;
   className?: string;
-  /** Stretches the cells to whatever box is left rather than squaring them. */
-  fill?: boolean;
 }) {
   const spent = spentIndex(columns);
 
   return (
     <div
-      className={cn(
-        "mx-auto grid",
-        fill && "h-full",
-        gridClasses[size],
-        className,
-      )}
+      className={cn("mx-auto grid", gridClasses[size], className)}
       style={{
         gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-        gridTemplateRows: fill
-          ? `repeat(${HOURS / columns}, minmax(0, 1fr))`
-          : undefined,
       }}
     >
       {Array.from({ length: HOURS }, (_, i) => {
@@ -104,8 +92,7 @@ function Grid({
           <div
             key={i}
             className={cn(
-              "relative transition-opacity duration-500",
-              fill ? "min-h-0" : "aspect-square",
+              "relative aspect-square transition-opacity duration-500",
               cellClasses[size],
               i === 0 || i === HOURS - 1
                 ? "border-[1.5px] border-white bg-transparent"
@@ -142,21 +129,17 @@ export function HoursGrid({
   const compact = size === HoursGridSize.Compact;
 
   return (
-    <div
-      ref={ref}
-      className={cn("flex flex-col", compact && "min-h-0 flex-1", className)}
-    >
+    <div ref={ref} className={cn("flex flex-col", className)}>
       <p className={cn("mb-2 text-white/85", labelClasses[size])}>
         {HOURS_START_LABEL}
       </p>
-      <div className={cn(wrapClasses[size], compact && "min-h-0 flex-1")}>
+      <div className={wrapClasses[size]}>
         {compact && (
           <Grid
             columns={NARROW_COLUMNS}
             size={size}
             inView={inView}
-            className="sm:hidden"
-            fill
+            className="w-full sm:hidden"
           />
         )}
         <Grid

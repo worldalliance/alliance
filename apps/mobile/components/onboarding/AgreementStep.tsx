@@ -10,9 +10,7 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import {
   AGREEMENT_HEADLINE,
   AGREEMENT_NOTE,
-  COMMIT_PHRASE,
   DETAILS_LINK,
-  isCommitted,
 } from "../../lib/onboarding/content";
 import {
   motion,
@@ -85,54 +83,11 @@ function SignedBy({
   );
 }
 
-function CommitControl({
-  typed,
-  onTypedChange,
-}: {
-  typed: string;
-  onTypedChange: (value: string) => void;
-}) {
-  const scale = useOnboardingScale();
-  const done = isCommitted(typed);
-
-  return (
-    <View className="justify-center">
-      <TextInput
-        className="min-h-11 rounded-md border-2 bg-white px-3.5 text-base text-black"
-        style={{
-          height: scale.signField,
-          fontSize: scale.ui,
-          borderColor: done ? onboardingColors.accentGreen : "#e4e4e7",
-        }}
-        placeholder={COMMIT_PHRASE}
-        placeholderTextColor="#a1a1aa"
-        value={typed}
-        onChangeText={onTypedChange}
-        autoCapitalize="none"
-        autoCorrect={false}
-        accessibilityLabel={`Type ${COMMIT_PHRASE} to agree`}
-        testID="vr-onboarding-commit"
-      />
-      {done && (
-        <View className="absolute right-3">
-          <Check
-            size={18}
-            color={onboardingColors.accentGreen}
-            strokeWidth={3}
-          />
-        </View>
-      )}
-    </View>
-  );
-}
-
 export function AgreementStep({
   contract,
   inviter,
   faces,
   signedCount,
-  committed,
-  onCommittedChange,
   signedName,
   onSignedNameChange,
   error,
@@ -142,9 +97,6 @@ export function AgreementStep({
   inviter: ReferrerProfileDto | null;
   faces: ProfileDto[];
   signedCount: number;
-  /** The raw text the member has typed into the commitment field. */
-  committed: string;
-  onCommittedChange: (value: string) => void;
   signedName: string;
   onSignedNameChange: (name: string) => void;
   error: string | null;
@@ -228,41 +180,21 @@ export function AgreementStep({
               className="bg-white"
               style={{ gap: scale.noteGap, padding: scale.cardPad }}
             >
-              <Text
-                className="text-black"
-                style={{ fontSize: scale.ui, lineHeight: scale.ui * 1.3 }}
-              >
-                Type{" "}
-                <Text
-                  weight={FontWeight.Semibold}
-                  className="text-black"
-                  style={{ fontSize: scale.ui }}
-                >
-                  {COMMIT_PHRASE}
-                </Text>{" "}
-                to agree.
-              </Text>
-              <View style={{ gap: 6 }}>
-                <CommitControl
-                  typed={committed}
-                  onTypedChange={onCommittedChange}
-                />
-                <TextInput
-                  className="rounded-md border-2 bg-white px-3.5 text-black"
-                  style={{
-                    height: scale.signField,
-                    fontSize: scale.ui,
-                    borderColor: "#e4e4e7",
-                  }}
-                  placeholder="Sign your full name"
-                  placeholderTextColor="#a1a1aa"
-                  value={signedName}
-                  onChangeText={onSignedNameChange}
-                  autoComplete="name"
-                  accessibilityLabel="Sign your full name"
-                  testID="vr-onboarding-signature"
-                />
-              </View>
+              <TextInput
+                className="rounded-md border-2 bg-white px-3.5 text-black"
+                style={{
+                  height: scale.signField,
+                  fontSize: scale.ui,
+                  borderColor: "#e4e4e7",
+                }}
+                placeholder="Sign your full name"
+                placeholderTextColor="#a1a1aa"
+                value={signedName}
+                onChangeText={onSignedNameChange}
+                autoComplete="name"
+                accessibilityLabel="Sign your full name"
+                testID="vr-onboarding-signature"
+              />
 
               {error && (
                 <Text

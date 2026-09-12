@@ -27,19 +27,19 @@ import { useSiteBackground } from "../components/HtmlBackgroundManager";
 import { useAuth } from "../lib/AuthContext";
 import { socialPreviewMeta } from "../lib/socialPreviewMeta";
 import { useContract } from "../lib/useContract";
-import { useMediaQuery } from "../lib/useMediaQuery";
+// import { useMediaQuery } from "../lib/useMediaQuery";
 import { SiteFooter } from "../site/Footer";
 import { JoinCta } from "../site/JoinCta";
 import { Navbar } from "../site/Navbar";
 import { LandingBody } from "../site/sections/LandingBody";
 import "../site/site.css";
 import { AccountStep } from "./AccountStep";
-import { AgreementStep, isCommitted } from "./AgreementStep";
+import { AgreementStep } from "./AgreementStep";
 import { FooterNav, ProgressTrack, StepLayout } from "./chrome";
 import {
   FILLED_SEGMENTS,
   isOnboardingStep,
-  MOBILE_WEB_QUERY,
+  // MOBILE_WEB_QUERY,
   OnboardingStep,
   PanelTone,
   STEP_EYEBROW,
@@ -49,7 +49,7 @@ import {
 } from "./flow";
 import { GrantmakingCard } from "./GrantmakingCard";
 import { JoinPhase, PANEL_FADE_MS } from "./joinPhase";
-import { MobileAppFooter, MobileAppStep } from "./MobileAppStep";
+// import { MobileAppFooter, MobileAppStep } from "./MobileAppStep";
 import "./onboarding.css";
 import {
   CommitmentStep,
@@ -99,7 +99,7 @@ const OnboardingPage = () => {
   const step = isOnboardingStep(stepParam) ? stepParam : OnboardingStep.Account;
   const referralCode = searchParams.get("ref");
   const isAccount = step === OnboardingStep.Account;
-  const mobileWeb = useMediaQuery(MOBILE_WEB_QUERY);
+  // const mobileWeb = useMediaQuery(MOBILE_WEB_QUERY);
   useLockedViewport(!isAccount);
   const { inviter, used: inviteUsed } = useInvite(referralCode);
   const faces = useSignupFaces(referralCode, {
@@ -115,7 +115,6 @@ const OnboardingPage = () => {
   const draft = useInitialDraft(referralCode);
   const [email, setEmail] = useState(draft?.email ?? "");
   const [password, setPassword] = useState(draft?.password ?? "");
-  const [committed, setCommitted] = useState("");
   const [signedName, setSignedName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -200,9 +199,7 @@ const OnboardingPage = () => {
   }, [referralCode]);
 
   const agreementSigned =
-    latestContract !== null &&
-    isCommitted(committed) &&
-    signedName.trim().length > 0;
+    latestContract !== null && signedName.trim().length > 0;
 
   const goNext = useCallback(() => {
     const next = stepAfter(step);
@@ -290,11 +287,11 @@ const OnboardingPage = () => {
       return;
     }
 
-    if (mobileWeb) {
-      setSubmitting(false);
-      goTo(OnboardingStep.MobileApp);
-      return;
-    }
+    // if (mobileWeb) {
+    //   setSubmitting(false);
+    //   goTo(OnboardingStep.MobileApp);
+    //   return;
+    // }
     await enterPlatform();
     setSubmitting(false);
   }, [
@@ -305,8 +302,6 @@ const OnboardingPage = () => {
     password,
     referralCode,
     latestContract,
-    mobileWeb,
-    goTo,
     enterPlatform,
   ]);
 
@@ -364,8 +359,6 @@ const OnboardingPage = () => {
                 inviter={inviter}
                 faces={faces}
                 signedCount={memberCount ?? 0}
-                committed={committed}
-                onCommittedChange={setCommitted}
                 signedName={signedName}
                 onSignedNameChange={setSignedName}
                 error={error}
@@ -383,14 +376,15 @@ const OnboardingPage = () => {
           </StepLayout>
         );
       case OnboardingStep.MobileApp:
-        return (
-          <StepLayout
-            eyebrow={STEP_EYEBROW[step]}
-            footer={<MobileAppFooter onContinue={enterPlatform} />}
-          >
-            <MobileAppStep />
-          </StepLayout>
-        );
+        // return (
+        //   <StepLayout
+        //     eyebrow={STEP_EYEBROW[step]}
+        //     footer={<MobileAppFooter onContinue={enterPlatform} />}
+        //   >
+        //     <MobileAppStep />
+        //   </StepLayout>
+        // );
+        return null;
       default:
         throw new Error(`unknown onboarding step: ${step satisfies never}`);
     }

@@ -109,13 +109,10 @@ export function MinutesStep() {
     <>
       <StepHeadline className="max-w-[52rem]">{MINUTES_HEADLINE}</StepHeadline>
       <div
-        className="flex min-h-0 flex-1 flex-col lg:flex-none"
+        className="flex flex-col"
         style={{ gap: "clamp(0.5rem, 3vh, 2.4rem)" }}
       >
-        <div
-          className="ob-rise mx-auto flex min-h-0 w-full flex-1 flex-col lg:w-[86%] lg:flex-none"
-          style={riseStyle(2)}
-        >
+        <div className="ob-rise mx-auto w-full lg:w-[86%]" style={riseStyle(2)}>
           <HoursGrid size={HoursGridSize.Compact} />
         </div>
         <StepNote>{MINUTES_NOTE}</StepNote>

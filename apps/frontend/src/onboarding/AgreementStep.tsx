@@ -3,7 +3,6 @@ import type {
   ProfileDto,
   ReferrerProfileDto,
 } from "@alliance/shared/client";
-import { isConfirmationCloseEnough } from "@alliance/shared/lib/contract";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { Check } from "lucide-react";
@@ -14,13 +13,6 @@ export const AGREEMENT_HEADLINE =
 
 export const AGREEMENT_NOTE =
   "This agreement is core to our planning ability. Once you enter it, you become a member.";
-
-/** Typed out rather than ticked, so agreeing takes a deliberate act. */
-export const COMMIT_PHRASE = "I commit to complete each task on time";
-
-export function isCommitted(typed: string): boolean {
-  return isConfirmationCloseEnough(typed, COMMIT_PHRASE);
-}
 
 /** Overlapping faces stop fitting the panel's width past this on a phone. */
 const FACE_COUNT = 5;
@@ -93,49 +85,11 @@ function SignedBy({
   );
 }
 
-function CommitControl({
-  typed,
-  onTypedChange,
-}: {
-  typed: string;
-  onTypedChange: (value: string) => void;
-}) {
-  const done = isCommitted(typed);
-
-  return (
-    <div className="relative">
-      <input
-        id="commit-phrase"
-        name="commitPhrase"
-        type="text"
-        autoComplete="off"
-        placeholder={COMMIT_PHRASE}
-        value={typed}
-        onChange={(e) => onTypedChange(e.target.value)}
-        className={cn(
-          FIELD,
-          "pr-10",
-          done ? "border-[var(--color-green)]" : FIELD_IDLE,
-        )}
-      />
-      {done && (
-        <Check
-          className="absolute top-1/2 right-3 size-5 -translate-y-1/2 text-[var(--color-green)]"
-          strokeWidth={3}
-          aria-hidden
-        />
-      )}
-    </div>
-  );
-}
-
 export function AgreementStep({
   contract,
   inviter,
   faces,
   signedCount,
-  committed,
-  onCommittedChange,
   signedName,
   onSignedNameChange,
   error,
@@ -145,9 +99,6 @@ export function AgreementStep({
   inviter: ReferrerProfileDto | null;
   faces: ProfileDto[];
   signedCount: number;
-  /** The raw text the member has typed into the commitment field. */
-  committed: string;
-  onCommittedChange: (value: string) => void;
   signedName: string;
   onSignedNameChange: (name: string) => void;
   error: string | null;
@@ -193,26 +144,16 @@ export function AgreementStep({
           </div>
 
           <div className="flex min-h-0 flex-col gap-2 bg-white p-[clamp(1.15rem,2.8vh,2rem)] text-[length:var(--ob-ui)]">
-            <label htmlFor="commit-phrase" className="leading-snug text-black">
-              Type <span className="font-semibold">{COMMIT_PHRASE}</span> to
-              enter the agreement.
-            </label>
-            <div className="flex flex-col gap-1.5">
-              <CommitControl
-                typed={committed}
-                onTypedChange={onCommittedChange}
-              />
-              <input
-                name="signedName"
-                type="text"
-                autoComplete="name"
-                placeholder="Sign your full name"
-                aria-label="Sign your full name"
-                value={signedName}
-                onChange={(e) => onSignedNameChange(e.target.value)}
-                className={cn(FIELD, FIELD_IDLE)}
-              />
-            </div>
+            <input
+              name="signedName"
+              type="text"
+              autoComplete="name"
+              placeholder="Sign your full name"
+              aria-label="Sign your full name"
+              value={signedName}
+              onChange={(e) => onSignedNameChange(e.target.value)}
+              className={cn(FIELD, FIELD_IDLE)}
+            />
 
             {error && (
               <p className="shrink-0 font-medium text-red-600" role="alert">

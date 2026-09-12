@@ -20,7 +20,8 @@ export const STEP_ORDER: OnboardingStep[] = [
   OnboardingStep.Scale,
   OnboardingStep.Minutes,
   OnboardingStep.Agreement,
-  OnboardingStep.MobileApp,
+  // App-download screen is out of the flow.
+  // OnboardingStep.MobileApp,
 ];
 
 export const PROGRESS_SEGMENTS = 5;

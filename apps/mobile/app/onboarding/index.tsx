@@ -39,7 +39,6 @@ import {
 import { WelcomeGate } from "../../components/onboarding/WelcomeGate";
 import Text from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
-import { isCommitted } from "../../lib/onboarding/content";
 import {
   AccountMode,
   FILLED_SEGMENTS,
@@ -89,7 +88,6 @@ const OnboardingScreen = () => {
   const [accountMode, setAccountMode] = useState(AccountMode.LogIn);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [committed, setCommitted] = useState("");
   const [signedName, setSignedName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -235,9 +233,7 @@ const OnboardingScreen = () => {
   ]);
 
   const agreementSigned =
-    Boolean(latestContract) &&
-    isCommitted(committed) &&
-    signedName.trim().length > 0;
+    Boolean(latestContract) && signedName.trim().length > 0;
 
   const tone = STEP_TONE[step];
   const filled = FILLED_SEGMENTS[step];
@@ -320,8 +316,6 @@ const OnboardingScreen = () => {
                 inviter={inviter}
                 faces={faces}
                 signedCount={memberCount ?? 0}
-                committed={committed}
-                onCommittedChange={setCommitted}
                 signedName={signedName}
                 onSignedNameChange={setSignedName}
                 error={error}
