@@ -184,7 +184,7 @@ describe("resolveUserActionStatus", () => {
         staffPreview: true,
         events: [
           {
-            date: new Date(NOW.getTime() - DAY_MS),
+            date: new Date(NOW.getTime() - millisecondsInDay),
             newStatus: ActionStatus.Resolution,
           },
         ] as ActionEvent[],
@@ -200,7 +200,7 @@ describe("resolveUserActionStatus", () => {
         staffPreview: true,
         events: [
           {
-            date: new Date(NOW.getTime() + DAY_MS),
+            date: new Date(NOW.getTime() + millisecondsInDay),
             newStatus: ActionStatus.MemberAction,
           },
         ] as ActionEvent[],
@@ -218,11 +218,11 @@ describe("resolveUserActionStatus", () => {
         staffPreview: true,
         events: [
           {
-            date: new Date(NOW.getTime() - DAY_MS),
+            date: new Date(NOW.getTime() - millisecondsInDay),
             newStatus: ActionStatus.OfficeAction,
           },
           {
-            date: new Date(NOW.getTime() + DAY_MS),
+            date: new Date(NOW.getTime() + millisecondsInDay),
             newStatus: ActionStatus.MemberAction,
           },
         ] as ActionEvent[],
@@ -492,7 +492,7 @@ describe("computeCanCompleteAction", () => {
 describe("memberActionHasOpened", () => {
   const event = (offsetDays: number, newStatus: ActionStatus) =>
     ({
-      date: new Date(NOW.getTime() + offsetDays * DAY_MS),
+      date: new Date(NOW.getTime() + offsetDays * millisecondsInDay),
       newStatus,
     }) as ActionEvent;
 
