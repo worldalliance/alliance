@@ -1,6 +1,6 @@
 ---
 name: playwright
-description: Read before driving the locally running apps: verifying a change in the browser, calling the API, authenticating as an admin, or driving the mobile app.
+description: "Read before driving the locally running apps: verifying a change in the browser, calling the API, authenticating as an admin, or driving the mobile app."
 ---
 
 # Driving the local apps
