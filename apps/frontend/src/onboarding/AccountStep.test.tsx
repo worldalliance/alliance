@@ -1,3 +1,6 @@
+import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import * as configModule from "@alliance/sharedweb/lib/config";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
@@ -8,47 +11,42 @@ import {
 import { useState } from "react";
 import { MemoryRouter } from "react-router";
 import { AuthContext, type AuthContextType } from "../lib/AuthContext";
+import { AccountStep } from "./AccountStep";
 
-const authLogin = jest.fn(async () => ({ response: { ok: true } }));
+declare global {
+  interface Window {
+    happyDOM: { setURL: (url: string) => void };
+  }
+}
+
+let loginBodies: { email: string; password: string; mode: string }[] = [];
+
+serveApi(
+  routes({
+    "POST /auth/login": async ({ request }) => {
+      loginBodies.push(await request.json());
+      return new Response(null, { status: 200 });
+    },
+  }),
+);
+
 const onLogin = jest.fn(async () => {});
 
-jest.mock("@alliance/shared/client", () => ({
-  authLogin,
-  authForgotPassword: jest.fn(),
-}));
+// The OAuth return URL the account step builds needs a real origin.
+window.happyDOM.setURL("https://test.alliance/login");
 
-jest.mock("@alliance/shared/lib/useInvite", () => ({
-  useInvite: () => ({ used: false, pending: false, inviter: null }),
-}));
+beforeEach(() => {
+  // getBaseUrl reads build-time env the test process does not set.
+  jest
+    .spyOn(configModule, "getBaseUrl")
+    .mockReturnValue("https://test.alliance");
+});
 
-jest.mock("@alliance/sharedweb/lib/oauth", () => ({
-  oauthStartUrl: () => "http://localhost/oauth",
-  useAppOrigin: () => "http://localhost:5173",
-}));
-
-jest.mock("../lib/config", () => ({
-  getApiUrl: () => "http://localhost:3000",
-  isFeatureEnabled: () => false,
-}));
-
-jest.mock("../site/content", () => ({
-  JOIN_MAILTO: "mailto:join@example.com",
-}));
-
-jest.mock("../site/ui", () => ({
-  SiteArrow: () => null,
-}));
-
-jest.mock("./GrantmakingCard", () => ({
-  InfoSessionButton: () => null,
-}));
-
-jest.mock("@alliance/sharedweb/ui/OAuthButtons", () => ({
-  __esModule: true,
-  default: () => null,
-}));
-
-import { AccountStep } from "./AccountStep";
+afterEach(() => {
+  cleanup();
+  onLogin.mockClear();
+  loginBodies = [];
+});
 
 const noop = () => Promise.resolve();
 
@@ -63,35 +61,31 @@ const authValue: AuthContextType = {
   loading: false,
 };
 
-afterEach(() => {
-  cleanup();
-  authLogin.mockClear();
-  onLogin.mockClear();
-});
-
 const Harness = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [tick, setTick] = useState(0);
   return (
     <MemoryRouter>
-      <AuthContext.Provider value={authValue}>
-        <button type="button" onClick={() => setTick((n) => n + 1)}>
-          parent update
-        </button>
-        <span data-testid="tick">{tick}</span>
-        <AccountStep
-          email={email}
-          onEmailChange={setEmail}
-          password={password}
-          onPasswordChange={setPassword}
-          onCreateAccount={() => {}}
-          redirectAfterLogin="/tasks"
-          startInLogin
-          referralCode={null}
-          providerError={null}
-        />
-      </AuthContext.Provider>
+      <QueryClientProvider client={new QueryClient()}>
+        <AuthContext.Provider value={authValue}>
+          <button type="button" onClick={() => setTick((n) => n + 1)}>
+            parent update
+          </button>
+          <span data-testid="tick">{tick}</span>
+          <AccountStep
+            email={email}
+            onEmailChange={setEmail}
+            password={password}
+            onPasswordChange={setPassword}
+            onCreateAccount={() => {}}
+            redirectAfterLogin="/tasks"
+            startInLogin
+            referralCode={null}
+            providerError={null}
+          />
+        </AuthContext.Provider>
+      </QueryClientProvider>
     </MemoryRouter>
   );
 };
@@ -123,13 +117,13 @@ describe("AccountStep", () => {
 
     fireEvent.click(submit);
     await waitFor(() => {
-      expect(authLogin).toHaveBeenCalledWith({
-        body: {
+      expect(loginBodies).toEqual([
+        {
           email: "member@example.com",
           password: "s3cret",
           mode: "cookie",
         },
-      });
+      ]);
     });
   });
 });

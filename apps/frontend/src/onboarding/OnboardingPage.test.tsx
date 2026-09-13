@@ -1,4 +1,6 @@
 import type { UserDto } from "@alliance/shared/client";
+import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import * as configModule from "@alliance/sharedweb/lib/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
@@ -8,45 +10,38 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router";
+import * as ytEmbedModule from "../components/AllianceIntroYouTubeEmbed";
 import { AuthContext, type AuthContextType } from "../lib/AuthContext";
 import { testAuthUser } from "../stories/testData";
+import OnboardingPage from "./OnboardingPage";
 import { OnboardingStep } from "./flow";
+
+serveApi(
+  routes({
+    "GET /contract/current": () => Response.json(null),
+    "POST /user/nmembers": () => Response.json({ count: 1000 }),
+    "GET /user/slug/:id": () =>
+      Response.json({ profilePicture: null, displayName: "" }),
+  }),
+);
+
+beforeEach(() => {
+  // The landing body's player reaches for a YouTube thumbnail on render.
+  jest.spyOn(ytEmbedModule, "default").mockImplementation(() => <></>);
+  // The OAuth return URL the account step builds needs a real origin.
+  jest
+    .spyOn(configModule, "getBaseUrl")
+    .mockReturnValue("https://test.alliance");
+});
+
+// Auto-cleanup registers once, in whichever file imports the library first.
+afterEach(cleanup);
 
 declare global {
   interface Window {
     happyDOM: { setURL: (url: string) => void };
   }
 }
-
-// The landing body's player reaches for a YouTube thumbnail on render.
-jest.mock("react-player", () => ({ default: () => null }));
-
-jest.mock("@alliance/sharedweb/lib/config", () => ({
-  getBaseUrl: () => "https://test.alliance",
-  getApiUrl: () => "https://test.alliance/api",
-  getWebSocketUrl: () => "https://test.alliance",
-  isProduction: () => false,
-  isStaging: () => false,
-}));
-
-jest.mock("@alliance/shared/client", () => ({
-  authForgotPassword: async () => ({ error: undefined }),
-  authLogin: async () => ({ error: undefined }),
-  authMe: async () => ({ data: undefined }),
-  authRegister: async () => ({ response: { ok: true } }),
-  contractGetCurrent: async () => ({ data: null }),
-  contractSignContract: async () => ({ response: { ok: true } }),
-  userNmembers: async () => ({ data: { count: 1000 } }),
-  userOnetimeInvite: async () => ({ data: null }),
-  userReferrerProfile: async () => ({ data: null }),
-  userSignupSocialProof: async () => ({ data: { profiles: [] } }),
-}));
-
-// Imported after the mocks: its imports bind to the real modules otherwise.
-const { default: OnboardingPage } = await import("./OnboardingPage");
-
-// Auto-cleanup registers once, in whichever file imports the library first.
-afterEach(cleanup);
 
 const noop = () => Promise.resolve();
 
