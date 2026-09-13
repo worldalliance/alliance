@@ -20,3 +20,8 @@ To pull a label's issues, filter `issueLabels` by `name: {eq: …}` and traverse
 Label it `AI-generated`, in addition to any other relevant labels.
 
 Write the description so the bug can be fixed from it alone, weeks later: repro, file paths with line numbers, and the branch and commit sha when the finding only exists on an unmerged branch.
+
+## Closing an issue
+
+The GitHub integration is live: a commit on `main` whose message contains `Fixes ALL-XXXX` auto-completes the issue, and a branch name containing the key (`all-XXXX-…`) moves it to In Progress.
+
