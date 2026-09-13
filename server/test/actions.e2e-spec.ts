@@ -16,7 +16,10 @@ import {
 import { NotifsService } from "src/notifs/notifs.service";
 import type { Form } from "src/tasks/entities/form.entity";
 import type { FormResponse } from "src/tasks/entities/formresponse.entity";
-import { ContractEventType } from "src/user/entities/contract-event.entity";
+import {
+  ContractEvent,
+  ContractEventType,
+} from "src/user/entities/contract-event.entity";
 import {
   UserAwayRange,
   UserAwayRangeReason,
@@ -45,6 +48,11 @@ import {
   VisibilityMode,
 } from "../src/actions/entities/action.entity";
 import { FollowUpForm } from "../src/actions/entities/follow-up-form.entity";
+import {
+  ReminderCohortType,
+  ReminderGroup,
+  ReminderGroupTimingMode,
+} from "../src/actions/entities/reminder-group.entity";
 import type { Community } from "../src/community/entities/community.entity";
 import { getImageSource } from "../src/images/images.service";
 import { User } from "../src/user/entities/user.entity";
@@ -2241,6 +2249,104 @@ describe("Actions (e2e)", () => {
 
       await userRepo.delete(secondLiker.id);
       await actionRepo.delete(action.id);
+    });
+  });
+
+  describe("Notification plan previews", () => {
+    let reminderGroupRepo: Repository<ReminderGroup>;
+    let contractEventRepo: Repository<ContractEvent>;
+
+    beforeAll(() => {
+      reminderGroupRepo = ctx.dataSource.getRepository(ReminderGroup);
+      contractEventRepo = ctx.dataSource.getRepository(ContractEvent);
+    });
+
+    const signMemberContract = async (userId: number) => {
+      await contractEventRepo.delete({ user: { id: userId } });
+      await contractEventRepo.save(
+        contractEventRepo.create({
+          user: { id: userId },
+          type: ContractEventType.SIGNED,
+          date: new Date(Date.now() - milliseconds({ days: 1 })),
+          automatic: false,
+          contractId: ctx.defaultContractId,
+        }),
+      );
+    };
+
+    const createPlanSourceAction = () =>
+      createPublishedAction(`Notification Plan Preview ${Date.now()}`, {
+        status: ActionStatus.MemberAction,
+      });
+
+    const createCustomCohortGroup = (event: ActionEvent, users: User[]) =>
+      reminderGroupRepo.save(
+        reminderGroupRepo.create({
+          name: `plan-preview-${Date.now()}`,
+          memberActionEvent: event,
+          cohortType: ReminderCohortType.Custom,
+          users,
+          timingMode: ReminderGroupTimingMode.Absolute,
+          sendAtAbsolute: new Date(Date.now() + milliseconds({ days: 1 })),
+          emailMessage: "Reminder for #{firstname} on #{action}",
+          emailSubject: "Reminder: #{action}",
+          textMessage: "Hi #{firstname}, remember #{action}",
+        }),
+      );
+
+    const expectNoSensitiveUserFields = (user: Record<string, unknown>) => {
+      expect(user).not.toHaveProperty("password");
+      expect(user).not.toHaveProperty("stripeCustomerId");
+      expect(user).not.toHaveProperty("emailVerified");
+      expect(user).not.toHaveProperty("phoneNumberUnsubscribed");
+    };
+
+    it("plansForGroup returns UserDto members without entity-only fields", async () => {
+      const { event } = await createPlanSourceAction();
+      await signMemberContract(ctx.testUserId);
+      const member = await userRepo.findOneOrFail({
+        where: { id: ctx.testUserId },
+      });
+      const group = await createCustomCohortGroup(event, [member]);
+
+      const res = await request(ctx.app.getHttpServer())
+        .get(`/actions/plansForGroup/${group.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      expect(res.body.length).toBeGreaterThan(0);
+      const plan = res.body[0];
+      expect(plan.user.id).toBe(ctx.testUserId);
+      expectNoSensitiveUserFields(plan.user);
+    });
+
+    it("checkTentativePlans returns UserDto members without entity-only fields", async () => {
+      const { event } = await createPlanSourceAction();
+      await signMemberContract(ctx.testUserId);
+
+      const res = await request(ctx.app.getHttpServer())
+        .post(`/actions/events/${event.id}/checkTentativePlans`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          name: `plan-preview-${Date.now()}`,
+          cohortType: ReminderCohortType.Custom,
+          timingMode: ReminderGroupTimingMode.Absolute,
+          sendAtAbsolute: new Date(Date.now() + milliseconds({ days: 1 })),
+          emailMessage: "Reminder for #{firstname} on #{action}",
+          emailSubject: "Reminder: #{action}",
+          textMessage: "Hi #{firstname}, remember #{action}",
+          pushMessage: "",
+          useSuiteTaskCount: false,
+          excludeOptionalActions: false,
+          excludePreviouslyNotified: false,
+          userIds: [ctx.testUserId],
+        });
+      expect(res.status).toBe(201);
+
+      expect(res.body.length).toBeGreaterThan(0);
+      const plan = res.body[0];
+      expect(plan.user.id).toBe(ctx.testUserId);
+      expectNoSensitiveUserFields(plan.user);
     });
   });
 
