@@ -2889,7 +2889,7 @@ export type NotificationChannel = 'text' | 'email' | 'push';
 
 export type PreviewNotificationPlanDto = {
     scheduledFor: string;
-    user: User;
+    user: UserDto;
     channels: Array<NotificationChannel>;
 };
 
