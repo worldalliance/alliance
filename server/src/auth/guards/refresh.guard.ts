@@ -33,7 +33,6 @@ export class RefreshTokenGuard implements CanActivate {
 
       // Attach user info to request for later use
       request["user"] = payload;
-      request["refreshToken"] = token;
 
       return true;
     } catch (err) {

@@ -57,8 +57,8 @@ export function extractRefreshTokenFromCookie(
 
 export function extractRefreshToken(request: Request): string | undefined {
   return (
-    extractRefreshTokenFromCookie(request) ??
-    extractBearerToken(request.headers.authorization)
+    extractBearerToken(request.headers.authorization) ??
+    extractRefreshTokenFromCookie(request)
   );
 }
 
