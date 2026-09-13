@@ -1,7 +1,15 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
-import { createElement, type ReactNode } from "react";
-import type { FormResponseCounts } from "./useFormsAdmin";
+import { queryKeys } from "./queryKeys";
+import { queryWrapper } from "./testing/queryWrapper";
+import { routes, serveApi } from "./testing/serveApi";
+import {
+  ResponseCountStatus,
+  useFormResponseCountsAdmin,
+  useFormsAdmin,
+  useInvalidateFormsAdmin,
+  useInvalidateFormsIndex,
+  type FormResponseCounts,
+} from "./useFormsAdmin";
 
 type CountRow = { formId: number; count: number };
 
@@ -13,32 +21,9 @@ type FormRow = {
 };
 
 let batches: number[][] = [];
-let respond: (formIds: number[]) => Promise<{ data: CountRow[] }>;
+let respond: (formIds: number[]) => Promise<CountRow[]>;
 let listCalls = 0;
 let listed: FormRow[] = [];
-
-jest.mock("../client", () => ({
-  tasksGetFormResponseCountsAdmin: (options: {
-    body: { formIds: number[] };
-  }) => {
-    batches.push(options.body.formIds);
-    return respond(options.body.formIds);
-  },
-  tasksListFormsAdmin: () => {
-    listCalls++;
-    return Promise.resolve({ data: listed });
-  },
-  tasksDeleteFormAdmin: () => Promise.resolve({ data: undefined }),
-}));
-
-import { queryKeys } from "./queryKeys";
-import {
-  ResponseCountStatus,
-  useFormResponseCountsAdmin,
-  useFormsAdmin,
-  useInvalidateFormsAdmin,
-  useInvalidateFormsIndex,
-} from "./useFormsAdmin";
 
 const formRow = (id: number, title: string): FormRow => ({
   id,
@@ -48,23 +33,32 @@ const formRow = (id: number, title: string): FormRow => ({
 });
 
 const respondWith = (counted: Map<number, number>) => (formIds: number[]) =>
-  Promise.resolve({
-    data: formIds.map((formId) => ({
-      formId,
-      count: counted.get(formId) ?? 0,
-    })),
-  });
+  Promise.resolve(
+    formIds.map((formId) => ({ formId, count: counted.get(formId) ?? 0 })),
+  );
 
 function mountCounts(formIds: number[]) {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
+  const { wrapper } = queryWrapper();
   const view = renderHook(() => useFormResponseCountsAdmin(formIds), {
-    wrapper: ({ children }: { children: ReactNode }) =>
-      createElement(QueryClientProvider, { client }, children),
+    wrapper,
   });
-  return { state: () => view.result.current, client };
+  return { state: () => view.result.current };
 }
+
+serveApi(
+  routes({
+    "POST /tasks/responses/counts": async ({ request }) => {
+      const { formIds } = (await request.json()) as { formIds: number[] };
+      batches.push(formIds);
+      return Response.json(await respond(formIds));
+    },
+    "GET /tasks/listForms": () => {
+      listCalls++;
+      return Response.json(listed);
+    },
+    "DELETE /tasks/:id": () => new Response(null, { status: 204 }),
+  }),
+);
 
 beforeEach(() => {
   batches = [];
@@ -116,7 +110,7 @@ test("keeps counts unknown rather than zero while a batch is in flight", async (
   let release!: (rows: CountRow[]) => void;
   respond = () =>
     new Promise((resolve) => {
-      release = (rows) => resolve({ data: rows });
+      release = resolve;
     });
 
   const { state } = mountCounts([1, 2]);
@@ -170,11 +164,7 @@ test("makes no request when there are no forms", async () => {
 
 test("serves the cached list within its stale time", async () => {
   listed = [formRow(1, "Before")];
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  const wrapper = ({ children }: { children: ReactNode }) =>
-    createElement(QueryClientProvider, { client }, children);
+  const { wrapper } = queryWrapper();
 
   const view = renderHook(() => useFormsAdmin(), { wrapper });
   await waitFor(() => expect(view.result.current.isLoading).toBe(false));
@@ -188,11 +178,7 @@ test("serves the cached list within its stale time", async () => {
 
 test("invalidating refetches the list a picker is already showing", async () => {
   listed = [formRow(1, "Before")];
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  const wrapper = ({ children }: { children: ReactNode }) =>
-    createElement(QueryClientProvider, { client }, children);
+  const { wrapper } = queryWrapper();
 
   const view = renderHook(
     () => ({ ...useFormsAdmin(), invalidate: useInvalidateFormsAdmin() }),
@@ -212,13 +198,8 @@ test("invalidating refetches the list a picker is already showing", async () => 
 
 test("deleting a form refetches the list it was deleted from", async () => {
   listed = [formRow(1, "Doomed"), formRow(2, "Kept")];
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  const view = renderHook(() => useFormsAdmin(), {
-    wrapper: ({ children }: { children: ReactNode }) =>
-      createElement(QueryClientProvider, { client }, children),
-  });
+  const { wrapper } = queryWrapper();
+  const view = renderHook(() => useFormsAdmin(), { wrapper });
   await waitFor(() => expect(view.result.current.forms).toHaveLength(2));
 
   listed = [formRow(2, "Kept")];
@@ -229,16 +210,7 @@ test("deleting a form refetches the list it was deleted from", async () => {
 
 test("gives back the same empty array while the list is loading", async () => {
   const { result, rerender } = renderHook(() => useFormsAdmin(), {
-    wrapper: ({ children }: { children: ReactNode }) =>
-      createElement(
-        QueryClientProvider,
-        {
-          client: new QueryClient({
-            defaultOptions: { queries: { retry: false } },
-          }),
-        },
-        children,
-      ),
+    wrapper: queryWrapper().wrapper,
   });
   const first = result.current.forms;
   rerender();
@@ -246,9 +218,7 @@ test("gives back the same empty array while the list is loading", async () => {
 });
 
 test("an action write leaves the cached field lists a builder is holding open", async () => {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
+  const { client, wrapper } = queryWrapper();
   const fieldsKey = queryKeys.formQuestionFieldsAdmin(1);
   client.setQueryData(fieldsKey, { formId: 1, fields: [] });
 
@@ -257,10 +227,7 @@ test("an action write leaves the cached field lists a builder is holding open", 
       index: useInvalidateFormsIndex(),
       everything: useInvalidateFormsAdmin(),
     }),
-    {
-      wrapper: ({ children }: { children: ReactNode }) =>
-        createElement(QueryClientProvider, { client }, children),
-    },
+    { wrapper },
   );
 
   // Renaming an action only moves usedInAction on the index.
@@ -274,11 +241,7 @@ test("an action write leaves the cached field lists a builder is holding open", 
 
 test("serves cached counts within their stale time", async () => {
   respond = respondWith(new Map([[1, 2]]));
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  const wrapper = ({ children }: { children: ReactNode }) =>
-    createElement(QueryClientProvider, { client }, children);
+  const { wrapper } = queryWrapper();
 
   const first = renderHook(() => useFormResponseCountsAdmin([1]), { wrapper });
   await waitFor(() =>

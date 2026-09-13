@@ -22,9 +22,6 @@ describe("flushAnalytics", () => {
   // so do other files in this suite, so without this the no-backend case picks
   // up whatever ran before it.
   beforeEach(__resetAnalyticsForTests);
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
 
   it("says so when a backend can't be flushed, rather than reporting a send", async () => {
     registerAnalytics(inertBackend);
@@ -137,9 +134,6 @@ describe("flushAnalytics", () => {
 
 describe("a backend that throws", () => {
   beforeEach(__resetAnalyticsForTests);
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
 
   const throwingBackend: AnalyticsBackend = {
     capture: () => {

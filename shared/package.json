@@ -2,8 +2,6 @@
   "name": "@alliance/shared",
   "version": "0.0.0",
   "private": true,
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
   "packageManager": "bun@1.3.6",
   "peerDependencies": {
     "react": "*",
@@ -27,6 +25,7 @@
     "@hey-api/openapi-ts": "^0.67.3",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.3.2",
+    "@types/bun": "^1.3.6",
     "@types/jest": "^29.5.14",
     "eslint-plugin-react-refresh": "^0.4.20",
     "typescript": "~5.7.2"

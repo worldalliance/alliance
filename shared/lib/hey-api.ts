@@ -17,10 +17,7 @@ export const AuthEvents = {
 export const createClientConfig: CreateClientConfig = (config) => {
   const originalFetch = (config?.fetch ?? fetch).bind(globalThis);
 
-  const wrappedFetch: typeof fetch = async (
-    input: RequestInfo | URL,
-    init?: RequestInit,
-  ) => {
+  const wrappedFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const req = new Request(input, init);
     const retryReq = req.clone();
 

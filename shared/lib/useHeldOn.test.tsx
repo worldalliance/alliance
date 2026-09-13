@@ -54,5 +54,4 @@ it("arms nothing for a flag that was never raised", () => {
   renderHook(() => useHeldOn(false, 50));
 
   expect(timer).not.toHaveBeenCalled();
-  timer.mockRestore();
 });

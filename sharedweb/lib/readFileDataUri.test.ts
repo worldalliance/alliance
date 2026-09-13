@@ -28,6 +28,5 @@ describe("readFileDataUri", () => {
     if (!result.ok)
       expect(result.error.message).toBe("Cancelled reading a.png");
     expect(abort).toHaveBeenCalled();
-    abort.mockRestore();
   });
 });

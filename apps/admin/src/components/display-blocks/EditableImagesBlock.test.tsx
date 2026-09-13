@@ -1,5 +1,9 @@
 import type { ImagesBlock } from "@alliance/common/forms/display-blocks";
 import { R, type Result } from "@alliance/common/result";
+import { pending, type Pending } from "@alliance/shared/lib/testing/pending";
+import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import * as uploadModule from "@alliance/shared/lib/uploadImageDataUri";
+import * as readFileDataUriModule from "@alliance/sharedweb/lib/readFileDataUri";
 import {
   act,
   cleanup,
@@ -9,33 +13,20 @@ import {
 } from "@testing-library/react";
 import { useLayoutEffect, useRef, useState } from "react";
 
-type Pending<T> = {
-  resolve: (value: T) => void;
-  reject: (error: Error) => void;
-  signal?: AbortSignal;
-};
-
 let reads: Pending<Result<string, Error>>[] = [];
 let uploads: Pending<Result<string, string>>[] = [];
 let users: { id: number; name: string; hasActiveContract: boolean }[] = [];
 
-jest.mock("@alliance/sharedweb/lib/readFileDataUri", () => ({
-  readFileDataUri: (_file: File, signal?: AbortSignal) =>
-    new Promise<Result<string, Error>>((resolve, reject) => {
-      reads.push({ resolve, reject, signal });
-    }),
-}));
+serveApi(routes({ "GET /user/list": () => Response.json(users) }));
 
-jest.mock("@alliance/shared/client", () => ({
-  userListAdmin: async () => ({ data: users }),
-}));
-
-jest.mock("@alliance/shared/lib/uploadImageDataUri", () => ({
-  uploadImageDataUri: (_dataUri: string, signal?: AbortSignal) =>
-    new Promise<Result<string, string>>((resolve, reject) => {
-      uploads.push({ resolve, reject, signal });
-    }),
-}));
+beforeEach(() => {
+  jest
+    .spyOn(readFileDataUriModule, "readFileDataUri")
+    .mockImplementation((_file, signal) => pending(reads, signal));
+  jest
+    .spyOn(uploadModule, "uploadImageDataUri")
+    .mockImplementation((_dataUri, signal) => pending(uploads, signal));
+});
 
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { EditableImagesBlock } from "./EditableImagesBlock";
