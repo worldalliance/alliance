@@ -1,3 +1,5 @@
+import { ACCOUNT_MOVED_MESSAGE } from "@alliance/common/url";
+import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import TestAgent from "supertest/lib/agent";
 import { createTestApp, TestContext } from "./e2e-test-utils";
@@ -97,6 +99,48 @@ describe("Auth via Http-Only cookies (e2e)", () => {
         .get("/forum/posts/1/comments")
         .set("Authorization", "Bearer junk")
         .expect(401);
+    });
+  });
+
+  describe("a member who moved to the new domain", () => {
+    const login = (host: string, mode: string) =>
+      request(ctx.app.getHttpServer())
+        .post("/auth/login")
+        .set("Host", host)
+        .send({ email: "user@example.com", password: "pass", mode });
+
+    beforeAll(async () => {
+      await ctx.dataSource
+        .getRepository(User)
+        .update(
+          { email: "user@example.com" },
+          { switchedDomainAt: new Date() },
+        );
+    });
+
+    afterAll(async () => {
+      await ctx.dataSource
+        .getRepository(User)
+        .update({ email: "user@example.com" }, { switchedDomainAt: null });
+    });
+
+    it("is refused a cookie session on the legacy domain", async () => {
+      const res = await login("worldalliance.org", "cookie").expect(409);
+
+      expect(res.body.message).toBe(ACCOUNT_MOVED_MESSAGE);
+      expect(res.headers["set-cookie"]).toBeUndefined();
+    });
+
+    it("is refused on a legacy host carrying a port", async () => {
+      await login("worldalliance.org:3005", "cookie").expect(409);
+    });
+
+    it("signs in on the new domain", async () => {
+      await login("thealliance.org", "cookie").expect(200);
+    });
+
+    it("signs in from the mobile app, which never crosses domains", async () => {
+      await login("worldalliance.org", "header").expect(200);
     });
   });
 

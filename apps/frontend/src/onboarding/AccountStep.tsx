@@ -1,14 +1,20 @@
 import { OAuthIntent } from "@alliance/common/oauth";
+import { ACCOUNT_MOVED_MESSAGE, ALLIANCE_DOMAIN } from "@alliance/common/url";
 import { authForgotPassword, authLogin } from "@alliance/shared/client";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
 import { Features } from "@alliance/shared/lib/features";
 import { useInvite } from "@alliance/shared/lib/useInvite";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import {
+  newDomainUrl,
+  redirectAlreadyTried,
+  redirectToNewDomain,
+} from "@alliance/sharedweb/lib/domainMigration";
 import { oauthStartUrl, useAppOrigin } from "@alliance/sharedweb/lib/oauth";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import OAuthButtons from "@alliance/sharedweb/ui/OAuthButtons";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { href, useNavigate } from "react-router";
 import { useAuth } from "../lib/AuthContext";
 import { getApiUrl, isFeatureEnabled } from "../lib/config";
@@ -62,7 +68,7 @@ export function AccountStep({
   const inviteOnly =
     (!isFeatureEnabled(Features.PublicSignup) && !referralCode) || inviteUsed;
   const [loggingIn, setLoggingIn] = useState(startInLogin);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ReactNode>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const showForm = loggingIn || (!inviteOnly && !invitePending);
@@ -112,6 +118,30 @@ export function AccountStep({
     if (res.response.ok) {
       await onLogin();
       navigate(redirectAfterLogin);
+      return;
+    }
+    if (res.error?.message === ACCOUNT_MOVED_MESSAGE) {
+      const target = {
+        hostname: window.location.hostname,
+        pathname: window.location.pathname,
+        search: window.location.search,
+        hash: "",
+      };
+      if (redirectAlreadyTried(new Date())) {
+        setError(
+          <>
+            We tried to send you to {ALLIANCE_DOMAIN} and you ended up back
+            here, so we&apos;ve stopped trying.{" "}
+            <a className="underline" href={newDomainUrl(target)}>
+              Log in at {ALLIANCE_DOMAIN}
+            </a>
+            , and update the bookmark or saved password that brought you here.
+          </>,
+        );
+        setPending(false);
+        return;
+      }
+      redirectToNewDomain(target, new Date());
       return;
     }
     setError("Invalid email or password");

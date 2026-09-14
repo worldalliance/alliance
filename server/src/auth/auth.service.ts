@@ -328,6 +328,7 @@ export class AuthService {
     refresh_token: string;
     isAdmin: boolean;
     userId: number;
+    switchedDomainAt: Date | null;
   }> {
     const user = await this.usersService.findOneByEmail(email);
 
@@ -348,6 +349,7 @@ export class AuthService {
       refresh_token: await this.generateRefreshToken(user),
       isAdmin: user.admin,
       userId: user.id,
+      switchedDomainAt: user.switchedDomainAt,
     };
   }
 

@@ -1,4 +1,25 @@
-import { isAllianceAppHostname, siteHref, urlMatchesDomain } from "./url";
+import {
+  isAllianceAppHostname,
+  isLegacyAllianceHost,
+  siteHref,
+  urlMatchesDomain,
+} from "./url";
+
+describe("isLegacyAllianceHost", () => {
+  it("accepts the legacy domain, its subdomains and a host with a port", () => {
+    expect(isLegacyAllianceHost("worldalliance.org")).toBe(true);
+    expect(isLegacyAllianceHost("www.worldalliance.org")).toBe(true);
+    expect(isLegacyAllianceHost("staging.worldalliance.org")).toBe(true);
+    expect(isLegacyAllianceHost("worldalliance.org:3000")).toBe(true);
+  });
+
+  it("rejects the new domain, lookalikes and local hosts", () => {
+    expect(isLegacyAllianceHost("thealliance.org")).toBe(false);
+    expect(isLegacyAllianceHost("notworldalliance.org")).toBe(false);
+    expect(isLegacyAllianceHost("worldalliance.org.evil.com")).toBe(false);
+    expect(isLegacyAllianceHost("localhost:3005")).toBe(false);
+  });
+});
 
 describe("urlMatchesDomain", () => {
   it("matches the domain itself and its subdomains", () => {

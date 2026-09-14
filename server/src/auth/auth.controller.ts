@@ -1,6 +1,11 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import {
+  ACCOUNT_MOVED_MESSAGE,
+  isLegacyAllianceHost,
+} from "@alliance/common/url";
+import {
   Body,
+  ConflictException,
   Controller,
   Get,
   HttpCode,
@@ -16,6 +21,7 @@ import {
 import { JwtService } from "@nestjs/jwt";
 import {
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiCookieAuth,
   ApiOkResponse,
   ApiPropertyOptional,
@@ -68,14 +74,28 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: SignInResponseDto })
   @ApiUnauthorizedResponse()
+  @ApiConflictResponse({
+    description: "Migrated account signing in on the legacy domain",
+  })
   @Post("login")
   async login(
     @Request() req: ExpressRequest,
     @Body() signInDto: SignInDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<SignInResponseDto> {
-    const { access_token, refresh_token, isAdmin, userId } =
+    const { access_token, refresh_token, isAdmin, userId, switchedDomainAt } =
       await this.authService.login(signInDto.email, signInDto.password);
+
+    // A cookie session cannot follow them to the new domain, so signing them in
+    // here only to have the web app bounce them is a loop. Header sessions are
+    // the mobile app, which has one API host and never moves.
+    if (
+      signInDto.mode === "cookie" &&
+      switchedDomainAt !== null &&
+      isLegacyAllianceHost(req.get("host") ?? "")
+    ) {
+      throw new ConflictException(ACCOUNT_MOVED_MESSAGE);
+    }
 
     this.authService.setAuthCookies(res, access_token, refresh_token);
     await this.mergeGuestSession(signInDto.guestToken, req, res, userId);

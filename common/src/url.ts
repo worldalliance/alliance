@@ -66,6 +66,17 @@ export function appendQueryParam(
 export const ALLIANCE_LEGACY_DOMAIN = "worldalliance.org";
 export const ALLIANCE_DOMAIN = "thealliance.org";
 
+/** `host` may be a `Host` header, which carries a port in local runs. */
+export const isLegacyAllianceHost = (host: string): boolean =>
+  hostnameMatchesDomain(host.split(":")[0], ALLIANCE_LEGACY_DOMAIN);
+
+/**
+ * What `POST /auth/login` refuses a migrated member with when they sign in on
+ * {@link ALLIANCE_LEGACY_DOMAIN} for a cookie session. The web login matches on
+ * it to send them to {@link ALLIANCE_DOMAIN} instead.
+ */
+export const ACCOUNT_MOVED_MESSAGE = `this account has moved to ${ALLIANCE_DOMAIN}`;
+
 /**
  * The hosts the web app answers on, per deploy/nginx/alliance.conf. A host
  * outside this list — `admin.`, or one added later — is not the web app.

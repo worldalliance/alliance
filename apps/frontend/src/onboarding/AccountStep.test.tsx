@@ -1,3 +1,4 @@
+import { ACCOUNT_MOVED_MESSAGE } from "@alliance/common/url";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as configModule from "@alliance/sharedweb/lib/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -21,11 +22,14 @@ declare global {
 
 let loginBodies: { email: string; password: string; mode: string }[] = [];
 
+const signedIn = () => new Response(null, { status: 200 });
+let loginReply: () => Response = signedIn;
+
 serveApi(
   routes({
     "POST /auth/login": async ({ request }) => {
       loginBodies.push(await request.json());
-      return new Response(null, { status: 200 });
+      return loginReply();
     },
   }),
 );
@@ -46,6 +50,9 @@ afterEach(() => {
   cleanup();
   onLogin.mockClear();
   loginBodies = [];
+  loginReply = signedIn;
+  window.sessionStorage.clear();
+  window.happyDOM.setURL("https://test.alliance/login");
 });
 
 const noop = () => Promise.resolve();
@@ -125,5 +132,53 @@ describe("AccountStep", () => {
         },
       ]);
     });
+  });
+
+  it("sends a migrated account to the new domain instead of signing it in", async () => {
+    window.happyDOM.setURL("https://worldalliance.org/login?redirect=%2Ftasks");
+    loginReply = () =>
+      Response.json(
+        { statusCode: 409, message: ACCOUNT_MOVED_MESSAGE },
+        { status: 409 },
+      );
+    render(<Harness />);
+
+    fillWithoutReact("moved@example.com", "s3cret");
+    fireEvent.click(screen.getByRole("button", { name: /log in/i }));
+
+    await waitFor(() => {
+      expect(window.location.href).toBe(
+        "https://thealliance.org/login?redirect=%2Ftasks",
+      );
+    });
+    expect(onLogin).not.toHaveBeenCalled();
+  });
+
+  it("stops hopping a migrated account once one hop has bounced back", async () => {
+    window.happyDOM.setURL("https://worldalliance.org/login?redirect=%2Ftasks");
+    window.sessionStorage.setItem(
+      "domain-migration-redirected",
+      String(Date.now()),
+    );
+    loginReply = () =>
+      Response.json(
+        { statusCode: 409, message: ACCOUNT_MOVED_MESSAGE },
+        { status: 409 },
+      );
+    render(<Harness />);
+
+    fillWithoutReact("moved@example.com", "s3cret");
+    fireEvent.click(screen.getByRole("button", { name: /log in/i }));
+
+    const link = await screen.findByRole("link", {
+      name: "Log in at thealliance.org",
+    });
+    expect(link.getAttribute("href")).toBe(
+      "https://thealliance.org/login?redirect=%2Ftasks",
+    );
+    expect(window.location.href).toBe(
+      "https://worldalliance.org/login?redirect=%2Ftasks",
+    );
+    expect(onLogin).not.toHaveBeenCalled();
   });
 });
