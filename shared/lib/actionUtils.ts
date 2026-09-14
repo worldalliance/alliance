@@ -209,6 +209,9 @@ export function isActionAssignedAndNotDismissed(action: ActionDto): boolean {
 }
 
 export function shouldCompleteAction(action: ActionDto): boolean {
+  if (action.viewer?.staffPreview) {
+    return !action.publicOnly;
+  }
   if (
     !canCompleteAction(action) ||
     action.publicOnly ||

@@ -41,6 +41,11 @@ export const taskHeaders = {
     },
     withdrew: "You withdrew from this action.",
   },
+  staffPreview: {
+    title: "Staff preview",
+    description:
+      "This action hasn't gone out to members yet. Nothing you enter here is submitted.",
+  },
   homePage: {
     away: {
       title: "Away",

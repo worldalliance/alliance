@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
 import { TouchableOpacity, View } from "react-native";
 
+import { taskHeaders } from "@alliance/shared/lib/copy";
 import {
   getNextEvent,
   LargeActionCardPropsShared,
@@ -7,8 +9,9 @@ import {
 import useActivities, {
   ActivityList,
 } from "@alliance/shared/lib/useActivities";
+import { cn } from "@alliance/shared/styles/util";
 import { router } from "expo-router";
-import { ArrowRight } from "lucide-react-native";
+import { ArrowRight, Eye } from "lucide-react-native";
 import { ActionCompletedBarWithInfo } from "./ActionCompletedBarWithInfo";
 import ActionTaskPanel from "./ActionTaskPanel";
 import Button, { ButtonColor } from "./system/Button";
@@ -23,6 +26,40 @@ export interface LargeActionCardProps extends LargeActionCardPropsShared {
   onCompleteAction?: () => void;
 }
 
+function Banner({
+  icon,
+  header,
+  message,
+  children,
+}: {
+  icon?: ReactNode;
+  header: string;
+  message: string;
+  children?: ReactNode;
+}) {
+  const headerText = (
+    <Text className="text-sky-800" weight={FontWeight.Semibold}>
+      {header}
+    </Text>
+  );
+  return (
+    <View className="-mx-4 -mt-4 mb-3 bg-sky-100 border-b border-sky-300 px-4 py-3">
+      {icon ? (
+        <View className="flex-row items-center gap-x-2">
+          {icon}
+          {headerText}
+        </View>
+      ) : (
+        headerText
+      )}
+      <Text className={cn("text-sky-700 mt-1", children && "mb-3")}>
+        {message}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
 function DismissBanner({
   header,
   message,
@@ -33,18 +70,14 @@ function DismissBanner({
   onDismiss: () => void;
 }) {
   return (
-    <View className="-mx-4 -mt-4 mb-3 bg-sky-100 border-b border-sky-300 px-4 py-3">
-      <Text className="text-sky-800" weight={FontWeight.Semibold}>
-        {header}
-      </Text>
-      <Text className="text-sky-700 mt-1 mb-3">{message}</Text>
+    <Banner header={header} message={message}>
       <Button
         color={ButtonColor.White}
         onPress={onDismiss}
         className="w-full"
         title="Dismiss"
       />
-    </View>
+    </Banner>
   );
 }
 
@@ -67,6 +100,13 @@ export default function LargeActionCard({
   return (
     <Card className="p-4!">
       <View>
+        {action.viewer?.staffPreview && (
+          <Banner
+            icon={<Eye size={16} color="#075985" />}
+            header={taskHeaders.staffPreview.title}
+            message={taskHeaders.staffPreview.description}
+          />
+        )}
         {dismissProps && (
           <DismissBanner
             header={dismissProps.header}

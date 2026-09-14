@@ -97,6 +97,12 @@ const taskPanelHeaderByState: Record<
   [ActionPageTaskPanelState.NotAssigned]: (
     <p>{taskHeaders.actionPage.notAssigned}</p>
   ),
+  [ActionPageTaskPanelState.StaffPreview]: (
+    <div>
+      <p className="font-medium">{taskHeaders.staffPreview.title}</p>
+      <p className="text-zinc-500">{taskHeaders.staffPreview.description}</p>
+    </div>
+  ),
   [ActionPageTaskPanelState.Completed]: null,
   [ActionPageTaskPanelState.Declined]: <p>{taskHeaders.actionPage.withdrew}</p>,
   [ActionPageTaskPanelState.MemberActionClosed]: (
@@ -371,6 +377,7 @@ const ActionPageTaskPanel = () => {
           missedDeadline
         />,
       );
+    case ActionPageTaskPanelState.StaffPreview:
     case ActionPageTaskPanelState.Optional:
     case ActionPageTaskPanelState.OptionalForViewer:
     case ActionPageTaskPanelState.OptionalForContractGap:

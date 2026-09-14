@@ -7,7 +7,7 @@ import {
   isActionOptional,
   type ActionWithAwayStatus,
 } from "@alliance/shared/lib/actionUtils";
-import { clipboardCopy } from "@alliance/shared/lib/copy";
+import { clipboardCopy, taskHeaders } from "@alliance/shared/lib/copy";
 import {
   buildActionShareUrl,
   buildShareText,
@@ -17,7 +17,18 @@ import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
-import { ArrowRight, Circle, CircleChevronRight, Link2 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@alliance/sharedweb/ui/Tooltip";
+import {
+  ArrowRight,
+  Circle,
+  CircleChevronRight,
+  Eye,
+  Link2,
+} from "lucide-react";
 import { type ReactNode } from "react";
 import { Link, href } from "react-router";
 import ShareButton from "../../components/ShareButton";
@@ -118,6 +129,23 @@ export function TaskNavigatorTodoActionRow({
         <>
           {showOptionalPrefix && optional && "(Optional) "}
           {action.name}
+          {action.viewer?.staffPreview && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <span
+                    className="inline-flex ml-1.5 align-text-bottom text-zinc-400"
+                    aria-label={taskHeaders.staffPreview.title}
+                  />
+                }
+              >
+                <Eye size={ICON_SIZE} aria-hidden />
+              </TooltipTrigger>
+              <TooltipContent sideOffset={4}>
+                {taskHeaders.staffPreview.title}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </>
       }
     />

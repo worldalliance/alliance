@@ -70,6 +70,14 @@ const taskPanelTopByState: Record<ActionPageTaskPanelState, ReactNode> = {
   [ActionPageTaskPanelState.NotAssigned]: (
     <Text>{taskHeaders.actionPage.notAssigned}</Text>
   ),
+  [ActionPageTaskPanelState.StaffPreview]: (
+    <View className="gap-y-1">
+      <Text weight={FontWeight.Medium}>{taskHeaders.staffPreview.title}</Text>
+      <Text className="text-zinc-500">
+        {taskHeaders.staffPreview.description}
+      </Text>
+    </View>
+  ),
   [ActionPageTaskPanelState.Completed]: null,
   [ActionPageTaskPanelState.Declined]: (
     <Text>{taskHeaders.actionPage.withdrew}</Text>
@@ -221,6 +229,7 @@ const ActionPageTaskPanel = ({
           bottomCardStyle={bodyStyle}
         />
       );
+    case ActionPageTaskPanelState.StaffPreview:
     case ActionPageTaskPanelState.PublicOnly:
     case ActionPageTaskPanelState.ShowTaskWithMissedDeadline:
     case ActionPageTaskPanelState.Optional:

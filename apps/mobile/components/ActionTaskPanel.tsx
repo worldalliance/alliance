@@ -61,6 +61,20 @@ const ActionTaskPanel = ({
     );
   }
 
+  if (action.viewer?.staffPreview) {
+    return action.taskFormId ? (
+      <ActionTaskPanelForm
+        taskFormId={action.taskFormId}
+        scrollPageTo={scrollPageTo}
+        scrollToEnd={scrollToEnd}
+        onCompleteAction={null}
+        onFormStarted={noop}
+        actionId={action.id}
+        preview
+      />
+    ) : null;
+  }
+
   if (action.taskFormId) {
     return (
       <ActionTaskPanelForm

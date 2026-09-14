@@ -33,6 +33,8 @@ interface ActionTaskPanelFormProps {
   onSubmitSuccess?: () => void;
   disabled?: boolean;
   formResponse?: FormResponseDto;
+  /** Editable but unsubmittable, and nothing typed outlives the screen. */
+  preview?: boolean;
 }
 
 const ActionTaskPanelForm = ({
@@ -46,6 +48,7 @@ const ActionTaskPanelForm = ({
   onSubmitSuccess = noop,
   disabled,
   formResponse,
+  preview = false,
 }: ActionTaskPanelFormProps) => {
   const { user, isAuthenticated } = useAuth();
   const [error, setError] = useState<string | null>(null);
@@ -166,7 +169,7 @@ const ActionTaskPanelForm = ({
         onFormStarted={onFormStarted}
         onAbandonAction={onAbandonAction}
         actionId={actionId}
-        persistKey={String(taskFormId)}
+        persistKey={preview ? null : String(taskFormId)}
         userId={user?.id}
         user={user}
         loadCurrentUserLocation={!!user && isAuthenticated}

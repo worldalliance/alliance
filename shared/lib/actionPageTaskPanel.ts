@@ -15,6 +15,7 @@ export enum ActionPageTaskPanelState {
   GuestCompleted = "guest_completed",
   OnboardingSignContractFirst = "onboarding_sign_contract_first",
   NotAssigned = "not_assigned",
+  StaffPreview = "staff_preview",
   Completed = "completed",
   Declined = "declined",
   MemberActionClosed = "member_action_closed",
@@ -41,6 +42,7 @@ const stateIsDisabled = {
   [ActionPageTaskPanelState.GuestCompleted]:
     ActionPageTaskPanelEnabled.Disabled,
   [ActionPageTaskPanelState.NotAssigned]: ActionPageTaskPanelEnabled.Disabled,
+  [ActionPageTaskPanelState.StaffPreview]: ActionPageTaskPanelEnabled.Enabled,
   [ActionPageTaskPanelState.Completed]: ActionPageTaskPanelEnabled.Disabled,
   [ActionPageTaskPanelState.Declined]: ActionPageTaskPanelEnabled.Disabled,
   [ActionPageTaskPanelState.MemberActionClosed]:
@@ -75,6 +77,7 @@ export const shouldLoadCompletedTaskFormByState = {
   [ActionPageTaskPanelState.GuestRef]: false,
   [ActionPageTaskPanelState.GuestCompleted]: false,
   [ActionPageTaskPanelState.NotAssigned]: false,
+  [ActionPageTaskPanelState.StaffPreview]: false,
   [ActionPageTaskPanelState.Completed]: true,
   [ActionPageTaskPanelState.Declined]: true,
   [ActionPageTaskPanelState.MemberActionClosed]: false,
@@ -106,6 +109,12 @@ export function cardStylesForState(
   state: ActionPageTaskPanelState,
 ): HeaderBodyStyles {
   return cardStylesByDisabled[stateIsDisabled[state]];
+}
+
+export function showActionPageTaskSection(
+  action: Pick<ActionDto, "status" | "viewer">,
+): boolean {
+  return action.status !== "planned" || !!action.viewer?.staffPreview;
 }
 
 /**
@@ -165,6 +174,10 @@ export function getActionPageTaskPanelState(params: {
     return hasRefCode
       ? ActionPageTaskPanelState.GuestRef
       : ActionPageTaskPanelState.NotAuthenticated;
+  }
+
+  if (action.viewer?.staffPreview) {
+    return ActionPageTaskPanelState.StaffPreview;
   }
 
   const canComplete = action.viewer
