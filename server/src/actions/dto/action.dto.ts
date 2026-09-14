@@ -570,9 +570,14 @@ export class AdminActionDto extends ActionDto {
   @IsOptional()
   storedSquareThumbnailImage?: string;
 
+  @ApiProperty()
+  @IsDefined()
+  staffPreview: boolean;
+
   constructor(action: ParsedAction, extra?: ActionDtoExtra) {
     super(action, extra);
     this.cohortExpression = action.cohortExpression;
+    this.staffPreview = action.staffPreview;
     this.followUpForms =
       action.followUpForms?.map((form) => new AdminFollowUpFormDto(form)) ?? [];
     this.storedImage = action.image ?? undefined;
@@ -617,6 +622,11 @@ export class CreateActionDto extends IntersectionType(
   })
   @IsOptional()
   suiteId?: number | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  staffPreview?: boolean;
 
   @ApiPropertyOptional({
     type: () => ActionReviewerDto,

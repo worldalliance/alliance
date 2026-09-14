@@ -443,6 +443,10 @@ export type Action = {
      */
     preventCompletion: boolean;
     /**
+     * Refuse participation writes until the action's member_action event starts
+     */
+    staffPreview: boolean;
+    /**
      * Whether the action is visible to and supposed to only be completed by non-members
      */
     publicOnly: boolean;
@@ -2499,6 +2503,7 @@ export type AdminActionDto = {
      * The squareThumbnailImage column itself, like `storedImage`.
      */
     storedSquareThumbnailImage?: string;
+    staffPreview: boolean;
 };
 
 export type CreateFollowUpFormDto = {
@@ -2702,6 +2707,7 @@ export type CreateActionDto = {
     customStatValue?: number;
     customStatGoal?: number;
     suiteId?: number | null;
+    staffPreview?: boolean;
     reviewers?: Array<ActionReviewerDto>;
     authorIds?: Array<number>;
 };
@@ -2800,6 +2806,7 @@ export type UpdateActionDto = {
     customStatValue?: number;
     customStatGoal?: number;
     suiteId?: number | null;
+    staffPreview?: boolean;
     reviewers?: Array<ActionReviewerDto>;
     authorIds?: Array<number>;
 };
@@ -3067,6 +3074,10 @@ export type ExportActionDto = {
      * Prevent completion of the action (for old actions)
      */
     preventCompletion: boolean;
+    /**
+     * Refuse participation writes until the action's member_action event starts
+     */
+    staffPreview: boolean;
     /**
      * Whether the action is visible to and supposed to only be completed by non-members
      */

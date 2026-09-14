@@ -217,6 +217,7 @@ import {
   ReminderGroupTimingMode,
 } from "./entities/reminder-group.entity";
 import { SCHEMA_WRITE_TARGETS } from "./schema-write-target";
+import { assertNotInStaffPreview } from "./staff-preview";
 import { resolveUserActionPillStatus } from "./user-action-pill-status";
 import {
   computeCanCompleteAction,
@@ -1683,6 +1684,10 @@ export class ActionsService {
     } = options;
     const action = await this.findOneOrFail({ id: actionId, userId });
 
+    if (!adminCreated) {
+      assertNotInStaffPreview(action);
+    }
+
     if (
       type === ActionActivityType.USER_WONT_COMPLETE &&
       action.isContractSigningAction &&
@@ -2730,7 +2735,9 @@ export class ActionsService {
     if (!activity) {
       throw new NotFoundException("Activity not found");
     }
-    await this.findOneOrFail({ id: activity.actionId, userId });
+    assertNotInStaffPreview(
+      await this.findOneOrFail({ id: activity.actionId, userId }),
+    );
     if (
       !GlobalFeedActivityTypes.includes(activity.type as GlobalFeedActivityType)
     ) {
@@ -2805,6 +2812,7 @@ export class ActionsService {
 
   async getPaymentAmountForAction(id: number): Promise<number> {
     const action = await this.findOneOrFail({ id, serverSide: true });
+    assertNotInStaffPreview(action);
     if (action.type !== ActionTaskType.Funding) {
       throw new BadRequestException("Action is not a funding action");
     }

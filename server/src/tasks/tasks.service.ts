@@ -66,6 +66,7 @@ import {
   FollowUpForm,
   parseFollowUpForm,
 } from "src/actions/entities/follow-up-form.entity";
+import { assertNotInStaffPreview } from "src/actions/staff-preview";
 import { AiDetectionQueryService } from "src/ai-detection/ai-detection-query.service";
 import { AiDetectionQueueService } from "src/ai-detection/ai-detection-queue.service";
 import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.entity";
@@ -744,7 +745,11 @@ export class TasksService {
 
     const action = await this.actionRepository.findOne({
       where: { id: submitFormDto.actionId },
+      relations: { events: true },
     });
+    if (action) {
+      assertNotInStaffPreview(action);
+    }
     const variants = await this.actionFormVariantService.listForAction(
       submitFormDto.actionId,
     );
@@ -1036,6 +1041,13 @@ export class TasksService {
     }
     const form = await this.getForm(formId);
     const user = await this.userService.findOneOrFail(userId);
+    const action = await this.actionRepository.findOne({
+      where: { id: actionId },
+      relations: { events: true },
+    });
+    if (action) {
+      assertNotInStaffPreview(action);
+    }
 
     const savedForm = await this.createAndSaveFormResponse({
       form,
