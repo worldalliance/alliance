@@ -1,6 +1,8 @@
+import { R } from "@alliance/common/result";
 import {
   BadRequestException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
@@ -55,6 +57,8 @@ export class AuthService {
     @InjectRepository(Guest)
     private guestRepository: Repository<Guest>,
   ) {}
+
+  private readonly logger = new Logger(AuthService.name);
 
   private static GUEST_COOKIE_MAX_AGE_MS = milliseconds({ days: 30 });
 
@@ -314,7 +318,15 @@ export class AuthService {
       await this.usersService.makeFriendsAutomated(referringUser.id, user.id);
     }
 
-    await this.usersService.sendWelcomeEmail(user.id);
+    // The user row is already committed; a mail failure must not fail the signup.
+    const welcomeMail = await R.fromPromise(
+      this.usersService.sendWelcomeEmail(user.id),
+    );
+    if (!welcomeMail.ok) {
+      this.logger.error(
+        `Failed to send welcome email to user ${user.id}: ${welcomeMail.error.message}`,
+      );
+    }
 
     return user;
   }
