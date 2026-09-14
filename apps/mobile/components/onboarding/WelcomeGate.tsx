@@ -57,7 +57,6 @@ function Scrim() {
 
 export function WelcomeGate({
   mode,
-  onModeChange,
   email,
   onEmailChange,
   password,
@@ -71,7 +70,6 @@ export function WelcomeGate({
   inviter,
 }: {
   mode: AccountMode;
-  onModeChange: (mode: AccountMode) => void;
   email: string;
   onEmailChange: (email: string) => void;
   password: string;
@@ -126,7 +124,6 @@ export function WelcomeGate({
 
         <AccountFields
           mode={mode}
-          onModeChange={onModeChange}
           email={email}
           onEmailChange={onEmailChange}
           password={password}

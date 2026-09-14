@@ -15,7 +15,6 @@ import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import PasswordVisibilityToggle from "../system/PasswordVisibilityToggle";
 import Text, { FontWeight } from "../system/Text";
 
-/** Matches the mobile signup screen's own check rather than pulling in a schema. */
 const EMAIL_PATTERN = /\S+@\S+\.\S+/;
 
 const FIELD =
@@ -23,7 +22,6 @@ const FIELD =
 
 export function AccountFields({
   mode,
-  onModeChange,
   email,
   onEmailChange,
   password,
@@ -37,7 +35,6 @@ export function AccountFields({
   inviter,
 }: {
   mode: AccountMode;
-  onModeChange: (mode: AccountMode) => void;
   email: string;
   onEmailChange: (email: string) => void;
   password: string;
@@ -168,20 +165,8 @@ export function AccountFields({
         </>
       )}
 
-      <View className="flex-row items-center gap-4">
-        <Pressable
-          onPress={() =>
-            onModeChange(loggingIn ? AccountMode.SignUp : AccountMode.LogIn)
-          }
-        >
-          <Text
-            className="text-white/80 underline"
-            style={{ fontSize: scale.caption }}
-          >
-            {loggingIn ? "Create an account" : "I already have an account"}
-          </Text>
-        </Pressable>
-        {loggingIn && (
+      {loggingIn && (
+        <View className="flex-row items-center gap-4">
           <Pressable onPress={onForgotPassword} disabled={submitting}>
             <Text
               className="text-white/80 underline"
@@ -190,8 +175,8 @@ export function AccountFields({
               {forgotPasswordCopy.prompt}
             </Text>
           </Pressable>
-        )}
-      </View>
+        </View>
+      )}
     </Animated.View>
   );
 }

@@ -78,14 +78,12 @@ const OnboardingScreen = () => {
   }>();
 
   // `?step=` opens any screen without registering, so the later ones can be
-  // reviewed while sign-up is invite-only. Development builds only.
+  // reviewed now that mobile has no sign-up. Development builds only.
   const [step, setStep] = useState(
     __DEV__ && isOnboardingStep(stepParam) ? stepParam : OnboardingStep.Account,
   );
-  // Nobody installs the app before they have an account, so the welcome
-  // screen opens on log in and hands straight over to the walkthrough. The
-  // sign-up narrative behind it stays reachable for when that changes.
-  const [accountMode, setAccountMode] = useState(AccountMode.LogIn);
+  // Account creation happens on the web for now, so the mobile gate only logs in.
+  const accountMode = AccountMode.LogIn;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [signedName, setSignedName] = useState("");
@@ -138,17 +136,9 @@ const OnboardingScreen = () => {
     if (previous) setStep(previous);
   }, [step]);
 
-  /** A returning member skips the story and lands straight in the walkthrough. */
   const submitAccount = useCallback(async () => {
     setError(null);
     setNotice(null);
-
-    if (accountMode === AccountMode.SignUp) {
-      if (inviteUsed) return;
-      goNext();
-      return;
-    }
-
     setSubmitting(true);
     try {
       await login({ email, password, navigateOnSuccess: false });
@@ -158,7 +148,7 @@ const OnboardingScreen = () => {
     } finally {
       setSubmitting(false);
     }
-  }, [accountMode, email, password, login, goNext, enterPlatform, inviteUsed]);
+  }, [email, password, login, enterPlatform]);
 
   const forgotPassword = useCallback(async () => {
     if (submitting) return;
@@ -268,7 +258,6 @@ const OnboardingScreen = () => {
         return (
           <WelcomeGate
             mode={accountMode}
-            onModeChange={setAccountMode}
             email={email}
             onEmailChange={setEmail}
             password={password}
