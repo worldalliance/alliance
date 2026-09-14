@@ -1,0 +1,2 @@
+alex needs to deploy along with environment variable changes
+note: alliance@thealliance.org is *already* registered in the apple developer portal
