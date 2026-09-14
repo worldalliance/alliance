@@ -274,6 +274,9 @@ export class UserActionStatusDto {
   assigned: boolean;
 
   @ApiProperty()
+  optional: boolean;
+
+  @ApiProperty()
   canComplete: boolean;
 
   @ApiProperty({
@@ -308,6 +311,7 @@ export class UserActionStatusDto {
 
   constructor(input: UserActionStatus) {
     this.assigned = input.assigned;
+    this.optional = input.optional;
     this.canComplete = input.canComplete;
     this.relation = input.relation;
     this.withdrawal = input.withdrawal

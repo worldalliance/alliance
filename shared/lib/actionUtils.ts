@@ -166,6 +166,24 @@ export function canCompleteAction(action: ActionDto): boolean {
   );
 }
 
+/**
+ * Is the action optional for the viewer? The server may widen this past
+ * `action.optional`, which describes the action itself and stays the right
+ * read for admin views and cohort-wide stats.
+ */
+export function isActionOptional(action: ActionDto): boolean {
+  const { viewer } = action;
+  return viewer ? viewer.optional : action.optional;
+}
+
+export function isActionAssignedAndNotDismissed(action: ActionDto): boolean {
+  const { viewer } = action;
+  // Legacy `shouldParticipate` already folds dismissal into assignment.
+  return viewer
+    ? viewer.assigned && !viewer.dismissed
+    : !!action.shouldParticipate;
+}
+
 export function shouldCompleteAction(action: ActionDto): boolean {
   if (
     !canCompleteAction(action) ||
@@ -177,25 +195,21 @@ export function shouldCompleteAction(action: ActionDto): boolean {
   ) {
     return false;
   }
-  const { viewer } = action;
-  // Legacy `shouldParticipate` folds dismissal into assignment; `viewer`
-  // models dismissal as a separate overlay.
-  return viewer
-    ? viewer.assigned && !viewer.dismissed
-    : !!action.shouldParticipate;
+  return isActionAssignedAndNotDismissed(action);
 }
 
 export function isCurrentlyCompletedAction(action: ActionDto): boolean {
-  if (action.status !== "member_action" || action.onboarding) {
+  if (
+    action.status !== "member_action" ||
+    action.onboarding ||
+    !isActionAssignedAndNotDismissed(action)
+  ) {
     return false;
   }
   const { viewer } = action;
-  if (viewer) {
-    return (
-      viewer.assigned && !viewer.dismissed && viewer.relation === "completed"
-    );
-  }
-  return !!action.shouldParticipate && action.userRelation === "completed";
+  return viewer
+    ? viewer.relation === "completed"
+    : action.userRelation === "completed";
 }
 
 export function showActionInSidebarList(action: ActionWithAwayStatus): boolean {
@@ -203,12 +217,7 @@ export function showActionInSidebarList(action: ActionWithAwayStatus): boolean {
     return false;
   }
   const { viewer } = action;
-  if (viewer) {
-    return viewer.away === "not_away" && !viewer.dismissed;
-  }
-  return (
-    action.awayStatus === "not_away" && action.userRelation !== "dismissed"
-  );
+  return viewer ? viewer.away === "not_away" : action.awayStatus === "not_away";
 }
 
 /**

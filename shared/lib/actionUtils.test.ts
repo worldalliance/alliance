@@ -9,6 +9,8 @@ import {
   calculateCompletionData,
   canCompleteAction,
   deadlineHasPassed,
+  isActionAssignedAndNotDismissed,
+  isActionOptional,
   isCurrentlyCompletedAction,
   shouldCompleteAction,
   showActionInSidebarList,
@@ -49,11 +51,20 @@ describe("viewer-based action predicates", () => {
     }
   });
 
+  it("reads optional off the viewer, falling back to the action flag for guests", () => {
+    expect(isActionOptional(makeAction())).toBe(false);
+    expect(
+      isActionOptional(makeAction({ viewer: makeViewer({ optional: true }) })),
+    ).toBe(true);
+    expect(isActionOptional(makeLegacyAction({ optional: true }))).toBe(true);
+  });
+
   it("keeps a dismissed action completable but out of home lists", () => {
     const action = makeAction({
       viewer: makeViewer({ dismissed: true }),
     });
     expect(canCompleteAction(action)).toBe(true);
+    expect(isActionAssignedAndNotDismissed(action)).toBe(false);
     expect(shouldCompleteAction(action)).toBe(false);
     expect(showActionInSidebarList(action)).toBe(false);
   });
@@ -127,6 +138,15 @@ describe("viewer-based action predicates", () => {
     expect(showActionInSidebarList(action)).toBe(false);
   });
 
+  it("follows viewer.assigned where the server widened it past shouldParticipate", () => {
+    const optionallyAssigned = makeAction({
+      shouldParticipate: false,
+      viewer: makeViewer({ optional: true }),
+    });
+    expect(isActionAssignedAndNotDismissed(optionallyAssigned)).toBe(true);
+    expect(shouldCompleteAction(optionallyAssigned)).toBe(true);
+  });
+
   it("matches the legacy fallback on dismissal semantics", () => {
     const action = makeLegacyAction({
       userRelation: "dismissed",
@@ -134,6 +154,7 @@ describe("viewer-based action predicates", () => {
       shouldParticipate: false,
     });
     expect(canCompleteAction(action)).toBe(true);
+    expect(isActionAssignedAndNotDismissed(action)).toBe(false);
     expect(shouldCompleteAction(action)).toBe(false);
     expect(showActionInSidebarList(action)).toBe(false);
   });
