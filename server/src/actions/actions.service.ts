@@ -3395,6 +3395,7 @@ export class ActionsService {
     const actions = (await this.findMemberPublic(userId))
       .filter(
         (action) =>
+          action.status !== ActionStatus.Draft &&
           action.shouldParticipate &&
           action.userRelation !== UserActionRelation.Completed,
       )
