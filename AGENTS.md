@@ -39,7 +39,7 @@ Read before the matching task:
 
 ## Formatting
 
-`bun run format` from the repo root, covering every package at once; `bun run format:check` to only report.
+`bun run format [FILE...]` from the repo root, all files when none are named; `bun run format:check [FILE...]` to only report.
 
 ## Testing
 
