@@ -5,6 +5,7 @@ import { SiteFooter } from "../../../site/Footer";
 import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
 import { SiteRoot } from "../../../site/PageShell";
 import { DisplayHeading, SITE_COL, SiteArrow } from "../../../site/ui";
+import { GrantmakingMemberProgress } from "./GrantmakingMemberProgress";
 
 export function meta() {
   return socialPreviewMeta({
@@ -21,7 +22,10 @@ export default function DemocraticGrantmaking26() {
   return (
     <SiteRoot className="bg-[var(--site-primary)] text-white">
       <Navbar overPrimary />
-      <main className="flex h-dvh flex-col" style={{ paddingTop: NAV_HEIGHT }}>
+      <main
+        className="flex min-h-dvh flex-col"
+        style={{ paddingTop: NAV_HEIGHT }}
+      >
         <div
           className={cn(
             SITE_COL,
@@ -49,6 +53,7 @@ export default function DemocraticGrantmaking26() {
                   <span className="font-semibold text-green">$36,300</span>{" "}
                   committed by funders so far
                 </p>
+                <GrantmakingMemberProgress className="mt-2 text-base md:text-lg" />
               </div>
             </div>
             <a

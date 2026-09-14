@@ -21,7 +21,6 @@ import { getApiUrl, isFeatureEnabled } from "../lib/config";
 import { JOIN_MAILTO } from "../site/content";
 import { SiteArrow } from "../site/ui";
 import { EmailDivider, riseStyle } from "./chrome";
-import { InfoSessionButton } from "./GrantmakingCard";
 
 const FIELD =
   "h-11 w-full rounded-md border border-zinc-300 bg-white px-3.5 text-sm text-black outline-none transition-colors placeholder:text-zinc-500 focus:border-[var(--ob-navy)]";
@@ -294,11 +293,6 @@ export function AccountStep({
               </button>
             )}
           </p>
-          {!loggingIn && (
-            <div className="mt-8">
-              <InfoSessionButton />
-            </div>
-          )}
         </div>
       </div>
     </div>

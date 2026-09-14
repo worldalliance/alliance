@@ -1,49 +1,11 @@
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
-import { Calendar, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import grassField from "../assets/redesign/grass-field.jpg";
-
-const INFO_SESSION_HREF =
-  "https://calendar.google.com/calendar/event?action=TEMPLATE&tmeid=MmUxZ3FxMmhtcWExbHQ3ODU4dHE5YjF2ODggZ3JhbnRAd29ybGRhbGxpYW5jZS5vcmc&tmsrc=grant%40worldalliance.org";
-
-const INFO_SESSION_STARTS_AT = new Date("2026-09-14T09:00:00-07:00");
-
-const INFO_SESSION_WHEN = new Intl.DateTimeFormat("en-US", {
-  weekday: "long",
-  month: "long",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  timeZone: "America/Los_Angeles",
-  timeZoneName: "short",
-}).format(INFO_SESSION_STARTS_AT);
+import { GrantmakingMemberProgress } from "../components/projects/democratic-grantmaking-26/GrantmakingMemberProgress";
 
 const TASK_TITLE = "Choose between recipients of our $100,000 grant";
 
 const TASK_MINUTES = 15;
-
-const TASK_JOINED = 211;
-
-const TASK_REQUIRED = 1000;
-
-export function InfoSessionButton() {
-  return (
-    <Button
-      color={ButtonColor.White}
-      className="h-auto w-full justify-start gap-3 py-3 whitespace-normal"
-      onClick={() => window.open(INFO_SESSION_HREF, "_blank", "noreferrer")}
-    >
-      <Calendar className="size-4 shrink-0" aria-hidden />
-      <span className="flex flex-col items-start gap-0.5 text-left leading-snug">
-        <span>Come to our next info session</span>
-        <span className="font-normal text-[var(--site-ink)]/55">
-          {INFO_SESSION_WHEN}
-        </span>
-      </span>
-    </Button>
-  );
-}
 
 /** A task from the grantmaking project, drawn the way the real task list draws one. */
 function GrantTaskMock() {
@@ -56,13 +18,6 @@ function GrantTaskMock() {
         <Clock className="size-3.5" aria-hidden />
         {TASK_MINUTES} minutes
       </p>
-      <div className="mt-4">
-        <p className="mb-1.5 text-sm text-zinc-600">
-          {TASK_JOINED.toLocaleString("en-US")} /{" "}
-          {TASK_REQUIRED.toLocaleString("en-US")} members required
-        </p>
-        <CompletedBar percentage={(TASK_JOINED / TASK_REQUIRED) * 100} />
-      </div>
     </div>
   );
 }
@@ -99,6 +54,7 @@ export function GrantmakingCard({ className }: { className?: string }) {
         <p className="mt-2 max-w-[33rem] leading-[1.35] text-white text-xl sm:text-2xl">
           Where should we donate $100,000?
         </p>
+        <GrantmakingMemberProgress className="mt-4 max-w-sm text-sm" />
       </div>
     </div>
   );
