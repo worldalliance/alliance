@@ -191,7 +191,7 @@ export class MailService {
       // Apple forwards to a Hide My Email relay only from senders registered
       // under Sign in with Apple for Email Communication in the developer
       // portal. Register a new address there before changing this one.
-      from: "Alliance <alliance@worldalliance.org>",
+      from: "Alliance <alliance@thealliance.org>",
       subject: subject ?? undefined,
       headers: {
         "o:tag": emailType,
