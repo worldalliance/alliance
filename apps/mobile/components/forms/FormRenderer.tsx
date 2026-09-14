@@ -127,6 +127,7 @@ type FormRendererProps = {
   onAbandonAction?: (withdrawal: ActionWithdrawal) => void;
   renderFormAsCompleted?: boolean;
   completedFormResponse?: FormResponseDto;
+  /** `null` without `renderFormAsCompleted` is a preview: editable, never submitted. */
   onSubmit: ((data: SubmitFormDto) => Promise<void>) | null;
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
@@ -638,7 +639,7 @@ const FormRenderer = ({
   scrollToEnd,
 }: FormRendererProps) => {
   const schema = form as unknown as FormSchema;
-  const readOnly = !!renderFormAsCompleted || !onSubmit;
+  const readOnly = !!renderFormAsCompleted;
 
   const storageKey = useMemo(
     () =>
@@ -966,10 +967,10 @@ const FormRenderer = ({
   };
 
   const handleSubmit = async () => {
-    if (submitting || readOnly || !onSubmit || imageUpload.uploadingAny) {
+    if (submitting || readOnly || imageUpload.uploadingAny) {
       return;
     }
-    if (formSnapshotId === null) {
+    if (onSubmit && formSnapshotId === null) {
       throw new Error(
         "FormRenderer: formSnapshotId is required when onSubmit is set",
       );
@@ -995,6 +996,11 @@ const FormRenderer = ({
         setCurrentPageIndex(firstInvalidPageIndex);
         setImmediate(() => scrollPageTo(0, false));
       }
+      setSubmitting(false);
+      return;
+    }
+
+    if (!onSubmit || formSnapshotId === null) {
       setSubmitting(false);
       return;
     }
@@ -1230,7 +1236,11 @@ const FormRenderer = ({
                       className="text-white text-base"
                       weight={FontWeight.Medium}
                     >
-                      {isLastPage ? "Complete" : "Next"}
+                      {isLastPage
+                        ? onSubmit
+                          ? "Complete"
+                          : "Complete (Preview Mode)"
+                        : "Next"}
                     </Text>
                   </>
                 )}
