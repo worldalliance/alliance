@@ -10,6 +10,7 @@ import { randomUUID } from "node:crypto";
 import { PostHog, setupExpressErrorHandler } from "posthog-node";
 import type { ServerOptions } from "socket.io";
 import { AppModule } from "./app.module";
+import { mailSendingEnabled } from "./mail/mail.service";
 import { MetricsInterceptor } from "./metrics";
 import { twilioSignatureEnforced } from "./mms/twilio-signature.guard";
 import { injectResponseSchemas } from "./openapi-errors";
@@ -35,6 +36,7 @@ function validateEnv() {
     "JWT_SECRET",
     "JWT_REFRESH_SECRET",
     ...(twilioSignatureEnforced() ? ["TWILIO_AUTH_TOKEN", "APP_URL"] : []),
+    ...(mailSendingEnabled() ? ["MAIL_FROM"] : []),
     ...deployedUrlVars(),
   ]);
 
