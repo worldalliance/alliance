@@ -15,11 +15,15 @@ import SettingsPage from "./SettingsPage";
 
 const me: UserDto = { ...testAuthUser, phoneNumber: null };
 let seedings = 0;
+let meFails = false;
 
 serveApi(
   routes({
     "GET /auth/me": () => {
       seedings += 1;
+      if (meFails) {
+        return Response.json({ message: "down" }, { status: 500 });
+      }
       return Response.json({ user: me });
     },
     "GET /user/mylocation": () => Response.json({ city: null }),
@@ -29,13 +33,14 @@ serveApi(
 afterEach(() => {
   cleanup();
   seedings = 0;
+  meFails = false;
 });
 
 const noop = () => Promise.resolve();
 
-const settings = (user: UserDto) => {
+const settings = (user: UserDto | undefined) => {
   const auth: AuthContextType = {
-    isAuthenticated: true,
+    isAuthenticated: user !== undefined,
     user,
     isImpersonation: false,
     refreshUser: noop,
@@ -76,4 +81,20 @@ it("keeps what the member typed when the auth user is refreshed", async () => {
       .value,
   ).toBe(typed);
   expect(seedings).toBe(1);
+});
+
+it("says the settings failed to load when the profile load fails", async () => {
+  meFails = true;
+  render(settings(me));
+
+  expect(await screen.findByText("Couldn't load your settings.")).toBeTruthy();
+});
+
+it("does not say the settings failed to load on logout", async () => {
+  const { rerender } = render(settings(me));
+  await screen.findByPlaceholderText("Enter phone number");
+
+  rerender(settings(undefined));
+
+  expect(screen.queryByText("Couldn't load your settings.")).toBeNull();
 });

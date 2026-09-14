@@ -132,10 +132,17 @@ export default function SettingsPage() {
     );
   }
 
-  if (!user || !editableUser) {
+  // Logout clears the user before the page goes away.
+  if (!user) {
+    return null;
+  }
+
+  if (!editableUser) {
     return (
       <View className="flex-1 bg-white p-4">
-        <Text className="text-center text-zinc-500">Not found</Text>
+        <Text className="text-center text-zinc-500">
+          Couldn&apos;t load your settings.
+        </Text>
       </View>
     );
   }

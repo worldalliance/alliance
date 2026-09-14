@@ -155,8 +155,13 @@ const SettingsPage: React.FC = () => {
     );
   }
 
-  if (!user || !editableUser) {
-    return <div>Not found</div>;
+  // Logout clears the user before the page goes away.
+  if (!user) {
+    return null;
+  }
+
+  if (!editableUser) {
+    return <div>Couldn&apos;t load your settings.</div>;
   }
 
   return (
