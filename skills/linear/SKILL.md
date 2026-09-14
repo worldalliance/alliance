@@ -24,4 +24,3 @@ Write the description so the bug can be fixed from it alone, weeks later: repro,
 ## Closing an issue
 
 The GitHub integration is live: a commit on `main` whose message contains `Fixes ALL-XXXX` auto-completes the issue, and a branch name containing the key (`all-XXXX-…`) moves it to In Progress.
-
