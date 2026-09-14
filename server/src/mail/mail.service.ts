@@ -1,4 +1,5 @@
 import { withCount } from "@alliance/common/plural";
+import { R } from "@alliance/common/result";
 import { ISendMailOptions, MailerService } from "@nestjs-modules/mailer";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -9,6 +10,14 @@ import { groupMembersListUrl, tasksUrl, withCid } from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "src/utils/Repository";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
+
+export function mailSendingEnabled(): boolean {
+  return (
+    process.env.NODE_ENV !== "test" &&
+    (process.env.NODE_ENV === "production" ||
+      process.env.SEND_DEV_NOTIFS === "1")
+  );
+}
 
 function interpretEscapes(s: string): string {
   return s
@@ -171,14 +180,16 @@ export class MailService {
       cid,
     });
 
-    if (
-      process.env.NODE_ENV === "test" ||
-      !(
-        process.env.NODE_ENV === "production" ||
-        process.env.SEND_DEV_NOTIFS === "1"
-      )
-    ) {
+    if (!mailSendingEnabled()) {
       return await this.mailRepository.save(mail);
+    }
+
+    // Apple forwards to a Hide My Email relay only from senders registered
+    // under Sign in with Apple for Email Communication in the developer
+    // portal. Register a new address there before changing MAIL_FROM.
+    const from = process.env.MAIL_FROM;
+    if (!from) {
+      throw new Error("MAIL_FROM is unset");
     }
 
     const tag =
@@ -186,22 +197,30 @@ export class MailService {
 
     const html = await this.renderHtml(emailType, context);
 
-    const e = await this.mailerService.sendMail({
-      to: recipient,
-      // Apple forwards to a Hide My Email relay only from senders registered
-      // under Sign in with Apple for Email Communication in the developer
-      // portal. Register a new address there before changing this one.
-      from: "Alliance <alliance@thealliance.org>",
-      subject: subject ?? undefined,
-      headers: {
-        "o:tag": emailType,
-        "X-Mailgun-Tag": tag,
-      },
-      html,
-    });
+    mail.renderedHtml = html;
+    await this.mailRepository.save(mail);
 
-    const accepted = e.accepted as string[];
-    const messageId = e.messageId as string;
+    const sent = await R.fromPromise(
+      this.mailerService.sendMail({
+        to: recipient,
+        from,
+        subject: subject ?? undefined,
+        headers: {
+          "o:tag": emailType,
+          "X-Mailgun-Tag": tag,
+        },
+        html,
+      }),
+    );
+
+    if (!sent.ok) {
+      mail.status = EmailStatus.Failed;
+      await this.mailRepository.save(mail);
+      throw sent.error;
+    }
+
+    const accepted = sent.value.accepted as string[];
+    const messageId = sent.value.messageId as string;
 
     if (accepted.length > 0) {
       mail.status = EmailStatus.Sent;
@@ -209,7 +228,6 @@ export class MailService {
       mail.status = EmailStatus.Failed;
     }
     mail.sentMessageId = messageId;
-    mail.renderedHtml = html;
     return this.mailRepository.save(mail);
   }
 

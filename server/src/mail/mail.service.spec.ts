@@ -1,6 +1,10 @@
+import { MailerService } from "@nestjs-modules/mailer";
+import { Test } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
 import { Action } from "src/actions/entities/action.entity";
 import { User } from "src/user/entities/user.entity";
-import { processKeywordReplacements } from "./mail.service";
+import { EmailStatus, EmailType, Mail } from "./mail.entity";
+import { MailService, processKeywordReplacements } from "./mail.service";
 
 describe("processKeywordReplacements", () => {
   let originalAppUrl: string | undefined;
@@ -183,5 +187,88 @@ describe("processKeywordReplacements", () => {
       );
       expect(result).toBe(`Hi Jane,\n1 task`);
     });
+  });
+});
+
+describe("sendMail", () => {
+  const originalEnv = { ...process.env };
+
+  async function harness(
+    sendMail: () => Promise<{ accepted: string[]; messageId: string }>,
+  ) {
+    const saves: Mail[] = [];
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        MailService,
+        { provide: MailerService, useValue: { sendMail } },
+        {
+          provide: getRepositoryToken(Mail),
+          useValue: {
+            create: (mail: Partial<Mail>) => ({ ...mail }),
+            save: (mail: Mail) => {
+              saves.push({ ...mail });
+              return Promise.resolve(mail);
+            },
+          },
+        },
+      ],
+    }).compile();
+
+    return { service: moduleRef.get(MailService), saves };
+  }
+
+  const send = (service: MailService) =>
+    service.sendMail({
+      recipient: "member@privaterelay.appleid.com",
+      emailType: EmailType.Welcome,
+      subject: "Welcome to the Alliance",
+      context: { name: "Jane", url: "https://example.org/verify" },
+      cid: null,
+    });
+
+  beforeEach(() => {
+    process.env.NODE_ENV = "production";
+    process.env.MAIL_FROM = "Alliance <alliance@thealliance.org>";
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  it("records a failed Mail row when the transport rejects", async () => {
+    const rejection = new Error("550 sender domain not allowed");
+    const { service, saves } = await harness(() => Promise.reject(rejection));
+
+    await expect(send(service)).rejects.toThrow(rejection);
+
+    expect(saves.at(-1)?.status).toBe(EmailStatus.Failed);
+    expect(saves.at(-1)?.to).toBe("member@privaterelay.appleid.com");
+  });
+
+  it("sends from MAIL_FROM and records the message id", async () => {
+    const { service, saves } = await harness(() =>
+      Promise.resolve({
+        accepted: ["member@privaterelay.appleid.com"],
+        messageId: "<abc@mg>",
+      }),
+    );
+
+    const mail = await send(service);
+
+    expect(mail.status).toBe(EmailStatus.Sent);
+    expect(mail.sentMessageId).toBe("<abc@mg>");
+    expect(saves[0].status).toBe(EmailStatus.Pending);
+  });
+
+  it("refuses to send when MAIL_FROM is unset", async () => {
+    delete process.env.MAIL_FROM;
+    let attempted = false;
+    const { service } = await harness(() => {
+      attempted = true;
+      return Promise.resolve({ accepted: [], messageId: "" });
+    });
+
+    await expect(send(service)).rejects.toThrow("MAIL_FROM is unset");
+    expect(attempted).toBe(false);
   });
 });
