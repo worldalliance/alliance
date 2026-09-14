@@ -50,6 +50,8 @@ function makeAction(
     onboarding: false,
     optional: false,
     preventCompletion: false,
+    staffPreview: false,
+    archived: false,
     ...overrides,
     events,
     memberActionPhase: memberActionPhase(events),
@@ -77,11 +79,14 @@ const AWAY_AROUND_NOW = [
 ];
 
 function makeUser(
-  overrides: Partial<Pick<User, "contractEvents" | "awayRanges">> = {},
+  overrides: Partial<
+    Pick<User, "contractEvents" | "awayRanges" | "staff">
+  > = {},
 ): ResolveParams["user"] {
   return new User({
     contractEvents: [signed(LONG_BEFORE)],
     awayRanges: [],
+    staff: false,
     ...overrides,
   });
 }
@@ -137,6 +142,7 @@ describe("resolveUserActionStatus", () => {
       memberActionStarted: true,
       deadlineAt: DEADLINE,
       deadlinePassed: false,
+      staffPreview: false,
       display: UserActionRelationPillStatus.Todo,
     });
   });
@@ -319,6 +325,63 @@ describe("resolveUserActionStatus", () => {
     expect(status.memberActionStarted).toBe(false);
     expect(status.assigned).toBe(true);
     expect(status.canComplete).toBe(true);
+  });
+});
+
+describe("resolveUserActionStatus staffPreview", () => {
+  const upcoming = makeEvents({
+    start: new Date(NOW.getTime() + millisecondsInDay),
+  });
+
+  it("is set for staff before the member_action event starts", () => {
+    const status = resolve({
+      action: makeAction({ staffPreview: true, events: upcoming }),
+      user: makeUser({ staff: true }),
+    });
+    expect(status.staffPreview).toBe(true);
+  });
+
+  it("is set for staff when no member_action event is scheduled", () => {
+    const status = resolve({
+      action: makeAction({ staffPreview: true, events: [] }),
+      user: makeUser({ staff: true }),
+    });
+    expect(status.staffPreview).toBe(true);
+  });
+
+  it("is unset for non-staff viewers", () => {
+    const status = resolve({
+      action: makeAction({ staffPreview: true, events: upcoming }),
+    });
+    expect(status.staffPreview).toBe(false);
+  });
+
+  it("is unset once the member_action event starts, with the toggle still on", () => {
+    const status = resolve({
+      action: makeAction({ staffPreview: true }),
+      user: makeUser({ staff: true }),
+    });
+    expect(status.staffPreview).toBe(false);
+  });
+
+  it("is unset for archived actions", () => {
+    const status = resolve({
+      action: makeAction({
+        staffPreview: true,
+        archived: true,
+        events: upcoming,
+      }),
+      user: makeUser({ staff: true }),
+    });
+    expect(status.staffPreview).toBe(false);
+  });
+
+  it("is unset with the toggle off", () => {
+    const status = resolve({
+      action: makeAction({ events: upcoming }),
+      user: makeUser({ staff: true }),
+    });
+    expect(status.staffPreview).toBe(false);
   });
 });
 

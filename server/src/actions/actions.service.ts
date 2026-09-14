@@ -217,7 +217,10 @@ import {
   ReminderGroupTimingMode,
 } from "./entities/reminder-group.entity";
 import { SCHEMA_WRITE_TARGETS } from "./schema-write-target";
-import { assertNotInStaffPreview } from "./staff-preview";
+import {
+  assertNotInStaffPreview,
+  isStaffPreviewActiveFor,
+} from "./staff-preview";
 import { resolveUserActionPillStatus } from "./user-action-pill-status";
 import {
   computeCanCompleteAction,
@@ -1005,7 +1008,13 @@ export class ActionsService {
     if (user?.admin) {
       return true;
     }
-    if (action.status === ActionStatus.Draft || action.archived) {
+    if (action.archived) {
+      return false;
+    }
+    if (user && isStaffPreviewActiveFor({ user, action, now: new Date() })) {
+      return true;
+    }
+    if (action.status === ActionStatus.Draft) {
       return false;
     }
     if (action.visibilityMode === VisibilityMode.Public) {

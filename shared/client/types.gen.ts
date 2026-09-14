@@ -443,7 +443,7 @@ export type Action = {
      */
     preventCompletion: boolean;
     /**
-     * Refuse participation writes until the action's member_action event starts
+     * Show the action to all staff until its member_action event starts, refusing participation writes until then
      */
     staffPreview: boolean;
     /**
@@ -2035,6 +2035,7 @@ export type UserActionStatusDto = {
     memberActionStarted: boolean;
     deadlineAt: string | null;
     deadlinePassed: boolean;
+    staffPreview: boolean;
     display: UserActionRelationPillStatus;
 };
 
@@ -3075,7 +3076,7 @@ export type ExportActionDto = {
      */
     preventCompletion: boolean;
     /**
-     * Refuse participation writes until the action's member_action event starts
+     * Show the action to all staff until its member_action event starts, refusing participation writes until then
      */
     staffPreview: boolean;
     /**

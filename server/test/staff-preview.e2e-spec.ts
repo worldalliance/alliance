@@ -24,9 +24,11 @@ import { TasksModule } from "src/tasks/tasks.module";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
+import type { ActionDto } from "../src/actions/dto/action.dto";
 import {
   createFormWithSnapshot,
   createTestApp,
+  giveActiveContract,
   signAccessToken,
   type TestContext,
 } from "./e2e-test-utils";
@@ -116,6 +118,17 @@ describe("Staff preview (e2e)", () => {
     offsetMs: -milliseconds({ hours: 1 }),
   };
 
+  const findInList = async (
+    token: string,
+    actionId: number,
+  ): Promise<ActionDto | undefined> => {
+    const res = await request(server())
+      .get("/actions/loggedIn")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    return (res.body as ActionDto[]).find((a) => a.id === actionId);
+  };
+
   beforeAll(async () => {
     ctx = await createTestApp([TasksModule]);
     actionRepo = ctx.dataSource.getRepository(Action);
@@ -144,6 +157,214 @@ describe("Staff preview (e2e)", () => {
     await ctx.app.close();
   });
 
+  describe("visibility", () => {
+    it("lists a draft action in preview for staff, marked as a preview", async () => {
+      const action = await createAction({
+        name: "Draft preview",
+        staffPreview: true,
+        events: [futureMemberAction],
+      });
+
+      const listed = await findInList(staffToken, action.id);
+
+      expect(listed?.viewer?.staffPreview).toBe(true);
+    });
+
+    it("lists a cohort-restricted action in preview for staff outside the cohort", async () => {
+      const action = await createAction({
+        name: "Cohort preview",
+        staffPreview: true,
+        events: [pastPlanned, futureMemberAction],
+        overrides: { visibilityMode: VisibilityMode.ParticipatingGroups },
+      });
+      const userRepo = ctx.dataSource.getRepository(User);
+      const outsider = await userRepo.save(
+        userRepo.create({
+          email: "outsider@example.com",
+          password: "pass",
+          name: "Outside Cohort",
+        }),
+      );
+
+      const staffView = await findInList(staffToken, action.id);
+
+      expect(staffView?.viewer?.staffPreview).toBe(true);
+      expect(
+        await findInList(signAccessToken(ctx.jwtService, outsider), action.id),
+      ).toBeUndefined();
+    });
+
+    it("hides a draft action in preview from non-staff members", async () => {
+      const action = await createAction({
+        name: "Draft preview hidden",
+        staffPreview: true,
+        events: [futureMemberAction],
+      });
+
+      expect(await findInList(ctx.accessToken, action.id)).toBeUndefined();
+      await request(server())
+        .get(`/actions/slug/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(404);
+      await request(server()).get(`/actions/slug/${action.id}`).expect(404);
+    });
+
+    it("keeps a share link from opening a draft preview for non-staff", async () => {
+      const action = await createAction({
+        name: "Draft preview shared",
+        staffPreview: true,
+        events: [futureMemberAction],
+      });
+
+      const code = await request(server())
+        .post(`/actions/${action.id}/referralCode`)
+        .set("Authorization", `Bearer ${staffToken}`)
+        .expect(201);
+
+      await request(server())
+        .get(`/actions/${action.id}/sharePreview`)
+        .query({ sid: code.body.referralCode })
+        .expect(404);
+      await request(server())
+        .get(`/actions/slug/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(404);
+    });
+
+    it("does not mark the preview for admins who are not staff", async () => {
+      const action = await createAction({
+        name: "Draft preview admin",
+        staffPreview: true,
+        events: [futureMemberAction],
+      });
+
+      const listed = await findInList(ctx.adminAccessToken, action.id);
+
+      expect(listed?.viewer?.staffPreview).toBe(false);
+    });
+
+    it("marks the preview on the single-action endpoint for staff", async () => {
+      const action = await createAction({
+        name: "Draft preview single",
+        staffPreview: true,
+        events: [futureMemberAction],
+      });
+
+      const res = await request(server())
+        .get(`/actions/slug/${action.id}`)
+        .set("Authorization", `Bearer ${staffToken}`)
+        .expect(200);
+
+      expect(res.body.viewer.staffPreview).toBe(true);
+    });
+
+    it("keeps a draft action with preview off hidden from staff", async () => {
+      const action = await createAction({
+        name: "Draft no preview",
+        staffPreview: false,
+        events: [futureMemberAction],
+      });
+
+      expect(await findInList(staffToken, action.id)).toBeUndefined();
+    });
+
+    it("drops the preview once the member_action event starts, with the toggle still on", async () => {
+      const action = await createAction({
+        name: "Launched with preview on",
+        staffPreview: true,
+        events: [pastMemberAction],
+      });
+
+      const staffView = await findInList(staffToken, action.id);
+      const memberView = await findInList(ctx.accessToken, action.id);
+
+      expect(staffView?.viewer?.staffPreview).toBe(false);
+      expect(staffView?.viewer?.canComplete).toBe(false);
+      expect(memberView?.viewer?.staffPreview).toBe(false);
+      expect(memberView?.viewer?.canComplete).toBe(true);
+    });
+
+    it("hides a launched cohort-restricted action from staff outside the cohort, with the toggle still on", async () => {
+      const action = await createAction({
+        name: "Launched cohort preview",
+        staffPreview: true,
+        events: [pastMemberAction],
+        overrides: { visibilityMode: VisibilityMode.ParticipatingGroups },
+      });
+
+      expect(await findInList(staffToken, action.id)).toBeUndefined();
+      await request(server())
+        .get(`/actions/slug/${action.id}`)
+        .set("Authorization", `Bearer ${staffToken}`)
+        .expect(404);
+    });
+
+    it("drops the preview for archived actions", async () => {
+      const action = await createAction({
+        name: "Archived preview",
+        staffPreview: true,
+        events: [futureMemberAction],
+        overrides: { archived: true },
+      });
+
+      expect(await findInList(staffToken, action.id)).toBeUndefined();
+    });
+
+    it("does not mark an archived action as a preview for admins who are staff", async () => {
+      const action = await createAction({
+        name: "Archived preview admin staff",
+        staffPreview: true,
+        events: [futureMemberAction],
+        overrides: { archived: true },
+      });
+      const userRepo = ctx.dataSource.getRepository(User);
+      const adminStaff = await userRepo.save(
+        userRepo.create({
+          email: "admin-staff@example.com",
+          password: "pass",
+          name: "Admin Staff",
+          staff: true,
+          admin: true,
+        }),
+      );
+
+      const listed = await findInList(
+        signAccessToken(ctx.jwtService, adminStaff),
+        action.id,
+      );
+
+      expect(listed?.viewer?.staffPreview).toBe(false);
+    });
+
+    it("leaves a draft in preview out of reminder task lists for staff in the cohort", async () => {
+      const action = await createAction({
+        name: "Draft preview reminder",
+        staffPreview: true,
+        events: [futureMemberAction],
+      });
+      const userRepo = ctx.dataSource.getRepository(User);
+      const cohortStaff = await userRepo.save(
+        userRepo.create({
+          email: "cohort-staff@example.com",
+          password: "pass",
+          name: "Cohort Staff",
+          staff: true,
+          tags: [ctx.defaultTag],
+        }),
+      );
+      await giveActiveContract(ctx, cohortStaff.id);
+
+      const listed = await findInList(
+        signAccessToken(ctx.jwtService, cohortStaff),
+        action.id,
+      );
+      const tasks = await actionsService.findUncompletedTasks(cohortStaff.id);
+
+      expect(listed?.viewer?.staffPreview).toBe(true);
+      expect(tasks.map((task) => task.id)).not.toContain(action.id);
+    });
+  });
+
   describe("writes during preview", () => {
     it("refuses completion", async () => {
       const action = await createAction({
@@ -166,7 +387,7 @@ describe("Staff preview (e2e)", () => {
       const action = await createAction({
         name: "Preview dismiss",
         staffPreview: true,
-        events: [pastPlanned, futureMemberAction],
+        events: [futureMemberAction],
       });
 
       await request(server())
@@ -318,7 +539,7 @@ describe("Staff preview (e2e)", () => {
       const action = await createAction({
         name: "Preview share",
         staffPreview: true,
-        events: [pastPlanned, futureMemberAction],
+        events: [futureMemberAction],
       });
 
       await request(server())

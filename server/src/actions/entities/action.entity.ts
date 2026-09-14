@@ -234,7 +234,7 @@ export class Action {
   @Column({ default: false })
   @ApiProperty({
     description:
-      "Refuse participation writes until the action's member_action event starts",
+      "Show the action to all staff until its member_action event starts, refusing participation writes until then",
   })
   @Allow()
   staffPreview: boolean;
