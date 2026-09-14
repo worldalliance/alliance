@@ -14,6 +14,7 @@ export function makeViewer(
   return {
     assigned: true,
     optional: false,
+    optionalReason: null,
     canComplete: true,
     relation: "none",
     dismissed: false,

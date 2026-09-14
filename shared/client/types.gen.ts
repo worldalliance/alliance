@@ -2010,6 +2010,8 @@ export type UserActionRelation = 'completed' | 'none' | 'declined' | 'dismissed'
 
 export type TaskAwayStatus = 'away_previously' | 'away_currently' | 'away_later' | 'not_away';
 
+export type ViewerOptionalReason = 'contract_gap';
+
 export type ViewerActionRelation = 'completed' | 'withdrawn' | 'none';
 
 export type WithdrawalOption = 'out_of_time' | 'moral' | 'other';
@@ -2024,6 +2026,7 @@ export type UserActionRelationPillStatus = 'away' | 'completed' | 'missed_deadli
 export type UserActionStatusDto = {
     assigned: boolean;
     optional: boolean;
+    optionalReason: ViewerOptionalReason | null;
     canComplete: boolean;
     relation: ViewerActionRelation;
     withdrawal?: UserActionWithdrawalDto;
