@@ -17,6 +17,6 @@ export function isLastWayIn(
   );
 }
 
-/** Why the disconnect is refused. Settings puts a reset above it. */
+/** Why the disconnect is refused. Both settings screens put a reset above it. */
 export const lastWayInNotice = (provider: OAuthProvider): string =>
   `${OAUTH_PROVIDER_LABEL[provider]} is the only way into your account right now. Send yourself a reset link above to set a password first.`;
