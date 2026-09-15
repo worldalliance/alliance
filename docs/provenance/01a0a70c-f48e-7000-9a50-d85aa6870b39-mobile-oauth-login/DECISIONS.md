@@ -12,6 +12,7 @@
 ## Server
 
 - A new `OAuthAuthService.signIn` holds the "existing provider identity, else matching verified email" half of `authenticate`. `authenticate` calls it and then creates an account when there is an invite. The mobile endpoints only call `signIn`, so no mobile path can reach account creation.
+- `authenticate` creates an account whenever the state carries a referral code that resolves, which is a one-time invite, a campaign code, or a member's referral link. That is the web signup rule already, and REQUIREMENTS.md's "requires an invite" is read as "requires one of those" rather than as a narrowing of the web flow. The e2e test pins the one-time invite case, including that the invite is spent.
 - `POST /auth/:provider/native` takes a native id token and answers with tokens or an `OAuthError` in a 200 body. No account, an unverified email, and a conflict are outcomes the app branches on, and the generated client throws on non-2xx.
 - The browser fallback reuses the web callback:
   - `POST /auth/:provider/native/browser` mints the proof and returns it with the consent URL. The state records `origin: app`.
