@@ -60,11 +60,6 @@ export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_requ
 
 export type NotifPriority = 'low' | 'high';
 
-/**
- * Type of the action
- */
-export type ActionTaskType = 'Funding' | 'Activity';
-
 export type VisibilityMode = 'public' | 'all_members' | 'participating_groups';
 
 export type CustomActionStat = 'none' | 'users_invited';
@@ -381,10 +376,6 @@ export type Action = {
      */
     squareThumbnailImageAlt?: string;
     /**
-     * Suggested donation amount (cents)
-     */
-    donationAmount?: number;
-    /**
      * markdown page body
      */
     body: string;
@@ -396,10 +387,6 @@ export type Action = {
      * Time estimate in minutes
      */
     timeEstimate?: number;
-    /**
-     * Type of the action
-     */
-    type: ActionTaskType;
     /**
      * Form associated with the action
      */
@@ -2064,10 +2051,6 @@ export type ActionDto = {
      */
     squareThumbnailImageAlt?: string;
     /**
-     * Suggested donation amount (cents)
-     */
-    donationAmount?: number;
-    /**
      * markdown page body
      */
     body: string;
@@ -2079,10 +2062,6 @@ export type ActionDto = {
      * Time estimate in minutes
      */
     timeEstimate?: number;
-    /**
-     * Type of the action
-     */
-    type: ActionTaskType;
     /**
      * Form associated with the action
      */
@@ -2393,10 +2372,6 @@ export type AdminActionDto = {
      */
     squareThumbnailImageAlt?: string;
     /**
-     * Suggested donation amount (cents)
-     */
-    donationAmount?: number;
-    /**
      * markdown page body
      */
     body: string;
@@ -2408,10 +2383,6 @@ export type AdminActionDto = {
      * Time estimate in minutes
      */
     timeEstimate?: number;
-    /**
-     * Type of the action
-     */
-    type: ActionTaskType;
     /**
      * Form associated with the action
      */
@@ -2641,10 +2612,6 @@ export type CreateActionDto = {
      */
     squareThumbnailImageAlt?: string;
     /**
-     * Suggested donation amount (cents)
-     */
-    donationAmount?: number;
-    /**
      * markdown page body
      */
     body: string;
@@ -2656,10 +2623,6 @@ export type CreateActionDto = {
      * Time estimate in minutes
      */
     timeEstimate?: number;
-    /**
-     * Type of the action
-     */
-    type: ActionTaskType;
     /**
      * Form associated with the action
      */
@@ -2740,10 +2703,6 @@ export type UpdateActionDto = {
      */
     squareThumbnailImageAlt?: string;
     /**
-     * Suggested donation amount (cents)
-     */
-    donationAmount?: number;
-    /**
      * markdown page body
      */
     body?: string;
@@ -2755,10 +2714,6 @@ export type UpdateActionDto = {
      * Time estimate in minutes
      */
     timeEstimate?: number;
-    /**
-     * Type of the action
-     */
-    type?: ActionTaskType;
     /**
      * Form associated with the action
      */
@@ -3018,10 +2973,6 @@ export type ExportActionDto = {
      */
     squareThumbnailImageAlt?: string;
     /**
-     * Suggested donation amount (cents)
-     */
-    donationAmount?: number;
-    /**
      * markdown page body
      */
     body: string;
@@ -3033,10 +2984,6 @@ export type ExportActionDto = {
      * Time estimate in minutes
      */
     timeEstimate?: number;
-    /**
-     * Type of the action
-     */
-    type: ActionTaskType;
     /**
      * Form associated with the action
      */

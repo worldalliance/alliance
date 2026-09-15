@@ -398,11 +398,9 @@ export class ActionDto extends PickType(Action, [
   "image",
   "squareThumbnailImage",
   "squareThumbnailImageAlt",
-  "donationAmount",
   "body",
   "shortDescription",
   "timeEstimate",
-  "type",
   "taskFormId",
   "createdAt",
   "updatedAt",
@@ -487,11 +485,9 @@ export class ActionDto extends PickType(Action, [
       ? getImageSource(action.squareThumbnailImage)
       : undefined;
     this.squareThumbnailImageAlt = action.squareThumbnailImageAlt || undefined;
-    this.donationAmount = action.donationAmount;
     this.body = action.body;
     this.shortDescription = action.shortDescription;
     this.timeEstimate = action.timeEstimate;
-    this.type = action.type;
     this.taskFormId = action.taskFormId;
     this.createdAt = action.createdAt;
     this.updatedAt = action.updatedAt;
@@ -597,11 +593,9 @@ export class CreateActionDto extends IntersectionType(
     "image",
     "squareThumbnailImage",
     "squareThumbnailImageAlt",
-    "donationAmount",
     "body",
     "shortDescription",
     "timeEstimate",
-    "type",
     "taskFormId",
     "isContractSigningAction",
     "visibilityMode",

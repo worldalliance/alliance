@@ -21,7 +21,6 @@ function mockTask(
     ...fields,
     image: "",
     status: "member_action",
-    type: "Activity",
     visibilityMode: "public",
     isContractSigningAction: false,
     isForumParticipationAction: false,

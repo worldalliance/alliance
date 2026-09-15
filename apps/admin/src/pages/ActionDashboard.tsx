@@ -315,7 +315,6 @@ const ActionDashboard: React.FC = () => {
     shortDescription: "",
     visibilityMode: "public",
     isContractSigningAction: false,
-    type: "Activity",
     preventCompletion: false,
     staffPreview: false,
     taskFormId: undefined,
@@ -340,7 +339,6 @@ const ActionDashboard: React.FC = () => {
         timeEstimate: 0,
         shortDescription: "",
         visibilityMode: "public",
-        type: "Activity",
         preventCompletion: false,
         staffPreview: false,
         taskFormId: undefined,
@@ -603,27 +601,10 @@ const ActionDashboard: React.FC = () => {
       return;
     }
 
-    // Handle numeric fields
-    if (name === "donationThreshold" || name === "donationAmount") {
-      const numValue = value === "" ? null : parseFloat(value);
-      setForm((prev) => ({
-        ...prev,
-        [name]: numValue,
-      }));
-    } else {
-      setForm((prev) => {
-        const newForm = {
-          ...prev,
-          [name]: value,
-        };
-
-        if (name === "type" && value === "Funding") {
-          newForm.taskFormId = undefined;
-        }
-
-        return newForm;
-      });
-    }
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const { confirm } = useToast();

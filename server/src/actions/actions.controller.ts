@@ -147,7 +147,6 @@ export class ActionsController {
       distinctId: String(req.user.sub),
       properties: {
         actionId: id,
-        actionType: activity.action?.type,
         actionName: activity.action?.name,
       },
     });

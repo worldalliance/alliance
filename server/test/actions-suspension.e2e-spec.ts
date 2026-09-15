@@ -9,11 +9,7 @@ import {
   ActionStatus,
 } from "../src/actions/entities/action-event.entity";
 import { ActionSuite } from "../src/actions/entities/action-suite.entity";
-import {
-  Action,
-  ActionTaskType,
-  VisibilityMode,
-} from "../src/actions/entities/action.entity";
+import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
 import { ContractService } from "../src/contract/contract.service";
 import { ContractEventType } from "../src/user/entities/contract-event.entity";
 import { User } from "../src/user/entities/user.entity";
@@ -70,7 +66,6 @@ describe("findUsersToSuspend (e2e)", () => {
         },
         priority: options.priority,
         preventCompletion: false,
-        type: ActionTaskType.Activity,
       }),
     );
 
@@ -221,7 +216,6 @@ describe("findUsersToSuspend (e2e)", () => {
         visibilityMode: VisibilityMode.Public,
         priority: 0,
         preventCompletion: false,
-        type: ActionTaskType.Activity,
         cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
       }),
     );
@@ -298,7 +292,6 @@ describe("findUsersToSuspend (e2e)", () => {
         suite: optionalSuite,
         visibilityMode: VisibilityMode.Public,
         preventCompletion: false,
-        type: ActionTaskType.Activity,
         optional: true,
         cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
       }),

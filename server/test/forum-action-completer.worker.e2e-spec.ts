@@ -6,11 +6,7 @@ import {
   ActionEvent,
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
-import {
-  Action,
-  ActionTaskType,
-  VisibilityMode,
-} from "src/actions/entities/action.entity";
+import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import { ForumActionCompleterWorker } from "src/actions/forum-action-completer.worker";
 import {
   Comment,
@@ -186,7 +182,6 @@ describe("ForumActionCompleterWorker (e2e)", () => {
         category: "Forum",
         body: "Action body",
         shortDescription: "Short description",
-        type: ActionTaskType.Activity,
         onboarding: true,
         shouldCompleteAfterDeadline: false,
         visibilityMode: VisibilityMode.Public,
@@ -344,7 +339,6 @@ describe("ForumActionCompleterWorker (e2e)", () => {
         category: "Forum",
         body: "Action body",
         shortDescription: "Short description",
-        type: ActionTaskType.Activity,
         shouldCompleteAfterDeadline: false,
         visibilityMode: VisibilityMode.Public,
         isForumParticipationAction: true,

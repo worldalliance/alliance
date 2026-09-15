@@ -19,7 +19,6 @@ export const testActions: ActionDto[] = [
     usersJoined: 234,
     shortDescription:
       "Gold mining companies are expressing interest in a highly biodiverse, unprotected area. We can outpace these companies by purchasing the land from the current owner, Susie.",
-    type: "Funding",
     usersCompleted: 157,
     events: [
       {
@@ -67,7 +66,6 @@ export const testActions: ActionDto[] = [
     usersJoined: 234,
     shortDescription:
       "Target has the power to stop millions of plastic bottles from polluting our planet. By applying pressure, we can make them stop stocking Coca-Cola single-use plastic bottles.",
-    type: "Activity",
     usersCompleted: 57,
     events: [],
 

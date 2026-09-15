@@ -15,7 +15,6 @@ const previewActions: ActionDto[] = [
   {
     ...testActions[0],
     id: 1,
-    type: "Activity",
     status: "member_action",
     usersCompleted: 157,
     events: [
@@ -32,9 +31,7 @@ const previewActions: ActionDto[] = [
   {
     ...testActions[1],
     id: 2,
-    type: "Funding",
     status: "member_action",
-    donationAmount: 1000,
     usersCompleted: 57,
     userRelation: "completed",
     events: [],

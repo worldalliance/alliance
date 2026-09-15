@@ -11,7 +11,7 @@ import {
 } from "src/actions/entities/action-event.entity";
 import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
 import { ActionSuite } from "src/actions/entities/action-suite.entity";
-import { Action, ActionTaskType } from "src/actions/entities/action.entity";
+import { Action } from "src/actions/entities/action.entity";
 import {
   ReminderCohortType,
   ReminderGroup,
@@ -168,7 +168,6 @@ describe("ActionEventNotifWorker (e2e)", () => {
         category: "Testing",
         body: "Body copy",
         shortDescription: "Short description",
-        type: ActionTaskType.Activity,
         suite,
         timeEstimate,
         cohortExpression: {
@@ -2750,7 +2749,6 @@ describe("ActionEventNotifWorker (e2e)", () => {
         category: "Testing",
         body: "Body copy",
         shortDescription: "Short description",
-        type: ActionTaskType.Activity,
         cohortExpression,
       }),
     );
@@ -2783,7 +2781,6 @@ describe("ActionEventNotifWorker (e2e)", () => {
         category: "Testing",
         body: "Body",
         shortDescription: "Short",
-        type: ActionTaskType.Activity,
       }),
     );
     await recordCompletion(user, prereqAction);

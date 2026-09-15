@@ -50,11 +50,6 @@ export enum CustomActionStat {
   USERS_INVITED = "users_invited",
 }
 
-export enum ActionTaskType {
-  Funding = "Funding", //giving money to a particular cause
-  Activity = "Activity", // one-time action taking a limited amount of time
-}
-
 export enum VisibilityMode {
   Public = "public",
   AllMembers = "all_members",
@@ -103,14 +98,6 @@ export class Action {
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   squareThumbnailImageAlt?: string;
 
-  @Column({ default: 500, nullable: true })
-  @ApiPropertyOptional({
-    description: "Suggested donation amount (cents)",
-  })
-  @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  donationAmount?: number;
-
   @Column()
   @ApiProperty({ description: "markdown page body" })
   @Allow()
@@ -127,19 +114,6 @@ export class Action {
   @IsOptional()
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   timeEstimate?: number;
-
-  @Column({
-    type: "enum",
-    enum: ActionTaskType,
-    default: ActionTaskType.Activity,
-  })
-  @ApiProperty({
-    description: "Type of the action",
-    enum: ActionTaskType,
-    enumName: "ActionTaskType",
-  })
-  @IsNotEmpty()
-  type: ActionTaskType;
 
   @Column({ nullable: true })
   @ApiPropertyOptional({ description: "Form associated with the action" })
