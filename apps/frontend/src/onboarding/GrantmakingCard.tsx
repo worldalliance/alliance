@@ -12,6 +12,11 @@ const TASK_MINUTES = 15;
 
 const TASK_START = "Project begins at 1,000 members";
 
+const CARD_HEADLINE = "Join the Alliance to unlock $100,000 for the world";
+
+const CARD_STANDFIRST =
+  "Philanthropists are committing funds toward a shared pool. At 1,000 members, we\u2019ll vote together on where it goes.";
+
 const TASK_BODY = [
   "We’re organizing a pilot of a democratic grantmaking process in which grants are made by combining expert beliefs and participant values. More specifically, we will elicit participant preferences over the expected result of various grants, as assessed by expert judgement.",
   "We aim to pilot an initial round of this process with >$100,000 committed and >1,000 participants. Pitches must relate to one of our four priorities: dangerous technologies, global poverty, democratic decline, and environmental destruction.",
@@ -62,7 +67,7 @@ export function GrantmakingCard({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "relative isolate flex flex-col items-center justify-center overflow-hidden p-7 text-left sm:p-9",
+        "relative isolate flex flex-col justify-between overflow-hidden p-7 text-left sm:p-9",
         className,
       )}
       style={{ borderRadius: "var(--site-radius-card)" }}
@@ -78,7 +83,18 @@ export function GrantmakingCard({ className }: { className?: string }) {
         aria-hidden
       />
 
-      <GrantTaskMock />
+      <div className="flex flex-1 items-center justify-center py-6">
+        <GrantTaskMock />
+      </div>
+
+      <div className="max-w-[33rem]">
+        <p className="text-xl leading-[1.35] text-white sm:text-2xl">
+          {CARD_HEADLINE}
+        </p>
+        <p className="mt-2 text-base text-white/70 md:text-lg">
+          {CARD_STANDFIRST}
+        </p>
+      </div>
     </div>
   );
 }

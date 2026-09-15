@@ -85,26 +85,42 @@ const Backdrop = memo(function Backdrop({ height }: { height: number }) {
   );
 });
 
-/**
- * iOS tears the keyboard down and puts it back up when focus moves between two
- * fields that ask for different keyboards, which is what the email and password
- * fields do. Committing to that hide dips the form and bounces it back, so a
- * hide only counts once no other field has claimed the keyboard.
- */
+/** Long enough for a tap on one field to land as focus on the next. */
 const FOCUS_SWAP_MS = 120;
 
+/**
+ * How far the keyboard covers the screen, ignoring what it does while focus is
+ * moving between fields.
+ *
+ * iOS swaps the keyboard rather than keeping it up when the next field asks for
+ * a different one, which the email and password fields do. That reports a hide
+ * and then a show, and obeying the hide dips the form and bounces it back. The
+ * fields say whether any of them still holds focus, so the tear-down is only
+ * believed once none of them does, and the inset only ever rises while one of
+ * them does. Between them the handover moves nothing at all.
+ */
 function useKeyboardInset() {
   const inset = useSharedValue(0);
+  const focusedFields = useRef(0);
 
   useEffect(() => {
     let collapse: ReturnType<typeof setTimeout> | undefined;
 
     const show = KeyboardEvents.addListener("keyboardWillShow", (event) => {
       clearTimeout(collapse);
-      inset.value = withTiming(event.height, { duration: event.duration });
+      // A swap can report a shorter keyboard than the one it replaced, when the
+      // two fields differ over an autofill bar. Holding the taller of the two
+      // leaves a little dead space under the form and moves nothing.
+      const height =
+        focusedFields.current > 0
+          ? Math.max(event.height, inset.value)
+          : event.height;
+      inset.value = withTiming(height, { duration: event.duration });
     });
     const hide = KeyboardEvents.addListener("keyboardWillHide", (event) => {
+      clearTimeout(collapse);
       collapse = setTimeout(() => {
+        if (focusedFields.current > 0) return;
         inset.value = withTiming(0, { duration: event.duration });
       }, FOCUS_SWAP_MS);
     });
@@ -116,7 +132,15 @@ function useKeyboardInset() {
     };
   }, [inset]);
 
-  return inset;
+  return {
+    inset,
+    onFieldFocus: () => {
+      focusedFields.current += 1;
+    },
+    onFieldBlur: () => {
+      focusedFields.current = Math.max(focusedFields.current - 1, 0);
+    },
+  };
 }
 
 /**
@@ -166,13 +190,13 @@ export function WelcomeGate({
   const insets = useSafeAreaInsets();
   const scale = useOnboardingScale();
   const viewportHeight = useViewportHeight();
-  const keyboardInset = useKeyboardInset();
+  const { inset, onFieldFocus, onFieldBlur } = useKeyboardInset();
 
   const padTop = insets.top + scale.gateTop;
   const padBottom = insets.bottom + 16;
   const contentStyle = useAnimatedStyle(() => ({
     paddingTop: padTop,
-    paddingBottom: padBottom + keyboardInset.value,
+    paddingBottom: padBottom + inset.value,
   }));
 
   return (
@@ -213,6 +237,8 @@ export function WelcomeGate({
           onForgotPassword={onForgotPassword}
           inviteUsed={inviteUsed}
           inviter={inviter}
+          onFieldFocus={onFieldFocus}
+          onFieldBlur={onFieldBlur}
         />
       </Animated.View>
     </View>

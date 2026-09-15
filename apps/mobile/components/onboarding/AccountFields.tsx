@@ -33,6 +33,8 @@ export function AccountFields({
   onForgotPassword,
   inviteUsed,
   inviter,
+  onFieldFocus,
+  onFieldBlur,
 }: {
   mode: AccountMode;
   email: string;
@@ -46,6 +48,9 @@ export function AccountFields({
   onForgotPassword: () => void;
   inviteUsed: boolean;
   inviter: ReferrerProfileDto | null;
+  /** Both fields report focus, so the keyboard handling can tell a swap from a dismissal. */
+  onFieldFocus: () => void;
+  onFieldBlur: () => void;
 }) {
   const scale = useOnboardingScale();
   const [showPassword, setShowPassword] = useState(false);
@@ -104,6 +109,8 @@ export function AccountFields({
             autoCorrect={false}
             autoFocus
             accessibilityLabel="Email"
+            onFocus={onFieldFocus}
+            onBlur={onFieldBlur}
           />
 
           <View className="flex-row items-center rounded-lg border border-white/40 bg-white/12 px-3.5">
@@ -119,6 +126,8 @@ export function AccountFields({
               autoCapitalize="none"
               autoCorrect={false}
               accessibilityLabel="Password"
+              onFocus={onFieldFocus}
+              onBlur={onFieldBlur}
             />
             <PasswordVisibilityToggle
               visible={showPassword}
