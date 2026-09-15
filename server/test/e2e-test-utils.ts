@@ -1,6 +1,6 @@
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import { MailerModule } from "@nestjs-modules/mailer";
-import { INestApplication, Type, ValidationPipe } from "@nestjs/common";
+import { INestApplication, Type } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { JwtService } from "@nestjs/jwt";
@@ -8,7 +8,6 @@ import type { NestExpressApplication } from "@nestjs/platform-express";
 import { Test, TestingModule } from "@nestjs/testing";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import cookieParser from "cookie-parser";
 import { accessTokenPayload } from "src/auth/tokens";
 import { Contract } from "src/contract/entities/contract.entity";
 import { testConnectionOptions } from "src/datasources/dataSourceTest";
@@ -26,9 +25,8 @@ import {
   ContractEventType,
 } from "src/user/entities/contract-event.entity";
 import { Tag } from "src/user/entities/tag.entity";
-import { configureBodyParsers } from "src/utils/body-parsers";
+import { configureApp } from "src/utils/configure-app";
 import { ALL_THROTTLERS } from "src/utils/throttle";
-import { VALIDATION_PIPE_OPTIONS } from "src/utils/validation-pipe-options";
 import supertest from "supertest";
 import TestAgent from "supertest/lib/agent";
 import { DataSource } from "typeorm";
@@ -103,9 +101,7 @@ export async function createTestApp(
   const app = moduleFixture.createNestApplication<NestExpressApplication>({
     bodyParser: false,
   });
-  configureBodyParsers(app);
-  app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE_OPTIONS));
-  app.use(cookieParser());
+  configureApp(app);
   await app.init();
 
   const dataSource = moduleFixture.get(DataSource);

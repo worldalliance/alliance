@@ -178,19 +178,16 @@ export const AuthProvider: React.FC<
 
         queryClient.clear();
 
-        const userProfile = await authMe();
-        if (!userProfile.data) {
+        const user = (await authMe()).data?.user;
+        if (!user) {
           throw new Error("Failed to fetch user profile");
         }
 
-        const user = userProfile.data?.user;
         setUser(user);
-        if (user) {
-          posthog?.identify(user.id.toString(), {
-            email: user.email,
-            name: user.name,
-          });
-        }
+        posthog?.identify(user.id.toString(), {
+          email: user.email,
+          name: user.name,
+        });
 
         if (!isVisualTestMode && navigateOnSuccess) {
           router.replace("/");

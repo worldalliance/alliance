@@ -91,6 +91,23 @@ describe("Auth (e2e)", () => {
     expect(body.refresh_token).toBeDefined();
   });
 
+  it("sends no ETag for a client to revalidate", async () => {
+    const user = await userRepository.save(
+      userRepository.create({
+        email: "revalidate@test.com",
+        password: "password",
+        name: "Revalidate",
+      }),
+    );
+
+    const response = await request(ctx.app.getHttpServer())
+      .get("/auth/me")
+      .set("Authorization", `Bearer ${signAccessToken(ctx.jwtService, user)}`)
+      .expect(200);
+
+    expect(response.headers.etag).toBeUndefined();
+  });
+
   describe("token refresh", () => {
     const login = async (
       email = "newusertest@test.com",

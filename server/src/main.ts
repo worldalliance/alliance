@@ -1,13 +1,11 @@
 import { devPorts, PortCaller } from "@alliance/common/dev-ports";
 import { GUEST_HEADER } from "@alliance/common/guest";
 import { currentNodeEnv, isDeployed } from "@alliance/common/node-env";
-import { ValidationPipe } from "@nestjs/common";
 import { HttpAdapterHost, NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { IoAdapter } from "@nestjs/platform-socket.io";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { useContainer } from "class-validator";
-import cookieParser from "cookie-parser";
 import { randomUUID } from "node:crypto";
 import { PostHog, setupExpressErrorHandler } from "posthog-node";
 import type { ServerOptions } from "socket.io";
@@ -16,11 +14,10 @@ import { MetricsInterceptor } from "./metrics";
 import { twilioSignatureEnforced } from "./mms/twilio-signature.guard";
 import { injectResponseSchemas } from "./openapi-errors";
 import { PosthogExceptionFilter } from "./posthog.filter";
-import { configureBodyParsers } from "./utils/body-parsers";
+import { configureApp } from "./utils/configure-app";
 import { socketCorsOrigins } from "./utils/cors-origins";
 import { requestContext } from "./utils/request-context";
 import { RouteContextGuard } from "./utils/request-context.guard";
-import { VALIDATION_PIPE_OPTIONS } from "./utils/validation-pipe-options";
 
 // Let validateNodeEnv report unknown values without treating them as deployed.
 function deployedUrlVars(): string[] {
@@ -106,8 +103,7 @@ async function bootstrap() {
     bodyParser: false,
   });
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
-  configureBodyParsers(app);
-  app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE_OPTIONS));
+  configureApp(app);
   app.useGlobalGuards(new RouteContextGuard());
   app.useGlobalInterceptors(new MetricsInterceptor());
   app.use((req, _res, next) => {
@@ -120,7 +116,6 @@ async function bootstrap() {
       () => next(),
     );
   });
-  app.use(cookieParser());
   app.enableCors({
     origin: true,
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
