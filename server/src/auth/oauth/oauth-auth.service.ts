@@ -158,21 +158,33 @@ export class OAuthAuthService {
 
     const byEmail = await this.usersService.findOneByEmail(profile.email);
     if (byEmail) {
-      const linked = await this.link({ userId: byEmail.id, profile });
-      if (!linked.ok) {
-        return linked;
+      const allowed = await this.linkable({ userId: byEmail.id, profile });
+      if (!allowed.ok) {
+        return allowed;
       }
       // A password on an account that never confirmed its address is nobody's
       // proven claim to it, and the provider just proved the address, so the
-      // account changes hands and the password goes with it. unlink() refuses
-      // a member's last way in, so this locks nobody out. A partial profile
+      // account changes hands and the password goes with it. A partial profile
       // from a payment finishes signing up here, as it does on the reset link.
       const takeover = byEmail.emailVerified
         ? {}
         : { password: null, isNotSignedUpPartialProfile: false };
-      await this.userRepository.update(byEmail.id, {
-        emailVerified: true,
-        ...takeover,
+      // The provider arrives and the password goes under the row lock unlink()
+      // takes, so a disconnect in between can't remove the only way left.
+      await this.userRepository.manager.transaction(async (manager) => {
+        await manager.getRepository(User).findOneOrFail({
+          where: { id: byEmail.id },
+          lock: { mode: "pessimistic_write" },
+        });
+        await this.saveAccount({
+          accounts: manager.getRepository(OAuthAccount),
+          userId: byEmail.id,
+          profile,
+        });
+        await manager.getRepository(User).update(byEmail.id, {
+          emailVerified: true,
+          ...takeover,
+        });
       });
       return R.success({
         user: await this.usersService.findOneOrFail(byEmail.id),
@@ -248,12 +260,24 @@ export class OAuthAuthService {
       return allowed;
     }
 
+    await this.saveAccount({
+      accounts: this.accountRepository,
+      userId: params.userId,
+      profile: params.profile,
+    });
+    return R.success(await this.usersService.findOneOrFail(params.userId));
+  }
+
+  private async saveAccount(params: {
+    accounts: Repository<OAuthAccount>;
+    userId: number;
+    profile: OAuthProfile;
+  }): Promise<void> {
     const { provider, subject, email } = params.profile;
-    await this.accountRepository.upsert(
+    await params.accounts.upsert(
       { userId: params.userId, provider, subject, email },
       ["userId", "provider"],
     );
-    return R.success(await this.usersService.findOneOrFail(params.userId));
   }
 
   async unlink(params: {

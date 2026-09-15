@@ -16,6 +16,7 @@ import { ReferralSource, User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import request from "supertest";
 import TestAgent from "supertest/lib/agent";
+import type { EntitySubscriberInterface, UpdateEvent } from "typeorm";
 import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
 
 const RETURN_TO = "http://localhost:5173/login";
@@ -367,6 +368,57 @@ describe("OAuth sign-in (e2e)", () => {
       expect(taken.emailVerified).toBe(true);
       // Whoever registered the address holds no way in once it changes hands.
       await login(squatted.email).expect(401);
+    });
+
+    // Whoever registered the address still holds a session, and the provider
+    // that just arrived is the account's only way in once the password goes.
+    it("keeps one way in when the old session disconnects mid-handover", async () => {
+      const squatted = await freshMember({ emailVerified: false });
+      profile = {
+        ...profile,
+        provider: OAuthProvider.Apple,
+        subject: `handover-${squatted.id}`,
+        email: squatted.email,
+      };
+
+      // Sends the disconnect as the password is about to go. Waiting on it
+      // outright would deadlock a handover that holds the member's row, so a
+      // disconnect that has not answered by then is left to finish after.
+      let disconnect: Promise<request.Response> | undefined;
+      const subscriber: EntitySubscriberInterface<User> = {
+        listenTo: () => User,
+        beforeUpdate: async (event: UpdateEvent<User>) => {
+          if (disconnect || event.entity?.password !== null) {
+            return;
+          }
+          disconnect = client()
+            .delete(path("link"))
+            .set("Authorization", `Bearer ${squatted.accessToken}`)
+            .then((res) => res);
+          await Promise.race([
+            disconnect,
+            new Promise((resolve) => setTimeout(resolve, 500)),
+          ]);
+        },
+      };
+      ctx.dataSource.subscribers.push(subscriber);
+      try {
+        const { finished } = await signIn();
+        expect(outcomeOf(finished.headers.location)).toBe(OAuthOutcome.Linked);
+      } finally {
+        ctx.dataSource.subscribers.splice(
+          ctx.dataSource.subscribers.indexOf(subscriber),
+          1,
+        );
+      }
+
+      expect((await disconnect)?.status).toBe(400);
+      const me = await client()
+        .get("/auth/me")
+        .set("Authorization", `Bearer ${squatted.accessToken}`)
+        .expect(200);
+      expect(me.body.user.hasPassword).toBe(false);
+      expect(linkedEmails(me.body.user)).toEqual({ apple: squatted.email });
     });
 
     it("leaves the password alone once the address is confirmed", async () => {
