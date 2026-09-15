@@ -422,7 +422,9 @@ export class UserService {
         contractEvents: true,
       },
     });
-    return users.filter((user) => user.hasActiveContract);
+    return users.filter(
+      (user) => user.hasActiveContract && user.profilePicture !== null,
+    );
   }
 
   async findStaffDirectory(): Promise<User[]> {
