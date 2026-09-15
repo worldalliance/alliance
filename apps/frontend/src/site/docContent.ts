@@ -345,7 +345,7 @@ Initial funding for the Alliance was provided by [Elizabeth Barnes](https://barn
   },
 ];
 
-export const PRIVACY_UPDATED = "Last updated 25 August 2025";
+export const PRIVACY_UPDATED = "Last updated 15 September 2026";
 
 export const PRIVACY_MARKDOWN = `
 Alliance Foundation ("Alliance," "we," "our," or "us") operates the Alliance Platform (the "Platform"). This privacy policy explains how our organization uses the personal data we collect from you when you use our website and services.
@@ -357,7 +357,6 @@ The Alliance collects the following data:
 - Personal identification information (name, email address, phone number)
 - Account information (username, password, account preferences)
 - Activity data related to your use of the Platform (actions joined, events created, preferences set)
-- Payment information (processed securely through Stripe, never stored directly by us)
 - Technical information (IP address, browser type, device information, approximate location)
 
 ## How do we collect your data?
@@ -377,7 +376,6 @@ Alliance collects your data so that we can:
 
 - Provide you access to and maintain your account.
 - Notify you about activities, events, and updates you have opted in to receive.
-- Process your payments.
 - Improve our services, analytics, and website functionality.
 - Enforce our Terms of Service and comply with applicable laws.
 
