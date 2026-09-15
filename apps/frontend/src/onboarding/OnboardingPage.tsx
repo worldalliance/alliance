@@ -1,6 +1,5 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { errorMessage } from "@alliance/common/errorMessage";
-import { OAuthOutcome } from "@alliance/common/oauth";
 import { R } from "@alliance/common/result";
 import {
   authMe,
@@ -91,7 +90,7 @@ const OnboardingPage = () => {
   useSiteBackground();
   const navigate = useNavigate();
   const location = useLocation();
-  const { onLogin, isAuthenticated, loading: authLoading } = useAuth();
+  const { onLogin, isAuthenticated, user, loading: authLoading } = useAuth();
   const { latestContract } = useContract();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -170,29 +169,33 @@ const OnboardingPage = () => {
 
   // A provider creates the account up front, so a new member rejoins the flow
   // at the story with registration already done and the agreement still owed.
+  //
+  // Which outcome fired does not say who came back: the provider returns
+  // `linked` rather than `signed_up` for any address that already has a user
+  // row, which is every invited member whose partial profile was pre-created.
+  // All three leave the member signed in, so the agreement is what decides
+  // where they belong.
   // Once only: the notice outlives the step change that rebuilds `goTo`.
   const oauthHandledRef = useRef(false);
   useEffect(() => {
     if (oauthNotice?.kind !== "outcome" || oauthHandledRef.current) return;
+    // The session the provider just set, rather than a fetch of our own: an
+    // await here would land `goTo` in a later tick than the notice's own strip
+    // of the URL, and the strip composes off the params it rendered with, so
+    // whichever settled last won and the step was dropped about a third of the
+    // time.
+    if (authLoading) return;
     oauthHandledRef.current = true;
-    switch (oauthNotice.outcome) {
-      case OAuthOutcome.SignedUp:
-        registeredRef.current = true;
-        clearDraft();
-        setSkipPanelMorph(true);
-        goTo(OnboardingStep.Community);
-        return;
-      case OAuthOutcome.SignedIn:
-        onLogin().then(() => navigate(redirectAfterLogin));
-        return;
-      case OAuthOutcome.Linked:
-        return;
-      default:
-        throw new Error(
-          `unknown oauth outcome: ${oauthNotice.outcome satisfies never}`,
-        );
+    registeredRef.current = true;
+    clearDraft();
+
+    if (user?.hasActiveContract) {
+      navigate(redirectAfterLogin);
+      return;
     }
-  }, [oauthNotice, goTo, onLogin, navigate, redirectAfterLogin]);
+    setSkipPanelMorph(true);
+    goTo(OnboardingStep.Community);
+  }, [oauthNotice, authLoading, user, goTo, navigate, redirectAfterLogin]);
 
   useEffect(() => {
     if (!referralCode) return;

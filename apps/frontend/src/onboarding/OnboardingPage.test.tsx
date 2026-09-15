@@ -26,6 +26,12 @@ serveApi(
   }),
 );
 
+/** The session the provider set by the time the page reads it. */
+const member = (hasActiveContract: boolean): UserDto => ({
+  ...testAuthUser,
+  hasActiveContract,
+});
+
 beforeEach(() => {
   // The landing body's player reaches for a YouTube thumbnail on render.
   jest.spyOn(ytEmbedModule, "default").mockImplementation(() => <></>);
@@ -57,9 +63,16 @@ const authValue = (user: UserDto | undefined): AuthContextType => ({
   loading: false,
 });
 
-const Search = () => <div data-testid="search">{useLocation().search}</div>;
+const Search = () => (
+  <>
+    <div data-testid="search">{useLocation().search}</div>
+    <div data-testid="pathname">{useLocation().pathname}</div>
+  </>
+);
 
 const search = () => screen.getByTestId("search").textContent ?? "";
+
+const pathname = () => screen.getByTestId("pathname").textContent ?? "";
 
 const step = () => new URLSearchParams(search()).get("step");
 
@@ -78,6 +91,27 @@ const visit = (url: string, user?: UserDto) => {
     </MemoryRouter>,
   );
 };
+
+// The provider returns `linked` rather than `signed_up` whenever a user row
+// already exists for the address, which is every invited member whose partial
+// profile was pre-created.
+test("a provider signup onto an existing record still enters the flow", async () => {
+  visit("/onboarding?google=linked", member(false));
+
+  await waitFor(() => expect(step()).toBe(OnboardingStep.Community));
+});
+
+test("a provider sign-in by someone who still owes the agreement enters the flow", async () => {
+  visit("/onboarding?google=signed_in", member(false));
+
+  await waitFor(() => expect(step()).toBe(OnboardingStep.Community));
+});
+
+test("a provider sign-in by a member who has entered it goes to the platform", async () => {
+  visit("/onboarding?google=signed_in", member(true));
+
+  await waitFor(() => expect(pathname()).toBe("/tasks"));
+});
 
 test("a provider signup walks on from the screen it lands on", async () => {
   visit("/onboarding?google=signed_up");
