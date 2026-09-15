@@ -63,7 +63,7 @@ export type NotifPriority = 'low' | 'high';
 /**
  * Type of the action
  */
-export type ActionTaskType = 'Funding' | 'Activity' | 'Ongoing';
+export type ActionTaskType = 'Funding' | 'Activity';
 
 export type VisibilityMode = 'public' | 'all_members' | 'participating_groups';
 
@@ -388,10 +388,6 @@ export type Action = {
      * markdown page body
      */
     body: string;
-    /**
-     * markdown contents for activity task card (instructions)
-     */
-    taskContents?: string;
     /**
      * Short description shown in cards
      */
@@ -2069,10 +2065,6 @@ export type ActionDto = {
      */
     body: string;
     /**
-     * markdown contents for activity task card (instructions)
-     */
-    taskContents?: string;
-    /**
      * Short description shown in cards
      */
     shortDescription: string;
@@ -2401,10 +2393,6 @@ export type AdminActionDto = {
      * markdown page body
      */
     body: string;
-    /**
-     * markdown contents for activity task card (instructions)
-     */
-    taskContents?: string;
     /**
      * Short description shown in cards
      */
@@ -3027,10 +3015,6 @@ export type ExportActionDto = {
      * markdown page body
      */
     body: string;
-    /**
-     * markdown contents for activity task card (instructions)
-     */
-    taskContents?: string;
     /**
      * Short description shown in cards
      */

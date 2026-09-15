@@ -387,7 +387,6 @@ export class ActionDto extends PickType(Action, [
   "squareThumbnailImageAlt",
   "donationAmount",
   "body",
-  "taskContents",
   "shortDescription",
   "timeEstimate",
   "type",
@@ -477,7 +476,6 @@ export class ActionDto extends PickType(Action, [
     this.squareThumbnailImageAlt = action.squareThumbnailImageAlt || undefined;
     this.donationAmount = action.donationAmount;
     this.body = action.body;
-    this.taskContents = action.taskContents;
     this.shortDescription = action.shortDescription;
     this.timeEstimate = action.timeEstimate;
     this.type = action.type;

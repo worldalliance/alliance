@@ -343,7 +343,6 @@ const ActionPageTaskPanel = () => {
           disabled={formDisabledByState}
           formResponse={effectiveFormResponse}
           guestMode={guestMode}
-          createAccountHref={guestMode ? (signupHref ?? undefined) : undefined}
           forceRenderTask={guestMode || formDisabledByState}
           redirectOnComplete={!guestMode}
           onFormSubmitted={

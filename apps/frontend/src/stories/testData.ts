@@ -196,12 +196,6 @@ export const testTodoActions: ActionDto[] = [
     ...testActions[1],
     status: "member_action",
   },
-  {
-    ...testActions[1],
-    status: "member_action",
-    type: "Ongoing",
-    name: "Stop buying from Coca-Cola",
-  },
 ];
 
 export const testNotJoinedActions: ActionDto[] = [

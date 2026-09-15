@@ -156,7 +156,6 @@ const ActionForm: React.FC<ActionFormProps> = ({
     () => [
       { value: "Activity", label: "Activity" },
       { value: "Funding", label: "Funding" },
-      { value: "Ongoing", label: "Ongoing" },
     ],
     [],
   );

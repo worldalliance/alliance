@@ -48,7 +48,6 @@ describe("Search (e2e)", () => {
         category: "Environment",
         body: "Clean the neighbourhood park",
         shortDescription: "Cleanup day",
-        taskContents: "Bring gloves",
       }),
     );
 

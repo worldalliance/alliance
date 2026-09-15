@@ -53,7 +53,6 @@ describe("Share URLs (e2e)", () => {
         name: "Share URL Test Action",
         category: "Test",
         body: "body",
-        taskContents: "task",
         shortDescription: "short",
         visibilityMode: VisibilityMode.Public,
         cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },

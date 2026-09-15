@@ -53,7 +53,6 @@ export enum CustomActionStat {
 export enum ActionTaskType {
   Funding = "Funding", //giving money to a particular cause
   Activity = "Activity", // one-time action taking a limited amount of time
-  Ongoing = "Ongoing", // ongoing or recurring behavior change
 }
 
 export enum VisibilityMode {
@@ -116,14 +115,6 @@ export class Action {
   @ApiProperty({ description: "markdown page body" })
   @Allow()
   body: string;
-
-  @Column({ nullable: true })
-  @ApiPropertyOptional({
-    description: "markdown contents for activity task card (instructions)",
-  })
-  @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  taskContents?: string;
 
   @Column({ nullable: true })
   @ApiProperty({ description: "Short description shown in cards" })

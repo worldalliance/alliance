@@ -92,7 +92,6 @@ describe("Actions (e2e)", () => {
         name,
         category: "Test",
         body: "Body copy",
-        taskContents: "Task copy",
         shortDescription: `${name} short description`,
         visibilityMode: VisibilityMode.Public,
         cohortExpression: {
@@ -141,7 +140,6 @@ describe("Actions (e2e)", () => {
       name: "Test Action",
       category: "Test",
       body: "Test action for forum tests",
-      taskContents: "Test action for forum tests",
       visibilityMode: VisibilityMode.Public,
       cohortExpression: {
         type: "Tag",
@@ -484,7 +482,6 @@ describe("Actions (e2e)", () => {
           category: "Test",
           body: "Manual cohort body",
           shortDescription: "Manual cohort short description",
-          taskContents: "Manual cohort task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
@@ -571,7 +568,6 @@ describe("Actions (e2e)", () => {
           category: "Test",
           body: "Manual cohort body",
           shortDescription: "Manual cohort short description",
-          taskContents: "Manual cohort task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
@@ -658,7 +654,6 @@ describe("Actions (e2e)", () => {
           category: "Test",
           body: "Phaseless body",
           shortDescription: "Phaseless short description",
-          taskContents: "Phaseless task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: false,
@@ -706,7 +701,6 @@ describe("Actions (e2e)", () => {
           name: `Prerequisite Action ${Date.now()}`,
           category: "Test",
           body: "Prerequisite body",
-          taskContents: "Prerequisite task",
           visibilityMode: VisibilityMode.Public,
         }),
       );
@@ -739,7 +733,6 @@ describe("Actions (e2e)", () => {
           name: `CompletedAction Cohort ${Date.now()}`,
           category: "Test",
           body: "Body",
-          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
@@ -798,7 +791,6 @@ describe("Actions (e2e)", () => {
           name: `InProgress Prereq ${Date.now()}`,
           category: "Test",
           body: "Body",
-          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           cohortExpression: {
             type: "Tag",
@@ -853,7 +845,6 @@ describe("Actions (e2e)", () => {
           name: `InProgressAction Cohort ${Date.now()}`,
           category: "Test",
           body: "Body",
-          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
@@ -939,7 +930,6 @@ describe("Actions (e2e)", () => {
           name: `GroupLead Cohort ${Date.now()}`,
           category: "Test",
           body: "Body",
-          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
@@ -1178,7 +1168,6 @@ describe("Actions (e2e)", () => {
           name: `FormField Cohort ${Date.now()}`,
           category: "Test",
           body: "Body",
-          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
@@ -1292,7 +1281,6 @@ describe("Actions (e2e)", () => {
           name: `FormField Any Cohort ${Date.now()}`,
           category: "Test",
           body: "Body",
-          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
@@ -1363,7 +1351,6 @@ describe("Actions (e2e)", () => {
           name: `AND Prereq ${Date.now()}`,
           category: "Test",
           body: "Body",
-          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
         }),
       );
@@ -1391,7 +1378,6 @@ describe("Actions (e2e)", () => {
           name: `AND Cohort ${Date.now()}`,
           category: "Test",
           body: "Body",
-          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
@@ -1632,7 +1618,6 @@ describe("Actions (e2e)", () => {
           name: "Status Transition Test",
           category: "Test",
           body: "Test action for status transitions",
-          taskContents: "Test action for status transitions",
         });
         await actionRepo.save(newAction);
 
@@ -1673,7 +1658,6 @@ describe("Actions (e2e)", () => {
           name: "Multi Event Test",
           category: "Test",
           body: "Test action for multiple events",
-          taskContents: "Test action for multiple events",
         });
         await actionRepo.save(newAction);
 
@@ -1720,7 +1704,6 @@ describe("Actions (e2e)", () => {
           name: "Future Event Test",
           category: "Test",
           body: "Test action for future events",
-          taskContents: "Test action for future events",
         });
         await actionRepo.save(newAction);
 
@@ -2640,7 +2623,6 @@ describe("Actions (e2e)", () => {
           name,
           category: "Test",
           body: "Ordering test action",
-          taskContents: "Ordering test task",
           shortDescription: `${name} short description`,
           visibilityMode: VisibilityMode.Public,
           priority: options.priority ?? 0,
@@ -3048,7 +3030,6 @@ describe("Actions (e2e)", () => {
           category: "Test",
           body: "Onboarding action body",
           shortDescription: "Onboarding short desc",
-          taskContents: "Onboarding task",
           visibilityMode: VisibilityMode.Public,
           priority: 0,
           preventCompletion: false,
