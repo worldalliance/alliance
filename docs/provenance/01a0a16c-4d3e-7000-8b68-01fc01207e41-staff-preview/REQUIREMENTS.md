@@ -22,3 +22,4 @@ task: Add a "staff preview" mode for actions
 - Dismiss (removing the action from one's own todo list without completing it) is refused during preview, same as complete/withdraw.
 - The preview-active check must be computed live on every read (toggle state vs. now vs. `member_action` start) — no stored "is active" flag that a background job clears with a lag.
 - A share-code link generated during preview still enforces staff-only visibility when opened: a non-staff/non-admin visitor following the link gets the normal "not available yet" experience, not early access to the pre-launch action.
+- Context from the agent's review: when staff load an action in preview, the server saves which form variant each of them gets, and an admin can't delete a variant once anyone has been assigned to it. The user's answer: admins should be able to delete variants. The variant stats counting those staff assignments is fine, because "that's just meant to reflect the state of the db".

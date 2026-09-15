@@ -18,7 +18,8 @@ import { Action } from "./action.entity";
 
 // Records which form variant a user has been assigned to for an action.
 // `variantId = null` means the user is on the action's default form
-// (`action.taskFormId`). Sticky: once a row exists, it never changes.
+// (`action.taskFormId`). Sticky: once a row exists, it never changes, though
+// deleting its variant before launch deletes the row.
 @Entity()
 @Unique("UQ_action_form_assignment_actionId_userId", ["actionId", "userId"])
 @Index("IDX_action_form_assignment_variantId", ["variantId"])

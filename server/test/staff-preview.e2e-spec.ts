@@ -7,6 +7,8 @@ import {
   ActionEvent,
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
+import { ActionFormAssignment } from "src/actions/entities/action-form-assignment.entity";
+import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
 import {
   Action,
   ActionTaskType,
@@ -397,6 +399,130 @@ describe("Staff preview (e2e)", () => {
         .expect(200);
 
       expect(res.body.staffPreview).toBe(true);
+    });
+  });
+
+  describe("form variants", () => {
+    const createAssignedVariant = async (params: {
+      name: string;
+      staffPreview: boolean;
+      events: { newStatus: ActionStatus; offsetMs: number }[];
+    }): Promise<{
+      actionId: number;
+      variantId: number;
+      variantFormId: number;
+      snapshotId: number;
+    }> => {
+      const { form, snapshot } = await createFormWithSnapshot(ctx.dataSource, {
+        title: params.name,
+        schema: previewFormSchema,
+      });
+      const action = await createAction({
+        name: params.name,
+        staffPreview: params.staffPreview,
+        events: params.events,
+        overrides: { taskFormId: form.id },
+      });
+      const variant = await request(server())
+        .post(`/actions/${action.id}/form-variants`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ name: "B", splitValue: 1 })
+        .expect(201);
+      await ctx.dataSource.getRepository(ActionFormAssignment).insert({
+        actionId: action.id,
+        userId: staffUserId,
+        variantId: variant.body.id,
+      });
+      return {
+        actionId: action.id,
+        variantId: variant.body.id,
+        variantFormId: variant.body.formId,
+        snapshotId: snapshot.id,
+      };
+    };
+
+    it("deletes a variant and its assignments during preview", async () => {
+      const { actionId, variantId } = await createAssignedVariant({
+        name: "Preview variant delete",
+        staffPreview: true,
+        events: [futureMemberAction],
+      });
+
+      await request(server())
+        .delete(`/actions/form-variants/${variantId}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      expect(
+        await ctx.dataSource
+          .getRepository(ActionFormAssignment)
+          .countBy({ actionId }),
+      ).toBe(0);
+      expect(
+        await ctx.dataSource
+          .getRepository(ActionFormVariant)
+          .countBy({ id: variantId }),
+      ).toBe(0);
+    });
+
+    it("keeps a variant with assignments once the member_action event starts, with the toggle still on", async () => {
+      const { variantId } = await createAssignedVariant({
+        name: "Launched variant delete",
+        staffPreview: true,
+        events: [pastMemberAction],
+      });
+
+      await request(server())
+        .delete(`/actions/form-variants/${variantId}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(400);
+    });
+
+    it("deletes a variant and its assignments before launch when preview is off", async () => {
+      const { actionId, variantId } = await createAssignedVariant({
+        name: "Unpreviewed variant delete",
+        staffPreview: false,
+        events: [futureMemberAction],
+      });
+
+      await request(server())
+        .delete(`/actions/form-variants/${variantId}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      expect(
+        await ctx.dataSource
+          .getRepository(ActionFormAssignment)
+          .countBy({ actionId }),
+      ).toBe(0);
+    });
+
+    it("keeps a variant whose form has responses during preview", async () => {
+      const { actionId, variantId, variantFormId, snapshotId } =
+        await createAssignedVariant({
+          name: "Relaunched variant delete",
+          staffPreview: true,
+          events: [futureMemberAction],
+        });
+      await formResponseRepo.save(
+        formResponseRepo.create({
+          formId: variantFormId,
+          user: { id: staffUserId },
+          answers: { answer: "submitted" },
+          formSnapshotId: snapshotId,
+        }),
+      );
+
+      await request(server())
+        .delete(`/actions/form-variants/${variantId}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(400);
+
+      expect(
+        await ctx.dataSource
+          .getRepository(ActionFormAssignment)
+          .countBy({ actionId }),
+      ).toBe(1);
     });
   });
 });

@@ -251,7 +251,7 @@ export default function ActionFormVariantsTab({
     async (variantId: number) => {
       if (
         !window.confirm(
-          "Delete this variant? This is hard-blocked if any users are already assigned to it.",
+          "Delete this variant? Before launch, this also removes users' assignments to it. After launch, it's blocked if any users are assigned.",
         )
       )
         return;

@@ -10,6 +10,7 @@ import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
 import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import { User } from "src/user/entities/user.entity";
+import { hasMemberActionStarted } from "src/utils/action-user";
 import { EntityManager, In, QueryFailedError, Repository } from "typeorm";
 import { ActionFormAssignment } from "./entities/action-form-assignment.entity";
 import { ActionFormVariant } from "./entities/action-form-variant.entity";
@@ -144,6 +145,28 @@ export class ActionFormVariantService {
   }
 
   async deleteVariant(variantId: number): Promise<void> {
+    const variant = await this.variantRepo.findOne({
+      where: { id: variantId },
+      relations: { action: { events: true } },
+    });
+    if (!variant) throw new NotFoundException("Variant not found");
+
+    // Clients only submit once member_action starts, so a response means
+    // members were assigned after a launch whose member_action event later
+    // moved or was deleted.
+    if (
+      !hasMemberActionStarted(variant.action.events, new Date()) &&
+      !(await this.variantRepo.manager.existsBy(FormResponse, {
+        formId: variant.formId,
+      }))
+    ) {
+      await this.variantRepo.manager.transaction(async (em) => {
+        await em.getRepository(ActionFormAssignment).delete({ variantId });
+        await em.getRepository(ActionFormVariant).delete({ id: variantId });
+      });
+      return;
+    }
+
     const assignmentCount = await this.assignmentRepo.count({
       where: { variantId },
     });
