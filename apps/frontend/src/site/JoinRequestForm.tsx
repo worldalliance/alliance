@@ -9,11 +9,11 @@ export const JOIN_NAME_LABEL = "Your name";
 export const JOIN_EMAIL_LABEL = "Email";
 export const JOIN_REASON_LABEL = "Why do you want to join the Alliance?";
 const JOIN_REASON_PLACEHOLDER =
-  "A sentence or two is plenty. What drew you here, and what would you want to work on?";
+  "A couple of sentences about how you heard about the Alliance and why you want to join.";
 const JOIN_SUBMIT = "Request an invite";
 const JOIN_SUBMITTED_TITLE = "Request received";
 const JOIN_SUBMITTED_BODY =
-  "Thanks. We read every request, and will send you an email.";
+  "Thanks. We read every request, and will follow up shortly.";
 
 /**
  * Sends a join request to the office. Nothing about the sender is known, so

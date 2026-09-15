@@ -1,4 +1,4 @@
-export const PARTNER_TITLE = "Mobilize an online community that cares";
+export const PARTNER_TITLE = "Mobilize an online community";
 
 export const PARTNER_RELY_TITLE =
   "Our unique model allows partners to rely on us";
@@ -105,7 +105,7 @@ export const partnerTasks: PartnerTask[] = [
 
 export const PARTNER_FORM_TITLE = "Propose a partnership";
 export const PARTNER_FORM_BODY =
-  "Tell us what you are working on, what kind of action would help you, and how you could help people discover the Alliance.";
+  "Tell us what you are working on, how our members could help you, and how you could help people discover the Alliance.";
 
 export const OUTREACH_CHANNELS = [
   "Website",

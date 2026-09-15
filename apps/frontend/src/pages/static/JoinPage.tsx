@@ -7,22 +7,22 @@ import { SITE_COL } from "../../site/ui";
 
 export function meta() {
   return socialPreviewMeta({
-    title: "Request to join — The Alliance",
+    title: "Request to join the Alliance",
     description:
-      "Membership is by invitation while we are still small. Tell us a little about yourself and we will follow up.",
+      "Membership is by invitation only while we are still experimental. Please share a little about yourself and we will follow up shortly.",
     url: "/join",
   });
 }
 
 const JOIN_TITLE = "Request to join";
 const JOIN_LEDE =
-  "Membership is by invitation while we are still small. Tell us a little about yourself and we will follow up with a signup link if there is a fit.";
+  "Membership is by invitation only while we are still experimental. Please share a little about yourself and we will follow up shortly.";
 
 /** The three points beside the form, so the page is not a bare form. */
 const JOIN_EXPECTATIONS = [
-  "15 minutes a week, in one block, with a 7-day window to finish it.",
-  "Tasks arrive through our platform, already researched and scoped by the office.",
-  "You can withdraw from any task you object to, and leave whenever you like.",
+  "There is a 15-minute weekly commitment.",
+  "Tasks arrive through our web and mobile apps.",
+  "You can withdraw from any task if it takes too long.",
 ];
 
 export default function JoinPage() {
@@ -47,7 +47,7 @@ export default function JoinPage() {
           ))}
         </ul>
         <div
-          className="bg-[var(--site-surface-alt)] p-7 sm:p-9"
+          className="bg-zinc-100 p-7 sm:p-9"
           style={{ borderRadius: "var(--site-radius-card)" }}
         >
           <JoinRequestForm />

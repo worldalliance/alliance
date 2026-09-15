@@ -1,36 +1,18 @@
 import { cn } from "@alliance/shared/styles/util";
 import { Fragment } from "react";
 import { Link } from "react-router";
-import { CONTACT_EMAIL, FOOTER_TAGLINE, JOIN_MAILTO } from "./content";
-import {
-  FOOTER_COLUMNS,
-  FOOTER_LEGAL_LINKS,
-  JOIN_HREF,
-  type SiteLink,
-} from "./links";
+import { CONTACT_EMAIL, FOOTER_TAGLINE } from "./content";
+import { FOOTER_COLUMNS, FOOTER_LEGAL_LINKS, type SiteLink } from "./links";
 import { Logotype, SITE_COL, SiteArrow, TexturedFill } from "./ui";
 
 function FooterAnchor({ link }: { link: SiteLink }) {
-  const className =
-    "-my-2.5 inline-flex items-center gap-1.5 py-2.5 text-white hover:underline";
-  const inner = (
-    <>
+  return (
+    <Link
+      to={link.to}
+      className="-my-2.5 inline-flex items-center gap-1.5 py-2.5 text-white hover:underline"
+    >
       {link.label}
       {link.withArrow && <SiteArrow className="size-2.5" />}
-    </>
-  );
-
-  if (link.to === JOIN_HREF) {
-    return (
-      <a href={JOIN_MAILTO} className={className}>
-        {inner}
-      </a>
-    );
-  }
-
-  return (
-    <Link to={link.to} className={className}>
-      {inner}
     </Link>
   );
 }

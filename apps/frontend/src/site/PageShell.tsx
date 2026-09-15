@@ -126,9 +126,9 @@ function PageHeader({
 }
 
 /**
- * Every page behind the nav: the bar, a title block, the page's own bands, the
- * closing CTA, and the footer. The join and partner pages drop the CTA, since
- * they already are one.
+ * Every page behind the nav: the bar, an optional title block, the page's own
+ * bands, the closing CTA, and the footer. The join and partner pages drop the
+ * CTA, since they already are one.
  */
 export function PageShell({
   title,
@@ -138,7 +138,7 @@ export function PageShell({
   titleClassName,
   headerTone = BandTone.Surface,
 }: {
-  title: string;
+  title?: string;
   subtitle?: ReactNode;
   children?: ReactNode;
   showJoinCta?: boolean;
@@ -148,13 +148,17 @@ export function PageShell({
   return (
     <SiteRoot>
       <Navbar overPrimary={headerTone === BandTone.Primary} />
-      <PageHeader
-        title={title}
-        subtitle={subtitle}
-        titleClassName={titleClassName}
-        tone={headerTone}
-      />
-      <main>{children}</main>
+      {title && (
+        <PageHeader
+          title={title}
+          subtitle={subtitle}
+          titleClassName={titleClassName}
+          tone={headerTone}
+        />
+      )}
+      <main style={title ? undefined : { paddingTop: NAV_HEIGHT }}>
+        {children}
+      </main>
       {showJoinCta && <JoinCta />}
       <SiteFooter />
     </SiteRoot>
