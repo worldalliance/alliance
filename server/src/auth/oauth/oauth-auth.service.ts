@@ -260,19 +260,32 @@ export class OAuthAuthService {
     userId: number;
     provider: OAuthProvider;
   }): Promise<Result<User, OAuthError>> {
-    const user = await this.usersService.findOneOrFail(params.userId);
-    const others = await this.accountRepository.countBy({
-      userId: params.userId,
-      provider: Not(params.provider),
-    });
-    if (!user.password && others === 0) {
+    // The row lock makes a second disconnect wait for this one, so it counts
+    // what is left after it rather than what was there before.
+    const unlinked = await this.accountRepository.manager.transaction(
+      async (manager) => {
+        const user = await manager.getRepository(User).findOneOrFail({
+          where: { id: params.userId },
+          lock: { mode: "pessimistic_write" },
+        });
+        const accounts = manager.getRepository(OAuthAccount);
+        const others = await accounts.countBy({
+          userId: params.userId,
+          provider: Not(params.provider),
+        });
+        if (!user.password && others === 0) {
+          return false;
+        }
+        await accounts.delete({
+          userId: params.userId,
+          provider: params.provider,
+        });
+        return true;
+      },
+    );
+    if (!unlinked) {
       return R.failure(OAuthError.LastSignInMethod);
     }
-
-    await this.accountRepository.delete({
-      userId: params.userId,
-      provider: params.provider,
-    });
     return R.success(await this.usersService.findOneOrFail(params.userId));
   }
 }

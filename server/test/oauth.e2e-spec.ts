@@ -507,5 +507,31 @@ describe("OAuth sign-in (e2e)", () => {
 
       expect(linkedEmails(unlinked.body.user)).toEqual({ apple: email });
     });
+
+    // One pair of requests doesn't always overlap, so this tries several.
+    it("keeps one way in when both providers are disconnected at once", async () => {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const member = await freshMember({ password: null });
+        for (const provider of Object.values(OAuthProvider)) {
+          profile = {
+            ...profile,
+            provider,
+            subject: `both-at-once-${provider}-${member.id}`,
+          };
+          await linkInBrowser(member.accessToken);
+        }
+
+        const statuses = await Promise.all(
+          Object.values(OAuthProvider).map(async (provider) => {
+            const res = await client()
+              .delete(`/auth/${provider}/link`)
+              .set("Authorization", `Bearer ${member.accessToken}`);
+            return res.status;
+          }),
+        );
+
+        expect(statuses.sort()).toEqual([200, 400]);
+      }
+    });
   });
 });
