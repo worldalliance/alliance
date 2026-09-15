@@ -30,12 +30,12 @@ import { ActionActivityDetailContext } from "../../components/ActionActivityDeta
 import ActionActivityList from "../../components/ActionActivityList";
 import { TaskPanelContext } from "../../components/ActionPageTaskPanel";
 import AllianceSignupPitch from "../../components/AllianceSignupPitch";
-import PrelaunchNavbar from "../../components/PrelaunchNavbar";
 import { useAuth } from "../../lib/AuthContext";
 import { useNavbarOptions } from "../../lib/NavbarOptionsContext";
 import { isNonmemberOnPublicActionReferral } from "../../lib/publicActionReferral";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import { useCIDFromParams } from "../../lib/utils";
+import { NAV_HEIGHT, Navbar } from "../../site/Navbar";
 import ActionCompletedBarWithInfo from "./ActionCompletedBarWithInfo";
 
 export async function loader({
@@ -201,12 +201,13 @@ export default function ActionPage() {
   return (
     <>
       {publicMode && (
-        <PrelaunchNavbar
-          transparent={false}
-          absolute={false}
-          showSignupButton={showHeaderSignupButton}
-          signupHref={signupHref}
-        />
+        <>
+          <Navbar
+            signupHref={showHeaderSignupButton ? signupHref : undefined}
+          />
+          {/* Reserves the height the fixed site bar covers. */}
+          <div className="bg-white" style={{ height: NAV_HEIGHT }} />
+        </>
       )}
       {showInvitePopup && (
         <Modal

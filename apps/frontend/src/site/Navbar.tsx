@@ -20,16 +20,6 @@ export const NAV_HEIGHT = 78;
 /** Past this many pixels the bar takes on a solid background. */
 const SOLID_AFTER = 24;
 
-/**
- * Below 378px the account cluster sheds itself piece by piece so the menu
- * button, the one control that must always reach the edge, never gets
- * squeezed off. Profile picture first (`max-[378px]:hidden`), then the
- * account button's arrow (`max-[344px]:hidden`), then the account button
- * itself (`max-[310px]:hidden`). Tailwind's scanner needs each arbitrary
- * variant written out in full in the JSX below — it cannot see one built
- * from a template literal.
- */
-
 export function Navbar({
   /**
    * Set where the bar floats over the primary band, as every page behind the
@@ -37,8 +27,16 @@ export function Navbar({
    * primary button on a primary band would disappear.
    */
   overPrimary = false,
+  signupHref,
 }: {
   overPrimary?: boolean;
+  /**
+   * Adds a signup call to action beside the account button while logged out,
+   * and in its place once the bar is too narrow for both. Carries the referral
+   * code when one brought the visitor here, so set it only where that link
+   * should outrank logging in.
+   */
+  signupHref?: string;
 } = {}) {
   const { isAuthenticated, user, loading } = useAuth();
   const location = useLocation();
@@ -77,6 +75,7 @@ export function Navbar({
   const accountLabel = isAuthenticated ? "My tasks" : "Log In";
   // Light type only survives while the bar is still over the primary band.
   const light = overPrimary && !scrolled && !menuOpen;
+  const showSignup = signupHref !== undefined && !isAuthenticated;
 
   return (
     <header
@@ -118,10 +117,16 @@ export function Navbar({
           <Logotype onDark={light} />
         </Link>
 
-        <div className="flex items-center justify-end gap-6">
+        <div className="flex items-center justify-end gap-3 md:gap-6">
+          {/* The cluster sheds parts as the bar narrows so the menu button always
+              clears the right edge: profile picture, then the account button's
+              arrow, then the account button, which goes early whenever a Sign up
+              button is holding a place beside it. Tailwind's scanner reads these
+              arbitrary variants literally, so each is written out rather than
+              built from a template. */}
           <div
             className={cn(
-              "flex items-center gap-6 transition-opacity duration-300",
+              "flex items-center gap-3 md:gap-6 transition-opacity duration-300",
               loading && "pointer-events-none opacity-0",
             )}
             aria-hidden={loading}
@@ -138,7 +143,7 @@ export function Navbar({
               to={accountHref}
               className={cn(
                 "inline-flex min-h-11 items-center gap-2 px-4 text-base font-medium transition-colors",
-                "max-[310px]:hidden",
+                showSignup ? "max-[420px]:hidden" : "max-[310px]:hidden",
                 light
                   ? "bg-white text-[var(--site-primary)] hover:bg-white/85"
                   : "bg-[var(--site-primary)] text-white hover:bg-[var(--site-primary-hover)]",
@@ -146,8 +151,22 @@ export function Navbar({
               style={{ borderRadius: "var(--site-radius-button)" }}
             >
               {accountLabel}
-              <SiteArrow className={cn("size-2.5", "max-[344px]:hidden")} />
+              <SiteArrow
+                className={cn(
+                  "size-2.5",
+                  showSignup ? "max-[470px]:hidden" : "max-[344px]:hidden",
+                )}
+              />
             </Link>
+            {showSignup && (
+              <Link
+                to={signupHref}
+                className="bg-green inline-flex min-h-11 items-center px-4 text-base font-medium text-white transition-colors hover:bg-[#4d8c1d]"
+                style={{ borderRadius: "var(--site-radius-button)" }}
+              >
+                Sign up
+              </Link>
+            )}
             {isAuthenticated && user && (
               <Link
                 to={profileHref}
@@ -176,7 +195,9 @@ export function Navbar({
           </div>
           <button
             type="button"
-            className="-mr-2 inline-flex size-11 shrink-0 items-center justify-center text-black md:hidden"
+            /* -ml-2.5 cancels the icon's inset inside its 44px tap target, so
+               the flex gap beside it reads as the gap you see. */
+            className="-mr-2 -ml-2.5 inline-flex size-11 shrink-0 items-center justify-center text-black md:hidden"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}
