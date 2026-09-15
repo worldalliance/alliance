@@ -25,6 +25,7 @@ export function Hero() {
         <div className="flex min-w-0 flex-col gap-5 min-[1020px]:flex-1 min-[1020px]:self-end">
           <DisplayHeading
             as="h1"
+            leading={1.28}
             className="text-[clamp(2.5rem,7.5vw,3.75rem)] min-[1020px]:text-[clamp(3.25rem,4.7vw,5.25rem)]"
           >
             {HERO_HEADLINE_PARTS.lead}{" "}

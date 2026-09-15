@@ -381,11 +381,18 @@ export function DisplayHeading({
   className,
   as: Tag = "h2",
   onDark = false,
+  leading = 1.35,
 }: {
   children: ReactNode;
   className?: string;
   as?: "h1" | "h2";
   onDark?: boolean;
+  /**
+   * Unitless line height. Below the 1.35 default, descenders for this face
+   * start catching the line underneath, so anything tighter wants checking at
+   * the narrow widths where the heading wraps most.
+   */
+  leading?: number;
 }) {
   return (
     <Tag
@@ -397,10 +404,8 @@ export function DisplayHeading({
       /**
        * `leading-*` is a Tailwind "font-size" utility as far as tailwind-merge is
        * concerned, so any caller-supplied text-size className silently strips it.
-       * 1.35 is the tightest value that clears descender/ascender overlap between
-       * lines for this face, measured across the hero's full wrap range.
        */
-      style={{ lineHeight: 1.35 }}
+      style={{ lineHeight: leading }}
     >
       {children}
     </Tag>
