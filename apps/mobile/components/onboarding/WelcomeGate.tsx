@@ -130,7 +130,7 @@ export function WelcomeGate({
 
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <View
-          className="flex-1 justify-between"
+          className="flex-1"
           style={{
             paddingTop: insets.top + scale.gateTop,
             paddingBottom: insets.bottom + 16,
@@ -156,6 +156,11 @@ export function WelcomeGate({
             </Text>
           </Animated.View>
 
+          {/* Equal spacers rest the form midway rather than pinning it low. The
+              email field takes focus on mount, and a bottom-pinned form has
+              most of the screen to cross the moment the keyboard opens. */}
+          <View className="flex-1" />
+
           <AccountFields
             mode={mode}
             email={email}
@@ -170,6 +175,8 @@ export function WelcomeGate({
             inviteUsed={inviteUsed}
             inviter={inviter}
           />
+
+          <View className="flex-1" />
         </View>
       </KeyboardAvoidingView>
     </View>
