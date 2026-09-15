@@ -161,7 +161,7 @@ export function AgreementStep({
             </div>
 
             <a
-              href={href("/guide")}
+              href={`${href("/governance")}#contract`}
               target="_blank"
               rel="noreferrer"
               className={cn(

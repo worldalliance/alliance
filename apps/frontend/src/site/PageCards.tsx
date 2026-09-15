@@ -185,7 +185,7 @@ export function ContractCard({
     <figure className="flex flex-col gap-3">
       <div
         id="contract"
-        className=" bg-zinc-100 p-6 sm:p-8"
+        className="scroll-mt-32 bg-zinc-100 p-6 sm:p-8"
         style={{ borderRadius: "var(--site-radius-card)" }}
       >
         {terms ? <ContractDescriptionList /> : <ContractMarkdown />}
