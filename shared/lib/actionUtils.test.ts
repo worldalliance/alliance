@@ -90,6 +90,29 @@ describe("viewer-based action predicates", () => {
     expect(canCompleteAction(action)).toBe(false);
   });
 
+  it("lists a staff preview in home lists without making it completable", () => {
+    const action = makeAction({
+      status: "draft",
+      viewer: makeViewer({
+        assigned: false,
+        canComplete: false,
+        memberActionStarted: false,
+        staffPreview: true,
+      }),
+    });
+    expect(shouldCompleteAction(action)).toBe(true);
+    expect(showActionInSidebarList(action)).toBe(true);
+    expect(canCompleteAction(action)).toBe(false);
+  });
+
+  it("keeps a public-only staff preview off home lists", () => {
+    const action = makeAction({
+      publicOnly: true,
+      viewer: makeViewer({ memberActionStarted: false, staffPreview: true }),
+    });
+    expect(shouldCompleteAction(action)).toBe(false);
+  });
+
   it("lets an unassigned member complete without listing the task", () => {
     const action = makeAction({ viewer: makeViewer({ assigned: false }) });
     expect(canCompleteAction(action)).toBe(true);

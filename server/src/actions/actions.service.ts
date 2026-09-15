@@ -217,6 +217,10 @@ import {
   ReminderGroupTimingMode,
 } from "./entities/reminder-group.entity";
 import { SCHEMA_WRITE_TARGETS } from "./schema-write-target";
+import {
+  assertNotInStaffPreview,
+  isStaffPreviewActiveFor,
+} from "./staff-preview";
 import { resolveUserActionPillStatus } from "./user-action-pill-status";
 import {
   computeCanCompleteAction,
@@ -1004,7 +1008,13 @@ export class ActionsService {
     if (user?.admin) {
       return true;
     }
-    if (action.status === ActionStatus.Draft || action.archived) {
+    if (action.archived) {
+      return false;
+    }
+    if (user && isStaffPreviewActiveFor({ user, action, now: new Date() })) {
+      return true;
+    }
+    if (action.status === ActionStatus.Draft) {
       return false;
     }
     if (action.visibilityMode === VisibilityMode.Public) {
@@ -1682,6 +1692,10 @@ export class ActionsService {
       adminCreated,
     } = options;
     const action = await this.findOneOrFail({ id: actionId, userId });
+
+    if (!adminCreated) {
+      assertNotInStaffPreview(action);
+    }
 
     if (
       type === ActionActivityType.USER_WONT_COMPLETE &&
@@ -2730,7 +2744,9 @@ export class ActionsService {
     if (!activity) {
       throw new NotFoundException("Activity not found");
     }
-    await this.findOneOrFail({ id: activity.actionId, userId });
+    assertNotInStaffPreview(
+      await this.findOneOrFail({ id: activity.actionId, userId }),
+    );
     if (
       !GlobalFeedActivityTypes.includes(activity.type as GlobalFeedActivityType)
     ) {
@@ -2805,6 +2821,7 @@ export class ActionsService {
 
   async getPaymentAmountForAction(id: number): Promise<number> {
     const action = await this.findOneOrFail({ id, serverSide: true });
+    assertNotInStaffPreview(action);
     if (action.type !== ActionTaskType.Funding) {
       throw new BadRequestException("Action is not a funding action");
     }
@@ -3387,6 +3404,7 @@ export class ActionsService {
     const actions = (await this.findMemberPublic(userId))
       .filter(
         (action) =>
+          action.status !== ActionStatus.Draft &&
           action.shouldParticipate &&
           action.userRelation !== UserActionRelation.Completed,
       )

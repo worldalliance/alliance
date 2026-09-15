@@ -16,6 +16,7 @@ import { UserActionRelationPillStatus } from "../user/dto/user-action-relations.
 import { findLatestTerminalActivity } from "./action-activity-status";
 import type { ActionActivity } from "./entities/action-activity.entity";
 import type { Action } from "./entities/action.entity";
+import { isStaffPreviewActiveFor } from "./staff-preview";
 import { resolveUserActionPillStatus } from "./user-action-pill-status";
 
 /**
@@ -84,6 +85,7 @@ export type UserActionStatus = {
   /** End of the member-action window, if one exists. */
   deadlineAt: Date | null;
   deadlinePassed: boolean;
+  staffPreview: boolean;
   /**
    * The single-enum collapse of the above for display (same value the
    * leader/admin member tables show as pills).
@@ -166,6 +168,8 @@ export function resolveUserActionStatus(params: {
     | "onboarding"
     | "optional"
     | "preventCompletion"
+    | "staffPreview"
+    | "archived"
   >;
   user: Pick<
     User,
@@ -173,6 +177,7 @@ export function resolveUserActionStatus(params: {
     | "hasActiveContractInFullRange"
     | "awayRanges"
     | "isAwayAtAnyPointInRange"
+    | "staff"
   >;
   inCohort: boolean;
   activities: Pick<
@@ -250,6 +255,7 @@ export function resolveUserActionStatus(params: {
     memberActionStarted: hasMemberActionStarted(action.events, now),
     deadlineAt,
     deadlinePassed,
+    staffPreview: isStaffPreviewActiveFor({ user, action, now }),
     display: resolveUserActionPillStatus({
       isJoined: isParticipant,
       isAway: inCohort && awayDuringWindow,

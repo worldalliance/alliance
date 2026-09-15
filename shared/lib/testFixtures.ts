@@ -22,6 +22,7 @@ export function makeViewer(
     memberActionStarted: true,
     deadlineAt: null,
     deadlinePassed: false,
+    staffPreview: false,
     display: "todo",
     ...overrides,
   };

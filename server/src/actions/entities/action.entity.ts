@@ -234,6 +234,14 @@ export class Action {
   @Column({ default: false })
   @ApiProperty({
     description:
+      "Show the action to all staff until its member_action event starts, refusing participation writes until then",
+  })
+  @Allow()
+  staffPreview: boolean;
+
+  @Column({ default: false })
+  @ApiProperty({
+    description:
       "Whether the action is visible to and supposed to only be completed by non-members",
   })
   @Allow()

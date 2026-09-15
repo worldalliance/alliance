@@ -311,6 +311,9 @@ export class UserActionStatusDto {
   @ApiProperty()
   deadlinePassed: boolean;
 
+  @ApiProperty()
+  staffPreview: boolean;
+
   @ApiProperty({
     enum: UserActionRelationPillStatus,
     enumName: "UserActionRelationPillStatus",
@@ -331,6 +334,7 @@ export class UserActionStatusDto {
     this.memberActionStarted = input.memberActionStarted;
     this.deadlineAt = input.deadlineAt;
     this.deadlinePassed = input.deadlinePassed;
+    this.staffPreview = input.staffPreview;
     this.display = input.display;
   }
 }
@@ -570,9 +574,14 @@ export class AdminActionDto extends ActionDto {
   @IsOptional()
   storedSquareThumbnailImage?: string;
 
+  @ApiProperty()
+  @IsDefined()
+  staffPreview: boolean;
+
   constructor(action: ParsedAction, extra?: ActionDtoExtra) {
     super(action, extra);
     this.cohortExpression = action.cohortExpression;
+    this.staffPreview = action.staffPreview;
     this.followUpForms =
       action.followUpForms?.map((form) => new AdminFollowUpFormDto(form)) ?? [];
     this.storedImage = action.image ?? undefined;
@@ -617,6 +626,11 @@ export class CreateActionDto extends IntersectionType(
   })
   @IsOptional()
   suiteId?: number | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  staffPreview?: boolean;
 
   @ApiPropertyOptional({
     type: () => ActionReviewerDto,

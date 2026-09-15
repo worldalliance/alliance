@@ -14,6 +14,17 @@ describe("getTaskDismissInfo", () => {
     ).toBeUndefined();
   });
 
+  it("offers no dismissal for a staff preview", () => {
+    expect(
+      getTaskDismissInfo(
+        makeAction({
+          optional: true,
+          viewer: makeViewer({ staffPreview: true }),
+        }),
+      ),
+    ).toBeUndefined();
+  });
+
   it("shows the away banner from viewer.away, picking the phase-specific copy", () => {
     const currently = getTaskDismissInfo(
       makeAction({ viewer: makeViewer({ away: "away_currently" }) }),

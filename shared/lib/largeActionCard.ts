@@ -38,7 +38,7 @@ const HOME_COPY_BY_VIEWER_ONLY_OPTIONAL_REASON = {
 export function getTaskDismissInfo(
   action: ActionWithAwayStatus,
 ): { header: string; message: string } | undefined {
-  if (action.onboarding) return undefined;
+  if (action.onboarding || action.viewer?.staffPreview) return undefined;
 
   // Viewer-first with the legacy flat-field fallback (see the note in
   // actionUtils.ts). Both carry the same 4-valued TaskAwayStatus.

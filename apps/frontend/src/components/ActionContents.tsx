@@ -5,6 +5,7 @@ import type {
   ProfileDto,
 } from "@alliance/shared/client/types.gen";
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
+import { showActionPageTaskSection } from "@alliance/shared/lib/actionPageTaskPanel";
 import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
 import { isFollowUpFormActive } from "@alliance/shared/lib/actionUtils";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
@@ -241,7 +242,7 @@ const ActionContents = () => {
             </Link>
           </div>
         )}
-        {action.status !== "planned" && (
+        {showActionPageTaskSection(action) && (
           <div className="flex flex-col">
             {loggedInMode && activeFollowUpForms.length > 0 && (
               <div className="flex flex-col gap-y-4 mb-6">

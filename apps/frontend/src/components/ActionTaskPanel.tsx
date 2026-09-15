@@ -11,6 +11,7 @@ import {
 } from "@alliance/shared/lib/actionTaskPanel";
 import { canCompleteAction } from "@alliance/shared/lib/actionUtils";
 import { captureEvent } from "@alliance/shared/lib/analytics";
+import { noop } from "@alliance/shared/lib/constants";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import { useCallback, useMemo, type RefObject } from "react";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
@@ -104,6 +105,20 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
         onSubmitted={onFormSubmitted}
       />
     );
+  }
+
+  if (action.viewer?.staffPreview) {
+    return action.type === "Activity" && action.taskFormId ? (
+      <ActionTaskPanelForm
+        taskFormId={action.taskFormId}
+        onCompleteAction={null}
+        onFormStarted={noop}
+        card={card}
+        actionId={action.id}
+        scrollContainerRef={scrollContainerRef}
+        preview
+      />
+    ) : null;
   }
 
   const canSubmit = canCompleteAction(action) || forceRenderTask;

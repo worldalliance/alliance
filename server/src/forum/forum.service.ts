@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { Action } from "src/actions/entities/action.entity";
+import { assertNotInStaffPreview } from "src/actions/staff-preview";
 import { AiDetectionQueueService } from "src/ai-detection/ai-detection-queue.service";
 import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.entity";
 import { EventType } from "src/eventlog/event-log.entity";
@@ -627,6 +628,35 @@ export class ForumService {
     await this.postRepository.update(id, { deleted: true });
   }
 
+  private async assertCommentParentNotInStaffPreview(
+    parent: Pick<Comment, "parentObjectType" | "parentObjectId">,
+  ): Promise<void> {
+    let action: Action | null;
+    switch (parent.parentObjectType) {
+      case CommentParentObject.Post:
+        return;
+      case CommentParentObject.Action:
+        action = await this.actionRepository.findOne({
+          where: { id: parent.parentObjectId },
+          relations: { events: true },
+        });
+        break;
+      case CommentParentObject.Activity:
+        action = await this.actionRepository.findOne({
+          where: { activities: { id: parent.parentObjectId } },
+          relations: { events: true },
+        });
+        break;
+      default:
+        throw new Error(
+          `unknown comment parent: ${parent.parentObjectType satisfies never}`,
+        );
+    }
+    if (action) {
+      assertNotInStaffPreview(action);
+    }
+  }
+
   private async resolveCommentTag(
     createCommentDto: CreateCommentDto,
   ): Promise<number | null> {
@@ -660,6 +690,8 @@ export class ForumService {
     createCommentDto: CreateCommentDto,
     userId: number,
   ): Promise<Comment> {
+    await this.assertCommentParentNotInStaffPreview(createCommentDto);
+
     // Validate parent reply if provided
     let parentReply: Comment | null = null;
     if (createCommentDto.parentId) {
@@ -924,6 +956,9 @@ export class ForumService {
 
     if (!object) {
       throw new NotFoundException(`${type} with ID "${id}" not found`);
+    }
+    if ("parentObjectType" in object) {
+      await this.assertCommentParentNotInStaffPreview(object);
     }
 
     const user = await this.userRepository.findOneOrFail({

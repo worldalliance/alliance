@@ -2043,6 +2043,38 @@ describe("ActionEventNotifWorker (e2e)", () => {
     ).toBe(externalDepDeadline.id);
   });
 
+  it("leaves draft actions out of an admin's uncompleted tasks", async () => {
+    const admin = await userRepo.save(
+      userRepo.create({
+        email: `${uniqueName("admin")}@example.com`,
+        password: "pass",
+        name: "Draft Admin",
+        admin: true,
+        tags: [ctx.defaultTag],
+      }),
+    );
+    await setUserContractSigned(
+      admin.id,
+      new Date(Date.now() - milliseconds({ days: 3 })),
+    );
+    await createActionWithMemberEvent({
+      name: uniqueName("draft"),
+      eventDate: new Date(Date.now() + milliseconds({ days: 3 })),
+    });
+    const { action: launched } = await createActionWithMemberEvent({
+      name: uniqueName("launched"),
+      eventDate: new Date(Date.now() - milliseconds({ hours: 1 })),
+    });
+
+    const tasks = await ctx.app
+      .get(ActionsService)
+      .findUncompletedTasks(admin.id);
+
+    expect(tasks.map((task) => task.id)).toEqual([launched.id]);
+
+    await userRepo.delete({ id: admin.id });
+  });
+
   it("sends suite reminders to users missing any suite actions", async () => {
     const now = Date.now();
     await clearUserContract(ctx.testUserId);

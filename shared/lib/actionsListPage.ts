@@ -10,7 +10,10 @@ export const useActionsQuery = (options?: {
     queryFn: () =>
       actionsFindAllLoggedIn({ query: { sorted: true } }).then(
         (response) =>
-          response.data?.filter((action) => action.status !== "draft") ?? [],
+          response.data?.filter(
+            (action) =>
+              action.status !== "draft" || action.viewer?.staffPreview,
+          ) ?? [],
       ),
     refetchInterval: options?.refetchInterval,
   });
@@ -21,7 +24,9 @@ export const filterActions = (
 ): ActionDto[] => {
   switch (mode) {
     case FilterMode.All:
-      return actions.filter((action) => action.status !== "planned");
+      return actions.filter(
+        (action) => action.status !== "planned" && action.status !== "draft",
+      );
     case FilterMode.CompletedByMe:
       return actions.filter((action) => action.userRelation === "completed");
     case FilterMode.PendingOfficeResolution:

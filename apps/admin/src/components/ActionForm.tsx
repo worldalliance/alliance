@@ -299,6 +299,14 @@ const ActionForm: React.FC<ActionFormProps> = ({
         gridCol: true,
       },
       {
+        name: "staffPreview",
+        label: "Staff Preview",
+        type: "checkbox",
+        section: "settings",
+        helpText:
+          "Staff see it on their home pages until the Member Action event starts, or indefinitely if none is scheduled. Until then, nobody can submit, complete, withdraw, dismiss, donate, like, or comment.",
+      },
+      {
         name: "shouldCompleteAfterDeadline",
         label: "Complete After Deadline",
         type: "checkbox",

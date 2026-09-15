@@ -13,7 +13,7 @@ import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import { ArrowRight, ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronRight, Eye } from "lucide-react";
 import { useCallback, useEffect, useState, type RefObject } from "react";
 import { href, Link, useNavigate } from "react-router";
 import ActionTaskPanel from "../../components/ActionTaskPanel";
@@ -102,6 +102,15 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
           className,
         )}
       >
+        {action.viewer?.staffPreview && (
+          <Card style={CardStyle.Alert} className="mb-3 border-none rounded-md">
+            <p className="font-semibold flex items-center gap-x-2">
+              <Eye size={16} aria-hidden />
+              {taskHeaders.staffPreview.title}
+            </p>
+            <p>{taskHeaders.staffPreview.description}</p>
+          </Card>
+        )}
         {dismissProps && (
           <Card style={CardStyle.Alert} className="mb-3 border-none rounded-md">
             <p className="font-semibold">{dismissProps.header}</p>

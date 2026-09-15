@@ -7,6 +7,7 @@ import {
 } from "@alliance/shared/client";
 import { actionActivityDtoIsVisibleInFeed } from "@alliance/shared/lib/actionActivity";
 import { useActionHandlers } from "@alliance/shared/lib/actionPage";
+import { showActionPageTaskSection } from "@alliance/shared/lib/actionPageTaskPanel";
 import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
 import { nameListSeparator } from "@alliance/shared/lib/nameList";
 import { cn } from "@alliance/shared/styles/util";
@@ -276,7 +277,7 @@ export default function ActionDetailScreen() {
       case "task":
         return (
           <View>
-            {action.status !== "planned" ? (
+            {showActionPageTaskSection(action) ? (
               <View>
                 <View className="mb-4 flex flex-col gap-1 w-full">
                   <Text

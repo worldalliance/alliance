@@ -37,6 +37,8 @@ interface ActionTaskPanelFormProps {
   redirectOnComplete?: boolean;
   onSubmitted?: (formResponse: FormResponseDto) => void;
   scrollContainerRef?: RefObject<HTMLElement | null>;
+  /** Editable but unsubmittable, and nothing typed outlives the page. */
+  preview?: boolean;
 }
 
 const ActionTaskPanelForm = ({
@@ -52,6 +54,7 @@ const ActionTaskPanelForm = ({
   redirectOnComplete = publicAction,
   onSubmitted,
   scrollContainerRef,
+  preview = false,
 }: ActionTaskPanelFormProps) => {
   const [error, setError] = useState<string | null>(null);
   const { user, isAuthenticated, refreshUser } = useAuth();
@@ -82,7 +85,7 @@ const ActionTaskPanelForm = ({
   });
 
   const draftEnabled =
-    !formResponse && !disabled && !publicAction && isAuthenticated;
+    !formResponse && !disabled && !publicAction && !preview && isAuthenticated;
   const { data: draftFormResponse } = useQuery({
     queryKey: ["linkedGuestDraft", taskFormId],
     queryFn: async () => {
@@ -209,7 +212,7 @@ const ActionTaskPanelForm = ({
           formSnapshotId={form.formSnapshotId}
           actionId={actionId}
           onSubmit={handleSubmitForm}
-          persistKey={String(taskFormId)}
+          persistKey={preview ? null : String(taskFormId)}
           userId={user?.id}
           user={user}
           loadCurrentUserLocation={!!user && isAuthenticated}

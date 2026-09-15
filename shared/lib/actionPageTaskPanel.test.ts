@@ -2,6 +2,7 @@ import type { ActionDto } from "../client/types.gen";
 import {
   ActionPageTaskPanelState,
   getActionPageTaskPanelState,
+  showActionPageTaskSection,
 } from "./actionPageTaskPanel";
 import {
   makeAction,
@@ -46,6 +47,22 @@ describe("getActionPageTaskPanelState", () => {
     expect(
       stateOf(guestVisible, { isAuthenticated: false, hasRefCode: true }),
     ).toBe(ActionPageTaskPanelState.GuestRef);
+  });
+
+  it("shows the staff preview state ahead of the cannot-complete check", () => {
+    expect(
+      stateOf(
+        makeAction({
+          status: "draft",
+          viewer: makeViewer({
+            assigned: false,
+            canComplete: false,
+            memberActionStarted: false,
+            staffPreview: true,
+          }),
+        }),
+      ),
+    ).toBe(ActionPageTaskPanelState.StaffPreview);
   });
 
   it("shows the task for a plain assigned todo on both paths", () => {
@@ -185,5 +202,27 @@ describe("getActionPageTaskPanelState", () => {
         }),
       ),
     ).toBe(ActionPageTaskPanelState.ShowTaskWithMissedDeadline);
+  });
+});
+
+describe("showActionPageTaskSection", () => {
+  it("hides the task section while an action is planned", () => {
+    expect(showActionPageTaskSection(makeAction({ status: "planned" }))).toBe(
+      false,
+    );
+  });
+
+  it("shows the task section for a planned action in staff preview", () => {
+    expect(
+      showActionPageTaskSection(
+        makeAction({
+          status: "planned",
+          viewer: makeViewer({
+            memberActionStarted: false,
+            staffPreview: true,
+          }),
+        }),
+      ),
+    ).toBe(true);
   });
 });
