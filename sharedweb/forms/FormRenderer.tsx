@@ -591,6 +591,14 @@ const FormRenderer = ({
   const trackValidationError =
     useFormValidationErrorTracking(formTrackingParams);
 
+  const validateAllPagesAndShowFirstInvalid = useCallback(async () => {
+    const result = await validateAllPages();
+    if (!result.isValid && typeof result.firstInvalidPageIndex === "number") {
+      setCurrentPageIndex(result.firstInvalidPageIndex);
+    }
+    return result;
+  }, [validateAllPages]);
+
   const submitCurrentPage = useCallback(async (): Promise<boolean> => {
     if (submittingRef.current) {
       return false;
@@ -624,16 +632,10 @@ const FormRenderer = ({
       return finishSubmit(false);
     }
 
-    const { isValid, firstInvalidPageIndex, firstInvalidFieldId } =
-      await validateAllPages();
+    const { isValid, firstInvalidFieldId } =
+      await validateAllPagesAndShowFirstInvalid();
     if (!isValid) {
       trackValidationError(firstInvalidFieldId);
-      if (
-        typeof firstInvalidPageIndex === "number" &&
-        firstInvalidPageIndex !== currentPageIndex
-      ) {
-        setCurrentPageIndex(firstInvalidPageIndex);
-      }
       return finishSubmit(false);
     }
 
@@ -680,7 +682,7 @@ const FormRenderer = ({
     sessionReplayUrl,
     trackValidationError,
     uploadingAny,
-    validateAllPages,
+    validateAllPagesAndShowFirstInvalid,
     validatePage,
     visibilityValidatorResults,
   ]);
@@ -691,10 +693,6 @@ const FormRenderer = ({
 
     await submitCurrentPage();
   };
-
-  const validateForPreview = useCallback(async () => {
-    await validatePage(currentPageIndex, true);
-  }, [formData, form, onSubmit]);
 
   const toggleWithdrawalOption = (option: WithdrawalOption) => {
     setWithdrawalOption((previous) => (previous === option ? null : option));
@@ -1083,7 +1081,8 @@ const FormRenderer = ({
                     <BaseButton
                       variant={BaseButtonVariant.Black}
                       className="!cursor-not-allowed w-full"
-                      onClick={validateForPreview}
+                      disabled={uploadingAny}
+                      onClick={validateAllPagesAndShowFirstInvalid}
                     >
                       {schema.submit?.label ||
                         (followUp ? "Submit" : "Complete")}
