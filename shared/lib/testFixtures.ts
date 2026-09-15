@@ -14,6 +14,7 @@ export function makeViewer(
   return {
     assigned: true,
     optional: false,
+    optionalReason: null,
     canComplete: true,
     relation: "none",
     dismissed: false,
@@ -24,6 +25,14 @@ export function makeViewer(
     display: "todo",
     ...overrides,
   };
+}
+
+export function makeViewerWithUnknownOptionalReason(): UserActionStatusDto {
+  return makeViewer({
+    optional: true,
+    // @ts-expect-error: a reason from a server newer than this build
+    optionalReason: "from_a_newer_server",
+  });
 }
 
 export function makeAction(

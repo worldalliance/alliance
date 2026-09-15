@@ -1,6 +1,11 @@
 import { ActionDto } from "../client/types.gen";
 import { CardStyle } from "../styles/card";
-import { deadlineHasPassed, isActionOptional } from "./actionUtils";
+import {
+  deadlineHasPassed,
+  getViewerOnlyOptionalReason,
+  isActionOptional,
+  ViewerOnlyOptionalReason,
+} from "./actionUtils";
 
 export enum ActionPageTaskPanelState {
   PublicOnly = "public_only",
@@ -17,6 +22,8 @@ export enum ActionPageTaskPanelState {
   ShowTaskWithMissedDeadline = "show_task_with_missed_deadline",
   ShowTask = "show_task",
   Optional = "optional",
+  OptionalForViewer = "optional_for_viewer",
+  OptionalForContractGap = "optional_for_contract_gap",
 }
 
 enum ActionPageTaskPanelEnabled {
@@ -45,6 +52,10 @@ const stateIsDisabled = {
   [ActionPageTaskPanelState.OnboardingSignContractFirst]:
     ActionPageTaskPanelEnabled.Disabled,
   [ActionPageTaskPanelState.Optional]: ActionPageTaskPanelEnabled.Enabled,
+  [ActionPageTaskPanelState.OptionalForViewer]:
+    ActionPageTaskPanelEnabled.Enabled,
+  [ActionPageTaskPanelState.OptionalForContractGap]:
+    ActionPageTaskPanelEnabled.Enabled,
   [ActionPageTaskPanelState.ShowTask]: ActionPageTaskPanelEnabled.Enabled,
 } as const satisfies Record<
   ActionPageTaskPanelState,
@@ -71,6 +82,8 @@ export const shouldLoadCompletedTaskFormByState = {
   [ActionPageTaskPanelState.ShowTaskWithMissedDeadline]: false,
   [ActionPageTaskPanelState.OnboardingSignContractFirst]: false,
   [ActionPageTaskPanelState.Optional]: false,
+  [ActionPageTaskPanelState.OptionalForViewer]: false,
+  [ActionPageTaskPanelState.OptionalForContractGap]: false,
   [ActionPageTaskPanelState.ShowTask]: false,
 } as const satisfies Record<ActionPageTaskPanelState, boolean>;
 
@@ -108,6 +121,13 @@ export function mustSignContractFirst(
     action.onboarding && !contractSigned && !action.isContractSigningAction
   );
 }
+
+const stateByViewerOnlyOptionalReason = {
+  [ViewerOnlyOptionalReason.Unknown]:
+    ActionPageTaskPanelState.OptionalForViewer,
+  [ViewerOnlyOptionalReason.ContractGap]:
+    ActionPageTaskPanelState.OptionalForContractGap,
+} as const satisfies Record<ViewerOnlyOptionalReason, ActionPageTaskPanelState>;
 
 /**
  * The auth/guest branches at the top are genuinely client-side; everything
@@ -186,6 +206,11 @@ export function getActionPageTaskPanelState(params: {
 
   if (deadlineHasPassed(action)) {
     return ActionPageTaskPanelState.ShowTaskWithMissedDeadline;
+  }
+
+  const viewerOnlyReason = getViewerOnlyOptionalReason(action);
+  if (viewerOnlyReason) {
+    return stateByViewerOnlyOptionalReason[viewerOnlyReason];
   }
 
   if (isActionOptional(action)) {

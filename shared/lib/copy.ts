@@ -29,6 +29,16 @@ export const taskHeaders = {
       description:
         "You are not required to complete the task, but can if you would like.",
     },
+    optionalForViewer: {
+      title: "This action is optional for you.",
+      description:
+        "You do not need to complete this task, but you can if you would like.",
+    },
+    optionalForContractGap: {
+      title: "This action is optional for you.",
+      description:
+        "You haven't been a member for the whole time this task has been open. You do not need to complete it, but you can if you would like.",
+    },
     withdrew: "You withdrew from this action.",
   },
   homePage: {
@@ -51,6 +61,15 @@ export const taskHeaders = {
     optional: {
       title: "This action is optional.",
       description: "You can complete the task as usual or dismiss it.",
+    },
+    optionalForViewer: {
+      title: "Optional for you",
+      description: "You can either complete this task or dismiss it.",
+    },
+    optionalForContractGap: {
+      title: "Optional for you",
+      description:
+        "You weren't a member for the whole time this task was open. You can either complete it or dismiss it.",
     },
   },
 } as const;

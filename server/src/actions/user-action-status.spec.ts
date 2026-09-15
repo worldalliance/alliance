@@ -14,7 +14,9 @@ import { ActionStatus } from "./entities/action-event.entity";
 import {
   computeCanCompleteAction,
   resolveUserActionStatus,
+  type UserActionStatus,
   ViewerActionRelation,
+  ViewerOptionalReason,
 } from "./user-action-status";
 import { memberActionPhase } from "./utils/action-event";
 
@@ -126,6 +128,7 @@ describe("resolveUserActionStatus", () => {
     expect(status).toEqual({
       assigned: true,
       optional: false,
+      optionalReason: null,
       canComplete: true,
       relation: ViewerActionRelation.None,
       withdrawal: null,
@@ -136,6 +139,20 @@ describe("resolveUserActionStatus", () => {
       deadlinePassed: false,
       display: UserActionRelationPillStatus.Todo,
     });
+  });
+
+  it("rejects a reason without optional: true at typecheck", () => {
+    const status = resolve();
+    // @ts-expect-error a reason needs optional: true
+    const _reasonOnly: UserActionStatus = {
+      ...status,
+      optionalReason: ViewerOptionalReason.ContractGap,
+    };
+    const _widened: UserActionStatus = {
+      ...status,
+      optional: true,
+      optionalReason: ViewerOptionalReason.ContractGap,
+    };
   });
 
   it("is entirely unassigned outside the cohort", () => {

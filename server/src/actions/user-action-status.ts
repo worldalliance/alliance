@@ -49,6 +49,12 @@ export type UserActionStatus = {
    */
   optional: boolean;
   /**
+   * Why `optional` is true where `Action.optional` is false; null otherwise.
+   * Viewer-facing copy names the reason, so widening `optional` for a new
+   * reason means adding a variant.
+   */
+  optionalReason: ViewerOptionalReason | null;
+  /**
    * May the viewer complete this action? Deliberately looser than `assigned`:
    * members without an active contract may still complete regular actions —
    * they're just not expected to (no home-page listing, no reminders, no
@@ -83,12 +89,20 @@ export type UserActionStatus = {
    * leader/admin member tables show as pills).
    */
   display: UserActionRelationPillStatus;
-};
+} & (
+  | { optionalReason: null }
+  | { optional: true; optionalReason: ViewerOptionalReason }
+);
 
 export enum ViewerActionRelation {
   Completed = "completed",
   Withdrawn = "withdrawn",
   None = "none",
+}
+
+export enum ViewerOptionalReason {
+  /** The viewer's contract missed part of the member-action window. */
+  ContractGap = "contract_gap",
 }
 
 export type UserActionWithdrawal = {
@@ -227,6 +241,7 @@ export function resolveUserActionStatus(params: {
   return {
     assigned,
     optional: action.optional,
+    optionalReason: null,
     canComplete: computeCanCompleteAction({ action, user, inCohort }),
     relation,
     withdrawal,

@@ -74,6 +74,7 @@ import {
 } from "../entities/reminder-group.entity";
 import {
   ViewerActionRelation,
+  ViewerOptionalReason,
   type UserActionStatus,
   type UserActionWithdrawal,
 } from "../user-action-status";
@@ -276,6 +277,13 @@ export class UserActionStatusDto {
   @ApiProperty()
   optional: boolean;
 
+  @ApiProperty({
+    enum: ViewerOptionalReason,
+    enumName: "ViewerOptionalReason",
+    nullable: true,
+  })
+  optionalReason: ViewerOptionalReason | null;
+
   @ApiProperty()
   canComplete: boolean;
 
@@ -312,6 +320,7 @@ export class UserActionStatusDto {
   constructor(input: UserActionStatus) {
     this.assigned = input.assigned;
     this.optional = input.optional;
+    this.optionalReason = input.optionalReason;
     this.canComplete = input.canComplete;
     this.relation = input.relation;
     this.withdrawal = input.withdrawal

@@ -52,9 +52,9 @@ const renderTitledHeader = (copy: TitledCopy, titleClassName?: string) => (
 
 // Guest-completion states (GuestRef, GuestCompleted) are web-only; mobile
 // pins hasRefCode/hasGuestResponse to false below so they're never reached.
-const taskPanelTopByState: Partial<
-  Record<ActionPageTaskPanelState, ReactNode>
-> = {
+const taskPanelTopByState: Record<ActionPageTaskPanelState, ReactNode> = {
+  [ActionPageTaskPanelState.GuestRef]: null,
+  [ActionPageTaskPanelState.GuestCompleted]: null,
   [ActionPageTaskPanelState.PublicOnlyAuthenticated]: (
     <Text>{taskHeaders.actionPage.externalOnly}</Text>
   ),
@@ -94,6 +94,14 @@ const taskPanelTopByState: Partial<
   ),
   [ActionPageTaskPanelState.Optional]: renderTitledHeader(
     taskHeaders.actionPage.optional,
+    "text-sky-500",
+  ),
+  [ActionPageTaskPanelState.OptionalForViewer]: renderTitledHeader(
+    taskHeaders.actionPage.optionalForViewer,
+    "text-sky-500",
+  ),
+  [ActionPageTaskPanelState.OptionalForContractGap]: renderTitledHeader(
+    taskHeaders.actionPage.optionalForContractGap,
     "text-sky-500",
   ),
   [ActionPageTaskPanelState.ShowTask]: null,
@@ -216,6 +224,8 @@ const ActionPageTaskPanel = ({
     case ActionPageTaskPanelState.PublicOnly:
     case ActionPageTaskPanelState.ShowTaskWithMissedDeadline:
     case ActionPageTaskPanelState.Optional:
+    case ActionPageTaskPanelState.OptionalForViewer:
+    case ActionPageTaskPanelState.OptionalForContractGap:
     case ActionPageTaskPanelState.ShowTask:
       return (
         <StackedCard

@@ -176,6 +176,30 @@ export function isActionOptional(action: ActionDto): boolean {
   return viewer ? viewer.optional : action.optional;
 }
 
+export enum ViewerOnlyOptionalReason {
+  Unknown = "unknown",
+  ContractGap = "contract_gap",
+}
+
+export function getViewerOnlyOptionalReason(
+  action: ActionDto,
+): ViewerOnlyOptionalReason | null {
+  const { viewer } = action;
+  if (!viewer?.optional || action.optional) {
+    return null;
+  }
+  const reason = viewer.optionalReason;
+  switch (reason) {
+    case "contract_gap":
+      return ViewerOnlyOptionalReason.ContractGap;
+    case null:
+      break;
+    default:
+      reason satisfies never;
+  }
+  return ViewerOnlyOptionalReason.Unknown;
+}
+
 export function isActionAssignedAndNotDismissed(action: ActionDto): boolean {
   const { viewer } = action;
   // Legacy `shouldParticipate` already folds dismissal into assignment.
