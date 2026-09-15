@@ -77,7 +77,6 @@ export const testUser = new User({
   checkPassword: function (): Promise<boolean> {
     throw new Error("Function not implemented.");
   },
-  stripeCustomerId: "",
   isNotSignedUpPartialProfile: false,
   over18: false,
   awayRanges: [],

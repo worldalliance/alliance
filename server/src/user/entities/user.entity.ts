@@ -277,11 +277,6 @@ export class User {
   @ApiProperty()
   referralCode: string;
 
-  @Column({ type: "varchar", nullable: true, unique: true })
-  @ApiProperty({ nullable: true })
-  @Allow()
-  stripeCustomerId: string | null;
-
   @Column({ default: false })
   @ApiProperty()
   @Allow()

@@ -12,7 +12,6 @@ import type { EditableContent } from "src/forum/entities/editablecontent.entity"
 import type { City } from "src/geo/city.entity";
 import type { Mail } from "src/mail/mail.entity";
 import type { Mms } from "src/mms/mms.entity";
-import type { PaymentUserDataToken } from "src/payments/entities/payment-token.entity";
 import type { RecentSearch } from "src/search/recentsearch.entity";
 import type { ExternalShareTarget } from "src/share-urls/entities/external-share-target.entity";
 import type { CustomValidator } from "src/tasks/entities/customvalidator.entity";
@@ -50,7 +49,6 @@ type _typecheck_EntityShapes =
   | Assert<EntityShape<Guest>>
   | Assert<EntityShape<Mail>>
   | Assert<EntityShape<Mms>>
-  | Assert<EntityShape<PaymentUserDataToken>>
   | Assert<EntityShape<RecentSearch>>
   | Assert<EntityShape<UserAwayRange>>
   | Assert<EntityShape<Video>>;

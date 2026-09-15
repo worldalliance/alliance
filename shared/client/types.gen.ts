@@ -717,7 +717,6 @@ export type User = {
     profilePicture: string | null;
     profileDescription: string | null;
     referralCode: string;
-    stripeCustomerId: string | null;
     isNotSignedUpPartialProfile: boolean;
     customCityString: string | null;
     over18: boolean | null;

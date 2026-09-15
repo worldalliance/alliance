@@ -2279,7 +2279,6 @@ describe("Actions (e2e)", () => {
 
     const expectNoSensitiveUserFields = (user: Record<string, unknown>) => {
       expect(user).not.toHaveProperty("password");
-      expect(user).not.toHaveProperty("stripeCustomerId");
       expect(user).not.toHaveProperty("emailVerified");
       expect(user).not.toHaveProperty("phoneNumberUnsubscribed");
     };
