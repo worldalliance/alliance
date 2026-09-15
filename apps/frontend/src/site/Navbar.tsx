@@ -134,7 +134,8 @@ export function Navbar({
             <Link
               to={PARTNER_HREF}
               className={cn(
-                "hidden md:inline-flex min-h-11 items-center hover:underline font-medium text-base text-black",
+                "hidden md:inline-flex min-h-11 items-center hover:underline font-medium text-base",
+                light ? "text-white" : "text-black",
               )}
             >
               {NAV_PARTNER}
@@ -197,7 +198,10 @@ export function Navbar({
             type="button"
             /* -ml-2.5 cancels the icon's inset inside its 44px tap target, so
                the flex gap beside it reads as the gap you see. */
-            className="-mr-2 -ml-2.5 inline-flex size-11 shrink-0 items-center justify-center text-black md:hidden"
+            className={cn(
+              "-mr-2 -ml-2.5 inline-flex size-11 shrink-0 items-center justify-center md:hidden",
+              light ? "text-white" : "text-black",
+            )}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}
