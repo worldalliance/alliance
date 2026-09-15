@@ -527,6 +527,68 @@ describe("OAuth sign-in (e2e)", () => {
         })
         .expect(400);
     });
+
+    it("links over the member's own session", async () => {
+      const member = await freshMember();
+      profile = {
+        ...profile,
+        subject: "native-link",
+        email: "user@example.com",
+      };
+
+      const linked = await client()
+        .post(path("native/link"))
+        .set("Authorization", `Bearer ${member.accessToken}`)
+        .send({ identityToken: mintIdentityToken() })
+        .expect(200);
+
+      expect(linkedEmails(linked.body.user)).toEqual({
+        google: "user@example.com",
+      });
+    });
+
+    // A 401 would read as the member's session expiring, not the token.
+    it("refuses to link a token the provider does not vouch for, saying why", async () => {
+      const member = await freshMember();
+
+      const refused = await client()
+        .post(path("native/link"))
+        .set("Authorization", `Bearer ${member.accessToken}`)
+        .send({ identityToken: "forged" })
+        .expect(400);
+
+      expect(refused.body.message).toBe(
+        oauthErrorMessage(OAuthProvider.Google, OAuthError.Failed),
+      );
+    });
+
+    it("refuses to link a provider account another member holds", async () => {
+      const holder = await freshMember();
+      const member = await freshMember();
+      profile = {
+        ...profile,
+        subject: "native-held",
+        email: "held@example.com",
+      };
+      await client()
+        .post(path("native/link"))
+        .set("Authorization", `Bearer ${holder.accessToken}`)
+        .send({ identityToken: mintIdentityToken() })
+        .expect(200);
+
+      const refused = await client()
+        .post(path("native/link"))
+        .set("Authorization", `Bearer ${member.accessToken}`)
+        .send({ identityToken: mintIdentityToken() })
+        .expect(400);
+
+      expect(refused.body.message).toBe(
+        oauthErrorMessage(
+          OAuthProvider.Google,
+          OAuthError.ClaimedByAnotherAccount,
+        ),
+      );
+    });
   });
 
   describe("linking", () => {

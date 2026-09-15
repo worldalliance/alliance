@@ -26,6 +26,7 @@ import {
   type ExecutionContext,
 } from "@nestjs/common";
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiCookieAuth,
   ApiOkResponse,
@@ -71,6 +72,7 @@ import {
 } from "./oauth-urls";
 import {
   OAuthCallbackDto,
+  OAuthIdentityTokenDto,
   OAuthNativeSignInDto,
   OAuthSignInResponseDto,
   OAuthStartDto,
@@ -410,6 +412,36 @@ export class OAuthController {
       outcome,
       isAdmin: user.admin,
       ...(body.mode === "header" && tokens),
+    });
+  }
+
+  @Post("native/link")
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: AuthMeResponseDto })
+  @ApiBadRequestResponse()
+  @ApiUnauthorizedResponse()
+  async nativeLink(
+    @ProviderParam() provider: OAuthProvider,
+    @Request() req: JwtRequest,
+    @Body() body: OAuthIdentityTokenDto,
+  ): Promise<AuthMeResponseDto> {
+    const profile = await this.nativeProfile({
+      provider,
+      identityToken: body.identityToken,
+    });
+    if (!profile.ok) {
+      throw new BadRequestException(oauthErrorMessage(provider, profile.error));
+    }
+    const linked = await this.oauth.link({
+      userId: req.user.sub,
+      profile: profile.value,
+    });
+    if (!linked.ok) {
+      throw new BadRequestException(oauthErrorMessage(provider, linked.error));
+    }
+    return new AuthMeResponseDto({
+      user: await this.authService.getProfile(linked.value.email),
     });
   }
 

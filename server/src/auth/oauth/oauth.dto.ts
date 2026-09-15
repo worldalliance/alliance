@@ -64,7 +64,8 @@ export class OAuthCallbackDto {
   user?: string;
 }
 
-export class OAuthNativeSignInDto {
+/** What a provider's native SDK hands the app, and the app hands us. */
+export class OAuthIdentityTokenDto {
   @ApiProperty({
     description: "The id token the provider's native SDK returned.",
   })
@@ -72,7 +73,9 @@ export class OAuthNativeSignInDto {
   @IsString()
   @IsNotEmpty()
   identityToken: string;
+}
 
+export class OAuthNativeSignInDto extends OAuthIdentityTokenDto {
   @ApiPropertyOptional({
     description:
       "Apple hands the name to the app beside the token rather than inside it.",

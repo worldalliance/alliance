@@ -875,6 +875,13 @@ export type OAuthSignInResponseDto = {
     outcome: OAuthOutcome;
 };
 
+export type OAuthIdentityTokenDto = {
+    /**
+     * The id token the provider's native SDK returned.
+     */
+    identityToken: string;
+};
+
 export type ClusterSummaryDto = {
     id: number;
     displayName: string;
@@ -4390,6 +4397,28 @@ export type OAuthNativeSignInResponses = {
 };
 
 export type OAuthNativeSignInResponse = OAuthNativeSignInResponses[keyof OAuthNativeSignInResponses];
+
+export type OAuthNativeLinkData = {
+    body: OAuthIdentityTokenDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/native/link';
+};
+
+export type OAuthNativeLinkErrors = {
+    400: HeyApiError;
+    401: HeyApiError;
+};
+
+export type OAuthNativeLinkError = OAuthNativeLinkErrors[keyof OAuthNativeLinkErrors];
+
+export type OAuthNativeLinkResponses = {
+    200: AuthMeResponseDto;
+};
+
+export type OAuthNativeLinkResponse = OAuthNativeLinkResponses[keyof OAuthNativeLinkResponses];
 
 export type OAuthUnlinkData = {
     body?: never;

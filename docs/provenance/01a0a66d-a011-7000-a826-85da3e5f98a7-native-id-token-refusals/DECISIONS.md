@@ -31,3 +31,11 @@ Rejected: a database table of spent tokens. It would survive a restart, but it n
 `name` is trimmed and has to be non-empty, as on `/auth/register`. The app sends no name rather than a blank one, so only a hand-built request gets the 400.
 
 Rejected: treating a blank name as absent, which names the member after their email and hides the client's bug.
+
+## `name` rides only on `/native`
+
+Only account creation reads the name. `/native/link` writes the provider, subject and email, so it doesn't accept a name. The global ValidationPipe strips unknown fields rather than rejecting them, so a client that still sends one gets the same response.
+
+## A token refused at `/native/link` is a 400
+
+The route sits behind AuthGuard, and mobile's fetch wrapper reads any 401 there as an expired session. It rotates the member's tokens and retries with the same dead id token. A 400 with the `Failed` message matches the route's other refusals.
