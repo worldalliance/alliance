@@ -75,7 +75,7 @@ export function BandHeading({
   return (
     <h2
       className={cn(
-        "site-display text-3xl leading-tight font-medium text-balance sm:text-4xl md:text-5xl",
+        "site-display text-4xl leading-tight font-medium text-balance sm:text-5xl md:text-6xl",
         onDark ? "text-white" : "text-black",
         className,
       )}

@@ -20,9 +20,7 @@ export function ModelSection() {
     <section className="bg-[var(--site-surface)] pb-20 sm:pb-36">
       <div className={`${SITE_COL} flex flex-col gap-8`}>
         <div className="flex flex-col gap-3">
-          <BandHeading className="text-[2.25rem] sm:text-5xl lg:text-6xl">
-            {MODEL_HEADLINE}
-          </BandHeading>
+          <BandHeading>{MODEL_HEADLINE}</BandHeading>
           <SectionSubtitle>
             {GROWTH_HEADLINE_FAR_PARTS.lead}
             <Link
