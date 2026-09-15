@@ -119,6 +119,9 @@ const OnboardingPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [joinPhase, setJoinPhase] = useState(JoinPhase.Idle);
+  // A provider hands the member back on a later screen. Morphing the panel out
+  // of the sign-up hero from there just plays the account screen underneath it.
+  const [skipPanelMorph, setSkipPanelMorph] = useState(false);
   const registeredRef = useRef(false);
   const leavingRef = useRef(false);
   // A provider signs the member in before the flow starts, so a session counts
@@ -176,6 +179,7 @@ const OnboardingPage = () => {
       case OAuthOutcome.SignedUp:
         registeredRef.current = true;
         clearDraft();
+        setSkipPanelMorph(true);
         goTo(OnboardingStep.Community);
         return;
       case OAuthOutcome.SignedIn:
@@ -317,7 +321,9 @@ const OnboardingPage = () => {
       fill={options?.fill}
       footer={
         <FooterNav
-          onBack={goBack}
+          onBack={
+            stepBefore(step) === OnboardingStep.Account ? undefined : goBack
+          }
           onNext={goNext}
           nextLabel="Continue"
           index={4}
@@ -436,7 +442,8 @@ const OnboardingPage = () => {
         <div
           className={cn(
             "ob-panel z-50",
-            isAccount ? "ob-panel--intro hidden md:block" : "ob-panel--full",
+            isAccount ? "ob-panel--intro hidden lg:block" : "ob-panel--full",
+            skipPanelMorph && "ob-panel--instant",
             joinPhase === JoinPhase.Leaving && "ob-panel--leaving",
             TONE_CLASS[STEP_TONE[step]],
           )}
@@ -451,7 +458,7 @@ const OnboardingPage = () => {
 
       {isAccount && (
         <>
-          <section className="bg-[var(--site-surface)] px-5 pb-14 md:hidden">
+          <section className="bg-[var(--site-surface)] px-5 pb-14 lg:hidden">
             <GrantmakingCard className="min-h-80" />
           </section>
           <LandingBody />

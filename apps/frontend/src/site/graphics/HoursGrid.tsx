@@ -24,13 +24,7 @@ export enum HoursGridSize {
 
 const gridClasses: Record<HoursGridSize, string> = {
   [HoursGridSize.Default]: "min-w-[560px] gap-[3px] sm:min-w-0 sm:gap-1.5",
-  [HoursGridSize.Compact]: "ob-hours-grid",
-};
-
-const wrapClasses: Record<HoursGridSize, string> = {
-  [HoursGridSize.Default]: "-mx-1 overflow-x-auto px-1 pb-1",
-  [HoursGridSize.Compact]:
-    "ob-hours-fit flex min-h-0 flex-1 flex-col justify-center",
+  [HoursGridSize.Compact]: "ob-hours-grid w-full",
 };
 
 const labelClasses: Record<HoursGridSize, string> = {
@@ -79,20 +73,10 @@ function Grid({
 }) {
   const spent = spentIndex(columns);
 
-  // Compact caps its own width off the height it was handed, so the 168 squares
-  // shrink to fit the panel rather than running past its foot.
-  const style: StyleWithVars = {
-    gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-    ...(size === HoursGridSize.Compact && {
-      "--hours-columns": columns,
-      "--hours-rows": Math.ceil(HOURS / columns),
-    }),
-  };
-
   return (
     <div
       className={cn("mx-auto grid", gridClasses[size], className)}
-      style={style}
+      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
     >
       {Array.from({ length: HOURS }, (_, i) => {
         const row = Math.floor(i / columns);
@@ -136,50 +120,81 @@ export function HoursGrid({
   className?: string;
 } = {}) {
   const { ref, inView } = useInView<HTMLDivElement>(0.2);
-  const compact = size === HoursGridSize.Compact;
 
-  return (
-    <div ref={ref} className={cn("flex flex-col", className)}>
-      <p className={cn("mb-2 text-white/85", labelClasses[size])}>
-        {HOURS_START_LABEL}
-      </p>
-      <div className={wrapClasses[size]}>
-        {compact && (
-          <Grid
-            columns={NARROW_COLUMNS}
-            size={size}
-            inView={inView}
-            className="sm:hidden"
-          />
-        )}
-        <Grid
-          columns={WIDE_COLUMNS}
-          size={size}
-          inView={inView}
-          className={compact ? "hidden sm:grid" : undefined}
-        />
+  const startLabel = (
+    <p className={cn("mb-2 text-white/85", labelClasses[size])}>
+      {HOURS_START_LABEL}
+    </p>
+  );
+
+  const legend = (
+    <div
+      className={cn(
+        "mt-3 flex flex-wrap items-center justify-between text-white/85",
+        legendClasses[size],
+        labelClasses[size],
+      )}
+    >
+      <span className={cn("flex flex-wrap items-center", legendClasses[size])}>
+        <span className="flex items-center gap-2">
+          <Swatch solid size={size} />
+          {HOURS_LEGEND_SPENT}
+        </span>
+        <span className="flex items-center gap-2">
+          <Swatch solid={false} size={size} />
+          {HOURS_LEGEND_TOTAL}
+        </span>
+      </span>
+      <span>{HOURS_END_LABEL}</span>
+    </div>
+  );
+
+  if (size === HoursGridSize.Default) {
+    return (
+      <div ref={ref} className={cn("flex flex-col", className)}>
+        {startLabel}
+        <div className="-mx-1 overflow-x-auto px-1 pb-1">
+          <Grid columns={WIDE_COLUMNS} size={size} inView={inView} />
+        </div>
+        {legend}
       </div>
+    );
+  }
+
+  // One block per arrangement rather than one grid each: the block is what the
+  // width cap applies to, so its labels stay pinned to the graphic's own edges
+  // instead of drifting to the panel's.
+  const block = (columns: number, blockClassName: string) => {
+    const style: StyleWithVars = {
+      "--hours-columns": columns,
+      "--hours-rows": Math.ceil(HOURS / columns),
+    };
+
+    return (
       <div
         className={cn(
-          "mt-3 flex flex-wrap items-center justify-between text-white/85",
-          legendClasses[size],
-          labelClasses[size],
+          "ob-hours-block mx-auto flex w-full flex-col",
+          blockClassName,
         )}
+        style={style}
       >
-        <span
-          className={cn("flex flex-wrap items-center", legendClasses[size])}
-        >
-          <span className="flex items-center gap-2">
-            <Swatch solid size={size} />
-            {HOURS_LEGEND_SPENT}
-          </span>
-          <span className="flex items-center gap-2">
-            <Swatch solid={false} size={size} />
-            {HOURS_LEGEND_TOTAL}
-          </span>
-        </span>
-        <span>{HOURS_END_LABEL}</span>
+        {startLabel}
+        <Grid columns={columns} size={size} inView={inView} />
+        {legend}
       </div>
+    );
+  };
+
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "ob-hours-fit flex min-h-0 flex-col justify-center",
+        className,
+      )}
+    >
+      {block(NARROW_COLUMNS, "sm:hidden")}
+      {block(WIDE_COLUMNS, "hidden sm:flex")}
     </div>
   );
 }

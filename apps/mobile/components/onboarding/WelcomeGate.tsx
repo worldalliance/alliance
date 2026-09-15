@@ -1,6 +1,6 @@
 import type { ReferrerProfileDto } from "@alliance/shared/client";
 import { Image } from "expo-image";
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated, { FadeIn } from "react-native-reanimated";
@@ -58,6 +58,29 @@ function Scrim() {
 }
 
 /**
+ * Pinned to the top at a fixed height, outside the keyboard-avoiding subtree,
+ * so the keyboard moves the form over a photo that holds still. Memoised
+ * because moving between the two fields re-renders the form, and re-rendering
+ * the SVG scrim with it flashes the whole backdrop.
+ */
+const Backdrop = memo(function Backdrop({ height }: { height: number }) {
+  return (
+    <View
+      style={{ position: "absolute", top: 0, left: 0, right: 0, height }}
+      pointerEvents="none"
+    >
+      <Image
+        source={WELCOME_IMAGE}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        contentPosition="center"
+      />
+      <Scrim />
+    </View>
+  );
+});
+
+/**
  * The window height with the keyboard down. Android resizes the window when the
  * keyboard opens, and the photo behind the form must not resize with it.
  */
@@ -107,26 +130,7 @@ export function WelcomeGate({
 
   return (
     <View className="flex-1" testID="vr-onboarding-gate-ready">
-      {/* Pinned to the top at a fixed height, outside the keyboard-avoiding
-          subtree, so the keyboard moves the form over a photo that holds still. */}
-      <View
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: viewportHeight,
-        }}
-        pointerEvents="none"
-      >
-        <Image
-          source={WELCOME_IMAGE}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          contentPosition="center"
-        />
-        <Scrim />
-      </View>
+      <Backdrop height={viewportHeight} />
 
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <View

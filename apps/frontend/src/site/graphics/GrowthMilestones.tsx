@@ -31,7 +31,7 @@ const labelClasses: Record<MilestoneSize, string> = {
 
 const barClasses: Record<MilestoneSize, string> = {
   [MilestoneSize.Default]: "h-5 md:h-[30px]",
-  [MilestoneSize.Compact]: "h-[clamp(0.425rem,1.35vh,1.05rem)]",
+  [MilestoneSize.Compact]: "h-[clamp(0.85rem,2.7vh,2.1rem)]",
 };
 
 const captionClasses: Record<MilestoneSize, string> = {

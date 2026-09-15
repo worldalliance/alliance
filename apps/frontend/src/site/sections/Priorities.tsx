@@ -55,7 +55,7 @@ export function PriorityCard({
         </h3>
         <div className="grid min-h-0 grid-rows-[0fr] transition-[grid-template-rows] duration-500 ease-out group-hover:grid-rows-[1fr] group-focus-visible:grid-rows-[1fr]">
           <div className="overflow-hidden">
-            <p className="pt-3 text-base leading-[1.45] text-white/90 opacity-0 transition-opacity duration-500 group-hover:opacity-100 group-focus-visible:opacity-100">
+            <p className="pt-3 text-[1.1rem] leading-[1.45] text-white/90 opacity-0 transition-opacity duration-500 group-hover:opacity-100 group-focus-visible:opacity-100">
               {priority.description}
             </p>
           </div>

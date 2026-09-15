@@ -6,6 +6,7 @@ import type {
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { Check } from "lucide-react";
+import { href } from "react-router";
 import { riseStyle, StepHeadline, StepNote } from "./chrome";
 import { useScrollFeather } from "./useScrollFeather";
 
@@ -23,7 +24,7 @@ const FACE =
   "size-[clamp(1.5rem,3.1vh,2.1rem)] rounded ring-2 ring-[var(--ob-navy)]";
 
 const FIELD =
-  "h-[clamp(2.1rem,4.4vh,2.75rem)] w-full shrink-0 rounded-md border-2 bg-white px-3.5 text-black outline-none transition-colors placeholder:text-zinc-400";
+  "h-[clamp(2.1rem,4.4vh,2.75rem)] w-full shrink-0 rounded-md border bg-white px-3.5 text-black outline-none transition-colors placeholder:text-zinc-400";
 
 const FIELD_IDLE = "border-zinc-300 focus:border-[var(--ob-navy)]";
 
@@ -116,18 +117,14 @@ export function AgreementStep({
   const terms = useScrollFeather<HTMLDivElement>();
 
   return (
-    <div className="mx-auto flex min-h-0 w-full max-w-[40rem] flex-1 flex-col justify-center gap-[clamp(0.55rem,1.7vh,1.15rem)] lg:max-w-none lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 xl:gap-16">
-      <div className="flex shrink-0 flex-col items-center gap-[clamp(0.4rem,1.2vh,0.85rem)] lg:max-w-[28rem] lg:items-start">
-        <StepHeadline className="lg:mx-0 lg:text-left">
-          {AGREEMENT_HEADLINE}
-        </StepHeadline>
-        <StepNote className="lg:mx-0 lg:text-left" index={2}>
-          {AGREEMENT_NOTE}
-        </StepNote>
+    <div className="mx-auto flex min-h-0 w-full max-w-[40rem] flex-1 flex-col justify-center gap-[clamp(0.55rem,1.7vh,1.15rem)]">
+      <div className="flex shrink-0 flex-col items-center gap-[clamp(0.4rem,1.2vh,0.85rem)]">
+        <StepHeadline>{AGREEMENT_HEADLINE}</StepHeadline>
+        <StepNote index={2}>{AGREEMENT_NOTE}</StepNote>
       </div>
 
       <div
-        className="ob-rise mx-auto flex max-h-full min-h-0 w-full max-w-[40rem] flex-col gap-[clamp(0.55rem,1.7vh,1.15rem)] lg:mx-0 lg:justify-self-end"
+        className="ob-rise mx-auto flex max-h-full min-h-0 w-full flex-col gap-[clamp(0.55rem,1.7vh,1.15rem)]"
         style={riseStyle(3)}
       >
         <div className="flex min-h-0 flex-col overflow-hidden rounded-lg">
@@ -162,6 +159,18 @@ export function AgreementStep({
                 ))}
               </ol>
             </div>
+
+            <a
+              href={href("/guide")}
+              target="_blank"
+              rel="noreferrer"
+              className={cn(
+                "mt-2 shrink-0 self-start text-[length:var(--ob-ui)] font-medium text-green underline underline-offset-2",
+                CARD_INLINE_PAD,
+              )}
+            >
+              View full agreement
+            </a>
           </div>
 
           <div

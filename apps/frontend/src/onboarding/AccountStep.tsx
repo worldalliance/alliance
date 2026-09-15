@@ -66,6 +66,9 @@ export function AccountStep({
   } = useInvite(referralCode);
   const inviteOnly =
     (!isFeatureEnabled(Features.PublicSignup) && !referralCode) || inviteUsed;
+  // An invite in the URL is a way in, so logging in offers the sign-up screen
+  // it came from rather than sending the member off to ask for another invite.
+  const canSignUp = isFeatureEnabled(Features.PublicSignup) || !!referralCode;
   const [loggingIn, setLoggingIn] = useState(startInLogin);
   const [error, setError] = useState<ReactNode>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -165,7 +168,7 @@ export function AccountStep({
   return (
     <div
       id="create-account"
-      className="flex h-dvh flex-col overflow-hidden md:w-1/2"
+      className="flex h-dvh flex-col overflow-hidden lg:w-1/2"
     >
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-5 pt-24 pb-6 sm:px-8">
         <div className="ob-rise w-full max-w-[22rem]" style={riseStyle(0)}>
@@ -272,7 +275,7 @@ export function AccountStep({
             {loggingIn
               ? "Don’t have an account? "
               : "Already have an account? "}
-            {loggingIn ? (
+            {loggingIn && !canSignUp ? (
               <a
                 href={JOIN_MAILTO}
                 className="font-medium text-black underline underline-offset-2"
@@ -283,13 +286,13 @@ export function AccountStep({
               <button
                 type="button"
                 onClick={() => {
-                  setLoggingIn(true);
+                  setLoggingIn(!loggingIn);
                   setError(null);
                   setNotice(null);
                 }}
                 className="font-medium text-black underline underline-offset-2"
               >
-                Log in
+                {loggingIn ? "Create an account" : "Log in"}
               </button>
             )}
           </p>

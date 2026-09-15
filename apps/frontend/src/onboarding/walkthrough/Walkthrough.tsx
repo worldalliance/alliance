@@ -99,8 +99,10 @@ function Spotlight({ box }: { box: Box }) {
         className={shade}
         style={{ top, left: right, right: 0, height: bottom - top }}
       />
+      {/* Over the cutout, not around it: the tour ends on Skip, so clicking
+          the thing it is pointing at must not navigate out from under it. */}
       <div
-        className="pointer-events-none fixed rounded-lg ring-2 ring-white/80"
+        className="pointer-events-auto fixed rounded-lg ring-2 ring-white/80"
         style={{ top, left, width: right - left, height: bottom - top }}
       />
     </>

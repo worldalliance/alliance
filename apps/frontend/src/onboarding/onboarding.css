@@ -47,29 +47,38 @@ html.ob-locked body {
 }
 
 .ob-root .ob-priorities .site-priority-body p {
-  font-size: var(--ob-caption);
+  font-size: calc(var(--ob-caption) * 1.1);
   line-height: 1.35;
 }
 
-/* The compact hours grid sizes itself off the height it is handed rather than
+/* The compact hours block sizes itself off the height it is handed rather than
    off its width alone, so all 168 squares fit the panel at every breakpoint.
-   The row and column gaps come out of the height before the aspect ratio is
-   applied and go back on after, which is what keeps the cells square. */
+   The gaps and the two labels come out of the height before the aspect ratio
+   is applied and the gaps go back on after, which is what keeps the cells
+   square. `--hours-chrome` rounds the labels up: overshooting costs a few
+   pixels of grid, undershooting overruns the panel. */
 .ob-hours-fit {
   container-type: size;
 }
 
-.ob-hours-grid {
+.ob-hours-block {
   --hours-gap: clamp(2px, 0.6vh, 7px);
-  gap: var(--hours-gap);
+  --hours-chrome: calc(var(--ob-caption) * 3.2 + 1.5rem);
   width: min(
     100%,
     calc(
-      (100cqh - (var(--hours-rows) - 1) * var(--hours-gap)) *
+      (
+          100cqh - var(--hours-chrome) - (var(--hours-rows) - 1) *
+            var(--hours-gap)
+        ) *
         var(--hours-columns) / var(--hours-rows) + (var(--hours-columns) - 1) *
         var(--hours-gap)
     )
   );
+}
+
+.ob-hours-grid {
+  gap: var(--hours-gap);
 }
 
 /* The agreement card must fit whole and must not scroll, so the promise beside
@@ -132,6 +141,11 @@ html.ob-locked body {
     border-radius 900ms var(--ob-swap),
     background-color 800ms ease,
     opacity var(--ob-leave, 300ms) var(--ob-swap);
+}
+
+/* Nothing to morph from when a provider hands the member back mid-flow. */
+.ob-panel--instant {
+  transition: none;
 }
 
 .ob-panel--leaving {

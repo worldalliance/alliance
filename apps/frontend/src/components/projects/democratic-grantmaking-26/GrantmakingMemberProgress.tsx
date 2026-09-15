@@ -3,15 +3,39 @@ import { cn } from "@alliance/shared/styles/util";
 
 const MEMBER_GOAL = 1_000;
 
+export enum ProgressTone {
+  /** White type over the grass photo. */
+  OnPhoto = "on-photo",
+  /** Dark type inside the platform mockup. */
+  OnCard = "on-card",
+}
+
+const toneText: Record<ProgressTone, string> = {
+  [ProgressTone.OnPhoto]: "text-white/80",
+  [ProgressTone.OnCard]: "text-zinc-600",
+};
+
+const toneTrack: Record<ProgressTone, string> = {
+  [ProgressTone.OnPhoto]: "bg-white/20",
+  [ProgressTone.OnCard]: "bg-zinc-200",
+};
+
 export function GrantmakingMemberProgress({
   className,
+  tone = ProgressTone.OnPhoto,
+  caption = true,
 }: {
   className?: string;
+  tone?: ProgressTone;
+  /** Off where the row beside the bar already says what the goal is. */
+  caption?: boolean;
 }) {
   const { data: memberCount, isError } = useAllianceMemberCount();
 
   return (
-    <div className={cn("flex w-full flex-col gap-3 text-white/80", className)}>
+    <div
+      className={cn("flex w-full flex-col gap-3", toneText[tone], className)}
+    >
       <p>
         {memberCount !== undefined
           ? `${memberCount.toLocaleString("en-US")} / ${MEMBER_GOAL.toLocaleString("en-US")} members`
@@ -29,7 +53,10 @@ export function GrantmakingMemberProgress({
             ? Math.min(memberCount, MEMBER_GOAL)
             : undefined
         }
-        className="h-3 w-full overflow-hidden rounded-full bg-white/20"
+        className={cn(
+          "h-3 w-full overflow-hidden rounded-full",
+          toneTrack[tone],
+        )}
       >
         <div
           className="h-full rounded-full bg-green"
@@ -38,7 +65,7 @@ export function GrantmakingMemberProgress({
           }}
         />
       </div>
-      <p>This project will run when we reach 1,000 members.</p>
+      {caption && <p>This project will run when we reach 1,000 members.</p>}
     </div>
   );
 }
