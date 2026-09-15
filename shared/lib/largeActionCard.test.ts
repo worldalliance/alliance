@@ -44,11 +44,18 @@ describe("getTaskDismissInfo", () => {
     expect(info).toBeUndefined();
   });
 
-  it("shows the deadline banner once the phase closed, then optional copy", () => {
+  it("shows the deadline banner for a required task and optional copy for an optional one", () => {
     const missed = getTaskDismissInfo(makeAction({ status: "resolution" }));
     expect(missed?.header).toBe(taskHeaders.homePage.deadline.title);
     const optional = getTaskDismissInfo(makeAction({ optional: true }));
     expect(optional?.header).toBe(taskHeaders.homePage.optional.title);
+  });
+
+  it("keeps the optional banner once the deadline has passed", () => {
+    const info = getTaskDismissInfo(
+      makeAction({ optional: true, status: "resolution" }),
+    );
+    expect(info?.header).toBe(taskHeaders.homePage.optional.title);
   });
 
   it("shows the optional banner for a viewer the action is optional for", () => {

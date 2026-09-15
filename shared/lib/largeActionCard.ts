@@ -50,17 +50,19 @@ export function getTaskDismissInfo(
       return undefined;
   }
 
-  if (deadlineHasPassed(action)) {
-    return {
-      header: taskHeaders.homePage.deadline.title,
-      message: taskHeaders.homePage.deadline.description,
-    };
-  }
-
+  // Ahead of the deadline branch, whose banner would tell the member they
+  // missed a deadline they were never held to.
   if (isActionOptional(action)) {
     return {
       header: taskHeaders.homePage.optional.title,
       message: taskHeaders.homePage.optional.description,
+    };
+  }
+
+  if (deadlineHasPassed(action)) {
+    return {
+      header: taskHeaders.homePage.deadline.title,
+      message: taskHeaders.homePage.deadline.description,
     };
   }
 
