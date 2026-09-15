@@ -117,14 +117,14 @@ export function AgreementStep({
   const terms = useScrollFeather<HTMLDivElement>();
 
   return (
-    <div className="mx-auto flex min-h-0 w-full max-w-[40rem] flex-1 flex-col justify-center gap-[clamp(0.55rem,1.7vh,1.15rem)]">
+    <div className="mx-auto flex min-h-0 w-full flex-1 flex-col justify-center gap-[clamp(0.55rem,1.7vh,1.15rem)]">
       <div className="flex shrink-0 flex-col items-center gap-[clamp(0.4rem,1.2vh,0.85rem)]">
         <StepHeadline>{AGREEMENT_HEADLINE}</StepHeadline>
         <StepNote index={2}>{AGREEMENT_NOTE}</StepNote>
       </div>
 
       <div
-        className="ob-rise mx-auto flex max-h-full min-h-0 w-full flex-col gap-[clamp(0.55rem,1.7vh,1.15rem)]"
+        className="ob-rise mx-auto flex max-h-full min-h-0 w-full max-w-[40rem] flex-col gap-[clamp(0.55rem,1.7vh,1.15rem)]"
         style={riseStyle(3)}
       >
         <div className="flex min-h-0 flex-col overflow-hidden rounded-lg">

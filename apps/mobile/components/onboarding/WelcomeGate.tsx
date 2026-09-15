@@ -1,9 +1,14 @@
 import type { ReferrerProfileDto } from "@alliance/shared/client";
 import { Image } from "expo-image";
-import { memo, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
-import Animated, { FadeIn } from "react-native-reanimated";
+import { KeyboardEvents } from "react-native-keyboard-controller";
+import Animated, {
+  FadeIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import {
@@ -81,6 +86,40 @@ const Backdrop = memo(function Backdrop({ height }: { height: number }) {
 });
 
 /**
+ * iOS tears the keyboard down and puts it back up when focus moves between two
+ * fields that ask for different keyboards, which is what the email and password
+ * fields do. Committing to that hide dips the form and bounces it back, so a
+ * hide only counts once no other field has claimed the keyboard.
+ */
+const FOCUS_SWAP_MS = 120;
+
+function useKeyboardInset() {
+  const inset = useSharedValue(0);
+
+  useEffect(() => {
+    let collapse: ReturnType<typeof setTimeout> | undefined;
+
+    const show = KeyboardEvents.addListener("keyboardWillShow", (event) => {
+      clearTimeout(collapse);
+      inset.value = withTiming(event.height, { duration: event.duration });
+    });
+    const hide = KeyboardEvents.addListener("keyboardWillHide", (event) => {
+      collapse = setTimeout(() => {
+        inset.value = withTiming(0, { duration: event.duration });
+      }, FOCUS_SWAP_MS);
+    });
+
+    return () => {
+      clearTimeout(collapse);
+      show.remove();
+      hide.remove();
+    };
+  }, [inset]);
+
+  return inset;
+}
+
+/**
  * The window height with the keyboard down. Android resizes the window when the
  * keyboard opens, and the photo behind the form must not resize with it.
  */
@@ -127,55 +166,55 @@ export function WelcomeGate({
   const insets = useSafeAreaInsets();
   const scale = useOnboardingScale();
   const viewportHeight = useViewportHeight();
+  const keyboardInset = useKeyboardInset();
+
+  const padTop = insets.top + scale.gateTop;
+  const padBottom = insets.bottom + 16;
+  const contentStyle = useAnimatedStyle(() => ({
+    paddingTop: padTop,
+    paddingBottom: padBottom + keyboardInset.value,
+  }));
 
   return (
     <View className="flex-1" testID="vr-onboarding-gate-ready">
       <Backdrop height={viewportHeight} />
 
-      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-        <View
-          className="flex-1 justify-between"
-          style={{
-            paddingTop: insets.top + scale.gateTop,
-            paddingBottom: insets.bottom + 16,
-          }}
+      <Animated.View className="flex-1 justify-between" style={contentStyle}>
+        <Animated.View
+          entering={FadeIn.delay(120).duration(760)}
+          className="px-6"
         >
-          <Animated.View
-            entering={FadeIn.delay(120).duration(760)}
-            className="px-6"
+          <Text
+            family={FontFamily.Serif}
+            weight={FontWeight.Bold}
+            className="text-center text-white"
+            style={{ fontSize: scale.gateTitle }}
           >
-            <Text
-              family={FontFamily.Serif}
-              weight={FontWeight.Bold}
-              className="text-center text-white"
-              style={{ fontSize: scale.gateTitle }}
-            >
-              {GATE_TITLE}
-            </Text>
-            <Text
-              className="mt-1.5 text-center text-white"
-              style={{ fontSize: scale.gateSubline }}
-            >
-              {GATE_SUBLINE}
-            </Text>
-          </Animated.View>
+            {GATE_TITLE}
+          </Text>
+          <Text
+            className="mt-1.5 text-center text-white"
+            style={{ fontSize: scale.gateSubline }}
+          >
+            {GATE_SUBLINE}
+          </Text>
+        </Animated.View>
 
-          <AccountFields
-            mode={mode}
-            email={email}
-            onEmailChange={onEmailChange}
-            password={password}
-            onPasswordChange={onPasswordChange}
-            onSubmit={onSubmit}
-            error={error}
-            notice={notice}
-            submitting={submitting}
-            onForgotPassword={onForgotPassword}
-            inviteUsed={inviteUsed}
-            inviter={inviter}
-          />
-        </View>
-      </KeyboardAvoidingView>
+        <AccountFields
+          mode={mode}
+          email={email}
+          onEmailChange={onEmailChange}
+          password={password}
+          onPasswordChange={onPasswordChange}
+          onSubmit={onSubmit}
+          error={error}
+          notice={notice}
+          submitting={submitting}
+          onForgotPassword={onForgotPassword}
+          inviteUsed={inviteUsed}
+          inviter={inviter}
+        />
+      </Animated.View>
     </View>
   );
 }

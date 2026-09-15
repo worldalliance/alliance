@@ -58,9 +58,7 @@ const REACHED_MILESTONES: Milestone[] = [
 export function CommunityStep() {
   return (
     <>
-      <StepHeadline className="max-w-[58rem]">
-        {COMMUNITY_HEADLINE}
-      </StepHeadline>
+      <StepHeadline>{COMMUNITY_HEADLINE}</StepHeadline>
       <div
         className="flex min-h-0 flex-1 flex-col lg:flex-none"
         style={{ gap: "var(--ob-gap)" }}
@@ -107,7 +105,7 @@ export function CommitmentStep() {
 export function MinutesStep() {
   return (
     <>
-      <StepHeadline className="max-w-[52rem]">{MINUTES_HEADLINE}</StepHeadline>
+      <StepHeadline>{MINUTES_HEADLINE}</StepHeadline>
       <div
         className="flex min-h-0 flex-1 flex-col"
         style={{ gap: "var(--ob-gap)" }}
@@ -129,7 +127,7 @@ export function ScaleStep() {
 
   return (
     <>
-      <StepHeadline className="max-w-[58rem]">{SCALE_HEADLINE}</StepHeadline>
+      <StepHeadline>{SCALE_HEADLINE}</StepHeadline>
       <div
         className="mx-auto flex min-h-0 w-full flex-col lg:w-[81%] lg:flex-none"
         style={{ gap: "var(--ob-gap)" }}
