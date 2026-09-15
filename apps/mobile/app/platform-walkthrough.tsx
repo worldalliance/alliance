@@ -1,7 +1,6 @@
 import { Redirect } from "expo-router";
-import { walkthroughStart } from "../lib/onboarding/walkthroughSteps";
 
-/** A shareable way back into the platform tour for anyone already signed in. */
-const PlatformWalkthrough = () => <Redirect href={walkthroughStart()} />;
+/** The tour is off, so its shareable entry point just opens the platform. */
+const PlatformWalkthrough = () => <Redirect href="/" />;
 
 export default PlatformWalkthrough;

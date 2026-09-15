@@ -12,13 +12,15 @@ export enum PanelTone {
   Photo = "photo",
 }
 
+// The narrative screens and the agreement are off: logging in goes straight to
+// the platform. `?step=` still opens each one in a development build.
 export const STEP_ORDER: OnboardingStep[] = [
   OnboardingStep.Account,
-  OnboardingStep.Community,
-  OnboardingStep.Commitment,
-  OnboardingStep.Scale,
-  OnboardingStep.Minutes,
-  OnboardingStep.Agreement,
+  // OnboardingStep.Community,
+  // OnboardingStep.Commitment,
+  // OnboardingStep.Scale,
+  // OnboardingStep.Minutes,
+  // OnboardingStep.Agreement,
 ];
 
 export const PROGRESS_SEGMENTS = 5;
@@ -54,7 +56,7 @@ export const STEP_EYEBROW: Record<OnboardingStep, string | null> = {
 export function isOnboardingStep(
   value: string | undefined,
 ): value is OnboardingStep {
-  return STEP_ORDER.some((step) => step === value);
+  return Object.values(OnboardingStep).some((step) => step === value);
 }
 
 export function stepAfter(step: OnboardingStep): OnboardingStep | null {

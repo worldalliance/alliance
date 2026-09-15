@@ -1,5 +1,6 @@
 import { HOURS, spentIndex } from "@alliance/shared/lib/hoursGrid";
 import { cn } from "@alliance/shared/styles/util";
+import type { StyleWithVars } from "@alliance/sharedweb/ui/cssVars";
 import {
   HOURS_END_LABEL,
   HOURS_LEGEND_SPENT,
@@ -23,12 +24,13 @@ export enum HoursGridSize {
 
 const gridClasses: Record<HoursGridSize, string> = {
   [HoursGridSize.Default]: "min-w-[560px] gap-[3px] sm:min-w-0 sm:gap-1.5",
-  [HoursGridSize.Compact]: "gap-[clamp(2px,0.6vh,7px)]",
+  [HoursGridSize.Compact]: "ob-hours-grid",
 };
 
 const wrapClasses: Record<HoursGridSize, string> = {
   [HoursGridSize.Default]: "-mx-1 overflow-x-auto px-1 pb-1",
-  [HoursGridSize.Compact]: "",
+  [HoursGridSize.Compact]:
+    "ob-hours-fit flex min-h-0 flex-1 flex-col justify-center",
 };
 
 const labelClasses: Record<HoursGridSize, string> = {
@@ -77,12 +79,20 @@ function Grid({
 }) {
   const spent = spentIndex(columns);
 
+  // Compact caps its own width off the height it was handed, so the 168 squares
+  // shrink to fit the panel rather than running past its foot.
+  const style: StyleWithVars = {
+    gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+    ...(size === HoursGridSize.Compact && {
+      "--hours-columns": columns,
+      "--hours-rows": Math.ceil(HOURS / columns),
+    }),
+  };
+
   return (
     <div
       className={cn("mx-auto grid", gridClasses[size], className)}
-      style={{
-        gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-      }}
+      style={style}
     >
       {Array.from({ length: HOURS }, (_, i) => {
         const row = Math.floor(i / columns);
@@ -139,7 +149,7 @@ export function HoursGrid({
             columns={NARROW_COLUMNS}
             size={size}
             inView={inView}
-            className="w-full sm:hidden"
+            className="sm:hidden"
           />
         )}
         <Grid

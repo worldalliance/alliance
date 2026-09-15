@@ -55,7 +55,6 @@ import {
   onboardingColors,
   useOnboardingScale,
 } from "../../lib/onboarding/scale";
-import { walkthroughStart } from "../../lib/onboarding/walkthroughSteps";
 
 const TONE_BACKGROUND: Record<PanelTone, string> = {
   [PanelTone.Navy]: onboardingColors.navy,
@@ -120,7 +119,7 @@ const OnboardingScreen = () => {
   const enterPlatform = useCallback(() => {
     if (leavingRef.current) return;
     leavingRef.current = true;
-    const go = () => router.replace(walkthroughStart());
+    const go = () => router.replace("/");
     fade.value = withTiming(0, { duration: motion.stepFadeMs }, (done) => {
       if (done) runOnJS(go)();
     });
@@ -323,7 +322,13 @@ const OnboardingScreen = () => {
   const isGate = step === OnboardingStep.Account;
 
   return (
-    <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+    // The gate runs its own keyboard handling, so the photo behind the form
+    // keeps its height while only the form moves.
+    <KeyboardAvoidingView
+      behavior="padding"
+      enabled={!isGate}
+      style={{ flex: 1 }}
+    >
       <Animated.View
         className="flex-1"
         style={[{ backgroundColor: TONE_BACKGROUND[tone] }, fadeStyle]}

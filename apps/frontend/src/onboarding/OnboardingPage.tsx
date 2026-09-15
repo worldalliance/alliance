@@ -307,9 +307,14 @@ const OnboardingPage = () => {
 
   const filled = FILLED_SEGMENTS[step];
 
-  const storyStep = (body: React.ReactNode) => (
+  const storyStep = (
+    body: React.ReactNode,
+    options?: { className?: string; fill?: boolean },
+  ) => (
     <StepLayout
       eyebrow={STEP_EYEBROW[step]}
+      className={options?.className}
+      fill={options?.fill}
       footer={
         <FooterNav
           onBack={goBack}
@@ -330,16 +335,21 @@ const OnboardingPage = () => {
       case OnboardingStep.Community:
         return storyStep(<CommunityStep />);
       case OnboardingStep.Commitment:
-        return storyStep(<CommitmentStep />);
+        // The deck scales itself into the space it is handed, which it only
+        // has once the body stops growing to fit its contents.
+        return storyStep(<CommitmentStep />, { fill: true });
       case OnboardingStep.Scale:
         return storyStep(<ScaleStep />);
       case OnboardingStep.Minutes:
-        return storyStep(<MinutesStep />);
+        // The grid sizes itself off the height it is handed, which it only has
+        // once the body stops growing to fit its contents.
+        return storyStep(<MinutesStep />, { fill: true });
       case OnboardingStep.Agreement:
         return (
           <StepLayout
             eyebrow={STEP_EYEBROW[step]}
             className="[--ob-gap:var(--ob-gap-tight)]"
+            fill
             footer={
               <FooterNav
                 onBack={goBack}

@@ -22,6 +22,7 @@ serveApi(
     "POST /user/nmembers": () => Response.json({ count: 1000 }),
     "GET /user/slug/:id": () =>
       Response.json({ profilePicture: null, displayName: "" }),
+    "GET /user/signupSocialProof": () => Response.json({ profiles: [] }),
   }),
 );
 

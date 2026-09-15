@@ -51,6 +51,27 @@ html.ob-locked body {
   line-height: 1.35;
 }
 
+/* The compact hours grid sizes itself off the height it is handed rather than
+   off its width alone, so all 168 squares fit the panel at every breakpoint.
+   The row and column gaps come out of the height before the aspect ratio is
+   applied and go back on after, which is what keeps the cells square. */
+.ob-hours-fit {
+  container-type: size;
+}
+
+.ob-hours-grid {
+  --hours-gap: clamp(2px, 0.6vh, 7px);
+  gap: var(--hours-gap);
+  width: min(
+    100%,
+    calc(
+      (100cqh - (var(--hours-rows) - 1) * var(--hours-gap)) *
+        var(--hours-columns) / var(--hours-rows) + (var(--hours-columns) - 1) *
+        var(--hours-gap)
+    )
+  );
+}
+
 /* The agreement card must fit whole and must not scroll, so the promise beside
    it yields on any viewport too short to hold both. */
 .ob-promise {
@@ -137,11 +158,14 @@ html.ob-locked body {
   border-radius: 1rem;
 }
 
+/* Padding rather than a shorter box: the morph above transitions `bottom` over
+   900ms, and the keyboard has to be answered in the frame it opens. */
 .ob-panel--full {
   top: var(--ob-margin);
   bottom: var(--ob-margin);
   left: var(--ob-margin);
   width: calc(100vw - 2 * var(--ob-margin));
+  padding-bottom: var(--ob-keyboard-inset, 0px);
 }
 
 @keyframes ob-rise {

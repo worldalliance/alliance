@@ -706,12 +706,19 @@ export class UserController {
     required: false,
     description: "Referral or invite code to prefer inviter friends",
   })
+  @ApiQuery({
+    name: "count",
+    required: false,
+    type: Number,
+    description: "How many avatars to return. Defaults to 5, capped at 24.",
+  })
   @ApiOkResponse({ type: SignupSocialProofDto })
   async signupSocialProof(
     @Query("code") code?: string,
+    @Query("count", new ParseIntPipe({ optional: true })) count?: number,
   ): Promise<SignupSocialProofDto> {
     return new SignupSocialProofDto(
-      await this.userService.getSignupSocialProof(code),
+      await this.userService.getSignupSocialProof(code, count),
     );
   }
 

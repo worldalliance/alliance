@@ -12,7 +12,7 @@ import { useSharedValue, withSpring } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 import AnimatedSidebar from "../../components/AnimatedSidebar";
-import { Walkthrough } from "../../components/onboarding/Walkthrough";
+// import { Walkthrough } from "../../components/onboarding/Walkthrough";
 import Sidebar from "../../components/Sidebar";
 import TabBar from "../../components/TabBar";
 import {
@@ -168,7 +168,8 @@ export default function AppLayout() {
       <WalkthroughAnchorProvider>
         <View className="flex-1" testID="vr-app-shell-ready">
           <AppContent />
-          <Walkthrough />
+          {/* The platform tour is off: logging in lands on the platform. */}
+          {/* <Walkthrough /> */}
         </View>
       </WalkthroughAnchorProvider>
     </AppDrawerProvider>

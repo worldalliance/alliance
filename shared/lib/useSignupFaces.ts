@@ -3,20 +3,25 @@ import { userSignupSocialProof, type ProfileDto } from "../client";
 import { queryKeys } from "./queryKeys";
 
 /**
- * Faces above the agreement's "and N others have signed" line. The server
- * prefers the inviter's friends over random members, so a referred signup sees
- * people it might recognise.
+ * Member avatars for the signup screens. The server prefers the inviter's
+ * friends over random members, so a referred signup sees people it might
+ * recognise, and returns five unless `count` asks for more.
  */
 export function useSignupFaces(
   referralCode: string | null,
-  params?: { enabled?: boolean },
+  params?: { enabled?: boolean; count?: number },
 ): ProfileDto[] {
+  const count = params?.count;
+
   const { data } = useQuery({
     enabled: params?.enabled ?? true,
-    queryKey: queryKeys.signupSocialProof(referralCode),
+    queryKey: queryKeys.signupSocialProof(referralCode, count),
     queryFn: () =>
       userSignupSocialProof({
-        query: referralCode ? { code: referralCode } : undefined,
+        query: {
+          ...(referralCode ? { code: referralCode } : {}),
+          ...(count === undefined ? {} : { count }),
+        },
       }).then((res) => res.data?.profiles ?? []),
   });
 

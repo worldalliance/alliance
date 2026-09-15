@@ -1,3 +1,4 @@
+import { useSignupFaces } from "@alliance/shared/lib/useSignupFaces";
 import { cn } from "@alliance/shared/styles/util";
 import { useState } from "react";
 import { FitStage } from "../../components/FitStage";
@@ -33,7 +34,6 @@ const ACTIONS: ActionExample[] = [
     completed: 143,
     expected: 177,
     minutes: 15,
-    faces: MEMBER_FACES,
     body: [
       {
         text: "You’ll use a free online tool called Mozilla Monitor to determine whether your personal information has been leaked in a data breach and, if so, take steps to protect the compromised accounts.",
@@ -61,7 +61,6 @@ const ACTIONS: ActionExample[] = [
     completed: 133,
     expected: 150,
     minutes: 15,
-    faces: MEMBER_FACES,
     body: [
       {
         text: "The Forest Service has opened a comment period on repealing the 2001 Roadless Rule. Comments in your own words carry more weight, so we have drafted talking points for you to adapt.",
@@ -94,7 +93,6 @@ const ACTIONS: ActionExample[] = [
     completed: 152,
     expected: 163,
     minutes: 15,
-    faces: MEMBER_FACES,
     body: [
       {
         text: "Take one short walk you would have taken anyway and log every piece of litter you pass in the TrashBlitz app.",
@@ -109,6 +107,29 @@ const ACTIONS: ActionExample[] = [
 
 /** Centred on the desktop row, where a middle card reads as the example. */
 const ROW_ORDER = [1, 0, 2];
+
+const FACES_PER_CARD = 4;
+
+/**
+ * A different set of members on each mockup, off the live roll. Falls back to
+ * the bundled avatars until the request lands, and wraps where the database
+ * holds fewer photos than the three cards want.
+ */
+function useCardFaces() {
+  const members = useSignupFaces(null, {
+    count: FACES_PER_CARD * ACTIONS.length,
+  });
+  const photos = members
+    .map((member) => member.profilePicture)
+    .filter((url): url is string => Boolean(url));
+  const pool = photos.length > 0 ? photos : MEMBER_FACES;
+
+  return (card: number) =>
+    Array.from(
+      { length: FACES_PER_CARD },
+      (_, i) => pool[(card * FACES_PER_CARD + i) % pool.length],
+    );
+}
 
 const CARD_WIDTH = 380;
 const CARD_HEIGHT = 460;
@@ -133,7 +154,13 @@ const DECK_HEIGHT = CARD_HEIGHT + DECK_STEP_Y * (ACTIONS.length - 1);
  * The three actions as a deck: tapping the front card sends it to the back and
  * brings the next one up, so a phone can reach all three without scrolling.
  */
-function Deck({ className }: { className?: string }) {
+function Deck({
+  className,
+  facesFor,
+}: {
+  className?: string;
+  facesFor: (card: number) => string[];
+}) {
   const [order, setOrder] = useState(ACTIONS.map((_, i) => i));
 
   const cycle = () => setOrder(([first, ...rest]) => [...rest, first]);
@@ -163,7 +190,7 @@ function Deck({ className }: { className?: string }) {
                 transform: `translateY(${depth * DECK_STEP_Y}px) scale(${1 - depth * DECK_SCALE_STEP})`,
               }}
             >
-              <ActionExampleCard action={action} />
+              <ActionExampleCard action={action} faces={facesFor(index)} />
             </span>
           );
         })}
@@ -173,6 +200,8 @@ function Deck({ className }: { className?: string }) {
 }
 
 export function CommitmentMocks() {
+  const facesFor = useCardFaces();
+
   return (
     <div className="ob-mocks flex min-h-0 flex-1 flex-col justify-center lg:flex-none">
       {/* Capped at what the cards actually occupy once scaled to the row's
@@ -189,12 +218,15 @@ export function CommitmentMocks() {
             height={CARD_HEIGHT}
             className="min-h-0 w-full flex-1"
           >
-            <ActionExampleCard action={ACTIONS[index]} />
+            <ActionExampleCard
+              action={ACTIONS[index]}
+              faces={facesFor(index)}
+            />
           </FitStage>
         ))}
       </div>
 
-      <Deck className="lg:hidden" />
+      <Deck className="lg:hidden" facesFor={facesFor} />
     </div>
   );
 }

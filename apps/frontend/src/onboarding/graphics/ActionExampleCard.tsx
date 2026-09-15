@@ -2,6 +2,7 @@ import { cn } from "@alliance/shared/styles/util";
 import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
 import { ChevronRight, Clock } from "lucide-react";
 import Timeline from "../../components/system/Timeline";
+import { MEMBER_FACES } from "../memberFaces";
 
 export enum TimelineEntryKind {
   Event = "event",
@@ -27,7 +28,6 @@ export type ActionExample = {
   completed: number;
   expected: number;
   minutes: number;
-  faces: string[];
   /** The task write-up, which runs past the card and feathers out at its foot. */
   body: { heading?: string; text: string }[];
 };
@@ -42,20 +42,33 @@ function FaceRow({ faces }: { faces: string[] }) {
           src={src}
           alt=""
           className="size-6 rounded object-cover"
+          // A member whose photo has gone missing leaves a broken-image glyph
+          // in the middle of the mockup otherwise.
+          onError={(event) => {
+            const fallback = MEMBER_FACES[i % MEMBER_FACES.length];
+            if (event.currentTarget.src.endsWith(fallback)) return;
+            event.currentTarget.src = fallback;
+          }}
         />
       ))}
     </span>
   );
 }
 
-function CompletedBlock({ action }: { action: ActionExample }) {
+function CompletedBlock({
+  action,
+  faces,
+}: {
+  action: ActionExample;
+  faces: string[];
+}) {
   return (
     <div className="mt-2 rounded-md border border-zinc-200 p-3">
       <div className="mb-1 flex items-center justify-between gap-2">
         <p className="text-[12.5px] text-zinc-600">
           {action.completed} / {action.expected} members completed
         </p>
-        <FaceRow faces={action.faces} />
+        <FaceRow faces={faces} />
       </div>
       <CompletedBar
         percentage={Math.round((action.completed / action.expected) * 100)}
@@ -108,7 +121,13 @@ function Entry({
  * time estimate, then the description and timeline — from authored content
  * rather than the API, at a fixed pixel size for a caller that scales it.
  */
-export function ActionExampleCard({ action }: { action: ActionExample }) {
+export function ActionExampleCard({
+  action,
+  faces,
+}: {
+  action: ActionExample;
+  faces: string[];
+}) {
   return (
     <div
       className="flex h-full flex-col overflow-hidden bg-white p-4 pb-0"
@@ -141,7 +160,9 @@ export function ActionExampleCard({ action }: { action: ActionExample }) {
         {action.timeline.map((entry, i) => (
           <div key={entry.title}>
             <Entry entry={entry} highlighted={i === 0} />
-            {i === action.barAtIndex && <CompletedBlock action={action} />}
+            {i === action.barAtIndex && (
+              <CompletedBlock action={action} faces={faces} />
+            )}
           </div>
         ))}
       </Timeline>

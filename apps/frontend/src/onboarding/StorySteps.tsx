@@ -63,7 +63,7 @@ export function CommunityStep() {
       </StepHeadline>
       <div
         className="flex min-h-0 flex-1 flex-col lg:flex-none"
-        style={{ gap: "clamp(0.5rem, 3vh, 2.4rem)" }}
+        style={{ gap: "var(--ob-gap)" }}
       >
         <div
           className="ob-priorities ob-rise grid min-h-0 flex-1 grid-cols-2 gap-3 lg:h-[27vh] lg:flex-none lg:grid-cols-4"
@@ -90,7 +90,7 @@ export function CommitmentStep() {
       <StepHeadline>{COMMITMENT_HEADLINE}</StepHeadline>
       <div
         className="flex min-h-0 flex-1 flex-col lg:flex-none"
-        style={{ gap: "clamp(0.5rem, 2.4vh, 1.6rem)" }}
+        style={{ gap: "var(--ob-gap)" }}
       >
         <div
           className="ob-rise flex min-h-0 flex-1 flex-col"
@@ -109,11 +109,14 @@ export function MinutesStep() {
     <>
       <StepHeadline className="max-w-[52rem]">{MINUTES_HEADLINE}</StepHeadline>
       <div
-        className="flex flex-col"
-        style={{ gap: "clamp(0.5rem, 3vh, 2.4rem)" }}
+        className="flex min-h-0 flex-1 flex-col"
+        style={{ gap: "var(--ob-gap)" }}
       >
-        <div className="ob-rise mx-auto w-full lg:w-[86%]" style={riseStyle(2)}>
-          <HoursGrid size={HoursGridSize.Compact} />
+        <div
+          className="ob-rise mx-auto flex min-h-0 w-full flex-1 flex-col lg:w-[86%]"
+          style={riseStyle(2)}
+        >
+          <HoursGrid size={HoursGridSize.Compact} className="min-h-0 flex-1" />
         </div>
         <StepNote>{MINUTES_NOTE}</StepNote>
       </div>
@@ -129,7 +132,7 @@ export function ScaleStep() {
       <StepHeadline className="max-w-[58rem]">{SCALE_HEADLINE}</StepHeadline>
       <div
         className="mx-auto flex min-h-0 w-full flex-col lg:w-[81%] lg:flex-none"
-        style={{ gap: "clamp(0.6rem, 2.6vh, 2rem)" }}
+        style={{ gap: "var(--ob-gap)" }}
       >
         <div className="ob-rise flex min-h-0 flex-col" style={riseStyle(2)}>
           <GrowthMilestones

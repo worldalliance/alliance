@@ -29,8 +29,8 @@ export const queryKeys = {
   publicProfile: (userId: number) => ["userFindOne", userId] as const,
   referrerProfile: (code: string | null) =>
     ["userReferrerProfile", code] as const,
-  signupSocialProof: (referralCode: string | null) =>
-    ["userSignupSocialProof", referralCode] as const,
+  signupSocialProof: (referralCode: string | null, count?: number) =>
+    ["userSignupSocialProof", referralCode, count] as const,
   staffDirectory: () => ["userStaffDirectory"] as const,
 
   // Admin

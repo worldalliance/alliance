@@ -31,7 +31,7 @@ const labelClasses: Record<MilestoneSize, string> = {
 
 const barClasses: Record<MilestoneSize, string> = {
   [MilestoneSize.Default]: "h-5 md:h-[30px]",
-  [MilestoneSize.Compact]: "h-[clamp(0.85rem,2.7vh,2.1rem)]",
+  [MilestoneSize.Compact]: "h-[clamp(0.425rem,1.35vh,1.05rem)]",
 };
 
 const captionClasses: Record<MilestoneSize, string> = {
@@ -64,6 +64,12 @@ const barToneClasses: Record<MilestoneKind, string> = {
 const farTrackClasses: Record<MilestoneSize, string> = {
   [MilestoneSize.Default]: "",
   [MilestoneSize.Compact]: "hidden sm:grid",
+};
+
+/** Between a milestone's own count, bar, and label. */
+const itemGapClasses: Record<MilestoneSize, string> = {
+  [MilestoneSize.Default]: "gap-1 md:gap-1.5",
+  [MilestoneSize.Compact]: "gap-0.5",
 };
 
 const rowGapClasses: Record<MilestoneSize, string> = {
@@ -106,7 +112,7 @@ function MilestoneTrack({
         return (
           <div
             key={milestone.members}
-            className="flex flex-col gap-1 md:gap-1.5"
+            className={cn("flex flex-col", itemGapClasses[size])}
           >
             <p
               className={cn(
@@ -157,16 +163,17 @@ function MilestoneTrack({
                 Upcoming
               </p>
             )}
-            {kind === MilestoneKind.Completed && (
-              <p
-                className={cn(
-                  "flex items-center justify-end gap-1.5 tracking-wider text-white/60 uppercase",
-                  planTagClasses[size],
-                )}
-              >
-                Completed
-              </p>
-            )}
+            {kind === MilestoneKind.Completed &&
+              size !== MilestoneSize.Compact && (
+                <p
+                  className={cn(
+                    "flex items-center justify-end gap-1.5 tracking-wider text-white/60 uppercase",
+                    planTagClasses[size],
+                  )}
+                >
+                  Completed
+                </p>
+              )}
           </div>
         );
       })}

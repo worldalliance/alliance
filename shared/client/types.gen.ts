@@ -5527,6 +5527,10 @@ export type UserSignupSocialProofData = {
          * Referral or invite code to prefer inviter friends
          */
         code?: string;
+        /**
+         * How many avatars to return. Defaults to 5, capped at 24.
+         */
+        count?: number;
     };
     url: '/user/signupSocialProof';
 };

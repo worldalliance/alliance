@@ -4,6 +4,7 @@ import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { PROGRESS_SEGMENTS } from "./flow";
+import { useScrollFeather } from "./useScrollFeather";
 
 /** Staggers a screen's contents in, top to bottom. */
 export function riseStyle(index: number): CSSProperties {
@@ -15,7 +16,10 @@ export function ProgressTrack({ filled }: { filled: number }) {
     <div
       className="pointer-events-none absolute inset-x-5 z-20 grid gap-3 sm:inset-x-8 sm:gap-5 lg:inset-x-14"
       style={{
-        bottom: "var(--ob-progress-bottom)",
+        // The panel's keyboard padding grows its padding box, which is what an
+        // absolute offset resolves against, so the track has to clear it too.
+        bottom:
+          "calc(var(--ob-progress-bottom) + var(--ob-keyboard-inset, 0px))",
         gridTemplateColumns: `repeat(${PROGRESS_SEGMENTS}, minmax(0, 1fr))`,
       }}
       aria-hidden
@@ -152,12 +156,20 @@ export function StepLayout({
   children,
   footer,
   className,
+  fill = false,
 }: {
   eyebrow?: string | null;
   children: ReactNode;
   footer?: ReactNode;
   className?: string;
+  /**
+   * Caps the body at the height it was given instead of letting it grow the
+   * scroller, for a screen that absorbs a short viewport inside itself.
+   */
+  fill?: boolean;
 }) {
+  const scroller = useScrollFeather<HTMLDivElement>();
+
   return (
     <div
       className={cn(
@@ -171,13 +183,18 @@ export function StepLayout({
     >
       {eyebrow && <StepEyebrow>{eyebrow}</StepEyebrow>}
       <div
+        ref={scroller.ref}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
         style={{
+          ...scroller.style,
           marginTop: eyebrow ? "var(--ob-band-gap)" : undefined,
         }}
       >
         <div
-          className="flex min-h-full flex-col justify-center"
+          className={cn(
+            "flex flex-col justify-center",
+            fill ? "h-full" : "min-h-full",
+          )}
           style={{ gap: "var(--ob-gap)" }}
         >
           {children}

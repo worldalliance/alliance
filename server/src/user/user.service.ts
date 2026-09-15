@@ -233,6 +233,11 @@ const ACTIVE_USER_WHERE: FindOptionsWhere<User> = {
   isNotSignedUpPartialProfile: false,
 };
 
+const SIGNUP_SOCIAL_PROOF_COUNT = 5;
+
+/** A ceiling on the caller's count: the endpoint is public and unpaginated. */
+const SIGNUP_SOCIAL_PROOF_MAX = 24;
+
 @Injectable()
 export class UserService {
   private readonly logger = new Logger(UserService.name);
@@ -871,11 +876,14 @@ export class UserService {
   }
 
   /**
-   * Up to 5 member profiles with avatars for the signup page.
+   * Member profiles with avatars for the signup page, `count` of them at most.
    * Prefer accepted friends of the referrer, then random members with photos.
    */
-  async getSignupSocialProof(referralCode?: string): Promise<User[]> {
-    const minProfiles = 5;
+  async getSignupSocialProof(
+    referralCode?: string,
+    count = SIGNUP_SOCIAL_PROOF_COUNT,
+  ): Promise<User[]> {
+    const minProfiles = Math.min(Math.max(count, 1), SIGNUP_SOCIAL_PROOF_MAX);
     const users: User[] = [];
     const usedIds: number[] = [];
 

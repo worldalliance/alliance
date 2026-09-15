@@ -7,6 +7,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { Check } from "lucide-react";
 import { riseStyle, StepHeadline, StepNote } from "./chrome";
+import { useScrollFeather } from "./useScrollFeather";
 
 export const AGREEMENT_HEADLINE =
   "Join a group of people who can count on each other.";
@@ -24,7 +25,11 @@ const FACE =
 const FIELD =
   "h-[clamp(2.1rem,4.4vh,2.75rem)] w-full shrink-0 rounded-md border-2 bg-white px-3.5 text-black outline-none transition-colors placeholder:text-zinc-400";
 
-const FIELD_IDLE = "border-zinc-200 focus:border-[var(--ob-navy)]";
+const FIELD_IDLE = "border-zinc-300 focus:border-[var(--ob-navy)]";
+
+const CARD_SURFACE = "bg-white/95";
+
+const CARD_INLINE_PAD = "px-[clamp(1.15rem,2.8vh,2rem)]";
 
 function SignedBy({
   inviter,
@@ -105,8 +110,13 @@ export function AgreementStep({
   /** Only after Join is pressed, which is what the bar confirms. */
   received: boolean;
 }) {
+  // The agreement gives up its own height before anything else does, so the
+  // headline, the field, the faces and the buttons all stay on screen when the
+  // keyboard takes half the viewport.
+  const terms = useScrollFeather<HTMLDivElement>();
+
   return (
-    <div className="mx-auto flex min-h-0 w-full max-w-[40rem] flex-col justify-center gap-[clamp(0.55rem,1.7vh,1.15rem)] lg:max-w-none lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 xl:gap-16">
+    <div className="mx-auto flex min-h-0 w-full max-w-[40rem] flex-1 flex-col justify-center gap-[clamp(0.55rem,1.7vh,1.15rem)] lg:max-w-none lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 xl:gap-16">
       <div className="flex shrink-0 flex-col items-center gap-[clamp(0.4rem,1.2vh,0.85rem)] lg:max-w-[28rem] lg:items-start">
         <StepHeadline className="lg:mx-0 lg:text-left">
           {AGREEMENT_HEADLINE}
@@ -117,18 +127,29 @@ export function AgreementStep({
       </div>
 
       <div
-        className="ob-rise mx-auto flex min-h-0 w-full max-w-[40rem] flex-col gap-[clamp(0.55rem,1.7vh,1.15rem)] lg:mx-0 lg:justify-self-end"
+        className="ob-rise mx-auto flex max-h-full min-h-0 w-full max-w-[40rem] flex-col gap-[clamp(0.55rem,1.7vh,1.15rem)] lg:mx-0 lg:justify-self-end"
         style={riseStyle(3)}
       >
-        <div className="flex shrink-0 flex-col overflow-hidden rounded-lg">
-          <div className="flex min-h-0 flex-col bg-white/95 p-[clamp(1.15rem,2.8vh,2rem)] text-[length:var(--ob-ui)]">
-            <ol className="flex list-none flex-col gap-[clamp(0.4rem,1.15vh,0.85rem)] pl-0">
-              {contract.description.map((item, index) => (
-                <li key={item.point} className="flex gap-x-3">
-                  <span className="flex size-[clamp(1.5rem,3.4vh,1.85rem)] shrink-0 items-center justify-center rounded bg-[var(--ob-navy)] text-[0.85em] leading-none font-semibold text-white tabular-nums">
-                    {index + 1}
-                  </span>
-                  <div className="flex min-w-0 flex-col">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-lg">
+          {/* The minimum belongs to the band, not to the scroller inside it:
+              a scroller that refuses to shrink runs out under the field. */}
+          <div
+            className={cn(
+              "flex min-h-[3.25rem] flex-1 flex-col py-[clamp(0.6rem,2.2vh,2rem)]",
+              CARD_SURFACE,
+            )}
+          >
+            <div
+              ref={terms.ref}
+              style={terms.style}
+              className={cn(
+                "min-h-0 flex-1 overflow-y-auto overscroll-contain text-[length:var(--ob-ui)]",
+                CARD_INLINE_PAD,
+              )}
+            >
+              <ol className="flex list-none flex-col gap-[clamp(0.4rem,1.15vh,0.85rem)] pl-0">
+                {contract.description.map((item) => (
+                  <li key={item.point} className="flex min-w-0 flex-col">
                     <p className="leading-snug font-semibold text-black">
                       {item.point}
                     </p>
@@ -137,13 +158,19 @@ export function AgreementStep({
                         {item.subtext}
                       </p>
                     )}
-                  </div>
-                </li>
-              ))}
-            </ol>
+                  </li>
+                ))}
+              </ol>
+            </div>
           </div>
 
-          <div className="flex min-h-0 flex-col gap-2 bg-white p-[clamp(1.15rem,2.8vh,2rem)] text-[length:var(--ob-ui)]">
+          <div
+            className={cn(
+              "flex shrink-0 flex-col gap-2 border-t border-black/10 py-[clamp(0.55rem,1.4vh,0.95rem)] text-[length:var(--ob-ui)]",
+              CARD_SURFACE,
+              CARD_INLINE_PAD,
+            )}
+          >
             <input
               name="signedName"
               type="text"
@@ -163,7 +190,7 @@ export function AgreementStep({
           </div>
 
           <div
-            className="grid transition-[grid-template-rows] duration-[380ms] ease-out"
+            className="grid shrink-0 transition-[grid-template-rows] duration-[380ms] ease-out"
             style={{ gridTemplateRows: received ? "1fr" : "0fr" }}
           >
             <div className="overflow-hidden">
