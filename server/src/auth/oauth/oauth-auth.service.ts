@@ -8,6 +8,8 @@ import { R, type Result } from "@alliance/common/result";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
+import { decodeJwt } from "jose";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
@@ -45,6 +47,9 @@ export type OAuthAuthentication = {
 };
 
 const STATE_LIFETIME = "10m";
+
+/** google-auth-library accepts an id token up to five minutes past its exp. */
+const ID_TOKEN_CLOCK_SKEW_MS = milliseconds({ minutes: 5 });
 
 export function mintProof(): OAuthProof {
   const proof = randomBytes(32).toString("base64url");
@@ -107,6 +112,36 @@ export class OAuthAuthService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
   ) {}
+
+  // Held in this process, which is the one process pm2 runs. A restart forgets
+  // them, and a second instance would accept a token this one already spent.
+  private readonly spentIdentityTokens = new Map<string, number>();
+
+  /**
+   * False when this verified token was presented before, so a copy of it is
+   * worth nothing once the app has used it. Remembered until the verifier would
+   * refuse it as expired.
+   */
+  spendIdentityToken(identityToken: string): boolean {
+    const now = Date.now();
+    for (const [hash, forgetAt] of this.spentIdentityTokens) {
+      if (forgetAt <= now) {
+        this.spentIdentityTokens.delete(hash);
+      }
+    }
+
+    const { exp } = decodeJwt(identityToken);
+    // Nothing tells us when it would be safe to forget a token that never expires.
+    if (exp === undefined) {
+      return false;
+    }
+    const hash = createHash("sha256").update(identityToken).digest("base64url");
+    if (this.spentIdentityTokens.has(hash)) {
+      return false;
+    }
+    this.spentIdentityTokens.set(hash, exp * 1000 + ID_TOKEN_CLOCK_SKEW_MS);
+    return true;
+  }
 
   signState(state: Omit<OAuthState, "tokenType">): Promise<string> {
     return this.jwtService.signAsync(

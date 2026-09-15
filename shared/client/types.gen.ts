@@ -851,6 +851,30 @@ export type OAuthCallbackDto = {
     user?: string;
 };
 
+export type OAuthNativeSignInDto = {
+    /**
+     * The id token the provider's native SDK returned.
+     */
+    identityToken: string;
+    /**
+     * Apple hands the name to the app beside the token rather than inside it.
+     */
+    name?: string;
+    mode: TokenMode;
+    referralCode?: string;
+    timeZone?: string;
+    guestToken?: string;
+};
+
+export type OAuthOutcome = 'signed_in' | 'signed_up' | 'linked';
+
+export type OAuthSignInResponseDto = {
+    isAdmin: boolean;
+    access_token?: string;
+    refresh_token?: string;
+    outcome: OAuthOutcome;
+};
+
 export type ClusterSummaryDto = {
     id: number;
     displayName: string;
@@ -4345,6 +4369,27 @@ export type OAuthCallbackFormResponses = {
 };
 
 export type OAuthCallbackFormResponse = OAuthCallbackFormResponses[keyof OAuthCallbackFormResponses];
+
+export type OAuthNativeSignInData = {
+    body: OAuthNativeSignInDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/native';
+};
+
+export type OAuthNativeSignInErrors = {
+    401: HeyApiError;
+};
+
+export type OAuthNativeSignInError = OAuthNativeSignInErrors[keyof OAuthNativeSignInErrors];
+
+export type OAuthNativeSignInResponses = {
+    200: OAuthSignInResponseDto;
+};
+
+export type OAuthNativeSignInResponse = OAuthNativeSignInResponses[keyof OAuthNativeSignInResponses];
 
 export type OAuthUnlinkData = {
     body?: never;

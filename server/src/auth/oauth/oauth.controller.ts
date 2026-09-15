@@ -7,6 +7,7 @@ import {
   OAuthProvider,
   parseOAuthProvider,
 } from "@alliance/common/oauth";
+import { R, type Result } from "@alliance/common/result";
 import {
   BadRequestException,
   Body,
@@ -30,6 +31,7 @@ import {
   ApiOkResponse,
   ApiParam,
   ApiResponse,
+  ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
 import { ThrottlerGuard } from "@nestjs/throttler";
 import { milliseconds } from "date-fns";
@@ -59,7 +61,7 @@ import {
   spendProof,
   type OAuthState,
 } from "./oauth-auth.service";
-import type { OAuthClient } from "./oauth-client";
+import type { OAuthClient, OAuthProfile } from "./oauth-client";
 import {
   fallbackLoginUrl,
   oauthRedirectUri,
@@ -67,7 +69,12 @@ import {
   returnUrlWithError,
   returnUrlWithOutcome,
 } from "./oauth-urls";
-import { OAuthCallbackDto, OAuthStartDto } from "./oauth.dto";
+import {
+  OAuthCallbackDto,
+  OAuthNativeSignInDto,
+  OAuthSignInResponseDto,
+  OAuthStartDto,
+} from "./oauth.dto";
 
 /** Outlives the state token it guards, so a slow consent screen still lands. */
 const STATE_COOKIE_MAX_AGE_MS = milliseconds({ minutes: 15 });
@@ -353,6 +360,79 @@ export class OAuthController {
           `unknown oauth intent: ${state.intent satisfies never}`,
         );
     }
+  }
+
+  /** The native SDK path: the app already holds a signed id token. */
+  @Public()
+  @UseGuards(ThrottlerGuard)
+  @OnlyThrottle(OAUTH_THROTTLE)
+  @Post("native")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: OAuthSignInResponseDto })
+  @ApiUnauthorizedResponse()
+  async nativeSignIn(
+    @ProviderParam() provider: OAuthProvider,
+    @Body() body: OAuthNativeSignInDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<OAuthSignInResponseDto> {
+    const profile = await this.nativeProfile({
+      provider,
+      identityToken: body.identityToken,
+      name: body.name,
+    });
+    if (!profile.ok) {
+      throw new UnauthorizedException(
+        oauthErrorMessage(provider, profile.error),
+      );
+    }
+    const result = await this.oauth.authenticate({
+      profile: profile.value,
+      referralCode: body.referralCode,
+      timeZone: body.timeZone ?? DEFAULT_TIME_ZONE,
+    });
+    if (!result.ok) {
+      throw new UnauthorizedException(
+        oauthErrorMessage(provider, result.error),
+      );
+    }
+
+    const { user, outcome } = result.value;
+    this.capture({ user, provider, outcome });
+    const tokens = await this.issueTokens(user);
+    this.authService.setAuthCookies(
+      res,
+      tokens.access_token,
+      tokens.refresh_token,
+    );
+    await this.authService.mergeGuestFromToken(body.guestToken, user.id);
+
+    return new OAuthSignInResponseDto({
+      outcome,
+      isAdmin: user.admin,
+      ...(body.mode === "header" && tokens),
+    });
+  }
+
+  private async nativeProfile(params: {
+    provider: OAuthProvider;
+    identityToken: string;
+    name?: string;
+  }): Promise<Result<OAuthProfile, OAuthError>> {
+    const verified = await this.clients[params.provider].verifyIdentityToken(
+      params.identityToken,
+    );
+    if (!verified.ok) {
+      console.error("oauth identity token rejected", verified.error);
+      return R.failure(OAuthError.Failed);
+    }
+    if (!this.oauth.spendIdentityToken(params.identityToken)) {
+      console.error("oauth identity token presented again");
+      return R.failure(OAuthError.Failed);
+    }
+    return R.success({
+      ...verified.value,
+      name: verified.value.name ?? params.name ?? null,
+    });
   }
 
   @Delete("link")

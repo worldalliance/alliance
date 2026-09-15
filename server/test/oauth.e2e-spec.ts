@@ -1,12 +1,15 @@
 import {
   OAuthError,
+  oauthErrorMessage,
   OAuthIntent,
   OAuthOutcome,
   OAuthProvider,
 } from "@alliance/common/oauth";
 import { R } from "@alliance/common/result";
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, UnauthorizedException } from "@nestjs/common";
+import { BaseExceptionFilter } from "@nestjs/core";
 import { AuthService } from "src/auth/auth.service";
+import { Guest } from "src/auth/entities/guest.entity";
 import { AppleOAuthClient } from "src/auth/oauth/apple-oauth.client";
 import { GoogleOAuthClient } from "src/auth/oauth/google-oauth.client";
 import { OAuthAuthService } from "src/auth/oauth/oauth-auth.service";
@@ -69,6 +72,20 @@ describe("OAuth sign-in (e2e)", () => {
     };
   };
 
+  let issued = 0;
+
+  /** A new token each call, shaped like a real one so its exp can be read. */
+  const mintIdentityToken = (
+    claims: { exp?: number } = { exp: Math.floor(Date.now() / 1000) + 600 },
+  ): string =>
+    [
+      "e30",
+      Buffer.from(JSON.stringify({ ...claims, jti: issued++ })).toString(
+        "base64url",
+      ),
+      "signature",
+    ].join(".");
+
   const linkedEmails = (user: {
     oauthAccounts: { provider: string; email: string }[];
   }): Record<string, string> =>
@@ -110,9 +127,9 @@ describe("OAuth sign-in (e2e)", () => {
       oauth.exchangeCode = () => Promise.resolve(R.success(profile));
       oauth.verifyIdentityToken = (token) =>
         Promise.resolve(
-          token === "valid"
-            ? R.success(profile)
-            : R.failure(new Error("bad token")),
+          token === "forged"
+            ? R.failure(new Error("bad token"))
+            : R.success(profile),
         );
     }
     await ctx.dataSource
@@ -301,6 +318,214 @@ describe("OAuth sign-in (e2e)", () => {
       });
 
       expect(errorOf(replayed.headers.location)).toBe(OAuthError.Failed);
+    });
+  });
+
+  describe("the native SDK flow", () => {
+    it("trades a verified id token for a session and says what happened", async () => {
+      const member = await freshMember();
+      profile = { ...profile, subject: "native-sdk", email: member.email };
+      const signedIn = await client()
+        .post(path("native"))
+        .send({ identityToken: mintIdentityToken(), mode: "header" })
+        .expect(200);
+
+      expect(signedIn.body.outcome).toBe(OAuthOutcome.Linked);
+      expect(typeof signedIn.body.access_token).toBe("string");
+    });
+
+    it("refuses a token the provider does not vouch for, saying why", async () => {
+      const refused = await client()
+        .post(path("native"))
+        .send({ identityToken: "forged", mode: "header" })
+        .expect(401);
+
+      expect(refused.body.message).toBe(
+        oauthErrorMessage(OAuthProvider.Google, OAuthError.Failed),
+      );
+    });
+
+    it("turns away an address with no account, saying why", async () => {
+      profile = {
+        ...profile,
+        subject: "native-stranger",
+        email: "native-stranger@example.com",
+      };
+
+      const refused = await client()
+        .post(path("native"))
+        .send({ identityToken: mintIdentityToken(), mode: "header" })
+        .expect(401);
+
+      expect(refused.body.message).toBe(
+        oauthErrorMessage(OAuthProvider.Google, OAuthError.NoAccount),
+      );
+    });
+
+    // PosthogExceptionFilter leaves an UnauthorizedException unreported.
+    it("turns a member away with an UnauthorizedException", async () => {
+      profile = {
+        ...profile,
+        subject: "native-unreported",
+        email: "native-unreported@example.com",
+      };
+      const handled = jest.spyOn(BaseExceptionFilter.prototype, "catch");
+
+      try {
+        await client()
+          .post(path("native"))
+          .send({ identityToken: mintIdentityToken(), mode: "header" })
+          .expect(401);
+        expect(handled.mock.calls[0]?.[0]).toBeInstanceOf(
+          UnauthorizedException,
+        );
+      } finally {
+        handled.mockRestore();
+      }
+    });
+
+    it("answers a signup that breaks with the error behind it", async () => {
+      profile = {
+        ...profile,
+        subject: "native-broken-signup",
+        email: "native-broken-signup@example.com",
+      };
+      const authService = ctx.app.get(AuthService);
+      const create = authService.createReferredUser.bind(authService);
+      const broken = new Error("db down");
+      authService.createReferredUser = () => Promise.reject(broken);
+      const handled = jest.spyOn(BaseExceptionFilter.prototype, "catch");
+
+      try {
+        await client()
+          .post(path("native"))
+          .send({
+            identityToken: mintIdentityToken(),
+            referralCode: "any",
+            mode: "header",
+          })
+          .expect(500);
+        expect(handled.mock.calls[0]?.[0]).toBe(broken);
+      } finally {
+        authService.createReferredUser = create;
+        handled.mockRestore();
+      }
+    });
+
+    it("refuses a token the app already presented", async () => {
+      const member = await freshMember();
+      profile = { ...profile, subject: "native-replayed", email: member.email };
+      const identityToken = mintIdentityToken();
+
+      await client()
+        .post(path("native"))
+        .send({ identityToken, mode: "header" })
+        .expect(200);
+      const replayed = await client()
+        .post(path("native"))
+        .send({ identityToken, mode: "header" })
+        .expect(401);
+
+      expect(replayed.body.message).toBe(
+        oauthErrorMessage(OAuthProvider.Google, OAuthError.Failed),
+      );
+    });
+
+    it("refuses a token that never expires", async () => {
+      const member = await freshMember();
+      profile = { ...profile, subject: "native-eternal", email: member.email };
+
+      await client()
+        .post(path("native"))
+        .send({ identityToken: mintIdentityToken({}), mode: "header" })
+        .expect(401);
+    });
+
+    it("merges the guest the app was browsing as", async () => {
+      const member = await freshMember();
+      profile = { ...profile, subject: "native-guest", email: member.email };
+      const authService = ctx.app.get(AuthService);
+      const { guestId, guestToken } = await authService.createGuestSession();
+
+      await client()
+        .post(path("native"))
+        .send({
+          identityToken: mintIdentityToken(),
+          mode: "header",
+          guestToken,
+        })
+        .expect(200);
+
+      const guest = await ctx.dataSource.getRepository(Guest).findOneOrFail({
+        where: { id: guestId },
+        relations: { linkedUser: true },
+      });
+      expect(guest.linkedUser?.id).toBe(member.id);
+    });
+
+    it("keeps the tokens in cookies in cookie mode", async () => {
+      const member = await freshMember();
+      profile = { ...profile, subject: "native-cookie", email: member.email };
+
+      const signedIn = await client()
+        .post(path("native"))
+        .send({ identityToken: mintIdentityToken(), mode: "cookie" })
+        .expect(200);
+
+      expect(String(signedIn.headers["set-cookie"])).toContain("access_token=");
+      expect(signedIn.body.access_token).toBeUndefined();
+      expect(signedIn.body.refresh_token).toBeUndefined();
+    });
+
+    // Apple's token carries no name; the SDK hands it to the app separately.
+    it("signs up with the provider linked, named by the app", async () => {
+      profile = {
+        ...profile,
+        provider: OAuthProvider.Apple,
+        subject: "apple-newcomer",
+        email: "newcomer@example.com",
+        name: null,
+      };
+      const signedUp = await client()
+        .post(path("native"))
+        .send({
+          identityToken: mintIdentityToken(),
+          name: "Ada Lovelace",
+          referralCode: "any",
+          mode: "header",
+        })
+        .expect(200);
+      expect(signedUp.body.outcome).toBe(OAuthOutcome.SignedUp);
+
+      const me = await client()
+        .get("/auth/me")
+        .set("Authorization", `Bearer ${signedUp.body.access_token}`)
+        .expect(200);
+      expect(me.body.user.name).toBe("Ada Lovelace");
+      expect(linkedEmails(me.body.user)).toEqual({
+        [OAuthProvider.Apple]: "newcomer@example.com",
+      });
+      expect(me.body.user.hasPassword).toBe(false);
+    });
+
+    it("refuses a blank name rather than signing up a nameless member", async () => {
+      profile = {
+        ...profile,
+        provider: OAuthProvider.Apple,
+        subject: "apple-blank-name",
+        email: "blank-name@example.com",
+        name: null,
+      };
+
+      await client()
+        .post(path("native"))
+        .send({
+          identityToken: mintIdentityToken(),
+          name: "  ",
+          referralCode: "any",
+          mode: "header",
+        })
+        .expect(400);
     });
   });
 
