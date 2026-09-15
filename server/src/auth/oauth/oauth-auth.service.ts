@@ -137,6 +137,42 @@ export class OAuthAuthService {
     timeZone: string;
   }): Promise<Result<OAuthAuthentication, OAuthError>> {
     const { profile } = params;
+    const signedIn = await this.signIn(profile);
+    if (
+      signedIn.ok ||
+      signedIn.error !== OAuthError.NoAccount ||
+      !params.referralCode
+    ) {
+      return signedIn;
+    }
+
+    const created = await R.fromPromise(
+      this.authService.createReferredUser({
+        name: profile.name ?? profile.email,
+        email: profile.email,
+        password: null,
+        timeZone: params.timeZone,
+        referralCode: params.referralCode,
+        oauth: profile,
+      }),
+    );
+    // A spent or unknown invite throws from deep inside the signup path, and
+    // the callback has nowhere to put an exception but the member's screen.
+    if (!created.ok) {
+      console.error("oauth signup failed", created.error);
+      return R.failure(
+        created.error instanceof BadRequestException
+          ? OAuthError.InviteRequired
+          : OAuthError.Failed,
+      );
+    }
+    return R.success({ user: created.value, outcome: OAuthOutcome.SignedUp });
+  }
+
+  /** Signs in or links an existing member, and never creates an account. */
+  async signIn(
+    profile: OAuthProfile,
+  ): Promise<Result<OAuthAuthentication, OAuthError>> {
     if (!profile.emailVerified) {
       return R.failure(OAuthError.EmailNotVerified);
     }
@@ -169,31 +205,7 @@ export class OAuthAuthService {
       });
     }
 
-    if (!params.referralCode) {
-      return R.failure(OAuthError.NoAccount);
-    }
-
-    const created = await R.fromPromise(
-      this.authService.createReferredUser({
-        name: profile.name ?? profile.email,
-        email: profile.email,
-        password: null,
-        timeZone: params.timeZone,
-        referralCode: params.referralCode,
-        oauth: profile,
-      }),
-    );
-    // A spent or unknown invite throws from deep inside the signup path, and
-    // the callback has nowhere to put an exception but the member's screen.
-    if (!created.ok) {
-      console.error("oauth signup failed", created.error);
-      return R.failure(
-        created.error instanceof BadRequestException
-          ? OAuthError.InviteRequired
-          : OAuthError.Failed,
-      );
-    }
-    return R.success({ user: created.value, outcome: OAuthOutcome.SignedUp });
+    return R.failure(OAuthError.NoAccount);
   }
 
   /**
