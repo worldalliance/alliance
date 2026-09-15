@@ -10,9 +10,9 @@ import {
 import { useInView } from "../hooks";
 
 /**
- * A day per row reads best where there is width for 24 columns. A phone gets a
- * squarer arrangement of the same 168 hours instead, so each cell is big enough
- * to see.
+ * A day per row reads best in a box with the width for 24 columns. A taller
+ * box than it is wide gets a squarer arrangement of the same 168 hours, so
+ * each cell is big enough to see.
  */
 const WIDE_COLUMNS = 24;
 const NARROW_COLUMNS = 12;
@@ -172,10 +172,7 @@ export function HoursGrid({
 
     return (
       <div
-        className={cn(
-          "ob-hours-block mx-auto flex w-full flex-col",
-          blockClassName,
-        )}
+        className={cn("ob-hours-block mx-auto w-full flex-col", blockClassName)}
         style={style}
       >
         {startLabel}
@@ -193,8 +190,8 @@ export function HoursGrid({
         className,
       )}
     >
-      {block(NARROW_COLUMNS, "sm:hidden")}
-      {block(WIDE_COLUMNS, "hidden sm:flex")}
+      {block(NARROW_COLUMNS, "ob-hours-block--narrow")}
+      {block(WIDE_COLUMNS, "ob-hours-block--wide")}
     </div>
   );
 }

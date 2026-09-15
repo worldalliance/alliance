@@ -62,19 +62,49 @@ html.ob-locked body {
 }
 
 .ob-hours-block {
+  display: flex;
   --hours-gap: clamp(2px, 0.6vh, 7px);
   --hours-chrome: calc(var(--ob-caption) * 3.2 + 1.5rem);
+  /* The height term goes negative on a short enough viewport, and an unguarded
+     `width` resolves that to zero and paints nothing. Inside the `100%` cap,
+     so a crop is only ever vertical. */
+  --hours-floor: calc(var(--hours-columns) * 0.75rem);
   width: min(
     100%,
-    calc(
-      (
-          100cqh - var(--hours-chrome) - (var(--hours-rows) - 1) *
-            var(--hours-gap)
-        ) *
-        var(--hours-columns) / var(--hours-rows) + (var(--hours-columns) - 1) *
-        var(--hours-gap)
+    max(
+      var(--hours-floor),
+      calc(
+        (
+            100cqh - var(--hours-chrome) - (var(--hours-rows) - 1) *
+              var(--hours-gap)
+          ) *
+          var(--hours-columns) / var(--hours-rows) +
+          (var(--hours-columns) - 1) * var(--hours-gap)
+      )
     )
   );
+}
+
+/* Which arrangement, off the box rather than off the viewport's width, which
+   says nothing about the height left once the headline, the note and the footer
+   have taken theirs. A square viewport hands this a wide, short box that a day
+   per row fills and a 12-column grid can only shrink inside, squeezing the two
+   labels into the width it leaves over.
+
+   Both conditions: the width is whether 24 columns have room to stay legible,
+   the ratio is whether a wide grid can fill the box at all. */
+.ob-hours-block--wide {
+  display: none;
+}
+
+@container (min-width: 28rem) and (min-aspect-ratio: 3 / 4) {
+  .ob-hours-block--narrow {
+    display: none;
+  }
+
+  .ob-hours-block--wide {
+    display: flex;
+  }
 }
 
 .ob-hours-grid {
