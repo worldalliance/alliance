@@ -52,9 +52,9 @@ const renderTitledHeader = (copy: TitledCopy, titleClassName?: string) => (
 
 // Guest-completion states (GuestRef, GuestCompleted) are web-only; mobile
 // pins hasRefCode/hasGuestResponse to false below so they're never reached.
-const taskPanelTopByState: Partial<
-  Record<ActionPageTaskPanelState, ReactNode>
-> = {
+const taskPanelTopByState: Record<ActionPageTaskPanelState, ReactNode> = {
+  [ActionPageTaskPanelState.GuestRef]: null,
+  [ActionPageTaskPanelState.GuestCompleted]: null,
   [ActionPageTaskPanelState.PublicOnlyAuthenticated]: (
     <Text>{taskHeaders.actionPage.externalOnly}</Text>
   ),
