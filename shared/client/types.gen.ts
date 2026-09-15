@@ -4057,6 +4057,10 @@ export type AuthLoginData = {
 
 export type AuthLoginErrors = {
     401: HeyApiError;
+    /**
+     * Migrated account signing in on the legacy domain
+     */
+    409: HeyApiError;
 };
 
 export type AuthLoginError = AuthLoginErrors[keyof AuthLoginErrors];
