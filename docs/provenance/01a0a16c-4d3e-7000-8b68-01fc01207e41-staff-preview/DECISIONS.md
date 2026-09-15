@@ -36,7 +36,7 @@
 - **Preview validates every page, on web and mobile.** Mobile already did this through `handleSubmit`. Web's preview button now calls `validateAllPagesAndShowFirstInvalid`, the same helper a real submit uses, so it jumps to the first invalid page. Like the real submit and mobile, it waits out file uploads: the button is disabled while one is running, because the file field has no answer until it finishes. The admin form builder's preview shares this button, so it changes there too.
 - **Preview typing isn't kept.** The form gets no `persistKey` and no guest-draft fetch, so answers typed in preview don't prefill the real form after launch. `onFormStarted` is a no-op, so previews don't emit FormStarted analytics.
 - **A planned action in preview still shows its task section.** The action page, web and mobile, hides the task section while an action is `planned`. `showActionPageTaskSection` makes an exception for staff preview, so the preview form shows up on the action page as well as on the home card.
-- **Only Activity actions with a task form render the preview form.** Ongoing and Funding actions render no task panel in preview. The banner still marks them.
+- **Only Activity actions with a task form render the preview form.** Funding actions render no task panel in preview. The banner still marks them.
 - **Preview markers.**
   - Web home card: an alert-style banner with an eye icon and the words "Staff preview".
   - Web navigator row: an eye icon with a tooltip.

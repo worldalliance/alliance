@@ -83,7 +83,6 @@ describe("Staff preview (e2e)", () => {
         name: params.name,
         category: "Test",
         body: "Body",
-        taskContents: "Task",
         shortDescription: "Short",
         visibilityMode: VisibilityMode.Public,
         cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
