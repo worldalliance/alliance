@@ -5,13 +5,15 @@ import { SiteFooter } from "../../../site/Footer";
 import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
 import { SiteRoot } from "../../../site/PageShell";
 import { DisplayHeading, SITE_COL, SiteArrow } from "../../../site/ui";
-import { GrantmakingMemberProgress } from "./GrantmakingMemberProgress";
+import {
+  GrantmakingMemberProgress,
+  MEMBER_GOAL_LABEL,
+} from "./GrantmakingMemberProgress";
 
 export function meta() {
   return socialPreviewMeta({
     title: "Democratic Grantmaking '26 — The Alliance",
-    description:
-      "We're planning a project in which an expert panel and 1,000 members will work together to make a significant grant.",
+    description: `We're planning a project in which an expert panel and ${MEMBER_GOAL_LABEL} members will work together to make a significant grant.`,
     url: "/projects/democratic-grantmaking-26",
   });
 }
@@ -46,8 +48,9 @@ export default function DemocraticGrantmaking26() {
               </DisplayHeading>
               <div className="flex w-full flex-col items-start gap-4">
                 <p className="text-lg leading-snug text-white sm:text-4xl lg:text-5xl">
-                  We&apos;re planning a project in which an expert panel and
-                  1,000 members will work together to make a significant grant.
+                  We&apos;re planning a project in which an expert panel and{" "}
+                  {MEMBER_GOAL_LABEL} members will work together to make a
+                  significant grant.
                 </p>
                 <p className="text-xl text-white/80 md:text-2xl">
                   <span className="font-semibold text-green">$36,300</span>{" "}

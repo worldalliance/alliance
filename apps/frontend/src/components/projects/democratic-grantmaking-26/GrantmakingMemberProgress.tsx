@@ -1,7 +1,10 @@
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { cn } from "@alliance/shared/styles/util";
+import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
 
 const MEMBER_GOAL = 1_000;
+
+export const MEMBER_GOAL_LABEL = MEMBER_GOAL.toLocaleString("en-US");
 
 export enum ProgressTone {
   /** White type over the grass photo. */
@@ -31,6 +34,7 @@ export function GrantmakingMemberProgress({
   caption?: boolean;
 }) {
   const { data: memberCount, isError } = useAllianceMemberCount();
+  const cappedCount = Math.min(memberCount ?? 0, MEMBER_GOAL);
 
   return (
     <div
@@ -38,34 +42,23 @@ export function GrantmakingMemberProgress({
     >
       <p>
         {memberCount !== undefined
-          ? `${memberCount.toLocaleString("en-US")} / ${MEMBER_GOAL.toLocaleString("en-US")} members`
+          ? `${memberCount.toLocaleString("en-US")} / ${MEMBER_GOAL_LABEL} members`
           : isError
             ? "Member count unavailable"
             : "Loading member count..."}
       </p>
-      <div
+      <CompletedBar
         role="progressbar"
         aria-label="Members toward the project launch"
         aria-valuemin={0}
         aria-valuemax={MEMBER_GOAL}
-        aria-valuenow={
-          memberCount !== undefined
-            ? Math.min(memberCount, MEMBER_GOAL)
-            : undefined
-        }
-        className={cn(
-          "h-3 w-full overflow-hidden rounded-full",
-          toneTrack[tone],
-        )}
-      >
-        <div
-          className="h-full rounded-full bg-green"
-          style={{
-            width: `${Math.min(((memberCount ?? 0) / MEMBER_GOAL) * 100, 100)}%`,
-          }}
-        />
-      </div>
-      {caption && <p>This project will run when we reach 1,000 members.</p>}
+        aria-valuenow={memberCount !== undefined ? cappedCount : undefined}
+        className={cn("mt-0", toneTrack[tone])}
+        percentage={(cappedCount / MEMBER_GOAL) * 100}
+      />
+      {caption && (
+        <p>This project will run when we reach {MEMBER_GOAL_LABEL} members.</p>
+      )}
     </div>
   );
 }
