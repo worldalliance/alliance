@@ -38,7 +38,8 @@ function ProgressCardLink({
 }) {
   const classes = cn(
     "flex flex-col gap-1.5 bg-[var(--site-surface)] p-5",
-    "transition-transform duration-300 ease-out hover:-translate-y-0.5",
+    "inset-ring-1 inset-ring-transparent hover:inset-ring-[var(--color-green)]",
+    "transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-0.5",
     className,
   );
   const external = to.startsWith("http");
