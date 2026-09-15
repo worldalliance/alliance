@@ -19,6 +19,7 @@
   - payments in the privacy policy
   - client reads of the action type
   - the Funding type (`removeFundingActionType` migration)
+  - the partial signup email type (`removePartialSignupEmailType` migration)
 - The clients stop reading `type` and `donationAmount` a commit before the
   server stops sending them. A web tab loaded before the server deploy runs the
   old `ActionTaskPanel`, which only rendered the task form for
@@ -55,8 +56,10 @@
   in auth and elsewhere.
 - `MailService.sendPartialSignupEmail` had one caller, the payments service, and
   is deleted. `EmailType.PartialSignup`, its `partial-signup.pug` template, and
-  the templates map entry stay: removing the value would change the `EmailType`
-  Postgres enum, which `mail` rows sent before 3f84034f3 may still hold.
+  the templates map entry go in their own commit with the generated
+  `removePartialSignupEmailType` migration. The staging copy in the local db has
+  no `partial_signup` mail rows, so the migration doesn't handle any. If
+  production holds one, the enum cast fails and the migration rolls back.
 - The raw-body parser for `SIGNED_WEBHOOK_ROUTES`, whose only route was
   `/payments/webhook`, is deleted. That left `body-parsers.ts` with two calls,
   which move into `configureApp`.

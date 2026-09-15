@@ -140,7 +140,6 @@ export class MailService {
     [EmailType.PasswordReset]: "password-reset",
     [EmailType.Verification]: "",
     [EmailType.Other]: "",
-    [EmailType.PartialSignup]: "partial-signup",
     [EmailType.Commitment]: "commitment",
     [EmailType.MemberAction]: "memberaction",
     [EmailType.CommitmentReminder]: "commitmentreminder",
