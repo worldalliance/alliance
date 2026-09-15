@@ -783,7 +783,7 @@ const ActionDashboard: React.FC = () => {
     { key: "details", label: "Action Details" },
     { key: "events", label: "Event Management" },
     { key: "updates", label: "Updates" },
-    ...(action?.type === "Activity"
+    ...(action
       ? [
           { key: "form" as Tab, label: "Task Form" },
           { key: "form-variants" as Tab, label: "Form Variants" },
@@ -852,15 +852,12 @@ const ActionDashboard: React.FC = () => {
         label: "Action authors set",
         isReady: (action.authors?.length ?? 0) > 0,
       },
-    ];
-
-    if (action.type === "Activity") {
-      items.push({
+      {
         id: "taskForm",
         label: "Task form linked",
         isReady: Boolean(action.taskFormId),
-      });
-    }
+      },
+    ];
 
     // Compute total reading time from task form + action description
     const countWords = (text: string | null | undefined): number => {

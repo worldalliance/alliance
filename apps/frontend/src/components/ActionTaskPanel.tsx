@@ -54,7 +54,6 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
   const handleFormStarted = useCallback(() => {
     captureEvent(AnalyticsEvent.FormStarted, {
       actionId: action.id,
-      actionType: action.type,
       actionName: action.name,
     });
   }, [action]);
@@ -108,7 +107,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
   }
 
   if (action.viewer?.staffPreview) {
-    return action.type === "Activity" && action.taskFormId ? (
+    return action.taskFormId ? (
       <ActionTaskPanelForm
         taskFormId={action.taskFormId}
         onCompleteAction={null}
@@ -139,7 +138,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
       />
     );
   }
-  if (!completionElement && action.type === "Activity" && action.taskFormId) {
+  if (!completionElement && action.taskFormId) {
     completionElement = (
       <ActionTaskPanelForm
         publicAction={action.publicOnly || guestMode}
@@ -156,37 +155,15 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
       />
     );
   }
-  if (!completionElement && action.type === "Activity" && !action.taskFormId) {
+  if (!completionElement) {
     completionElement = <p>Couldn&apos;t load action contents</p>;
   }
-  if (completionElement) {
-    return (
-      <>
-        {completionElement}
-        {errorMessageNode}
-      </>
-    );
-  }
-
-  if (action.status === "draft") {
-    return (
-      <>
-        {action.taskFormId && (
-          <ActionTaskPanelForm
-            taskFormId={action.taskFormId}
-            onCompleteAction={null}
-            onFormStarted={handleFormStarted}
-            onAbandonAction={onAbandonAction}
-            card={card}
-            actionId={action.id}
-          />
-        )}
-        {errorMessageNode}
-      </>
-    );
-  }
-
-  return errorMessageNode;
+  return (
+    <>
+      {completionElement}
+      {errorMessageNode}
+    </>
+  );
 };
 
 export default ActionTaskPanel;
