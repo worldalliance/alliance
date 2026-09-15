@@ -34,7 +34,7 @@ await context.addInitScript(
 );
 ```
 
-Use `addInitScript`, not `page.evaluate` after a `goto`. `AuthContext` reads the token on mount and clears it when it finds nothing, so a racing write lands you on `/auth/login` with empty localStorage.
+Use `addInitScript`, not `page.evaluate` after a `goto`. `AuthContext` reads the token on mount and clears it when it finds nothing, so a racing write lands you on `/onboarding` with empty localStorage.
 
 Mint it with an expiry that outlives the run. Nothing seeds `alliance.secure.refreshToken`, and the fetch wrapper in `apps/mobile/app/_layout.tsx` refreshes only when it finds one, so the session ends at the first 401 after the token expires.
 

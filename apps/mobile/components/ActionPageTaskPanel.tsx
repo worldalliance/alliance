@@ -61,7 +61,7 @@ const taskPanelTopByState: Record<ActionPageTaskPanelState, ReactNode> = {
   [ActionPageTaskPanelState.PublicOnly]: null,
   [ActionPageTaskPanelState.NotAuthenticated]: (
     <View className="flex-row flex-wrap items-center">
-      <Link href="/auth/login">
+      <Link href="/onboarding">
         <Text className="text-green">Log in</Text>
       </Link>
       <Text> to complete this task.</Text>
