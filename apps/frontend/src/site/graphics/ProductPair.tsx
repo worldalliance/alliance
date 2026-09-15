@@ -11,10 +11,6 @@ import {
 } from "./ProductScreens";
 
 /**
- * Where each card sits on the stage, in the cards' own pixels. The opened post
- * starts past the middle of the feed and well below it, so the two read as one
- * screen opening out of the other rather than a pair set side by side.
- *
  * The stage is padded past the pair's own bounding box, and both cards sit
  * inset from its edges by that same margin, so the composition has room to
  * breathe rather than pinning the feed to the stage's exact top-left corner
@@ -22,6 +18,11 @@ import {
  */
 const STAGE_MARGIN = 28;
 
+/**
+ * Where each card sits on the stage, in the cards' own pixels. The opened post
+ * starts past the middle of the feed and well below it, so the two read as one
+ * screen opening out of the other rather than a pair set side by side.
+ */
 const DETAIL_X = 318;
 const DETAIL_Y = 172;
 
