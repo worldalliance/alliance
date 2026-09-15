@@ -5014,8 +5014,6 @@ export class ActionsService {
 
     const ctx = singleUserCohortContext({
       userId: user.id,
-      // Mirror findActiveUsersWithTags' universe filter so NOT() agrees across both paths.
-      isCandidate: !user.isNotSignedUpPartialProfile,
       hasTag: (tagId: string) =>
         (user.tags || []).some((tag) => tag.id === tagId),
       completedAction: async (actionId: number) => {

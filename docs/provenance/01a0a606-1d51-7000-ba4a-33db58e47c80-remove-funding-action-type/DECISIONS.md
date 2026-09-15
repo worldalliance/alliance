@@ -20,6 +20,7 @@
   - client reads of the action type
   - the Funding type (`removeFundingActionType` migration)
   - the partial signup email type (`removePartialSignupEmailType` migration)
+  - the partial profile flag (`removePartialProfileFlag` migration)
 - The clients stop reading `type` and `donationAmount` a commit before the
   server stops sending them. A web tab loaded before the server deploy runs the
   old `ActionTaskPanel`, which only rendered the task form for
@@ -49,11 +50,25 @@
   of `taskFormId` goes with it.
 - `actionType` is dropped from the `ActionCompleted` (server) and `FormStarted`
   (frontend and mobile) analytics events.
-- `UserService.createPartialProfile` had no caller outside `oauth.e2e-spec` and
-  `users.e2e-spec`, so it is deleted and those specs insert the partial profile
-  row directly. Their tests stay, because partial profiles created while
-  payments worked still exist. `isNotSignedUpPartialProfile` keeps its readers
-  in auth and elsewhere.
+- Only the payment flow created partial profiles, and the staging copy in the
+  local db has none of 613 users flagged. `UserService.createPartialProfile`,
+  the `user.isNotSignedUpPartialProfile` column, and every reader go: the
+  active-user filters in `UserService` and the contract reminder worker, the
+  flag clears on password reset and OAuth linking, the field in
+  `UpdateProfileDto` (no client sent it), and the two e2e tests that built a
+  partial profile by hand. Other tests already cover password reset and linking
+  an existing account.
+- With every user a candidate, `isCandidate` leaves `SingleUserCohortPredicates`
+  and the single-user `NOT` universe is always `{userId}`. The spec loses the
+  non-candidate case, and its parity test counts all five users as candidates.
+- `removePartialProfileFlag` throws with the ids of any partial profile before
+  dropping the column, since those users would otherwise start receiving
+  contract reminders and counting as active members. Verified locally by
+  flagging user 7: the migration threw and the column survived. After clearing
+  the flag it ran, and `schema:log` found no schema changes.
+- The seed's `migrations_id_seq` was dumped before the rebase that brought in
+  `1789418641611-action-staff-preview`, so `reseed.sh` miscounts the migrations
+  to revert. It is run with `--revert 3`.
 - `MailService.sendPartialSignupEmail` had one caller, the payments service, and
   is deleted. `EmailType.PartialSignup`, its `partial-signup.pug` template, and
   the templates map entry go in their own commit with the generated

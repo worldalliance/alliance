@@ -278,7 +278,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
         type: "checkbox",
         section: "settings",
         helpText:
-          "Staff see it on their home pages until the Member Action event starts, or indefinitely if none is scheduled. Until then, nobody can submit, complete, withdraw, dismiss, donate, like, or comment.",
+          "Staff see it on their home pages until the Member Action event starts, or indefinitely if none is scheduled. Until then, nobody can submit, complete, withdraw, dismiss, like, or comment.",
       },
       {
         name: "shouldCompleteAfterDeadline",

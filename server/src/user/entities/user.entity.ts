@@ -277,11 +277,6 @@ export class User {
   @ApiProperty()
   referralCode: string;
 
-  @Column({ default: false })
-  @ApiProperty()
-  @Allow()
-  isNotSignedUpPartialProfile: boolean;
-
   @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   @Allow()

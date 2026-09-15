@@ -704,7 +704,6 @@ export type User = {
     profilePicture: string | null;
     profileDescription: string | null;
     referralCode: string;
-    isNotSignedUpPartialProfile: boolean;
     customCityString: string | null;
     over18: boolean | null;
     anonymous: boolean;
@@ -891,7 +890,6 @@ export type UpdateProfileDto = {
     shareEmailWithCommunityLead?: boolean;
     sharePhoneNumberWithCommunityLead?: boolean;
     forumDigestPreference?: ForumDigestPreference;
-    isNotSignedUpPartialProfile?: boolean;
     anonymous?: boolean;
     shareInfoPublicly?: boolean;
     formDataPreference?: PublicFormResponseDefault;

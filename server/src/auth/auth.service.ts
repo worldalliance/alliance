@@ -457,13 +457,7 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    const updatedUser = await this.usersService.setPassword(user.id, password);
-
-    if (updatedUser.isNotSignedUpPartialProfile) {
-      await this.usersService.update(updatedUser.id, {
-        isNotSignedUpPartialProfile: false,
-      });
-    }
+    await this.usersService.setPassword(user.id, password);
   }
 
   async generateImpersonationTokens(

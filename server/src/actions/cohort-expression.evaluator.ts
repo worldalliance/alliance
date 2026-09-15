@@ -29,10 +29,8 @@ export type CohortEvaluationContext = {
 /**
  * Resolves a CohortExpression to the Set of user IDs it targets.
  *
- * `NOT(X)` is `getAllCandidateUserIds()` minus `X`'s set, so the candidate set
- * is the universe a negation is taken against: all candidate users for the
- * population context, or `{userId}` iff the user is a candidate for a
- * single-user context — so `NOT(X)` excludes non-candidates from both.
+ * `NOT(X)` is `getAllCandidateUserIds()` minus `X`'s set: every user for the
+ * population context, `{userId}` for a single-user context.
  *
  * When `ctx.targetUserId` is set, the evaluator only cares about that one
  * user's membership, so every leaf set is `{targetUserId}` or `{}`. This lets
@@ -198,7 +196,6 @@ export function collectCohortDependencies(
  */
 export type SingleUserCohortPredicates = {
   userId: number;
-  isCandidate: boolean;
   hasTag(tagId: string): boolean;
   completedAction(actionId: number): Promise<boolean>;
   inProgressAction(actionId: number): Promise<boolean>;
@@ -221,11 +218,6 @@ export type SingleUserCohortPredicates = {
  * AND/OR/NOT/difference all distribute over the singleton. Setting
  * `targetUserId` also lets AND/OR short-circuit rather than fan out every
  * branch's DB work.
- *
- * `isCandidate` becomes the `NOT` universe (`{userId}` iff a candidate —
- * mirroring `findActiveUsersWithTags`, a fully signed-up, non-partial profile),
- * so a non-candidate is in no `NOT(...)` result, exactly as in the population
- * evaluator.
  */
 export function singleUserCohortContext(
   p: SingleUserCohortPredicates,
@@ -247,7 +239,7 @@ export function singleUserCohortContext(
     getGroupLeadUserIds: () => justAsync(p.isGroupLead()),
     getUserIdsByUsMembership: async (membership) =>
       just((await p.usMembership()) === membership),
-    getAllCandidateUserIds: async () => just(p.isCandidate),
+    getAllCandidateUserIds: async () => just(true),
     targetUserId: p.userId,
   };
 }

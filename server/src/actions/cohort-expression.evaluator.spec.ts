@@ -44,7 +44,6 @@ function scopedContext(
 ): CohortEvaluationContext {
   return singleUserCohortContext({
     userId,
-    isCandidate: true,
     hasTag: () => false,
     completedAction: async () => false,
     inProgressAction: async () => false,
@@ -927,28 +926,16 @@ describe("single-user scoping (singleUserCohortContext)", () => {
       expect(result).toBe(false);
     });
 
-    it("negates a false result for a candidate user", async () => {
+    it("negates a false result", async () => {
       const result = await userInCohort(
         1,
         {
           type: "NOT",
           child: { type: "Tag", tagId: "a" },
         },
-        { hasTag: () => false, isCandidate: true },
+        { hasTag: () => false },
       );
       expect(result).toBe(true);
-    });
-
-    it("excludes a non-candidate user from NOT (matches population NOT-universe)", async () => {
-      const result = await userInCohort(
-        1,
-        {
-          type: "NOT",
-          child: { type: "Tag", tagId: "a" },
-        },
-        { hasTag: () => false, isCandidate: false },
-      );
-      expect(result).toBe(false);
     });
   });
 
@@ -1088,10 +1075,8 @@ describe("population and single-user agreement", () => {
     }
   });
 
-  it("agree for NOT(Tag) including the universe boundary", async () => {
-    // Population: universe = candidates {1,2,3,4}; tag = {2,4}; NOT = {1,3}.
-    // User 5 is not a candidate, so it must be excluded by both.
-    const candidates = new Set([1, 2, 3, 4]);
+  it("agree for NOT(Tag)", async () => {
+    const candidates = new Set([1, 2, 3, 4, 5]);
     const tagUsers = new Set([2, 4]);
     const expr: CohortExpression = {
       type: "NOT",
@@ -1105,11 +1090,10 @@ describe("population and single-user agreement", () => {
         getUserIdsForTag: jest.fn().mockResolvedValue(tagUsers),
       }),
     );
-    expect(batchResult).toEqual(new Set([1, 3]));
+    expect(batchResult).toEqual(new Set([1, 3, 5]));
 
     for (const userId of [1, 2, 3, 4, 5]) {
       const single = await userInCohort(userId, expr, {
-        isCandidate: candidates.has(userId),
         hasTag: () => tagUsers.has(userId),
       });
       expect(single).toBe(batchResult.has(userId));

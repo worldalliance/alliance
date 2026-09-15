@@ -516,7 +516,6 @@ export class UpdateProfileDto extends PartialType(
     "forumDigestPreference",
     "formDataPreference",
     "timeZone",
-    "isNotSignedUpPartialProfile",
     "shareInfoPublicly",
     "pushesForLikes",
     "pushesForComments",

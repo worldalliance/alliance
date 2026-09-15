@@ -2457,30 +2457,6 @@ describe("Users (e2e)", () => {
     });
   });
 
-  describe("partial profile from a payment", () => {
-    it("sets the password and clears the partial flag on reset", async () => {
-      const user = await userRepo.save(
-        userRepo.create({
-          email: "partialprofile@test.com",
-          name: "Partial Profile",
-          password: null,
-          isNotSignedUpPartialProfile: true,
-          referralSource: ReferralSource.None,
-        }),
-      );
-
-      const token = await userService.generatePasswordResetToken(user.id);
-      await request(ctx.app.getHttpServer())
-        .post("/auth/reset-password")
-        .send({ token, password: "FreshPassword123!" })
-        .expect(200);
-
-      const reset = await userRepo.findOneByOrFail({ id: user.id });
-      expect(await reset.checkPassword("FreshPassword123!")).toBe(true);
-      expect(reset.isNotSignedUpPartialProfile).toBe(false);
-    });
-  });
-
   afterAll(async () => {
     await ctx.app.close();
   });

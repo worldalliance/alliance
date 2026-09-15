@@ -369,27 +369,6 @@ describe("OAuth sign-in (e2e)", () => {
         await login(member.email).expect(200);
       },
     );
-
-    // Partial profiles from the removed payment flow are still in the database.
-    it("finishes signing up a partial profile from a payment", async () => {
-      const email = "paid-then-signed-in@example.com";
-      const partial = await freshMember({
-        email,
-        password: null,
-        emailVerified: false,
-        isNotSignedUpPartialProfile: true,
-      });
-      profile = { ...profile, subject: "paid-first", email };
-
-      const { finished } = await signIn();
-
-      expect(outcomeOf(finished.headers.location)).toBe(OAuthOutcome.Linked);
-      const completed = await ctx.dataSource
-        .getRepository(User)
-        .findOneByOrFail({ id: partial.id });
-      expect(completed.isNotSignedUpPartialProfile).toBe(false);
-      expect(completed.emailVerified).toBe(true);
-    });
   });
 
   describe("a second account from one provider", () => {
