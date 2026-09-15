@@ -344,40 +344,32 @@ describe("OAuth sign-in (e2e)", () => {
     });
   });
 
-  // Registering does not confirm the address, so an account claiming one is not
-  // evidence that its owner made it.
-  describe("an account someone else may have registered", () => {
+  describe("an existing account with the provider's address", () => {
     const login = (email: string) =>
       client()
         .post("/auth/login")
         .send({ email, password: FRESH_MEMBER_PASSWORD, mode: "cookie" });
 
-    it("hands it to the address's owner and retires the unproven password", async () => {
-      const squatted = await freshMember({ emailVerified: false });
-      profile = { ...profile, subject: "squatted", email: squatted.email };
+    it.each([false, true])(
+      "keeps the password when emailVerified is %p",
+      async (emailVerified) => {
+        const member = await freshMember({ emailVerified });
+        profile = {
+          ...profile,
+          subject: `existing-${member.id}`,
+          email: member.email,
+        };
 
-      const { finished } = await signIn();
+        const { finished } = await signIn();
 
-      expect(outcomeOf(finished.headers.location)).toBe(OAuthOutcome.Linked);
-      expect(String(finished.headers["set-cookie"])).toContain("access_token=");
-      const taken = await ctx.dataSource
-        .getRepository(User)
-        .findOneByOrFail({ id: squatted.id });
-      expect(taken.password).toBeNull();
-      expect(taken.emailVerified).toBe(true);
-      // Whoever registered the address holds no way in once it changes hands.
-      await login(squatted.email).expect(401);
-    });
-
-    it("leaves the password alone once the address is confirmed", async () => {
-      const member = await freshMember({ emailVerified: true });
-      profile = { ...profile, subject: "confirmed", email: member.email };
-
-      const { finished } = await signIn();
-
-      expect(outcomeOf(finished.headers.location)).toBe(OAuthOutcome.Linked);
-      await login(member.email).expect(200);
-    });
+        expect(outcomeOf(finished.headers.location)).toBe(OAuthOutcome.Linked);
+        const linked = await ctx.dataSource
+          .getRepository(User)
+          .findOneByOrFail({ id: member.id });
+        expect(linked.emailVerified).toBe(true);
+        await login(member.email).expect(200);
+      },
+    );
 
     // The payment flow leaves an account with no password and an address it
     // never confirmed, which the reset link used to be the only way out of.

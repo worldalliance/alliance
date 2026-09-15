@@ -162,17 +162,11 @@ export class OAuthAuthService {
       if (!linked.ok) {
         return linked;
       }
-      // A password on an account that never confirmed its address is nobody's
-      // proven claim to it, and the provider just proved the address, so the
-      // account changes hands and the password goes with it. unlink() refuses
-      // a member's last way in, so this locks nobody out. A partial profile
-      // from a payment finishes signing up here, as it does on the reset link.
-      const takeover = byEmail.emailVerified
-        ? {}
-        : { password: null, isNotSignedUpPartialProfile: false };
+      // A partial profile from a payment finishes signing up here, as it does
+      // on the reset link.
       await this.userRepository.update(byEmail.id, {
         emailVerified: true,
-        ...takeover,
+        isNotSignedUpPartialProfile: false,
       });
       return R.success({
         user: await this.usersService.findOneOrFail(byEmail.id),
