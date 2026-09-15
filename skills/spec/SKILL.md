@@ -22,6 +22,8 @@ Continue asking questions as more decision points are uncovered. Done when every
 
 Ask in plain text, without tool calls. Ask them together in one numbered message.
 
+For each question, also provide your recommendation.
+
 ### Guidelines
 
 Don't assume the answer to any question. If anything is unclear, ask the user.
