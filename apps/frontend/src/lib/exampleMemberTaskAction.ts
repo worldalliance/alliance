@@ -21,7 +21,6 @@ export const exampleMemberTaskAction: ActionWithAwayStatus = {
   usersJoined: 120,
   shortDescription:
     "We negotiated a long-term 20% discount with a compostable cup supplier, available to all cafes that members frequently visit.",
-  type: "Activity" as const,
   usersCompleted: 98,
   priority: 0,
   preventCompletion: false,

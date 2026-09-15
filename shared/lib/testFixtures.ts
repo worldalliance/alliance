@@ -49,7 +49,6 @@ export function makeAction(
     category: "test",
     body: "",
     shortDescription: "",
-    type: "Activity",
     createdAt: new Date(0).toISOString(),
     updatedAt: new Date(0).toISOString(),
     isContractSigningAction: false,

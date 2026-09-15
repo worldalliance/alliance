@@ -791,8 +791,6 @@ jobs:
             export SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
             [ "${{ github.ref_name }}" != "production" ] || [ -n "${{ vars.MAIL_FROM }}" ] || { echo "MAIL_FROM is unset for this environment"; exit 1; }
             export MAIL_FROM="${{ vars.MAIL_FROM }}"
-            export STRIPE_ENDPOINT_SECRET=${{ secrets.STRIPE_ENDPOINT_SECRET }}
-            export STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}
             export ASSETS_BUCKET=${{ secrets.ASSETS_BUCKET_NAME }}
             export POSTHOG_KEY=${{ secrets.POSTHOG_KEY }}
             [ -n "${{ vars.ALT_DOMAIN_NAME }}" ] || { echo "ALT_DOMAIN_NAME is unset for this environment"; exit 1; }

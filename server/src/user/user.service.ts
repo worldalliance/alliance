@@ -44,7 +44,6 @@ import {
   type CreateNotifParams,
   NotifsService,
 } from "src/notifs/notifs.service";
-import { PaymentUserDataToken } from "src/payments/entities/payment-token.entity";
 import { Push } from "src/push/push.entity";
 import { PushService } from "src/push/push.service";
 import { groupUrl, profileUrl } from "src/search/approutes";
@@ -68,7 +67,6 @@ import {
   Brackets,
   DataSource,
   DeepPartial,
-  type FindOptionsWhere,
   ILike,
   In,
   IsNull,
@@ -222,16 +220,6 @@ export type ReferralResolution =
         | ReferralSource.InviteShareLink
         | ReferralSource.ReferralLink;
     };
-
-/**
- * The "active user" population: every fully signed-up profile. Shared by the
- * user-listing methods and by cohort resolution's NOT-universe
- * (`findActiveUserIds`), which must never diverge from the base-user set
- * (`findActiveUsersWithTags`).
- */
-const ACTIVE_USER_WHERE: FindOptionsWhere<User> = {
-  isNotSignedUpPartialProfile: false,
-};
 
 const SIGNUP_SOCIAL_PROOF_COUNT = 5;
 
@@ -628,9 +616,7 @@ export class UserService {
   }
 
   async count(): Promise<number> {
-    return this.userRepository.count({
-      where: { isNotSignedUpPartialProfile: false },
-    });
+    return this.userRepository.count();
   }
 
   async sendWelcomeEmail(userId: number) {
@@ -864,8 +850,7 @@ export class UserService {
     const qb = this.userRepository
       .createQueryBuilder("u")
       .where("u.profilePicture IS NOT NULL")
-      .andWhere("TRIM(u.profilePicture) != ''")
-      .andWhere("u.isNotSignedUpPartialProfile = :partial", { partial: false });
+      .andWhere("TRIM(u.profilePicture) != ''");
     if (excludeIds.length > 0) {
       qb.andWhere("u.id NOT IN (:...ids)", { ids: excludeIds });
     }
@@ -1272,14 +1257,6 @@ export class UserService {
     ];
   }
 
-  async findOneByStripeCustomerId(
-    stripeCustomerId: string,
-  ): Promise<User | null> {
-    return this.userRepository.findOne({
-      where: { stripeCustomerId: stripeCustomerId },
-    });
-  }
-
   async generatePasswordResetToken(userId: number) {
     const payload: PWResetJwtPayload = {
       sub: userId,
@@ -1291,23 +1268,16 @@ export class UserService {
     });
   }
 
-  async setStripeCustomerId(userId: number, stripeCustomerId: string) {
-    await this.userRepository.update(userId, { stripeCustomerId });
-  }
-
   async setOptInMms(userId: number, mmsId: number) {
     await this.userRepository.update(userId, { optInMms: { id: mmsId } });
   }
 
   async findAllUsers(): Promise<User[]> {
-    return this.userRepository.find({
-      where: ACTIVE_USER_WHERE,
-    });
+    return this.userRepository.find();
   }
 
   async findActiveUsersWithTags(): Promise<User[]> {
     return this.userRepository.find({
-      where: ACTIVE_USER_WHERE,
       relations: { tags: true, awayRanges: true, contractEvents: true },
       relationLoadStrategy: "query",
     });
@@ -1324,7 +1294,6 @@ export class UserService {
   async findActiveUsersForRoster(): Promise<User[]> {
     return this.userRepository.find({
       select: { id: true },
-      where: ACTIVE_USER_WHERE,
       relations: { awayRanges: true, contractEvents: true },
       relationLoadStrategy: "query",
     });
@@ -1337,21 +1306,8 @@ export class UserService {
   async findActiveUserIds(): Promise<number[]> {
     const users = await this.userRepository.find({
       select: { id: true },
-      where: ACTIVE_USER_WHERE,
     });
     return users.map((user) => user.id);
-  }
-
-  async createPartialProfile(
-    body: Pick<PaymentUserDataToken, "email" | "firstName" | "lastName">,
-  ): Promise<User> {
-    return this.create({
-      email: body.email,
-      name: body.firstName + " " + body.lastName,
-      password: null,
-      isNotSignedUpPartialProfile: true,
-      referralSource: ReferralSource.None,
-    });
   }
 
   async findByUsername(query: string): Promise<User[]> {
@@ -1359,7 +1315,6 @@ export class UserService {
       where: {
         name: ILike(`%${query}%`),
         anonymous: false,
-        isNotSignedUpPartialProfile: false,
       },
     });
     return users;

@@ -48,9 +48,6 @@ export class ContractReminderWorker {
           .createQueryBuilder("user")
           .leftJoin("user.contractEvents", "ce")
           .where("user.createdAt <= :cutoff", { cutoff })
-          .andWhere("user.isNotSignedUpPartialProfile = :partial", {
-            partial: false,
-          })
           .andWhere("ce.id IS NULL")
           .andWhere(
             `NOT EXISTS (

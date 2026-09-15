@@ -14,11 +14,7 @@ import {
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
 import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
-import {
-  Action,
-  ActionTaskType,
-  VisibilityMode,
-} from "src/actions/entities/action.entity";
+import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import { Community } from "src/community/entities/community.entity";
 import {
   Comment,
@@ -159,7 +155,6 @@ describe("Tasks (e2e)", () => {
         category: "Community",
         body: "Body copy",
         shortDescription: "Short copy",
-        type: ActionTaskType.Activity,
         isForumParticipationAction: false,
         shouldCompleteAfterDeadline: false,
         visibilityMode: VisibilityMode.Public,
@@ -208,7 +203,6 @@ describe("Tasks (e2e)", () => {
         body: "Body copy",
         shortDescription: "Short copy",
         taskFormId: formId,
-        type: ActionTaskType.Activity,
         isForumParticipationAction: false,
         shouldCompleteAfterDeadline: false,
         visibilityMode: VisibilityMode.Public,
@@ -629,7 +623,6 @@ describe("Tasks (e2e)", () => {
         category: "Community",
         body: "Body copy",
         shortDescription: "Short copy",
-        type: ActionTaskType.Activity,
         isForumParticipationAction: false,
         shouldCompleteAfterDeadline: false,
         visibilityMode: VisibilityMode.Public,
@@ -738,7 +731,6 @@ describe("Tasks (e2e)", () => {
         category: "Community",
         body: "Body copy",
         shortDescription: "Short copy",
-        type: ActionTaskType.Activity,
         isForumParticipationAction: false,
         shouldCompleteAfterDeadline: false,
         visibilityMode: VisibilityMode.Public,
@@ -878,7 +870,6 @@ describe("Tasks (e2e)", () => {
           category: "Community",
           body: "Body copy",
           shortDescription: "Short copy",
-          type: ActionTaskType.Activity,
           shouldCompleteAfterDeadline: false,
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,

@@ -53,7 +53,6 @@ export const FORM_BUILDER_PREVIEW_USER: UserDto = {
 };
 
 export const testActions: CreateActionDto[] = [
-  // Funding Action 1
   {
     name: "Save 2,500 acres of Ecuador cloud forest",
     category: "Climate Change",
@@ -80,8 +79,6 @@ We can outpace these mining companies by purchasing the land directly and placin
 This is our chance to take direct action against environmental destruction. Every contribution makes a difference.`,
     shortDescription:
       "Gold mining companies are expressing interest in a highly biodiverse area. We can outpace them by purchasing the land.",
-    type: "Funding",
-    donationAmount: 1000,
     timeEstimate: 5,
     preventCompletion: false,
     visibilityMode: "public",

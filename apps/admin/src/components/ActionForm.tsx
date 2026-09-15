@@ -152,14 +152,6 @@ const ActionForm: React.FC<ActionFormProps> = ({
     inverted?: boolean; // for checkboxes: invert the displayed/stored value
   };
 
-  const actionTypeOptions = useMemo(
-    () => [
-      { value: "Activity", label: "Activity" },
-      { value: "Funding", label: "Funding" },
-    ],
-    [],
-  );
-
   const customStatTypeOptions = useMemo(
     () => [
       { value: "none", label: "None" },
@@ -241,15 +233,6 @@ const ActionForm: React.FC<ActionFormProps> = ({
 
       // === SETTINGS SECTION  ===
       {
-        name: "type",
-        label: "Type",
-        type: "select",
-        section: "settings",
-        required: true,
-        options: actionTypeOptions,
-        gridCol: true,
-      },
-      {
         name: "category",
         label: "Category",
         type: "text",
@@ -281,15 +264,6 @@ const ActionForm: React.FC<ActionFormProps> = ({
         gridCol: true,
       },
       {
-        name: "donationAmount",
-        label: "Donation Amount (cents)",
-        type: "number",
-        section: "settings",
-        show: (f) => f.type === "Funding",
-        helpText: "Suggested amount per person",
-        gridCol: true,
-      },
-      {
         name: "onboarding",
         label: "Onboarding",
         helpText:
@@ -304,7 +278,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
         type: "checkbox",
         section: "settings",
         helpText:
-          "Staff see it on their home pages until the Member Action event starts, or indefinitely if none is scheduled. Until then, nobody can submit, complete, withdraw, dismiss, donate, like, or comment.",
+          "Staff see it on their home pages until the Member Action event starts, or indefinitely if none is scheduled. Until then, nobody can submit, complete, withdraw, dismiss, like, or comment.",
       },
       {
         name: "shouldCompleteAfterDeadline",
@@ -388,7 +362,6 @@ const ActionForm: React.FC<ActionFormProps> = ({
       },
     ],
     [
-      actionTypeOptions,
       suiteSelectOptions,
       suitesLoading,
       visibilityModeOptions,
@@ -592,7 +565,6 @@ const ActionForm: React.FC<ActionFormProps> = ({
           onChange={onInputChange}
           required={f.required}
           min={undefined}
-          step={f.name === "donationAmount" ? 0.01 : undefined}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
         />
         {f.helpText && (

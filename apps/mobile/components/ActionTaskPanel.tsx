@@ -39,7 +39,6 @@ const ActionTaskPanel = ({
   const handleFormStarted = useCallback(() => {
     captureEvent(AnalyticsEvent.FormStarted, {
       actionId: action.id,
-      actionType: action.type,
       actionName: action.name,
     });
   }, [action]);

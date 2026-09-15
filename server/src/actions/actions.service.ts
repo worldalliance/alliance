@@ -197,7 +197,6 @@ import {
 } from "./entities/action-update.entity";
 import {
   Action,
-  ActionTaskType,
   parseAction,
   VisibilityMode,
   type ParsedAction,
@@ -2819,18 +2818,6 @@ export class ActionsService {
     });
   }
 
-  async getPaymentAmountForAction(id: number): Promise<number> {
-    const action = await this.findOneOrFail({ id, serverSide: true });
-    assertNotInStaffPreview(action);
-    if (action.type !== ActionTaskType.Funding) {
-      throw new BadRequestException("Action is not a funding action");
-    }
-    if (!action.donationAmount) {
-      throw new BadRequestException("Action has no funding amount");
-    }
-    return action.donationAmount;
-  }
-
   async adminCreateActivity(
     activityDto: CreateActionActivityDto,
   ): Promise<ActionActivity> {
@@ -5027,8 +5014,6 @@ export class ActionsService {
 
     const ctx = singleUserCohortContext({
       userId: user.id,
-      // Mirror findActiveUsersWithTags' universe filter so NOT() agrees across both paths.
-      isCandidate: !user.isNotSignedUpPartialProfile,
       hasTag: (tagId: string) =>
         (user.tags || []).some((tag) => tag.id === tagId),
       completedAction: async (actionId: number) => {

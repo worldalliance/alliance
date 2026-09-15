@@ -140,7 +140,6 @@ export class MailService {
     [EmailType.PasswordReset]: "password-reset",
     [EmailType.Verification]: "",
     [EmailType.Other]: "",
-    [EmailType.PartialSignup]: "partial-signup",
     [EmailType.Commitment]: "commitment",
     [EmailType.MemberAction]: "memberaction",
     [EmailType.CommitmentReminder]: "commitmentreminder",
@@ -266,26 +265,6 @@ export class MailService {
       subject: "a link to reset your password",
       context: {
         name,
-        url,
-      },
-      cid: null,
-    });
-  }
-
-  public async sendPartialSignupEmail(params: {
-    email: string;
-    name: string;
-    resetToken: string;
-  }): Promise<Mail> {
-    const { email, name, resetToken } = params;
-    const url = this.getPasswordResetUrl(resetToken);
-    return this.sendMail({
-      recipient: email,
-      emailType: EmailType.PartialSignup,
-      subject: "Thanks for helping out! Want to do more?",
-      context: {
-        name,
-        email,
         url,
       },
       cid: null,

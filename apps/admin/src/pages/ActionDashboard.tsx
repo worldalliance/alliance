@@ -315,7 +315,6 @@ const ActionDashboard: React.FC = () => {
     shortDescription: "",
     visibilityMode: "public",
     isContractSigningAction: false,
-    type: "Activity",
     preventCompletion: false,
     staffPreview: false,
     taskFormId: undefined,
@@ -340,7 +339,6 @@ const ActionDashboard: React.FC = () => {
         timeEstimate: 0,
         shortDescription: "",
         visibilityMode: "public",
-        type: "Activity",
         preventCompletion: false,
         staffPreview: false,
         taskFormId: undefined,
@@ -603,27 +601,10 @@ const ActionDashboard: React.FC = () => {
       return;
     }
 
-    // Handle numeric fields
-    if (name === "donationThreshold" || name === "donationAmount") {
-      const numValue = value === "" ? null : parseFloat(value);
-      setForm((prev) => ({
-        ...prev,
-        [name]: numValue,
-      }));
-    } else {
-      setForm((prev) => {
-        const newForm = {
-          ...prev,
-          [name]: value,
-        };
-
-        if (name === "type" && value === "Funding") {
-          newForm.taskFormId = undefined;
-        }
-
-        return newForm;
-      });
-    }
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const { confirm } = useToast();
@@ -783,7 +764,7 @@ const ActionDashboard: React.FC = () => {
     { key: "details", label: "Action Details" },
     { key: "events", label: "Event Management" },
     { key: "updates", label: "Updates" },
-    ...(action?.type === "Activity"
+    ...(action
       ? [
           { key: "form" as Tab, label: "Task Form" },
           { key: "form-variants" as Tab, label: "Form Variants" },
@@ -852,15 +833,12 @@ const ActionDashboard: React.FC = () => {
         label: "Action authors set",
         isReady: (action.authors?.length ?? 0) > 0,
       },
-    ];
-
-    if (action.type === "Activity") {
-      items.push({
+      {
         id: "taskForm",
         label: "Task form linked",
         isReady: Boolean(action.taskFormId),
-      });
-    }
+      },
+    ];
 
     // Compute total reading time from task form + action description
     const countWords = (text: string | null | undefined): number => {

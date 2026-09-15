@@ -55,7 +55,6 @@ describe("ActionTaskPanel in staff preview", () => {
             <AuthContext.Provider value={authValue({ user: testAuthUser })}>
               <ActionTaskPanel
                 action={makeAction({
-                  type: "Activity",
                   taskFormId: 7,
                   status: "draft",
                   viewer: makeViewer({

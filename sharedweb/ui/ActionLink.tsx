@@ -10,7 +10,7 @@ import { deadlineColor } from "@alliance/shared/lib/taskTimeInfo";
 import { cn } from "@alliance/shared/styles/util";
 import { useQuery } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
-import { CheckCircle2, Clock, Coins, Flag, Users } from "lucide-react";
+import { CheckCircle2, Clock, Flag, Users } from "lucide-react";
 import React, { useState } from "react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./HoverCard";
 
@@ -219,14 +219,7 @@ function ActionPreviewMeta({
     );
   }
 
-  if (action.type === "Funding" && action.donationAmount) {
-    items.push(
-      <span key="donation" className="flex items-center gap-x-1">
-        <Coins size={12} className="shrink-0" />$
-        {(action.donationAmount / 100).toFixed(0)} suggested
-      </span>,
-    );
-  } else if (nextEvent) {
+  if (nextEvent) {
     items.push(
       <span
         key="deadline"

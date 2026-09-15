@@ -40,10 +40,6 @@ const SettingsPage: React.FC = () => {
     retrySave,
   } = useSettingsAutosave(user?.id, location?.countryCode);
 
-  // const [paymentMethod, setPaymentMethod] = useState<PaymentMethodDto | null>(
-  //   null
-  // );
-  // const [loadingPaymentMethod, setLoadingPaymentMethod] = useState(false);
   const [passwordResetMessage, setPasswordResetMessage] = useState<
     string | null
   >(null);
@@ -70,29 +66,6 @@ const SettingsPage: React.FC = () => {
     },
     [updateEditableUser],
   );
-
-  // const loadPaymentMethod = useCallback(async () => {
-  //   try {
-  //     const response = await paymentsPaymentMethod();
-  //     if (response.data) {
-  //       setPaymentMethod(response.data);
-  //     }
-  //   } catch { }
-  // }, []);
-
-  // const handleClearPaymentMethod = useCallback(async () => {
-  //   setLoadingPaymentMethod(true);
-  //   try {
-  //     const clear = await paymentsClearPaymentMethods();
-  //     if (clear.response.ok) {
-  //       setPaymentMethod(null);
-  //     }
-  //   } catch (error) {
-  //     console.error("Failed to clear payment method:", error);
-  //   } finally {
-  //     setLoadingPaymentMethod(false);
-  //   }
-  // }, []);
 
   const handlePasswordReset = useCallback(async () => {
     if (!user?.email) {

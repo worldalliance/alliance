@@ -60,11 +60,6 @@ export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_requ
 
 export type NotifPriority = 'low' | 'high';
 
-/**
- * Type of the action
- */
-export type ActionTaskType = 'Funding' | 'Activity';
-
 export type VisibilityMode = 'public' | 'all_members' | 'participating_groups';
 
 export type CustomActionStat = 'none' | 'users_invited';
@@ -227,7 +222,7 @@ export type ActionEventNotifType = 'announcement' | 'misseddeadline' | 'reminder
 
 export type EmailStatus = 'pending' | 'sent' | 'failed';
 
-export type EmailType = 'verification' | 'password_reset' | 'partial_signup' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reminder';
+export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reminder';
 
 export type Mail = {
     id: number;
@@ -381,10 +376,6 @@ export type Action = {
      */
     squareThumbnailImageAlt?: string;
     /**
-     * Suggested donation amount (cents)
-     */
-    donationAmount?: number;
-    /**
      * markdown page body
      */
     body: string;
@@ -396,10 +387,6 @@ export type Action = {
      * Time estimate in minutes
      */
     timeEstimate?: number;
-    /**
-     * Type of the action
-     */
-    type: ActionTaskType;
     /**
      * Form associated with the action
      */
@@ -717,8 +704,6 @@ export type User = {
     profilePicture: string | null;
     profileDescription: string | null;
     referralCode: string;
-    stripeCustomerId: string | null;
-    isNotSignedUpPartialProfile: boolean;
     customCityString: string | null;
     over18: boolean | null;
     anonymous: boolean;
@@ -905,7 +890,6 @@ export type UpdateProfileDto = {
     shareEmailWithCommunityLead?: boolean;
     sharePhoneNumberWithCommunityLead?: boolean;
     forumDigestPreference?: ForumDigestPreference;
-    isNotSignedUpPartialProfile?: boolean;
     anonymous?: boolean;
     shareInfoPublicly?: boolean;
     formDataPreference?: PublicFormResponseDefault;
@@ -2065,10 +2049,6 @@ export type ActionDto = {
      */
     squareThumbnailImageAlt?: string;
     /**
-     * Suggested donation amount (cents)
-     */
-    donationAmount?: number;
-    /**
      * markdown page body
      */
     body: string;
@@ -2080,10 +2060,6 @@ export type ActionDto = {
      * Time estimate in minutes
      */
     timeEstimate?: number;
-    /**
-     * Type of the action
-     */
-    type: ActionTaskType;
     /**
      * Form associated with the action
      */
@@ -2394,10 +2370,6 @@ export type AdminActionDto = {
      */
     squareThumbnailImageAlt?: string;
     /**
-     * Suggested donation amount (cents)
-     */
-    donationAmount?: number;
-    /**
      * markdown page body
      */
     body: string;
@@ -2409,10 +2381,6 @@ export type AdminActionDto = {
      * Time estimate in minutes
      */
     timeEstimate?: number;
-    /**
-     * Type of the action
-     */
-    type: ActionTaskType;
     /**
      * Form associated with the action
      */
@@ -2642,10 +2610,6 @@ export type CreateActionDto = {
      */
     squareThumbnailImageAlt?: string;
     /**
-     * Suggested donation amount (cents)
-     */
-    donationAmount?: number;
-    /**
      * markdown page body
      */
     body: string;
@@ -2657,10 +2621,6 @@ export type CreateActionDto = {
      * Time estimate in minutes
      */
     timeEstimate?: number;
-    /**
-     * Type of the action
-     */
-    type: ActionTaskType;
     /**
      * Form associated with the action
      */
@@ -2741,10 +2701,6 @@ export type UpdateActionDto = {
      */
     squareThumbnailImageAlt?: string;
     /**
-     * Suggested donation amount (cents)
-     */
-    donationAmount?: number;
-    /**
      * markdown page body
      */
     body?: string;
@@ -2756,10 +2712,6 @@ export type UpdateActionDto = {
      * Time estimate in minutes
      */
     timeEstimate?: number;
-    /**
-     * Type of the action
-     */
-    type?: ActionTaskType;
     /**
      * Form associated with the action
      */
@@ -3019,10 +2971,6 @@ export type ExportActionDto = {
      */
     squareThumbnailImageAlt?: string;
     /**
-     * Suggested donation amount (cents)
-     */
-    donationAmount?: number;
-    /**
      * markdown page body
      */
     body: string;
@@ -3034,10 +2982,6 @@ export type ExportActionDto = {
      * Time estimate in minutes
      */
     timeEstimate?: number;
-    /**
-     * Type of the action
-     */
-    type: ActionTaskType;
     /**
      * Form associated with the action
      */

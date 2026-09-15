@@ -162,12 +162,7 @@ export class OAuthAuthService {
       if (!linked.ok) {
         return linked;
       }
-      // A partial profile from a payment finishes signing up here, as it does
-      // on the reset link.
-      await this.userRepository.update(byEmail.id, {
-        emailVerified: true,
-        isNotSignedUpPartialProfile: false,
-      });
+      await this.userRepository.update(byEmail.id, { emailVerified: true });
       return R.success({
         user: await this.usersService.findOneOrFail(byEmail.id),
         outcome: OAuthOutcome.Linked,

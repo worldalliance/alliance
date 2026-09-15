@@ -9,11 +9,7 @@ import {
 } from "src/actions/entities/action-event.entity";
 import { ActionFormAssignment } from "src/actions/entities/action-form-assignment.entity";
 import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
-import {
-  Action,
-  ActionTaskType,
-  VisibilityMode,
-} from "src/actions/entities/action.entity";
+import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import {
   Comment,
   CommentParentObject,
@@ -455,19 +451,6 @@ describe("Staff preview (e2e)", () => {
       expect(await formResponseRepo.count({ where: { formId: form.id } })).toBe(
         0,
       );
-    });
-
-    it("refuses donations before a payment intent is created", async () => {
-      const action = await createAction({
-        name: "Preview donate",
-        staffPreview: true,
-        events: [pastPlanned, futureMemberAction],
-        overrides: { type: ActionTaskType.Funding },
-      });
-
-      await expect(
-        actionsService.getPaymentAmountForAction(action.id),
-      ).rejects.toThrow(previewRefusal.message);
     });
 
     it("refuses comments on the action and on its activities", async () => {

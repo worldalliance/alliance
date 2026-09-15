@@ -42,11 +42,7 @@ import {
   ActionReviewer,
   ActionReviewerIcon,
 } from "../src/actions/entities/action-reviewer.entity";
-import {
-  Action,
-  ActionTaskType,
-  VisibilityMode,
-} from "../src/actions/entities/action.entity";
+import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
 import { FollowUpForm } from "../src/actions/entities/follow-up-form.entity";
 import {
   ReminderCohortType,
@@ -225,7 +221,6 @@ describe("Actions (e2e)", () => {
         timeEstimate: 5,
         shortDescription: "Do something important",
         visibilityMode: VisibilityMode.Public,
-        type: ActionTaskType.Activity,
         isContractSigningAction: false,
         shouldCompleteAfterDeadline: false,
         isForumParticipationAction: false,
@@ -267,7 +262,6 @@ describe("Actions (e2e)", () => {
         timeEstimate: 5,
         shortDescription: "Short",
         visibilityMode: VisibilityMode.Public,
-        type: ActionTaskType.Activity,
         isContractSigningAction: false,
         shouldCompleteAfterDeadline: false,
         isForumParticipationAction: false,
@@ -319,7 +313,6 @@ describe("Actions (e2e)", () => {
           timeEstimate: 5,
           shortDescription: "Short",
           visibilityMode: VisibilityMode.Public,
-          type: ActionTaskType.Activity,
           isContractSigningAction: false,
           shouldCompleteAfterDeadline: false,
           isForumParticipationAction: false,
@@ -485,7 +478,6 @@ describe("Actions (e2e)", () => {
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
-          type: ActionTaskType.Activity,
           cohortExpression: {
             type: "Manual",
             userIds: [cohortMember.id],
@@ -571,7 +563,6 @@ describe("Actions (e2e)", () => {
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
-          type: ActionTaskType.Activity,
           cohortExpression: {
             type: "Manual",
             userIds: [cohortMember.id, awayMember.id],
@@ -657,7 +648,6 @@ describe("Actions (e2e)", () => {
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: false,
-          type: ActionTaskType.Activity,
           cohortExpression: {
             type: "Manual",
             userIds: [cohortMember.id],
@@ -736,7 +726,6 @@ describe("Actions (e2e)", () => {
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
-          type: ActionTaskType.Activity,
           cohortExpression: {
             type: "CompletedAction",
             actionId: prerequisiteAction.id,
@@ -848,7 +837,6 @@ describe("Actions (e2e)", () => {
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
-          type: ActionTaskType.Activity,
           cohortExpression: {
             type: "InProgressAction",
             actionId: prerequisiteAction.id,
@@ -933,7 +921,6 @@ describe("Actions (e2e)", () => {
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
-          type: ActionTaskType.Activity,
           cohortExpression: {
             type: "GroupLead",
           },
@@ -1171,7 +1158,6 @@ describe("Actions (e2e)", () => {
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
-          type: ActionTaskType.Activity,
           cohortExpression: {
             type: "FormFieldValue",
             formId: form.id,
@@ -1284,7 +1270,6 @@ describe("Actions (e2e)", () => {
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
-          type: ActionTaskType.Activity,
           cohortExpression: {
             type: "FormFieldValue",
             formId: form.id,
@@ -1381,7 +1366,6 @@ describe("Actions (e2e)", () => {
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
-          type: ActionTaskType.Activity,
           cohortExpression: {
             type: "AND",
             children: [
@@ -2279,7 +2263,6 @@ describe("Actions (e2e)", () => {
 
     const expectNoSensitiveUserFields = (user: Record<string, unknown>) => {
       expect(user).not.toHaveProperty("password");
-      expect(user).not.toHaveProperty("stripeCustomerId");
       expect(user).not.toHaveProperty("emailVerified");
       expect(user).not.toHaveProperty("phoneNumberUnsubscribed");
     };
@@ -3033,7 +3016,6 @@ describe("Actions (e2e)", () => {
           visibilityMode: VisibilityMode.Public,
           priority: 0,
           preventCompletion: false,
-          type: ActionTaskType.Activity,
           onboarding: true,
           cohortExpression: {
             type: "Tag",
@@ -3604,7 +3586,6 @@ describe("Actions (e2e)", () => {
       timeEstimate: 5,
       shortDescription: "Short",
       visibilityMode: VisibilityMode.Public,
-      type: ActionTaskType.Activity,
       isContractSigningAction: false,
       shouldCompleteAfterDeadline: false,
       isForumParticipationAction: false,
@@ -3801,7 +3782,6 @@ describe("Actions (e2e)", () => {
           timeEstimate: 5,
           shortDescription: "Short",
           visibilityMode: VisibilityMode.Public,
-          type: ActionTaskType.Activity,
           isContractSigningAction: false,
           shouldCompleteAfterDeadline: false,
           isForumParticipationAction: false,
@@ -3947,7 +3927,6 @@ describe("Actions (e2e)", () => {
           name: "Duplicated images",
           category: "",
           body: "",
-          type: ActionTaskType.Activity,
           isContractSigningAction: false,
           visibilityMode: VisibilityMode.Public,
           image: getImageSource(coverKey),
@@ -3969,7 +3948,6 @@ describe("Actions (e2e)", () => {
           name: "Typed thumbnail",
           category: "",
           body: "",
-          type: ActionTaskType.Activity,
           isContractSigningAction: false,
           visibilityMode: VisibilityMode.Public,
           squareThumbnailImage: "https://example.com/promo.png",
@@ -3990,7 +3968,6 @@ describe("Actions (e2e)", () => {
           name: "Key-shaped thumbnail",
           category: "",
           body: "",
-          type: ActionTaskType.Activity,
           isContractSigningAction: false,
           visibilityMode: VisibilityMode.Public,
           squareThumbnailImage: typed,
