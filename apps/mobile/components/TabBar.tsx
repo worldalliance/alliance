@@ -82,7 +82,7 @@ function AnimatedTabButton({
       onPress={onPress}
       onPressIn={animateIn}
       onPressOut={animateOut}
-      className="flex-1 items-center"
+      className="items-center"
     >
       <Animated.View
         className="relative items-center gap-0.5 pt-3 pb-1"
