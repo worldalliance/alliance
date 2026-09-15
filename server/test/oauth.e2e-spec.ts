@@ -12,6 +12,10 @@ import { GoogleOAuthClient } from "src/auth/oauth/google-oauth.client";
 import { OAuthAuthService } from "src/auth/oauth/oauth-auth.service";
 import type { OAuthProfile } from "src/auth/oauth/oauth-client";
 import { GUEST_COOKIE } from "src/auth/tokens";
+import {
+  OnetimeInvite,
+  OnetimeInviteStatus,
+} from "src/user/entities/onetime-invite.entity";
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import request from "supertest";
 import TestAgent from "supertest/lib/agent";
@@ -415,6 +419,40 @@ describe("OAuth sign-in (e2e)", () => {
       const { finished } = await signIn();
 
       expect(errorOf(finished.headers.location)).toBe(OAuthError.NoAccount);
+    });
+
+    it("is created by an invite that resolves, with the provider connected", async () => {
+      const inviter = await freshMember();
+      const invites = ctx.dataSource.getRepository(OnetimeInvite);
+      const invite = await invites.save(
+        invites.create({
+          invitee: "invited@example.com",
+          code: `invite-${inviter.id}`,
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          invitingUser: { id: inviter.id },
+        }),
+      );
+      profile = { ...profile, subject: "invited", email: invite.invitee };
+
+      const { finished } = await signIn({ referralCode: invite.code });
+
+      expect(outcomeOf(finished.headers.location)).toBe(OAuthOutcome.SignedUp);
+      const created = await ctx.dataSource.getRepository(User).findOneOrFail({
+        where: { email: profile.email },
+        relations: {
+          oauthAccounts: true,
+          referredBy: true,
+          referredByInvite: true,
+        },
+      });
+      expect(created.referredBy?.id).toBe(inviter.id);
+      expect(created.referredByInvite?.id).toBe(invite.id);
+      expect(created.emailVerified).toBe(true);
+      expect(created.oauthAccounts).toMatchObject([
+        { provider: profile.provider, email: profile.email },
+      ]);
+      const spent = await invites.findOneByOrFail({ id: invite.id });
+      expect(spent.status).toBe(OnetimeInviteStatus.LINK_USED);
     });
 
     // A spent invite throws from inside the signup path, where an exception has
