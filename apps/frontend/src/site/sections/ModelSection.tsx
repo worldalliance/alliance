@@ -35,7 +35,7 @@ export function ModelSection() {
           </SectionSubtitle>
         </div>
         <div
-          className="overflow-hidden bg-black px-5 py-7 sm:px-18 sm:py-16"
+          className="overflow-hidden bg-[var(--site-primary)] px-5 py-7 sm:px-18 sm:py-16"
           style={{ borderRadius: "var(--site-radius-card)" }}
         >
           <GrowthMilestones
