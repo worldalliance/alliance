@@ -25,12 +25,32 @@ let loginBodies: { email: string; password: string; mode: string }[] = [];
 const signedIn = () => new Response(null, { status: 200 });
 let loginReply: () => Response = signedIn;
 
+/** What the two lookups behind the code in the URL come back with. */
+let inviteState: "valid" | "used" | "unknown" = "valid";
+
+const notFound = () => new Response(null, { status: 404 });
+
 serveApi(
   routes({
     "POST /auth/login": async ({ request }) => {
       loginBodies.push(await request.json());
       return loginReply();
     },
+    "GET /user/referrerProfile/:code": () =>
+      inviteState === "unknown"
+        ? notFound()
+        : Response.json({
+            kind: "user",
+            displayName: "Alex Dorey",
+            profilePicture: null,
+          }),
+    "GET /user/onetimeInvite/:code": () =>
+      inviteState === "unknown"
+        ? notFound()
+        : Response.json({
+            code: "invite-code",
+            status: inviteState === "used" ? "link_used" : "link_unused",
+          }),
   }),
 );
 
@@ -51,6 +71,7 @@ afterEach(() => {
   onLogin.mockClear();
   loginBodies = [];
   loginReply = signedIn;
+  inviteState = "valid";
   window.sessionStorage.clear();
   window.happyDOM.setURL("https://test.alliance/login");
 });
@@ -97,6 +118,29 @@ const Harness = () => {
   );
 };
 
+const SignUpWithCode = () => (
+  <MemoryRouter>
+    <QueryClientProvider client={new QueryClient()}>
+      <AuthContext.Provider value={authValue}>
+        <AccountStep
+          email=""
+          onEmailChange={() => {}}
+          password=""
+          onPasswordChange={() => {}}
+          onCreateAccount={() => {}}
+          redirectAfterLogin="/tasks"
+          startInLogin={false}
+          referralCode="some-code"
+          providerError={null}
+        />
+      </AuthContext.Provider>
+    </QueryClientProvider>
+  </MemoryRouter>
+);
+
+const providerButtons = () =>
+  document.querySelectorAll("a[href*='/auth/']").length;
+
 const fillWithoutReact = (email: string, password: string) => {
   const emailInput = screen.getByLabelText("Email") as HTMLInputElement;
   const passwordInput = screen.getByLabelText("Password") as HTMLInputElement;
@@ -106,6 +150,27 @@ const fillWithoutReact = (email: string, password: string) => {
 };
 
 describe("AccountStep", () => {
+  // The server only rejects a code that names nothing once the provider has
+  // handed the member back, so the screen has to refuse it before the trip.
+  it("refuses a code that resolves to nothing", async () => {
+    inviteState = "unknown";
+    render(<SignUpWithCode />);
+
+    await waitFor(() =>
+      expect(screen.getByText("This invite link isn’t valid.")).toBeDefined(),
+    );
+    expect(providerButtons()).toBe(0);
+    expect(screen.queryByLabelText("Email")).toBeNull();
+  });
+
+  it("offers a code that resolves", async () => {
+    inviteState = "valid";
+    render(<SignUpWithCode />);
+
+    await waitFor(() => expect(providerButtons()).toBeGreaterThan(0));
+    expect(screen.getByLabelText("Email")).toBeDefined();
+  });
+
   it("logs in from a password-manager fill that never fires change", async () => {
     render(<Harness />);
 

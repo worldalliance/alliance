@@ -62,13 +62,21 @@ export function AccountStep({
   const {
     used: inviteUsed,
     pending: invitePending,
+    unresolved: inviteUnresolved,
     inviter,
   } = useInvite(referralCode);
+  // A code that names nothing cannot create an account, and the server only
+  // says so after the provider round-trip. Refusing it here costs the member
+  // the trip rather than the whole journey.
   const inviteOnly =
-    (!isFeatureEnabled(Features.PublicSignup) && !referralCode) || inviteUsed;
+    (!isFeatureEnabled(Features.PublicSignup) && !referralCode) ||
+    inviteUsed ||
+    inviteUnresolved;
   // An invite in the URL is a way in, so logging in offers the sign-up screen
   // it came from rather than sending the member off to ask for another invite.
-  const canSignUp = isFeatureEnabled(Features.PublicSignup) || !!referralCode;
+  const canSignUp =
+    isFeatureEnabled(Features.PublicSignup) ||
+    (!!referralCode && !inviteUsed && !inviteUnresolved);
   const [loggingIn, setLoggingIn] = useState(startInLogin);
   const [error, setError] = useState<ReactNode>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -88,9 +96,11 @@ export function AccountStep({
     ? "Log into your account"
     : inviteUsed
       ? "This invite link has already been used."
-      : inviteOnly
-        ? "The Alliance is invite-only."
-        : "Create an account";
+      : inviteUnresolved
+        ? "This invite link isn’t valid."
+        : inviteOnly
+          ? "The Alliance is invite-only."
+          : "Create an account";
 
   // Password managers write .value without React onChange, so the fields stay
   // uncontrolled and submit reads the form instead of React state.

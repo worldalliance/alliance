@@ -13,7 +13,7 @@ import { queryKeys } from "./queryKeys";
  * onetime invite can be used up, so `used` still comes from that lookup.
  */
 export function useInvite(referralCode: string | null) {
-  const { data: referrer } = useQuery({
+  const { data: referrer, isPending: referrerPending } = useQuery({
     queryKey: queryKeys.referrerProfile(referralCode),
     queryFn: () =>
       userReferrerProfile({ path: { code: referralCode! } }).then(
@@ -34,11 +34,16 @@ export function useInvite(referralCode: string | null) {
   });
 
   const used = invite?.status === "link_used";
-  const pending = Boolean(referralCode) && invitePending;
+  const pending = Boolean(referralCode) && (invitePending || referrerPending);
+  // Both lookups empty is the only proof the code names nothing. Neither
+  // settles it alone: an invite whose inviter is gone has no referrer, and a
+  // campaign or personal referral code has no onetime invite behind it.
+  const unresolved = Boolean(referralCode) && !pending && !referrer && !invite;
 
   return {
     used,
     pending,
+    unresolved,
     inviter: used ? null : namedInviter(referrer ?? null),
   };
 }
