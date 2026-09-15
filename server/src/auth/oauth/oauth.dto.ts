@@ -16,6 +16,26 @@ import {
   type TokenMode,
 } from "../dto/signin.dto";
 
+export type OAuthConsent = {
+  consentUrl: string;
+  proof: string;
+};
+
+export class OAuthConsentDto {
+  @ApiProperty()
+  consentUrl: string;
+
+  @ApiProperty({
+    description: "Present this with the handoff at /exchange or /link.",
+  })
+  proof: string;
+
+  constructor(input: OAuthConsent) {
+    this.consentUrl = input.consentUrl;
+    this.proof = input.proof;
+  }
+}
+
 export class OAuthStartDto {
   @ApiProperty({ enum: OAuthIntent, enumName: "OAuthIntent" })
   @IsDefined()
@@ -62,6 +82,33 @@ export class OAuthCallbackDto {
   @IsOptional()
   @IsString()
   user?: string;
+}
+
+/** What the app trades the callback's deep link for, at /link or /exchange. */
+export class OAuthHandoffDto {
+  @ApiProperty()
+  @IsDefined()
+  @IsString()
+  @IsNotEmpty()
+  handoff: string;
+
+  @ApiProperty({ description: "The secret /auth/:provider/start handed back." })
+  @IsDefined()
+  @IsString()
+  @IsNotEmpty()
+  proof: string;
+}
+
+export class OAuthExchangeDto extends OAuthHandoffDto {
+  @ApiProperty({ enum: ["cookie", "header"], enumName: "TokenMode" })
+  @IsDefined()
+  @IsEnum(["cookie", "header"])
+  mode: TokenMode;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  guestToken?: string;
 }
 
 /** What a provider's native SDK hands the app, and the app hands us. */

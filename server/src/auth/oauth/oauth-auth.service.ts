@@ -1,7 +1,7 @@
 import {
   OAuthError,
+  OAuthIntent,
   OAuthOutcome,
-  type OAuthIntent,
   type OAuthProvider,
 } from "@alliance/common/oauth";
 import { R, type Result } from "@alliance/common/result";
@@ -50,6 +50,27 @@ const STATE_LIFETIME = "10m";
 
 /** google-auth-library accepts an id token up to five minutes past its exp. */
 const ID_TOKEN_CLOCK_SKEW_MS = milliseconds({ minutes: 5 });
+
+/**
+ * Half of the proof that its holder is one user, handed to the app on a deep
+ * link any other app on the device may be listening for. Useless without the
+ * secret from the start call, and short-lived on top of that.
+ */
+const HANDOFF_LIFETIME_MS = 1000 * 60 * 2;
+
+/**
+ * What the callback still owes the app once the provider is done with. A
+ * native client takes no cookies, so a session and a link both come back as one.
+ */
+export type OAuthHandoffPurpose =
+  | { intent: OAuthIntent.Authenticate }
+  | { intent: OAuthIntent.Link; profile: OAuthProfile };
+
+export type OAuthHandoff = OAuthHandoffPurpose & {
+  userId: number;
+  proofHash: string;
+  expiresAt: number;
+};
 
 export function mintProof(): OAuthProof {
   const proof = randomBytes(32).toString("base64url");
@@ -143,6 +164,11 @@ export class OAuthAuthService {
     return true;
   }
 
+  // Held here so the deep link carries only a random id, not the profile. The
+  // map lives in this process, which is the one process pm2 runs; a second
+  // instance would not know the handoffs this one issued.
+  private readonly pendingHandoffs = new Map<string, OAuthHandoff>();
+
   signState(state: Omit<OAuthState, "tokenType">): Promise<string> {
     return this.jwtService.signAsync(
       { ...state, tokenType: JWTTokenType.oauthState },
@@ -160,6 +186,45 @@ export class OAuthAuthService {
       return null;
     }
     return payload.value;
+  }
+
+  issueHandoff(params: {
+    userId: number;
+    proofHash: string;
+    purpose: OAuthHandoffPurpose;
+  }): string {
+    this.dropExpiredHandoffs();
+    const handoff = randomBytes(32).toString("base64url");
+    this.pendingHandoffs.set(handoff, {
+      ...params.purpose,
+      userId: params.userId,
+      proofHash: params.proofHash,
+      expiresAt: Date.now() + HANDOFF_LIFETIME_MS,
+    });
+    return handoff;
+  }
+
+  /** One shot: a handoff that matches here cannot be presented again. */
+  spendHandoff(params: {
+    handoff: string;
+    proof: string;
+  }): OAuthHandoff | null {
+    this.dropExpiredHandoffs();
+    const pending = this.pendingHandoffs.get(params.handoff);
+    if (!pending || !proofMatches(params.proof, pending.proofHash)) {
+      return null;
+    }
+    this.pendingHandoffs.delete(params.handoff);
+    return pending;
+  }
+
+  private dropExpiredHandoffs(): void {
+    const now = Date.now();
+    for (const [handoff, pending] of this.pendingHandoffs) {
+      if (pending.expiresAt <= now) {
+        this.pendingHandoffs.delete(handoff);
+      }
+    }
   }
 
   /**

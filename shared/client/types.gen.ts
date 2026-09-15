@@ -841,6 +841,21 @@ export type ResetPasswordDto = {
 
 export type OAuthIntent = 'authenticate' | 'link';
 
+export type OAuthStartDto = {
+    intent: OAuthIntent;
+    returnTo: string;
+    referralCode?: string;
+    timeZone?: string;
+};
+
+export type OAuthConsentDto = {
+    consentUrl: string;
+    /**
+     * Present this with the handoff at /exchange or /link.
+     */
+    proof: string;
+};
+
 export type OAuthCallbackDto = {
     code?: string;
     state?: string;
@@ -849,6 +864,16 @@ export type OAuthCallbackDto = {
      * JSON Apple posts on the first authorization, holding the name.
      */
     user?: string;
+};
+
+export type OAuthExchangeDto = {
+    handoff: string;
+    /**
+     * The secret /auth/:provider/start handed back.
+     */
+    proof: string;
+    mode: TokenMode;
+    guestToken?: string;
 };
 
 export type OAuthNativeSignInDto = {
@@ -880,6 +905,14 @@ export type OAuthIdentityTokenDto = {
      * The id token the provider's native SDK returned.
      */
     identityToken: string;
+};
+
+export type OAuthHandoffDto = {
+    handoff: string;
+    /**
+     * The secret /auth/:provider/start handed back.
+     */
+    proof: string;
 };
 
 export type ClusterSummaryDto = {
@@ -4315,6 +4348,27 @@ export type OAuthRedirectToProviderResponses = {
 
 export type OAuthRedirectToProviderResponse = OAuthRedirectToProviderResponses[keyof OAuthRedirectToProviderResponses];
 
+export type OAuthStartData = {
+    body: OAuthStartDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/start';
+};
+
+export type OAuthStartErrors = {
+    401: HeyApiError;
+};
+
+export type OAuthStartError = OAuthStartErrors[keyof OAuthStartErrors];
+
+export type OAuthStartResponses = {
+    200: OAuthConsentDto;
+};
+
+export type OAuthStartResponse = OAuthStartResponses[keyof OAuthStartResponses];
+
 export type OAuthCallbackData = {
     body?: never;
     path: {
@@ -4376,6 +4430,27 @@ export type OAuthCallbackFormResponses = {
 };
 
 export type OAuthCallbackFormResponse = OAuthCallbackFormResponses[keyof OAuthCallbackFormResponses];
+
+export type OAuthExchangeData = {
+    body: OAuthExchangeDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/exchange';
+};
+
+export type OAuthExchangeErrors = {
+    401: HeyApiError;
+};
+
+export type OAuthExchangeError = OAuthExchangeErrors[keyof OAuthExchangeErrors];
+
+export type OAuthExchangeResponses = {
+    200: SignInResponseDto;
+};
+
+export type OAuthExchangeResponse = OAuthExchangeResponses[keyof OAuthExchangeResponses];
 
 export type OAuthNativeSignInData = {
     body: OAuthNativeSignInDto;
@@ -4443,6 +4518,27 @@ export type OAuthUnlinkResponses = {
 };
 
 export type OAuthUnlinkResponse = OAuthUnlinkResponses[keyof OAuthUnlinkResponses];
+
+export type OAuthCompleteLinkData = {
+    body: OAuthHandoffDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/link';
+};
+
+export type OAuthCompleteLinkErrors = {
+    401: HeyApiError;
+};
+
+export type OAuthCompleteLinkError = OAuthCompleteLinkErrors[keyof OAuthCompleteLinkErrors];
+
+export type OAuthCompleteLinkResponses = {
+    200: AuthMeResponseDto;
+};
+
+export type OAuthCompleteLinkResponse = OAuthCompleteLinkResponses[keyof OAuthCompleteLinkResponses];
 
 export type UserFindMeData = {
     body?: never;

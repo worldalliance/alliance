@@ -1,5 +1,7 @@
 import { currentNodeEnv, isDeployed } from "@alliance/common/node-env";
 import {
+  MOBILE_OAUTH_RETURN_URL,
+  OAUTH_HANDOFF_PARAM,
   oauthErrorParam,
   oauthOutcomeParam,
   type OAuthError,
@@ -27,7 +29,8 @@ function requestOrigin(req: OriginRequest): string {
  * The provider matches this against its registered list, and the callback
  * sets the session cookies on whatever origin it runs on, so it has to be the
  * origin the member came from rather than one canonical host. Deployed, that is
- * the vetted returnTo, under the /api prefix nginx serves the API on.
+ * the vetted returnTo, under the /api prefix nginx serves the API on. A native
+ * returnTo takes no cookies, so the flow can finish on the canonical app.
  */
 export function oauthRedirectUri(params: {
   req: OriginRequest;
@@ -38,7 +41,19 @@ export function oauthRedirectUri(params: {
   if (!deployed()) {
     return `${requestOrigin(params.req)}${path}`;
   }
-  return `${params.returnTo.origin}/api${path}`;
+
+  const origin = isNativeReturnTo(params.returnTo)
+    ? appOrigin()
+    : params.returnTo.origin;
+  return `${origin}/api${path}`;
+}
+
+function appOrigin(): string {
+  const appUrl = process.env.APP_URL;
+  if (!appUrl) {
+    throw new Error("APP_URL is unset, so sign-in has no home origin");
+  }
+  return new URL(appUrl).origin;
 }
 
 /**
@@ -63,6 +78,10 @@ function allowedOrigins(): (string | RegExp)[] {
   return [...configured, ...www];
 }
 
+export function isNativeReturnTo(returnTo: URL): boolean {
+  return returnTo.toString() === MOBILE_OAUTH_RETURN_URL;
+}
+
 export function fallbackLoginUrl(req: OriginRequest): string {
   return `${process.env.APP_URL ?? requestOrigin(req)}/login`;
 }
@@ -80,11 +99,13 @@ export function resolveReturnTo(returnTo: string): URL {
     throw new BadRequestException("returnTo must be an absolute URL");
   }
 
-  const permitted = allowedOrigins().some((allowed) =>
-    typeof allowed === "string"
-      ? allowed === url.origin
-      : allowed.test(url.origin),
-  );
+  const permitted =
+    isNativeReturnTo(url) ||
+    allowedOrigins().some((allowed) =>
+      typeof allowed === "string"
+        ? allowed === url.origin
+        : allowed.test(url.origin),
+    );
 
   if (!permitted) {
     throw new BadRequestException(`returnTo ${url.origin} is not allowed`);
@@ -97,9 +118,13 @@ export function returnUrlWithOutcome(params: {
   returnTo: string;
   provider: OAuthProvider;
   outcome: OAuthOutcome;
+  handoff?: string;
 }): string {
   const url = new URL(params.returnTo);
   url.searchParams.set(oauthOutcomeParam(params.provider), params.outcome);
+  if (params.handoff) {
+    url.searchParams.set(OAUTH_HANDOFF_PARAM, params.handoff);
+  }
   return url.toString();
 }
 

@@ -1,11 +1,13 @@
 import { NodeEnv } from "@alliance/common/node-env";
 import {
+  MOBILE_OAUTH_RETURN_URL,
   OAuthError,
   OAuthOutcome,
   OAuthProvider,
 } from "@alliance/common/oauth";
 import { BadRequestException } from "@nestjs/common";
 import {
+  isNativeReturnTo,
   oauthRedirectUri,
   resolveReturnTo,
   returnUrlWithError,
@@ -45,6 +47,7 @@ describe("resolveReturnTo", () => {
     "https://www.worldalliance.org/login",
     "https://www.thealliance.org/login",
     "https://admin.worldalliance.org/",
+    MOBILE_OAUTH_RETURN_URL,
   ])("allows %s", (returnTo) => {
     withEnv(DEPLOYED_ENV, () => {
       expect(resolveReturnTo(returnTo).toString()).toBe(returnTo);
@@ -77,10 +80,15 @@ describe("resolveReturnTo", () => {
   });
 });
 
-describe("a scheme that is not the web's", () => {
+describe("isNativeReturnTo", () => {
+  it("matches the one address the app registers", () => {
+    expect(isNativeReturnTo(new URL(MOBILE_OAUTH_RETURN_URL))).toBe(true);
+  });
+
   it.each(["alliance://auth/evil", "alliance://elsewhere"])(
-    "refuses %s",
+    "rejects %s, which shares only the scheme",
     (returnTo) => {
+      expect(isNativeReturnTo(new URL(returnTo))).toBe(false);
       withEnv(DEPLOYED_ENV, () => {
         expect(() => resolveReturnTo(returnTo)).toThrow(BadRequestException);
       });
@@ -98,6 +106,18 @@ describe("oauthRedirectUri", () => {
           returnTo: new URL("https://www.thealliance.org/login"),
         }),
       ).toBe("https://www.thealliance.org/api/auth/apple/callback");
+    });
+  });
+
+  it("sends a native flow home to APP_URL", () => {
+    withEnv(DEPLOYED_ENV, () => {
+      expect(
+        oauthRedirectUri({
+          req: asRequest("https://worldalliance.org"),
+          provider: OAuthProvider.Google,
+          returnTo: new URL(MOBILE_OAUTH_RETURN_URL),
+        }),
+      ).toBe("https://worldalliance.org/api/auth/google/callback");
     });
   });
 
@@ -123,6 +143,24 @@ describe("returnUrl", () => {
         outcome: OAuthOutcome.SignedUp,
       }),
     ).toBe("https://worldalliance.org/signup?ref=abc&google=signed_up");
+  });
+
+  it("appends the handoff only when there is one", () => {
+    expect(
+      returnUrlWithOutcome({
+        returnTo: MOBILE_OAUTH_RETURN_URL,
+        provider: OAuthProvider.Apple,
+        outcome: OAuthOutcome.SignedIn,
+        handoff: "handoff-token",
+      }),
+    ).toBe("alliance://auth/oauth?apple=signed_in&handoff=handoff-token");
+    expect(
+      returnUrlWithOutcome({
+        returnTo: MOBILE_OAUTH_RETURN_URL,
+        provider: OAuthProvider.Apple,
+        outcome: OAuthOutcome.Linked,
+      }),
+    ).toBe("alliance://auth/oauth?apple=linked");
   });
 
   it("names the error after the provider", () => {

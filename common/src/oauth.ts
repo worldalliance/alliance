@@ -22,6 +22,16 @@ export enum OAuthIntent {
 export const oauthOutcomeParam = (provider: OAuthProvider): string => provider;
 export const oauthErrorParam = (provider: OAuthProvider): string =>
   `${provider}Error`;
+export const OAUTH_HANDOFF_PARAM = "handoff";
+
+/** `scheme` in apps/mobile/app.config.js. */
+const MOBILE_APP_SCHEME = "alliance";
+
+/**
+ * Where the callback deep-links the mobile app back to. It cannot set a cookie
+ * on a native client, so it appends a handoff token to trade for real ones.
+ */
+export const MOBILE_OAUTH_RETURN_URL = `${MOBILE_APP_SCHEME}://auth/oauth`;
 
 export enum OAuthOutcome {
   SignedIn = "signed_in",
