@@ -16,6 +16,7 @@ import React, {
   useState,
 } from "react";
 
+import { R } from "@alliance/common/result";
 import { useBackfillTimeZone } from "@alliance/shared/lib/useBackfillTimeZone";
 import { ViewerAuthenticationProvider } from "@alliance/sharedweb/ui/ViewerAuthenticationProvider";
 import type { QueryClient } from "@tanstack/react-query";
@@ -143,7 +144,12 @@ export const AuthProvider: React.FC<
     }, [loadAuthenticatedUser, queryClient]);
 
     const refreshUser = useCallback(async () => {
-      const { data } = await authMe();
+      const me = await R.fromPromise(authMe());
+      if (!me.ok) {
+        console.log("AuthContext", "reload failed", me.error);
+        return;
+      }
+      const { data } = me.value;
       if (data) {
         setUser(data.user);
         setIsImpersonation(data.isImpersonation ?? false);
