@@ -87,6 +87,17 @@ describe("OAuth sign-in (e2e)", () => {
     return { agent, started, finished };
   };
 
+  const linkInBrowser = async (accessToken: string) => {
+    const agent = client();
+    const started = await agent
+      .get(path("start"))
+      .set("Authorization", `Bearer ${accessToken}`)
+      .query({ intent: OAuthIntent.Link, returnTo: RETURN_TO });
+    return agent
+      .get(path("callback"))
+      .query({ code: "code", state: stateOf(started.headers.location) });
+  };
+
   beforeAll(async () => {
     ctx = await createTestApp([]);
     for (const oauth of [
@@ -305,15 +316,7 @@ describe("OAuth sign-in (e2e)", () => {
     });
 
     it("writes straight away for the browser that started the flow", async () => {
-      const agent = client();
-      const started = await agent
-        .get(path("start"))
-        .set("Authorization", `Bearer ${member.accessToken}`)
-        .query({ intent: OAuthIntent.Link, returnTo: RETURN_TO });
-      const finished = await agent.get(path("callback")).query({
-        code: "code",
-        state: stateOf(started.headers.location),
-      });
+      const finished = await linkInBrowser(member.accessToken);
 
       expect(outcomeOf(finished.headers.location)).toBe(OAuthOutcome.Linked);
       const me = await client()
@@ -331,15 +334,7 @@ describe("OAuth sign-in (e2e)", () => {
       oauth.link = () => Promise.reject(new Error("boom"));
 
       try {
-        const agent = client();
-        const started = await agent
-          .get(path("start"))
-          .set("Authorization", `Bearer ${member.accessToken}`)
-          .query({ intent: OAuthIntent.Link, returnTo: RETURN_TO });
-        const finished = await agent.get(path("callback")).query({
-          code: "code",
-          state: stateOf(started.headers.location),
-        });
+        const finished = await linkInBrowser(member.accessToken);
 
         expect(finished.status).toBe(302);
         expect(errorOf(finished.headers.location)).toBe(OAuthError.Failed);
@@ -498,20 +493,12 @@ describe("OAuth sign-in (e2e)", () => {
       const email = "two-ways-in@example.com";
       const accessToken = await passwordless(email);
 
-      const agent = client();
       profile = {
         ...profile,
         provider: OAuthProvider.Apple,
         subject: "second-way-in",
       };
-      const started = await agent
-        .get(path("start"))
-        .set("Authorization", `Bearer ${accessToken}`)
-        .query({ intent: OAuthIntent.Link, returnTo: RETURN_TO });
-      await agent.get(path("callback")).query({
-        code: "code",
-        state: stateOf(started.headers.location),
-      });
+      await linkInBrowser(accessToken);
 
       const unlinked = await client()
         .delete("/auth/google/link")
@@ -519,6 +506,32 @@ describe("OAuth sign-in (e2e)", () => {
         .expect(200);
 
       expect(linkedEmails(unlinked.body.user)).toEqual({ apple: email });
+    });
+
+    // One pair of requests doesn't always overlap, so this tries several.
+    it("keeps one way in when both providers are disconnected at once", async () => {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const member = await freshMember({ password: null });
+        for (const provider of Object.values(OAuthProvider)) {
+          profile = {
+            ...profile,
+            provider,
+            subject: `both-at-once-${provider}-${member.id}`,
+          };
+          await linkInBrowser(member.accessToken);
+        }
+
+        const statuses = await Promise.all(
+          Object.values(OAuthProvider).map(async (provider) => {
+            const res = await client()
+              .delete(`/auth/${provider}/link`)
+              .set("Authorization", `Bearer ${member.accessToken}`);
+            return res.status;
+          }),
+        );
+
+        expect(statuses.sort()).toEqual([200, 400]);
+      }
     });
   });
 });
