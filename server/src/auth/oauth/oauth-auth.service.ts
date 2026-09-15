@@ -207,14 +207,14 @@ export class OAuthAuthService {
       }),
     );
     // A spent or unknown invite throws from deep inside the signup path, and
-    // the callback has nowhere to put an exception but the member's screen.
+    // is the member's to fix. Anything else stays thrown, so its cause reaches
+    // whoever catches it.
     if (!created.ok) {
+      if (!(created.error instanceof BadRequestException)) {
+        throw created.error;
+      }
       console.error("oauth signup failed", created.error);
-      return R.failure(
-        created.error instanceof BadRequestException
-          ? OAuthError.InviteRequired
-          : OAuthError.Failed,
-      );
+      return R.failure(OAuthError.InviteRequired);
     }
     return R.success({ user: created.value, outcome: OAuthOutcome.SignedUp });
   }

@@ -518,6 +518,22 @@ describe("OAuth sign-in (e2e)", () => {
         authService.createReferredUser = create;
       }
     });
+
+    it("is sent back when the signup breaks", async () => {
+      const authService = ctx.app.get(AuthService);
+      const create = authService.createReferredUser.bind(authService);
+      authService.createReferredUser = () =>
+        Promise.reject(new Error("db down"));
+
+      try {
+        const { finished } = await signIn({ referralCode: "any" });
+
+        expect(finished.status).toBe(302);
+        expect(errorOf(finished.headers.location)).toBe(OAuthError.Failed);
+      } finally {
+        authService.createReferredUser = create;
+      }
+    });
   });
 
   describe("unlinking", () => {
