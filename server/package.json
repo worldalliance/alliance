@@ -56,7 +56,6 @@
     "es-toolkit": "^1.49.0",
     "escape-html": "^1.0.3",
     "expo-server-sdk": "^4.0.0",
-    "express": "^5.2.1",
     "google-auth-library": "^11.0.2",
     "heic-convert": "^2.1.0",
     "html-encoding-sniffer": "^4.0.0",
@@ -79,7 +78,6 @@
     "rxjs": "^7.8.1",
     "sharp": "^0.34.3",
     "socket.io": "^4.8.1",
-    "stripe": "18.0.0",
     "twilio": "^5.9.0",
     "typeorm": "^0.3.25",
     "zod": "^4.3.6"

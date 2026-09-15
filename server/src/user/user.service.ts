@@ -44,7 +44,6 @@ import {
   type CreateNotifParams,
   NotifsService,
 } from "src/notifs/notifs.service";
-import { PaymentUserDataToken } from "src/payments/entities/payment-token.entity";
 import { Push } from "src/push/push.entity";
 import { PushService } from "src/push/push.service";
 import { groupUrl, profileUrl } from "src/search/approutes";
@@ -1272,14 +1271,6 @@ export class UserService {
     ];
   }
 
-  async findOneByStripeCustomerId(
-    stripeCustomerId: string,
-  ): Promise<User | null> {
-    return this.userRepository.findOne({
-      where: { stripeCustomerId: stripeCustomerId },
-    });
-  }
-
   async generatePasswordResetToken(userId: number) {
     const payload: PWResetJwtPayload = {
       sub: userId,
@@ -1289,10 +1280,6 @@ export class UserService {
       secret: process.env.JWT_SECRET,
       expiresIn: `1d`,
     });
-  }
-
-  async setStripeCustomerId(userId: number, stripeCustomerId: string) {
-    await this.userRepository.update(userId, { stripeCustomerId });
   }
 
   async setOptInMms(userId: number, mmsId: number) {
@@ -1340,18 +1327,6 @@ export class UserService {
       where: ACTIVE_USER_WHERE,
     });
     return users.map((user) => user.id);
-  }
-
-  async createPartialProfile(
-    body: Pick<PaymentUserDataToken, "email" | "firstName" | "lastName">,
-  ): Promise<User> {
-    return this.create({
-      email: body.email,
-      name: body.firstName + " " + body.lastName,
-      password: null,
-      isNotSignedUpPartialProfile: true,
-      referralSource: ReferralSource.None,
-    });
   }
 
   async findByUsername(query: string): Promise<User[]> {

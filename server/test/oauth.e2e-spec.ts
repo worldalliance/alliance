@@ -13,7 +13,6 @@ import { OAuthAuthService } from "src/auth/oauth/oauth-auth.service";
 import type { OAuthProfile } from "src/auth/oauth/oauth-client";
 import { GUEST_COOKIE } from "src/auth/tokens";
 import { ReferralSource, User } from "src/user/entities/user.entity";
-import { UserService } from "src/user/user.service";
 import request from "supertest";
 import TestAgent from "supertest/lib/agent";
 import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
@@ -371,13 +370,15 @@ describe("OAuth sign-in (e2e)", () => {
       },
     );
 
-    // The payment flow leaves an account with no password and an address it
-    // never confirmed, which the reset link used to be the only way out of.
+    // Partial profiles from the removed payment flow are still in the database.
     it("finishes signing up a partial profile from a payment", async () => {
       const email = "paid-then-signed-in@example.com";
-      const partial = await ctx.app
-        .get(UserService)
-        .createPartialProfile({ email, firstName: "Paid", lastName: "First" });
+      const partial = await freshMember({
+        email,
+        password: null,
+        emailVerified: false,
+        isNotSignedUpPartialProfile: true,
+      });
       profile = { ...profile, subject: "paid-first", email };
 
       const { finished } = await signIn();

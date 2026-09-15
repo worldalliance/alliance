@@ -272,26 +272,6 @@ export class MailService {
     });
   }
 
-  public async sendPartialSignupEmail(params: {
-    email: string;
-    name: string;
-    resetToken: string;
-  }): Promise<Mail> {
-    const { email, name, resetToken } = params;
-    const url = this.getPasswordResetUrl(resetToken);
-    return this.sendMail({
-      recipient: email,
-      emailType: EmailType.PartialSignup,
-      subject: "Thanks for helping out! Want to do more?",
-      context: {
-        name,
-        email,
-        url,
-      },
-      cid: null,
-    });
-  }
-
   public async sendContractSuspendedEmail(
     email: string,
     name: string,

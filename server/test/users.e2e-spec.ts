@@ -2458,15 +2458,16 @@ describe("Users (e2e)", () => {
   });
 
   describe("partial profile from a payment", () => {
-    it("has no password until the member follows the reset link", async () => {
-      const user = await userService.createPartialProfile({
-        email: "partialprofile@test.com",
-        firstName: "Partial",
-        lastName: "Profile",
-      });
-      expect(
-        (await userRepo.findOneByOrFail({ id: user.id })).password,
-      ).toBeNull();
+    it("sets the password and clears the partial flag on reset", async () => {
+      const user = await userRepo.save(
+        userRepo.create({
+          email: "partialprofile@test.com",
+          name: "Partial Profile",
+          password: null,
+          isNotSignedUpPartialProfile: true,
+          referralSource: ReferralSource.None,
+        }),
+      );
 
       const token = await userService.generatePasswordResetToken(user.id);
       await request(ctx.app.getHttpServer())
