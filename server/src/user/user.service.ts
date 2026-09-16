@@ -6,7 +6,7 @@ import {
 } from "@alliance/common/forms/user-properties";
 import type { AccountDerivedConditionKind } from "@alliance/common/forms/visible-if-formula";
 import { forCount } from "@alliance/common/plural";
-import type { Result } from "@alliance/common/result";
+import { R, type Result } from "@alliance/common/result";
 import { Temporal } from "@js-temporal/polyfill";
 import {
   BadRequestException,
@@ -637,18 +637,21 @@ export class UserService {
   }
 
   async verifyEmail(token: string) {
-    const payload = this.jwtService.verify<
-      VerifyEmailJwtPayload & LegacyMailedJwtPayload
-    >(token, {
-      secret: process.env.JWT_SECRET,
-    });
+    const verified = await R.fromPromise(
+      this.jwtService.verifyAsync<
+        VerifyEmailJwtPayload & LegacyMailedJwtPayload
+      >(token, {
+        secret: process.env.JWT_SECRET,
+      }),
+    );
     if (
-      payload.tokenType !== JWTTokenType.verifyEmail &&
-      payload.type !== "verify-email"
+      !verified.ok ||
+      (verified.value.tokenType !== JWTTokenType.verifyEmail &&
+        verified.value.type !== "verify-email")
     ) {
       throw new UnauthorizedException();
     }
-    const user = await this.findOneOrFail(payload.sub);
+    const user = await this.findOneOrFail(verified.value.sub);
     user.emailVerified = true;
     await this.userRepository.save(user);
   }

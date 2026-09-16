@@ -3,6 +3,7 @@ import { R } from "@alliance/common/result";
 import { Temporal } from "@js-temporal/polyfill";
 import { milliseconds } from "date-fns";
 import { AuthService } from "src/auth/auth.service";
+import { JWTTokenType } from "src/auth/tokens";
 import { ContractService } from "src/contract/contract.service";
 import {
   Notification,
@@ -2398,6 +2399,24 @@ describe("Users (e2e)", () => {
         .expect(401);
 
       expect(await isVerified(userBId)).toBe(false);
+    });
+
+    it("refuses an expired verify-email token with 401", async () => {
+      const expired = ctx.jwtService.sign(
+        { sub: userBId, tokenType: JWTTokenType.verifyEmail },
+        { secret: process.env.JWT_SECRET, expiresIn: "-1s" },
+      );
+      await request(ctx.app.getHttpServer())
+        .post("/user/verifyEmail")
+        .send({ token: expired })
+        .expect(401);
+    });
+
+    it("refuses a malformed verify-email token with 401", async () => {
+      await request(ctx.app.getHttpServer())
+        .post("/user/verifyEmail")
+        .send({ token: "not-a-jwt" })
+        .expect(401);
     });
 
     it("accepts a verify-email token, minted before or after the type landed", async () => {
