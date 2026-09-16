@@ -22,7 +22,7 @@ export function Hero() {
           "min-[1020px]:flex-row min-[1020px]:items-start min-[1020px]:gap-16 min-[1020px]:pt-[104px]",
         )}
       >
-        <div className="flex min-w-0 flex-col gap-5 min-[1020px]:flex-1 min-[1020px]:self-end">
+        <div className="flex min-w-0 flex-col gap-5 min-[1020px]:flex-1 min-[1020px]:self-center">
           <DisplayHeading
             as="h1"
             leading={1.15}
