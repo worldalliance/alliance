@@ -1,68 +1,81 @@
 ---
 user: Charles Lien
-task: Normalize stored emails to lowercase and match them exactly
+task: Make emails unique regardless of case and match them exactly
 ---
 
 # Decisions
 
-## Normalization is trim + lowercase, not `validator.normalizeEmail`
+## `citext` on `email`
 
-The repo prefers a maintained package over hand-rolling, but
-`validator.normalizeEmail` strips Gmail dots and `+tags`, which changes which
-mailbox an address denotes. Against a database of existing accounts that
-rewrites identities and merges distinct people. `trim().toLowerCase()` is the
-whole of what was asked.
+The user asked for a robust method that's common for this type of problem and
+went with the agent's recommendation. The agent weighed three: a `citext`
+column, a unique index on `lower(email)`, and a generated lowercase column with
+its own unique constraint (an earlier pass of this branch). It picked `citext`.
 
-The trim half already existed as `@Transform(({ value }) => value?.trim())` on
-the email DTO fields; `normalizeEmail` absorbs it so the two halves can't drift.
+`citext` makes the column itself compare without case, so the existing unique
+constraint on `email` rejects `Foo@x.com` next to `foo@x.com`, and every
+`where email = $1` in the app ignores case without being rewritten. The other
+two only dedupe for code that remembers to compare against the lowercase form.
+The generated column also needed a hand-written `typeorm_metadata` row, and the
+`lower(email)` index can't be declared on the entity, so TypeORM can't see it.
 
-## Lowercasing the local part, not just the domain
+`email` keeps the address as the member typed it. Nothing is rewritten, so
+`down` changes the type back without losing data.
+
+## Case only, no trimming, not `validator.normalizeEmail`
+
+`citext` folds case and nothing else. Sign-up, sign-in and forgot-password
+already trim in their DTOs. `validator.normalizeEmail` strips Gmail dots and
+`+tags`, which changes which mailbox an address denotes and would merge distinct
+people. No Unicode normalization and no IDNA folding of domains.
+
+`citext` folds with Postgres `lower`, which follows the database locale for
+non-ASCII letters and can disagree with `String.prototype.toLowerCase` (`İ`).
+Comparisons happen in the database, so both sides use the same rules.
+
+## Folding the local part, not just the domain
 
 Only the domain is case-insensitive under RFC 5321; the local part is left to
-the provider. Every major provider folds it, and the existing `ILike` lookup
-already assumed as much, so folding the whole address preserves current
-behavior. A provider that distinguishes `Foo@` from `foo@` would now see the
+the provider. Every major provider folds it, and the old `ILike` lookup already
+assumed as much. A provider that distinguishes `Foo@` from `foo@` now sees the
 two as one account.
 
-## `common/src/email.ts`
+## The migration
 
-Server-only today, but `common` is the package the mobile and web clients can
-also reach, and email input normalization belongs next to `phone.ts`.
+It lists every group of accounts whose addresses differ only in case, by id and
+quoted address, and throws before changing anything. The unique constraint would
+fail on its own, but it names only one duplicate key.
 
-## Explicit normalization at boundaries, plus a `lower(email)` unique index
+`migration:generate` emitted `DROP COLUMN "email"` + `ADD "email" citext`, which
+deletes every address. The migration uses `ALTER COLUMN ... TYPE citext`, which
+rebuilds the existing unique index under the new comparison. It also runs
+`CREATE EXTENSION IF NOT EXISTS citext`, which the generator leaves out. `citext`
+is a trusted extension since Postgres 13, so the database owner can install it
+without superuser; the production Postgres version was not checked. `down`
+leaves the extension installed.
 
-Normalization goes in three places rather than a TypeORM column transformer:
-the email DTO fields, `UserService.create` (the single path every account
-creation funnels through, including `createWithInviteAssignment`), and the
-OAuth profile. A column transformer would also silently rewrite where-clause
-values, and whether TypeORM applies it to every find operator varies by
-version — a silent miss there reintroduces exactly this bug.
+Tested locally: a seeded case collision aborts with both pairs listed and the
+column unchanged; run, revert and run again keep all rows; `migration:generate`
+reports no schema changes afterward. The local database is staging, where
+`sync_prod_to_staging.sh` rewrites every address to `user<id>@example.com`, so
+it carries no real case distribution.
 
-The backstop is a partial-free unique index on `lower(email)`, installed by the
-migration and declared on the entity with `synchronize: false`, matching
-`idx_city_name_trgm` in `city.entity.ts`. A write path that forgets to
-normalize now fails loudly at the database instead of creating a second account
-that shadows the first. The plain `unique` constraint on the column stays.
+## `oauth_account.email` is left alone
 
-## The four lookups normalize their input
+Accounts are found by `provider` + `subject`, not by email, and the account's
+email is compared only to the provider's own profile.
 
-`findOneByEmail` was the only case-insensitive one; `admin.guard.ts`,
-`user-already-exists.validator.ts` and `mailgun.webhook.controller.ts` matched
-exactly against un-normalized input. All four now exact-match a normalized
-address. The admin guard and the Mailgun webhook read their address from a JWT
-and a third-party payload respectively, neither of which passes through a DTO.
+## Out of scope
 
-## `oauth_account.email` is backfilled too
+`findByUsername` and `findByName` interpolate search input into `ILIKE`, so `_`
+and `%` act as wildcards there too. That is search, not email lookup, and was
+not asked for.
 
-Not a lookup key — accounts are found by `provider` + `subject` — but it is a
-stored address, and `authenticate` compares it to the incoming profile with
-`!==`, which would otherwise write a no-op update on every case flip. No unique
-constraint, so no collision risk in the backfill.
+The admin guard, the Mailgun webhook, and `IsUserAlreadyExist` match `email`
+with `findOneBy`, and now ignore case along with everything else. The
+contract-reminder worker joins `mail."to" = "user"."email"`; Postgres compares
+`citext` with `varchar` as text, so that join stays case-sensitive, as it was.
 
-## The local database proves nothing about the collision case
-
-613 users, zero mixed-case, zero collisions — but `sync_prod_to_staging.sh:246`
-rewrites every address to `user<id>@example.com`, so staging carries no real
-case distribution. The abort branch is written against prod unseen; this is the
-one place the "a branch for a shape no row holds never runs" rule from the
-migrations skill could not be checked.
+Admin time-spent stats match PostHog people to users by `email` in JavaScript,
+and PostHog keeps the casing typed at the last sign-in. That mismatch predates
+this branch and `email` keeps its casing, so this change doesn't make it worse.

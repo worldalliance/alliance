@@ -618,6 +618,65 @@ describe("Auth (e2e)", () => {
     );
   });
 
+  describe("email case", () => {
+    const register = async (params: {
+      email: string;
+      name: string;
+      status: number;
+    }) => {
+      const referrer = await userRepository.save(
+        userRepository.create({
+          email: `referrer-${params.name}@test.com`,
+          password: "password",
+          name: "Referrer",
+        }),
+      );
+
+      return request(ctx.app.getHttpServer())
+        .post("/auth/register")
+        .send({
+          email: params.email,
+          password: "password",
+          name: params.name,
+          mode: "header",
+          timeZone: "America/Los_Angeles",
+          referralCode: referrer.referralCode,
+        } satisfies SignUpDto)
+        .expect(params.status);
+    };
+
+    it("keeps the address as typed", async () => {
+      await register({
+        email: "Shouty@Test.COM",
+        name: "Shouty",
+        status: 201,
+      });
+
+      const shouty = await userRepository.findOneByOrFail({ name: "Shouty" });
+      expect(shouty.email).toBe("Shouty@Test.COM");
+    });
+
+    it("rejects a second row whose address differs only in case", async () => {
+      await userRepository.save(
+        userRepository.create({
+          email: "taken@test.com",
+          password: "password",
+          name: "Taken",
+        }),
+      );
+
+      await expect(
+        userRepository.save(
+          userRepository.create({
+            email: "TAKEN@test.com",
+            password: "password",
+            name: "Impostor",
+          }),
+        ),
+      ).rejects.toThrow(/duplicate key value violates unique constraint/);
+    });
+  });
+
   afterEach(async () => {
     await userRepository.deleteAll();
     // await inviteRepo.deleteAll();
