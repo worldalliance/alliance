@@ -627,6 +627,113 @@ describe("Auth (e2e)", () => {
     );
   });
 
+  describe("email case and exact matching", () => {
+    const signIn = (email: string) =>
+      request(ctx.app.getHttpServer())
+        .post("/auth/login")
+        .send({ email, password: "password", mode: "header" });
+
+    const register = async (params: {
+      email: string;
+      name: string;
+      status: number;
+    }) => {
+      const referrer = await userRepository.save(
+        userRepository.create({
+          email: `referrer-${params.name}@test.com`,
+          password: "password",
+          name: "Referrer",
+        }),
+      );
+
+      return request(ctx.app.getHttpServer())
+        .post("/auth/register")
+        .send({
+          email: params.email,
+          password: "password",
+          name: params.name,
+          mode: "header",
+          timeZone: "America/Los_Angeles",
+          referralCode: referrer.referralCode,
+        } satisfies SignUpDto)
+        .expect(params.status);
+    };
+
+    it("keeps the address as typed", async () => {
+      await register({
+        email: "Shouty@Test.COM",
+        name: "Shouty",
+        status: 201,
+      });
+
+      const shouty = await userRepository.findOneByOrFail({ name: "Shouty" });
+      expect(shouty.email).toBe("Shouty@Test.COM");
+    });
+
+    it("rejects a second row whose address differs only in case", async () => {
+      await userRepository.save(
+        userRepository.create({
+          email: "taken@test.com",
+          password: "password",
+          name: "Taken",
+        }),
+      );
+
+      await expect(
+        userRepository.save(
+          userRepository.create({
+            email: "TAKEN@test.com",
+            password: "password",
+            name: "Impostor",
+          }),
+        ),
+      ).rejects.toThrow(/duplicate key value violates unique constraint/);
+    });
+
+    it("signs in a member who typed their address in a different case", async () => {
+      await userRepository.save(
+        userRepository.create({
+          email: "mixedcase@test.com",
+          password: "password",
+          name: "Mixed Case",
+        }),
+      );
+
+      await signIn("MixedCase@Test.COM").expect(200);
+    });
+
+    it("refuses a second account differing only in case", async () => {
+      await userRepository.save(
+        userRepository.create({
+          email: "taken@test.com",
+          password: "password",
+          name: "Taken",
+        }),
+      );
+
+      await register({
+        email: "TAKEN@test.com",
+        name: "Impostor",
+        status: 400,
+      });
+    });
+
+    it.each(["a_b@test.com", "a%@test.com"])(
+      "treats %p as an address, not a pattern",
+      async (email) => {
+        await userRepository.save(
+          userRepository.create({
+            email: "axb@test.com",
+            password: "password",
+            name: "Wildcard Bait",
+          }),
+        );
+
+        await signIn(email).expect(401);
+      },
+    );
+  });
+
   afterEach(async () => {
     await userRepository.deleteAll();
     // await inviteRepo.deleteAll();

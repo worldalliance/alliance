@@ -117,7 +117,7 @@ export class User {
   @IsNotEmpty()
   name: string;
 
-  @Column({ unique: true })
+  @Column({ type: "citext", unique: true })
   @IsNotEmpty()
   @IsEmail()
   email: string;
