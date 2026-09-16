@@ -24,7 +24,7 @@ export type FormValue =
   | CityFieldValue
   | ListFieldValue;
 
-const formValueSchema: z.ZodType<FormValue> = z.lazy(() =>
+export const formValueSchema: z.ZodType<FormValue> = z.lazy(() =>
   z.union([
     z.string(),
     z.number(),

@@ -39,6 +39,7 @@ import {
   formatUserLocationDisplayValue,
   resolveDisplayBlockForUser,
   restorableAnswers,
+  restorablePublicAnswers,
   type UserLocationDisplayValue,
 } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
@@ -50,6 +51,7 @@ import { stripCardIds } from "@alliance/shared/forms/listCards";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import {
   cancelAllImageUploads,
+  draftSaveFailed,
   outputFieldPublicToggle,
   waitingForImageUpload,
 } from "@alliance/shared/lib/copy";
@@ -59,6 +61,7 @@ import { cn } from "@alliance/shared/styles/util";
 import {
   useCurrentUserLocation,
   useFieldErrors,
+  useFormDraftSync,
   useFormSchemaMaps,
   useFormValidation,
   useFormVisibility,
@@ -127,6 +130,8 @@ type FormRendererProps = {
   onAbandonAction?: (withdrawal: ActionWithdrawal) => void;
   renderFormAsCompleted?: boolean;
   completedFormResponse?: FormResponseDto;
+  /** Save progress to the member's account as well as this device, so the form can be finished elsewhere. */
+  syncDraftToServer?: boolean;
   /** `null` without `renderFormAsCompleted` is a preview: editable, never submitted. */
   onSubmit: ((data: SubmitFormDto) => Promise<void>) | null;
   scrollPageTo: (y: number, animated?: boolean) => void;
@@ -631,6 +636,7 @@ const FormRenderer = ({
   onAbandonAction,
   renderFormAsCompleted,
   completedFormResponse,
+  syncDraftToServer,
   actionId,
   initialPageIndex,
   phDistinctId,
@@ -668,6 +674,7 @@ const FormRenderer = ({
     unknownKind,
     hasUserLocationDisplayBlock,
     outputFieldDefaultPublic,
+    outputFieldIds,
     maxPageIndex,
   } = useFormSchemaMaps({ schema, userDefaultPublic });
 
@@ -740,11 +747,16 @@ const FormRenderer = ({
   // Draft persistence: tracks whether we've loaded a stored draft so the save
   // effect doesn't overwrite stored data with initial defaults.
   const draftLoaded = useRef(false);
+  // The stored-draft apply below waits on `localDraftRead`, because a device
+  // that has never synced and one whose read hasn't finished both read null.
+  const [localDraftRead, setLocalDraftRead] = useState(false);
+  const [syncedUpdatedAt, setSyncedUpdatedAt] = useState<string | null>(null);
 
   // Restore draft from AsyncStorage on mount
   useEffect(() => {
     if (readOnly || !persistKey) {
       draftLoaded.current = true;
+      setLocalDraftRead(true);
       return;
     }
 
@@ -754,9 +766,13 @@ const FormRenderer = ({
         const raw = await AsyncStorage.getItem(storageKey);
         if (cancelled || !raw) {
           draftLoaded.current = true;
+          setLocalDraftRead(true);
           return;
         }
         const parsed = JSON.parse(raw);
+        if (typeof parsed?.syncedUpdatedAt === "string") {
+          setSyncedUpdatedAt(parsed.syncedUpdatedAt);
+        }
         if (parsed?.formData && typeof parsed.formData === "object") {
           const filtered = restorableAnswers(
             parsed.formData as Record<string, FormValue>,
@@ -765,17 +781,10 @@ const FormRenderer = ({
           setFormData(applyDefaultValues(filtered, defaultValueMap));
         }
         if (parsed?.publicAnswers && typeof parsed.publicAnswers === "object") {
-          const overrides: Record<string, boolean> = {};
-          for (const [fieldId, value] of Object.entries(
+          const overrides = restorablePublicAnswers(
             parsed.publicAnswers as Record<string, unknown>,
-          )) {
-            if (
-              outputFieldDefaultPublic.has(fieldId) &&
-              typeof value === "boolean"
-            ) {
-              overrides[fieldId] = value;
-            }
-          }
+            outputFieldIds,
+          );
           if (Object.keys(overrides).length > 0) {
             setPublicAnswers((prev) => ({ ...prev, ...overrides }));
           }
@@ -787,6 +796,7 @@ const FormRenderer = ({
         // Corrupt or missing draft — ignore.
       }
       draftLoaded.current = true;
+      setLocalDraftRead(true);
     })();
 
     return () => {
@@ -795,6 +805,53 @@ const FormRenderer = ({
     // Only run once on mount for a given storageKey
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey]);
+
+  const draftSyncEnabled =
+    !!syncDraftToServer && !readOnly && !!persistKey && formSnapshotId !== null;
+
+  const { serverDraft, saveFailed, stopSyncing } = useFormDraftSync({
+    enabled: draftSyncEnabled,
+    formId: id,
+    actionId,
+    formSnapshotId,
+    answers: formData,
+    publicAnswers,
+    currentPageIndex,
+    edited: hasEmittedStart,
+    onSaved: setSyncedUpdatedAt,
+  });
+
+  useEffect(() => {
+    if (!draftSyncEnabled || hasEmittedStart || !serverDraft) return;
+    if (!localDraftRead) return;
+    // Equal means the stored draft is this device's own last save. Both sides
+    // are server-issued, so nothing here depends on the device's clock.
+    if (serverDraft.updatedAt === syncedUpdatedAt) {
+      return;
+    }
+    const answers = restorableAnswers(
+      serverDraft.answers as Record<string, FormValue>,
+      fieldLookup,
+    );
+    setFormData((prev) =>
+      applyDefaultValues({ ...prev, ...answers }, defaultValueMap),
+    );
+    setPublicAnswers((prev) => ({
+      ...prev,
+      ...restorablePublicAnswers(serverDraft.publicAnswers, outputFieldIds),
+    }));
+    setCurrentPageIndex(clampPageIndex(serverDraft.currentPageIndex));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    serverDraft,
+    draftSyncEnabled,
+    hasEmittedStart,
+    localDraftRead,
+    syncedUpdatedAt,
+    fieldLookup,
+    defaultValueMap,
+    outputFieldIds,
+  ]);
 
   // Save draft to AsyncStorage when form state changes
   useEffect(() => {
@@ -808,6 +865,7 @@ const FormRenderer = ({
           publicAnswers,
           currentPageIndex,
           updatedAt: Date.now(),
+          syncedUpdatedAt,
         }),
       ).catch((e) => {
         // Storage write failed — non-critical.
@@ -823,6 +881,7 @@ const FormRenderer = ({
     persistKey,
     storageKey,
     readOnly,
+    syncedUpdatedAt,
   ]);
 
   useEffect(() => {
@@ -1021,6 +1080,7 @@ const FormRenderer = ({
 
     onSubmit(submissionPayload)
       .then(() => {
+        stopSyncing();
         if (persistKey) {
           AsyncStorage.removeItem(storageKey).catch(() => {});
         }
@@ -1045,6 +1105,7 @@ const FormRenderer = ({
       publicAnswers,
     };
 
+    stopSyncing();
     onAbandonAction?.({
       ...withdrawalFlagsFromOption(option),
       reason: customReason.trim(),
@@ -1270,6 +1331,11 @@ const FormRenderer = ({
                 <X size={20} color={colors.text.icon} />
               </TouchableOpacity>
             </View>
+          )}
+          {saveFailed && (
+            <Text className="text-amber-600 text-base p-2">
+              {draftSaveFailed}
+            </Text>
           )}
           {Object.keys(fieldErrors).length > 0 && (
             <Text className="text-red-500 text-base p-2">

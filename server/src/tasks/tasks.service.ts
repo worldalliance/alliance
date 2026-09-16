@@ -5,6 +5,11 @@ import {
 import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import {
+  FORM_DRAFT_MAX_ANSWER_BYTES,
+  readFormAnswers,
+  readPublicFormAnswers,
+} from "@alliance/common/forms/form-responses";
+import {
   type AggregateViewSchema,
   type AggregateViewValue,
   type AnyField,
@@ -104,15 +109,22 @@ import {
   parseFormResponse,
 } from "./entities/formresponse.entity";
 import {
+  FormResponseDraft,
+  type ParsedFormResponseDraft,
+  parseFormResponseDraft,
+} from "./entities/formresponsedraft.entity";
+import {
   FormSnapshot,
   SnapshotHistoryOwner,
 } from "./entities/formsnapshot.entity";
 import {
   CreateFormDto,
+  type FormDraft,
   type FormResponseCount,
   FormResponseDto,
   type FormSnapshotMigration,
   type FormSummary,
+  SaveFormDraftDto,
   type SnapshotResponseGroup,
   SubmitFollowUpFormDto,
   SubmitFormDto,
@@ -136,6 +148,15 @@ function parseSubmittedValidatorResults(
     );
   }
   return parsed.data;
+}
+
+function pickKeys<T>(
+  values: Record<string, T>,
+  allowed: Set<string>,
+): Record<string, T> {
+  return Object.fromEntries(
+    Object.entries(values).filter(([key]) => allowed.has(key)),
+  );
 }
 
 const STORED_PAGES = `snapshot.schema -> 'pages'`;
@@ -170,6 +191,8 @@ export class TasksService {
     private formRepository: Repository<Form>,
     @InjectRepository(FormResponse)
     private formResponseRepository: Repository<FormResponse>,
+    @InjectRepository(FormResponseDraft)
+    private formResponseDraftRepository: Repository<FormResponseDraft>,
     @InjectRepository(Action)
     private actionRepository: Repository<Action>,
     @InjectRepository(FollowUpForm)
@@ -916,6 +939,7 @@ export class TasksService {
     await this.actionsService.completeAction(submitFormDto.actionId, userId, {
       taskFormResponse: savedForm,
     });
+    await this.deleteFormDraft(userId, formId);
 
     return savedForm;
   }
@@ -1058,6 +1082,8 @@ export class TasksService {
       ),
       user,
     });
+
+    await this.deleteFormDraft(userId, formId);
 
     return this.actionsService.createActionActivity({
       actionId,
@@ -1455,6 +1481,120 @@ export class TasksService {
       order: { createdAt: "DESC", id: "DESC" },
     });
     return response && parseFormResponse(response);
+  }
+
+  /**
+   * Upserts the caller's in-progress answers for a task form. A draft leaves
+   * no trace in feeds, counts or reminders, so it deliberately skips what
+   * {@link submitForm} does around the save: required-field validation,
+   * hidden-answer stripping, profile auto-extraction, contract signing, AI
+   * detection, and the completion activity.
+   */
+  async saveFormDraft(params: {
+    userId: number;
+    formId: number;
+    dto: SaveFormDraftDto;
+  }): Promise<FormDraft> {
+    const { userId, formId, dto } = params;
+    const form = await this.getForm(formId);
+
+    const valid = await this.actionFormVariantService.validateFormIdForUser({
+      actionId: dto.actionId,
+      userId,
+      formId,
+    });
+    if (!valid) {
+      throw new ForbiddenException(
+        "This form is not the variant assigned to you for this action",
+      );
+    }
+
+    const submitted = await this.formResponseRepository.findOne({
+      where: { formId, user: { id: userId } },
+    });
+    if (submitted) {
+      throw new BadRequestException("Form already submitted");
+    }
+
+    const snapshot = await this.resolveSubmissionSnapshot(form, dto);
+    const answers = readFormAnswers(dto.answers);
+    if (R.isFailure(answers)) {
+      throw new BadRequestException("Draft answers are not a valid answer map");
+    }
+    const publicAnswers = readPublicFormAnswers(dto.publicAnswers ?? {});
+    if (R.isFailure(publicAnswers)) {
+      throw new BadRequestException(
+        "Draft public answers are not a map of booleans",
+      );
+    }
+
+    const fieldIds = this.draftableFieldIds(
+      snapshot.schema as unknown as FormSchema,
+    );
+    const storedAnswers = pickKeys(answers.value, fieldIds.answered);
+    const storedPublicAnswers = pickKeys(publicAnswers.value, fieldIds.output);
+    const size = Buffer.byteLength(
+      JSON.stringify([storedAnswers, storedPublicAnswers]),
+    );
+    if (size > FORM_DRAFT_MAX_ANSWER_BYTES) {
+      throw new BadRequestException(
+        `Draft answers are ${size} bytes, over the ${FORM_DRAFT_MAX_ANSWER_BYTES} byte limit`,
+      );
+    }
+
+    const draft = {
+      userId,
+      formId,
+      actionId: dto.actionId,
+      formSnapshotId: snapshot.id,
+      answers: storedAnswers,
+      publicAnswers: storedPublicAnswers,
+      currentPageIndex: dto.currentPageIndex ?? 0,
+      updatedAt: new Date(),
+    };
+    await this.formResponseDraftRepository.upsert(draft, {
+      conflictPaths: ["userId", "formId"],
+    });
+    return draft;
+  }
+
+  async getFormDraft(
+    userId: number,
+    formId: number,
+  ): Promise<ParsedFormResponseDraft | null> {
+    const draft = await this.formResponseDraftRepository.findOne({
+      where: { userId, formId },
+    });
+    return draft && parseFormResponseDraft(draft);
+  }
+
+  async deleteFormDraft(userId: number, formId: number): Promise<void> {
+    await this.formResponseDraftRepository.delete({ userId, formId });
+  }
+
+  /**
+   * Ids a draft may carry, and the subset whose answers a member can publish.
+   * A field the schema no longer has is dropped rather than rejected, so a
+   * client still on the old schema keeps autosaving instead of 400ing.
+   */
+  private draftableFieldIds(schema: FormSchema): {
+    answered: Set<string>;
+    output: Set<string>;
+  } {
+    const answered = new Set<string>();
+    const output = new Set<string>();
+    for (const page of schema.pages ?? []) {
+      for (const element of flattenPageItems(page.fields ?? [])) {
+        if (!isQuestionField(element)) {
+          continue;
+        }
+        answered.add(element.id);
+        if (element.output?.output) {
+          output.add(element.id);
+        }
+      }
+    }
+    return { answered, output };
   }
 
   async getLinkedGuestDraftFormResponse(

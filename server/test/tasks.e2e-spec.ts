@@ -1,6 +1,9 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { devPorts, PortCaller } from "@alliance/common/dev-ports";
-import { FORM_RESPONSES_BY_FORMS_MAX_BATCH } from "@alliance/common/forms/form-responses";
+import {
+  FORM_DRAFT_MAX_ANSWER_BYTES,
+  FORM_RESPONSES_BY_FORMS_MAX_BATCH,
+} from "@alliance/common/forms/form-responses";
 import type {
   FormSchema,
   RankingField,
@@ -31,6 +34,7 @@ import {
 } from "src/tasks/entities/customvalidator.entity";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
+import { FormResponseDraft } from "src/tasks/entities/formresponsedraft.entity";
 import type { FormSummaryDto } from "src/tasks/form.dto";
 import { TasksModule } from "src/tasks/tasks.module";
 import {
@@ -88,6 +92,7 @@ describe("Tasks (e2e)", () => {
   let ctx: TestContext;
   let formRepo: Repository<Form>;
   let formResponseRepo: Repository<FormResponse>;
+  let formResponseDraftRepo: Repository<FormResponseDraft>;
   let actionRepo: Repository<Action>;
   let variantRepo: Repository<ActionFormVariant>;
   let eventRepo: Repository<ActionEvent>;
@@ -105,6 +110,7 @@ describe("Tasks (e2e)", () => {
     ctx = await createTestApp([TasksModule]);
     formRepo = ctx.dataSource.getRepository(Form);
     formResponseRepo = ctx.dataSource.getRepository(FormResponse);
+    formResponseDraftRepo = ctx.dataSource.getRepository(FormResponseDraft);
     actionRepo = ctx.dataSource.getRepository(Action);
     variantRepo = ctx.dataSource.getRepository(ActionFormVariant);
     eventRepo = ctx.dataSource.getRepository(ActionEvent);
@@ -119,6 +125,7 @@ describe("Tasks (e2e)", () => {
   }, 50000);
 
   afterEach(async () => {
+    await formResponseDraftRepo.query("DELETE FROM form_response_draft");
     await formResponseRepo.query("DELETE FROM form_response");
     // Before the forms it points at; the variant -> form FK is RESTRICT.
     await variantRepo.query("DELETE FROM action_form_variant");
@@ -825,6 +832,262 @@ describe("Tasks (e2e)", () => {
 
     expect(publicOutputAnswers).toEqual({
       "public-output": "should-be-visible-by-default",
+    });
+  });
+
+  describe("Form drafts", () => {
+    let draftFormId: number;
+    let draftSnapshotId: number;
+    let draftActionId: number;
+
+    const draftBody = (answers: Record<string, unknown>) => ({
+      actionId: draftActionId,
+      formSnapshotId: draftSnapshotId,
+      answers,
+    });
+
+    const saveDraft = (answers: Record<string, unknown>) =>
+      request(ctx.app.getHttpServer())
+        .put(`/tasks/formDraft/${draftFormId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send(draftBody(answers));
+
+    const formOnSchema = async (title: string, schema: FormSchema) => {
+      const created = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title, schema })
+        .expect(201);
+      const action = await createAction(`${title} Action`);
+      await actionRepo.update(action.id, { taskFormId: created.body.id });
+      return {
+        save: (body: Record<string, unknown>) =>
+          request(ctx.app.getHttpServer())
+            .put(`/tasks/formDraft/${created.body.id}`)
+            .set("Authorization", `Bearer ${ctx.accessToken}`)
+            .send({
+              actionId: action.id,
+              formSnapshotId: created.body.formSnapshotId,
+              ...body,
+            }),
+      };
+    };
+
+    beforeEach(async () => {
+      const created = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "Draftable", schema: sampleSchema })
+        .expect(201);
+      draftFormId = created.body.id;
+      draftSnapshotId = created.body.formSnapshotId;
+      const action = await createAction("Draftable Action");
+      draftActionId = action.id;
+      await actionRepo.update(draftActionId, { taskFormId: draftFormId });
+    });
+
+    it("stores partial answers without completing the action", async () => {
+      const saved = await saveDraft({ "full-name": "Half Typed" }).expect(200);
+
+      expect(saved.body.answers).toEqual({ "full-name": "Half Typed" });
+      expect(saved.body.currentPageIndex).toBe(0);
+      expect(
+        await actionActivityRepo.count({ where: { actionId: draftActionId } }),
+      ).toBe(0);
+      expect(
+        await formResponseRepo.count({ where: { formId: draftFormId } }),
+      ).toBe(0);
+
+      const fetched = await request(ctx.app.getHttpServer())
+        .get(`/tasks/formDraft/${draftFormId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      expect(fetched.body.draft.answers).toEqual({ "full-name": "Half Typed" });
+      expect(fetched.body.draft.formSnapshotId).toBe(draftSnapshotId);
+    });
+
+    it("keeps one row per member and form, holding the latest answers", async () => {
+      await saveDraft({ "full-name": "First" }).expect(200);
+      await saveDraft({ "full-name": "Second" }).expect(200);
+
+      const drafts = await formResponseDraftRepo.find({
+        where: { formId: draftFormId },
+      });
+      expect(drafts).toHaveLength(1);
+      expect(drafts[0].answers).toEqual({ "full-name": "Second" });
+    });
+
+    it("drops answers for fields the schema doesn't have", async () => {
+      const saved = await saveDraft({
+        "full-name": "Kept",
+        "not-a-field": "dropped",
+      }).expect(200);
+
+      expect(saved.body.answers).toEqual({ "full-name": "Kept" });
+    });
+
+    it("keeps answers for fields inside a group", async () => {
+      const groupedSchema: FormSchema = {
+        ...sampleSchema,
+        pages: [
+          {
+            id: "grouped-page",
+            fields: [
+              {
+                id: "a-group",
+                type: "group",
+                kind: "group",
+                label: "A group",
+                fields: [
+                  {
+                    id: "grouped-field",
+                    type: "input",
+                    kind: "text",
+                    label: "Inside the group",
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      const form = await formOnSchema("Grouped", groupedSchema);
+
+      const saved = await form
+        .save({ answers: { "grouped-field": "Typed inside a group" } })
+        .expect(200);
+
+      expect(saved.body.answers).toEqual({
+        "grouped-field": "Typed inside a group",
+      });
+    });
+
+    it("turns away publicAnswers that aren't booleans", async () => {
+      await saveDraft({ "full-name": "Typed" }).expect(200);
+
+      await request(ctx.app.getHttpServer())
+        .put(`/tasks/formDraft/${draftFormId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          ...draftBody({ "full-name": "Typed" }),
+          publicAnswers: { junk: { nested: "arbitrary jsonb" } },
+        })
+        .expect(400);
+    });
+
+    it("drops publicAnswers for fields that don't publish an answer", async () => {
+      const form = await formOnSchema("Output fields", {
+        ...sampleSchema,
+        pages: [
+          {
+            id: "output-page",
+            fields: [
+              {
+                id: "published",
+                type: "input",
+                kind: "text",
+                label: "Published",
+                output: { output: true },
+              },
+              {
+                id: "unpublished",
+                type: "input",
+                kind: "text",
+                label: "Unpublished",
+              },
+            ],
+          },
+        ],
+      });
+
+      const saved = await form
+        .save({
+          answers: { published: "Shown", unpublished: "Hidden" },
+          publicAnswers: {
+            published: true,
+            unpublished: true,
+            "not-a-field": true,
+          },
+        })
+        .expect(200);
+
+      expect(saved.body.publicAnswers).toEqual({ published: true });
+    });
+
+    it("turns away answers over the byte limit", async () => {
+      await saveDraft({
+        "full-name": "x".repeat(FORM_DRAFT_MAX_ANSWER_BYTES + 1),
+      }).expect(400);
+    });
+
+    it("stays out of the admin response list and counts", async () => {
+      await saveDraft({ "full-name": "Half Typed" }).expect(200);
+
+      const responses = await request(ctx.app.getHttpServer())
+        .get(`/tasks/responses/${draftFormId}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      expect(responses.body).toHaveLength(0);
+
+      const counts = await request(ctx.app.getHttpServer())
+        .post("/tasks/responses/counts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ formIds: [draftFormId] })
+        .expect(201);
+      expect(counts.body).toEqual([{ formId: draftFormId, count: 0 }]);
+    });
+
+    it("is deleted by the submission it was a draft of", async () => {
+      await saveDraft({ "full-name": "Half Typed" }).expect(200);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${draftFormId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { "full-name": "All Typed" },
+          formSnapshotId: draftSnapshotId,
+          actionId: draftActionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(201);
+
+      expect(
+        await formResponseDraftRepo.count({ where: { formId: draftFormId } }),
+      ).toBe(0);
+
+      const fetched = await request(ctx.app.getHttpServer())
+        .get(`/tasks/formDraft/${draftFormId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      expect(fetched.body.draft).toBeUndefined();
+
+      await saveDraft({ "full-name": "Too Late" }).expect(400);
+    });
+
+    it("turns away a form that isn't the action's", async () => {
+      const other = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "Unlinked", schema: sampleSchema })
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .put(`/tasks/formDraft/${other.body.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          actionId: draftActionId,
+          formSnapshotId: other.body.formSnapshotId,
+          answers: { "full-name": "Wrong form" },
+        })
+        .expect(403);
+    });
+
+    it("turns away a signed-out caller", async () => {
+      await request(ctx.app.getHttpServer())
+        .put(`/tasks/formDraft/${draftFormId}`)
+        .send(draftBody({ "full-name": "Anonymous" }))
+        .expect(401);
     });
   });
 
