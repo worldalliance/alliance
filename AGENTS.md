@@ -2,13 +2,13 @@
 
 ## Packages
 
-- `server/` — backend (NestJS)
-- `apps/frontend/` — web (React)
-- `apps/admin/` — admin panel (React)
-- `apps/mobile/` — mobile (React Native)
-- `sharedweb/` — shared by admin + frontend
-- `shared/` — shared by admin + frontend + mobile
-- `common/` — shared by all apps + server
+- `server/`: backend, NestJS
+- `apps/frontend/`: web, React
+- `apps/admin/`: admin panel, React
+- `apps/mobile/`: mobile, React Native
+- `sharedweb/`: shared by admin + frontend
+- `shared/`: shared by admin + frontend + mobile
+- `common/`: shared by all apps + server
 
 ## Nested AGENTS.md
 
@@ -16,7 +16,7 @@ Working under `server/**` → read `server/AGENTS.md`; under `apps/**` → `apps
 
 ## Worktree
 
-If @.worktree/AGENTS.md exists, read it. Otherwise, you can ignore this.
+If @.worktree/AGENTS.md exists, read it.
 
 ## Skills
 
@@ -35,7 +35,7 @@ Read before the matching task:
 
 ## Typechecking
 
-`bun run typecheck` — per-package, not at the repo root; resolves the right config per package (`tsconfig.typecheck.json` where shared sources need pulling in directly). Never bare `tsc`, even with `--noEmit`.
+`bun run typecheck` from inside a package; the repo root has no such script. Each package's script picks the right config (`tsconfig.typecheck.json` where shared sources need pulling in directly). Never bare `tsc`, even with `--noEmit`.
 
 ## Formatting
 
@@ -43,13 +43,13 @@ Read before the matching task:
 
 ## Testing
 
-`bun run test` from the repo root; scope by package: `bun run test apps/admin sharedweb`. Bare `bun test` from inside a package.
+`bun run test` from the repo root; scope by package: `bun run test apps/admin sharedweb`. From inside a package, run bare `bun test`.
 
 ## Dependencies
 
 Non-standard workspace: every web package installs from `apps/frontend/package.json`. A dependency used in `apps/admin`, `sharedweb`, `common`, … must also be declared there, same version range. `bun install` after editing.
 
-Reach for a maintained npm package over hand-rolling parsing, sanitization, date handling, retries. Same inside the repo — reuse or extract a shared util instead of duplicating one.
+Reach for a maintained npm package over hand-rolling parsing, sanitization, date handling, retries. Inside the repo, reuse or extract a shared util instead of duplicating one.
 
 ## Issue tracking
 
@@ -65,7 +65,7 @@ Ask before running a git command that writes. Read-only ones (`git diff`, `git s
 
 Prefer to fail loudly over silently.
 
-For example, forms should not render at all if we detect any error in the schema. If this were not the case, a user may try to go through the normal journey of completing the form, and not realize anything is wrong.
+For example, a form with any schema error should not render. Otherwise a user fills it out without knowing it's broken.
 
 ## Enum branching
 
@@ -80,11 +80,11 @@ default:
 
 The throw is optional: `default: kind satisfies never; return null;` is fine when an older client should ignore new variants.
 
-Or a `Record<MyEnum, T>` lookup, which forces every variant to be listed. Applies at two variants, and to subsets, where a `Record<MyEnum, boolean>` makes each new variant a compile error until someone opts it in or out.
+Or a `Record<MyEnum, T>` lookup, which forces every variant to be listed. Both forms apply even to two-variant enums. For a rule that covers only some variants, a `Record<MyEnum, boolean>` makes each new variant a compile error until someone opts it in or out.
 
 ## Function arguments
 
-Three or more parameters → a single `params`/`input` object. One or two are usually fine positionally, but name them when they're same-typed or boolean — `slice(start, end)` reads; `move(sourceId, targetId)` doesn't.
+Three or more parameters → a single `params`/`input` object. One or two are usually fine positionally, but name them when they're same-typed or boolean. `slice(start, end)` reads; `move(sourceId, targetId)` doesn't.
 
 ## Comments
 
@@ -92,7 +92,7 @@ Default to none. Add one only for a non-obvious constraint, rationale, invariant
 
 ## Type casts
 
-Avoid `as` — fix types at the source, validate with zod at trust boundaries, or use `satisfies`. Unavoidable cast: keep it narrow, comment why it's safe. `as const` fine. Never `as any` or `x as unknown as T`.
+Avoid `as`. Fix types at the source, validate with zod at trust boundaries, or use `satisfies`. Unavoidable cast: keep it narrow, comment why it's safe. `as const` fine. Never `as any` or `x as unknown as T`.
 
 ## Result type
 
@@ -102,31 +102,31 @@ Operations that can fail (parsing, validation, fallible IO) return `Result<T, E>
 import { R, type Result } from "@alliance/common/result";
 ```
 
-Use the `R.*` helpers (`R.fromPromise`, `R.match`, …) rather than hand-rolling `{ ok, ... }`. Throwing is still right where the framework expects it — e.g. NestJS controllers behind exception filters.
+Use the `R.*` helpers (`R.fromPromise`, `R.match`, …) rather than hand-rolling `{ ok, ... }`. Throwing is still right where the framework expects it, e.g. NestJS controllers behind exception filters.
 
 ## UI affordances
 
 Icons and direct interaction over words: a `lucide-react` icon button (`lucide-react-native` on mobile) over a text button, an inline edit over an "Edit" mode toggle. Text labels only where nothing else reads unambiguously.
 
-Icon-only controls carry a tooltip or `aria-label`, and destructive or irreversible actions say what they do in words.
+Icon-only controls carry a tooltip or `aria-label`. Destructive or irreversible actions say what they do in words.
 
 ## Secrets
 
-Secrets stay in the environment, out of context. Redact values in `.env*` files when reading them or write a script that pipes them directly into a command, and read those files through a filter that redacts the values.
+Secrets stay in the environment, out of context. Read `.env*` files through a filter that redacts values; to use a secret, pipe it into the command from a script.
 
 ## Working files
 
-Everything stays inside the repo — scratch files, notes, scripts, logs, dumps, downloads. Never `/tmp` or `~`. Same when reading: prefer files in the repo over things stashed elsewhere on the machine.
+Put working files in `.scratch/`: notes, scripts, logs, dumps, downloads. Never `/tmp` or `~`. When reading, prefer files in the repo over ones elsewhere on the machine.
 
 ## Less is more
 
-Follow YAGNI principles and prefer one-liner solutions. An abstraction earns its place at the second caller, a config option at the first person who sets it, an error branch at a state that can actually occur.
+Follow YAGNI. Prefer one-liners. An abstraction earns its place at the second caller, a config option at the first person who sets it, an error branch at a state that can occur.
 
 ## Surgical changes
 
 Every changed line traces to the request. Adjacent code keeps its style, its formatting, and its comments, even where you would write it differently.
 
-Delete what your change orphaned: the import, variable, or function nothing calls now. Dead code that was already there gets named in your response and left in the file.
+Delete what your change orphaned: the import, variable, or function nothing calls now. Leave dead code that was already there, and name it in your response.
 
 ## Success criteria
 
