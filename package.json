@@ -40,17 +40,17 @@
   "dependencies": {
     "@tanstack/react-query": "^5.90.20",
     "lucide-react": "^0.563.0",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
-    "react-native-reanimated": "4.2.2",
+    "react-native-reanimated": "4.5.1",
     "socket.io-client": "^4.8.1"
   },
   "overrides": {
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "react-test-renderer": "19.2.0",
-    "react-native-renderer": "19.2.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-test-renderer": "19.2.3",
+    "react-native-renderer": "19.2.3",
     "@types/react": "19.2.10"
   }
 }

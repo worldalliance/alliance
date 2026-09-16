@@ -1,4 +1,4 @@
-import { Route, usePathname, useRouter } from "expo-router";
+import { RoutePath, usePathname, useRouter } from "expo-router";
 import {
   BookText,
   FileText,
@@ -20,7 +20,7 @@ import Text, { FontWeight } from "./system/Text";
 
 type NavItem = {
   name: string;
-  href: Route;
+  href: RoutePath;
   icon: React.ElementType;
   matchPaths: string[];
 };
@@ -76,7 +76,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const handleNavigate = (href: Route) => {
+  const handleNavigate = (href: RoutePath) => {
     closeDrawer();
     router.replace(href);
   };

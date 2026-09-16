@@ -35,6 +35,9 @@ export default {
         },
       },
       appleTeamId: "629G87T7R5",
+      entitlements: {
+        "com.apple.developer.applesignin": ["Default"],
+      },
       associatedDomains: [
         "applinks:worldalliance.org",
         "webcredentials:worldalliance.org",
@@ -105,6 +108,13 @@ export default {
         },
       ],
       "expo-video",
+      [
+        "expo-build-properties",
+        {
+          // Xcode 27 requires the UIKit scene lifecycle; SDK 58 enables it by default, so drop this there.
+          ios: { enableSceneSupport: true },
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,

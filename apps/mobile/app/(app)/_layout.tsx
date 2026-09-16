@@ -6,7 +6,7 @@ import {
   View,
 } from "react-native";
 
-import { useNavigationState } from "@react-navigation/native";
+import { useNavigationState } from "expo-router/react-navigation";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSharedValue, withSpring } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
