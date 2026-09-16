@@ -7,6 +7,7 @@ import {
   OAuthProvider,
   parseOAuthProvider,
 } from "@alliance/common/oauth";
+import { R } from "@alliance/common/result";
 import {
   BadRequestException,
   Body,
@@ -57,6 +58,7 @@ import {
   mintProof,
   OAuthAuthService,
   spendProof,
+  type OAuthAuthentication,
   type OAuthState,
 } from "./oauth-auth.service";
 import type { OAuthClient } from "./oauth-client";
@@ -67,7 +69,13 @@ import {
   returnUrlWithError,
   returnUrlWithOutcome,
 } from "./oauth-urls";
-import { OAuthCallbackDto, OAuthStartDto } from "./oauth.dto";
+import {
+  MobileIdentityTokenDto,
+  MobileOAuthSignInDto,
+  OAuthCallbackDto,
+  OAuthStartDto,
+  type SessionTokens,
+} from "./oauth.dto";
 
 /** Outlives the state token it guards, so a slow consent screen still lands. */
 const STATE_COOKIE_MAX_AGE_MS = milliseconds({ minutes: 15 });
@@ -194,6 +202,38 @@ export class OAuthController {
     });
 
     return this.clients[provider].authorizationUrl({ redirectUri, state });
+  }
+
+  @Public()
+  @UseGuards(ThrottlerGuard)
+  @OnlyThrottle(OAUTH_THROTTLE)
+  @Post("native")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: MobileOAuthSignInDto })
+  async signInWithIdentityToken(
+    @ProviderParam() provider: OAuthProvider,
+    @Body() body: MobileIdentityTokenDto,
+  ): Promise<MobileOAuthSignInDto> {
+    const profile = await this.clients[provider].verifyIdentityToken(
+      body.identityToken,
+    );
+    if (!profile.ok) {
+      console.error("oauth identity token rejected", profile.error);
+      return new MobileOAuthSignInDto(R.failure(OAuthError.Failed));
+    }
+    const signedIn = await this.oauth.signIn(profile.value);
+    if (!signedIn.ok) {
+      return new MobileOAuthSignInDto(signedIn);
+    }
+    return new MobileOAuthSignInDto(
+      R.success(
+        await this.startMobileSession({
+          ...signedIn.value,
+          provider,
+          guestToken: body.guestToken,
+        }),
+      ),
+    );
   }
 
   /**
@@ -377,6 +417,20 @@ export class OAuthController {
     });
   }
 
+  private async startMobileSession(
+    params: OAuthAuthentication & {
+      provider: OAuthProvider;
+      guestToken: string | undefined;
+    },
+  ): Promise<SessionTokens> {
+    this.capture(params);
+    await this.authService.mergeGuestFromToken(
+      params.guestToken,
+      params.user.id,
+    );
+    return this.issueTokens(params.user);
+  }
+
   private browserStartedFlow(
     req: ExpressRequest,
     res: Response,
@@ -423,9 +477,7 @@ export class OAuthController {
     });
   }
 
-  private async issueTokens(
-    user: User,
-  ): Promise<{ access_token: string; refresh_token: string }> {
+  private async issueTokens(user: User): Promise<SessionTokens> {
     return {
       access_token: await this.authService.generateAccessToken(user),
       refresh_token: await this.authService.generateRefreshToken(user),
