@@ -11,6 +11,7 @@ import officePhoto from "../../assets/redesign/office.jpg?w=480;960;1200&format=
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import {
   BandHeading,
+  BandHeadingSize,
   BandTone,
   PageBand,
   PageShell,
@@ -57,7 +58,9 @@ function ExpertGroup() {
       className="flex flex-col gap-10"
     >
       <div className="flex flex-col gap-3">
-        <BandHeading onDark>Expert group</BandHeading>
+        <BandHeading onDark size={BandHeadingSize.Section}>
+          Expert group
+        </BandHeading>
         <SectionSubtitle onDark>
           Experts occasionally lend time, knowledge, or resources to the
           Alliance.
@@ -128,7 +131,7 @@ function Office() {
   return (
     <PageBand id="office" className="flex flex-col gap-10">
       <div className="flex flex-col gap-3">
-        <BandHeading>Office</BandHeading>
+        <BandHeading size={BandHeadingSize.Section}>Office</BandHeading>
         <SectionSubtitle>
           Our staff team plans actions, creates infrastructure, and manages the
           Alliance.
@@ -191,7 +194,7 @@ function MemberDirectory({ memberCount }: { memberCount: number | undefined }) {
   return (
     <PageBand id="members" className="flex flex-col gap-10">
       <div className="flex flex-col gap-3">
-        <BandHeading>Members</BandHeading>
+        <BandHeading size={BandHeadingSize.Section}>Members</BandHeading>
         {memberCount !== undefined && (
           <SectionSubtitle>
             {`The Alliance has ${memberCount} ${memberCount === 1 ? "member" : "members"}. Membership is currently by invitation only.`}

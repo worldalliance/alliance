@@ -62,20 +62,35 @@ export function PageBand({
   );
 }
 
+/** Band spans a full band; Section matches the Guide's in-column section headers. */
+export enum BandHeadingSize {
+  Band = "band",
+  Section = "section",
+}
+
+const bandHeadingSizes: Record<BandHeadingSize, string> = {
+  [BandHeadingSize.Band]: "text-4xl sm:text-5xl md:text-6xl",
+  [BandHeadingSize.Section]: "text-3xl sm:text-4xl",
+};
+
 /** Section heading for the interior pages: display face, primary, oversized. */
 export function BandHeading({
   children,
   className,
   onDark = false,
+  size = BandHeadingSize.Band,
 }: {
   children: ReactNode;
   className?: string;
   onDark?: boolean;
+  size?: BandHeadingSize;
 }) {
   return (
     <h2
       className={cn(
-        "site-display text-4xl leading-tight font-medium text-balance sm:text-5xl md:text-6xl",
+        "site-display font-medium text-balance",
+        bandHeadingSizes[size],
+        "leading-tight",
         onDark ? "text-white" : "text-black",
         className,
       )}

@@ -4,7 +4,12 @@ import { cn } from "@alliance/shared/styles/util";
 import { useState, type FormEvent } from "react";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import { CONTACT_EMAIL } from "../../site/content";
-import { PageBand, PageShell } from "../../site/PageShell";
+import {
+  BandHeading,
+  BandHeadingSize,
+  PageBand,
+  PageShell,
+} from "../../site/PageShell";
 import {
   OUTREACH_CHANNELS,
   PARTNER_AUDIENCE_LABEL,
@@ -270,9 +275,9 @@ function PartnerForm() {
         style={{ borderRadius: "var(--site-radius-card)" }}
       >
         <div className="flex flex-col gap-3">
-          <h2 className="site-display text-[1.9rem] leading-tight text-black sm:text-[2.4rem]">
+          <BandHeading size={BandHeadingSize.Section}>
             {PARTNER_FORM_TITLE}
-          </h2>
+          </BandHeading>
           <SectionSubtitle>{PARTNER_FORM_BODY}</SectionSubtitle>
         </div>
 

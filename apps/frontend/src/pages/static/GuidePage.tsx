@@ -16,7 +16,12 @@ import { useActiveSection } from "../../site/hooks";
 import { FAQ_HREF, FOUNDATION_HREF, GOVERNANCE_HREF } from "../../site/links";
 import { NAV_HEIGHT } from "../../site/Navbar";
 import { ContractCard, ImpactCard } from "../../site/PageCards";
-import { BandTone, PageShell } from "../../site/PageShell";
+import {
+  BandHeading,
+  BandHeadingSize,
+  BandTone,
+  PageShell,
+} from "../../site/PageShell";
 import { SITE_COL, SiteArrow, SitePicture } from "../../site/ui";
 
 export function meta() {
@@ -191,9 +196,9 @@ export default function GuidePage() {
                   id={kind}
                   className="flex scroll-mt-32 flex-col gap-6"
                 >
-                  <h2 className="site-display text-3xl sm:text-4xl font-medium leading-tight text-black ">
+                  <BandHeading size={BandHeadingSize.Section}>
                     {section.label}
-                  </h2>
+                  </BandHeading>
                   {section.markdown.trim() && (
                     <DocProse markdown={section.markdown} />
                   )}
