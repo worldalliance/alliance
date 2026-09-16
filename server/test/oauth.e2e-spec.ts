@@ -1,4 +1,5 @@
 import {
+  MOBILE_OAUTH_RETURN_URL,
   OAuthError,
   OAuthIntent,
   OAuthOutcome,
@@ -10,9 +11,10 @@ import { AuthService } from "src/auth/auth.service";
 import { Guest } from "src/auth/entities/guest.entity";
 import { AppleOAuthClient } from "src/auth/oauth/apple-oauth.client";
 import { GoogleOAuthClient } from "src/auth/oauth/google-oauth.client";
-import { OAuthAuthService } from "src/auth/oauth/oauth-auth.service";
+import { mintProof, OAuthAuthService } from "src/auth/oauth/oauth-auth.service";
 import type { OAuthProfile } from "src/auth/oauth/oauth-client";
-import { GUEST_COOKIE } from "src/auth/tokens";
+import { SpentTokenService } from "src/auth/spent-token.service";
+import { GUEST_COOKIE, JWTTokenType } from "src/auth/tokens";
 import {
   OnetimeInvite,
   OnetimeInviteStatus,
@@ -236,6 +238,32 @@ describe("OAuth sign-in (e2e)", () => {
 
       expect(outcomeOf(finished.headers.location)).toBe(OAuthOutcome.Linked);
       expect(String(finished.headers["set-cookie"])).toContain("access_token=");
+    });
+
+    it("sends an expired flow to the web login rather than the app", async () => {
+      const agent = client();
+      const started = await agent.get(path("start")).query({
+        intent: OAuthIntent.Authenticate,
+        returnTo: RETURN_TO,
+      });
+      const {
+        exp: _exp,
+        iat: _iat,
+        ...claims
+      } = claimsOf(stateOf(started.headers.location)) as Record<
+        string,
+        unknown
+      >;
+
+      const finished = await agent.get(path("callback")).query({
+        code: "code",
+        state: ctx.jwtService.sign(claims, { expiresIn: -60 }),
+      });
+
+      expect(
+        finished.headers.location.startsWith(MOBILE_OAUTH_RETURN_URL),
+      ).toBe(false);
+      expect(errorOf(finished.headers.location)).toBe(OAuthError.Failed);
     });
 
     // Otherwise an attacker finishes their own consent, hands the callback url
@@ -704,6 +732,264 @@ describe("OAuth sign-in (e2e)", () => {
           error: OAuthError.Failed,
         });
       });
+    });
+
+    describe("through a browser session", () => {
+      const startBrowserSession = async () => {
+        const started = await client().post(path("native/browser")).expect(200);
+        return {
+          proof: String(started.body.proof),
+          state: stateOf(started.body.url),
+        };
+      };
+
+      /** A fresh agent: the system browser shares no cookies with the app. */
+      const finishInBrowser = async (query: Record<string, unknown>) => {
+        const finished = await client().get(path("callback")).query(query);
+        expect(
+          finished.headers.location.startsWith(MOBILE_OAUTH_RETURN_URL),
+        ).toBe(true);
+        expect(String(finished.headers["set-cookie"])).not.toContain(
+          "access_token=",
+        );
+        return new URL(finished.headers.location).searchParams;
+      };
+
+      const redeem = async (params: { handoff: string; proof: string }) =>
+        (await client().post(path("native/redeem")).send(params).expect(200))
+          .body;
+
+      it("hands the session only to the proof that started it", async () => {
+        const member = await freshMember();
+        profile = {
+          ...profile,
+          subject: `browser-${member.id}`,
+          email: member.email,
+        };
+        const { proof, state } = await startBrowserSession();
+        const returned = await finishInBrowser({ code: "code", state });
+        const handoff = String(returned.get("handoff"));
+
+        // Another app can register the same scheme and catch the deep link.
+        expect(await redeem({ handoff, proof: mintProof().proof })).toEqual({
+          error: OAuthError.Failed,
+        });
+
+        const redeemed = await redeem({ handoff, proof });
+        expect((await sessionUser(redeemed.session.access_token)).id).toBe(
+          member.id,
+        );
+      });
+
+      it("finishes an Apple form post", async () => {
+        const member = await freshMember();
+        profile = {
+          ...profile,
+          provider: OAuthProvider.Apple,
+          subject: `apple-browser-${member.id}`,
+          email: member.email,
+        };
+        const { proof, state } = await startBrowserSession();
+        const browser = client();
+        const posted = await browser
+          .post(path("callback"))
+          .type("form")
+          .send({ code: "code", state })
+          .expect(303);
+
+        const finished = await browser.get(
+          `${path("callback")}${posted.headers.location}`,
+        );
+        expect(
+          finished.headers.location.startsWith(MOBILE_OAUTH_RETURN_URL),
+        ).toBe(true);
+        const handoff = String(
+          new URL(finished.headers.location).searchParams.get("handoff"),
+        );
+
+        const redeemed = await redeem({ handoff, proof });
+        expect((await sessionUser(redeemed.session.access_token)).id).toBe(
+          member.id,
+        );
+      });
+
+      it("redeems a handoff once", async () => {
+        const member = await freshMember();
+        profile = {
+          ...profile,
+          subject: `browser-replay-${member.id}`,
+          email: member.email,
+        };
+        const { proof, state } = await startBrowserSession();
+        const returned = await finishInBrowser({ code: "code", state });
+        const handoff = String(returned.get("handoff"));
+
+        const redeemed = await redeem({ handoff, proof });
+        expect((await sessionUser(redeemed.session.access_token)).id).toBe(
+          member.id,
+        );
+
+        expect(await redeem({ handoff, proof })).toEqual({
+          error: OAuthError.Failed,
+        });
+      });
+
+      it("comes back on the link it chose, whatever the caller asks for", async () => {
+        const started = await client()
+          .post(path("native/browser"))
+          .send({ returnTo: "https://evil.example.com/mobile/oauth-callback" })
+          .expect(200);
+
+        expect(started.body.returnTo).toBe(MOBILE_OAUTH_RETURN_URL);
+        expect(claimsOf(stateOf(started.body.url))).toMatchObject({
+          returnTo: MOBILE_OAUTH_RETURN_URL,
+        });
+      });
+
+      it("sends a cancellation back to the app", async () => {
+        const { state } = await startBrowserSession();
+
+        const returned = await finishInBrowser({
+          error: "access_denied",
+          state,
+        });
+
+        expect(returned.get("error")).toBe(OAuthError.Cancelled);
+      });
+
+      it("sends Apple's cancellation back to the app", async () => {
+        profile = { ...profile, provider: OAuthProvider.Apple };
+        const { state } = await startBrowserSession();
+
+        const returned = await finishInBrowser({
+          error: "user_cancelled_authorize",
+          state,
+        });
+
+        expect(returned.get("error")).toBe(OAuthError.Cancelled);
+      });
+
+      it("sends any other provider error back to the app as a failure", async () => {
+        const { state } = await startBrowserSession();
+
+        const returned = await finishInBrowser({
+          error: "server_error",
+          state,
+        });
+
+        expect(returned.get("error")).toBe(OAuthError.Failed);
+      });
+
+      it("sends a missing account back to the app and creates none", async () => {
+        profile = {
+          ...profile,
+          subject: "browser-stranger",
+          email: "browser-stranger@example.com",
+        };
+        const { state } = await startBrowserSession();
+
+        const returned = await finishInBrowser({ code: "code", state });
+
+        expect(returned.get("error")).toBe(OAuthError.NoAccount);
+        expect(await users().findOneBy({ email: profile.email })).toBeNull();
+      });
+
+      it("sends an expired flow back to the app", async () => {
+        const { state } = await startBrowserSession();
+        const {
+          exp: _exp,
+          iat: _iat,
+          ...claims
+        } = claimsOf(state) as Record<string, unknown>;
+        const expired = ctx.jwtService.sign(claims, { expiresIn: -60 });
+
+        const returned = await finishInBrowser({
+          code: "code",
+          state: expired,
+        });
+
+        expect(returned.get("error")).toBe(OAuthError.Expired);
+      });
+
+      it("refuses the state token the app also holds", async () => {
+        const { proof, state } = await startBrowserSession();
+
+        expect(await redeem({ handoff: String(state), proof })).toEqual({
+          error: OAuthError.Failed,
+        });
+      });
+
+      it("refuses a handoff minted for another provider", async () => {
+        const { proof, proofHash } = mintProof();
+        const handoff = ctx.jwtService.sign({
+          tokenType: JWTTokenType.oauthHandoff,
+          userId: ctx.testUserId,
+          provider: OAuthProvider.Apple,
+          outcome: OAuthOutcome.SignedIn,
+          proofHash,
+        });
+
+        // `path` follows `profile.provider`, which is Google here.
+        expect(await redeem({ handoff, proof })).toEqual({
+          error: OAuthError.Failed,
+        });
+      });
+
+      it("refuses an expired handoff as expired", async () => {
+        const { proof, proofHash } = mintProof();
+        const handoff = ctx.jwtService.sign(
+          {
+            tokenType: JWTTokenType.oauthHandoff,
+            userId: ctx.testUserId,
+            provider: profile.provider,
+            outcome: OAuthOutcome.SignedIn,
+            proofHash,
+          },
+          { expiresIn: -60 },
+        );
+
+        expect(await redeem({ handoff, proof })).toEqual({
+          error: OAuthError.Expired,
+        });
+      });
+    });
+  });
+  describe("spent credentials", () => {
+    it("forgets one that has expired and holds on to one that has not", async () => {
+      const spentTokens = ctx.app.get(SpentTokenService);
+      await spentTokens.spend({
+        credential: "still-alive",
+        retainForMs: 60_000,
+      });
+      await spentTokens.spend({
+        credential: "long-gone",
+        retainForMs: -60_000,
+      });
+
+      await spentTokens.forgetExpired();
+
+      expect(
+        await spentTokens.spend({
+          credential: "long-gone",
+          retainForMs: 60_000,
+        }),
+      ).toBe(true);
+      expect(
+        await spentTokens.spend({
+          credential: "still-alive",
+          retainForMs: 60_000,
+        }),
+      ).toBe(false);
+    });
+
+    it("lets one of many concurrent spends through", async () => {
+      const spentTokens = ctx.app.get(SpentTokenService);
+      const results = await Promise.all(
+        Array.from({ length: 20 }, () =>
+          spentTokens.spend({ credential: "raced", retainForMs: 60_000 }),
+        ),
+      );
+      expect(results.filter(Boolean)).toHaveLength(1);
     });
   });
 });

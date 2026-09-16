@@ -8,11 +8,13 @@ import { UserModule } from "../user/user.module";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { Guest } from "./entities/guest.entity";
+import { SpentToken } from "./entities/spent-token.entity";
 import { AppleOAuthClient } from "./oauth/apple-oauth.client";
 import { GoogleOAuthClient } from "./oauth/google-oauth.client";
 import { OAuthAccount } from "./oauth/oauth-account.entity";
 import { OAuthAuthService } from "./oauth/oauth-auth.service";
 import { OAuthController } from "./oauth/oauth.controller";
+import { SpentTokenService } from "./spent-token.service";
 
 @Module({
   imports: [
@@ -26,11 +28,12 @@ import { OAuthController } from "./oauth/oauth.controller";
         signOptions: { expiresIn: "1d" },
       }),
     }),
-    TypeOrmModule.forFeature([User, Guest, OAuthAccount]),
+    TypeOrmModule.forFeature([User, Guest, OAuthAccount, SpentToken]),
   ],
   providers: [
     AuthService,
     OAuthAuthService,
+    SpentTokenService,
     GoogleOAuthClient,
     AppleOAuthClient,
   ],

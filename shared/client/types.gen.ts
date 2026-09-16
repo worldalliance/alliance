@@ -839,11 +839,32 @@ export type SessionTokensDto = {
     refresh_token: string;
 };
 
-export type OAuthError = 'cancelled' | 'failed' | 'no_account' | 'email_not_verified' | 'claimed_by_another_account' | 'invite_required' | 'last_sign_in_method' | 'provider_already_connected';
+export type OAuthError = 'cancelled' | 'failed' | 'no_account' | 'email_not_verified' | 'claimed_by_another_account' | 'invite_required' | 'last_sign_in_method' | 'provider_already_connected' | 'expired';
 
 export type MobileOAuthSignInDto = {
     session?: SessionTokensDto;
     error?: OAuthError;
+};
+
+export type MobileOAuthBrowserSessionDto = {
+    /**
+     * The provider's consent screen.
+     */
+    url: string;
+    /**
+     * Sent back with the handoff to redeem it.
+     */
+    proof: string;
+    /**
+     * The link the browser session comes back to the app on.
+     */
+    returnTo: string;
+};
+
+export type MobileOAuthHandoffDto = {
+    handoff: string;
+    proof: string;
+    guestToken?: string;
 };
 
 export type OAuthCallbackDto = {
@@ -4305,6 +4326,54 @@ export type OAuthSignInWithIdentityTokenResponses = {
 };
 
 export type OAuthSignInWithIdentityTokenResponse = OAuthSignInWithIdentityTokenResponses[keyof OAuthSignInWithIdentityTokenResponses];
+
+export type OAuthStartMobileBrowserSessionData = {
+    body?: never;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/native/browser';
+};
+
+export type OAuthStartMobileBrowserSessionErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type OAuthStartMobileBrowserSessionError = OAuthStartMobileBrowserSessionErrors[keyof OAuthStartMobileBrowserSessionErrors];
+
+export type OAuthStartMobileBrowserSessionResponses = {
+    200: MobileOAuthBrowserSessionDto;
+};
+
+export type OAuthStartMobileBrowserSessionResponse = OAuthStartMobileBrowserSessionResponses[keyof OAuthStartMobileBrowserSessionResponses];
+
+export type OAuthRedeemMobileHandoffData = {
+    body: MobileOAuthHandoffDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/native/redeem';
+};
+
+export type OAuthRedeemMobileHandoffErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type OAuthRedeemMobileHandoffError = OAuthRedeemMobileHandoffErrors[keyof OAuthRedeemMobileHandoffErrors];
+
+export type OAuthRedeemMobileHandoffResponses = {
+    200: MobileOAuthSignInDto;
+};
+
+export type OAuthRedeemMobileHandoffResponse = OAuthRedeemMobileHandoffResponses[keyof OAuthRedeemMobileHandoffResponses];
 
 export type OAuthCallbackData = {
     body?: never;
