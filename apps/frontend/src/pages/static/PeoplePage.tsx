@@ -33,6 +33,9 @@ export async function loader() {
   return res.data?.count;
 }
 
+const PEOPLE_TITLE = "People";
+const PEOPLE_LEDE = "Every member broadens the scope of what we can do.";
+
 const OFFICE_PHOTO_CAPTION = "The office in San Francisco, California";
 
 const MEMBER_ROWS = 3;
@@ -243,7 +246,11 @@ export default function PeoplePage() {
   const memberCount = useLoaderData<typeof loader>();
 
   return (
-    <PageShell>
+    <PageShell
+      title={PEOPLE_TITLE}
+      subtitle={PEOPLE_LEDE}
+      headerTone={BandTone.Primary}
+    >
       <Office />
       <ExpertGroup />
       <MemberDirectory memberCount={memberCount} />
