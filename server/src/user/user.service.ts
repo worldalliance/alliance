@@ -644,14 +644,15 @@ export class UserService {
         secret: process.env.JWT_SECRET,
       }),
     );
-    if (
-      !verified.ok ||
-      (verified.value.tokenType !== JWTTokenType.verifyEmail &&
-        verified.value.type !== "verify-email")
-    ) {
-      throw new UnauthorizedException();
+    const user =
+      verified.ok &&
+      (verified.value.tokenType === JWTTokenType.verifyEmail ||
+        verified.value.type === "verify-email")
+        ? await this.findOne(verified.value.sub)
+        : null;
+    if (!user) {
+      throw new BadRequestException("Invalid or expired verification link");
     }
-    const user = await this.findOneOrFail(verified.value.sub);
     user.emailVerified = true;
     await this.userRepository.save(user);
   }
