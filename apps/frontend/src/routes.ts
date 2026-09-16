@@ -13,7 +13,7 @@ export default [
   route("/guide", "pages/static/GuidePage.tsx"),
   route("/foundation", "pages/static/FoundationPage.tsx"),
   route("/governance", "pages/static/GovernancePage.tsx"),
-  route("/description", "pages/static/ExpertDescriptionPage.tsx"),
+  route("/description", "pages/static/ExpertDescriptionRedirect.tsx"),
   route("/faq", "pages/static/FAQPage.tsx"),
   route("/invite", "pages/static/InvitePage.tsx"),
   route("/outreach-partner", "pages/static/OutreachPartnerPage.tsx"),
