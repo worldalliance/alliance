@@ -28,8 +28,8 @@ describe("Auth (e2e)", () => {
     inviteRepo = ctx.dataSource.getRepository(OnetimeInvite);
   }, 50000);
 
-  it("returns 401 for invalid login", () => {
-    return request(ctx.app.getHttpServer())
+  it("returns 401 for invalid login", async () => {
+    await request(ctx.app.getHttpServer())
       .post("/auth/login")
       .send({ email: "baduser@test.com", password: "password", mode: "header" })
       .expect(401);
@@ -55,8 +55,16 @@ describe("Auth (e2e)", () => {
       .expect(401);
   });
 
-  it("registers a new user", () => {
-    return request(ctx.app.getHttpServer())
+  it("registers a new user", async () => {
+    const referrer = await userRepository.save(
+      userRepository.create({
+        email: "referrer@test.com",
+        password: "password",
+        name: "Referrer",
+      }),
+    );
+
+    await request(ctx.app.getHttpServer())
       .post("/auth/register")
       .send({
         email: "newusertest@test.com",
@@ -64,6 +72,7 @@ describe("Auth (e2e)", () => {
         name: "Test User",
         mode: "header",
         timeZone: "America/Los_Angeles",
+        referralCode: referrer.referralCode,
       } satisfies SignUpDto)
       .expect(201);
   });
@@ -128,8 +137,8 @@ describe("Auth (e2e)", () => {
       return response.body as SignInResponseDto;
     };
 
-    it("returns 401 for an invalid refresh token", () => {
-      return request(ctx.app.getHttpServer())
+    it("returns 401 for an invalid refresh token", async () => {
+      await request(ctx.app.getHttpServer())
         .post("/auth/refresh")
         .set("Authorization", "Bearer invalid")
         .expect(401);
