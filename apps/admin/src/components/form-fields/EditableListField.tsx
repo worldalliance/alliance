@@ -23,6 +23,7 @@ import { EditableEmailField } from "./EditableEmailField";
 import { EditableFileField } from "./EditableFileField";
 import { EditableNumberField } from "./EditableNumberField";
 import { EditablePhoneField } from "./EditablePhoneField";
+import { EditableRadioField } from "./EditableRadioField";
 import { EditableRangeField } from "./EditableRangeField";
 import { EditableTextField } from "./EditableTextField";
 import { EditableTextareaField } from "./EditableTextareaField";
@@ -158,6 +159,7 @@ function renderEditableSubField(
     case "checkbox":
       return <EditableCheckboxField {...commonProps} />;
     case "radio":
+      return <EditableRadioField {...commonProps} />;
     case "select":
     case "multiselect":
       return <EditableChoiceField {...commonProps} />;
