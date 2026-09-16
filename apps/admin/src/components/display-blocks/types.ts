@@ -1,5 +1,9 @@
-import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
+import type {
+  DisplayBlock,
+  DisplayKind,
+} from "@alliance/common/forms/display-blocks";
 import type { AnyField } from "@alliance/common/forms/form-schema";
+import type { ComponentType } from "react";
 import type { AddressedWrite } from "../../lib/displayBlockById";
 import type { OutputBlockOption } from "../form-fields/CommonControls";
 
@@ -20,3 +24,9 @@ export interface BaseDisplayBlockProps<T extends DisplayBlock> {
   previousFields?: AnyField[];
   outputBlocks?: OutputBlockOption[];
 }
+
+export type BlockOfKind = { [B in DisplayBlock as B["kind"]]: B };
+
+export type BlockEditor<K extends DisplayKind> = ComponentType<
+  BaseDisplayBlockProps<BlockOfKind[K]>
+>;

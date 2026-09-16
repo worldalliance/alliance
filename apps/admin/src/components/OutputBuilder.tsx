@@ -23,33 +23,44 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { addressedWrite, type BlockWriteById } from "../lib/displayBlockById";
-import {
-  createDisplayBlock,
-  EditableDividerBlock,
-  EditableHeaderBlock,
-  EditableHtmlBlock,
-  EditableImagesBlock,
-  EditableLabelBlock,
-  EditableSpacerBlock,
-  EditableTextBlock,
-  EditableUserLocationBlock,
-} from "./display-blocks";
-import { EditableQuoteBlock } from "./display-blocks/EditableQuoteBlock";
+import { createDisplayBlock } from "./display-blocks";
+import { renderBlockEditor } from "./display-blocks/blockEditors";
 import { EditableOutputFieldBlock } from "./output-builder/EditableOutputFieldBlock";
 
-const DISPLAY_BLOCK_KINDS = [
-  "header",
-  "text",
-  "label",
-  "divider",
-  "spacer",
-  "html",
-  "images",
-  "quote",
-  "userLocation",
-] as const satisfies DisplayKind[];
+const OUTPUT_BY_KIND = {
+  header: true,
+  text: true,
+  label: true,
+  divider: true,
+  spacer: true,
+  html: true,
+  images: true,
+  quote: true,
+  userLocation: true,
+  video: false,
+  biglink: false,
+  copytext: false,
+  previousAnswer: false,
+  chatTranscript: false,
+  accordion: false,
+} as const satisfies Record<DisplayKind, boolean>;
 
-type OutputDisplayBlockKind = (typeof DISPLAY_BLOCK_KINDS)[number];
+type OutputDisplayBlockKind = {
+  [K in keyof typeof OUTPUT_BY_KIND]: (typeof OUTPUT_BY_KIND)[K] extends true
+    ? K
+    : never;
+}[keyof typeof OUTPUT_BY_KIND];
+
+const isOutputDisplayBlockKind = (
+  kind: string,
+): kind is OutputDisplayBlockKind =>
+  Object.entries(OUTPUT_BY_KIND).some(
+    ([allowedKind, allowed]) => allowed && allowedKind === kind,
+  );
+
+const DISPLAY_BLOCK_KINDS = Object.keys(OUTPUT_BY_KIND).filter(
+  isOutputDisplayBlockKind,
+);
 
 const collectOutputFields = (schema: FormSchema): AnyField[] => {
   const result: AnyField[] = [];
@@ -392,78 +403,16 @@ export function OutputBuilder({
           {isDisplayBlock ? (
             (() => {
               const displayBlock = block as DisplayBlock;
-              const sharedProps = {
+              if (!OUTPUT_BY_KIND[displayBlock.kind]) return null;
+              return renderBlockEditor({
+                block: displayBlock,
                 onUpdate: handleDisplayUpdate,
                 updateCurrent,
                 onRemove: () => removeBlockAtIndex(index),
                 previousFields: outputFields,
                 outputBlocks,
                 ...dragProps,
-              };
-              const displayBlockKind = displayBlock.kind;
-              switch (displayBlockKind) {
-                case "header":
-                  return (
-                    <EditableHeaderBlock
-                      block={displayBlock}
-                      {...sharedProps}
-                    />
-                  );
-                case "text":
-                  return (
-                    <EditableTextBlock block={displayBlock} {...sharedProps} />
-                  );
-                case "label":
-                  return (
-                    <EditableLabelBlock block={displayBlock} {...sharedProps} />
-                  );
-                case "divider":
-                  return (
-                    <EditableDividerBlock
-                      block={displayBlock}
-                      {...sharedProps}
-                    />
-                  );
-                case "spacer":
-                  return (
-                    <EditableSpacerBlock
-                      block={displayBlock}
-                      {...sharedProps}
-                    />
-                  );
-                case "html":
-                  return (
-                    <EditableHtmlBlock block={displayBlock} {...sharedProps} />
-                  );
-                case "images":
-                  return (
-                    <EditableImagesBlock
-                      block={displayBlock}
-                      {...sharedProps}
-                    />
-                  );
-                case "quote":
-                  return (
-                    <EditableQuoteBlock block={displayBlock} {...sharedProps} />
-                  );
-                case "userLocation":
-                  return (
-                    <EditableUserLocationBlock
-                      block={displayBlock}
-                      {...sharedProps}
-                    />
-                  );
-                case "biglink":
-                case "copytext":
-                case "previousAnswer":
-                case "video":
-                case "chatTranscript":
-                case "accordion":
-                  return null;
-                default:
-                  displayBlockKind satisfies never;
-                  return null;
-              }
+              });
             })()
           ) : (
             <EditableOutputFieldBlock

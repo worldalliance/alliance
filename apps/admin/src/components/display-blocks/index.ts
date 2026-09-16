@@ -1,18 +1,4 @@
 export { createDisplayBlock } from "./createDisplayBlock";
 export { DisplayBlockWrapper } from "./DisplayBlockWrapper";
-export { EditableAccordionBlock } from "./EditableAccordionBlock";
-export { EditableBigLinkBlock } from "./EditableBigLinkBlock";
-export { EditableChatTranscriptBlock } from "./EditableChatTranscriptBlock";
-export { EditableCopyTextBlock } from "./EditableCopyTextBlock";
-export { EditableDividerBlock } from "./EditableDividerBlock";
-export { EditableHeaderBlock } from "./EditableHeaderBlock";
-export { EditableHtmlBlock } from "./EditableHtmlBlock";
-export { EditableImagesBlock } from "./EditableImagesBlock";
-export { EditableLabelBlock } from "./EditableLabelBlock";
-export { EditablePreviousAnswerBlock } from "./EditablePreviousAnswerBlock";
-export { EditableSpacerBlock } from "./EditableSpacerBlock";
-export { EditableTextBlock } from "./EditableTextBlock";
-export { EditableUserLocationBlock } from "./EditableUserLocationBlock";
-export { EditableVideoBlock } from "./EditableVideoBlock";
 export { PerViewerOptions } from "./PerViewerOptionsContext";
 export type { BaseDisplayBlockProps } from "./types";
