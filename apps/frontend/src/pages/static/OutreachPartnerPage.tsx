@@ -277,11 +277,7 @@ function PartnerForm() {
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <SiteField
-            label="Organization name"
-            name="organizationName"
-            required
-          >
+          <SiteField label="Organization name" name="organizationName" required>
             <input
               id="organizationName"
               name="organizationName"

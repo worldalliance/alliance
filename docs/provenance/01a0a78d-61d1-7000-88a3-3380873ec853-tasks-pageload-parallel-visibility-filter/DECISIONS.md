@@ -9,10 +9,10 @@ The user asked to parallelize the sequential visibility-filter loop in
 then benchmarked before/after on identical code and schema:
 
 | concurrency | sequential loop | `Promise.all` |
-| --- | --- | --- |
-| 1 | 26ms | 25ms |
-| 7 | 111ms | 112ms |
-| 14 | 213ms | 226ms |
+| ----------- | --------------- | ------------- |
+| 1           | 26ms            | 25ms          |
+| 7           | 111ms           | 112ms         |
+| 14          | 213ms           | 226ms         |
 
 No effect. Cause: `userCanSeeAction` returns before reaching the cohort
 evaluation for `public` and `all_members` actions. The dev dataset is 82
@@ -63,12 +63,12 @@ Sharing an entry between the two would hand one path the other's semantics.
 
 Result, `GET /actions/loggedIn?sorted=true` as a non-admin member:
 
-| metric | before | after |
-| --- | --- | --- |
-| queries per request | 56 | 45 |
-| concurrency 1 | 26ms | 23ms |
-| concurrency 7 | 111ms | 101ms |
-| concurrency 14 | 213ms | 199ms |
+| metric              | before | after |
+| ------------------- | ------ | ----- |
+| queries per request | 56     | 45    |
+| concurrency 1       | 26ms   | 23ms  |
+| concurrency 7       | 111ms  | 101ms |
+| concurrency 14      | 213ms  | 199ms |
 
 Query count is exact and repeatable (45/45/45 across runs). The timing gain is
 small locally because a localhost query costs ~0.1ms; on staging, where each
@@ -99,10 +99,10 @@ byte-identical before and after (207318 bytes, 77 actions, same id order).
 
 `EXPLAIN (ANALYZE, BUFFERS)` on the two query shapes:
 
-| | row width | execution |
-| --- | --- | --- |
-| all columns | 920 bytes | 0.82ms |
-| id only | 32 bytes | 0.28ms |
+|             | row width | execution |
+| ----------- | --------- | --------- |
+| all columns | 920 bytes | 0.82ms    |
+| id only     | 32 bytes  | 0.28ms    |
 
 Buffers are identical at 28 shared hits, so this removes no I/O — the heap scan
 still touches every row. What it removes is width: ~87KB carried through the
@@ -111,10 +111,10 @@ hash aggregate and sort and returned over the wire, down to ~3KB.
 End-to-end local timing is unchanged, within noise:
 
 | concurrency | before | after |
-| --- | --- | --- |
-| 1 | 24ms | 23ms |
-| 7 | 103ms | 102ms |
-| 14 | 200ms | 209ms |
+| ----------- | ------ | ----- |
+| 1           | 24ms   | 23ms  |
+| 7           | 103ms  | 102ms |
+| 14          | 200ms  | 209ms |
 
 That is expected rather than disappointing: on localhost the redundant transfer
 is nearly free. The change should carry further against a remote database,
