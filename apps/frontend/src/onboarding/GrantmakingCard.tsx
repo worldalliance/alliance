@@ -10,8 +10,6 @@ const TASK_TITLE = "Compare candidates for our $100,000 grant";
 
 const TASK_MINUTES = 15;
 
-const TASK_START = "Project begins at 1,000 members";
-
 const CARD_HEADLINE = "Join the Alliance to unlock $100,000 for the world";
 
 const CARD_STANDFIRST =
@@ -31,17 +29,14 @@ function GrantTaskMock() {
       </p>
 
       <GrantmakingMemberProgress
-        className="mt-4 gap-2 text-sm"
+        className="mt-2 gap-2 text-sm"
         tone={ProgressTone.OnCard}
         caption={false}
       />
 
-      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
-        <span className="flex items-center gap-1.5 font-medium text-[var(--color-green)]">
-          <Clock className="size-3.5" aria-hidden />
-          {TASK_MINUTES} minutes
-        </span>
-        <span className="text-zinc-500">{TASK_START}</span>
+      <div className="mt-2.5 flex items-center gap-1.5 text-sm font-medium text-[var(--color-green)]">
+        <Clock className="size-3.5" aria-hidden />
+        {TASK_MINUTES} minutes
       </div>
 
       {/* Three lines and then it feathers out, the way the real task body does. */}
