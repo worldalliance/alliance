@@ -1,3 +1,4 @@
+import type { Action } from "src/actions/entities/action.entity";
 import type { UsMembership } from "src/geo/us-membership";
 import type { User } from "src/user/entities/user.entity";
 
@@ -44,4 +45,16 @@ export class CohortResolutionSession {
     number,
     Promise<FormResponseAnswerRow[]>
   >();
+
+  /**
+   * Single-user leaf memos, keyed by user where the answer is per-user. The
+   * maps above hold every user's rows for the batch path, so the two cannot
+   * share an entry.
+   */
+  readonly completedActionIdsByUser = new Map<number, Promise<Set<number>>>();
+  readonly formResponsesByUserAndForm = new Map<
+    string,
+    Promise<{ answers: Record<string, unknown> }[]>
+  >();
+  readonly actionWithEventsById = new Map<number, Promise<Action | null>>();
 }

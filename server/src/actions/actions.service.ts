@@ -553,6 +553,7 @@ export class ActionsService {
 
     const qb = this.actionRepository
       .createQueryBuilder("a")
+      .select("a.id", "id")
       .leftJoin("a.events", "e")
       .addSelect(
         `
@@ -585,13 +586,14 @@ export class ActionsService {
     if (limit) {
       qb.limit(limit);
     }
-    const sortedActions = await qb.getMany();
+    const actionIds = (await qb.getRawMany<{ id: number }>()).map(
+      (row) => row.id,
+    );
 
-    if (!relations || sortedActions.length === 0) {
-      return sortedActions.map(parseAction);
+    if (actionIds.length === 0) {
+      return [];
     }
 
-    const actionIds = sortedActions.map((a) => a.id);
     const actionsWithRelations = await this.actionRepository.find({
       where: { id: In(actionIds) },
       relations,
@@ -4994,6 +4996,21 @@ export class ActionsService {
     return followUpForms.filter((_, i) => results[i]);
   }
 
+  private loadActionWithEvents(
+    actionId: number,
+    session: CohortResolutionSession,
+  ): Promise<Action | null> {
+    let pending = session.actionWithEventsById.get(actionId);
+    if (!pending) {
+      pending = this.actionRepository.findOne({
+        where: { id: actionId },
+        relations: { events: true },
+      });
+      session.actionWithEventsById.set(actionId, pending);
+    }
+    return pending;
+  }
+
   /**
    * Check if a user is in a cohort expression's target set.
    */
@@ -5017,21 +5034,24 @@ export class ActionsService {
       hasTag: (tagId: string) =>
         (user.tags || []).some((tag) => tag.id === tagId),
       completedAction: async (actionId: number) => {
-        const activity = await this.actionActivityRepository.findOne({
-          where: {
-            userId: user.id,
-            actionId,
-            type: ActionActivityType.USER_COMPLETED,
-          },
-        });
-        return !!activity;
+        let pending = session.completedActionIdsByUser.get(user.id);
+        if (!pending) {
+          pending = this.actionActivityRepository
+            .find({
+              where: {
+                userId: user.id,
+                type: ActionActivityType.USER_COMPLETED,
+              },
+              select: { actionId: true },
+            })
+            .then((rows) => new Set(rows.map((row) => row.actionId)));
+          session.completedActionIdsByUser.set(user.id, pending);
+        }
+        return (await pending).has(actionId);
       },
       inProgressAction: async (actionId: number) => {
         if (visitedActionIds.has(actionId)) return false;
-        const fetched = await this.actionRepository.findOne({
-          where: { id: actionId },
-          relations: { events: true },
-        });
+        const fetched = await this.loadActionWithEvents(actionId, session);
         if (!fetched) return false;
         const action = parseAction(fetched);
 
@@ -5062,10 +5082,7 @@ export class ActionsService {
       },
       missedActionDeadline: async (actionId: number) => {
         if (visitedActionIds.has(actionId)) return false;
-        const fetched = await this.actionRepository.findOne({
-          where: { id: actionId },
-          relations: { events: true },
-        });
+        const fetched = await this.loadActionWithEvents(actionId, session);
         if (!fetched) return false;
         const action = parseAction(fetched);
 
@@ -5127,17 +5144,19 @@ export class ActionsService {
         responseEqualTo?: string;
         responseAny?: boolean;
       }) => {
-        const responses = await this.formResponseRepository.find({
-          where: {
-            formId: fieldParams.formId,
-            user: { id: user.id },
-          },
-        });
-        return responses.some((r) =>
-          answerMatchesFormField(
-            r.answers as Record<string, unknown>,
-            fieldParams,
-          ),
+        const key = `${user.id}:${fieldParams.formId}`;
+        let pending = session.formResponsesByUserAndForm.get(key);
+        if (!pending) {
+          pending = this.formResponseRepository.find({
+            where: {
+              formId: fieldParams.formId,
+              user: { id: user.id },
+            },
+          });
+          session.formResponsesByUserAndForm.set(key, pending);
+        }
+        return (await pending).some((r) =>
+          answerMatchesFormField(r.answers, fieldParams),
         );
       },
       isGroupLead: async () => {
