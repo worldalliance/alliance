@@ -1,4 +1,6 @@
 import { AnalyticsEvent, ExceptionEvent } from "@alliance/common/analytics";
+import type { OAuthProvider } from "@alliance/common/oauth";
+import { R, type Result } from "@alliance/common/result";
 import { run } from "@alliance/common/run";
 import { captureEvent, captureException } from "@alliance/shared/lib/analytics";
 import { useBackfillTimeZone } from "@alliance/shared/lib/useBackfillTimeZone";
@@ -17,10 +19,12 @@ import {
   appHealthCheck,
   authLogin,
   authMe,
-  type SessionTokensDto,
   UserDto,
+  type SessionTokensDto,
 } from "../../../shared/client";
 import { clearGuestToken, getStoredGuestToken } from "./guestSession";
+import { signInWithProvider } from "./oauth";
+import { thrownFailure, type OAuthFailure } from "./oauthResult";
 import {
   getAccessToken,
   getRefreshToken,
@@ -53,6 +57,10 @@ interface AuthContextType {
   canConnectToServer: boolean;
   user: UserDto | undefined;
   login: (params: LoginParams) => Promise<void>;
+  /** Leaves navigation to the caller, as `navigateOnSuccess: false` does. */
+  loginWithProvider: (
+    provider: OAuthProvider,
+  ) => Promise<Result<void, OAuthFailure>>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   isLoading: boolean;
@@ -231,6 +239,28 @@ export const AuthProvider: React.FC<
     [router, startSession],
   );
 
+  const loginWithProvider = useCallback(
+    async (provider: OAuthProvider): Promise<Result<void, OAuthFailure>> => {
+      const attempt = await R.fromPromiseFn(
+        async (): Promise<Result<void, OAuthFailure>> => {
+          const guestToken = (await getStoredGuestToken()) ?? undefined;
+          const signedIn = await signInWithProvider({ provider, guestToken });
+          if (!signedIn.ok) {
+            return signedIn;
+          }
+          if (guestToken) {
+            await clearGuestToken();
+          }
+          await startSession(signedIn.value);
+          return R.success(undefined);
+        },
+        thrownFailure,
+      );
+      return R.flatMap(attempt, (result) => result);
+    },
+    [startSession],
+  );
+
   useEffect(() => {
     const visualTestCredentials = getVisualTestAutoLoginCredentials();
     const devAutoLoginEnabled =
@@ -264,6 +294,7 @@ export const AuthProvider: React.FC<
     isAuthenticated: !!user,
     user,
     login,
+    loginWithProvider,
     logout,
     refreshUser,
     canConnectToServer,

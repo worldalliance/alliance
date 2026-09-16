@@ -49,7 +49,10 @@ export const MOBILE_OAUTH_ERROR_PARAM = "error";
 export const parseOAuthProvider = (value: unknown): OAuthProvider | null =>
   z.enum(OAuthProvider).safeParse(value).data ?? null;
 
-const ERROR_MESSAGE: Record<OAuthError, (label: string) => string> = {
+export const OAUTH_ERROR_MESSAGE: Record<
+  OAuthError,
+  (label: string) => string
+> = {
   [OAuthError.Cancelled]: (label) => `${label} sign-in was cancelled.`,
   [OAuthError.Failed]: (label) => `${label} sign-in failed. Please try again.`,
   [OAuthError.NoAccount]: (label) =>
@@ -72,7 +75,7 @@ export function oauthErrorMessage(
   provider: OAuthProvider,
   error: OAuthError,
 ): string {
-  return ERROR_MESSAGE[error](OAUTH_PROVIDER_LABEL[provider]);
+  return OAUTH_ERROR_MESSAGE[error](OAUTH_PROVIDER_LABEL[provider]);
 }
 
 const oauthOutcomeSchema = z.enum(OAuthOutcome);

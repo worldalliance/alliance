@@ -1,9 +1,11 @@
+import { OAUTH_PROVIDER_LABEL, OAuthProvider } from "@alliance/common/oauth";
 import type { ReferrerProfileDto } from "@alliance/shared/client";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
 import { ArrowRight } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { FailureTone, type ProviderFailure } from "../../lib/oauthResult";
 import { ACCOUNT_HEADING, AccountMode } from "../../lib/onboarding/flow";
 import {
   motion,
@@ -12,10 +14,26 @@ import {
 } from "../../lib/onboarding/scale";
 import ProfileImage from "../ProfileImage";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
+import OAuthProviderIcon from "../system/OAuthProviderIcon";
 import PasswordVisibilityToggle from "../system/PasswordVisibilityToggle";
 import Text, { FontWeight } from "../system/Text";
 
 const EMAIL_PATTERN = /\S+@\S+\.\S+/;
+
+/** Apple's button guidelines ask for it above the other providers'. */
+const PROVIDER_RANK: Record<OAuthProvider, number> = {
+  [OAuthProvider.Apple]: 0,
+  [OAuthProvider.Google]: 1,
+};
+
+const PROVIDERS = Object.values(OAuthProvider).sort(
+  (a, b) => PROVIDER_RANK[a] - PROVIDER_RANK[b],
+);
+
+const FAILURE_INK: Record<FailureTone, string> = {
+  [FailureTone.Notice]: "text-white/80",
+  [FailureTone.Error]: "text-red-300",
+};
 
 const FIELD =
   "min-h-12 rounded-lg border border-white/40 bg-white/12 px-3.5 text-base text-white";
@@ -31,6 +49,9 @@ export function AccountFields({
   notice,
   submitting,
   onForgotPassword,
+  pendingProvider,
+  providerFailure,
+  onContinueWithProvider,
   inviteUsed,
   inviter,
   onFieldFocus,
@@ -46,6 +67,9 @@ export function AccountFields({
   notice: string | null;
   submitting: boolean;
   onForgotPassword: () => void;
+  pendingProvider: OAuthProvider | null;
+  providerFailure: ProviderFailure | null;
+  onContinueWithProvider: (provider: OAuthProvider) => void;
   inviteUsed: boolean;
   inviter: ReferrerProfileDto | null;
   /** Both fields report focus, so the keyboard handling can tell a swap from a dismissal. */
@@ -59,6 +83,7 @@ export function AccountFields({
   const showForm = loggingIn || !inviteUsed;
   const emailValid = EMAIL_PATTERN.test(email.trim());
   const ready = emailValid && password.length > 0;
+  const busy = submitting || pendingProvider !== null;
   const heading =
     !loggingIn && inviteUsed
       ? "This invite link has already been used."
@@ -96,6 +121,53 @@ export function AccountFields({
 
       {showForm && (
         <>
+          {loggingIn && (
+            <>
+              {PROVIDERS.map((provider) => (
+                <Button
+                  key={provider}
+                  color={ButtonColor.White}
+                  size={ButtonSize.Custom}
+                  className="min-h-12 gap-2.5 rounded-lg border-transparent py-3.5"
+                  onPress={() => onContinueWithProvider(provider)}
+                  disabled={busy}
+                  loading={pendingProvider === provider}
+                >
+                  <OAuthProviderIcon provider={provider} />
+                  <Text
+                    weight={FontWeight.Medium}
+                    className="text-zinc-900"
+                    style={{ fontSize: scale.button }}
+                  >
+                    Continue with {OAUTH_PROVIDER_LABEL[provider]}
+                  </Text>
+                </Button>
+              ))}
+
+              {providerFailure && (
+                <Text
+                  className={FAILURE_INK[providerFailure.tone]}
+                  weight={FontWeight.Medium}
+                  style={{ fontSize: scale.caption }}
+                  accessibilityRole="alert"
+                >
+                  {providerFailure.message}
+                </Text>
+              )}
+
+              <View className="flex-row items-center gap-3 py-1">
+                <View className="h-px flex-1 bg-white/40" />
+                <Text
+                  className="text-white/80"
+                  style={{ fontSize: scale.caption }}
+                >
+                  or continue with email
+                </Text>
+                <View className="h-px flex-1 bg-white/40" />
+              </View>
+            </>
+          )}
+
           <TextInput
             className={FIELD}
             placeholder="Email"
@@ -107,7 +179,6 @@ export function AccountFields({
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
-            autoFocus
             accessibilityLabel="Email"
             onFocus={onFieldFocus}
             onBlur={onFieldBlur}
@@ -156,7 +227,7 @@ export function AccountFields({
             size={ButtonSize.Custom}
             className="min-h-12 gap-2 rounded-lg border-transparent py-3.5"
             onPress={onSubmit}
-            disabled={!ready || submitting}
+            disabled={!ready || busy}
             loading={submitting}
             testID="vr-onboarding-account-submit"
           >
@@ -176,7 +247,7 @@ export function AccountFields({
 
       {loggingIn && (
         <View className="flex-row items-center gap-4">
-          <Pressable onPress={onForgotPassword} disabled={submitting}>
+          <Pressable onPress={onForgotPassword} disabled={busy}>
             <Text
               className="text-white/80 underline"
               style={{ fontSize: scale.caption }}

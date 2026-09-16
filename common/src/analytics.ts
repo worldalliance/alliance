@@ -119,6 +119,7 @@ export enum ExceptionEvent {
   RequestFailed = "request_failed",
   ClearSessionTokensFailed = "clear_session_tokens_failed",
   SessionLoadFailed = "session_load_failed",
+  OAuthSignInFailed = "oauth_sign_in_failed",
 }
 
 export const SLACK_PROPERTY = "send_to_slack";
@@ -211,4 +212,5 @@ export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   [ExceptionEvent.RequestFailed]: false,
   [ExceptionEvent.ClearSessionTokensFailed]: true,
   [ExceptionEvent.SessionLoadFailed]: false,
+  [ExceptionEvent.OAuthSignInFailed]: true,
 };
