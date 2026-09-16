@@ -25,6 +25,8 @@
 - `OAuthError.Expired` is new in `common/src/oauth.ts`. Web never emits it but its message record needs an entry.
 - The callback treats any state whose `origin` isn't `app` as a web flow, cookie check included. A state minted before this deploy has no `origin`, so it finishes as the web flow it is.
 - The redeem endpoint answers `failed` when the handoff's user no longer exists.
+- The server accepts a native id token more than once. On Android, `@react-native-google-signin/google-signin` 16.1.5 signs in through Play services' legacy `GoogleSignInClient`, which is expected to return the same cached id token until it expires (not yet checked on a device). Refusing a repeat would then fail a member who logs out and back in within the hour, and every retry after it. The replay it would prevent exposes nothing new: the same response carries a 1-day access token and a 30-day refresh token, and the server logs no request bodies.
+- Neither native id token carries a nonce. The app would send it alongside the token it is stamped into, leaving the server to compare a value to itself, and `@react-native-google-signin/google-signin` has no nonce outside its paid tier anyway.
 
 ## Login surface
 

@@ -826,6 +826,26 @@ export type ResetPasswordDto = {
 
 export type OAuthIntent = 'authenticate' | 'link';
 
+export type MobileIdentityTokenDto = {
+    /**
+     * The id token the provider's native SDK issued.
+     */
+    identityToken: string;
+    guestToken?: string;
+};
+
+export type SessionTokensDto = {
+    access_token: string;
+    refresh_token: string;
+};
+
+export type OAuthError = 'cancelled' | 'failed' | 'no_account' | 'email_not_verified' | 'claimed_by_another_account' | 'invite_required' | 'last_sign_in_method' | 'provider_already_connected';
+
+export type MobileOAuthSignInDto = {
+    session?: SessionTokensDto;
+    error?: OAuthError;
+};
+
 export type OAuthCallbackDto = {
     code?: string;
     state?: string;
@@ -4261,6 +4281,30 @@ export type OAuthRedirectToProviderResponses = {
 };
 
 export type OAuthRedirectToProviderResponse = OAuthRedirectToProviderResponses[keyof OAuthRedirectToProviderResponses];
+
+export type OAuthSignInWithIdentityTokenData = {
+    body: MobileIdentityTokenDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/native';
+};
+
+export type OAuthSignInWithIdentityTokenErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type OAuthSignInWithIdentityTokenError = OAuthSignInWithIdentityTokenErrors[keyof OAuthSignInWithIdentityTokenErrors];
+
+export type OAuthSignInWithIdentityTokenResponses = {
+    200: MobileOAuthSignInDto;
+};
+
+export type OAuthSignInWithIdentityTokenResponse = OAuthSignInWithIdentityTokenResponses[keyof OAuthSignInWithIdentityTokenResponses];
 
 export type OAuthCallbackData = {
     body?: never;

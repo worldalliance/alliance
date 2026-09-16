@@ -7,6 +7,7 @@ import {
 import { R } from "@alliance/common/result";
 import { BadRequestException } from "@nestjs/common";
 import { AuthService } from "src/auth/auth.service";
+import { Guest } from "src/auth/entities/guest.entity";
 import { AppleOAuthClient } from "src/auth/oauth/apple-oauth.client";
 import { GoogleOAuthClient } from "src/auth/oauth/google-oauth.client";
 import { OAuthAuthService } from "src/auth/oauth/oauth-auth.service";
@@ -566,6 +567,143 @@ describe("OAuth sign-in (e2e)", () => {
 
         expect(statuses.sort()).toEqual([200, 400]);
       }
+    });
+  });
+  describe("the mobile app", () => {
+    const users = () => ctx.dataSource.getRepository(User);
+
+    const nativeSignIn = async (identityToken = "valid") =>
+      (await client().post(path("native")).send({ identityToken }).expect(200))
+        .body;
+
+    const sessionUser = async (accessToken: string) =>
+      (
+        await client()
+          .get("/auth/me")
+          .set("Authorization", `Bearer ${accessToken}`)
+          .expect(200)
+      ).body.user;
+
+    describe("with a native id token", () => {
+      it("signs in to the account the identity is connected to", async () => {
+        const member = await freshMember();
+        profile = {
+          ...profile,
+          subject: `native-${member.id}`,
+          email: member.email,
+        };
+        await nativeSignIn();
+
+        // Apple hides the address behind a relay whenever the member asks,
+        // and a connected identity still gets in.
+        profile = { ...profile, email: "relay@privaterelay.appleid.com" };
+        const signedIn = await nativeSignIn();
+
+        expect((await sessionUser(signedIn.session.access_token)).id).toBe(
+          member.id,
+        );
+      });
+
+      it("accepts an id token it has already accepted", async () => {
+        const member = await freshMember();
+        profile = {
+          ...profile,
+          subject: `native-again-${member.id}`,
+          email: member.email,
+        };
+        await nativeSignIn();
+
+        const signedIn = await nativeSignIn();
+
+        expect((await sessionUser(signedIn.session.access_token)).id).toBe(
+          member.id,
+        );
+      });
+
+      it("connects a verified address that matches and signs in", async () => {
+        const member = await freshMember();
+        profile = {
+          ...profile,
+          subject: `native-match-${member.id}`,
+          email: member.email,
+        };
+
+        const signedIn = await nativeSignIn();
+
+        const user = await sessionUser(signedIn.session.access_token);
+        expect(user.id).toBe(member.id);
+        expect(linkedEmails(user)).toEqual({ google: member.email });
+      });
+
+      it("refuses an address the provider has not verified", async () => {
+        const member = await freshMember();
+        profile = {
+          ...profile,
+          subject: `native-unverified-${member.id}`,
+          email: member.email,
+          emailVerified: false,
+        };
+
+        expect(await nativeSignIn()).toEqual({
+          error: OAuthError.EmailNotVerified,
+        });
+      });
+
+      it("turns away an address with no account and creates none", async () => {
+        profile = {
+          ...profile,
+          subject: "native-stranger",
+          email: "native-stranger@example.com",
+        };
+
+        expect(await nativeSignIn()).toEqual({ error: OAuthError.NoAccount });
+        expect(await users().findOneBy({ email: profile.email })).toBeNull();
+      });
+
+      it("merges the guest the app carried into the member", async () => {
+        const member = await freshMember();
+        profile = {
+          ...profile,
+          subject: `native-guest-${member.id}`,
+          email: member.email,
+        };
+        const { guestId, guestToken } = await ctx.app
+          .get(AuthService)
+          .createGuestSession();
+
+        await client()
+          .post(path("native"))
+          .send({ identityToken: "valid", guestToken })
+          .expect(200);
+
+        const guest = await ctx.dataSource.getRepository(Guest).findOneOrFail({
+          where: { id: guestId },
+          relations: { linkedUser: true },
+        });
+        expect(guest.linkedUser?.id).toBe(member.id);
+      });
+
+      it("reports a second identity from a provider the account already has", async () => {
+        const member = await freshMember();
+        profile = {
+          ...profile,
+          subject: `native-first-${member.id}`,
+          email: member.email,
+        };
+        await nativeSignIn();
+
+        profile = { ...profile, subject: `native-second-${member.id}` };
+
+        expect(await nativeSignIn()).toEqual({
+          error: OAuthError.ProviderAlreadyConnected,
+        });
+      });
+
+      it("fails a token the provider did not sign", async () => {
+        expect(await nativeSignIn("forged")).toEqual({
+          error: OAuthError.Failed,
+        });
+      });
     });
   });
 });
