@@ -40,6 +40,8 @@ export enum OAuthError {
   ProviderAlreadyConnected = "provider_already_connected",
 }
 
+export const MOBILE_OAUTH_RETURN_PATH = "/mobile/oauth-callback";
+
 export const parseOAuthProvider = (value: unknown): OAuthProvider | null =>
   z.enum(OAuthProvider).safeParse(value).data ?? null;
 

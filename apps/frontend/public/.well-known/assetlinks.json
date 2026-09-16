@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.alliance.alliancemobile",
+      "sha256_cert_fingerprints": [
+        "EF:D3:34:5F:20:1A:07:06:5B:5E:AE:1C:9F:DF:DA:BE:9C:8E:B1:43:3A:92:CB:4C:F6:AF:B8:05:38:A5:3A:E9",
+        "A3:ED:1A:B6:F6:4C:4F:7D:F7:F4:04:F6:AC:8D:B6:4C:3B:C0:10:6F:9A:D7:B0:FB:D6:A1:01:4A:30:C4:C2:7E"
+      ]
+    }
+  }
+]
