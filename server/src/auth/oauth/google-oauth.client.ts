@@ -73,6 +73,7 @@ export class GoogleOAuthClient implements OAuthClient {
         idToken: identityToken,
         audience: this.config().clientId,
       }),
+      () => new Error("Google id token rejected"),
     );
     if (!ticket.ok) {
       return ticket;
