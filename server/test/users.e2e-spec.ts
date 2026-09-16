@@ -2396,12 +2396,12 @@ describe("Users (e2e)", () => {
       await request(ctx.app.getHttpServer())
         .post("/user/verifyEmail")
         .send({ token: userBToken })
-        .expect(401);
+        .expect(400);
 
       expect(await isVerified(userBId)).toBe(false);
     });
 
-    it("refuses an expired verify-email token with 401", async () => {
+    it("refuses an expired verify-email token with 400", async () => {
       const expired = ctx.jwtService.sign(
         { sub: userBId, tokenType: JWTTokenType.verifyEmail },
         { secret: process.env.JWT_SECRET, expiresIn: "-1s" },
@@ -2409,14 +2409,22 @@ describe("Users (e2e)", () => {
       await request(ctx.app.getHttpServer())
         .post("/user/verifyEmail")
         .send({ token: expired })
-        .expect(401);
+        .expect(400);
     });
 
-    it("refuses a malformed verify-email token with 401", async () => {
+    it("refuses a malformed verify-email token with 400", async () => {
       await request(ctx.app.getHttpServer())
         .post("/user/verifyEmail")
         .send({ token: "not-a-jwt" })
-        .expect(401);
+        .expect(400);
+    });
+
+    it("refuses a verify-email token for a deleted user with 400", async () => {
+      const token = await userService.getVerifyEmailToken(999_999_999);
+      await request(ctx.app.getHttpServer())
+        .post("/user/verifyEmail")
+        .send({ token })
+        .expect(400);
     });
 
     it("accepts a verify-email token, minted before or after the type landed", async () => {
