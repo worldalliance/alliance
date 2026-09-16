@@ -73,6 +73,50 @@ export class MobileIdentityTokenDto {
   guestToken?: string;
 }
 
+export class MobileOAuthHandoffDto {
+  @ApiProperty()
+  @IsDefined()
+  @IsString()
+  @IsNotEmpty()
+  handoff: string;
+
+  @ApiProperty()
+  @IsDefined()
+  @IsString()
+  @IsNotEmpty()
+  proof: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  guestToken?: string;
+}
+
+export type MobileOAuthBrowserSession = {
+  url: string;
+  proof: string;
+  returnTo: string;
+};
+
+export class MobileOAuthBrowserSessionDto {
+  @ApiProperty({ description: "The provider's consent screen." })
+  url: string;
+
+  @ApiProperty({ description: "Sent back with the handoff to redeem it." })
+  proof: string;
+
+  @ApiProperty({
+    description: "The link the browser session comes back to the app on.",
+  })
+  returnTo: string;
+
+  constructor(input: MobileOAuthBrowserSession) {
+    this.url = input.url;
+    this.proof = input.proof;
+    this.returnTo = input.returnTo;
+  }
+}
+
 export type SessionTokens = {
   access_token: string;
   refresh_token: string;

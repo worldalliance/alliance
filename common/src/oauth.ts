@@ -38,9 +38,13 @@ export enum OAuthError {
   InviteRequired = "invite_required",
   LastSignInMethod = "last_sign_in_method",
   ProviderAlreadyConnected = "provider_already_connected",
+  Expired = "expired",
 }
 
+export const MOBILE_OAUTH_RETURN_URL = "alliance://oauth-callback";
 export const MOBILE_OAUTH_RETURN_PATH = "/mobile/oauth-callback";
+export const MOBILE_OAUTH_HANDOFF_PARAM = "handoff";
+export const MOBILE_OAUTH_ERROR_PARAM = "error";
 
 export const parseOAuthProvider = (value: unknown): OAuthProvider | null =>
   z.enum(OAuthProvider).safeParse(value).data ?? null;
@@ -60,6 +64,8 @@ const ERROR_MESSAGE: Record<OAuthError, (label: string) => string> = {
     `${label} is the only way into your account. Set a password or connect another account first.`,
   [OAuthError.ProviderAlreadyConnected]: (label) =>
     `A different ${label} account is already connected to your Alliance account. Disconnect that one first.`,
+  [OAuthError.Expired]: (label) =>
+    `${label} sign-in took too long. Please try again.`,
 };
 
 export function oauthErrorMessage(
