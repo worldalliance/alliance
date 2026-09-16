@@ -7,12 +7,15 @@ interface FormModalProps {
   visible: boolean;
   onClose: () => void;
   animationType?: "none" | "fade" | "slide";
+  /** Off for content holding its own virtualized list. */
+  scrolls?: boolean;
 }
 
 function FormModal({
   visible,
   onClose,
   animationType = "fade",
+  scrolls = true,
   children,
 }: PropsWithChildren<FormModalProps>) {
   const insets = useSafeAreaInsets();
@@ -29,13 +32,17 @@ function FormModal({
           {/* Prevent backdrop press from closing when tapping content */}
           <Pressable onPress={(e) => e.stopPropagation()}>
             <View className="bg-white rounded-t-2xl px-5 pt-5 pb-15">
-              <ScrollView
-                keyboardShouldPersistTaps="handled"
-                bounces={false}
-                showsVerticalScrollIndicator={false}
-              >
-                {children}
-              </ScrollView>
+              {scrolls ? (
+                <ScrollView
+                  keyboardShouldPersistTaps="handled"
+                  bounces={false}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {children}
+                </ScrollView>
+              ) : (
+                children
+              )}
             </View>
           </Pressable>
         </KeyboardAvoidingView>
