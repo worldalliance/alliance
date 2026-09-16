@@ -458,7 +458,7 @@ export class UserService {
     relations?: Relations<User>,
   ): Promise<User | null> {
     return this.userRepository.findOne({
-      where: { email: ILike(email) },
+      where: { email },
       relations,
     });
   }

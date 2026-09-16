@@ -60,6 +60,13 @@ reports no schema changes afterward. The local database is staging, where
 `sync_prod_to_staging.sh` rewrites every address to `user<id>@example.com`, so
 it carries no real case distribution.
 
+## `findOneByEmail` matches with plain equality
+
+`where: { email }`. The column is `citext`, so the match still ignores case, and
+plain equality has no wildcards, so `_` and `%` in an address match only
+themselves. It lands after the `citext` commit; against `varchar` it would
+turn sign-in case-sensitive.
+
 ## `oauth_account.email` is left alone
 
 Accounts are found by `provider` + `subject`, not by email, and the account's

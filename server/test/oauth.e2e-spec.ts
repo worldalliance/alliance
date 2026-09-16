@@ -369,6 +369,30 @@ describe("OAuth sign-in (e2e)", () => {
         await login(member.email).expect(200);
       },
     );
+
+    it.each(["_", "%"])(
+      "is not linked from an address with %p in its place",
+      async (wildcard) => {
+        const member = await freshMember({ emailVerified: false });
+        profile = {
+          ...profile,
+          subject: `pattern-${member.id}`,
+          email: member.email.replace("-", wildcard),
+        };
+
+        const { finished } = await signIn();
+
+        expect(errorOf(finished.headers.location)).toBe(OAuthError.NoAccount);
+        const untouched = await ctx.dataSource
+          .getRepository(User)
+          .findOneOrFail({
+            where: { id: member.id },
+            relations: { oauthAccounts: true },
+          });
+        expect(untouched.emailVerified).toBe(false);
+        expect(untouched.oauthAccounts).toEqual([]);
+      },
+    );
   });
 
   describe("a second account from one provider", () => {

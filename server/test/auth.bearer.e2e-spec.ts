@@ -618,7 +618,12 @@ describe("Auth (e2e)", () => {
     );
   });
 
-  describe("email case", () => {
+  describe("email case and exact matching", () => {
+    const signIn = (email: string) =>
+      request(ctx.app.getHttpServer())
+        .post("/auth/login")
+        .send({ email, password: "password", mode: "header" });
+
     const register = async (params: {
       email: string;
       name: string;
@@ -675,6 +680,49 @@ describe("Auth (e2e)", () => {
         ),
       ).rejects.toThrow(/duplicate key value violates unique constraint/);
     });
+
+    it("signs in a member who typed their address in a different case", async () => {
+      await userRepository.save(
+        userRepository.create({
+          email: "mixedcase@test.com",
+          password: "password",
+          name: "Mixed Case",
+        }),
+      );
+
+      await signIn("MixedCase@Test.COM").expect(200);
+    });
+
+    it("refuses a second account differing only in case", async () => {
+      await userRepository.save(
+        userRepository.create({
+          email: "taken@test.com",
+          password: "password",
+          name: "Taken",
+        }),
+      );
+
+      await register({
+        email: "TAKEN@test.com",
+        name: "Impostor",
+        status: 400,
+      });
+    });
+
+    it.each(["a_b@test.com", "a%@test.com"])(
+      "treats %p as an address, not a pattern",
+      async (email) => {
+        await userRepository.save(
+          userRepository.create({
+            email: "axb@test.com",
+            password: "password",
+            name: "Wildcard Bait",
+          }),
+        );
+
+        await signIn(email).expect(401);
+      },
+    );
   });
 
   afterEach(async () => {
