@@ -148,7 +148,7 @@ const guideExtras: Record<GuideSectionKind, ReactNode> = {
       <ContractCard caption={GUIDE_CONTRACT_CAPTION} terms />
     </div>
   ),
-  [GuideSectionKind.Actions]: (
+  [GuideSectionKind.Projects]: (
     <div className="flex flex-col gap-6">
       {/* The two screens a member sees: the action, then what came of it. */}
       <div className="grid gap-3 sm:grid-cols-3">

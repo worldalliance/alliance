@@ -6,7 +6,7 @@
 export enum GuideSectionKind {
   Introduction = "introduction",
   Structure = "structure",
-  Actions = "actions",
+  Projects = "projects",
   Priorities = "priorities",
   Roadmap = "roadmap",
   Resources = "resources",
@@ -52,19 +52,21 @@ We depend on members reliably completing the tasks they are assigned. Since we k
 New members sign a **membership contract** that sets a clear expectation of reliability. Once they sign a contract, we start to assign them tasks. If a member does not complete the tasks they are assigned, we automatically suspend their contract and no longer assign them tasks. They can re-sign the contract at any time.
 `,
   },
-  [GuideSectionKind.Actions]: {
-    label: "Actions",
+  [GuideSectionKind.Projects]: {
+    label: "Projects",
     markdown: `
-Planning actions is a creative, open-ended process that searches for levers of change which members can pull.
+The office plans projects to advance our priorities, and breaks them down into step-by-step tasks that members can complete.
 
-When ideating for and developing an action, we weigh many considerations. For instance:
+Planning projects is a creative, open-ended process that searches for levers of change which members can pull.
 
-- How does the action relate to the priorities of the Alliance?
-- Will the action produce a tangible impact on the world?
-- Will the action make effective use of members' time?
-- Will the action have any compounding effects – for instance, by providing an educational opportunity or growing the Alliance's network?
+When ideating for and developing a project, we weigh many considerations. For instance:
 
-Examples of actions we have taken:
+- How does the project relate to the priorities of the Alliance?
+- Will the project produce a tangible impact on the world?
+- Will the project make effective use of members' time?
+- Will the project have any compounding effects – for instance, by providing an educational opportunity or growing the Alliance's network?
+
+Examples of projects we have completed:
 `,
   },
   [GuideSectionKind.Priorities]: {
@@ -88,7 +90,7 @@ Once we are confident in our processes and structures, we will launch publicly. 
 
 As the Alliance grows, we plan to bring together experts from diverse fields to make increasingly impactful, long-term plans. Our online platform will enable direct communication between these experts and millions of members to enact rapid, large-scale change.
 
-It is difficult to know exactly which actions we will take as we grow. However, a few broad categories of actions include:
+It is difficult to know exactly which projects we will undertake as we grow. However, a few broad categories of projects include:
 `,
   },
   [GuideSectionKind.Resources]: {
@@ -100,7 +102,7 @@ It is difficult to know exactly which actions we will take as we grow. However, 
 export const GUIDE_SECTION_ORDER: GuideSectionKind[] = [
   GuideSectionKind.Introduction,
   GuideSectionKind.Structure,
-  GuideSectionKind.Actions,
+  GuideSectionKind.Projects,
   GuideSectionKind.Priorities,
   GuideSectionKind.Roadmap,
   GuideSectionKind.Resources,
