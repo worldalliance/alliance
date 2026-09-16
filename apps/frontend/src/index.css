@@ -70,6 +70,8 @@
 }
 
 :root {
+  --navbar-top-bar-height: 0px;
+  --nav-width: 0px;
   --site-primary: #081e40;
   --site-primary-hover: #0d2c5c;
   --site-panel: #11301f;
