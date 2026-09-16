@@ -11,7 +11,7 @@ import {
 import { GrowthMilestones } from "../graphics/GrowthMilestones";
 import { PEOPLE_HREF, PROGRESS_HREF } from "../links";
 import { BandHeading } from "../PageShell";
-import { SectionSubtitle, SITE_COL, SiteArrow } from "../ui";
+import { SITE_COL, SiteArrow, SiteSubtitle } from "../ui";
 
 export function ModelSection() {
   const { data: memberCount } = useAllianceMemberCount();
@@ -21,7 +21,7 @@ export function ModelSection() {
       <div className={`${SITE_COL} flex flex-col gap-8`}>
         <div className="flex flex-col gap-3">
           <BandHeading>{MODEL_HEADLINE}</BandHeading>
-          <SectionSubtitle>
+          <SiteSubtitle>
             {GROWTH_HEADLINE_FAR_PARTS.lead}
             <Link
               to={PEOPLE_HREF}
@@ -30,7 +30,7 @@ export function ModelSection() {
               {GROWTH_HEADLINE_FAR_PARTS.link}
             </Link>
             {GROWTH_HEADLINE_FAR_PARTS.tail}
-          </SectionSubtitle>
+          </SiteSubtitle>
         </div>
         <div
           className="overflow-hidden bg-[var(--site-primary)] px-5 py-7 sm:px-18 sm:py-16"

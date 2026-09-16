@@ -2,7 +2,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { HERO_HEADLINE_PARTS, HERO_SUBHEAD } from "../content";
 import { ProductPair } from "../graphics/ProductPair";
 import { NAV_HEIGHT } from "../Navbar";
-import { DisplayHeading, DisplaySubtitle, SITE_COL } from "../ui";
+import { DisplayHeading, SITE_COL, SiteSubtitle, SubtitleSize } from "../ui";
 
 /**
  * Headline and subhead hold the left column, with the feed and an opened post
@@ -33,7 +33,9 @@ export function Hero() {
               {HERO_HEADLINE_PARTS.tail}
             </span>
           </DisplayHeading>
-          <DisplaySubtitle>{HERO_SUBHEAD}</DisplaySubtitle>
+          <SiteSubtitle size={SubtitleSize.Display}>
+            {HERO_SUBHEAD}
+          </SiteSubtitle>
         </div>
         <ProductPair className="min-[1020px]:w-[46%] min-[1020px]:shrink-0" />
       </div>

@@ -5,7 +5,7 @@ import { SiteFooter } from "./Footer";
 import { JoinCta } from "./JoinCta";
 import { NAV_HEIGHT, Navbar } from "./Navbar";
 import "./site.css";
-import { DisplayHeading, PageShellSubtitle, SITE_COL } from "./ui";
+import { DisplayHeading, SITE_COL, SiteSubtitle, SubtitleSize } from "./ui";
 
 /** The page root every public page sits inside. */
 export function SiteRoot({
@@ -133,7 +133,9 @@ function PageHeader({
           {title}
         </DisplayHeading>
         {subtitle && (
-          <PageShellSubtitle onDark={onDark}>{subtitle}</PageShellSubtitle>
+          <SiteSubtitle size={SubtitleSize.Page} onDark={onDark}>
+            {subtitle}
+          </SiteSubtitle>
         )}
       </div>
     </header>

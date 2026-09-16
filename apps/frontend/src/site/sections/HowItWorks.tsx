@@ -2,7 +2,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { WORK_HEADLINE, WORK_SUBHEAD } from "../content";
 import { CommitCard, TaskCard, UpdateCard } from "../graphics/ProductCards";
 import { BandHeading } from "../PageShell";
-import { SectionSubtitle, SITE_COL } from "../ui";
+import { SITE_COL, SiteSubtitle } from "../ui";
 
 export function HowItWorks() {
   return (
@@ -10,7 +10,7 @@ export function HowItWorks() {
       <div className={cn(SITE_COL, "flex flex-col gap-6")}>
         <div className="flex flex-col gap-3">
           <BandHeading>{WORK_HEADLINE}</BandHeading>
-          <SectionSubtitle>{WORK_SUBHEAD}</SectionSubtitle>
+          <SiteSubtitle>{WORK_SUBHEAD}</SiteSubtitle>
         </div>
         <div className="grid gap-4 min-[1020px]:grid-cols-3">
           <CommitCard />

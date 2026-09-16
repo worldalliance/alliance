@@ -352,29 +352,6 @@ export function SiteField({
   );
 }
 
-/** Section h2. Body face at regular weight, matching the priority titles. */
-export function SectionHeading({
-  children,
-  className,
-  onDark = false,
-}: {
-  children: ReactNode;
-  className?: string;
-  onDark?: boolean;
-}) {
-  return (
-    <h2
-      className={cn(
-        "text-[1.7rem] leading-tight font-normal sm:text-[2rem]",
-        onDark ? "text-white" : "text-[var(--site-primary)]",
-        className,
-      )}
-    >
-      {children}
-    </h2>
-  );
-}
-
 /** The oversized display heading, which every page uses as its h1. */
 export function DisplayHeading({
   children,
@@ -413,65 +390,49 @@ export function DisplayHeading({
 }
 
 /** Companion to the hero's DisplayHeading. Landing page only. */
-export function DisplaySubtitle({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <p
-      className={cn(
-        "max-w-xl text-lg leading-snug text-(--site-ink) sm:text-2xl",
-        className,
-      )}
-    >
-      {children}
-    </p>
-  );
+/** Section sits under a BandHeading, Page under a page's h1, Display under a hero. */
+export enum SubtitleSize {
+  Section = "section",
+  Page = "page",
+  Display = "display",
 }
 
-/** Under a BandHeading on landing, people, partner, and similar sections. */
-export function SectionSubtitle({
+const subtitleClasses: Record<
+  SubtitleSize,
+  { base: string; onLight: string; onDark: string }
+> = {
+  [SubtitleSize.Section]: {
+    base: "max-w-[50.4rem] text-xl leading-snug sm:text-2xl",
+    onLight: "text-(--site-ink)/90",
+    onDark: "text-white/75",
+  },
+  [SubtitleSize.Page]: {
+    base: "max-w-2xl text-lg sm:text-xl md:text-2xl",
+    onLight: "text-(--site-ink)/90",
+    onDark: "text-white/90",
+  },
+  [SubtitleSize.Display]: {
+    base: "max-w-xl text-lg leading-snug sm:text-2xl",
+    onLight: "text-(--site-ink)",
+    onDark: "text-white",
+  },
+};
+
+export function SiteSubtitle({
   children,
   className,
   onDark = false,
+  size = SubtitleSize.Section,
 }: {
   children: ReactNode;
   className?: string;
   onDark?: boolean;
+  size?: SubtitleSize;
 }) {
+  const tone = subtitleClasses[size];
   return (
     <p
-      className={cn(
-        "max-w-[50.4rem] text-xl leading-snug sm:text-2xl",
-        onDark ? "text-white/75" : "text-(--site-ink)/90",
-        className,
-      )}
-    >
-      {children}
-    </p>
-  );
-}
-
-/** The line under a page's DisplayHeading h1. */
-export function PageShellSubtitle({
-  children,
-  className,
-  onDark = false,
-}: {
-  children: ReactNode;
-  className?: string;
-  onDark?: boolean;
-}) {
-  return (
-    <p
-      className={cn(
-        "max-w-2xl text-lg sm:text-xl md:text-2xl",
-        onDark ? "text-white/90" : "text-(--site-ink)/90",
-        className,
-      )}
+      className={cn(tone.base, onDark ? tone.onDark : tone.onLight, className)}
     >
       {children}
     </p>

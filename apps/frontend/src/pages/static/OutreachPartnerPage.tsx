@@ -19,11 +19,11 @@ import {
   PARTNER_TITLE,
 } from "../../site/partnerContent";
 import {
-  SectionSubtitle,
   SITE_INPUT,
   SITE_INPUT_STYLE,
   SITE_SUBMIT,
   SiteField,
+  SiteSubtitle,
 } from "../../site/ui";
 
 export function meta() {
@@ -278,7 +278,7 @@ function PartnerForm() {
           <BandHeading size={BandHeadingSize.Section}>
             {PARTNER_FORM_TITLE}
           </BandHeading>
-          <SectionSubtitle>{PARTNER_FORM_BODY}</SectionSubtitle>
+          <SiteSubtitle>{PARTNER_FORM_BODY}</SiteSubtitle>
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">

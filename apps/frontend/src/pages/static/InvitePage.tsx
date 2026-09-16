@@ -20,9 +20,10 @@ import { SiteRoot } from "../../site/PageShell";
 import { LandingBody } from "../../site/sections/LandingBody";
 import {
   DisplayHeading,
-  DisplaySubtitle,
   SITE_COL,
   SiteButton,
+  SiteSubtitle,
+  SubtitleSize,
 } from "../../site/ui";
 
 export function meta() {
@@ -85,9 +86,12 @@ const InvitePage: React.FC = () => {
             >
               Invalid invite
             </DisplayHeading>
-            <DisplaySubtitle className="mx-auto text-center">
+            <SiteSubtitle
+              size={SubtitleSize.Display}
+              className="mx-auto text-center"
+            >
               This invite link is missing a code.
-            </DisplaySubtitle>
+            </SiteSubtitle>
           </div>
         </section>
         <SiteFooter />
@@ -144,9 +148,12 @@ const InvitePage: React.FC = () => {
             >
               Invitation to the Alliance
             </DisplayHeading>
-            <DisplaySubtitle className="mx-auto text-center">
+            <SiteSubtitle
+              size={SubtitleSize.Display}
+              className="mx-auto text-center"
+            >
               {HERO_SUBHEAD}
-            </DisplaySubtitle>
+            </SiteSubtitle>
           </div>
           <p className="max-w-xl text-lg leading-snug text-[var(--site-ink)]/80 sm:text-xl">
             {inviteeName ? `Hi ${inviteeName}, ` : ""}I invite you to join me as

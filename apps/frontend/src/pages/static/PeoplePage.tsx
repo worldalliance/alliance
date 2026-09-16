@@ -18,7 +18,7 @@ import {
 } from "../../site/PageShell";
 import { usePublicMembers, useStaffDirectory } from "../../site/data";
 import { experts } from "../../site/peopleContent";
-import { SectionSubtitle, SitePicture } from "../../site/ui";
+import { SitePicture, SiteSubtitle } from "../../site/ui";
 
 export function meta() {
   return socialPreviewMeta({
@@ -61,10 +61,10 @@ function ExpertGroup() {
         <BandHeading onDark size={BandHeadingSize.Section}>
           Expert group
         </BandHeading>
-        <SectionSubtitle onDark>
+        <SiteSubtitle onDark>
           Experts occasionally lend time, knowledge, or resources to the
           Alliance.
-        </SectionSubtitle>
+        </SiteSubtitle>
       </div>
       <div className="grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
         {experts.map((expert) => (
@@ -132,10 +132,10 @@ function Office() {
     <PageBand id="office" className="flex flex-col gap-10">
       <div className="flex flex-col gap-3">
         <BandHeading size={BandHeadingSize.Section}>Office</BandHeading>
-        <SectionSubtitle>
+        <SiteSubtitle>
           Our staff team plans actions, creates infrastructure, and manages the
           Alliance.
-        </SectionSubtitle>
+        </SiteSubtitle>
       </div>
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-16">
         <figure className="flex flex-col gap-3">
@@ -196,9 +196,9 @@ function MemberDirectory({ memberCount }: { memberCount: number | undefined }) {
       <div className="flex flex-col gap-3">
         <BandHeading size={BandHeadingSize.Section}>Members</BandHeading>
         {memberCount !== undefined && (
-          <SectionSubtitle>
+          <SiteSubtitle>
             {`The Alliance has ${memberCount} ${memberCount === 1 ? "member" : "members"}. Membership is currently by invitation only.`}
-          </SectionSubtitle>
+          </SiteSubtitle>
         )}
       </div>
       {isPending ? (
