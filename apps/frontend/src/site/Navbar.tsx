@@ -83,8 +83,9 @@ export function Navbar({
         "fixed inset-x-0 top-0 z-[90] w-full",
         "transition-[background-color,padding,box-shadow] duration-300",
         scrolled || menuOpen
-          ? "bg-[var(--site-surface)] py-3 shadow-[0_1px_0_rgba(0,0,0,0.07)]"
-          : "bg-transparent py-5 lg:py-7",
+          ? "bg-[var(--site-surface)] shadow-[0_1px_0_rgba(0,0,0,0.07)]"
+          : "bg-transparent",
+        scrolled ? "py-3" : "py-5 lg:py-7",
         light ? "text-white" : "text-[var(--site-ink)]",
       )}
     >
@@ -217,7 +218,7 @@ export function Navbar({
 
       {menuOpen && (
         <nav
-          className="fixed inset-x-0 top-[62px] bottom-0 z-[89] flex flex-col gap-2 overflow-y-auto bg-[var(--site-surface)] px-5 pt-6 pb-12 md:hidden"
+          className="absolute inset-x-0 top-full z-[89] flex h-[calc(100dvh-100%)] flex-col gap-2 overflow-y-auto bg-[var(--site-surface)] px-5 pt-6 pb-12 md:hidden"
           aria-label="Primary"
         >
           {NAV_LINKS.map((link) => (
