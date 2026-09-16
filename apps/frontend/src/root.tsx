@@ -1,3 +1,4 @@
+import { MOBILE_OAUTH_RETURN_PATH } from "@alliance/common/oauth";
 import { client } from "@alliance/shared/client/client.gen";
 import { registerAnalytics } from "@alliance/shared/lib/analytics";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
@@ -15,6 +16,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
 } from "react-router";
 import { Route } from "../.react-router/types/src/+types/root";
 import { HtmlBackgroundManager } from "./components/HtmlBackgroundManager";
@@ -108,6 +110,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   useNumberInputScrollGuard();
+  const { pathname } = useLocation();
 
   const inner = (
     <SiteAppProvider>
@@ -131,7 +134,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        {import.meta.env.PROD ? (
+        {/* PostHog records the full URL, and the mobile app's sign-in handoff
+            arrives in this page's query string. */}
+        {import.meta.env.PROD && pathname !== MOBILE_OAUTH_RETURN_PATH ? (
           <PostHogProvider
             apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY}
             options={options}
