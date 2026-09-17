@@ -1,4 +1,8 @@
-import { getParticipantState, isConversationAdmin } from "./messages";
+import {
+  canEditConversationInfo,
+  getParticipantState,
+  isConversationAdmin,
+} from "./messages";
 import { makeConversation, makeParticipant } from "./testFixtures";
 
 describe("isConversationAdmin", () => {
@@ -64,5 +68,47 @@ describe("getParticipantState", () => {
 
   it("is null with no conversation", () => {
     expect(getParticipantState(null, 1)).toBeNull();
+  });
+});
+
+describe("canEditConversationInfo", () => {
+  it("is true for an admin of a group", () => {
+    const conversation = makeConversation([
+      makeParticipant(1, "owner"),
+      makeParticipant(2, "member"),
+    ]);
+
+    expect(canEditConversationInfo(conversation, 1)).toBe(true);
+  });
+
+  it("is false for a member of a group", () => {
+    const conversation = makeConversation([
+      makeParticipant(1, "owner"),
+      makeParticipant(2, "member"),
+    ]);
+
+    expect(canEditConversationInfo(conversation, 2)).toBe(false);
+  });
+
+  it("is false for an admin of a community chat", () => {
+    const conversation = makeConversation(
+      [makeParticipant(1, "admin"), makeParticipant(2, "member")],
+      "community",
+    );
+
+    expect(canEditConversationInfo(conversation, 1)).toBe(false);
+  });
+
+  it("is false for a direct conversation", () => {
+    const conversation = makeConversation(
+      [makeParticipant(1, "admin"), makeParticipant(2, "member")],
+      "direct",
+    );
+
+    expect(canEditConversationInfo(conversation, 1)).toBe(false);
+  });
+
+  it("is false with no conversation", () => {
+    expect(canEditConversationInfo(null, 1)).toBe(false);
   });
 });

@@ -1,10 +1,8 @@
+import { ConversationType } from "@alliance/common/conversationType";
 import { ParticipantRole } from "@alliance/common/participantRole";
 import { Community } from "src/community/entities/community.entity";
 import { ConversationService } from "src/messaging/conversation.service";
-import {
-  Conversation,
-  ConversationType,
-} from "src/messaging/entities/conversation.entity";
+import { Conversation } from "src/messaging/entities/conversation.entity";
 import {
   Participant,
   ParticipantState,

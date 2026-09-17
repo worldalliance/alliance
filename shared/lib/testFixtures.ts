@@ -2,6 +2,7 @@ import { milliseconds } from "date-fns";
 import type {
   ActionEventDto,
   ConversationDto,
+  ConversationType,
   ParticipantDto,
   ParticipantRole,
   ProfileDto,
@@ -134,12 +135,13 @@ export function makeParticipant(
 
 export function makeConversation(
   participants: ParticipantDto[],
+  type: ConversationType = "multiple",
 ): ConversationDto {
   return {
     id: 1,
     createdAt: "2026-09-17T00:00:00.000Z",
     updatedAt: "2026-09-17T00:00:00.000Z",
-    type: "multiple",
+    type,
     title: "Group",
     participants,
     hasUnread: false,

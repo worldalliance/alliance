@@ -1,4 +1,8 @@
 import {
+  ConversationType,
+  conversationTypesWithEditableInfo,
+} from "@alliance/common/conversationType";
+import {
   ParticipantRole,
   rolesWithAdminPowers,
 } from "@alliance/common/participantRole";
@@ -27,16 +31,10 @@ import {
   UnreadMessageSummary,
   UpdateConversationDto,
 } from "./dto/messaging.dto";
-import { Conversation, ConversationType } from "./entities/conversation.entity";
+import { Conversation } from "./entities/conversation.entity";
 import { Message } from "./entities/message.entity";
 import { Participant, ParticipantState } from "./entities/participant.entity";
 import { MessagingEvents } from "./messaging.events";
-
-const conversationTypesWithEditableInfo: Record<ConversationType, boolean> = {
-  [ConversationType.Direct]: false,
-  [ConversationType.Multiple]: true,
-  [ConversationType.Community]: false,
-};
 
 @Injectable()
 export class ConversationService {
