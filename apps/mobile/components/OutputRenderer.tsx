@@ -17,6 +17,7 @@ import {
 } from "@alliance/shared/outputrenderer";
 import { parseVisibilityValidatorResults } from "@alliance/shared/parsed-dtos";
 import { cn } from "@alliance/shared/styles/util";
+import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import { useMemo } from "react";
 import { Image, View } from "react-native";
 import { getImageSource } from "../lib/config";
@@ -201,6 +202,7 @@ function OutputRenderer({
                   value={item.value}
                   disabled
                   isOutputView
+                  fieldContext={staticFieldContext}
                 />
               ) : (
                 renderFormattedOutputFieldValue(item)

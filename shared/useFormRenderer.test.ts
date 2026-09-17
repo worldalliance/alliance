@@ -311,6 +311,51 @@ describe("useFormVisibility", () => {
 
     expect(moves).toEqual([]);
   });
+
+  const noteSub: TextField = {
+    ...textField("note"),
+    requiredIfFormula: gatedOnYes,
+  };
+  const extraSub: TextField = {
+    ...textField("extra"),
+    visibleIfFormula: gatedOnYes,
+  };
+  const joinedOnYes = {
+    conditions: {
+      c1: { kind: "equals" as const, when: "joined", equals: "yes" },
+    },
+    formula: "c1",
+  };
+  const joinedSub: TextField = {
+    ...textField("since"),
+    visibleIfFormula: joinedOnYes,
+    requiredIfFormula: joinedOnYes,
+  };
+
+  it("reads a list row's conditions off that row's cells over the form's answers", () => {
+    const { result } = renderVisibility({
+      schema: schemaWith([
+        textField("joined"),
+        listField("people", [textField("gate"), noteSub, extraSub, joinedSub]),
+      ]),
+      formData: { joined: "yes" },
+    });
+    const answered = result.current.fieldContext.forRow({ gate: "yes" });
+    const blank = result.current.fieldContext.forRow({ gate: "no" });
+
+    expect(answered.isFieldRequired(noteSub)).toBe(true);
+    expect(blank.isFieldRequired(noteSub)).toBe(false);
+    expect(blank.isFieldRequired(joinedSub)).toBe(true);
+    expect(answered.visibleSubFields([noteSub, extraSub, joinedSub])).toEqual([
+      noteSub,
+      extraSub,
+      joinedSub,
+    ]);
+    expect(blank.visibleSubFields([noteSub, extraSub, joinedSub])).toEqual([
+      noteSub,
+      joinedSub,
+    ]);
+  });
 });
 
 function renderValidation(args: {

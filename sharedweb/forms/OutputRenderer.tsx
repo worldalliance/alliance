@@ -14,6 +14,7 @@ import {
 import { parseVisibilityValidatorResults } from "@alliance/shared/parsed-dtos";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
+import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import { useMemo, type ReactNode } from "react";
 import { imageSrcFromKey } from "../lib/imageSrc";
 import Card from "../ui/Card";
@@ -176,6 +177,7 @@ export function OutputRenderer({
                 value={item.value}
                 disabled
                 isOutputView
+                fieldContext={staticFieldContext}
               />
             </div>
           );

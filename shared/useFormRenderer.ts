@@ -20,6 +20,7 @@ import {
   type CityFieldValue,
   type FormSchema,
   type FormValue,
+  type ListSubField,
 } from "@alliance/common/forms/form-schema";
 import {
   emptyUserPropertyPresence,
@@ -29,7 +30,9 @@ import { resolveVariableValues } from "@alliance/common/forms/variables";
 import {
   isElementCurrentlyVisible as isElementCurrentlyVisibleShared,
   isFieldConditionallyRequired,
+  listRowData,
   stripHiddenAnswers,
+  visibleListSubFields,
   type ConditionExtras,
 } from "@alliance/common/forms/visibility";
 import { R } from "@alliance/common/result";
@@ -524,18 +527,55 @@ export function useVisibilityValidatorResults(args: {
   return readOnly ? readOnlyResults : results;
 }
 
+export type FieldConditionContext = {
+  isFieldRequired: (field: AnyField) => boolean;
+  forRow: (cells: Record<string, FormValue>) => ListRowContext;
+};
+
+/** A row's cells shadow the form's answers. */
+export type ListRowContext = FieldConditionContext & {
+  visibleSubFields: (subFields: ListSubField[]) => ListSubField[];
+};
+
+/** For a renderer with no answers to read. */
+export const staticFieldContext: ListRowContext = {
+  isFieldRequired: (field) => !!field.required,
+  visibleSubFields: (subFields) => subFields,
+  forRow: () => staticFieldContext,
+};
+
+function fieldContextFor(params: {
+  data: Record<string, FormValue>;
+  extras: ConditionExtras & { readOnly?: boolean };
+}): FieldConditionContext {
+  const { data, extras } = params;
+  return {
+    // Reads the same answers as `validateFieldValue`, so a required marker on
+    // the label agrees with what blocks submission and with the server's check.
+    isFieldRequired: (field) =>
+      isFieldConditionallyRequired(field, data, extras),
+    forRow: (cells) => ({
+      ...fieldContextFor({
+        data: listRowData({ data, row: cells }),
+        extras,
+      }),
+      visibleSubFields: (subFields) =>
+        visibleListSubFields({
+          subFields,
+          data,
+          row: cells,
+          extras,
+        }),
+    }),
+  };
+}
+
 export type FormVisibility = {
   visibilityExtras: ConditionExtras;
   effectiveFormData: Record<string, FormValue>;
   variableValues: ReturnType<typeof resolveVariableValues>;
-  isElementCurrentlyVisible: (
-    element: AnyField | DisplayBlock,
-    data?: Record<string, FormValue>,
-  ) => boolean;
-  isFieldCurrentlyRequired: (
-    field: AnyField,
-    data?: Record<string, FormValue>,
-  ) => boolean;
+  isElementCurrentlyVisible: (element: AnyField | DisplayBlock) => boolean;
+  fieldContext: FieldConditionContext;
   visiblePageIndices: number[];
   nextVisiblePageIndex: number | null;
   previousVisiblePageIndex: number | null;
@@ -654,28 +694,22 @@ export function useFormVisibility(args: {
   );
 
   const isElementCurrentlyVisible = useCallback(
-    (
-      element: AnyField | DisplayBlock,
-      data?: Record<string, FormValue>,
-    ): boolean =>
+    (element: AnyField | DisplayBlock): boolean =>
       isElementCurrentlyVisibleShared(
         element,
-        data ?? effectiveFormData,
+        effectiveFormData,
         visibilityExtrasReadOnly,
       ),
     [effectiveFormData, visibilityExtrasReadOnly],
   );
 
-  // Reads the same answers as `validateFieldValue`, so a required marker on the
-  // label agrees with what blocks submission and with the server's check.
-  const isFieldCurrentlyRequired = useCallback(
-    (field: AnyField, data?: Record<string, FormValue>): boolean =>
-      isFieldConditionallyRequired(
-        field,
-        data ?? effectiveFormData,
-        visibilityExtras,
-      ),
-    [effectiveFormData, visibilityExtras],
+  const fieldContext = useMemo(
+    () =>
+      fieldContextFor({
+        data: effectiveFormData,
+        extras: visibilityExtrasReadOnly,
+      }),
+    [effectiveFormData, visibilityExtrasReadOnly],
   );
 
   const visiblePageIndices = useMemo(
@@ -728,7 +762,7 @@ export function useFormVisibility(args: {
     effectiveFormData,
     variableValues,
     isElementCurrentlyVisible,
-    isFieldCurrentlyRequired,
+    fieldContext,
     visiblePageIndices,
     nextVisiblePageIndex,
     previousVisiblePageIndex,

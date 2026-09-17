@@ -1,4 +1,8 @@
-import type { FormSchema } from "@alliance/common/forms/form-schema";
+import type {
+  AnyField,
+  FormSchema,
+  TextField,
+} from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as uploadModule from "@alliance/shared/lib/uploadImageDataUri";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -73,6 +77,52 @@ const renderPreview = (schema: FormSchema) =>
     </QueryClientProvider>,
   );
 
+const yesIn = (when: string) => ({
+  conditions: { condition1: { kind: "equals" as const, when, equals: "yes" } },
+  formula: "condition1",
+});
+
+const peopleForm = (
+  noteConditions: Pick<TextField, "visibleIfFormula" | "requiredIfFormula">,
+  ...topLevel: AnyField[]
+): FormSchema => ({
+  pages: [
+    {
+      id: "p1",
+      fields: [
+        ...topLevel,
+        {
+          id: "people",
+          type: "input",
+          kind: "list",
+          label: "People",
+          defaultNumber: 2,
+          fields: [
+            { id: "gate", type: "input", kind: "text", label: "Gate" },
+            {
+              id: "note",
+              type: "input",
+              kind: "text",
+              label: "Note",
+              ...noteConditions,
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  outputViews: [],
+});
+
+const noteMarkedOptional = () =>
+  screen
+    .getAllByText("Note")
+    .map(
+      (note) =>
+        note.closest("label")?.previousElementSibling?.textContent ===
+        "Optional",
+    );
+
 describe("FormRenderer preview", () => {
   it("validates every page, going back to the first invalid one", async () => {
     renderPreview(form);
@@ -87,6 +137,50 @@ describe("FormRenderer preview", () => {
 
     expect(await screen.findByText(/Details/)).toBeTruthy();
     expect(screen.getByText(/This field is required/)).toBeTruthy();
+  });
+
+  it("marks a list sub-field required from its own row's cells", async () => {
+    renderPreview(peopleForm({ requiredIfFormula: yesIn("gate") }));
+
+    expect(noteMarkedOptional()).toEqual([true, true]);
+
+    const [firstCardGate] = screen.getAllByRole("textbox");
+    await act(async () => {
+      fireEvent.change(firstCardGate, { target: { value: "yes" } });
+    });
+
+    expect(noteMarkedOptional()).toEqual([false, true]);
+  });
+
+  it("draws a gated list sub-field only in the row that reveals it", async () => {
+    renderPreview(peopleForm({ visibleIfFormula: yesIn("gate") }));
+
+    expect(screen.queryByText("Note")).toBeNull();
+
+    const [firstCardGate] = screen.getAllByRole("textbox");
+    await act(async () => {
+      fireEvent.change(firstCardGate, { target: { value: "yes" } });
+    });
+
+    expect(screen.getAllByText("Note")).toHaveLength(1);
+  });
+
+  it("draws a list sub-field gated on a top-level answer in every row", async () => {
+    renderPreview(
+      peopleForm(
+        { visibleIfFormula: yesIn("joined") },
+        { id: "joined", type: "input", kind: "text", label: "Joined" },
+      ),
+    );
+
+    expect(screen.queryByText("Note")).toBeNull();
+
+    const [joined] = screen.getAllByRole("textbox");
+    await act(async () => {
+      fireEvent.change(joined, { target: { value: "yes" } });
+    });
+
+    expect(screen.getAllByText("Note")).toHaveLength(2);
   });
 
   it("does not validate while a file is uploading", async () => {
