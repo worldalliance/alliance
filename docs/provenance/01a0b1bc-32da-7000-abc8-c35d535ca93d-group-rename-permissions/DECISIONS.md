@@ -1,0 +1,4 @@
+- `ParticipantRole` moved from the participant entity to `common/src/participantRole.ts`. The client helper in `shared/` kept its own copy of the admin rule keyed on the generated client's union, so server and client could disagree about who is an admin and the client could offer a control the server refuses.
+- The rule is a `Record<ParticipantRole, boolean>` rather than an array or a predicate, so a fourth role fails the build in every package until someone opts it in or out. The old server form, `[Admin, Owner].includes(role)`, would have made it non-admin without a word.
+- The Postgres enum keeps the name `ParticipantRole` and its three values, so there is no migration and no change to the generated client.
+- `ParticipantState` stays on the entity. Nothing outside the server reads it as an enum.

@@ -1,3 +1,4 @@
+import { rolesWithAdminPowers } from "@alliance/common/participantRole";
 import {
   ConversationDto,
   conversationGetMyConversations,
@@ -5,7 +6,6 @@ import {
   conversationMarkRead,
   MessageDto,
   messageGetMessages,
-  ParticipantRole,
 } from "@alliance/shared/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
@@ -60,12 +60,6 @@ export const getParticipantState = (
       (participant) => participant.user.id === userId,
     )?.state ?? null
   );
-};
-
-const rolesWithAdminPowers: Record<ParticipantRole, boolean> = {
-  admin: true,
-  owner: true,
-  member: false,
 };
 
 export const isConversationAdmin = (

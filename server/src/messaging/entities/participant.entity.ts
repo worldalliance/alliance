@@ -1,3 +1,4 @@
+import { ParticipantRole } from "@alliance/common/participantRole";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
@@ -15,12 +16,6 @@ import {
 } from "typeorm";
 import { Conversation } from "./conversation.entity";
 import { Message } from "./message.entity";
-
-export enum ParticipantRole {
-  Admin = "admin",
-  Member = "member",
-  Owner = "owner",
-}
 
 export enum ParticipantState {
   Invited = "invited",
