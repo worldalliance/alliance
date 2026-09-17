@@ -1,5 +1,6 @@
 import {
   formSchema,
+  syncSchemaVariableListInputs,
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
 import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
@@ -236,10 +237,11 @@ export function mergeFormSchemas(
     return R.failure(["The merged result is not a valid form schema"]);
   }
 
-  const refErrors = validateFormSchema(parsed.data);
+  const synced = syncSchemaVariableListInputs(parsed.data);
+  const refErrors = validateFormSchema(synced);
   if (refErrors.length > 0) {
     return R.failure(refErrors.map((e) => `${e.blockId}: ${e.message}`));
   }
 
-  return R.success(parsed.data);
+  return R.success(synced);
 }

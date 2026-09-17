@@ -1,5 +1,6 @@
 // Formula inputs use aliases because field IDs are not guaranteed to be valid identifiers.
 
+import { camelCase, deburr, isEqual } from "es-toolkit";
 import z from "zod";
 import { R, type Result } from "../result";
 import { formatCityValue, parseCityValue } from "./city";
@@ -149,6 +150,50 @@ export function readableListSubFields(
   return subFields.filter((sub) => isFieldKindReadableByFieldInput(sub.kind));
 }
 
+const FALLBACK_PROPERTY_NAME = "field";
+
+function propertyNameFromLabel(label: string | null): string {
+  const name = camelCase(
+    deburr(label ?? "")
+      .replace(/['’]/g, "")
+      .replace(/[^A-Za-z0-9]+/g, " "),
+  );
+  if (!name) return FALLBACK_PROPERTY_NAME;
+  return /^[0-9]/.test(name) ? `${FALLBACK_PROPERTY_NAME}${name}` : name;
+}
+
+/**
+ * Keeps each readable sub-field's existing name, names the rest from their
+ * labels, and drops names for sub-fields that are gone or unreadable. Existing
+ * names never change, so a relabeled sub-field cannot break a formula. A name
+ * for a sub-field of a kind this build doesn't know stays, since a newer build
+ * may read it.
+ */
+export function syncListInputProperties(
+  properties: Readonly<Record<string, string>>,
+  subFields: readonly ListSubField[],
+): Record<string, string> {
+  const kept = subFields.filter(
+    (sub) =>
+      Object.hasOwn(properties, sub.id) &&
+      (!isKnownFieldKind(sub.kind) ||
+        isFieldKindReadableByFieldInput(sub.kind)),
+  );
+  const taken = new Set<string>(FORBIDDEN_PROPERTIES);
+  for (const sub of kept) taken.add(properties[sub.id]);
+  const synced: Record<string, string> = {};
+  for (const sub of kept) synced[sub.id] = properties[sub.id];
+  for (const sub of readableListSubFields(subFields)) {
+    if (Object.hasOwn(synced, sub.id)) continue;
+    const base = propertyNameFromLabel(sub.label);
+    let name = base;
+    for (let n = 2; taken.has(name); n += 1) name = `${base}${n}`;
+    taken.add(name);
+    synced[sub.id] = name;
+  }
+  return synced;
+}
+
 export function listInputPropertyErrors(params: {
   inputName: string;
   input: VariableListInput;
@@ -201,6 +246,34 @@ export function listInputPropertyErrors(params: {
     seen.add(name);
   }
   return errors;
+}
+
+/** Brings every list input in line with its list's current sub-fields. */
+export function syncVariableListInputs(
+  variables: readonly FormVariable[],
+  fields: ReadonlyMap<string, VariableInputField>,
+): FormVariable[] {
+  return variables.map((variable) => {
+    let changed = false;
+    const inputs = Object.fromEntries(
+      Object.entries(variable.inputs).map(([name, input]) => {
+        const field = fields.get(input.fieldId);
+        if (input.kind !== "list" || field?.kind !== "list") {
+          return [name, input];
+        }
+        const properties = syncListInputProperties(
+          input.properties,
+          field.fields ?? [],
+        );
+        if (isEqual(properties, input.properties)) {
+          return [name, input];
+        }
+        changed = true;
+        return [name, { ...input, properties }];
+      }),
+    );
+    return changed ? { ...variable, inputs } : variable;
+  });
 }
 
 // Keep these as strings so form renderers can import this module without

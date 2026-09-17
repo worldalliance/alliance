@@ -15,6 +15,7 @@
     "@jsep-plugin/arrow": "^1.0.6",
     "@jsep-plugin/object": "^1.2.2",
     "dotenv": "^17.2.3",
+    "es-toolkit": "^1.49.0",
     "jsep": "^1.4.0",
     "libphonenumber-js": "^1.12.17",
     "pluralize": "^8.0.0",

@@ -17,6 +17,7 @@ import {
   flattenPageItems,
   isFieldGroup,
   isQuestionField,
+  syncSchemaVariableListInputs,
   type AnyField,
   type FieldGroup,
   type FieldKind,
@@ -1704,7 +1705,12 @@ export function FormBuilder(props: FormBuilderProps) {
     setSaveError(null);
 
     try {
-      const validationErrors = validateFormSchema(schema);
+      // List inputs name sub-fields added since the variable was last edited
+      // here, from labels that are final by now.
+      const syncedSchema = syncSchemaVariableListInputs(schema);
+      if (syncedSchema !== schema) setSchema(syncedSchema);
+
+      const validationErrors = validateFormSchema(syncedSchema);
       if (validationErrors.length > 0) {
         const summary = validationErrors
           .map((e) => `• Block ${e.blockId}: ${e.message}`)
@@ -1715,7 +1721,7 @@ export function FormBuilder(props: FormBuilderProps) {
       }
 
       const { schema: schemaForSave, resolvedDraftIds } =
-        await resolveCustomValidatorDrafts(schema);
+        await resolveCustomValidatorDrafts(syncedSchema);
       if (resolvedDraftIds.length > 0) {
         setSchema(schemaForSave);
       }

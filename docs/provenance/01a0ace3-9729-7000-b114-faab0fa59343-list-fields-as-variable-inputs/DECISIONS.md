@@ -29,7 +29,7 @@ A list input is a new input kind, `{ kind: "list", fieldId, properties }`. `prop
 
 ## Naming properties
 
-`syncListInputProperties` keeps every existing name, names each unmapped readable sub-field from its label (`camelCase(deburr(label))` from es-toolkit, stripped to `[A-Za-z0-9_]`), and drops names for sub-fields that were removed or are unreadable. A blank label becomes `field`, a leading digit gets a `field` prefix, and collisions get `2`, `3`, … suffixes. `constructor`, `prototype`, and `__proto__` count as taken, because the evaluator refuses to read them.
+`syncListInputProperties` keeps every existing name, names each unmapped readable sub-field from its label (es-toolkit's `deburr`, then every run of characters outside `[A-Za-z0-9]` becomes a space, then `camelCase`), and drops names for sub-fields that were removed or are unreadable. It keeps a name for a sub-field of a kind the running build doesn't know, so an admin tab left open across a deploy gets the reload error instead of saving a formula that quietly lost a property. A blank label becomes `field`, a leading digit gets a `field` prefix, and collisions get `2`, `3`, … suffixes. `constructor`, `prototype`, and `__proto__` count as taken, because the evaluator refuses to read them.
 
 The sync runs in two places:
 

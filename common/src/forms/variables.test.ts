@@ -38,6 +38,8 @@ import {
   interpolateVariables,
   resolveVariableValues,
   sanitizeVariableName,
+  syncListInputProperties,
+  syncVariableListInputs,
   textHasVariableReference,
   VARIABLE_NAME_REGEX,
   type FormVariable,
@@ -551,6 +553,81 @@ describe("list inputs", () => {
       answers,
       fields: variableInputFieldsById([people]),
     });
+
+  describe("syncListInputProperties", () => {
+    it("names each readable sub-field from its label", () => {
+      expect(syncListInputProperties({}, people.fields)).toEqual(properties);
+    });
+
+    it("keeps a name the author already chose, whatever the label says", () => {
+      expect(
+        syncListInputProperties({ n: "who", a: "age" }, people.fields),
+      ).toEqual({ n: "who", a: "age", r: "roles" });
+    });
+
+    it("drops a name for a sub-field that is gone or unreadable", () => {
+      expect(
+        syncListInputProperties(
+          { ...properties, gone: "old", photo: "photo" },
+          people.fields,
+        ),
+      ).toEqual(properties);
+    });
+
+    it("keeps a name for a sub-field of a kind this build doesn't know", () => {
+      const future: ListSubField = JSON.parse(
+        '{ "id": "sig", "type": "input", "kind": "future", "label": "Sig" }',
+      );
+      expect(
+        syncListInputProperties({ ...properties, sig: "sig" }, [
+          ...people.fields,
+          future,
+        ]),
+      ).toEqual({ ...properties, sig: "sig" });
+    });
+
+    it("falls back when a label gives no usable name, and never repeats one", () => {
+      expect(
+        syncListInputProperties({ a: "field" }, [
+          { ...textField("blank"), label: null },
+          { ...textField("digits"), label: "2 kids" },
+          { ...textField("dup"), label: "Age" },
+          { ...textField("dup2"), label: "Age!" },
+          { ...textField("proto"), label: "constructor" },
+          { ...textField("apos"), label: "What's your age?" },
+          { ...textField("emoji"), label: "🎉 Party" },
+          numberField("a"),
+        ]),
+      ).toEqual({
+        blank: "field2",
+        digits: "field2Kids",
+        dup: "age",
+        dup2: "age2",
+        proto: "constructor2",
+        apos: "whatsYourAge",
+        emoji: "party",
+        a: "field",
+      });
+    });
+
+    it("leaves a variable whose inputs are in sync as the same object", () => {
+      const synced = listVariable("input1.length");
+      const fields = variableInputFieldsById([people]);
+      expect(syncVariableListInputs([synced], fields)[0]).toBe(synced);
+      const stale = variable({
+        inputs: {
+          input1: { kind: "list", fieldId: "people", properties: { n: "x" } },
+        },
+      });
+      expect(syncVariableListInputs([stale], fields)[0].inputs).toEqual({
+        input1: {
+          kind: "list",
+          fieldId: "people",
+          properties: { n: "x", a: "age", r: "roles" },
+        },
+      });
+    });
+  });
 
   describe("evaluateVariable", () => {
     it("reads one record per row, each cell converted like its field", () => {
