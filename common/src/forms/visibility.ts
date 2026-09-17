@@ -6,6 +6,7 @@ import {
   type AnyField,
   type FieldGroup,
   type FormValue,
+  type ListSubField,
   type OutputFieldBlock,
   type Page,
   collectFieldLookup,
@@ -347,6 +348,23 @@ export function listRowData(params: {
   row: Record<string, FormValue>;
 }): Record<string, FormValue> {
   return { ...params.data, ...params.row };
+}
+
+/**
+ * The sub-fields a list row shows: those whose conditions hold against the
+ * form's answers with the row's own cells on top.
+ */
+export function visibleListSubFields(params: {
+  subFields: ListSubField[];
+  data: Record<string, FormValue>;
+  row: Record<string, FormValue>;
+  extras: ConditionExtras & { readOnly?: boolean };
+}): ListSubField[] {
+  const { subFields, data, row, extras } = params;
+  const rowData = listRowData({ data, row });
+  return subFields.filter((subField) =>
+    isElementCurrentlyVisible(subField, rowData, extras),
+  );
 }
 
 /**

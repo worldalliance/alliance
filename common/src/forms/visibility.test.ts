@@ -9,6 +9,7 @@ import {
   isPageCurrentlyVisible,
   listRowData,
   stripHiddenAnswers,
+  visibleListSubFields,
 } from "./visibility";
 import type { Condition, VisibleIfFormula } from "./visible-if-formula";
 
@@ -353,6 +354,67 @@ describe("listRowData", () => {
     expect(
       listRowData({ data: { gate: "yes", other: 1 }, row: { gate: "no" } }),
     ).toEqual({ gate: "no", other: 1 });
+  });
+});
+
+describe("visibleListSubFields", () => {
+  const gated = textField("note", {
+    visibleIfFormula: formula({
+      c1: { kind: "equals", when: "gate", equals: "yes" },
+    }),
+  });
+  const subFields = [textField("gate"), gated];
+
+  it("reads a form answer the row's cells don't cover", () => {
+    expect(
+      visibleListSubFields({
+        subFields,
+        data: { gate: "yes" },
+        row: {},
+        extras,
+      }),
+    ).toEqual(subFields);
+    expect(
+      visibleListSubFields({
+        subFields,
+        data: { gate: "no" },
+        row: {},
+        extras,
+      }),
+    ).toEqual([subFields[0]]);
+  });
+
+  it("keeps a sub-field the row's cells reveal", () => {
+    expect(
+      visibleListSubFields({
+        subFields,
+        data: { gate: "no" },
+        row: { gate: "yes" },
+        extras,
+      }),
+    ).toEqual(subFields);
+  });
+
+  it("drops a sub-field the row's cells hide", () => {
+    expect(
+      visibleListSubFields({
+        subFields,
+        data: { gate: "yes" },
+        row: { gate: "no" },
+        extras,
+      }),
+    ).toEqual([subFields[0]]);
+  });
+
+  it("reads the row's cells with no form answers at all", () => {
+    expect(
+      visibleListSubFields({
+        subFields,
+        data: {},
+        row: { gate: "no" },
+        extras,
+      }),
+    ).toEqual([subFields[0]]);
   });
 });
 

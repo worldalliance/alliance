@@ -47,6 +47,7 @@ import {
   stripHiddenAnswers,
   type VisibilityValidatorResults,
   visibilityValidatorResultsSchema,
+  visibleListSubFields,
 } from "@alliance/common/forms/visibility";
 import {
   type AccountDerivedConditionKind,
@@ -646,15 +647,19 @@ export class TasksService {
                 data: effectiveAnswers,
                 row: card,
               });
-              for (const sub of subFields) {
+              for (const sub of visibleListSubFields({
+                subFields,
+                data: effectiveAnswers,
+                row: card,
+                extras: visibilityExtras,
+              })) {
                 if (
                   !isQuestionField(sub) ||
                   !isFieldConditionallyRequired(
                     sub,
                     mergedData,
                     visibilityExtras,
-                  ) ||
-                  !isElementCurrentlyVisible(sub, mergedData, visibilityExtras)
+                  )
                 ) {
                   continue;
                 }
