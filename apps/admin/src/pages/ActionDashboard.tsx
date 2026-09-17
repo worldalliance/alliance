@@ -1429,7 +1429,7 @@ const ActionDashboard: React.FC = () => {
                           setSearchParams((prev) => {
                             const next = new URLSearchParams(prev);
                             next.set("tab", "responses");
-                            next.set("resp_tab", "responses");
+                            next.set("resp_tab", "replays");
                             next.set("resp_filterField", filter.fieldId);
                             next.set("resp_filterOp", filter.op);
                             if (filter.value != null) {

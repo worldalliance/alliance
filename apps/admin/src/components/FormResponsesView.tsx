@@ -144,7 +144,7 @@ const FILTERABLE_FIELD_KINDS = new Set<FieldKind>([
 
 const AI_SCORE_FIELD_KINDS = new Set<FieldKind>(["text", "textarea"]);
 
-type Tab = "responses" | "stats" | "questions";
+type Tab = "responses" | "stats" | "questions" | "replays";
 
 type ResponseFilterOp = "equals" | "includes" | "no-response";
 
@@ -161,7 +161,10 @@ const isResponseFilterOp = (value: string | null): value is ResponseFilterOp =>
   value === "equals" || value === "includes" || value === "no-response";
 
 const isTab = (value: string | null): value is Tab =>
-  value === "responses" || value === "stats" || value === "questions";
+  value === "responses" ||
+  value === "stats" ||
+  value === "questions" ||
+  value === "replays";
 
 const normalizeBoolean = (value: unknown): boolean | null => {
   if (value === true || value === false) return value;
@@ -312,7 +315,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
   );
 
   const tabParam = params.get(paramKey("tab"));
-  const tab = isTab(tabParam) ? tabParam : "responses";
+  const tab = isTab(tabParam) ? tabParam : "replays";
   const filterFieldId = params.get(paramKey("filterField"))?.trim() ?? "";
   const filterOpParam = params.get(paramKey("filterOp"));
   const filterValueParam = params.get(paramKey("filterValue"));
@@ -545,7 +548,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
   const handleStatFilter = useCallback(
     (filter: FormResponseFilter) => {
       updateParams({
-        tab: "responses",
+        tab: "replays",
         filterField: filter.fieldId,
         filterOp: filter.op,
         filterValue: filter.value ?? null,
@@ -821,6 +824,15 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
                 >
                   Questions
                 </Button>
+                <Button
+                  onClick={() => updateParams({ tab: "replays" })}
+                  color={
+                    tab === "replays" ? ButtonColor.Black : ButtonColor.White
+                  }
+                  size="small"
+                >
+                  Replays
+                </Button>
               </div>
             </div>
 
@@ -878,7 +890,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
           </div>
         </div>
         {/* Response Navigator (inside header) */}
-        {tab === "responses" && !loading && !error && filteredTotal > 0 && (
+        {tab === "replays" && !loading && !error && filteredTotal > 0 && (
           <div className="px-6 pb-4 border-t border-gray-100 pt-3">
             {filterSummary && (
               <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
@@ -1035,7 +1047,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
         )}
       </div>
 
-      {tab === "responses" && (
+      {tab === "replays" && (
         <div className="px-2">
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -1093,6 +1105,13 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
               )}
             </>
           )}
+        </div>
+      )}
+      {tab === "responses" && (
+        <div className="px-2">
+          <Card style={CardStyle.White}>
+            <p className="text-gray-600">Nothing here yet.</p>
+          </Card>
         </div>
       )}
       {tab === "stats" && (
