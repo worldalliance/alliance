@@ -23,6 +23,7 @@ import {
   isElementCurrentlyVisible,
   isFieldConditionallyRequired,
   isPageCurrentlyVisible,
+  listRowData,
 } from "@alliance/common/forms/visibility";
 import {
   CONDITION_KIND_IS_ACCOUNT_DERIVED,
@@ -695,7 +696,7 @@ export function getListSubFieldErrors(
   const subFields = listField.fields ?? [];
   for (let cardIndex = 0; cardIndex < cards.length; cardIndex++) {
     const card = cards[cardIndex] ?? {};
-    const mergedData = { ...data, ...card };
+    const mergedData = listRowData({ data, row: card });
     for (const sub of subFields) {
       const key = `${listField.id}:${cardIndex}:${sub.id}`;
       if (!isElementCurrentlyVisible(sub, mergedData, extras)) {

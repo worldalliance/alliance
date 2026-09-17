@@ -41,6 +41,7 @@ import {
   isElementCurrentlyVisible,
   isFieldConditionallyRequired,
   isPageCurrentlyVisible,
+  listRowData,
   stripHiddenAnswers,
   type VisibilityValidatorResults,
   visibilityValidatorResultsSchema,
@@ -646,10 +647,10 @@ export class TasksService {
             const subFields = listField.fields ?? [];
             for (let i = 0; i < listValue.length; i += 1) {
               const card = listValue[i] ?? {};
-              const mergedData = {
-                ...effectiveAnswers,
-                ...card,
-              } as Record<string, FormValue>;
+              const mergedData = listRowData({
+                data: effectiveAnswers,
+                row: card,
+              });
               for (const sub of subFields) {
                 if (
                   !isQuestionField(sub) ||

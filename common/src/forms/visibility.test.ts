@@ -7,6 +7,7 @@ import {
   isElementCurrentlyVisible,
   isFieldConditionallyRequired,
   isPageCurrentlyVisible,
+  listRowData,
   stripHiddenAnswers,
 } from "./visibility";
 import type { Condition, VisibleIfFormula } from "./visible-if-formula";
@@ -344,6 +345,14 @@ describe("isFieldConditionallyRequired", () => {
       requiredIfFormula: { conditions: {}, formula: "" },
     });
     expect(isFieldConditionallyRequired(field, {}, extras)).toBe(true);
+  });
+});
+
+describe("listRowData", () => {
+  it("puts the row's cells over the form's answers", () => {
+    expect(
+      listRowData({ data: { gate: "yes", other: 1 }, row: { gate: "no" } }),
+    ).toEqual({ gate: "no", other: 1 });
   });
 });
 
