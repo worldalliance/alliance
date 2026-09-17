@@ -9,7 +9,6 @@ import type {
   RangeField,
   TimeField,
 } from "@alliance/common/forms/form-schema";
-import { listRowData } from "@alliance/common/forms/visibility";
 import { withCount } from "@alliance/common/plural";
 import type { UserDto } from "@alliance/shared/client";
 import {
@@ -35,6 +34,7 @@ import {
 import { cancelImageUpload } from "@alliance/shared/lib/copy";
 import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
 import { cn } from "@alliance/shared/styles/util";
+import type { FieldConditionContext } from "@alliance/shared/useFormRenderer";
 import { ChevronDown, X } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -83,11 +83,7 @@ export type RenderFieldProps = {
   isOutputView?: boolean;
   user?: Omit<UserDto, "email">;
   hideLabel?: boolean;
-  formData?: Record<string, FormValue>;
-  isFieldRequired?: (
-    field: AnyField,
-    data?: Record<string, FormValue>,
-  ) => boolean;
+  fieldContext: FieldConditionContext;
 };
 
 const sharedInputClasses =
@@ -158,11 +154,10 @@ export function RenderField({
   isOutputView,
   user,
   hideLabel,
-  formData,
-  isFieldRequired,
+  fieldContext,
 }: RenderFieldProps) {
   const [selectOpen, setSelectOpen] = useState(false);
-  const required = isFieldRequired ? isFieldRequired(field) : !!field.required;
+  const required = fieldContext.isFieldRequired(field);
   const errorMessage =
     typeof error === "string" && error.trim().length > 0 ? error : null;
   const hasError = Boolean(errorMessage);
@@ -861,6 +856,7 @@ export function RenderField({
           <View className="gap-3">
             {cards.map((card, cardIndex) => {
               const cardId = card[CARD_ID_KEY];
+              const row = fieldContext.forRow(card);
               return (
                 <Card
                   key={cardId}
@@ -901,18 +897,7 @@ export function RenderField({
                       disableOptionRandomization={disableOptionRandomization}
                       isOutputView={isOutputView}
                       user={user}
-                      isFieldRequired={
-                        isFieldRequired
-                          ? (sub: AnyField) =>
-                              isFieldRequired(
-                                sub,
-                                listRowData({
-                                  data: formData ?? {},
-                                  row: card,
-                                }),
-                              )
-                          : undefined
-                      }
+                      fieldContext={row}
                     />
                   ))}
                   {!disabled && (

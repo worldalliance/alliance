@@ -3,6 +3,7 @@ import {
   type FormValueUpdater,
   resolveFormValue,
 } from "@alliance/shared/forms/formValueUpdater";
+import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import { registerRootComponent } from "expo";
 import { useFonts } from "expo-font";
 import { useState } from "react";
@@ -49,6 +50,7 @@ function MultiselectFixture() {
   return (
     <View style={{ gap: 16 }}>
       <RenderField
+        fieldContext={staticFieldContext}
         field={{
           id: "places",
           type: "input",
@@ -64,6 +66,7 @@ function MultiselectFixture() {
       />
       <Text>Places {searchable.text}</Text>
       <RenderField
+        fieldContext={staticFieldContext}
         field={{
           id: "plain",
           type: "input",
@@ -77,6 +80,7 @@ function MultiselectFixture() {
       />
       <Text>Plain places {plain.text}</Text>
       <RenderField
+        fieldContext={staticFieldContext}
         field={{
           id: "readonly",
           type: "input",
@@ -115,6 +119,7 @@ function CategoriesFixture() {
   return (
     <View style={{ padding: 24, gap: 16 }}>
       <RenderField
+        fieldContext={staticFieldContext}
         field={{
           id: "grouped",
           type: "input",
@@ -129,6 +134,7 @@ function CategoriesFixture() {
       />
       <Text>Grouped selected {grouped.text}</Text>
       <RenderField
+        fieldContext={staticFieldContext}
         field={{
           id: "produce",
           type: "input",
@@ -151,6 +157,7 @@ function CategoriesFixture() {
       />
       <Text>Produce {produce.text}</Text>
       <RenderField
+        fieldContext={staticFieldContext}
         field={{
           id: "groupedMulti",
           type: "input",

@@ -11,6 +11,7 @@ import {
   getVisiblePreviousAnswerSubFields,
   isPreviousAnswerValueEmpty,
 } from "@alliance/shared/lib/previousAnswers";
+import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import { View } from "react-native";
 import Text, { FontWeight } from "../system/Text";
 import { RenderField } from "./RenderField";
@@ -87,6 +88,7 @@ export default function RenderPreviousAnswer({
         disabled
         user={user}
         hideLabel={block.showLabel === false}
+        fieldContext={staticFieldContext}
       />
     </View>
   );
@@ -133,6 +135,7 @@ function RenderPreviousAnswerList({
                 disabled
                 user={user}
                 hideLabel={block.showLabel === false}
+                fieldContext={staticFieldContext}
               />
             ))}
           </View>

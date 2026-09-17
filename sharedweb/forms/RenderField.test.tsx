@@ -1,5 +1,6 @@
 import type { AnyField } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { SiteAppProvider } from "../ui/SiteAppProvider";
@@ -15,6 +16,7 @@ it.each([false, true])(
       <MemoryRouter>
         <SiteAppProvider>
           <RenderField
+            fieldContext={staticFieldContext}
             field={{
               id: "location",
               type: "input",
@@ -64,7 +66,11 @@ describe.each([{ hideLabel: false }, { hideLabel: true }])(
       render(
         <MemoryRouter>
           <SiteAppProvider>
-            <RenderField field={field} hideLabel={hideLabel} />
+            <RenderField
+              fieldContext={staticFieldContext}
+              field={field}
+              hideLabel={hideLabel}
+            />
           </SiteAppProvider>
         </MemoryRouter>,
       );
@@ -84,7 +90,11 @@ it.each([
     render(
       <MemoryRouter>
         <SiteAppProvider>
-          <RenderField field={{ ...base, kind, options }} hideLabel />
+          <RenderField
+            fieldContext={staticFieldContext}
+            field={{ ...base, kind, options }}
+            hideLabel
+          />
         </SiteAppProvider>
       </MemoryRouter>,
     );
@@ -102,7 +112,10 @@ it("names a range group while retaining the numeric option names", () => {
   render(
     <MemoryRouter>
       <SiteAppProvider>
-        <RenderField field={{ ...base, kind: "range", optionCount: 3 }} />
+        <RenderField
+          fieldContext={staticFieldContext}
+          field={{ ...base, kind: "range", optionCount: 3 }}
+        />
       </SiteAppProvider>
     </MemoryRouter>,
   );
@@ -117,9 +130,11 @@ it("keeps question labels separate when a field is rendered twice", () => {
     <MemoryRouter>
       <SiteAppProvider>
         <RenderField
+          fieldContext={staticFieldContext}
           field={{ ...base, kind: "text", label: "First question" }}
         />
         <RenderField
+          fieldContext={staticFieldContext}
           field={{ ...base, kind: "text", label: "Second question" }}
         />
       </SiteAppProvider>
@@ -146,7 +161,11 @@ it.each(groupedInputs)("names the $kind group", (field) => {
   render(
     <MemoryRouter>
       <SiteAppProvider>
-        <RenderField field={field} hideLabel />
+        <RenderField
+          fieldContext={staticFieldContext}
+          field={field}
+          hideLabel
+        />
       </SiteAppProvider>
     </MemoryRouter>,
   );
@@ -158,6 +177,7 @@ it("names the timezone button from its question and its selected zone", () => {
     <MemoryRouter>
       <SiteAppProvider>
         <RenderField
+          fieldContext={staticFieldContext}
           field={{ ...base, kind: "timezone" }}
           value="Asia/Kolkata"
         />
@@ -189,7 +209,12 @@ describe("option categories", () => {
     render(
       <MemoryRouter>
         <SiteAppProvider>
-          <RenderField field={field} value={value} onChange={() => {}} />
+          <RenderField
+            fieldContext={staticFieldContext}
+            field={field}
+            value={value}
+            onChange={() => {}}
+          />
         </SiteAppProvider>
       </MemoryRouter>,
     );

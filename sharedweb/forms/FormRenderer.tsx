@@ -522,7 +522,7 @@ const FormRenderer = ({
     effectiveFormData,
     variableValues,
     isElementCurrentlyVisible,
-    isFieldCurrentlyRequired,
+    fieldContext,
     visiblePageIndices,
     nextVisiblePageIndex,
     previousVisiblePageIndex,
@@ -1030,9 +1030,7 @@ const FormRenderer = ({
           disableOptionRandomization={disableOptionRandomization}
           user={user}
           labelRightAddon={fieldLabelRightContent?.[field.id]}
-          formData={effectiveFormData}
-          isElementVisible={isElementCurrentlyVisible}
-          isFieldRequired={isFieldCurrentlyRequired}
+          fieldContext={fieldContext}
           fieldErrors={fieldErrors}
           responseHiddenFromOthers={isOutputField && !sharePublicly}
         />
