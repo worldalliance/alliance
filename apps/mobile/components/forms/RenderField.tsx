@@ -835,7 +835,7 @@ export function RenderField({
       const hiddenInOutputIds = new Set(
         isOutputView ? (listField.outputViewHiddenFieldIds ?? []) : [],
       );
-      const visibleSubFields = subFields.filter(
+      const shownSubFields = subFields.filter(
         (subField) => !hiddenInOutputIds.has(subField.id),
       );
       const canDelete = cards.length > minCards;
@@ -863,7 +863,7 @@ export function RenderField({
                   cardStyle={CardStyle.White}
                   className="border border-zinc-200 gap-4"
                 >
-                  {visibleSubFields.map((subField) => (
+                  {row.visibleSubFields(shownSubFields).map((subField) => (
                     <RenderField
                       key={subField.id}
                       field={subField}
