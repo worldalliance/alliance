@@ -469,18 +469,19 @@ const storedDraft = {
   updatedAt: "2026-09-16T00:00:00.000Z",
 };
 
-let fetchDraft: () => Promise<Response>;
+let fetchDraft: (formId: string) => Promise<Response>;
 let fetches: number;
-let saves: { answers: Record<string, unknown> }[];
+let saves: { formId: string; answers: Record<string, unknown> }[];
 
 serveApi(
   routes({
-    "GET /tasks/formDraft/:id": () => {
+    "GET /tasks/formDraft/:id": ({ params }) => {
       fetches += 1;
-      return fetchDraft();
+      return fetchDraft(params.id);
     },
-    "PUT /tasks/formDraft/:id": async ({ request }) => {
-      saves.push(await request.json());
+    "PUT /tasks/formDraft/:id": async ({ request, params }) => {
+      const body = await request.json();
+      saves.push({ formId: params.id, answers: body.answers });
       return json(storedDraft);
     },
   }),
@@ -489,9 +490,9 @@ serveApi(
 const realSetTimeout = globalThis.setTimeout;
 
 describe("useFormDraftSync", () => {
-  const draftArgs = (answers: Record<string, FormValue>) => ({
+  const draftArgs = (answers: Record<string, FormValue>, formId = 3) => ({
     enabled: true,
-    formId: 3,
+    formId,
     actionId: 4,
     formSnapshotId: 5,
     answers,
@@ -576,5 +577,32 @@ describe("useFormDraftSync", () => {
 
     expect(saves).toHaveLength(2);
     expect(saves[1].answers).toEqual({ q1: "second" });
+  });
+
+  it("gates again on the new form when the form changes under it", async () => {
+    let landSecond: (response: Response) => void = () => {};
+    fetchDraft = (formId) =>
+      formId === "3"
+        ? Promise.resolve(json({}))
+        : new Promise<Response>((resolve) => {
+            landSecond = resolve;
+          });
+
+    const { rerender } = renderHook(
+      (formId: number) => useFormDraftSync(draftArgs({ q1: "first" }, formId)),
+      { initialProps: 3 },
+    );
+
+    await settle();
+    expect(saves).toHaveLength(1);
+
+    rerender(7);
+    await settle();
+    expect(saves).toHaveLength(1);
+
+    landSecond(json({}));
+    await settle();
+
+    expect(saves[1]?.formId).toBe("7");
   });
 });

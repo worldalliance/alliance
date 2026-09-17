@@ -998,6 +998,10 @@ export function useFormDraftSync(args: {
 
   useEffect(() => {
     if (!enabled) return;
+    // A renderer whose form changes under it keeps this hook mounted, and the
+    // previous form's draft and open save path would both carry over.
+    setServerDraft(null);
+    setFetched(false);
     let cancelled = false;
     tasksGetFormDraft({ path: { id: formId } })
       .then((response) => {
