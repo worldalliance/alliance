@@ -30,4 +30,4 @@ Don't assume the answer to any question. If anything is unclear, ask the user.
 
 ## Documentation
 
-After the interview, read and follow `(root)/skills/provenance/SKILL.md`, and create a new directory in `docs/provenance`. As a sanity check, if the interview was done correctly, `DECISIONS.md` should have no content. If you are tempted to populate `DECISIONS.md`, instead, ask the user another round of questions.
+After the interview, read and follow `(root)/skills/provenance/SKILL.md`, and create a new directory in `docs/provenance` and populate `REQUIREMENTS` and `DECISIONS`, separating what was suggested by the user and what was only agreed to.
