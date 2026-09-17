@@ -20,11 +20,6 @@ import { cn } from "@alliance/shared/styles/util";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@alliance/sharedweb/ui/HoverCard";
 import { CirclePlay } from "lucide-react";
 import React, {
   useCallback,
@@ -39,53 +34,12 @@ import {
   type ReturnToState,
   type SnapshotMigrationTarget,
 } from "../lib/navigation";
+import { respondentName as buildRespondentName } from "../lib/respondent";
 import FormResponseStatistics from "./FormResponseStatistics";
+import { IdentityChip } from "./IdentitySwatch";
+import ResponsesTable from "./responses-table/ResponsesTable";
 import SnapshotTargetPicker from "./SnapshotTargetPicker";
-
-const WithdrawalBadge: React.FC<{ className?: string }> = ({ className }) => (
-  <span
-    className={cn(
-      "inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800",
-      className,
-    )}
-  >
-    Withdrew
-  </span>
-);
-
-const WithdrawalInfo: React.FC<{ withdrawal: ActionWithdrawalDto }> = ({
-  withdrawal,
-}) => {
-  const hasDetails =
-    withdrawal.outOfTime || withdrawal.isMoral || withdrawal.declineReason;
-
-  if (!hasDetails) {
-    return <WithdrawalBadge className="whitespace-nowrap" />;
-  }
-
-  return (
-    <HoverCard>
-      <HoverCardTrigger
-        render={
-          <WithdrawalBadge className="whitespace-nowrap cursor-default" />
-        }
-      />
-      <HoverCardContent>
-        <div className="flex flex-col items-center gap-0.5">
-          {withdrawal.outOfTime && (
-            <span className="text-orange-600">Out of time</span>
-          )}
-          {withdrawal.isMoral && (
-            <span className="text-amber-600">Moral objection</span>
-          )}
-          {withdrawal.declineReason && (
-            <span className="text-zinc-500">{withdrawal.declineReason}</span>
-          )}
-        </div>
-      </HoverCardContent>
-    </HoverCard>
-  );
-};
+import { WithdrawalBadge, WithdrawalInfo } from "./WithdrawalInfo";
 
 export type FormWithSchema = Pick<
   FormDto,
@@ -731,15 +685,8 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
       : null;
 
   const getRespondentName = useCallback(
-    (response: FormResponseDto): string => {
-      return (
-        response.user?.name ??
-        (sidsToUserMap[response.sid ?? ""]
-          ? "anonymous invited by " +
-            sidsToUserMap[response.sid ?? ""]?.displayName
-          : "anonymous")
-      );
-    },
+    (response: FormResponseDto): string =>
+      buildRespondentName({ response, sidsToUserMap }),
     [sidsToUserMap],
   );
 
@@ -778,6 +725,24 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     ? getResponseVariantName(currentResponse)
     : null;
 
+  // Every response, so the date does not move with the search or a filter.
+  const releaseDate = useMemo(() => {
+    const earliest = responses.reduce<string | null>(
+      (oldest, response) =>
+        oldest === null || response.createdAt < oldest
+          ? response.createdAt
+          : oldest,
+      null,
+    );
+    return earliest
+      ? new Date(earliest).toLocaleDateString(undefined, {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : null;
+  }, [responses]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -786,7 +751,16 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
+                <div className="flex items-baseline gap-2">
+                  <h1 className="text-xl font-semibold text-gray-900">
+                    {title}
+                  </h1>
+                  {releaseDate && (
+                    <span className="text-sm text-gray-500">
+                      Released {releaseDate}
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-gray-500">
                   {withCount(total, "response")}
                 </p>
@@ -1008,9 +982,10 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
                         {respondentName}
                       </p>
                       {currentResponseVariantName && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 whitespace-nowrap">
-                          {currentResponseVariantName}
-                        </span>
+                        <IdentityChip
+                          seed={currentResponseVariantName}
+                          label={currentResponseVariantName}
+                        />
                       )}
                       {currentWithdrawal && (
                         <WithdrawalInfo withdrawal={currentWithdrawal} />
@@ -1108,10 +1083,17 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
         </div>
       )}
       {tab === "responses" && (
-        <div className="px-2">
-          <Card style={CardStyle.White}>
-            <p className="text-gray-600">Nothing here yet.</p>
-          </Card>
+        <div className="px-2 py-3">
+          <ResponsesTable
+            form={form}
+            responses={scopedResponses}
+            variantOptions={variantOptions}
+            withdrawnUserMap={withdrawnUserMap}
+            sidsToUserMap={sidsToUserMap}
+            loading={loading}
+            error={error}
+            paramKey={paramKey}
+          />
         </div>
       )}
       {tab === "stats" && (
@@ -1212,9 +1194,11 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
                               {getRespondentName(response)}
                             </p>
                             {variantName && (
-                              <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                {variantName}
-                              </span>
+                              <IdentityChip
+                                seed={variantName}
+                                label={variantName}
+                                className="shrink-0"
+                              />
                             )}
                             {response.user?.id != null &&
                               withdrawnUserMap.has(response.user.id) && (
