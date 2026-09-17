@@ -15,22 +15,10 @@ import {
   FormPickerError,
   FormPickerErrorReason,
 } from "../FormPickerError";
-import { EditableCheckboxField } from "./EditableCheckboxField";
-import { EditableChoiceField } from "./EditableChoiceField";
-import { EditableCityField } from "./EditableCityField";
-import { EditableDateField } from "./EditableDateField";
-import { EditableEmailField } from "./EditableEmailField";
-import { EditableFileField } from "./EditableFileField";
-import { EditableNumberField } from "./EditableNumberField";
-import { EditablePhoneField } from "./EditablePhoneField";
-import { EditableRangeField } from "./EditableRangeField";
-import { EditableTextField } from "./EditableTextField";
-import { EditableTextareaField } from "./EditableTextareaField";
-import { EditableTimeField } from "./EditableTimeField";
-import { EditableTimezoneField } from "./EditableTimezoneField";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
-import type { BaseFieldProps } from "./types";
+import { SUB_FIELD_EDITORS } from "./subFieldEditors";
+import type { BaseFieldProps, FieldEditor, FieldOfKind } from "./types";
 
 const SUB_FIELD_KINDS_OPTIONS = {
   textarea: true,
@@ -126,54 +114,34 @@ function createDefaultSubField(
   }
 }
 
+type ListSubFieldKind = ListSubField["kind"];
+
+const LIST_SUB_FIELD_EDITORS: {
+  [K in ListSubFieldKind]: FieldEditor<K> | null;
+} = { ...SUB_FIELD_EDITORS, contract: null, custom: null };
+
+function renderSubFieldEditor<K extends ListSubFieldKind>(
+  kind: K,
+  props: BaseFieldProps<FieldOfKind[K]>,
+) {
+  const Editor: FieldEditor<K> | null = LIST_SUB_FIELD_EDITORS[kind];
+  return Editor && <Editor {...props} />;
+}
+
 function renderEditableSubField(
-  sub: AnyField,
+  sub: ListSubField,
   index: number,
   updateSubField: (index: number, updates: Partial<AnyField>) => void,
   removeSubField: (index: number) => void,
   previousFields: AnyField[],
 ) {
-  const commonProps = {
-    field: sub as never,
-    onUpdate: (updates: Partial<AnyField>) => updateSubField(index, updates),
+  return renderSubFieldEditor(sub.kind, {
+    field: sub,
+    onUpdate: (updates) => updateSubField(index, updates),
     onRemove: () => removeSubField(index),
     previousFields,
-    onDragStart: undefined,
-    onDragEnd: undefined,
     isDragging: false,
-  };
-  switch (sub.kind) {
-    case "text":
-      return <EditableTextField {...commonProps} />;
-    case "textarea":
-      return <EditableTextareaField {...commonProps} />;
-    case "email":
-      return <EditableEmailField {...commonProps} />;
-    case "phone":
-      return <EditablePhoneField {...commonProps} />;
-    case "number":
-      return <EditableNumberField {...commonProps} />;
-    case "range":
-      return <EditableRangeField {...commonProps} />;
-    case "checkbox":
-      return <EditableCheckboxField {...commonProps} />;
-    case "radio":
-    case "select":
-    case "multiselect":
-      return <EditableChoiceField {...commonProps} />;
-    case "date":
-      return <EditableDateField {...commonProps} />;
-    case "time":
-      return <EditableTimeField {...commonProps} />;
-    case "timezone":
-      return <EditableTimezoneField {...commonProps} />;
-    case "city":
-      return <EditableCityField {...commonProps} />;
-    case "file":
-      return <EditableFileField {...commonProps} />;
-    default:
-      return null;
-  }
+  });
 }
 
 export function EditableListField({
