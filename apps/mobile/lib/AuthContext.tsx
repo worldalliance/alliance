@@ -23,6 +23,7 @@ import {
 } from "../../../shared/client";
 import { clearGuestToken, getStoredGuestToken } from "./guestSession";
 import { SecureStorage, SecureStorageKey } from "./SecureStorage";
+import { openSession } from "./session";
 import {
   getVisualTestAutoLoginCredentials,
   isVisualTestMode,
@@ -147,29 +148,21 @@ export const AuthProvider: React.FC<
 
   const startSession = useCallback(
     async (tokens: SessionTokensDto) => {
-      client.setConfig({
-        ...client.getConfig(),
-        headers: {
-          Authorization: `Bearer ${tokens.access_token}`,
-        },
-      });
-
-      await saveTokens(tokens.access_token, tokens.refresh_token);
-
       queryClient.clear();
 
-      const user = (await authMe()).data?.user;
-      if (!user) {
-        throw new Error("Failed to fetch user profile");
+      const opened = await openSession({ tokens, saveTokens, clearTokens });
+      if (!opened.ok) {
+        throw opened.error;
       }
 
+      const user = opened.value;
       setUser(user);
       posthog?.identify(user.id.toString(), {
         email: user.email,
         name: user.name,
       });
     },
-    [saveTokens, posthog, queryClient],
+    [saveTokens, clearTokens, posthog, queryClient],
   );
 
   const login = useCallback(
