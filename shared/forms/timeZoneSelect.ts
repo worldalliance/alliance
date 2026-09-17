@@ -401,23 +401,24 @@ function namesMoreThan({
 //
 // It stays searchable where Intl's name displaces it: Intl calls Asia/Kolkata
 // "India Standard Time", which answers nobody searching for Sri Lanka.
+function labelFor({ tz, label, searchTerms = [] }: TzOption): BaseLabel {
+  const generic = getGenericLabelFromIntl(tz);
+  const city = prettyCityFromIana(tz);
+  const left = `${generic ?? label} — ${city}`;
+  const searchable = [left, ...(generic ? [label] : []), ...searchTerms, tz];
+  return {
+    tz,
+    labelLeft: left,
+    labelSub: generic && namesMoreThan({ label, shown: left }) ? label : null,
+    searchTerms,
+    searchText: fold(searchable.join(" ")),
+  };
+}
+
 function getBaseLabels(): BaseLabel[] {
   if (cachedLabels) return cachedLabels;
 
-  cachedLabels = TZ_OPTIONS.map(({ tz, label, searchTerms = [] }) => {
-    const generic = getGenericLabelFromIntl(tz);
-    const city = prettyCityFromIana(tz);
-    const left = `${generic ?? label} — ${city}`;
-    const searchable = [left, ...(generic ? [label] : []), ...searchTerms, tz];
-    return {
-      tz,
-      labelLeft: left,
-      labelSub: generic && namesMoreThan({ label, shown: left }) ? label : null,
-      searchTerms,
-      searchText: fold(searchable.join(" ")),
-    };
-  });
-
+  cachedLabels = TZ_OPTIONS.map(labelFor);
   return cachedLabels;
 }
 
@@ -491,7 +492,16 @@ export function useTimeZoneSelect({
     if (value != null) setInternalValue(value);
   }, [value]);
 
-  const base = useMemo(() => baseItems(minute), [minute]);
+  // The list asks Intl for about three formatters a zone, so a trigger labels
+  // itself from the saved zone alone until the picker first opens. The list then
+  // stays, since a modal still renders it while animating closed.
+  const [listed, setListed] = useState(false);
+  if (open && !listed) setListed(true);
+
+  const base = useMemo(
+    () => (listed ? baseItems(minute) : []),
+    [listed, minute],
+  );
 
   const items = useMemo<TimeZoneSelectItem[]>(() => {
     const when = minuteStart(minute);
@@ -503,18 +513,22 @@ export function useTimeZoneSelect({
 
   const selected = useMemo<TimeZoneSelectItem>(() => {
     const when = minuteStart(minute);
-    return (
-      items.find((i) => i.tz === internalValue) ?? {
-        tz: internalValue,
-        labelLeft: internalValue,
-        labelSub: null,
-        searchTerms: [],
-        searchText: fold(internalValue),
-        offsetMins: getOffsetMinutes(internalValue, when),
-        timeLabel: formatTimeInTz(internalValue, hour12, when),
-      }
-    );
-  }, [items, internalValue, hour12, minute]);
+    const option = TZ_OPTIONS.find(({ tz }) => tz === internalValue);
+    const row = option
+      ? labelFor(option)
+      : {
+          tz: internalValue,
+          labelLeft: internalValue,
+          labelSub: null,
+          searchTerms: [],
+          searchText: fold(internalValue),
+        };
+    return {
+      ...row,
+      offsetMins: getOffsetMinutes(row.tz, when),
+      timeLabel: formatTimeInTz(row.tz, hour12, when),
+    };
+  }, [internalValue, hour12, minute]);
 
   const filtered = useMemo(() => {
     const q = fold(query.trim());
