@@ -20,29 +20,54 @@ function searchFor(query: string): void {
   });
 }
 
-it("shows the words a member's search matched on", () => {
+it("shows the country a member's search matched on", () => {
   render(<TimeZoneSelect />);
 
   searchFor("sri lanka");
+
+  expect(screen.getByText("India Standard Time — Colombo")).toBeDefined();
+  expect(screen.getByText("Sri Lanka")).toBeDefined();
+});
+
+it("keeps it on the trigger once the member picks the row", () => {
+  render(<TimeZoneSelect />);
+
+  searchFor("sri lanka");
+  fireEvent.click(screen.getByText("India Standard Time — Colombo"));
+
+  expect(screen.getByText("Sri Lanka")).toBeDefined();
+});
+
+function pressEnter(): void {
+  fireEvent.keyDown(screen.getByPlaceholderText("Search time zones…"), {
+    key: "Enter",
+  });
+}
+
+it("saves the row a search names alone on Enter", () => {
+  render(<TimeZoneSelect />);
+
+  searchFor("india");
+  pressEnter();
 
   expect(screen.getByText("India Standard Time — Kolkata")).toBeDefined();
-  expect(screen.getByText("India, Sri Lanka Time")).toBeDefined();
 });
 
-it("keeps them on the trigger once the member picks the row", () => {
+it("opens on the first row when a member arrows down from the trigger", () => {
   render(<TimeZoneSelect />);
 
-  searchFor("sri lanka");
-  fireEvent.click(screen.getByText("India Standard Time — Kolkata"));
+  fireEvent.keyDown(screen.getByRole("button"), { key: "ArrowDown" });
+  pressEnter();
 
-  expect(screen.getByText("India, Sri Lanka Time")).toBeDefined();
+  expect(screen.queryByPlaceholderText("Search time zones…")).toBeNull();
 });
 
-it("leaves a row alone where the curated label repeats its name", () => {
+it("saves nothing on Enter when a search names several rows first", () => {
   render(<TimeZoneSelect />);
 
-  searchFor("dubai");
+  searchFor("usa");
+  pressEnter();
 
-  expect(screen.getByText("Gulf Standard Time — Dubai")).toBeDefined();
-  expect(screen.queryByText("Dubai Time")).toBeNull();
+  expect(screen.getByPlaceholderText("Search time zones…")).toBeDefined();
+  expect(screen.getAllByText("Pacific Time — Los Angeles")).toHaveLength(2);
 });

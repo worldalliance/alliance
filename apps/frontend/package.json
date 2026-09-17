@@ -44,6 +44,7 @@
     "classnames": "^2.5.1",
     "clsx": "^2.1.1",
     "compression": "^1.8.0",
+    "countries-and-timezones": "^3.10.0",
     "d3": "^7.9.0",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",

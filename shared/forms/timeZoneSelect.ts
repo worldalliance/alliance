@@ -1,116 +1,132 @@
 import { R } from "@alliance/common/result";
 import {
+  type CountryCode,
+  getAllCountries,
+  getAllTimezones,
+  getTimezone,
+} from "countries-and-timezones";
+import {
   millisecondsInMinute,
   millisecondsInSecond,
   minutesInHour,
 } from "date-fns/constants";
-import { deburr } from "es-toolkit";
+import { deburr, groupBy } from "es-toolkit";
 import { useEffect, useMemo, useState } from "react";
 import { minuteStart, useClockMinute } from "../lib/useClockMinute";
 
-export type TzOption = {
-  group: string;
-  label: string;
-  tz: string;
-  /** Names a search matches the row on, beyond what its labels write. */
-  searchTerms?: string[];
+export type TzCountry = {
+  name: string;
+  /** Names a search finds the country by that tzdata does not use. */
+  alsoCalled: string[];
 };
 
-export const TZ_OPTIONS: TzOption[] = [
-  // US
-  { group: "US", label: "Pacific Time", tz: "America/Los_Angeles" },
-  { group: "US", label: "Mountain Time", tz: "America/Denver" },
-  { group: "US", label: "Central Time", tz: "America/Chicago" },
-  { group: "US", label: "Eastern Time", tz: "America/New_York" },
-  { group: "US", label: "Alaska Time", tz: "America/Anchorage" },
-  { group: "US", label: "Arizona Time", tz: "America/Phoenix" },
-  { group: "US", label: "Hawaii Time", tz: "Pacific/Honolulu" },
+export type TzOption = {
+  tz: string;
+  countries: TzCountry[];
+};
 
-  // Canada gets its own zones rather than sharing the US ones beside it.
-  // America/Los_Angeles belongs to the US whatever an option is labelled, so
-  // sharing it leaves a Vancouver member indistinguishable from a Seattle one.
-  { group: "Canada", label: "Pacific Time", tz: "America/Vancouver" },
-  { group: "Canada", label: "Mountain Time", tz: "America/Edmonton" },
-  { group: "Canada", label: "Saskatchewan Time", tz: "America/Regina" },
-  { group: "Canada", label: "Central Time", tz: "America/Winnipeg" },
-  { group: "Canada", label: "Eastern Time", tz: "America/Toronto" },
-  { group: "Canada", label: "Atlantic Time", tz: "America/Halifax" },
-  { group: "Canada", label: "Newfoundland Time", tz: "America/St_Johns" },
-  { group: "Canada", label: "Yukon Time", tz: "America/Whitehorse" },
+const UTC_ZONE = "Etc/UTC";
+const ANTARCTICA = "AQ";
+const COUNTRIES = getAllCountries();
 
-  // America
-  { group: "America", label: "Mexico City Time", tz: "America/Mexico_City" },
-  {
-    group: "America",
-    label: "Bogota, Jamaica, Lima Time",
-    tz: "America/Bogota",
-  },
-  { group: "America", label: "Caracas Time", tz: "America/Caracas" },
-  { group: "America", label: "Santiago Time", tz: "America/Santiago" },
-  {
-    group: "America",
-    label: "Buenos Aires Time",
-    tz: "America/Argentina/Buenos_Aires",
-  },
-  { group: "America", label: "Brasilia Time", tz: "America/Sao_Paulo" },
+const ALSO_CALLED: Partial<Record<CountryCode, string[]>> = {
+  AE: ["UAE"],
+  CD: ["DRC"],
+  CI: ["Côte d'Ivoire"],
+  CV: ["Cape Verde"],
+  CZ: ["Czech Republic"],
+  GB: [
+    "UK",
+    "Great Britain",
+    "England",
+    "Scotland",
+    "Wales",
+    "Northern Ireland",
+  ],
+  MM: ["Burma"],
+  NL: ["Holland"],
+  SZ: ["Swaziland"],
+  TL: ["East Timor"],
+  TR: ["Turkey"],
+  US: ["United States", "USA", "US", "America"],
+  VA: ["Vatican"],
+};
 
-  // Europe
-  {
-    group: "Europe",
-    label: "UK, Ireland, Lisbon Time",
-    tz: "Europe/London",
-    searchTerms: ["Greenwich"],
-  },
-  { group: "Europe", label: "Central European Time", tz: "Europe/Paris" },
-  { group: "Europe", label: "Eastern European Time", tz: "Europe/Athens" },
-  { group: "Europe", label: "Turkey Time", tz: "Europe/Istanbul" },
-  { group: "Europe", label: "Moscow Time", tz: "Europe/Moscow" },
+// A country's zones sort west to east like every other row, which buries the
+// one nearly everyone searching for that country means: Honolulu for "usa",
+// Urumqi for "china", Beulah, North Dakota for "central". The zones below lead
+// the rows they tie with. No field in tzdata picks them out; nothing there says
+// Denver over Boise.
+export const PRINCIPAL_ZONES: Partial<Record<CountryCode, string[]>> = {
+  AR: ["America/Argentina/Buenos_Aires"],
+  AU: ["Australia/Sydney"],
+  BR: ["America/Sao_Paulo"],
+  CA: [
+    "America/Toronto",
+    "America/Vancouver",
+    "America/Edmonton",
+    "America/Winnipeg",
+    "America/Halifax",
+    "America/St_Johns",
+  ],
+  CL: ["America/Santiago"],
+  CN: ["Asia/Shanghai"],
+  EC: ["America/Guayaquil"],
+  ES: ["Europe/Madrid"],
+  FR: ["Europe/Paris"],
+  ID: ["Asia/Jakarta"],
+  KZ: ["Asia/Almaty"],
+  MX: ["America/Mexico_City"],
+  NZ: ["Pacific/Auckland"],
+  PT: ["Europe/Lisbon"],
+  RU: ["Europe/Moscow"],
+  UA: ["Europe/Kyiv"],
+  US: [
+    "America/New_York",
+    "America/Chicago",
+    "America/Denver",
+    "America/Los_Angeles",
+    "America/Anchorage",
+    "Pacific/Honolulu",
+  ],
+  UZ: ["Asia/Tashkent"],
+};
 
-  // Africa
-  { group: "Africa", label: "West Africa Time", tz: "Africa/Lagos" },
-  { group: "Africa", label: "Central Africa Time", tz: "Africa/Kinshasa" },
-  { group: "Africa", label: "South Africa Time", tz: "Africa/Johannesburg" },
-  { group: "Africa", label: "East Africa Time", tz: "Africa/Nairobi" },
-  { group: "Africa", label: "Egypt Time", tz: "Africa/Cairo" },
+const PRINCIPAL_TZS = new Set<string>(Object.values(PRINCIPAL_ZONES).flat());
 
-  // Asia
-  { group: "Asia", label: "Dubai Time", tz: "Asia/Dubai" },
-  { group: "Asia", label: "Tehran Time", tz: "Asia/Tehran" },
-  { group: "Asia", label: "Pakistan, Maldives Time", tz: "Asia/Karachi" },
-  { group: "Asia", label: "India, Sri Lanka Time", tz: "Asia/Kolkata" },
-  { group: "Asia", label: "Kathmandu Time", tz: "Asia/Kathmandu" },
-  { group: "Asia", label: "Bangladesh Time", tz: "Asia/Dhaka" },
-  { group: "Asia", label: "Indochina Time", tz: "Asia/Bangkok" },
-  { group: "Asia", label: "China, Singapore, Perth", tz: "Asia/Shanghai" },
-  { group: "Asia", label: "Japan, Korea Time", tz: "Asia/Tokyo" },
+const tzCountry = (code: CountryCode): TzCountry => ({
+  name: COUNTRIES[code].name,
+  alsoCalled: ALSO_CALLED[code] ?? [],
+});
 
-  // Australia
-  {
-    group: "Australia",
-    label: "Western Australia Time",
-    tz: "Australia/Perth",
-  },
-  {
-    group: "Australia",
-    label: "Central Australia Time",
-    tz: "Australia/Darwin",
-  },
-  { group: "Australia", label: "Adelaide Time", tz: "Australia/Adelaide" },
-  { group: "Australia", label: "Brisbane Time", tz: "Australia/Brisbane" },
-  {
-    group: "Australia",
-    label: "Sydney, Melbourne Time",
-    tz: "Australia/Sydney",
-  },
-  { group: "Australia", label: "Lord Howe Time", tz: "Australia/Lord_Howe" },
+// Of the zones no country claims, UTC is the only one a member means: the rest
+// are Factory and Etc/GMT±N, whose sign runs opposite to the offset.
+//
+// Antarctica stays only on a zone no country shares, or Singapore's row reads
+// "Singapore · Antarctica · Malaysia".
+export const TZ_OPTIONS: TzOption[] = Object.values(getAllTimezones())
+  .filter(({ name, countries }) => countries.length > 0 || name === UTC_ZONE)
+  .map(({ name, countries }) => ({
+    tz: name,
+    countries: countries
+      .filter((code) => code !== ANTARCTICA || countries.length === 1)
+      .map(tzCountry),
+  }));
 
-  // Pacific
-  { group: "Pacific", label: "Auckland Time", tz: "Pacific/Auckland" },
-  { group: "Pacific", label: "Chatham Time", tz: "Pacific/Chatham" },
-  { group: "Pacific", label: "Fiji Time", tz: "Pacific/Fiji" },
-  { group: "Pacific", label: "Samoa Time", tz: "Pacific/Apia" },
-  { group: "Pacific", label: "Line Islands Time", tz: "Pacific/Kiritimati" },
-];
+const CITY_AREA =
+  /^(Africa|America|Antarctica|Arctic|Asia|Atlantic|Australia|Europe|Indian|Pacific)\//;
+
+// tzdata keeps a retired or merged zone as a link to the zone that replaced it,
+// so Africa/Kinshasa and Asia/Calcutta have no row of their own. A link outside
+// the Area/City folders, like Brazil/West, ends in no place, and would find
+// Manaus for "west".
+const LINKED_ZONES = groupBy(
+  Object.values(getAllTimezones({ deprecated: true })).flatMap(
+    ({ name, aliasOf }) =>
+      aliasOf && CITY_AREA.test(name) ? [{ name, aliasOf }] : [],
+  ),
+  ({ aliasOf }): string => aliasOf,
+);
 
 const formatterCache = new Map<string, Intl.DateTimeFormat | null>();
 
@@ -317,14 +333,22 @@ function prettyCityFromIana(tz: string): string {
   return seg.replace(/_/g, " ");
 }
 
+// What an id says between its area and its city: North_Dakota, Argentina,
+// Indiana. The area itself is no help to a search, since it would put every
+// Pacific/* island ahead of Pacific Time and answer "indian" with the Indian
+// Ocean.
+const regionsOf = (tz: string) => tz.split("/").slice(1, -1);
+
 export type TimeZoneSelectItem = {
   tz: string;
   labelLeft: string;
-  /** The line under the name: the curated label where it names a place the
-   * name does not, or the search term the query matched. */
   labelSub: string | null;
-  searchTerms: string[];
   searchText: string;
+  /** What the row holds as its own: its city, the name Intl gives the zone, and
+   * the names of the country tzdata lists first for it. */
+  ownNames: string[];
+  /** The names of the other countries the zone lists. */
+  sharedNames: string[];
   offsetMins: number | null;
   timeLabel: string | null;
 };
@@ -333,13 +357,9 @@ export const NO_TIME_LABEL = "—";
 
 export const DEFAULT_TIMEZONE = "America/Los_Angeles";
 
-type BaseLabel = {
-  tz: string;
-  labelLeft: string;
-  labelSub: string | null;
-  searchTerms: string[];
-  searchText: string;
-};
+const NO_ACTIVE_ROW = -1;
+
+type BaseLabel = Omit<TimeZoneSelectItem, "offsetMins" | "timeLabel">;
 let cachedLabels: BaseLabel[] | null = null;
 
 export function resetTimeZoneCaches(): void {
@@ -349,7 +369,7 @@ export function resetTimeZoneCaches(): void {
 }
 
 // Both sides of a search fold, so "São Paulo" reaches a row spelled Sao Paulo.
-export const fold = (text: string) => deburr(text).toLowerCase();
+const fold = (text: string) => deburr(text).toLowerCase();
 
 const WORD_CHAR = /[\p{L}\p{N}]/u;
 
@@ -372,46 +392,35 @@ function matchesQuery({
   return false;
 }
 
-const wordsOf = (text: string) => fold(text).match(/\p{L}+/gu) ?? [];
-
-// "Australian Western Standard Time" already says "Western Australia Time" and
-// "Türkiye Time" says "Turkey Time", so two words on a shared stem count as one
-// word said.
-const sameWord = (a: string, b: string) =>
-  a === b ||
-  (a.length >= 4 && b.length >= 4 && a.slice(0, 4) === b.slice(0, 4));
-
-// Most of the list would carry a second line otherwise, and most of those
-// would repeat the first: "Gulf Standard Time — Dubai" over "Dubai Time".
-function namesMoreThan({
-  label,
-  shown,
-}: {
-  label: string;
-  shown: string;
-}): boolean {
-  const said = wordsOf(shown);
-  return wordsOf(label).some(
-    (word) => word !== "time" && !said.some((seen) => sameWord(word, seen)),
-  );
-}
+const namesOf = ({ name, alsoCalled }: TzCountry) => [name, ...alsoCalled];
 
 // A zone this runtime cannot format is still one the server schedules in, so
-// its row stays, under the curated label when Intl has no name for it.
-//
-// It stays searchable where Intl's name displaces it: Intl calls Asia/Kolkata
-// "India Standard Time", which answers nobody searching for Sri Lanka.
-function labelFor({ tz, label, searchTerms = [] }: TzOption): BaseLabel {
+// its row stays, under its city alone when Intl has no name for it.
+function labelFor({ tz, countries }: TzOption): BaseLabel {
   const generic = getGenericLabelFromIntl(tz);
   const city = prettyCityFromIana(tz);
-  const left = `${generic ?? label} — ${city}`;
-  const searchable = [left, ...(generic ? [label] : []), ...searchTerms, tz];
+  const left = generic ? `${generic} — ${city}` : city;
   return {
     tz,
     labelLeft: left,
-    labelSub: generic && namesMoreThan({ label, shown: left }) ? label : null,
-    searchTerms,
-    searchText: fold(searchable.join(" ")),
+    // A country name can hold a comma: "Saint Helena, Ascension and Tristan da Cunha".
+    labelSub: countries.map(({ name }) => name).join(" · ") || null,
+    searchText: fold(
+      [
+        left,
+        ...countries.flatMap(namesOf),
+        ...regionsOf(tz),
+        ...(LINKED_ZONES[tz] ?? []).map(({ name }) => prettyCityFromIana(name)),
+      ].join(" "),
+    ),
+    ownNames: [
+      city,
+      // Intl gives Denver "Mountain Time" and the zones beside it that skip DST
+      // "Mountain Standard Time", so "mountain" leads with Denver's family.
+      ...(generic ? [generic.replace(/ Time$/, "")] : []),
+      ...countries.slice(0, 1).flatMap(namesOf),
+    ].map(fold),
+    sharedNames: countries.slice(1).flatMap(namesOf).map(fold),
   };
 }
 
@@ -448,21 +457,6 @@ function baseItems(minute: number): BaseItem[] {
   return items;
 }
 
-// A row holding none of what was typed reads as a wrong answer, so a term that
-// matched off the row takes the second line while the query stands.
-function subForQuery(
-  item: TimeZoneSelectItem,
-  foldedQuery: string,
-): string | null {
-  const shown = fold(`${item.labelLeft} ${item.labelSub ?? ""}`);
-  if (matchesQuery({ foldedText: shown, foldedQuery })) return item.labelSub;
-  return (
-    item.searchTerms.find((term) =>
-      matchesQuery({ foldedText: fold(term), foldedQuery }),
-    ) ?? item.labelSub
-  );
-}
-
 export type UseTimeZoneSelectParams = {
   value?: string;
   defaultValue?: string;
@@ -478,9 +472,9 @@ export function useTimeZoneSelect({
   hour12 = true,
   disabled,
 }: UseTimeZoneSelectParams) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [open, setOpenState] = useState(false);
+  const [query, setQueryState] = useState("");
+  const [activeOverride, setActiveOverride] = useState<number | null>(null);
   const [internalValue, setInternalValue] = useState<string>(
     value ?? defaultValue,
   );
@@ -513,15 +507,18 @@ export function useTimeZoneSelect({
 
   const selected = useMemo<TimeZoneSelectItem>(() => {
     const when = minuteStart(minute);
-    const option = TZ_OPTIONS.find(({ tz }) => tz === internalValue);
+    const resolved = getTimezone(internalValue)?.aliasOf ?? internalValue;
+    const current = resolved === "Etc/GMT" ? UTC_ZONE : resolved;
+    const option = TZ_OPTIONS.find(({ tz }) => tz === current);
     const row = option
       ? labelFor(option)
       : {
           tz: internalValue,
           labelLeft: internalValue,
           labelSub: null,
-          searchTerms: [],
           searchText: fold(internalValue),
+          ownNames: [],
+          sharedNames: [],
         };
     return {
       ...row,
@@ -530,17 +527,52 @@ export function useTimeZoneSelect({
     };
   }, [internalValue, hour12, minute]);
 
-  const filtered = useMemo(() => {
+  // A row the query names leads: "india" opens on Kolkata, not the Indiana
+  // zones. The city or the country tzdata lists first outranks any other country
+  // on the row, so "vietnam" opens on Ho Chi Minh rather than Bangkok, and
+  // "netherlands", first on no zone, on Brussels. Rows that tie there put their
+  // country's principal zone first.
+  //
+  // Enter on web saves the active row, so the first row starts active only when
+  // it ranks alone. "eastern" leads with New York, which a Canadian member did
+  // not mean.
+  const { filtered, leadIndex } = useMemo(() => {
     const q = fold(query.trim());
-    if (!q) return items;
-    return items
-      .filter((i) => matchesQuery({ foldedText: i.searchText, foldedQuery: q }))
-      .map((i) => ({ ...i, labelSub: subForQuery(i, q) }));
+    if (!q) return { filtered: items, leadIndex: NO_ACTIVE_ROW };
+    const rank = ({ ownNames, sharedNames }: TimeZoneSelectItem) =>
+      ownNames.includes(q) ? 0 : sharedNames.includes(q) ? 1 : 2;
+    const matches = items
+      .filter((item) =>
+        matchesQuery({ foldedText: item.searchText, foldedQuery: q }),
+      )
+      .sort(
+        (a, b) =>
+          rank(a) - rank(b) ||
+          Number(PRINCIPAL_TZS.has(b.tz)) - Number(PRINCIPAL_TZS.has(a.tz)),
+      );
+    const [first, second] = matches;
+    const singledOut = first && (!second || rank(first) < rank(second));
+    return { filtered: matches, leadIndex: singledOut ? 0 : NO_ACTIVE_ROW };
   }, [items, query]);
 
-  useEffect(() => {
-    setActiveIndex(0);
-  }, [query, open]);
+  // An override rather than a reset on open, which would land after the
+  // trigger's ArrowDown and wipe the row it asked for.
+  const activeIndex = activeOverride ?? leadIndex;
+
+  // Opening starts a fresh search. Closing leaves the query alone, or the list
+  // would repopulate behind a modal still fading out.
+  const setOpen = (next: boolean) => {
+    if (next) {
+      setQueryState("");
+      setActiveOverride(null);
+    }
+    setOpenState(next);
+  };
+
+  const setQuery = (next: string) => {
+    setQueryState(next);
+    setActiveOverride(null);
+  };
 
   const commit = (tz: string) => {
     if (disabled) return;
@@ -556,7 +588,7 @@ export function useTimeZoneSelect({
     query,
     setQuery,
     activeIndex,
-    setActiveIndex,
+    setActiveIndex: (index: number) => setActiveOverride(index),
     commit,
     open,
     setOpen,

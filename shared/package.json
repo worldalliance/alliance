@@ -12,6 +12,7 @@
     "@alliance/common": "workspace:*",
     "@hey-api/client-fetch": "^0.10.0",
     "clsx": "^2.1.1",
+    "countries-and-timezones": "^3.10.0",
     "date-fns": "^4.1.0",
     "es-toolkit": "^1.49.0",
     "lucide-react": "^0.563.0",

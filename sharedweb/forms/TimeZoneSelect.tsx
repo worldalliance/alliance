@@ -51,7 +51,7 @@ export default function TimeZoneSelectPretty({
     if (disabled) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      setOpen((v) => !v);
+      setOpen(!open);
     }
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -68,12 +68,12 @@ export default function TimeZoneSelectPretty({
     }
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+      setActiveIndex(Math.min(activeIndex + 1, filtered.length - 1));
       return;
     }
     if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActiveIndex((i) => Math.max(i - 1, 0));
+      setActiveIndex(Math.max(activeIndex - 1, 0));
       return;
     }
     if (e.key === "Enter") {
@@ -90,7 +90,7 @@ export default function TimeZoneSelectPretty({
         <button
           type="button"
           disabled={disabled}
-          onClick={() => !disabled && setOpen((v) => !v)}
+          onClick={() => !disabled && setOpen(!open)}
           onKeyDown={onTriggerKeyDown}
           className={[
             "w-full rounded border border-zinc-300 bg-white px-3 py-3 text-left",
