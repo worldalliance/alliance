@@ -20,6 +20,7 @@ import { cn } from "@alliance/shared/styles/util";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
+import Pagination from "@alliance/sharedweb/ui/Pagination";
 import { CirclePlay } from "lucide-react";
 import React, {
   useCallback,
@@ -930,44 +931,11 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
               </div>
             )}
             <div className="flex items-center justify-between flex-wrap md:flex-nowrap gap-3">
-              {/* Pagination Controls */}
-              <div className="flex items-center gap-1">
-                <Button
-                  disabled={page <= 1}
-                  onClick={() => setPage(1)}
-                  color={ButtonColor.Black}
-                  size="small"
-                >
-                  First
-                </Button>
-                <Button
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  color={ButtonColor.Black}
-                  size="small"
-                >
-                  &larr; Prev
-                </Button>
-                <div className="px-4 py-1.5 text-sm font-medium text-gray-700 min-w-[100px] text-center">
-                  {page} of {totalPages}
-                </div>
-                <Button
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  color={ButtonColor.Black}
-                  size="small"
-                >
-                  Next &rarr;
-                </Button>
-                <Button
-                  disabled={page >= totalPages}
-                  onClick={() => setPage(totalPages)}
-                  color={ButtonColor.Black}
-                  size="small"
-                >
-                  Last
-                </Button>
-              </div>
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
 
               {/* User Search Dropdown */}
               <div className="relative" ref={userSearchRef}>
