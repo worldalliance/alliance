@@ -507,6 +507,7 @@ export class ConversationService {
     userId: number,
     dto: UpdateConversationDto,
   ): Promise<ConversationDto> {
+    await this.ensureConversationAdmin(conversationId, userId);
     const conversation = await this.getConversationEntity(conversationId);
 
     if (conversation.type !== ConversationType.Direct) {
