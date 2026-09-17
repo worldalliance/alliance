@@ -66,6 +66,7 @@ export default function ConversationInfoScreen() {
   const [search, setSearch] = useState("");
   const { data: messageableUsers = [], isLoading: loadingUsers } =
     useMessageableUsersQuery({ enabled: isGroup && isAdmin });
+  const canPickPhoto = canEditInfo && isEditing;
 
   useEffect(() => {
     if (!selectedConvo || isEditing) return;
@@ -89,7 +90,6 @@ export default function ConversationInfoScreen() {
   }, [messageableUsers, search, selectedConvo?.participants]);
 
   const handlePickPhoto = useCallback(async () => {
-    if (!canEditInfo) return;
     const picked = await pickImageDataUri();
     if (!picked.ok) {
       console.error("Failed to pick image", picked.error);
@@ -99,7 +99,7 @@ export default function ConversationInfoScreen() {
     if (picked.value) {
       setEditingPhoto(picked.value.dataUri);
     }
-  }, [canEditInfo]);
+  }, []);
 
   const handleSave = useCallback(async () => {
     if (!selectedConvo || saving) return;
@@ -204,13 +204,13 @@ export default function ConversationInfoScreen() {
 
       <KeyboardAwareScrollView>
         <View className="items-center px-4 pt-6">
-          <TouchableOpacity onPress={handlePickPhoto} disabled={!canEditInfo}>
+          <TouchableOpacity onPress={handlePickPhoto} disabled={!canPickPhoto}>
             <ProfileImage
-              pfp={editingPhoto ?? selectedConvo.photo ?? null}
+              pfp={isEditing ? editingPhoto : (selectedConvo.photo ?? null)}
               size="huge"
               className="mb-3"
             />
-            {canEditInfo && (
+            {canPickPhoto && (
               <View className="absolute bottom-1 right-1 bg-black/70 rounded-full p-1.5">
                 <Edit size={14} color="#fff" />
               </View>
