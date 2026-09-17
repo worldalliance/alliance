@@ -5,6 +5,12 @@
 - Google on iOS and Android goes through `@react-native-google-signin/google-signin`. Its id token carries the web client id as audience, which `GoogleOAuthClient.verifyIdentityToken` already checks against `GOOGLE_CLIENT_ID`.
 - Apple on iOS goes through `expo-apple-authentication`. `AppleOAuthClient.verifyIdentityToken` checks the token against `APPLE_BUNDLE_ID`, so the dev bundle id has to be in that comma-separated list.
 - Android has no native Apple UI, so Apple there uses the browser session. Google also falls back to it when Google Play services are missing, since the native SDK can't run without them.
+- The module depends on `androidx.browser` 1.9.0, the first release with Auth Tab. `expo-web-browser` declares 1.6.0, and Gradle resolves both to 1.9.0.
+- The module starts the Auth Tab with `startActivityForResult` and settles `openAsync` from `OnActivityResult`, which still arrives after Android recreates the activity (checked on a device with "Don't keep activities" on). Expo's `registerForActivityResult` would also settle it after recreation, through its fallback callback, but it takes a contract class and a `Serializable` input to get the same result.
+- An Auth Tab result that arrives with nothing waiting on it, which is what a process death during the tab leaves behind, is logged and dropped. Picking that sign-in back up would take the redeem proof outliving the process, and the flow holds it in memory.
+- The result carries Android's raw result code next to the mapped type, so a code the module doesn't know shows up in the log rather than as a bare `unknown`.
+- `openAsync` rejects with `ERR_AUTH_TAB_UNSUPPORTED` when the default browser has no Auth Tab by the time it runs. Launching the intent without a package would hand the consent URL to whatever opens it, which may never return the redirect.
+- On Android, `modules/auth-tab` loads its native module with `requireNativeModule`, so a binary built without it fails at startup instead of silently opening a Custom Tab.
 - The app requests only Apple's email scope. Mobile sign-in never creates an account, so a name has no use.
 - A request that never gets a response (React Native's fetch rejects with a `TypeError`) counts as a network failure. Any other rejection counts as `failed`.
 - The app signs out of the Google SDK after every attempt. Otherwise the SDK reuses the account it just picked, and a member told "no account found" can't choose a different Google account.
