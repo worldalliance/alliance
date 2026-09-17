@@ -249,7 +249,7 @@ export default function ConversationInfoScreen() {
                   <Button
                     color={ButtonColor.Green}
                     onPress={handleSave}
-                    disabled={saving}
+                    disabled={saving || !editingTitle.trim()}
                   >
                     <Text className="text-white" weight={FontWeight.Medium}>
                       {saving ? "Saving..." : "Save"}

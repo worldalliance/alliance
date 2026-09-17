@@ -181,7 +181,7 @@ const ConversationInfoPanel = ({
               <Button
                 color={ButtonColor.Stone}
                 onClick={handleSaveGroup}
-                disabled={isSaving}
+                disabled={isSaving || !editingGroupTitle.trim()}
                 className="flex flex-row items-center gap-x-2"
               >
                 {isSaving && <Spinner size="small" />}
