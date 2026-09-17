@@ -40,7 +40,7 @@ import {
 } from "./dto/authtokens.dto";
 import ForgotPasswordDto, { ResetPasswordDto } from "./dto/forgotpassword.dto";
 import { SignUpDto } from "./dto/sign-up.dto";
-import { SignInDto, SignInResponseDto, type TokenMode } from "./dto/signin.dto";
+import { SignInDto, SignInResponseDto, TokenMode } from "./dto/signin.dto";
 import { AdminGuard } from "./guards/admin.guard";
 import { AuthGuard } from "./guards/auth.guard";
 import { RefreshTokenGuard } from "./guards/refresh.guard";
@@ -54,9 +54,9 @@ import {
 } from "./tokens";
 
 class TokenModeQuery {
-  @ApiPropertyOptional({ enum: ["cookie", "header"] })
+  @ApiPropertyOptional({ enum: TokenMode, enumName: "TokenMode" })
   @IsOptional()
-  @IsEnum(["cookie", "header"])
+  @IsEnum(TokenMode)
   mode?: TokenMode;
 }
 
@@ -90,7 +90,7 @@ export class AuthController {
     // here only to have the web app bounce them is a loop. Header sessions are
     // the mobile app, which has one API host and never moves.
     if (
-      signInDto.mode === "cookie" &&
+      signInDto.mode === TokenMode.Cookie &&
       switchedDomainAt !== null &&
       isLegacyAllianceHost(req.get("host") ?? "")
     ) {
@@ -108,7 +108,7 @@ export class AuthController {
       distinctId: String(userId),
       properties: { isAdmin },
     });
-    if (signInDto.mode === "header") {
+    if (signInDto.mode === TokenMode.Header) {
       return new SignInResponseDto({ access_token, refresh_token, isAdmin });
     }
     return new SignInResponseDto({ isAdmin });
@@ -138,7 +138,7 @@ export class AuthController {
       distinctId: String(userId),
       properties: { isAdmin: true },
     });
-    if (signInDto.mode === "header") {
+    if (signInDto.mode === TokenMode.Header) {
       return new SignInResponseDto({ access_token, refresh_token, isAdmin });
     }
     return new SignInResponseDto({ isAdmin: true });
@@ -195,7 +195,7 @@ export class AuthController {
         referral_code: signUp.referralCode,
       },
     });
-    if (signUp.mode === "header") {
+    if (signUp.mode === TokenMode.Header) {
       return new SignInResponseDto({ access_token, refresh_token, isAdmin });
     }
     return new SignInResponseDto({ isAdmin });
@@ -215,12 +215,12 @@ export class AuthController {
     const { access_token, refresh_token } =
       await this.authService.refreshTokens(userId, isImpersonation);
     const mode: TokenMode =
-      query.mode === "header"
-        ? "header"
+      query.mode === TokenMode.Header
+        ? TokenMode.Header
         : extractRefreshTokenFromCookie(req)
-          ? "cookie"
-          : "header";
-    if (mode === "cookie") {
+          ? TokenMode.Cookie
+          : TokenMode.Header;
+    if (mode === TokenMode.Cookie) {
       this.authService.setAuthCookies(res, access_token, refresh_token);
       return new RefreshTokensResponseDto({});
     }

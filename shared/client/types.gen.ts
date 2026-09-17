@@ -14,8 +14,10 @@ export type MobileFingerprintsDto = {
     android: MobilePlatformFingerprintDto;
 };
 
+export type TokenMode = 'cookie' | 'header';
+
 export type SignInDto = {
-    mode: 'cookie' | 'header';
+    mode: TokenMode;
     email: string;
     password: string;
     guestToken?: string;
@@ -26,8 +28,6 @@ export type SignInResponseDto = {
     access_token?: string;
     refresh_token?: string;
 };
-
-export type TokenMode = 'cookie' | 'header';
 
 export type SignUpDto = {
     name: string;
@@ -4140,7 +4140,7 @@ export type AuthRefreshTokensData = {
     body?: never;
     path?: never;
     query?: {
-        mode?: 'cookie' | 'header';
+        mode?: TokenMode;
     };
     url: '/auth/refresh';
 };
