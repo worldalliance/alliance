@@ -316,6 +316,58 @@ describe("ConversationController (e2e)", () => {
         .expect(403);
     });
 
+    it("refuses a rename from a member who is not an admin", async () => {
+      const { user: member, token: memberToken } = await createUserAndToken();
+      const { token: outsiderToken } = await createUserAndToken();
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Renameable Chat",
+          participantIds: [member.id],
+        })
+        .expect(201);
+
+      const conversationId = createResponse.body.id;
+
+      const acceptResponse = await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversationId}/accept`)
+        .set("Authorization", `Bearer ${memberToken}`)
+        .expect(201);
+
+      const memberParticipant = acceptResponse.body.participants.find(
+        (participant) => participant.user.id === member.id,
+      );
+      expect(memberParticipant?.role).toBe(ParticipantRole.Member);
+      expect(memberParticipant?.state).toBe(ParticipantState.Joined);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversationId}/update`)
+        .set("Authorization", `Bearer ${memberToken}`)
+        .send({ title: "Renamed By A Member" })
+        .expect(403);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversationId}/update`)
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .send({ title: "Renamed By An Outsider" })
+        .expect(403);
+
+      const storedConversation = await conversationRepo.findOne({
+        where: { id: conversationId },
+      });
+      expect(storedConversation?.title).toBe("Renameable Chat");
+
+      const renameResponse = await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversationId}/update`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "Renamed By The Owner" })
+        .expect(201);
+
+      expect(renameResponse.body.title).toBe("Renamed By The Owner");
+    });
+
     it("removes members who leave and blocks further access attempts", async () => {
       const { user: leavingUser, token: leavingToken } =
         await createUserAndToken();
