@@ -1,7 +1,7 @@
 import { authMe } from "@alliance/shared/client";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { afterEach, expect, it, mock } from "bun:test";
-import { openSession, setAuthHeader } from "./session";
+import { closeSession, openSession, setAuthHeader } from "./session";
 
 const api = serveApi(routes({}));
 
@@ -118,5 +118,23 @@ it("reports both failures when clearing the tokens fails too", async () => {
     keychain,
     keychainDelete,
   ]);
+  expect(await nextAuthorization()).toBeNull();
+});
+
+it("sends the logout with the token, then drops it", async () => {
+  const logout = Promise.withResolvers<string | null>();
+  api.throwingOnRefusal({
+    "POST /auth/logout": ({ request }) => {
+      logout.resolve(request.headers.get("authorization"));
+      return new Response(null, { status: 200 });
+    },
+  });
+  setAuthHeader("access");
+  const clearTokens = mock(async () => {});
+
+  closeSession(clearTokens);
+
+  expect(await logout.promise).toBe("Bearer access");
+  expect(clearTokens).toHaveBeenCalled();
   expect(await nextAuthorization()).toBeNull();
 });

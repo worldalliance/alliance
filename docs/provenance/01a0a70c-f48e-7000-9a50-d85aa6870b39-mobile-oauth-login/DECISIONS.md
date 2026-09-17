@@ -56,6 +56,7 @@
 - A failed token save drops the header and clears both stored tokens. The access token is written first, so a failure on the refresh token would otherwise leave it to sign the member in on the next launch. If clearing fails too, the error is an `AggregateError` holding both, since that access token may still be on disk and nothing else reports it.
 - The half of `startSession` below React state lives in `apps/mobile/lib/session.ts`. `AuthContext` pulls in secure storage, the router and PostHog, none of which load under bun, so the split is what lets `session.test.ts` cover the order against `serveApi`.
 - `setAuthHeader` drops the header by setting it to `null`. `client.setConfig` merges headers into the ones already set, so an empty object would leave the member's token on every later request.
+- Logging out drops the header too. `clearSession` cleared the stored tokens and the user but left the token on the client, so every query the screens refired after it went out as the member who just left. `closeSession` in `apps/mobile/lib/session.ts` drops it after sending the logout request, because the server attributes the logout to the token on that request.
 - `expo-router` would treat `alliance://oauth-callback` as a route. `app/+native-intent.tsx` returns `null` for it, which leaves the login screen mounted while `expo-web-browser` reads the URL.
 
 ## Copy

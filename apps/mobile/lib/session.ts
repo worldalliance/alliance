@@ -1,5 +1,6 @@
 import { R, type Result } from "@alliance/common/result";
 import {
+  authLogout,
   authMe,
   type SessionTokensDto,
   type UserDto,
@@ -13,6 +14,14 @@ export function setAuthHeader(accessToken: string | undefined): void {
     // drops one.
     headers: { Authorization: accessToken ? `Bearer ${accessToken}` : null },
   });
+}
+
+export function closeSession(clearTokens: () => Promise<void>): void {
+  // The server attributes the logout to the token this request carries, which
+  // the client reads when the call starts.
+  authLogout();
+  clearTokens();
+  setAuthHeader(undefined);
 }
 
 export async function openSession(params: {
