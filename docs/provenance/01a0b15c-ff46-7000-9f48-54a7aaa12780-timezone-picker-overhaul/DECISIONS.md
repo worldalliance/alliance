@@ -6,11 +6,14 @@ The overhaul ships as a run of standalone changes, ordered so that no step waits
 on a later one. Each leaves web and mobile working and can merge alone. The
 sections below this one carry the reasoning each step implements.
 
-1. **Timezone catalog.** A generator downloads a pinned tzdb archive, checks its
-   SHA-512, and writes `common/src/timezone-catalog.gen.ts`: the release
-   version, one row per `zone.tab` identifier plus `UTC`, and the compatibility
-   links out of `backward` and `etcetera`. Nothing imports it yet. Regenerating
-   reproduces the committed file byte for byte.
+1. **Timezone catalog.** Done. A generator downloads a pinned tzdb archive,
+   checks its SHA-512, and writes `common/src/timezone-catalog.gen.ts`: the
+   release version, one row per `zone.tab` identifier plus `UTC`, and the
+   compatibility links out of `backward` and `etcetera`, placed with the help
+   of `backzone`. Nothing imports it yet.
+   Regenerating on the same runtime reproduces the committed file byte for
+   byte. The country names come from `Intl.DisplayNames`, so a runtime
+   carrying newer ICU data rewrites a few of them.
 2. **Shared validation.** A validator in `common` that accepts any identifier
    the runtime resolves, wired into every server write path: password signup,
    OAuth signup, profile update, form extraction, admin edits.
@@ -53,6 +56,7 @@ sections below this one carry the reasoning each step implements.
 
 - Generate the client catalog from a named IANA tzdb release. Selectable rows are every geographic identifier in `zone.tab`, plus `UTC`.
 - Keep equivalent geographic identifiers separate. This preserves the location the member expects and prevents a future rule change in one country from changing members stored under another country's identifier.
+- An alias points at the row in the place its name names, not merely one with the same clocks since 1970. The generator takes the row a `#=` comment in `backward` names, then the row `backzone` links the name to, and only then the link's own target. Without that, `Iceland` lands on `Africa/Abidjan` and `Pacific/Yap` on Papua New Guinea. Reading `backzone` instead of keeping a hand list also places a link of this kind that a later release adds, as long as `backzone` records it.
 - Make identifiers from IANA's compatibility links searchable and acceptable on reads. Do not list obsolete links or fixed-offset `Etc/GMT` identifiers as separate rows.
 - Commit the generated TypeScript or JSON catalog. The updater downloads a pinned IANA archive, verifies its checksum, and records the tzdb version. Application builds and runtime use no network request for the catalog.
 - Check for new IANA releases on a schedule and update through reviewed pull requests. A normal test run stays offline.
