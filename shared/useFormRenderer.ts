@@ -7,6 +7,7 @@
 import { type DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import { type DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
+  collectFieldLookup,
   collectGroupByFieldId,
   collectSourceFormIds,
   collectVariableInputFields,
@@ -166,28 +167,23 @@ export function useFormSchemaMaps(args: {
   const { schema, userDefaultPublic } = args;
 
   const { fieldLookup, defaultValueMap } = useMemo(() => {
-    const lookup = new Map<string, AnyField>();
     const defaults = new Map<string, FormValue>();
 
     for (const page of schema.pages) {
       for (const element of flattenPageItems(page.fields)) {
         if (isQuestionField(element)) {
-          lookup.set(element.id, element);
           const defaultValue = resolveFieldDefaultValue(element);
           if (defaultValue !== undefined) {
             defaults.set(element.id, defaultValue);
-          }
-          // List sub-fields are looked up too, so a condition can reference one.
-          if (element.kind === "list" && Array.isArray(element.fields)) {
-            for (const sub of element.fields) {
-              lookup.set(sub.id, sub);
-            }
           }
         }
       }
     }
 
-    return { fieldLookup: lookup, defaultValueMap: defaults };
+    return {
+      fieldLookup: collectFieldLookup(schema.pages),
+      defaultValueMap: defaults,
+    };
   }, [schema]);
 
   const unknownKind = useMemo(

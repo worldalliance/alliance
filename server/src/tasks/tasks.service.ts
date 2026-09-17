@@ -16,6 +16,7 @@ import {
   type CheckboxExtractionTarget,
   type CheckboxField,
   type CityFieldValue,
+  collectFieldLookup,
   collectSourceFormIds,
   type CustomComponentField,
   flattenPageItems,
@@ -509,14 +510,7 @@ export class TasksService {
       accountConditionKinds,
     );
 
-    const fieldLookup = new Map<string, AnyField>();
-    for (const page of schema.pages) {
-      for (const element of flattenPageItems(page.fields)) {
-        if (isQuestionField(element)) {
-          fieldLookup.set(element.id, element);
-        }
-      }
-    }
+    const fieldLookup = collectFieldLookup(schema.pages);
 
     const visibilityExtras: ConditionExtras = {
       deviceType: submitFormDto.deviceType,

@@ -456,6 +456,23 @@ export function collectGroupByFieldId(pages: Page[]): Map<string, FieldGroup> {
   return map;
 }
 
+export function collectFieldLookup(pages: Page[]): Map<string, AnyField> {
+  const lookup = new Map<string, AnyField>();
+  for (const page of pages) {
+    for (const element of flattenPageItems(page.fields)) {
+      if (!isQuestionField(element)) continue;
+      lookup.set(element.id, element);
+      // List sub-fields are looked up too, so a condition can reference one.
+      if (element.kind === "list") {
+        for (const sub of element.fields ?? []) {
+          lookup.set(sub.id, sub);
+        }
+      }
+    }
+  }
+  return lookup;
+}
+
 export function mapPageItems(
   items: PageItem[],
   mapLeaf: (item: AnyField | DisplayBlock) => AnyField | DisplayBlock,

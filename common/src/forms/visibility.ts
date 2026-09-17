@@ -8,6 +8,7 @@ import {
   type FormValue,
   type OutputFieldBlock,
   type Page,
+  collectFieldLookup,
   collectGroupByFieldId,
   flattenPageItems,
   isFieldGroup,
@@ -393,15 +394,7 @@ export function stripHiddenAnswers(
   answers: Record<string, FormValue>,
   extras: ConditionExtras & { readOnly?: boolean },
 ): Record<string, FormValue> {
-  const fieldLookup =
-    extras.fieldLookup ??
-    new Map(
-      pages.flatMap((page) =>
-        flattenPageItems(page.fields)
-          .filter(isQuestionField)
-          .map((field) => [field.id, field] as const),
-      ),
-    );
+  const fieldLookup = extras.fieldLookup ?? collectFieldLookup(pages);
   const groupByFieldId = extras.groupByFieldId ?? collectGroupByFieldId(pages);
 
   let data = answers;
