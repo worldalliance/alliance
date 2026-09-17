@@ -4,6 +4,7 @@ import {
   conversationRemoveParticipant,
   conversationUpdateInfo,
 } from "@alliance/shared/client";
+import { isConversationAdmin } from "@alliance/shared/lib/messages";
 import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
 import { router, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, Edit, Plus, X } from "lucide-react-native";
@@ -53,16 +54,7 @@ export default function ConversationInfoScreen() {
     [conversations, convoId],
   );
 
-  const participantMe = useMemo(
-    () =>
-      selectedConvo?.participants.find(
-        (participant) => participant.user.id === user?.id,
-      ) ?? null,
-    [selectedConvo, user?.id],
-  );
-
-  const isAdmin =
-    participantMe?.role === "admin" || participantMe?.role === "owner";
+  const isAdmin = isConversationAdmin(selectedConvo, user?.id);
   const isGroup = selectedConvo?.type === "multiple";
   const isCommunity = selectedConvo?.type === "community";
 
