@@ -6,6 +6,7 @@ import {
   type AnyField,
   type FieldGroup,
   type FormValue,
+  type ListField,
   type ListSubField,
   type OutputFieldBlock,
   type Page,
@@ -13,6 +14,7 @@ import {
   collectGroupByFieldId,
   flattenPageItems,
   isFieldGroup,
+  isListRow,
   isQuestionField,
 } from "./form-schema";
 import {
@@ -398,8 +400,9 @@ export function isPageCurrentlyVisible(
 /**
  * Returns `answers` without the entries for question fields the user cannot
  * currently see — because the field's own formula is false or because its page
- * is hidden. An answer that isn't visible is treated as never given: it must
- * not drive visibility conditions, satisfy validation, or be persisted.
+ * is hidden — and without list cells whose sub-field is hidden for their row.
+ * An answer that isn't visible is treated as never given: it must not drive
+ * visibility conditions, satisfy validation, or be persisted.
  *
  * Runs to a fixpoint, since removing a stale answer can hide further pages and
  * fields (or, with negated conditions, reveal fields — those stay stripped,
@@ -437,14 +440,67 @@ export function stripHiddenAnswers(
         )
         .map((field) => field.id);
     });
-    if (hiddenAnsweredIds.length === 0) {
+    if (hiddenAnsweredIds.length > 0) {
+      data = { ...data };
+      for (const id of hiddenAnsweredIds) {
+        delete data[id];
+      }
+      continue;
+    }
+    const withoutHiddenCells = stripHiddenListCells(pages, data, {
+      ...extras,
+      fieldLookup,
+      groupByFieldId,
+    });
+    if (withoutHiddenCells === data) {
       return data;
     }
-    data = { ...data };
-    for (const id of hiddenAnsweredIds) {
-      delete data[id];
+    data = withoutHiddenCells;
+  }
+}
+
+function stripHiddenListCells(
+  pages: Page[],
+  data: Record<string, FormValue>,
+  extras: ConditionExtras & { readOnly?: boolean },
+): Record<string, FormValue> {
+  let stripped = data;
+  for (const page of pages) {
+    for (const field of flattenPageItems(page.fields)) {
+      if (!isQuestionField(field) || field.kind !== "list") continue;
+      const rows = data[field.id];
+      if (!Array.isArray(rows) || !rows.every(isListRow)) continue;
+      let changed = false;
+      const nextRows = rows.map((row) => {
+        const nextRow = stripHiddenRowCells(field, row, data, extras);
+        if (nextRow !== row) changed = true;
+        return nextRow;
+      });
+      if (changed) stripped = { ...stripped, [field.id]: nextRows };
     }
   }
+  return stripped;
+}
+
+function stripHiddenRowCells(
+  list: ListField,
+  row: Record<string, FormValue>,
+  data: Record<string, FormValue>,
+  extras: ConditionExtras & { readOnly?: boolean },
+): Record<string, FormValue> {
+  const subFields = list.fields ?? [];
+  const visibleIds = new Set(
+    visibleListSubFields({ subFields, data, row, extras }).map((sub) => sub.id),
+  );
+  const hiddenIds = subFields
+    .filter((sub) => sub.id in row && !visibleIds.has(sub.id))
+    .map((sub) => sub.id);
+  if (hiddenIds.length === 0) return row;
+  const next = { ...row };
+  for (const id of hiddenIds) {
+    delete next[id];
+  }
+  return next;
 }
 
 function evaluateVisibleIfFormula(

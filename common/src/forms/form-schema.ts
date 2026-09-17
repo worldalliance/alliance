@@ -30,6 +30,10 @@ export type FormValue =
   | CityFieldValue
   | ListFieldValue;
 
+export function isListRow(value: unknown): value is Record<string, FormValue> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export const formValueSchema: z.ZodType<FormValue> = z.lazy(() =>
   z.union([
     z.string(),
