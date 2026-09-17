@@ -5,6 +5,7 @@ import {
   conversationMarkRead,
   MessageDto,
   messageGetMessages,
+  ParticipantRole,
 } from "@alliance/shared/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
@@ -58,6 +59,23 @@ export const getParticipantState = (
     conversation.participants.find(
       (participant) => participant.user.id === userId,
     )?.state ?? null
+  );
+};
+
+const rolesWithAdminPowers: Record<ParticipantRole, boolean> = {
+  admin: true,
+  owner: true,
+  member: false,
+};
+
+export const isConversationAdmin = (
+  conversation: ConversationDto | null | undefined,
+  userId: number | null | undefined,
+): boolean => {
+  if (!conversation || !userId) return false;
+  return conversation.participants.some(
+    (participant) =>
+      participant.user.id === userId && rolesWithAdminPowers[participant.role],
   );
 };
 
