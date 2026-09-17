@@ -16,14 +16,13 @@ import React, {
 import {
   appHealthCheck,
   authLogin,
-  authLogout,
   authMe,
   type SessionTokensDto,
   UserDto,
 } from "../../../shared/client";
 import { clearGuestToken, getStoredGuestToken } from "./guestSession";
 import { SecureStorage, SecureStorageKey } from "./SecureStorage";
-import { openSession } from "./session";
+import { closeSession, openSession } from "./session";
 import {
   getVisualTestAutoLoginCredentials,
   isVisualTestMode,
@@ -76,8 +75,7 @@ export const AuthProvider: React.FC<
     return await SecureStorage.getItem(SecureStorageKey.ACCESS_TOKEN);
   }, []);
   const clearSession = useCallback(() => {
-    authLogout();
-    clearTokens();
+    closeSession(clearTokens);
     queryClient.clear();
     setUser(undefined);
   }, [clearTokens, queryClient]);
