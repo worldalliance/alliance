@@ -844,6 +844,26 @@ export class UserService {
     return others.sort((a, b) => a.id - b.id);
   }
 
+  async findRandomActiveUserIds(
+    count: number,
+    excludeIds: number[],
+  ): Promise<number[]> {
+    if (count <= 0) {
+      return [];
+    }
+    const qb = this.userRepository
+      .createQueryBuilder("u")
+      .select("u.id", "id")
+      .where(sqlUserHasActiveContractAt("u.id", "NOW()"));
+    if (excludeIds.length > 0) {
+      qb.andWhere("u.id NOT IN (:...excludeIds)", { excludeIds });
+    }
+    const rows = await qb.orderBy("RANDOM()").take(count).getRawMany<{
+      id: number;
+    }>();
+    return rows.map((r) => r.id);
+  }
+
   private async pickRandomUsersWithProfilePictures(
     count: number,
     excludeIds: number[],

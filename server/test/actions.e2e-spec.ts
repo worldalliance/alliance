@@ -4005,6 +4005,194 @@ describe("Actions (e2e)", () => {
     });
   });
 
+  describe("Home feed random fill", () => {
+    const contentfulFormSchema = {
+      pages: [
+        {
+          id: "page-1",
+          fields: [
+            {
+              id: "published",
+              type: "input",
+              kind: "text",
+              label: "Published",
+              output: { output: true },
+            },
+          ],
+        },
+      ],
+      outputViews: [],
+    };
+
+    it("tops up a small friends+group set with random active users", async () => {
+      const viewer = await userService.create({
+        email: `feed-viewer-${Date.now()}@example.com`,
+        password: "Password123!",
+        name: "Feed Viewer",
+        tags: [ctx.defaultTag],
+      });
+
+      const spy = jest.spyOn(userService, "findRandomActiveUserIds");
+
+      await request(ctx.app.getHttpServer())
+        .get("/actions/homeFeed")
+        .set(
+          "Authorization",
+          `Bearer ${signAccessToken(ctx.jwtService, viewer)}`,
+        )
+        .expect(200);
+
+      expect(spy).toHaveBeenCalledWith(10, [viewer.id]);
+
+      spy.mockRestore();
+      await userRepo.delete(viewer.id);
+    });
+
+    it("skips the random fill once friends+group already meet the minimum", async () => {
+      const viewer = await userService.create({
+        email: `feed-viewer-full-${Date.now()}@example.com`,
+        password: "Password123!",
+        name: "Feed Viewer Full",
+        tags: [ctx.defaultTag],
+      });
+
+      const friendIds: number[] = [];
+      for (let i = 0; i < 10; i++) {
+        const friend = await userService.create({
+          email: `feed-friend-${Date.now()}-${i}@example.com`,
+          password: "Password123!",
+          name: `Feed Friend ${i}`,
+          tags: [ctx.defaultTag],
+        });
+        await userService.makeFriendsAutomated(viewer.id, friend.id);
+        friendIds.push(friend.id);
+      }
+
+      const spy = jest.spyOn(userService, "findRandomActiveUserIds");
+
+      await request(ctx.app.getHttpServer())
+        .get("/actions/homeFeed")
+        .set(
+          "Authorization",
+          `Bearer ${signAccessToken(ctx.jwtService, viewer)}`,
+        )
+        .expect(200);
+
+      expect(spy).not.toHaveBeenCalled();
+
+      spy.mockRestore();
+      await userRepo.delete(viewer.id);
+      await userRepo.delete(friendIds);
+    });
+
+    it("still surfaces a friend's contentful completion in the home feed", async () => {
+      const viewer = await userService.create({
+        email: `feed-regression-viewer-${Date.now()}@example.com`,
+        password: "Password123!",
+        name: "Feed Regression Viewer",
+        tags: [ctx.defaultTag],
+      });
+      const friend = await userService.create({
+        email: `feed-regression-friend-${Date.now()}@example.com`,
+        password: "Password123!",
+        name: "Feed Regression Friend",
+        tags: [ctx.defaultTag],
+      });
+      await userService.makeFriendsAutomated(viewer.id, friend.id);
+
+      const { action } = await createPublishedAction("Home Feed Regression", {
+        status: ActionStatus.MemberAction,
+      });
+      const { form, snapshot } = await createFormWithSnapshot(ctx.dataSource, {
+        title: "Home Feed Regression Form",
+        schema: contentfulFormSchema,
+      });
+
+      await activityRepo.save(
+        activityRepo.create({
+          type: ActionActivityType.USER_COMPLETED,
+          actionId: action.id,
+          userId: friend.id,
+          taskFormResponse: formResponseRepo.create({
+            formId: form.id,
+            formSnapshotId: snapshot.id,
+            user: friend,
+            answers: { published: "Shown" },
+          }),
+        }),
+      );
+
+      const feed = await request(ctx.app.getHttpServer())
+        .get("/actions/homeFeed")
+        .set(
+          "Authorization",
+          `Bearer ${signAccessToken(ctx.jwtService, viewer)}`,
+        )
+        .expect(200);
+
+      expect(
+        feed.body.some(
+          (item: { activity?: { actionName: string } }) =>
+            item.activity?.actionName === action.name,
+        ),
+      ).toBe(true);
+
+      await actionRepo.delete(action.id);
+      await formRepo.delete(form.id);
+      await userRepo.delete([viewer.id, friend.id]);
+    });
+
+    it("findRandomActiveUserIds excludes given ids and users without a signed contract", async () => {
+      const now = Date.now();
+      const signedContract = (offsetMinutes: number) => [
+        {
+          type: ContractEventType.SIGNED,
+          date: new Date(now - milliseconds({ minutes: offsetMinutes })),
+          automatic: false,
+          contractId: ctx.defaultContractId,
+        },
+      ];
+
+      const eligible = await userService.create({
+        email: `feed-random-eligible-${now}@example.com`,
+        password: "Password123!",
+        name: "Random Eligible",
+        tags: [ctx.defaultTag],
+        contractEvents: signedContract(1),
+      });
+      const excludedExplicitly = await userService.create({
+        email: `feed-random-excluded-${now}@example.com`,
+        password: "Password123!",
+        name: "Random Excluded",
+        tags: [ctx.defaultTag],
+        contractEvents: signedContract(1),
+      });
+      const unsigned = await userService.create({
+        email: `feed-random-unsigned-${now}@example.com`,
+        password: "Password123!",
+        name: "Random Unsigned",
+        tags: [ctx.defaultTag],
+      });
+
+      const everyoneElse = (await userRepo.find({ select: { id: true } }))
+        .map((u) => u.id)
+        .filter(
+          (id) =>
+            ![eligible.id, excludedExplicitly.id, unsigned.id].includes(id),
+        );
+
+      const result = await userService.findRandomActiveUserIds(5, [
+        ...everyoneElse,
+        excludedExplicitly.id,
+      ]);
+      expect(result).toEqual([eligible.id]);
+
+      expect(await userService.findRandomActiveUserIds(0, [])).toEqual([]);
+
+      await userRepo.delete([eligible.id, excludedExplicitly.id, unsigned.id]);
+    });
+  });
+
   afterAll(async () => {
     await actionRepo.query("DELETE FROM action");
     await ctx.app.close();

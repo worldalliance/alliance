@@ -266,6 +266,8 @@ const GLOBAL_FEED_WINDOW_DAYS = 8;
  */
 const OPT_OUT_REASON_PREVIEW_LENGTH = 300;
 
+const MIN_HOME_FEED_SOURCE_USERS = 10;
+
 type FeedMemberPageRow = {
   userId: number | string;
   latestAt: Date | string;
@@ -2543,9 +2545,16 @@ export class ActionsService {
       }
     }
 
-    const allUserIds = [
-      ...new Set([...friendIds, ...communityMemberIds, userId]),
-    ];
+    const knownIds = new Set([...friendIds, ...communityMemberIds]);
+    if (knownIds.size < MIN_HOME_FEED_SOURCE_USERS) {
+      const fillerIds = await this.userService.findRandomActiveUserIds(
+        MIN_HOME_FEED_SOURCE_USERS - knownIds.size,
+        [...knownIds, userId],
+      );
+      for (const id of fillerIds) knownIds.add(id);
+    }
+
+    const allUserIds = [...knownIds, userId];
 
     const visibilityUser = await this.loadUserForActionVisibility(userId);
     const visibilitySession = new CohortResolutionSession();
