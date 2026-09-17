@@ -5,6 +5,7 @@ import {
   messageSendMessage,
   ProfileDto,
 } from "@alliance/shared/client";
+import { isConversationAdmin } from "@alliance/shared/lib/messages";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
@@ -356,11 +357,7 @@ const ConversationDetailPanel = ({
 
   const isAdmin = useMemo(() => {
     if (mode === "new") return false;
-    return selectedConvo.participants.some(
-      (participant) =>
-        (participant.user.id === user?.id && participant.role === "admin") ||
-        participant.role === "owner",
-    );
+    return isConversationAdmin(selectedConvo, user?.id);
   }, [mode, selectedConvo, user]);
 
   const isInvited = useMemo(

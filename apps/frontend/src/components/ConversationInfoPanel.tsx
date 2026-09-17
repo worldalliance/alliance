@@ -40,12 +40,6 @@ const ConversationInfoPanel = ({
 }: ConversationInfoPanelProps) => {
   const { user } = useAuth();
 
-  const participantMe = useMemo(() => {
-    return selectedConvo.participants.find(
-      (participant) => participant.user.id === user?.id,
-    );
-  }, [selectedConvo, user]);
-
   const [addMemberSearch, setAddMemberSearch] = useState<string>("");
   const [isEditingGroup, setIsEditingGroup] = useState<boolean>(false);
   const [editingGroupTitle, setEditingGroupTitle] = useState<string>(
@@ -270,41 +264,39 @@ const ConversationInfoPanel = ({
                 </Link>
               ))}
             </List>
-            {selectedConvo.type === "multiple" &&
-              (participantMe?.role === "admin" ||
-                participantMe?.role === "owner") && (
-                <Card
-                  style={CardStyle.LightGrey}
-                  className="w-full !p-0 relative group"
-                >
-                  <input
-                    type="text"
-                    placeholder="Add member..."
-                    className="text-zinc-800 !bg-transparent p-4 active:outline-none focus:outline-none"
-                    value={addMemberSearch}
-                    onChange={(e) => setAddMemberSearch(e.target.value)}
-                  />
-                  {filteredFriends && filteredFriends.length > 0 && (
-                    <div className="absolute top-full bg-white w-full border border-zinc-200 rounded rounded-t-none">
-                      {filteredFriends.map((friend) => (
-                        <div
-                          key={friend.id}
-                          className="flex flex-row items-center gap-x-3 cursor-pointer hover:bg-zinc-100 p-4 rounded-md"
-                          onClick={() => {
-                            handleAddMember(friend.id);
-                          }}
-                        >
-                          <AvatarProfile
-                            pfp={friend.profilePicture}
-                            size="large"
-                          />
-                          <p>{friend.displayName}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </Card>
-              )}
+            {selectedConvo.type === "multiple" && isAdmin && (
+              <Card
+                style={CardStyle.LightGrey}
+                className="w-full !p-0 relative group"
+              >
+                <input
+                  type="text"
+                  placeholder="Add member..."
+                  className="text-zinc-800 !bg-transparent p-4 active:outline-none focus:outline-none"
+                  value={addMemberSearch}
+                  onChange={(e) => setAddMemberSearch(e.target.value)}
+                />
+                {filteredFriends && filteredFriends.length > 0 && (
+                  <div className="absolute top-full bg-white w-full border border-zinc-200 rounded rounded-t-none">
+                    {filteredFriends.map((friend) => (
+                      <div
+                        key={friend.id}
+                        className="flex flex-row items-center gap-x-3 cursor-pointer hover:bg-zinc-100 p-4 rounded-md"
+                        onClick={() => {
+                          handleAddMember(friend.id);
+                        }}
+                      >
+                        <AvatarProfile
+                          pfp={friend.profilePicture}
+                          size="large"
+                        />
+                        <p>{friend.displayName}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            )}
 
             {selectedConvo.type === "multiple" && (
               <Button
