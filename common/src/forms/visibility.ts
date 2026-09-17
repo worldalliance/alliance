@@ -341,6 +341,13 @@ function isOwnElementCurrentlyVisible(
   return evaluateVisibleIfFormula(formula, data, extras);
 }
 
+export function listRowData(params: {
+  data: Record<string, FormValue>;
+  row: Record<string, FormValue>;
+}): Record<string, FormValue> {
+  return { ...params.data, ...params.row };
+}
+
 /**
  * A page with a `visibleIfFormula` is skipped entirely (rendering, navigation,
  * validation) when the formula evaluates false. Pages without one are always

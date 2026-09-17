@@ -9,6 +9,7 @@ import type {
   RangeField,
   TimeField,
 } from "@alliance/common/forms/form-schema";
+import { listRowData } from "@alliance/common/forms/visibility";
 import { withCount } from "@alliance/common/plural";
 import type { UserDto } from "@alliance/shared/client";
 import {
@@ -997,15 +998,16 @@ export function RenderField({
       });
       const visibleSubFieldsForCard = (card: Record<string, FormValue>) => {
         if (!isElementVisible || !formData) return subFields;
-        const mergedData = { ...formData, ...card };
+        const mergedData = listRowData({ data: formData, row: card });
         return subFields.filter((sub) => isElementVisible(sub, mergedData));
       };
-      // A sub-field's requiredIfFormula can reference either the surrounding
-      // answers or its own card, so resolve it against the same merged data
-      // the visibility filter above uses.
       const subFieldRequiredForCard = (card: Record<string, FormValue>) =>
         isFieldRequired
-          ? (sub: AnyField) => isFieldRequired(sub, { ...formData, ...card })
+          ? (sub: AnyField) =>
+              isFieldRequired(
+                sub,
+                listRowData({ data: formData ?? {}, row: card }),
+              )
           : undefined;
       const hiddenInOutputIds = new Set(
         listField.outputViewHiddenFieldIds ?? [],

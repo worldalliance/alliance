@@ -9,6 +9,7 @@ import type {
   RangeField,
   TimeField,
 } from "@alliance/common/forms/form-schema";
+import { listRowData } from "@alliance/common/forms/visibility";
 import { withCount } from "@alliance/common/plural";
 import type { UserDto } from "@alliance/shared/client";
 import {
@@ -900,12 +901,16 @@ export function RenderField({
                       disableOptionRandomization={disableOptionRandomization}
                       isOutputView={isOutputView}
                       user={user}
-                      // A sub-field's requiredIfFormula can reference either the
-                      // surrounding answers or its own card.
                       isFieldRequired={
                         isFieldRequired
                           ? (sub: AnyField) =>
-                              isFieldRequired(sub, { ...formData, ...card })
+                              isFieldRequired(
+                                sub,
+                                listRowData({
+                                  data: formData ?? {},
+                                  row: card,
+                                }),
+                              )
                           : undefined
                       }
                     />
