@@ -5,7 +5,10 @@ import {
   messageSendMessage,
   ProfileDto,
 } from "@alliance/shared/client";
-import { isConversationAdmin } from "@alliance/shared/lib/messages";
+import {
+  getParticipantState,
+  isConversationAdmin,
+} from "@alliance/shared/lib/messages";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
@@ -210,10 +213,7 @@ const ConversationDetailPanel = ({
 
   const amInvited = useMemo(() => {
     if (mode === "new") return false;
-    return selectedConvo.participants.some(
-      (participant) =>
-        participant.user.id === user?.id && participant.state === "invited",
-    );
+    return getParticipantState(selectedConvo, user?.id) === "invited";
   }, [mode, selectedConvo, user]);
 
   const handleFocusReply = useCallback((messageId: string) => {
@@ -360,15 +360,6 @@ const ConversationDetailPanel = ({
     return isConversationAdmin(selectedConvo, user?.id);
   }, [mode, selectedConvo, user]);
 
-  const isInvited = useMemo(
-    () =>
-      selectedConvo?.participants.some(
-        (participant) =>
-          participant.user.id === user?.id && participant.state === "invited",
-      ),
-    [selectedConvo, user],
-  );
-
   return (
     <div
       className="flex flex-col h-full overflow-hidden relative bg-white"
@@ -506,7 +497,7 @@ const ConversationDetailPanel = ({
                 <div ref={bottomRef} />
               </div>
             ) : null}
-            {mode === "existing" && isInvited && (
+            {mode === "existing" && amInvited && (
               <div className="flex flex-row items-center gap-x-2 w-full p-5">
                 <div className="flex flex-col lg:flex-row items-center mx-auto gap-3">
                   <p className="text-zinc-800">
