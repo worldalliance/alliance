@@ -70,6 +70,15 @@ export const INPUT_MODE_HELP: Record<VariableInputMode, InputModeHelp> = {
   },
 };
 
+export const LIST_INPUT_HELP = {
+  notes:
+    "One record per row, in the order answered. Name a property for each sub-field; each reads like that field kind. Files and custom components are left out.",
+  example: (input: string, property: string | undefined) =>
+    property === undefined
+      ? `${input}.length`
+      : `${input}.map(row => row.${property}).join(', ')`,
+};
+
 const MODE_IS_DOCUMENTED: Record<VariableInputMode, boolean> = {
   [VariableInputMode.Number]: true,
   [VariableInputMode.Text]: true,
@@ -89,7 +98,7 @@ const kindsForMode = (mode: VariableInputMode): string[] =>
     each === mode ? [kind] : [],
   );
 
-export const inputModeType = (mode: VariableInputMode): string =>
+const inputModeType = (mode: VariableInputMode): string =>
   mode === VariableInputMode.None
     ? VARIABLE_INPUT_TYPE[mode]
     : `${VARIABLE_INPUT_TYPE[mode]} | undefined`;
@@ -289,6 +298,20 @@ export function VariableHelpModal({
                   </tr>
                 );
               })}
+              <tr className="border-t border-gray-100 text-xs">
+                <td className="w-32 py-2 pr-4 align-top font-mono text-gray-600">
+                  list
+                </td>
+                <td className="py-2 align-top text-gray-600">
+                  <p className="font-mono text-gray-900">
+                    {"{ name: string | undefined; … }[]"}
+                  </p>
+                  <p>{LIST_INPUT_HELP.notes}</p>
+                  <p className="font-mono text-gray-500">
+                    {LIST_INPUT_HELP.example("input1", "name")}
+                  </p>
+                </td>
+              </tr>
             </tbody>
           </table>
         </Section>
