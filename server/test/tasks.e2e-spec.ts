@@ -2288,6 +2288,66 @@ describe("Tasks (e2e)", () => {
         .expect(201);
     });
 
+    it("stores a list row without the cells hidden for it", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "List Hidden Cell Stored",
+        {
+          pages: [
+            {
+              id: "page-1",
+              fields: [
+                {
+                  id: "people",
+                  type: "input",
+                  kind: "list",
+                  label: "People",
+                  fields: [
+                    { id: "name", type: "input", kind: "text", label: "Name" },
+                    {
+                      id: "note",
+                      type: "input",
+                      kind: "text",
+                      label: "Note",
+                      visibleIfFormula: {
+                        conditions: {
+                          c1: { kind: "equals", when: "name", equals: "Ada" },
+                        },
+                        formula: "c1",
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+          outputViews: [],
+        },
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            people: [
+              { name: "Ada", note: "shown" },
+              { name: "Lin", note: "stale" },
+            ],
+          },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(201);
+
+      const stored = await formResponseRepo.findOneOrFail({
+        where: { formId },
+      });
+      expect(stored.answers).toEqual({
+        people: [{ name: "Ada", note: "shown" }, { name: "Lin" }],
+      });
+    });
+
     it("does not enforce list/ranking requiredness when requiredIfFormula is false", async () => {
       const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
         "RequiredIf List And Ranking Not Triggered",

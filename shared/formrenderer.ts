@@ -33,7 +33,7 @@ import {
 import { withCount } from "@alliance/common/plural";
 import { parseTimeToMinutes } from "@alliance/shared/forms/timeUtils";
 import { dropUnuploadedFileAnswers } from "./forms/fileAnswers";
-import { defaultCardCount, resolveCards } from "./forms/listCards";
+import { asCards, defaultCardCount, resolveCards } from "./forms/listCards";
 
 /** Indices into `pages` of the currently visible pages. */
 export function getVisiblePageIndices(
@@ -647,13 +647,7 @@ export function validateFieldValue(
       return valueToCheck ? null : "Please upload a file.";
     case "list": {
       const listField = field as ListField;
-      const listVal = Array.isArray(valueToCheck) ? valueToCheck : [];
-      const listValTyped = listVal.every(
-        (item): item is Record<string, FormValue> =>
-          item !== null && typeof item === "object" && !Array.isArray(item),
-      )
-        ? listVal
-        : [];
+      const listValTyped = asCards(valueToCheck) ?? [];
       const minCards = Math.max(0, Math.floor(Number(listField.min || 0)));
       const maxCards =
         typeof listField.max === "number" && listField.max >= 0

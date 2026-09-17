@@ -1,8 +1,9 @@
-import type {
-  FormValue,
-  ListField,
-  ListFieldValue,
-  ListSubField,
+import {
+  isListRow,
+  type FormValue,
+  type ListField,
+  type ListFieldValue,
+  type ListSubField,
 } from "@alliance/common/forms/form-schema";
 import { isOutputValueMissing } from "../outputrenderer";
 import type { ListRowContext } from "../useFormRenderer";
@@ -23,12 +24,7 @@ export function asCards(value: FormValue | undefined): ListFieldValue | null {
   if (!Array.isArray(value)) {
     return null;
   }
-  return value.every(
-    (item): item is Record<string, FormValue> =>
-      item !== null && typeof item === "object" && !Array.isArray(item),
-  )
-    ? value
-    : null;
+  return value.every(isListRow) ? value : null;
 }
 
 export function cardIdOf(card: Record<string, FormValue>): string | undefined {
