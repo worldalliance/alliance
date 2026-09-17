@@ -71,8 +71,11 @@ function allowedOrigins(): (string | RegExp)[] {
 /**
  * The caller never picks this. Whoever starts a flow holds its proof, so a
  * return link another app can claim hands that app the member's session.
- * Deployed, only the verified production Android package can claim the https
- * path. A local server answers with the scheme, which a dev build can claim.
+ * Deployed, it is the https path, which Android verifies against the
+ * production package's signing certificate. When the browser keeps the
+ * redirect, the page there opens whichever app has the package name,
+ * certificate unchecked. A local server answers with the scheme, which a dev
+ * build can claim.
  */
 export function mobileReturnUrl(): string {
   if (!deployed()) {

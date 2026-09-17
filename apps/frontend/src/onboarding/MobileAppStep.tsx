@@ -1,5 +1,6 @@
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { Smartphone } from "lucide-react";
+import { ANDROID_PACKAGE } from "../lib/mobileApp";
 import { riseStyle, StepHeadline, StepNote } from "./chrome";
 
 export const APP_HEADLINE_MOBILE = "Most members do this in the app.";
@@ -14,8 +15,7 @@ const APP_NOTE_DESKTOP =
 
 const IOS_URL = "https://apps.apple.com/app/id6760088194";
 
-const ANDROID_URL =
-  "https://play.google.com/store/apps/details?id=com.alliance.alliancemobile";
+const ANDROID_URL = `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE}`;
 
 const NAV = "min-h-11 gap-2 rounded-lg px-6 sm:min-w-[13rem]";
 
