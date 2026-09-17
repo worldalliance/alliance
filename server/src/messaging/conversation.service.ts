@@ -1,4 +1,8 @@
 import {
+  ParticipantRole,
+  rolesWithAdminPowers,
+} from "@alliance/common/participantRole";
+import {
   BadRequestException,
   ForbiddenException,
   Injectable,
@@ -25,11 +29,7 @@ import {
 } from "./dto/messaging.dto";
 import { Conversation, ConversationType } from "./entities/conversation.entity";
 import { Message } from "./entities/message.entity";
-import {
-  Participant,
-  ParticipantRole,
-  ParticipantState,
-} from "./entities/participant.entity";
+import { Participant, ParticipantState } from "./entities/participant.entity";
 import { MessagingEvents } from "./messaging.events";
 
 @Injectable()
@@ -1041,9 +1041,7 @@ export class ConversationService {
   }
 
   private isConversationAdmin(participant: Participant): boolean {
-    return [ParticipantRole.Admin, ParticipantRole.Owner].includes(
-      participant.role,
-    );
+    return rolesWithAdminPowers[participant.role];
   }
 
   async getUnreadMessages(userId: number): Promise<number> {

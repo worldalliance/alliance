@@ -1,10 +1,10 @@
+import { ParticipantRole } from "@alliance/common/participantRole";
 import {
   Conversation,
   ConversationType,
 } from "src/messaging/entities/conversation.entity";
 import {
   Participant,
-  ParticipantRole,
   ParticipantState,
 } from "src/messaging/entities/participant.entity";
 import { MessagingModule } from "src/messaging/messaging.module";
