@@ -32,7 +32,7 @@ import {
   type ConditionExtras,
 } from "@alliance/common/forms/visibility";
 import { R } from "@alliance/common/result";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   tasksGetForm,
   tasksGetFormDraft,
@@ -975,8 +975,10 @@ export function useFormDraftSync(args: {
   /** The stored draft, or null until the fetch lands. */
   serverDraft: FormDraftDto | null;
   saveFailed: boolean;
-  /** Call once the form is submitted or withdrawn from: the server deletes the draft, and a queued save would write it back. */
-  stopSyncing: () => void;
+  /** Call before submitting or withdrawing: the server deletes the draft, and a save queued behind the request would write it back. */
+  pauseSyncing: () => void;
+  /** Call when a submission the caller paused for didn't go through. */
+  resumeSyncing: () => void;
 } {
   const {
     enabled,
@@ -990,16 +992,18 @@ export function useFormDraftSync(args: {
     onSaved,
   } = args;
   const [serverDraft, setServerDraft] = useState<FormDraftDto | null>(null);
+  const [fetched, setFetched] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
-  const stoppedRef = useRef(false);
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
     tasksGetFormDraft({ path: { id: formId } })
       .then((response) => {
-        if (cancelled) return;
+        if (cancelled || !response.response.ok) return;
         setServerDraft(response.data?.draft ?? null);
+        setFetched(true);
       })
       .catch(() => {});
     return () => {
@@ -1008,9 +1012,12 @@ export function useFormDraftSync(args: {
   }, [enabled, formId]);
 
   useEffect(() => {
-    if (!enabled || !edited || formSnapshotId === null) return;
+    // A save before the fetch lands overwrites another device's draft with
+    // this one's near-empty state. A failed fetch reads as no draft, so only
+    // a successful one opens the save path.
+    if (!enabled || !edited || !fetched || paused || formSnapshotId === null)
+      return;
     const timer = setTimeout(() => {
-      if (stoppedRef.current) return;
       tasksSaveFormDraft({
         path: { id: formId },
         body: {
@@ -1035,6 +1042,8 @@ export function useFormDraftSync(args: {
   }, [
     enabled,
     edited,
+    fetched,
+    paused,
     formId,
     actionId,
     formSnapshotId,
@@ -1044,9 +1053,8 @@ export function useFormDraftSync(args: {
     onSaved,
   ]);
 
-  const stopSyncing = useCallback(() => {
-    stoppedRef.current = true;
-  }, []);
+  const pauseSyncing = useCallback(() => setPaused(true), []);
+  const resumeSyncing = useCallback(() => setPaused(false), []);
 
-  return { serverDraft, saveFailed, stopSyncing };
+  return { serverDraft, saveFailed, pauseSyncing, resumeSyncing };
 }

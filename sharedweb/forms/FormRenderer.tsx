@@ -335,17 +335,18 @@ const FormRenderer = ({
   const draftSyncEnabled =
     !!syncDraftToServer && !readOnly && !!persistKey && formSnapshotId !== null;
 
-  const { serverDraft, saveFailed, stopSyncing } = useFormDraftSync({
-    enabled: draftSyncEnabled,
-    formId: id,
-    actionId,
-    formSnapshotId,
-    answers: formData,
-    publicAnswers: resolvedPublicAnswers,
-    currentPageIndex,
-    edited: hasEmittedStart,
-    onSaved: setSyncedUpdatedAt,
-  });
+  const { serverDraft, saveFailed, pauseSyncing, resumeSyncing } =
+    useFormDraftSync({
+      enabled: draftSyncEnabled,
+      formId: id,
+      actionId,
+      formSnapshotId,
+      answers: formData,
+      publicAnswers: resolvedPublicAnswers,
+      currentPageIndex,
+      edited: hasEmittedStart,
+      onSaved: setSyncedUpdatedAt,
+    });
 
   useEffect(() => {
     if (!draftSyncEnabled || hasEmittedStart || !serverDraft) return;
@@ -724,13 +725,15 @@ const FormRenderer = ({
       sid: sid ?? undefined,
     };
 
+    pauseSyncing();
     try {
       const submitted = await onSubmit(submissionPayload);
-      if (submitted) {
-        stopSyncing();
+      if (!submitted) {
+        resumeSyncing();
       }
       return submitted;
     } catch {
+      resumeSyncing();
       return false;
     } finally {
       submittingRef.current = false;
@@ -756,7 +759,8 @@ const FormRenderer = ({
     validateAllPagesAndShowFirstInvalid,
     validatePage,
     visibilityValidatorResults,
-    stopSyncing,
+    pauseSyncing,
+    resumeSyncing,
   ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -785,7 +789,7 @@ const FormRenderer = ({
       publicAnswers: resolvedPublicAnswers,
     };
 
-    stopSyncing();
+    pauseSyncing();
     onAbandonAction?.({
       ...withdrawalFlagsFromOption(option),
       reason: customReason.trim(),
@@ -1171,7 +1175,9 @@ const FormRenderer = ({
                 className="text-zinc-500"
               />
             )}
-            {saveFailed && <p className="text-amber-600">{draftSaveFailed}</p>}
+            {saveFailed && !readOnly && (
+              <p className="text-amber-600">{draftSaveFailed}</p>
+            )}
           </div>
 
           {onAbandonAction && !readOnly && !publicAction && !followUp && (

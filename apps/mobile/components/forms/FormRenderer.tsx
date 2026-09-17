@@ -809,7 +809,7 @@ const FormRenderer = ({
   const draftSyncEnabled =
     !!syncDraftToServer && !readOnly && !!persistKey && formSnapshotId !== null;
 
-  const { serverDraft, saveFailed, stopSyncing } = useFormDraftSync({
+  const { serverDraft, saveFailed, pauseSyncing } = useFormDraftSync({
     enabled: draftSyncEnabled,
     formId: id,
     actionId,
@@ -1078,9 +1078,11 @@ const FormRenderer = ({
       sessionReplayUrl,
     };
 
+    // `onSubmit` resolves whether or not the submission went through, so a
+    // failed submit stops draft syncing for the rest of the screen.
+    pauseSyncing();
     onSubmit(submissionPayload)
       .then(() => {
-        stopSyncing();
         if (persistKey) {
           AsyncStorage.removeItem(storageKey).catch(() => {});
         }
@@ -1105,7 +1107,7 @@ const FormRenderer = ({
       publicAnswers,
     };
 
-    stopSyncing();
+    pauseSyncing();
     onAbandonAction?.({
       ...withdrawalFlagsFromOption(option),
       reason: customReason.trim(),
@@ -1332,7 +1334,7 @@ const FormRenderer = ({
               </TouchableOpacity>
             </View>
           )}
-          {saveFailed && (
+          {saveFailed && !readOnly && (
             <Text className="text-amber-600 text-base p-2">
               {draftSaveFailed}
             </Text>
