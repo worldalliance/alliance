@@ -1,3 +1,4 @@
+import { AuthService } from "src/auth/auth.service";
 import { SignUpDto } from "src/auth/dto/sign-up.dto";
 import { ACCESS_COOKIE, JWTTokenType, REFRESH_COOKIE } from "src/auth/tokens";
 import { UserService } from "src/user/user.service";
@@ -115,6 +116,121 @@ describe("Auth (e2e)", () => {
 
     expect(body.access_token).toBeDefined();
     expect(body.refresh_token).toBeDefined();
+  });
+
+  const cookieSession = async (email: string) => {
+    await userRepository.save(
+      userRepository.create({ email, password: "password", name: "No Cookie" }),
+    );
+    const agent = request.agent(ctx.app.getHttpServer());
+    await agent
+      .post("/auth/login")
+      .send({ email, password: "password", mode: TokenMode.Cookie })
+      .expect(200);
+    await agent.get("/auth/me").expect(200);
+    return agent;
+  };
+
+  it("sets no cookie session on a header-mode register", async () => {
+    const referrer = await userRepository.save(
+      userRepository.create({
+        email: "nocookie-referrer@test.com",
+        password: "password",
+        name: "No Cookie Referrer",
+      }),
+    );
+    const agent = request.agent(ctx.app.getHttpServer());
+
+    await agent
+      .post("/auth/register")
+      .send({
+        email: "nocookie-register@test.com",
+        password: "password",
+        name: "No Cookie",
+        mode: TokenMode.Header,
+        timeZone: "America/Los_Angeles",
+        referralCode: referrer.referralCode,
+      } satisfies SignUpDto)
+      .expect(201);
+    await agent.get("/auth/me").expect(401);
+  });
+
+  it("clears the cookie session on a header-mode login", async () => {
+    const email = "nocookie-login@test.com";
+    const agent = await cookieSession(email);
+
+    await agent
+      .post("/auth/login")
+      .send({ email, password: "password", mode: TokenMode.Header })
+      .expect(200);
+    await agent.get("/auth/me").expect(401);
+  });
+
+  it("clears the cookie session on a rejected header-mode login", async () => {
+    const email = "nocookie-rejected-login@test.com";
+    const agent = await cookieSession(email);
+
+    await agent
+      .post("/auth/login")
+      .send({ email, password: "wrong", mode: TokenMode.Header })
+      .expect(401);
+    await agent.get("/auth/me").expect(401);
+  });
+
+  it("clears the cookie session on a rejected header-mode register", async () => {
+    const email = "nocookie-rejected-register@test.com";
+    const agent = await cookieSession(email);
+    const referrer = await userRepository.save(
+      userRepository.create({
+        email: "nocookie-rejected-referrer@test.com",
+        password: "password",
+        name: "No Cookie Referrer",
+      }),
+    );
+
+    await agent
+      .post("/auth/register")
+      .send({
+        email,
+        password: "password",
+        name: "No Cookie",
+        mode: TokenMode.Header,
+        timeZone: "America/Los_Angeles",
+        referralCode: referrer.referralCode,
+      } satisfies SignUpDto)
+      .expect(400);
+    await agent.get("/auth/me").expect(401);
+  });
+
+  it("clears the cookie session on a header-mode login that merges a guest", async () => {
+    const email = "nocookie-guest@test.com";
+    const agent = await cookieSession(email);
+    const { guestToken } = await ctx.app.get(AuthService).createGuestSession();
+
+    await agent
+      .post("/auth/login")
+      .send({ email, password: "password", mode: TokenMode.Header, guestToken })
+      .expect(200);
+    await agent.get("/auth/me").expect(401);
+  });
+
+  it("clears the cookie session on a header-mode refresh", async () => {
+    const email = "nocookie-refresh@test.com";
+    const agent = await cookieSession(email);
+
+    const stranded = await request(ctx.app.getHttpServer())
+      .post("/auth/login")
+      .send({ email, password: "password", mode: TokenMode.Header })
+      .expect(200);
+
+    await agent
+      .post("/auth/refresh?mode=header")
+      .set(
+        "Authorization",
+        `Bearer ${(stranded.body as SignInResponseDto).refresh_token}`,
+      )
+      .expect(200);
+    await agent.get("/auth/me").expect(401);
   });
 
   it("sends no ETag for a client to revalidate", async () => {
