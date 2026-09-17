@@ -81,12 +81,6 @@ export default function TimeZoneSelect({
     maxHeight: LIST_MAX_HEIGHT,
   });
 
-  // The trigger has one line under the name, so the label shares it with the
-  // clock.
-  const underName = [selected.labelSub, selected.timeLabel ?? NO_TIME_LABEL]
-    .filter(Boolean)
-    .join(" · ");
-
   return (
     <View>
       <TouchableOpacity
@@ -102,9 +96,19 @@ export default function TimeZoneSelect({
           <Text className="text-base text-zinc-900" numberOfLines={1}>
             {selected.labelLeft || placeholder}
           </Text>
-          <Text className="text-xs text-zinc-500 mt-0.5" numberOfLines={1}>
-            {underName}
-          </Text>
+          <View className="flex-row mt-0.5">
+            {selected.labelSub ? (
+              // React Native defaults flexShrink to 0, and a zone listing ten
+              // countries would push the clock off the row.
+              <Text className="text-xs text-zinc-500 shrink" numberOfLines={1}>
+                {selected.labelSub}
+              </Text>
+            ) : null}
+            <Text className="text-xs text-zinc-500 shrink-0">
+              {selected.labelSub ? " · " : ""}
+              {selected.timeLabel ?? NO_TIME_LABEL}
+            </Text>
+          </View>
         </View>
         <ChevronDown size={18} color={colors.text.icon} />
       </TouchableOpacity>
