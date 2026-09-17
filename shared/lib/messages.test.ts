@@ -1,44 +1,5 @@
-import {
-  ConversationDto,
-  ParticipantDto,
-  ParticipantRole,
-  ProfileDto,
-} from "@alliance/shared/client";
 import { getParticipantState, isConversationAdmin } from "./messages";
-
-const makeProfile = (id: number): ProfileDto => ({
-  id,
-  admin: false,
-  staff: false,
-  ambassador: false,
-  profilePicture: null,
-  profileDescription: null,
-  anonymous: false,
-  displayName: `User ${id}`,
-  hasActiveContract: true,
-  isCommunityLeader: false,
-});
-
-const makeParticipant = (
-  id: number,
-  role: ParticipantRole,
-): ParticipantDto => ({
-  role,
-  state: "joined",
-  user: makeProfile(id),
-});
-
-const makeConversation = (participants: ParticipantDto[]): ConversationDto => ({
-  id: 1,
-  createdAt: "2026-09-17T00:00:00.000Z",
-  updatedAt: "2026-09-17T00:00:00.000Z",
-  type: "multiple",
-  title: "Group",
-  participants,
-  hasUnread: false,
-  isMessageRequest: false,
-  unreadCount: 0,
-});
+import { makeConversation, makeParticipant } from "./testFixtures";
 
 describe("isConversationAdmin", () => {
   it("stays false for a member of a group that has an owner", () => {
