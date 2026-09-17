@@ -57,6 +57,7 @@ export default function ConversationInfoScreen() {
   const isAdmin = isConversationAdmin(selectedConvo, user?.id);
   const isGroup = selectedConvo?.type === "multiple";
   const isCommunity = selectedConvo?.type === "community";
+  const canEditInfo = isGroup && isAdmin;
 
   const [isEditing, setIsEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState("");
@@ -88,7 +89,7 @@ export default function ConversationInfoScreen() {
   }, [messageableUsers, search, selectedConvo?.participants]);
 
   const handlePickPhoto = useCallback(async () => {
-    if (!isAdmin || !isGroup) return;
+    if (!canEditInfo) return;
     const picked = await pickImageDataUri();
     if (!picked.ok) {
       console.error("Failed to pick image", picked.error);
@@ -98,7 +99,7 @@ export default function ConversationInfoScreen() {
     if (picked.value) {
       setEditingPhoto(picked.value.dataUri);
     }
-  }, [isAdmin, isGroup]);
+  }, [canEditInfo]);
 
   const handleSave = useCallback(async () => {
     if (!selectedConvo || saving) return;
@@ -203,16 +204,13 @@ export default function ConversationInfoScreen() {
 
       <KeyboardAwareScrollView>
         <View className="items-center px-4 pt-6">
-          <TouchableOpacity
-            onPress={handlePickPhoto}
-            disabled={!isAdmin || !isGroup}
-          >
+          <TouchableOpacity onPress={handlePickPhoto} disabled={!canEditInfo}>
             <ProfileImage
               pfp={editingPhoto ?? selectedConvo.photo ?? null}
               size="huge"
               className="mb-3"
             />
-            {isAdmin && isGroup && (
+            {canEditInfo && (
               <View className="absolute bottom-1 right-1 bg-black/70 rounded-full p-1.5">
                 <Edit size={14} color="#fff" />
               </View>
@@ -244,7 +242,7 @@ export default function ConversationInfoScreen() {
             </Text>
           )}
 
-          {isAdmin && isGroup && (
+          {canEditInfo && (
             <View className="flex-row items-center gap-2 mt-4">
               {isEditing ? (
                 <>
