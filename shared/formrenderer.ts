@@ -9,6 +9,7 @@ import {
   type FormValue,
   isFieldGroup,
   type ListField,
+  type ListSubField,
   type NumberField,
   type Page,
   type PageItem,
@@ -20,10 +21,10 @@ import {
 } from "@alliance/common/forms/ranking";
 import {
   type ConditionExtras,
-  isElementCurrentlyVisible,
   isFieldConditionallyRequired,
   isPageCurrentlyVisible,
   listRowData,
+  visibleListSubFields,
 } from "@alliance/common/forms/visibility";
 import {
   CONDITION_KIND_IS_ACCOUNT_DERIVED,
@@ -697,13 +698,22 @@ export function getListSubFieldErrors(
   for (let cardIndex = 0; cardIndex < cards.length; cardIndex++) {
     const card = cards[cardIndex] ?? {};
     const mergedData = listRowData({ data, row: card });
+    const key = (sub: ListSubField) => `${listField.id}:${cardIndex}:${sub.id}`;
     for (const sub of subFields) {
-      const key = `${listField.id}:${cardIndex}:${sub.id}`;
-      if (!isElementCurrentlyVisible(sub, mergedData, extras)) {
-        result[key] = null;
-        continue;
-      }
-      result[key] = validateFieldValue(sub, card[sub.id], mergedData, extras);
+      result[key(sub)] = null;
+    }
+    for (const sub of visibleListSubFields({
+      subFields,
+      data,
+      row: card,
+      extras,
+    })) {
+      result[key(sub)] = validateFieldValue(
+        sub,
+        card[sub.id],
+        mergedData,
+        extras,
+      );
     }
   }
   return result;
