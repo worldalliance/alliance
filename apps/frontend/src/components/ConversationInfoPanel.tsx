@@ -193,13 +193,15 @@ const ConversationInfoPanel = ({
               <p className="font-semibold text-xl text-center break-words max-w-[500px]">
                 {selectedConvo.title}
               </p>
-              {selectedConvo.type !== "community" && (
-                <div
+              {selectedConvo.type !== "community" && isAdmin && (
+                <button
+                  type="button"
+                  aria-label="Edit group"
                   className="cursor-pointer hover:bg-zinc-100 rounded-md p-2"
                   onClick={() => setIsEditingGroup(true)}
                 >
                   <SquarePen className="h-4 w-4 text-zinc-500" />
-                </div>
+                </button>
               )}
             </div>
           )}
