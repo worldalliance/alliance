@@ -56,7 +56,6 @@ export default function ConversationInfoScreen() {
 
   const isAdmin = isConversationAdmin(selectedConvo, user?.id);
   const isGroup = selectedConvo?.type === "multiple";
-  const isCommunity = selectedConvo?.type === "community";
   const canEditInfo = isGroup && isAdmin;
 
   const [isEditing, setIsEditing] = useState(false);
@@ -326,7 +325,7 @@ export default function ConversationInfoScreen() {
           </View>
         </View>
 
-        {isAdmin && isGroup && !isCommunity && (
+        {isAdmin && isGroup && (
           <View className="px-4 mt-6">
             <Text className="text-sm text-zinc-500 mb-2">Add member</Text>
             <View className="border border-zinc-200 rounded-lg px-3 py-2 flex-row items-center gap-2">
