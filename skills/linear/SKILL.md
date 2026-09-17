@@ -17,6 +17,8 @@ To pull a label's issues, filter `issueLabels` by `name: {eq: …}` and traverse
 
 ## Filing an issue
 
+Before filing any issue, make sure it isn't already filed.
+
 Label it `AI-generated`, in addition to any other relevant labels.
 
 Write the description so the bug can be fixed from it alone, weeks later: repro, file paths with line numbers, and the branch and commit sha when the finding only exists on an unmerged branch.
