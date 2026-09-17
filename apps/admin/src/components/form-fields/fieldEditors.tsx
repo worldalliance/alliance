@@ -19,7 +19,8 @@ function renderEditorOfKind<K extends FieldKind>(
   props: BaseFieldProps<FieldOfKind[K]>,
 ) {
   const Editor: FieldEditor<K> | undefined = FIELD_EDITORS[kind];
-  return Editor ? <Editor {...props} /> : null;
+  if (!Editor) throw new Error(`no editor for field kind ${kind}`);
+  return <Editor {...props} />;
 }
 
 export function renderFieldEditor(props: BaseFieldProps<AnyField>) {

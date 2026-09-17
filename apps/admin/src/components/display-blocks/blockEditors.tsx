@@ -20,10 +20,7 @@ function renderEditorOfKind<K extends DisplayKind>(
   props: BaseDisplayBlockProps<BlockOfKind[K]>,
 ) {
   const Editor: BlockEditor<K> | undefined = BLOCK_EDITORS[kind];
-  if (!Editor) {
-    console.error(`Unknown block kind: ${kind}`);
-    return null;
-  }
+  if (!Editor) throw new Error(`no editor for block kind ${kind}`);
   return <Editor {...props} />;
 }
 

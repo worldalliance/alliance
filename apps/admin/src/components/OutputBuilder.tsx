@@ -403,7 +403,10 @@ export function OutputBuilder({
           {isDisplayBlock ? (
             (() => {
               const displayBlock = block as DisplayBlock;
-              if (!OUTPUT_BY_KIND[displayBlock.kind]) return null;
+              if (!OUTPUT_BY_KIND[displayBlock.kind])
+                throw new Error(
+                  `output views can't show ${displayBlock.kind} blocks`,
+                );
               return renderBlockEditor({
                 block: displayBlock,
                 onUpdate: handleDisplayUpdate,
