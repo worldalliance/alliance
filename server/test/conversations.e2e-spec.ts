@@ -455,6 +455,40 @@ describe("ConversationController (e2e)", () => {
       });
       expect(storedConversation?.title).toBe("Community With A Chat");
     });
+
+    it("refuses a blank group title and trims the one it stores", async () => {
+      const { user: member } = await createUserAndToken();
+
+      await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "   ", participantIds: [member.id] })
+        .expect(400);
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "  Named Chat  ", participantIds: [member.id] })
+        .expect(201);
+
+      expect(createResponse.body.title).toBe("Named Chat");
+
+      const conversationId = createResponse.body.id;
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversationId}/update`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "   " })
+        .expect(400);
+
+      const renameResponse = await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversationId}/update`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "  Padded Chat  " })
+        .expect(201);
+
+      expect(renameResponse.body.title).toBe("Padded Chat");
+    });
   });
 
   describe("unread counts", () => {

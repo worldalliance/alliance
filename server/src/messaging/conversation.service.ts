@@ -382,7 +382,7 @@ export class ConversationService {
 
     const conversation = await this.conversationRepository.save(
       this.conversationRepository.create({
-        title: dto.title.trim(),
+        title: dto.title,
         photo: photo ?? null,
         type: ConversationType.Multiple,
       }),
