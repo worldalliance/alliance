@@ -52,6 +52,10 @@
 - Provider buttons show only in `AccountMode.LogIn`. The dormant sign-up mode stays untouched.
 - The email field no longer autofocuses. With provider buttons above it, an open keyboard would push them and the title off small screens.
 - Cancellation shows in the gate's existing neutral `notice` line. Failures use its `error` line. The buttons stay enabled afterwards, so a retry is one tap.
+- The session tokens reach secure storage only once the profile has loaded. Written before it, they outlive a sign-in the member was told had failed and sign them in on the next launch. Password login is the only caller today, and provider sign-in lands on top of it next, so the fix goes first.
+- A failed token save drops the header and clears both stored tokens. The access token is written first, so a failure on the refresh token would otherwise leave it to sign the member in on the next launch. If clearing fails too, the error is an `AggregateError` holding both, since that access token may still be on disk and nothing else reports it.
+- The half of `startSession` below React state lives in `apps/mobile/lib/session.ts`. `AuthContext` pulls in secure storage, the router and PostHog, none of which load under bun, so the split is what lets `session.test.ts` cover the order against `serveApi`.
+- `setAuthHeader` drops the header by setting it to `null`. `client.setConfig` merges headers into the ones already set, so an empty object would leave the member's token on every later request.
 - `expo-router` would treat `alliance://oauth-callback` as a route. `app/+native-intent.tsx` returns `null` for it, which leaves the login screen mounted while `expo-web-browser` reads the URL.
 
 ## Copy
