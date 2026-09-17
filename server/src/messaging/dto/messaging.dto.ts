@@ -1,3 +1,4 @@
+import { ConversationType } from "@alliance/common/conversationType";
 import {
   ApiProperty,
   ApiPropertyOptional,
@@ -22,10 +23,7 @@ import { CommunityDto } from "src/community/dto/community.dto";
 import { getImageSource } from "src/images/images.service";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { trim } from "src/utils/transforms";
-import {
-  Conversation,
-  ConversationType,
-} from "../entities/conversation.entity";
+import { Conversation } from "../entities/conversation.entity";
 import { Message } from "../entities/message.entity";
 import { Participant, ParticipantState } from "../entities/participant.entity";
 

@@ -7,6 +7,7 @@ import {
   conversationUpdateInfo,
   ProfileDto,
 } from "@alliance/shared/client";
+import { canEditConversationInfo } from "@alliance/shared/lib/messages";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -39,6 +40,8 @@ const ConversationInfoPanel = ({
   onClose,
 }: ConversationInfoPanelProps) => {
   const { user } = useAuth();
+
+  const canEditInfo = canEditConversationInfo(selectedConvo, user?.id);
 
   const [addMemberSearch, setAddMemberSearch] = useState<string>("");
   const [isEditingGroup, setIsEditingGroup] = useState<boolean>(false);
@@ -174,7 +177,6 @@ const ConversationInfoPanel = ({
               <input
                 type="text"
                 className="font-semibold text-xl text-center active:outline-none focus:outline-none border-b border-zinc-200 pb-1"
-                disabled={selectedConvo.type === "community"}
                 value={editingGroupTitle}
                 onChange={(e) => setEditingGroupTitle(e.target.value)}
               />
@@ -193,7 +195,7 @@ const ConversationInfoPanel = ({
               <p className="font-semibold text-xl text-center break-words max-w-[500px]">
                 {selectedConvo.title}
               </p>
-              {selectedConvo.type !== "community" && isAdmin && (
+              {canEditInfo && (
                 <button
                   type="button"
                   aria-label="Edit group"

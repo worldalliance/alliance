@@ -4,7 +4,10 @@ import {
   conversationRemoveParticipant,
   conversationUpdateInfo,
 } from "@alliance/shared/client";
-import { isConversationAdmin } from "@alliance/shared/lib/messages";
+import {
+  canEditConversationInfo,
+  isConversationAdmin,
+} from "@alliance/shared/lib/messages";
 import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
 import { router, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, Edit, Plus, X } from "lucide-react-native";
@@ -56,7 +59,7 @@ export default function ConversationInfoScreen() {
 
   const isAdmin = isConversationAdmin(selectedConvo, user?.id);
   const isGroup = selectedConvo?.type === "multiple";
-  const canEditInfo = isGroup && isAdmin;
+  const canEditInfo = canEditConversationInfo(selectedConvo, user?.id);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState("");
