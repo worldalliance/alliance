@@ -924,6 +924,7 @@ export class TasksService {
         userId: user.id,
         signedName: null,
         contractId,
+        viaTaskForm: true,
       });
     }
 

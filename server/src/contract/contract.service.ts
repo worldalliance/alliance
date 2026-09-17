@@ -140,12 +140,13 @@ export class ContractService {
     }
   }
 
-  async signContract(params: {
-    userId: number;
-    signedName: string | null;
-    contractId: number;
-  }): Promise<Date> {
-    const { userId, signedName, contractId } = params;
+  async signContract(
+    params: { userId: number; contractId: number } & (
+      | { signedName: string; viaTaskForm: false }
+      | { signedName: null; viaTaskForm: true }
+    ),
+  ): Promise<Date> {
+    const { userId, signedName, contractId, viaTaskForm } = params;
 
     // Cheap initial load
     let user = await this.userRepository.findOneOrFail({
@@ -166,9 +167,18 @@ export class ContractService {
       type: ContractEventType.SIGNED,
       date: new Date(),
       signedName,
+      viaTaskForm,
       contract: { id: contractId },
     });
     const saveContractEventP = this.contractEventRepository.save(contractEvent);
+
+    const signedOutsideTaskForm = user.contractEvents!.some(
+      (event) => event.type === ContractEventType.SIGNED && !event.viaTaskForm,
+    );
+    if (!viaTaskForm && !signedOutsideTaskForm) {
+      await this.userRepository.update(userId, { name: signedName });
+      user.name = signedName;
+    }
 
     if (switchingContracts) {
       await saveContractEventP;

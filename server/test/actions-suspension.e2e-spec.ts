@@ -366,6 +366,7 @@ describe("findUsersToSuspend (e2e)", () => {
     await contractService.signContract({
       userId: failingUser.id,
       signedName: "Test Name",
+      viaTaskForm: false,
       contractId: ctx.defaultContractId,
     });
 

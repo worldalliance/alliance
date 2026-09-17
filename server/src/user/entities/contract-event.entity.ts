@@ -89,6 +89,11 @@ export class ContractEvent {
   @IsOptional()
   signedName: string | null;
 
+  @Column({ default: false })
+  @ApiProperty()
+  @Allow()
+  viaTaskForm: boolean;
+
   @Column({ type: "int", nullable: true })
   @ApiProperty({ nullable: true })
   @IsOptional()

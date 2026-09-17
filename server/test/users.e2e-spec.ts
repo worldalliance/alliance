@@ -629,6 +629,28 @@ describe("Users (e2e)", () => {
     expect(typeof suspend.text === "string" || suspend.body).toBeTruthy();
   });
 
+  it("trims the signed name and rejects a blank one", async () => {
+    const member = await userRepo.save(
+      userRepo.create({
+        name: "Untrimmed Member",
+        email: "untrimmed.member@example.com",
+        password: "Password123!",
+      }),
+    );
+    const token = signAccessToken(ctx.jwtService, member);
+    const sign = (signedName: string) =>
+      request(ctx.app.getHttpServer())
+        .post(`/contract/sign/${ctx.defaultContractId}`)
+        .send({ signedName })
+        .set("Authorization", `Bearer ${token}`);
+
+    await sign("   ").expect(400);
+    await sign("  Jane Doe  ").expect(201);
+    expect((await userRepo.findOneByOrFail({ id: member.id })).name).toBe(
+      "Jane Doe",
+    );
+  });
+
   it("counts one-time, reusable invite, and referral-link recruits after they sign the contract", async () => {
     const ambassador = await userRepo.save(
       userRepo.create({
@@ -704,16 +726,19 @@ describe("Users (e2e)", () => {
     await contractService.signContract({
       userId: recruit.id,
       signedName: recruit.name,
+      viaTaskForm: false,
       contractId: ctx.defaultContractId,
     });
     await contractService.signContract({
       userId: reusableInviteRecruit.id,
       signedName: reusableInviteRecruit.name,
+      viaTaskForm: false,
       contractId: ctx.defaultContractId,
     });
     await contractService.signContract({
       userId: referralLinkRecruit.id,
       signedName: referralLinkRecruit.name,
+      viaTaskForm: false,
       contractId: ctx.defaultContractId,
     });
 
@@ -762,6 +787,40 @@ describe("Users (e2e)", () => {
       });
     };
 
+    it("names the member after their first signing outside a task form", async () => {
+      const member = await userRepo.save(
+        userRepo.create({
+          name: "Provider Name",
+          email: "signature.name@example.com",
+          password: null,
+        }),
+      );
+      const nameOf = async () =>
+        (await userRepo.findOneByOrFail({ id: member.id })).name;
+      const sign = (signedName: string) =>
+        contractService.signContract({
+          userId: member.id,
+          signedName,
+          contractId: ctx.defaultContractId,
+          viaTaskForm: false,
+        });
+
+      await contractService.signContract({
+        userId: member.id,
+        signedName: null,
+        contractId: ctx.defaultContractId,
+        viaTaskForm: true,
+      });
+      expect(await nameOf()).toBe("Provider Name");
+
+      await sign("Signed Name");
+      expect(await nameOf()).toBe("Signed Name");
+
+      await contractService.suspendContract({ userId: member.id });
+      await sign("Later Name");
+      expect(await nameOf()).toBe("Signed Name");
+    });
+
     it("joins community from referredByInvite when signing contract for first time", async () => {
       // Create a new user with an invite
       const inviter = await userRepo.save(
@@ -808,6 +867,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -873,6 +933,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -921,6 +982,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -999,6 +1061,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1033,6 +1096,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1093,6 +1157,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1147,6 +1212,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1199,6 +1265,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1279,6 +1346,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1315,6 +1383,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1373,6 +1442,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1409,6 +1479,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: newUser.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1450,6 +1521,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: user.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1470,6 +1542,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: user.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1526,6 +1599,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: user.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
       await contractService.suspendContract({ userId: user.id });
@@ -1541,6 +1615,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: user.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1591,6 +1666,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: member.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1632,6 +1708,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: leader.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
 
@@ -1690,6 +1767,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: member.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
       await contractService.suspendContract({ userId: member.id });
@@ -1769,6 +1847,7 @@ describe("Users (e2e)", () => {
       await contractService.signContract({
         userId: member.id,
         signedName: "Test Name",
+        viaTaskForm: false,
         contractId: ctx.defaultContractId,
       });
       await contractService.suspendContract({ userId: member.id });

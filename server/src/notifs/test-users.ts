@@ -23,6 +23,7 @@ export const testUser = new User({
       automatic: false,
       autoSuspendKey: null,
       signedName: null,
+      viaTaskForm: false,
       contractId: null,
       user: { id: -1 } as User,
     },

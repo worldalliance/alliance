@@ -175,6 +175,7 @@ describe("Actions (e2e)", () => {
     await contractService.signContract({
       userId: defaultUser.id,
       signedName: "Test Name",
+      viaTaskForm: false,
       contractId: ctx.defaultContractId,
     });
 
