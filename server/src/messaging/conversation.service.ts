@@ -32,6 +32,12 @@ import { Message } from "./entities/message.entity";
 import { Participant, ParticipantState } from "./entities/participant.entity";
 import { MessagingEvents } from "./messaging.events";
 
+const conversationTypesWithEditableInfo: Record<ConversationType, boolean> = {
+  [ConversationType.Direct]: false,
+  [ConversationType.Multiple]: true,
+  [ConversationType.Community]: false,
+};
+
 @Injectable()
 export class ConversationService {
   private readonly logger = new Logger(ConversationService.name);
@@ -510,13 +516,17 @@ export class ConversationService {
     await this.ensureConversationAdmin(conversationId, userId);
     const conversation = await this.getConversationEntity(conversationId);
 
-    if (conversation.type !== ConversationType.Direct) {
-      conversation.title = dto.title ?? conversation.title;
+    if (!conversationTypesWithEditableInfo[conversation.type]) {
+      throw new ForbiddenException(
+        "This conversation's name and photo cannot be changed.",
+      );
+    }
 
-      if (dto.photo?.startsWith("data:")) {
-        conversation.photo =
-          await this.imagesService.processAndUploadProfileImage(dto.photo);
-      }
+    conversation.title = dto.title ?? conversation.title;
+
+    if (dto.photo?.startsWith("data:")) {
+      conversation.photo =
+        await this.imagesService.processAndUploadProfileImage(dto.photo);
     }
 
     await this.conversationRepository.save(conversation);

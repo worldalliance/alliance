@@ -1,4 +1,6 @@
 import { ParticipantRole } from "@alliance/common/participantRole";
+import { Community } from "src/community/entities/community.entity";
+import { ConversationService } from "src/messaging/conversation.service";
 import {
   Conversation,
   ConversationType,
@@ -18,6 +20,7 @@ describe("ConversationController (e2e)", () => {
   let userRepo: Repository<User>;
   let conversationRepo: Repository<Conversation>;
   let participantRepo: Repository<Participant>;
+  let communityRepo: Repository<Community>;
   let userCounter = 0;
 
   const createUserAndToken = async (
@@ -41,6 +44,7 @@ describe("ConversationController (e2e)", () => {
     userRepo = ctx.dataSource.getRepository(User);
     conversationRepo = ctx.dataSource.getRepository(Conversation);
     participantRepo = ctx.dataSource.getRepository(Participant);
+    communityRepo = ctx.dataSource.getRepository(Community);
   }, 50000);
 
   afterAll(async () => {
@@ -417,6 +421,39 @@ describe("ConversationController (e2e)", () => {
         },
       });
       expect(participantRecords).toHaveLength(0);
+    });
+  });
+
+  describe("conversation info", () => {
+    it("refuses to rename a community chat", async () => {
+      const { user: leader, token: leaderToken } = await createUserAndToken();
+
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: "Community With A Chat",
+          description: "A community with a chat.",
+          public: false,
+          allowMemberInvites: false,
+          allowStaffAssignments: false,
+          users: [leader],
+          leaders: [leader],
+        }),
+      );
+
+      const conversation = await ctx.app
+        .get(ConversationService)
+        .syncCommunityConversationMembers(community.id);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversation.id}/update`)
+        .set("Authorization", `Bearer ${leaderToken}`)
+        .send({ title: "Renamed Community" })
+        .expect(403);
+
+      const storedConversation = await conversationRepo.findOne({
+        where: { id: conversation.id },
+      });
+      expect(storedConversation?.title).toBe("Community With A Chat");
     });
   });
 
