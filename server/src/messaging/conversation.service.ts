@@ -528,6 +528,7 @@ export class ConversationService {
     }
 
     await this.conversationRepository.save(conversation);
+    await this.emitConversationUpdate(conversation);
     return new ConversationDto({ conversation, contextUserId: userId });
   }
 

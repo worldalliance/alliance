@@ -1,5 +1,6 @@
 import { ConversationType } from "@alliance/common/conversationType";
 import { ParticipantRole } from "@alliance/common/participantRole";
+import { io } from "socket.io-client";
 import { Community } from "src/community/entities/community.entity";
 import { ConversationService } from "src/messaging/conversation.service";
 import { Conversation } from "src/messaging/entities/conversation.entity";
@@ -39,6 +40,7 @@ describe("ConversationController (e2e)", () => {
 
   beforeAll(async () => {
     ctx = await createTestApp([MessagingModule]);
+    await ctx.app.listen(0);
     userRepo = ctx.dataSource.getRepository(User);
     conversationRepo = ctx.dataSource.getRepository(Conversation);
     participantRepo = ctx.dataSource.getRepository(Participant);
@@ -47,6 +49,7 @@ describe("ConversationController (e2e)", () => {
 
   afterAll(async () => {
     if (ctx?.app) {
+      ctx.app.getHttpServer().closeAllConnections();
       await ctx.app.close();
     }
   });
@@ -487,6 +490,53 @@ describe("ConversationController (e2e)", () => {
 
       expect(renameResponse.body.title).toBe("Padded Chat");
     });
+
+    it("tells the other members when a group is renamed", async () => {
+      const { user: member, token: memberToken } = await createUserAndToken();
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "Broadcast Chat", participantIds: [member.id] })
+        .expect(201);
+
+      const conversationId = createResponse.body.id;
+      const socket = io(`${await ctx.app.getUrl()}/messaging/overview`, {
+        auth: { token: memberToken },
+        transports: ["websocket"],
+        reconnection: false,
+      });
+
+      try {
+        await new Promise<void>((resolve, reject) => {
+          socket.on("connect", () => resolve());
+          socket.on("connect_error", reject);
+        });
+        const renamed = new Promise<void>((resolve) => {
+          socket.on(
+            "conversation:unread",
+            (payload: { conversation: { id: number; title: string } }) => {
+              if (
+                payload.conversation.id === conversationId &&
+                payload.conversation.title === "Renamed Broadcast Chat"
+              ) {
+                resolve();
+              }
+            },
+          );
+        });
+
+        await request(ctx.app.getHttpServer())
+          .post(`/messaging/conversations/${conversationId}/update`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({ title: "Renamed Broadcast Chat" })
+          .expect(201);
+
+        await renamed;
+      } finally {
+        socket.disconnect();
+      }
+    }, 5000);
   });
 
   describe("unread counts", () => {
