@@ -35,6 +35,8 @@ serveApi(
       received = [];
       return new Response(null, { status: 201 });
     },
+    "PATCH /user/friends/:requesterId/decline": () =>
+      Response.json({ message: "No pending request found" }, { status: 404 }),
   }),
 );
 
@@ -79,4 +81,13 @@ it("marks an accepted requester as a friend on their profile", async () => {
   expect(
     client.getQueryData(userQueryKeys.friendStatus(GRACE.id)),
   ).toMatchObject({ status: "accepted" });
+});
+
+it("tells the user when the server refuses a decline", async () => {
+  renderFriendsTab();
+  fireEvent.click(await screen.findByText("Received Requests (1)"));
+  fireEvent.click(await screen.findByText("Decline"));
+
+  await screen.findByText("Couldn't decline friend request");
+  screen.getByText("No pending request found");
 });

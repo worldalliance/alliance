@@ -1,4 +1,5 @@
 import {
+  friendMutationErrorMessage,
   useAcceptFriendRequestMutation,
   useDeclineFriendRequestMutation,
   useRemoveFriendMutation,
@@ -50,7 +51,10 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
   const [processingIds, setProcessingIds] = useState<Record<string, boolean>>(
     {},
   );
-  const { confirm } = useToast();
+  const { confirm, error: errorToast } = useToast();
+
+  const showFailure = (title: string, error: unknown) =>
+    errorToast(friendMutationErrorMessage(error), title);
 
   const startProcessing = (userId: number) => {
     setProcessingIds((prev) => ({ ...prev, [userId]: true }));
@@ -67,6 +71,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
       await acceptFriendRequest.mutateAsync(requesterId);
     } catch (error) {
       console.error("Error accepting friend request:", error);
+      showFailure("Couldn't accept friend request", error);
     } finally {
       endProcessing(requesterId);
     }
@@ -79,6 +84,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
       await declineFriendRequest.mutateAsync(requesterId);
     } catch (error) {
       console.error("Error declining friend request:", error);
+      showFailure("Couldn't decline friend request", error);
     } finally {
       endProcessing(requesterId);
     }
@@ -105,6 +111,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
       await removeFriend.mutateAsync(friendId);
     } catch (error) {
       console.error("Error removing friend:", error);
+      showFailure("Couldn't remove friend", error);
     } finally {
       endProcessing(friendId);
     }
@@ -117,6 +124,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
       await removeFriend.mutateAsync(userId);
     } catch (error) {
       console.error("Error canceling friend request:", error);
+      showFailure("Couldn't cancel friend request", error);
     } finally {
       endProcessing(userId);
     }

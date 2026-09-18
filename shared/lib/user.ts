@@ -27,6 +27,7 @@ import {
   userRequestFriend,
   userUpdate,
 } from "../client";
+import { thrownRefusalMessage } from "./hey-api";
 import { queryKeys } from "./queryKeys";
 
 export const userQueryKeys = {
@@ -287,6 +288,13 @@ const resyncFriend = (queryClient: QueryClient, userId: number) =>
     }),
     invalidateFriendships(queryClient),
   ]);
+
+export const friendMutationErrorMessage = (error: unknown) =>
+  thrownRefusalMessage({
+    error,
+    fallback: "Please try again.",
+    sessionExpired: "Your session has expired. Sign in again.",
+  });
 
 const useFriendMutation = (
   params: {

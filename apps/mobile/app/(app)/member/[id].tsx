@@ -16,6 +16,7 @@ import useActivities, {
 import useUserFeed from "@alliance/shared/lib/useUserFeed";
 import {
   buildForumActivityItems,
+  friendMutationErrorMessage,
   useAcceptFriendRequestMutation,
   useDeclineFriendRequestMutation,
   useMessageableUsersQuery,
@@ -103,6 +104,9 @@ const FRIENDS_TAB_LABELS: Record<FriendsTab, string> = {
   [FriendsTab.Received]: "Received",
   [FriendsTab.Sent]: "Sent",
 };
+
+const alertFriendFailure = (title: string, error: unknown) =>
+  Alert.alert(title, friendMutationErrorMessage(error));
 
 export default function UserProfileScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -272,6 +276,7 @@ export default function UserProfileScreen() {
       await sendFriendRequest.mutateAsync(userId);
     } catch (error) {
       console.error("Failed to send friend request", error);
+      alertFriendFailure("Couldn't send friend request", error);
     }
   }, [userId, sendFriendRequest]);
 
@@ -281,6 +286,7 @@ export default function UserProfileScreen() {
       await acceptFriendRequest.mutateAsync(userId);
     } catch (error) {
       console.error("Failed to accept friend request", error);
+      alertFriendFailure("Couldn't accept friend request", error);
     }
   }, [userId, acceptFriendRequest]);
 
@@ -290,6 +296,7 @@ export default function UserProfileScreen() {
       await declineFriendRequest.mutateAsync(userId);
     } catch (error) {
       console.error("Failed to decline friend request", error);
+      alertFriendFailure("Couldn't decline friend request", error);
     }
   }, [userId, declineFriendRequest]);
 
@@ -300,6 +307,7 @@ export default function UserProfileScreen() {
       setFriendActionsOpen(false);
     } catch (error) {
       console.error("Failed to remove friend", error);
+      alertFriendFailure("Couldn't remove friend", error);
     }
   }, [userId, removeFriend]);
 
@@ -316,7 +324,12 @@ export default function UserProfileScreen() {
         {
           text: "Cancel request",
           style: "destructive",
-          onPress: () => removeFriend.mutate(targetId),
+          onPress: () =>
+            removeFriend
+              .mutateAsync(targetId)
+              .catch((error) =>
+                alertFriendFailure("Couldn't cancel friend request", error),
+              ),
         },
       ]);
     },
@@ -555,14 +568,29 @@ export default function UserProfileScreen() {
               title="Accept"
               color={ButtonColor.Green}
               size={ButtonSize.Small}
-              onPress={() => acceptFriendRequest.mutate(request.id)}
+              onPress={() =>
+                acceptFriendRequest
+                  .mutateAsync(request.id)
+                  .catch((error) =>
+                    alertFriendFailure("Couldn't accept friend request", error),
+                  )
+              }
               disabled={answeringRequest}
             />
             <Button
               title="Decline"
               color={ButtonColor.Light}
               size={ButtonSize.Small}
-              onPress={() => declineFriendRequest.mutate(request.id)}
+              onPress={() =>
+                declineFriendRequest
+                  .mutateAsync(request.id)
+                  .catch((error) =>
+                    alertFriendFailure(
+                      "Couldn't decline friend request",
+                      error,
+                    ),
+                  )
+              }
               disabled={answeringRequest}
             />
           </View>

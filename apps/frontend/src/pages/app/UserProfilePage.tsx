@@ -12,6 +12,7 @@ import useActivities, {
 } from "@alliance/shared/lib/useActivities";
 import {
   buildForumActivityItems,
+  friendMutationErrorMessage,
   useAcceptFriendRequestMutation,
   useRemoveFriendMutation,
   useSendFriendRequestMutation,
@@ -86,7 +87,7 @@ const UserProfilePage: React.FC = () => {
   const { state } = useLocation();
   const { openFriendRequest } = state || false;
   const { openFriends } = state || false;
-  const { confirm } = useToast();
+  const { confirm, error: errorToast } = useToast();
 
   const userId = id ? parseInt(id, 10) : undefined;
   if (!userId) {
@@ -224,8 +225,12 @@ const UserProfilePage: React.FC = () => {
       await sendFriendRequest.mutateAsync(userId);
     } catch (error) {
       console.error("Error sending friend request:", error);
+      errorToast(
+        friendMutationErrorMessage(error),
+        "Couldn't send friend request",
+      );
     }
-  }, [userId, user, sendFriendRequest]);
+  }, [userId, user, sendFriendRequest, errorToast]);
 
   const handleAcceptFriendRequest = useCallback(async () => {
     if (!userId || !user) return;
@@ -233,8 +238,12 @@ const UserProfilePage: React.FC = () => {
       await acceptFriendRequest.mutateAsync(userId);
     } catch (error) {
       console.error("Error accepting friend request:", error);
+      errorToast(
+        friendMutationErrorMessage(error),
+        "Couldn't accept friend request",
+      );
     }
-  }, [userId, user, acceptFriendRequest]);
+  }, [userId, user, acceptFriendRequest, errorToast]);
 
   const navigate = useNavigate();
 
@@ -254,9 +263,10 @@ const UserProfilePage: React.FC = () => {
         await removeFriend.mutateAsync(userId);
       } catch (error) {
         console.error("Error removing friend:", error);
+        errorToast(friendMutationErrorMessage(error), "Couldn't remove friend");
       }
     },
-    [userId, user, confirm, removeFriend],
+    [userId, user, confirm, removeFriend, errorToast],
   );
 
   const handleSave = async () => {

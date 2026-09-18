@@ -3,6 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi, type RouteTable } from "./testing/serveApi";
 import {
+  friendMutationErrorMessage,
   useAcceptFriendRequestMutation,
   useDeclineFriendRequestMutation,
   useMessageableUsersQuery,
@@ -299,4 +300,40 @@ it("a successful decline settles once the received requests have reloaded", asyn
 
   await hooks.result.current.decline.mutateAsync(ALLOWED_USER);
   expect(client.getQueryData(userQueryKeys.receivedRequests())).toEqual([]);
+});
+
+const declineAnswering = async (answer: () => Response) => {
+  api.alsoServing({ "PATCH /user/friends/:requesterId/decline": answer });
+  const { wrapper } = queryWrapper();
+  const mutation = renderHook(() => useDeclineFriendRequestMutation(), {
+    wrapper,
+  });
+  const error = await mutation.result.current
+    .mutateAsync(ALLOWED_USER)
+    .catch((thrown: unknown) => thrown);
+  return friendMutationErrorMessage(error);
+};
+
+it("tells the user why the server refused a friend action", async () => {
+  expect(await declineAnswering(notFound)).toBe("No pending request found");
+});
+
+it("keeps the server's own fault out of a friend action's message", async () => {
+  expect(await declineAnswering(serverError)).toBe("Please try again.");
+});
+
+it("says the session went rather than repeating the server's word for it", async () => {
+  expect(
+    await declineAnswering(() =>
+      Response.json({ message: "Unauthorized" }, { status: 401 }),
+    ),
+  ).toBe("Your session has expired. Sign in again.");
+});
+
+it("asks again after a friend action that never reached the server", async () => {
+  expect(
+    await declineAnswering(() => {
+      throw new TypeError("Failed to fetch");
+    }),
+  ).toBe("Please try again.");
 });
