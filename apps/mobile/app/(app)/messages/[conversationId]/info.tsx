@@ -77,6 +77,10 @@ export default function ConversationInfoScreen() {
     setEditingPhoto(selectedConvo.photo ?? null);
   }, [selectedConvo, isEditing]);
 
+  useEffect(() => {
+    if (!canEditInfo) setIsEditing(false);
+  }, [canEditInfo]);
+
   const filteredUsers = useMemo(() => {
     if (!search.trim()) return [];
     const term = search.trim().toLowerCase();
