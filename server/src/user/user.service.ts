@@ -804,7 +804,9 @@ export class UserService {
         associatedUsers: [requester],
       } satisfies CreateNotifParams);
 
+      // Reverses a declined request instead of adding a second row for the pair.
       rel = this.friendRepository.create({
+        ...reverse,
         requester,
         addressee,
         status: FriendStatus.Pending,

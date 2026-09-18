@@ -725,6 +725,36 @@ describe("Users (e2e)", () => {
     expect(status.body.status).toBe(FriendStatus.Declined);
   });
 
+  it("User B can send a request to User A after declining theirs", async () => {
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userAId}`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(201);
+
+    const status = await request(ctx.app.getHttpServer())
+      .get(`/user/myfriendrelationship/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`);
+    expect(status.body).toEqual({
+      status: FriendStatus.Pending,
+      didReceiveRequest: true,
+    });
+
+    await request(ctx.app.getHttpServer())
+      .patch(`/user/friends/${userBId}/accept`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(200);
+
+    for (const [token, otherId] of [
+      [userAToken, userBId],
+      [userBToken, userAId],
+    ] as const) {
+      const after = await request(ctx.app.getHttpServer())
+        .get(`/user/myfriendrelationship/${otherId}`)
+        .set("Authorization", `Bearer ${token}`);
+      expect(after.body.status).toBe(FriendStatus.Accepted);
+    }
+  });
+
   /* ────────────────────────────────────────────────────────────
    *  Auth guard checks
    * ──────────────────────────────────────────────────────────── */
