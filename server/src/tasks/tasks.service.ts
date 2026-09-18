@@ -67,6 +67,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { isNull, omitBy } from "es-toolkit";
 import { ActionFormVariantService } from "src/actions/action-form-variant.service";
 import { ActionsService } from "src/actions/actions.service";
 import { Action } from "src/actions/entities/action.entity";
@@ -443,6 +444,12 @@ export class TasksService {
      */
     effectiveAnswers: Record<string, FormValue>;
   }> {
+    // Submit accepts null as a way to leave a field unanswered.
+    const answers = readFormAnswers(omitBy(submitFormDto.answers, isNull));
+    if (R.isFailure(answers)) {
+      throw new BadRequestException("Answers are not a valid answer map");
+    }
+
     const validatorIds = new Set<number>();
     const accountConditionKinds = new Set<AccountDerivedConditionKind>();
 
@@ -530,7 +537,7 @@ export class TasksService {
 
     const effectiveAnswers = stripHiddenAnswers(
       schema.pages,
-      submitFormDto.answers,
+      answers.value,
       visibilityExtras,
     );
 
@@ -605,15 +612,11 @@ export class TasksService {
             ) {
               continue;
             }
-            const rawList: unknown = effectiveAnswers[listField.id];
+            const rawList = effectiveAnswers[listField.id];
             const listValue: Record<string, FormValue>[] = [];
             if (Array.isArray(rawList)) {
               for (const [i, item] of rawList.entries()) {
-                if (
-                  item === null ||
-                  typeof item !== "object" ||
-                  Array.isArray(item)
-                ) {
+                if (typeof item !== "object") {
                   throw new BadRequestException(
                     `Field ${elementInternalDescriptor(listField)} (item ${i + 1}) is not a list item.`,
                   );

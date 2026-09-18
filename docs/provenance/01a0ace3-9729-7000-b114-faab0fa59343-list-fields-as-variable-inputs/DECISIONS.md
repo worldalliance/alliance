@@ -65,3 +65,7 @@ The existing renderability check already rejects a formula that ends on an array
 The list resolver lives in `common/src/forms/variables.ts`, which the web and mobile forms (`shared/useFormRenderer.ts`) and saved-response output (`shared/outputrenderer.ts`) already share. Variables recompute whenever answers or visibility extras change.
 
 No migration. Existing `field` inputs keep their shape and behavior. es-toolkit was added to `common/package.json`, at the same version range `apps/frontend` already declares.
+
+## Submitted answers
+
+Submit parses answers with `readFormAnswers`, the check the draft endpoint already uses, and answers 400 when one isn't a `FormValue`. That rejects a list row or cell of any other shape, where the row check alone let a card like `{ notes: { deep: 1 } }` be stored. A top-level `null` is dropped first rather than rejected, because an e2e test from the ranking field pins that submit accepts one. No client sends either. The row check stays for a list answered with a `string[]`, which `formValueSchema` allows.
