@@ -20,6 +20,7 @@ import {
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
 import {
   CARD_ID_KEY,
+  cardSubFields,
   defaultCardCount,
   listCardWriters,
   resolveCards,
@@ -740,7 +741,6 @@ export function RenderField({
 
     case "list": {
       const listField = field as ListField;
-      const subFields = listField.fields ?? [];
       const defaultCount = defaultCardCount(listField);
       const minCards = Math.max(0, Math.floor(Number(listField.min || 0)));
       const maxCards =
@@ -748,12 +748,6 @@ export function RenderField({
           ? Math.floor(listField.max)
           : Infinity;
       const cards = resolveCards({ value, defaultCardCount: defaultCount });
-      const hiddenInOutputIds = new Set(
-        isOutputView ? (listField.outputViewHiddenFieldIds ?? []) : [],
-      );
-      const shownSubFields = subFields.filter(
-        (subField) => !hiddenInOutputIds.has(subField.id),
-      );
       const canDelete = cards.length > minCards;
       const { addCard, removeCard, updateCard } = listCardWriters({
         onChange,
@@ -773,13 +767,22 @@ export function RenderField({
             {cards.map((card, cardIndex) => {
               const cardId = card[CARD_ID_KEY];
               const row = fieldContext.forRow(card);
+              const subFields = cardSubFields({
+                listField,
+                card,
+                row,
+                isOutputView,
+              });
+              if (isOutputView && subFields.length === 0) {
+                return null;
+              }
               return (
                 <Card
                   key={cardId}
                   cardStyle={CardStyle.White}
                   className="border border-zinc-200 gap-4"
                 >
-                  {row.visibleSubFields(shownSubFields).map((subField) => (
+                  {subFields.map((subField) => (
                     <RenderField
                       key={subField.id}
                       field={subField}
