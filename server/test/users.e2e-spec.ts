@@ -2564,75 +2564,78 @@ describe("Users (e2e)", () => {
   });
 
   describe("friend graph edges (admin)", () => {
+    const saveGraphUser = (label: string) =>
+      userRepo.save(
+        userRepo.create({
+          name: `Graph ${label}`,
+          email: `graph.${label.toLowerCase().replace(/ /g, ".")}.${Date.now()}@example.com`,
+          password: "Password123!",
+        }),
+      );
+
+    const fetchHasEdge = async (userAId: number, userBId: number) => {
+      const res = await request(ctx.app.getHttpServer())
+        .get("/user/friends/graphEdges")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      return res.body.some(
+        (edge: { userAId: number; userBId: number }) =>
+          (edge.userAId === userAId && edge.userBId === userBId) ||
+          (edge.userAId === userBId && edge.userBId === userAId),
+      );
+    };
+
     it("includes an accepted friendship between two active-contract users", async () => {
-      const userA = await userRepo.save(
-        userRepo.create({
-          name: "Graph Active A",
-          email: `graph.active.a.${Date.now()}@example.com`,
-          password: "Password123!",
-        }),
-      );
-      const userB = await userRepo.save(
-        userRepo.create({
-          name: "Graph Active B",
-          email: `graph.active.b.${Date.now()}@example.com`,
-          password: "Password123!",
-        }),
-      );
+      const userA = await saveGraphUser("Active A");
+      const userB = await saveGraphUser("Active B");
       await giveActiveContract(ctx, userA.id);
       await giveActiveContract(ctx, userB.id);
       await userService.makeFriendsAutomated(userA.id, userB.id);
 
-      const res = await request(ctx.app.getHttpServer())
-        .get("/user/friends/graphEdges")
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .expect(200);
-
-      expect(
-        res.body.some(
-          (edge: { userAId: number; userBId: number }) =>
-            (edge.userAId === userA.id && edge.userBId === userB.id) ||
-            (edge.userAId === userB.id && edge.userBId === userA.id),
-        ),
-      ).toBe(true);
+      expect(await fetchHasEdge(userA.id, userB.id)).toBe(true);
 
       await userRepo.delete([userA.id, userB.id]);
     });
 
-    it("excludes a friendship where one side lacks an active contract", async () => {
-      const activeUser = await userRepo.save(
-        userRepo.create({
-          name: "Graph Active Only",
-          email: `graph.active.only.${Date.now()}@example.com`,
-          password: "Password123!",
-        }),
-      );
-      const inactiveUser = await userRepo.save(
-        userRepo.create({
-          name: "Graph No Contract",
-          email: `graph.no.contract.${Date.now()}@example.com`,
-          password: "Password123!",
-        }),
-      );
-      await giveActiveContract(ctx, activeUser.id);
-      await userService.makeFriendsAutomated(activeUser.id, inactiveUser.id);
+    it("excludes a friendship where the addressee lacks an active contract", async () => {
+      const requester = await saveGraphUser("Active Requester");
+      const addressee = await saveGraphUser("Inactive Addressee");
+      await giveActiveContract(ctx, requester.id);
+      await userService.makeFriendsAutomated(requester.id, addressee.id);
 
-      const res = await request(ctx.app.getHttpServer())
+      expect(await fetchHasEdge(requester.id, addressee.id)).toBe(false);
+
+      await userRepo.delete([requester.id, addressee.id]);
+    });
+
+    it("excludes a friendship where the requester lacks an active contract", async () => {
+      const requester = await saveGraphUser("Inactive Requester");
+      const addressee = await saveGraphUser("Active Addressee");
+      await giveActiveContract(ctx, addressee.id);
+      await userService.makeFriendsAutomated(requester.id, addressee.id);
+
+      expect(await fetchHasEdge(requester.id, addressee.id)).toBe(false);
+
+      await userRepo.delete([requester.id, addressee.id]);
+    });
+
+    it("excludes a pending friend request between active-contract users", async () => {
+      const requester = await saveGraphUser("Pending Requester");
+      const addressee = await saveGraphUser("Pending Addressee");
+      await giveActiveContract(ctx, requester.id);
+      await giveActiveContract(ctx, addressee.id);
+      await userService.createFriendRequest(requester.id, addressee.id);
+
+      expect(await fetchHasEdge(requester.id, addressee.id)).toBe(false);
+
+      await userRepo.delete([requester.id, addressee.id]);
+    });
+
+    it("rejects non-admins", async () => {
+      await request(ctx.app.getHttpServer())
         .get("/user/friends/graphEdges")
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .expect(200);
-
-      expect(
-        res.body.some(
-          (edge: { userAId: number; userBId: number }) =>
-            (edge.userAId === activeUser.id &&
-              edge.userBId === inactiveUser.id) ||
-            (edge.userAId === inactiveUser.id &&
-              edge.userBId === activeUser.id),
-        ),
-      ).toBe(false);
-
-      await userRepo.delete([activeUser.id, inactiveUser.id]);
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(401);
     });
   });
 
