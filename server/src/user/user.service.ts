@@ -62,7 +62,7 @@ import {
   type StoredInviteAssignment,
 } from "src/share-urls/invite-assignment";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
-import { isForeignKeyViolation } from "src/utils/db-errors";
+import { isForeignKeyViolation, isUniqueViolation } from "src/utils/db-errors";
 import { PaginationQueryDto } from "src/utils/pagination.dto";
 import type {
   Relations,
@@ -744,6 +744,19 @@ export class UserService {
    * ─────────────────────────────── */
 
   async createFriendRequest(
+    requesterId: number,
+    addresseeId: number,
+  ): Promise<Friend> {
+    try {
+      return await this.saveFriendRequest(requesterId, addresseeId);
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      // Another request for the pair committed after our reads; the retry sees it.
+      return this.saveFriendRequest(requesterId, addresseeId);
+    }
+  }
+
+  private async saveFriendRequest(
     requesterId: number,
     addresseeId: number,
   ): Promise<Friend> {

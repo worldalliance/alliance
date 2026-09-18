@@ -2,6 +2,7 @@ import { AnalyticsEvent } from "@alliance/common/analytics";
 import { toE164 } from "@alliance/common/phone";
 import { R } from "@alliance/common/result";
 import { Temporal } from "@js-temporal/polyfill";
+import { getRepositoryToken } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { AuthService } from "src/auth/auth.service";
 import { TokenMode } from "src/auth/dto/signin.dto";
@@ -26,7 +27,7 @@ import { Community } from "../src/community/entities/community.entity";
 import { City } from "../src/geo/city.entity";
 import { GeoModule } from "../src/geo/geo.module";
 import { getImageSource } from "../src/images/images.service";
-import { FriendStatus } from "../src/user/entities/friend.entity";
+import { Friend, FriendStatus } from "../src/user/entities/friend.entity";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
 import {
   createTestApp,
@@ -753,6 +754,39 @@ describe("Users (e2e)", () => {
         .set("Authorization", `Bearer ${token}`);
       expect(after.body.status).toBe(FriendStatus.Accepted);
     }
+  });
+
+  it("A request that crosses the other user's accepts it", async () => {
+    await request(ctx.app.getHttpServer())
+      .delete(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(200);
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(201);
+
+    // B's two lookups miss A's row, as if A's insert committed right after them.
+    const findOne = jest
+      .spyOn(
+        ctx.app.get<Repository<Friend>>(getRepositoryToken(Friend)),
+        "findOne",
+      )
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userAId}`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(201);
+    findOne.mockRestore();
+
+    const rows = await ctx.dataSource.getRepository(Friend).find({
+      where: [
+        { requester: { id: userAId }, addressee: { id: userBId } },
+        { requester: { id: userBId }, addressee: { id: userAId } },
+      ],
+    });
+    expect(rows.map((row) => row.status)).toEqual([FriendStatus.Accepted]);
   });
 
   /* ────────────────────────────────────────────────────────────
