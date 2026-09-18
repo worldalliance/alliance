@@ -78,6 +78,24 @@ it("starts the editor from the group's current name and photo", () => {
   );
 });
 
+it("closes the editor when the viewer stops being an admin", () => {
+  const { convo, rerender } = renderPanel("admin");
+  fireEvent.click(screen.getByRole("button", { name: "Edit group" }));
+
+  rerender(
+    panel({
+      ...convo,
+      participants: convo.participants.map((participant) =>
+        participant.user.id === testAuthUser.id
+          ? { ...participant, role: "member" }
+          : participant,
+      ),
+    }),
+  );
+
+  expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+});
+
 it.each([
   {
     status: 403,

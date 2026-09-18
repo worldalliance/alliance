@@ -53,6 +53,10 @@ const ConversationInfoPanel = ({
     null,
   );
 
+  useEffect(() => {
+    if (!canEditInfo) setIsEditingGroup(false);
+  }, [canEditInfo]);
+
   const handleRemoveParticipant = async (userId: number) => {
     const response = await conversationRemoveParticipant({
       path: { conversationId: selectedConvo.id, userId },
