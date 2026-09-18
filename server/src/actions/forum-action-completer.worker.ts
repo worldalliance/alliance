@@ -21,6 +21,7 @@ import {
 } from "src/tasks/entities/customvalidator.entity";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
+import { formSchemaOf } from "src/tasks/form-snapshot-schema";
 import { User } from "src/user/entities/user.entity";
 import {
   DataSource,
@@ -367,7 +368,7 @@ export class ForumActionCompleterWorker {
   private async findForumValidator(
     form: Form,
   ): Promise<CustomValidator | null> {
-    const schema = form.formSnapshot.schema as unknown as FormSchema;
+    const schema = formSchemaOf(form.formSnapshot);
     const validatorIds = this.collectValidatorIds(schema);
     if (validatorIds.length === 0) {
       return null;
