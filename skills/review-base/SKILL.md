@@ -28,7 +28,7 @@ Findings and the judgment behind each field come from the review skill. Report t
 
 Before you start reviewing, create `.scratch/review/<base-sha>.json` holding `{"base": <sha>, "summary": "", "findings": []}`. Create, modify, or delete findings as you review the commit.
 
-Your last message says where the file is, in addition to the markdown-style review. Pretend you just gave the file to the user and they invoked `(root)/skills/bro/SKILL.md`.
+Your last message says where the file is, in addition to the markdown-style review, with the same sections as specified in `review`. For the wording,pretend you just gave the file to the user and they invoked `(root)/skills/bro/SKILL.md`.
 
 Do not delete this file after your review. It will be read later.
 
