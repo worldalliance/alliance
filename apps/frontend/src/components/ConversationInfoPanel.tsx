@@ -1,4 +1,3 @@
-import { errorMessage } from "@alliance/common/errorMessage";
 import {
   conversationAddParticipant,
   ConversationDto,
@@ -8,6 +7,10 @@ import {
   ProfileDto,
 } from "@alliance/shared/client";
 import { canEditConversationInfo } from "@alliance/shared/lib/messages";
+import {
+  type Explanation,
+  sendOrExplain,
+} from "@alliance/shared/lib/sendOrExplain";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -84,6 +87,8 @@ const ConversationInfoPanel = ({
   const [justAddedMember, setJustAddedMember] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const showExplanation = ({ title, message }: Explanation) =>
+    setError(`${title}. ${message}`);
 
   useEffect(() => {
     if (justAddedMember) {
@@ -98,23 +103,25 @@ const ConversationInfoPanel = ({
 
   const handleSaveGroup = async () => {
     setIsSaving(true);
-    const response = await conversationUpdateInfo({
-      path: { conversationId: selectedConvo.id },
-      body: { title: editingGroupTitle, photo: editingGroupPhoto ?? undefined },
+    const saved = await sendOrExplain({
+      send: conversationUpdateInfo,
+      options: {
+        path: { conversationId: selectedConvo.id },
+        body: {
+          title: editingGroupTitle,
+          photo: editingGroupPhoto ?? undefined,
+        },
+      },
+      action: "save the group",
     });
-    if (response.data) {
-      handleConversationUpdated(response.data);
-      setIsEditingGroup(false);
-      setError(null);
-    } else {
-      setError(
-        errorMessage({
-          error: response.error,
-          fallback: "Failed to save group",
-        }),
-      );
-    }
     setIsSaving(false);
+    if (!saved.ok) {
+      showExplanation(saved.error);
+      return;
+    }
+    handleConversationUpdated(saved.value);
+    setIsEditingGroup(false);
+    setError(null);
   };
 
   const handleAddMember = async (userId: number) => {
