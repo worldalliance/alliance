@@ -1,4 +1,9 @@
-import type { Selection, SimulationLinkDatum, SimulationNodeDatum } from "d3";
+import type {
+  Selection,
+  Simulation,
+  SimulationLinkDatum,
+  SimulationNodeDatum,
+} from "d3";
 import {
   drag,
   forceCenter,
@@ -10,7 +15,13 @@ import {
   zoom,
   zoomIdentity,
 } from "d3";
-import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 export interface ForceGraphNode extends SimulationNodeDatum {
   id: string;
@@ -79,6 +90,8 @@ export const ForceGraph = <N extends ForceGraphNode>({
   const layerRef = useRef<SVGGElement>(null);
   const [graph, setGraph] = useState<DrawnGraph<N> | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const simulationRef = useRef<Simulation<N, undefined> | null>(null);
+  const chargeStrengthRef = useRef(chargeStrength);
 
   // Layout effects, so the graph is styled before the browser first paints it.
   useLayoutEffect(() => {
@@ -125,7 +138,7 @@ export const ForceGraph = <N extends ForceGraphNode>({
           .id((d) => d.id)
           .distance(60),
       )
-      .force("charge", forceManyBody().strength(chargeStrength))
+      .force("charge", forceManyBody().strength(chargeStrengthRef.current))
       .force("center", forceCenter(width / 2, height / 2))
       .force("collision", forceCollide().radius(NODE_COLLISION_RADIUS))
       .stop();
@@ -226,14 +239,25 @@ export const ForceGraph = <N extends ForceGraphNode>({
         .translate(-width / 2, -height / 2),
     );
 
+    simulationRef.current = simulation;
     setSelectedId(null);
     setGraph({ node, link });
 
     return () => {
       simulation.stop();
+      simulationRef.current = null;
       setGraph(null);
     };
-  }, [nodes, links, nodeStyle, chargeStrength]);
+  }, [nodes, links, nodeStyle]);
+
+  useEffect(() => {
+    if (chargeStrengthRef.current === chargeStrength) return;
+    chargeStrengthRef.current = chargeStrength;
+    simulationRef.current
+      ?.force("charge", forceManyBody().strength(chargeStrength))
+      .alpha(0.5)
+      .restart();
+  }, [chargeStrength]);
 
   useLayoutEffect(() => {
     if (graph) applyStyles(graph, selectedId);
