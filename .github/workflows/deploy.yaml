@@ -907,6 +907,14 @@ jobs:
           curl --fail --silent --show-error https://${{vars.ALT_DOMAIN_NAME}} > /dev/null
           echo "alt domain https ok"
 
+      - name: Check Android app links file
+        run: |
+          for host in ${{vars.DOMAIN_NAME}} ${{vars.ALT_DOMAIN_NAME}}; do
+            echo "Checking assetlinks.json on $host..."
+            curl --fail --silent --show-error https://$host/.well-known/assetlinks.json > /dev/null
+          done
+          echo "assetlinks.json ok"
+
       - name: Check admin app
         run: |
           echo "Checking admin app..."

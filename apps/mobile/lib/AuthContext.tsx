@@ -18,10 +18,12 @@ import {
   authLogin,
   authLogout,
   authMe,
+  type SessionTokensDto,
   UserDto,
 } from "../../../shared/client";
 import { clearGuestToken, getStoredGuestToken } from "./guestSession";
 import { SecureStorage, SecureStorageKey } from "./SecureStorage";
+import { openSession } from "./session";
 import {
   getVisualTestAutoLoginCredentials,
   isVisualTestMode,
@@ -144,6 +146,25 @@ export const AuthProvider: React.FC<
     };
   }, []);
 
+  const startSession = useCallback(
+    async (tokens: SessionTokensDto) => {
+      queryClient.clear();
+
+      const opened = await openSession({ tokens, saveTokens, clearTokens });
+      if (!opened.ok) {
+        throw opened.error;
+      }
+
+      const user = opened.value;
+      setUser(user);
+      posthog?.identify(user.id.toString(), {
+        email: user.email,
+        name: user.name,
+      });
+    },
+    [saveTokens, clearTokens, posthog, queryClient],
+  );
+
   const login = useCallback(
     async ({ email, password, navigateOnSuccess = true }: LoginParams) => {
       setIsLoading(true);
@@ -156,38 +177,12 @@ export const AuthProvider: React.FC<
           await clearGuestToken();
         }
 
-        if (response.error || !response.data) {
+        const { access_token, refresh_token } = response.data ?? {};
+        if (response.error || !access_token || !refresh_token) {
           throw new Error("Login failed");
         }
 
-        client.setConfig({
-          ...client.getConfig(),
-          headers: {
-            Authorization: `Bearer ${response.data.access_token}`,
-          },
-        });
-
-        if (response.data.access_token && response.data.refresh_token) {
-          await saveTokens(
-            response.data.access_token,
-            response.data.refresh_token,
-          );
-        } else {
-          console.error("didn't recieve tokens: something went wrong");
-        }
-
-        queryClient.clear();
-
-        const user = (await authMe()).data?.user;
-        if (!user) {
-          throw new Error("Failed to fetch user profile");
-        }
-
-        setUser(user);
-        posthog?.identify(user.id.toString(), {
-          email: user.email,
-          name: user.name,
-        });
+        await startSession({ access_token, refresh_token });
 
         if (!isVisualTestMode && navigateOnSuccess) {
           router.replace("/");
@@ -198,7 +193,7 @@ export const AuthProvider: React.FC<
         setIsLoading(false);
       }
     },
-    [router, saveTokens, posthog, queryClient],
+    [router, startSession],
   );
 
   useEffect(() => {

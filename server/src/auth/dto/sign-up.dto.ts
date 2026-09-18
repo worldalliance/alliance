@@ -10,7 +10,7 @@ import {
   IsString,
   IsTimeZone,
 } from "class-validator";
-import type { TokenMode } from "./signin.dto";
+import { TokenMode } from "./signin.dto";
 
 export class SignUpDto {
   @IsDefined()
@@ -31,8 +31,8 @@ export class SignUpDto {
   readonly password: string;
 
   @Allow()
-  @IsEnum(["cookie", "header"])
-  @ApiProperty({ enum: ["cookie", "header"], enumName: "TokenMode" })
+  @IsEnum(TokenMode)
+  @ApiProperty({ enum: TokenMode, enumName: "TokenMode" })
   mode: TokenMode;
 
   @IsDefined()

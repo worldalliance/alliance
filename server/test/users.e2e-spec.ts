@@ -3,6 +3,7 @@ import { R } from "@alliance/common/result";
 import { Temporal } from "@js-temporal/polyfill";
 import { milliseconds } from "date-fns";
 import { AuthService } from "src/auth/auth.service";
+import { TokenMode } from "src/auth/dto/signin.dto";
 import { JWTTokenType } from "src/auth/tokens";
 import { ContractService } from "src/contract/contract.service";
 import {
@@ -781,7 +782,7 @@ describe("Users (e2e)", () => {
         name: params.name,
         email: params.email,
         password: "Password123!",
-        mode: "header",
+        mode: TokenMode.Header,
         timeZone: "America/Los_Angeles",
         referralCode: sid,
       });

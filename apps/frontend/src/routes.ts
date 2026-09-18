@@ -36,6 +36,7 @@ export default [
   route("/memberquotes", "pages/static/oneoff/MemberQuotesPage.tsx"),
 
   route("/actions/completed", "pages/app/PublicActionCompletedPage.tsx"),
+  route("/mobile/oauth-callback", "pages/app/MobileOAuthCallbackPage.tsx"),
   layout("applayout.tsx", [
     layout("navbar.tsx", [
       ...prefix("/actions", [

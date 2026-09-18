@@ -8,12 +8,15 @@ import {
   IsOptional,
   IsString,
 } from "class-validator";
-export type TokenMode = "cookie" | "header";
+export enum TokenMode {
+  Cookie = "cookie",
+  Header = "header",
+}
 
 export class SignInDto {
-  @ApiProperty({ enum: ["cookie", "header"] })
+  @ApiProperty({ enum: TokenMode, enumName: "TokenMode" })
   @IsDefined()
-  @IsEnum(["cookie", "header"])
+  @IsEnum(TokenMode)
   mode: TokenMode;
 
   @ApiProperty()

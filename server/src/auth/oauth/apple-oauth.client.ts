@@ -3,6 +3,7 @@ import { R, type Result } from "@alliance/common/result";
 import { Injectable, ServiceUnavailableException } from "@nestjs/common";
 import {
   createRemoteJWKSet,
+  errors,
   importPKCS8,
   jwtVerify,
   SignJWT,
@@ -82,6 +83,15 @@ export function appleProfile(
       claims.data.email_verified === "true",
     name,
   });
+}
+
+/** jose's errors carry the token's claims, the member's email among them. */
+export function appleTokenFailure(error: unknown): Error {
+  const reason =
+    error instanceof errors.JOSEError
+      ? `${error.code}: ${error.message}`
+      : R.toError(error).message;
+  return new Error(`Apple id token rejected: ${reason}`);
 }
 
 @Injectable()
@@ -200,6 +210,7 @@ export class AppleOAuthClient implements OAuthClient {
         issuer: APPLE_ISSUER,
         audience: params.audience,
       }),
+      appleTokenFailure,
     );
     if (!verified.ok) {
       return verified;

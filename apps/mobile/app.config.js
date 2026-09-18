@@ -6,6 +6,10 @@ const IS_DEV = process.env.APP_VARIANT === "development";
 process.env.EXPO_PUBLIC_GIT_COMMIT ||=
   process.env.EAS_BUILD_GIT_COMMIT_HASH ?? "";
 
+const GOOGLE_IOS_CLIENT_ID = IS_DEV
+  ? "498109422267-oure3ds53734t8bomo4bea4fglogpg80.apps.googleusercontent.com"
+  : "498109422267-a6im2d5qscd6g39nkbcvkaqp1miftvg6.apps.googleusercontent.com";
+
 export default {
   expo: {
     name: IS_DEV ? "Alliance (Dev)" : "Alliance",
@@ -30,14 +34,13 @@ export default {
         : "com.alliancefoundation.alliancemobile",
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
+        // expo-apple-authentication sets this to true when it's unset.
+        CFBundleAllowMixedLocalizations: false,
         NSAppTransportSecurity: {
           NSAllowsArbitraryLoads: true,
         },
       },
       appleTeamId: "629G87T7R5",
-      entitlements: {
-        "com.apple.developer.applesignin": ["Default"],
-      },
       associatedDomains: [
         "applinks:worldalliance.org",
         "webcredentials:worldalliance.org",
@@ -100,6 +103,13 @@ export default {
       "expo-localization",
       "expo-secure-store",
       "expo-web-browser",
+      "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          iosUrlScheme: `com.googleusercontent.apps.${GOOGLE_IOS_CLIENT_ID.split(".")[0]}`,
+        },
+      ],
       [
         "expo-notifications",
         {
