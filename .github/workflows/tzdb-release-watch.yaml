@@ -1,0 +1,84 @@
+name: tzdb release watch
+
+on:
+  schedule:
+    - cron: "0 15 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Point the generator at the latest release
+        id: bump
+        working-directory: common
+        run: |
+          version=$(bun scripts/bump-tzdb.ts)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Skip a release that already has a pull request
+        id: branch
+        if: steps.bump.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          branch="tzdb/${{ steps.bump.outputs.version }}"
+          prs=$(gh pr list --head "$branch" --state all --json number --jq length)
+          if [ "$prs" -gt 0 ]; then
+            echo "$branch already has a pull request."
+          else
+            echo "name=$branch" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Regenerate the catalog
+        if: steps.branch.outputs.name != ''
+        working-directory: common
+        run: bun run generate-timezone-catalog
+
+      # A pull request opened with GITHUB_TOKEN triggers no workflows, so CI
+      # doesn't run on it until someone closes and reopens it.
+      - name: Typecheck and test common
+        if: steps.branch.outputs.name != ''
+        run: |
+          (cd common && bun run typecheck)
+          scripts/test-all.sh common
+
+      - name: Open a pull request
+        if: steps.branch.outputs.name != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.branch.outputs.name }}
+          VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git commit -am "bump tzdb to $VERSION"
+          git push --force origin "$BRANCH"
+          gh pr create --head "$BRANCH" --title "bump tzdb to $VERSION" --body-file - <<EOF
+          IANA released tzdb $VERSION: https://data.iana.org/time-zones/tzdb-$VERSION/NEWS
+
+          Read the diff to \`common/src/timezone-catalog.gen.ts\`. A row that disappears or an alias that moves changes what members with that timezone see.
+
+          Typecheck and tests for \`common\` passed in the job that opened this. CI hasn't run: close and reopen this pull request to start it.
+          EOF
+          superseded=$(gh pr list --state open --json number,headRefName \
+            --jq '.[] | select(.headRefName | startswith("tzdb/")) | select(.headRefName != env.BRANCH) | .number')
+          for pr in $superseded; do
+            gh pr close "$pr" --comment "Superseded by tzdb $VERSION."
+          done

@@ -102,6 +102,7 @@
     "@types/express": "^5",
     "@types/jest": "^29.5.14",
     "@types/morgan": "^1",
+    "@types/node": "^22.10.7",
     "@types/pluralize": "^0.0.33",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",

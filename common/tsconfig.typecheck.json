@@ -1,9 +1,10 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    "lib": ["ESNext"]
   },
-  // Scripts has no package.json. Keeping its TypeScript in this config avoids a
-  // workspace package that deploy.yaml would also need to ship to EC2.
-  "include": ["src", "../scripts"]
+  // `../scripts` has no package.json. Keeping its TypeScript in this config
+  // avoids a workspace package that deploy.yaml would also need to ship to EC2.
+  "include": ["src", "scripts", "../scripts"]
 }
