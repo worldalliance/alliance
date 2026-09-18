@@ -1,0 +1,1 @@
+export const CONVERSATION_TITLE_MAX_LENGTH = 500;

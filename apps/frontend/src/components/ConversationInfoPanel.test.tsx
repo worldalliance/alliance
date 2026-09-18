@@ -1,3 +1,4 @@
+import { CONVERSATION_TITLE_MAX_LENGTH } from "@alliance/common/conversation";
 import {
   ConversationDto,
   ConversationType,
@@ -129,6 +130,19 @@ it("starts the editor from the group's current name and photo", () => {
   expect(screen.getByAltText("Profile preview").getAttribute("src")).toBe(
     "https://example.com/new.png",
   );
+});
+
+it("stops the group name at the server's limit", () => {
+  const { convo } = renderPanel("admin");
+
+  fireEvent.click(screen.getByRole("button", { name: "Edit group" }));
+
+  expect(screen.getByDisplayValue(convo.title).getAttribute("maxLength")).toBe(
+    String(CONVERSATION_TITLE_MAX_LENGTH),
+  );
+  expect(
+    screen.getByText(`Maximum ${CONVERSATION_TITLE_MAX_LENGTH} characters`),
+  ).toBeTruthy();
 });
 
 it("closes the editor when the viewer stops being an admin", () => {

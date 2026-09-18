@@ -1,3 +1,4 @@
+import { CONVERSATION_TITLE_MAX_LENGTH } from "@alliance/common/conversation";
 import {
   conversationAddParticipant,
   ConversationDto,
@@ -21,6 +22,7 @@ import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
+import CharacterLimitNotice from "@alliance/sharedweb/ui/CharacterLimitNotice";
 import List from "@alliance/sharedweb/ui/List";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { milliseconds } from "date-fns";
@@ -214,12 +216,19 @@ const ConversationInfoPanel = ({
             </>
           ) : isEditingGroup ? (
             <div className="flex flex-row items-center gap-x-5">
-              <input
-                type="text"
-                className="font-semibold text-xl text-center active:outline-none focus:outline-none border-b border-zinc-200 pb-1"
-                value={editingGroupTitle}
-                onChange={(e) => setEditingGroupTitle(e.target.value)}
-              />
+              <div className="flex flex-col items-center">
+                <input
+                  type="text"
+                  className="font-semibold text-xl text-center active:outline-none focus:outline-none border-b border-zinc-200 pb-1"
+                  value={editingGroupTitle}
+                  maxLength={CONVERSATION_TITLE_MAX_LENGTH}
+                  onChange={(e) => setEditingGroupTitle(e.target.value)}
+                />
+                <CharacterLimitNotice
+                  value={editingGroupTitle}
+                  max={CONVERSATION_TITLE_MAX_LENGTH}
+                />
+              </div>
               <Button
                 color={ButtonColor.Stone}
                 onClick={handleSaveGroup}

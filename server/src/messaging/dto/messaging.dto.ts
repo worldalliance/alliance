@@ -1,3 +1,4 @@
+import { CONVERSATION_TITLE_MAX_LENGTH } from "@alliance/common/conversation";
 import { ConversationType } from "@alliance/common/conversationType";
 import {
   ApiProperty,
@@ -266,7 +267,7 @@ export class CreateDirectConversationDto {
   @ApiPropertyOptional({ type: String })
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxLength(CONVERSATION_TITLE_MAX_LENGTH)
   title?: string;
 }
 
@@ -275,7 +276,7 @@ export class CreateGroupConversationDto {
   @Transform(trim)
   @IsString()
   @IsNotEmpty()
-  @MaxLength(500)
+  @MaxLength(CONVERSATION_TITLE_MAX_LENGTH)
   title: string;
 
   @ApiPropertyOptional({ type: String })
@@ -325,7 +326,7 @@ export class UpdateConversationDto {
   @Transform(trim)
   @IsString()
   @IsNotEmpty()
-  @MaxLength(500)
+  @MaxLength(CONVERSATION_TITLE_MAX_LENGTH)
   title?: string;
 
   @ApiPropertyOptional({ type: String })

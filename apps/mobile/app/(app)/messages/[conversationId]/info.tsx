@@ -1,3 +1,4 @@
+import { CONVERSATION_TITLE_MAX_LENGTH } from "@alliance/common/conversation";
 import {
   conversationAddParticipant,
   conversationLeave,
@@ -28,6 +29,7 @@ import {
 import KeyboardAwareScrollView from "../../../../components/KeyboardAwareScrollView";
 import ProfileImage from "../../../../components/ProfileImage";
 import Button, { ButtonColor } from "../../../../components/system/Button";
+import CharacterLimitNotice from "../../../../components/system/CharacterLimitNotice";
 import Text, {
   FontFamily,
   FontWeight,
@@ -248,12 +250,19 @@ export default function ConversationInfoScreen() {
             )}
           </TouchableOpacity>
           {isEditing ? (
-            <TextInput
-              value={editingTitle}
-              onChangeText={setEditingTitle}
-              className="text-xl text-zinc-900 border-b border-zinc-200 px-2 py-1 text-center"
-              style={resolveFontFamily(FontFamily.Sans, FontWeight.Semibold)}
-            />
+            <>
+              <TextInput
+                value={editingTitle}
+                onChangeText={setEditingTitle}
+                maxLength={CONVERSATION_TITLE_MAX_LENGTH}
+                className="text-xl text-zinc-900 border-b border-zinc-200 px-2 py-1 text-center"
+                style={resolveFontFamily(FontFamily.Sans, FontWeight.Semibold)}
+              />
+              <CharacterLimitNotice
+                value={editingTitle}
+                max={CONVERSATION_TITLE_MAX_LENGTH}
+              />
+            </>
           ) : (
             <Text
               className="text-xl text-zinc-900 text-center"
