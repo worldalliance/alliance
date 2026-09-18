@@ -844,6 +844,42 @@ export class UserService {
     return others.sort((a, b) => a.id - b.id);
   }
 
+  async countActiveUsers(ids: number[]): Promise<number> {
+    if (ids.length === 0) {
+      return 0;
+    }
+    return this.userRepository
+      .createQueryBuilder("u")
+      .where("u.id IN (:...ids)", { ids })
+      .andWhere(sqlUserHasActiveContractAt("u.id", "NOW()"))
+      .getCount();
+  }
+
+  /** Active members shuffled by `seed`. One seed always picks the same members. */
+  async pickActiveUserIdsForSeed(params: {
+    count: number;
+    excludeIds: number[];
+    seed: string;
+  }): Promise<number[]> {
+    const { count, excludeIds, seed } = params;
+    if (count <= 0) {
+      return [];
+    }
+    const qb = this.userRepository
+      .createQueryBuilder("u")
+      .select("u.id", "id")
+      .where(sqlUserHasActiveContractAt("u.id", "NOW()"));
+    if (excludeIds.length > 0) {
+      qb.andWhere("u.id NOT IN (:...excludeIds)", { excludeIds });
+    }
+    const rows = await qb
+      .orderBy("md5(u.id::text || :seed)")
+      .setParameter("seed", seed)
+      .take(count)
+      .getRawMany<{ id: number }>();
+    return rows.map((r) => r.id);
+  }
+
   private async pickRandomUsersWithProfilePictures(
     count: number,
     excludeIds: number[],

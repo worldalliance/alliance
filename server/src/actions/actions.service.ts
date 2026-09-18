@@ -266,6 +266,12 @@ const GLOBAL_FEED_WINDOW_DAYS = 8;
  */
 const OPT_OUT_REASON_PREVIEW_LENGTH = 300;
 
+/**
+ * Below this many active friends + group members, the feed is topped up with other
+ * active members so a thin network still has something to read.
+ */
+const MIN_HOME_FEED_SOURCE_USERS = 10;
+
 type FeedMemberPageRow = {
   userId: number | string;
   latestAt: Date | string;
@@ -2543,9 +2549,19 @@ export class ActionsService {
       }
     }
 
-    const allUserIds = [
-      ...new Set([...friendIds, ...communityMemberIds, userId]),
-    ];
+    const knownIds = new Set([...friendIds, ...communityMemberIds]);
+    knownIds.delete(userId);
+    const activeKnownCount = await this.userService.countActiveUsers([
+      ...knownIds,
+    ]);
+    // Seeded by viewer, so the fillers stay the same across pages and visits.
+    const fillerIds = await this.userService.pickActiveUserIdsForSeed({
+      count: MIN_HOME_FEED_SOURCE_USERS - activeKnownCount,
+      excludeIds: [...knownIds, userId],
+      seed: String(userId),
+    });
+
+    const allUserIds = [...knownIds, ...fillerIds, userId];
 
     const visibilityUser = await this.loadUserForActionVisibility(userId);
     const visibilitySession = new CohortResolutionSession();
@@ -2553,7 +2569,7 @@ export class ActionsService {
     const forumComments = await this.forumService.findForumCommentsForFeed({
       userId,
       userClusterId,
-      friendAndGroupMemberIds: allUserIds,
+      sourceUserIds: allUserIds,
       limit,
       before,
     });

@@ -408,12 +408,11 @@ export class ForumService {
   async findForumCommentsForFeed(params: {
     userId: number;
     userClusterId: number | null;
-    friendAndGroupMemberIds: number[];
+    sourceUserIds: number[];
     limit: number;
     before?: Date;
   }): Promise<ForumFeedComment[]> {
-    const { userId, userClusterId, friendAndGroupMemberIds, limit, before } =
-      params;
+    const { userId, userClusterId, sourceUserIds, limit, before } = params;
 
     const qb = this.commentRepository
       .createQueryBuilder("comment")
@@ -428,9 +427,9 @@ export class ForumService {
 
     const authorClauses: string[] = ["author.id = :feedUserId"];
     const authorParams: Record<string, unknown> = { feedUserId: userId };
-    if (friendAndGroupMemberIds.length > 0) {
-      authorClauses.push("author.id IN (:...feedFriendIds)");
-      authorParams.feedFriendIds = friendAndGroupMemberIds;
+    if (sourceUserIds.length > 0) {
+      authorClauses.push("author.id IN (:...feedSourceUserIds)");
+      authorParams.feedSourceUserIds = sourceUserIds;
     }
     if (userClusterId != null) {
       authorClauses.push(
