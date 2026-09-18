@@ -1,6 +1,6 @@
 import { pickForCount, withCount } from "@alliance/common/plural";
-import { actionsGetUnwelcomedSignedContractMembersAdmin } from "@alliance/shared/client";
-import type { UnwelcomedSignedContractMemberDto } from "@alliance/shared/client/types.gen";
+import { actionsGetWelcomeQueueMembersAdmin } from "@alliance/shared/client";
+import type { WelcomeQueueMemberDto } from "@alliance/shared/client/types.gen";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import React, { useEffect, useMemo, useState } from "react";
@@ -17,15 +17,11 @@ const formatDate = (date: string): string =>
     minute: "2-digit",
   });
 
-const frontendActivityCommentsUrl = (
-  entry: UnwelcomedSignedContractMemberDto,
-): string =>
+const frontendActivityCommentsUrl = (entry: WelcomeQueueMemberDto): string =>
   `${getBaseUrl()}/actions/${entry.actionId}/activity/${entry.activityId}#comments`;
 
 const WelcomeQueuePage: React.FC = () => {
-  const [members, setMembers] = useState<UnwelcomedSignedContractMemberDto[]>(
-    [],
-  );
+  const [members, setMembers] = useState<WelcomeQueueMemberDto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<WelcomeQueueFilter>("all");
@@ -33,7 +29,7 @@ const WelcomeQueuePage: React.FC = () => {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    actionsGetUnwelcomedSignedContractMembersAdmin()
+    actionsGetWelcomeQueueMembersAdmin()
       .then((response) => {
         setMembers(response.data ?? []);
       })
@@ -67,7 +63,8 @@ const WelcomeQueuePage: React.FC = () => {
         })
         .sort(
           (a, b) =>
-            new Date(b.signedAt).getTime() - new Date(a.signedAt).getTime(),
+            new Date(b.completedAt).getTime() -
+            new Date(a.completedAt).getTime(),
         ),
     [filter, members],
   );
@@ -78,9 +75,9 @@ const WelcomeQueuePage: React.FC = () => {
       <div>
         <h1 className="text-lg font-bold text-zinc-900">Welcome Queue</h1>
         <p className="text-sm text-zinc-600 mt-1 max-w-3xl">
-          We welcome every user by leaving a comment on their signed contract
-          action. This list shows signed members whose contract completion has
-          not received a staff comment yet.
+          We welcome every member by leaving a comment on their completion of
+          this action. This list shows members who have completed it and
+          haven&apos;t received a staff comment yet.
         </p>
       </div>
 
@@ -121,7 +118,7 @@ const WelcomeQueuePage: React.FC = () => {
 
         {!loading && displayedMembers.length === 0 && !error ? (
           <p className="px-4 py-8 text-sm text-zinc-500">
-            No signed contract completions match this filter.
+            No completions match this filter.
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -130,9 +127,6 @@ const WelcomeQueuePage: React.FC = () => {
                 <tr>
                   <th className="px-4 py-2 font-medium text-zinc-600">
                     Member
-                  </th>
-                  <th className="px-4 py-2 font-medium text-zinc-600">
-                    Signed
                   </th>
                   <th className="px-4 py-2 font-medium text-zinc-600">
                     Completed
@@ -163,9 +157,6 @@ const WelcomeQueuePage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-zinc-600">
-                      {formatDate(entry.signedAt)}
-                    </td>
-                    <td className="px-4 py-3 text-zinc-600">
                       {formatDate(entry.completedAt)}
                     </td>
                     <td className="px-4 py-3 text-zinc-600">
@@ -177,7 +168,7 @@ const WelcomeQueuePage: React.FC = () => {
                           to={`/actions/${entry.actionId}`}
                           className="text-blue-600 hover:underline"
                         >
-                          Contract action
+                          Action
                         </Link>
                         <a
                           href={frontendActivityCommentsUrl(entry)}
@@ -196,7 +187,7 @@ const WelcomeQueuePage: React.FC = () => {
                 ))}
                 {loading && (
                   <tr>
-                    <td className="px-4 py-8 text-sm text-zinc-500" colSpan={5}>
+                    <td className="px-4 py-8 text-sm text-zinc-500" colSpan={4}>
                       Loading members...
                     </td>
                   </tr>

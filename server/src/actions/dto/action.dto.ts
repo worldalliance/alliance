@@ -811,16 +811,15 @@ export class ActionActivityDto extends PickType(ActionActivity, [
   }
 }
 
-export type UnwelcomedSignedContractMember = {
+export type WelcomeQueueMember = {
   user: User;
   actionId: number;
   activityId: number;
-  signedAt: Date;
   completedAt: Date;
   staffLikeCount: number;
 };
 
-export class UnwelcomedSignedContractMemberDto {
+export class WelcomeQueueMemberDto {
   @ApiProperty({ type: () => ProfileDto })
   @Type(() => ProfileDto)
   user: ProfileDto;
@@ -832,19 +831,15 @@ export class UnwelcomedSignedContractMemberDto {
   activityId: number;
 
   @ApiProperty()
-  signedAt: Date;
-
-  @ApiProperty()
   completedAt: Date;
 
   @ApiProperty()
   staffLikeCount: number;
 
-  constructor(input: UnwelcomedSignedContractMember) {
+  constructor(input: WelcomeQueueMember) {
     this.user = new ProfileDto(input.user);
     this.actionId = input.actionId;
     this.activityId = input.activityId;
-    this.signedAt = input.signedAt;
     this.completedAt = input.completedAt;
     this.staffLikeCount = input.staffLikeCount;
   }
