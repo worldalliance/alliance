@@ -45,11 +45,9 @@ const ConversationInfoPanel = ({
 
   const [addMemberSearch, setAddMemberSearch] = useState<string>("");
   const [isEditingGroup, setIsEditingGroup] = useState<boolean>(false);
-  const [editingGroupTitle, setEditingGroupTitle] = useState<string>(
-    selectedConvo.title,
-  );
+  const [editingGroupTitle, setEditingGroupTitle] = useState<string>("");
   const [editingGroupPhoto, setEditingGroupPhoto] = useState<string | null>(
-    selectedConvo.photo ?? null,
+    null,
   );
 
   const handleRemoveParticipant = async (userId: number) => {
@@ -107,8 +105,6 @@ const ConversationInfoPanel = ({
     if (response.data) {
       handleConversationUpdated(response.data);
       setIsEditingGroup(false);
-      setEditingGroupTitle(response.data.title);
-      setEditingGroupPhoto(response.data.photo ?? null);
       setError(null);
     } else {
       setError(
@@ -200,7 +196,11 @@ const ConversationInfoPanel = ({
                   type="button"
                   aria-label="Edit group"
                   className="cursor-pointer hover:bg-zinc-100 rounded-md p-2"
-                  onClick={() => setIsEditingGroup(true)}
+                  onClick={() => {
+                    setEditingGroupTitle(selectedConvo.title);
+                    setEditingGroupPhoto(selectedConvo.photo ?? null);
+                    setIsEditingGroup(true);
+                  }}
                 >
                   <SquarePen className="h-4 w-4 text-zinc-500" />
                 </button>
