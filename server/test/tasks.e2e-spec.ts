@@ -2104,6 +2104,80 @@ describe("Tasks (e2e)", () => {
       expect(response.body.message).toBe("Answers are not a valid answer map");
     });
 
+    it("guest submit rejects a list answer that isn't a list", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Guest Junk",
+        listRequiredIfSchema,
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitPublicForm/${formId}`)
+        .send({
+          answers: { people: "junk" },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe("Field People is not a list.");
+    });
+
+    it("opt-out rejects a list cell that isn't an answer", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Opt-out Junk",
+        listRequiredIfSchema,
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/optout/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          actionId,
+          reason: "",
+          outOfTime: true,
+          isMoral: false,
+          partialFormData: {
+            answers: { people: [{ name: "Ada", notes: { deep: 1 } }] },
+            formSnapshotId,
+            actionId,
+            deviceType: "desktop" as const,
+          },
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe("Answers are not a valid answer map");
+    });
+
+    it("opt-out drops a null answer instead of storing it", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Opt-out Null",
+        listRequiredIfSchema,
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/optout/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          actionId,
+          reason: "",
+          outOfTime: true,
+          isMoral: false,
+          partialFormData: {
+            answers: { people: [{ name: "Ada" }], skipped: null },
+            formSnapshotId,
+            actionId,
+            deviceType: "desktop" as const,
+          },
+        })
+        .expect(201);
+
+      const stored = await formResponseRepo.findOneOrFail({
+        where: { formId },
+      });
+      expect(stored.answers).toEqual({ people: [{ name: "Ada" }] });
+    });
+
     it("accepts list items that satisfy or do not trigger the sub-field requiredIfFormula", async () => {
       const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
         "RequiredIf List Answered",
