@@ -2,7 +2,10 @@ import type {
   FormValue,
   ListField,
   ListFieldValue,
+  ListSubField,
 } from "@alliance/common/forms/form-schema";
+import { isOutputValueMissing } from "../outputrenderer";
+import type { ListRowContext } from "../useFormRenderer";
 import { resolveFormValue, type FormValueUpdater } from "./formValueUpdater";
 
 /**
@@ -98,6 +101,25 @@ export function resolveCards(params: {
     );
   }
   return withCardIds(asCards(value) ?? []);
+}
+
+export function cardSubFields(params: {
+  listField: ListField;
+  card: Record<string, FormValue>;
+  row: ListRowContext;
+  isOutputView: boolean | undefined;
+}): ListSubField[] {
+  const { listField, card, row, isOutputView } = params;
+  const visible = row.visibleSubFields(listField.fields ?? []);
+  if (!isOutputView) {
+    return visible;
+  }
+  const hiddenInOutputIds = new Set(listField.outputViewHiddenFieldIds ?? []);
+  return visible.filter(
+    (subField) =>
+      !hiddenInOutputIds.has(subField.id) &&
+      !isOutputValueMissing(card[subField.id]),
+  );
 }
 
 export function stripCardIds(

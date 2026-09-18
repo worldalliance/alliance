@@ -19,6 +19,7 @@ import {
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
 import {
   CARD_ID_KEY,
+  cardSubFields,
   defaultCardCount,
   listCardWriters,
   resolveCards,
@@ -30,7 +31,6 @@ import {
 } from "@alliance/shared/forms/timeUtils";
 import { cancelImageUpload } from "@alliance/shared/lib/copy";
 import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
-import { isOutputValueMissing } from "@alliance/shared/outputrenderer";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import type { FieldConditionContext } from "@alliance/shared/useFormRenderer";
@@ -966,7 +966,6 @@ export function RenderField({
 
     case "list": {
       const listField = field as ListField;
-      const subFields = listField.fields ?? [];
       const defaultCount = defaultCardCount(listField);
       const minCards = Math.max(0, Math.floor(Number(listField.min || 0)));
       const maxCards =
@@ -984,17 +983,6 @@ export function RenderField({
       const hiddenInOutputIds = new Set(
         listField.outputViewHiddenFieldIds ?? [],
       );
-      const cardContext = (card: Record<string, FormValue>) => {
-        const row = fieldContext.forRow(card);
-        let fields = row.visibleSubFields(subFields);
-        if (isOutputView) {
-          if (hiddenInOutputIds.size > 0) {
-            fields = fields.filter((sub) => !hiddenInOutputIds.has(sub.id));
-          }
-          fields = fields.filter((sub) => !isOutputValueMissing(card[sub.id]));
-        }
-        return { row, fields };
-      };
       return (
         <div role="group" aria-labelledby={labelId} className="space-y-3">
           <RenderLabel
@@ -1009,7 +997,13 @@ export function RenderField({
           <div className="space-y-3">
             {cards.map((card, cardIndex) => {
               const cardId = card[CARD_ID_KEY];
-              const { row, fields } = cardContext(card);
+              const row = fieldContext.forRow(card);
+              const fields = cardSubFields({
+                listField,
+                card,
+                row,
+                isOutputView,
+              });
               return (
                 <Card
                   key={cardId}
