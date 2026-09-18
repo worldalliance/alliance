@@ -8,8 +8,13 @@ import {
   canEditConversationInfo,
   canEditConversationMembers,
 } from "@alliance/shared/lib/messages";
-import { sendOrExplain } from "@alliance/shared/lib/sendOrExplain";
+import {
+  type Explanation,
+  sendOrExplain,
+} from "@alliance/shared/lib/sendOrExplain";
+import { useOneAtATime } from "@alliance/shared/lib/useOneAtATime";
 import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
+import { cn } from "@alliance/shared/styles/util";
 import { router, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, Edit, Plus, X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -35,6 +40,9 @@ import {
 } from "../../../../lib/messages";
 import { pickImageDataUri } from "../../../../lib/pickImageDataUri";
 import { colors } from "../../../../lib/style/colors";
+
+const explain = ({ title, message }: Explanation) =>
+  Alert.alert(title, message);
 
 export default function ConversationInfoScreen() {
   const { conversationId } = useLocalSearchParams<{
@@ -67,6 +75,7 @@ export default function ConversationInfoScreen() {
   const [editingPhoto, setEditingPhoto] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const { busy: changingMembers, run: changeMembers } = useOneAtATime();
   const { data: messageableUsers = [], isLoading: loadingUsers } =
     useMessageableUsersQuery({ enabled: canEditMembers });
   const canPickPhoto = canEditInfo && isEditing;
@@ -118,7 +127,7 @@ export default function ConversationInfoScreen() {
     });
     setSaving(false);
     if (!saved.ok) {
-      Alert.alert(saved.error.title, saved.error.message);
+      explain(saved.error);
       return;
     }
     setConversations((prev) => mergeConversationUpdate(prev, saved.value));
@@ -128,44 +137,66 @@ export default function ConversationInfoScreen() {
   const handleAddMember = useCallback(
     async (userId: number) => {
       if (!selectedConvo) return;
-      const response = await conversationAddParticipant({
-        path: { conversationId: selectedConvo.id },
-        body: { userId },
-      });
-      if (response.data) {
-        setConversations((prev) =>
-          mergeConversationUpdate(prev, response.data!),
-        );
+      await changeMembers(async () => {
+        const added = await sendOrExplain({
+          send: conversationAddParticipant,
+          options: {
+            path: { conversationId: selectedConvo.id },
+            body: { userId },
+          },
+          action: "add that member",
+        });
+        if (!added.ok) {
+          explain(added.error);
+          return;
+        }
+        setConversations((prev) => mergeConversationUpdate(prev, added.value));
         setSearch("");
-      }
+      });
     },
-    [selectedConvo, setConversations],
+    [changeMembers, selectedConvo, setConversations],
   );
 
   const handleRemoveMember = useCallback(
     async (userId: number) => {
       if (!selectedConvo) return;
-      const response = await conversationRemoveParticipant({
-        path: { conversationId: selectedConvo.id, userId },
-      });
-      if (response.data) {
+      await changeMembers(async () => {
+        const removed = await sendOrExplain({
+          send: conversationRemoveParticipant,
+          options: {
+            path: { conversationId: selectedConvo.id, userId },
+          },
+          action: "remove that member",
+        });
+        if (!removed.ok) {
+          explain(removed.error);
+          return;
+        }
         setConversations((prev) =>
-          mergeConversationUpdate(prev, response.data!),
+          mergeConversationUpdate(prev, removed.value),
         );
-      }
+      });
     },
-    [selectedConvo, setConversations],
+    [changeMembers, selectedConvo, setConversations],
   );
 
   const handleLeave = useCallback(async () => {
     if (!selectedConvo) return;
-    const response = await conversationLeave({
-      path: { conversationId: selectedConvo.id },
-    });
-    if (response.data) {
+    await changeMembers(async () => {
+      const left = await sendOrExplain({
+        send: conversationLeave,
+        options: {
+          path: { conversationId: selectedConvo.id },
+        },
+        action: "leave the group",
+      });
+      if (!left.ok) {
+        explain(left.error);
+        return;
+      }
       router.replace("/messages");
-    }
-  }, [selectedConvo]);
+    });
+  }, [changeMembers, selectedConvo]);
 
   if (Number.isNaN(convoId)) {
     return (
@@ -322,7 +353,11 @@ export default function ConversationInfoScreen() {
                     }}
                     className="p-2"
                   >
-                    <X size={16} color={colors.error} />
+                    <X
+                      size={16}
+                      color={colors.error}
+                      opacity={changingMembers ? 0.5 : 1}
+                    />
                   </TouchableOpacity>
                 )}
               </TouchableOpacity>
@@ -358,8 +393,12 @@ export default function ConversationInfoScreen() {
                   filteredUsers.map((member) => (
                     <TouchableOpacity
                       key={member.id}
-                      className="flex-row items-center gap-3 px-3 py-2 border-b border-zinc-200 last:border-b-0"
+                      className={cn(
+                        "flex-row items-center gap-3 px-3 py-2 border-b border-zinc-200 last:border-b-0",
+                        changingMembers && "opacity-50",
+                      )}
                       onPress={() => handleAddMember(member.id)}
+                      disabled={changingMembers}
                     >
                       <ProfileImage pfp={member.profilePicture} size="small" />
                       <Text className="text-zinc-900">
@@ -375,7 +414,11 @@ export default function ConversationInfoScreen() {
 
         {isGroup && (
           <View className="px-4 mt-8 mb-12">
-            <Button color={ButtonColor.Light} onPress={handleLeave}>
+            <Button
+              color={ButtonColor.Light}
+              onPress={handleLeave}
+              disabled={changingMembers}
+            >
               <Text className="text-zinc-800" weight={FontWeight.Medium}>
                 Leave group
               </Text>
