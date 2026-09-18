@@ -642,7 +642,6 @@ const UserProfilePage: React.FC = () => {
               userId={profile.id}
               isMe={isMe}
               originalTab={openFriendRequest ? "received" : "friends"}
-              friends={friends}
               className="mt-4"
             />
           )}

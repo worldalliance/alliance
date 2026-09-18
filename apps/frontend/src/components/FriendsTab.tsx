@@ -1,12 +1,11 @@
 import {
-  ProfileDto,
   userAcceptFriendRequest,
   userDeclineFriendRequest,
-  userListFriends,
   userListReceivedRequests,
   userListSentRequests,
   userRemoveFriend,
 } from "@alliance/shared/client";
+import { useUserFriendsQuery, userQueryKeys } from "@alliance/shared/lib/user";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -22,7 +21,6 @@ interface FriendsTabProps {
   userId: number;
   isMe?: boolean;
   originalTab?: "friends" | "received" | "sent";
-  friends?: ProfileDto[];
   className?: string;
 }
 
@@ -30,17 +28,12 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
   userId,
   isMe = false,
   originalTab = "friends",
-  friends: initialFriends = [],
   className,
 }: FriendsTabProps) => {
   const queryClient = useQueryClient();
 
-  const { data: friends = initialFriends, isLoading: isLoadingFriends } =
-    useQuery({
-      queryKey: ["userListFriends", userId],
-      queryFn: () =>
-        userListFriends({ path: { id: userId } }).then((res) => res.data ?? []),
-    });
+  const { data: friends = [], isLoading: isLoadingFriends } =
+    useUserFriendsQuery(userId);
 
   const { data: receivedRequests = [], isLoading: isLoadingReceived } =
     useQuery({
@@ -78,7 +71,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
     try {
       const response = await userAcceptFriendRequest({ path: { requesterId } });
       console.log("response", response);
-      queryClient.invalidateQueries({ queryKey: ["userListFriends"] });
+      queryClient.invalidateQueries({ queryKey: userQueryKeys.allFriends() });
       queryClient.invalidateQueries({
         queryKey: ["userListReceivedRequests"],
       });
@@ -123,7 +116,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
 
     try {
       await userRemoveFriend({ path: { targetUserId: friendId } });
-      queryClient.invalidateQueries({ queryKey: ["userListFriends"] });
+      queryClient.invalidateQueries({ queryKey: userQueryKeys.allFriends() });
     } catch (error) {
       console.error("Error removing friend:", error);
     } finally {
