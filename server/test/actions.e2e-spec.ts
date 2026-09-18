@@ -4005,7 +4005,7 @@ describe("Actions (e2e)", () => {
     });
   });
 
-  describe("Home feed random fill", () => {
+  describe("Home feed filler users", () => {
     const contentfulFormSchema = {
       pages: [
         {
@@ -4024,31 +4024,142 @@ describe("Actions (e2e)", () => {
       outputViews: [],
     };
 
-    it("tops up a small friends+group set with random active users", async () => {
+    const signedContract = () => [
+      {
+        type: ContractEventType.SIGNED,
+        date: new Date(Date.now() - milliseconds({ minutes: 1 })),
+        automatic: false,
+        contractId: ctx.defaultContractId,
+      },
+    ];
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const homeFeed = async (viewer: User, before?: string) =>
+      (
+        await request(ctx.app.getHttpServer())
+          .get("/actions/homeFeed")
+          .query({ limit: "10", ...(before ? { before } : {}) })
+          .set(
+            "Authorization",
+            `Bearer ${signAccessToken(ctx.jwtService, viewer)}`,
+          )
+          .expect(200)
+      ).body as Array<{
+        date: string;
+        activity?: { id: number; actionName: string };
+      }>;
+
+    it("surfaces a filler user's completion to a viewer with no friends", async () => {
+      const now = Date.now();
       const viewer = await userService.create({
-        email: `feed-viewer-${Date.now()}@example.com`,
+        email: `feed-viewer-${now}@example.com`,
         password: "Password123!",
         name: "Feed Viewer",
         tags: [ctx.defaultTag],
       });
+      const filler = await userService.create({
+        email: `feed-filler-${now}@example.com`,
+        password: "Password123!",
+        name: "Feed Filler",
+        tags: [ctx.defaultTag],
+      });
 
-      const spy = jest.spyOn(userService, "findRandomActiveUserIds");
+      const { action } = await createPublishedAction("Home Feed Filler", {
+        status: ActionStatus.MemberAction,
+      });
+      const { form, snapshot } = await createFormWithSnapshot(ctx.dataSource, {
+        title: "Home Feed Filler Form",
+        schema: contentfulFormSchema,
+      });
+      await activityRepo.save(
+        activityRepo.create({
+          type: ActionActivityType.USER_COMPLETED,
+          actionId: action.id,
+          userId: filler.id,
+          taskFormResponse: formResponseRepo.create({
+            formId: form.id,
+            formSnapshotId: snapshot.id,
+            user: filler,
+            answers: { published: "Shown" },
+          }),
+        }),
+      );
 
-      await request(ctx.app.getHttpServer())
-        .get("/actions/homeFeed")
-        .set(
-          "Authorization",
-          `Bearer ${signAccessToken(ctx.jwtService, viewer)}`,
-        )
-        .expect(200);
+      // Pin the cohort: the assertion is that filler activity reaches the feed,
+      // not which members get drawn.
+      jest
+        .spyOn(userService, "pickActiveUserIdsForSeed")
+        .mockResolvedValue([filler.id]);
 
-      expect(spy).toHaveBeenCalledWith(10, [viewer.id]);
+      const feed = await homeFeed(viewer);
+      expect(feed.some((i) => i.activity?.actionName === action.name)).toBe(
+        true,
+      );
 
-      spy.mockRestore();
-      await userRepo.delete(viewer.id);
+      await actionRepo.delete(action.id);
+      await formRepo.delete(form.id);
+      await userRepo.delete([viewer.id, filler.id]);
     });
 
-    it("skips the random fill once friends+group already meet the minimum", async () => {
+    it("draws a viewer the same fillers on every page, and another viewer different ones", async () => {
+      const now = Date.now();
+      const viewer = await userService.create({
+        email: `feed-stable-${now}@example.com`,
+        password: "Password123!",
+        name: "Feed Stable",
+        tags: [ctx.defaultTag],
+      });
+      const otherViewer = await userService.create({
+        email: `feed-stable-other-${now}@example.com`,
+        password: "Password123!",
+        name: "Feed Stable Other",
+        tags: [ctx.defaultTag],
+      });
+
+      // More candidates than the fill needs, so drawing the same ten twice proves
+      // the order is seeded rather than that everyone got drawn.
+      const candidateIds: number[] = [];
+      for (let i = 0; i < 40; i++) {
+        const candidate = await userService.create({
+          email: `feed-stable-candidate-${now}-${i}@example.com`,
+          password: "Password123!",
+          name: `Feed Stable Candidate ${i}`,
+          tags: [ctx.defaultTag],
+          contractEvents: signedContract(),
+        });
+        candidateIds.push(candidate.id);
+      }
+
+      const pick = userService.pickActiveUserIdsForSeed.bind(userService);
+      const cohorts: number[][] = [];
+      jest
+        .spyOn(userService, "pickActiveUserIdsForSeed")
+        .mockImplementation(async (params) => {
+          const ids = await pick(params);
+          cohorts.push(ids);
+          return ids;
+        });
+
+      await homeFeed(viewer);
+      await homeFeed(
+        viewer,
+        new Date(now - milliseconds({ days: 1 })).toISOString(),
+      );
+
+      await homeFeed(otherViewer);
+
+      expect(cohorts).toHaveLength(3);
+      expect(cohorts[0]).toHaveLength(10);
+      expect(cohorts[1]).toEqual(cohorts[0]);
+      expect(cohorts[2]).not.toEqual(cohorts[0]);
+
+      await userRepo.delete([viewer.id, otherViewer.id, ...candidateIds]);
+    });
+
+    it("draws no fillers once active friends+group meet the minimum", async () => {
       const viewer = await userService.create({
         email: `feed-viewer-full-${Date.now()}@example.com`,
         password: "Password123!",
@@ -4063,26 +4174,82 @@ describe("Actions (e2e)", () => {
           password: "Password123!",
           name: `Feed Friend ${i}`,
           tags: [ctx.defaultTag],
+          contractEvents: signedContract(),
         });
         await userService.makeFriendsAutomated(viewer.id, friend.id);
         friendIds.push(friend.id);
       }
 
-      const spy = jest.spyOn(userService, "findRandomActiveUserIds");
+      const spy = jest.spyOn(userService, "pickActiveUserIdsForSeed");
 
-      await request(ctx.app.getHttpServer())
-        .get("/actions/homeFeed")
-        .set(
-          "Authorization",
-          `Bearer ${signAccessToken(ctx.jwtService, viewer)}`,
-        )
-        .expect(200);
+      await homeFeed(viewer);
 
-      expect(spy).not.toHaveBeenCalled();
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ count: 0 }));
 
-      spy.mockRestore();
       await userRepo.delete(viewer.id);
       await userRepo.delete(friendIds);
+    });
+
+    it("does not count inactive friends toward the minimum", async () => {
+      const now = Date.now();
+      const viewer = await userService.create({
+        email: `feed-viewer-inactive-${now}@example.com`,
+        password: "Password123!",
+        name: "Feed Viewer Inactive",
+        tags: [ctx.defaultTag],
+      });
+
+      const friendIds: number[] = [];
+      for (let i = 0; i < 10; i++) {
+        const friend = await userService.create({
+          email: `feed-inactive-friend-${now}-${i}@example.com`,
+          password: "Password123!",
+          name: `Feed Inactive Friend ${i}`,
+          tags: [ctx.defaultTag],
+          ...(i < 2 ? { contractEvents: signedContract() } : {}),
+        });
+        await userService.makeFriendsAutomated(viewer.id, friend.id);
+        friendIds.push(friend.id);
+      }
+
+      const spy = jest.spyOn(userService, "pickActiveUserIdsForSeed");
+
+      await homeFeed(viewer);
+
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ count: 8 }));
+
+      await userRepo.delete([viewer.id, ...friendIds]);
+    });
+
+    it("does not count the viewer toward the minimum", async () => {
+      const now = Date.now();
+      const createMember = (i: number) =>
+        userService.create({
+          email: `feed-group-${now}-${i}@example.com`,
+          password: "Password123!",
+          name: `Feed Group ${i}`,
+          tags: [ctx.defaultTag],
+          contractEvents: signedContract(),
+        });
+      const viewer = await createMember(0);
+      const groupMates = await Promise.all(
+        Array.from({ length: 9 }, (_, i) => createMember(i + 1)),
+      );
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: `Feed Group ${now}`,
+          users: [viewer, ...groupMates],
+        }),
+      );
+
+      const spy = jest.spyOn(userService, "pickActiveUserIdsForSeed");
+
+      await homeFeed(viewer);
+
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ count: 1 }));
+
+      await communityRepo.delete(community.id);
+      await userRepo.delete([viewer.id, ...groupMates.map((m) => m.id)]);
     });
 
     it("still surfaces a friend's contentful completion in the home feed", async () => {
@@ -4122,50 +4289,32 @@ describe("Actions (e2e)", () => {
         }),
       );
 
-      const feed = await request(ctx.app.getHttpServer())
-        .get("/actions/homeFeed")
-        .set(
-          "Authorization",
-          `Bearer ${signAccessToken(ctx.jwtService, viewer)}`,
-        )
-        .expect(200);
-
-      expect(
-        feed.body.some(
-          (item: { activity?: { actionName: string } }) =>
-            item.activity?.actionName === action.name,
-        ),
-      ).toBe(true);
+      const feed = await homeFeed(viewer);
+      expect(feed.some((i) => i.activity?.actionName === action.name)).toBe(
+        true,
+      );
 
       await actionRepo.delete(action.id);
       await formRepo.delete(form.id);
       await userRepo.delete([viewer.id, friend.id]);
     });
 
-    it("findRandomActiveUserIds excludes given ids and users without a signed contract", async () => {
+    it("pickActiveUserIdsForSeed excludes given ids and users without a signed contract", async () => {
       const now = Date.now();
-      const signedContract = (offsetMinutes: number) => [
-        {
-          type: ContractEventType.SIGNED,
-          date: new Date(now - milliseconds({ minutes: offsetMinutes })),
-          automatic: false,
-          contractId: ctx.defaultContractId,
-        },
-      ];
 
       const eligible = await userService.create({
         email: `feed-random-eligible-${now}@example.com`,
         password: "Password123!",
         name: "Random Eligible",
         tags: [ctx.defaultTag],
-        contractEvents: signedContract(1),
+        contractEvents: signedContract(),
       });
       const excludedExplicitly = await userService.create({
         email: `feed-random-excluded-${now}@example.com`,
         password: "Password123!",
         name: "Random Excluded",
         tags: [ctx.defaultTag],
-        contractEvents: signedContract(1),
+        contractEvents: signedContract(),
       });
       const unsigned = await userService.create({
         email: `feed-random-unsigned-${now}@example.com`,
@@ -4174,20 +4323,22 @@ describe("Actions (e2e)", () => {
         tags: [ctx.defaultTag],
       });
 
-      const everyoneElse = (await userRepo.find({ select: { id: true } }))
-        .map((u) => u.id)
-        .filter(
-          (id) =>
-            ![eligible.id, excludedExplicitly.id, unsigned.id].includes(id),
-        );
+      const result = await userService.pickActiveUserIdsForSeed({
+        count: await userRepo.count(),
+        excludeIds: [excludedExplicitly.id],
+        seed: String(now),
+      });
+      expect(result).toContain(eligible.id);
+      expect(result).not.toContain(excludedExplicitly.id);
+      expect(result).not.toContain(unsigned.id);
 
-      const result = await userService.findRandomActiveUserIds(5, [
-        ...everyoneElse,
-        excludedExplicitly.id,
-      ]);
-      expect(result).toEqual([eligible.id]);
-
-      expect(await userService.findRandomActiveUserIds(0, [])).toEqual([]);
+      expect(
+        await userService.pickActiveUserIdsForSeed({
+          count: 0,
+          excludeIds: [],
+          seed: String(now),
+        }),
+      ).toEqual([]);
 
       await userRepo.delete([eligible.id, excludedExplicitly.id, unsigned.id]);
     });
