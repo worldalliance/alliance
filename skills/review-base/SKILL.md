@@ -14,6 +14,8 @@ Read `(root)/skills/review/SKILL.md` and use it to review the base commit. The c
 
 While reviewing, feel free to run `git reset --hard` to test various functionality. If you do, make sure to reset back to the current commit after your review.
 
+Do not read any DECISIONS.md file while you are reviewing, even changes to those files that are contained in the base commit. This is so you can come to your own conclusions. You may read the DECISIONS.md after the user tells you to make changes.
+
 # One commit, one change
 
 The base commit should carry one purpose, and typecheck and pass tests on its own.
@@ -26,7 +28,7 @@ Findings and the judgment behind each field come from the review skill. Report t
 
 Before you start reviewing, create `.scratch/review/<base-sha>.json` holding `{"base": <sha>, "summary": "", "findings": []}`. Create, modify, or delete findings as you review the commit.
 
-Your last message says where the file is, in addition to the markdown-style review.
+Your last message says where the file is, in addition to the markdown-style review. Pretend you just gave the file to the user and they invoked `(root)/skills/bro/SKILL.md`.
 
 Do not delete this file after your review. It will be read later.
 
