@@ -5,10 +5,7 @@ import {
   messageSendMessage,
   ProfileDto,
 } from "@alliance/shared/client";
-import {
-  getParticipantState,
-  isConversationAdmin,
-} from "@alliance/shared/lib/messages";
+import { getParticipantState } from "@alliance/shared/lib/messages";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
@@ -355,11 +352,6 @@ const ConversationDetailPanel = ({
     };
   }, []);
 
-  const isAdmin = useMemo(() => {
-    if (mode === "new") return false;
-    return isConversationAdmin(selectedConvo, user?.id);
-  }, [mode, selectedConvo, user]);
-
   return (
     <div
       className="flex flex-col h-full overflow-hidden relative bg-white"
@@ -376,7 +368,6 @@ const ConversationDetailPanel = ({
       {groupInfoOpen && mode === "existing" ? (
         <ConversationInfoPanel
           selectedConvo={selectedConvo}
-          isAdmin={isAdmin}
           handleConversationUpdated={handleConversationUpdated}
           friends={friends}
           onLeave={onLeave}

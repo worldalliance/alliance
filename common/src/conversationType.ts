@@ -12,3 +12,12 @@ export const conversationTypesWithEditableInfo: Record<
   [ConversationType.Multiple]: true,
   [ConversationType.Community]: false,
 };
+
+export const conversationTypesWithEditableMembers: Record<
+  ConversationType,
+  boolean
+> = {
+  [ConversationType.Direct]: false,
+  [ConversationType.Multiple]: true,
+  [ConversationType.Community]: false,
+};

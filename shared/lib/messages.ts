@@ -1,4 +1,7 @@
-import { conversationTypesWithEditableInfo } from "@alliance/common/conversationType";
+import {
+  conversationTypesWithEditableInfo,
+  conversationTypesWithEditableMembers,
+} from "@alliance/common/conversationType";
 import { rolesWithAdminPowers } from "@alliance/common/participantRole";
 import {
   ConversationDto,
@@ -80,6 +83,14 @@ export const canEditConversationInfo = (
 ): boolean =>
   !!conversation &&
   conversationTypesWithEditableInfo[conversation.type] &&
+  isConversationAdmin(conversation, userId);
+
+export const canEditConversationMembers = (
+  conversation: ConversationDto | null | undefined,
+  userId: number | null | undefined,
+): boolean =>
+  !!conversation &&
+  conversationTypesWithEditableMembers[conversation.type] &&
   isConversationAdmin(conversation, userId);
 
 export const filterConversationsByParticipantState = (

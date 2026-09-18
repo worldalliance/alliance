@@ -6,7 +6,10 @@ import {
   conversationUpdateInfo,
   ProfileDto,
 } from "@alliance/shared/client";
-import { canEditConversationInfo } from "@alliance/shared/lib/messages";
+import {
+  canEditConversationInfo,
+  canEditConversationMembers,
+} from "@alliance/shared/lib/messages";
 import {
   type Explanation,
   sendOrExplain,
@@ -29,14 +32,12 @@ export interface ConversationInfoPanelProps {
   selectedConvo: ConversationDto;
   handleConversationUpdated: (conversation: ConversationDto) => void;
   friends: ProfileDto[] | null;
-  isAdmin: boolean;
   onLeave: () => void;
   onClose: () => void;
 }
 
 const ConversationInfoPanel = ({
   selectedConvo,
-  isAdmin,
   handleConversationUpdated,
   friends,
   onLeave,
@@ -45,6 +46,7 @@ const ConversationInfoPanel = ({
   const { user } = useAuth();
 
   const canEditInfo = canEditConversationInfo(selectedConvo, user?.id);
+  const canEditMembers = canEditConversationMembers(selectedConvo, user?.id);
 
   const [addMemberSearch, setAddMemberSearch] = useState<string>("");
   const [isEditingGroup, setIsEditingGroup] = useState<boolean>(false);
@@ -261,25 +263,23 @@ const ConversationInfoPanel = ({
                       ) : (
                         <p className="text-zinc-500 mr-2">Invited</p>
                       ))}
-                    {isAdmin &&
-                      participant.user.id !== user?.id &&
-                      selectedConvo.type === "multiple" && (
-                        <Button
-                          color={ButtonColor.Transparent}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleRemoveParticipant(participant.user.id);
-                          }}
-                          className="hover:!bg-zinc-200 !px-2"
-                        >
-                          <X size="18" color="var(--color-red-400)" />
-                        </Button>
-                      )}
+                    {canEditMembers && participant.user.id !== user?.id && (
+                      <Button
+                        color={ButtonColor.Transparent}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleRemoveParticipant(participant.user.id);
+                        }}
+                        className="hover:!bg-zinc-200 !px-2"
+                      >
+                        <X size="18" color="var(--color-red-400)" />
+                      </Button>
+                    )}
                   </div>
                 </Link>
               ))}
             </List>
-            {selectedConvo.type === "multiple" && isAdmin && (
+            {canEditMembers && (
               <Card
                 style={CardStyle.LightGrey}
                 className="w-full !p-0 relative group"

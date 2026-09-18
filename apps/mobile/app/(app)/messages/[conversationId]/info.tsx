@@ -6,7 +6,7 @@ import {
 } from "@alliance/shared/client";
 import {
   canEditConversationInfo,
-  isConversationAdmin,
+  canEditConversationMembers,
 } from "@alliance/shared/lib/messages";
 import { sendOrExplain } from "@alliance/shared/lib/sendOrExplain";
 import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
@@ -58,9 +58,9 @@ export default function ConversationInfoScreen() {
     [conversations, convoId],
   );
 
-  const isAdmin = isConversationAdmin(selectedConvo, user?.id);
   const isGroup = selectedConvo?.type === "multiple";
   const canEditInfo = canEditConversationInfo(selectedConvo, user?.id);
+  const canEditMembers = canEditConversationMembers(selectedConvo, user?.id);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState("");
@@ -68,7 +68,7 @@ export default function ConversationInfoScreen() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const { data: messageableUsers = [], isLoading: loadingUsers } =
-    useMessageableUsersQuery({ enabled: isGroup && isAdmin });
+    useMessageableUsersQuery({ enabled: canEditMembers });
   const canPickPhoto = canEditInfo && isEditing;
 
   useEffect(() => {
@@ -314,7 +314,7 @@ export default function ConversationInfoScreen() {
                     )}
                   </View>
                 </View>
-                {isAdmin && isGroup && participant.user.id !== user?.id && (
+                {canEditMembers && participant.user.id !== user?.id && (
                   <TouchableOpacity
                     onPress={(event) => {
                       event.stopPropagation();
@@ -330,7 +330,7 @@ export default function ConversationInfoScreen() {
           </View>
         </View>
 
-        {isAdmin && isGroup && (
+        {canEditMembers && (
           <View className="px-4 mt-6">
             <Text className="text-sm text-zinc-500 mb-2">Add member</Text>
             <View className="border border-zinc-200 rounded-lg px-3 py-2 flex-row items-center gap-2">

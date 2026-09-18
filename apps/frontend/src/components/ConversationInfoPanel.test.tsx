@@ -1,5 +1,8 @@
-import { ConversationDto, ParticipantRole } from "@alliance/shared/client";
-import { isConversationAdmin } from "@alliance/shared/lib/messages";
+import {
+  ConversationDto,
+  ConversationType,
+  ParticipantRole,
+} from "@alliance/shared/client";
 import {
   makeConversation,
   makeParticipant,
@@ -30,7 +33,6 @@ const panel = (convo: ConversationDto) => (
     <AuthContext.Provider value={authValue({ user: testAuthUser })}>
       <ConversationInfoPanel
         selectedConvo={convo}
-        isAdmin={isConversationAdmin(convo, testAuthUser.id)}
         handleConversationUpdated={() => {}}
         friends={[]}
         onLeave={() => {}}
@@ -40,11 +42,17 @@ const panel = (convo: ConversationDto) => (
   </MemoryRouter>
 );
 
-const renderPanel = (viewerRole: ParticipantRole) => {
-  const convo = makeConversation([
-    makeParticipant(testAuthUser.id, viewerRole),
-    makeParticipant(testAuthUser.id + 1, "owner"),
-  ]);
+const renderPanel = (
+  viewerRole: ParticipantRole,
+  type: ConversationType = "multiple",
+) => {
+  const convo = makeConversation(
+    [
+      makeParticipant(testAuthUser.id, viewerRole),
+      makeParticipant(testAuthUser.id + 1, "owner"),
+    ],
+    type,
+  );
   return { convo, ...render(panel(convo)) };
 };
 
@@ -94,6 +102,18 @@ it("closes the editor when the viewer stops being an admin", () => {
   );
 
   expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+});
+
+it("offers a group admin the field to add members", () => {
+  renderPanel("admin");
+
+  expect(screen.getByPlaceholderText("Add member...")).toBeTruthy();
+});
+
+it("keeps the field to add members from a community chat admin", () => {
+  renderPanel("admin", "community");
+
+  expect(screen.queryByPlaceholderText("Add member...")).toBeNull();
 });
 
 it.each([
