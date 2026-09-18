@@ -100,4 +100,8 @@ describe("getParticipantState", () => {
 
     expect(getParticipantState(conversation, undefined)).toBeNull();
   });
+
+  it("is null with no conversation", () => {
+    expect(getParticipantState(null, 1)).toBeNull();
+  });
 });

@@ -51,10 +51,10 @@ export const getConversationTimestamp = (conversation: ConversationDto) => {
 };
 
 export const getParticipantState = (
-  conversation: ConversationDto,
+  conversation: ConversationDto | null | undefined,
   userId: number | null | undefined,
 ) => {
-  if (!userId) return null;
+  if (!conversation || !userId) return null;
   return (
     conversation.participants.find(
       (participant) => participant.user.id === userId,

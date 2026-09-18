@@ -111,10 +111,10 @@ export default function ConversationScreen() {
     [convoMessages, replyingTo],
   );
 
-  const amInvited = useMemo(() => {
-    if (!selectedConvo) return false;
-    return getParticipantState(selectedConvo, user?.id) === "invited";
-  }, [selectedConvo, user]);
+  const amInvited = useMemo(
+    () => getParticipantState(selectedConvo, user?.id) === "invited",
+    [selectedConvo, user],
+  );
 
   const otherParticipantInvited = useMemo(() => {
     if (!selectedConvo || !user) return null;
