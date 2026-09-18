@@ -163,11 +163,11 @@ import {
   SuspensionPlan,
   TimelineFeedItemDto,
   TimelineFeedItemType,
-  UnwelcomedSignedContractMember,
   UpdateActionDto,
   UpdateActionEventDto,
   UpdateActionUpdateDto,
   UserActionRelation,
+  WelcomeQueueMember,
 } from "./dto/action.dto";
 import {
   CreateFollowUpFormDto,
@@ -795,16 +795,18 @@ export class ActionsService {
     return this.userService.findByIds(incompleteUserIds);
   }
 
-  async findUnwelcomedSignedContractMembers(): Promise<
-    UnwelcomedSignedContractMember[]
-  > {
+  async findWelcomeQueueMembers(): Promise<WelcomeQueueMember[]> {
+    // Action 9 was "sign your contract"; that requirement was removed from
+    // it, so completion here is independent of contract-signing status.
+    // https://thealliance.org/actions/9
+    const welcomeQueueActionId = 9;
+
     const rows = await this.actionActivityRepository.query<
       {
         userId: number | string;
         actionId: number | string;
         activityId: number | string;
         completedAt: Date | string;
-        signedAt: Date | string;
         staffLikeCount: number | string;
       }[]
     >(
@@ -814,15 +816,11 @@ export class ActionsService {
           action.id AS "actionId",
           activity.id AS "activityId",
           activity."createdAt" AS "completedAt",
-          MAX(contract_event.date) AS "signedAt",
           COUNT(DISTINCT staff_liker.id) AS "staffLikeCount"
         FROM action_activity activity
         INNER JOIN action
           ON action.id = activity."actionId"
-          AND action."isContractSigningAction" = true
-        INNER JOIN contract_event
-          ON contract_event."userId" = activity."userId"
-          AND contract_event.type = $1
+          AND action.id = $1
         LEFT JOIN comment staff_comment
           ON staff_comment."parentObjectType" = $2
           AND staff_comment."parentObjectId" = activity.id
@@ -838,10 +836,10 @@ export class ActionsService {
         WHERE activity.type = $3
         GROUP BY activity.id, activity."userId", action.id
         HAVING COUNT(staff_comment_author.id) = 0
-        ORDER BY MAX(contract_event.date) DESC
+        ORDER BY activity."createdAt" DESC
       `,
       [
-        ContractEventType.SIGNED,
+        welcomeQueueActionId,
         CommentParentObject.Activity,
         ActionActivityType.USER_COMPLETED,
       ],
@@ -860,7 +858,6 @@ export class ActionsService {
         user,
         actionId: Number(row.actionId),
         activityId: Number(row.activityId),
-        signedAt: new Date(row.signedAt),
         completedAt: new Date(row.completedAt),
         staffLikeCount: Number(row.staffLikeCount),
       };

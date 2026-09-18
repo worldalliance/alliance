@@ -2503,11 +2503,10 @@ export type UpdateFollowUpFormDto = {
     formId?: number;
 };
 
-export type UnwelcomedSignedContractMemberDto = {
+export type WelcomeQueueMemberDto = {
     user: ProfileDto;
     actionId: number;
     activityId: number;
-    signedAt: string;
     completedAt: string;
     staffLikeCount: number;
 };
@@ -9152,27 +9151,27 @@ export type ActionsGetIncompleteUsersAdminResponses = {
 
 export type ActionsGetIncompleteUsersAdminResponse = ActionsGetIncompleteUsersAdminResponses[keyof ActionsGetIncompleteUsersAdminResponses];
 
-export type ActionsGetUnwelcomedSignedContractMembersAdminData = {
+export type ActionsGetWelcomeQueueMembersAdminData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/actions/welcome-queue';
 };
 
-export type ActionsGetUnwelcomedSignedContractMembersAdminErrors = {
+export type ActionsGetWelcomeQueueMembersAdminErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type ActionsGetUnwelcomedSignedContractMembersAdminError = ActionsGetUnwelcomedSignedContractMembersAdminErrors[keyof ActionsGetUnwelcomedSignedContractMembersAdminErrors];
+export type ActionsGetWelcomeQueueMembersAdminError = ActionsGetWelcomeQueueMembersAdminErrors[keyof ActionsGetWelcomeQueueMembersAdminErrors];
 
-export type ActionsGetUnwelcomedSignedContractMembersAdminResponses = {
-    200: Array<UnwelcomedSignedContractMemberDto>;
+export type ActionsGetWelcomeQueueMembersAdminResponses = {
+    200: Array<WelcomeQueueMemberDto>;
 };
 
-export type ActionsGetUnwelcomedSignedContractMembersAdminResponse = ActionsGetUnwelcomedSignedContractMembersAdminResponses[keyof ActionsGetUnwelcomedSignedContractMembersAdminResponses];
+export type ActionsGetWelcomeQueueMembersAdminResponse = ActionsGetWelcomeQueueMembersAdminResponses[keyof ActionsGetWelcomeQueueMembersAdminResponses];
 
 export type ActionsEvaluateCohortAdminData = {
     body: EvaluateCohortExpressionDto;
