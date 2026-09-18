@@ -6,6 +6,7 @@ import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import {
   FORM_DRAFT_MAX_ANSWER_BYTES,
+  type FormAnswers,
   readFormAnswers,
   readPublicFormAnswers,
 } from "@alliance/common/forms/form-responses";
@@ -27,6 +28,7 @@ import {
   isFieldGroup,
   isQuestionField,
   type ListField,
+  type ListFieldValue,
   Page,
 } from "@alliance/common/forms/form-schema";
 import {
@@ -153,6 +155,49 @@ function parseSubmittedValidatorResults(
     );
   }
   return parsed.data;
+}
+
+function parseSubmittedAnswers(value: Record<string, unknown>): FormAnswers {
+  const answers = readFormAnswers(omitBy(value, isNull));
+  if (R.isFailure(answers)) {
+    throw new BadRequestException("Answers are not a valid answer map");
+  }
+  return answers.value;
+}
+
+function readListAnswer(
+  field: ListField,
+  value: FormValue | undefined,
+): ListFieldValue {
+  if (value === undefined) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    throw new BadRequestException(
+      `Field ${elementInternalDescriptor(field)} is not a list.`,
+    );
+  }
+  return value.map((item, i) => {
+    if (typeof item !== "object") {
+      throw new BadRequestException(
+        `Field ${elementInternalDescriptor(field)} (item ${i + 1}) is not a list item.`,
+      );
+    }
+    return item;
+  });
+}
+
+function assertListAnswersAreLists(
+  schema: FormSchema,
+  answers: FormAnswers,
+): void {
+  for (const page of schema.pages) {
+    for (const field of flattenPageItems(page.fields)) {
+      if (field.kind === "list") {
+        readListAnswer(field, answers[field.id]);
+      }
+    }
+  }
 }
 
 function pickKeys<T>(
@@ -444,11 +489,7 @@ export class TasksService {
      */
     effectiveAnswers: Record<string, FormValue>;
   }> {
-    // Submit accepts null as a way to leave a field unanswered.
-    const answers = readFormAnswers(omitBy(submitFormDto.answers, isNull));
-    if (R.isFailure(answers)) {
-      throw new BadRequestException("Answers are not a valid answer map");
-    }
+    const answers = parseSubmittedAnswers(submitFormDto.answers);
 
     const validatorIds = new Set<number>();
     const accountConditionKinds = new Set<AccountDerivedConditionKind>();
@@ -537,7 +578,7 @@ export class TasksService {
 
     const effectiveAnswers = stripHiddenAnswers(
       schema.pages,
-      answers.value,
+      answers,
       visibilityExtras,
     );
 
@@ -612,22 +653,10 @@ export class TasksService {
             ) {
               continue;
             }
-            const rawList = effectiveAnswers[listField.id];
-            const listValue: Record<string, FormValue>[] = [];
-            if (Array.isArray(rawList)) {
-              for (const [i, item] of rawList.entries()) {
-                if (typeof item !== "object") {
-                  throw new BadRequestException(
-                    `Field ${elementInternalDescriptor(listField)} (item ${i + 1}) is not a list item.`,
-                  );
-                }
-                listValue.push(item);
-              }
-            } else if (rawList != null) {
-              throw new BadRequestException(
-                `Field ${elementInternalDescriptor(listField)} is not a list.`,
-              );
-            }
+            const listValue = readListAnswer(
+              listField,
+              effectiveAnswers[listField.id],
+            );
             const minCards = Math.max(
               0,
               Math.floor(Number(listField.min ?? 0)),
@@ -1146,8 +1175,10 @@ export class TasksService {
   }): Promise<ParsedFormResponse> {
     const snapshot =
       preResolvedSnapshot ?? (await this.resolveSubmissionSnapshot(form, dto));
+    const answers = parseSubmittedAnswers(dto.answers);
+    assertListAnswersAreLists(formSchemaOf(snapshot), answers);
     const formResponse = this.formResponseRepository.create({
-      answers: dto.answers,
+      answers,
       formSnapshotId: snapshot.id,
       formSnapshot: snapshot,
       visibilityValidatorResults: validatorResults,
