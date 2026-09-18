@@ -1,6 +1,7 @@
 import {
   ConversationType,
   conversationTypesWithEditableInfo,
+  conversationTypesWithEditableMembers,
 } from "@alliance/common/conversationType";
 import {
   ParticipantRole,
@@ -542,6 +543,8 @@ export class ConversationService {
       actingUserId,
     );
 
+    this.ensureMembersEditable(adminParticipant.conversation);
+
     const alreadyParticipant = adminParticipant.conversation.participants?.some(
       (participant) => participant.user.id === dto.userId,
     );
@@ -586,6 +589,8 @@ export class ConversationService {
       conversationId,
       actingUserId,
     );
+
+    this.ensureMembersEditable(adminParticipant.conversation);
 
     const targetParticipant = await this.participantRepository.findOne({
       where: {
@@ -842,6 +847,14 @@ export class ConversationService {
       },
     });
     return count > 0;
+  }
+
+  private ensureMembersEditable(conversation: Conversation) {
+    if (!conversationTypesWithEditableMembers[conversation.type]) {
+      throw new ForbiddenException(
+        "This conversation's members cannot be changed.",
+      );
+    }
   }
 
   private async ensureConversationAdmin(

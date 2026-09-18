@@ -38,6 +38,29 @@ describe("ConversationController (e2e)", () => {
     return { user, token };
   };
 
+  const createCommunityChat = async () => {
+    const { user: leader, token: leaderToken } = await createUserAndToken();
+    const { user: member } = await createUserAndToken();
+
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: "Community With Members",
+        description: "A community with a chat.",
+        public: false,
+        allowMemberInvites: false,
+        allowStaffAssignments: false,
+        users: [leader, member],
+        leaders: [leader],
+      }),
+    );
+
+    const conversation = await ctx.app
+      .get(ConversationService)
+      .syncCommunityConversationMembers(community.id);
+
+    return { conversation, leaderToken, member };
+  };
+
   beforeAll(async () => {
     ctx = await createTestApp([MessagingModule]);
     await ctx.app.listen(0);
@@ -423,27 +446,61 @@ describe("ConversationController (e2e)", () => {
       });
       expect(participantRecords).toHaveLength(0);
     });
+
+    it("lets the owner add a member", async () => {
+      const { user: member } = await createUserAndToken();
+      const { user: newcomer } = await createUserAndToken();
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "Growing Chat", participantIds: [member.id] })
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${createResponse.body.id}/participants`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ userId: newcomer.id })
+        .expect(201);
+
+      const added = await participantRepo.findOne({
+        where: {
+          conversation: { id: createResponse.body.id },
+          user: { id: newcomer.id },
+        },
+      });
+      expect(added?.state).toBe(ParticipantState.Invited);
+    });
+
+    it("lets the owner remove a member", async () => {
+      const { user: member } = await createUserAndToken();
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "Shrinking Chat", participantIds: [member.id] })
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .delete(
+          `/messaging/conversations/${createResponse.body.id}/participants/${member.id}`,
+        )
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const stillThere = await participantRepo.findOne({
+        where: {
+          conversation: { id: createResponse.body.id },
+          user: { id: member.id },
+        },
+      });
+      expect(stillThere).toBeNull();
+    });
   });
 
   describe("conversation info", () => {
     it("refuses to rename a community chat", async () => {
-      const { user: leader, token: leaderToken } = await createUserAndToken();
-
-      const community = await communityRepo.save(
-        communityRepo.create({
-          name: "Community With A Chat",
-          description: "A community with a chat.",
-          public: false,
-          allowMemberInvites: false,
-          allowStaffAssignments: false,
-          users: [leader],
-          leaders: [leader],
-        }),
-      );
-
-      const conversation = await ctx.app
-        .get(ConversationService)
-        .syncCommunityConversationMembers(community.id);
+      const { conversation, leaderToken } = await createCommunityChat();
 
       await request(ctx.app.getHttpServer())
         .post(`/messaging/conversations/${conversation.id}/update`)
@@ -454,7 +511,7 @@ describe("ConversationController (e2e)", () => {
       const storedConversation = await conversationRepo.findOne({
         where: { id: conversation.id },
       });
-      expect(storedConversation?.title).toBe("Community With A Chat");
+      expect(storedConversation?.title).toBe("Community With Members");
     });
 
     it("refuses a blank group title and trims the one it stores", async () => {
@@ -537,6 +594,46 @@ describe("ConversationController (e2e)", () => {
         socket.disconnect();
       }
     }, 5000);
+  });
+
+  describe("community chat members", () => {
+    const participantIds = async (conversationId: number) =>
+      (
+        await participantRepo.find({
+          where: { conversation: { id: conversationId } },
+          relations: { user: true },
+        })
+      )
+        .map((participant) => participant.user.id)
+        .sort((a, b) => a - b);
+
+    it("refuses a leader adding someone from outside the community", async () => {
+      const { conversation, leaderToken } = await createCommunityChat();
+      const { user: outsider } = await createUserAndToken();
+      const before = await participantIds(conversation.id);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversation.id}/participants`)
+        .set("Authorization", `Bearer ${leaderToken}`)
+        .send({ userId: outsider.id })
+        .expect(403);
+
+      expect(await participantIds(conversation.id)).toEqual(before);
+    });
+
+    it("refuses a leader removing a member", async () => {
+      const { conversation, leaderToken, member } = await createCommunityChat();
+      const before = await participantIds(conversation.id);
+
+      await request(ctx.app.getHttpServer())
+        .delete(
+          `/messaging/conversations/${conversation.id}/participants/${member.id}`,
+        )
+        .set("Authorization", `Bearer ${leaderToken}`)
+        .expect(403);
+
+      expect(await participantIds(conversation.id)).toEqual(before);
+    });
   });
 
   describe("unread counts", () => {
