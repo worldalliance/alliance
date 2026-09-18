@@ -151,6 +151,23 @@ describe("FormRenderer preview", () => {
     expect(screen.getByText('#{total}: "this" is not allowed.')).toBeTruthy();
   });
 
+  it("won't draw a form whose variable reads an input kind this build doesn't know", () => {
+    renderPreview({
+      ...form,
+      variables: [
+        {
+          name: "total",
+          inputs: JSON.parse(
+            '{ "input1": { "kind": "future", "fieldId": "joined" } }',
+          ),
+          formula: "input1",
+        },
+      ],
+    });
+
+    expect(screen.getByText("This form can't be displayed")).toBeTruthy();
+  });
+
   it("validates every page, going back to the first invalid one", async () => {
     renderPreview(form);
 

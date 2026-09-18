@@ -169,27 +169,32 @@ function checkVariableInputs(
   push: (message: string) => void,
 ): void {
   for (const [inputName, input] of Object.entries(variable.inputs)) {
-    // `field` is the only input kind today, so there is nothing for a
-    // `satisfies never` default to narrow. The resolver table in `variables.ts`
-    // is what makes adding a kind a compile error, at the point it has to be
-    // turned into a value; a kind unknown here is simply left unchecked.
-    if (input.kind !== "field") continue;
-
-    const field = fields.get(input.fieldId);
-    if (field === undefined) {
-      push(`Input "${inputName}" references missing field "${input.fieldId}"`);
-      continue;
-    }
-    if (field.insideList) {
-      push(
-        `Input "${inputName}" reads field "${input.fieldId}", which is inside a list — a list has one answer per row, so variables can't read it`,
-      );
-      continue;
-    }
-    if (!isFieldKindUsableAsVariableInput(field.kind)) {
-      push(
-        `Input "${inputName}" reads field "${input.fieldId}", whose kind (${field.kind}) has no value a formula can read`,
-      );
+    switch (input.kind) {
+      case "field": {
+        const field = fields.get(input.fieldId);
+        if (field === undefined) {
+          push(
+            `Input "${inputName}" references missing field "${input.fieldId}"`,
+          );
+          break;
+        }
+        if (field.insideList) {
+          push(
+            `Input "${inputName}" reads field "${input.fieldId}", which is inside a list — a list has one answer per row, so variables can't read it`,
+          );
+          break;
+        }
+        if (!isFieldKindUsableAsVariableInput(field.kind)) {
+          push(
+            `Input "${inputName}" reads field "${input.fieldId}", whose kind (${field.kind}) has no value a formula can read`,
+          );
+        }
+        break;
+      }
+      default:
+        push(
+          `Input "${inputName}" has a kind (${input.kind satisfies never}) this build doesn't know. Reload the page`,
+        );
     }
   }
 }

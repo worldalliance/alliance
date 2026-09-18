@@ -55,7 +55,6 @@ export const variableInputSchema = z.discriminatedUnion("kind", [
   variableFieldInputSchema,
 ]);
 export type VariableInput = z.infer<typeof variableInputSchema>;
-export type VariableInputKind = VariableInput["kind"];
 
 export const formVariableSchema = z.strictObject({
   name: z.string().regex(VARIABLE_NAME_REGEX),
@@ -285,27 +284,27 @@ export type VariableResolutionContext = {
   fields: ReadonlyMap<string, VariableInputField>;
 };
 
-const INPUT_RESOLVERS: {
-  [K in VariableInputKind]: (
-    input: Extract<VariableInput, { kind: K }>,
-    context: VariableResolutionContext,
-  ) => ExprValue;
-} = {
-  field: (input, context) => {
-    const field = context.fields.get(input.fieldId);
-    if (field === undefined) return undefined;
-    return formValueToExprValue(context.answers[input.fieldId], field);
-  },
-};
+function resolveFieldInput(
+  input: Extract<VariableInput, { kind: "field" }>,
+  context: VariableResolutionContext,
+): ExprValue {
+  const field = context.fields.get(input.fieldId);
+  if (field === undefined) return undefined;
+  return formValueToExprValue(context.answers[input.fieldId], field);
+}
 
 function resolveInput(
   input: VariableInput,
   context: VariableResolutionContext,
-): ExprValue {
-  // A table rather than a switch: with only one input kind there is nothing for
-  // a `satisfies never` default to narrow against, whereas a missing entry here
-  // is a compile error the moment a kind is added.
-  return INPUT_RESOLVERS[input.kind](input, context);
+): Result<ExprValue, string> {
+  const { kind } = input;
+  switch (kind) {
+    case "field":
+      return R.success(resolveFieldInput(input, context));
+    default:
+      // A newer admin can save an input kind this build predates.
+      return R.failure(`Unknown input kind: ${kind satisfies never}`);
+  }
 }
 
 export function formatVariableValue(value: ExprValue): string {
@@ -324,7 +323,9 @@ export function evaluateVariable(
 
   const inputs = new Map<string, ExprValue>();
   for (const [name, input] of Object.entries(variable.inputs)) {
-    inputs.set(name, resolveInput(input, context));
+    const value = resolveInput(input, context);
+    if (!value.ok) return value;
+    inputs.set(name, value.value);
   }
 
   const value = R.fromThrowable(() =>

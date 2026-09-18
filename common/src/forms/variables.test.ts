@@ -446,6 +446,19 @@ describe("evaluateVariable", () => {
     ).toEqual({ ok: true, value: "n/a" });
   });
 
+  it("fails on an input of a kind this build doesn't know", () => {
+    const v: FormVariable = {
+      ...variable({ formula: "input1 ?? 'n/a'" }),
+      inputs: JSON.parse(
+        '{ "input1": { "kind": "future", "fieldId": "qty" } }',
+      ),
+    };
+    expect(evaluate(v, { qty: 3 })).toEqual({
+      ok: false,
+      error: "Unknown input kind: future",
+    });
+  });
+
   it("renders nothing on a division by zero rather than showing Infinity", () => {
     const v = variable({ formula: "100 / input1" });
     expect(evaluate(v, { qty: 0 })).toEqual({ ok: true, value: "" });
@@ -777,6 +790,24 @@ describe("validateFormSchema: variables", () => {
     });
     expect(errors).toHaveLength(1);
     expect(errors[0]).toContain("has no value a formula can read");
+  });
+
+  it("rejects an input of a kind this build doesn't know", () => {
+    expect(
+      errorsFor({
+        pages: [page("p1", [numberField("qty")])],
+        variables: [
+          {
+            ...variable(),
+            inputs: JSON.parse(
+              '{ "input1": { "kind": "future", "fieldId": "qty" } }',
+            ),
+          },
+        ],
+      }),
+    ).toEqual([
+      'Input "input1" has a kind (future) this build doesn\'t know. Reload the page',
+    ]);
   });
 
   it.each([
