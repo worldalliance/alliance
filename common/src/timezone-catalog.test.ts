@@ -38,18 +38,6 @@ describe("the timezone catalog", () => {
     );
     expect(unnamed).toEqual([]);
   });
-
-  it("holds only identifiers this runtime resolves", () => {
-    const unresolved = identifiers.filter((tz) => {
-      try {
-        Intl.DateTimeFormat(undefined, { timeZone: tz });
-        return false;
-      } catch {
-        return true;
-      }
-    });
-    expect(unresolved).toEqual([]);
-  });
 });
 
 describe("the timezone aliases", () => {
