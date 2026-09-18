@@ -96,17 +96,17 @@ type UserCommentsQueryOptions = Omit<
 > & { enabled?: boolean };
 
 type FriendStatusQueryOptions = Omit<
-  UseQueryOptions<FriendStatusDto | null>,
+  UseQueryOptions<FriendStatusDto | null, unknown>,
   "queryKey" | "queryFn" | "enabled"
 > & { enabled?: boolean };
 
 type FriendsQueryOptions<TData> = Omit<
-  UseQueryOptions<ProfileDto[], Error, TData>,
+  UseQueryOptions<ProfileDto[], unknown, TData>,
   "queryKey" | "queryFn" | "enabled"
 > & { enabled?: boolean };
 
 type FriendRequestsQueryOptions = Omit<
-  UseQueryOptions<ProfileDto[]>,
+  UseQueryOptions<ProfileDto[], unknown>,
   "queryKey" | "queryFn"
 >;
 
@@ -143,8 +143,9 @@ export const useUserFriendStatusQuery = (
       if (!userId) return null;
       const response = await userMyFriendRelationship({
         path: { id: userId },
+        throwOnError: true,
       });
-      return response.data ?? null;
+      return response.data;
     },
     enabled: defaultQueryEnabled(userId, options?.enabled),
   });
@@ -193,8 +194,11 @@ export const useUserFriendsQuery = <TData = ProfileDto[]>(
     queryKey: userQueryKeys.friends(userId),
     queryFn: async () => {
       if (!userId) return [];
-      const response = await userListFriends({ path: { id: userId } });
-      return response.data ?? [];
+      const response = await userListFriends({
+        path: { id: userId },
+        throwOnError: true,
+      });
+      return response.data;
     },
     enabled: defaultQueryEnabled(userId, options?.enabled),
   });
@@ -206,8 +210,8 @@ export const useUserReceivedFriendRequestsQuery = (
     ...options,
     queryKey: userQueryKeys.receivedRequests(),
     queryFn: async () => {
-      const response = await userListReceivedRequests({});
-      return response.data ?? [];
+      const response = await userListReceivedRequests({ throwOnError: true });
+      return response.data;
     },
   });
 
@@ -218,13 +222,13 @@ export const useUserSentFriendRequestsQuery = (
     ...options,
     queryKey: userQueryKeys.sentRequests(),
     queryFn: async () => {
-      const response = await userListSentRequests({});
-      return response.data ?? [];
+      const response = await userListSentRequests({ throwOnError: true });
+      return response.data;
     },
   });
 
 type MessageableUsersQueryOptions = Omit<
-  UseQueryOptions<ProfileDto[]>,
+  UseQueryOptions<ProfileDto[], unknown>,
   "queryKey" | "queryFn"
 >;
 
@@ -237,8 +241,8 @@ export const useMessageableUsersQuery = (
     ...options,
     queryKey: userQueryKeys.messageableUsers(),
     queryFn: async () => {
-      const response = await userListMessageableUsers();
-      return response.data ?? [];
+      const response = await userListMessageableUsers({ throwOnError: true });
+      return response.data;
     },
   });
   const ids = useMemo<ReadonlySet<number>>(

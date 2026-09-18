@@ -1,12 +1,17 @@
 import type { QueryKey } from "@tanstack/react-query";
-import { renderHook } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi, type RouteTable } from "./testing/serveApi";
 import {
   useAcceptFriendRequestMutation,
   useDeclineFriendRequestMutation,
+  useMessageableUsersQuery,
   useRemoveFriendMutation,
   useSendFriendRequestMutation,
+  useUserFriendStatusQuery,
+  useUserFriendsQuery,
+  useUserReceivedFriendRequestsQuery,
+  useUserSentFriendRequestsQuery,
   userQueryKeys,
 } from "./user";
 
@@ -15,6 +20,9 @@ const ALLOWED_USER = 3;
 
 const notFound = () =>
   Response.json({ message: "No pending request found" }, { status: 404 });
+
+const serverError = () =>
+  Response.json({ message: "Internal server error" }, { status: 500 });
 
 const refuseRefusedUser = ({ params }: { params: Record<string, string> }) =>
   Object.values(params).includes(String(REFUSED_USER))
@@ -45,6 +53,14 @@ const allLists: QueryKey[] = [
   userQueryKeys.messageableUsers(),
   ...requestLists,
 ];
+
+const failingFriendReads: RouteTable = {
+  "GET /user/myfriendrelationship/:id": serverError,
+  "GET /user/listfriends/:id": serverError,
+  "GET /user/friends/requests/received": serverError,
+  "GET /user/friends/requests/sent": serverError,
+  "GET /user/listMessageableUsers": serverError,
+};
 
 const api = serveApi(routes(friendRoutes));
 
@@ -161,3 +177,103 @@ it.each([
     }
   },
 );
+
+const cachedFriends = [{ id: 4, displayName: "Ada" }];
+const cachedStatus = { status: "accepted", didReceiveRequest: false };
+
+const friendQueries = [
+  [
+    "friend status",
+    () => useUserFriendStatusQuery(ALLOWED_USER),
+    userQueryKeys.friendStatus(ALLOWED_USER),
+    cachedStatus,
+  ],
+  [
+    "friends",
+    () => useUserFriendsQuery(ALLOWED_USER),
+    userQueryKeys.friends(ALLOWED_USER),
+    cachedFriends,
+  ],
+  [
+    "received requests",
+    () => useUserReceivedFriendRequestsQuery(),
+    userQueryKeys.receivedRequests(),
+    cachedFriends,
+  ],
+  [
+    "sent requests",
+    () => useUserSentFriendRequestsQuery(),
+    userQueryKeys.sentRequests(),
+    cachedFriends,
+  ],
+  [
+    "messageable users",
+    () => useMessageableUsersQuery(),
+    userQueryKeys.messageableUsers(),
+    cachedFriends,
+  ],
+] as const;
+
+const servedFriendReads: RouteTable = {
+  "GET /user/myfriendrelationship/:id": () => Response.json(cachedStatus),
+  "GET /user/listfriends/:id": () => Response.json(cachedFriends),
+  "GET /user/friends/requests/received": () => Response.json(cachedFriends),
+  "GET /user/friends/requests/sent": () => Response.json(cachedFriends),
+  "GET /user/listMessageableUsers": () => Response.json(cachedFriends),
+};
+
+it.each(friendQueries)(
+  "a %s fetch returns the body the server sent",
+  async (_, useQuery, __, body) => {
+    api.alsoServing(servedFriendReads);
+    const { wrapper } = queryWrapper();
+
+    const query = renderHook(() => useQuery(), { wrapper });
+
+    await waitFor(() => expect(query.result.current.isSuccess).toBe(true));
+    expect(query.result.current.data).toEqual(body);
+  },
+);
+
+it.each(friendQueries)(
+  "a failed %s fetch errors instead of caching empty data",
+  async (_, useQuery) => {
+    api.alsoServing(failingFriendReads);
+    const { wrapper } = queryWrapper();
+
+    const query = renderHook(() => useQuery(), { wrapper });
+
+    await waitFor(() => expect(query.result.current.isError).toBe(true));
+    expect(query.result.current.data).toBeUndefined();
+  },
+);
+
+it.each(friendQueries)(
+  "a failed %s refetch keeps the data it had",
+  async (_, useQuery, key, cached) => {
+    api.alsoServing(failingFriendReads);
+    const { client, wrapper } = queryWrapper();
+    client.setQueryData(key, cached);
+
+    const query = renderHook(() => useQuery(), { wrapper });
+
+    await waitFor(() => expect(query.result.current.isError).toBe(true));
+    expect(query.result.current.data).toBe(cached);
+  },
+);
+
+it("hands the caller the error body the server sent, which is no Error", async () => {
+  api.alsoServing(failingFriendReads);
+  const { wrapper } = queryWrapper();
+
+  const query = renderHook(() => useUserFriendsQuery(ALLOWED_USER), {
+    wrapper,
+  });
+
+  await waitFor(() => expect(query.result.current.isError).toBe(true));
+  expect(query.result.current.error).toEqual({
+    message: "Internal server error",
+    statusCode: 500,
+  });
+  expect(query.result.current.error).not.toBeInstanceOf(Error);
+});

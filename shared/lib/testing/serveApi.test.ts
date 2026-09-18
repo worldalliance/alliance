@@ -16,6 +16,28 @@ it("answers the client from the route the request matched", async () => {
   expect(data).toEqual({ name: "one" });
 });
 
+it("answers a route the test added, and the file's routes for the rest", async () => {
+  api.alsoServing({
+    "GET /probe/:name": () => Response.json({ name: "added" }),
+  });
+
+  expect((await client.get({ url: "/probe/one" })).data).toEqual({
+    name: "added",
+  });
+  expect((await client.get({ url: "/refuse" })).error).toEqual({
+    message: "no",
+    statusCode: 403,
+  });
+});
+
+it("records a request no route matched once the test added its own", async () => {
+  api.alsoServing({ "GET /probe/:name": () => Response.json({}) });
+
+  await client.get({ url: "/nowhere" }).catch(() => {});
+
+  expect(() => endServedTest()).toThrow(UnroutedRequest);
+});
+
 it("records a request no route matched, and throws it from the restore", async () => {
   await client.get({ url: "/nowhere" }).catch(() => {});
 

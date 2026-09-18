@@ -45,9 +45,12 @@ const matcher = (template: string) => {
 
 export type RouteTable = Record<string, RouteHandler>;
 
-/** Answers each `"METHOD /path/:param"` from its handler, and throws
- * UnroutedRequest for anything else. */
-export const routes = (table: RouteTable): ApiHandler => {
+/** Answers each `"METHOD /path/:param"` from its handler, and hands anything
+ * else to `fallback`, or throws UnroutedRequest when there is none. */
+export const routes = (
+  table: RouteTable,
+  fallback?: ApiHandler,
+): ApiHandler => {
   const routed = Object.entries(table).map(([route, handler]) => {
     const [method, template] = route.split(" ");
     if (!template) throw new Error(`route names no path: ${route}`);
@@ -59,6 +62,7 @@ export const routes = (table: RouteTable): ApiHandler => {
       const params = request.method === method ? matches(pathname) : null;
       if (params) return handler({ request, params });
     }
+    if (fallback) return fallback(request);
     throw new UnroutedRequest(request);
   };
 };
@@ -111,6 +115,13 @@ export interface ServedApi {
    * rather than a handler, so the test keeps the check that the request
    * reached the route it names. */
   throwingOnRefusal: (table: RouteTable) => void;
+
+  /** Answers `table` for the rest of this test, and the file's routes for
+   * every other request, through a client that returns a refusal the way web
+   * configures it. Put a route only some tests need here, so every other test
+   * still fails on a request no route answers. Replaces whatever an earlier
+   * `throwingOnRefusal` or `alsoServing` installed. */
+  alsoServing: (table: RouteTable) => void;
 }
 
 /** Answers every generated client call in this file from `handler`, and puts
@@ -122,5 +133,7 @@ export function serveApi(handler: ApiHandler): ServedApi {
   afterEach(endServedTest);
   return {
     throwingOnRefusal: (table) => serve(routes(table), { throwOnError: true }),
+    alsoServing: (table) =>
+      serve(routes(table, handler), { throwOnError: false }),
   };
 }
