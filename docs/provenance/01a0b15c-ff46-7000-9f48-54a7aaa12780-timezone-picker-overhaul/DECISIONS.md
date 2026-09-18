@@ -26,9 +26,16 @@ sections below this one carry the reasoning each step implements.
    A FormatJS release that changes its tz data goes onto the open catalog
    pull request, or into a new one that supersedes any open FormatJS one,
    unless someone declined that tz data.
-3. **Shared validation.** A validator in `common` that accepts any identifier
-   the runtime resolves, wired into every server write path: password signup,
-   OAuth signup, profile update, form extraction, admin edits.
+3. **Shared validation.** Done. `isTimeZoneIdentifier` in
+   `common/src/timezone.ts` accepts an identifier the runtime resolves to
+   itself, or one the catalog lists as a row or alias, except a raw offset or
+   `Factory`. The server's `@IsTimeZoneIdentifier` wraps it on
+   password signup, OAuth start, and `/user/update`, which had no check before.
+   It rejects a value spelled in a case other than tzdb's, and
+   `/user/update` treats `null` as leaving the zone unchanged. Form extraction rejects the submission
+   instead of logging and skipping the value. No admin endpoint writes a
+   member's timezone. An admin changing it while impersonating goes through
+   `/user/update`.
 4. **Rows from the catalog.** `shared/forms/timeZoneSelect.ts` drops the 50-row
    `TZ_OPTIONS` and builds its rows from the catalog, with the generic name and
    location as the primary label, country and offset under it, and local time at
@@ -174,6 +181,9 @@ sections below this one carry the reasoning each step implements.
 
 - Store an IANA identifier string. Preserve an existing valid alias until the member selects a replacement. A new explicit selection writes the listed identifier, and detection stores the exact valid identifier reported by the platform.
 - Validate timezone values on every write path, including password signup, OAuth signup, profile updates, form extraction, admin edits, and backfill.
+- A raw offset such as `-08:00` is not a valid new value, though `Intl` resolves it. It names no place, the catalog has no row for it, and every other stored value is an identifier. `Etc/GMT+8` stays valid, since devices report it. `Factory`, tzdb's placeholder zone, is refused for the same reason: Bun resolves it, but it names no place.
+- Validation rejects a value whose case differs from tzdb's spelling, such as `america/los_angeles`, rather than fixing it. Stored as sent, it misses exact-match lookups like `getCountryForTimezone`. A value passes when the runtime resolves it to the same spelling, or when the catalog lists it as a row or alias. FormatJS on the server and V8 in the browser swap an alias for its canonical zone, so there the catalog is what keeps `US/Pacific` valid. Bun keeps an alias as sent and fixes only its case, so there the first test alone accepts any name its tzdb knows. The answer still follows each runtime's tzdb: Bun accepts `EST5EDT`, which V8 and the server refuse.
+- The server's runtime decides whether a timezone is valid, not the catalog, because reminders run on it. `@js-temporal/polyfill` reads zone rules from `Intl.DateTimeFormat`, so a zone the server's `Intl` lacks throws wherever the server computes local time. The catalog decides what the picker offers. A zone newer than the catalog passes if the runtime knows it.
 - The server's `Intl.DateTimeFormat` is FormatJS's, not Bun's. Bun bundles its ICU, so its tzdb only moves with a Bun release: Linux Bun 1.3.6 carries 2024a, with no `America/Coyhaique` and none of the rule changes since. FormatJS ships 2026d and published it three days after IANA. Upgrading Bun on every tzdb release would leave members' reminders wrong between Bun releases; an adapter over our own compiled rules is further off (see Out of scope).
 - Bun reads `server/bunfig.toml`, and so preloads FormatJS, only when it runs from `server/`. The deploy zip carries the bunfig. `bun run repl` runs on Node through ts-node, since Bun has no `repl.start`, so it preloads the file with `-r`. `app.module.ts` throws on import when `Intl.DateTimeFormat` isn't FormatJS's, so the server, the repl, and any script that boots the app refuse to run on the runtime's own rules, and a deploy that loses the preload fails its health check.
 - The release watch bumps FormatJS within its major version. A major can move the files `intl-timezone.ts` imports, so it waits for someone to take it by hand, and the watch fails until they do: once FormatJS stops releasing the old major, the server's tz data would stop updating with nothing to show for it. FormatJS ships each tzdb release a few days after IANA, usually after the catalog's pull request has opened, so the watch also bumps FormatJS when only FormatJS has new tz data.
@@ -182,6 +192,9 @@ sections below this one carry the reasoning each step implements.
 - FormatJS 7.8.0 reads every line of tzdb's `backward` file as a link, so its link table holds entries like `"-5:00": "EST5EDT"` and it drops the zones `backward` defines. In tzdb 2026d, `GMT` throws, in `Intl` and in Temporal. `EST5EDT`, `CST6CDT`, `MST7MDT`, and `PST8PDT` resolve to no zone, so Temporal computes them as UTC, hours off. None of the four is a catalog row or alias. `Africa/Abidjan`, `Etc/UTC`, and `Etc/GMT` have no rules either, and come out right only because they are UTC+0. The staging copy of prod taken on 2026-09-18 saves none of these names.
 - `intl-timezone.ts` hardcodes no zone. It tries every catalog alias against FormatJS and gives each one that throws the rules of the catalog row it names, which today turns `GMT` into `UTC`. Bun accepted `GMT`, the catalog aliases it, and a device can report it, so refusing it would turn away a signup the server handled before. The rules go into FormatJS's public `tzData` table rather than its links, since FormatJS reads its links from a table built into the bundle. Converting stored aliases to their rows at every call site would also work, but it touches every place the server computes a local time, and this change stores an alias as sent.
 - `server/src/intl-timezone.spec.ts` computes every catalog row and alias, and every zone FormatJS has rules for, at six instants from 2010 to 2023 and compares the offsets with a Bun process started from the repo root, where Bun's own ICU applies. Bun's tzdb is older but agrees about that span, since tzdb has corrected history only before 2008 since 2024a. That catches any name FormatJS throws on or has wrong rules for, without a list of known-bad names. A name Bun lacks, like `America/Coyhaique` on Linux, only has to compute. The test also checks a rule from 2025b and one from 2026d that Bun's ICU lacks, so it fails if the preload stops loading.
+- The server refuses the four System V names, which resolve to no zone the catalog lists, so no member saves one from here on. `GMT` and the three UTC+0 names pass and compute right. No test lists them: every name the server accepts is a catalog row, a catalog alias, or a zone FormatJS has rules for, and `server/src/intl-timezone.spec.ts` checks all of those against Bun's tzdb.
+- A member cannot clear a saved timezone. `/user/update` keeps the saved value when the field is `null` or left out. Mobile builds from before 2026-07-29 send the whole `/auth/me` user on every settings save, `timeZone: null` included for a member with no zone, and a 400 there would fail the whole save.
+- An invalid timezone in an auto-extracting form field fails the whole submission with a 400. The check runs before the phone number's opt-in MMS goes out, so a rejected submission has no side effects.
 - Invalid new values produce a validation error. An invalid saved value renders as its raw identifier with an unavailable warning and remains replaceable; it does not silently become UTC.
 - Historical form answers remain byte-for-byte unchanged. Rendering continues to tolerate old raw offsets such as `-08:00`.
 

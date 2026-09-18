@@ -7,8 +7,8 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsTimeZone,
 } from "class-validator";
+import { IsTimeZoneIdentifier } from "src/utils/timezone";
 
 export class OAuthStartDto {
   @ApiProperty({ enum: OAuthIntent, enumName: "OAuthIntent" })
@@ -29,7 +29,7 @@ export class OAuthStartDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsTimeZone()
+  @IsTimeZoneIdentifier()
   timeZone?: string;
 }
 

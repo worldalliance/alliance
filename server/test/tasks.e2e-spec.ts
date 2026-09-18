@@ -25,6 +25,7 @@ import {
 } from "src/forum/entities/comment.entity";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { Post } from "src/forum/entities/post.entity";
+import { MmsService } from "src/mms/mms.service";
 import { CustomValidatorTypeDto } from "src/tasks/customvalidator.dto";
 import {
   CustomValidator,
@@ -125,6 +126,7 @@ describe("Tasks (e2e)", () => {
   }, 50000);
 
   afterEach(async () => {
+    jest.restoreAllMocks();
     await formResponseDraftRepo.query("DELETE FROM form_response_draft");
     await formResponseRepo.query("DELETE FROM form_response");
     // Before the forms it points at; the variant -> form FK is RESTRICT.
@@ -2860,6 +2862,69 @@ describe("Tasks (e2e)", () => {
       expect(updatedUser?.customCityString).toBe("Custom City Name");
       expect(updatedUser?.shareInfoPublicly).toBe(true);
       expect(updatedUser?.profileDescription).toBe(initialDescription);
+    });
+
+    it("refuses a submission whose extracted time zone is invalid", async () => {
+      await userRepo.update(ctx.testUserId, {
+        phoneNumber: null,
+        timeZone: "Europe/Berlin",
+      });
+      const sendMms = jest.spyOn(ctx.app.get(MmsService), "sendMms");
+
+      const schema: FormSchema = {
+        pages: [
+          {
+            id: "page-1",
+            fields: [
+              {
+                id: "phone-field",
+                type: "input",
+                kind: "phone",
+                label: "Phone Number",
+                autoExtractUserData: true,
+              },
+              {
+                id: "timezone-field",
+                type: "input",
+                kind: "timezone",
+                label: "Time Zone",
+                autoExtractUserData: true,
+              },
+            ],
+          },
+        ],
+        outputViews: [],
+        aggregateViews: [],
+      };
+
+      const action = await createAction("Invalid Time Zone Action");
+      const form = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "Invalid Time Zone Form", schema })
+        .expect(201);
+      await actionRepo.update(action.id, {
+        taskFormId: form.body.id as number,
+      });
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${form.body.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            "phone-field": "+14155551234",
+            "timezone-field": "-08:00",
+          },
+          formSnapshotId: form.body.formSnapshotId as number,
+          actionId: action.id,
+          deviceType: "desktop" as const,
+        })
+        .expect(400);
+
+      const user = await userRepo.findOneByOrFail({ id: ctx.testUserId });
+      expect(user.timeZone).toBe("Europe/Berlin");
+      expect(user.phoneNumber).toBeNull();
+      expect(sendMms).not.toHaveBeenCalled();
     });
 
     it("extracts a non-US number, which is what the picker unblocks", async () => {

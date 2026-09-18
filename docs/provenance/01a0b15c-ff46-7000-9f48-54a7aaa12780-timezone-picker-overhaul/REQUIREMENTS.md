@@ -9,6 +9,7 @@ task: Overhaul timezone selection on web and mobile
 - Keep password and OAuth signup timezone capture automatic. Do not add a timezone _step_ to signup.
 - Keep the per-account backfill for accounts with no timezone.
 - Keep a saved account timezone when it differs from the device timezone. Changing it requires user interaction.
+- "the users should not be allowed to clear their time zone"
 - If backfill detection fails, leave the account timezone missing and retry on a later session.
 
 Form timezone field:

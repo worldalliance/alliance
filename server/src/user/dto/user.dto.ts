@@ -22,6 +22,7 @@ import { OAuthAccount } from "src/auth/oauth/oauth-account.entity";
 import { getImageSource } from "src/images/images.service";
 import { IsE164 } from "src/utils/phone";
 import { IsPlainTime, trimToPlainTime } from "src/utils/plain-time";
+import { IsTimeZoneIdentifier } from "src/utils/timezone";
 import { trim, trimToNull } from "src/utils/transforms";
 import { Campaign } from "../../campaign/entities/campaign.entity";
 import { ClusterSummaryDto } from "../../cluster/dto/cluster.dto";
@@ -516,7 +517,6 @@ export class UpdateProfileDto extends PartialType(
     "sharePhoneNumberWithCommunityLead",
     "forumDigestPreference",
     "formDataPreference",
-    "timeZone",
     "shareInfoPublicly",
     "pushesForLikes",
     "pushesForComments",
@@ -557,6 +557,13 @@ export class UpdateProfileDto extends PartialType(
   @IsString()
   @Transform(trimToNull)
   customCityString?: string | null;
+
+  @IsOptional()
+  @ApiPropertyOptional({ type: String })
+  @IsTimeZoneIdentifier()
+  // Older mobile builds send back /auth/me's null, which keeps the saved zone.
+  @Transform(({ value }) => value ?? undefined)
+  timeZone?: string;
 }
 
 export class UpdateUserRolesAdminDto extends PartialType(

@@ -54,7 +54,7 @@ import {
 import { toE164 } from "@alliance/common/phone";
 import { withCount } from "@alliance/common/plural";
 import { R, type Result } from "@alliance/common/result";
-import { Temporal } from "@js-temporal/polyfill";
+import { isTimeZoneIdentifier } from "@alliance/common/timezone";
 import {
   BadRequestException,
   ConflictException,
@@ -819,6 +819,10 @@ export class TasksService {
       effectiveAnswers,
       "timezone",
     );
+    // Before the phone number, whose opt-in MMS a rejection cannot take back.
+    if (timeZone && !isTimeZoneIdentifier(timeZone)) {
+      throw new BadRequestException(`Invalid time zone: ${timeZone}`);
+    }
 
     const city = this.getFirstAutoExtractAnswer(
       submittedSchema,
@@ -883,24 +887,8 @@ export class TasksService {
       }
     }
 
-    function isTimeZoneValid(timeZoneIdentifier: string): boolean {
-      try {
-        Temporal.Now.instant().toZonedDateTimeISO(timeZoneIdentifier);
-        return true;
-      } catch (error) {
-        if (error instanceof RangeError) {
-          return false;
-        }
-        throw error;
-      }
-    }
-
     if (timeZone) {
-      if (isTimeZoneValid(timeZone)) {
-        userUpdates.timeZone = timeZone;
-      } else {
-        this.logger.warn(`Invalid time zone: ${timeZone}`);
-      }
+      userUpdates.timeZone = timeZone;
     }
 
     const shareInfoPublicly = this.getCheckboxExtractionValue(

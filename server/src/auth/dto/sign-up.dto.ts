@@ -7,8 +7,8 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsTimeZone,
 } from "class-validator";
+import { IsTimeZoneIdentifier } from "src/utils/timezone";
 import { TokenMode } from "./signin.dto";
 
 export class SignUpDto {
@@ -35,7 +35,7 @@ export class SignUpDto {
   mode: TokenMode;
 
   @IsDefined()
-  @IsTimeZone()
+  @IsTimeZoneIdentifier()
   @ApiProperty()
   readonly timeZone: string;
 
