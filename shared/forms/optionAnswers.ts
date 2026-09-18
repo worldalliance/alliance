@@ -1,9 +1,9 @@
-import type {
-  AnyField,
-  FormValue,
-  MultiSelectField,
+import {
+  asCards,
+  type AnyField,
+  type FormValue,
+  type MultiSelectField,
 } from "@alliance/common/forms/form-schema";
-import { asCards } from "./listCards";
 
 function knownSelections(
   field: MultiSelectField,

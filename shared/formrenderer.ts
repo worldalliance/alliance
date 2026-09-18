@@ -3,6 +3,7 @@ import { formatCityValue, parseCityValue } from "@alliance/common/forms/city";
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
   type AnyField,
+  asCards,
   type CityFieldValue,
   forEachCondition,
   forEachOutputViewCondition,
@@ -34,7 +35,7 @@ import {
 import { withCount } from "@alliance/common/plural";
 import { parseTimeToMinutes } from "@alliance/shared/forms/timeUtils";
 import { dropUnuploadedFileAnswers } from "./forms/fileAnswers";
-import { asCards, defaultCardCount, resolveCards } from "./forms/listCards";
+import { defaultCardCount, resolveCards } from "./forms/listCards";
 import { dropUnknownOptionAnswers } from "./forms/optionAnswers";
 
 /** Indices into `pages` of the currently visible pages. */

@@ -3,6 +3,7 @@ import type {
   ListField,
   ListFieldValue,
 } from "@alliance/common/forms/form-schema";
+import { formatOutputFieldValue } from "../outputrenderer";
 import type { ListRowContext } from "../useFormRenderer";
 import {
   CARD_ID_KEY,
@@ -233,13 +234,15 @@ describe("cardSubFields", () => {
     ).toEqual(["name"]);
   });
 
-  it("leaves out a sub-field the row hides in an output view, even answered", () => {
+  it("counts and draws the same answered card regardless of form row visibility", () => {
+    const card = { age: "3" };
+    expect(formatOutputFieldValue(listField, [card])).toBe("1 item");
     expect(
       ids({
-        card: { name: "Rex", age: "3" },
+        card,
         row: hidingAge,
         isOutputView: true,
       }),
-    ).toEqual(["name"]);
+    ).toEqual(["age"]);
   });
 });

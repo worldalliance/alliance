@@ -50,6 +50,16 @@ No formula rewriting. After a rename, the type check reports the old name as a m
 - The output renderer passes the device type and validator results it already uses for block visibility.
 - The builder preview treats every sample cell as visible. Sample rows have no other answers to evaluate conditions against.
 
+## Blank cards in an output view
+
+An output view draws a list card's sub-fields only when the view doesn't hide them and the card answers them. A card left with none of those is not drawn, and a list with no such card is left out the same way as an unanswered field, label included. Output rendering and counting use the same filter without applying form row visibility again, so a caller's row context cannot make a counted card disappear. The shared filter lives in `shared/forms/outputValues.ts` so list-card helpers do not depend on the output resolver.
+
+The web test counts the card boxes through the classes `Card` and the list branch of `RenderField` give them, which keeps a test hook out of the shipped markup, where nothing else in the repo carries one. Counting the controls a card renders instead would pass either way, because a card the view has nothing to show for renders no control whether or not its box is left out.
+
+The `textonly` and `card` formats draw a count of the rows rather than the rows themselves. That count is of the cards the view has something to show for, not of every row the respondent added, so one saved answer can't read two ways in the same view, with the block that draws the cards gone while the count beside it says three. It also stops a list whose sub-fields the view all hides from reporting how many rows there were.
+
+`asCards` decides which cards a list answer has. Both renderers already read the answer through it, and it moved to `form-schema.ts` so `isOutputBlockVisible` can read it too. It returns nothing for an answer that isn't a list of rows, so one bad entry leaves the field with no cards to draw and the block is left out. Judging those entries one at a time would keep the label over an empty box for an answer like `[null, { name: "Ada" }]`, which a response stored before the server checked the shape can still hold.
+
 ## Sample answers in the output builder preview
 
 The preview pane beside an output view makes up an answer for every field so the author can see the view take shape. A list had no case of its own and fell to the default, a sentence of text. That isn't a list of rows, so the block drew its label over nothing. `buildPreviewAnswers` now calls itself on the sub-fields, which hands back one row holding the sample cell each sub-field would get on its own. One row is enough to show the layout and which sub-fields the view hides.

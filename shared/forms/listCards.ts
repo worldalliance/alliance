@@ -1,13 +1,13 @@
 import {
-  isListRow,
+  asCards,
   type FormValue,
   type ListField,
   type ListFieldValue,
   type ListSubField,
 } from "@alliance/common/forms/form-schema";
-import { isOutputValueMissing } from "../outputrenderer";
 import type { ListRowContext } from "../useFormRenderer";
 import { resolveFormValue, type FormValueUpdater } from "./formValueUpdater";
+import { outputCardSubFields } from "./outputValues";
 
 /**
  * Client-only identity for a list card, so an async write (an image upload)
@@ -19,13 +19,6 @@ export const CARD_ID_KEY = "__cardId";
 export type IdentifiedCard = Record<string, FormValue> & {
   [CARD_ID_KEY]: string;
 };
-
-export function asCards(value: FormValue | undefined): ListFieldValue | null {
-  if (!Array.isArray(value)) {
-    return null;
-  }
-  return value.every(isListRow) ? value : null;
-}
 
 export function cardIdOf(card: Record<string, FormValue>): string | undefined {
   const id = card[CARD_ID_KEY];
@@ -106,16 +99,9 @@ export function cardSubFields(params: {
   isOutputView: boolean | undefined;
 }): ListSubField[] {
   const { listField, card, row, isOutputView } = params;
-  const visible = row.visibleSubFields(listField.fields ?? []);
-  if (!isOutputView) {
-    return visible;
-  }
-  const hiddenInOutputIds = new Set(listField.outputViewHiddenFieldIds ?? []);
-  return visible.filter(
-    (subField) =>
-      !hiddenInOutputIds.has(subField.id) &&
-      !isOutputValueMissing(card[subField.id]),
-  );
+  return isOutputView
+    ? outputCardSubFields(listField, card)
+    : row.visibleSubFields(listField.fields ?? []);
 }
 
 export function stripCardIds(

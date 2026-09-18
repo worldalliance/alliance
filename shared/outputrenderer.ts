@@ -7,11 +7,13 @@ import type {
   FormSchema,
   FormValue,
   ListField,
+  ListFieldValue,
   OutputBlock,
   OutputFieldBlock,
   OutputViewSchema,
 } from "@alliance/common/forms/form-schema";
 import {
+  asCards,
   collectVariableResolutionFields,
   flattenPageItems,
   isQuestionField,
@@ -29,6 +31,10 @@ import {
   type VisibilityValidatorResults,
 } from "@alliance/common/forms/visibility";
 import { withCount } from "@alliance/common/plural";
+import {
+  isOutputValueMissing,
+  outputCardSubFields,
+} from "./forms/outputValues";
 
 export type ResolvedOutputDisplayItem = {
   type: "display";
@@ -63,15 +69,13 @@ type ResolveOutputItemsParams = {
   publicAnswers?: Record<string, boolean>;
 };
 
-export const isOutputValueMissing = (value: FormValue | undefined): boolean => {
-  if (value === undefined || value === null || value === "") {
-    return true;
-  }
-  if (Array.isArray(value) && value.length === 0) {
-    return true;
-  }
-  return false;
-};
+const drawnCards = (
+  listField: ListField,
+  value: FormValue | undefined,
+): ListFieldValue =>
+  (asCards(value) ?? []).filter(
+    (card) => outputCardSubFields(listField, card).length > 0,
+  );
 
 export const collectOutputFieldMap = (
   schema: FormSchema,
@@ -149,10 +153,8 @@ export const formatOutputFieldValue = (
       const city = parseCityValue(value);
       return city ? formatCityValue(city) : String(value);
     }
-    case "list": {
-      const listValue = Array.isArray(value) ? value : [];
-      return withCount(listValue.length, "item");
-    }
+    case "list":
+      return withCount(drawnCards(field, value).length, "item");
     case "file":
       return "";
     default:
@@ -190,8 +192,17 @@ export const isOutputBlockVisible = (
       return false;
     }
   }
-  if ("fieldId" in block && isOutputValueMissing(answers[block.fieldId])) {
-    return false;
+  if ("fieldId" in block) {
+    const value = answers[block.fieldId];
+    if (isOutputValueMissing(value)) {
+      return false;
+    }
+    if (
+      inputField?.kind === "list" &&
+      drawnCards(inputField, value).length === 0
+    ) {
+      return false;
+    }
   }
   return isElementCurrentlyVisible(block, answers, {
     deviceType: deviceType ?? "desktop",

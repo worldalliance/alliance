@@ -1,7 +1,9 @@
 import type {
   FormSchema,
+  FormValue,
   ListField,
   NumberField,
+  OutputFieldBlock,
 } from "@alliance/common/forms/form-schema";
 import { resolveOutputItems } from "./outputrenderer";
 
@@ -192,5 +194,65 @@ describe("resolveOutputItems interpolates variables", () => {
     if (item.type !== "display") throw new Error("expected a display item");
     if (item.block.kind !== "text") throw new Error("expected a text block");
     expect(item.block.text).toBe("42 kg");
+  });
+});
+
+describe("resolveOutputItems and blank list cards", () => {
+  const list: ListField = {
+    id: "shipment-weights",
+    type: "input",
+    kind: "list",
+    label: "Items",
+    fields: [numberField("weight", "Weight"), numberField("note", "Note")],
+    outputViewHiddenFieldIds: ["note"],
+  };
+  const resolveList = (
+    value: FormValue,
+    {
+      format,
+      publicAnswer = true,
+      blocks = [{ id: "ob1", fieldId: list.id, format }],
+    }: {
+      format?: OutputFieldBlock["format"];
+      publicAnswer?: boolean;
+      blocks?: OutputFieldBlock[];
+    } = {},
+  ) =>
+    resolveOutputItems({
+      schema: {
+        pages: [{ id: "p1", fields: [list] }],
+        outputViews: [
+          {
+            id: "v1",
+            type: "default",
+            blocks,
+          },
+        ],
+      },
+      answers: { [list.id]: value },
+      publicAnswers: { [list.id]: publicAnswer },
+    }).items;
+
+  it("leaves out a list whose cards answer only what the view hides", () => {
+    expect(resolveList([{ weight: "" }, { note: 3 }])).toEqual([]);
+  });
+
+  it("keeps a list with one card the view shows an answer for", () => {
+    expect(resolveList([{ weight: "" }, { weight: 2 }])).toHaveLength(1);
+  });
+
+  it("leaves out a count block for a list the view shows nothing of", () => {
+    expect(
+      resolveList([{ weight: "" }, { note: 3 }], { format: "textonly" }),
+    ).toEqual([]);
+  });
+
+  it("counts only the cards the view shows an answer for", () => {
+    const [item] = resolveList([{ weight: "" }, { weight: 2 }], {
+      format: "textonly",
+    });
+
+    if (item.type !== "field") throw new Error("expected a field item");
+    expect(item.formattedValue).toBe("1 item");
   });
 });

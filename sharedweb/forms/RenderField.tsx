@@ -1004,6 +1004,9 @@ export function RenderField({
                 row,
                 isOutputView,
               });
+              if (isOutputView && fields.length === 0) {
+                return null;
+              }
               return (
                 <Card
                   key={cardId}

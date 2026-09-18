@@ -34,6 +34,13 @@ export function isListRow(value: unknown): value is Record<string, FormValue> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+export function asCards(value: FormValue | undefined): ListFieldValue | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  return value.every(isListRow) ? value : null;
+}
+
 export const formValueSchema: z.ZodType<FormValue> = z.lazy(() =>
   z.union([
     z.string(),
