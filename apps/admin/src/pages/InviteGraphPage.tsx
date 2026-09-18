@@ -8,6 +8,7 @@ import {
 } from "@alliance/shared/client";
 import { AlertTriangle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { EnumFilterSelect } from "../components/force-graph/EnumFilterSelect";
 import {
   type DrawnGraph,
   ForceGraph,
@@ -17,6 +18,7 @@ import {
   type NodeStyle,
 } from "../components/force-graph/ForceGraph";
 import {
+  type UserFilterOption,
   UserGraphFilterControls,
   useUserGraphFilters,
 } from "../components/force-graph/UserGraphFilters";
@@ -38,7 +40,23 @@ interface GraphNode extends ForceGraphNode {
 
 type GraphLink = ForceGraphLink<GraphNode>;
 
-type ContractFilter = "all" | "active" | "inactive";
+enum ContractFilter {
+  All = "all",
+  Active = "active",
+  Inactive = "inactive",
+}
+
+const CONTRACT_FILTERS: Record<ContractFilter, UserFilterOption> = {
+  [ContractFilter.All]: { label: "All", matches: () => true },
+  [ContractFilter.Active]: {
+    label: "Active",
+    matches: (u) => u.hasActiveContract,
+  },
+  [ContractFilter.Inactive]: {
+    label: "Inactive",
+    matches: (u) => !u.hasActiveContract,
+  },
+};
 
 const NODE_RADIUS = 20;
 const HUB_RADIUS = 14;
@@ -113,8 +131,7 @@ const InviteGraphPage = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // Filters
-  const [contractFilter, setContractFilter] =
-    useState<ContractFilter>("active");
+  const [contractFilter, setContractFilter] = useState(ContractFilter.Active);
   const [isolateSubgraph, setIsolateSubgraph] = useState(false);
 
   useEffect(() => {
@@ -163,18 +180,18 @@ const InviteGraphPage = () => {
   const filteredUserIds = useMemo(() => {
     const ids = new Set<number>();
     for (const u of users) {
-      if (contractFilter === "active" && !u.hasActiveContract) continue;
-      if (contractFilter === "inactive" && u.hasActiveContract) continue;
+      if (!CONTRACT_FILTERS[contractFilter].matches(u)) continue;
       if (!matchesUserFilters(u)) continue;
       ids.add(u.id);
     }
     return ids;
   }, [users, contractFilter, matchesUserFilters]);
 
-  const hasActiveFilters = contractFilter !== "active" || filters.isActive;
+  const hasActiveFilters =
+    contractFilter !== ContractFilter.Active || filters.isActive;
 
   const clearFilters = useCallback(() => {
-    setContractFilter("active");
+    setContractFilter(ContractFilter.Active);
     clearUserFilters();
   }, [clearUserFilters]);
 
@@ -444,20 +461,13 @@ const InviteGraphPage = () => {
 
       {/* Filters */}
       <div className="px-4 py-2 border-b border-gray-200 shrink-0 flex flex-wrap items-center gap-3 text-sm">
-        <label className="flex items-center gap-1.5">
-          <span className="text-xs font-medium text-gray-600">Contract</span>
-          <select
-            value={contractFilter}
-            onChange={(e) =>
-              setContractFilter(e.target.value as ContractFilter)
-            }
-            className="rounded border border-gray-300 px-2 py-1 text-xs bg-white"
-          >
-            <option value="all">All</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </label>
+        <EnumFilterSelect
+          label="Contract"
+          values={ContractFilter}
+          options={CONTRACT_FILTERS}
+          value={contractFilter}
+          onChange={setContractFilter}
+        />
 
         <UserGraphFilterControls filters={filters} />
 

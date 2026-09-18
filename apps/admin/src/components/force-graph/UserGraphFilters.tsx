@@ -1,10 +1,31 @@
 import { UserDto } from "@alliance/shared/client";
 import { useCallback, useMemo, useState } from "react";
+import { EnumFilterSelect } from "./EnumFilterSelect";
 
-type RoleFilter = "all" | "admin" | "staff" | "regular";
+export type UserFilterOption = {
+  label: string;
+  matches: (u: UserDto) => boolean;
+};
+
+enum RoleFilter {
+  All = "all",
+  Admin = "admin",
+  Staff = "staff",
+  Regular = "regular",
+}
+
+const ROLE_FILTERS: Record<RoleFilter, UserFilterOption> = {
+  [RoleFilter.All]: { label: "All", matches: () => true },
+  [RoleFilter.Admin]: { label: "Admin", matches: (u) => u.admin },
+  [RoleFilter.Staff]: { label: "Staff", matches: (u) => u.staff },
+  [RoleFilter.Regular]: {
+    label: "Regular",
+    matches: (u) => !u.admin && !u.staff,
+  },
+};
 
 export function useUserGraphFilters(users: UserDto[]) {
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [roleFilter, setRoleFilter] = useState(RoleFilter.All);
   const [communityFilter, setCommunityFilter] = useState<string>("all");
   const [tagFilter, setTagFilter] = useState<string>("all");
 
@@ -34,9 +55,7 @@ export function useUserGraphFilters(users: UserDto[]) {
 
   const matches = useCallback(
     (u: UserDto): boolean => {
-      if (roleFilter === "admin" && !u.admin) return false;
-      if (roleFilter === "staff" && !u.staff) return false;
-      if (roleFilter === "regular" && (u.admin || u.staff)) return false;
+      if (!ROLE_FILTERS[roleFilter].matches(u)) return false;
       if (communityFilter !== "all") {
         const inCommunity = (u.communities ?? []).some(
           (c) => String(c.id) === communityFilter,
@@ -53,10 +72,12 @@ export function useUserGraphFilters(users: UserDto[]) {
   );
 
   const isActive =
-    roleFilter !== "all" || communityFilter !== "all" || tagFilter !== "all";
+    roleFilter !== RoleFilter.All ||
+    communityFilter !== "all" ||
+    tagFilter !== "all";
 
   const clear = useCallback(() => {
-    setRoleFilter("all");
+    setRoleFilter(RoleFilter.All);
     setCommunityFilter("all");
     setTagFilter("all");
   }, []);
@@ -84,19 +105,13 @@ export const UserGraphFilterControls = ({
   filters: UserGraphFilters;
 }) => (
   <>
-    <label className="flex items-center gap-1.5">
-      <span className="text-xs font-medium text-gray-600">Role</span>
-      <select
-        value={filters.roleFilter}
-        onChange={(e) => filters.setRoleFilter(e.target.value as RoleFilter)}
-        className="rounded border border-gray-300 px-2 py-1 text-xs bg-white"
-      >
-        <option value="all">All</option>
-        <option value="admin">Admin</option>
-        <option value="staff">Staff</option>
-        <option value="regular">Regular</option>
-      </select>
-    </label>
+    <EnumFilterSelect
+      label="Role"
+      values={RoleFilter}
+      options={ROLE_FILTERS}
+      value={filters.roleFilter}
+      onChange={filters.setRoleFilter}
+    />
 
     <label className="flex items-center gap-1.5">
       <span className="text-xs font-medium text-gray-600">Community</span>
