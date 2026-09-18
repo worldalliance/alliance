@@ -19,7 +19,7 @@ export function setAuthHeader(accessToken: string | undefined): void {
 export function closeSession(clearTokens: () => Promise<void>): void {
   // The server attributes the logout to the token this request carries, which
   // the client reads when the call starts.
-  authLogout();
+  authLogout().catch((error) => console.error("logout request failed", error));
   clearTokens();
   setAuthHeader(undefined);
 }

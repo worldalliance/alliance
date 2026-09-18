@@ -138,3 +138,14 @@ it("sends the logout with the token, then drops it", async () => {
   expect(clearTokens).toHaveBeenCalled();
   expect(await nextAuthorization()).toBeNull();
 });
+
+it("closes the session when the logout request fails", async () => {
+  api.throwingOnRefusal({
+    "POST /auth/logout": () => new Response(null, { status: 500 }),
+  });
+  setAuthHeader("access");
+
+  closeSession(async () => {});
+
+  expect(await nextAuthorization()).toBeNull();
+});
