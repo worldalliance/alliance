@@ -109,7 +109,6 @@ const FriendGraphPage = () => {
     const links: GraphLink[] = [];
     const neighborMap = new Map<string, Set<string>>();
     for (const edge of friendEdges) {
-      if (edge.userAId === edge.userBId) continue;
       const a = userNodeId(edge.userAId);
       const b = userNodeId(edge.userBId);
       if (!nodeIds.has(a) || !nodeIds.has(b)) continue;
