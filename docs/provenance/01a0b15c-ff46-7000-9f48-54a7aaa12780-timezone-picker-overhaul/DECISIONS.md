@@ -20,7 +20,9 @@ sections below this one carry the reasoning each step implements.
 3. **Rows from the catalog.** `shared/forms/timeZoneSelect.ts` drops the 50-row
    `TZ_OPTIONS` and builds its rows from the catalog, with the generic name and
    location as the primary label, country and offset under it, and local time at
-   the trailing edge. Sorted by offset, then location.
+   the trailing edge. Sorted by offset, then location. A saved or detected
+   identifier the runtime resolves but neither the catalog nor its aliases
+   carry gets a row of its own, labeled from `Intl` and the identifier.
 4. **Search.** Match city, country, identifier, generic name, and alias, folding
    case and accents. Exact city and country matches rank first, then prefix
    matches, then other word matches.
@@ -49,17 +51,26 @@ sections below this one carry the reasoning each step implements.
     runtime knows renders raw, with a warning, and stays replaceable.
 15. **Test form cleanup.** Remove the explicit `America/Los_Angeles` default
     from the local `test action form`.
-16. **Release watch.** A scheduled job checks data.iana.org for a newer release
-    and opens a pull request bumping the version and the checksum together.
+16. **Release watch.** Done. `tzdb-release-watch.yaml` runs weekly.
+    `common/scripts/bump-tzdb.ts` checks `tzdata-latest.tar.gz` against its
+    PGP signature, reads its version, and, when it is newer, rewrites the
+    generator's version and checksum. An older one, from a cached copy behind
+    a pin moved by hand, fails the run. The job regenerates the catalog,
+    typechecks and tests `common`, and opens a pull request on
+    `tzdb/<version>`. A release that already has a pull request on that
+    branch, open or closed, is skipped, so a closed one means the release was
+    declined. A branch a failed run left without a pull request gets
+    force-pushed over. Opening a pull request closes any other open one on a
+    `tzdb/` branch, which the new release supersedes.
 
 ## Catalog
 
 - Generate the client catalog from a named IANA tzdb release. Selectable rows are every geographic identifier in `zone.tab`, plus `UTC`.
 - Keep equivalent geographic identifiers separate. This preserves the location the member expects and prevents a future rule change in one country from changing members stored under another country's identifier.
 - An alias points at the row in the place its name names, not merely one with the same clocks since 1970. The generator takes the row a `#=` comment in `backward` names, then the row `backzone` links the name to, and only then the link's own target. Without that, `Iceland` lands on `Africa/Abidjan` and `Pacific/Yap` on Papua New Guinea. Reading `backzone` instead of keeping a hand list also places a link of this kind that a later release adds, as long as `backzone` records it.
-- Make identifiers from IANA's compatibility links searchable and acceptable on reads. Do not list obsolete links or fixed-offset `Etc/GMT` identifiers as separate rows.
+- Make identifiers from IANA's compatibility links searchable and acceptable on reads. Do not list obsolete links or fixed-offset `Etc/GMT` identifiers as separate rows. The member's own saved or detected value is the exception: an identifier the runtime resolves but the catalog lacks still gets a row. Devices can report fixed offsets, and a zone newer than the pinned release has no row until the bump lands.
 - Commit the generated TypeScript or JSON catalog. The updater downloads a pinned IANA archive, verifies its checksum, and records the tzdb version. Application builds and runtime use no network request for the catalog.
-- Check for new IANA releases on a schedule and update through reviewed pull requests. A normal test run stays offline.
+- Check for new IANA releases on a schedule and update through reviewed pull requests. A normal test run stays offline. The reviewer reads the catalog diff, which is what a release changes for members; the checksum the job writes is only as good as the download it hashes, so the job first checks that download against IANA's PGP signature. The signing key is Paul Eggert's, fingerprint `7E37 92A9 D8AC F7D6 33BC 1588 ED97 E90E 62AA 7E34`, committed as a keyring from keys.openpgp.org. `gpgv` ignores key expiry, so only a new signing key fails the run, until someone commits it. A pull request opened with `GITHUB_TOKEN` starts no workflows, so the job runs `common`'s typecheck and tests itself and the pull request asks for a close and reopen to start CI.
 - Use `Intl.DateTimeFormat` for current offsets, local times, generic names, and hour-cycle preferences. The catalog supplies stable identifiers and location metadata, not transition calculations.
 - A runtime that cannot format a catalog entry still lists it by location. Missing decoration does not remove a valid choice.
 

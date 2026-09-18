@@ -1,9 +1,11 @@
 /**
  * Generates the timezone catalog from a pinned IANA tzdb release.
  *
- * Bump both constants below together. The download is only as trustworthy as
- * the digest that checks it.
+ * `bump-tzdb.ts` moves both constants below to the latest release. The
+ * download is only as trustworthy as the digest that checks it.
  */
+import { download, readMember, sha512 } from "./tzdb-archive";
+
 const TZDB_VERSION = "2026d";
 const TZDATA_SHA512 =
   "1a27de5af50bbc28a2f64c506ab3678b09d9e5ab6c118f39eb38bb823aa8f57069bf5e465848e71df8274c6b8bcd0fc736a88107e5792d816a1db5d867cbc219";
@@ -19,33 +21,14 @@ const UTC_TARGETS = new Set(["Etc/UTC", "Etc/GMT"]);
 const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
 
 async function fetchArchive(): Promise<Uint8Array> {
-  const response = await fetch(ARCHIVE_URL);
-  if (!response.ok) {
-    throw new Error(`${ARCHIVE_URL} answered ${response.status}`);
-  }
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  const bytes = await download(ARCHIVE_URL);
 
-  const digest = new Bun.CryptoHasher("sha512").update(bytes).digest("hex");
+  const digest = sha512(bytes);
   if (digest !== TZDATA_SHA512) {
     throw new Error(`${ARCHIVE_URL} hashes to ${digest}, not ${TZDATA_SHA512}`);
   }
 
   return bytes;
-}
-
-async function readMember(
-  archive: Uint8Array,
-  member: string,
-): Promise<string> {
-  const tar = Bun.spawn(["tar", "-xzOf", "-", member], {
-    stdin: archive,
-    stderr: "inherit",
-  });
-  const text = await new Response(tar.stdout).text();
-  if ((await tar.exited) !== 0) {
-    throw new Error(`could not read ${member} out of the archive`);
-  }
-  return text;
 }
 
 const dataLines = (file: string) =>
@@ -207,6 +190,3 @@ ${aliasLines.join("\n")}
 ]);
 `,
 );
-
-// Marks the file a module, which top-level `await` requires.
-export {};
