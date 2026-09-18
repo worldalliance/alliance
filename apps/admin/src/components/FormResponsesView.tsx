@@ -35,6 +35,7 @@ import {
   type SnapshotMigrationTarget,
 } from "../lib/navigation";
 import { respondentName as buildRespondentName } from "../lib/respondent";
+import { buildResponsesHtml } from "../lib/responsesHtmlExport";
 import FormResponseStatistics from "./FormResponseStatistics";
 import { IdentityChip } from "./IdentitySwatch";
 import ResponsesTable from "./responses-table/ResponsesTable";
@@ -654,6 +655,39 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     getResponseVariantName,
   ]);
 
+  const handleExportHtml = useCallback(() => {
+    if (!form) return;
+    const safeTitle = exportFileBase.replace(/[^a-z0-9-_]+/gi, "-");
+    const html = buildResponsesHtml({
+      title,
+      form,
+      responses,
+      withdrawnUserMap,
+      sidsToUserMap,
+      variantOptions,
+      exportedAt: new Date().toISOString(),
+      csvFileName: `${safeTitle}-responses.csv`,
+    });
+
+    const blob = new Blob([html], { type: "text/html;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${safeTitle}-responses.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [
+    form,
+    title,
+    responses,
+    withdrawnUserMap,
+    sidsToUserMap,
+    variantOptions,
+    exportFileBase,
+  ]);
+
   const [userSearch, setUserSearch] = useState("");
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const userSearchRef = useRef<HTMLDivElement>(null);
@@ -859,6 +893,14 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
                 size="small"
               >
                 Export CSV
+              </Button>
+              <Button
+                onClick={handleExportHtml}
+                disabled={responses.length === 0}
+                color={ButtonColor.White}
+                size="small"
+              >
+                Export HTML
               </Button>
             </div>
           </div>
