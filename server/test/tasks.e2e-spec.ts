@@ -2081,6 +2081,29 @@ describe("Tasks (e2e)", () => {
         .expect(201);
     });
 
+    it.each([
+      ["a row that isn't an object", [{ name: "Ada" }, "junk"]],
+      ["a cell that isn't an answer", [{ name: "Ada", notes: { deep: 1 } }]],
+    ])("rejects a list answer holding %s", async (_, people) => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Invalid Answer",
+        listRequiredIfSchema,
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { people },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe("Answers are not a valid answer map");
+    });
+
     it("accepts list items that satisfy or do not trigger the sub-field requiredIfFormula", async () => {
       const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
         "RequiredIf List Answered",
