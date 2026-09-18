@@ -2,3 +2,4 @@
 - The rule is a `Record<ParticipantRole, boolean>` rather than an array or a predicate, so a fourth role fails the build in every package until someone opts it in or out. The old server form, `[Admin, Owner].includes(role)`, would have made it non-admin without a word.
 - The Postgres enum keeps the name `ParticipantRole` and its three values, so there is no migration and no change to the generated client.
 - `ParticipantState` stays on the entity. Nothing outside the server reads it as an enum.
+- `getParticipantState` takes a missing conversation and returns null, like `isConversationAdmin`, so the mobile screen drops its own null check. Web's conversation panel keeps its `mode === "new"` check, which is about the mode rather than null: the new-mode props allow a conversation, and the new-message view is never an invite.
