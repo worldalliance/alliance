@@ -2017,6 +2017,68 @@ describe("Tasks (e2e)", () => {
       );
     });
 
+    it("rejects a list answer holding a row that isn't an object", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Junk Row",
+        listRequiredIfSchema,
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            people: ["Ada", "Lin"],
+          },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe(
+        "Field People (item 1) is not a list item.",
+      );
+    });
+
+    it("rejects a list answer that isn't an array", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Not Array",
+        listRequiredIfSchema,
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { people: "junk" },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe("Field People is not a list.");
+    });
+
+    it("reads a null list answer as unanswered", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Null",
+        listRequiredIfSchema,
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { people: null },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(201);
+    });
+
     it("accepts list items that satisfy or do not trigger the sub-field requiredIfFormula", async () => {
       const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
         "RequiredIf List Answered",
