@@ -122,6 +122,7 @@ import {
   FormSnapshot,
   SnapshotHistoryOwner,
 } from "./entities/formsnapshot.entity";
+import { formSchemaOf } from "./form-snapshot-schema";
 import {
   CreateFormDto,
   type FormDraft,
@@ -314,8 +315,7 @@ export class TasksService {
       relations: { formSnapshot: true },
     });
 
-    const aggregateViews =
-      (form.formSnapshot.schema as unknown as FormSchema).aggregateViews ?? [];
+    const aggregateViews = formSchemaOf(form.formSnapshot).aggregateViews ?? [];
     if (aggregateViews.length === 0) {
       return [];
     }
@@ -359,8 +359,8 @@ export class TasksService {
   }
 
   async transformImageUrls(form: Form): Promise<Form> {
-    const schema = structuredClone(form.formSnapshot.schema);
-    const pages = schema.pages as Page[];
+    const schema = structuredClone(formSchemaOf(form.formSnapshot));
+    const pages = schema.pages;
     const transformElement = (field: Page["fields"][number]): void => {
       if (isFieldGroup(field)) {
         field.fields.forEach(transformElement);
@@ -392,8 +392,8 @@ export class TasksService {
   }
 
   async transformContractFields(form: Form): Promise<Form> {
-    const schema = structuredClone(form.formSnapshot.schema);
-    const pages = schema.pages as Page[];
+    const schema = structuredClone(formSchemaOf(form.formSnapshot));
+    const pages = schema.pages;
     for (const page of pages) {
       for (const field of flattenPageItems(page.fields)) {
         if (field.kind === "contract" && field.contractId) {
@@ -807,7 +807,7 @@ export class TasksService {
       form,
       submitFormDto,
     );
-    const submittedSchema = submittedSnapshot.schema as unknown as FormSchema;
+    const submittedSchema = formSchemaOf(submittedSnapshot);
 
     const { validatorResults, effectiveAnswers } =
       await this.validateFormSubmission({
@@ -1000,7 +1000,7 @@ export class TasksService {
     );
     const { validatorResults, effectiveAnswers } =
       await this.validateFormSubmission({
-        schema: submittedSnapshot.schema as unknown as FormSchema,
+        schema: formSchemaOf(submittedSnapshot),
         submitFormDto: submitFollowUpFormDto as SubmitFormDto,
         userId,
       });
@@ -1530,9 +1530,7 @@ export class TasksService {
       );
     }
 
-    const fieldIds = this.draftableFieldIds(
-      snapshot.schema as unknown as FormSchema,
-    );
+    const fieldIds = this.draftableFieldIds(formSchemaOf(snapshot));
     const storedAnswers = pickKeys(answers.value, fieldIds.answered);
     const storedPublicAnswers = pickKeys(publicAnswers.value, fieldIds.output);
     const size = Buffer.byteLength(
