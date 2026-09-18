@@ -8,6 +8,7 @@ import {
   canEditConversationInfo,
   isConversationAdmin,
 } from "@alliance/shared/lib/messages";
+import { sendOrExplain } from "@alliance/shared/lib/sendOrExplain";
 import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
 import { router, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, Edit, Plus, X } from "lucide-react-native";
@@ -106,25 +107,24 @@ export default function ConversationInfoScreen() {
   const handleSave = useCallback(async () => {
     if (!selectedConvo || saving) return;
     setSaving(true);
-    try {
-      const response = await conversationUpdateInfo({
+    const saved = await sendOrExplain({
+      send: conversationUpdateInfo,
+      options: {
         path: { conversationId: selectedConvo.id },
         body: {
           title: editingTitle,
           photo: editingPhoto ?? undefined,
         },
-      });
-      if (response.data) {
-        setConversations((prev) =>
-          mergeConversationUpdate(prev, response.data!),
-        );
-        setIsEditing(false);
-      }
-    } catch (error) {
-      console.error("Failed to update conversation", error);
-    } finally {
-      setSaving(false);
+      },
+      action: "save the group",
+    });
+    setSaving(false);
+    if (!saved.ok) {
+      Alert.alert(saved.error.title, saved.error.message);
+      return;
     }
+    setConversations((prev) => mergeConversationUpdate(prev, saved.value));
+    setIsEditing(false);
   }, [editingPhoto, editingTitle, saving, selectedConvo, setConversations]);
 
   const handleAddMember = useCallback(
