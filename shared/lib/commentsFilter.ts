@@ -215,9 +215,8 @@ export function useCommentFilterData({
   const { data: friendIds = [] } = useQuery({
     queryKey: ["userListFriends", userId],
     queryFn: () =>
-      userListFriends({ path: { id: userId! } }).then((res) =>
-        (res.data ?? []).map((friend) => friend.id),
-      ),
+      userListFriends({ path: { id: userId! } }).then((res) => res.data ?? []),
+    select: (friends) => friends.map((friend) => friend.id),
     enabled: enabled && userId != null,
   });
 

@@ -1,5 +1,13 @@
-import { CommentDto } from "@alliance/shared/client";
-import { CommentSort, sortComments } from "./commentsFilter";
+import { CommentDto, userListFriends } from "@alliance/shared/client";
+import { useQuery } from "@tanstack/react-query";
+import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import {
+  CommentSort,
+  sortComments,
+  useCommentFilterData,
+} from "./commentsFilter";
+import { queryWrapper } from "./testing/queryWrapper";
+import { routes, serveApi } from "./testing/serveApi";
 
 const comment = (
   id: number,
@@ -9,6 +17,19 @@ const comment = (
     children = [],
   }: { pinned?: boolean; children?: CommentDto[] } = {},
 ) => ({ id, createdAt, pinned, children }) as CommentDto;
+
+serveApi(
+  routes({
+    "GET /user/listfriends/:id": () =>
+      Response.json([
+        { id: 1, displayName: "Ada" },
+        { id: 2, displayName: "Grace" },
+      ]),
+    "GET /community/list/my": () => Response.json([]),
+  }),
+);
+
+afterEach(cleanup);
 
 describe("sortComments by newest", () => {
   it("orders pinned comments by their most recent reply, then the rest by their own date", () => {
@@ -37,5 +58,33 @@ describe("sortComments by newest", () => {
     );
 
     expect(sorted.map((c) => c.id)).toEqual([1, 4, 6, 5]);
+  });
+});
+
+describe("useCommentFilterData", () => {
+  it("leaves friend profiles in the cache for screens that list them", async () => {
+    const { wrapper } = queryWrapper();
+    const filter = renderHook(
+      () => useCommentFilterData({ enabled: true, userId: 7 }),
+      { wrapper },
+    );
+    await waitFor(() =>
+      expect([...filter.result.current.friendIdSet]).toEqual([1, 2]),
+    );
+
+    const list = renderHook(
+      () =>
+        useQuery({
+          queryKey: ["userListFriends", 7],
+          queryFn: () =>
+            userListFriends({ path: { id: 7 } }).then((res) => res.data ?? []),
+        }),
+      { wrapper },
+    );
+
+    expect(list.result.current.data?.map((f) => f.displayName)).toEqual([
+      "Ada",
+      "Grace",
+    ]);
   });
 });
