@@ -1,6 +1,5 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { run } from "@alliance/common/run";
-import { client } from "@alliance/shared/client/client.gen";
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import { useBackfillTimeZone } from "@alliance/shared/lib/useBackfillTimeZone";
 import type { QueryClient } from "@tanstack/react-query";
@@ -22,7 +21,7 @@ import {
 } from "../../../shared/client";
 import { clearGuestToken, getStoredGuestToken } from "./guestSession";
 import { SecureStorage, SecureStorageKey } from "./SecureStorage";
-import { closeSession, openSession } from "./session";
+import { closeSession, openSession, setAuthHeader } from "./session";
 import {
   getVisualTestAutoLoginCredentials,
   isVisualTestMode,
@@ -103,12 +102,7 @@ export const AuthProvider: React.FC<
       try {
         const accessToken = await getAccessToken();
         if (accessToken) {
-          client.setConfig({
-            ...client.getConfig(),
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          });
+          setAuthHeader(accessToken);
         }
         // If the access token is expired, the fetch wrapper in _layout.tsx
         // will intercept the 401 and transparently refresh before retrying.

@@ -1,5 +1,4 @@
 import { authRefreshTokens } from "@alliance/shared/client";
-import { client } from "@alliance/shared/client/client.gen";
 import {
   buildGroupConversationTitle,
   createMessagingHooks,
@@ -15,6 +14,7 @@ import {
 } from "@alliance/shared/lib/messages";
 import { getWebSocketUrl } from "./config";
 import { SecureStorage, SecureStorageKey } from "./SecureStorage";
+import { setAuthHeader } from "./session";
 
 const getAuthToken = () => SecureStorage.getItem(SecureStorageKey.ACCESS_TOKEN);
 
@@ -33,10 +33,7 @@ const onRefreshToken = async (): Promise<string | null> => {
   const token = response.data?.access_token;
   if (token) {
     await SecureStorage.setItem(SecureStorageKey.ACCESS_TOKEN, token);
-    client.setConfig({
-      ...client.getConfig(),
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    setAuthHeader(token);
     return token;
   }
   return null;
