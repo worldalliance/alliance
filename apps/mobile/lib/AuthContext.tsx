@@ -1,6 +1,6 @@
-import { AnalyticsEvent } from "@alliance/common/analytics";
+import { AnalyticsEvent, ExceptionEvent } from "@alliance/common/analytics";
 import { run } from "@alliance/common/run";
-import { captureEvent } from "@alliance/shared/lib/analytics";
+import { captureEvent, captureException } from "@alliance/shared/lib/analytics";
 import { useBackfillTimeZone } from "@alliance/shared/lib/useBackfillTimeZone";
 import type { QueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
@@ -12,6 +12,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { Alert } from "react-native";
 import {
   appHealthCheck,
   authLogin,
@@ -21,7 +22,13 @@ import {
 } from "../../../shared/client";
 import { clearGuestToken, getStoredGuestToken } from "./guestSession";
 import { SecureStorage, SecureStorageKey } from "./SecureStorage";
-import { closeSession, openSession, setAuthHeader } from "./session";
+import {
+  clearStoredTokens,
+  closeSession,
+  openSession,
+  retryClearTokens,
+  setAuthHeader,
+} from "./session";
 import {
   getVisualTestAutoLoginCredentials,
   isVisualTestMode,
@@ -46,6 +53,24 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const clearSessionTokens = () =>
+  clearStoredTokens(SecureStorage, [
+    SecureStorageKey.ACCESS_TOKEN,
+    SecureStorageKey.REFRESH_TOKEN,
+  ]);
+
+const askToRetryLogout = () =>
+  new Promise<boolean>((resolve) =>
+    Alert.alert(
+      "Couldn't finish logging out",
+      "Your login is still saved on this device, so the app will sign you back in the next time it opens.",
+      [
+        { text: "Close", style: "cancel", onPress: () => resolve(false) },
+        { text: "Try again", onPress: () => resolve(true) },
+      ],
+    ),
+  );
+
 export const AuthProvider: React.FC<
   React.PropsWithChildren<{
     queryClient: QueryClient;
@@ -63,24 +88,35 @@ export const AuthProvider: React.FC<
     await SecureStorage.setItem(SecureStorageKey.REFRESH_TOKEN, refresh);
   }, []);
 
-  const clearTokens = useCallback(async () => {
-    await Promise.all([
-      SecureStorage.deleteItem(SecureStorageKey.ACCESS_TOKEN),
-      SecureStorage.deleteItem(SecureStorageKey.REFRESH_TOKEN),
-    ]);
+  const clearTokensAndReport = useCallback(async () => {
+    const cleared = await clearSessionTokens();
+    if (!cleared.ok) {
+      console.error("failed to clear the session tokens", cleared.error);
+      captureException(ExceptionEvent.ClearSessionTokensFailed, cleared.error);
+    }
+    return cleared;
   }, []);
 
   const getAccessToken = useCallback(async () => {
     return await SecureStorage.getItem(SecureStorageKey.ACCESS_TOKEN);
   }, []);
   const clearSession = useCallback(() => {
-    closeSession(clearTokens);
+    const closed = closeSession(clearTokensAndReport);
     queryClient.clear();
     setUser(undefined);
-  }, [clearTokens, queryClient]);
+    return closed;
+  }, [clearTokensAndReport, queryClient]);
 
   const logout = useCallback(() => {
-    clearSession();
+    run(async () => {
+      const closed = await clearSession();
+      if (!closed.ok) {
+        await retryClearTokens({
+          clearTokens: clearSessionTokens,
+          askToRetry: askToRetryLogout,
+        });
+      }
+    });
     if (!isVisualTestMode) {
       router.replace("/onboarding");
     }
@@ -112,7 +148,7 @@ export const AuthProvider: React.FC<
         captureEvent(AnalyticsEvent.AuthFailedToRefresh);
         // No redirect: a first launch has no session to lose, and the app
         // layout already sends an unauthenticated visitor to onboarding.
-        clearSession();
+        await clearSession();
       } finally {
         setIsLoading(false);
       }
@@ -142,7 +178,11 @@ export const AuthProvider: React.FC<
     async (tokens: SessionTokensDto) => {
       queryClient.clear();
 
-      const opened = await openSession({ tokens, saveTokens, clearTokens });
+      const opened = await openSession({
+        tokens,
+        saveTokens,
+        clearTokens: clearTokensAndReport,
+      });
       if (!opened.ok) {
         throw opened.error;
       }
@@ -154,7 +194,7 @@ export const AuthProvider: React.FC<
         name: user.name,
       });
     },
-    [saveTokens, clearTokens, posthog, queryClient],
+    [saveTokens, clearTokensAndReport, posthog, queryClient],
   );
 
   const login = useCallback(

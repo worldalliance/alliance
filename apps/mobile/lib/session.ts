@@ -16,18 +16,57 @@ export function setAuthHeader(accessToken: string | undefined): void {
   });
 }
 
-export function closeSession(clearTokens: () => Promise<void>): void {
+export async function closeSession(
+  clearTokens: () => Promise<Result<void, Error>>,
+): Promise<Result<void, Error>> {
   // The server attributes the logout to the token this request carries, which
   // the client reads when the call starts.
   authLogout().catch((error) => console.error("logout request failed", error));
-  clearTokens();
   setAuthHeader(undefined);
+  return await clearTokens();
+}
+
+export async function clearStoredTokens<Key extends string>(
+  storage: {
+    deleteItem: (key: Key) => Promise<void>;
+    getItem: (key: Key) => Promise<string | null>;
+  },
+  keys: Key[],
+): Promise<Result<void, Error>> {
+  const left = await R.fromPromiseFn(async () => {
+    await Promise.all(keys.map((key) => storage.deleteItem(key)));
+    // expo-secure-store's iOS delete resolves without checking whether the
+    // keychain removed the item.
+    return await Promise.all(keys.map((key) => storage.getItem(key)));
+  });
+  if (!left.ok) {
+    return left;
+  }
+  const stored = keys.filter((_key, i) => left.value[i] !== null);
+  return stored.length === 0
+    ? R.success(undefined)
+    : R.failure(
+        new Error(
+          `session tokens still stored after the delete: ${stored.join(", ")}`,
+        ),
+      );
+}
+
+export async function retryClearTokens(params: {
+  clearTokens: () => Promise<Result<void, Error>>;
+  askToRetry: () => Promise<boolean>;
+}): Promise<void> {
+  while (await params.askToRetry()) {
+    if ((await params.clearTokens()).ok) {
+      return;
+    }
+  }
 }
 
 export async function openSession(params: {
   tokens: SessionTokensDto;
   saveTokens: (access: string, refresh: string) => Promise<void>;
-  clearTokens: () => Promise<void>;
+  clearTokens: () => Promise<Result<void, Error>>;
 }): Promise<Result<UserDto, Error>> {
   const { tokens } = params;
   setAuthHeader(tokens.access_token);
@@ -51,7 +90,7 @@ export async function openSession(params: {
   if (!saved.ok) {
     setAuthHeader(undefined);
     // The access token can land without the refresh token.
-    const cleared = await R.fromPromise(params.clearTokens());
+    const cleared = await params.clearTokens();
     return R.failure(
       cleared.ok
         ? saved.error
