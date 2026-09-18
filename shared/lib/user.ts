@@ -254,8 +254,6 @@ export const useMessageableUsersQuery = (
   return { ...query, ids };
 };
 
-type FriendRequestMutationOptions = UseMutationOptions<void, unknown, number>;
-
 type UpdateProfileMutationOptions = UseMutationOptions<
   ProfileDto | null,
   Error,
@@ -296,17 +294,14 @@ export const friendMutationErrorMessage = (error: unknown) =>
     sessionExpired: "Your session has expired. Sign in again.",
   });
 
-const useFriendMutation = (
-  params: {
-    call: (userId: number) => Promise<unknown>;
-    statusOnSuccess: FriendStatusDto;
-    invalidateOnSuccess: (
-      queryClient: QueryClient,
-      userId: number,
-    ) => Promise<unknown>;
-  },
-  options?: FriendRequestMutationOptions,
-) => {
+const useFriendMutation = (params: {
+  call: (userId: number) => Promise<unknown>;
+  statusOnSuccess: FriendStatusDto;
+  invalidateOnSuccess: (
+    queryClient: QueryClient,
+    userId: number,
+  ) => Promise<unknown>;
+}) => {
   const { call, statusOnSuccess, invalidateOnSuccess } = params;
   const queryClient = useQueryClient();
   return useMutation<void, unknown, number>({
@@ -315,74 +310,51 @@ const useFriendMutation = (
     },
     // Stays pending until the refetched lists land, so a caller that disables
     // on isPending keeps an answered row locked until it leaves the list.
-    onSuccess: async (data, userId, onMutateResult, context) => {
+    onSuccess: (_data, userId) => {
       queryClient.setQueryData(
         userQueryKeys.friendStatus(userId),
         statusOnSuccess,
       );
-      const refetched = invalidateOnSuccess(queryClient, userId);
-      options?.onSuccess?.(data, userId, onMutateResult, context);
-      await refetched;
+      return invalidateOnSuccess(queryClient, userId);
     },
-    onError: (error, userId, onMutateResult, context) => {
+    onError: (_error, userId) => {
       void resyncFriend(queryClient, userId);
-      options?.onError?.(error, userId, onMutateResult, context);
     },
   });
 };
 
-export const useSendFriendRequestMutation = (
-  options?: FriendRequestMutationOptions,
-) =>
-  useFriendMutation(
-    {
-      call: (targetUserId) =>
-        userRequestFriend({ path: { targetUserId }, throwOnError: true }),
-      statusOnSuccess: { status: "pending", didReceiveRequest: false },
-      // Sending back to someone whose request is pending accepts theirs.
-      invalidateOnSuccess: resyncFriend,
-    },
-    options,
-  );
+export const useSendFriendRequestMutation = () =>
+  useFriendMutation({
+    call: (targetUserId) =>
+      userRequestFriend({ path: { targetUserId }, throwOnError: true }),
+    statusOnSuccess: { status: "pending", didReceiveRequest: false },
+    // Sending back to someone whose request is pending accepts theirs.
+    invalidateOnSuccess: resyncFriend,
+  });
 
-export const useAcceptFriendRequestMutation = (
-  options?: FriendRequestMutationOptions,
-) =>
-  useFriendMutation(
-    {
-      call: (requesterId) =>
-        userAcceptFriendRequest({ path: { requesterId }, throwOnError: true }),
-      statusOnSuccess: { status: "accepted", didReceiveRequest: false },
-      invalidateOnSuccess: invalidateFriendships,
-    },
-    options,
-  );
+export const useAcceptFriendRequestMutation = () =>
+  useFriendMutation({
+    call: (requesterId) =>
+      userAcceptFriendRequest({ path: { requesterId }, throwOnError: true }),
+    statusOnSuccess: { status: "accepted", didReceiveRequest: false },
+    invalidateOnSuccess: invalidateFriendships,
+  });
 
-export const useDeclineFriendRequestMutation = (
-  options?: FriendRequestMutationOptions,
-) =>
-  useFriendMutation(
-    {
-      call: (requesterId) =>
-        userDeclineFriendRequest({ path: { requesterId }, throwOnError: true }),
-      statusOnSuccess: { status: "none", didReceiveRequest: false },
-      invalidateOnSuccess: invalidateFriendRequests,
-    },
-    options,
-  );
+export const useDeclineFriendRequestMutation = () =>
+  useFriendMutation({
+    call: (requesterId) =>
+      userDeclineFriendRequest({ path: { requesterId }, throwOnError: true }),
+    statusOnSuccess: { status: "none", didReceiveRequest: false },
+    invalidateOnSuccess: invalidateFriendRequests,
+  });
 
-export const useRemoveFriendMutation = (
-  options?: FriendRequestMutationOptions,
-) =>
-  useFriendMutation(
-    {
-      call: (targetUserId) =>
-        userRemoveFriend({ path: { targetUserId }, throwOnError: true }),
-      statusOnSuccess: { status: "none", didReceiveRequest: false },
-      invalidateOnSuccess: invalidateFriendships,
-    },
-    options,
-  );
+export const useRemoveFriendMutation = () =>
+  useFriendMutation({
+    call: (targetUserId) =>
+      userRemoveFriend({ path: { targetUserId }, throwOnError: true }),
+    statusOnSuccess: { status: "none", didReceiveRequest: false },
+    invalidateOnSuccess: invalidateFriendships,
+  });
 
 export const useUpdateProfileMutation = (
   userId: number | undefined,
