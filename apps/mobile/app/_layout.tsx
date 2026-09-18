@@ -21,6 +21,7 @@ import { AuthProvider } from "../lib/AuthContext";
 import PostHogProvider from "../lib/PostHogProvider";
 import { SecureStorage, SecureStorageKey } from "../lib/SecureStorage";
 import { getApiUrl } from "../lib/config";
+import { setAuthHeader } from "../lib/session";
 import "../lib/setImmediatePolyfill";
 import { hideSplash } from "../lib/splash";
 
@@ -99,12 +100,7 @@ export default function RootLayout() {
             refreshRes.data.refresh_token,
           );
         }
-        client.setConfig({
-          baseUrl: getApiUrl(),
-          headers: { Authorization: `Bearer ${refreshRes.data.access_token}` },
-          fetch: wrappedFetch,
-          throwOnError: true,
-        });
+        setAuthHeader(refreshRes.data.access_token);
         const retryHeaders = new Headers(retryReq.headers);
         retryHeaders.set(
           "Authorization",
