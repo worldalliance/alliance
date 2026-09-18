@@ -919,7 +919,7 @@ const FormRenderer = ({
     effectiveFormData,
     variableValues,
     isElementCurrentlyVisible,
-    isFieldCurrentlyRequired,
+    fieldContext,
     visiblePageIndices,
     nextVisiblePageIndex,
     previousVisiblePageIndex,
@@ -1217,8 +1217,7 @@ const FormRenderer = ({
                 randomizationKey={randomizationKey}
                 disableOptionRandomization={disableOptionRandomization}
                 user={user}
-                formData={effectiveFormData}
-                isFieldRequired={isFieldCurrentlyRequired}
+                fieldContext={fieldContext}
               />
               {renderPublicToggle(field)}
             </View>

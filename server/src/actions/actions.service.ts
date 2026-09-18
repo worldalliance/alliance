@@ -16,10 +16,7 @@ import {
   emptyDisplayOnlySchema,
   type DisplayOnlySchema,
 } from "@alliance/common/forms/display-only-schema";
-import {
-  flattenPageItems,
-  type FormSchema,
-} from "@alliance/common/forms/form-schema";
+import { flattenPageItems } from "@alliance/common/forms/form-schema";
 import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
 import { echoesStoredKey } from "@alliance/common/image-src";
 import { run } from "@alliance/common/run";
@@ -73,6 +70,7 @@ import {
   type ParsedFormResponse,
 } from "src/tasks/entities/formresponse.entity";
 import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
+import { formSchemaOf } from "src/tasks/form-snapshot-schema";
 import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import {
   UserActionRelationDetail,
@@ -2074,8 +2072,7 @@ export class ActionsService {
       return undefined;
     }
 
-    const schema = activity.taskFormResponse.formSnapshot
-      .schema as unknown as FormSchema;
+    const schema = formSchemaOf(activity.taskFormResponse.formSnapshot);
 
     const answerToIsPublic = (
       answer: string,

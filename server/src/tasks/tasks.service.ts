@@ -6,6 +6,7 @@ import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import {
   FORM_DRAFT_MAX_ANSWER_BYTES,
+  type FormAnswers,
   readFormAnswers,
   readPublicFormAnswers,
 } from "@alliance/common/forms/form-responses";
@@ -16,6 +17,7 @@ import {
   type CheckboxExtractionTarget,
   type CheckboxField,
   type CityFieldValue,
+  collectFieldLookup,
   collectSourceFormIds,
   type CustomComponentField,
   flattenPageItems,
@@ -26,6 +28,7 @@ import {
   isFieldGroup,
   isQuestionField,
   type ListField,
+  type ListFieldValue,
   Page,
 } from "@alliance/common/forms/form-schema";
 import {
@@ -41,9 +44,11 @@ import {
   isElementCurrentlyVisible,
   isFieldConditionallyRequired,
   isPageCurrentlyVisible,
+  listRowData,
   stripHiddenAnswers,
   type VisibilityValidatorResults,
   visibilityValidatorResultsSchema,
+  visibleListSubFields,
 } from "@alliance/common/forms/visibility";
 import {
   type AccountDerivedConditionKind,
@@ -64,6 +69,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { isNull, omitBy } from "es-toolkit";
 import { ActionFormVariantService } from "src/actions/action-form-variant.service";
 import { ActionsService } from "src/actions/actions.service";
 import { Action } from "src/actions/entities/action.entity";
@@ -117,6 +123,7 @@ import {
   FormSnapshot,
   SnapshotHistoryOwner,
 } from "./entities/formsnapshot.entity";
+import { formSchemaOf } from "./form-snapshot-schema";
 import {
   CreateFormDto,
   type FormDraft,
@@ -148,6 +155,49 @@ function parseSubmittedValidatorResults(
     );
   }
   return parsed.data;
+}
+
+function parseSubmittedAnswers(value: Record<string, unknown>): FormAnswers {
+  const answers = readFormAnswers(omitBy(value, isNull));
+  if (R.isFailure(answers)) {
+    throw new BadRequestException("Answers are not a valid answer map");
+  }
+  return answers.value;
+}
+
+function readListAnswer(
+  field: ListField,
+  value: FormValue | undefined,
+): ListFieldValue {
+  if (value === undefined) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    throw new BadRequestException(
+      `Field ${elementInternalDescriptor(field)} is not a list.`,
+    );
+  }
+  return value.map((item, i) => {
+    if (typeof item !== "object") {
+      throw new BadRequestException(
+        `Field ${elementInternalDescriptor(field)} (item ${i + 1}) is not a list item.`,
+      );
+    }
+    return item;
+  });
+}
+
+function assertListAnswersAreLists(
+  schema: FormSchema,
+  answers: FormAnswers,
+): void {
+  for (const page of schema.pages) {
+    for (const field of flattenPageItems(page.fields)) {
+      if (field.kind === "list") {
+        readListAnswer(field, answers[field.id]);
+      }
+    }
+  }
 }
 
 function pickKeys<T>(
@@ -309,8 +359,7 @@ export class TasksService {
       relations: { formSnapshot: true },
     });
 
-    const aggregateViews =
-      (form.formSnapshot.schema as unknown as FormSchema).aggregateViews ?? [];
+    const aggregateViews = formSchemaOf(form.formSnapshot).aggregateViews ?? [];
     if (aggregateViews.length === 0) {
       return [];
     }
@@ -354,8 +403,8 @@ export class TasksService {
   }
 
   async transformImageUrls(form: Form): Promise<Form> {
-    const schema = structuredClone(form.formSnapshot.schema);
-    const pages = schema.pages as Page[];
+    const schema = structuredClone(formSchemaOf(form.formSnapshot));
+    const pages = schema.pages;
     const transformElement = (field: Page["fields"][number]): void => {
       if (isFieldGroup(field)) {
         field.fields.forEach(transformElement);
@@ -387,8 +436,8 @@ export class TasksService {
   }
 
   async transformContractFields(form: Form): Promise<Form> {
-    const schema = structuredClone(form.formSnapshot.schema);
-    const pages = schema.pages as Page[];
+    const schema = structuredClone(formSchemaOf(form.formSnapshot));
+    const pages = schema.pages;
     for (const page of pages) {
       for (const field of flattenPageItems(page.fields)) {
         if (field.kind === "contract" && field.contractId) {
@@ -440,6 +489,8 @@ export class TasksService {
      */
     effectiveAnswers: Record<string, FormValue>;
   }> {
+    const answers = parseSubmittedAnswers(submitFormDto.answers);
+
     const validatorIds = new Set<number>();
     const accountConditionKinds = new Set<AccountDerivedConditionKind>();
 
@@ -508,14 +559,7 @@ export class TasksService {
       accountConditionKinds,
     );
 
-    const fieldLookup = new Map<string, AnyField>();
-    for (const page of schema.pages) {
-      for (const element of flattenPageItems(page.fields)) {
-        if (isQuestionField(element)) {
-          fieldLookup.set(element.id, element);
-        }
-      }
-    }
+    const fieldLookup = collectFieldLookup(schema.pages);
 
     const visibilityExtras: ConditionExtras = {
       deviceType: submitFormDto.deviceType,
@@ -534,7 +578,7 @@ export class TasksService {
 
     const effectiveAnswers = stripHiddenAnswers(
       schema.pages,
-      submitFormDto.answers,
+      answers,
       visibilityExtras,
     );
 
@@ -609,17 +653,10 @@ export class TasksService {
             ) {
               continue;
             }
-            const rawList = effectiveAnswers[listField.id];
-            const listValue: Record<string, FormValue>[] = Array.isArray(
-              rawList,
-            )
-              ? (rawList as unknown[]).filter(
-                  (item): item is Record<string, FormValue> =>
-                    item !== null &&
-                    typeof item === "object" &&
-                    !Array.isArray(item),
-                )
-              : [];
+            const listValue = readListAnswer(
+              listField,
+              effectiveAnswers[listField.id],
+            );
             const minCards = Math.max(
               0,
               Math.floor(Number(listField.min ?? 0)),
@@ -646,19 +683,23 @@ export class TasksService {
             const subFields = listField.fields ?? [];
             for (let i = 0; i < listValue.length; i += 1) {
               const card = listValue[i] ?? {};
-              const mergedData = {
-                ...effectiveAnswers,
-                ...card,
-              } as Record<string, FormValue>;
-              for (const sub of subFields) {
+              const mergedData = listRowData({
+                data: effectiveAnswers,
+                row: card,
+              });
+              for (const sub of visibleListSubFields({
+                subFields,
+                data: effectiveAnswers,
+                row: card,
+                extras: visibilityExtras,
+              })) {
                 if (
                   !isQuestionField(sub) ||
                   !isFieldConditionallyRequired(
                     sub,
                     mergedData,
                     visibilityExtras,
-                  ) ||
-                  !isElementCurrentlyVisible(sub, mergedData, visibilityExtras)
+                  )
                 ) {
                   continue;
                 }
@@ -794,7 +835,7 @@ export class TasksService {
       form,
       submitFormDto,
     );
-    const submittedSchema = submittedSnapshot.schema as unknown as FormSchema;
+    const submittedSchema = formSchemaOf(submittedSnapshot);
 
     const { validatorResults, effectiveAnswers } =
       await this.validateFormSubmission({
@@ -999,7 +1040,7 @@ export class TasksService {
     );
     const { validatorResults, effectiveAnswers } =
       await this.validateFormSubmission({
-        schema: submittedSnapshot.schema as unknown as FormSchema,
+        schema: formSchemaOf(submittedSnapshot),
         submitFormDto: submitFollowUpFormDto as SubmitFormDto,
         userId,
       });
@@ -1134,8 +1175,10 @@ export class TasksService {
   }): Promise<ParsedFormResponse> {
     const snapshot =
       preResolvedSnapshot ?? (await this.resolveSubmissionSnapshot(form, dto));
+    const answers = parseSubmittedAnswers(dto.answers);
+    assertListAnswersAreLists(formSchemaOf(snapshot), answers);
     const formResponse = this.formResponseRepository.create({
-      answers: dto.answers,
+      answers,
       formSnapshotId: snapshot.id,
       formSnapshot: snapshot,
       visibilityValidatorResults: validatorResults,
@@ -1529,9 +1572,7 @@ export class TasksService {
       );
     }
 
-    const fieldIds = this.draftableFieldIds(
-      snapshot.schema as unknown as FormSchema,
-    );
+    const fieldIds = this.draftableFieldIds(formSchemaOf(snapshot));
     const storedAnswers = pickKeys(answers.value, fieldIds.answered);
     const storedPublicAnswers = pickKeys(publicAnswers.value, fieldIds.output);
     const size = Buffer.byteLength(

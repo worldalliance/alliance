@@ -24,6 +24,10 @@ export type FormValue =
   | CityFieldValue
   | ListFieldValue;
 
+export function isListRow(value: unknown): value is Record<string, FormValue> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export const formValueSchema: z.ZodType<FormValue> = z.lazy(() =>
   z.union([
     z.string(),
@@ -454,6 +458,23 @@ export function collectGroupByFieldId(pages: Page[]): Map<string, FieldGroup> {
     }
   }
   return map;
+}
+
+export function collectFieldLookup(pages: Page[]): Map<string, AnyField> {
+  const lookup = new Map<string, AnyField>();
+  for (const page of pages) {
+    for (const element of flattenPageItems(page.fields)) {
+      if (!isQuestionField(element)) continue;
+      lookup.set(element.id, element);
+      // List sub-fields are looked up too, so a condition can reference one.
+      if (element.kind === "list") {
+        for (const sub of element.fields ?? []) {
+          lookup.set(sub.id, sub);
+        }
+      }
+    }
+  }
+  return lookup;
 }
 
 export function mapPageItems(

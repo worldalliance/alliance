@@ -2017,6 +2017,165 @@ describe("Tasks (e2e)", () => {
       );
     });
 
+    it("rejects a list answer holding a row that isn't an object", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Junk Row",
+        listRequiredIfSchema,
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            people: ["Ada", "Lin"],
+          },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe(
+        "Field People (item 1) is not a list item.",
+      );
+    });
+
+    it("rejects a list answer that isn't an array", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Not Array",
+        listRequiredIfSchema,
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { people: "junk" },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe("Field People is not a list.");
+    });
+
+    it("reads a null list answer as unanswered", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Null",
+        listRequiredIfSchema,
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { people: null },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(201);
+    });
+
+    it.each([
+      ["a row that isn't an object", [{ name: "Ada" }, "junk"]],
+      ["a cell that isn't an answer", [{ name: "Ada", notes: { deep: 1 } }]],
+    ])("rejects a list answer holding %s", async (_, people) => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Invalid Answer",
+        listRequiredIfSchema,
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { people },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe("Answers are not a valid answer map");
+    });
+
+    it("guest submit rejects a list answer that isn't a list", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Guest Junk",
+        listRequiredIfSchema,
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitPublicForm/${formId}`)
+        .send({
+          answers: { people: "junk" },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe("Field People is not a list.");
+    });
+
+    it("opt-out rejects a list cell that isn't an answer", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Opt-out Junk",
+        listRequiredIfSchema,
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/optout/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          actionId,
+          reason: "",
+          outOfTime: true,
+          isMoral: false,
+          partialFormData: {
+            answers: { people: [{ name: "Ada", notes: { deep: 1 } }] },
+            formSnapshotId,
+            actionId,
+            deviceType: "desktop" as const,
+          },
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe("Answers are not a valid answer map");
+    });
+
+    it("opt-out drops a null answer instead of storing it", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "RequiredIf List Opt-out Null",
+        listRequiredIfSchema,
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/optout/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          actionId,
+          reason: "",
+          outOfTime: true,
+          isMoral: false,
+          partialFormData: {
+            answers: { people: [{ name: "Ada" }], skipped: null },
+            formSnapshotId,
+            actionId,
+            deviceType: "desktop" as const,
+          },
+        })
+        .expect(201);
+
+      const stored = await formResponseRepo.findOneOrFail({
+        where: { formId },
+      });
+      expect(stored.answers).toEqual({ people: [{ name: "Ada" }] });
+    });
+
     it("accepts list items that satisfy or do not trigger the sub-field requiredIfFormula", async () => {
       const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
         "RequiredIf List Answered",
@@ -2042,6 +2201,151 @@ describe("Tasks (e2e)", () => {
           deviceType: "desktop" as const,
         })
         .expect(201);
+    });
+
+    it("skips a list sub-field whose condition reads a sibling hidden for its row", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "List Hidden Sibling",
+        {
+          pages: [
+            {
+              id: "page-1",
+              fields: [
+                {
+                  id: "attending",
+                  type: "input",
+                  kind: "radio",
+                  label: "Attending?",
+                  options: [
+                    { label: "Yes", value: "yes" },
+                    { label: "No", value: "no" },
+                  ],
+                },
+                {
+                  id: "people",
+                  type: "input",
+                  kind: "list",
+                  label: "People",
+                  fields: [
+                    {
+                      id: "has-restrictions",
+                      type: "input",
+                      kind: "radio",
+                      label: "Dietary restrictions?",
+                      options: [
+                        { label: "Yes", value: "yes" },
+                        { label: "No", value: "no" },
+                      ],
+                      visibleIfFormula: {
+                        conditions: {
+                          c1: {
+                            kind: "equals",
+                            when: "attending",
+                            equals: "yes",
+                          },
+                        },
+                        formula: "c1",
+                      },
+                    },
+                    {
+                      id: "dietary-notes",
+                      type: "input",
+                      kind: "text",
+                      label: "Dietary notes",
+                      required: true,
+                      visibleIfFormula: {
+                        conditions: {
+                          c1: {
+                            kind: "equals",
+                            when: "has-restrictions",
+                            equals: "yes",
+                          },
+                        },
+                        formula: "c1",
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+          outputViews: [],
+        },
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            attending: "no",
+            people: [{ "has-restrictions": "yes" }],
+          },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(201);
+    });
+
+    it("stores a list row without the cells hidden for it", async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        "List Hidden Cell Stored",
+        {
+          pages: [
+            {
+              id: "page-1",
+              fields: [
+                {
+                  id: "people",
+                  type: "input",
+                  kind: "list",
+                  label: "People",
+                  fields: [
+                    { id: "name", type: "input", kind: "text", label: "Name" },
+                    {
+                      id: "note",
+                      type: "input",
+                      kind: "text",
+                      label: "Note",
+                      visibleIfFormula: {
+                        conditions: {
+                          c1: { kind: "equals", when: "name", equals: "Ada" },
+                        },
+                        formula: "c1",
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+          outputViews: [],
+        },
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            people: [
+              { name: "Ada", note: "shown" },
+              { name: "Lin", note: "stale" },
+            ],
+          },
+          formSnapshotId,
+          actionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(201);
+
+      const stored = await formResponseRepo.findOneOrFail({
+        where: { formId },
+      });
+      expect(stored.answers).toEqual({
+        people: [{ name: "Ada", note: "shown" }, { name: "Lin" }],
+      });
     });
 
     it("does not enforce list/ranking requiredness when requiredIfFormula is false", async () => {

@@ -9,6 +9,7 @@ import {
   type FormValue,
   isFieldGroup,
   type ListField,
+  type ListSubField,
   type NumberField,
   type Page,
   type PageItem,
@@ -20,9 +21,10 @@ import {
 } from "@alliance/common/forms/ranking";
 import {
   type ConditionExtras,
-  isElementCurrentlyVisible,
   isFieldConditionallyRequired,
   isPageCurrentlyVisible,
+  listRowData,
+  visibleListSubFields,
 } from "@alliance/common/forms/visibility";
 import {
   CONDITION_KIND_IS_ACCOUNT_DERIVED,
@@ -31,7 +33,7 @@ import {
 import { withCount } from "@alliance/common/plural";
 import { parseTimeToMinutes } from "@alliance/shared/forms/timeUtils";
 import { dropUnuploadedFileAnswers } from "./forms/fileAnswers";
-import { defaultCardCount, resolveCards } from "./forms/listCards";
+import { asCards, defaultCardCount, resolveCards } from "./forms/listCards";
 
 /** Indices into `pages` of the currently visible pages. */
 export function getVisiblePageIndices(
@@ -645,13 +647,7 @@ export function validateFieldValue(
       return valueToCheck ? null : "Please upload a file.";
     case "list": {
       const listField = field as ListField;
-      const listVal = Array.isArray(valueToCheck) ? valueToCheck : [];
-      const listValTyped = listVal.every(
-        (item): item is Record<string, FormValue> =>
-          item !== null && typeof item === "object" && !Array.isArray(item),
-      )
-        ? listVal
-        : [];
+      const listValTyped = asCards(valueToCheck) ?? [];
       const minCards = Math.max(0, Math.floor(Number(listField.min || 0)));
       const maxCards =
         typeof listField.max === "number" && listField.max >= 0
@@ -695,14 +691,23 @@ export function getListSubFieldErrors(
   const subFields = listField.fields ?? [];
   for (let cardIndex = 0; cardIndex < cards.length; cardIndex++) {
     const card = cards[cardIndex] ?? {};
-    const mergedData = { ...data, ...card };
+    const mergedData = listRowData({ data, row: card });
+    const key = (sub: ListSubField) => `${listField.id}:${cardIndex}:${sub.id}`;
     for (const sub of subFields) {
-      const key = `${listField.id}:${cardIndex}:${sub.id}`;
-      if (!isElementCurrentlyVisible(sub, mergedData, extras)) {
-        result[key] = null;
-        continue;
-      }
-      result[key] = validateFieldValue(sub, card[sub.id], mergedData, extras);
+      result[key(sub)] = null;
+    }
+    for (const sub of visibleListSubFields({
+      subFields,
+      data,
+      row: card,
+      extras,
+    })) {
+      result[key(sub)] = validateFieldValue(
+        sub,
+        card[sub.id],
+        mergedData,
+        extras,
+      );
     }
   }
   return result;

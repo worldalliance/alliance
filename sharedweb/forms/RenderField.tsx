@@ -18,6 +18,7 @@ import {
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
 import {
   CARD_ID_KEY,
+  cardSubFields,
   defaultCardCount,
   listCardWriters,
   resolveCards,
@@ -28,9 +29,9 @@ import {
 } from "@alliance/shared/forms/timeUtils";
 import { cancelImageUpload } from "@alliance/shared/lib/copy";
 import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
-import { isOutputValueMissing } from "@alliance/shared/outputrenderer";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
+import type { FieldConditionContext } from "@alliance/shared/useFormRenderer";
 import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
 import { ChevronDown, Plus, X } from "lucide-react";
 import {
@@ -71,20 +72,7 @@ export type RenderFieldProps = {
   disableOptionRandomization?: boolean;
   user?: Omit<UserDto, "email">;
   labelRightAddon?: ReactNode;
-  formData?: Record<string, FormValue>;
-  isElementVisible?: (
-    element: AnyField,
-    data?: Record<string, FormValue>,
-  ) => boolean;
-  /**
-   * Effective requiredness, honoring `requiredIfFormula` (which replaces the
-   * static `required` flag in both directions). Falls back to `field.required`
-   * when omitted, so callers with no answer/visibility context still render.
-   */
-  isFieldRequired?: (
-    field: AnyField,
-    data?: Record<string, FormValue>,
-  ) => boolean;
+  fieldContext: FieldConditionContext;
   fieldErrors?: Record<string, string | null>;
   responseHiddenFromOthers?: boolean;
   isOutputView?: boolean;
@@ -162,9 +150,7 @@ export function RenderField({
   disableOptionRandomization,
   user,
   labelRightAddon,
-  formData,
-  isElementVisible,
-  isFieldRequired,
+  fieldContext,
   fieldErrors,
   responseHiddenFromOthers,
   isOutputView,
@@ -178,7 +164,7 @@ export function RenderField({
     uploadError,
   } = resolveUploadSlot({ fileUpload, fileUploadSlot, fieldId: field.id });
   const [fileReadError, setFileReadError] = useState<string | null>(null);
-  const required = isFieldRequired ? isFieldRequired(field) : !!field.required;
+  const required = fieldContext.isFieldRequired(field);
   const errorMessage =
     typeof error === "string" && error.trim().length > 0 ? error : null;
   const hasError = Boolean(errorMessage);
@@ -880,7 +866,6 @@ export function RenderField({
 
     case "list": {
       const listField = field as ListField;
-      const subFields = listField.fields ?? [];
       const defaultCount = defaultCardCount(listField);
       const minCards = Math.max(0, Math.floor(Number(listField.min || 0)));
       const maxCards =
@@ -895,31 +880,9 @@ export function RenderField({
         defaultCardCount: defaultCount,
         maxCards,
       });
-      const visibleSubFieldsForCard = (card: Record<string, FormValue>) => {
-        if (!isElementVisible || !formData) return subFields;
-        const mergedData = { ...formData, ...card };
-        return subFields.filter((sub) => isElementVisible(sub, mergedData));
-      };
-      // A sub-field's requiredIfFormula can reference either the surrounding
-      // answers or its own card, so resolve it against the same merged data
-      // the visibility filter above uses.
-      const subFieldRequiredForCard = (card: Record<string, FormValue>) =>
-        isFieldRequired
-          ? (sub: AnyField) => isFieldRequired(sub, { ...formData, ...card })
-          : undefined;
       const hiddenInOutputIds = new Set(
         listField.outputViewHiddenFieldIds ?? [],
       );
-      const subFieldsForCard = (card: Record<string, FormValue>) => {
-        let fields = visibleSubFieldsForCard(card);
-        if (isOutputView) {
-          if (hiddenInOutputIds.size > 0) {
-            fields = fields.filter((sub) => !hiddenInOutputIds.has(sub.id));
-          }
-          fields = fields.filter((sub) => !isOutputValueMissing(card[sub.id]));
-        }
-        return fields;
-      };
       return (
         <div className="space-y-3">
           <RenderLabel
@@ -933,6 +896,13 @@ export function RenderField({
           <div className="space-y-3">
             {cards.map((card, cardIndex) => {
               const cardId = card[CARD_ID_KEY];
+              const row = fieldContext.forRow(card);
+              const fields = cardSubFields({
+                listField,
+                card,
+                row,
+                isOutputView,
+              });
               return (
                 <Card
                   key={cardId}
@@ -941,7 +911,7 @@ export function RenderField({
                 >
                   <div className="flex flex-row gap-x-4 justify-between">
                     <div className="w-full space-y-6">
-                      {subFieldsForCard(card).map((sub) => {
+                      {fields.map((sub) => {
                         const isHiddenInOutput = hiddenInOutputIds.has(sub.id);
                         return (
                           <div key={sub.id}>
@@ -978,7 +948,7 @@ export function RenderField({
                                 disableOptionRandomization
                               }
                               user={user}
-                              isFieldRequired={subFieldRequiredForCard(card)}
+                              fieldContext={row}
                             />
                             {!disabled &&
                               isHiddenInOutput &&

@@ -1,4 +1,4 @@
-import type { FieldGroup, Page, TextField } from "./form-schema";
+import type { FieldGroup, FormValue, Page, TextField } from "./form-schema";
 import {
   emptyUserPropertyPresence,
   UserValueProperty,
@@ -7,7 +7,9 @@ import {
   isElementCurrentlyVisible,
   isFieldConditionallyRequired,
   isPageCurrentlyVisible,
+  listRowData,
   stripHiddenAnswers,
+  visibleListSubFields,
 } from "./visibility";
 import type { Condition, VisibleIfFormula } from "./visible-if-formula";
 
@@ -347,6 +349,75 @@ describe("isFieldConditionallyRequired", () => {
   });
 });
 
+describe("listRowData", () => {
+  it("puts the row's cells over the form's answers", () => {
+    expect(
+      listRowData({ data: { gate: "yes", other: 1 }, row: { gate: "no" } }),
+    ).toEqual({ gate: "no", other: 1 });
+  });
+});
+
+describe("visibleListSubFields", () => {
+  const gated = textField("note", {
+    visibleIfFormula: formula({
+      c1: { kind: "equals", when: "gate", equals: "yes" },
+    }),
+  });
+  const subFields = [textField("gate"), gated];
+
+  it("reads a form answer the row's cells don't cover", () => {
+    expect(
+      visibleListSubFields({
+        subFields,
+        data: { gate: "yes" },
+        row: {},
+        extras,
+      }),
+    ).toEqual(subFields);
+    expect(
+      visibleListSubFields({
+        subFields,
+        data: { gate: "no" },
+        row: {},
+        extras,
+      }),
+    ).toEqual([subFields[0]]);
+  });
+
+  it("keeps a sub-field the row's cells reveal", () => {
+    expect(
+      visibleListSubFields({
+        subFields,
+        data: { gate: "no" },
+        row: { gate: "yes" },
+        extras,
+      }),
+    ).toEqual(subFields);
+  });
+
+  it("drops a sub-field the row's cells hide", () => {
+    expect(
+      visibleListSubFields({
+        subFields,
+        data: { gate: "yes" },
+        row: { gate: "no" },
+        extras,
+      }),
+    ).toEqual([subFields[0]]);
+  });
+
+  it("reads the row's cells with no form answers at all", () => {
+    expect(
+      visibleListSubFields({
+        subFields,
+        data: {},
+        row: { gate: "no" },
+        extras,
+      }),
+    ).toEqual([subFields[0]]);
+  });
+});
+
 describe("stripHiddenAnswers", () => {
   const equalsYes = (when: string): Condition => ({
     kind: "equals",
@@ -426,6 +497,135 @@ describe("stripHiddenAnswers", () => {
       }),
     ];
     const answers = { f1: "no", f2: "answered" };
+    expect(
+      stripHiddenAnswers(pages, answers, { ...extras, readOnly: true }),
+    ).toBe(answers);
+  });
+});
+
+describe("stripHiddenAnswers in list rows", () => {
+  const equalsYes = (when: string): Condition => ({
+    kind: "equals",
+    when,
+    equals: "yes",
+  });
+
+  const listPage = (fields: TextField[]) => [
+    page("p1", {
+      fields: [
+        textField("gate"),
+        { id: "people", type: "input", kind: "list", label: "People", fields },
+      ],
+    }),
+  ];
+
+  it("strips a cell hidden for its row and keeps the rest of the row", () => {
+    const pages = listPage([
+      textField("name"),
+      textField("note", {
+        visibleIfFormula: formula({ c1: equalsYes("name") }),
+      }),
+    ]);
+    expect(
+      stripHiddenAnswers(
+        pages,
+        {
+          people: [
+            { name: "yes", note: "shown", __cardId: "c0" },
+            { name: "no", note: "stale", __cardId: "c1" },
+          ],
+        },
+        extras,
+      ),
+    ).toEqual({
+      people: [
+        { name: "yes", note: "shown", __cardId: "c0" },
+        { name: "no", __cardId: "c1" },
+      ],
+    });
+  });
+
+  it("reads the form's answers under the row's cells", () => {
+    const pages = listPage([
+      textField("note", {
+        visibleIfFormula: formula({ c1: equalsYes("gate") }),
+      }),
+    ]);
+    expect(
+      stripHiddenAnswers(
+        pages,
+        { gate: "no", people: [{ note: "stale" }] },
+        extras,
+      ),
+    ).toEqual({ gate: "no", people: [{}] });
+  });
+
+  it("hides a cell whose chain of sibling conditions starts at a hidden cell", () => {
+    const pages = listPage([
+      textField("a"),
+      textField("b", { visibleIfFormula: formula({ c1: equalsYes("a") }) }),
+      textField("c", { visibleIfFormula: formula({ c1: equalsYes("b") }) }),
+    ]);
+    expect(
+      stripHiddenAnswers(
+        pages,
+        { people: [{ a: "no", b: "yes", c: "stale" }] },
+        extras,
+      ),
+    ).toEqual({ people: [{ a: "no" }] });
+  });
+
+  it("returns the same object when every answered cell is visible", () => {
+    const pages = listPage([
+      textField("name"),
+      textField("note", {
+        visibleIfFormula: formula({ c1: equalsYes("name") }),
+      }),
+    ]);
+    const answers: Record<string, FormValue> = {
+      people: [{ name: "yes", note: "shown" }, { name: "no" }],
+    };
+    expect(stripHiddenAnswers(pages, answers, extras)).toBe(answers);
+  });
+
+  it("keeps a cell that a negated condition on a hidden sibling reveals", () => {
+    const pages = listPage([
+      textField("a"),
+      textField("b", { visibleIfFormula: formula({ c1: equalsYes("a") }) }),
+      textField("c", {
+        visibleIfFormula: {
+          conditions: { c1: equalsYes("b") },
+          formula: { op: "NOT", operand: "c1" },
+        },
+      }),
+    ]);
+    expect(
+      stripHiddenAnswers(
+        pages,
+        {
+          people: [
+            { a: "yes", b: "yes" },
+            { a: "no", b: "yes", c: "shown" },
+          ],
+        },
+        extras,
+      ),
+    ).toEqual({
+      people: [
+        { a: "yes", b: "yes" },
+        { a: "no", c: "shown" },
+      ],
+    });
+  });
+
+  it("does not strip answered cells in readOnly", () => {
+    const pages = listPage([
+      textField("name"),
+      textField("note", {
+        visibleIfFormula: formula({ c1: equalsYes("name") }),
+      }),
+    ]);
+    const answers = { people: [{ name: "no", note: "answered" }] };
     expect(
       stripHiddenAnswers(pages, answers, { ...extras, readOnly: true }),
     ).toBe(answers);

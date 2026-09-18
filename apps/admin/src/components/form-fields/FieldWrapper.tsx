@@ -14,6 +14,7 @@ import {
   tasksFindOneCustomValidatorAdmin,
 } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
+import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import RenderField from "@alliance/sharedweb/forms/RenderField";
 import { useEffect, useRef, useState } from "react";
 import { FORM_BUILDER_PREVIEW_USER } from "../../lib/testData";
@@ -483,6 +484,7 @@ export function FieldWrapper<T extends AnyField>({
               disabled
               randomizationKey="preview"
               user={FORM_BUILDER_PREVIEW_USER}
+              fieldContext={staticFieldContext}
             />
             {hasExtractionEnabled(field) && (
               <div className="mt-4 text-xs text-blue-600 flex items-center gap-1">
