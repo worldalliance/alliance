@@ -606,17 +606,26 @@ export class TasksService {
             ) {
               continue;
             }
-            const rawList = effectiveAnswers[listField.id];
-            const listValue: Record<string, FormValue>[] = Array.isArray(
-              rawList,
-            )
-              ? (rawList as unknown[]).filter(
-                  (item): item is Record<string, FormValue> =>
-                    item !== null &&
-                    typeof item === "object" &&
-                    !Array.isArray(item),
-                )
-              : [];
+            const rawList: unknown = effectiveAnswers[listField.id];
+            const listValue: Record<string, FormValue>[] = [];
+            if (Array.isArray(rawList)) {
+              for (const [i, item] of rawList.entries()) {
+                if (
+                  item === null ||
+                  typeof item !== "object" ||
+                  Array.isArray(item)
+                ) {
+                  throw new BadRequestException(
+                    `Field ${elementInternalDescriptor(listField)} (item ${i + 1}) is not a list item.`,
+                  );
+                }
+                listValue.push(item);
+              }
+            } else if (rawList != null) {
+              throw new BadRequestException(
+                `Field ${elementInternalDescriptor(listField)} is not a list.`,
+              );
+            }
             const minCards = Math.max(
               0,
               Math.floor(Number(listField.min ?? 0)),
