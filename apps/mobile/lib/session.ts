@@ -1,6 +1,7 @@
 import { R, type Result } from "@alliance/common/result";
 import { TIMED_OUT, withTimeout } from "@alliance/common/timeout";
 import {
+  authLogin,
   authLogout,
   authMe,
   authRefreshTokens,
@@ -9,8 +10,61 @@ import {
 } from "@alliance/shared/client";
 import { client } from "@alliance/shared/client/client.gen";
 import { milliseconds } from "date-fns";
-import { isNetworkFailure } from "./network";
+import { isNetworkFailure, NETWORK_FAILURE_MESSAGE } from "./network";
 import type { SessionTokens } from "./SecureStorage";
+
+export class CredentialsRefusedError extends Error {
+  constructor() {
+    super("The server refused the email and password");
+    this.name = "CredentialsRefusedError";
+  }
+}
+
+export async function requestTokens(credentials: {
+  email: string;
+  password: string;
+  guestToken?: string;
+}): Promise<Result<SessionTokensDto, Error>> {
+  const sent = await R.fromPromise(
+    authLogin({
+      body: { ...credentials, mode: "header" },
+      throwOnError: false,
+    }),
+  );
+  if (!sent.ok) {
+    return sent;
+  }
+  const { data, error, response } = sent.value;
+  // 400 is a malformed email or an empty password.
+  if (response.status === 400 || response.status === 401) {
+    return R.failure(new CredentialsRefusedError());
+  }
+  const { access_token, refresh_token } = data ?? {};
+  if (!access_token || !refresh_token) {
+    return R.failure(new Error("Login failed", { cause: error }));
+  }
+  return R.success({ access_token, refresh_token });
+}
+
+// The profile load after the server issues tokens wraps the fetch error in `cause`.
+export function passwordLoginFailure(error: unknown): {
+  message: string;
+  report: boolean;
+} {
+  if (error instanceof CredentialsRefusedError) {
+    return { message: "Invalid email or password", report: false };
+  }
+  if (
+    isNetworkFailure(error) ||
+    (error instanceof Error && isNetworkFailure(error.cause))
+  ) {
+    return { message: NETWORK_FAILURE_MESSAGE, report: false };
+  }
+  return {
+    message: "We couldn't log you in. Please try again.",
+    report: true,
+  };
+}
 
 export function setAuthHeader(accessToken: string | undefined): void {
   client.setConfig({

@@ -17,7 +17,6 @@ import React, {
 import { Alert } from "react-native";
 import {
   appHealthCheck,
-  authLogin,
   authMe,
   UserDto,
   type SessionTokensDto,
@@ -37,6 +36,7 @@ import {
   clearStoredTokens,
   closeSession,
   openSession,
+  requestTokens,
   restoreSession,
   retryClearTokens,
 } from "./session";
@@ -213,19 +213,15 @@ export const AuthProvider: React.FC<
       setIsLoading(true);
       try {
         const guestToken = (await getStoredGuestToken()) ?? undefined;
-        const response = await authLogin({
-          body: { email, password, mode: "header", guestToken },
-        });
+        const requested = await requestTokens({ email, password, guestToken });
+        if (!requested.ok) {
+          throw requested.error;
+        }
         if (guestToken) {
           await clearGuestToken();
         }
 
-        const { access_token, refresh_token } = response.data ?? {};
-        if (response.error || !access_token || !refresh_token) {
-          throw new Error("Login failed");
-        }
-
-        await startSession({ access_token, refresh_token });
+        await startSession(requested.value);
 
         if (!isVisualTestMode && navigateOnSuccess) {
           router.replace("/");

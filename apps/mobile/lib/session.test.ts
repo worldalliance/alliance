@@ -9,6 +9,7 @@ import {
 import { afterEach, expect, it, jest, mock, spyOn } from "bun:test";
 import { milliseconds } from "date-fns";
 import { FetchError } from "expo/src/winter/fetch/FetchErrors";
+import { NETWORK_FAILURE_MESSAGE } from "./network";
 import type { SessionTokens } from "./SecureStorage";
 import {
   __resetSessionForTests,
@@ -16,12 +17,15 @@ import {
   clearClosedSessionTokens,
   clearStoredTokens,
   closeSession,
+  CredentialsRefusedError,
   currentSession,
   loadSessionUser,
   openSession,
+  passwordLoginFailure,
   refreshingFetch,
   refreshOpenSession,
   refreshSession,
+  requestTokens,
   restoreSession,
   retryClearTokens,
   SessionRefusedError,
@@ -1459,4 +1463,87 @@ it("never asks the server for a refresh while no session is open", async () => {
   expect(R.unwrap(refreshed)).toBeUndefined();
   expect(getRefreshToken).not.toHaveBeenCalled();
   expect(saveTokens).not.toHaveBeenCalled();
+});
+
+const credentials = { email: "member@example.com", password: "hunter2" };
+
+it("returns the tokens the server issues for the credentials", async () => {
+  api.throwingOnRefusal({
+    "POST /auth/login": () => Response.json({ isAdmin: false, ...tokens }),
+  });
+
+  const result = await requestTokens(credentials);
+
+  expect(result.ok && result.value).toEqual(tokens);
+});
+
+it.each([400, 401])(
+  "reports refused credentials when the server answers %i",
+  async (status) => {
+    api.throwingOnRefusal({
+      "POST /auth/login": () =>
+        Response.json({ message: "Unauthorized" }, { status }),
+    });
+
+    const result = await requestTokens(credentials);
+
+    expect(result.ok ? undefined : result.error).toBeInstanceOf(
+      CredentialsRefusedError,
+    );
+  },
+);
+
+it("reports a server failure apart from refused credentials", async () => {
+  api.throwingOnRefusal({
+    "POST /auth/login": () => new Response(null, { status: 500 }),
+  });
+
+  const result = await requestTokens(credentials);
+
+  expect(result.ok).toBe(false);
+  expect(result.ok ? undefined : result.error).not.toBeInstanceOf(
+    CredentialsRefusedError,
+  );
+});
+
+it("reports a request that never gets a response", async () => {
+  const unreachable = new Error("fetch failed");
+  api.throwingOnRefusal({
+    "POST /auth/login": () => {
+      throw unreachable;
+    },
+  });
+
+  const result = await requestTokens(credentials);
+
+  expect(result.ok ? undefined : result.error).toBe(unreachable);
+});
+
+it("tells the member their password was refused without reporting it", () => {
+  expect(passwordLoginFailure(new CredentialsRefusedError())).toEqual({
+    message: "Invalid email or password",
+    report: false,
+  });
+});
+
+it.each([
+  ["the login request", FetchError.createFromError(new Error("offline"))],
+  [
+    "the profile load",
+    new Error("Failed to fetch user profile", {
+      cause: FetchError.createFromError(new Error("offline")),
+    }),
+  ],
+])(
+  "asks the member to check their connection when %s gets no response",
+  (_request, error) => {
+    expect(passwordLoginFailure(error)).toEqual({
+      message: NETWORK_FAILURE_MESSAGE,
+      report: false,
+    });
+  },
+);
+
+it("reports any other password login failure", () => {
+  expect(passwordLoginFailure(new Error("Login failed")).report).toBe(true);
 });

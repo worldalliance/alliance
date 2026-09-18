@@ -1,4 +1,4 @@
-import { AnalyticsEvent } from "@alliance/common/analytics";
+import { AnalyticsEvent, ExceptionEvent } from "@alliance/common/analytics";
 import { errorMessage } from "@alliance/common/errorMessage";
 import type { OAuthProvider } from "@alliance/common/oauth";
 import { run } from "@alliance/common/run";
@@ -8,7 +8,7 @@ import {
   contractGetCurrent,
   contractSignContract,
 } from "@alliance/shared/client";
-import { captureEvent } from "@alliance/shared/lib/analytics";
+import { captureEvent, captureException } from "@alliance/shared/lib/analytics";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
 import { deviceTimeZone } from "@alliance/shared/lib/timeZone";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
@@ -64,6 +64,7 @@ import {
   onboardingColors,
   useOnboardingScale,
 } from "../../lib/onboarding/scale";
+import { passwordLoginFailure } from "../../lib/session";
 
 const TONE_BACKGROUND: Record<PanelTone, string> = {
   [PanelTone.Navy]: onboardingColors.navy,
@@ -182,8 +183,13 @@ const OnboardingScreen = () => {
     try {
       await login({ email, password, navigateOnSuccess: false });
       enterPlatform();
-    } catch {
-      setError("Invalid email or password");
+    } catch (error) {
+      const failure = passwordLoginFailure(error);
+      if (failure.report) {
+        console.error("password login failed", error);
+        captureException(ExceptionEvent.PasswordLoginFailed, error);
+      }
+      setError(failure.message);
     } finally {
       setSubmitting(false);
     }

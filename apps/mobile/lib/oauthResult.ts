@@ -25,7 +25,7 @@ import {
   AuthTabResultType,
   type AuthTabResult,
 } from "../modules/auth-tab/src/AuthTab.types";
-import { isNetworkFailure } from "./network";
+import { isNetworkFailure, NETWORK_FAILURE_MESSAGE } from "./network";
 
 export enum ClientFailure {
   Network = "network",
@@ -303,7 +303,7 @@ function oauthFailureMessage(params: {
     : ANY_PROVIDER_LABEL;
   switch (params.failure) {
     case ClientFailure.Network:
-      return "We couldn't reach the Alliance. Check your connection and try again.";
+      return NETWORK_FAILURE_MESSAGE;
     case OAuthError.NoAccount:
       return `We couldn't find an Alliance account for that ${label} address. Try a different Google or Apple account, or log in with your email and password.`;
     // The web copy points at a disconnect control mobile doesn't have.

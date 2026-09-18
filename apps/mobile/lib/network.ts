@@ -5,3 +5,6 @@ const NETWORK_FAILURE_PREFIX = "fetch failed: ";
 
 export const isNetworkFailure = (error: unknown): boolean =>
   error instanceof Error && error.message.startsWith(NETWORK_FAILURE_PREFIX);
+
+export const NETWORK_FAILURE_MESSAGE =
+  "We couldn't reach the Alliance. Check your connection and try again.";
