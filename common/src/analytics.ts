@@ -117,6 +117,7 @@ export enum ExceptionEvent {
   DeleteCommentError = "delete_comment_error",
   OtaGateCrashed = "ota_gate_crashed",
   RequestFailed = "request_failed",
+  ClearSessionTokensFailed = "clear_session_tokens_failed",
 }
 
 export const SLACK_PROPERTY = "send_to_slack";
@@ -207,4 +208,5 @@ export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   [ExceptionEvent.DeleteCommentError]: false,
   [ExceptionEvent.OtaGateCrashed]: true,
   [ExceptionEvent.RequestFailed]: false,
+  [ExceptionEvent.ClearSessionTokensFailed]: true,
 };

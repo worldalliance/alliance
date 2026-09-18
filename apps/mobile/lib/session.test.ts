@@ -1,7 +1,14 @@
+import { R, type Result } from "@alliance/common/result";
 import { authMe } from "@alliance/shared/client";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { afterEach, expect, it, mock } from "bun:test";
-import { closeSession, openSession, setAuthHeader } from "./session";
+import {
+  clearStoredTokens,
+  closeSession,
+  openSession,
+  retryClearTokens,
+  setAuthHeader,
+} from "./session";
 
 const api = serveApi(routes({}));
 
@@ -9,9 +16,11 @@ afterEach(() => setAuthHeader(undefined));
 
 const tokens = { access_token: "access", refresh_token: "refresh" };
 
+const cleared = async (): Promise<Result<void, Error>> => R.success(undefined);
+
 const start = ({
   saveTokens = mock(async (_access: string, _refresh: string) => {}),
-  clearTokens = mock(async () => {}),
+  clearTokens = mock(cleared),
 } = {}) => {
   return {
     saveTokens,
@@ -106,9 +115,7 @@ it("reports both failures when clearing the tokens fails too", async () => {
     saveTokens: mock(async () => {
       throw keychain;
     }),
-    clearTokens: mock(async () => {
-      throw keychainDelete;
-    }),
+    clearTokens: mock(async () => R.failure(keychainDelete)),
   });
   const result = await opened;
 
@@ -130,12 +137,26 @@ it("sends the logout with the token, then drops it", async () => {
     },
   });
   setAuthHeader("access");
-  const clearTokens = mock(async () => {});
+  const clearTokens = mock(cleared);
 
-  closeSession(clearTokens);
+  const closed = await closeSession(clearTokens);
 
+  expect(closed.ok).toBe(true);
   expect(await logout.promise).toBe("Bearer access");
   expect(clearTokens).toHaveBeenCalled();
+  expect(await nextAuthorization()).toBeNull();
+});
+
+it("reports a failure to clear the tokens", async () => {
+  api.throwingOnRefusal({
+    "POST /auth/logout": () => new Response(null, { status: 200 }),
+  });
+  setAuthHeader("access");
+  const keychainDelete = new Error("keychain delete");
+
+  const closed = await closeSession(async () => R.failure(keychainDelete));
+
+  expect(closed.ok ? undefined : closed.error).toBe(keychainDelete);
   expect(await nextAuthorization()).toBeNull();
 });
 
@@ -145,7 +166,113 @@ it("closes the session when the logout request fails", async () => {
   });
   setAuthHeader("access");
 
-  closeSession(async () => {});
+  const closed = await closeSession(cleared);
 
+  expect(closed.ok).toBe(true);
   expect(await nextAuthorization()).toBeNull();
+});
+
+const storage = ({ deletes }: { deletes: boolean }) => {
+  const items = new Map([
+    ["access", "a"],
+    ["refresh", "r"],
+  ]);
+  return {
+    items,
+    deleteItem: async (key: string) => {
+      if (deletes) {
+        items.delete(key);
+      }
+    },
+    getItem: async (key: string) => items.get(key) ?? null,
+  };
+};
+
+it("clears the stored tokens", async () => {
+  const stored = storage({ deletes: true });
+
+  const result = await clearStoredTokens(stored, ["access", "refresh"]);
+
+  expect(result.ok).toBe(true);
+  expect(stored.items.size).toBe(0);
+});
+
+it("reports a delete that resolves but leaves the tokens stored", async () => {
+  const result = await clearStoredTokens(storage({ deletes: false }), [
+    "access",
+    "refresh",
+  ]);
+
+  expect(result.ok).toBe(false);
+});
+
+it("names the tokens a delete leaves stored", async () => {
+  const stored = storage({ deletes: true });
+
+  const result = await clearStoredTokens(
+    {
+      ...stored,
+      deleteItem: async (key) => {
+        if (key === "access") {
+          stored.items.delete(key);
+        }
+      },
+    },
+    ["access", "refresh"],
+  );
+
+  expect(result.ok ? undefined : result.error.message).toBe(
+    "session tokens still stored after the delete: refresh",
+  );
+});
+
+it("reports a delete that rejects", async () => {
+  const keychainDelete = new Error("keychain delete");
+
+  const result = await clearStoredTokens(
+    {
+      ...storage({ deletes: true }),
+      deleteItem: async () => {
+        throw keychainDelete;
+      },
+    },
+    ["access", "refresh"],
+  );
+
+  expect(result.ok ? undefined : result.error).toBe(keychainDelete);
+});
+
+it("stops asking once a retry clears the tokens", async () => {
+  const askToRetry = mock(async () => true);
+  const clearTokens = mock(cleared);
+
+  await retryClearTokens({
+    clearTokens,
+    askToRetry,
+  });
+
+  expect(askToRetry).toHaveBeenCalledTimes(1);
+  expect(clearTokens).toHaveBeenCalledTimes(1);
+});
+
+it("asks again after a failed retry", async () => {
+  const askToRetry = mock(async () => askToRetry.mock.calls.length < 2);
+
+  await retryClearTokens({
+    clearTokens: async () => R.failure(new Error("retried")),
+    askToRetry,
+  });
+
+  expect(askToRetry).toHaveBeenCalledTimes(2);
+});
+
+it("leaves the tokens when the member declines to retry", async () => {
+  const clearTokens = mock(cleared);
+
+  await retryClearTokens({
+    clearTokens,
+    askToRetry: async () => false,
+  });
+
+  expect(clearTokens).not.toHaveBeenCalled();
 });
