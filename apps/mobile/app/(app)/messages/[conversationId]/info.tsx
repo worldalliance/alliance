@@ -72,12 +72,6 @@ export default function ConversationInfoScreen() {
   const canPickPhoto = canEditInfo && isEditing;
 
   useEffect(() => {
-    if (!selectedConvo || isEditing) return;
-    setEditingTitle(selectedConvo.title);
-    setEditingPhoto(selectedConvo.photo ?? null);
-  }, [selectedConvo, isEditing]);
-
-  useEffect(() => {
     if (!canEditInfo) setIsEditing(false);
   }, [canEditInfo]);
 
@@ -273,7 +267,11 @@ export default function ConversationInfoScreen() {
               ) : (
                 <Button
                   color={ButtonColor.Light}
-                  onPress={() => setIsEditing(true)}
+                  onPress={() => {
+                    setEditingTitle(selectedConvo.title);
+                    setEditingPhoto(selectedConvo.photo ?? null);
+                    setIsEditing(true);
+                  }}
                 >
                   <Text className="text-zinc-800" weight={FontWeight.Medium}>
                     Edit group
