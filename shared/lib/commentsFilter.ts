@@ -1,7 +1,10 @@
-import { CommentDto, userListFriends } from "@alliance/shared/client";
+import { CommentDto } from "@alliance/shared/client";
 import { hashStringToSeed } from "@alliance/shared/forms/randomutils";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
-import { useQuery } from "@tanstack/react-query";
+import {
+  selectFriendIds,
+  useUserFriendsQuery,
+} from "@alliance/shared/lib/user";
 import { useMemo } from "react";
 
 export enum CommentFilter {
@@ -212,12 +215,9 @@ export function useCommentFilterData({
   enabled: boolean;
   userId: number | undefined;
 }) {
-  const { data: friendIds = [] } = useQuery({
-    queryKey: ["userListFriends", userId],
-    queryFn: () =>
-      userListFriends({ path: { id: userId! } }).then((res) => res.data ?? []),
-    select: (friends) => friends.map((friend) => friend.id),
-    enabled: enabled && userId != null,
+  const { data: friendIds = [] } = useUserFriendsQuery(userId, {
+    select: selectFriendIds,
+    enabled,
   });
 
   const { communities } = useMyCommunities({

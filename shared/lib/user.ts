@@ -34,7 +34,9 @@ export const userQueryKeys = {
   friendStatus: (userId: number) => ["user", userId, "friendStatus"] as const,
   forumPosts: (userId: number) => ["user", userId, "forumPosts"] as const,
   forumComments: (userId: number) => ["user", userId, "forumComments"] as const,
-  friends: (userId: number) => ["user", userId, "friends"] as const,
+  allFriends: () => ["user", "friends"] as const,
+  friends: (userId: number | undefined) =>
+    [...userQueryKeys.allFriends(), userId] as const,
   receivedRequests: () => ["user", "friendRequests", "received"] as const,
   sentRequests: () => ["user", "friendRequests", "sent"] as const,
   messageableUsers: () => ["user", "messageableUsers"] as const,
@@ -98,8 +100,8 @@ type FriendStatusQueryOptions = Omit<
   "queryKey" | "queryFn" | "enabled"
 > & { enabled?: boolean };
 
-type FriendsQueryOptions = Omit<
-  UseQueryOptions<ProfileDto[]>,
+type FriendsQueryOptions<TData> = Omit<
+  UseQueryOptions<ProfileDto[], Error, TData>,
   "queryKey" | "queryFn" | "enabled"
 > & { enabled?: boolean };
 
@@ -179,9 +181,12 @@ export const useUserForumCommentsQuery = (
     enabled: defaultQueryEnabled(userId, options?.enabled),
   });
 
-export const useUserFriendsQuery = (
-  userId: number,
-  options?: FriendsQueryOptions,
+export const selectFriendIds = (friends: ProfileDto[]) =>
+  friends.map((friend) => friend.id);
+
+export const useUserFriendsQuery = <TData = ProfileDto[]>(
+  userId: number | undefined,
+  options?: FriendsQueryOptions<TData>,
 ) =>
   useQuery({
     ...options,
@@ -273,9 +278,6 @@ export const useSendFriendRequestMutation = (
         status: "pending",
         didReceiveRequest: false,
       });
-      void queryClient.invalidateQueries({
-        queryKey: userQueryKeys.friends(targetUserId),
-      });
       invalidateFriendLists(queryClient);
       options?.onSuccess?.(data, targetUserId, onMutateResult, context);
     },
@@ -298,7 +300,7 @@ export const useAcceptFriendRequestMutation = (
         didReceiveRequest: false,
       });
       void queryClient.invalidateQueries({
-        queryKey: userQueryKeys.friends(requesterId),
+        queryKey: userQueryKeys.allFriends(),
       });
       void queryClient.invalidateQueries({
         queryKey: userQueryKeys.messageableUsers(),
@@ -346,7 +348,7 @@ export const useRemoveFriendMutation = (
         didReceiveRequest: false,
       });
       void queryClient.invalidateQueries({
-        queryKey: userQueryKeys.friends(targetUserId),
+        queryKey: userQueryKeys.allFriends(),
       });
       void queryClient.invalidateQueries({
         queryKey: userQueryKeys.messageableUsers(),
