@@ -5,6 +5,7 @@ import {
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
 import {
+  Check,
   Column,
   Entity,
   JoinColumn,
@@ -23,6 +24,7 @@ export enum FriendStatus {
 }
 
 @Entity()
+@Check(`"requesterId" <> "addresseeId"`)
 @Unique(["requester", "addressee"]) // a user can only request once per counterpart
 export class Friend {
   // Fields

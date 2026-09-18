@@ -44,6 +44,7 @@ import {
   TestPushNotificationDto,
   UserDeviceDto,
 } from "./dto/device.dto";
+import { FriendGraphEdgeDto } from "./dto/friend-graph.dto";
 import {
   AmbassadorInviteDashboardDto,
   AmbassadorInviteGoalDto,
@@ -407,6 +408,15 @@ export class UserController {
         tags: true,
       })
     ).map((user) => new UserDto(user));
+  }
+
+  @Get("friends/graphEdges")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: [FriendGraphEdgeDto] })
+  async getFriendGraphEdgesAdmin(): Promise<FriendGraphEdgeDto[]> {
+    return (await this.userService.findFriendGraphEdges()).map(
+      (edge) => new FriendGraphEdgeDto(edge),
+    );
   }
 
   @Get("cityCounts")

@@ -8,6 +8,7 @@ export default [
       route("/timeline", "pages/NewTimelinePage.tsx"),
       route("/invites", "pages/InvitesPage.tsx"),
       route("/invites/graph", "pages/InviteGraphPage.tsx"),
+      route("/friend-graph", "pages/FriendGraphPage.tsx"),
       route("/groups", "pages/GroupsPage.tsx"),
       route("/groups/:id", "pages/GroupDetailPage.tsx"),
       route("/clusters", "pages/ClustersPage.tsx"),

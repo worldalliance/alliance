@@ -36,6 +36,7 @@ import {
   SquareMousePointer,
   UserPlus,
   Users,
+  Waypoints,
 } from "lucide-react";
 import React, {
   useCallback,
@@ -376,6 +377,11 @@ const Sidebar: React.FC = () => {
                     to: "/clusters",
                     label: "Clusters",
                     icon: <Network size={16} />,
+                  },
+                  {
+                    to: "/friend-graph",
+                    label: "Friend Graph",
+                    icon: <Waypoints size={16} />,
                   },
                 ].map((link) => (
                   <Link
