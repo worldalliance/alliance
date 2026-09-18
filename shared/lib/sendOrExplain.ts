@@ -1,5 +1,7 @@
+import { ExceptionEvent } from "@alliance/common/analytics";
 import { refusalMessage } from "@alliance/common/errorMessage";
 import { R, type Result } from "@alliance/common/result";
+import { captureException } from "./analytics";
 
 const TRY_AGAIN = "Please try again.";
 
@@ -25,11 +27,16 @@ export async function sendOrExplain<O, T>(params: {
   const sent = await R.fromPromise(send({ ...options, throwOnError: false }));
   if (!sent.ok) {
     console.error(`Failed to ${action}`, sent.error);
+    captureException(ExceptionEvent.RequestFailed, sent.error, { action });
     return R.failure({ title, message: TRY_AGAIN });
   }
   const { data, error, response } = sent.value;
   if (error) {
     console.error(`The server refused to ${action}`, error);
+    captureException(ExceptionEvent.RequestFailed, error, {
+      action,
+      status: response.status,
+    });
     return R.failure({
       title,
       message: refusalMessage({

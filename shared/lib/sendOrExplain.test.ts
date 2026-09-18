@@ -1,5 +1,7 @@
+import { ExceptionEvent } from "@alliance/common/analytics";
 import { conversationUpdateInfo } from "../client";
 import { sendOrExplain } from "./sendOrExplain";
+import { recordExceptions } from "./testing/recordExceptions";
 import { routes, serveApi } from "./testing/serveApi";
 
 let answer: () => Response;
@@ -9,6 +11,8 @@ const api = serveApi(
     "POST /messaging/conversations/:conversationId/update": () => answer(),
   }),
 );
+
+const reported = recordExceptions();
 
 beforeEach(() => {
   jest.spyOn(console, "error").mockImplementation(() => {});
@@ -25,6 +29,7 @@ it("hands back the data when the server answers", async () => {
   answer = () => Response.json({ id: 1 });
 
   expect(await saveGroup()).toEqual({ ok: true, value: { id: 1 } });
+  expect(reported).toEqual([]);
 });
 
 it.each([
@@ -75,4 +80,38 @@ it("reads a refusal the client is configured to throw", async () => {
       message: "Only admins can do that.",
     },
   });
+});
+
+it("reports a refusal with the status it came back with", async () => {
+  answer = () =>
+    Response.json(
+      { statusCode: 403, message: "Only admins can do that." },
+      { status: 403 },
+    );
+
+  await saveGroup();
+
+  expect(reported).toEqual([
+    {
+      event: ExceptionEvent.RequestFailed,
+      error: { statusCode: 403, message: "Only admins can do that." },
+      properties: { action: "save the group", status: 403 },
+    },
+  ]);
+});
+
+it("reports a request that never reached the server", async () => {
+  answer = () => {
+    throw new TypeError("Network request failed");
+  };
+
+  await saveGroup();
+
+  expect(reported).toEqual([
+    {
+      event: ExceptionEvent.RequestFailed,
+      error: expect.any(TypeError),
+      properties: { action: "save the group" },
+    },
+  ]);
 });
