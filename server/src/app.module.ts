@@ -41,6 +41,12 @@ import { UserService } from "./user/user.service";
 import { ALL_THROTTLERS } from "./utils/throttle";
 import { VideosModule } from "./videos/videos.module";
 
+if (!("polyfilled" in Intl.DateTimeFormat)) {
+  throw new Error(
+    "FormatJS isn't loaded. Preload src/intl-timezone.ts, as server/bunfig.toml and the repl script do.",
+  );
+}
+
 @Module({
   imports: [
     ConfigModule.forRoot({

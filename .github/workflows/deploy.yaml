@@ -720,6 +720,7 @@ jobs:
             bunfig.toml \
             tsconfig.base.json \
             server/package.json \
+            server/bunfig.toml \
             server/tsconfig.json \
             server/src \
             server/migrations \
