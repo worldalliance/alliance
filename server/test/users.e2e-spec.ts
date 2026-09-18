@@ -610,6 +610,12 @@ describe("Users (e2e)", () => {
     expect(res.status).toBe(400);
   });
 
+  it("User cannot be made friends with themself automatically", async () => {
+    await expect(
+      userService.makeFriendsAutomated(userAId, userAId),
+    ).rejects.toThrow(/violates check constraint/);
+  });
+
   /* ──────────────────────────────────────────────────────────── */
 
   it("user can sign and suspend the contract", async () => {
