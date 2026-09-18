@@ -358,7 +358,6 @@ const OnboardingPage = () => {
           <StepLayout
             eyebrow={STEP_EYEBROW[step]}
             className="[--ob-gap:var(--ob-gap-tight)]"
-            fill
             footer={
               <FooterNav
                 onBack={goBack}

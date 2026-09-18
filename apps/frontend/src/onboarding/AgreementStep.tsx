@@ -8,7 +8,6 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { Check } from "lucide-react";
 import { href } from "react-router";
 import { riseStyle, StepHeadline, StepNote } from "./chrome";
-import { useScrollFeather } from "./useScrollFeather";
 
 export const AGREEMENT_HEADLINE =
   "Join a group of people who can count on each other.";
@@ -111,11 +110,6 @@ export function AgreementStep({
   /** Only after Join is pressed, which is what the bar confirms. */
   received: boolean;
 }) {
-  // The agreement gives up its own height before anything else does, so the
-  // headline, the field, the faces and the buttons all stay on screen when the
-  // keyboard takes half the viewport.
-  const terms = useScrollFeather<HTMLDivElement>();
-
   return (
     <div className="mx-auto flex min-h-0 w-full flex-1 flex-col justify-center gap-[clamp(0.55rem,1.7vh,1.15rem)]">
       <div className="flex shrink-0 flex-col items-center gap-[clamp(0.4rem,1.2vh,0.85rem)]">
@@ -128,22 +122,13 @@ export function AgreementStep({
         style={riseStyle(3)}
       >
         <div className="flex min-h-0 flex-col overflow-hidden rounded-lg">
-          {/* The minimum belongs to the band, not to the scroller inside it:
-              a scroller that refuses to shrink runs out under the field. */}
           <div
             className={cn(
-              "flex min-h-[3.25rem] flex-1 flex-col py-[clamp(0.6rem,2.2vh,2rem)]",
+              "flex flex-col py-[clamp(0.6rem,2.2vh,2rem)]",
               CARD_SURFACE,
             )}
           >
-            <div
-              ref={terms.ref}
-              style={terms.style}
-              className={cn(
-                "min-h-0 flex-1 overflow-y-auto overscroll-contain text-[length:var(--ob-ui)]",
-                CARD_INLINE_PAD,
-              )}
-            >
+            <div className={cn("text-[length:var(--ob-ui)]", CARD_INLINE_PAD)}>
               <ol className="flex list-none flex-col gap-[clamp(0.4rem,1.15vh,0.85rem)] pl-0">
                 {contract.description.map((item) => (
                   <li key={item.point} className="flex min-w-0 flex-col">
