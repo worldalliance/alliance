@@ -41,6 +41,8 @@ Torn between two tiers, take the lower one. A must-fix the author talks you out 
 
 # Voice
 
+The change is likely AI-generated, so the reader has no context on it. They haven't read the diff and don't know why it exists. Write the summary and every finding so they make sense cold, naming what the code does before what's wrong with it. The exception is `REQUIREMENTS.md` files; assume the reader knows its contents and refer to it without restating it.
+
 Write like one engineer talking to another. The plainest word for each idea, short sentences, no jargon where a common word does the job. A finding the author has to read twice is a finding they skip.
 
 # Output contract
