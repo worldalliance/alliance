@@ -80,6 +80,7 @@ import {
 } from "./ambassador-invite-goal-notification.utils";
 import { CreateAwayRangeDto, UpdateAwayRangeDto } from "./dto/away-range.dto";
 import { RegisterDeviceDto } from "./dto/device.dto";
+import { type FriendGraphEdge } from "./dto/friend-graph.dto";
 import {
   AmbassadorInviteDashboard,
   AmbassadorInviteGoalWithStats,
@@ -2788,6 +2789,17 @@ export class UserService {
       })
       .andWhere("invite.invitingUserId IS NOT NULL")
       .getRawMany<OnetimeInviteEdge>();
+  }
+
+  async findFriendGraphEdges(): Promise<FriendGraphEdge[]> {
+    return this.friendRepository
+      .createQueryBuilder("friend")
+      .select("friend.requesterId", "userAId")
+      .addSelect("friend.addresseeId", "userBId")
+      .where("friend.status = :status", { status: FriendStatus.Accepted })
+      .andWhere(sqlUserHasActiveContractAt("friend.requesterId", "NOW()"))
+      .andWhere(sqlUserHasActiveContractAt("friend.addresseeId", "NOW()"))
+      .getRawMany<FriendGraphEdge>();
   }
 
   async findOnetimeInvites(communityId: number): Promise<OnetimeInvite[]> {

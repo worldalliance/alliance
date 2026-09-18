@@ -957,6 +957,11 @@ export type FriendStatusDto = {
     didReceiveRequest: boolean;
 };
 
+export type FriendGraphEdgeDto = {
+    userAId: number;
+    userBId: number;
+};
+
 export type UserCityCountDto = {
     cityId?: number | null;
     cityName?: string | null;
@@ -4900,6 +4905,28 @@ export type UserListForGraphAdminResponses = {
 };
 
 export type UserListForGraphAdminResponse = UserListForGraphAdminResponses[keyof UserListForGraphAdminResponses];
+
+export type UserGetFriendGraphEdgesAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/friends/graphEdges';
+};
+
+export type UserGetFriendGraphEdgesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserGetFriendGraphEdgesAdminError = UserGetFriendGraphEdgesAdminErrors[keyof UserGetFriendGraphEdgesAdminErrors];
+
+export type UserGetFriendGraphEdgesAdminResponses = {
+    200: Array<FriendGraphEdgeDto>;
+};
+
+export type UserGetFriendGraphEdgesAdminResponse = UserGetFriendGraphEdgesAdminResponses[keyof UserGetFriendGraphEdgesAdminResponses];
 
 export type UserCityCountsAdminData = {
     body?: never;
