@@ -77,7 +77,7 @@ jobs:
 
           Typecheck and tests for \`common\` passed in the job that opened this. CI hasn't run: close and reopen this pull request to start it.
           EOF
-          superseded=$(gh pr list --state open --json number,headRefName \
+          superseded=$(gh pr list --state open --limit 1000 --json number,headRefName \
             --jq '.[] | select(.headRefName | startswith("tzdb/")) | select(.headRefName != env.BRANCH) | .number')
           for pr in $superseded; do
             gh pr close "$pr" --comment "Superseded by tzdb $VERSION."

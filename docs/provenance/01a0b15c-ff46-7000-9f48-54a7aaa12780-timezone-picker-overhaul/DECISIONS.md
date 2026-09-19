@@ -69,7 +69,8 @@ sections below this one carry the reasoning each step implements.
     branch, open or closed, is skipped, so a closed one means the release was
     declined. A branch a failed run left without a pull request gets
     force-pushed over. Opening a pull request closes any other open one on a
-    `tzdb/` branch, which the new release supersedes.
+    `tzdb/` branch, which the new release supersedes. It lists up to 1000 open
+    pull requests, since the default of 30 would miss an old `tzdb/` one.
 
 ## Catalog
 
