@@ -4,6 +4,11 @@ import {
   conversationRemoveParticipant,
   conversationUpdateInfo,
 } from "@alliance/shared/client";
+import {
+  canEditConversationInfo,
+  isConversationAdmin,
+} from "@alliance/shared/lib/messages";
+import { sendOrExplain } from "@alliance/shared/lib/sendOrExplain";
 import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
 import { router, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, Edit, Plus, X } from "lucide-react-native";
@@ -53,18 +58,9 @@ export default function ConversationInfoScreen() {
     [conversations, convoId],
   );
 
-  const participantMe = useMemo(
-    () =>
-      selectedConvo?.participants.find(
-        (participant) => participant.user.id === user?.id,
-      ) ?? null,
-    [selectedConvo, user?.id],
-  );
-
-  const isAdmin =
-    participantMe?.role === "admin" || participantMe?.role === "owner";
+  const isAdmin = isConversationAdmin(selectedConvo, user?.id);
   const isGroup = selectedConvo?.type === "multiple";
-  const isCommunity = selectedConvo?.type === "community";
+  const canEditInfo = canEditConversationInfo(selectedConvo, user?.id);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState("");
@@ -73,12 +69,11 @@ export default function ConversationInfoScreen() {
   const [search, setSearch] = useState("");
   const { data: messageableUsers = [], isLoading: loadingUsers } =
     useMessageableUsersQuery({ enabled: isGroup && isAdmin });
+  const canPickPhoto = canEditInfo && isEditing;
 
   useEffect(() => {
-    if (!selectedConvo || isEditing) return;
-    setEditingTitle(selectedConvo.title);
-    setEditingPhoto(selectedConvo.photo ?? null);
-  }, [selectedConvo, isEditing]);
+    if (!canEditInfo) setIsEditing(false);
+  }, [canEditInfo]);
 
   const filteredUsers = useMemo(() => {
     if (!search.trim()) return [];
@@ -96,7 +91,6 @@ export default function ConversationInfoScreen() {
   }, [messageableUsers, search, selectedConvo?.participants]);
 
   const handlePickPhoto = useCallback(async () => {
-    if (!isAdmin || !isGroup) return;
     const picked = await pickImageDataUri();
     if (!picked.ok) {
       console.error("Failed to pick image", picked.error);
@@ -106,30 +100,29 @@ export default function ConversationInfoScreen() {
     if (picked.value) {
       setEditingPhoto(picked.value.dataUri);
     }
-  }, [isAdmin, isGroup]);
+  }, []);
 
   const handleSave = useCallback(async () => {
     if (!selectedConvo || saving) return;
     setSaving(true);
-    try {
-      const response = await conversationUpdateInfo({
+    const saved = await sendOrExplain({
+      send: conversationUpdateInfo,
+      options: {
         path: { conversationId: selectedConvo.id },
         body: {
           title: editingTitle,
           photo: editingPhoto ?? undefined,
         },
-      });
-      if (response.data) {
-        setConversations((prev) =>
-          mergeConversationUpdate(prev, response.data!),
-        );
-        setIsEditing(false);
-      }
-    } catch (error) {
-      console.error("Failed to update conversation", error);
-    } finally {
-      setSaving(false);
+      },
+      action: "save the group",
+    });
+    setSaving(false);
+    if (!saved.ok) {
+      Alert.alert(saved.error.title, saved.error.message);
+      return;
     }
+    setConversations((prev) => mergeConversationUpdate(prev, saved.value));
+    setIsEditing(false);
   }, [editingPhoto, editingTitle, saving, selectedConvo, setConversations]);
 
   const handleAddMember = useCallback(
@@ -211,16 +204,13 @@ export default function ConversationInfoScreen() {
 
       <KeyboardAwareScrollView>
         <View className="items-center px-4 pt-6">
-          <TouchableOpacity
-            onPress={handlePickPhoto}
-            disabled={!isAdmin || !isGroup}
-          >
+          <TouchableOpacity onPress={handlePickPhoto} disabled={!canPickPhoto}>
             <ProfileImage
-              pfp={editingPhoto ?? selectedConvo.photo ?? null}
+              pfp={isEditing ? editingPhoto : (selectedConvo.photo ?? null)}
               size="huge"
               className="mb-3"
             />
-            {isAdmin && isGroup && (
+            {canPickPhoto && (
               <View className="absolute bottom-1 right-1 bg-black/70 rounded-full p-1.5">
                 <Edit size={14} color="#fff" />
               </View>
@@ -252,14 +242,14 @@ export default function ConversationInfoScreen() {
             </Text>
           )}
 
-          {isAdmin && isGroup && (
+          {canEditInfo && (
             <View className="flex-row items-center gap-2 mt-4">
               {isEditing ? (
                 <>
                   <Button
                     color={ButtonColor.Green}
                     onPress={handleSave}
-                    disabled={saving}
+                    disabled={saving || !editingTitle.trim()}
                   >
                     <Text className="text-white" weight={FontWeight.Medium}>
                       {saving ? "Saving..." : "Save"}
@@ -277,7 +267,11 @@ export default function ConversationInfoScreen() {
               ) : (
                 <Button
                   color={ButtonColor.Light}
-                  onPress={() => setIsEditing(true)}
+                  onPress={() => {
+                    setEditingTitle(selectedConvo.title);
+                    setEditingPhoto(selectedConvo.photo ?? null);
+                    setIsEditing(true);
+                  }}
                 >
                   <Text className="text-zinc-800" weight={FontWeight.Medium}>
                     Edit group
@@ -336,7 +330,7 @@ export default function ConversationInfoScreen() {
           </View>
         </View>
 
-        {isAdmin && isGroup && !isCommunity && (
+        {isAdmin && isGroup && (
           <View className="px-4 mt-6">
             <Text className="text-sm text-zinc-500 mb-2">Add member</Text>
             <View className="border border-zinc-200 rounded-lg px-3 py-2 flex-row items-center gap-2">

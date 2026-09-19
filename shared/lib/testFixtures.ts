@@ -1,9 +1,17 @@
 import { milliseconds } from "date-fns";
-import type { ActionEventDto, UserActionStatusDto } from "../client/types.gen";
+import type {
+  ActionEventDto,
+  ConversationDto,
+  ConversationType,
+  ParticipantDto,
+  ParticipantRole,
+  ProfileDto,
+  UserActionStatusDto,
+} from "../client/types.gen";
 import type { ActionWithAwayStatus } from "./actionUtils";
 
-// Test-only fixture builders shared by the unit suites. The defaults
-// describe a plain assigned todo in the member-action phase, expressed
+// Test-only fixture builders shared by the unit suites. The action builders
+// default to a plain assigned todo in the member-action phase, expressed
 // through the server-computed `viewer` status; `makeLegacyAction` re-expresses
 // the same action through the legacy flat fields (no `viewer`) for the
 // fallback paths.
@@ -101,4 +109,43 @@ export function makeLegacyAction(
     events: [makeEvent()],
     ...overrides,
   });
+}
+
+function makeProfile(id: number): ProfileDto {
+  return {
+    id,
+    admin: false,
+    staff: false,
+    ambassador: false,
+    profilePicture: null,
+    profileDescription: null,
+    anonymous: false,
+    displayName: `User ${id}`,
+    hasActiveContract: true,
+    isCommunityLeader: false,
+  };
+}
+
+export function makeParticipant(
+  id: number,
+  role: ParticipantRole,
+): ParticipantDto {
+  return { role, state: "joined", user: makeProfile(id) };
+}
+
+export function makeConversation(
+  participants: ParticipantDto[],
+  type: ConversationType = "multiple",
+): ConversationDto {
+  return {
+    id: 1,
+    createdAt: "2026-09-17T00:00:00.000Z",
+    updatedAt: "2026-09-17T00:00:00.000Z",
+    type,
+    title: "Group",
+    participants,
+    hasUnread: false,
+    isMessageRequest: false,
+    unreadCount: 0,
+  };
 }

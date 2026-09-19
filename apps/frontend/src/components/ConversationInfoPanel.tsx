@@ -1,4 +1,3 @@
-import { errorMessage } from "@alliance/common/errorMessage";
 import {
   conversationAddParticipant,
   ConversationDto,
@@ -7,6 +6,11 @@ import {
   conversationUpdateInfo,
   ProfileDto,
 } from "@alliance/shared/client";
+import { canEditConversationInfo } from "@alliance/shared/lib/messages";
+import {
+  type Explanation,
+  sendOrExplain,
+} from "@alliance/shared/lib/sendOrExplain";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -40,20 +44,18 @@ const ConversationInfoPanel = ({
 }: ConversationInfoPanelProps) => {
   const { user } = useAuth();
 
-  const participantMe = useMemo(() => {
-    return selectedConvo.participants.find(
-      (participant) => participant.user.id === user?.id,
-    );
-  }, [selectedConvo, user]);
+  const canEditInfo = canEditConversationInfo(selectedConvo, user?.id);
 
   const [addMemberSearch, setAddMemberSearch] = useState<string>("");
   const [isEditingGroup, setIsEditingGroup] = useState<boolean>(false);
-  const [editingGroupTitle, setEditingGroupTitle] = useState<string>(
-    selectedConvo.title,
-  );
+  const [editingGroupTitle, setEditingGroupTitle] = useState<string>("");
   const [editingGroupPhoto, setEditingGroupPhoto] = useState<string | null>(
-    selectedConvo.photo ?? null,
+    null,
   );
+
+  useEffect(() => {
+    if (!canEditInfo) setIsEditingGroup(false);
+  }, [canEditInfo]);
 
   const handleRemoveParticipant = async (userId: number) => {
     const response = await conversationRemoveParticipant({
@@ -89,6 +91,8 @@ const ConversationInfoPanel = ({
   const [justAddedMember, setJustAddedMember] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const showExplanation = ({ title, message }: Explanation) =>
+    setError(`${title}. ${message}`);
 
   useEffect(() => {
     if (justAddedMember) {
@@ -103,25 +107,25 @@ const ConversationInfoPanel = ({
 
   const handleSaveGroup = async () => {
     setIsSaving(true);
-    const response = await conversationUpdateInfo({
-      path: { conversationId: selectedConvo.id },
-      body: { title: editingGroupTitle, photo: editingGroupPhoto ?? undefined },
+    const saved = await sendOrExplain({
+      send: conversationUpdateInfo,
+      options: {
+        path: { conversationId: selectedConvo.id },
+        body: {
+          title: editingGroupTitle,
+          photo: editingGroupPhoto ?? undefined,
+        },
+      },
+      action: "save the group",
     });
-    if (response.data) {
-      handleConversationUpdated(response.data);
-      setIsEditingGroup(false);
-      setEditingGroupTitle(response.data.title);
-      setEditingGroupPhoto(response.data.photo ?? null);
-      setError(null);
-    } else {
-      setError(
-        errorMessage({
-          error: response.error,
-          fallback: "Failed to save group",
-        }),
-      );
-    }
     setIsSaving(false);
+    if (!saved.ok) {
+      showExplanation(saved.error);
+      return;
+    }
+    handleConversationUpdated(saved.value);
+    setIsEditingGroup(false);
+    setError(null);
   };
 
   const handleAddMember = async (userId: number) => {
@@ -180,14 +184,13 @@ const ConversationInfoPanel = ({
               <input
                 type="text"
                 className="font-semibold text-xl text-center active:outline-none focus:outline-none border-b border-zinc-200 pb-1"
-                disabled={selectedConvo.type === "community"}
                 value={editingGroupTitle}
                 onChange={(e) => setEditingGroupTitle(e.target.value)}
               />
               <Button
                 color={ButtonColor.Stone}
                 onClick={handleSaveGroup}
-                disabled={isSaving}
+                disabled={isSaving || !editingGroupTitle.trim()}
                 className="flex flex-row items-center gap-x-2"
               >
                 {isSaving && <Spinner size="small" />}
@@ -199,13 +202,19 @@ const ConversationInfoPanel = ({
               <p className="font-semibold text-xl text-center break-words max-w-[500px]">
                 {selectedConvo.title}
               </p>
-              {selectedConvo.type !== "community" && (
-                <div
+              {canEditInfo && (
+                <button
+                  type="button"
+                  aria-label="Edit group"
                   className="cursor-pointer hover:bg-zinc-100 rounded-md p-2"
-                  onClick={() => setIsEditingGroup(true)}
+                  onClick={() => {
+                    setEditingGroupTitle(selectedConvo.title);
+                    setEditingGroupPhoto(selectedConvo.photo ?? null);
+                    setIsEditingGroup(true);
+                  }}
                 >
                   <SquarePen className="h-4 w-4 text-zinc-500" />
-                </div>
+                </button>
               )}
             </div>
           )}
@@ -270,41 +279,39 @@ const ConversationInfoPanel = ({
                 </Link>
               ))}
             </List>
-            {selectedConvo.type === "multiple" &&
-              (participantMe?.role === "admin" ||
-                participantMe?.role === "owner") && (
-                <Card
-                  style={CardStyle.LightGrey}
-                  className="w-full !p-0 relative group"
-                >
-                  <input
-                    type="text"
-                    placeholder="Add member..."
-                    className="text-zinc-800 !bg-transparent p-4 active:outline-none focus:outline-none"
-                    value={addMemberSearch}
-                    onChange={(e) => setAddMemberSearch(e.target.value)}
-                  />
-                  {filteredFriends && filteredFriends.length > 0 && (
-                    <div className="absolute top-full bg-white w-full border border-zinc-200 rounded rounded-t-none">
-                      {filteredFriends.map((friend) => (
-                        <div
-                          key={friend.id}
-                          className="flex flex-row items-center gap-x-3 cursor-pointer hover:bg-zinc-100 p-4 rounded-md"
-                          onClick={() => {
-                            handleAddMember(friend.id);
-                          }}
-                        >
-                          <AvatarProfile
-                            pfp={friend.profilePicture}
-                            size="large"
-                          />
-                          <p>{friend.displayName}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </Card>
-              )}
+            {selectedConvo.type === "multiple" && isAdmin && (
+              <Card
+                style={CardStyle.LightGrey}
+                className="w-full !p-0 relative group"
+              >
+                <input
+                  type="text"
+                  placeholder="Add member..."
+                  className="text-zinc-800 !bg-transparent p-4 active:outline-none focus:outline-none"
+                  value={addMemberSearch}
+                  onChange={(e) => setAddMemberSearch(e.target.value)}
+                />
+                {filteredFriends && filteredFriends.length > 0 && (
+                  <div className="absolute top-full bg-white w-full border border-zinc-200 rounded rounded-t-none">
+                    {filteredFriends.map((friend) => (
+                      <div
+                        key={friend.id}
+                        className="flex flex-row items-center gap-x-3 cursor-pointer hover:bg-zinc-100 p-4 rounded-md"
+                        onClick={() => {
+                          handleAddMember(friend.id);
+                        }}
+                      >
+                        <AvatarProfile
+                          pfp={friend.profilePicture}
+                          size="large"
+                        />
+                        <p>{friend.displayName}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            )}
 
             {selectedConvo.type === "multiple" && (
               <Button

@@ -1,4 +1,12 @@
 import {
+  ConversationType,
+  conversationTypesWithEditableInfo,
+} from "@alliance/common/conversationType";
+import {
+  ParticipantRole,
+  rolesWithAdminPowers,
+} from "@alliance/common/participantRole";
+import {
   BadRequestException,
   ForbiddenException,
   Injectable,
@@ -23,13 +31,9 @@ import {
   UnreadMessageSummary,
   UpdateConversationDto,
 } from "./dto/messaging.dto";
-import { Conversation, ConversationType } from "./entities/conversation.entity";
+import { Conversation } from "./entities/conversation.entity";
 import { Message } from "./entities/message.entity";
-import {
-  Participant,
-  ParticipantRole,
-  ParticipantState,
-} from "./entities/participant.entity";
+import { Participant, ParticipantState } from "./entities/participant.entity";
 import { MessagingEvents } from "./messaging.events";
 
 @Injectable()
@@ -376,7 +380,7 @@ export class ConversationService {
 
     const conversation = await this.conversationRepository.save(
       this.conversationRepository.create({
-        title: dto.title.trim(),
+        title: dto.title,
         photo: photo ?? null,
         type: ConversationType.Multiple,
       }),
@@ -507,18 +511,24 @@ export class ConversationService {
     userId: number,
     dto: UpdateConversationDto,
   ): Promise<ConversationDto> {
+    await this.ensureConversationAdmin(conversationId, userId);
     const conversation = await this.getConversationEntity(conversationId);
 
-    if (conversation.type !== ConversationType.Direct) {
-      conversation.title = dto.title ?? conversation.title;
+    if (!conversationTypesWithEditableInfo[conversation.type]) {
+      throw new ForbiddenException(
+        "This conversation's name and photo cannot be changed.",
+      );
+    }
 
-      if (dto.photo?.startsWith("data:")) {
-        conversation.photo =
-          await this.imagesService.processAndUploadProfileImage(dto.photo);
-      }
+    conversation.title = dto.title ?? conversation.title;
+
+    if (dto.photo?.startsWith("data:")) {
+      conversation.photo =
+        await this.imagesService.processAndUploadProfileImage(dto.photo);
     }
 
     await this.conversationRepository.save(conversation);
+    await this.emitConversationUpdate(conversation);
     return new ConversationDto({ conversation, contextUserId: userId });
   }
 
@@ -1041,9 +1051,7 @@ export class ConversationService {
   }
 
   private isConversationAdmin(participant: Participant): boolean {
-    return [ParticipantRole.Admin, ParticipantRole.Owner].includes(
-      participant.role,
-    );
+    return rolesWithAdminPowers[participant.role];
   }
 
   async getUnreadMessages(userId: number): Promise<number> {

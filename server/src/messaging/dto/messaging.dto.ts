@@ -1,15 +1,17 @@
+import { ConversationType } from "@alliance/common/conversationType";
 import {
   ApiProperty,
   ApiPropertyOptional,
   OmitType,
   PickType,
 } from "@nestjs/swagger";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   ArrayNotEmpty,
   IsArray,
   IsInt,
   IsISO8601,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
@@ -20,10 +22,8 @@ import {
 import { CommunityDto } from "src/community/dto/community.dto";
 import { getImageSource } from "src/images/images.service";
 import { ProfileDto } from "src/user/dto/user.dto";
-import {
-  Conversation,
-  ConversationType,
-} from "../entities/conversation.entity";
+import { trim } from "src/utils/transforms";
+import { Conversation } from "../entities/conversation.entity";
 import { Message } from "../entities/message.entity";
 import { Participant, ParticipantState } from "../entities/participant.entity";
 
@@ -272,7 +272,9 @@ export class CreateDirectConversationDto {
 
 export class CreateGroupConversationDto {
   @ApiProperty({ type: String })
+  @Transform(trim)
   @IsString()
+  @IsNotEmpty()
   @MaxLength(500)
   title: string;
 
@@ -320,7 +322,9 @@ export class CreateMessageDto {
 export class UpdateConversationDto {
   @ApiPropertyOptional({ type: String })
   @IsOptional()
+  @Transform(trim)
   @IsString()
+  @IsNotEmpty()
   @MaxLength(500)
   title?: string;
 

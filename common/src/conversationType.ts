@@ -1,0 +1,14 @@
+export enum ConversationType {
+  Direct = "direct",
+  Multiple = "multiple",
+  Community = "community",
+}
+
+export const conversationTypesWithEditableInfo: Record<
+  ConversationType,
+  boolean
+> = {
+  [ConversationType.Direct]: false,
+  [ConversationType.Multiple]: true,
+  [ConversationType.Community]: false,
+};

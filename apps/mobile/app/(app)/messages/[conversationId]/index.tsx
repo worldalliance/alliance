@@ -8,6 +8,7 @@ import {
   messageSendMessage,
   ProfileDto,
 } from "@alliance/shared/client";
+import { getParticipantState } from "@alliance/shared/lib/messages";
 import { LegendList, LegendListRef } from "@legendapp/list";
 import { milliseconds } from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";
@@ -110,13 +111,10 @@ export default function ConversationScreen() {
     [convoMessages, replyingTo],
   );
 
-  const amInvited = useMemo(() => {
-    if (!selectedConvo || !user) return false;
-    return selectedConvo.participants.some(
-      (participant) =>
-        participant.user.id === user.id && participant.state === "invited",
-    );
-  }, [selectedConvo, user]);
+  const amInvited = useMemo(
+    () => getParticipantState(selectedConvo, user?.id) === "invited",
+    [selectedConvo, user],
+  );
 
   const otherParticipantInvited = useMemo(() => {
     if (!selectedConvo || !user) return null;
