@@ -46,6 +46,7 @@ app-example
 
 /ios/
 /android/
+/modules/*/android/build/
 
 local-ip.ts
 .env

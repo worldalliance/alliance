@@ -7,7 +7,8 @@ node_modules
 coverage
 
 # production
-build
+/apps/admin/build/
+/apps/frontend/build/
 
 # misc
 .DS_Store
@@ -23,8 +24,8 @@ yarn-error.log*
 
 *storybook.log
 
-.terraform
-.terraform.lock.hcl
+/terraform/.terraform/
+/terraform/.terraform.lock.hcl
 
 terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
@@ -33,7 +34,7 @@ terraform/terraform.tfstate.backup
 
 secret.tfvars
 
-nginx-confs/
+/nginx-confs/
 
 server/uploads/
 **/CLAUDE.local.md
@@ -44,7 +45,7 @@ uploads/
 
 .yarn/*
 **/tsconfig.tsbuildinfo
-db_dumps/
+/db_dumps/
 
 citesting/screenshots/
 terraform/.terraform.tfstate.lock.info
@@ -60,8 +61,8 @@ migration_log.txt
 prod_migration_*.txt
 
 # Redesign working files: source comps/fonts and screenshot output
-design/
-scratch/
+/design/
+/scratch/
 
 # Agent working output
 .scratch/
