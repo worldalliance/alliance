@@ -63,6 +63,8 @@ export class NotifPushDispatcherWorker {
             AND n."shouldPush" = true
             AND n."pushClaimedBy" IS NULL
             AND n."pushDispatchedAt" IS NULL
+            -- Mark-all-read also marks scheduled notifications that aren't due yet; those still push.
+            AND (n."readAt" IS NULL OR n."readAt" < n."sendTime")
           ORDER BY n."sendTime" ASC
           LIMIT 500
           FOR UPDATE SKIP LOCKED

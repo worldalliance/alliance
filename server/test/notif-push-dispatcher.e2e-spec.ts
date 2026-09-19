@@ -307,5 +307,41 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
       expect(messages[0].expoPushToken).toBe(oldDevice.expoPushToken);
       expect(messages[0].expoPushToken).not.toBe(newDevice.expoPushToken);
     });
+
+    it("does not push a notification read after it was due", async () => {
+      const user = await createUser();
+      const now = new Date();
+      const oneHourAgo = new Date(now.getTime() - milliseconds({ hours: 1 }));
+      const fiveMinutesAgo = new Date(
+        now.getTime() - milliseconds({ minutes: 5 }),
+      );
+
+      await createDevice(user, oneHourAgo);
+      await createNotification(user, fiveMinutesAgo, { readAt: now });
+
+      const messages = await dispatcher.findNotificationPushes(
+        "test-dispatch-read-after-due",
+      );
+
+      expect(messages).toHaveLength(0);
+    });
+
+    it("pushes a notification read before it was due", async () => {
+      const user = await createUser();
+      const now = new Date();
+      const oneHourAgo = new Date(now.getTime() - milliseconds({ hours: 1 }));
+      const fiveMinutesAgo = new Date(
+        now.getTime() - milliseconds({ minutes: 5 }),
+      );
+
+      await createDevice(user, oneHourAgo);
+      await createNotification(user, fiveMinutesAgo, { readAt: oneHourAgo });
+
+      const messages = await dispatcher.findNotificationPushes(
+        "test-dispatch-read-before-due",
+      );
+
+      expect(messages).toHaveLength(1);
+    });
   });
 });
