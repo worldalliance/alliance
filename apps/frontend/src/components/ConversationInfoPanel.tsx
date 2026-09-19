@@ -116,7 +116,7 @@ const ConversationInfoPanel = ({
   }, [friends, addMemberSearch, selectedConvo.participants]);
 
   const [justAddedMember, setJustAddedMember] = useState<number | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const { busy: isSaving, run: save } = useOneAtATime();
 
   useEffect(() => {
     if (justAddedMember) {
@@ -129,28 +129,27 @@ const ConversationInfoPanel = ({
     }
   }, [justAddedMember]);
 
-  const handleSaveGroup = async () => {
-    setIsSaving(true);
-    setError(null);
-    const saved = await sendOrExplain({
-      send: conversationUpdateInfo,
-      options: {
-        path: { conversationId: selectedConvo.id },
-        body: {
-          title: editingGroupTitle,
-          photo: editingGroupPhoto ?? undefined,
+  const handleSaveGroup = () =>
+    save(async () => {
+      setError(null);
+      const saved = await sendOrExplain({
+        send: conversationUpdateInfo,
+        options: {
+          path: { conversationId: selectedConvo.id },
+          body: {
+            title: editingGroupTitle,
+            photo: editingGroupPhoto ?? undefined,
+          },
         },
-      },
-      action: "save the group",
+        action: "save the group",
+      });
+      if (!saved.ok) {
+        showExplanation(saved.error);
+        return;
+      }
+      handleConversationUpdated(saved.value);
+      setIsEditingGroup(false);
     });
-    setIsSaving(false);
-    if (!saved.ok) {
-      showExplanation(saved.error);
-      return;
-    }
-    handleConversationUpdated(saved.value);
-    setIsEditingGroup(false);
-  };
 
   const handleAddMember = (userId: number) =>
     changeMembers(async () => {

@@ -12,6 +12,7 @@ import {
 import { pending, type Pending } from "@alliance/shared/lib/testing/pending";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -33,6 +34,7 @@ let leaveResponse: () => Response | Promise<Response>;
 let addResponse: () => Response;
 let removeResponse: () => Response;
 let memberChangesSent: number;
+let savesSent: number;
 beforeEach(() => {
   updateResponse = () => new Response(null, { status: 500 });
   leaveResponse = () =>
@@ -43,11 +45,14 @@ beforeEach(() => {
   addResponse = () => new Response(null, { status: 500 });
   removeResponse = () => new Response(null, { status: 500 });
   memberChangesSent = 0;
+  savesSent = 0;
 });
 serveApi(
   routes({
-    "POST /messaging/conversations/:conversationId/update": () =>
-      updateResponse(),
+    "POST /messaging/conversations/:conversationId/update": () => {
+      savesSent++;
+      return updateResponse();
+    },
     "POST /messaging/conversations/:conversationId/leave": () => {
       memberChangesSent++;
       return leaveResponse();
@@ -237,6 +242,22 @@ it("says a save that never reached the server failed", async () => {
   expect(
     screen.getByRole("button", { name: "Save" }).hasAttribute("disabled"),
   ).toBe(false);
+});
+
+it("sends one save for two clicks that land before the re-render", async () => {
+  renderPanel("admin");
+  fireEvent.click(screen.getByRole("button", { name: "Edit group" }));
+  const saveButton = screen.getByRole("button", { name: "Save" });
+
+  act(() => {
+    saveButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    saveButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+
+  expect(
+    await screen.findByText("Couldn't save the group. Please try again."),
+  ).toBeTruthy();
+  expect(savesSent).toBe(1);
 });
 
 it("says why leaving the group failed", async () => {

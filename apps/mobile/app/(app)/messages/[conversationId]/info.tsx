@@ -76,7 +76,7 @@ export default function ConversationInfoScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState("");
   const [editingPhoto, setEditingPhoto] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const { busy: saving, run: save } = useOneAtATime();
   const [search, setSearch] = useState("");
   const { busy: changingMembers, run: changeMembers } = useOneAtATime();
   const { data: messageableUsers = [], isLoading: loadingUsers } =
@@ -115,27 +115,27 @@ export default function ConversationInfoScreen() {
   }, []);
 
   const handleSave = useCallback(async () => {
-    if (!selectedConvo || saving) return;
-    setSaving(true);
-    const saved = await sendOrExplain({
-      send: conversationUpdateInfo,
-      options: {
-        path: { conversationId: selectedConvo.id },
-        body: {
-          title: editingTitle,
-          photo: editingPhoto ?? undefined,
+    if (!selectedConvo) return;
+    await save(async () => {
+      const saved = await sendOrExplain({
+        send: conversationUpdateInfo,
+        options: {
+          path: { conversationId: selectedConvo.id },
+          body: {
+            title: editingTitle,
+            photo: editingPhoto ?? undefined,
+          },
         },
-      },
-      action: "save the group",
+        action: "save the group",
+      });
+      if (!saved.ok) {
+        explain(saved.error);
+        return;
+      }
+      setConversations((prev) => mergeConversationUpdate(prev, saved.value));
+      setIsEditing(false);
     });
-    setSaving(false);
-    if (!saved.ok) {
-      explain(saved.error);
-      return;
-    }
-    setConversations((prev) => mergeConversationUpdate(prev, saved.value));
-    setIsEditing(false);
-  }, [editingPhoto, editingTitle, saving, selectedConvo, setConversations]);
+  }, [editingPhoto, editingTitle, save, selectedConvo, setConversations]);
 
   const handleAddMember = useCallback(
     async (userId: number) => {
