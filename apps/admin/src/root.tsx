@@ -1,5 +1,6 @@
 import { client } from "@alliance/shared/client/client.gen";
 import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
+import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
 import { AuthoredLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
@@ -23,6 +24,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       gcTime: milliseconds({ days: 1 }),
+      retry: retryUnlessRefused(3),
     },
   },
 });
