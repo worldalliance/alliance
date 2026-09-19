@@ -162,6 +162,9 @@ jobs:
           name: admin-build
           path: apps/admin/admin-build.zip
 
+  actionlint:
+    uses: ./.github/workflows/actionlint.yaml
+
   format-check:
     uses: ./.github/workflows/format-check.yaml
 
@@ -201,6 +204,7 @@ jobs:
       - typecheck
       - format-check
       - gitignore-check
+      - actionlint
       - visual-regression
     steps:
       - run: echo "all checks passed"
@@ -609,7 +613,6 @@ jobs:
           fi
 
           SHA="${{ github.sha }}"
-          ENV_NAME="${{ env.env_name }}"
           BASELINE_DIR="${{ github.workspace }}/screenshots/baseline"
           CURRENT_DIR="${{ github.workspace }}/screenshots/current"
           TOKEN="${{ secrets.SLACK_BOT_TOKEN }}"

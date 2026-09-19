@@ -73,6 +73,7 @@ jobs:
           fi
           # Choose copy by whether a matching build was captured.
           # $'...' emits newlines.
+          # shellcheck disable=SC2016
           if [ "$NEEDS_CAPTURE" = "true" ]; then
             HEADLINE=$':iphone: *Mobile native fingerprint changed* — a new App Store / Play Store build is required.\nThese changes cannot reach existing installs over OTA.'
             FOOTER='At build time run `bun run fingerprint:capture <.ipa> <.aab>` (pass both platform artifacts; then they can be deleted). Once the build is live in the store, run `bun run fingerprint:promote` and commit/deploy promptly to clear this.'
@@ -89,6 +90,7 @@ jobs:
             # Commit messages are multi-line; Slack links get the subject only.
             SOURCE=$(printf '*Commit:* <%s|%s %s>' "$COMMIT_URL" "${SHA:0:7}" "$(esc "${COMMIT_MESSAGE%%$'\n'*}")")
           fi
+          # shellcheck disable=SC2016
           MSG=$(printf '%s\n\n%s\n*Branch:* `%s`\n```\n%s\n```\n%s' \
             "$HEADLINE" "$SOURCE" "$BRANCH" "$DETAILS" "$FOOTER")
           PAYLOAD=$(jq -n --arg text "$MSG" '{text: $text}')
