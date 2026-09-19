@@ -67,7 +67,9 @@ sections below this one carry the reasoning each step implements.
     typechecks and tests `common`, and opens a pull request on
     `tzdb/<version>`. A release that already has a pull request on that
     branch, open or closed, is skipped, so a closed one means the release was
-    declined. A branch a failed run left without a pull request gets
+    declined. Runs don't overlap, or an older one's close step could take a
+    newer one's pull request with it and the skip rule would retire that
+    release. A branch a failed run left without a pull request gets
     force-pushed over. Opening a pull request closes any other open one on a
     `tzdb/` branch, which the new release supersedes, with a comment linking
     the pull request that replaced it, and deletes its branch. A composite
