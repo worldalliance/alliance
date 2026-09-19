@@ -68,3 +68,6 @@ scratch/
 
 # Onboarding design exports: comps referenced by nothing, 9.4MB
 apps/frontend/src/assets/redesign/onboarding/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
