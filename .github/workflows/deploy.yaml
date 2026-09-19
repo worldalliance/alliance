@@ -809,6 +809,7 @@ jobs:
             export USE_CLOUDFRONT=${{ vars.USE_CLOUDFRONT }}
             export CLOUDFRONT_DOMAIN=${{ secrets.CLOUDFRONT_DOMAIN }}
             export SLACK_WEBHOOK_URL=${{ secrets.SLACK_WEBHOOK_URL }}
+            export SLACK_FIREHOSE_WEBHOOK_URL=${{ secrets.SLACK_FIREHOSE_WEBHOOK_URL }}
             export DB_CA_CERT="${{ secrets.DB_CA_CERT }}"
             export PANGRAM_API_KEY=${{ secrets.PANGRAM_API_KEY }}
             export PANGRAM_API_URL=https://text.api.pangram.com/v3

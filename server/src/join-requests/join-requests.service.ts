@@ -1,7 +1,7 @@
 import type { Result } from "@alliance/common/result";
 import { Injectable } from "@nestjs/common";
 import { EventType } from "src/eventlog/event-log.entity";
-import { EventLogService } from "src/eventlog/eventlog.service";
+import { EventLogService, SlackChannel } from "src/eventlog/eventlog.service";
 import { escapeSlackText } from "src/eventlog/slack-format";
 import { CreateJoinRequestDto } from "./dto/join-request.dto";
 
@@ -26,6 +26,18 @@ export function formatSlackMessage(dto: CreateJoinRequestDto): string {
   ].join("\n");
 }
 
+function isRandomToken(text: string): boolean {
+  const trimmed = text.trim();
+  return (
+    /^[A-Za-z]{12,}$/.test(trimmed) &&
+    (trimmed.slice(1).match(/[A-Z]/g)?.length ?? 0) >= 3
+  );
+}
+
+export function isGibberishSpam(dto: CreateJoinRequestDto): boolean {
+  return isRandomToken(dto.name) && isRandomToken(dto.reason);
+}
+
 @Injectable()
 export class JoinRequestsService {
   constructor(private readonly eventLogService: EventLogService) {}
@@ -35,6 +47,9 @@ export class JoinRequestsService {
       type: EventType.JoinRequest,
       message: `Join request from ${dto.name} (${dto.email}): ${dto.reason}`,
       slackMessage: formatSlackMessage(dto),
+      slackChannel: isGibberishSpam(dto)
+        ? SlackChannel.Firehose
+        : SlackChannel.Alerts,
       blob: { name: dto.name, email: dto.email, reason: dto.reason },
       userId: null,
     });

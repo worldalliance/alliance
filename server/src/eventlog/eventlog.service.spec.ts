@@ -2,7 +2,7 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import type { Repository } from "src/utils/Repository";
 import { EventLog, EventType } from "./event-log.entity";
 import { EventLogEvents } from "./eventlog.events";
-import { EventLogService } from "./eventlog.service";
+import { EventLogService, SlackChannel } from "./eventlog.service";
 import { escapeSlackText } from "./slack-format";
 
 describe("EventLogService.sendMessage", () => {
@@ -17,6 +17,7 @@ describe("EventLogService.sendMessage", () => {
   const originalEnv = {
     NODE_ENV: process.env.NODE_ENV,
     SLACK_WEBHOOK_URL: process.env.SLACK_WEBHOOK_URL,
+    SLACK_FIREHOSE_WEBHOOK_URL: process.env.SLACK_FIREHOSE_WEBHOOK_URL,
   };
   const originalFetch = globalThis.fetch;
 
@@ -54,6 +55,8 @@ describe("EventLogService.sendMessage", () => {
     globalThis.fetch = originalFetch;
     process.env.NODE_ENV = originalEnv.NODE_ENV;
     process.env.SLACK_WEBHOOK_URL = originalEnv.SLACK_WEBHOOK_URL;
+    process.env.SLACK_FIREHOSE_WEBHOOK_URL =
+      originalEnv.SLACK_FIREHOSE_WEBHOOK_URL;
   });
 
   it("returns failure and does not forward when the event-log write fails", async () => {
@@ -134,6 +137,24 @@ describe("EventLogService.sendMessage", () => {
       expect.objectContaining({ message: "New comment on action 42" }),
     );
     expect(postedSlackText()).toBe(slackMessage);
+  });
+
+  it("posts to the firehose webhook when slackChannel is Firehose", async () => {
+    process.env.SLACK_FIREHOSE_WEBHOOK_URL =
+      "https://hooks.slack.example/services/FIREHOSE";
+
+    await service.sendMessage({
+      type: EventType.JoinRequest,
+      message: "Join request",
+      slackChannel: SlackChannel.Firehose,
+      blob: null,
+      userId: null,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://hooks.slack.example/services/FIREHOSE",
+      expect.anything(),
+    );
   });
 
   it("does not post to Slack for types excluded from SEND_TO_SLACK", async () => {
