@@ -1,5 +1,6 @@
 import {
   ConversationType,
+  conversationTypesUsersCanLeave,
   conversationTypesWithEditableInfo,
   conversationTypesWithEditableMembers,
 } from "@alliance/common/conversationType";
@@ -633,6 +634,9 @@ export class ConversationService {
     userId: number,
   ): Promise<ConversationDto> {
     const participant = await this.getParticipantOrFail(conversationId, userId);
+    if (!conversationTypesUsersCanLeave[participant.conversation.type]) {
+      throw new ForbiddenException("This conversation can't be left.");
+    }
     await this.participantRepository.remove(participant);
     const updatedConversation =
       await this.getConversationEntity(conversationId);

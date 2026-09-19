@@ -40,7 +40,7 @@ describe("ConversationController (e2e)", () => {
 
   const createCommunityChat = async () => {
     const { user: leader, token: leaderToken } = await createUserAndToken();
-    const { user: member } = await createUserAndToken();
+    const { user: member, token: memberToken } = await createUserAndToken();
 
     const community = await communityRepo.save(
       communityRepo.create({
@@ -58,7 +58,7 @@ describe("ConversationController (e2e)", () => {
       .get(ConversationService)
       .syncCommunityConversationMembers(community.id);
 
-    return { conversation, leaderToken, member };
+    return { conversation, leaderToken, member, memberToken };
   };
 
   beforeAll(async () => {
@@ -664,6 +664,58 @@ describe("ConversationController (e2e)", () => {
         .expect(403);
 
       expect(await participantIds(conversation.id)).toEqual(before);
+    });
+
+    it("refuses a member leaving", async () => {
+      const { conversation, memberToken } = await createCommunityChat();
+      const before = await participantIds(conversation.id);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversation.id}/leave`)
+        .set("Authorization", `Bearer ${memberToken}`)
+        .expect(403);
+
+      expect(await participantIds(conversation.id)).toEqual(before);
+    });
+  });
+
+  describe("leaving", () => {
+    it("lets a member leave a group", async () => {
+      const { user: member, token: memberToken } = await createUserAndToken();
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "Leavable Chat", participantIds: [member.id] })
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${createResponse.body.id}/leave`)
+        .set("Authorization", `Bearer ${memberToken}`)
+        .expect(201);
+
+      const stillThere = await participantRepo.findOne({
+        where: {
+          conversation: { id: createResponse.body.id },
+          user: { id: member.id },
+        },
+      });
+      expect(stillThere).toBeNull();
+    });
+
+    it("refuses leaving a direct conversation", async () => {
+      const { user: targetUser } = await createUserAndToken();
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/direct")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ targetUserId: targetUser.id })
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${createResponse.body.id}/leave`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(403);
     });
   });
 
