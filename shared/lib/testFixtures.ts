@@ -111,7 +111,7 @@ export function makeLegacyAction(
   });
 }
 
-function makeProfile(id: number): ProfileDto {
+export function makeProfile(id: number): ProfileDto {
   return {
     id,
     admin: false,

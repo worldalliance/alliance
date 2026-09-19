@@ -14,7 +14,9 @@ import {
   type Explanation,
   sendOrExplain,
 } from "@alliance/shared/lib/sendOrExplain";
+import { useOneAtATime } from "@alliance/shared/lib/useOneAtATime";
 import { CardStyle } from "@alliance/shared/styles/card";
+import { cn } from "@alliance/shared/styles/util";
 import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -54,28 +56,48 @@ const ConversationInfoPanel = ({
   const [editingGroupPhoto, setEditingGroupPhoto] = useState<string | null>(
     null,
   );
+  const { busy: changingMembers, run: changeMembers } = useOneAtATime();
+  const [error, setError] = useState<string | null>(null);
+  const showExplanation = ({ title, message }: Explanation) =>
+    setError(`${title}. ${message}`);
 
   useEffect(() => {
     if (!canEditInfo) setIsEditingGroup(false);
   }, [canEditInfo]);
 
-  const handleRemoveParticipant = async (userId: number) => {
-    const response = await conversationRemoveParticipant({
-      path: { conversationId: selectedConvo.id, userId },
+  const handleRemoveParticipant = (userId: number) =>
+    changeMembers(async () => {
+      setError(null);
+      const removed = await sendOrExplain({
+        send: conversationRemoveParticipant,
+        options: {
+          path: { conversationId: selectedConvo.id, userId },
+        },
+        action: "remove that member",
+      });
+      if (!removed.ok) {
+        showExplanation(removed.error);
+        return;
+      }
+      handleConversationUpdated(removed.value);
     });
-    if (response.data) {
-      handleConversationUpdated(response.data);
-    }
-  };
 
-  const handleLeaveGroup = async () => {
-    const response = await conversationLeave({
-      path: { conversationId: selectedConvo.id },
-    });
-    if (response.data) {
+  const handleLeaveGroup = () =>
+    changeMembers(async () => {
+      setError(null);
+      const left = await sendOrExplain({
+        send: conversationLeave,
+        options: {
+          path: { conversationId: selectedConvo.id },
+        },
+        action: "leave the group",
+      });
+      if (!left.ok) {
+        showExplanation(left.error);
+        return;
+      }
       onLeave();
-    }
-  };
+    });
 
   const filteredFriends = useMemo(() => {
     if (addMemberSearch.length === 0) return [];
@@ -92,9 +114,6 @@ const ConversationInfoPanel = ({
 
   const [justAddedMember, setJustAddedMember] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const showExplanation = ({ title, message }: Explanation) =>
-    setError(`${title}. ${message}`);
 
   useEffect(() => {
     if (justAddedMember) {
@@ -109,6 +128,7 @@ const ConversationInfoPanel = ({
 
   const handleSaveGroup = async () => {
     setIsSaving(true);
+    setError(null);
     const saved = await sendOrExplain({
       send: conversationUpdateInfo,
       options: {
@@ -127,25 +147,36 @@ const ConversationInfoPanel = ({
     }
     handleConversationUpdated(saved.value);
     setIsEditingGroup(false);
-    setError(null);
   };
 
-  const handleAddMember = async (userId: number) => {
-    const response = await conversationAddParticipant({
-      path: { conversationId: selectedConvo.id },
-      body: { userId },
-    });
-    if (response.data) {
-      handleConversationUpdated(response.data);
+  const handleAddMember = (userId: number) =>
+    changeMembers(async () => {
+      setError(null);
+      const added = await sendOrExplain({
+        send: conversationAddParticipant,
+        options: {
+          path: { conversationId: selectedConvo.id },
+          body: { userId },
+        },
+        action: "add that member",
+      });
+      if (!added.ok) {
+        showExplanation(added.error);
+        return;
+      }
+      handleConversationUpdated(added.value);
       setAddMemberSearch("");
       setJustAddedMember(userId);
-    }
-  };
+    });
 
   return (
-    <div className="overflow-y-auto my-auto">
-      <div className="flex-1 relative flex flex-col items-center justify-center">
-        {error && <p className="text-red-500">{error}</p>}
+    <div className="flex flex-col min-h-0 my-auto">
+      {error && (
+        <p role="alert" className="text-red-500 px-14 py-2 text-center">
+          {error}
+        </p>
+      )}
+      <div className="overflow-y-auto relative flex flex-col items-center">
         <div className="flex flex-col items-center px-8 w-full gap-y-2 mt-20">
           {isEditingGroup ? (
             <ImageEditor
@@ -273,6 +304,7 @@ const ConversationInfoPanel = ({
                       onClick={() => {
                         handleRemoveParticipant(participant.user.id);
                       }}
+                      disabled={changingMembers}
                       className="hover:!bg-zinc-200 !px-2 mr-4"
                     >
                       <X size="18" color="var(--color-red-400)" />
@@ -298,7 +330,11 @@ const ConversationInfoPanel = ({
                     {filteredFriends.map((friend) => (
                       <div
                         key={friend.id}
-                        className="flex flex-row items-center gap-x-3 cursor-pointer hover:bg-zinc-100 p-4 rounded-md"
+                        className={cn(
+                          "flex flex-row items-center gap-x-3 cursor-pointer hover:bg-zinc-100 p-4 rounded-md",
+                          changingMembers &&
+                            "opacity-50 cursor-not-allowed pointer-events-none",
+                        )}
                         onClick={() => {
                           handleAddMember(friend.id);
                         }}
@@ -319,6 +355,7 @@ const ConversationInfoPanel = ({
               <Button
                 color={ButtonColor.Transparent}
                 onClick={handleLeaveGroup}
+                disabled={changingMembers}
                 className="self-end text-zinc-500"
               >
                 Leave group
