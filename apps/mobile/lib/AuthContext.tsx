@@ -27,6 +27,7 @@ import {
   closeSession,
   openSession,
   retryClearTokens,
+  type SessionTokens,
   setAuthHeader,
 } from "./session";
 import {
@@ -59,6 +60,13 @@ const clearSessionTokens = () =>
     SecureStorageKey.REFRESH_TOKEN,
   ]);
 
+export const saveSessionTokens = async ({ access, refresh }: SessionTokens) => {
+  await SecureStorage.setItem(SecureStorageKey.ACCESS_TOKEN, access);
+  if (refresh) {
+    await SecureStorage.setItem(SecureStorageKey.REFRESH_TOKEN, refresh);
+  }
+};
+
 const askToRetryLogout = () =>
   new Promise<boolean>((resolve) =>
     Alert.alert(
@@ -82,11 +90,6 @@ export const AuthProvider: React.FC<
   const router = useRouter();
 
   useBackfillTimeZone(user);
-
-  const saveTokens = useCallback(async (access: string, refresh: string) => {
-    await SecureStorage.setItem(SecureStorageKey.ACCESS_TOKEN, access);
-    await SecureStorage.setItem(SecureStorageKey.REFRESH_TOKEN, refresh);
-  }, []);
 
   const clearTokensAndReport = useCallback(async () => {
     const cleared = await clearSessionTokens();
@@ -180,7 +183,7 @@ export const AuthProvider: React.FC<
 
       const opened = await openSession({
         tokens,
-        saveTokens,
+        saveTokens: saveSessionTokens,
         clearTokens: clearTokensAndReport,
       });
       if (!opened.ok) {
@@ -194,7 +197,7 @@ export const AuthProvider: React.FC<
         name: user.name,
       });
     },
-    [saveTokens, clearTokensAndReport, posthog, queryClient],
+    [clearTokensAndReport, posthog, queryClient],
   );
 
   const login = useCallback(

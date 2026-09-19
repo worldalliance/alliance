@@ -16,7 +16,7 @@ import OtaUpdateGate from "../components/OtaUpdateGate";
 import PushNotificationResponseHandler from "../components/PushNotificationResponseHandler";
 import UpdateAvailableModal from "../components/UpdateAvailableModal";
 import "../global.css";
-import { AuthProvider } from "../lib/AuthContext";
+import { AuthProvider, saveSessionTokens } from "../lib/AuthContext";
 import PostHogProvider from "../lib/PostHogProvider";
 import { SecureStorage, SecureStorageKey } from "../lib/SecureStorage";
 import { getApiUrl } from "../lib/config";
@@ -70,15 +70,7 @@ export default function RootLayout() {
         fetch: fetch.bind(globalThis),
         getRefreshToken: () =>
           SecureStorage.getItem(SecureStorageKey.REFRESH_TOKEN),
-        saveTokens: async ({ access, refresh }) => {
-          await SecureStorage.setItem(SecureStorageKey.ACCESS_TOKEN, access);
-          if (refresh) {
-            await SecureStorage.setItem(
-              SecureStorageKey.REFRESH_TOKEN,
-              refresh,
-            );
-          }
-        },
+        saveTokens: saveSessionTokens,
       }),
       throwOnError: true,
     });

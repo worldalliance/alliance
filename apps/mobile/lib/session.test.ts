@@ -13,6 +13,7 @@ import {
   openSession,
   refreshingFetch,
   retryClearTokens,
+  type SessionTokens,
   setAuthHeader,
 } from "./session";
 
@@ -25,7 +26,7 @@ const tokens = { access_token: "access", refresh_token: "refresh" };
 const cleared = async (): Promise<Result<void, Error>> => R.success(undefined);
 
 const start = ({
-  saveTokens = mock(async (_access: string, _refresh: string) => {}),
+  saveTokens = mock(async (_tokens: SessionTokens) => {}),
   clearTokens = mock(cleared),
 } = {}) => {
   return {
@@ -61,7 +62,10 @@ it("saves the tokens once the profile has loaded", async () => {
 
   expect(result.ok && result.value.id).toBe(7);
   expect(sent).toHaveBeenCalledWith("Bearer access");
-  expect(saveTokens).toHaveBeenCalledWith("access", "refresh");
+  expect(saveTokens).toHaveBeenCalledWith({
+    access: "access",
+    refresh: "refresh",
+  });
 });
 
 it("saves nothing and drops the header when the profile is refused", async () => {

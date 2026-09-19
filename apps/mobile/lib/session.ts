@@ -8,6 +8,8 @@ import {
 } from "@alliance/shared/client";
 import { client } from "@alliance/shared/client/client.gen";
 
+export type SessionTokens = { access: string; refresh: string | undefined };
+
 export function setAuthHeader(accessToken: string | undefined): void {
   client.setConfig({
     ...client.getConfig(),
@@ -69,10 +71,7 @@ export async function retryClearTokens(params: {
 export function refreshingFetch(params: {
   fetch: (request: Request) => Promise<Response>;
   getRefreshToken: () => Promise<string | null>;
-  saveTokens: (tokens: {
-    access: string;
-    refresh: string | undefined;
-  }) => Promise<void>;
+  saveTokens: (tokens: SessionTokens) => Promise<void>;
 }): (request: Request) => Promise<Response> {
   return async (req) => {
     const retryReq = req.clone();
@@ -104,7 +103,7 @@ export function refreshingFetch(params: {
 
 export async function openSession(params: {
   tokens: SessionTokensDto;
-  saveTokens: (access: string, refresh: string) => Promise<void>;
+  saveTokens: (tokens: SessionTokens) => Promise<void>;
   clearTokens: () => Promise<Result<void, Error>>;
 }): Promise<Result<UserDto, Error>> {
   const { tokens } = params;
@@ -124,7 +123,10 @@ export async function openSession(params: {
   // Tokens saved before the profile loads outlive a sign-in the member was
   // told had failed, and sign them in on the next launch.
   const saved = await R.fromPromise(
-    params.saveTokens(tokens.access_token, tokens.refresh_token),
+    params.saveTokens({
+      access: tokens.access_token,
+      refresh: tokens.refresh_token,
+    }),
   );
   if (!saved.ok) {
     setAuthHeader(undefined);
