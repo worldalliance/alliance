@@ -114,29 +114,33 @@ it.each([
     "send",
     useSendFriendRequestMutation,
     { status: "pending", didReceiveRequest: false },
-    requestLists,
+    allLists,
+    true,
   ],
   [
     "accept",
     useAcceptFriendRequestMutation,
     { status: "accepted", didReceiveRequest: false },
     allLists,
+    false,
   ],
   [
     "decline",
     useDeclineFriendRequestMutation,
     { status: "none", didReceiveRequest: false },
     requestLists,
+    false,
   ],
   [
     "remove",
     useRemoveFriendMutation,
     { status: "none", didReceiveRequest: false },
     allLists,
+    false,
   ],
 ] as const)(
   "a successful %s sets the friend status and refetches its lists",
-  async (_, useMutation, status, lists) => {
+  async (_, useMutation, status, lists, refetchesStatus) => {
     const { client, wrapper } = queryWrapper();
     for (const key of allLists) client.setQueryData(key, []);
 
@@ -146,6 +150,10 @@ it.each([
     expect(
       client.getQueryData(userQueryKeys.friendStatus(ALLOWED_USER)),
     ).toEqual(status);
+    expect(
+      client.getQueryState(userQueryKeys.friendStatus(ALLOWED_USER))
+        ?.isInvalidated,
+    ).toBe(refetchesStatus);
     for (const key of allLists) {
       expect(client.getQueryState(key)?.isInvalidated).toBe(
         lists.includes(key),
