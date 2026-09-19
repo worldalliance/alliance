@@ -21,7 +21,12 @@ import {
   UserDto,
 } from "../../../shared/client";
 import { clearGuestToken, getStoredGuestToken } from "./guestSession";
-import { SecureStorage, SecureStorageKey } from "./SecureStorage";
+import {
+  getAccessToken,
+  getRefreshToken,
+  SecureStorage,
+  SecureStorageKey,
+} from "./SecureStorage";
 import {
   clearStoredTokens,
   closeSession,
@@ -100,9 +105,6 @@ export const AuthProvider: React.FC<
     return cleared;
   }, []);
 
-  const getAccessToken = useCallback(async () => {
-    return await SecureStorage.getItem(SecureStorageKey.ACCESS_TOKEN);
-  }, []);
   const clearSession = useCallback(() => {
     const closed = closeSession(clearTokensAndReport);
     queryClient.clear();
@@ -143,10 +145,11 @@ export const AuthProvider: React.FC<
         // before this call returns.
         const restored = await restoreSession({
           getAccessToken,
+          getRefreshToken,
           dropSession: async () => {
             captureEvent(AnalyticsEvent.AuthFailedToRefresh);
-            // No redirect: a first launch has no session to lose, and the app
-            // layout already sends an unauthenticated visitor to onboarding.
+            // No redirect: the app layout already sends an unauthenticated
+            // visitor to onboarding.
             await clearSession();
           },
           reportFailure: (error) =>
@@ -159,7 +162,7 @@ export const AuthProvider: React.FC<
         setIsLoading(false);
       }
     })();
-  }, [clearSession, getAccessToken]);
+  }, [clearSession]);
 
   useEffect(() => {
     let cancelled = false;

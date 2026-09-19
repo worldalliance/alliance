@@ -126,13 +126,15 @@ export async function loadSessionUser(): Promise<Result<UserDto, Error>> {
     : R.failure(new Error(`Failed to load the session: ${response.status}`));
 }
 
-/** Loads the stored session's member at launch. Drops the session only when
- * the server refuses it; any other failure keeps the tokens for the next try. */
+/** Loads the stored session's member at launch, resolving to no member when
+ * no token is stored. Drops the session only when the server refuses it; any
+ * other failure keeps the tokens for the next try. */
 export async function restoreSession(params: {
   getAccessToken: () => Promise<string | null>;
+  getRefreshToken: () => Promise<string | null>;
   dropSession: () => Promise<void>;
   reportFailure: (error: Error) => void;
-}): Promise<Result<UserDto, Error>> {
+}): Promise<Result<UserDto | undefined, Error>> {
   const fail = (error: Error) => {
     console.error("failed to load the session at launch", error);
     if (!isNetworkFailure(error)) {
@@ -146,6 +148,15 @@ export async function restoreSession(params: {
   }
   if (accessToken.value) {
     setAuthHeader(accessToken.value);
+  } else {
+    const refreshToken = await R.fromPromise(params.getRefreshToken());
+    if (!refreshToken.ok) {
+      fail(refreshToken.error);
+      return refreshToken;
+    }
+    if (!refreshToken.value) {
+      return R.success(undefined);
+    }
   }
   const loaded = await loadSessionUser();
   if (loaded.ok) {

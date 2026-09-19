@@ -20,3 +20,8 @@ export const SecureStorage = {
   deleteItem: (key: SecureStorageKey, options?: SecureStoreOptions) =>
     secureStorageBackend.deleteItem(key, options),
 };
+
+export const getAccessToken = () =>
+  SecureStorage.getItem(SecureStorageKey.ACCESS_TOKEN);
+export const getRefreshToken = () =>
+  SecureStorage.getItem(SecureStorageKey.REFRESH_TOKEN);

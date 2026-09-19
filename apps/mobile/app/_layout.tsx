@@ -18,7 +18,7 @@ import UpdateAvailableModal from "../components/UpdateAvailableModal";
 import "../global.css";
 import { AuthProvider, saveSessionTokens } from "../lib/AuthContext";
 import PostHogProvider from "../lib/PostHogProvider";
-import { SecureStorage, SecureStorageKey } from "../lib/SecureStorage";
+import { getRefreshToken } from "../lib/SecureStorage";
 import { getApiUrl } from "../lib/config";
 import { refreshingFetch } from "../lib/session";
 import "../lib/setImmediatePolyfill";
@@ -68,8 +68,7 @@ export default function RootLayout() {
       baseUrl: getApiUrl(),
       fetch: refreshingFetch({
         fetch: fetch.bind(globalThis),
-        getRefreshToken: () =>
-          SecureStorage.getItem(SecureStorageKey.REFRESH_TOKEN),
+        getRefreshToken,
         saveTokens: saveSessionTokens,
       }),
       throwOnError: true,

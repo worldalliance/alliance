@@ -345,7 +345,8 @@ it("tells a server error apart from a refusal", async () => {
 });
 
 const restore = ({
-  getAccessToken = async (): Promise<string | null> => null,
+  getAccessToken = async (): Promise<string | null> => "stored",
+  getRefreshToken = async (): Promise<string | null> => null,
 } = {}) => {
   const dropSession = mock(async () => {});
   const reportFailure = mock((_error: Error) => {});
@@ -354,7 +355,12 @@ const restore = ({
     dropSession,
     reportFailure,
     consoleError,
-    restored: restoreSession({ getAccessToken, dropSession, reportFailure }),
+    restored: restoreSession({
+      getAccessToken,
+      getRefreshToken,
+      dropSession,
+      reportFailure,
+    }),
   };
 };
 
@@ -386,6 +392,37 @@ it("keeps and reports a session whose stored token it couldn't read", async () =
   expect(reportFailure).toHaveBeenCalledWith(unreadable);
 });
 
+it("loads the member with a stored access token when the refresh token can't be read", async () => {
+  api.throwingOnRefusal({
+    "GET /auth/me": () => Response.json({ user: { id: 1 } }),
+  });
+  const getRefreshToken = mock(async (): Promise<string | null> => {
+    throw new Error("keychain unavailable");
+  });
+
+  const { reportFailure, restored } = restore({ getRefreshToken });
+  const result = await restored;
+
+  expect(result.ok ? result.value?.id : undefined).toBe(1);
+  expect(getRefreshToken).not.toHaveBeenCalled();
+  expect(reportFailure).not.toHaveBeenCalled();
+});
+
+it("keeps and reports a session whose stored refresh token it couldn't read", async () => {
+  const unreadable = new Error("keychain unavailable");
+
+  const { dropSession, reportFailure, restored } = restore({
+    getAccessToken: async () => null,
+    getRefreshToken: async () => {
+      throw unreadable;
+    },
+  });
+  expect((await restored).ok).toBe(false);
+
+  expect(dropSession).not.toHaveBeenCalled();
+  expect(reportFailure).toHaveBeenCalledWith(unreadable);
+});
+
 it("restores the member without dropping the session", async () => {
   api.throwingOnRefusal({
     "GET /auth/me": () => Response.json({ user: { id: 1 } }),
@@ -394,7 +431,7 @@ it("restores the member without dropping the session", async () => {
   const { dropSession, reportFailure, restored } = restore();
   const result = await restored;
 
-  expect(result.ok ? result.value.id : undefined).toBe(1);
+  expect(result.ok ? result.value?.id : undefined).toBe(1);
   expect(dropSession).not.toHaveBeenCalled();
   expect(reportFailure).not.toHaveBeenCalled();
 });
@@ -408,6 +445,21 @@ it("drops a session the server refuses at launch", async () => {
   await restored;
 
   expect(dropSession).toHaveBeenCalled();
+  expect(reportFailure).not.toHaveBeenCalled();
+});
+
+it("settles on no member without asking the server when no token is stored", async () => {
+  const me = mock(() => new Response(null, { status: 503 }));
+  api.throwingOnRefusal({ "GET /auth/me": me });
+
+  const { dropSession, reportFailure, restored } = restore({
+    getAccessToken: async () => null,
+  });
+  const result = await restored;
+
+  expect(result.ok && result.value).toBeUndefined();
+  expect(me).not.toHaveBeenCalled();
+  expect(dropSession).not.toHaveBeenCalled();
   expect(reportFailure).not.toHaveBeenCalled();
 });
 
@@ -516,6 +568,38 @@ it("reports a session whose refresh the server refuses", async () => {
   expect(loaded.ok ? undefined : loaded.error).toBeInstanceOf(
     SessionRefusedError,
   );
+});
+
+it("restores the member from a stored refresh token alone", async () => {
+  serveRefreshing({
+    "GET /auth/me": expiredMe,
+    "POST /auth/refresh": () =>
+      Response.json({ access_token: "refreshed", refresh_token: "next" }),
+  });
+
+  const { dropSession, restored } = restore({
+    getAccessToken: async () => null,
+    getRefreshToken: async () => "refresh",
+  });
+  const result = await restored;
+
+  expect(result.ok ? result.value?.id : undefined).toBe(1);
+  expect(dropSession).not.toHaveBeenCalled();
+});
+
+it("drops a stored refresh token the server refuses at launch", async () => {
+  serveRefreshing({
+    "GET /auth/me": expiredMe,
+    "POST /auth/refresh": () => new Response(null, { status: 401 }),
+  });
+
+  const { dropSession, restored } = restore({
+    getAccessToken: async () => null,
+    getRefreshToken: async () => "refresh",
+  });
+  await restored;
+
+  expect(dropSession).toHaveBeenCalled();
 });
 
 it("reports a session with no refresh token to try", async () => {
