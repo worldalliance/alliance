@@ -1,6 +1,7 @@
 import {
   canEditConversationInfo,
   canEditConversationMembers,
+  canLeaveConversation,
   getParticipantState,
   isConversationAdmin,
 } from "./messages";
@@ -153,5 +154,23 @@ describe("canEditConversationMembers", () => {
 
   it("is false with no conversation", () => {
     expect(canEditConversationMembers(null, 1)).toBe(false);
+  });
+});
+
+describe("canLeaveConversation", () => {
+  it("is true for a group", () => {
+    expect(canLeaveConversation(makeConversation([]))).toBe(true);
+  });
+
+  it("is false for a community chat", () => {
+    expect(canLeaveConversation(makeConversation([], "community"))).toBe(false);
+  });
+
+  it("is false for a direct conversation", () => {
+    expect(canLeaveConversation(makeConversation([], "direct"))).toBe(false);
+  });
+
+  it("is false with no conversation", () => {
+    expect(canLeaveConversation(null)).toBe(false);
   });
 });

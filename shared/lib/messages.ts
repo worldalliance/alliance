@@ -1,4 +1,5 @@
 import {
+  conversationTypesUsersCanLeave,
   conversationTypesWithEditableInfo,
   conversationTypesWithEditableMembers,
 } from "@alliance/common/conversationType";
@@ -92,6 +93,11 @@ export const canEditConversationMembers = (
   !!conversation &&
   conversationTypesWithEditableMembers[conversation.type] &&
   isConversationAdmin(conversation, userId);
+
+export const canLeaveConversation = (
+  conversation: ConversationDto | null | undefined,
+): boolean =>
+  !!conversation && conversationTypesUsersCanLeave[conversation.type];
 
 export const filterConversationsByParticipantState = (
   conversations: ConversationDto[] | null | undefined,

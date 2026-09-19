@@ -21,3 +21,10 @@ export const conversationTypesWithEditableMembers: Record<
   [ConversationType.Multiple]: true,
   [ConversationType.Community]: false,
 };
+
+export const conversationTypesUsersCanLeave: Record<ConversationType, boolean> =
+  {
+    [ConversationType.Direct]: false,
+    [ConversationType.Multiple]: true,
+    [ConversationType.Community]: false,
+  };

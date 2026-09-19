@@ -10,6 +10,7 @@ import {
 import {
   canEditConversationInfo,
   canEditConversationMembers,
+  canLeaveConversation,
 } from "@alliance/shared/lib/messages";
 import {
   type Explanation,
@@ -360,7 +361,7 @@ const ConversationInfoPanel = ({
               </Card>
             )}
 
-            {selectedConvo.type === "multiple" && (
+            {canLeaveConversation(selectedConvo) && (
               <Button
                 color={ButtonColor.Transparent}
                 onClick={handleLeaveGroup}

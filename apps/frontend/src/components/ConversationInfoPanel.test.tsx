@@ -357,3 +357,9 @@ it("passes on the group the server returns after an add, and clears the search",
   await waitFor(() => expect(updated).toHaveBeenCalledWith(withTheFriend));
   expect(search.getAttribute("value")).toBe("");
 });
+
+it("keeps the leave button from a community chat member", () => {
+  renderPanel("member", "community");
+
+  expect(screen.queryByRole("button", { name: "Leave group" })).toBeNull();
+});

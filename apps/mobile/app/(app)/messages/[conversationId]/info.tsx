@@ -8,6 +8,7 @@ import {
 import {
   canEditConversationInfo,
   canEditConversationMembers,
+  canLeaveConversation,
 } from "@alliance/shared/lib/messages";
 import {
   type Explanation,
@@ -68,9 +69,9 @@ export default function ConversationInfoScreen() {
     [conversations, convoId],
   );
 
-  const isGroup = selectedConvo?.type === "multiple";
   const canEditInfo = canEditConversationInfo(selectedConvo, user?.id);
   const canEditMembers = canEditConversationMembers(selectedConvo, user?.id);
+  const canLeave = canLeaveConversation(selectedConvo);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState("");
@@ -426,7 +427,7 @@ export default function ConversationInfoScreen() {
           </View>
         )}
 
-        {isGroup && (
+        {canLeave && (
           <View className="px-4 mt-8 mb-12">
             <Button
               color={ButtonColor.Light}
