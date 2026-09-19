@@ -6,8 +6,6 @@ import {
   ConversationDto,
   conversationMarkRead,
   MessageDto,
-  ProfileDto,
-  userListMessageableUsers,
 } from "@alliance/shared/client";
 import {
   buildGroupConversationTitle,
@@ -20,6 +18,7 @@ import {
   sortConversations,
   updateConversationsForLastMessage,
 } from "@alliance/shared/lib/messages";
+import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -91,22 +90,13 @@ const MessagesPage = () => {
     onConversationUpdated: handleConversationUpdated,
   });
 
-  const [messageableUsers, setMessageableUsers] = useState<ProfileDto[] | null>(
-    null,
-  );
+  const { data: messageableUsers = null } = useMessageableUsersQuery({
+    enabled: !!user,
+  });
 
   const [messagesOpen, setMessagesOpen] = useState(!!selectedConvoId);
   const isSmall = useMediaQuery("(max-width: 768px)");
   const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    userListMessageableUsers().then((response) => {
-      if (response.data) {
-        setMessageableUsers(response.data);
-      }
-    });
-  }, [user]);
 
   const [creatingNewConversation, setCreatingNewConversation] = useState(false);
 
