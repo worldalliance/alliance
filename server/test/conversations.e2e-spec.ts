@@ -472,6 +472,37 @@ describe("ConversationController (e2e)", () => {
       expect(added?.state).toBe(ParticipantState.Invited);
     });
 
+    it("adds a member once when adds for them arrive together", async () => {
+      const { user: member } = await createUserAndToken();
+      const { user: newcomer } = await createUserAndToken();
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "Doubled Chat", participantIds: [member.id] })
+        .expect(201);
+
+      const add = () =>
+        request(ctx.app.getHttpServer())
+          .post(
+            `/messaging/conversations/${createResponse.body.id}/participants`,
+          )
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({ userId: newcomer.id });
+      const responses = await Promise.all(Array.from({ length: 10 }, add));
+
+      expect(responses.map((response) => response.status)).toEqual(
+        Array(10).fill(201),
+      );
+      const rows = await participantRepo.count({
+        where: {
+          conversation: { id: createResponse.body.id },
+          user: { id: newcomer.id },
+        },
+      });
+      expect(rows).toBe(1);
+    });
+
     it("lets the owner remove a member", async () => {
       const { user: member } = await createUserAndToken();
 

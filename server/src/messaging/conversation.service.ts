@@ -22,6 +22,7 @@ import { Friend, FriendStatus } from "src/user/entities/friend.entity";
 import { User } from "src/user/entities/user.entity";
 import { UserEvents, type FriendsAcceptedPayload } from "src/user/user.events";
 import type { Relations } from "src/utils/Repository";
+import { isUniqueViolation } from "src/utils/db-errors";
 import { In, type EntityManager, type Repository } from "typeorm";
 import {
   ConversationAdminSummaryDto,
@@ -569,7 +570,12 @@ export class ConversationService {
       joinedAt: new Date(),
     });
 
-    await this.participantRepository.save(participant);
+    try {
+      await this.participantRepository.save(participant);
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      return this.buildConversationDto(conversationId, actingUserId);
+    }
     await this.touchConversation(conversationId);
     const updatedConversation =
       await this.getConversationEntity(conversationId);
