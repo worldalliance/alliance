@@ -2998,6 +2998,7 @@ export function FormBuilder(props: FormBuilderProps) {
                     userId={resolvedPreviewUserId}
                     user={resolvedPreviewUser}
                     adminPreviewUserId={resolvedPreviewUserId}
+                    showVariableError
                     initialPageIndex={selectedPageIndex}
                   />
                 </div>

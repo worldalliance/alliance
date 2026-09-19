@@ -574,7 +574,9 @@ function fieldContextFor(params: {
 export type FormVisibility = {
   visibilityExtras: ConditionExtras;
   effectiveFormData: Record<string, FormValue>;
-  variableValues: ReturnType<typeof resolveVariableValues>;
+  variableValues: ReadonlyMap<string, string>;
+  /** Set when any variable fails, which blocks the whole form. */
+  variablesError: string | null;
   isElementCurrentlyVisible: (element: AnyField | DisplayBlock) => boolean;
   fieldContext: FieldConditionContext;
   visiblePageIndices: number[];
@@ -685,7 +687,7 @@ export function useFormVisibility(args: {
     [schema],
   );
 
-  const variableValues = useMemo(
+  const variables = useMemo(
     () =>
       resolveVariableValues(schema.variables, {
         answers: effectiveFormData,
@@ -761,7 +763,8 @@ export function useFormVisibility(args: {
   return {
     visibilityExtras,
     effectiveFormData,
-    variableValues,
+    variableValues: variables.ok ? variables.value : new Map(),
+    variablesError: variables.ok ? null : variables.error,
     isElementCurrentlyVisible,
     fieldContext,
     visiblePageIndices,

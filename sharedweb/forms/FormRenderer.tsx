@@ -125,6 +125,8 @@ type FormRendererProps = {
   fieldLabelRightContent?: Record<string, React.ReactNode>;
   /** When set, previousAnswer blocks fetch this user's responses via the admin all-responses endpoint. */
   adminPreviewUserId?: string | number;
+  /** For admins: name the variable that blocks the form in place of the refresh advice. */
+  showVariableError?: boolean;
   /** When true, fetch the logged-in viewer's saved city for userLocation display blocks. */
   loadCurrentUserLocation?: boolean;
   onSubmit: ((data: SubmitFormDto) => Promise<boolean>) | null; // null for admin preview
@@ -170,6 +172,7 @@ const FormRenderer = ({
   syncDraftToServer,
   fieldLabelRightContent,
   adminPreviewUserId,
+  showVariableError,
   loadCurrentUserLocation,
   actionId,
   initialPageIndex,
@@ -521,6 +524,7 @@ const FormRenderer = ({
     visibilityExtras,
     effectiveFormData,
     variableValues,
+    variablesError,
     isElementCurrentlyVisible,
     fieldContext,
     visiblePageIndices,
@@ -1082,14 +1086,18 @@ const FormRenderer = ({
     );
   };
 
-  if (unknownKind) {
+  if (unknownKind || variablesError !== null) {
     return (
       <div
         className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800"
         role="alert"
       >
         <p className="font-medium">This form can&apos;t be displayed</p>
-        <p className="mt-1 text-sm">Refreshing the page may fix the issue.</p>
+        <p className="mt-1 text-sm">
+          {showVariableError && variablesError !== null
+            ? variablesError
+            : "Refreshing the page may fix the issue."}
+        </p>
       </div>
     );
   }

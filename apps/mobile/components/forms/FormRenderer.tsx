@@ -919,6 +919,7 @@ const FormRenderer = ({
     visibilityExtras,
     effectiveFormData,
     variableValues,
+    variablesError,
     isElementCurrentlyVisible,
     fieldContext,
     visiblePageIndices,
@@ -1158,7 +1159,7 @@ const FormRenderer = ({
     return false;
   };
 
-  if (unknownKind) {
+  if (unknownKind || variablesError !== null) {
     return (
       <View className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
         <Text weight={FontWeight.Medium} className="text-amber-800">

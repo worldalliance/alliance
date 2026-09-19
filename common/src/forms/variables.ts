@@ -335,15 +335,15 @@ export function evaluateVariable(
   return R.success(formatVariableValue(value.value));
 }
 
-/** Evaluation failures render as empty rather than aborting the form. */
 export function resolveVariableValues(
   variables: readonly FormVariable[] | undefined,
   context: VariableResolutionContext,
-): Map<string, string> {
+): Result<Map<string, string>, string> {
   const values = new Map<string, string>();
   for (const variable of variables ?? []) {
     const result = evaluateVariable(variable, context);
-    values.set(variable.name, result.ok ? result.value : "");
+    if (!result.ok) return R.failure(`#{${variable.name}}: ${result.error}`);
+    values.set(variable.name, result.value);
   }
-  return values;
+  return R.success(values);
 }

@@ -23,7 +23,7 @@ import {
   interpolateFieldText,
   interpolateOutputFieldBlock,
 } from "@alliance/common/forms/variable-interpolation";
-import { resolveVariableValues } from "@alliance/common/forms/variables";
+import { evaluateVariable } from "@alliance/common/forms/variables";
 import {
   isElementCurrentlyVisible,
   type VisibilityValidatorResults,
@@ -306,10 +306,16 @@ export const resolveOutputItems = ({
 
   // Substituted here rather than in each renderer so every consumer of an item
   // — label, override and field text alike — sees the same resolved values.
-  const variableValues = resolveVariableValues(schema.variables, {
+  const variableContext = {
     answers,
     fields: variableInputFieldsById(collectVariableInputFields(schema)),
-  });
+  };
+  // A variable that fails stays out, so its `#{name}` shows as written.
+  const variableValues = new Map<string, string>();
+  for (const variable of schema.variables ?? []) {
+    const value = evaluateVariable(variable, variableContext);
+    if (value.ok) variableValues.set(variable.name, value.value);
+  }
 
   const items = allBlocks
     .filter((block) =>

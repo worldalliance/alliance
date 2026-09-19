@@ -62,7 +62,10 @@ const form: FormSchema = {
   outputViews: [],
 };
 
-const renderPreview = (schema: FormSchema) =>
+const renderPreview = (
+  schema: FormSchema,
+  props: Partial<React.ComponentProps<typeof FormRenderer>> = {},
+) =>
   render(
     <QueryClientProvider client={new QueryClient()}>
       <MemoryRouter>
@@ -73,6 +76,7 @@ const renderPreview = (schema: FormSchema) =>
             formSnapshotId={null}
             actionId={1}
             onSubmit={null}
+            {...props}
           />
         </SiteAppProvider>
       </MemoryRouter>
@@ -126,6 +130,27 @@ const noteMarkedOptional = () =>
     );
 
 describe("FormRenderer preview", () => {
+  it("won't draw a form whose variable fails", () => {
+    renderPreview({
+      ...form,
+      variables: [{ name: "total", inputs: {}, formula: "this" }],
+    });
+
+    expect(screen.getByText("This form can't be displayed")).toBeTruthy();
+    expect(
+      screen.getByText("Refreshing the page may fix the issue."),
+    ).toBeTruthy();
+  });
+
+  it("names the failing variable when asked to", () => {
+    renderPreview(
+      { ...form, variables: [{ name: "total", inputs: {}, formula: "this" }] },
+      { showVariableError: true },
+    );
+
+    expect(screen.getByText('#{total}: "this" is not allowed.')).toBeTruthy();
+  });
+
   it("validates every page, going back to the first invalid one", async () => {
     renderPreview(form);
 

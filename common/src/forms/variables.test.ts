@@ -465,16 +465,24 @@ describe("resolveVariableValues", () => {
       [variable(), variable({ name: "half", formula: "input1 / 2" })],
       { answers: { qty: 10 }, fields: numberInputs("qty") },
     );
-    expect(values.get("total")).toBe("20");
-    expect(values.get("half")).toBe("5");
+    expect(values).toEqual({
+      ok: true,
+      value: new Map([
+        ["total", "20"],
+        ["half", "5"],
+      ]),
+    });
   });
 
-  it("renders nothing for a variable that cannot compile", () => {
-    const values = resolveVariableValues([variable({ formula: "this" })], {
-      answers: { qty: 1 },
-      fields: numberInputs("qty"),
+  it("fails, naming the variable, when one cannot compile", () => {
+    const values = resolveVariableValues(
+      [variable(), variable({ name: "broken", formula: "this" })],
+      { answers: { qty: 1 }, fields: numberInputs("qty") },
+    );
+    expect(values).toEqual({
+      ok: false,
+      error: expect.stringMatching(/^#\{broken\}: /),
     });
-    expect(values.get("total")).toBe("");
   });
 });
 

@@ -33,6 +33,37 @@ const resolve = (schema: FormSchema) =>
   });
 
 describe("resolveOutputItems interpolates variables", () => {
+  it("leaves a failed variable's reference as written and still fills the rest", () => {
+    const [item] = resolve(
+      schemaWithVariable({
+        pages: [
+          {
+            id: "p1",
+            fields: [numberField("qty", "#{broken} of #{total} units")],
+          },
+        ],
+        outputViews: [
+          {
+            id: "v1",
+            type: "default",
+            blocks: [{ id: "ob1", fieldId: "qty", showLabel: true }],
+          },
+        ],
+        variables: [
+          { name: "broken", inputs: {}, formula: "this" },
+          {
+            name: "total",
+            inputs: { input1: { kind: "field", fieldId: "qty" } },
+            formula: "input1 * 2",
+          },
+        ],
+      }),
+    ).items;
+
+    if (item.type !== "field") throw new Error("expected a field item");
+    expect(item.label).toBe("#{broken} of 42 units");
+  });
+
   it("substitutes into a label override", () => {
     const [item] = resolve(
       schemaWithVariable({

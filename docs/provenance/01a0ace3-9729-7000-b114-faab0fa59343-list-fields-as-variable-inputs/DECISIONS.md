@@ -64,6 +64,10 @@ The existing renderability check already rejects a formula that ends on an array
 
 The list resolver lives in `common/src/forms/variables.ts`, which the web and mobile forms (`shared/useFormRenderer.ts`) and saved-response output (`shared/outputrenderer.ts`) already share. Variables recompute whenever answers or visibility extras change.
 
+Any variable that fails blocks the form, web and mobile, with the "This form can't be displayed" notice an unknown element or condition kind already gets. I read "the variable calculation fails" as every failure `evaluateVariable` reports, not only an unknown input kind. The evaluator doesn't throw on answers, and the admin rejects a formula that doesn't compile, so a failure in practice means a newer admin saved something this build can't calculate. Answers typed mid-form shouldn't trip it. The admin's builder preview renders the unsaved schema, so it shows the same notice while a formula there is broken. There the notice names the variable and why it failed, in place of the line about refreshing, which can't fix a draft. The admin's response views get the same message, since refreshing can't fix a formula in a response's snapshot either.
+
+An output view isn't blocked. A variable that fails there gets no value, so its `#{name}` shows as written, which is what `interpolateVariables` already does for a name it has no value for. The other variables still fill in. One bad variable in a feed card shouldn't hide the card, and the raw token still shows something is wrong.
+
 No migration. Existing `field` inputs keep their shape and behavior. es-toolkit was added to `common/package.json`, at the same version range `apps/frontend` already declares.
 
 ## Submitted answers

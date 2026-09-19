@@ -29,3 +29,9 @@ The user approved the agent's proposals that:
 ## Implementation discretion
 
 The user left alias-renaming behavior to the implementation agent because the preferred behavior depends on maintenance cost. The implementation may rewrite safe formula references or report a validation error after the rename. It must not change a formula's meaning silently.
+
+## Variable failures
+
+A reviewing agent reported that an app build treated a variable input kind it didn't know as an empty value, so the form showed fallback or blank text with no sign anything was wrong. Asked how to fail loudly, the user approved the agent's proposal to block the form the way an unknown element or condition kind already does, and stated the requirement:
+
+> block the form when the variable calculation fails
