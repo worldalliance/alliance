@@ -601,6 +601,65 @@ describe("Users (e2e)", () => {
     expect(res.body.status).toBe(FriendStatus.Accepted);
   });
 
+  it("Re-sending a request to a friend leaves the friendship accepted", async () => {
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(409);
+
+    const status = await request(ctx.app.getHttpServer())
+      .get(`/user/myfriendrelationship/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`);
+    expect(status.body.status).toBe(FriendStatus.Accepted);
+  });
+
+  it("A request from the friend who accepted leaves the friendship accepted", async () => {
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userAId}`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(409);
+
+    const status = await request(ctx.app.getHttpServer())
+      .get(`/user/myfriendrelationship/${userAId}`)
+      .set("Authorization", `Bearer ${userBToken}`);
+    expect(status.body.status).toBe(FriendStatus.Accepted);
+  });
+
+  it("User A can send again after User B declines", async () => {
+    await request(ctx.app.getHttpServer())
+      .delete(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(200);
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(201);
+    await request(ctx.app.getHttpServer())
+      .patch(`/user/friends/${userAId}/decline`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(200);
+
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(201);
+
+    const status = await request(ctx.app.getHttpServer())
+      .get(`/user/myfriendrelationship/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`);
+    expect(status.body.status).toBe(FriendStatus.Pending);
+
+    const recv = await request(ctx.app.getHttpServer())
+      .get("/user/friends/requests/received")
+      .set("Authorization", `Bearer ${userBToken}`);
+    expect(recv.body.map((u) => u.id)).toEqual([userAId]);
+
+    await request(ctx.app.getHttpServer())
+      .patch(`/user/friends/${userAId}/accept`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(200);
+  });
+
   it("Either user can un-friend the other", async () => {
     const res = await request(ctx.app.getHttpServer())
       .delete(`/user/friends/${userAId}`)

@@ -1,0 +1,2 @@
+- The endpoint declares its 409 in the OpenAPI spec, so the generated client types it. From the review of eeb87668b ("Refuse a friend request to an existing friend"), nit `undocumented-409`.
+- That review also flagged pairs left with two rows by the old code, which a send could turn into two accepted rows. The user believed there were none; staging (pruned production data) had 988 friend rows across 988 distinct pairs on 2026-09-19, so this commit doesn't clean them up.

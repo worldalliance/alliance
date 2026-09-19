@@ -11,6 +11,7 @@ import { R, type Result } from "@alliance/common/result";
 import { Temporal } from "@js-temporal/polyfill";
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
@@ -756,9 +757,39 @@ export class UserService {
     let rel = await this.friendRepository.findOne({
       where: { requester: { id: requesterId }, addressee: { id: addresseeId } },
     });
+    const reverse = await this.friendRepository.findOne({
+      where: { requester: { id: addresseeId }, addressee: { id: requesterId } },
+    });
+
+    if (reverse) {
+      switch (reverse.status) {
+        case FriendStatus.Accepted:
+          throw new ConflictException("Already friends");
+        case FriendStatus.Pending:
+        case FriendStatus.Declined:
+        case FriendStatus.None:
+          break;
+        default:
+          throw new Error(
+            `unknown friend status: ${reverse.status satisfies never}`,
+          );
+      }
+    }
 
     if (rel) {
-      rel.status = FriendStatus.Pending; // reset to pending / resend
+      switch (rel.status) {
+        case FriendStatus.Accepted:
+          throw new ConflictException("Already friends");
+        case FriendStatus.Pending:
+        case FriendStatus.Declined:
+        case FriendStatus.None:
+          rel.status = FriendStatus.Pending; // reset to pending / resend
+          break;
+        default:
+          throw new Error(
+            `unknown friend status: ${rel.status satisfies never}`,
+          );
+      }
     } else {
       const notif = this.notifsService.createNotif({
         user: addressee,

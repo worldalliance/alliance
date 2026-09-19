@@ -4790,9 +4790,9 @@ export type UserRequestFriendData = {
 
 export type UserRequestFriendErrors = {
     /**
-     * Default error response for hey-api
+     * Already friends
      */
-    default: HeyApiError;
+    409: HeyApiError;
 };
 
 export type UserRequestFriendError = UserRequestFriendErrors[keyof UserRequestFriendErrors];

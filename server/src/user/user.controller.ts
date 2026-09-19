@@ -20,6 +20,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
+  ApiConflictResponse,
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
@@ -257,6 +258,7 @@ export class UserController {
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: "Send a friend request" })
   @ApiOkResponse({ description: "Friend request is now pending" })
+  @ApiConflictResponse({ description: "Already friends" })
   async requestFriend(
     @Param("targetUserId", ParseIntPipe) targetUserId: number,
     @Request() req: JwtRequest,
