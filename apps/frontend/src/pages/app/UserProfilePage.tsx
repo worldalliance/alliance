@@ -6,6 +6,7 @@ import {
   actionsUserCompletedCount,
 } from "@alliance/shared/client";
 import { roleBadges } from "@alliance/shared/lib/copy";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { Features } from "@alliance/shared/lib/features";
 import useActivities, {
   ActivityList,
@@ -39,7 +40,7 @@ import {
   TooltipTrigger,
 } from "@alliance/sharedweb/ui/Tooltip";
 import { useQuery } from "@tanstack/react-query";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, RefreshCw } from "lucide-react";
 import React, {
   useCallback,
   useEffect,
@@ -100,13 +101,21 @@ const UserProfilePage: React.FC = () => {
     isError: profileError,
   } = useUserProfileQuery(userId);
 
-  const { data: friendStatus } = useUserFriendStatusQuery(userId, {
+  const friendStatusQuery = useUserFriendStatusQuery(userId, {
     enabled: isAuthenticated && !isMe,
   });
+  const {
+    data: friendStatus,
+    isFetching: isFetchingFriendStatus,
+    refetch: refetchFriendStatus,
+  } = friendStatusQuery;
+  const didFriendStatusFail = failedToLoad(friendStatusQuery);
 
   const { data: forumPosts = [] } = useUserForumPostsQuery(userId);
   const { data: forumComments = [] } = useUserForumCommentsQuery(userId);
-  const { data: friends = [] } = useUserFriendsQuery(userId);
+  const friendsQuery = useUserFriendsQuery(userId);
+  const { data: friends = [] } = friendsQuery;
+  const didFriendsFail = failedToLoad(friendsQuery);
 
   const [selectedTab, setSelectedTab] = useState(ProfileTabs.Activity);
   const [isEditing, setIsEditing] = useState(false);
@@ -482,7 +491,7 @@ const UserProfilePage: React.FC = () => {
               onClick={() => setSelectedTab(ProfileTabs.Forum)}
             />
             <PillTab
-              number={friends.length}
+              number={didFriendsFail ? undefined : friends.length}
               label={forCount(friends.length, "friend")}
               selected={selectedTab === ProfileTabs.Friends}
               onClick={() => setSelectedTab(ProfileTabs.Friends)}
@@ -490,6 +499,17 @@ const UserProfilePage: React.FC = () => {
           </div>
           {/* button row */}
           <div className="absolute right-0 top-0 space-x-3 flex flex-row p-5">
+            {isAuthenticated && !isMe && didFriendStatusFail && (
+              <Button
+                color={ButtonColor.White}
+                onClick={() => void refetchFriendStatus()}
+                disabled={isFetchingFriendStatus}
+                title="Retry loading friend status"
+                className="!h-9 flex flex-row items-center !px-3"
+              >
+                <RefreshCw size={16} className="text-zinc-600" />
+              </Button>
+            )}
             {isAuthenticated && !isMe && friendStatus != null && (
               <FriendRequestButton
                 friendStatus={friendStatus}

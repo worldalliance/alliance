@@ -9,6 +9,7 @@ import {
 } from "@alliance/shared/client";
 import { type FeedActionActivityDto } from "@alliance/shared/lib/actionActivity";
 import { roleBadges } from "@alliance/shared/lib/copy";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { ParsedHomeFeedItemDto } from "@alliance/shared/lib/feedHelpers";
 import useActivities, {
   ActivityList,
@@ -36,8 +37,20 @@ import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { useQuery } from "@tanstack/react-query";
 import { RelativePathString, router, useLocalSearchParams } from "expo-router";
-import { ChevronDown, Edit, Menu, MessageSquare } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ChevronDown,
+  Edit,
+  Menu,
+  MessageSquare,
+  RefreshCw,
+} from "lucide-react-native";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentProps,
+} from "react";
 import {
   Alert,
   FlatList,
@@ -81,6 +94,29 @@ enum FriendsTab {
   Sent = "sent",
 }
 
+function LoadFailed({
+  onRetry,
+  retrying,
+}: {
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  return (
+    <View className="items-center gap-2 py-6 px-4">
+      <Text className="text-center text-zinc-500">
+        Couldn&apos;t load this list.
+      </Text>
+      <Button
+        title="Try again"
+        color={ButtonColor.White}
+        size={ButtonSize.Small}
+        onPress={onRetry}
+        loading={retrying}
+      />
+    </View>
+  );
+}
+
 const PROFILE_TABS_ORDER: ProfileTab[] = [
   ProfileTab.Activity,
   ProfileTab.ActionsCompleted,
@@ -121,18 +157,42 @@ export default function UserProfileScreen() {
     isPending: profilePending,
     isError: profileError,
   } = useUserProfileQuery(userId);
-  const { data: friendStatus } = useUserFriendStatusQuery(userId, {
+  const friendStatusQuery = useUserFriendStatusQuery(userId, {
     enabled: isAuthenticated && !isMe,
   });
+  const {
+    data: friendStatus,
+    isFetching: isFetchingFriendStatus,
+    refetch: refetchFriendStatus,
+  } = friendStatusQuery;
+  const didFriendStatusFail = failedToLoad(friendStatusQuery);
   const { data: forumPosts = [] } = useUserForumPostsQuery(userId);
   const { data: forumComments = [] } = useUserForumCommentsQuery(userId);
-  const { data: friends = [] } = useUserFriendsQuery(userId);
-  const { data: receivedRequests = [] } = useUserReceivedFriendRequestsQuery({
+  const friendsQuery = useUserFriendsQuery(userId);
+  const {
+    data: friends = [],
+    isFetching: isFetchingFriends,
+    refetch: refetchFriends,
+  } = friendsQuery;
+  const didFriendsFail = failedToLoad(friendsQuery);
+  const receivedQuery = useUserReceivedFriendRequestsQuery({
     enabled: isMe,
   });
-  const { data: sentRequests = [] } = useUserSentFriendRequestsQuery({
+  const {
+    data: receivedRequests = [],
+    isFetching: isFetchingReceived,
+    refetch: refetchReceived,
+  } = receivedQuery;
+  const didReceivedFail = failedToLoad(receivedQuery);
+  const sentQuery = useUserSentFriendRequestsQuery({
     enabled: isMe,
   });
+  const {
+    data: sentRequests = [],
+    isFetching: isFetchingSent,
+    refetch: refetchSent,
+  } = sentQuery;
+  const didSentFail = failedToLoad(sentQuery);
   const { ids: messageableIds } = useMessageableUsersQuery({
     enabled: isAuthenticated,
   });
@@ -337,7 +397,22 @@ export default function UserProfileScreen() {
   );
 
   const renderFriendAction = useCallback(() => {
-    if (!isAuthenticated || isMe || !friendStatus) return null;
+    if (!isAuthenticated || isMe) return null;
+
+    if (!friendStatus) {
+      if (!didFriendStatusFail) return null;
+      return (
+        <Button
+          color={ButtonColor.White}
+          size={ButtonSize.Small}
+          onPress={() => void refetchFriendStatus()}
+          loading={isFetchingFriendStatus}
+          accessibilityLabel="Retry loading friend status"
+        >
+          <RefreshCw size={14} color="#27272a" />
+        </Button>
+      );
+    }
 
     const status = friendStatus.status ?? "none";
     switch (status) {
@@ -433,6 +508,9 @@ export default function UserProfileScreen() {
     isAuthenticated,
     isMe,
     friendStatus,
+    didFriendStatusFail,
+    isFetchingFriendStatus,
+    refetchFriendStatus,
     handleSendFriendRequest,
     handleAcceptFriendRequest,
     handleDeclineFriendRequest,
@@ -761,6 +839,31 @@ export default function UserProfileScreen() {
   );
 
   const listEmptyComponent = useMemo(() => {
+    const friendsFailure = (): ComponentProps<typeof LoadFailed> | null => {
+      switch (friendsTab) {
+        case FriendsTab.Received:
+          return didReceivedFail
+            ? {
+                onRetry: () => void refetchReceived(),
+                retrying: isFetchingReceived,
+              }
+            : null;
+        case FriendsTab.Sent:
+          return didSentFail
+            ? { onRetry: () => void refetchSent(), retrying: isFetchingSent }
+            : null;
+        case FriendsTab.Friends:
+          return didFriendsFail
+            ? {
+                onRetry: () => void refetchFriends(),
+                retrying: isFetchingFriends,
+              }
+            : null;
+        default:
+          throw new Error(`Unknown friends tab: ${friendsTab satisfies never}`);
+      }
+    };
+
     const friendsEmptyMessage = (): string => {
       switch (friendsTab) {
         case FriendsTab.Received:
@@ -773,6 +876,10 @@ export default function UserProfileScreen() {
           throw new Error(`Unknown friends tab: ${friendsTab satisfies never}`);
       }
     };
+
+    const failure =
+      selectedTab === ProfileTab.Friends ? friendsFailure() : null;
+    if (failure) return <LoadFailed {...failure} />;
 
     let message: string;
     switch (selectedTab) {
@@ -795,7 +902,20 @@ export default function UserProfileScreen() {
     return (
       <Text className="text-center text-zinc-500 py-6 px-4">{message}</Text>
     );
-  }, [selectedTab, friendsTab, isMe]);
+  }, [
+    selectedTab,
+    friendsTab,
+    isMe,
+    didFriendsFail,
+    didReceivedFail,
+    didSentFail,
+    isFetchingFriends,
+    isFetchingReceived,
+    isFetchingSent,
+    refetchFriends,
+    refetchReceived,
+    refetchSent,
+  ]);
 
   if (!userId) {
     return (
