@@ -9,6 +9,8 @@ import {
   useMessageableUsersQuery,
   useRemoveFriendMutation,
   useSendFriendRequestMutation,
+  useUserForumCommentsQuery,
+  useUserForumPostsQuery,
   useUserFriendStatusQuery,
   useUserFriendsQuery,
   useUserReceivedFriendRequestsQuery,
@@ -67,12 +69,14 @@ const allLists: QueryKey[] = [
   ...requestLists,
 ];
 
-const failingFriendReads: RouteTable = {
+const failingReads: RouteTable = {
   "GET /user/myfriendrelationship/:id": serverError,
   "GET /user/listfriends/:id": serverError,
   "GET /user/friends/requests/received": serverError,
   "GET /user/friends/requests/sent": serverError,
   "GET /user/listMessageableUsers": serverError,
+  "GET /forum/posts/user/:id": serverError,
+  "GET /forum/posts/user/:id/comments": serverError,
 };
 
 const api = serveApi(routes(friendRoutes));
@@ -224,10 +228,10 @@ it.each(friendMutations)(
   },
 );
 
-const cachedFriends = [{ id: 4, displayName: "Ada" }];
+const cachedList = [{ id: 4, displayName: "Ada" }];
 const cachedStatus = { status: "accepted", didReceiveRequest: false };
 
-const friendQueries = [
+const erroringQueries = [
   [
     "friend status",
     () => useUserFriendStatusQuery(ALLOWED_USER),
@@ -238,40 +242,54 @@ const friendQueries = [
     "friends",
     () => useUserFriendsQuery(ALLOWED_USER),
     userQueryKeys.friends(ALLOWED_USER),
-    cachedFriends,
+    cachedList,
   ],
   [
     "received requests",
     () => useUserReceivedFriendRequestsQuery(),
     userQueryKeys.receivedRequests(),
-    cachedFriends,
+    cachedList,
   ],
   [
     "sent requests",
     () => useUserSentFriendRequestsQuery(),
     userQueryKeys.sentRequests(),
-    cachedFriends,
+    cachedList,
   ],
   [
     "messageable users",
     () => useMessageableUsersQuery(),
     userQueryKeys.messageableUsers(),
-    cachedFriends,
+    cachedList,
+  ],
+  [
+    "forum posts",
+    () => useUserForumPostsQuery(ALLOWED_USER),
+    userQueryKeys.forumPosts(ALLOWED_USER),
+    cachedList,
+  ],
+  [
+    "forum comments",
+    () => useUserForumCommentsQuery(ALLOWED_USER),
+    userQueryKeys.forumComments(ALLOWED_USER),
+    cachedList,
   ],
 ] as const;
 
-const servedFriendReads: RouteTable = {
+const servedReads: RouteTable = {
   "GET /user/myfriendrelationship/:id": () => Response.json(cachedStatus),
-  "GET /user/listfriends/:id": () => Response.json(cachedFriends),
-  "GET /user/friends/requests/received": () => Response.json(cachedFriends),
-  "GET /user/friends/requests/sent": () => Response.json(cachedFriends),
-  "GET /user/listMessageableUsers": () => Response.json(cachedFriends),
+  "GET /user/listfriends/:id": () => Response.json(cachedList),
+  "GET /user/friends/requests/received": () => Response.json(cachedList),
+  "GET /user/friends/requests/sent": () => Response.json(cachedList),
+  "GET /user/listMessageableUsers": () => Response.json(cachedList),
+  "GET /forum/posts/user/:id": () => Response.json(cachedList),
+  "GET /forum/posts/user/:id/comments": () => Response.json(cachedList),
 };
 
-it.each(friendQueries)(
+it.each(erroringQueries)(
   "a %s fetch returns the body the server sent",
   async (_, useQuery, __, body) => {
-    api.alsoServing(servedFriendReads);
+    api.alsoServing(servedReads);
     const { wrapper } = queryWrapper();
 
     const query = renderHook(() => useQuery(), { wrapper });
@@ -281,10 +299,10 @@ it.each(friendQueries)(
   },
 );
 
-it.each(friendQueries)(
+it.each(erroringQueries)(
   "a failed %s fetch errors instead of caching empty data",
   async (_, useQuery) => {
-    api.alsoServing(failingFriendReads);
+    api.alsoServing(failingReads);
     const { wrapper } = queryWrapper();
 
     const query = renderHook(() => useQuery(), { wrapper });
@@ -294,10 +312,10 @@ it.each(friendQueries)(
   },
 );
 
-it.each(friendQueries)(
+it.each(erroringQueries)(
   "a failed %s refetch keeps the data it had",
   async (_, useQuery, key, cached) => {
-    api.alsoServing(failingFriendReads);
+    api.alsoServing(failingReads);
     const { client, wrapper } = queryWrapper();
     client.setQueryData(key, cached);
 
@@ -309,7 +327,7 @@ it.each(friendQueries)(
 );
 
 it("hands the caller the error body the server sent, which is no Error", async () => {
-  api.alsoServing(failingFriendReads);
+  api.alsoServing(failingReads);
   const { wrapper } = queryWrapper();
 
   const query = renderHook(() => useUserFriendsQuery(ALLOWED_USER), {

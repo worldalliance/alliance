@@ -27,9 +27,11 @@ export function useUnreadGeneralUpdates() {
   } = useQuery({
     queryKey: UNREAD_QUERY_KEY,
     queryFn: () =>
-      actionsUnreadGeneralUpdates().then((response) =>
-        (response.data ?? []).map(parseGeneralUpdate),
+      actionsUnreadGeneralUpdates({ throwOnError: true }).then((response) =>
+        response.data.map(parseGeneralUpdate),
       ),
+    // Both home screens hold their main content until this settles.
+    retry: false,
   });
 
   const dismissGeneralUpdate = useCallback(
@@ -62,8 +64,8 @@ export function useAllGeneralUpdates() {
   } = useQuery({
     queryKey: ALL_QUERY_KEY,
     queryFn: () =>
-      actionsAllGeneralUpdates().then((response) =>
-        (response.data ?? []).map(parseGeneralUpdate),
+      actionsAllGeneralUpdates({ throwOnError: true }).then((response) =>
+        response.data.map(parseGeneralUpdate),
       ),
   });
 

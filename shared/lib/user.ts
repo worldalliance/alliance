@@ -87,12 +87,12 @@ type UserProfileQueryOptions = Omit<
 > & { enabled?: boolean };
 
 type UserPostsQueryOptions = Omit<
-  UseQueryOptions<PostDto[]>,
+  UseQueryOptions<PostDto[], unknown>,
   "queryKey" | "queryFn" | "enabled"
 > & { enabled?: boolean };
 
 type UserCommentsQueryOptions = Omit<
-  UseQueryOptions<UserCommentDto[]>,
+  UseQueryOptions<UserCommentDto[], unknown>,
   "queryKey" | "queryFn" | "enabled"
 > & { enabled?: boolean };
 
@@ -160,8 +160,11 @@ export const useUserForumPostsQuery = (
     queryKey: userQueryKeys.forumPosts(userId),
     queryFn: async () => {
       if (!userId) return [];
-      const response = await forumFindPostsByUser({ path: { id: userId } });
-      return response.data ?? [];
+      const response = await forumFindPostsByUser({
+        path: { id: userId },
+        throwOnError: true,
+      });
+      return response.data;
     },
     enabled: defaultQueryEnabled(userId, options?.enabled),
   });
@@ -177,8 +180,9 @@ export const useUserForumCommentsQuery = (
       if (!userId) return [];
       const response = await forumFindCommentsByUser({
         path: { id: userId },
+        throwOnError: true,
       });
-      return response.data ?? [];
+      return response.data;
     },
     enabled: defaultQueryEnabled(userId, options?.enabled),
   });
