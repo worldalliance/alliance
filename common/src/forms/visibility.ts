@@ -10,11 +10,11 @@ import {
   type ListSubField,
   type OutputFieldBlock,
   type Page,
+  asCards,
   collectFieldLookup,
   collectGroupByFieldId,
   flattenPageItems,
   isFieldGroup,
-  isListRow,
   isQuestionField,
 } from "./form-schema";
 import {
@@ -468,8 +468,8 @@ function stripHiddenListCells(
   for (const page of pages) {
     for (const field of flattenPageItems(page.fields)) {
       if (!isQuestionField(field) || field.kind !== "list") continue;
-      const rows = data[field.id];
-      if (!Array.isArray(rows) || !rows.every(isListRow)) continue;
+      const rows = asCards(data[field.id]);
+      if (!rows) continue;
       let changed = false;
       const nextRows = rows.map((row) => {
         const nextRow = stripHiddenRowCells(field, row, data, extras);
