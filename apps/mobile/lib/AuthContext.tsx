@@ -29,6 +29,7 @@ import {
   SecureStorageKey,
 } from "./SecureStorage";
 import {
+  clearClosedSessionTokens,
   clearStoredTokens,
   closeSession,
   openSession,
@@ -110,7 +111,7 @@ export const AuthProvider: React.FC<
       const closed = await clearSession();
       if (!closed.ok) {
         await retryClearTokens({
-          clearTokens: clearSessionTokens,
+          clearTokens: () => clearClosedSessionTokens(clearSessionTokens),
           askToRetry: askToRetryLogout,
         });
       }

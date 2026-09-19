@@ -18,11 +18,14 @@ import {
   getRefreshToken,
   saveSessionTokens,
 } from "./SecureStorage";
-import { refreshSession } from "./session";
+import { refreshOpenSession } from "./session";
 
 const onRefreshToken = async (): Promise<Result<boolean, Error>> =>
   R.map(
-    await refreshSession({ getRefreshToken, saveTokens: saveSessionTokens }),
+    await refreshOpenSession({
+      getRefreshToken,
+      saveTokens: saveSessionTokens,
+    }),
     (accessToken) => accessToken !== undefined,
   );
 

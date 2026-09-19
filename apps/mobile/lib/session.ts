@@ -1,4 +1,5 @@
 import { R, type Result } from "@alliance/common/result";
+import { TIMED_OUT, withTimeout } from "@alliance/common/timeout";
 import {
   authLogout,
   authMe,
@@ -7,6 +8,7 @@ import {
   type UserDto,
 } from "@alliance/shared/client";
 import { client } from "@alliance/shared/client/client.gen";
+import { milliseconds } from "date-fns";
 import { isNetworkFailure } from "./network";
 import type { SessionTokens } from "./SecureStorage";
 
@@ -19,14 +21,107 @@ export function setAuthHeader(accessToken: string | undefined): void {
   });
 }
 
+const FIRST_SESSION = 1;
+// Long enough that a keychain write this slow has hung.
+const TOKEN_WRITE_DEADLINE = milliseconds({ seconds: 5 });
+
+let lastSession = FIRST_SESSION;
+let session: number | undefined = lastSession;
+let tokenWrites: Promise<unknown> = Promise.resolve();
+// The last logout's delete, login's save or refresh's save. It runs again once
+// a write the deadline gave up on lands, so storage ends up matching the
+// session.
+let lastTokenWrite: () => Promise<unknown> = async () => {};
+
+/** The session a request goes out under, for handing to refreshSession.
+ * Undefined from logout, or from the start of a login, until a login saves its
+ * tokens. */
+export function currentSession(): number | undefined {
+  return session;
+}
+
+/** Runs `write` once every token write queued before it has settled, or has
+ * run past the deadline. Each write reads the session in the same turn as it
+ * writes, so a logout's delete, a login's save and a refresh's save can't land
+ * over one another. */
+function queueTokenWrite<T>(write: () => Promise<T>): Promise<T> {
+  const ran = tokenWrites.then(write);
+  const settled = ran.then(
+    () => {},
+    () => {},
+  );
+  // A keychain write that never settles would otherwise hold every write
+  // behind it forever.
+  tokenWrites = tokenWrites.then(async () => {
+    const waited = await withTimeout(settled, TOKEN_WRITE_DEADLINE);
+    if (waited !== TIMED_OUT) return;
+    void settled
+      .then(() => queueTokenWrite(() => lastTokenWrite()))
+      .catch((error) => console.error("failed to rewrite the tokens", error));
+  });
+  return ran;
+}
+
+/**
+ * Test-only. Puts the session back in the state the module starts a process in.
+ *
+ * @internal
+ */
+export function __resetSessionForTests(): void {
+  if (!__DEV__) {
+    throw new Error("__resetSessionForTests called outside of tests");
+  }
+  lastSession = FIRST_SESSION;
+  session = lastSession;
+  tokenWrites = Promise.resolve();
+  lastTokenWrite = async () => {};
+}
+
+/** Saves and sets a refreshed token, unless the session it was refreshed for
+ * has closed since. Resolves to whether it did. */
+export function applyRefresh(params: {
+  session: number;
+  accessToken: string;
+  saveTokens: () => Promise<void>;
+}): Promise<boolean> {
+  return queueTokenWrite(async () => {
+    if (params.session !== session) {
+      return false;
+    }
+    await params.saveTokens();
+    // Logout and login close the session without waiting for the queue.
+    if (params.session !== session) {
+      return false;
+    }
+    lastTokenWrite = params.saveTokens;
+    setAuthHeader(params.accessToken);
+    return true;
+  });
+}
+
+/** Deletes the stored tokens unless a session is open, since the tokens stored
+ * then are that session's. */
+export function clearClosedSessionTokens(
+  clearTokens: () => Promise<Result<void, Error>>,
+): Promise<Result<void, Error>> {
+  return queueTokenWrite(async () => {
+    if (session !== undefined) {
+      return R.success(undefined);
+    }
+    lastTokenWrite = clearTokens;
+    return await clearTokens();
+  });
+}
+
 export async function closeSession(
   clearTokens: () => Promise<Result<void, Error>>,
 ): Promise<Result<void, Error>> {
+  session = undefined;
   // The server attributes the logout to the token this request carries, which
   // the client reads when the call starts.
   authLogout().catch((error) => console.error("logout request failed", error));
   setAuthHeader(undefined);
-  return await clearTokens();
+  return await clearClosedSessionTokens(clearTokens);
 }
 
 export async function clearStoredTokens<Key extends string>(
@@ -71,11 +166,12 @@ type RefreshDeps = {
   saveTokens: (tokens: SessionTokens) => Promise<void>;
 };
 
-/** Refreshes the stored tokens, saves them and puts the new access token on
- * the client, then resolves to it. Resolves to no token when none is stored
- * and when the server refuses the one that is. */
+/** Refreshes the tokens of `session` and resolves to the new access token,
+ * having saved it and put it on the client. Resolves to no token when none is
+ * stored, the server refuses the one that is, or the session closed
+ * meanwhile. */
 export async function refreshSession(
-  params: RefreshDeps,
+  params: RefreshDeps & { session: number },
 ): Promise<Result<string | undefined, Error>> {
   const refreshToken = await R.fromPromise(params.getRefreshToken());
   if (!refreshToken.ok) return refreshToken;
@@ -107,12 +203,26 @@ export async function refreshSession(
     );
   }
 
-  const saved = await R.fromPromise(
-    params.saveTokens({ access: access_token, refresh: refresh_token }),
+  const applied = await R.fromPromiseFn(() =>
+    applyRefresh({
+      session: params.session,
+      accessToken: access_token,
+      saveTokens: () =>
+        params.saveTokens({ access: access_token, refresh: refresh_token }),
+    }),
   );
-  if (!saved.ok) return saved;
-  setAuthHeader(access_token);
-  return R.success(access_token);
+  return R.map(applied, (didApply) => (didApply ? access_token : undefined));
+}
+
+/** Refreshes whatever session is open. Resolves to no token while none is,
+ * so a refresh started after logout never reaches the server. */
+export async function refreshOpenSession(
+  deps: RefreshDeps,
+): Promise<Result<string | undefined, Error>> {
+  const session = currentSession();
+  return session === undefined
+    ? R.success(undefined)
+    : await refreshSession({ session, ...deps });
 }
 
 /** Wraps `fetch` so a request the server answers with 401 is retried once
@@ -123,13 +233,21 @@ export function refreshingFetch(
 ): (request: Request) => Promise<Response> {
   return async (req) => {
     const retryReq = req.clone();
+    const sentIn = currentSession();
     const res = await params.fetch(req);
 
     if (res.status !== 401 || req.url.includes("auth/refresh")) {
       return res;
     }
+    if (sentIn === undefined || sentIn !== currentSession()) return res;
 
-    const accessToken = R.unwrap(await refreshSession(params));
+    const accessToken = R.unwrap(
+      await refreshSession({
+        session: sentIn,
+        getRefreshToken: params.getRefreshToken,
+        saveTokens: params.saveTokens,
+      }),
+    );
     if (!accessToken) return res;
     const retryHeaders = new Headers(retryReq.headers);
     retryHeaders.set("Authorization", `Bearer ${accessToken}`);
@@ -209,6 +327,9 @@ export async function openSession(params: {
 }): Promise<Result<UserDto, Error>> {
   const { tokens } = params;
   setAuthHeader(tokens.access_token);
+  // The login replaces whatever session was open, so closing it here keeps the
+  // profile call below from refreshing with the tokens that one left stored.
+  session = undefined;
 
   const profile = await R.fromPromise(authMe());
   const user = profile.ok ? profile.value.data?.user : undefined;
@@ -223,16 +344,23 @@ export async function openSession(params: {
 
   // Tokens saved before the profile loads outlive a sign-in the member was
   // told had failed, and sign them in on the next launch.
-  const saved = await R.fromPromise(
-    params.saveTokens({
-      access: tokens.access_token,
-      refresh: tokens.refresh_token,
-    }),
-  );
+  const saved = await queueTokenWrite(async () => {
+    const saveTokens = () =>
+      params.saveTokens({
+        access: tokens.access_token,
+        refresh: tokens.refresh_token,
+      });
+    const saved = await R.fromPromise(saveTokens());
+    if (saved.ok) {
+      session = ++lastSession;
+      lastTokenWrite = saveTokens;
+    }
+    return saved;
+  });
   if (!saved.ok) {
     setAuthHeader(undefined);
     // The access token can land without the refresh token.
-    const cleared = await params.clearTokens();
+    const cleared = await clearClosedSessionTokens(params.clearTokens);
     return R.failure(
       cleared.ok
         ? saved.error

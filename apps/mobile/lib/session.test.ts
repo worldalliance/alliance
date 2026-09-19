@@ -6,15 +6,21 @@ import {
   type RouteTable,
   serveApi,
 } from "@alliance/shared/lib/testing/serveApi";
-import { afterEach, expect, it, mock, spyOn } from "bun:test";
+import { afterEach, expect, it, jest, mock, spyOn } from "bun:test";
+import { milliseconds } from "date-fns";
 import { FetchError } from "expo/src/winter/fetch/FetchErrors";
 import type { SessionTokens } from "./SecureStorage";
 import {
+  __resetSessionForTests,
+  applyRefresh,
+  clearClosedSessionTokens,
   clearStoredTokens,
   closeSession,
+  currentSession,
   loadSessionUser,
   openSession,
   refreshingFetch,
+  refreshOpenSession,
   refreshSession,
   restoreSession,
   retryClearTokens,
@@ -25,7 +31,10 @@ import {
 const api = serveApi(routes({}));
 
 afterEach(() => {
+  // A test that logs out leaves the session closed for the next one.
+  __resetSessionForTests();
   setAuthHeader(undefined);
+  jest.useRealTimers();
   mock.restore();
 });
 
@@ -660,8 +669,680 @@ it("tells a refresh that never got a response apart from a refusal", async () =>
   );
 });
 
+const openedSession = (): number => {
+  const session = currentSession();
+  if (session === undefined) throw new Error("no session open");
+  return session;
+};
+
+const keychain = (initial?: SessionTokens) => {
+  let stored = initial;
+  return {
+    stored: () => stored,
+    saveTokens: async (tokens: SessionTokens) => {
+      stored = tokens;
+    },
+    clearTokens: async (): Promise<Result<void, Error>> => {
+      stored = undefined;
+      return R.success(undefined);
+    },
+  };
+};
+
+const settleAfterDeadlines = async <T>(promise: Promise<T>): Promise<T> => {
+  let settled = false;
+  void promise.finally(() => {
+    settled = true;
+  });
+  while (!settled) {
+    jest.advanceTimersByTime(milliseconds({ seconds: 5 }));
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  return await promise;
+};
+
+const startRefreshSave = async (saveTokens: () => Promise<void>) => {
+  const started = Promise.withResolvers<void>();
+  const applied = applyRefresh({
+    session: openedSession(),
+    accessToken: "refreshed",
+    saveTokens: () => {
+      started.resolve();
+      return saveTokens();
+    },
+  });
+  await started.promise;
+  return { applied };
+};
+
+const serveLogout = () =>
+  api.throwingOnRefusal({
+    "POST /auth/logout": () => new Response(null, { status: 200 }),
+  });
+
+it("sets the refreshed token while the session is open", async () => {
+  const saveTokens = mock(async () => {});
+
+  const applied = await applyRefresh({
+    session: openedSession(),
+    accessToken: "refreshed",
+    saveTokens,
+  });
+
+  expect(applied).toBe(true);
+  expect(saveTokens).toHaveBeenCalled();
+  expect(await nextAuthorization()).toBe("Bearer refreshed");
+});
+
+it("drops a refresh that returns after logout", async () => {
+  serveLogout();
+  setAuthHeader("access");
+  const session = openedSession();
+  await closeSession(cleared);
+  const saveTokens = mock(async () => {});
+
+  const applied = await applyRefresh({
+    session,
+    accessToken: "refreshed",
+    saveTokens,
+  });
+
+  expect(applied).toBe(false);
+  expect(saveTokens).not.toHaveBeenCalled();
+  expect(await nextAuthorization()).toBeNull();
+});
+
+it("clears the tokens after a refresh save that logout lands in", async () => {
+  serveLogout();
+  setAuthHeader("access");
+  const saving = Promise.withResolvers<void>();
+  const order: string[] = [];
+
+  const { applied: applying } = await startRefreshSave(async () => {
+    await saving.promise;
+    order.push("saved");
+  });
+  const closing = closeSession(async () => {
+    order.push("cleared");
+    return R.success(undefined);
+  });
+  saving.resolve();
+
+  expect(await applying).toBe(false);
+  expect((await closing).ok).toBe(true);
+  expect(order).toEqual(["saved", "cleared"]);
+  expect(await nextAuthorization()).toBeNull();
+});
+
+it("drops a refresh save still queued when logout lands", async () => {
+  serveLogout();
+  const slowSave = Promise.withResolvers<void>();
+  const order: string[] = [];
+  const session = openedSession();
+
+  const { applied: slow } = await startRefreshSave(async () => {
+    await slowSave.promise;
+    order.push("saved slow");
+  });
+  const fast = applyRefresh({
+    session,
+    accessToken: "fast",
+    saveTokens: async () => {
+      order.push("saved fast");
+    },
+  });
+  const closing = closeSession(async () => {
+    order.push("cleared");
+    return R.success(undefined);
+  });
+  slowSave.resolve();
+
+  expect(await slow).toBe(false);
+  expect(await fast).toBe(false);
+  expect((await closing).ok).toBe(true);
+  expect(order).toEqual(["saved slow", "cleared"]);
+});
+
+it("returns the 401 when logout lands while the refresh is out", async () => {
+  const refreshing = Promise.withResolvers<void>();
+  const answer = Promise.withResolvers<void>();
+  const { saveTokens } = serveRefreshing({
+    "GET /auth/me": expiredMe,
+    "POST /auth/logout": () => new Response(null, { status: 200 }),
+    "POST /auth/refresh": async () => {
+      refreshing.resolve();
+      await answer.promise;
+      return Response.json({
+        access_token: "refreshed",
+        refresh_token: "next",
+      });
+    },
+  });
+  setAuthHeader("expired");
+
+  const me = authMe({ throwOnError: false });
+  await refreshing.promise;
+  await closeSession(cleared);
+  answer.resolve();
+
+  expect((await me).response.status).toBe(401);
+  expect(saveTokens).not.toHaveBeenCalled();
+  expect(await nextAuthorization()).toBeNull();
+});
+
+it("skips the refresh for a request sent after logout", async () => {
+  const deleting = Promise.withResolvers<void>();
+  const refreshed = mock();
+  const { saveTokens } = serveRefreshing({
+    "GET /auth/me": expiredMe,
+    "POST /auth/logout": () => new Response(null, { status: 200 }),
+    "POST /auth/refresh": () => {
+      refreshed();
+      return Response.json({
+        access_token: "refreshed",
+        refresh_token: "next",
+      });
+    },
+  });
+  setAuthHeader("access");
+  const closing = closeSession(async () => {
+    await deleting.promise;
+    return R.success(undefined);
+  });
+
+  const me = await authMe({ throwOnError: false });
+  deleting.resolve();
+  await closing;
+
+  expect(me.response.status).toBe(401);
+  expect(refreshed).not.toHaveBeenCalled();
+  expect(saveTokens).not.toHaveBeenCalled();
+  expect(await nextAuthorization()).toBeNull();
+});
+
+it("skips the refresh for a request whose session a login replaced", async () => {
+  const sent = Promise.withResolvers<void>();
+  const answer = Promise.withResolvers<void>();
+  const refreshed = mock();
+  serveRefreshing({
+    "GET /auth/me": async ({ request }) => {
+      if (request.headers.get("authorization") === "Bearer access") {
+        return Response.json({ user: { id: 1 } });
+      }
+      sent.resolve();
+      await answer.promise;
+      return new Response(null, { status: 401 });
+    },
+    "POST /auth/logout": () => new Response(null, { status: 200 }),
+    "POST /auth/refresh": () => {
+      refreshed();
+      return Response.json({
+        access_token: "refreshed",
+        refresh_token: "next",
+      });
+    },
+  });
+  setAuthHeader("expired");
+
+  const me = authMe({ throwOnError: false });
+  await sent.promise;
+  await closeSession(cleared);
+  await openSession({
+    tokens,
+    saveTokens: async () => {},
+    clearTokens: cleared,
+  });
+  answer.resolve();
+
+  expect((await me).response.status).toBe(401);
+  expect(refreshed).not.toHaveBeenCalled();
+});
+
+it("refreshes again once a login follows a logout", async () => {
+  serveLogout();
+  await closeSession(cleared);
+  api.throwingOnRefusal({
+    "GET /auth/me": () => Response.json({ user: { id: 1 } }),
+  });
+  await openSession({
+    tokens,
+    saveTokens: async () => {},
+    clearTokens: cleared,
+  });
+  const { saveTokens } = serveRefreshing({
+    "GET /auth/me": expiredMe,
+    "POST /auth/refresh": () =>
+      Response.json({ access_token: "refreshed", refresh_token: "next" }),
+  });
+  setAuthHeader("expired");
+
+  const me = await authMe();
+
+  expect(me.data?.user.id).toBe(1);
+  expect(saveTokens).toHaveBeenCalled();
+});
+
+it("skips the refresh after a login that failed to load the profile", async () => {
+  const refreshed = mock();
+  const { saveTokens } = serveRefreshing({
+    "GET /auth/me": () => new Response(null, { status: 401 }),
+    "POST /auth/logout": () => new Response(null, { status: 200 }),
+    "POST /auth/refresh": () => {
+      refreshed();
+      return Response.json({
+        access_token: "refreshed",
+        refresh_token: "next",
+      });
+    },
+  });
+  await closeSession(async () => R.failure(new Error("keychain delete")));
+  const opened = await openSession({
+    tokens,
+    saveTokens,
+    clearTokens: cleared,
+  });
+
+  const me = await authMe({ throwOnError: false });
+
+  expect(opened.ok).toBe(false);
+  expect(me.response.status).toBe(401);
+  expect(refreshed).not.toHaveBeenCalled();
+  expect(saveTokens).not.toHaveBeenCalled();
+});
+
+it("leaves the session closed after a login that failed to save its tokens", async () => {
+  serveLogout();
+  await closeSession(cleared);
+  api.throwingOnRefusal({
+    "GET /auth/me": () => Response.json({ user: { id: 1 } }),
+  });
+
+  const opened = await openSession({
+    tokens,
+    saveTokens: async () => {
+      throw new Error("keychain");
+    },
+    clearTokens: cleared,
+  });
+
+  expect(opened.ok).toBe(false);
+  expect(currentSession()).toBeUndefined();
+});
+
+it("deletes the tokens even when a refresh save never settles", async () => {
+  jest.useFakeTimers();
+  serveLogout();
+  const clearTokens = mock(cleared);
+  await startRefreshSave(() => new Promise<void>(() => {}));
+
+  const closing = closeSession(clearTokens);
+  jest.advanceTimersByTime(milliseconds({ seconds: 5 }));
+
+  expect((await closing).ok).toBe(true);
+  expect(clearTokens).toHaveBeenCalled();
+});
+
+it("saves a login's tokens after a refresh save from the session it replaces", async () => {
+  const answeredMe = Promise.withResolvers<void>();
+  api.throwingOnRefusal({
+    "POST /auth/logout": () => new Response(null, { status: 200 }),
+    "GET /auth/me": () => {
+      answeredMe.resolve();
+      return Response.json({ user: { id: 1 } });
+    },
+  });
+  const storage = keychain({ access: "old", refresh: "old" });
+  const saving = Promise.withResolvers<void>();
+  await startRefreshSave(async () => {
+    await saving.promise;
+    await storage.saveTokens({ access: "refreshed", refresh: "next" });
+  });
+
+  const closing = closeSession(storage.clearTokens);
+  const opening = openSession({
+    tokens,
+    saveTokens: storage.saveTokens,
+    clearTokens: storage.clearTokens,
+  });
+  await answeredMe.promise;
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  saving.resolve();
+
+  expect((await opening).ok).toBe(true);
+  expect((await closing).ok).toBe(true);
+  expect(storage.stored()).toEqual({ access: "access", refresh: "refresh" });
+});
+
+it("saves a login's tokens even when a refresh save never settles", async () => {
+  jest.useFakeTimers();
+  api.throwingOnRefusal({
+    "GET /auth/me": () => Response.json({ user: { id: 1 } }),
+  });
+  const storage = keychain();
+  await startRefreshSave(() => new Promise<void>(() => {}));
+
+  const opened = await settleAfterDeadlines(
+    openSession({
+      tokens,
+      saveTokens: storage.saveTokens,
+      clearTokens: storage.clearTokens,
+    }),
+  );
+
+  expect(opened.ok).toBe(true);
+  expect(storage.stored()).toEqual({ access: "access", refresh: "refresh" });
+});
+
+it("saves a login's tokens after a delete the logout already started", async () => {
+  const answeredMe = Promise.withResolvers<void>();
+  api.throwingOnRefusal({
+    "POST /auth/logout": () => new Response(null, { status: 200 }),
+    "GET /auth/me": () => {
+      answeredMe.resolve();
+      return Response.json({ user: { id: 1 } });
+    },
+  });
+  const deleting = Promise.withResolvers<void>();
+  const order: string[] = [];
+
+  const closing = closeSession(async () => {
+    await deleting.promise;
+    order.push("cleared");
+    return R.success(undefined);
+  });
+  const opening = openSession({
+    tokens,
+    saveTokens: async () => {
+      order.push("saved");
+    },
+    clearTokens: cleared,
+  });
+  await answeredMe.promise;
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  deleting.resolve();
+
+  expect((await opening).ok).toBe(true);
+  expect((await closing).ok).toBe(true);
+  expect(order).toEqual(["cleared", "saved"]);
+  expect(currentSession()).toBeDefined();
+});
+
+it("saves a login's tokens even when a logout's delete never settles", async () => {
+  jest.useFakeTimers();
+  api.throwingOnRefusal({
+    "POST /auth/logout": () => new Response(null, { status: 200 }),
+    "GET /auth/me": () => Response.json({ user: { id: 1 } }),
+  });
+  const storage = keychain();
+  void closeSession(() => new Promise(() => {}));
+
+  const opened = await settleAfterDeadlines(
+    openSession({
+      tokens,
+      saveTokens: storage.saveTokens,
+      clearTokens: storage.clearTokens,
+    }),
+  );
+
+  expect(opened.ok).toBe(true);
+  expect(storage.stored()).toEqual({ access: "access", refresh: "refresh" });
+});
+
+it("writes the login's tokens again when a delete lands after the deadline", async () => {
+  jest.useFakeTimers();
+  api.throwingOnRefusal({
+    "POST /auth/logout": () => new Response(null, { status: 200 }),
+    "GET /auth/me": () => Response.json({ user: { id: 1 } }),
+  });
+  const storage = keychain({ access: "old", refresh: "old" });
+  const deleting = Promise.withResolvers<void>();
+  void closeSession(async () => {
+    await deleting.promise;
+    return await storage.clearTokens();
+  });
+
+  const opened = await settleAfterDeadlines(
+    openSession({
+      tokens,
+      saveTokens: storage.saveTokens,
+      clearTokens: storage.clearTokens,
+    }),
+  );
+  jest.useRealTimers();
+  deleting.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  expect(opened.ok).toBe(true);
+  expect(storage.stored()).toEqual({ access: "access", refresh: "refresh" });
+});
+
+it("keeps a later login's tokens when an earlier login fails to save", async () => {
+  const answeredBoth = Promise.withResolvers<void>();
+  let answered = 0;
+  api.throwingOnRefusal({
+    "GET /auth/me": () => {
+      if (++answered === 2) answeredBoth.resolve();
+      return Response.json({ user: { id: 1 } });
+    },
+  });
+  const storage = keychain();
+  const failing = Promise.withResolvers<void>();
+
+  const first = openSession({
+    tokens: { access_token: "first", refresh_token: "first" },
+    saveTokens: () => failing.promise,
+    clearTokens: storage.clearTokens,
+  });
+  const second = openSession({
+    tokens,
+    saveTokens: storage.saveTokens,
+    clearTokens: storage.clearTokens,
+  });
+  await answeredBoth.promise;
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  failing.reject(new Error("keychain"));
+
+  expect((await first).ok).toBe(false);
+  expect((await second).ok).toBe(true);
+  expect(storage.stored()).toEqual({ access: "access", refresh: "refresh" });
+  expect(currentSession()).toBeDefined();
+});
+
+it("deletes the tokens again when a save lands after the deadline", async () => {
+  jest.useFakeTimers();
+  serveLogout();
+  const saving = Promise.withResolvers<void>();
+  const clearTokens = mock(cleared);
+  await startRefreshSave(() => saving.promise);
+
+  const closing = closeSession(clearTokens);
+  jest.advanceTimersByTime(milliseconds({ seconds: 5 }));
+  expect((await closing).ok).toBe(true);
+  expect(clearTokens).toHaveBeenCalledTimes(1);
+
+  jest.useRealTimers();
+  saving.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  expect(clearTokens).toHaveBeenCalledTimes(2);
+});
+
+it("writes the login's tokens again when a save lands after the deadline", async () => {
+  jest.useFakeTimers();
+  api.throwingOnRefusal({
+    "POST /auth/logout": () => new Response(null, { status: 200 }),
+    "GET /auth/me": () => Response.json({ user: { id: 1 } }),
+  });
+  const storage = keychain({ access: "old", refresh: "old" });
+  const saving = Promise.withResolvers<void>();
+  await startRefreshSave(async () => {
+    await saving.promise;
+    await storage.saveTokens({ access: "refreshed", refresh: "next" });
+  });
+
+  const closing = closeSession(storage.clearTokens);
+  jest.advanceTimersByTime(milliseconds({ seconds: 5 }));
+  await closing;
+  jest.useRealTimers();
+  const opened = await openSession({
+    tokens,
+    saveTokens: storage.saveTokens,
+    clearTokens: storage.clearTokens,
+  });
+  saving.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  expect(opened.ok).toBe(true);
+  expect(storage.stored()).toEqual({ access: "access", refresh: "refresh" });
+});
+
+it("writes the open session's refreshed tokens again when a save lands after the deadline", async () => {
+  jest.useFakeTimers();
+  api.throwingOnRefusal({
+    "POST /auth/logout": () => new Response(null, { status: 200 }),
+    "GET /auth/me": () => Response.json({ user: { id: 1 } }),
+  });
+  const storage = keychain({ access: "old", refresh: "old" });
+  const saving = Promise.withResolvers<void>();
+  await startRefreshSave(async () => {
+    await saving.promise;
+    await storage.saveTokens({ access: "refreshed", refresh: "next" });
+  });
+
+  const closing = closeSession(storage.clearTokens);
+  jest.advanceTimersByTime(milliseconds({ seconds: 5 }));
+  await closing;
+  jest.useRealTimers();
+  await openSession({
+    tokens,
+    saveTokens: storage.saveTokens,
+    clearTokens: storage.clearTokens,
+  });
+  await applyRefresh({
+    session: openedSession(),
+    accessToken: "newer",
+    saveTokens: () => storage.saveTokens({ access: "newer", refresh: "newer" }),
+  });
+  saving.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  expect(storage.stored()).toEqual({ access: "newer", refresh: "newer" });
+});
+
+it("deletes the tokens again when a save lands after a login that failed to save", async () => {
+  jest.useFakeTimers();
+  api.throwingOnRefusal({
+    "GET /auth/me": () => Response.json({ user: { id: 1 } }),
+  });
+  const storage = keychain({ access: "old", refresh: "old" });
+  const saving = Promise.withResolvers<void>();
+  await startRefreshSave(async () => {
+    await saving.promise;
+    await storage.saveTokens({ access: "refreshed", refresh: "next" });
+  });
+
+  const opened = await settleAfterDeadlines(
+    openSession({
+      tokens,
+      saveTokens: async () => {
+        throw new Error("keychain");
+      },
+      clearTokens: storage.clearTokens,
+    }),
+  );
+  jest.useRealTimers();
+  saving.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  expect(opened.ok).toBe(false);
+  expect(storage.stored()).toBeUndefined();
+});
+
+it("stops waiting on a refresh save the deadline gave up on", async () => {
+  jest.useFakeTimers();
+  serveLogout();
+  await startRefreshSave(() => new Promise<void>(() => {}));
+  const first = closeSession(mock(cleared));
+  jest.advanceTimersByTime(milliseconds({ seconds: 5 }));
+  await first;
+  jest.useRealTimers();
+  api.throwingOnRefusal({
+    "POST /auth/logout": () => new Response(null, { status: 200 }),
+    "GET /auth/me": () => Response.json({ user: { id: 1 } }),
+  });
+  await openSession({
+    tokens,
+    saveTokens: async () => {},
+    clearTokens: cleared,
+  });
+
+  let settled = false;
+  const second = closeSession(mock(cleared)).then((closed) => {
+    settled = true;
+    return closed;
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  expect(settled).toBe(true);
+  expect((await second).ok).toBe(true);
+});
+
+it("retries the delete while no session is open", async () => {
+  serveLogout();
+  await closeSession(async () => R.failure(new Error("keychain delete")));
+  const clearTokens = mock(cleared);
+
+  expect((await clearClosedSessionTokens(clearTokens)).ok).toBe(true);
+  expect(clearTokens).toHaveBeenCalled();
+});
+
+it("skips a retried delete once a login has opened a session", async () => {
+  api.throwingOnRefusal({
+    "POST /auth/logout": () => new Response(null, { status: 200 }),
+    "GET /auth/me": () => Response.json({ user: { id: 1 } }),
+  });
+  await closeSession(async () => R.failure(new Error("keychain delete")));
+  await openSession({
+    tokens,
+    saveTokens: async () => {},
+    clearTokens: cleared,
+  });
+  const clearTokens = mock(cleared);
+
+  expect((await clearClosedSessionTokens(clearTokens)).ok).toBe(true);
+  expect(clearTokens).not.toHaveBeenCalled();
+});
+
+it("skips the refresh for the profile call of a login that follows a launch", async () => {
+  const refreshed = mock();
+  const { saveTokens } = serveRefreshing({
+    "GET /auth/me": () => new Response(null, { status: 401 }),
+    "POST /auth/refresh": () => {
+      refreshed();
+      return Response.json({
+        access_token: "refreshed",
+        refresh_token: "next",
+      });
+    },
+  });
+
+  const opened = await openSession({
+    tokens,
+    saveTokens,
+    clearTokens: cleared,
+  });
+
+  expect(opened.ok).toBe(false);
+  expect(refreshed).not.toHaveBeenCalled();
+  expect(saveTokens).not.toHaveBeenCalled();
+});
+
 const refreshing = (saveTokens = mock(async (_tokens: SessionTokens) => {})) =>
-  refreshSession({ getRefreshToken: async () => "refresh", saveTokens });
+  refreshSession({
+    session: openedSession(),
+    getRefreshToken: async () => "refresh",
+    saveTokens,
+  });
 
 it("saves both refreshed tokens and resolves to the access token", async () => {
   api.throwingOnRefusal({
@@ -715,6 +1396,7 @@ it("fails a refresh whose stored token it couldn't read", async () => {
   const saveTokens = mock(async (_tokens: SessionTokens) => {});
 
   const refreshed = await refreshSession({
+    session: openedSession(),
     getRefreshToken: async () => {
       throw new Error("the keychain is locked");
     },
@@ -722,5 +1404,59 @@ it("fails a refresh whose stored token it couldn't read", async () => {
   });
 
   expect(refreshed).toMatchObject({ ok: false });
+  expect(saveTokens).not.toHaveBeenCalled();
+});
+
+it("resolves to no token when logout lands while the refresh is out", async () => {
+  const answer = Promise.withResolvers<void>();
+  api.throwingOnRefusal({
+    "POST /auth/logout": () => new Response(null, { status: 200 }),
+    "POST /auth/refresh": async () => {
+      await answer.promise;
+      return Response.json({
+        access_token: "refreshed",
+        refresh_token: "next",
+      });
+    },
+  });
+  const saveTokens = mock(async (_tokens: SessionTokens) => {});
+
+  const refreshed = refreshing(saveTokens);
+  await closeSession(cleared);
+  answer.resolve();
+
+  expect(R.unwrap(await refreshed)).toBeUndefined();
+  expect(saveTokens).not.toHaveBeenCalled();
+});
+
+it("refreshes whatever session is open", async () => {
+  api.throwingOnRefusal({
+    "POST /auth/refresh": () =>
+      Response.json({ access_token: "refreshed", refresh_token: "next" }),
+  });
+  const saveTokens = mock(async (_tokens: SessionTokens) => {});
+
+  const refreshed = await refreshOpenSession({
+    getRefreshToken: async () => "refresh",
+    saveTokens,
+  });
+
+  expect(R.unwrap(refreshed)).toBe("refreshed");
+  expect(saveTokens).toHaveBeenCalledWith({
+    access: "refreshed",
+    refresh: "next",
+  });
+});
+
+it("never asks the server for a refresh while no session is open", async () => {
+  serveLogout();
+  await closeSession(cleared);
+  const getRefreshToken = mock(async (): Promise<string | null> => "refresh");
+  const saveTokens = mock(async (_tokens: SessionTokens) => {});
+
+  const refreshed = await refreshOpenSession({ getRefreshToken, saveTokens });
+
+  expect(R.unwrap(refreshed)).toBeUndefined();
+  expect(getRefreshToken).not.toHaveBeenCalled();
   expect(saveTokens).not.toHaveBeenCalled();
 });
