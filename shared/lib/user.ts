@@ -295,27 +295,22 @@ export const friendMutationErrorMessage = (error: unknown) =>
   });
 
 const useFriendMutation = (params: {
-  call: (userId: number) => Promise<unknown>;
-  statusOnSuccess: FriendStatusDto;
-  invalidateOnSuccess: (
-    queryClient: QueryClient,
-    userId: number,
-  ) => Promise<unknown>;
+  call: (userId: number) => Promise<FriendStatusDto>;
+  invalidateOnSuccess: (queryClient: QueryClient) => Promise<unknown>;
 }) => {
-  const { call, statusOnSuccess, invalidateOnSuccess } = params;
+  const { call, invalidateOnSuccess } = params;
   const queryClient = useQueryClient();
-  return useMutation<void, unknown, number>({
-    mutationFn: async (userId) => {
-      await call(userId);
-    },
+  return useMutation<FriendStatusDto, unknown, number>({
+    mutationFn: call,
     // Stays pending until the refetched lists land, so a caller that disables
     // on isPending keeps an answered row locked until it leaves the list.
-    onSuccess: (_data, userId) => {
-      queryClient.setQueryData(
-        userQueryKeys.friendStatus(userId),
-        statusOnSuccess,
-      );
-      return invalidateOnSuccess(queryClient, userId);
+    onSuccess: async (status, userId) => {
+      // A status read begun before the call would land the old status over this.
+      await queryClient.cancelQueries({
+        queryKey: userQueryKeys.friendStatus(userId),
+      });
+      queryClient.setQueryData(userQueryKeys.friendStatus(userId), status);
+      return invalidateOnSuccess(queryClient);
     },
     onError: (_error, userId) => {
       void resyncFriend(queryClient, userId);
@@ -325,34 +320,43 @@ const useFriendMutation = (params: {
 
 export const useSendFriendRequestMutation = () =>
   useFriendMutation({
-    call: (targetUserId) =>
-      userRequestFriend({ path: { targetUserId }, throwOnError: true }),
-    statusOnSuccess: { status: "pending", didReceiveRequest: false },
+    call: async (targetUserId) =>
+      (await userRequestFriend({ path: { targetUserId }, throwOnError: true }))
+        .data,
     // Sending back to someone whose request is pending accepts theirs.
-    invalidateOnSuccess: resyncFriend,
+    invalidateOnSuccess: invalidateFriendships,
   });
 
 export const useAcceptFriendRequestMutation = () =>
   useFriendMutation({
-    call: (requesterId) =>
-      userAcceptFriendRequest({ path: { requesterId }, throwOnError: true }),
-    statusOnSuccess: { status: "accepted", didReceiveRequest: false },
+    call: async (requesterId) => {
+      await userAcceptFriendRequest({
+        path: { requesterId },
+        throwOnError: true,
+      });
+      return { status: "accepted", didReceiveRequest: false };
+    },
     invalidateOnSuccess: invalidateFriendships,
   });
 
 export const useDeclineFriendRequestMutation = () =>
   useFriendMutation({
-    call: (requesterId) =>
-      userDeclineFriendRequest({ path: { requesterId }, throwOnError: true }),
-    statusOnSuccess: { status: "none", didReceiveRequest: false },
+    call: async (requesterId) => {
+      await userDeclineFriendRequest({
+        path: { requesterId },
+        throwOnError: true,
+      });
+      return { status: "none", didReceiveRequest: false };
+    },
     invalidateOnSuccess: invalidateFriendRequests,
   });
 
 export const useRemoveFriendMutation = () =>
   useFriendMutation({
-    call: (targetUserId) =>
-      userRemoveFriend({ path: { targetUserId }, throwOnError: true }),
-    statusOnSuccess: { status: "none", didReceiveRequest: false },
+    call: async (targetUserId) => {
+      await userRemoveFriend({ path: { targetUserId }, throwOnError: true });
+      return { status: "none", didReceiveRequest: false };
+    },
     invalidateOnSuccess: invalidateFriendships,
   });
 

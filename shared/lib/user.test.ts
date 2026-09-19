@@ -18,6 +18,7 @@ import {
 
 const REFUSED_USER = 2;
 const ALLOWED_USER = 3;
+const REQUESTING_USER = 4;
 
 const notFound = () =>
   Response.json({ message: "No pending request found" }, { status: 404 });
@@ -30,8 +31,19 @@ const refuseRefusedUser = ({ params }: { params: Record<string, string> }) =>
     ? notFound()
     : new Response(null, { status: 200 });
 
+const sendFriendRequest = ({ params }: { params: Record<string, string> }) => {
+  switch (Number(params.targetUserId)) {
+    case REFUSED_USER:
+      return notFound();
+    case REQUESTING_USER:
+      return Response.json({ status: "accepted", didReceiveRequest: false });
+    default:
+      return Response.json({ status: "pending", didReceiveRequest: false });
+  }
+};
+
 const friendRoutes: RouteTable = {
-  "POST /user/friends/:targetUserId": refuseRefusedUser,
+  "POST /user/friends/:targetUserId": sendFriendRequest,
   "DELETE /user/friends/:targetUserId": refuseRefusedUser,
   "PATCH /user/friends/:requesterId/accept": refuseRefusedUser,
   "PATCH /user/friends/:requesterId/decline": refuseRefusedUser,
@@ -132,32 +144,28 @@ it.each([
     useSendFriendRequestMutation,
     { status: "pending", didReceiveRequest: false },
     allLists,
-    true,
   ],
   [
     "accept",
     useAcceptFriendRequestMutation,
     { status: "accepted", didReceiveRequest: false },
     allLists,
-    false,
   ],
   [
     "decline",
     useDeclineFriendRequestMutation,
     { status: "none", didReceiveRequest: false },
     requestLists,
-    false,
   ],
   [
     "remove",
     useRemoveFriendMutation,
     { status: "none", didReceiveRequest: false },
     allLists,
-    false,
   ],
 ] as const)(
   "a successful %s sets the friend status and refetches its lists",
-  async (_, useMutation, status, lists, refetchesStatus) => {
+  async (_, useMutation, status, lists) => {
     const { client, wrapper } = queryWrapper();
     for (const key of allLists) client.setQueryData(key, []);
 
@@ -170,12 +178,49 @@ it.each([
     expect(
       client.getQueryState(userQueryKeys.friendStatus(ALLOWED_USER))
         ?.isInvalidated,
-    ).toBe(refetchesStatus);
+    ).toBe(false);
     for (const key of allLists) {
       expect(client.getQueryState(key)?.isInvalidated).toBe(
         lists.includes(key),
       );
     }
+  },
+);
+
+it("a send that accepts their request sets the friend status to accepted", async () => {
+  const { client, wrapper } = queryWrapper();
+
+  const mutation = renderHook(() => useSendFriendRequestMutation(), {
+    wrapper,
+  });
+
+  await mutation.result.current.mutateAsync(REQUESTING_USER);
+  expect(
+    client.getQueryData(userQueryKeys.friendStatus(REQUESTING_USER)),
+  ).toEqual({ status: "accepted", didReceiveRequest: false });
+});
+
+it.each(friendMutations)(
+  "a successful %s keeps its status over a status read begun before it",
+  async (_, useMutation) => {
+    const { client, wrapper } = queryWrapper();
+    const staleRead = Promise.withResolvers<void>();
+    api.alsoServing({
+      "GET /user/myfriendrelationship/:id": async () => {
+        await staleRead.promise;
+        return Response.json({ status: "pending", didReceiveRequest: true });
+      },
+    });
+    renderHook(() => useUserFriendStatusQuery(ALLOWED_USER), { wrapper });
+    const mutation = renderHook(() => useMutation(), { wrapper });
+
+    const status = await mutation.result.current.mutateAsync(ALLOWED_USER);
+    staleRead.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(
+      client.getQueryData(userQueryKeys.friendStatus(ALLOWED_USER)),
+    ).toEqual(status);
   },
 );
 
