@@ -906,13 +906,21 @@ export class UserService {
         { requester: { id: userId }, addressee: { id: targetUserId } },
         { requester: { id: targetUserId }, addressee: { id: userId } },
       ],
-      relations: { addressee: true, sentNotif: true },
+      relations: {
+        requester: true,
+        addressee: true,
+        sentNotif: true,
+        acceptedNotif: true,
+      },
     });
     if (!rel) {
       return;
     }
     if (rel.addressee && rel.sentNotif) {
       await this.notifsService.setRead(rel.sentNotif.id, rel.addressee.id);
+    }
+    if (rel.requester && rel.acceptedNotif) {
+      await this.notifsService.setRead(rel.acceptedNotif.id, rel.requester.id);
     }
 
     await this.friendRepository.delete(rel.id);

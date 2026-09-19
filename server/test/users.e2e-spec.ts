@@ -849,6 +849,33 @@ describe("Users (e2e)", () => {
     await expectRemovalMarksRequestRead(userBToken, userAId);
   });
 
+  it("Un-friending marks the accepted notification read", async () => {
+    const countUnreadAccepted = () =>
+      ctx.dataSource.getRepository(Notification).count({
+        where: {
+          user: { id: userAId },
+          category: NotificationCategory.FriendRequestAccepted,
+          readAt: IsNull(),
+        },
+      });
+    const unreadBefore = await countUnreadAccepted();
+
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(201);
+    await request(ctx.app.getHttpServer())
+      .patch(`/user/friends/${userAId}/accept`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(200);
+    await request(ctx.app.getHttpServer())
+      .delete(`/user/friends/${userAId}`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(200);
+
+    expect(await countUnreadAccepted()).toBe(unreadBefore);
+  });
+
   /* ────────────────────────────────────────────────────────────
    *  Auth guard checks
    * ──────────────────────────────────────────────────────────── */
