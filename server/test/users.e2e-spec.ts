@@ -803,6 +803,44 @@ describe("Users (e2e)", () => {
     expect(rows.map((row) => row.status)).toEqual([FriendStatus.Accepted]);
   });
 
+  const expectRemovalMarksRequestRead = async (
+    removerToken: string,
+    removedUserId: number,
+  ) => {
+    const countUnreadRequests = () =>
+      ctx.dataSource.getRepository(Notification).count({
+        where: {
+          user: { id: userBId },
+          category: NotificationCategory.FriendRequest,
+          readAt: IsNull(),
+        },
+      });
+    await request(ctx.app.getHttpServer())
+      .delete(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(200);
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(201);
+    expect(await countUnreadRequests()).toBe(1);
+
+    await request(ctx.app.getHttpServer())
+      .delete(`/user/friends/${removedUserId}`)
+      .set("Authorization", `Bearer ${removerToken}`)
+      .expect(200);
+
+    expect(await countUnreadRequests()).toBe(0);
+  };
+
+  it("Cancelling a request marks its notification read", async () => {
+    await expectRemovalMarksRequestRead(userAToken, userBId);
+  });
+
+  it("Removing a received request marks its notification read", async () => {
+    await expectRemovalMarksRequestRead(userBToken, userAId);
+  });
+
   /* ────────────────────────────────────────────────────────────
    *  Auth guard checks
    * ──────────────────────────────────────────────────────────── */

@@ -901,14 +901,21 @@ export class UserService {
 
   /** Cancel a request OR un-friend an accepted friend in either direction. */
   async removeFriend(userId: number, targetUserId: number): Promise<void> {
-    await this.friendRepository
-      .createQueryBuilder()
-      .delete()
-      .where(
-        `(requesterId = :u AND addresseeId = :t) OR (requesterId = :t AND addresseeId = :u)`,
-        { u: userId, t: targetUserId },
-      )
-      .execute();
+    const rel = await this.friendRepository.findOne({
+      where: [
+        { requester: { id: userId }, addressee: { id: targetUserId } },
+        { requester: { id: targetUserId }, addressee: { id: userId } },
+      ],
+      relations: { addressee: true, sentNotif: true },
+    });
+    if (!rel) {
+      return;
+    }
+    if (rel.addressee && rel.sentNotif) {
+      await this.notifsService.setRead(rel.sentNotif.id, rel.addressee.id);
+    }
+
+    await this.friendRepository.delete(rel.id);
   }
 
   async findFriends(userId: number): Promise<User[]> {
