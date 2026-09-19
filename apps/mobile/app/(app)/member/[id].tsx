@@ -339,92 +339,96 @@ export default function UserProfileScreen() {
   const renderFriendAction = useCallback(() => {
     if (!isAuthenticated || isMe || !friendStatus) return null;
 
-    if (friendStatus.status === "none") {
-      return (
-        <Button
-          title="Send friend request"
-          color={ButtonColor.White}
-          size={ButtonSize.Small}
-          onPress={handleSendFriendRequest}
-        />
-      );
-    }
-
-    if (friendStatus.status === "accepted") {
-      return (
-        <View className="relative">
-          {friendActionsOpen ? (
-            <Pressable
-              className="absolute -inset-4"
-              onPress={() => setFriendActionsOpen(false)}
-            />
-          ) : null}
+    const status = friendStatus.status ?? "none";
+    switch (status) {
+      case "none":
+      case "declined":
+        return (
           <Button
+            title="Send friend request"
             color={ButtonColor.White}
             size={ButtonSize.Small}
-            onPress={() => setFriendActionsOpen((prev) => !prev)}
-          >
-            <View className="flex-row items-center gap-1">
-              <Text className="text-zinc-800" weight={FontWeight.Medium}>
-                Friends
-              </Text>
-              <ChevronDown size={14} color="#27272a" />
-            </View>
-          </Button>
-          {friendActionsOpen ? (
-            <View className="absolute left-0 top-full z-20 self-start rounded-sm border border-stone-300 bg-white">
-              <TouchableOpacity
-                className="flex-row self-start px-3 py-2"
-                onPress={handleRemoveFriend}
-                activeOpacity={0.8}
-              >
-                <View className="flex-row gap-1">
-                  <Text className="shrink-0 text-sm text-red-600">Remove</Text>
-                  <Text className="shrink-0 text-sm text-red-600">friend</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-          ) : null}
-        </View>
-      );
-    }
-
-    if (friendStatus.status === "pending") {
-      if (friendStatus.didReceiveRequest) {
+            onPress={handleSendFriendRequest}
+          />
+        );
+      case "accepted":
         return (
-          <View className="flex-row items-center gap-2">
-            <Text className="text-zinc-600 text-sm">
-              Sent you a friend request
-            </Text>
+          <View className="relative">
+            {friendActionsOpen ? (
+              <Pressable
+                className="absolute -inset-4"
+                onPress={() => setFriendActionsOpen(false)}
+              />
+            ) : null}
             <Button
-              title="Accept"
-              color={ButtonColor.Green}
+              color={ButtonColor.White}
               size={ButtonSize.Small}
-              onPress={handleAcceptFriendRequest}
-              disabled={answeringRequest}
-            />
-            <Button
-              title="Decline"
-              color={ButtonColor.Light}
-              size={ButtonSize.Small}
-              onPress={handleDeclineFriendRequest}
-              disabled={answeringRequest}
-            />
+              onPress={() => setFriendActionsOpen((prev) => !prev)}
+            >
+              <View className="flex-row items-center gap-1">
+                <Text className="text-zinc-800" weight={FontWeight.Medium}>
+                  Friends
+                </Text>
+                <ChevronDown size={14} color="#27272a" />
+              </View>
+            </Button>
+            {friendActionsOpen ? (
+              <View className="absolute left-0 top-full z-20 self-start rounded-sm border border-stone-300 bg-white">
+                <TouchableOpacity
+                  className="flex-row self-start px-3 py-2"
+                  onPress={handleRemoveFriend}
+                  activeOpacity={0.8}
+                >
+                  <View className="flex-row gap-1">
+                    <Text className="shrink-0 text-sm text-red-600">
+                      Remove
+                    </Text>
+                    <Text className="shrink-0 text-sm text-red-600">
+                      friend
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </View>
         );
-      }
-      return (
-        <Button
-          title="Friend request sent"
-          color={ButtonColor.Light}
-          size={ButtonSize.Small}
-          onPress={handleSendFriendRequest}
-          disabled
-        />
-      );
+      case "pending":
+        if (friendStatus.didReceiveRequest) {
+          return (
+            <View className="flex-row items-center gap-2">
+              <Text className="text-zinc-600 text-sm">
+                Sent you a friend request
+              </Text>
+              <Button
+                title="Accept"
+                color={ButtonColor.Green}
+                size={ButtonSize.Small}
+                onPress={handleAcceptFriendRequest}
+                disabled={answeringRequest}
+              />
+              <Button
+                title="Decline"
+                color={ButtonColor.Light}
+                size={ButtonSize.Small}
+                onPress={handleDeclineFriendRequest}
+                disabled={answeringRequest}
+              />
+            </View>
+          );
+        }
+        return (
+          <Button
+            title="Friend request sent"
+            color={ButtonColor.Light}
+            size={ButtonSize.Small}
+            onPress={handleSendFriendRequest}
+            disabled
+          />
+        );
+      default:
+        status satisfies never;
+        return null;
     }
-
-    return null;
   }, [
     isAuthenticated,
     isMe,

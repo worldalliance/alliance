@@ -1,0 +1,5 @@
+- The fix comes from the review of 890cfd771 ("Refuse a friend request to an existing friend"), finding `declined-shows-friends`. When B declines A's request, both users get status `declined`. Web fell through to the "Friends" / "Remove friend" button and mobile rendered nothing. The user picked the option of treating `declined` like `none` in both clients.
+- Both sides now see "Send friend request". The server already handles either sender. A's resend resets the declined A to B row to pending with a new notification (8813f97ed). B's send flips the row to B to A, pending, with a notification (8b91d6491).
+- I added `declined` to the existing `none` check instead of turning each if-chain into an exhaustive switch. The switch would re-indent both render functions for a two-line fix. Neither chain is exhaustive today, and web still renders "Friends" for a `null` status.
+- The commit sits at the end of the branch. It needs 8b91d6491, since before that commit B's send after a decline adds a second row for the pair.
+- Only web has a test. Mobile has no component tests to extend.

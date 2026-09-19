@@ -17,3 +17,17 @@ it("disables Accept while an accept is pending", () => {
     screen.getByRole("button", { name: "Accept" }).hasAttribute("disabled"),
   ).toBe(true);
 });
+
+it("offers to send a request after a decline", () => {
+  render(
+    <FriendRequestButton
+      friendStatus={{ status: "declined", didReceiveRequest: false }}
+      handleSendFriendRequest={() => {}}
+      handleRemoveFriend={() => {}}
+      handleAcceptFriendRequest={() => {}}
+      accepting={false}
+    />,
+  );
+  expect(screen.getByText("Send friend request")).toBeTruthy();
+  expect(screen.queryByText("Friends")).toBeNull();
+});
