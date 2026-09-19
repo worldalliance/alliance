@@ -498,6 +498,9 @@ export class ConversationService {
     userId: number,
   ): Promise<ConversationDto> {
     const participant = await this.getParticipantOrFail(conversationId, userId);
+    if (participant.state !== ParticipantState.Invited) {
+      throw new ForbiddenException("There's no invite to decline.");
+    }
     await this.participantRepository.remove(participant);
     await this.touchConversation(conversationId);
     const conversation = await this.getConversationEntity(conversationId);

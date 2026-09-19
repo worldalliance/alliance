@@ -677,6 +677,18 @@ describe("ConversationController (e2e)", () => {
 
       expect(await participantIds(conversation.id)).toEqual(before);
     });
+
+    it("refuses a joined member declining", async () => {
+      const { conversation, memberToken } = await createCommunityChat();
+      const before = await participantIds(conversation.id);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversation.id}/decline`)
+        .set("Authorization", `Bearer ${memberToken}`)
+        .expect(403);
+
+      expect(await participantIds(conversation.id)).toEqual(before);
+    });
   });
 
   describe("leaving", () => {
