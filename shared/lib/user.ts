@@ -34,7 +34,9 @@ export const userQueryKeys = {
   friendStatus: (userId: number) => ["user", userId, "friendStatus"] as const,
   forumPosts: (userId: number) => ["user", userId, "forumPosts"] as const,
   forumComments: (userId: number) => ["user", userId, "forumComments"] as const,
-  friends: (userId: number) => ["user", userId, "friends"] as const,
+  allFriends: () => ["user", "friends"] as const,
+  friends: (userId: number | undefined) =>
+    [...userQueryKeys.allFriends(), userId] as const,
   receivedRequests: () => ["user", "friendRequests", "received"] as const,
   sentRequests: () => ["user", "friendRequests", "sent"] as const,
   messageableUsers: () => ["user", "messageableUsers"] as const,
@@ -98,8 +100,8 @@ type FriendStatusQueryOptions = Omit<
   "queryKey" | "queryFn" | "enabled"
 > & { enabled?: boolean };
 
-type FriendsQueryOptions = Omit<
-  UseQueryOptions<ProfileDto[]>,
+type FriendsQueryOptions<TData> = Omit<
+  UseQueryOptions<ProfileDto[], Error, TData>,
   "queryKey" | "queryFn" | "enabled"
 > & { enabled?: boolean };
 
@@ -179,9 +181,12 @@ export const useUserForumCommentsQuery = (
     enabled: defaultQueryEnabled(userId, options?.enabled),
   });
 
-export const useUserFriendsQuery = (
-  userId: number,
-  options?: FriendsQueryOptions,
+export const selectFriendIds = (friends: ProfileDto[]) =>
+  friends.map((friend) => friend.id);
+
+export const useUserFriendsQuery = <TData = ProfileDto[]>(
+  userId: number | undefined,
+  options?: FriendsQueryOptions<TData>,
 ) =>
   useQuery({
     ...options,
@@ -244,7 +249,7 @@ export const useMessageableUsersQuery = (
   return { ...query, ids };
 };
 
-type FriendRequestMutationOptions = UseMutationOptions<unknown, Error, number>;
+type FriendRequestMutationOptions = UseMutationOptions<void, unknown, number>;
 
 type UpdateProfileMutationOptions = UseMutationOptions<
   ProfileDto | null,
@@ -252,7 +257,7 @@ type UpdateProfileMutationOptions = UseMutationOptions<
   UpdateProfileDto
 >;
 
-const invalidateFriendLists = (queryClient: QueryClient) => {
+const invalidateFriendRequests = (queryClient: QueryClient) => {
   void queryClient.invalidateQueries({
     queryKey: userQueryKeys.receivedRequests(),
   });
@@ -261,104 +266,101 @@ const invalidateFriendLists = (queryClient: QueryClient) => {
   });
 };
 
-export const useSendFriendRequestMutation = (
+const invalidateFriendships = (queryClient: QueryClient) => {
+  void queryClient.invalidateQueries({ queryKey: userQueryKeys.allFriends() });
+  void queryClient.invalidateQueries({
+    queryKey: userQueryKeys.messageableUsers(),
+  });
+  invalidateFriendRequests(queryClient);
+};
+
+const resyncFriend = (queryClient: QueryClient, userId: number) => {
+  void queryClient.invalidateQueries({
+    queryKey: userQueryKeys.friendStatus(userId),
+  });
+  invalidateFriendships(queryClient);
+};
+
+const useFriendMutation = (
+  params: {
+    call: (userId: number) => Promise<unknown>;
+    statusOnSuccess: FriendStatusDto;
+    invalidateOnSuccess: (queryClient: QueryClient, userId: number) => void;
+  },
   options?: FriendRequestMutationOptions,
 ) => {
+  const { call, statusOnSuccess, invalidateOnSuccess } = params;
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (targetUserId: number) =>
-      userRequestFriend({ path: { targetUserId } }),
-    onSuccess: (data, targetUserId, onMutateResult, context) => {
-      queryClient.setQueryData(userQueryKeys.friendStatus(targetUserId), {
-        status: "pending",
-        didReceiveRequest: false,
-      });
-      void queryClient.invalidateQueries({
-        queryKey: userQueryKeys.friends(targetUserId),
-      });
-      invalidateFriendLists(queryClient);
-      options?.onSuccess?.(data, targetUserId, onMutateResult, context);
+  return useMutation<void, unknown, number>({
+    mutationFn: async (userId) => {
+      await call(userId);
     },
-    onError: (error, variables, onMutateResult, context) => {
-      options?.onError?.(error, variables, onMutateResult, context);
+    onSuccess: (data, userId, onMutateResult, context) => {
+      queryClient.setQueryData(
+        userQueryKeys.friendStatus(userId),
+        statusOnSuccess,
+      );
+      invalidateOnSuccess(queryClient, userId);
+      options?.onSuccess?.(data, userId, onMutateResult, context);
+    },
+    onError: (error, userId, onMutateResult, context) => {
+      resyncFriend(queryClient, userId);
+      options?.onError?.(error, userId, onMutateResult, context);
     },
   });
 };
+
+export const useSendFriendRequestMutation = (
+  options?: FriendRequestMutationOptions,
+) =>
+  useFriendMutation(
+    {
+      call: (targetUserId) =>
+        userRequestFriend({ path: { targetUserId }, throwOnError: true }),
+      statusOnSuccess: { status: "pending", didReceiveRequest: false },
+      invalidateOnSuccess: resyncFriend,
+    },
+    options,
+  );
 
 export const useAcceptFriendRequestMutation = (
   options?: FriendRequestMutationOptions,
-) => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (requesterId: number) =>
-      userAcceptFriendRequest({ path: { requesterId } }),
-    onSuccess: (data, requesterId, onMutateResult, context) => {
-      queryClient.setQueryData(userQueryKeys.friendStatus(requesterId), {
-        status: "accepted",
-        didReceiveRequest: false,
-      });
-      void queryClient.invalidateQueries({
-        queryKey: userQueryKeys.friends(requesterId),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: userQueryKeys.messageableUsers(),
-      });
-      invalidateFriendLists(queryClient);
-      options?.onSuccess?.(data, requesterId, onMutateResult, context);
+) =>
+  useFriendMutation(
+    {
+      call: (requesterId) =>
+        userAcceptFriendRequest({ path: { requesterId }, throwOnError: true }),
+      statusOnSuccess: { status: "accepted", didReceiveRequest: false },
+      invalidateOnSuccess: invalidateFriendships,
     },
-    onError: (error, variables, onMutateResult, context) => {
-      options?.onError?.(error, variables, onMutateResult, context);
-    },
-  });
-};
+    options,
+  );
 
 export const useDeclineFriendRequestMutation = (
   options?: FriendRequestMutationOptions,
-) => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (requesterId: number) =>
-      userDeclineFriendRequest({ path: { requesterId } }),
-    onSuccess: (data, requesterId, onMutateResult, context) => {
-      queryClient.setQueryData(userQueryKeys.friendStatus(requesterId), {
-        status: "none",
-        didReceiveRequest: false,
-      });
-      invalidateFriendLists(queryClient);
-      options?.onSuccess?.(data, requesterId, onMutateResult, context);
+) =>
+  useFriendMutation(
+    {
+      call: (requesterId) =>
+        userDeclineFriendRequest({ path: { requesterId }, throwOnError: true }),
+      statusOnSuccess: { status: "none", didReceiveRequest: false },
+      invalidateOnSuccess: invalidateFriendRequests,
     },
-    onError: (error, variables, onMutateResult, context) => {
-      options?.onError?.(error, variables, onMutateResult, context);
-    },
-  });
-};
+    options,
+  );
 
 export const useRemoveFriendMutation = (
   options?: FriendRequestMutationOptions,
-) => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (targetUserId: number) =>
-      userRemoveFriend({ path: { targetUserId } }),
-    onSuccess: (data, targetUserId, onMutateResult, context) => {
-      queryClient.setQueryData(userQueryKeys.friendStatus(targetUserId), {
-        status: "none",
-        didReceiveRequest: false,
-      });
-      void queryClient.invalidateQueries({
-        queryKey: userQueryKeys.friends(targetUserId),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: userQueryKeys.messageableUsers(),
-      });
-      invalidateFriendLists(queryClient);
-      options?.onSuccess?.(data, targetUserId, onMutateResult, context);
+) =>
+  useFriendMutation(
+    {
+      call: (targetUserId) =>
+        userRemoveFriend({ path: { targetUserId }, throwOnError: true }),
+      statusOnSuccess: { status: "none", didReceiveRequest: false },
+      invalidateOnSuccess: invalidateFriendships,
     },
-    onError: (error, variables, onMutateResult, context) => {
-      options?.onError?.(error, variables, onMutateResult, context);
-    },
-  });
-};
+    options,
+  );
 
 export const useUpdateProfileMutation = (
   userId: number | undefined,
