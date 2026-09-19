@@ -4,11 +4,5 @@
     "version": "1.3.3",
     "gitCommit": "fc3cd92837122ae774ea9a4dd3e3c3900cc1e951",
     "capturedAt": "2026-09-19T21:39:59.478Z"
-  },
-  "android": {
-    "fingerprint": "8a1dcc5cebc4dd2c96617e45b75138b1aa16d415",
-    "version": "1.3.3",
-    "gitCommit": "fc3cd92837122ae774ea9a4dd3e3c3900cc1e951",
-    "capturedAt": "2026-09-19T21:39:59.478Z"
   }
 }

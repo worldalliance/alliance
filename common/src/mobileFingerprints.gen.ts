@@ -9,7 +9,7 @@ export const MOBILE_STORE_FINGERPRINTS = {
     version: "1.3.2",
   },
   android: {
-    fingerprint: "59e3d529292d300f8f2b342eca06e41443d12889",
-    version: "1.3.2",
+    fingerprint: "8a1dcc5cebc4dd2c96617e45b75138b1aa16d415",
+    version: "1.3.3",
   },
 } as const;
