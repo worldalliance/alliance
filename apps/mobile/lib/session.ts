@@ -7,6 +7,7 @@ import {
   type UserDto,
 } from "@alliance/shared/client";
 import { client } from "@alliance/shared/client/client.gen";
+import { isNetworkFailure } from "./network";
 
 export type SessionTokens = { access: string; refresh: string | undefined };
 
@@ -67,7 +68,8 @@ export async function retryClearTokens(params: {
 }
 
 /** Wraps `fetch` so a request the server answers with 401 is retried once
- * with refreshed tokens. */
+ * with refreshed tokens. A refresh the server refuses leaves the original 401;
+ * any other refresh failure throws. */
 export function refreshingFetch(params: {
   fetch: (request: Request) => Promise<Response>;
   getRefreshToken: () => Promise<string | null>;
@@ -87,9 +89,11 @@ export function refreshingFetch(params: {
     const refreshRes = await authRefreshTokens({
       query: { mode: "header" },
       headers: { Authorization: `Bearer ${refreshToken}` },
+      throwOnError: false,
     });
-    if (!refreshRes.response.ok || !refreshRes.data?.access_token) {
-      return res;
+    if (refreshRes.response.status === 401) return res;
+    if (!refreshRes.data?.access_token) {
+      throw new Error(`token refresh failed: ${refreshRes.response.status}`);
     }
 
     const { access_token, refresh_token } = refreshRes.data;
@@ -99,6 +103,60 @@ export function refreshingFetch(params: {
     retryHeaders.set("Authorization", `Bearer ${access_token}`);
     return params.fetch(new Request(retryReq, { headers: retryHeaders }));
   };
+}
+
+export class SessionRefusedError extends Error {
+  constructor() {
+    super("The server refused the stored session");
+    this.name = "SessionRefusedError";
+  }
+}
+
+export async function loadSessionUser(): Promise<Result<UserDto, Error>> {
+  const sent = await R.fromPromise(authMe({ throwOnError: false }));
+  if (!sent.ok) {
+    return sent;
+  }
+  const { data, response } = sent.value;
+  if (response.status === 401) {
+    return R.failure(new SessionRefusedError());
+  }
+  return data?.user
+    ? R.success(data.user)
+    : R.failure(new Error(`Failed to load the session: ${response.status}`));
+}
+
+/** Loads the stored session's member at launch. Drops the session only when
+ * the server refuses it; any other failure keeps the tokens for the next try. */
+export async function restoreSession(params: {
+  getAccessToken: () => Promise<string | null>;
+  dropSession: () => Promise<void>;
+  reportFailure: (error: Error) => void;
+}): Promise<Result<UserDto, Error>> {
+  const fail = (error: Error) => {
+    console.error("failed to load the session at launch", error);
+    if (!isNetworkFailure(error)) {
+      params.reportFailure(error);
+    }
+  };
+  const accessToken = await R.fromPromise(params.getAccessToken());
+  if (!accessToken.ok) {
+    fail(accessToken.error);
+    return accessToken;
+  }
+  if (accessToken.value) {
+    setAuthHeader(accessToken.value);
+  }
+  const loaded = await loadSessionUser();
+  if (loaded.ok) {
+    return loaded;
+  }
+  if (loaded.error instanceof SessionRefusedError) {
+    await params.dropSession();
+  } else {
+    fail(loaded.error);
+  }
+  return loaded;
 }
 
 export async function openSession(params: {

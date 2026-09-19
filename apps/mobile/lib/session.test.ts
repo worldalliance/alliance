@@ -6,20 +6,27 @@ import {
   type RouteTable,
   serveApi,
 } from "@alliance/shared/lib/testing/serveApi";
-import { afterEach, expect, it, mock } from "bun:test";
+import { afterEach, expect, it, mock, spyOn } from "bun:test";
+import { FetchError } from "expo/src/winter/fetch/FetchErrors";
 import {
   clearStoredTokens,
   closeSession,
+  loadSessionUser,
   openSession,
   refreshingFetch,
+  restoreSession,
   retryClearTokens,
+  SessionRefusedError,
   type SessionTokens,
   setAuthHeader,
 } from "./session";
 
 const api = serveApi(routes({}));
 
-afterEach(() => setAuthHeader(undefined));
+afterEach(() => {
+  setAuthHeader(undefined);
+  mock.restore();
+});
 
 const tokens = { access_token: "access", refresh_token: "refresh" };
 
@@ -287,6 +294,150 @@ it("leaves the tokens when the member declines to retry", async () => {
   expect(clearTokens).not.toHaveBeenCalled();
 });
 
+it("loads the member the session belongs to", async () => {
+  api.throwingOnRefusal({
+    "GET /auth/me": () => Response.json({ user: { id: 1 } }),
+  });
+
+  const loaded = await loadSessionUser();
+
+  expect(loaded.ok ? loaded.value.id : undefined).toBe(1);
+});
+
+it("reports a session the server refuses", async () => {
+  api.throwingOnRefusal({
+    "GET /auth/me": () => new Response(null, { status: 401 }),
+  });
+
+  const loaded = await loadSessionUser();
+
+  expect(loaded.ok ? undefined : loaded.error).toBeInstanceOf(
+    SessionRefusedError,
+  );
+});
+
+it("tells a server it couldn't reach apart from a refusal", async () => {
+  api.throwingOnRefusal({
+    "GET /auth/me": () => {
+      throw new TypeError("fetch failed: offline");
+    },
+  });
+
+  const loaded = await loadSessionUser();
+
+  expect(loaded.ok).toBe(false);
+  expect(loaded.ok ? undefined : loaded.error).not.toBeInstanceOf(
+    SessionRefusedError,
+  );
+});
+
+it("tells a server error apart from a refusal", async () => {
+  api.throwingOnRefusal({
+    "GET /auth/me": () => new Response(null, { status: 503 }),
+  });
+
+  const loaded = await loadSessionUser();
+
+  expect(loaded.ok).toBe(false);
+  expect(loaded.ok ? undefined : loaded.error).not.toBeInstanceOf(
+    SessionRefusedError,
+  );
+});
+
+const restore = ({
+  getAccessToken = async (): Promise<string | null> => null,
+} = {}) => {
+  const dropSession = mock(async () => {});
+  const reportFailure = mock((_error: Error) => {});
+  const consoleError = spyOn(console, "error").mockImplementation(() => {});
+  return {
+    dropSession,
+    reportFailure,
+    consoleError,
+    restored: restoreSession({ getAccessToken, dropSession, reportFailure }),
+  };
+};
+
+it("loads the member with the stored access token", async () => {
+  const sent = mock();
+  api.throwingOnRefusal({
+    "GET /auth/me": ({ request }) => {
+      sent(request.headers.get("authorization"));
+      return Response.json({ user: { id: 1 } });
+    },
+  });
+
+  await restore({ getAccessToken: async () => "stored" }).restored;
+
+  expect(sent).toHaveBeenCalledWith("Bearer stored");
+});
+
+it("keeps and reports a session whose stored token it couldn't read", async () => {
+  const unreadable = new Error("keychain unavailable");
+
+  const { dropSession, reportFailure, restored } = restore({
+    getAccessToken: async () => {
+      throw unreadable;
+    },
+  });
+  expect((await restored).ok).toBe(false);
+
+  expect(dropSession).not.toHaveBeenCalled();
+  expect(reportFailure).toHaveBeenCalledWith(unreadable);
+});
+
+it("restores the member without dropping the session", async () => {
+  api.throwingOnRefusal({
+    "GET /auth/me": () => Response.json({ user: { id: 1 } }),
+  });
+
+  const { dropSession, reportFailure, restored } = restore();
+  const result = await restored;
+
+  expect(result.ok ? result.value.id : undefined).toBe(1);
+  expect(dropSession).not.toHaveBeenCalled();
+  expect(reportFailure).not.toHaveBeenCalled();
+});
+
+it("drops a session the server refuses at launch", async () => {
+  api.throwingOnRefusal({
+    "GET /auth/me": () => new Response(null, { status: 401 }),
+  });
+
+  const { dropSession, reportFailure, restored } = restore();
+  await restored;
+
+  expect(dropSession).toHaveBeenCalled();
+  expect(reportFailure).not.toHaveBeenCalled();
+});
+
+it("keeps and reports a session the server failed to load at launch", async () => {
+  api.throwingOnRefusal({
+    "GET /auth/me": () => new Response(null, { status: 503 }),
+  });
+
+  const { dropSession, reportFailure, restored } = restore();
+  expect((await restored).ok).toBe(false);
+
+  expect(dropSession).not.toHaveBeenCalled();
+  expect(reportFailure).toHaveBeenCalled();
+});
+
+it("keeps a session it couldn't reach the server for, without reporting it", async () => {
+  api.throwingOnRefusal({
+    "GET /auth/me": () => {
+      throw FetchError.createFromError(new Error("offline"));
+    },
+  });
+
+  const { dropSession, reportFailure, consoleError, restored } = restore();
+  expect((await restored).ok).toBe(false);
+
+  expect(dropSession).not.toHaveBeenCalled();
+  expect(reportFailure).not.toHaveBeenCalled();
+  expect(consoleError).toHaveBeenCalled();
+});
+
 const serveRefreshing = (
   table: RouteTable,
   { refreshToken = "refresh" }: { refreshToken?: string | null } = {},
@@ -335,4 +486,91 @@ it("retries a refused request with refreshed tokens", async () => {
     refresh: "next",
   });
   expect(await nextAuthorization()).toBe("Bearer refreshed");
+});
+
+it("loads the member with refreshed tokens", async () => {
+  const { saveTokens } = serveRefreshing({
+    "GET /auth/me": expiredMe,
+    "POST /auth/refresh": () =>
+      Response.json({ access_token: "refreshed", refresh_token: "next" }),
+  });
+
+  const loaded = await loadSessionUser();
+
+  expect(loaded.ok ? loaded.value.id : undefined).toBe(1);
+  expect(saveTokens).toHaveBeenCalledWith({
+    access: "refreshed",
+    refresh: "next",
+  });
+  expect(await nextAuthorization()).toBe("Bearer refreshed");
+});
+
+it("reports a session whose refresh the server refuses", async () => {
+  serveRefreshing({
+    "GET /auth/me": expiredMe,
+    "POST /auth/refresh": () => new Response(null, { status: 401 }),
+  });
+
+  const loaded = await loadSessionUser();
+
+  expect(loaded.ok ? undefined : loaded.error).toBeInstanceOf(
+    SessionRefusedError,
+  );
+});
+
+it("reports a session with no refresh token to try", async () => {
+  serveRefreshing(
+    { "GET /auth/me": () => new Response(null, { status: 401 }) },
+    { refreshToken: null },
+  );
+
+  const loaded = await loadSessionUser();
+
+  expect(loaded.ok ? undefined : loaded.error).toBeInstanceOf(
+    SessionRefusedError,
+  );
+});
+
+it("reports a session the server refuses after a refresh", async () => {
+  serveRefreshing({
+    "GET /auth/me": () => new Response(null, { status: 401 }),
+    "POST /auth/refresh": () =>
+      Response.json({ access_token: "refreshed", refresh_token: "next" }),
+  });
+
+  const loaded = await loadSessionUser();
+
+  expect(loaded.ok ? undefined : loaded.error).toBeInstanceOf(
+    SessionRefusedError,
+  );
+});
+
+it("tells a refresh the server failed apart from a refusal", async () => {
+  serveRefreshing({
+    "GET /auth/me": expiredMe,
+    "POST /auth/refresh": () => new Response(null, { status: 503 }),
+  });
+
+  const loaded = await loadSessionUser();
+
+  expect(loaded.ok).toBe(false);
+  expect(loaded.ok ? undefined : loaded.error).not.toBeInstanceOf(
+    SessionRefusedError,
+  );
+});
+
+it("tells a refresh that never got a response apart from a refusal", async () => {
+  serveRefreshing({
+    "GET /auth/me": expiredMe,
+    "POST /auth/refresh": () => {
+      throw new TypeError("fetch failed: offline");
+    },
+  });
+
+  const loaded = await loadSessionUser();
+
+  expect(loaded.ok).toBe(false);
+  expect(loaded.ok ? undefined : loaded.error).not.toBeInstanceOf(
+    SessionRefusedError,
+  );
 });

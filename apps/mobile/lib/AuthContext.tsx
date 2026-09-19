@@ -26,9 +26,9 @@ import {
   clearStoredTokens,
   closeSession,
   openSession,
+  restoreSession,
   retryClearTokens,
   type SessionTokens,
-  setAuthHeader,
 } from "./session";
 import {
   getVisualTestAutoLoginCredentials,
@@ -139,19 +139,22 @@ export const AuthProvider: React.FC<
   useEffect(() => {
     (async () => {
       try {
-        const accessToken = await getAccessToken();
-        if (accessToken) {
-          setAuthHeader(accessToken);
+        // refreshingFetch refreshes an expired access token and retries
+        // before this call returns.
+        const restored = await restoreSession({
+          getAccessToken,
+          dropSession: async () => {
+            captureEvent(AnalyticsEvent.AuthFailedToRefresh);
+            // No redirect: a first launch has no session to lose, and the app
+            // layout already sends an unauthenticated visitor to onboarding.
+            await clearSession();
+          },
+          reportFailure: (error) =>
+            captureException(ExceptionEvent.SessionLoadFailed, error),
+        });
+        if (restored.ok) {
+          setUser(restored.value);
         }
-        // If the access token is expired, the fetch wrapper in _layout.tsx
-        // will intercept the 401 and transparently refresh before retrying.
-        const profile = (await authMe()).data;
-        setUser(profile?.user);
-      } catch {
-        captureEvent(AnalyticsEvent.AuthFailedToRefresh);
-        // No redirect: a first launch has no session to lose, and the app
-        // layout already sends an unauthenticated visitor to onboarding.
-        await clearSession();
       } finally {
         setIsLoading(false);
       }
