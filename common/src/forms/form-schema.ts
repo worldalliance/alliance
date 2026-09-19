@@ -512,15 +512,21 @@ export function fieldHasOptions(field: AnyField): field is OptionField {
  * are excluded because each list answer contains one value per row.
  */
 export function collectVariableInputFields(schema: FormSchema): AnyField[] {
-  const fields: AnyField[] = [];
-  for (const page of schema.pages ?? []) {
-    for (const element of flattenPageItems(page.fields ?? [])) {
-      if (!isQuestionField(element)) continue;
-      if (!isFieldKindUsableAsVariableInput(element.kind)) continue;
-      fields.push(element);
-    }
-  }
-  return fields;
+  return collectVariableResolutionFields(schema).filter((field) =>
+    isFieldKindUsableAsVariableInput(field.kind),
+  );
+}
+
+/**
+ * Every page-level question field, readable or not, so a variable reading a
+ * kind this build doesn't know fails instead of reading nothing.
+ */
+export function collectVariableResolutionFields(
+  schema: FormSchema,
+): AnyField[] {
+  return (schema.pages ?? []).flatMap((page) =>
+    flattenPageItems(page.fields ?? []).filter(isQuestionField),
+  );
 }
 
 export function variableInputFieldsById(

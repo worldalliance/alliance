@@ -64,6 +64,41 @@ describe("resolveOutputItems interpolates variables", () => {
     expect(item.label).toBe("#{broken} of 42 units");
   });
 
+  it("leaves a variable reading a field kind this build doesn't know as written", () => {
+    const [item] = resolve(
+      schemaWithVariable({
+        pages: [
+          {
+            id: "p1",
+            fields: [
+              numberField("qty", "#{total} units"),
+              JSON.parse(
+                '{ "id": "future", "type": "input", "kind": "future", "label": "Future" }',
+              ),
+            ],
+          },
+        ],
+        outputViews: [
+          {
+            id: "v1",
+            type: "default",
+            blocks: [{ id: "ob1", fieldId: "qty", showLabel: true }],
+          },
+        ],
+        variables: [
+          {
+            name: "total",
+            inputs: { input1: { kind: "field", fieldId: "future" } },
+            formula: "input1 ?? 'n/a'",
+          },
+        ],
+      }),
+    ).items;
+
+    if (item.type !== "field") throw new Error("expected a field item");
+    expect(item.label).toBe("#{total} units");
+  });
+
   it("substitutes into a label override", () => {
     const [item] = resolve(
       schemaWithVariable({

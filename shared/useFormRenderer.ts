@@ -11,7 +11,7 @@ import {
   collectFieldLookup,
   collectGroupByFieldId,
   collectSourceFormIds,
-  collectVariableInputFields,
+  collectVariableResolutionFields,
   flattenPageItems,
   forEachCondition,
   isDisplayBlock,
@@ -683,7 +683,7 @@ export function useFormVisibility(args: {
   );
 
   const variableInputFields = useMemo(
-    () => variableInputFieldsById(collectVariableInputFields(schema)),
+    () => variableInputFieldsById(collectVariableResolutionFields(schema)),
     [schema],
   );
 

@@ -12,7 +12,7 @@ import type {
   OutputViewSchema,
 } from "@alliance/common/forms/form-schema";
 import {
-  collectVariableInputFields,
+  collectVariableResolutionFields,
   flattenPageItems,
   isQuestionField,
   variableInputFieldsById,
@@ -308,7 +308,7 @@ export const resolveOutputItems = ({
   // — label, override and field text alike — sees the same resolved values.
   const variableContext = {
     answers,
-    fields: variableInputFieldsById(collectVariableInputFields(schema)),
+    fields: variableInputFieldsById(collectVariableResolutionFields(schema)),
   };
   // A variable that fails stays out, so its `#{name}` shows as written.
   const variableValues = new Map<string, string>();

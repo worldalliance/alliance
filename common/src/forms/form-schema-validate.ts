@@ -16,6 +16,7 @@ import { compileVariableExpression } from "./variable-expression";
 import { checkVariableFormulaType } from "./variable-formula-check";
 import {
   isFieldKindUsableAsVariableInput,
+  isKnownFieldKind,
   VARIABLE_NAME_REGEX,
   variableTypeEnv,
   type FormVariable,
@@ -184,7 +185,11 @@ function checkVariableInputs(
           );
           break;
         }
-        if (!isFieldKindUsableAsVariableInput(field.kind)) {
+        if (!isKnownFieldKind(field.kind)) {
+          push(
+            `Input "${inputName}" reads field "${input.fieldId}", whose kind (${field.kind}) this build doesn't know. Reload the page`,
+          );
+        } else if (!isFieldKindUsableAsVariableInput(field.kind)) {
           push(
             `Input "${inputName}" reads field "${input.fieldId}", whose kind (${field.kind}) has no value a formula can read`,
           );

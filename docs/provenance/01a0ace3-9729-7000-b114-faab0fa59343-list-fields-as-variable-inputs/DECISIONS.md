@@ -68,7 +68,7 @@ Any variable that fails blocks the form, web and mobile, with the "This form can
 
 An output view isn't blocked. A variable that fails there gets no value, so its `#{name}` shows as written, which is what `interpolateVariables` already does for a name it has no value for. The other variables still fill in. One bad variable in a feed card shouldn't hide the card, and the raw token still shows something is wrong.
 
-An input kind the running build doesn't know fails the variable rather than throwing, so an older app build that meets a kind added later shows the "This form can't be displayed" notice instead of crashing. An admin tab left open across a deploy can meet one too. Saving there reports the input as an error that says to reload, next to the form's other errors.
+An input kind the running build doesn't know fails the variable rather than throwing, so an older app build that meets a kind added later shows the "This form can't be displayed" notice instead of crashing. An admin tab left open across a deploy can meet one too. Saving there reports the input as an error that says to reload, next to the form's other errors. A field kind it doesn't know can't be picked as an input, a variable that reads one fails the same way, and saving reports that input as an error that says to reload. Reading it as `undefined` would pass for an unanswered field, so a formula's `??` fallback would show on an answered form.
 
 No migration. Existing `field` inputs keep their shape and behavior. es-toolkit was added to `common/package.json`, at the same version range `apps/frontend` already declares.
 

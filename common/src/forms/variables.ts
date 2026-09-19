@@ -111,8 +111,19 @@ export const FIELD_KIND_VARIABLE_INPUT_MODE: Record<
   custom: VariableInputMode.None,
 };
 
+// A newer admin can save a field kind this build predates.
+export function isKnownFieldKind(kind: string): kind is FieldKind {
+  return Object.hasOwn(FIELD_KIND_VARIABLE_INPUT_MODE, kind);
+}
+
+function variableInputMode(kind: FieldKind): VariableInputMode {
+  return isKnownFieldKind(kind)
+    ? FIELD_KIND_VARIABLE_INPUT_MODE[kind]
+    : VariableInputMode.None;
+}
+
 export function isFieldKindUsableAsVariableInput(kind: FieldKind): boolean {
-  return FIELD_KIND_VARIABLE_INPUT_MODE[kind] !== VariableInputMode.None;
+  return variableInputMode(kind) !== VariableInputMode.None;
 }
 
 export type VariableInputField = {
@@ -273,10 +284,7 @@ export function formValueToExprValue(
   field: VariableInputField,
 ): ExprValue {
   if (value === undefined || value === null) return undefined;
-  return ANSWER_READERS[FIELD_KIND_VARIABLE_INPUT_MODE[field.kind]](
-    value,
-    field,
-  );
+  return ANSWER_READERS[variableInputMode(field.kind)](value, field);
 }
 
 export type VariableResolutionContext = {
@@ -287,10 +295,13 @@ export type VariableResolutionContext = {
 function resolveFieldInput(
   input: Extract<VariableInput, { kind: "field" }>,
   context: VariableResolutionContext,
-): ExprValue {
+): Result<ExprValue, string> {
   const field = context.fields.get(input.fieldId);
-  if (field === undefined) return undefined;
-  return formValueToExprValue(context.answers[input.fieldId], field);
+  if (field === undefined) return R.success(undefined);
+  if (!isKnownFieldKind(field.kind)) {
+    return R.failure(`Unknown field kind: ${field.kind}`);
+  }
+  return R.success(formValueToExprValue(context.answers[input.fieldId], field));
 }
 
 function resolveInput(
@@ -300,7 +311,7 @@ function resolveInput(
   const { kind } = input;
   switch (kind) {
     case "field":
-      return R.success(resolveFieldInput(input, context));
+      return resolveFieldInput(input, context);
     default:
       // A newer admin can save an input kind this build predates.
       return R.failure(`Unknown input kind: ${kind satisfies never}`);

@@ -261,6 +261,13 @@ describe("collectVariableInputFields", () => {
     expect(offered([numberField("qty"), fileField("upload")])).toEqual(["qty"]);
   });
 
+  it("leaves out a kind this build doesn't know", () => {
+    const future: AnyField = JSON.parse(
+      '{ "id": "future", "type": "input", "kind": "future", "label": "Future" }',
+    );
+    expect(offered([numberField("qty"), future])).toEqual(["qty"]);
+  });
+
   it("leaves out display blocks", () => {
     expect(offered([textBlock("intro", "Hello")])).toEqual([]);
   });
@@ -457,6 +464,16 @@ describe("evaluateVariable", () => {
       ok: false,
       error: "Unknown input kind: future",
     });
+  });
+
+  it("fails on a field of a kind this build doesn't know", () => {
+    const v = variable({ formula: "input1 ?? 'n/a'" });
+    expect(
+      evaluateVariable(v, {
+        answers: { qty: 3 },
+        fields: new Map([["qty", JSON.parse('{ "kind": "future" }')]]),
+      }),
+    ).toEqual({ ok: false, error: "Unknown field kind: future" });
   });
 
   it("renders nothing on a division by zero rather than showing Infinity", () => {
@@ -790,6 +807,23 @@ describe("validateFormSchema: variables", () => {
     });
     expect(errors).toHaveLength(1);
     expect(errors[0]).toContain("has no value a formula can read");
+  });
+
+  it("rejects an input reading a field of a kind this build doesn't know", () => {
+    expect(
+      errorsFor({
+        pages: [
+          page("p1", [
+            JSON.parse(
+              '{ "id": "qty", "type": "input", "kind": "future", "label": "Future" }',
+            ),
+          ]),
+        ],
+        variables: [variable()],
+      }),
+    ).toEqual([
+      'Input "input1" reads field "qty", whose kind (future) this build doesn\'t know. Reload the page',
+    ]);
   });
 
   it("rejects an input of a kind this build doesn't know", () => {

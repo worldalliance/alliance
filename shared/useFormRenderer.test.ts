@@ -356,6 +356,31 @@ describe("useFormVisibility", () => {
       joinedSub,
     ]);
   });
+
+  it("reports a variable reading a field kind this build doesn't know", () => {
+    const { result } = renderVisibility({
+      schema: {
+        ...schemaWith([
+          JSON.parse(
+            '{ "id": "future", "type": "input", "kind": "future", "label": "Future" }',
+          ),
+        ]),
+        variables: [
+          {
+            name: "total",
+            inputs: { input1: { kind: "field", fieldId: "future" } },
+            formula: "input1 ?? 'n/a'",
+          },
+        ],
+      },
+      formData: { future: "answered" },
+    });
+
+    expect(result.current.variablesError).toBe(
+      "#{total}: Unknown field kind: future",
+    );
+    expect(result.current.variableValues.size).toBe(0);
+  });
 });
 
 function renderValidation(args: {
