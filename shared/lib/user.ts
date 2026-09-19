@@ -285,7 +285,7 @@ const useFriendMutation = (
   params: {
     call: (userId: number) => Promise<unknown>;
     statusOnSuccess: FriendStatusDto;
-    invalidateOnSuccess: (queryClient: QueryClient) => void;
+    invalidateOnSuccess: (queryClient: QueryClient, userId: number) => void;
   },
   options?: FriendRequestMutationOptions,
 ) => {
@@ -300,7 +300,7 @@ const useFriendMutation = (
         userQueryKeys.friendStatus(userId),
         statusOnSuccess,
       );
-      invalidateOnSuccess(queryClient);
+      invalidateOnSuccess(queryClient, userId);
       options?.onSuccess?.(data, userId, onMutateResult, context);
     },
     onError: (error, userId, onMutateResult, context) => {
@@ -318,7 +318,7 @@ export const useSendFriendRequestMutation = (
       call: (targetUserId) =>
         userRequestFriend({ path: { targetUserId }, throwOnError: true }),
       statusOnSuccess: { status: "pending", didReceiveRequest: false },
-      invalidateOnSuccess: invalidateFriendRequests,
+      invalidateOnSuccess: resyncFriend,
     },
     options,
   );
