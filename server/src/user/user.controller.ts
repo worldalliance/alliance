@@ -257,12 +257,12 @@ export class UserController {
   @Post("friends/:targetUserId")
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: "Send a friend request" })
-  @ApiOkResponse({ description: "Friend request is now pending" })
+  @ApiOkResponse({ type: FriendStatusDto })
   @ApiConflictResponse({ description: "Already friends" })
   async requestFriend(
     @Param("targetUserId", ParseIntPipe) targetUserId: number,
     @Request() req: JwtRequest,
-  ): Promise<void> {
+  ): Promise<FriendStatusDto> {
     const rel = await this.userService.createFriendRequest(
       req.user.sub,
       targetUserId,
@@ -279,6 +279,9 @@ export class UserController {
             distinctId: String(req.user.sub),
             properties: { targetUserId },
           },
+    );
+    return new FriendStatusDto(
+      await this.userService.getRelationshipStatus(req.user.sub, targetUserId),
     );
   }
 

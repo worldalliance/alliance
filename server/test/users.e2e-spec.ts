@@ -516,6 +516,10 @@ describe("Users (e2e)", () => {
       .set("Authorization", `Bearer ${userAToken}`);
 
     expect([200, 201]).toContain(res.status);
+    expect(res.body).toEqual({
+      status: FriendStatus.Pending,
+      didReceiveRequest: false,
+    });
 
     const status = await request(ctx.app.getHttpServer())
       .get(`/user/myfriendrelationship/${userBId}`)
@@ -679,10 +683,14 @@ describe("Users (e2e)", () => {
 
   it("User B sending a request back accepts User A's pending one", async () => {
     const capture = jest.spyOn(ctx.app.get(PosthogService), "capture");
-    await request(ctx.app.getHttpServer())
+    const res = await request(ctx.app.getHttpServer())
       .post(`/user/friends/${userAId}`)
       .set("Authorization", `Bearer ${userBToken}`)
       .expect(201);
+    expect(res.body).toEqual({
+      status: FriendStatus.Accepted,
+      didReceiveRequest: false,
+    });
     expect(capture.mock.calls.map(([{ event }]) => event)).toEqual([
       AnalyticsEvent.FriendRequestAccepted,
     ]);

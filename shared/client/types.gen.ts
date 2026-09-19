@@ -4798,12 +4798,7 @@ export type UserRequestFriendErrors = {
 export type UserRequestFriendError = UserRequestFriendErrors[keyof UserRequestFriendErrors];
 
 export type UserRequestFriendResponses = {
-    /**
-     * Friend request is now pending
-     */
-    200: {
-        [key: string]: never;
-    };
+    200: FriendStatusDto;
 };
 
 export type UserRequestFriendResponse = UserRequestFriendResponses[keyof UserRequestFriendResponses];
