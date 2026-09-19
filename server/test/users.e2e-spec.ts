@@ -1,3 +1,4 @@
+import { AnalyticsEvent } from "@alliance/common/analytics";
 import { toE164 } from "@alliance/common/phone";
 import { R } from "@alliance/common/result";
 import { Temporal } from "@js-temporal/polyfill";
@@ -10,6 +11,7 @@ import {
   Notification,
   NotificationCategory,
 } from "src/notifs/entities/notification.entity";
+import { PosthogService } from "src/posthog/posthog.service";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import { StoredInviteAssignmentKind } from "src/share-urls/invite-assignment";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
@@ -639,10 +641,15 @@ describe("Users (e2e)", () => {
       .set("Authorization", `Bearer ${userBToken}`)
       .expect(200);
 
+    const capture = jest.spyOn(ctx.app.get(PosthogService), "capture");
     await request(ctx.app.getHttpServer())
       .post(`/user/friends/${userBId}`)
       .set("Authorization", `Bearer ${userAToken}`)
       .expect(201);
+    expect(capture.mock.calls.map(([{ event }]) => event)).toEqual([
+      AnalyticsEvent.FriendRequestSent,
+    ]);
+    capture.mockRestore();
 
     const status = await request(ctx.app.getHttpServer())
       .get(`/user/myfriendrelationship/${userBId}`)
@@ -653,11 +660,33 @@ describe("Users (e2e)", () => {
       .get("/user/friends/requests/received")
       .set("Authorization", `Bearer ${userBToken}`);
     expect(recv.body.map((u) => u.id)).toEqual([userAId]);
+  });
 
+  it("User B sending a request back accepts User A's pending one", async () => {
+    const capture = jest.spyOn(ctx.app.get(PosthogService), "capture");
     await request(ctx.app.getHttpServer())
-      .patch(`/user/friends/${userAId}/accept`)
+      .post(`/user/friends/${userAId}`)
       .set("Authorization", `Bearer ${userBToken}`)
-      .expect(200);
+      .expect(201);
+    expect(capture.mock.calls.map(([{ event }]) => event)).toEqual([
+      AnalyticsEvent.FriendRequestAccepted,
+    ]);
+    capture.mockRestore();
+
+    for (const [token, otherId] of [
+      [userAToken, userBId],
+      [userBToken, userAId],
+    ] as const) {
+      const status = await request(ctx.app.getHttpServer())
+        .get(`/user/myfriendrelationship/${otherId}`)
+        .set("Authorization", `Bearer ${token}`);
+      expect(status.body.status).toBe(FriendStatus.Accepted);
+    }
+
+    const aFriends = await request(ctx.app.getHttpServer())
+      .get(`/user/listfriends/${userAId}`)
+      .set("Authorization", `Bearer ${userAToken}`);
+    expect(aFriends.body.map((u) => u.id)).toEqual([userBId]);
   });
 
   it("Either user can un-friend the other", async () => {

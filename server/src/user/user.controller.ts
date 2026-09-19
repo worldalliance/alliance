@@ -263,14 +263,23 @@ export class UserController {
     @Param("targetUserId", ParseIntPipe) targetUserId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    await this.userService.createFriendRequest(req.user.sub, targetUserId);
-    this.posthog.capture({
-      event: AnalyticsEvent.FriendRequestSent,
-      distinctId: String(req.user.sub),
-      properties: {
-        targetUserId,
-      },
-    });
+    const rel = await this.userService.createFriendRequest(
+      req.user.sub,
+      targetUserId,
+    );
+    this.posthog.capture(
+      rel.status === FriendStatus.Accepted
+        ? {
+            event: AnalyticsEvent.FriendRequestAccepted,
+            distinctId: String(req.user.sub),
+            properties: { requesterId: targetUserId },
+          }
+        : {
+            event: AnalyticsEvent.FriendRequestSent,
+            distinctId: String(req.user.sub),
+            properties: { targetUserId },
+          },
+    );
   }
 
   @Patch("friends/:requesterId/accept")

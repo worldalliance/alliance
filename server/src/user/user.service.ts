@@ -766,6 +766,11 @@ export class UserService {
         case FriendStatus.Accepted:
           throw new ConflictException("Already friends");
         case FriendStatus.Pending:
+          return this.updateFriendRequestStatus(
+            addresseeId,
+            requesterId,
+            FriendStatus.Accepted,
+          );
         case FriendStatus.Declined:
         case FriendStatus.None:
           break;

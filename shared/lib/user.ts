@@ -318,6 +318,7 @@ export const useSendFriendRequestMutation = (
       call: (targetUserId) =>
         userRequestFriend({ path: { targetUserId }, throwOnError: true }),
       statusOnSuccess: { status: "pending", didReceiveRequest: false },
+      // Sending back to someone whose request is pending accepts theirs.
       invalidateOnSuccess: resyncFriend,
     },
     options,
