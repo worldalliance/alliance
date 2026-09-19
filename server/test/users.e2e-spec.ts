@@ -22,7 +22,7 @@ import {
 } from "src/user/entities/onetime-invite.entity";
 import { UserService } from "src/user/user.service";
 import request from "supertest";
-import type { Repository } from "typeorm";
+import { IsNull, type Repository } from "typeorm";
 import { Community } from "../src/community/entities/community.entity";
 import { City } from "../src/geo/city.entity";
 import { GeoModule } from "../src/geo/geo.module";
@@ -661,6 +661,20 @@ describe("Users (e2e)", () => {
       .get("/user/friends/requests/received")
       .set("Authorization", `Bearer ${userBToken}`);
     expect(recv.body.map((u) => u.id)).toEqual([userAId]);
+
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(201);
+
+    const unread = await ctx.dataSource.getRepository(Notification).count({
+      where: {
+        user: { id: userBId },
+        category: NotificationCategory.FriendRequest,
+        readAt: IsNull(),
+      },
+    });
+    expect(unread).toBe(1);
   });
 
   it("User B sending a request back accepts User A's pending one", async () => {

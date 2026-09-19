@@ -799,9 +799,11 @@ export class UserService {
         case FriendStatus.Accepted:
           throw new ConflictException("Already friends");
         case FriendStatus.Pending:
+          break;
         case FriendStatus.Declined:
         case FriendStatus.None:
-          rel.status = FriendStatus.Pending; // reset to pending / resend
+          rel.status = FriendStatus.Pending;
+          rel.sentNotif = this.createFriendRequestNotif(requester, addressee);
           break;
         default:
           throw new Error(
@@ -809,24 +811,26 @@ export class UserService {
           );
       }
     } else {
-      const notif = this.notifsService.createNotif({
-        user: addressee,
-        category: NotificationCategory.FriendRequest,
-        message: `${requester.name} wants to be friends`,
-        webAppLocation: profileUrl(requesterId),
-        associatedUsers: [requester],
-      } satisfies CreateNotifParams);
-
       // Reverses a declined request instead of adding a second row for the pair.
       rel = this.friendRepository.create({
         ...reverse,
         requester,
         addressee,
         status: FriendStatus.Pending,
-        sentNotif: notif,
+        sentNotif: this.createFriendRequestNotif(requester, addressee),
       });
     }
     return this.friendRepository.save(rel);
+  }
+
+  private createFriendRequestNotif(requester: User, addressee: User) {
+    return this.notifsService.createNotif({
+      user: addressee,
+      category: NotificationCategory.FriendRequest,
+      message: `${requester.name} wants to be friends`,
+      webAppLocation: profileUrl(requester.id),
+      associatedUsers: [requester],
+    } satisfies CreateNotifParams);
   }
 
   /** Accept / decline a pending request (requester → addressee). */

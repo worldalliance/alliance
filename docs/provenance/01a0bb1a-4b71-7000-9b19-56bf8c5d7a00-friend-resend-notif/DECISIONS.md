@@ -1,0 +1,4 @@
+- The fix comes from the review of b2a612dcc ("Refuse a friend request to an existing friend"), finding `resend-no-notif`. The user asked for every finding to be fixed. When A sent again after B declined, the row went back to pending with no new notification, since B's decline had marked the first one read. B had a pending request with nothing unread to point at it.
+- A resend over a declined (or `none`) row now creates a new friend-request notification and stores it as the row's `sentNotif`, so accepting or declining marks that one read. A resend over a pending row changes nothing, so repeat taps don't send repeat notifications.
+- The notification is built by `createFriendRequestNotif`, shared with the branch that inserts or flips a row.
+- The commit lands before "Offer to send a friend request again after a decline", which puts a button on this path.
