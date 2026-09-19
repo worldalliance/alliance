@@ -36,7 +36,7 @@ await context.addInitScript(
 
 Use `addInitScript`, not `page.evaluate` after a `goto`. `AuthContext` reads the token on mount and clears it when it finds nothing, so a racing write lands you on `/onboarding` with empty localStorage.
 
-Mint it with an expiry that outlives the run. Nothing seeds `alliance.secure.refreshToken`, and the fetch wrapper in `apps/mobile/app/_layout.tsx` refreshes only when it finds one, so the session ends at the first 401 after the token expires.
+Mint it with an expiry that outlives the run. Nothing seeds `alliance.secure.refreshToken`, and `refreshingFetch` in `apps/mobile/lib/session.ts` refreshes only when it finds one, so the session ends at the first 401 after the token expires.
 
 `citesting/src/test-user.ts` holds the seeded user CI logs in as.
 

@@ -1,11 +1,17 @@
 import { R, type Result } from "@alliance/common/result";
 import { authMe } from "@alliance/shared/client";
-import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import { client } from "@alliance/shared/client/client.gen";
+import {
+  routes,
+  type RouteTable,
+  serveApi,
+} from "@alliance/shared/lib/testing/serveApi";
 import { afterEach, expect, it, mock } from "bun:test";
 import {
   clearStoredTokens,
   closeSession,
   openSession,
+  refreshingFetch,
   retryClearTokens,
   setAuthHeader,
 } from "./session";
@@ -275,4 +281,54 @@ it("leaves the tokens when the member declines to retry", async () => {
   });
 
   expect(clearTokens).not.toHaveBeenCalled();
+});
+
+const serveRefreshing = (
+  table: RouteTable,
+  { refreshToken = "refresh" }: { refreshToken?: string | null } = {},
+) => {
+  api.throwingOnRefusal(table);
+  const served = client.getConfig().fetch;
+  if (!served) throw new Error("serveApi set no fetch");
+  const saveTokens = mock(
+    async (_tokens: { access: string; refresh: string | undefined }) => {},
+  );
+  client.setConfig({
+    fetch: refreshingFetch({
+      fetch: served,
+      getRefreshToken: async () => refreshToken,
+      saveTokens,
+    }),
+  });
+  return { saveTokens };
+};
+
+const expiredMe = ({ request }: { request: Request }) =>
+  request.headers.get("authorization") === "Bearer refreshed"
+    ? Response.json({ user: { id: 1 } })
+    : new Response(null, { status: 401 });
+
+it("retries a refused request with refreshed tokens", async () => {
+  const refreshedWith = mock();
+  const { saveTokens } = serveRefreshing({
+    "GET /auth/me": expiredMe,
+    "POST /auth/refresh": ({ request }) => {
+      refreshedWith(request.headers.get("authorization"));
+      return Response.json({
+        access_token: "refreshed",
+        refresh_token: "next",
+      });
+    },
+  });
+  setAuthHeader("expired");
+
+  const me = await authMe();
+
+  expect(me.data?.user.id).toBe(1);
+  expect(refreshedWith).toHaveBeenCalledWith("Bearer refresh");
+  expect(saveTokens).toHaveBeenCalledWith({
+    access: "refreshed",
+    refresh: "next",
+  });
+  expect(await nextAuthorization()).toBe("Bearer refreshed");
 });

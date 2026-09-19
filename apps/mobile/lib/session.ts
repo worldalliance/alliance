@@ -2,6 +2,7 @@ import { R, type Result } from "@alliance/common/result";
 import {
   authLogout,
   authMe,
+  authRefreshTokens,
   type SessionTokensDto,
   type UserDto,
 } from "@alliance/shared/client";
@@ -61,6 +62,44 @@ export async function retryClearTokens(params: {
       return;
     }
   }
+}
+
+/** Wraps `fetch` so a request the server answers with 401 is retried once
+ * with refreshed tokens. */
+export function refreshingFetch(params: {
+  fetch: (request: Request) => Promise<Response>;
+  getRefreshToken: () => Promise<string | null>;
+  saveTokens: (tokens: {
+    access: string;
+    refresh: string | undefined;
+  }) => Promise<void>;
+}): (request: Request) => Promise<Response> {
+  return async (req) => {
+    const retryReq = req.clone();
+    const res = await params.fetch(req);
+
+    if (res.status !== 401 || req.url.includes("auth/refresh")) {
+      return res;
+    }
+
+    const refreshToken = await params.getRefreshToken();
+    if (!refreshToken) return res;
+
+    const refreshRes = await authRefreshTokens({
+      query: { mode: "header" },
+      headers: { Authorization: `Bearer ${refreshToken}` },
+    });
+    if (!refreshRes.response.ok || !refreshRes.data?.access_token) {
+      return res;
+    }
+
+    const { access_token, refresh_token } = refreshRes.data;
+    await params.saveTokens({ access: access_token, refresh: refresh_token });
+    setAuthHeader(access_token);
+    const retryHeaders = new Headers(retryReq.headers);
+    retryHeaders.set("Authorization", `Bearer ${access_token}`);
+    return params.fetch(new Request(retryReq, { headers: retryHeaders }));
+  };
 }
 
 export async function openSession(params: {
