@@ -6,11 +6,15 @@ const IS_DEV = process.env.APP_VARIANT === "development";
 process.env.EXPO_PUBLIC_GIT_COMMIT ||=
   process.env.EAS_BUILD_GIT_COMMIT_HASH ?? "";
 
+const GOOGLE_IOS_CLIENT_ID = IS_DEV
+  ? "498109422267-oure3ds53734t8bomo4bea4fglogpg80.apps.googleusercontent.com"
+  : "498109422267-a6im2d5qscd6g39nkbcvkaqp1miftvg6.apps.googleusercontent.com";
+
 export default {
   expo: {
     name: IS_DEV ? "Alliance (Dev)" : "Alliance",
     slug: "alliance-mobile",
-    version: "1.3.2",
+    version: "1.3.3",
     orientation: "portrait",
     icon: "./assets/images/globe-icon.png",
     scheme: "alliance",
@@ -30,14 +34,13 @@ export default {
         : "com.alliancefoundation.alliancemobile",
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
+        // expo-apple-authentication sets this to true when it's unset.
+        CFBundleAllowMixedLocalizations: false,
         NSAppTransportSecurity: {
           NSAllowsArbitraryLoads: true,
         },
       },
       appleTeamId: "629G87T7R5",
-      entitlements: {
-        "com.apple.developer.applesignin": ["Default"],
-      },
       associatedDomains: [
         "applinks:worldalliance.org",
         "webcredentials:worldalliance.org",
@@ -53,6 +56,26 @@ export default {
       package: IS_DEV
         ? "com.alliance.alliancemobile.dev"
         : "com.alliance.alliancemobile",
+      // Only the production package is in the web app's assetlinks.json, so
+      // only it can have Android verify the link and route it here. A dev
+      // build talks to a local server, which answers with the alliance://
+      // scheme instead. Both hosts, because the server returns on APP_URL's.
+      ...(IS_DEV
+        ? {}
+        : {
+            intentFilters: [
+              {
+                action: "VIEW",
+                autoVerify: true,
+                category: ["BROWSABLE", "DEFAULT"],
+                data: ["worldalliance.org", "thealliance.org"].map((host) => ({
+                  scheme: "https",
+                  host,
+                  path: "/mobile/oauth-callback",
+                })),
+              },
+            ],
+          }),
       googleServicesFile: IS_DEV
         ? "./google-services-dev.json"
         : "./google-services.json",
@@ -100,6 +123,13 @@ export default {
       "expo-localization",
       "expo-secure-store",
       "expo-web-browser",
+      "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          iosUrlScheme: `com.googleusercontent.apps.${GOOGLE_IOS_CLIENT_ID.split(".")[0]}`,
+        },
+      ],
       [
         "expo-notifications",
         {
@@ -121,6 +151,7 @@ export default {
     },
     extra: {
       router: {},
+      googleIosClientId: GOOGLE_IOS_CLIENT_ID,
       eas: {
         projectId: "49c13cc4-9361-4e91-8de8-27108c7527a6",
       },
