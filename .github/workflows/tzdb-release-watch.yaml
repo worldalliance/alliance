@@ -9,6 +9,12 @@ permissions:
   contents: write
   pull-requests: write
 
+env:
+  GIT_AUTHOR_NAME: github-actions[bot]
+  GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+  GIT_COMMITTER_NAME: github-actions[bot]
+  GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+
 jobs:
   bump:
     runs-on: ubuntu-latest
@@ -60,25 +66,15 @@ jobs:
 
       - name: Open a pull request
         if: steps.branch.outputs.name != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: ${{ steps.branch.outputs.name }}
-          VERSION: ${{ steps.bump.outputs.version }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch -c "$BRANCH"
-          git commit -am "bump tzdb to $VERSION"
-          git push --force origin "$BRANCH"
-          gh pr create --head "$BRANCH" --title "bump tzdb to $VERSION" --body-file - <<EOF
-          IANA released tzdb $VERSION: https://data.iana.org/time-zones/tzdb-$VERSION/NEWS
+        uses: ./.github/actions/open-superseding-pr
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.branch.outputs.name }}
+          title: bump tzdb to ${{ steps.bump.outputs.version }}
+          supersedes: tzdb/
+          body: |
+            IANA released tzdb ${{ steps.bump.outputs.version }}: https://data.iana.org/time-zones/tzdb-${{ steps.bump.outputs.version }}/NEWS
 
-          Read the diff to \`common/src/timezone-catalog.gen.ts\`. A row that disappears or an alias that moves changes what members with that timezone see.
+            Read the diff to `common/src/timezone-catalog.gen.ts`. A row that disappears or an alias that moves changes what members with that timezone see.
 
-          Typecheck and tests for \`common\` passed in the job that opened this. CI hasn't run: close and reopen this pull request to start it.
-          EOF
-          superseded=$(gh pr list --state open --limit 1000 --json number,headRefName \
-            --jq '.[] | select(.headRefName | startswith("tzdb/")) | select(.headRefName != env.BRANCH) | .number')
-          for pr in $superseded; do
-            gh pr close "$pr" --comment "Superseded by tzdb $VERSION."
-          done
+            Typecheck and tests for `common` passed in the job that opened this. CI hasn't run: close and reopen this pull request to start it.

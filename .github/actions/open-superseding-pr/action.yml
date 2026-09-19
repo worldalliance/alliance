@@ -1,0 +1,36 @@
+name: Open a superseding pull request
+description: >-
+  Commit the working tree to a new branch, open a pull request from it, and
+  close any other open pull request whose branch starts with the given prefix.
+  Needs a checkout that kept its push credentials and a git author and committer
+  identity in the environment. The job needs contents: write and
+  pull-requests: write.
+
+inputs:
+  branch:
+    description: Branch to force-push and open the pull request from.
+    required: true
+  title:
+    description: Pull request title, also the commit message.
+    required: true
+  body:
+    description: Pull request body.
+    required: true
+  supersedes:
+    description: Branch prefix whose open pull requests this one closes.
+    required: true
+  token:
+    description: Token gh opens and closes pull requests with.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        BRANCH: ${{ inputs.branch }}
+        TITLE: ${{ inputs.title }}
+        BODY: ${{ inputs.body }}
+        PREFIX: ${{ inputs.supersedes }}
+        GH_TOKEN: ${{ inputs.token }}
+      run: $GITHUB_ACTION_PATH/open.sh

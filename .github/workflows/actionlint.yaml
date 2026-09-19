@@ -14,3 +14,8 @@ jobs:
         uses: docker://rhysd/actionlint:1.7.12
         with:
           args: -color
+
+      # actionlint opens a composite action's action.yml to check the inputs its
+      # callers pass, and stops there, so the scripts they run need their own pass.
+      - name: Lint Composite Action Scripts
+        run: shellcheck .github/actions/*/*.sh

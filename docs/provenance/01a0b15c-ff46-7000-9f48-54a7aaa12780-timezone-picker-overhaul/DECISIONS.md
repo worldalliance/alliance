@@ -69,7 +69,14 @@ sections below this one carry the reasoning each step implements.
     branch, open or closed, is skipped, so a closed one means the release was
     declined. A branch a failed run left without a pull request gets
     force-pushed over. Opening a pull request closes any other open one on a
-    `tzdb/` branch, which the new release supersedes. It lists up to 1000 open
+    `tzdb/` branch, which the new release supersedes, with a comment linking
+    the pull request that replaced it, and deletes its branch. A composite
+    action, `open-superseding-pr`, holds the commit, push, open, and close,
+    since the FormatJS bump opens its pull requests the same way. It refuses an
+    empty branch prefix, which would match every branch and close every open
+    pull request, and a missing token or git identity, which would otherwise
+    surface after the force-push. A working tree with nothing staged ends the
+    run rather than opening an empty pull request. It lists up to 1000 open
     pull requests, since the default of 30 would miss an old `tzdb/` one.
 
 ## Catalog
