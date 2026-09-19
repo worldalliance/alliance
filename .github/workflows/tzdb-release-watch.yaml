@@ -211,3 +211,21 @@ jobs:
             Leaving this closed declines its tz data (`add-all-tz.js` SHA-1 ${{ steps.bump.outputs.tzdata }}): the watch won't propose that tz data again.
 
             The server's typecheck and timezone test passed in the job that opened this. CI hasn't run: close and reopen this pull request to start it.
+
+  formatjs-major:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Fail on a new FormatJS major
+        run: |
+          range=$(jq -er '.dependencies["@formatjs/intl-datetimeformat"]' server/package.json)
+          installed=$(echo "$range" | sed 's/^[^0-9]*//; s/\..*//')
+          latest=$(npm view @formatjs/intl-datetimeformat version)
+          if [ "${latest%%.*}" != "$installed" ]; then
+            echo "::error::@formatjs/intl-datetimeformat $latest is out, but the watch bumps only within $installed.x, so the server's tz data stops updating once FormatJS stops releasing $installed.x. Take the major by hand: it can move the files intl-timezone.ts imports."
+            exit 1
+          fi
