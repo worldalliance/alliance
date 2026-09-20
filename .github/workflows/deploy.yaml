@@ -968,7 +968,7 @@ jobs:
           github-username: ${{ github.actor }}
 
       - name: Post webhook if any upstream failed/cancelled
-        if: ${{ contains(join(needs.*.result, ','), 'failure') || contains(join(needs.*.result, ','), 'skipped') }}
+        if: ${{ always() && (contains(join(needs.*.result, ','), 'failure') || contains(join(needs.*.result, ','), 'skipped')) }}
         env:
           WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
           MENTION: ${{ steps.slack_mention.outputs.mention }}
@@ -976,6 +976,10 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
+          if [ -z "$WEBHOOK" ]; then
+            echo "SLACK_WEBHOOK_URL_DEPLOYMENT is not set" >&2
+            exit 1
+          fi
           # Slack reads <...> as a link or a mention, so a subject naming
           # <Button> or carrying a <url|label> of its own renders as one.
           esc() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
@@ -983,7 +987,9 @@ jobs:
           PAYLOAD=$(jq -n --arg text \
             "${MENTION:+$MENTION }Deploy $env_name failed for $SUBJECT. <$RUN_URL|Open run>" \
             '{text: $text}')
-          curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$WEBHOOK"
+          curl -sS --fail-with-body --max-time 30 \
+            --retry 3 --retry-max-time 60 --retry-connrefused \
+            -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$WEBHOOK"
 
   # Publishes an over-the-air JS/asset update to the production EAS Update
   # channel. Only JS/asset changes ship this way; native changes still require a
