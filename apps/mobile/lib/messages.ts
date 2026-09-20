@@ -1,4 +1,4 @@
-import { R } from "@alliance/common/result";
+import { R, type Result } from "@alliance/common/result";
 import {
   buildGroupConversationTitle,
   createMessagingHooks,
@@ -20,11 +20,11 @@ import {
 } from "./SecureStorage";
 import { refreshSession } from "./session";
 
-// attachAuthRefresh logs what this throws and leaves the socket disconnected.
-const onRefreshToken = async (): Promise<string | null> =>
-  R.unwrap(
+const onRefreshToken = async (): Promise<Result<boolean, Error>> =>
+  R.map(
     await refreshSession({ getRefreshToken, saveTokens: saveSessionTokens }),
-  ) ?? null;
+    (accessToken) => accessToken !== undefined,
+  );
 
 const { useConversations, useLiveConvoMessages, useMessagingUnread } =
   createMessagingHooks({

@@ -1,7 +1,19 @@
+import { R, type Result } from "@alliance/common/result";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  spyOn,
+} from "bun:test";
+import { Manager } from "socket.io-client";
 import {
   canEditConversationInfo,
   canEditConversationMembers,
   canLeaveConversation,
+  connectMessagingSocket,
   getParticipantState,
   isConversationAdmin,
 } from "./messages";
@@ -173,4 +185,184 @@ describe("canLeaveConversation", () => {
   it("is false with no conversation", () => {
     expect(canLeaveConversation(null)).toBe(false);
   });
+});
+
+beforeEach(() => {
+  spyOn(Manager.prototype, "open").mockImplementation(function (this: Manager) {
+    return this;
+  });
+});
+
+afterEach(() => mock.restore());
+
+it("ignores another auth error while refresh is pending", async () => {
+  let finish!: (value: Result<boolean, Error>) => void;
+  const pending = new Promise<Result<boolean, Error>>((resolve) => {
+    finish = resolve;
+  });
+  const onRefreshToken = mock(() => pending);
+  const socket = connectMessagingSocket("/", {
+    getWebSocketUrl: () => "http://messaging.test",
+    getAuthToken: () => "expired",
+    onRefreshToken,
+  });
+  spyOn(socket, "connect").mockReturnValue(socket);
+
+  const [onConnectError] = socket.listeners("connect_error");
+  const firstAttempt = onConnectError(new Error("jwt expired"));
+  const secondAttempt = onConnectError(new Error("Unauthorized"));
+
+  expect(onRefreshToken).toHaveBeenCalledTimes(1);
+  expect(socket.connect).not.toHaveBeenCalled();
+
+  finish(R.success(true));
+  await Promise.all([firstAttempt, secondAttempt]);
+
+  expect(socket.connect).toHaveBeenCalledTimes(1);
+});
+
+it("leaves an error that is not about the token alone", async () => {
+  const onRefreshToken = mock(async () => R.success(true));
+  const socket = connectMessagingSocket("/", {
+    getWebSocketUrl: () => "http://messaging.test",
+    getAuthToken: () => "expired",
+    onRefreshToken,
+  });
+  spyOn(socket, "connect").mockReturnValue(socket);
+  spyOn(socket, "disconnect").mockReturnValue(socket);
+
+  const [onConnectError] = socket.listeners("connect_error");
+  await onConnectError(new Error("websocket error"));
+
+  expect(onRefreshToken).not.toHaveBeenCalled();
+  expect(socket.connect).not.toHaveBeenCalled();
+  expect(socket.disconnect).not.toHaveBeenCalled();
+});
+
+it("reads the latest stored token after a socket refresh and a later HTTP refresh", async () => {
+  let storedToken = "expired";
+  const config = {
+    getWebSocketUrl: () => "http://messaging.test",
+    getAuthToken: async () => storedToken,
+    onRefreshToken: mock(async () => {
+      storedToken = "socket-refreshed";
+      return R.success(true);
+    }),
+  };
+  const socket = connectMessagingSocket("/", config);
+  spyOn(socket, "connect").mockReturnValue(socket);
+
+  const readAuth = () =>
+    new Promise<object>((resolve) => {
+      if (typeof socket.auth === "function") {
+        socket.auth(resolve);
+      } else {
+        resolve(socket.auth);
+      }
+    });
+
+  expect(await readAuth()).toEqual({ token: "expired" });
+
+  const [onConnectError] = socket.listeners("connect_error");
+  await onConnectError(new Error("jwt expired"));
+
+  expect(config.onRefreshToken).toHaveBeenCalledTimes(1);
+  expect(socket.connect).toHaveBeenCalledTimes(1);
+  expect(await readAuth()).toEqual({ token: "socket-refreshed" });
+
+  storedToken = "http-refreshed";
+
+  expect(await readAuth()).toEqual({ token: "http-refreshed" });
+});
+
+it("does not reconnect when the refresh returns no session", async () => {
+  const config = {
+    getWebSocketUrl: () => "http://messaging.test",
+    getAuthToken: async () => "expired",
+    onRefreshToken: mock(async () => R.success(false)),
+  };
+  const socket = connectMessagingSocket("/", config);
+  spyOn(socket, "connect").mockReturnValue(socket);
+
+  const [onConnectError] = socket.listeners("connect_error");
+  await onConnectError(new Error("jwt expired"));
+
+  expect(config.onRefreshToken).toHaveBeenCalledTimes(1);
+  expect(socket.connect).not.toHaveBeenCalled();
+});
+
+it("logs a refresh that rejects without reconnecting", async () => {
+  const error = new Error("refresh callback rejected");
+  const log = spyOn(console, "error").mockImplementation(() => {});
+  const socket = connectMessagingSocket("/", {
+    getWebSocketUrl: () => "http://messaging.test",
+    getAuthToken: () => "expired",
+    onRefreshToken: () => Promise.reject(error),
+  });
+  spyOn(socket, "connect").mockReturnValue(socket);
+
+  const [onConnectError] = socket.listeners("connect_error");
+  await onConnectError(new Error("jwt expired"));
+
+  expect(log).toHaveBeenCalledWith("Socket token refresh failed", error);
+  expect(socket.connect).not.toHaveBeenCalled();
+});
+
+it("logs a refresh failure without reconnecting", async () => {
+  const error = new Error("fetch failed: offline");
+  const log = spyOn(console, "error").mockImplementation(() => {});
+  const socket = connectMessagingSocket("/", {
+    getWebSocketUrl: () => "http://messaging.test",
+    getAuthToken: () => "expired",
+    onRefreshToken: async () => R.failure(error),
+  });
+  spyOn(socket, "connect").mockReturnValue(socket);
+
+  const [onConnectError] = socket.listeners("connect_error");
+  await onConnectError(new Error("jwt expired"));
+
+  expect(log).toHaveBeenCalledWith("Socket token refresh failed", error);
+  expect(socket.connect).not.toHaveBeenCalled();
+});
+
+it("stops and logs once a token it refreshed still cannot connect", async () => {
+  const log = spyOn(console, "error").mockImplementation(() => {});
+  const refresh = mock(async () => R.success(true));
+  const socket = connectMessagingSocket("/", {
+    getWebSocketUrl: () => "http://messaging.test",
+    getAuthToken: () => "expired",
+    onRefreshToken: refresh,
+  });
+  const connect = spyOn(socket, "connect").mockReturnValue(socket);
+  const disconnect = spyOn(socket, "disconnect").mockReturnValue(socket);
+  const [onConnectError] = socket.listeners("connect_error");
+
+  await onConnectError(new Error("jwt expired"));
+  await onConnectError(new Error("Unauthorized"));
+
+  expect(refresh).toHaveBeenCalledTimes(1);
+  expect(connect).toHaveBeenCalledTimes(1);
+  expect(disconnect).toHaveBeenCalledTimes(2);
+  expect(log).toHaveBeenCalledWith(
+    "Socket authentication failed after token refresh",
+    new Error("Unauthorized"),
+  );
+});
+
+it("refreshes again once the socket has connected", async () => {
+  const refresh = mock(async () => R.success(true));
+  const socket = connectMessagingSocket("/", {
+    getWebSocketUrl: () => "http://messaging.test",
+    getAuthToken: () => "expired",
+    onRefreshToken: refresh,
+  });
+  const connect = spyOn(socket, "connect").mockReturnValue(socket);
+  const [onConnectError] = socket.listeners("connect_error");
+
+  await onConnectError(new Error("jwt expired"));
+  for (const listener of socket.listeners("connect")) listener();
+  await onConnectError(new Error("jwt expired"));
+
+  expect(refresh).toHaveBeenCalledTimes(2);
+  expect(connect).toHaveBeenCalledTimes(2);
 });

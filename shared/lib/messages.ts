@@ -5,6 +5,7 @@ import {
   conversationTypesWithEditableMembers,
 } from "@alliance/common/conversationType";
 import { rolesWithAdminPowers } from "@alliance/common/participantRole";
+import { type Result } from "@alliance/common/result";
 import {
   ConversationDto,
   conversationGetMyConversations,
@@ -25,9 +26,16 @@ export type ConversationUnreadPayload = {
 
 export type MessagingConnectionConfig = {
   getWebSocketUrl: () => string;
-  getAuthToken?: () => Promise<string | null> | string | null;
-  onRefreshToken?: () => Promise<string | null>;
-};
+} & (
+  | {
+      getAuthToken: () => Promise<string | null> | string | null;
+      /** Must store the refreshed token where getAuthToken reads it before returning R.success(true).
+       * Returns R.success(false) when the session is absent or refused.
+       * Returns R.failure when refresh fails without establishing whether the session is valid. */
+      onRefreshToken?: () => Promise<Result<boolean, Error>>;
+    }
+  | { getAuthToken?: undefined; onRefreshToken?: undefined }
+);
 
 export interface UseLiveConvoMessagesOptions {
   onIncomingMessage?: (message: MessageDto) => void;
@@ -335,10 +343,14 @@ const buildSocketOptions = (
 
 const attachAuthRefresh = (
   socket: Socket,
-  onRefreshToken?: () => Promise<string | null>,
+  onRefreshToken?: () => Promise<Result<boolean, Error>>,
 ) => {
   if (!onRefreshToken) return;
   let refreshing = false;
+  let refreshed = false;
+  socket.on("connect", () => {
+    refreshed = false;
+  });
   socket.on("connect_error", async (err) => {
     if (refreshing) return;
     if (
@@ -347,25 +359,42 @@ const attachAuthRefresh = (
     ) {
       return;
     }
+    if (refreshed) {
+      console.error("Socket authentication failed after token refresh", err);
+      socket.disconnect();
+      return;
+    }
     refreshing = true;
     socket.disconnect(); // stop auto-reconnect from racing with the refresh
     try {
-      const newToken = await onRefreshToken();
-      if (newToken) {
-        socket.auth = { token: newToken };
+      const hasSession = await onRefreshToken();
+      if (!hasSession.ok) {
+        console.error("Socket token refresh failed", hasSession.error);
+      } else if (hasSession.value) {
+        refreshed = true;
         socket.connect();
       }
-    } catch (refreshErr) {
-      console.error("Socket token refresh failed", refreshErr);
+    } catch (error) {
+      console.error("Socket token refresh failed", error);
     } finally {
       refreshing = false;
     }
   });
 };
 
-export const createMessagingHooks = (config: MessagingConnectionConfig) => {
-  const { getWebSocketUrl, getAuthToken, onRefreshToken } = config;
+export const connectMessagingSocket = (
+  namespace: string,
+  config: MessagingConnectionConfig,
+): Socket => {
+  const socket = io(
+    `${config.getWebSocketUrl()}${namespace}`,
+    buildSocketOptions(config.getAuthToken),
+  );
+  attachAuthRefresh(socket, config.onRefreshToken);
+  return socket;
+};
 
+export const createMessagingHooks = (config: MessagingConnectionConfig) => {
   const useConversations = (activeConversationId?: number | null) => {
     const [conversations, setConversations] = useState<
       ConversationDto[] | null
@@ -409,11 +438,7 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
 
       (async () => {
         if (cancelled) return;
-        socket = io(
-          `${getWebSocketUrl()}/messaging/overview`,
-          buildSocketOptions(getAuthToken),
-        );
-        attachAuthRefresh(socket, onRefreshToken);
+        socket = connectMessagingSocket("/messaging/overview", config);
 
         socket.on(
           "conversation:unread",
@@ -437,7 +462,7 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
         cancelled = true;
         socket?.disconnect();
       };
-    }, [getWebSocketUrl, getAuthToken]);
+    }, [config]);
 
     return { conversations, setConversations, loading, refreshConversations };
   };
@@ -470,11 +495,7 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
       (async () => {
         if (cancelled) return;
 
-        socket = io(
-          `${getWebSocketUrl()}/messaging`,
-          buildSocketOptions(getAuthToken),
-        );
-        attachAuthRefresh(socket, onRefreshToken);
+        socket = connectMessagingSocket("/messaging", config);
         socketRef.current = socket;
 
         socket.on("message:new", (incoming: MessageDto) => {
@@ -537,7 +558,7 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
         socketRef.current = null;
         joinedConversationRef.current = null;
       };
-    }, [getWebSocketUrl, getAuthToken]);
+    }, [config]);
 
     useEffect(() => {
       activeConversationRef.current = conversationId;
@@ -663,11 +684,7 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
 
       (async () => {
         if (cancelled) return;
-        socket = io(
-          `${getWebSocketUrl()}/messaging/overview`,
-          buildSocketOptions(getAuthToken),
-        );
-        attachAuthRefresh(socket, onRefreshToken);
+        socket = connectMessagingSocket("/messaging/overview", config);
         socketRef.current = socket;
 
         socket.on("conversation:unread", () => {
@@ -685,7 +702,7 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
         socket?.disconnect();
         socketRef.current = null;
       };
-    }, [getWebSocketUrl, getAuthToken]);
+    }, [config]);
 
     return {
       unread,
