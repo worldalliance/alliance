@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { userNmembers } from "../client";
 import { queryKeys } from "./queryKeys";
+import { retryUnlessRefused } from "./retryQuery";
 
 export function useAllianceMemberCount(params?: { enabled?: boolean }) {
   const { enabled = true } = params ?? {};
@@ -9,6 +10,6 @@ export function useAllianceMemberCount(params?: { enabled?: boolean }) {
     queryFn: () =>
       userNmembers({ throwOnError: true }).then((res) => res.data.count),
     enabled,
-    retry: 1,
+    retry: retryUnlessRefused(1),
   });
 }

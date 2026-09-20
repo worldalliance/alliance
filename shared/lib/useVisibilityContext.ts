@@ -8,6 +8,7 @@ import { useCallback, useMemo, useRef } from "react";
 import { userMyVisibilityContext } from "../client";
 import { schemaNeedsVisibilityContext } from "../formrenderer";
 import { queryKeys } from "./queryKeys";
+import { retryUnlessRefused } from "./retryQuery";
 
 export type VisibilityContext = {
   userHasCity: boolean;
@@ -82,7 +83,7 @@ export function useVisibilityContext(
     refetchOnMount: "always",
     // Whole form is gated on this, and failure only settles once react-query
     // stops retrying.
-    retry: 1,
+    retry: retryUnlessRefused(1),
   });
 
   const mountedAt = useRef(Date.now()).current;
