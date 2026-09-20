@@ -967,8 +967,8 @@ jobs:
         with:
           github-username: ${{ github.actor }}
 
-      - name: Post webhook if any upstream failed/cancelled
-        if: ${{ always() && (contains(join(needs.*.result, ','), 'failure') || contains(join(needs.*.result, ','), 'skipped')) }}
+      - name: Post webhook if any upstream did not succeed
+        if: ${{ always() && (contains(join(needs.*.result, ','), 'failure') || contains(join(needs.*.result, ','), 'cancelled') || contains(join(needs.*.result, ','), 'skipped')) }}
         env:
           WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
           MENTION: ${{ steps.slack_mention.outputs.mention }}
@@ -985,7 +985,7 @@ jobs:
           esc() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
           SUBJECT=$(esc "${COMMIT_MESSAGE%%$'\n'*}")
           PAYLOAD=$(jq -n --arg text \
-            "${MENTION:+$MENTION }Deploy $env_name failed for $SUBJECT. <$RUN_URL|Open run>" \
+            "${MENTION:+$MENTION }Deploy $env_name did not succeed for $SUBJECT. <$RUN_URL|Open run>" \
             '{text: $text}')
           curl -sS --fail-with-body --max-time 30 \
             --retry 3 --retry-max-time 60 --retry-connrefused \
