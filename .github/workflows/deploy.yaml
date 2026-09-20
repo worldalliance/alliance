@@ -955,6 +955,8 @@ jobs:
       - verify-deployment
       - verify-https
       - verify-api
+      - mobile-fingerprint-check
+      - publish-mobile-ota
     if: always()
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
@@ -967,13 +969,23 @@ jobs:
         with:
           github-username: ${{ github.actor }}
 
+      # publish-mobile-ota is skipped on staging by design, so only a failure
+      # there is worth an alert. For the rest a skip means an upstream failed.
       - name: Post webhook if any upstream did not succeed
-        if: ${{ always() && (contains(join(needs.*.result, ','), 'failure') || contains(join(needs.*.result, ','), 'cancelled') || contains(join(needs.*.result, ','), 'skipped')) }}
+        if: >-
+          ${{ always() && (needs.deploy-nest-backend.result != 'success'
+          || needs.verify-deployment.result != 'success'
+          || needs.verify-https.result != 'success'
+          || needs.verify-api.result != 'success'
+          || needs.mobile-fingerprint-check.result != 'success'
+          || needs.publish-mobile-ota.result == 'failure'
+          || needs.publish-mobile-ota.result == 'cancelled') }}
         env:
           WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
           MENTION: ${{ steps.slack_mention.outputs.mention }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          NEEDS: ${{ toJSON(needs) }}
         run: |
           set -euo pipefail
           if [ -z "$WEBHOOK" ]; then
@@ -984,8 +996,9 @@ jobs:
           # <Button> or carrying a <url|label> of its own renders as one.
           esc() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
           SUBJECT=$(esc "${COMMIT_MESSAGE%%$'\n'*}")
+          FAILED=$(jq -r '[to_entries[] | select(.value.result == "failure" or .value.result == "cancelled") | .key] | join(", ")' <<<"$NEEDS")
           PAYLOAD=$(jq -n --arg text \
-            "${MENTION:+$MENTION }Deploy $env_name did not succeed for $SUBJECT. <$RUN_URL|Open run>" \
+            "${MENTION:+$MENTION }Deploy $env_name did not succeed for $SUBJECT${FAILED:+ ($FAILED)}. <$RUN_URL|Open run>" \
             '{text: $text}')
           curl -sS --fail-with-body --max-time 30 \
             --retry 3 --retry-max-time 60 --retry-connrefused \
@@ -998,6 +1011,7 @@ jobs:
   # talks to an API older than itself.
   publish-mobile-ota:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs:
       - deploy-nest-backend
     if: ${{ github.ref_name == 'production' }}
