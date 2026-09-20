@@ -116,6 +116,23 @@ it("keeps the field to add members from a community chat admin", () => {
   expect(screen.queryByPlaceholderText("Add member...")).toBeNull();
 });
 
+it("offers a group admin a labeled button to remove a member", () => {
+  renderPanel("admin");
+
+  const name = `User ${testAuthUser.id + 1}`;
+  const remove = screen.getByRole("button", { name: `Remove ${name}` });
+  const profile = screen.getByRole("link", { name });
+
+  expect(profile.getAttribute("href")).toBe(`/member/${testAuthUser.id + 1}`);
+  expect(remove.closest("a")).toBeNull();
+});
+
+it("keeps the remove buttons from a community chat admin", () => {
+  renderPanel("admin", "community");
+
+  expect(screen.queryByRole("button", { name: /^Remove / })).toBeNull();
+});
+
 it.each([
   {
     status: 403,

@@ -242,41 +242,43 @@ const ConversationInfoPanel = ({
             )}
             <List className="w-full">
               {selectedConvo.participants.map((participant) => (
-                <Link
+                <div
                   key={participant.user.id}
-                  to={href("/member/:id", {
-                    id: participant.user.id.toString(),
-                  })}
-                  className="p-4 hover:bg-zinc-100 flex flex-row items-center gap-x-3 justify-between"
+                  className="hover:bg-zinc-100 flex flex-row items-center"
                 >
-                  <div className="flex flex-row items-center gap-x-3">
-                    <AvatarProfile
-                      pfp={participant.user.profilePicture}
-                      size="large"
-                    />
-                    <p>{participant.user.displayName}</p>
-                  </div>
-                  <div className="flex flex-row items-center gap-x-2">
+                  <Link
+                    to={href("/member/:id", {
+                      id: participant.user.id.toString(),
+                    })}
+                    className="p-4 flex-1 flex flex-row items-center gap-x-3 justify-between"
+                  >
+                    <div className="flex flex-row items-center gap-x-3">
+                      <AvatarProfile
+                        pfp={participant.user.profilePicture}
+                        size="large"
+                      />
+                      <p>{participant.user.displayName}</p>
+                    </div>
                     {participant.state == "invited" &&
                       (justAddedMember === participant.user.id ? (
                         <p className="text-green">Invite sent!</p>
                       ) : (
-                        <p className="text-zinc-500 mr-2">Invited</p>
+                        <p className="text-zinc-500">Invited</p>
                       ))}
-                    {canEditMembers && participant.user.id !== user?.id && (
-                      <Button
-                        color={ButtonColor.Transparent}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleRemoveParticipant(participant.user.id);
-                        }}
-                        className="hover:!bg-zinc-200 !px-2"
-                      >
-                        <X size="18" color="var(--color-red-400)" />
-                      </Button>
-                    )}
-                  </div>
-                </Link>
+                  </Link>
+                  {canEditMembers && participant.user.id !== user?.id && (
+                    <Button
+                      color={ButtonColor.Transparent}
+                      title={`Remove ${participant.user.displayName}`}
+                      onClick={() => {
+                        handleRemoveParticipant(participant.user.id);
+                      }}
+                      className="hover:!bg-zinc-200 !px-2 mr-4"
+                    >
+                      <X size="18" color="var(--color-red-400)" />
+                    </Button>
+                  )}
+                </div>
               ))}
             </List>
             {canEditMembers && (

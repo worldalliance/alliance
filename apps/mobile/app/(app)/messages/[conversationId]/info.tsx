@@ -325,13 +325,16 @@ export default function ConversationInfoScreen() {
           <Text className="text-sm text-zinc-500 mb-3">Members</Text>
           <View className="overflow-hidden">
             {selectedConvo.participants.map((participant) => (
-              <TouchableOpacity
+              <View
                 key={participant.user.id}
-                className="flex-row items-center justify-between px-3 py-3 border-t border-zinc-200 last:border-b-0!"
-                onPress={() => router.push(`/member/${participant.user.id}`)}
-                activeOpacity={0.7}
+                className="flex-row items-center justify-between px-3 border-t border-zinc-200 last:border-b-0!"
               >
-                <View className="flex-row items-center gap-3">
+                <TouchableOpacity
+                  className="flex-1 flex-row items-center gap-3 py-3"
+                  onPress={() => router.push(`/member/${participant.user.id}`)}
+                  activeOpacity={0.7}
+                  accessibilityRole="link"
+                >
                   <ProfileImage
                     pfp={participant.user.profilePicture}
                     size="medium"
@@ -344,13 +347,14 @@ export default function ConversationInfoScreen() {
                       <Text className="text-xs text-zinc-500">Invited</Text>
                     )}
                   </View>
-                </View>
+                </TouchableOpacity>
                 {canEditMembers && participant.user.id !== user?.id && (
                   <TouchableOpacity
-                    onPress={(event) => {
-                      event.stopPropagation();
+                    onPress={() => {
                       handleRemoveMember(participant.user.id);
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove ${participant.user.displayName}`}
                     className="p-2"
                   >
                     <X
@@ -360,7 +364,7 @@ export default function ConversationInfoScreen() {
                     />
                   </TouchableOpacity>
                 )}
-              </TouchableOpacity>
+              </View>
             ))}
           </View>
         </View>
