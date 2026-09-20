@@ -1,3 +1,4 @@
+import type { Client } from "@hey-api/client-fetch";
 import { CreateClientConfig } from "../client/client.gen";
 
 const isReactNative = (): boolean =>
@@ -58,4 +59,14 @@ export const createClientConfig: CreateClientConfig = (config) => {
     fetch: wrappedFetch,
     throwOnError: false,
   };
+};
+
+// Attach the HTTP status because the error body may omit it.
+export const registerErrorStatus = (client: Client): void => {
+  client.interceptors.error.use((error, response) => ({
+    ...(typeof error === "object" && error !== null && !Array.isArray(error)
+      ? error
+      : { body: error }),
+    statusCode: response.status,
+  }));
 };

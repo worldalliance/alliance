@@ -1,4 +1,5 @@
 import { client } from "@alliance/shared/client/client.gen";
+import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
 import { AuthoredLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
@@ -29,6 +30,8 @@ const queryClient = new QueryClient({
 client.setConfig({
   baseUrl: getApiUrl(),
 });
+
+registerErrorStatus(client);
 
 export function HydrateFallback() {
   return (

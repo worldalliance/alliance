@@ -1,6 +1,11 @@
 import { client } from "../../client/client.gen";
+import { registerErrorStatus } from "../hey-api";
 
 const originalConfig = client.getConfig();
+
+// Every app registers this at startup, so a test without it reads an error no
+// app ships.
+registerErrorStatus(client);
 
 // happy-dom refuses to construct a Request from a relative URL, and the client
 // is configured without a baseUrl outside an app.
