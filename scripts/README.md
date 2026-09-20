@@ -27,6 +27,9 @@ Drops and recreates the local db named by `server/.env`, then restores the dump.
 
 ## Other
 
+`check-gitignore.sh`
+Fails when a tracked file is also matched by a .gitignore rule, which anything re-applying those rules then drops. `bun run gitignore:check` calls it, and so does CI. The header explains what that costs and what the check cannot see.
+
 `commit-after.sh <commit-ish>`
 Prints the commit immediately after `<commit-ish>` on the path to HEAD, which is the first commit a branch adds on top of the ref it came from. Runs against the repository of the working directory. Exits non-zero with an `ERROR[...]` line when the ref does not resolve, is not an ancestor of HEAD, already is HEAD, or has several children leading to HEAD.
 
