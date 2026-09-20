@@ -969,10 +969,21 @@ jobs:
 
       - name: Post webhook if any upstream failed/cancelled
         if: ${{ contains(join(needs.*.result, ','), 'failure') || contains(join(needs.*.result, ','), 'skipped') }}
+        env:
+          WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
+          MENTION: ${{ steps.slack_mention.outputs.mention }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"${{ steps.slack_mention.outputs.mention }} Deploy ${{ github.ref_name == 'production' && 'production' || 'staging' }} failed for ${{ github.event.head_commit.message }}. <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Open run>\"}" \
-            ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
+          set -euo pipefail
+          # Slack reads <...> as a link or a mention, so a subject naming
+          # <Button> or carrying a <url|label> of its own renders as one.
+          esc() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
+          SUBJECT=$(esc "${COMMIT_MESSAGE%%$'\n'*}")
+          PAYLOAD=$(jq -n --arg text \
+            "${MENTION:+$MENTION }Deploy $env_name failed for $SUBJECT. <$RUN_URL|Open run>" \
+            '{text: $text}')
+          curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$WEBHOOK"
 
   # Publishes an over-the-air JS/asset update to the production EAS Update
   # channel. Only JS/asset changes ship this way; native changes still require a
