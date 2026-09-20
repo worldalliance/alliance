@@ -320,6 +320,5 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_CLA }}
         run: |
-          curl -s -X POST -H 'Content-type: application/json' \
-            --data @slack.json \
-            "$SLACK_WEBHOOK_URL"
+          . .github/scripts/slack.sh
+          slack_post_payload "$SLACK_WEBHOOK_URL" < slack.json

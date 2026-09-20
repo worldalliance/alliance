@@ -37,6 +37,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Validate SHA screenshots exist
         run: |
           case "$SHA" in
@@ -192,7 +195,6 @@ jobs:
         env:
           WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
         run: |
-          PAYLOAD=$(jq -n --arg text \
-            "Visual baseline ($ENV_NAME, $SUITE) approved and updated to \`$SHA\`. Re-run the failed deploy to continue." \
-            '{text: $text}')
-          curl -sS --fail -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$WEBHOOK"
+          . .github/scripts/slack.sh
+          slack_post "$WEBHOOK" \
+            "Visual baseline ($ENV_NAME, $SUITE) approved and updated to \`$SHA\`. Re-run the failed deploy to continue."

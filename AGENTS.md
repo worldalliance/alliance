@@ -45,7 +45,7 @@ Read before the matching task:
 
 `actionlint` from the repo root after editing `.github/workflows/`; CI and deploys fail on its findings. Without `shellcheck` on `PATH` it skips the shell in `run:` blocks and still passes; `brew install actionlint shellcheck`.
 
-`shellcheck .github/actions/*/*.sh` after editing `.github/actions/`; actionlint skips those scripts, and CI and deploys run it too.
+`shellcheck .github/actions/*/*.sh .github/scripts/*.sh` after editing either directory; actionlint skips those scripts, and CI and deploys run it too.
 
 ## Testing
 

@@ -991,21 +991,11 @@ jobs:
           NEEDS: ${{ toJSON(needs) }}
         run: |
           set -euo pipefail
-          if [ -z "$WEBHOOK" ]; then
-            echo "SLACK_WEBHOOK_URL_DEPLOYMENT is not set" >&2
-            exit 1
-          fi
-          # Slack reads <...> as a link or a mention, so a subject naming
-          # <Button> or carrying a <url|label> of its own renders as one.
-          esc() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
-          SUBJECT=$(esc "${COMMIT_MESSAGE%%$'\n'*}")
+          . .github/scripts/slack.sh
+          SUBJECT=$(slack_commit_subject "$COMMIT_MESSAGE")
           FAILED=$(jq -r '[to_entries[] | select(.value.result == "failure" or .value.result == "cancelled") | .key] | join(", ")' <<<"$NEEDS")
-          PAYLOAD=$(jq -n --arg text \
-            "${MENTION:+$MENTION }Deploy $env_name did not succeed for $SUBJECT${FAILED:+ ($FAILED)}. <$RUN_URL|Open run>" \
-            '{text: $text}')
-          curl -sS --fail-with-body --max-time 30 \
-            --retry 3 --retry-max-time 60 --retry-connrefused \
-            -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$WEBHOOK"
+          slack_post "$WEBHOOK" \
+            "${MENTION:+$MENTION }Deploy $env_name did not succeed for $SUBJECT${FAILED:+ ($FAILED)}. <$RUN_URL|Open run>"
 
   # Publishes an over-the-air JS/asset update to the production EAS Update
   # channel. Only JS/asset changes ship this way; native changes still require a
