@@ -8,16 +8,17 @@ import {
 } from "@alliance/shared/lib/testing/serveApi";
 import { afterEach, expect, it, mock, spyOn } from "bun:test";
 import { FetchError } from "expo/src/winter/fetch/FetchErrors";
+import type { SessionTokens } from "./SecureStorage";
 import {
   clearStoredTokens,
   closeSession,
   loadSessionUser,
   openSession,
   refreshingFetch,
+  refreshSession,
   restoreSession,
   retryClearTokens,
   SessionRefusedError,
-  type SessionTokens,
   setAuthHeader,
 } from "./session";
 
@@ -657,4 +658,53 @@ it("tells a refresh that never got a response apart from a refusal", async () =>
   expect(loaded.ok ? undefined : loaded.error).not.toBeInstanceOf(
     SessionRefusedError,
   );
+});
+
+const refreshing = (saveTokens = mock(async (_tokens: SessionTokens) => {})) =>
+  refreshSession({ getRefreshToken: async () => "refresh", saveTokens });
+
+it("saves both refreshed tokens and resolves to the access token", async () => {
+  api.throwingOnRefusal({
+    "POST /auth/refresh": () =>
+      Response.json({ access_token: "refreshed", refresh_token: "next" }),
+  });
+  const saveTokens = mock(async (_tokens: SessionTokens) => {});
+
+  expect(R.unwrap(await refreshing(saveTokens))).toBe("refreshed");
+  expect(saveTokens).toHaveBeenCalledWith({
+    access: "refreshed",
+    refresh: "next",
+  });
+});
+
+it("resolves to no token when the server refuses the refresh", async () => {
+  api.throwingOnRefusal({
+    "POST /auth/refresh": () => new Response(null, { status: 401 }),
+  });
+
+  expect(R.unwrap(await refreshing())).toBeUndefined();
+});
+
+it("fails a refresh the server couldn't answer", async () => {
+  api.throwingOnRefusal({
+    "POST /auth/refresh": () => new Response(null, { status: 503 }),
+  });
+  const saveTokens = mock(async (_tokens: SessionTokens) => {});
+
+  expect(await refreshing(saveTokens)).toMatchObject({ ok: false });
+  expect(saveTokens).not.toHaveBeenCalled();
+});
+
+it("fails a refresh whose stored token it couldn't read", async () => {
+  const saveTokens = mock(async (_tokens: SessionTokens) => {});
+
+  const refreshed = await refreshSession({
+    getRefreshToken: async () => {
+      throw new Error("the keychain is locked");
+    },
+    saveTokens,
+  });
+
+  expect(refreshed).toMatchObject({ ok: false });
+  expect(saveTokens).not.toHaveBeenCalled();
 });

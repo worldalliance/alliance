@@ -24,6 +24,7 @@ import { clearGuestToken, getStoredGuestToken } from "./guestSession";
 import {
   getAccessToken,
   getRefreshToken,
+  saveSessionTokens,
   SecureStorage,
   SecureStorageKey,
 } from "./SecureStorage";
@@ -33,7 +34,6 @@ import {
   openSession,
   restoreSession,
   retryClearTokens,
-  type SessionTokens,
 } from "./session";
 import {
   getVisualTestAutoLoginCredentials,
@@ -64,13 +64,6 @@ const clearSessionTokens = () =>
     SecureStorageKey.ACCESS_TOKEN,
     SecureStorageKey.REFRESH_TOKEN,
   ]);
-
-export const saveSessionTokens = async ({ access, refresh }: SessionTokens) => {
-  await SecureStorage.setItem(SecureStorageKey.ACCESS_TOKEN, access);
-  if (refresh) {
-    await SecureStorage.setItem(SecureStorageKey.REFRESH_TOKEN, refresh);
-  }
-};
 
 const askToRetryLogout = () =>
   new Promise<boolean>((resolve) =>

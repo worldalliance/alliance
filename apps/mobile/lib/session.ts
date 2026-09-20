@@ -8,8 +8,7 @@ import {
 } from "@alliance/shared/client";
 import { client } from "@alliance/shared/client/client.gen";
 import { isNetworkFailure } from "./network";
-
-export type SessionTokens = { access: string; refresh: string | undefined };
+import type { SessionTokens } from "./SecureStorage";
 
 export function setAuthHeader(accessToken: string | undefined): void {
   client.setConfig({
@@ -67,14 +66,53 @@ export async function retryClearTokens(params: {
   }
 }
 
+type RefreshDeps = {
+  getRefreshToken: () => Promise<string | null>;
+  saveTokens: (tokens: SessionTokens) => Promise<void>;
+};
+
+/** Refreshes the stored tokens, saves them and puts the new access token on
+ * the client, then resolves to it. Resolves to no token when none is stored
+ * and when the server refuses the one that is. */
+export async function refreshSession(
+  params: RefreshDeps,
+): Promise<Result<string | undefined, Error>> {
+  const refreshToken = await R.fromPromise(params.getRefreshToken());
+  if (!refreshToken.ok) return refreshToken;
+  if (!refreshToken.value) return R.success(undefined);
+
+  const sent = await R.fromPromise(
+    authRefreshTokens({
+      query: { mode: "header" },
+      // setAuthHeader leaves the access token on the client, and this endpoint
+      // authenticates with the refresh token.
+      headers: { Authorization: `Bearer ${refreshToken.value}` }, //TODO: mobile shouldnt have to manually set this - fix non-cookie mode somehow. or maybe use auth context?
+      throwOnError: false,
+    }),
+  );
+  if (!sent.ok) return sent;
+
+  const { data, response } = sent.value;
+  if (response.status === 401) return R.success(undefined);
+  if (!data?.access_token) {
+    return R.failure(new Error(`token refresh failed: ${response.status}`));
+  }
+
+  const { access_token, refresh_token } = data;
+  const saved = await R.fromPromise(
+    params.saveTokens({ access: access_token, refresh: refresh_token }),
+  );
+  if (!saved.ok) return saved;
+  setAuthHeader(access_token);
+  return R.success(access_token);
+}
+
 /** Wraps `fetch` so a request the server answers with 401 is retried once
  * with refreshed tokens. A refresh the server refuses leaves the original 401;
  * any other refresh failure throws. */
-export function refreshingFetch(params: {
-  fetch: (request: Request) => Promise<Response>;
-  getRefreshToken: () => Promise<string | null>;
-  saveTokens: (tokens: SessionTokens) => Promise<void>;
-}): (request: Request) => Promise<Response> {
+export function refreshingFetch(
+  params: RefreshDeps & { fetch: (request: Request) => Promise<Response> },
+): (request: Request) => Promise<Response> {
   return async (req) => {
     const retryReq = req.clone();
     const res = await params.fetch(req);
@@ -83,24 +121,10 @@ export function refreshingFetch(params: {
       return res;
     }
 
-    const refreshToken = await params.getRefreshToken();
-    if (!refreshToken) return res;
-
-    const refreshRes = await authRefreshTokens({
-      query: { mode: "header" },
-      headers: { Authorization: `Bearer ${refreshToken}` },
-      throwOnError: false,
-    });
-    if (refreshRes.response.status === 401) return res;
-    if (!refreshRes.data?.access_token) {
-      throw new Error(`token refresh failed: ${refreshRes.response.status}`);
-    }
-
-    const { access_token, refresh_token } = refreshRes.data;
-    await params.saveTokens({ access: access_token, refresh: refresh_token });
-    setAuthHeader(access_token);
+    const accessToken = R.unwrap(await refreshSession(params));
+    if (!accessToken) return res;
     const retryHeaders = new Headers(retryReq.headers);
-    retryHeaders.set("Authorization", `Bearer ${access_token}`);
+    retryHeaders.set("Authorization", `Bearer ${accessToken}`);
     return params.fetch(new Request(retryReq, { headers: retryHeaders }));
   };
 }
