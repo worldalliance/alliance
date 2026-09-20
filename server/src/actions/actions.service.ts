@@ -37,6 +37,7 @@ import {
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
+import { groupBy } from "es-toolkit";
 import { CommunityService } from "src/community/community.service";
 import { Community } from "src/community/entities/community.entity";
 import { EventType } from "src/eventlog/event-log.entity";
@@ -126,6 +127,7 @@ import { UserService } from "../user/user.service";
 import {
   findLatestTerminalActivity,
   resolveUserActionRelation,
+  TERMINAL_ACTIVITY_TYPES,
 } from "./action-activity-status";
 import { ActionFormVariantService } from "./action-form-variant.service";
 import {
@@ -165,11 +167,11 @@ import {
   SuspensionPlan,
   TimelineFeedItemDto,
   TimelineFeedItemType,
-  UnwelcomedSignedContractMember,
   UpdateActionDto,
   UpdateActionEventDto,
   UpdateActionUpdateDto,
   UserActionRelation,
+  WelcomeQueue,
 } from "./dto/action.dto";
 import {
   CreateFollowUpFormDto,
@@ -797,76 +799,124 @@ export class ActionsService {
     return this.userService.findByIds(incompleteUserIds);
   }
 
-  async findUnwelcomedSignedContractMembers(): Promise<
-    UnwelcomedSignedContractMember[]
-  > {
+  async findWelcomeQueue(): Promise<WelcomeQueue> {
+    const onboardingActions = await this.actionRepository.find({
+      where: {
+        onboarding: true,
+        optional: false,
+        archived: false,
+        preventCompletion: false,
+      },
+      relations: { events: true },
+    });
+    const requiredActions = onboardingActions
+      .filter((action) => action.status === ActionStatus.MemberAction)
+      .map(parseAction);
+    const actionIds = requiredActions.map((action) => action.id);
+    const requiredActionCount = actionIds.length;
+    if (!requiredActionCount) return { requiredActionCount, members: [] };
+
     const rows = await this.actionActivityRepository.query<
       {
-        userId: number | string;
-        actionId: number | string;
-        activityId: number | string;
-        completedAt: Date | string;
-        signedAt: Date | string;
-        staffLikeCount: number | string;
+        userId: number;
+        actionId: number;
+        activityId: number;
+        completedAt: Date;
+        staffLikeCount: string;
       }[]
     >(
       `
-        SELECT
-          activity."userId" AS "userId",
-          action.id AS "actionId",
-          activity.id AS "activityId",
-          activity."createdAt" AS "completedAt",
-          MAX(contract_event.date) AS "signedAt",
-          COUNT(DISTINCT staff_liker.id) AS "staffLikeCount"
-        FROM action_activity activity
-        INNER JOIN action
-          ON action.id = activity."actionId"
-          AND action."isContractSigningAction" = true
-        INNER JOIN contract_event
-          ON contract_event."userId" = activity."userId"
-          AND contract_event.type = $1
-        LEFT JOIN comment staff_comment
-          ON staff_comment."parentObjectType" = $2
-          AND staff_comment."parentObjectId" = activity.id
-          AND staff_comment.deleted = false
-        LEFT JOIN "user" staff_comment_author
-          ON staff_comment_author.id = staff_comment."authorId"
-          AND staff_comment_author.staff = true
+        WITH latest AS (
+          SELECT DISTINCT ON ("userId", "actionId") id, "userId", "actionId", "createdAt", type
+          FROM action_activity
+          WHERE "actionId" = ANY($1::int[]) AND type::text = ANY($5::text[])
+          ORDER BY "userId", "actionId", "createdAt" DESC, id DESC
+        )
+        SELECT activity."userId", activity."actionId", activity.id AS "activityId",
+          activity."createdAt" AS "completedAt", COUNT(staff_liker.id) AS "staffLikeCount"
+        FROM latest activity
         LEFT JOIN action_activity_likes_user activity_like
           ON activity_like."actionActivityId" = activity.id
         LEFT JOIN "user" staff_liker
-          ON staff_liker.id = activity_like."userId"
-          AND staff_liker.staff = true
-        WHERE activity.type = $3
-        GROUP BY activity.id, activity."userId", action.id
-        HAVING COUNT(staff_comment_author.id) = 0
-        ORDER BY MAX(contract_event.date) DESC
+          ON staff_liker.id = activity_like."userId" AND staff_liker.staff = true
+        WHERE activity.type = $2
+        AND EXISTS (
+          SELECT 1 FROM contract_event
+          WHERE contract_event."userId" = activity."userId" AND contract_event.type = $4
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM action_activity completion
+          INNER JOIN action ON action.id = completion."actionId" AND action.onboarding = true
+          INNER JOIN comment ON comment."parentObjectType" = $3
+            AND comment."parentObjectId" = completion.id AND comment.deleted = false
+          INNER JOIN "user" author ON author.id = comment."authorId" AND author.staff = true
+          WHERE completion."userId" = activity."userId" AND completion.type = $2
+        )
+        GROUP BY activity.id, activity."userId", activity."actionId", activity."createdAt"
+        ORDER BY activity."createdAt" DESC, activity.id DESC
       `,
       [
-        ContractEventType.SIGNED,
-        CommentParentObject.Activity,
+        actionIds,
         ActionActivityType.USER_COMPLETED,
+        CommentParentObject.Activity,
+        ContractEventType.SIGNED,
+        TERMINAL_ACTIVITY_TYPES,
       ],
     );
-
+    const rowsByUser = groupBy(rows, (row) => row.userId);
     const users = await this.userService.findByIds(
-      rows.map((row) => Number(row.userId)),
+      Object.keys(rowsByUser).map(Number),
       { contractEvents: true },
     );
-    const usersById = new Map(users.map((user) => [user.id, user]));
+    const session = new CohortResolutionSession();
+    session.candidateUserIds = Promise.resolve(
+      new Set(users.map((user) => user.id)),
+    );
+    const cohorts = await Promise.all(
+      requiredActions.map((action) =>
+        this.actionEventRecipientService.resolveCohortMemberIds(
+          action.cohortExpression,
+          session,
+        ),
+      ),
+    );
 
-    return rows.flatMap((row) => {
-      const user = usersById.get(Number(row.userId));
-      if (!user) return [];
-      return {
-        user,
-        actionId: Number(row.actionId),
-        activityId: Number(row.activityId),
-        signedAt: new Date(row.signedAt),
-        completedAt: new Date(row.completedAt),
-        staffLikeCount: Number(row.staffLikeCount),
-      };
-    });
+    return {
+      requiredActionCount,
+      members: users
+        .flatMap((user) => {
+          const applicableActions = requiredActions.filter((action, index) =>
+            computeCanCompleteAction({
+              action,
+              user,
+              inCohort: cohorts[index].has(user.id),
+            }),
+          );
+          const applicableIds = new Set(
+            applicableActions.map((action) => action.id),
+          );
+          const completions = rowsByUser[user.id].filter((row) =>
+            applicableIds.has(row.actionId),
+          );
+          const latest = completions[0];
+          if (!latest || completions.length !== applicableIds.size) return [];
+          return [
+            {
+              user,
+              actionId: latest.actionId,
+              activityId: latest.activityId,
+              completedAt: latest.completedAt,
+              staffLikeCount: Number(latest.staffLikeCount),
+            },
+          ];
+        })
+        .sort(
+          (a, b) =>
+            b.completedAt.getTime() - a.completedAt.getTime() ||
+            b.activityId - a.activityId,
+        ),
+    };
   }
 
   /**
