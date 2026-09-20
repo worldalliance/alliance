@@ -50,6 +50,10 @@ No formula rewriting. After a rename, the type check reports the old name as a m
 - The output renderer passes the device type and validator results it already uses for block visibility.
 - The builder preview treats every sample cell as visible. Sample rows have no other answers to evaluate conditions against.
 
+## Sample answers in the output builder preview
+
+The preview pane beside an output view makes up an answer for every field so the author can see the view take shape. A list had no case of its own and fell to the default, a sentence of text. That isn't a list of rows, so the block drew its label over nothing. `buildPreviewAnswers` now calls itself on the sub-fields, which hands back one row holding the sample cell each sub-field would get on its own. One row is enough to show the layout and which sub-fields the view hides.
+
 ## Preview
 
 For a list input, the builder shows one name box per readable sub-field and a sample-row editor. Authors add and remove rows, and each cell uses the existing `SampleAnswer` control for its kind. Cells go through `readSampleAnswer`, the same path as scalar samples, so the preview gets the same record shape and conversions as a live form. The first bad cell is reported by row and property.

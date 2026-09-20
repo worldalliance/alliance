@@ -1,10 +1,26 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
+import { AuthoredLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { OutputBuilder } from "./OutputBuilder";
 
 afterEach(cleanup);
+
+const renderBuilder = (schema: FormSchema) =>
+  render(
+    <AuthoredLinkProvider>
+      <QueryClientProvider client={new QueryClient()}>
+        <ToastProvider>
+          <OutputBuilder
+            schema={schema}
+            onSchemaChange={() => {}}
+            onUpdateBlockById={() => null}
+          />
+        </ToastProvider>
+      </QueryClientProvider>
+    </AuthoredLinkProvider>,
+  );
 
 describe("OutputBuilder", () => {
   it("refuses to render a display block kind output views don't allow", () => {
@@ -19,18 +35,41 @@ describe("OutputBuilder", () => {
       ],
     };
 
-    expect(() =>
-      render(
-        <QueryClientProvider client={new QueryClient()}>
-          <ToastProvider>
-            <OutputBuilder
-              schema={schema}
-              onSchemaChange={() => {}}
-              onUpdateBlockById={() => null}
-            />
-          </ToastProvider>
-        </QueryClientProvider>,
-      ),
-    ).toThrow("output views can't show video blocks");
+    expect(() => renderBuilder(schema)).toThrow(
+      "output views can't show video blocks",
+    );
+  });
+
+  it("previews a list field as a row of sample cells", () => {
+    const schema: FormSchema = {
+      pages: [
+        {
+          id: "page-1",
+          fields: [
+            {
+              id: "people",
+              type: "input",
+              kind: "list",
+              label: "People",
+              output: { output: true },
+              fields: [
+                { id: "email", type: "input", kind: "email", label: "Email" },
+              ],
+            },
+          ],
+        },
+      ],
+      outputViews: [
+        {
+          type: "default",
+          id: "view-1",
+          blocks: [{ id: "block-1", fieldId: "people" }],
+        },
+      ],
+    };
+
+    renderBuilder(schema);
+
+    expect(screen.getByDisplayValue("user@example.com")).toBeTruthy();
   });
 });
