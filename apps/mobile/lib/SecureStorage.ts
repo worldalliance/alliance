@@ -1,7 +1,7 @@
 import { secureStorageBackend } from "./secureStorageBackend";
 import type { SecureStoreOptions } from "./secureStorageBackendContract";
 
-export type SessionTokens = { access: string; refresh: string | undefined };
+export type SessionTokens = { access: string; refresh: string };
 
 export enum SecureStorageKey {
   ACCESS_TOKEN = "accessToken",
@@ -30,7 +30,5 @@ export const getRefreshToken = () =>
 
 export const saveSessionTokens = async ({ access, refresh }: SessionTokens) => {
   await SecureStorage.setItem(SecureStorageKey.ACCESS_TOKEN, access);
-  if (refresh) {
-    await SecureStorage.setItem(SecureStorageKey.REFRESH_TOKEN, refresh);
-  }
+  await SecureStorage.setItem(SecureStorageKey.REFRESH_TOKEN, refresh);
 };

@@ -94,11 +94,19 @@ export async function refreshSession(
 
   const { data, response } = sent.value;
   if (response.status === 401) return R.success(undefined);
-  if (!data?.access_token) {
+  if (!response.ok) {
     return R.failure(new Error(`token refresh failed: ${response.status}`));
   }
+  const { access_token, refresh_token } = data ?? {};
+  // Header mode answers with both or neither.
+  if (!access_token || !refresh_token) {
+    return R.failure(
+      new Error(
+        `token refresh answered ${response.status} without both tokens`,
+      ),
+    );
+  }
 
-  const { access_token, refresh_token } = data;
   const saved = await R.fromPromise(
     params.saveTokens({ access: access_token, refresh: refresh_token }),
   );

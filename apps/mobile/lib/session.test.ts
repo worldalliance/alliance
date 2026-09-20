@@ -685,13 +685,29 @@ it("resolves to no token when the server refuses the refresh", async () => {
   expect(R.unwrap(await refreshing())).toBeUndefined();
 });
 
+it("fails a refresh the server answered without a refresh token", async () => {
+  api.throwingOnRefusal({
+    "POST /auth/refresh": () => Response.json({ access_token: "refreshed" }),
+  });
+  const saveTokens = mock(async (_tokens: SessionTokens) => {});
+
+  expect(await refreshing(saveTokens)).toMatchObject({
+    ok: false,
+    error: { message: "token refresh answered 200 without both tokens" },
+  });
+  expect(saveTokens).not.toHaveBeenCalled();
+});
+
 it("fails a refresh the server couldn't answer", async () => {
   api.throwingOnRefusal({
     "POST /auth/refresh": () => new Response(null, { status: 503 }),
   });
   const saveTokens = mock(async (_tokens: SessionTokens) => {});
 
-  expect(await refreshing(saveTokens)).toMatchObject({ ok: false });
+  expect(await refreshing(saveTokens)).toMatchObject({
+    ok: false,
+    error: { message: "token refresh failed: 503" },
+  });
   expect(saveTokens).not.toHaveBeenCalled();
 });
 
