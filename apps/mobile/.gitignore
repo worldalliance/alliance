@@ -44,8 +44,8 @@ yarn-error.*
 
 app-example
 
-ios/
-android/
+/ios/
+/android/
 
 local-ip.ts
 .env
