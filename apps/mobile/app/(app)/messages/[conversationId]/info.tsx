@@ -355,6 +355,7 @@ export default function ConversationInfoScreen() {
                     }}
                     accessibilityRole="button"
                     accessibilityLabel={`Remove ${participant.user.displayName}`}
+                    disabled={changingMembers}
                     className="p-2"
                   >
                     <X
