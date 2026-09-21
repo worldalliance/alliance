@@ -110,9 +110,11 @@ Icons and direct interaction over words: a `lucide-react` icon button (`lucide-r
 
 Icon-only controls carry a tooltip or `aria-label`. Destructive or irreversible actions say what they do in words.
 
-## Secrets
+## Secrets and personal information
 
 Secrets stay in the environment, out of context. Read `.env*` files through a filter that redacts values; to use a secret, pipe it into the command from a script.
+
+Never write secrets or real personally identifiable information into any repo file, including provenance, ignored files, and `.scratch/` artifacts. Redact sensitive values as `[redacted]` before writing text or capturing artifacts; use synthetic data for fixtures and examples. Before handing off, check every file you created or changed for secrets and personal information.
 
 ## Working files
 
