@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.base.json",
+  "include": ["server.ts", "src/**/*.ts", "ui/**/*.ts", "ui/**/*.tsx"],
+  "compilerOptions": {
+    "types": ["bun"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true
+  }
+}
