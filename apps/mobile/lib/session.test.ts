@@ -19,6 +19,7 @@ import {
   closeSession,
   CredentialsRefusedError,
   currentSession,
+  dropSessionOnRefusal,
   loadSessionUser,
   openSession,
   passwordLoginFailure,
@@ -31,6 +32,7 @@ import {
   SessionOvertakenError,
   SessionRefusedError,
   setAuthHeader,
+  subscribeToSessionRefusal,
 } from "./session";
 
 const api = serveApi(routes({}));
@@ -852,6 +854,183 @@ const serveLogout = () =>
   api.throwingOnRefusal({
     "POST /auth/logout": () => new Response(null, { status: 200 }),
   });
+
+it("reports a refused session during an HTTP refresh", async () => {
+  serveRefreshing({
+    "GET /auth/me": expiredMe,
+    "POST /auth/refresh": () => new Response(null, { status: 401 }),
+  });
+  const refused = mock();
+  subscribeToSessionRefusal(refused);
+  setAuthHeader("expired");
+
+  const me = await authMe({ throwOnError: false });
+
+  expect(me.response.status).toBe(401);
+  expect(refused).toHaveBeenCalledTimes(1);
+});
+
+it.each([
+  { reason: "refused", refreshToken: "refresh" },
+  { reason: "missing", refreshToken: null },
+])(
+  "reports a $reason session during a socket refresh",
+  async ({ refreshToken }) => {
+    api.throwingOnRefusal({
+      "POST /auth/refresh": () => new Response(null, { status: 401 }),
+    });
+    const refused = mock();
+    subscribeToSessionRefusal(refused);
+
+    const refreshed = await refreshOpenSession({
+      getRefreshToken: async () => refreshToken,
+      saveTokens: async () => {},
+    });
+
+    expect(refreshed).toEqual(R.success(undefined));
+    expect(refused).toHaveBeenCalledTimes(1);
+  },
+);
+
+it("keeps a newer login when an old socket refresh is refused", async () => {
+  const refreshing = Promise.withResolvers<void>();
+  const answer = Promise.withResolvers<void>();
+  api.throwingOnRefusal({
+    "GET /auth/me": () => Response.json({ user: { id: 1 } }),
+    "POST /auth/refresh": async () => {
+      refreshing.resolve();
+      await answer.promise;
+      return new Response(null, { status: 401 });
+    },
+  });
+  const refused = mock();
+  subscribeToSessionRefusal(refused);
+  const refreshingSession = refreshOpenSession({
+    getRefreshToken: async () => "refresh",
+    saveTokens: async () => {},
+  });
+  await refreshing.promise;
+  expect((await start().opened).ok).toBe(true);
+  const newSession = openedSession();
+  answer.resolve();
+
+  expect(await refreshingSession).toEqual(R.success(undefined));
+  expect(refused).not.toHaveBeenCalled();
+  expect(currentSession()).toBe(newSession);
+  expect(await nextAuthorization()).toBe("Bearer access");
+});
+
+it("ignores a missing token read that returns after logout", async () => {
+  serveLogout();
+  const token = Promise.withResolvers<string | null>();
+  const refused = mock();
+  subscribeToSessionRefusal(refused);
+  const refreshing = refreshOpenSession({
+    getRefreshToken: () => token.promise,
+    saveTokens: async () => {},
+  });
+  await closeSession(cleared);
+  token.resolve(null);
+
+  expect(await refreshing).toEqual(R.success(undefined));
+  expect(refused).not.toHaveBeenCalled();
+});
+
+it.each([
+  {
+    reason: "server outage",
+    respond: () => new Response(null, { status: 503 }),
+  },
+  {
+    reason: "network failure",
+    respond: () => {
+      throw new Error("offline");
+    },
+  },
+])("keeps the session after a refresh $reason", async ({ respond }) => {
+  api.throwingOnRefusal({ "POST /auth/refresh": respond });
+  const refused = mock();
+  subscribeToSessionRefusal(refused);
+  const session = openedSession();
+
+  const refreshed = await refreshOpenSession({
+    getRefreshToken: async () => "refresh",
+    saveTokens: async () => {},
+  });
+
+  expect(refreshed.ok).toBe(false);
+  expect(refused).not.toHaveBeenCalled();
+  expect(currentSession()).toBe(session);
+});
+
+const refuseRefresh = () =>
+  refreshOpenSession({
+    getRefreshToken: async () => null,
+    saveTokens: async () => {},
+  });
+
+it("removes the session refusal listener on cleanup", async () => {
+  const refused = mock();
+  const unsubscribe = subscribeToSessionRefusal(refused);
+  unsubscribe();
+
+  await refuseRefresh();
+
+  expect(refused).not.toHaveBeenCalled();
+});
+
+it("drops a signed-in session once it is refused", async () => {
+  const dropSession = mock(async () => {});
+  dropSessionOnRefusal({ signedIn: true, dropSession });
+
+  await refuseRefresh();
+
+  expect(dropSession).toHaveBeenCalledTimes(1);
+});
+
+it("drops a session refused by several requests once", async () => {
+  serveRefreshing({
+    "GET /auth/me": expiredMe,
+    "POST /auth/refresh": () => new Response(null, { status: 401 }),
+    "POST /auth/logout": () => new Response(null, { status: 200 }),
+  });
+  const dropping = Promise.withResolvers<void>();
+  const dropSession = mock(async () => {
+    await dropping.promise;
+    await closeSession(cleared);
+  });
+  dropSessionOnRefusal({ signedIn: true, dropSession });
+  setAuthHeader("expired");
+
+  await Promise.all([
+    authMe({ throwOnError: false }),
+    authMe({ throwOnError: false }),
+  ]);
+  dropping.resolve();
+  await dropSession.mock.results[0]?.value;
+
+  expect(dropSession).toHaveBeenCalledTimes(1);
+});
+
+it("leaves a refusal before sign-in to the launch", async () => {
+  const dropSession = mock(async () => {});
+  expect(
+    dropSessionOnRefusal({ signedIn: false, dropSession }),
+  ).toBeUndefined();
+
+  await refuseRefresh();
+
+  expect(dropSession).not.toHaveBeenCalled();
+});
+
+it("stops dropping the session once signed-in cleanup runs", async () => {
+  const dropSession = mock(async () => {});
+  dropSessionOnRefusal({ signedIn: true, dropSession })?.();
+
+  await refuseRefresh();
+
+  expect(dropSession).not.toHaveBeenCalled();
+});
 
 it("sets the refreshed token while the session is open", async () => {
   const saveTokens = mock(async () => {});

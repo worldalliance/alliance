@@ -30,6 +30,7 @@ import {
   clearClosedSessionTokens,
   clearStoredTokens,
   closeSession,
+  dropSessionOnRefusal,
   openSession,
   requestTokens,
   restoreSession,
@@ -128,6 +129,23 @@ export const AuthProvider: React.FC<
     }
   }, [router, clearSession]);
 
+  // A failed token delete gets no retry prompt: the stored tokens can't
+  // refresh, so the next launch drops them. No redirect: the app layout already
+  // sends an unauthenticated visitor to onboarding.
+  const dropRefusedSession = useCallback(async () => {
+    captureEvent(AnalyticsEvent.AuthFailedToRefresh);
+    await clearSession();
+  }, [clearSession]);
+
+  useEffect(
+    () =>
+      dropSessionOnRefusal({
+        signedIn: !!user,
+        dropSession: dropRefusedSession,
+      }),
+    [user, dropRefusedSession],
+  );
+
   const refreshUser = useCallback(async () => {
     try {
       const profile = (await authMe()).data;
@@ -148,12 +166,7 @@ export const AuthProvider: React.FC<
       const restored = await restoreSession({
         getAccessToken,
         getRefreshToken,
-        dropSession: async () => {
-          captureEvent(AnalyticsEvent.AuthFailedToRefresh);
-          // No redirect: the app layout already sends an unauthenticated
-          // visitor to onboarding.
-          await clearSession();
-        },
+        dropSession: dropRefusedSession,
         reportFailure: (error) =>
           captureException(ExceptionEvent.SessionLoadFailed, error),
       });
@@ -167,7 +180,7 @@ export const AuthProvider: React.FC<
     } finally {
       setIsLoading(false);
     }
-  }, [clearSession]);
+  }, [dropRefusedSession]);
 
   useEffect(() => {
     run(restoreStoredSession);

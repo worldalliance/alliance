@@ -1,4 +1,5 @@
 import { R, type Result } from "@alliance/common/result";
+import { run } from "@alliance/common/run";
 import { TIMED_OUT, withTimeout } from "@alliance/common/timeout";
 import {
   authLogin,
@@ -86,6 +87,33 @@ let tokenWrites: Promise<unknown> = Promise.resolve();
 // a write the deadline gave up on lands, so storage ends up matching the
 // session.
 let lastTokenWrite: () => Promise<unknown> = async () => {};
+const sessionRefusalListeners = new Set<() => void>();
+
+export function subscribeToSessionRefusal(listener: () => void): () => void {
+  sessionRefusalListeners.add(listener);
+  return () => {
+    sessionRefusalListeners.delete(listener);
+  };
+}
+
+/** Drops the session once the server refuses it, while a member is signed in.
+ * Before then restoreSession drops a refused session itself. */
+export function dropSessionOnRefusal(params: {
+  signedIn: boolean;
+  dropSession: () => Promise<void>;
+}): (() => void) | undefined {
+  if (!params.signedIn) return;
+  const unsubscribe = subscribeToSessionRefusal(() => {
+    unsubscribe();
+    run(params.dropSession);
+  });
+  return unsubscribe;
+}
+
+function reportSessionRefusal(refusedSession: number): void {
+  if (refusedSession !== session) return;
+  sessionRefusalListeners.forEach((listener) => listener());
+}
 
 /** The session a request goes out under, for handing to refreshSession.
  * Undefined from logout, or from the start of a login, until a login saves its
@@ -129,6 +157,7 @@ export function __resetSessionForTests(): void {
   session = lastSession;
   tokenWrites = Promise.resolve();
   lastTokenWrite = async () => {};
+  sessionRefusalListeners.clear();
 }
 
 /** Saves and sets a refreshed token, unless the session it was refreshed for
@@ -223,13 +252,17 @@ type RefreshDeps = {
 /** Refreshes the tokens of `session` and resolves to the new access token,
  * having saved it and put it on the client. Resolves to no token when none is
  * stored, the server refuses the one that is, or the session closed
- * meanwhile. */
+ * meanwhile. A missing or refused token for the current session also notifies
+ * subscribeToSessionRefusal listeners. */
 export async function refreshSession(
   params: RefreshDeps & { session: number },
 ): Promise<Result<string | undefined, Error>> {
   const refreshToken = await R.fromPromise(params.getRefreshToken());
   if (!refreshToken.ok) return refreshToken;
-  if (!refreshToken.value) return R.success(undefined);
+  if (!refreshToken.value) {
+    reportSessionRefusal(params.session);
+    return R.success(undefined);
+  }
 
   const sent = await R.fromPromise(
     authRefreshTokens({
@@ -243,7 +276,10 @@ export async function refreshSession(
   if (!sent.ok) return sent;
 
   const { data, response } = sent.value;
-  if (response.status === 401) return R.success(undefined);
+  if (response.status === 401) {
+    reportSessionRefusal(params.session);
+    return R.success(undefined);
+  }
   if (!response.ok) {
     return R.failure(new Error(`token refresh failed: ${response.status}`));
   }
