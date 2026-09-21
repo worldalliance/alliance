@@ -559,7 +559,7 @@ export class UpdateProfileDto extends PartialType(
 }
 
 export class UpdateUserRolesAdminDto extends PartialType(
-  PickType(User, ["ambassador", "staff"]),
+  PickType(User, ["ambassador", "staff", "admin"]),
 ) {
   @ApiPropertyOptional()
   @IsOptional()
@@ -570,6 +570,11 @@ export class UpdateUserRolesAdminDto extends PartialType(
   @IsOptional()
   @IsBoolean()
   staff?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  admin?: boolean;
 }
 
 export class DeleteUserAdminDto {

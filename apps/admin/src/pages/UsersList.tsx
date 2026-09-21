@@ -27,6 +27,11 @@ import { LayoutGrid, List, Shuffle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { href, Link, useSearchParams } from "react-router";
 import UserCard from "../components/UserCard";
+import {
+  matchesSelectedRoles,
+  ROLE_FILTERS,
+  RoleFilter,
+} from "../lib/memberRoleFilter";
 
 type ViewMode = "cards" | "rows";
 
@@ -83,6 +88,9 @@ const UsersList: React.FC = () => {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [isTagFilterOpen, setIsTagFilterOpen] = useState(false);
   const tagDropdownRef = useOutsideClick(() => setIsTagFilterOpen(false));
+  const [selectedRoles, setSelectedRoles] = useState<RoleFilter[]>([]);
+  const [isRoleFilterOpen, setIsRoleFilterOpen] = useState(false);
+  const roleDropdownRef = useOutsideClick(() => setIsRoleFilterOpen(false));
   const [pendingTagOps, setPendingTagOps] = useState<Set<string>>(
     () => new Set(),
   );
@@ -128,16 +136,25 @@ const UsersList: React.FC = () => {
     );
   }, [tags]);
 
-  const filteredByTags = useMemo(() => {
-    if (!selectedTagIds.length) {
+  const filteredByRoles = useMemo(() => {
+    if (!selectedRoles.length) {
       return sortedUsers;
     }
+    return sortedUsers.filter((user) =>
+      matchesSelectedRoles({ user, selectedRoles }),
+    );
+  }, [selectedRoles, sortedUsers]);
+
+  const filteredByTags = useMemo(() => {
+    if (!selectedTagIds.length) {
+      return filteredByRoles;
+    }
     const selected = new Set(selectedTagIds);
-    return sortedUsers.filter((user) => {
+    return filteredByRoles.filter((user) => {
       const userTags = userTagsMap[user.id] || [];
       return userTags.some((tag) => selected.has(tag.id));
     });
-  }, [selectedTagIds, sortedUsers, userTagsMap]);
+  }, [selectedTagIds, filteredByRoles, userTagsMap]);
 
   const filteredBySearch = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -179,7 +196,7 @@ const UsersList: React.FC = () => {
 
   useEffect(() => {
     setShuffledIds(null);
-  }, [selectedTagIds, searchQuery]);
+  }, [selectedTagIds, selectedRoles, searchQuery]);
 
   const groupFilterLabel = useMemo(() => {
     if (!selectedTagIds.length) {
@@ -190,6 +207,32 @@ const UsersList: React.FC = () => {
       withCount(selectedTagIds.length, "tag")
     );
   }, [selectedTagIds, selectedTagNames]);
+
+  const roleFilterLabel = useMemo(() => {
+    if (!selectedRoles.length) {
+      return "All roles";
+    }
+    return (
+      (selectedRoles.length === 1 &&
+        selectedRoles[0] &&
+        ROLE_FILTERS[selectedRoles[0]].label) ||
+      withCount(selectedRoles.length, "role")
+    );
+  }, [selectedRoles]);
+
+  const roleMemberCounts = useMemo(
+    () =>
+      mapValues(ROLE_FILTERS, (filter) => users.filter(filter.matches).length),
+    [users],
+  );
+
+  const toggleRoleSelection = (role: RoleFilter) => {
+    setSelectedRoles((prev) =>
+      prev.includes(role)
+        ? prev.filter((selected) => selected !== role)
+        : [...prev, role],
+    );
+  };
 
   const toggleTagSelection = (tagId: string) => {
     setSelectedTagIds((prev) => {
@@ -204,13 +247,20 @@ const UsersList: React.FC = () => {
     setSelectedTagIds([]);
   };
 
+  const clearRoleSelection = () => {
+    setSelectedRoles([]);
+  };
+
   const resetAllFilters = () => {
     setSearchQuery("");
     setSelectedTagIds([]);
+    setSelectedRoles([]);
   };
 
   const hasActiveFilters =
-    searchQuery.trim() !== "" || selectedTagIds.length > 0;
+    searchQuery.trim() !== "" ||
+    selectedTagIds.length > 0 ||
+    selectedRoles.length > 0;
 
   const usersAsProfiles = useMemo((): ProfileDto[] => {
     return filteredBySearch.map((user) => {
@@ -359,6 +409,53 @@ const UsersList: React.FC = () => {
           className="text-sm border border-gray-2 text-black bg-white px-3 rounded-sm py-2 w-64 focus:outline-none focus:border-black"
         />
         <div className="flex flex-row gap-3 items-center">
+          <div className="relative" ref={roleDropdownRef}>
+            <button
+              type="button"
+              className="text-sm border border-gray-2 text-black bg-white hover:bg-zinc-50 px-3 rounded-sm py-2 flex flex-row gap-x-2 items-center"
+              style={{ fontWeight: 450 }}
+              onClick={() => setIsRoleFilterOpen((open) => !open)}
+            >
+              <span>{roleFilterLabel}</span>
+            </button>
+            {isRoleFilterOpen && (
+              <div className="absolute z-10 top-[calc(100%+4px)] left-0 min-w-[220px] bg-white border border-zinc-200 rounded shadow">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-200">
+                  <p className="text-sm font-medium text-zinc-600">Roles</p>
+                  <button
+                    type="button"
+                    className="text-xs text-blue-600 hover:underline"
+                    onClick={clearRoleSelection}
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div>
+                  {Object.values(RoleFilter).map((role) => (
+                    <label
+                      key={role}
+                      className="flex flex-row items-center gap-2 px-3 py-2 text-sm hover:bg-zinc-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        className="cursor-pointer"
+                        checked={selectedRoles.includes(role)}
+                        onChange={() => toggleRoleSelection(role)}
+                      />
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          {ROLE_FILTERS[role].label}
+                        </span>
+                        <span className="text-xs text-zinc-500">
+                          {withCount(roleMemberCounts[role], "member")}
+                        </span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <div className="relative" ref={tagDropdownRef}>
             <button
               type="button"

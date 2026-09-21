@@ -455,11 +455,16 @@ export class UserController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: UserAdminDetailDto })
   async updateUserRolesAdmin(
+    @Request() req: JwtRequest,
     @Param("id", ParseIntPipe) id: number,
     @Body() body: UpdateUserRolesAdminDto,
   ): Promise<UserAdminDetailDto> {
     return new UserAdminDetailDto(
-      await this.userService.updateRolesAdmin(id, body),
+      await this.userService.updateRolesAdmin({
+        id,
+        actorId: req.user.sub,
+        roles: body,
+      }),
     );
   }
 

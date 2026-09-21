@@ -67,6 +67,7 @@ import { Link, useLoaderData, useNavigate } from "react-router";
 import { Route } from "../../.react-router/types/src/pages/+types/UserDetailView";
 import CreateActivityControls from "../components/CreateActivityControls";
 import DeleteAccountModal from "../components/DeleteAccountModal";
+import { useAuth } from "../lib/AuthContext";
 import { getApiUrl } from "../lib/config";
 
 const AWAY_REASON_OPTIONS = [
@@ -172,9 +173,12 @@ const UserDetailView: React.FC = () => {
   const [tagMutationError, setTagMutationError] = useState<string | null>(null);
   const [isAmbassadorPending, setIsAmbassadorPending] = useState(false);
   const [isStaffPending, setIsStaffPending] = useState(false);
+  const [isAdminPending, setIsAdminPending] = useState(false);
   const [roleMutationError, setRoleMutationError] = useState<string | null>(
     null,
   );
+  const { user: viewer } = useAuth();
+  const isSelf = viewer?.id === user.id;
   const [isSuspendPending, setIsSuspendPending] = useState(false);
   const [suspendMutationError, setSuspendMutationError] = useState<
     string | null
@@ -438,6 +442,28 @@ const UserDetailView: React.FC = () => {
         setRoleMutationError("Failed to update role. Try again.");
       } finally {
         setIsStaffPending(false);
+      }
+    },
+    [user.id],
+  );
+
+  const handleAdminToggle = useCallback(
+    async (nextChecked: boolean) => {
+      setIsAdminPending(true);
+      setRoleMutationError(null);
+      try {
+        const res = await userUpdateUserRolesAdmin({
+          path: { id: user.id },
+          body: { admin: nextChecked },
+          throwOnError: true,
+        });
+        setUser(res.data);
+      } catch (error) {
+        setRoleMutationError(
+          errorMessage({ error, fallback: "Could not update admin status." }),
+        );
+      } finally {
+        setIsAdminPending(false);
       }
     },
     [user.id],
@@ -1188,6 +1214,31 @@ const UserDetailView: React.FC = () => {
                   }
                 >
                   Ambassador
+                </span>
+              </label>
+              <label
+                className={cn(
+                  "flex items-center gap-2 text-sm px-1 py-0.5 rounded",
+                  isSelf
+                    ? "cursor-not-allowed"
+                    : "cursor-pointer hover:bg-zinc-50",
+                  isAdminPending && "opacity-50",
+                )}
+                title={
+                  isSelf ? "You cannot change your own admin status" : undefined
+                }
+              >
+                <input
+                  type="checkbox"
+                  checked={user.admin}
+                  disabled={isAdminPending || isSelf}
+                  onChange={(e) => handleAdminToggle(e.target.checked)}
+                  className="rounded"
+                />
+                <span
+                  className={user.admin ? "text-zinc-900" : "text-zinc-500"}
+                >
+                  Admin
                 </span>
               </label>
             </div>

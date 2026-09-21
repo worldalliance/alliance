@@ -602,10 +602,17 @@ export class UserService {
     await this.userRepository.update(id, { admin });
   }
 
-  async updateRolesAdmin(
-    id: number,
-    roles: { ambassador?: boolean; staff?: boolean },
-  ): Promise<User> {
+  async updateRolesAdmin(params: {
+    id: number;
+    actorId: number;
+    roles: { ambassador?: boolean; staff?: boolean; admin?: boolean };
+  }): Promise<User> {
+    const { id, actorId, roles } = params;
+
+    if (roles.admin !== undefined && id === actorId) {
+      throw new BadRequestException("You cannot change your own admin status");
+    }
+
     await this.userRepository.update(id, roles);
     return this.findOneOrFail(id, {
       contractEvents: true,

@@ -1039,6 +1039,7 @@ export type UserAdminDetailDto = {
 };
 
 export type UpdateUserRolesAdminDto = {
+    admin?: boolean;
     staff?: boolean;
     ambassador?: boolean;
 };
