@@ -27,6 +27,7 @@ const EVENT_TYPES: EventType[] = [
   "sms_failure",
   "forum_action_autocomplete",
   "action_comment",
+  "admin_role_changed",
 ];
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
@@ -38,6 +39,7 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
   sms_failure: "bg-red-100 text-red-700",
   forum_action_autocomplete: "bg-yellow-100 text-yellow-800",
   action_comment: "bg-indigo-100 text-indigo-800",
+  admin_role_changed: "bg-pink-100 text-pink-800",
 };
 
 function formatEventType(type: string): string {

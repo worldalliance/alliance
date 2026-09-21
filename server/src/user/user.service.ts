@@ -33,7 +33,10 @@ import { getStaffAssignableSlots } from "src/community/community.utils";
 import { Community } from "src/community/entities/community.entity";
 import { ALL_MEMBERS_TAG_NAME } from "src/constants";
 import { EventType } from "src/eventlog/event-log.entity";
-import { EventLogService } from "src/eventlog/eventlog.service";
+import {
+  EventLogMessage,
+  EventLogService,
+} from "src/eventlog/eventlog.service";
 import { escapeSlackText } from "src/eventlog/slack-format";
 import { City } from "src/geo/city.entity";
 import { getImageSource, ImagesService } from "src/images/images.service";
@@ -613,7 +616,19 @@ export class UserService {
       throw new BadRequestException("You cannot change your own admin status");
     }
 
-    await this.userRepository.update(id, roles);
+    const audit = await this.adminRoleChangeEntry({
+      id,
+      actorId,
+      admin: roles.admin,
+    });
+
+    const forwardAudit = await this.dataSource.transaction(async (manager) => {
+      await manager.update(User, id, roles);
+      if (!audit) return null;
+      return this.eventLogService.sendMessageInTransaction(manager, audit);
+    });
+    await forwardAudit?.();
+
     return this.findOneOrFail(id, {
       contractEvents: true,
       referredBy: true,
@@ -623,6 +638,42 @@ export class UserService {
       city: true,
       tags: true,
     });
+  }
+
+  /**
+   * The entry for an admin grant or revocation, or null when the request leaves
+   * the flag as it is. The `admin` column keeps no history, so an entry that
+   * fails to write leaves a privilege change with no record. Callers write this
+   * through the transaction that carries the update.
+   */
+  private async adminRoleChangeEntry(params: {
+    id: number;
+    actorId: number;
+    admin: boolean | undefined;
+  }): Promise<EventLogMessage | null> {
+    const { id, actorId, admin } = params;
+    if (admin === undefined) return null;
+
+    const [target, actor] = await Promise.all([
+      this.findOneOrFail(id),
+      this.findOneOrFail(actorId),
+    ]);
+    if (target.admin === admin) return null;
+
+    const verb = admin ? "granted admin to" : "revoked admin from";
+    return {
+      type: EventType.AdminRoleChanged,
+      message: `${actor.name} ${verb} ${target.name} (${target.email}, id ${target.id})`,
+      userId: target.id,
+      blob: {
+        targetId: target.id,
+        targetEmail: target.email,
+        actorId: actor.id,
+        actorName: actor.name,
+        actorEmail: actor.email,
+        admin,
+      },
+    };
   }
 
   async count(): Promise<number> {

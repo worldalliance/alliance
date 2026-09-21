@@ -25,6 +25,7 @@ export enum EventType {
   AccountDeletionRequested = "account_deletion_requested",
   AccountDeleted = "account_deleted",
   JoinRequest = "join_request",
+  AdminRoleChanged = "admin_role_changed",
 }
 
 export const SEND_TO_SLACK: Record<EventType, boolean> = {
@@ -42,6 +43,7 @@ export const SEND_TO_SLACK: Record<EventType, boolean> = {
   [EventType.AccountDeletionRequested]: true,
   [EventType.AccountDeleted]: true,
   [EventType.JoinRequest]: true,
+  [EventType.AdminRoleChanged]: true,
 };
 
 @Entity()
