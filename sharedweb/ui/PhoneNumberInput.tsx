@@ -8,6 +8,7 @@ import { cn } from "@alliance/shared/styles/util";
 import React from "react";
 
 type PhoneNumberInputProps = {
+  labelId?: string;
   value: string;
   onChange: (value: string) => void;
   country: CountryCode;
@@ -22,6 +23,7 @@ type PhoneNumberInputProps = {
 };
 
 const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
+  labelId,
   value,
   onChange,
   country,
@@ -88,6 +90,7 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
         </div>
         <span className="my-2 w-px shrink-0 bg-zinc-200" aria-hidden />
         <input
+          aria-labelledby={labelId}
           id={name}
           name={name}
           type="tel"

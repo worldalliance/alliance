@@ -31,3 +31,9 @@ Keep the synthetic native picker fixture and Android Maestro regression flow in 
 Give the fixture no tsconfig of its own. The mobile package's typecheck config already covers it, and a nearer config is what an editor picks, without the repo's strict settings or the uniwind className types.
 
 Use Android text selectors for the regression flow. The iOS modal currently groups its input and rows into one accessibility element, so the fixture supports manual iOS inspection without claiming an automated iOS pass.
+
+Associate existing web question labels with native and composed inputs. Give radio, range, multiselect, ranking, and repeated-field groups the question's name while preserving each option's own label. Reuse RenderLabel's visually hidden rendering so hideLabel affects presentation without removing the question from the accessible name. Keep this accessibility correction in a separate commit because it also fixes field kinds unrelated to dropdown search.
+
+Retain the searchable dropdown's "Options" fallback for genuinely blank labels. A selected answer cannot supply the missing question. Do not add a second authoring property or reject existing schemas without a requirement for that behavior; form authors must supply a meaningful question label, which can be visually hidden.
+
+Name the timezone trigger from both the question label and its own content. It is a plain button, so labelling it from the question alone would replace the selected zone in its accessible name.

@@ -109,6 +109,11 @@ const getRangeValues = (field: RangeField): number[] => {
   return Array.from({ length: optionCount }, (_, index) => index + 1);
 };
 
+function useQuestionLabelId(field: AnyField): string | undefined {
+  const instanceId = useId();
+  return field.label?.trim() ? `${field.id}-${instanceId}-label` : undefined;
+}
+
 export function RenderLabel({
   field,
   labelId,
@@ -175,6 +180,7 @@ export function RenderField({
 }: RenderFieldProps) {
   const instanceId = useId();
   const fieldName = `${field.id}-${instanceId}`;
+  const labelId = useQuestionLabelId(field);
   const {
     slot: uploadSlot,
     uploading,
@@ -230,6 +236,7 @@ export function RenderField({
         <div className="space-y-1">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -237,6 +244,7 @@ export function RenderField({
             required={required}
           />
           <input
+            aria-labelledby={labelId}
             type="text"
             value={(value as string) ?? ""}
             onChange={onChange ? (e) => onChange(e.target.value) : undefined}
@@ -260,6 +268,7 @@ export function RenderField({
         <div className="space-y-1">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -267,6 +276,7 @@ export function RenderField({
             required={required}
           />
           <TextareaAutosize
+            aria-labelledby={labelId}
             minRows={disabled ? 1 : field.rows || 3}
             translate="no"
             maxLength={field.maxLength}
@@ -296,6 +306,7 @@ export function RenderField({
         <div className="space-y-1">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -303,6 +314,7 @@ export function RenderField({
             required={required}
           />
           <input
+            aria-labelledby={labelId}
             type="email"
             value={(value as string) ?? ""}
             onChange={onChange ? (e) => onChange(e.target.value) : undefined}
@@ -340,6 +352,7 @@ export function RenderField({
         <div className="space-y-1">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -347,6 +360,7 @@ export function RenderField({
             required={required}
           />
           <input
+            aria-labelledby={labelId}
             type="number"
             value={
               value === undefined || value === null
@@ -399,6 +413,7 @@ export function RenderField({
         <div className="relative pb-6">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -409,7 +424,11 @@ export function RenderField({
             <span className="text-black">{field.startLabel}</span>
             <span className="text-black">{field.endLabel}</span>
           </div>
-          <div className="flex w-full divide-x divide-zinc-300 border-x border-zinc-300">
+          <div
+            role="radiogroup"
+            aria-labelledby={labelId}
+            className="flex w-full divide-x divide-zinc-300 border-x border-zinc-300"
+          >
             {values.map((optionValue) => {
               const checked = normalizedValue === optionValue;
               return (
@@ -523,6 +542,7 @@ export function RenderField({
         <div className="space-y-2">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -530,6 +550,8 @@ export function RenderField({
             required={required}
           />
           <div
+            role="radiogroup"
+            aria-labelledby={labelId}
             className={cn(
               "space-y-2",
               hasError && "border-l-2 border-red-500 pl-3",
@@ -573,10 +595,6 @@ export function RenderField({
 
     case "select": {
       const options = randomizedOptions ?? field.options;
-      const labelId =
-        field.searchable && field.label?.trim()
-          ? `${fieldName}-label`
-          : undefined;
       return (
         <div className="space-y-1">
           <RenderLabel
@@ -601,6 +619,7 @@ export function RenderField({
             />
           ) : (
             <select
+              aria-labelledby={labelId}
               value={(value as string) ?? ""}
               onChange={onChange ? (e) => onChange(e.target.value) : undefined}
               aria-required={required}
@@ -644,6 +663,7 @@ export function RenderField({
         <div className="space-y-2">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -651,6 +671,8 @@ export function RenderField({
             required={required}
           />
           <div
+            role="group"
+            aria-labelledby={labelId}
             className={cn(
               "space-y-2",
               hasError && "border-l-2 border-red-500 pl-3",
@@ -720,6 +742,7 @@ export function RenderField({
         <div className="space-y-1">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -727,6 +750,7 @@ export function RenderField({
             required={required}
           />
           <input
+            aria-labelledby={labelId}
             type="date"
             value={(value as string) ?? ""}
             onChange={onChange ? (e) => onChange(e.target.value) : undefined}
@@ -759,6 +783,7 @@ export function RenderField({
         <div className="space-y-1">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -766,6 +791,7 @@ export function RenderField({
             required={required}
           />
           <TimeZoneSelect
+            labelId={labelId}
             value={(value as string) ?? "America/Los_Angeles"}
             onChange={onChange ? (tz) => onChange(tz) : undefined}
             disabled={disabled}
@@ -788,12 +814,14 @@ export function RenderField({
         <div className="space-y-1">
           <RenderLabel
             field={field as CityField}
+            labelId={labelId}
             error={errorMessage}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
             required={required}
           />
           <CityAutosuggest
+            labelId={labelId}
             key={`city-${cityValue?.id ?? field.id}`}
             value={displayValue}
             placeholder={(field as CityField).placeholder}
@@ -823,6 +851,7 @@ export function RenderField({
         <div className="space-y-2">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -855,6 +884,7 @@ export function RenderField({
           {!(disabled && fileValue) && (
             <div className="flex items-center space-x-2">
               <input
+                aria-labelledby={labelId}
                 type="file"
                 accept="image/*"
                 onChange={async (e) => {
@@ -942,9 +972,10 @@ export function RenderField({
         return fields;
       };
       return (
-        <div className="space-y-3">
+        <div role="group" aria-labelledby={labelId} className="space-y-3">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -1121,9 +1152,10 @@ export function RenderField({
 
     case "ranking":
       return (
-        <div className="space-y-2">
+        <div role="group" aria-labelledby={labelId} className="space-y-2">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
@@ -1172,6 +1204,7 @@ export function PhoneInputField({
   hideLabel,
   required = !!field.required,
 }: PhoneInputFieldProps) {
+  const labelId = useQuestionLabelId(field);
   const answer = typeof value === "string" ? value : "";
   const [country, setCountry] = usePhoneFieldCountry(answer);
 
@@ -1179,6 +1212,7 @@ export function PhoneInputField({
     <div className="space-y-1">
       <RenderLabel
         field={field}
+        labelId={labelId}
         error={baseError}
         labelRightAddon={labelRightAddon}
         isOutputView={isOutputView}
@@ -1186,6 +1220,7 @@ export function PhoneInputField({
         required={required}
       />
       <PhoneNumberInput
+        labelId={labelId}
         name={field.id}
         value={answer}
         onChange={(next) => onChange?.(next)}
@@ -1224,6 +1259,7 @@ export function TimeInputField({
   hideLabel,
   required = !!field.required,
 }: TimeInputFieldProps) {
+  const labelId = useQuestionLabelId(field);
   const normalizedValue = typeof value === "string" && value ? value : "";
   const [inputValue, setInputValue] = useState<string>(() =>
     formatTimeForDisplay(normalizedValue),
@@ -1300,6 +1336,7 @@ export function TimeInputField({
     <div className="space-y-1 relative">
       <RenderLabel
         field={field}
+        labelId={labelId}
         error={effectiveError}
         labelRightAddon={labelRightAddon}
         isOutputView={isOutputView}
@@ -1309,6 +1346,7 @@ export function TimeInputField({
       <div className="relative">
         <input
           ref={inputRef}
+          aria-labelledby={labelId}
           type="text"
           value={inputValue}
           onFocus={() => {

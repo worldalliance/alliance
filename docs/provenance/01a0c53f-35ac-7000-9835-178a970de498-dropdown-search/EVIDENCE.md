@@ -113,3 +113,43 @@ Measured on 2026-09-22 with the dropdown-search commit's `RenderField` class str
 - Frontend, root font size 15px: text input 39.5, native select 40, searchable trigger 39.5.
 - Admin, root font size 16px: text input 42, native select 42, searchable trigger 42.
 - The same script run with `h-10` added to both dropdown variants reported 37.5 for select and trigger against a 39.5 text input on the frontend, and 40 against a 42 text input on the admin.
+
+## Web question labels
+
+With dropdown search implemented and before the web question-label changes, added `sharedweb/forms/RenderField.test.tsx` before changing the components. `bun test forms/RenderField.test.tsx` from `sharedweb` exited 1 with 2 passing and 28 failing tests. The two passing cases were searchable selects. The failures covered missing question associations on native inputs, composed inputs, and choice groups, including hidden labels and repeated field ids.
+
+After the accessibility changes:
+
+- `bun test forms/RenderField.test.tsx` from `sharedweb` exited 0 with all 30 tests passing. Assertions cover rendered Markdown labels, hidden labels, distinct labels for repeated field ids, group names, and unchanged radio and checkbox option names.
+- `bun run test sharedweb apps/frontend apps/admin` from the repository root exited 0. The packages reported 139, 122, and 190 passing tests, respectively, with zero failures.
+- `bun run typecheck` from each of `sharedweb`, `apps/frontend`, and `apps/admin` exited 0. Frontend and admin ESLint printed the existing warning that the React version is unspecified.
+
+These are DOM tests using the repository's Happy DOM preload; they do not establish screen-reader behavior on a device.
+
+After replaying the web question-label commit onto amended dropdown-search base `f2b7110d2` on 2026-09-21:
+
+- `bun run test sharedweb apps/frontend apps/admin` from the repository root exited 0 with 142, 122, and 190 passing tests and zero failures.
+- `bun run typecheck` from each of those three packages exited 0. Frontend and admin ESLint printed the existing warning that the React version was unspecified.
+- `bun run format:check` from the repository root on the six modified files and seven moved fixture files exited 0.
+- `git diff 2079e61c9 HEAD -- ':(glob)**/REQUIREMENTS.md'` and `git diff 2079e61c9 HEAD -- apps/mobile/e2e/dropdown` both produced no output. The requirements and fixture contents match the previous branch tip.
+
+After replaying the web question-label commit onto amended dropdown-search base `8e2668f8f` on 2026-09-21:
+
+- `bun run test sharedweb apps/frontend apps/admin` from the repository root exited 0 with 146, 122, and 190 passing tests and zero failures. `bun run typecheck` from each of those three packages exited 0, with the existing React-version ESLint warning in frontend and admin.
+- `bun .scratch/form-focus/check.ts` from the repository root exited 0 with all 12 browser checks passing against the combined changes.
+- `git diff 15242b4fa HEAD -- ':(glob)**/REQUIREMENTS.md'` produced no output. `git diff --check 15242b4fa HEAD` exited 0.
+
+## Split branch on 2026-09-22
+
+Run against the branch rebased onto `main` at `3b134bc26` and split into `96b022f7d` (required-dropdown validation and invalid-field focus), `a44900283` (dropdown search), and the branch tip (web question labels). Commands run from a separate checkout of each commit in turn.
+
+- At each of the three commits, `bun run test` from the repository root exited 0 with zero failures in all seven packages, `bun run typecheck` exited 0 in each of `common`, `shared`, `sharedweb`, `apps/mobile`, `server`, `apps/admin`, and `apps/frontend`, and `bun run format:check` from the repository root exited 0. In `apps/admin` and `apps/frontend`, `tsc` also reported `TS2307` for modules under `.react-router/types`, which is gitignored and produced by react-router typegen.
+- `bun test` from `sharedweb` reported 104 passing at `96b022f7d`, 117 at `a44900283`, and 147 at the branch tip.
+- At the branch tip, `bun run test` reported server 538, common 829, shared 521, sharedweb 147, frontend 122, admin 190, and mobile 54 passing.
+- From `sharedweb`, `bun test forms/FormRenderer.test.tsx` with `scrollElementIntoView(field)` replaced by `field.scrollIntoView(...)` exited 1: the container-scroll case failed and the other 6 passed. With the helper restored the same command exited 0.
+- `git diff` of `REQUIREMENTS.md` between the branch tip before the split and after it produced no output.
+
+## Timezone trigger name on 2026-09-22
+
+- Added a `RenderField` test that a timezone field set to `Asia/Kolkata` has a button named from the question followed by the selected zone. Before the fix, `bun test forms/RenderField.test.tsx` from `sharedweb` exited 1 with that test failing and 32 passing; the button's name was only the question.
+- After the fix, `bun test` from `sharedweb` exited 0 with 154 passing. `bun test` from `apps/frontend` and `apps/admin` exited 0 with 122 and 210 passing. `bun run typecheck` exited 0 in all three packages.

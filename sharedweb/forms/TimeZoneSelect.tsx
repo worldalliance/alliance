@@ -5,9 +5,11 @@ import {
 import { cn } from "@alliance/shared/styles/util";
 import { Check } from "lucide-react";
 import type React from "react";
+import { useId } from "react";
 import { zIndex } from "../ui/zIndex";
 
 type Props = {
+  labelId?: string;
   value?: string;
   defaultValue?: string; // defaults to America/Los_Angeles
   onChange?: (tz: string) => void;
@@ -21,6 +23,7 @@ type Props = {
 };
 
 export default function TimeZoneSelectPretty({
+  labelId,
   value,
   defaultValue = "America/Los_Angeles",
   onChange,
@@ -29,6 +32,7 @@ export default function TimeZoneSelectPretty({
   className,
   hour12 = true,
 }: Props) {
+  const valueId = useId();
   const {
     filtered,
     selected,
@@ -88,6 +92,7 @@ export default function TimeZoneSelectPretty({
     <div className={className ?? ""}>
       <div className="relative max-w-[700px]">
         <button
+          aria-labelledby={labelId ? `${labelId} ${valueId}` : undefined}
           type="button"
           disabled={disabled}
           onClick={() => !disabled && setOpen((v) => !v)}
@@ -98,7 +103,7 @@ export default function TimeZoneSelectPretty({
             "disabled:opacity-50 disabled:cursor-not-allowed",
           ].join(" ")}
         >
-          <div className="flex items-center justify-between gap-3">
+          <div id={valueId} className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="truncate text-zinc-900">
                 {selected.labelLeft || placeholder}
