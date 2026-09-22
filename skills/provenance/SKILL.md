@@ -35,7 +35,10 @@ Never infer user intent from existing code, prior agent decisions, or agent prop
 
 ## EVIDENCE.md
 
-Only objective observations, each paired with how it was obtained and the result. For commands, record the command, working directory, exit status, and observed output. For other methods, record the source or steps and what was observed. Include the revision, inputs, or environment details needed to reproduce or locate the observation, subject to the repo-wide redaction rule in `AGENTS.md`.
+Only objective observations, each paired with how it was obtained and the result. It should be reproducable like a chemistry lab report. For issues that are not reproducable, you may add a timestamp and just make a note.
+
+- For commands, record the commit/codebase state, command, working directory, exit status, and observed output.
+- For other methods, record the source or steps and what was observed. Include the revision, inputs, or environment details needed to reproduce or locate the observation, subject to the repo-wide redaction rule in `AGENTS.md`.
 
 No narrative context: explanations, hypotheses, interpretations, rationale, and conclusions belong in `DECISIONS.md`. `EVIDENCE.md` must stand alone for a reviewer who never reads `DECISIONS.md`. Neither reference nor paraphrase that file; obtain each fact directly from its source. Use neutral headings and descriptions that do not reveal agent decisions.
 
