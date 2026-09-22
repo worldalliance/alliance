@@ -36,6 +36,22 @@ describe("option value uniqueness", () => {
   });
 });
 
+describe("searchable dropdowns", () => {
+  it.each([true, false, undefined])("accepts searchable=%s", (searchable) => {
+    expect(
+      anyFieldSchema.safeParse({ ...optionField("select", ["a"]), searchable })
+        .success,
+    ).toBe(true);
+  });
+
+  it.each(["yes", 1, null])("rejects invalid searchable=%s", (searchable) => {
+    expect(
+      anyFieldSchema.safeParse({ ...optionField("select", ["a"]), searchable })
+        .success,
+    ).toBe(false);
+  });
+});
+
 describe("forEachCondition", () => {
   /** A condition tagged with the slot it was hung on, so order is checkable. */
   const marker = (when: string): Condition => ({

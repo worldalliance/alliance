@@ -126,7 +126,13 @@ describe("FormRenderer preview", () => {
   });
 });
 
-const dropdownForm = (): FormSchema => ({
+const dropdownForm = ({
+  searchable,
+  label = "Location",
+}: {
+  searchable?: boolean;
+  label?: string;
+}): FormSchema => ({
   pages: [
     {
       id: "p1",
@@ -135,8 +141,9 @@ const dropdownForm = (): FormSchema => ({
           id: "location",
           type: "input",
           kind: "select",
-          label: "Location",
+          label,
           required: true,
+          searchable,
           options: [
             { label: "New York", value: "ny" },
             { label: "California", value: "ca" },
@@ -162,20 +169,76 @@ const renderDropdownForm = (
             formSnapshotId={1}
             actionId={1}
             onSubmit={onSubmit}
-            fieldLabelRightContent={{
-              location: <button type="button">Location help</button>,
-            }}
           />
         </SiteAppProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   );
 
-it.each([true, false])(
-  "shows the required dropdown error with submit focus=%p",
-  async (focused) => {
+it.each([undefined, false])(
+  "keeps the native dropdown when search is %s",
+  (searchable) => {
+    renderPreview(dropdownForm({ searchable }));
+    expect(screen.getByRole("combobox").tagName).toBe("SELECT");
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "ny" } });
+    expect(
+      screen.getByRole("option", { name: "New York", selected: true }),
+    ).toBeTruthy();
+  },
+);
+
+it("requires an option selection even after searching", async () => {
+  renderPreview(dropdownForm({ searchable: true }));
+  fireEvent.click(screen.getByRole("combobox", { name: "Location" }));
+  const input = await screen.findByRole("combobox", {
+    name: "Search options",
+  });
+  fireEvent.change(input, { target: { value: "York" } });
+  fireEvent.keyDown(input, { key: "Escape" });
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: /Preview Mode/ }));
+  });
+  expect(await screen.findByText("This field is required.")).toBeTruthy();
+  fireEvent.click(screen.getByRole("combobox", { name: "Location" }));
+  fireEvent.click(await screen.findByRole("option", { name: "New York" }));
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: /Preview Mode/ }));
+  });
+  expect(screen.queryByText("This field is required.")).toBeNull();
+});
+
+it("names a searchable dropdown from its rendered Markdown label", () => {
+  renderPreview(dropdownForm({ searchable: true, label: "**Location**" }));
+  expect(screen.getByRole("combobox", { name: "Location" })).toBeTruthy();
+});
+
+it.each([
+  { searchable: true, focused: true },
+  { searchable: true, focused: false },
+  { searchable: false, focused: true },
+  { searchable: false, focused: false },
+])(
+  "shows the required error with searchable=$searchable and button focus=$focused",
+  async ({ searchable, focused }) => {
     const onSubmit = jest.fn(async () => false);
-    renderDropdownForm(dropdownForm(), onSubmit);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <SiteAppProvider>
+            <FormRenderer
+              form={dropdownForm({ searchable })}
+              id={1}
+              formSnapshotId={1}
+              actionId={1}
+              onSubmit={onSubmit}
+              fieldLabelRightContent={{
+                location: <button type="button">Location help</button>,
+              }}
+            />
+          </SiteAppProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
     const submit = screen.getByRole("button", { name: "Complete" });
     await act(async () => {
       if (focused) submit.focus();
@@ -191,7 +254,12 @@ it.each([true, false])(
       submit.click();
     });
     expect(document.activeElement === dropdown).toBe(true);
-    fireEvent.change(dropdown, { target: { value: "ny" } });
+    if (searchable) {
+      fireEvent.click(dropdown);
+      fireEvent.click(await screen.findByRole("option", { name: "New York" }));
+    } else {
+      fireEvent.change(dropdown, { target: { value: "ny" } });
+    }
     await act(async () => {
       if (focused) submit.focus();
       submit.click();
@@ -203,17 +271,36 @@ it.each([true, false])(
   },
 );
 
-it.each([false, true])(
-  "focuses an invalid dropdown before advancing, submitEvent=%p",
-  async (submitEvent) => {
-    const form = dropdownForm();
-    form.pages.push({ id: "p2", fields: [] });
-    const { container } = renderDropdownForm(form);
+it.each([
+  { searchable: false, submitEvent: false },
+  { searchable: true, submitEvent: false },
+  { searchable: false, submitEvent: true },
+  { searchable: true, submitEvent: true },
+])(
+  "focuses an invalid dropdown before advancing, searchable=$searchable, submitEvent=$submitEvent",
+  async ({ searchable, submitEvent }) => {
+    const schema = dropdownForm({ searchable });
+    schema.pages.push({ id: "p2", fields: [] });
+    const { container } = render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <SiteAppProvider>
+            <FormRenderer
+              form={schema}
+              id={1}
+              formSnapshotId={1}
+              actionId={1}
+              onSubmit={jest.fn(async () => false)}
+            />
+          </SiteAppProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
     await act(async () => {
       if (submitEvent) {
-        const formElement = container.querySelector("form");
-        if (!formElement) throw new Error("Form not rendered");
-        fireEvent.submit(formElement);
+        const form = container.querySelector("form");
+        if (!form) throw new Error("Form not rendered");
+        fireEvent.submit(form);
       } else {
         fireEvent.click(screen.getByRole("button", { name: /Next/ }));
       }
@@ -229,13 +316,12 @@ it("scrolls an invalid dropdown through the caller's container", async () => {
   const scrollTo = jest.fn();
   container.scrollTo = scrollTo;
   const documentScroll = jest.fn();
-  const form = dropdownForm();
   render(
     <QueryClientProvider client={new QueryClient()}>
       <MemoryRouter>
         <SiteAppProvider>
           <FormRenderer
-            form={form}
+            form={dropdownForm({})}
             id={1}
             formSnapshotId={1}
             actionId={1}
@@ -258,25 +344,28 @@ it("scrolls an invalid dropdown through the caller's container", async () => {
   container.remove();
 });
 
-it("reports a required dropdown before a later required native field", async () => {
-  const form = dropdownForm();
-  form.pages[0].fields.push({
-    id: "name",
-    type: "input",
-    kind: "text",
-    label: "Name",
-    required: true,
-  });
-  renderDropdownForm(form);
-  await act(async () => {
-    screen.getByRole("button", { name: "Complete" }).click();
-  });
-  expect(screen.getAllByText("This field is required.")).toHaveLength(2);
-  expect(document.activeElement === screen.getByRole("combobox")).toBe(true);
-});
+it.each([false, true])(
+  "reports a required dropdown before a later required native field, searchable=%p",
+  async (searchable) => {
+    const form = dropdownForm({ searchable });
+    form.pages[0].fields.push({
+      id: "name",
+      type: "input",
+      kind: "text",
+      label: "Name",
+      required: true,
+    });
+    renderDropdownForm(form);
+    await act(async () => {
+      screen.getByRole("button", { name: "Complete" }).click();
+    });
+    expect(screen.getAllByText("This field is required.")).toHaveLength(2);
+    expect(document.activeElement === screen.getByRole("combobox")).toBe(true);
+  },
+);
 
 it("keeps native checks the form does not duplicate", async () => {
-  const form = dropdownForm();
+  const form = dropdownForm({});
   form.pages[0].fields.push({
     id: "email",
     type: "input",
@@ -302,7 +391,7 @@ it("keeps native checks the form does not duplicate", async () => {
 it.each([false, true])(
   "keeps native checks before advancing a page, submitEvent=%p",
   async (submitEvent) => {
-    const form = dropdownForm();
+    const form = dropdownForm({});
     form.pages[0].fields.push({
       id: "email",
       type: "input",
