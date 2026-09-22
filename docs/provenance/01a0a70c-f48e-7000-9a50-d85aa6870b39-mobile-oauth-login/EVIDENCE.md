@@ -14,3 +14,13 @@ The following checks ran on an earlier draft of this commit, before the refresh-
 - On that draft, with the two refresh-loop regression tests added, `bun test lib/messages.test.ts` from `shared/` exited 1: 7 passed, 1 failed. After refresh succeeded, a second authentication failure invoked refresh twice instead of once.
 - With the guard moved into the base commit, the same command exited 0: 8 passed, 0 failed. The tests check that another authentication failure stops refresh and that a successful connection allows a later refresh.
 - With the guard and both tests, `bun run test` from the repository root exited 0: 2389 passed, 0 failed across all seven packages. `bun run typecheck` from `shared/`, `apps/mobile/`, and `apps/frontend/` each exited 0.
+
+# Messaging refresh checks
+
+- Source inspection at `91bd8882d`: Socket.IO client 4.8.3 calls `destroy()` before emitting `connect_error` for a middleware rejection in `node_modules/socket.io-client/build/cjs/socket.js`. `destroy()` removes the manager subscriptions used for reconnecting.
+- From `shared/`, `bun test lib/messages.integration.test.ts` with the two regression tests and the implementation at `91bd8882d` exited 1. Both tests timed out waiting for a connection after the middleware rejected the expired token, including the case where refresh saved a fresh token.
+- The first run after restoring explicit reconnection exited 1 because test teardown timed out after successful connections. The test server cleanup now calls `http.closeAllConnections()` after initiating `server.close()`.
+- From `shared/`, `bun test lib/messages.test.ts lib/messages.integration.test.ts` with the amended implementation exited 0: 13 passed, 0 failed. The integration cases cover successful refresh, a returned refresh failure, a rejected refresh promise, rejection of the fresh token, and cleanup during the retry delay. Unit cases also cover cleanup during an in-flight refresh and the unrelated-error guard.
+- From `shared/` and `apps/mobile/`, `bun run typecheck` with the amended implementation exited 0 in both packages, including their ESLint checks.
+- From the repository root, `bun run test` with the amended implementation exited 0: server 531, common 823, shared 531, sharedweb 99, frontend 124, admin 190, and mobile 96 tests passed, with no failures.
+- From the repository root, `bun run format:check` on the changed TypeScript, package manifests, and provenance files exited 0. `git diff --check` also exited 0.

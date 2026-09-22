@@ -120,6 +120,7 @@
     "eslint-plugin-unused-imports": "^4.1.4",
     "globals": "^16.2.0",
     "postcss": "^8.5.3",
+    "socket.io": "^4.8.1",
     "storybook-addon-remix-react-router": "^4",
     "tailwindcss": "^4.1.4",
     "typescript-eslint": "^8.33.0",

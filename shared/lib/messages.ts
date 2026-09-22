@@ -5,7 +5,7 @@ import {
   conversationTypesWithEditableMembers,
 } from "@alliance/common/conversationType";
 import { rolesWithAdminPowers } from "@alliance/common/participantRole";
-import { type Result } from "@alliance/common/result";
+import { R, type Result } from "@alliance/common/result";
 import {
   ConversationDto,
   conversationGetMyConversations,
@@ -14,6 +14,7 @@ import {
   MessageDto,
   messageGetMessages,
 } from "@alliance/shared/client";
+import { retry } from "es-toolkit";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 
@@ -346,13 +347,14 @@ const attachAuthRefresh = (
   onRefreshToken?: () => Promise<Result<boolean, Error>>,
 ) => {
   if (!onRefreshToken) return;
+  const controller = new AbortController();
   let refreshing = false;
   let refreshed = false;
-  socket.on("connect", () => {
+  const onConnect = () => {
     refreshed = false;
-  });
-  socket.on("connect_error", async (err) => {
-    if (refreshing) return;
+  };
+  const onConnectError = async (err: Error) => {
+    if (refreshing || controller.signal.aborted) return;
     if (
       !err.message?.includes("jwt expired") &&
       !err.message?.includes("Unauthorized")
@@ -365,33 +367,57 @@ const attachAuthRefresh = (
       return;
     }
     refreshing = true;
-    socket.disconnect(); // stop auto-reconnect from racing with the refresh
     try {
-      const hasSession = await onRefreshToken();
-      if (!hasSession.ok) {
-        console.error("Socket token refresh failed", hasSession.error);
-      } else if (hasSession.value) {
+      const hasSession = await retry(
+        async () => R.unwrap(await onRefreshToken()),
+        {
+          signal: controller.signal,
+          delay: (attempt) => Math.min(1000 * 2 ** attempt, 30000),
+          shouldRetry: (error) => {
+            if (controller.signal.aborted) return false;
+            console.error("Socket token refresh failed", error);
+            return true;
+          },
+        },
+      );
+      if (controller.signal.aborted) return;
+      if (hasSession) {
         refreshed = true;
         socket.connect();
+      } else {
+        socket.disconnect();
       }
     } catch (error) {
-      console.error("Socket token refresh failed", error);
+      if (!controller.signal.aborted) {
+        console.error("Socket token refresh failed", error);
+      }
     } finally {
       refreshing = false;
     }
-  });
+  };
+  socket.on("connect", onConnect);
+  socket.on("connect_error", onConnectError);
+  return () => {
+    controller.abort();
+    socket.off("connect", onConnect);
+    socket.off("connect_error", onConnectError);
+  };
 };
 
 export const connectMessagingSocket = (
   namespace: string,
   config: MessagingConnectionConfig,
-): Socket => {
+) => {
   const socket = io(
     `${config.getWebSocketUrl()}${namespace}`,
     buildSocketOptions(config.getAuthToken),
   );
-  attachAuthRefresh(socket, config.onRefreshToken);
-  return socket;
+  const stopAuthRefresh = attachAuthRefresh(socket, config.onRefreshToken);
+  const close = () => {
+    stopAuthRefresh?.();
+    socket.disconnect();
+  };
+  return { socket, close };
 };
 
 export const createMessagingHooks = (config: MessagingConnectionConfig) => {
@@ -435,10 +461,14 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
     useEffect(() => {
       let cancelled = false;
       let socket: Socket | null = null;
+      let close: (() => void) | undefined;
 
       (async () => {
         if (cancelled) return;
-        socket = connectMessagingSocket("/messaging/overview", config);
+        ({ socket, close } = connectMessagingSocket(
+          "/messaging/overview",
+          config,
+        ));
 
         socket.on(
           "conversation:unread",
@@ -460,7 +490,7 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
 
       return () => {
         cancelled = true;
-        socket?.disconnect();
+        close?.();
       };
     }, [config]);
 
@@ -491,11 +521,12 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
     useEffect(() => {
       let cancelled = false;
       let socket: Socket | null = null;
+      let close: (() => void) | undefined;
 
       (async () => {
         if (cancelled) return;
 
-        socket = connectMessagingSocket("/messaging", config);
+        ({ socket, close } = connectMessagingSocket("/messaging", config));
         socketRef.current = socket;
 
         socket.on("message:new", (incoming: MessageDto) => {
@@ -554,7 +585,7 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
 
       return () => {
         cancelled = true;
-        socket?.disconnect();
+        close?.();
         socketRef.current = null;
         joinedConversationRef.current = null;
       };
@@ -681,10 +712,14 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
     useEffect(() => {
       let cancelled = false;
       let socket: Socket | null = null;
+      let close: (() => void) | undefined;
 
       (async () => {
         if (cancelled) return;
-        socket = connectMessagingSocket("/messaging/overview", config);
+        ({ socket, close } = connectMessagingSocket(
+          "/messaging/overview",
+          config,
+        ));
         socketRef.current = socket;
 
         socket.on("conversation:unread", () => {
@@ -699,7 +734,7 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
 
       return () => {
         cancelled = true;
-        socket?.disconnect();
+        close?.();
         socketRef.current = null;
       };
     }, [config]);
