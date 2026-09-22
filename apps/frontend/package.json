@@ -60,6 +60,8 @@
     "jspdf": "^3.0.4",
     "libphonenumber-js": "^1.12.17",
     "lucide-react": "^0.563.0",
+    "mdast-util-from-markdown": "^2.0.3",
+    "mdast-util-to-string": "^4.0.0",
     "morgan": "^1.10.0",
     "pluralize": "^8.0.0",
     "pm2": "^6.0.6",

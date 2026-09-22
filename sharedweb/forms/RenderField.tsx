@@ -54,6 +54,7 @@ import PhoneNumberInput from "../ui/PhoneNumberInput";
 import YesNoToggle from "../ui/YesNoToggle";
 import CityAutosuggest from "./CityAutosuggest";
 import { getCustomComponentById } from "./components";
+import MultiSelectDropdown from "./MultiSelectDropdown";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import { shuffleWithSeed } from "./randomutils";
 import { RankingFieldInput } from "./RankingFieldInput";
@@ -670,63 +671,81 @@ export function RenderField({
             hideLabel={hideLabel}
             required={required}
           />
-          <div
-            role="group"
-            aria-labelledby={labelId}
-            className={cn(
-              "space-y-2",
-              hasError && "border-l-2 border-red-500 pl-3",
-            )}
-          >
-            {options.map((option, optIndex) => (
-              <label key={optIndex} className="flex">
-                <input
-                  type="checkbox"
-                  name={fieldName}
-                  checked={selections.includes(option.value)}
-                  onChange={
-                    onChange
-                      ? (e) => {
-                          const currentValues: string[] =
-                            Array.isArray(value) &&
-                            value.every((e) => typeof e === "string")
-                              ? (value as string[])
-                              : [];
-                          if (e.target.checked) {
-                            onChange([...currentValues, option.value]);
-                          } else {
-                            onChange(
-                              currentValues.filter((v) => v !== option.value),
-                            );
+          {field.dropdown ? (
+            <MultiSelectDropdown
+              options={options}
+              value={selections}
+              onChange={onChange}
+              searchable={field.searchable}
+              maxReached={maxReached}
+              labelId={labelId}
+              required={required}
+              disabled={disabled}
+              invalid={hasError}
+              className={composeClassName(sharedInputClasses)}
+            />
+          ) : (
+            <div
+              role="group"
+              aria-labelledby={labelId}
+              className={cn(
+                "space-y-2",
+                hasError && "border-l-2 border-red-500 pl-3",
+              )}
+            >
+              {options.map((option, optIndex) => (
+                <label key={optIndex} className="flex">
+                  <input
+                    type="checkbox"
+                    name={fieldName}
+                    checked={selections.includes(option.value)}
+                    onChange={
+                      onChange
+                        ? (e) => {
+                            const currentValues: string[] =
+                              Array.isArray(value) &&
+                              value.every((e) => typeof e === "string")
+                                ? (value as string[])
+                                : [];
+                            if (e.target.checked) {
+                              onChange([...currentValues, option.value]);
+                            } else {
+                              onChange(
+                                currentValues.filter((v) => v !== option.value),
+                              );
+                            }
                           }
-                        }
-                      : undefined
-                  }
-                  required={required && selectedCount === 0 && optIndex === 0}
-                  disabled={
-                    disabled ||
-                    (!selections.includes(option.value) && maxReached)
-                  }
-                  aria-invalid={hasError}
-                  style={{ marginTop: "4px" }}
-                  className={composeClassName(
-                    `shrink-0 mr-2 h-4 w-4 disabled:ring-1 disabled:ring-zinc-400 ${
-                      hasError ? "text-red-600" : "text-blue-600"
-                    } focus:outline-none rounded`,
-                    {
-                      normal:
-                        "border border-zinc-300 focus:ring-blue-500 focus:ring-2",
-                      error:
-                        "border border-red-500 focus:ring-red-500 focus:ring-2",
-                    },
-                  )}
-                />
-                <span className={hasError ? "text-red-600" : "text-zinc-700"}>
-                  <FormMarkdownWrapper markdownContent={option.label} inline />
-                </span>
-              </label>
-            ))}
-          </div>
+                        : undefined
+                    }
+                    required={required && selectedCount === 0 && optIndex === 0}
+                    disabled={
+                      disabled ||
+                      (!selections.includes(option.value) && maxReached)
+                    }
+                    aria-invalid={hasError}
+                    style={{ marginTop: "4px" }}
+                    className={composeClassName(
+                      `shrink-0 mr-2 h-4 w-4 disabled:ring-1 disabled:ring-zinc-400 ${
+                        hasError ? "text-red-600" : "text-blue-600"
+                      } focus:outline-none rounded`,
+                      {
+                        normal:
+                          "border border-zinc-300 focus:ring-blue-500 focus:ring-2",
+                        error:
+                          "border border-red-500 focus:ring-red-500 focus:ring-2",
+                      },
+                    )}
+                  />
+                  <span className={hasError ? "text-red-600" : "text-zinc-700"}>
+                    <FormMarkdownWrapper
+                      markdownContent={option.label}
+                      inline
+                    />
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
           {maxSelections !== undefined && (
             <p className="text-xs text-gray-500">
               Select up to {withCount(maxSelections, "option")}
