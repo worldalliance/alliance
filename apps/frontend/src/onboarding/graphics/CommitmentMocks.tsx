@@ -1,7 +1,9 @@
 import { useSignupFaces } from "@alliance/shared/lib/useSignupFaces";
 import { cn } from "@alliance/shared/styles/util";
+import type { StyleWithVars } from "@alliance/sharedweb/ui/cssVars";
 import { useState } from "react";
 import { FitStage } from "../../components/FitStage";
+import { useMediaQuery } from "../../lib/useMediaQuery";
 import { MEMBER_FACES } from "../memberFaces";
 import {
   ActionExampleCard,
@@ -143,6 +145,15 @@ const ROW_MAX_WIDTH = `calc(${
   (ROW_ORDER.length * CARD_WIDTH) / CARD_HEIGHT
 } * ${ROW_HEIGHT} + ${(ROW_ORDER.length - 1) * ROW_GAP_REM}rem)`;
 
+/** The cap is a variable so a phone held sideways can lift it and crop instead. */
+const ROW_STYLE: StyleWithVars = {
+  height: ROW_HEIGHT,
+  "--mocks-row-max": ROW_MAX_WIDTH,
+};
+
+/** Kept in step with the rule in `onboarding.css` that lifts the cap. */
+const CROP_QUERY = "(orientation: landscape) and (max-height: 560px)";
+
 /** How far back each card behind the front one sits, in the deck's own pixels. */
 const DECK_STEP_Y = 18;
 const DECK_SCALE_STEP = 0.05;
@@ -201,6 +212,7 @@ function Deck({
 
 export function CommitmentMocks() {
   const facesFor = useCardFaces();
+  const crop = useMediaQuery(CROP_QUERY);
 
   return (
     <div className="ob-mocks flex min-h-0 flex-1 flex-col justify-center lg:flex-none">
@@ -208,15 +220,16 @@ export function CommitmentMocks() {
           height. Left to grow, each stage takes an equal slice of an ultrawide
           panel and the cards scatter to its edges. */}
       <div
-        className="mx-auto hidden w-full min-h-0 gap-6 lg:flex"
-        style={{ height: ROW_HEIGHT, maxWidth: ROW_MAX_WIDTH }}
+        className="ob-mocks__row mx-auto hidden w-full min-h-0 gap-6 lg:flex"
+        style={ROW_STYLE}
       >
         {ROW_ORDER.map((index) => (
           <FitStage
             key={ACTIONS[index].id}
             width={CARD_WIDTH}
             height={CARD_HEIGHT}
-            className="min-h-0 w-full flex-1"
+            crop={crop}
+            className="ob-mock-stage min-h-0 w-full flex-1"
           >
             <ActionExampleCard
               action={ACTIONS[index]}
@@ -226,7 +239,7 @@ export function CommitmentMocks() {
         ))}
       </div>
 
-      <Deck className="lg:hidden" facesFor={facesFor} />
+      <Deck className="ob-mocks__deck lg:hidden" facesFor={facesFor} />
     </div>
   );
 }

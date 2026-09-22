@@ -10,6 +10,7 @@ import { HoursGrid, HoursGridSize } from "../site/graphics/HoursGrid";
 import { PriorityCard } from "../site/sections/Priorities";
 import { riseStyle, StepHeadline, StepNote } from "./chrome";
 import { CommitmentMocks } from "./graphics/CommitmentMocks";
+import { usePriorityRowFit } from "./usePriorityRowFit";
 
 export const COMMUNITY_HEADLINE =
   "We’re assembling a community that works together to combat global problems by committing 15 minutes every week.";
@@ -56,6 +57,8 @@ const REACHED_MILESTONES: Milestone[] = [
 ];
 
 export function CommunityStep() {
+  const row = usePriorityRowFit<HTMLDivElement>();
+
   return (
     <>
       <StepHeadline>{COMMUNITY_HEADLINE}</StepHeadline>
@@ -64,6 +67,7 @@ export function CommunityStep() {
         style={{ gap: "var(--ob-gap)" }}
       >
         <div
+          ref={row}
           className="ob-priorities ob-rise grid min-h-0 flex-1 grid-cols-2 gap-3 lg:h-[27vh] lg:flex-none lg:grid-cols-4"
           style={riseStyle(2)}
         >
@@ -96,7 +100,9 @@ export function CommitmentStep() {
         >
           <CommitmentMocks />
         </div>
-        <StepNote className="lg:hidden">{COMMITMENT_NOTE}</StepNote>
+        <StepNote className="ob-drop-landscape lg:hidden">
+          {COMMITMENT_NOTE}
+        </StepNote>
       </div>
     </>
   );
@@ -116,7 +122,7 @@ export function MinutesStep() {
         >
           <HoursGrid size={HoursGridSize.Compact} className="min-h-0 flex-1" />
         </div>
-        <StepNote>{MINUTES_NOTE}</StepNote>
+        <StepNote className="ob-drop-landscape">{MINUTES_NOTE}</StepNote>
       </div>
     </>
   );
@@ -139,7 +145,9 @@ export function ScaleStep() {
             size={MilestoneSize.Compact}
           />
         </div>
-        <StepNote index={3}>{SCALE_NOTE}</StepNote>
+        <StepNote index={3} className="ob-drop-landscape">
+          {SCALE_NOTE}
+        </StepNote>
       </div>
     </>
   );

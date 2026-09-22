@@ -19,6 +19,7 @@ import {
 } from "@alliance/sharedweb/lib/oauth";
 import type { StyleWithVars } from "@alliance/sharedweb/ui/cssVars";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
+import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import posthog from "posthog-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { href, useLocation, useNavigate, useSearchParams } from "react-router";
@@ -416,8 +417,15 @@ const OnboardingPage = () => {
       )}
     >
       <div className="relative h-dvh">
+        {/* Same tier as the panel, which follows it in the DOM and so stays on
+            top: the panel fades out over this rather than being cut off by it. */}
         {joinPhase === JoinPhase.Leaving && (
-          <div className="fixed inset-0 z-40 flex items-center justify-center bg-white">
+          <div
+            className={cn(
+              zIndex.drawer,
+              "fixed inset-0 flex items-center justify-center bg-white",
+            )}
+          >
             <Spinner size="large" />
           </div>
         )}
@@ -443,7 +451,8 @@ const OnboardingPage = () => {
 
         <div
           className={cn(
-            "ob-panel z-50",
+            "ob-panel",
+            zIndex.drawer,
             isAccount ? "ob-panel--intro hidden lg:block" : "ob-panel--full",
             skipPanelMorph && "ob-panel--instant",
             joinPhase === JoinPhase.Leaving && "ob-panel--leaving",

@@ -3,34 +3,70 @@ import ReactMarkdown from "react-markdown";
 import { Link } from "react-router";
 import remarkGfm from "remark-gfm";
 
+export enum DocProseSize {
+  Default = "default",
+  /** For a dialog, where the reader is mid-flow and scrolling is the cost. */
+  Compact = "compact",
+}
+
+type ProseType = { h2: string; h3: string; body: string; rule: string };
+
+// `tailwind-merge` counts `text-[length]` as a font size and drops a `leading-*`
+// it merges over, so each line height travels with its own size.
+const PROSE: Record<DocProseSize, ProseType> = {
+  [DocProseSize.Default]: {
+    h2: "mt-10 text-[1.5rem] leading-tight sm:text-[1.75rem]",
+    h3: "mt-8 text-[1.2rem] leading-tight",
+    body: "mt-4 text-[1.05rem] leading-[1.65] sm:text-[1.12rem]",
+    rule: "mt-10",
+  },
+  [DocProseSize.Compact]: {
+    h2: "mt-6 text-[1.05rem] leading-tight sm:text-[1.15rem]",
+    h3: "mt-5 text-[0.95rem] leading-tight",
+    body: "mt-2.5 text-[0.9rem] leading-[1.55]",
+    rule: "mt-6",
+  },
+};
+
 /**
  * The guide, foundation, governance, legal pages, and FAQ answers are all
  * authored as markdown, so one renderer carries the type scale for them.
  */
 export function DocProse({
   markdown,
+  size = DocProseSize.Default,
   className,
 }: {
   markdown: string;
+  size?: DocProseSize;
   className?: string;
 }) {
+  const type = PROSE[size];
+
   return (
     <div className={cn("flex flex-col text-[var(--site-ink)]", className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
           h2: ({ children }) => (
-            <h2 className="mt-10 text-[1.5rem] leading-tight font-normal text-[var(--site-primary)] first:mt-0 sm:text-[1.75rem]">
+            <h2
+              className={cn(
+                "font-normal text-[var(--site-primary)] first:mt-0",
+                type.h2,
+              )}
+            >
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className="mt-8 text-[1.2rem] leading-tight font-medium first:mt-0">
+            <h3 className={cn("font-medium first:mt-0", type.h3)}>
               {children}
             </h3>
           ),
           p: ({ children }) => (
-            <p className="mt-4 text-[1.05rem] leading-[1.65] text-[var(--site-ink)]/85 first:mt-0 sm:text-[1.12rem]">
+            <p
+              className={cn("text-[var(--site-ink)]/85 first:mt-0", type.body)}
+            >
               {children}
             </p>
           ),
@@ -40,12 +76,22 @@ export function DocProse({
             </strong>
           ),
           ol: ({ children }) => (
-            <ol className="mt-4 flex list-outside list-decimal flex-col gap-2 pl-6 text-[1.05rem] leading-[1.65] text-[var(--site-ink)]/85 sm:text-[1.12rem]">
+            <ol
+              className={cn(
+                "flex list-outside list-decimal flex-col gap-2 pl-6 text-[var(--site-ink)]/85",
+                type.body,
+              )}
+            >
               {children}
             </ol>
           ),
           ul: ({ children }) => (
-            <ul className="mt-4 flex list-outside list-disc flex-col gap-2 pl-6 text-[1.05rem] leading-[1.65] text-[var(--site-ink)]/85 sm:text-[1.12rem]">
+            <ul
+              className={cn(
+                "flex list-outside list-disc flex-col gap-2 pl-6 text-[var(--site-ink)]/85",
+                type.body,
+              )}
+            >
               {children}
             </ul>
           ),
@@ -74,7 +120,9 @@ export function DocProse({
             );
           },
           hr: () => (
-            <hr className="mt-10 border-t border-[var(--site-ink)]/12" />
+            <hr
+              className={cn("border-t border-[var(--site-ink)]/12", type.rule)}
+            />
           ),
         }}
       >

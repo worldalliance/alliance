@@ -1,5 +1,6 @@
 import { cn } from "@alliance/shared/styles/util";
 import { Clock } from "lucide-react";
+import { useLayoutEffect, useRef } from "react";
 import grassField from "../assets/redesign/grass-field.jpg";
 import {
   GrantmakingMemberProgress,
@@ -58,9 +59,65 @@ function GrantTaskMock() {
   );
 }
 
+/**
+ * Drops the card's copy a line at a time, standfirst first, as the card runs
+ * short of the height to show it. Every pass starts from the full copy, so a
+ * window that grows back brings the lines back with it.
+ */
+function useCopyFit() {
+  const card = useRef<HTMLDivElement>(null);
+  const headline = useRef<HTMLParagraphElement>(null);
+  const standfirst = useRef<HTMLParagraphElement>(null);
+
+  useLayoutEffect(() => {
+    const box = card.current;
+    const headlineEl = headline.current;
+    const standfirstEl = standfirst.current;
+    if (!box || !headlineEl || !standfirstEl) return;
+
+    const overflows = () => box.scrollHeight > box.clientHeight;
+
+    const measure = () => {
+      headlineEl.style.removeProperty("display");
+      standfirstEl.style.removeProperty("display");
+      if (!overflows()) return;
+      standfirstEl.style.display = "none";
+      if (!overflows()) return;
+      headlineEl.style.display = "none";
+    };
+
+    measure();
+
+    // The observer watches the card's own box, which a webfont swap does not
+    // resize. Without this the decision stands on the fallback's metrics.
+    let live = true;
+    void document.fonts?.ready.then(() => {
+      if (live) measure();
+    });
+
+    if (typeof ResizeObserver === "undefined") {
+      return () => {
+        live = false;
+      };
+    }
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(box);
+    return () => {
+      live = false;
+      observer.disconnect();
+    };
+  }, []);
+
+  return { card, headline, standfirst };
+}
+
 export function GrantmakingCard({ className }: { className?: string }) {
+  const fit = useCopyFit();
+
   return (
     <div
+      ref={fit.card}
       className={cn(
         "relative isolate flex flex-col justify-between overflow-hidden p-7 text-left sm:p-9",
         className,
@@ -83,10 +140,16 @@ export function GrantmakingCard({ className }: { className?: string }) {
       </div>
 
       <div className="max-w-[33rem]">
-        <p className="text-xl leading-[1.35] text-white sm:text-2xl">
+        <p
+          ref={fit.headline}
+          className="text-xl leading-[1.35] text-white sm:text-2xl"
+        >
           {CARD_HEADLINE}
         </p>
-        <p className="mt-2 text-base text-white/70 md:text-lg">
+        <p
+          ref={fit.standfirst}
+          className="mt-1.5 text-base text-white/70 md:text-lg"
+        >
           {CARD_STANDFIRST}
         </p>
       </div>

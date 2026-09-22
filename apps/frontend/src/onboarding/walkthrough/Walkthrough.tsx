@@ -1,8 +1,10 @@
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
+import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
+import { ProgressSegments } from "../chrome";
 import "../onboarding.css";
 import { MOCK_PARAM } from "../useMockTasks";
 import {
@@ -30,12 +32,15 @@ const MAX_SCROLLS = 6;
 
 const SCROLL_SETTLE_MS = 420;
 
-const TOUR_BUTTON = "min-h-11 w-full rounded-lg";
+const TOUR_BUTTON = "min-h-11 w-full gap-2 rounded-lg";
 
-const TOUR_PRIMARY = "border-transparent bg-white text-(--ob-green)";
+const TOUR_PRIMARY = "border-transparent bg-white text-(--ob-navy)";
 
 const TOUR_SECONDARY =
   "border-white/70 bg-transparent text-white hover:bg-white/10";
+
+const TOUR_TERTIARY =
+  "-mt-1.5 -mr-2 shrink-0 rounded px-2 py-1.5 text-[length:var(--ob-ui)] text-white/70 underline underline-offset-2 hover:text-white";
 
 type Box = { top: number; left: number; width: number; height: number };
 
@@ -72,7 +77,7 @@ function sameBox(a: Measurement | null, b: Measurement) {
   );
 }
 
-function Spotlight({ box }: { box: Box }) {
+function Spotlight({ box, deferred }: { box: Box; deferred?: boolean }) {
   const shade = "pointer-events-auto fixed bg-black/60";
   // Clamped to the viewport: an anchor taller than the screen would otherwise
   // make shades thousands of pixels long, which the compositor mishandles.
@@ -99,12 +104,16 @@ function Spotlight({ box }: { box: Box }) {
         className={shade}
         style={{ top, left: right, right: 0, height: bottom - top }}
       />
-      {/* Over the cutout, not around it: the tour ends on Skip, so clicking
-          the thing it is pointing at must not navigate out from under it. */}
+      {/* Over the cutout, not around it: clicking the thing the tour is
+          pointing at must not navigate out from under it. */}
       <div
         className="pointer-events-auto fixed rounded-lg ring-2 ring-white/80"
         style={{ top, left, width: right - left, height: bottom - top }}
-      />
+      >
+        {deferred && (
+          <div className="size-full rounded-lg bg-[var(--ob-navy)]/30 backdrop-grayscale" />
+        )}
+      </div>
     </>
   );
 }
@@ -214,6 +223,11 @@ export function Walkthrough() {
     }
     navigate(stepHref(next), { replace: true, preventScrollReset: true });
   }, [index, close, navigate, stepHref]);
+
+  const retreat = useCallback(() => {
+    if (index <= 0) return;
+    navigate(stepHref(index - 1), { replace: true, preventScrollReset: true });
+  }, [index, navigate, stepHref]);
 
   const onStepPath = Boolean(step) && location.pathname === step.path;
 
@@ -326,7 +340,7 @@ export function Walkthrough() {
         className={cn("transition-opacity duration-300", intro && "opacity-0")}
       >
         {spotlight ? (
-          <Spotlight box={spotlight} />
+          <Spotlight box={spotlight} deferred={step.deferred} />
         ) : (
           <div className="pointer-events-auto fixed inset-0 bg-black/60" />
         )}
@@ -337,7 +351,7 @@ export function Walkthrough() {
           aria-live="polite"
           className={cn(
             "pointer-events-auto fixed bottom-4 left-1/2 z-10 w-[min(30rem,calc(100vw-1.5rem))]",
-            "-translate-x-1/2 rounded-xl bg-[var(--ob-green)] p-4 text-white sm:bottom-8 sm:p-5",
+            "-translate-x-1/2 rounded-xl bg-[var(--ob-navy)] p-4 text-white sm:bottom-8 sm:p-5",
             "shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]",
           )}
         >
@@ -345,31 +359,44 @@ export function Walkthrough() {
             <p className="text-[length:var(--ob-body)] font-semibold">
               {step.title()}
             </p>
-            <span className="shrink-0 text-[length:var(--ob-caption)] text-white/60 tabular-nums">
-              {index + 1} of {WALKTHROUGH_STEPS.length}
-            </span>
+            <button type="button" className={TOUR_TERTIARY} onClick={close}>
+              Skip
+            </button>
           </div>
           <p className="mt-1 text-[length:var(--ob-ui)] leading-snug text-pretty text-white/85">
             {step.body()}
           </p>
-          <div className="mt-3 sm:mt-4">
-            <div className="grid grid-cols-2 gap-3">
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:mt-4">
+            {index > 0 && (
               <Button
                 color={ButtonColor.Outline}
                 className={cn(TOUR_BUTTON, TOUR_SECONDARY)}
-                onClick={close}
+                onClick={retreat}
               >
-                Skip
+                <ArrowLeft className="size-4" aria-hidden />
+                Back
               </Button>
-              <Button
-                color={ButtonColor.WhiteBorderless}
-                className={cn(TOUR_BUTTON, TOUR_PRIMARY)}
-                onClick={advance}
-              >
-                {isLast ? "Get started" : "Next"}
-              </Button>
-            </div>
+            )}
+            <Button
+              color={ButtonColor.WhiteBorderless}
+              className={cn(
+                TOUR_BUTTON,
+                TOUR_PRIMARY,
+                index === 0 && "col-span-2",
+              )}
+              onClick={advance}
+            >
+              {isLast ? "Get started" : "Next"}
+            </Button>
           </div>
+          <p className="sr-only">
+            Step {index + 1} of {WALKTHROUGH_STEPS.length}
+          </p>
+          <ProgressSegments
+            segments={WALKTHROUGH_STEPS.length}
+            filled={index + 1}
+            className="mt-4 gap-1.5 [--ob-bar:2px]"
+          />
         </div>
       </div>
 

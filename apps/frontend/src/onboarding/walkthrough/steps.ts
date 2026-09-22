@@ -24,6 +24,11 @@ export type WalkthroughStep = {
   path: string;
   title: () => string;
   body: () => string;
+  /**
+   * Greys the spotlighted element out, for an anchor whose open fields would
+   * otherwise read as something to fill in during the tour.
+   */
+  deferred?: boolean;
 };
 
 export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
@@ -37,9 +42,10 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   {
     anchor: WalkthroughAnchor.CurrentTask,
     path: href("/tasks"),
-    title: () => "The most important part",
+    title: () => "Your tasks",
     body: () =>
       "Here, you'll see any tasks you've been assigned. Tasks will take no more than 15 minutes per week.",
+    deferred: true,
   },
   {
     anchor: WalkthroughAnchor.ActionUpdates,
@@ -52,14 +58,15 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     anchor: WalkthroughAnchor.ProfileMenu,
     path: href("/tasks"),
     title: () => "Manage your membership",
-    body: () => "Choose Membership from the profile menu.",
+    body: () =>
+      "Your settings and your membership sit behind the profile icon. A profile picture is a good place to start.",
   },
   {
     anchor: WalkthroughAnchor.Contract,
     path: href("/membership"),
     title: () => "Your agreement",
     body: () =>
-      "This is what you signed to become a member. You can end your agreement here, and we’ll stop assigning you tasks.",
+      "This is what you signed to become a member. You can suspend your agreement here, and we’ll stop assigning you tasks.",
   },
   {
     anchor: WalkthroughAnchor.AwayRanges,

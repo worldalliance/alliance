@@ -34,6 +34,15 @@
   --ob-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* iOS Safari zooms the page in when a focused field's text is under 16px, and
+   never zooms back out. The root here is 15px, so even `text-base` is short of
+   it and the floor has to be explicit. */
+@media (pointer: coarse) {
+  .ob-root input {
+    font-size: max(16px, var(--ob-ui));
+  }
+}
+
 /* The flow owns the whole viewport, so nothing may put a scrollbar on html and
    leave a gutter beside the panel. */
 html.ob-locked,
@@ -46,9 +55,20 @@ html.ob-locked body {
   font-size: var(--ob-h2);
 }
 
+/* Blends the flow's own caption-scaled size with the site's 1.1rem. 0 is the
+   size the flow used before, 1 is the site's; this is the midpoint. Cards here
+   are a fraction of the width the site gives one, so the site's size alone
+   overruns them. */
+.ob-root .ob-priorities {
+  --ob-priority-body: 0.5;
+}
+
 .ob-root .ob-priorities .site-priority-body p {
-  font-size: calc(var(--ob-caption) * 1.1);
-  line-height: 1.35;
+  font-size: calc(
+    var(--ob-caption) * 1.1 + (1.1rem - var(--ob-caption) * 1.1) *
+      var(--ob-priority-body)
+  );
+  line-height: 1.4;
 }
 
 /* The compact hours block sizes itself off the height it is handed rather than
@@ -85,25 +105,27 @@ html.ob-locked body {
   );
 }
 
-/* Which arrangement, off the box rather than off the viewport's width, which
-   says nothing about the height left once the headline, the note and the footer
-   have taken theirs. A square viewport hands this a wide, short box that a day
-   per row fills and a 12-column grid can only shrink inside, squeezing the two
-   labels into the width it leaves over.
+/* Which arrangement. The screen decides, not the box: the headline, the note
+   and the footer take their height first, so the box is landscape-shaped on a
+   portrait tablet and says nothing about how the device is being held.
 
-   Both conditions: the width is whether 24 columns have room to stay legible,
-   the ratio is whether a wide grid can fill the box at all. */
+   A day per row unless the screen is read vertically, where a screen within
+   4:5 of square counts as neither and keeps the day per row. The width is
+   separate, and off the box, because it asks whether 24 columns have the room
+   to stay legible at all. */
 .ob-hours-block--wide {
   display: none;
 }
 
-@container (min-width: 28rem) and (min-aspect-ratio: 3 / 4) {
-  .ob-hours-block--narrow {
-    display: none;
-  }
+@media (min-aspect-ratio: 4 / 5) {
+  @container (min-width: 28rem) {
+    .ob-hours-block--narrow {
+      display: none;
+    }
 
-  .ob-hours-block--wide {
-    display: flex;
+    .ob-hours-block--wide {
+      display: flex;
+    }
   }
 }
 
@@ -148,6 +170,58 @@ html.ob-locked body {
   }
 }
 
+/* The grid's two anchors are gone below this, so the block must stop reserving
+   a line of height for them. Written the way Tailwind writes `max-lg`, which is
+   what hides them, so the two cannot part company on a fractional width. */
+@media (width < 64rem) {
+  .ob-root .ob-hours-block {
+    --hours-chrome: calc(var(--ob-caption) * 2.2 + 0.85rem);
+  }
+}
+
+/* A phone held sideways. Roughly a third of the height a phone gives in
+   portrait, on a screen wide enough that the tablet rules above have already
+   fired, so each screen here gives up whatever it can spare and the rest is
+   drawn to the width instead of the height. */
+@media (orientation: landscape) and (max-height: 560px) {
+  :root {
+    --ob-margin: 0px;
+    --ob-radius: 0px;
+  }
+
+  .ob-root .ob-drop-landscape {
+    display: none;
+  }
+
+  .ob-root [data-ob-nav] > button {
+    min-width: 9rem;
+    min-height: 2.25rem;
+    padding-inline: 1rem;
+    font-size: var(--ob-ui);
+  }
+
+  /* One row: four cards across a wide screen beat two rows of two on a short
+     one, where the second row is what runs out of height. */
+  .ob-root .ob-priorities {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* All three mockups rather than the deck, drawn to the width the screen has
+     and cut off where the height runs out. */
+  .ob-root .ob-mocks__row {
+    display: flex;
+    max-width: none;
+  }
+
+  .ob-root .ob-mocks__deck {
+    display: none;
+  }
+
+  .ob-root .ob-mock-stage {
+    mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
+  }
+}
+
 .ob-root .ob-display {
   font-family: var(--site-font-display);
 }
@@ -155,6 +229,11 @@ html.ob-locked body {
 /* The reused product miniatures set actions in the site's link blue. */
 .ob-mocks {
   --site-link: var(--color-green);
+}
+
+/* Held in a variable so the phone-landscape rule above can lift the cap. */
+.ob-mocks__row {
+  max-width: var(--mocks-row-max);
 }
 
 /* One element carries the whole flow. It starts as the panel bleeding off the

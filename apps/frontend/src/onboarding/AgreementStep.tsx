@@ -6,8 +6,9 @@ import type {
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { Check } from "lucide-react";
-import { href } from "react-router";
+import { useState, type CSSProperties } from "react";
 import { riseStyle, StepHeadline, StepNote } from "./chrome";
+import { FullAgreementModal } from "./FullAgreementModal";
 
 export const AGREEMENT_HEADLINE =
   "Join a group of people who can count on each other.";
@@ -31,16 +32,36 @@ const CARD_SURFACE = "bg-white/95";
 
 const CARD_INLINE_PAD = "px-[clamp(1.15rem,2.8vh,2rem)]";
 
+/**
+ * Desktop only, above every tablet. Fixed tracks around a fixed gap, sized and
+ * centred as one group, so the two halves cannot drift apart on a wide monitor
+ * the way a pair of percentage columns would.
+ */
+const SIDE_BY_SIDE =
+  "xl:grid xl:w-fit xl:grid-cols-[28rem_34rem] xl:grid-rows-[auto_auto] xl:content-center xl:items-center xl:gap-x-14";
+
+// Row one holds the agreement alone, so the aside centres against it and not
+// against the signatures underneath.
+const ASIDE = "xl:col-start-1 xl:row-start-1 xl:items-start";
+
+const AGREEMENT_COL = "xl:col-start-2 xl:row-start-1";
+
+const SIGNATURES_COL = "xl:col-start-2 xl:row-start-2";
+
+const RANGED_LEFT = "xl:mx-0 xl:text-left";
+
 function SignedBy({
   inviter,
   faces,
   signedCount,
   className,
+  style,
 }: {
   inviter: ReferrerProfileDto | null;
   faces: ProfileDto[];
   signedCount: number;
   className?: string;
+  style?: CSSProperties;
 }) {
   const shown = faces.slice(0, inviter ? FACE_COUNT - 1 : FACE_COUNT);
 
@@ -50,6 +71,7 @@ function SignedBy({
         "flex shrink-0 flex-col items-start gap-2 text-left",
         className,
       )}
+      style={style}
     >
       {(inviter || shown.length > 0) && (
         <span className="flex -space-x-2" aria-hidden>
@@ -110,97 +132,124 @@ export function AgreementStep({
   /** Only after Join is pressed, which is what the bar confirms. */
   received: boolean;
 }) {
+  const [showFull, setShowFull] = useState(false);
+
   return (
-    <div className="mx-auto flex min-h-0 w-full flex-1 flex-col justify-center gap-[clamp(0.55rem,1.7vh,1.15rem)]">
-      <div className="flex shrink-0 flex-col items-center gap-[clamp(0.4rem,1.2vh,0.85rem)]">
-        <StepHeadline>{AGREEMENT_HEADLINE}</StepHeadline>
-        <StepNote index={2}>{AGREEMENT_NOTE}</StepNote>
+    <div
+      className={cn(
+        "mx-auto flex min-h-0 w-full flex-1 flex-col justify-center gap-[clamp(0.55rem,1.7vh,1.15rem)]",
+        SIDE_BY_SIDE,
+      )}
+    >
+      <div
+        className={cn(
+          "flex shrink-0 flex-col items-center gap-[clamp(0.4rem,1.2vh,0.85rem)]",
+          ASIDE,
+        )}
+      >
+        <StepHeadline className={RANGED_LEFT}>
+          {AGREEMENT_HEADLINE}
+        </StepHeadline>
+        <StepNote index={2} className={cn(RANGED_LEFT, "ob-drop-landscape")}>
+          {AGREEMENT_NOTE}
+        </StepNote>
       </div>
 
       <div
-        className="ob-rise mx-auto flex max-h-full min-h-0 w-full max-w-[40rem] flex-col gap-[clamp(0.55rem,1.7vh,1.15rem)]"
+        className={cn(
+          "ob-rise mx-auto flex max-h-full min-h-0 w-full max-w-[40rem] flex-col overflow-hidden rounded-lg",
+          AGREEMENT_COL,
+        )}
         style={riseStyle(3)}
       >
-        <div className="flex min-h-0 flex-col overflow-hidden rounded-lg">
-          <div
-            className={cn(
-              "flex flex-col py-[clamp(0.6rem,2.2vh,2rem)]",
-              CARD_SURFACE,
-            )}
-          >
-            <div className={cn("text-[length:var(--ob-ui)]", CARD_INLINE_PAD)}>
-              <ol className="flex list-none flex-col gap-[clamp(0.4rem,1.15vh,0.85rem)] pl-0">
-                {contract.description.map((item) => (
-                  <li key={item.point} className="flex min-w-0 flex-col">
-                    <p className="leading-snug font-semibold text-black">
-                      {item.point}
+        <div
+          className={cn(
+            "flex flex-col py-[clamp(0.6rem,2.2vh,2rem)]",
+            CARD_SURFACE,
+          )}
+        >
+          <div className={cn("text-[length:var(--ob-ui)]", CARD_INLINE_PAD)}>
+            <ol className="flex list-none flex-col gap-[clamp(0.4rem,1.15vh,0.85rem)] pl-0">
+              {contract.description.map((item) => (
+                <li key={item.point} className="flex min-w-0 flex-col">
+                  <p className="leading-snug font-semibold text-black">
+                    {item.point}
+                  </p>
+                  {item.subtext.trim() !== "" && (
+                    <p className="text-[0.9em] leading-snug text-zinc-700">
+                      {item.subtext}
                     </p>
-                    {item.subtext.trim() !== "" && (
-                      <p className="text-[0.9em] leading-snug text-zinc-700">
-                        {item.subtext}
-                      </p>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            </div>
-
-            <a
-              href={`${href("/governance")}#contract`}
-              target="_blank"
-              rel="noreferrer"
-              className={cn(
-                "mt-2 shrink-0 self-start text-[length:var(--ob-ui)] font-medium text-green underline underline-offset-2",
-                CARD_INLINE_PAD,
-              )}
-            >
-              View full agreement
-            </a>
+                  )}
+                </li>
+              ))}
+            </ol>
           </div>
 
-          <div
+          <button
+            type="button"
+            onClick={() => setShowFull(true)}
             className={cn(
-              "flex shrink-0 flex-col gap-2 border-t border-black/10 py-[clamp(0.55rem,1.4vh,0.95rem)] text-[length:var(--ob-ui)]",
-              CARD_SURFACE,
+              "mt-2 shrink-0 self-start text-[length:var(--ob-ui)] font-medium text-green underline underline-offset-2",
               CARD_INLINE_PAD,
             )}
           >
-            <input
-              name="signedName"
-              type="text"
-              autoComplete="name"
-              placeholder="Sign your full name"
-              aria-label="Sign your full name"
-              value={signedName}
-              onChange={(e) => onSignedNameChange(e.target.value)}
-              className={cn(FIELD, FIELD_IDLE)}
-            />
-
-            {error && (
-              <p className="shrink-0 font-medium text-red-600" role="alert">
-                {error}
-              </p>
-            )}
-          </div>
-
-          <div
-            className="grid shrink-0 transition-[grid-template-rows] duration-[380ms] ease-out"
-            style={{ gridTemplateRows: received ? "1fr" : "0fr" }}
-          >
-            <div className="overflow-hidden">
-              <p
-                className="flex items-center gap-2 bg-[var(--color-green)] px-6 py-2.5 text-[length:var(--ob-ui)] font-medium text-white sm:px-7"
-                role="status"
-              >
-                <Check className="size-4" aria-hidden />
-                Agreement received
-              </p>
-            </div>
-          </div>
+            View full agreement
+          </button>
         </div>
 
-        <SignedBy inviter={inviter} faces={faces} signedCount={signedCount} />
+        <div
+          className={cn(
+            "flex shrink-0 flex-col gap-2 border-t border-black/10 py-[clamp(0.55rem,1.4vh,0.95rem)] text-[length:var(--ob-ui)]",
+            CARD_SURFACE,
+            CARD_INLINE_PAD,
+          )}
+        >
+          <input
+            name="signedName"
+            type="text"
+            autoComplete="name"
+            placeholder="Sign your full name"
+            aria-label="Sign your full name"
+            value={signedName}
+            onChange={(e) => onSignedNameChange(e.target.value)}
+            className={cn(FIELD, FIELD_IDLE)}
+          />
+
+          {error && (
+            <p className="shrink-0 font-medium text-red-600" role="alert">
+              {error}
+            </p>
+          )}
+        </div>
+
+        <div
+          className="grid shrink-0 transition-[grid-template-rows] duration-[380ms] ease-out"
+          style={{ gridTemplateRows: received ? "1fr" : "0fr" }}
+        >
+          <div className="overflow-hidden">
+            <p
+              className="flex items-center gap-2 bg-[var(--color-green)] px-6 py-2.5 text-[length:var(--ob-ui)] font-medium text-white sm:px-7"
+              role="status"
+            >
+              <Check className="size-4" aria-hidden />
+              Agreement received
+            </p>
+          </div>
+        </div>
       </div>
+
+      <SignedBy
+        inviter={inviter}
+        faces={faces}
+        signedCount={signedCount}
+        className={cn(
+          "ob-rise ob-drop-landscape mx-auto w-full max-w-[40rem]",
+          SIGNATURES_COL,
+        )}
+        style={riseStyle(3)}
+      />
+
+      {showFull && <FullAgreementModal onClose={() => setShowFull(false)} />}
     </div>
   );
 }
