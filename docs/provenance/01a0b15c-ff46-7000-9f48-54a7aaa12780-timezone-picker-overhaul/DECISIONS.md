@@ -22,6 +22,7 @@ sections below this one carry the reasoning each step implements.
    so the server's rules follow a FormatJS release instead of a Bun release.
    The deploy ships the bunfig, the repl preloads the same file, and loading
    `AppModule` without FormatJS throws.
+   The release watch bumps FormatJS in the same pull request as the catalog.
 3. **Shared validation.** A validator in `common` that accepts any identifier
    the runtime resolves, wired into every server write path: password signup,
    OAuth signup, profile update, form extraction, admin edits.
@@ -64,10 +65,13 @@ sections below this one carry the reasoning each step implements.
     PGP signature, reads its version, and, when it is newer, rewrites the
     generator's version and checksum. An older one, from a cached copy behind
     a pin moved by hand, fails the run. The job regenerates the catalog,
-    typechecks and tests `common`, and opens a pull request on
-    `tzdb/<version>`. A release that already has a pull request on that
+    bumps FormatJS under the rule below, typechecks and tests `common`,
+    typechecks the server and runs its timezone test, and opens a pull
+    request on `tzdb/<version>`. A release that already has a pull request on that
     branch, open or closed, is skipped, so a closed one means the release was
-    declined. Runs don't overlap, or an older one's close step could take a
+    declined. A release that adds a zone the server's FormatJS lacks fails
+    the timezone test until FormatJS ships the zone, so a later run opens its
+    pull request. Runs don't overlap, or an older one's close step could take a
     newer one's pull request with it and the skip rule would retire that
     release. A branch a failed run left without a pull request gets
     force-pushed over. Opening a pull request closes any other open one on a
@@ -80,6 +84,10 @@ sections below this one carry the reasoning each step implements.
     surface after the force-push. A working tree with nothing staged ends the
     run rather than opening an empty pull request. It lists up to 1000 open
     pull requests, since the default of 30 would miss an old `tzdb/` one.
+    `.github/scripts/bump-formatjs.sh` does the bump: it updates
+    `@formatjs/intl-datetimeformat` within its major version and keeps the
+    update only when it changes `add-all-tz.js`, since most FormatJS releases
+    carry the same tz data as the one before.
 
 ## Catalog
 
@@ -98,6 +106,7 @@ sections below this one carry the reasoning each step implements.
 - Validate timezone values on every write path, including password signup, OAuth signup, profile updates, form extraction, admin edits, and backfill.
 - The server's `Intl.DateTimeFormat` is FormatJS's, not Bun's. Bun bundles its ICU, so its tzdb only moves with a Bun release: Linux Bun 1.3.6 carries 2024a, with no `America/Coyhaique` and none of the rule changes since. FormatJS ships 2026d and published it three days after IANA. Upgrading Bun on every tzdb release would leave members' reminders wrong between Bun releases; an adapter over our own compiled rules is further off (see Out of scope).
 - Bun reads `server/bunfig.toml`, and so preloads FormatJS, only when it runs from `server/`. The deploy zip carries the bunfig. `bun run repl` runs on Node through ts-node, since Bun has no `repl.start`, so it preloads the file with `-r`. `app.module.ts` throws on import when `Intl.DateTimeFormat` isn't FormatJS's, so the server, the repl, and any script that boots the app refuse to run on the runtime's own rules, and a deploy that loses the preload fails its health check.
+- The release watch bumps FormatJS within its major version. A major can move the files `intl-timezone.ts` imports, so it waits for someone to take it by hand.
 - The swap costs speed and reach. Converting between an instant and a zone's local time runs about 2.4 to 3.7 times slower, roughly 13 to 36 µs each on a development Mac. Loading every zone adds about 53 MB of memory and 25 ms of startup to each server and `bun test` process. It also covers every `Intl.DateTimeFormat` and `Date.prototype.toLocale*String` on the server, and FormatJS's `toLocale*String` returns `"Invalid Date"` instead of throwing. Only `en` locale data loads, since the server formats only `en-US`.
 - The server's local time zone is UTC. FormatJS takes UTC as the local zone whatever the host says, so the preload also sets `TZ=UTC` and `Date` agrees with it. The prod host was already on UTC with no `TZ` set (checked 2026-09-18), so crons and log timestamps there don't move. A development machine in another zone now fires crons and prints logs in UTC, as prod does. Passing the host's zone to FormatJS instead would keep development local, at the cost of development and prod disagreeing.
 - FormatJS 7.8.0 reads every line of tzdb's `backward` file as a link, so its link table holds entries like `"-5:00": "EST5EDT"` and it drops the zones `backward` defines. In tzdb 2026d, `GMT` throws, in `Intl` and in Temporal. `EST5EDT`, `CST6CDT`, `MST7MDT`, and `PST8PDT` resolve to no zone, so Temporal computes them as UTC, hours off. None of the four is a catalog row or alias. `Africa/Abidjan`, `Etc/UTC`, and `Etc/GMT` have no rules either, and come out right only because they are UTC+0. The staging copy of prod taken on 2026-09-18 saves none of these names.
