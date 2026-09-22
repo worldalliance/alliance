@@ -5,9 +5,9 @@ import {
   type ListFieldValue,
   type ListSubField,
 } from "@alliance/common/forms/form-schema";
+import { outputCardSubFields } from "@alliance/common/forms/output-values";
 import type { ListRowContext } from "../useFormRenderer";
 import { resolveFormValue, type FormValueUpdater } from "./formValueUpdater";
-import { outputCardSubFields } from "./outputValues";
 
 /**
  * Client-only identity for a list card, so an async write (an image upload)

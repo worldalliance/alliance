@@ -3,6 +3,7 @@ import {
   type DeviceVisibilityTarget,
 } from "@alliance/common/forms/device";
 import type { FormSchema, FormValue } from "@alliance/common/forms/form-schema";
+import { resolveOutputView } from "@alliance/common/forms/output-resolution";
 import type { VisibilityValidatorResults } from "@alliance/common/forms/visibility";
 import { R } from "@alliance/common/result";
 import type {
@@ -11,7 +12,6 @@ import type {
 } from "@alliance/shared/client";
 import {
   resolveOutputItems,
-  resolveOutputView,
   type ResolvedOutputFieldItem,
 } from "@alliance/shared/outputrenderer";
 import { parseVisibilityValidatorResults } from "@alliance/shared/parsed-dtos";

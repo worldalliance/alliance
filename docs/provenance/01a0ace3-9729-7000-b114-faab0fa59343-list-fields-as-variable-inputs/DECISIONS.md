@@ -54,7 +54,7 @@ No formula rewriting. After a rename, the type check reports the old name as a m
 
 ## Blank cards in an output view
 
-An output view draws a list card's sub-fields only when the view doesn't hide them and the card answers them. A card left with none of those is not drawn, and a list with no such card is left out the same way as an unanswered field, label included. Output rendering and counting use the same filter without applying form row visibility again, so a caller's row context cannot make a counted card disappear. The shared filter lives in `shared/forms/outputValues.ts` so list-card helpers do not depend on the output resolver.
+An output view draws a list card's sub-fields only when the view doesn't hide them and the card answers them. A card left with none of those is not drawn, and a list with no such card is left out the same way as an unanswered field, label included. Output rendering and counting use the same filter without applying form row visibility again, so a caller's row context cannot make a counted card disappear. The shared filter lives in `common/src/forms/output-values.ts` so list-card helpers do not depend on the output resolver.
 
 The web test counts the card boxes through the classes `Card` and the list branch of `RenderField` give them, which keeps a test hook out of the shipped markup, where nothing else in the repo carries one. Counting the controls a card renders instead would pass either way, because a card the view has nothing to show for renders no control whether or not its box is left out.
 
@@ -84,7 +84,7 @@ A formula that ends on a method it never calls, like `.join`, gets "Add () to ca
 
 ## Scope and compatibility
 
-The list resolver lives in `common/src/forms/variables.ts`, which the web and mobile forms (`shared/useFormRenderer.ts`) and saved-response output (`shared/outputrenderer.ts`) already share. Variables recompute whenever answers or visibility extras change.
+The list resolver lives in `common/src/forms/variables.ts`, which the web and mobile forms (`shared/useFormRenderer.ts`) and saved-response output (`common/src/forms/output-resolution.ts`) already share. Variables recompute whenever answers or visibility extras change.
 
 Any variable that fails blocks the form, web and mobile, with the "This form can't be displayed" notice an unknown element or condition kind already gets. I read "the variable calculation fails" as every failure `evaluateVariable` reports, not only an unknown input kind. The evaluator doesn't throw on answers, and the admin rejects a formula that doesn't compile, so a failure in practice means a newer admin saved something this build can't calculate. Answers typed mid-form shouldn't trip it. The admin's builder preview renders the unsaved schema, so it shows the same notice while a formula there is broken. There the notice names the variable and why it failed, in place of the line about refreshing, which can't fix a draft. The admin's response views get the same message, since refreshing can't fix a formula in a response's snapshot either.
 

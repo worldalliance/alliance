@@ -1,8 +1,4 @@
-import type {
-  FormValue,
-  ListField,
-  ListSubField,
-} from "@alliance/common/forms/form-schema";
+import type { FormValue, ListField, ListSubField } from "./form-schema";
 
 export const isOutputValueMissing = (value: FormValue | undefined): boolean => {
   if (value === undefined || value === null || value === "") {
