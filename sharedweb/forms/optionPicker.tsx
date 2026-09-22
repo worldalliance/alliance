@@ -1,5 +1,6 @@
 import { cn } from "@alliance/shared/styles/util";
 import { Combobox } from "@base-ui/react/combobox";
+import { type KeyboardEvent, useState } from "react";
 
 export const popupClassName =
   "flex flex-col w-[var(--anchor-width)] max-h-[var(--available-height)] overflow-hidden rounded border border-zinc-300 bg-white shadow-lg";
@@ -42,4 +43,42 @@ export function OptionSearch({ labelId }: { labelId?: string }) {
       </Combobox.Empty>
     </>
   );
+}
+
+export function useOptionSearch() {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  return {
+    rootProps: {
+      open,
+      onOpenChange: (next: boolean) => {
+        setOpen(next);
+        if (next) setQuery("");
+      },
+      inputValue: query,
+      onInputValueChange: (
+        next: string,
+        details: Combobox.Root.ChangeEventDetails,
+      ) => {
+        if (details.reason !== "input-clear") setQuery(next);
+      },
+      // Only "always" highlights a query set from the trigger rather than typed.
+      // Root forwards it to AriaCombobox, which accepts it; Root's type omits it.
+      autoHighlight: (query.trim() ? "always" : true) as unknown as boolean,
+    },
+    onTriggerKeyDown: (event: KeyboardEvent) => {
+      // Space keeps opening the picker; other printable keys start the search.
+      if (
+        event.key.length !== 1 ||
+        event.key === " " ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey
+      )
+        return;
+      event.preventDefault();
+      setQuery(event.key);
+      setOpen(true);
+    },
+  };
 }

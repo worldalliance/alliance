@@ -9,6 +9,7 @@ import {
   OptionSearch,
   popupClassName,
   triggerProps,
+  useOptionSearch,
 } from "./optionPicker";
 
 type Option = { label: string; value: string };
@@ -34,6 +35,7 @@ export default function SearchableSelect({
   invalid,
   className,
 }: Props) {
+  const search = useOptionSearch();
   return (
     <Combobox.Root<Option>
       items={options}
@@ -41,6 +43,7 @@ export default function SearchableSelect({
       onValueChange={(option) => {
         if (option) onChange?.(option.value);
       }}
+      {...search.rootProps}
       filter={matchesOptionSearch}
       disabled={disabled}
     >
@@ -51,6 +54,7 @@ export default function SearchableSelect({
           invalid,
           className: cn(className, "data-placeholder:text-zinc-400"),
         })}
+        onKeyDown={search.onTriggerKeyDown}
       >
         <span className="min-w-0 truncate">
           <Combobox.Value placeholder="Select an option" />

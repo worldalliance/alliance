@@ -5,7 +5,7 @@ import { Select } from "@base-ui/react/select";
 import { Check, ChevronDown, X } from "lucide-react";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { toString } from "mdast-util-to-string";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import { zIndex } from "../ui/zIndex";
 import {
@@ -14,6 +14,7 @@ import {
   OptionSearch,
   popupClassName,
   triggerProps,
+  useOptionSearch,
 } from "./optionPicker";
 
 type Option = { label: string; value: string };
@@ -64,8 +65,7 @@ export default function MultiSelectDropdown({
   invalid,
   className,
 }: Props) {
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
+  const search = useOptionSearch();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const items = useMemo(
     () =>
@@ -105,38 +105,11 @@ export default function MultiSelectDropdown({
       items={items}
       value={selected}
       onValueChange={(next) => onChange?.(next.map((option) => option.value))}
-      inputValue={query}
-      onInputValueChange={(next, details) => {
-        if (details.reason !== "input-clear") setQuery(next);
-      }}
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (next) setQuery("");
-      }}
-      autoHighlight
-      filter={(item, search) =>
-        matchesOptionSearch({ label: item.text }, search)
-      }
+      {...search.rootProps}
+      filter={(item, query) => matchesOptionSearch({ label: item.text }, query)}
       disabled={disabled}
     >
-      <Combobox.Trigger
-        {...trigger}
-        onKeyDown={(event) => {
-          // Space keeps opening the picker; other printable keys start the search.
-          if (
-            event.key.length !== 1 ||
-            event.key === " " ||
-            event.ctrlKey ||
-            event.metaKey ||
-            event.altKey
-          )
-            return;
-          event.preventDefault();
-          setQuery(event.key);
-          setOpen(true);
-        }}
-      />
+      <Combobox.Trigger {...trigger} onKeyDown={search.onTriggerKeyDown} />
       <Combobox.Portal>
         <Combobox.Positioner sideOffset={4} className={zIndex.popover}>
           <Combobox.Popup className={popupClassName}>

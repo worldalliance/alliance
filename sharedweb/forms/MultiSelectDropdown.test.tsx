@@ -292,4 +292,6 @@ it("opens the search with a character typed on the closed trigger", async () => 
     expect(optionNames()).toEqual(["Côte d'Ivoire", "California"]),
   );
   await waitFor(() => expect(document.activeElement === input).toBe(true));
+  fireEvent.keyDown(input, { key: "Enter" });
+  await waitFor(() => expect(answer()).toBe("ci"));
 });
