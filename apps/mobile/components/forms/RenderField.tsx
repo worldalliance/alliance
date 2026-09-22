@@ -55,6 +55,7 @@ import Checkbox, { CheckboxSize } from "../system/Checkbox";
 import Text, { FontWeight } from "../system/Text";
 import CityAutosuggest from "./CityAutosuggest";
 import { getCustomComponentById } from "./customComponentRegistry";
+import CustomHtmlField from "./CustomHtmlField";
 import FormModal from "./FormModal";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import PhoneNumberInput from "./PhoneNumberInput";
@@ -982,6 +983,25 @@ export function RenderField({
             disabled={disabled}
             hasError={hasError}
             isOutputView={isOutputView}
+          />
+          {renderValidationMessage(errorMessage)}
+        </View>
+      );
+
+    case "customhtml":
+      return (
+        <View>
+          <RenderLabel
+            field={field}
+            isOutputView={isOutputView}
+            hideLabel={hideLabel}
+            required={required}
+          />
+          <CustomHtmlField
+            field={field}
+            value={typeof value === "string" ? value : undefined}
+            onChange={(next) => onChange?.(next)}
+            disabled={disabled}
           />
           {renderValidationMessage(errorMessage)}
         </View>

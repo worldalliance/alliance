@@ -1,6 +1,7 @@
 import type { AnyField, FieldKind } from "@alliance/common/forms/form-schema";
 import { EditableContractField } from "./EditableContractField";
 import { EditableCustomComponentField } from "./EditableCustomComponentField";
+import { EditableCustomHtmlField } from "./EditableCustomHtmlField";
 import { EditableListField } from "./EditableListField";
 import { EditableRankingField } from "./EditableRankingField";
 import { SUB_FIELD_EDITORS } from "./subFieldEditors";
@@ -12,6 +13,7 @@ const FIELD_EDITORS: { [K in FieldKind]: FieldEditor<K> } = {
   contract: EditableContractField,
   list: EditableListField,
   custom: EditableCustomComponentField,
+  customhtml: EditableCustomHtmlField,
 };
 
 function renderEditorOfKind<K extends FieldKind>(

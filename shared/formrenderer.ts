@@ -132,6 +132,7 @@ const KNOWN_FORM_ELEMENT_KINDS_RECORD = {
   list: true,
   ranking: true,
   custom: true,
+  customhtml: true,
   header: true,
   label: true,
   divider: true,
@@ -526,7 +527,10 @@ export function validateFieldValue(
     case "phone":
     case "date":
     case "timezone":
-    case "select": {
+    case "select":
+    // A custom HTML field's answer is a string like any other, and "answered"
+    // means its author published something non-empty.
+    case "customhtml": {
       if (!required) return null;
       if (valueToCheck === undefined || valueToCheck === null) {
         return "This field is required.";

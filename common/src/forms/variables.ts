@@ -110,6 +110,9 @@ export const FIELD_KIND_VARIABLE_INPUT_MODE: Record<
   list: VariableInputMode.None,
   file: VariableInputMode.None,
   custom: VariableInputMode.None,
+  // A custom HTML field's answer is whatever string its author decided on, but
+  // it is still a string a formula can read and compare.
+  customhtml: VariableInputMode.Text,
 };
 
 export function isFieldKindUsableAsVariableInput(kind: FieldKind): boolean {

@@ -443,6 +443,7 @@ const renderPretty = (field: AnyField, value: unknown): string => {
     case "contract":
     case "file":
     case "custom":
+    case "customhtml":
       return escapeXml(stringify(value));
     default:
       throw new Error(`unknown field kind: ${field satisfies never}`);

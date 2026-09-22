@@ -108,6 +108,9 @@ const CELL_RENDERERS: Record<FieldKind, CellRenderer> = {
   time: plainText,
   timezone: plainText,
   custom: plainText,
+  // The authored markup decides what the string means, so the table can only
+  // show it as written.
+  customhtml: plainText,
   checkbox: ({ value }) => booleanCell({ value, yes: "Yes", no: "No" }),
   contract: forKind("contract", ({ field, value }) =>
     booleanCell({

@@ -54,6 +54,7 @@ import PhoneNumberInput from "../ui/PhoneNumberInput";
 import YesNoToggle from "../ui/YesNoToggle";
 import CityAutosuggest from "./CityAutosuggest";
 import { getCustomComponentById } from "./components";
+import CustomHtmlField from "./CustomHtmlField";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import { shuffleWithSeed } from "./randomutils";
 import { RankingFieldInput } from "./RankingFieldInput";
@@ -1137,6 +1138,27 @@ export function RenderField({
             disabled={disabled}
             hasError={hasError}
             isOutputView={isOutputView}
+          />
+          {renderValidationMessage()}
+        </div>
+      );
+
+    case "customhtml":
+      return (
+        <div className="space-y-2">
+          <RenderLabel
+            field={field}
+            error={errorMessage}
+            labelRightAddon={labelRightAddon}
+            isOutputView={isOutputView}
+            hideLabel={hideLabel}
+            required={required}
+          />
+          <CustomHtmlField
+            field={field}
+            value={typeof value === "string" ? value : undefined}
+            onChange={onChange ? (next) => onChange(next) : undefined}
+            disabled={disabled}
           />
           {renderValidationMessage()}
         </div>

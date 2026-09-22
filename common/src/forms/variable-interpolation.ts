@@ -64,6 +64,7 @@ const FIELD_KIND_HAS_OPTION_LABELS: Record<FieldKind, boolean> = {
   file: false,
   contract: false,
   custom: false,
+  customhtml: false,
   list: false,
 };
 
@@ -91,6 +92,8 @@ const FIELD_KIND_SUPPORTS_INTERPOLATION: Record<FieldKind, boolean> = {
   custom: true,
   list: true,
   ranking: true,
+  // Covers its label and description; the authored HTML is left alone.
+  customhtml: true,
 };
 
 // Preserve referential equality when interpolation changes nothing so renderers

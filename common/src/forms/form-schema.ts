@@ -267,6 +267,26 @@ const customComponentFieldSchema = z.strictObject({
 });
 export type CustomComponentField = z.infer<typeof customComponentFieldSchema>;
 
+/**
+ * A block of admin-authored HTML/CSS/JS that produces one string answer.
+ *
+ * The answer comes from whichever element carries `data-alliance-value`
+ * (read on `input`/`change`), or from an explicit `Alliance.setValue()` call
+ * in the authored script — see `shared/forms/customHtml.ts` for the runtime
+ * contract both renderers implement.
+ *
+ * Deliberately not a list sub-field: the authored markup is written once and
+ * would have to be re-scoped per row.
+ */
+const customHtmlFieldSchema = z.strictObject({
+  ...baseFieldSchema.shape,
+  kind: z.literal("customhtml"),
+  html: z.string(),
+  css: z.string().optional(),
+  js: z.string().optional(),
+});
+export type CustomHtmlField = z.infer<typeof customHtmlFieldSchema>;
+
 export const listSubFieldSchema = z.discriminatedUnion("kind", [
   textFieldSchema,
   textareaFieldSchema,
@@ -314,6 +334,7 @@ export const anyFieldSchema = z.discriminatedUnion("kind", [
   ...listSubFieldSchema.options,
   listFieldSchema,
   rankingFieldSchema,
+  customHtmlFieldSchema,
 ]);
 export type AnyField = z.infer<typeof anyFieldSchema>;
 export type FieldKind = AnyField["kind"];

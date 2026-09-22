@@ -36,7 +36,10 @@ const SUB_FIELD_KINDS_OPTIONS = {
   file: true,
   range: true,
 } as const satisfies Record<
-  Exclude<FieldKind, "list" | "contract" | "custom" | "text" | "ranking">,
+  Exclude<
+    FieldKind,
+    "list" | "contract" | "custom" | "customhtml" | "text" | "ranking"
+  >,
   unknown
 >;
 type SubFieldKind = keyof typeof SUB_FIELD_KINDS_OPTIONS;

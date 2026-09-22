@@ -73,6 +73,7 @@ const ANSWER_COMPARATORS: Record<FieldKind, AnswerComparator> = {
   city: byText,
   file: byText,
   custom: byText,
+  customhtml: byText,
   radio: byText,
   select: byText,
   multiselect: byText,

@@ -1295,6 +1295,22 @@ export function FormBuilder(props: FormBuilderProps) {
           ],
         };
         break;
+      case "customhtml":
+        newField = {
+          id: fieldId,
+          type: "input",
+          kind: "customhtml",
+          label: "Custom HTML Field",
+          required: false,
+          html: `<div data-alliance-value>
+  <label><input type="radio" name="focus" value="environmental-destruction" /> Environmental destruction</label>
+  <label><input type="radio" name="focus" value="global-poverty" /> Global poverty</label>
+  <label><input type="radio" name="focus" value="dangerous-technology" /> Dangerous technology</label>
+  <label><input type="radio" name="focus" value="democratic-decline" /> Democratic decline</label>
+</div>`,
+          css: `label { display: block; }`,
+        };
+        break;
       case "custom": {
         const defaultComponent = customComponentRegistry[0];
         newField = {
