@@ -1,0 +1,63 @@
+appId: ${APP_ID}
+---
+- assertVisible: Places p4
+- assertVisible: Remove California
+- assertNotVisible: Remove New York
+- tapOn: 1 selected
+- assertVisible: Search options
+- tapOn: Search options
+- inputText: new
+- assertVisible: New Jersey
+- assertNotVisible: Côte d.Ivoire
+- tapOn: New Jersey
+- assertVisible: Search options
+- assertVisible: new
+- assertNotVisible: Côte d.Ivoire
+- eraseText: 3
+- inputText: COTE
+- tapOn: Côte d.Ivoire
+- eraseText: 4
+- inputText: zzz
+- assertVisible: No matches
+- tapOn:
+    point: 50%, 10%
+- assertVisible: Places p4,p2,p3
+- assertVisible: 3 selected
+- assertVisible: Remove New Jersey
+- assertVisible: Remove Côte d.Ivoire
+- tapOn: 3 selected
+- assertNotVisible: No matches
+- assertVisible: New York
+- tapOn: New York
+- tapOn:
+    point: 50%, 10%
+- assertVisible: Places p4,p2,p3
+- tapOn: 3 selected
+- tapOn: New Jersey
+- tapOn: New York
+- tapOn:
+    point: 50%, 10%
+- assertVisible: Places p4,p3,p1
+- assertVisible: 3 selected
+- tapOn: Remove California
+- assertVisible: Places p3,p1
+- assertVisible: 2 selected
+- tapOn: Select options…
+- assertNotVisible: Search options
+- tapOn: New York
+- tapOn: Côte d.Ivoire
+- tapOn: New York
+- tapOn:
+    point: 50%, 10%
+- assertVisible: Plain places p3
+- assertVisible: "A place with a label long enough to wrap across the chip row"
+- assertNotVisible: "Remove A place with a label long enough to wrap across the chip row"
+- tapOn: 2 selected
+- tapOn: Search options
+- inputText: bold ch
+- tapOn: Bold choice
+- tapOn:
+    point: 50%, 10%
+- assertVisible: Places p3,p1,p6
+- tapOn: Remove Bold choice
+- assertVisible: Places p3,p1

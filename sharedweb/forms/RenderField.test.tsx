@@ -53,6 +53,8 @@ const singleInputs: AnyField[] = [
   { ...base, kind: "city" },
   { ...base, kind: "select", options },
   { ...base, kind: "select", options, searchable: true },
+  { ...base, kind: "multiselect", options, dropdown: true },
+  { ...base, kind: "multiselect", options, dropdown: true, searchable: true },
 ];
 
 describe.each([{ hideLabel: false }, { hideLabel: true }])(

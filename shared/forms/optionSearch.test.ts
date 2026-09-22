@@ -1,4 +1,4 @@
-import { matchesOptionSearch } from "./optionSearch";
+import { markdownPlainText, matchesOptionSearch } from "./optionSearch";
 
 it("matches a trimmed, case-insensitive substring of labels", () => {
   expect(matchesOptionSearch({ label: "New York" }, "  w Yo  ")).toBe(true);
@@ -24,4 +24,9 @@ it("matches accents in labels and queries regardless of Unicode composition", ()
   expect(matchesOptionSearch({ label: "Co\u0302te d'Ivoire" }, "cote")).toBe(
     true,
   );
+});
+
+it("reduces a markdown label to its rendered text", () => {
+  expect(markdownPlainText("**Bold** choice")).toBe("Bold choice");
+  expect(markdownPlainText("[Our site](https://example.org)")).toBe("Our site");
 });

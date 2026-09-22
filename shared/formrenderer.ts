@@ -32,6 +32,7 @@ import { withCount } from "@alliance/common/plural";
 import { parseTimeToMinutes } from "@alliance/shared/forms/timeUtils";
 import { dropUnuploadedFileAnswers } from "./forms/fileAnswers";
 import { defaultCardCount, resolveCards } from "./forms/listCards";
+import { dropUnknownOptionAnswers } from "./forms/optionAnswers";
 
 /** Indices into `pages` of the currently visible pages. */
 export function getVisiblePageIndices(
@@ -458,16 +459,20 @@ export function filterAnswersByFieldIds(
 
 /**
  * The answers a renderer should start a draft from: only fields the schema
- * still has, and only file answers naming an image that reached the server.
- * Callers apply defaults afterwards, since an empty result is what decides
- * which of several stored drafts wins.
+ * still has, only multiselect selections of options the field still has, and
+ * only file answers naming an image that reached the server. Callers apply
+ * defaults afterwards, since an empty result is what decides which of several
+ * stored drafts wins.
  */
 export function restorableAnswers(
   answers: Record<string, FormValue> | null,
   allowedFields: Map<string, AnyField>,
 ): Record<string, FormValue> {
   return dropUnuploadedFileAnswers(
-    filterAnswersByFieldIds(answers, allowedFields),
+    dropUnknownOptionAnswers(
+      filterAnswersByFieldIds(answers, allowedFields),
+      allowedFields,
+    ),
     allowedFields,
   );
 }

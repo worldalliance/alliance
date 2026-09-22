@@ -1,4 +1,5 @@
-import type { FormSchema } from "@alliance/common/forms/form-schema";
+import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
+import type { SubmitFormDto } from "@alliance/shared/client";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as uploadModule from "@alliance/shared/lib/uploadImageDataUri";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -8,6 +9,7 @@ import {
   fireEvent,
   render,
   screen,
+  within,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { SiteAppProvider } from "../ui/SiteAppProvider";
@@ -157,7 +159,9 @@ const dropdownForm = ({
 
 const renderDropdownForm = (
   form: FormSchema,
-  onSubmit = jest.fn(async () => false),
+  onSubmit: (data: SubmitFormDto) => Promise<boolean> = jest.fn(
+    async () => false,
+  ),
 ) =>
   render(
     <QueryClientProvider client={new QueryClient()}>
@@ -466,4 +470,99 @@ it("focuses an earlier list answer before a later invalid field", async () => {
   });
   const [who] = screen.getAllByRole("textbox");
   expect(document.activeElement === who).toBe(true);
+});
+
+const multiselectDropdownForm = (
+  field: Partial<Extract<AnyField, { kind: "multiselect" }>>,
+): FormSchema => ({
+  pages: [
+    {
+      id: "p1",
+      fields: [
+        {
+          id: "places",
+          type: "input",
+          kind: "multiselect",
+          label: "Places",
+          required: true,
+          dropdown: true,
+          options: [
+            { label: "New York", value: "ny" },
+            { label: "California", value: "ca" },
+            { label: "Texas", value: "tx" },
+          ],
+          ...field,
+        },
+      ],
+    },
+  ],
+  outputViews: [],
+});
+
+const pickOption = async (name: string) => {
+  const option = await screen.findByRole("option", { name });
+  fireEvent.mouseMove(option);
+  fireEvent.click(option);
+};
+
+it.each([false, true])(
+  "requires a multiselect dropdown answer and submits option values, searchable=%p",
+  async (searchable) => {
+    const onSubmit = jest.fn(async (_data: SubmitFormDto) => false);
+    renderDropdownForm(multiselectDropdownForm({ searchable }), onSubmit);
+    const trigger = screen.getByRole("combobox", { name: "Places" });
+    await act(async () => {
+      screen.getByRole("button", { name: "Complete" }).click();
+    });
+    expect(screen.getByText("Select at least one option.")).toBeTruthy();
+    expect(document.activeElement === trigger).toBe(true);
+    fireEvent.click(trigger);
+    await pickOption("Texas");
+    await pickOption("New York");
+    await act(async () => {
+      screen.getByRole("button", { name: "Complete" }).click();
+    });
+    expect(screen.queryByText("Select at least one option.")).toBeNull();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit.mock.calls[0][0].answers).toEqual({ places: ["tx", "ny"] });
+  },
+);
+
+it("shows defaults as chips and keeps the selection-limit guidance", () => {
+  renderPreview(
+    multiselectDropdownForm({ defaultValue: ["ca"], maxSelections: 2 }),
+  );
+  expect(
+    screen.getByRole("combobox", { name: "Places" }).textContent,
+  ).toContain("1 selected");
+  expect(
+    screen.getByRole("button", { name: "Remove California" }),
+  ).toBeTruthy();
+  expect(screen.getByText("Select up to 2 options")).toBeTruthy();
+});
+
+it("orders chips by the randomized option order", async () => {
+  const options = Array.from({ length: 8 }, (_, index) => ({
+    label: `Option ${index + 1}`,
+    value: `o${index + 1}`,
+  }));
+  renderPreview(
+    multiselectDropdownForm({
+      options,
+      randomizeOptions: true,
+      defaultValue: options.map((option) => option.value),
+    }),
+  );
+  fireEvent.click(screen.getByRole("combobox", { name: "Places" }));
+  await screen.findByRole("listbox");
+  const pickerOrder = screen
+    .getAllByRole("option")
+    .map((node) => node.textContent);
+  const chipOrder = within(
+    screen.getByRole("list", { name: "Selected options" }),
+  )
+    .getAllByRole("listitem")
+    .map((node) => node.textContent);
+  expect(pickerOrder).not.toEqual(options.map((option) => option.label));
+  expect(chipOrder).toEqual(pickerOrder);
 });

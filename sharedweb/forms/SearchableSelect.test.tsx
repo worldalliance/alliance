@@ -86,3 +86,54 @@ it("cannot open when disabled", () => {
   fireEvent.click(screen.getByRole("combobox", { name: "Options" }));
   expect(screen.queryByRole("combobox", { name: "Search options" })).toBeNull();
 });
+
+it("selects the first match on Enter after typing a query", async () => {
+  render(<Select />);
+  const input = await open();
+  fireEvent.input(input, {
+    target: { value: "new" },
+    inputType: "insertText",
+  });
+  await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(2));
+  fireEvent.keyDown(input, { key: "Enter" });
+  await waitFor(() =>
+    expect(screen.getByTestId("answer").textContent).toBe("ny"),
+  );
+});
+
+it("opens the search with a character typed on the closed trigger", async () => {
+  render(<Select />);
+  const trigger = screen.getByRole("combobox", { name: "Location" });
+  trigger.focus();
+  fireEvent.keyDown(trigger, { key: "j" });
+  const input = await screen.findByRole("combobox", {
+    name: "Search options",
+  });
+  expect((input as HTMLInputElement).value).toBe("j");
+  await waitFor(() =>
+    expect(
+      screen.getAllByRole("option").map((node) => node.textContent),
+    ).toEqual(["New Jersey"]),
+  );
+  fireEvent.keyDown(input, { key: "Enter" });
+  await waitFor(() =>
+    expect(screen.getByTestId("answer").textContent).toBe("nj"),
+  );
+});
+
+it("leaves Space and modifier shortcuts on the closed trigger out of the search", async () => {
+  render(<Select />);
+  const trigger = screen.getByRole("combobox", { name: "Location" });
+  trigger.focus();
+  for (const init of [
+    { key: " " },
+    { key: "Tab" },
+    { key: "c", metaKey: true },
+    { key: "c", ctrlKey: true },
+    { key: "c", altKey: true },
+  ])
+    fireEvent.keyDown(trigger, init);
+  expect(screen.queryByRole("combobox", { name: "Search options" })).toBeNull();
+  const input = await open();
+  expect((input as HTMLInputElement).value).toBe("");
+});

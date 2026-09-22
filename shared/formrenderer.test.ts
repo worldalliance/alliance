@@ -7,11 +7,13 @@ import type {
 import type { ConditionExtras } from "@alliance/common/forms/visibility";
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
 import {
+  applyDefaultValues,
   findUnknownConditionKind,
   getFallbackVisiblePageIndex,
   getListSubFieldErrors,
   getNextVisiblePageIndex,
   getPreviousVisiblePageIndex,
+  restorableAnswers,
   schemaNeedsVisibilityContext,
 } from "./formrenderer";
 
@@ -323,5 +325,41 @@ describe("getListSubFieldErrors", () => {
         extras,
       ),
     ).toEqual({ "addresses:0:street": null });
+  });
+});
+
+describe("restorableAnswers", () => {
+  it("drops multiselect selections of options the field no longer has", () => {
+    const places: AnyField = {
+      id: "places",
+      type: "input",
+      kind: "multiselect",
+      label: "Places",
+      options: [{ label: "New York", value: "ny" }],
+    };
+    expect(
+      restorableAnswers(
+        { places: ["gone", "ny"] },
+        new Map([["places", places]]),
+      ),
+    ).toEqual({ places: ["ny"] });
+  });
+
+  it("keeps a cleared multiselect from taking its default", () => {
+    const places: AnyField = {
+      id: "places",
+      type: "input",
+      kind: "multiselect",
+      label: "Places",
+      options: [{ label: "New York", value: "ny" }],
+      defaultValue: ["ny"],
+    };
+    const restored = restorableAnswers(
+      { places: [] },
+      new Map([["places", places]]),
+    );
+    expect(applyDefaultValues(restored, new Map([["places", ["ny"]]]))).toEqual(
+      { places: [] },
+    );
   });
 });
