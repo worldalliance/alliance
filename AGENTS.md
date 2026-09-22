@@ -22,7 +22,6 @@ If @.worktree/AGENTS.md exists, read it.
 
 Always read and apply:
 
-- `(root)/skills/unslop/SKILL.md` → everything you write.
 - `(root)/skills/trim-comments/SKILL.md` → every comment your change adds or touches, before you present the change.
 
 Read before the matching task:
