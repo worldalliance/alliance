@@ -69,6 +69,14 @@ type ResolveOutputItemsParams = {
   publicAnswers?: Record<string, boolean>;
 };
 
+const visibilityContext = (
+  validatorResults: VisibilityValidatorResults | undefined,
+  deviceType: DeviceVisibilityTarget | undefined,
+) => ({
+  deviceType: deviceType ?? "desktop",
+  visibilityValidatorResults: validatorResults ?? {},
+});
+
 const drawnCards = (
   listField: ListField,
   value: FormValue | undefined,
@@ -183,11 +191,9 @@ export const isOutputBlockVisible = (
   inputField?: AnyField,
   outputBlockVisibility?: Map<string, boolean>,
 ): boolean => {
+  const context = visibilityContext(validatorResults, deviceType);
   if (inputField) {
-    const isVisible = isElementCurrentlyVisible(inputField, answers, {
-      deviceType: deviceType ?? "desktop",
-      visibilityValidatorResults: validatorResults ?? {},
-    });
+    const isVisible = isElementCurrentlyVisible(inputField, answers, context);
     if (!isVisible) {
       return false;
     }
@@ -205,8 +211,7 @@ export const isOutputBlockVisible = (
     }
   }
   return isElementCurrentlyVisible(block, answers, {
-    deviceType: deviceType ?? "desktop",
-    visibilityValidatorResults: validatorResults ?? {},
+    ...context,
     outputBlockVisibility,
   });
 };
