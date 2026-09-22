@@ -7,6 +7,7 @@ export enum JobKind {
 export enum JobStatus {
   Running = "running",
   Paused = "paused",
+  NeedsAttention = "needs-attention",
   Succeeded = "succeeded",
   Failed = "failed",
   Canceled = "canceled",
@@ -20,6 +21,7 @@ export enum RunMode {
 export enum StepStatus {
   Pending = "pending",
   Running = "running",
+  NeedsAttention = "needs-attention",
   Succeeded = "succeeded",
   Failed = "failed",
   Canceled = "canceled",

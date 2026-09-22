@@ -25,7 +25,13 @@ High-signal review of the proposed change: catch correctness bugs, edge cases, a
 
 # Verify every claim
 
-Every finding is a claim about behavior, and an untested claim is a guess. Before a finding reaches the output, make the defect observable: run the input that breaks it, write a script that fails, take screenshots, query the db, trace the call path back to a real caller, etc.
+Start each review from the code and requirements. Keep prior reviews, review assessments, and agent-authored DECISIONS.md files out of the review context, including their contents in diffs. A later review is a fresh assessment, not a reconciliation with earlier verdicts.
+
+Inspect every changed file and trace affected callers and contracts. Finish discovery before proposing repairs. Report every supported finding, including nits with a concrete benefit; there is no finding-count limit. Record unchecked areas and unavailable checks in the summary; an incomplete review is not a clean review.
+
+For each behavioral finding, identify the reachable trigger, expected and actual behavior, consequence, and supporting requirement or contract. Make the defect observable: run the input that breaks it, write a failing test, or trace the execution path to a real caller. Distinguish observed failures from unverified claims.
+
+For cleanup, establish the concrete benefit and the assumptions that make it safe. Verify that dead code is unused and duplicated code implements the same rule. More accurate text and comments qualify; preference alone does not.
 
 Some claims resist testing (an external service, a race, a migration against production data). Report those as unverified and name what would settle it.
 
@@ -33,7 +39,9 @@ Some claims resist testing (an external service, a race, a migration against pro
 
 - **Must-fix** — shipping it is wrong. Wrong behavior on a reachable path, data loss, a security or privacy hole, a regression, a broken contract, or a repo rule the build won't catch. The author changes the code before merge.
 - **Should-fix** — it works, but someone pays for it later. Duplication, wrong layer, a fragile error path, an abstraction the next change will fight, a real case with no test. The author picks: fix now, or file a follow-up.
-- **Nit** — taste. Naming, ordering, a shorter way to write the same thing. No effect on behavior or on the next change. The author can ignore it without replying.
+- **Nit** — a small, supported improvement, such as correcting an inaccurate comment or removing verified dead code. Worth keeping, but does not block shipping. Omit changes justified only by taste.
+
+Assign tiers independently of whether a change is worth making. A must-fix names the broken behavior, contract, or explicit repo rule that blocks shipping. A supported improvement can remain a nit.
 
 Out of scope for this change → should-fix, phrased as a follow-up, unless it is a real risk.
 
@@ -47,7 +55,7 @@ Write like one engineer talking to another. The plainest word for each idea, sho
 
 # Output contract
 
-Always these sections, in this order. A section with nothing to report says `None`. The tier is the severity, so no finding carries a separate severity label.
+Always these sections, in this order. A section with nothing to report says `None`. Use the severity labels specified below for each tier.
 
 ```
 ## Summary

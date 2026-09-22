@@ -6,15 +6,15 @@ disable-model-invocation: true
 
 # Base commit
 
-The user provides a "base" commit. If they have not, ask for it and ignore the rest of this skill.
+Resolve the user's "base" to an exact commit SHA. If they have not provided one, ask for it and ignore the rest of this skill. Review that commit against its parent.
 
 # Review
 
 Read `(root)/skills/review/SKILL.md` and use it to review the base commit. The commits other than the base will be reviewed in the future, so you don't need to review them. You may view them for more context on the planned follow-up changes.
 
-While reviewing, feel free to run `git reset --hard` to test various functionality. If you do, make sure to reset back to the current commit after your review.
+Run checks against the base snapshot, using an isolated checkout when needed to preserve the current checkout and uncommitted work. Results from the branch tip do not establish that the base works alone.
 
-Do not read any DECISIONS.md file while you are reviewing, even changes to those files that are contained in the base commit. This is so you can come to your own conclusions. You may read the DECISIONS.md after the user tells you to make changes.
+Determine whether each problem exists in the parent; an old line newly made unsafe by this commit is an introduced defect.
 
 # One commit, one change
 
@@ -26,15 +26,17 @@ Judge it against that as part of the review. A base commit holding more than one
 
 Findings and the judgment behind each field come from the review skill. Report them as JSON instead of the markdown it describes, conforming to `(root)/skills/review-base/findings.schema.json`.
 
-Before you start reviewing, create `.scratch/review/<base-sha>.json` holding `{"base": <sha>, "summary": "", "findings": []}`. Create, modify, or delete findings as you review the commit.
+Before you start reviewing, initialize `.scratch/review/<base-sha>.json` with `{"base": <sha>, "summary": "", "findings": []}` without reading a previous file at that path. Create, modify, or delete findings as you review the commit. Put the reproduction or execution trace in each finding's `evidence`.
 
-Your last message says where the file is, in addition to the markdown-style review, with the same sections as specified in `review`. For the wording,pretend you just gave the file to the user and they invoked `(root)/skills/bro/SKILL.md`.
+Your last message says where the file is, in addition to the markdown-style review, with the same sections as specified in `review`. For the wording, pretend you just gave the file to the user and they invoked `(root)/skills/bro/SKILL.md`.
 
 Do not delete this file after your review. It will be read later.
 
 # Applying fixes
 
 If you are asked to apply changes after your review, you own the git history for them. This waives the root `AGENTS.md` rule on git writes for the rest of the task: commit, amend, and rebase without asking again.
+
+You may read provenance DECISIONS.md files when applying changes.
 
 Place each change in the commit that owns it. Fold a fix into the base commit while the base commit stays one standalone change. Once folding would give it a second purpose, the fix takes its own commit, ordered so each commit still deploys alone.
 

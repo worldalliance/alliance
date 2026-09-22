@@ -1,3 +1,4 @@
+import { R } from "@alliance/common/result";
 import {
   Bot,
   Braces,
@@ -78,6 +79,16 @@ const resultSchema = z.object({
   duration_ms: z.number().optional(),
   num_turns: z.number().optional(),
   total_cost_usd: z.number().optional(),
+});
+
+const codexItemSchema = z.object({
+  type: z.enum(["item.started", "item.updated", "item.completed"]),
+  item: z.object({
+    type: z.string(),
+    text: z.string().optional(),
+    command: z.string().optional(),
+    aggregated_output: z.string().optional(),
+  }),
 });
 
 function kindOf(type: string): MessageKind {
@@ -269,6 +280,31 @@ function summarize(params: { kind: MessageKind; message: unknown }): {
   body: ReactNode;
 } {
   const { kind, message } = params;
+
+  const codex = codexItemSchema.safeParse(message);
+  if (codex.success) {
+    const item = codex.data.item;
+    const json = R.fromThrowable(() => JSON.parse(item.text ?? ""));
+    const report = z
+      .object({ report: z.string() })
+      .safeParse(json.ok ? json.value : null);
+    const content = report.success ? report.data.report : item.text;
+    return {
+      preview: firstLine(content ?? item.command ?? item.type, 90),
+      body: content ? (
+        <div className="markdown">
+          <Markdown>{content}</Markdown>
+        </div>
+      ) : item.command ? (
+        <>
+          <pre>{item.command}</pre>
+          <pre>{item.aggregated_output}</pre>
+        </>
+      ) : (
+        <pre>{text(message)}</pre>
+      ),
+    };
+  }
 
   if (kind === MessageKind.System) {
     const system = systemSchema.safeParse(message);

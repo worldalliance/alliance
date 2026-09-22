@@ -49,7 +49,7 @@
           },
           "pre-existing": {
             "type": "boolean",
-            "description": "the defect is in code the base commit did not introduce"
+            "description": "the defect already exists in the base commit's parent; an old line newly made unsafe by the base commit is not pre-existing"
           },
           "description": {
             "type": "string",

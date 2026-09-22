@@ -1,5 +1,7 @@
 import { R, type Result } from "@alliance/common/result";
 import type { Subprocess } from "bun";
+import { appendFile, writeFile } from "node:fs/promises";
+import { basename, join } from "node:path";
 import {
   JobStatus,
   RunMode,
@@ -20,6 +22,7 @@ export type StepContext = {
   job: JobRecord;
   step: JobStep;
   outputs: Map<string, string>;
+  logDirectory?: string;
 };
 
 export type StepDefinition = {
@@ -27,7 +30,9 @@ export type StepDefinition = {
   title: string;
   command: string;
   outputFormat: StepOutputFormat;
-  run: (context: StepContext) => Promise<Result<string | null, string>>;
+  run: (
+    context: StepContext,
+  ) => Promise<Result<string | null | { needsAttention: string }, string>>;
 };
 
 export const REPO_LOCK = "repo";
@@ -36,6 +41,7 @@ export const REPO_LOCK = "repo";
 const ACTIVE: Record<JobStatus, boolean> = {
   [JobStatus.Running]: true,
   [JobStatus.Paused]: true,
+  [JobStatus.NeedsAttention]: false,
   [JobStatus.Succeeded]: false,
   [JobStatus.Failed]: false,
   [JobStatus.Canceled]: false,
@@ -112,6 +118,7 @@ export function appendLog(step: JobStep, line: string): void {
 async function drain(params: {
   stream: ReadableStream<Uint8Array>;
   onLine?: (line: string) => void;
+  outputPath?: string;
 }): Promise<string> {
   const reader = params.stream.getReader();
   const decoder = new TextDecoder();
@@ -121,6 +128,8 @@ async function drain(params: {
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
+
+    if (params.outputPath) await appendFile(params.outputPath, value);
 
     const decoded = decoder.decode(value, { stream: true });
     text += decoded;
@@ -145,6 +154,25 @@ export async function spawnLogged(params: {
   const { job, step } = params.context;
   step.command = params.command.join(" ");
 
+  const directory = params.context.logDirectory;
+  const jsonl = ["claude", "codex"].includes(basename(params.command[0] ?? ""));
+  const stdoutPath = directory
+    ? join(directory, `${step.id}.stdout.${jsonl ? "jsonl" : "log"}`)
+    : undefined;
+  const stderrPath = directory
+    ? join(directory, `${step.id}.stderr.log`)
+    : undefined;
+  if (stdoutPath && stderrPath) {
+    const opened = await R.fromPromiseFn(() =>
+      Promise.all([
+        writeFile(stdoutPath, "", { mode: 0o600 }),
+        writeFile(stderrPath, "", { mode: 0o600 }),
+      ]),
+    );
+    if (!opened.ok)
+      return R.failure(`could not open process logs: ${opened.error.message}`);
+  }
+
   const spawned = R.fromThrowable(() =>
     Bun.spawn(params.command, {
       cwd: params.cwd,
@@ -158,11 +186,30 @@ export async function spawnLogged(params: {
   const proc = spawned.value;
   job.proc = proc;
 
-  const [stdout, , exitCode] = await Promise.all([
-    drain({ stream: proc.stdout, onLine: params.onStdout }),
-    drain({ stream: proc.stderr, onLine: (line) => appendLog(step, line) }),
-    proc.exited,
-  ]);
+  const drained = await R.fromPromise(
+    Promise.all([
+      drain({
+        stream: proc.stdout,
+        onLine: params.onStdout,
+        outputPath: stdoutPath,
+      }),
+      drain({
+        stream: proc.stderr,
+        onLine: (line) => appendLog(step, line),
+        outputPath: stderrPath,
+      }),
+      proc.exited,
+    ]),
+  );
+  if (!drained.ok) {
+    proc.kill();
+    await proc.exited;
+    job.proc = null;
+    return R.failure(
+      `could not capture process output: ${drained.error.message}`,
+    );
+  }
+  const [stdout, , exitCode] = drained.value;
   job.proc = null;
 
   return exitCode === 0
@@ -212,19 +259,32 @@ async function runStep(job: JobRecord, index: number): Promise<boolean> {
   step.endedAt = Date.now();
   job.proc = null;
 
+  let needsAttention = false;
   const failure = outcome.ok
     ? R.match(outcome.value, {
         success: (output) => {
-          step.status = StepStatus.Succeeded;
-          step.output = output;
-          pending.outputs.set(definition.id, output ?? "");
+          const attention = output !== null && typeof output === "object";
+          needsAttention = attention;
+          step.status = attention
+            ? StepStatus.NeedsAttention
+            : StepStatus.Succeeded;
+          step.output = attention ? output.needsAttention : output;
+          pending.outputs.set(definition.id, step.output ?? "");
           return null;
         },
         failure: (error) => error,
       })
     : outcome.error.message;
 
-  if (failure === null) return true;
+  if (failure === null) {
+    if (!needsAttention) return true;
+    job.status = JobStatus.NeedsAttention;
+    for (const remaining of job.steps.slice(index + 1))
+      remaining.status = StepStatus.Skipped;
+    job.endedAt = Date.now();
+    runnable.delete(job.id);
+    return false;
+  }
 
   finish({
     job,

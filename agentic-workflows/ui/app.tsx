@@ -48,6 +48,11 @@ import { Transcript } from "./transcript";
 const STATUS_ICON: Record<JobStatus, ReactNode> = {
   [JobStatus.Running]: <Loader2 className="spin" size={14} />,
   [JobStatus.Paused]: <CirclePause className="muted" size={14} />,
+  [JobStatus.NeedsAttention]: (
+    <>
+      <CirclePause size={14} /> needs your attention
+    </>
+  ),
   [JobStatus.Succeeded]: <CircleCheck className="ok" size={14} />,
   [JobStatus.Failed]: <CircleX className="bad" size={14} />,
   [JobStatus.Canceled]: <CircleSlash className="muted" size={14} />,
@@ -89,6 +94,11 @@ function commitSelection(params: {
 const STEP_ICON: Record<StepStatus, ReactNode> = {
   [StepStatus.Pending]: <CircleDashed className="muted" size={14} />,
   [StepStatus.Running]: <Loader2 className="spin" size={14} />,
+  [StepStatus.NeedsAttention]: (
+    <>
+      <CirclePause size={14} /> needs your attention
+    </>
+  ),
   [StepStatus.Succeeded]: <CircleCheck className="ok" size={14} />,
   [StepStatus.Failed]: <CircleX className="bad" size={14} />,
   [StepStatus.Canceled]: <CircleSlash className="muted" size={14} />,
@@ -118,6 +128,7 @@ function elapsed(job: Job): string {
 const STEP_RAN: Record<StepStatus, boolean> = {
   [StepStatus.Pending]: false,
   [StepStatus.Running]: true,
+  [StepStatus.NeedsAttention]: true,
   [StepStatus.Succeeded]: true,
   [StepStatus.Failed]: true,
   [StepStatus.Canceled]: true,
@@ -556,15 +567,20 @@ function ReviewBaseWorkflow(props: {
           className="icon"
           type="submit"
           disabled={running || start.isPending || remote.length === 0}
-          aria-label="Run review"
-          title="Run review"
+          aria-label="Review, fix, and push"
+          title="Review, fix, and push"
         >
           <Play size={14} />
         </button>
       </h3>
       <p className="muted">
         the commit after <code>{remote || "the base"}</code>, reviewed by{" "}
-        <code>claude -p /review-base</code>
+        Claude, assessed and fixed by Astra
+      </p>
+      <p className="muted">
+        A round with no accepted findings pushes only that commit to{" "}
+        <code>{remote}</code>. Pending commits back up to{" "}
+        <code>origin/draft/{props.worktree.branch ?? "<local-branch>"}</code>.
       </p>
       {start.error && <span className="error">{start.error.message}</span>}
 
@@ -788,12 +804,12 @@ function StepModal(props: {
         {step.messageCount > 0 && (
           <>
             <h5>
-              claude messages
+              agent messages
               <button
                 className="icon"
                 onClick={() => setTranscript(!transcript)}
-                aria-label="Show the claude messages"
-                title="Show the claude messages"
+                aria-label="Show the agent messages"
+                title="Show the agent messages"
               >
                 {transcript ? (
                   <ChevronDown size={12} />
