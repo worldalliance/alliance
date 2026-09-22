@@ -74,9 +74,12 @@ sections below this one carry the reasoning each step implements.
     pull request. Runs don't overlap, or an older one's close step could take a
     newer one's pull request with it and the skip rule would retire that
     release. A branch a failed run left without a pull request gets
-    force-pushed over. Opening a pull request closes any other open one on a
-    `tzdb/` branch, which the new release supersedes, with a comment linking
-    the pull request that replaced it, and deletes its branch. A composite
+    force-pushed over. Opening a pull request closes any other open one
+    github-actions opened on a `tzdb/` branch, which the new release
+    supersedes, with a comment linking the pull request that replaced it, and
+    deletes its branch. Someone's own branch that shares the prefix stays
+    open: the action closes only pull requests by the new one's author, so the
+    token a caller passes decides whose it closes. A composite
     action, `open-superseding-pr`, holds the commit, push, open, and close,
     since the FormatJS bump opens its pull requests the same way. It refuses an
     empty branch prefix, which would match every branch and close every open

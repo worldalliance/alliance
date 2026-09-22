@@ -27,8 +27,12 @@ git commit -m "$TITLE"
 git push --force origin "$BRANCH"
 
 url=$(gh pr create --head "$BRANCH" --title "$TITLE" --body "$BODY")
-superseded=$(gh pr list --state open --limit 1000 --json number,headRefName \
-  --jq '.[] | select(.headRefName | startswith(env.PREFIX)) | select(.headRefName != env.BRANCH) | .number')
+# Only pull requests this token's identity opened, so a person's branch that
+# shares the prefix is never closed and deleted.
+AUTHOR=$(gh pr view "$url" --json author --jq .author.login)
+export AUTHOR
+superseded=$(gh pr list --state open --limit 1000 --json number,headRefName,author \
+  --jq '.[] | select(.author.login == env.AUTHOR) | select(.headRefName | startswith(env.PREFIX)) | select(.headRefName != env.BRANCH) | .number')
 for pr in $superseded; do
   gh pr close "$pr" --delete-branch --comment "Superseded by $url." \
     || echo "::warning::gh pr close --delete-branch failed for #$pr; check whether it is still open and its branch still exists."

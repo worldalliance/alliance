@@ -1,10 +1,10 @@
 name: Open a superseding pull request
 description: >-
   Commit the working tree to a new branch, open a pull request from it, and
-  close any other open pull request whose branch starts with the given prefix.
-  Needs a checkout that kept its push credentials and a git author and committer
-  identity in the environment. The job needs contents: write and
-  pull-requests: write.
+  close any other open pull request the same token's identity opened whose
+  branch starts with the given prefix. Needs a checkout that kept its push
+  credentials and a git author and committer identity in the environment. The
+  job needs contents: write and pull-requests: write.
 
 inputs:
   branch:
