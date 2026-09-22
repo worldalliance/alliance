@@ -26,7 +26,8 @@ Always read and apply:
 
 Read before the matching task:
 
-- Implementing a feature or behavior change → `(root)/skills/provenance/SKILL.md`
+- Determining the provenance of anything in the repository → `(root)/skills/provenance/SKILL.md`
+- Implementing a feature, fixing a bug, or refactoring code → `(root)/skills/implement/SKILL.md`
 - Querying the local Postgres db → `(root)/skills/local-db/SKILL.md`
 - Using the Linear API → `(root)/skills/linear/SKILL.md`
 - Verifying a change in the browser, driving the mobile app, calling the API, or authenticating as an admin → `(root)/skills/playwright/SKILL.md`

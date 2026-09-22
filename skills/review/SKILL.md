@@ -11,18 +11,11 @@ High-signal review of the proposed change: catch correctness bugs, edge cases, a
 # Reviewer stance
 
 - Ask when context is missing; say so when uncertain, and name the evidence that would settle it.
-- Recommend the simplest root-cause fix that fully addresses the demonstrated problem and preserves the relevant invariants. Justify broader changes with concrete requirements, weighing their cost and risk.
 - Accept the author's choice among equally valid approaches.
 
 # What to inspect
 
-1. **Intent & scope** — what is the change trying to do, does the diff match, is anything unrelated mixed in?
-2. **Correctness** — logic, error paths, boundary conditions, concurrency/async hazards, backward compatibility, public API and contract changes.
-3. **Maintainability** — does similar functionality already exist to reuse or extract, or is it hand-rolling parsing, dates, retries where a package exists? Right layer and clear responsibilities? Anything simplifiable without behavior change? Does added generality serve a concrete requirement?
-4. **Security & privacy**, only where the change touches it — trace sources → validation/transformation → sinks (db, filesystem, UI rendering, logs, external calls). Injection, unsafe deserialization, authn/authz gaps, secrets and PII handling, unsafe logging.
-5. **Reliability** — failure modes, retries, timeouts, idempotency, resource cleanup; logs/metrics/traces where they matter, carrying no secrets or PII.
-6. **Tests** — is the change covered, and by the right kind (unit/integration/e2e)? Inspect assertions and mocks: would the tests detect the defect, or do they bypass the relevant behavior? When useful, verify this against the old implementation or by temporarily reintroducing the defect, restoring the code afterward. Propose the smallest set of tests that would close a concrete coverage gap.
-7. **User experience & documentation**, where affected — exercise relevant loading, empty, error, and keyboard states for UI changes. Check that changes to build, usage, testing, or release workflows update the associated instructions.
+Read `(root)/skills/engineering-criteria.md`. Apply each relevant criterion to the change and use it when recommending fixes.
 
 # Verify every claim
 
@@ -34,7 +27,7 @@ For each behavioral finding, identify the reachable trigger, expected and actual
 
 For cleanup, establish the concrete benefit and the assumptions that make it safe. Verify that dead code is unused and duplicated code implements the same rule. More accurate text and comments qualify; preference alone does not.
 
-Investigate confusing code before calling it unclear. If correctness depends on an undocumented invariant, identify what future readers need and recommend expressing it through types, structure, or tests, with a comment for constraints those cannot express.
+Investigate confusing code before calling it unclear; identify the information future readers would lack.
 
 Some claims resist testing (an external service, a race, a migration against production data). Report those as unverified and name what would settle it.
 
