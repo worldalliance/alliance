@@ -20,7 +20,7 @@ import type { Repository } from "typeorm";
  * - Contract event but no phase start → out of time: can't onboard into a phase
  *   that hasn't started.
  *
- * Single source of this rule, shared by {@link computeIsAssignedCore}
+ * Single source of this rule, shared by {@link computeAssignmentCore}
  * (both assignment variants, i.e. the `ActionDto.shouldParticipate` wire field)
  * and `ActionsService.isCompletionAllowed` (the `ActionDto.canParticipate`
  * wire field).
@@ -45,17 +45,39 @@ export function computeContractSignedAfterOnboardingStart(params: {
 }
 
 /**
- * Shared "is this user assigned?" rule behind both assignment variants:
- * dismissal, cohort membership, and the contract requirement — onboarding
- * actions need the first contract signed at/after the phase start; all others
- * need an active contract across the whole member-action window
- * (`deadlineDate: null` = open-ended).
+ * How strongly a user is held to an action.
+ *
+ * `Optional` is the mid-window joiner: in the cohort and holding a contract by
+ * the end of the member-action window, but without one across the whole of it.
+ * The action reaches their home page and they may complete it, but nothing
+ * holds them to it — no reminders, no suspension accounting, no missed
+ * deadline.
+ */
+export enum ActionAssignment {
+  Unassigned = "unassigned",
+  Optional = "optional",
+  Required = "required",
+}
+
+/** What the shared rule can decide without a clock. */
+enum CoreAssignment {
+  Unassigned = "unassigned",
+  /** In the cohort, but without a contract across the whole window. */
+  ContractGap = "contract_gap",
+  Required = "required",
+}
+
+/**
+ * Shared assignment rule behind every variant: dismissal, cohort membership,
+ * and the contract requirement — onboarding actions need the first contract
+ * signed at/after the phase start; all others need an active contract across
+ * the whole member-action window (`deadlineDate: null` = open-ended).
  *
  * NOTE: the dismissal exclusion still lives here for now; the target model
  * treats dismissal as an overlay, not part of assignment. It moves out when
  * `viewer.status` lands.
  */
-function computeIsAssignedCore(params: {
+function computeAssignmentCore(params: {
   /** Member-action phase start; also the onboarding join-timing reference. */
   eventDate: Date;
   deadlineDate: Date | null;
@@ -69,7 +91,7 @@ function computeIsAssignedCore(params: {
    */
   includeSuspended?: boolean;
   includeDismissed?: boolean;
-}): boolean {
+}): CoreAssignment {
   const {
     eventDate,
     deadlineDate,
@@ -82,52 +104,45 @@ function computeIsAssignedCore(params: {
   } = params;
 
   if (!includeDismissed && dismissed) {
-    return false;
+    return CoreAssignment.Unassigned;
   }
   if (!inCohort) {
-    return false;
+    return CoreAssignment.Unassigned;
   }
   if (onboarding) {
     return computeContractSignedAfterOnboardingStart({
       user,
       memberActionPhaseStart: eventDate,
-    });
+    })
+      ? CoreAssignment.Required
+      : CoreAssignment.Unassigned;
   }
-  return (
-    includeSuspended ||
+  return includeSuspended ||
     user.hasActiveContractInFullRange({
       startDate: eventDate,
       endDate: deadlineDate,
     })
-  );
+    ? CoreAssignment.Required
+    : CoreAssignment.ContractGap;
 }
 
-/**
- * Self-view "is this user assigned this action?" predicate — source of the
- * viewer's own `ActionDto.shouldParticipate` (the wire field keeps its legacy
- * name until the `viewer` object ships).
- *
- * Distinct from {@link computeIsAssignedFromCohortSet} (the event-recipient variant
- * driven by a precomputed cohort-member set, for notifications/roster). This one
- * consumes the full cohort-*expression* result (`computeIsInCohortExpression`)
- * as `inCohort`, and stays pure/sync so the caller controls when the DB-hitting
- * cohort evaluation runs. Both delegate to {@link computeIsAssignedCore}.
- */
-export function computeIsAssignedToAction(params: {
+type SelfViewParams = {
   action: Pick<Action, "events" | "memberActionPhase" | "onboarding">;
-  user: Pick<User, "contractEvents" | "hasActiveContractInFullRange"> | null;
+  user: Pick<
+    User,
+    "contractEvents" | "hasActiveContractInFullRange" | "hasActiveContractAt"
+  > | null;
   inCohort: boolean;
   dismissed: boolean;
-}): boolean {
+};
+
+function computeSelfViewCore(params: SelfViewParams): CoreAssignment {
   const { action, user, inCohort, dismissed } = params;
-  if (!user) {
-    return false;
-  }
   const { event, deadlineEvent } = action.memberActionPhase;
-  if (!event) {
-    return false;
+  if (!user || !event) {
+    return CoreAssignment.Unassigned;
   }
-  return computeIsAssignedCore({
+  return computeAssignmentCore({
     eventDate: event.date,
     deadlineDate: deadlineEvent?.date ?? null,
     inCohort,
@@ -135,6 +150,57 @@ export function computeIsAssignedToAction(params: {
     onboarding: action.onboarding,
     user,
   });
+}
+
+/**
+ * Self-view "how is this user assigned this action?" predicate — source of the
+ * viewer's own `ActionDto.shouldParticipate` and of `viewer.assigned` /
+ * `viewer.optional`.
+ *
+ * A contract that covers the window's end but not the whole window is the
+ * `Optional` case, once the phase has opened. Anchoring on the end rather than
+ * on `now` keeps actions that closed before the user ever signed `Unassigned`,
+ * so a new member's history doesn't fill with optional entries for actions
+ * they missed.
+ *
+ * Distinct from {@link computeIsAssignedFromCohortSet} (the event-recipient variant
+ * driven by a precomputed cohort-member set, for notifications/roster). This one
+ * consumes the full cohort-*expression* result (`computeIsInCohortExpression`)
+ * as `inCohort`, and stays pure/sync so the caller controls when the DB-hitting
+ * cohort evaluation runs. Both delegate to {@link computeAssignmentCore}.
+ */
+export function computeActionAssignment(
+  params: SelfViewParams & { now: Date },
+): ActionAssignment {
+  const { action, user, now } = params;
+  const core = computeSelfViewCore(params);
+  switch (core) {
+    case CoreAssignment.Required:
+      return ActionAssignment.Required;
+    case CoreAssignment.Unassigned:
+      return ActionAssignment.Unassigned;
+    case CoreAssignment.ContractGap: {
+      const { event, deadlineEvent } = action.memberActionPhase;
+      // Only once the phase has opened: the viewer copy for this case says the
+      // task has already been open.
+      return user &&
+        event &&
+        event.date <= now &&
+        user.hasActiveContractAt(deadlineEvent?.date ?? now)
+        ? ActionAssignment.Optional
+        : ActionAssignment.Unassigned;
+    }
+    default:
+      throw new Error(`unknown core assignment: ${core satisfies never}`);
+  }
+}
+
+/**
+ * {@link computeActionAssignment} narrowed to `Required`, for callers that
+ * must agree with the roster ({@link computeIsAssignedFromCohortSet}).
+ */
+export function computeIsRequiredForAction(params: SelfViewParams): boolean {
+  return computeSelfViewCore(params) === CoreAssignment.Required;
 }
 
 /**
@@ -318,11 +384,15 @@ export function computeIsTaggedOrInManualCohort(params: {
 }
 
 /**
- * Roster variant of the assignment predicate: is this user assigned, given a
- * precomputed cohort-member id set? Same rule as
- * {@link computeIsAssignedToAction} (cohort membership, dismissal, onboarding
+ * Roster variant of the assignment predicate: is this user *required* to do
+ * this action, given a precomputed cohort-member id set? Same rule as
+ * {@link computeActionAssignment} (cohort membership, dismissal, onboarding
  * rules, contract dates) but shaped for bulk evaluation over many users.
  * Runs per member-action event, so `eventDate` is the phase start.
+ *
+ * Deliberately narrower than `computeActionAssignment`: this roster drives
+ * reminders, suspension accounting and the participant counter, none of which
+ * a mid-window joiner belongs in, so a contract gap reads false here.
  */
 export function computeIsAssignedFromCohortSet(params: {
   eventDate: Date;
@@ -345,16 +415,18 @@ export function computeIsAssignedFromCohortSet(params: {
     includeDismissed,
   } = params;
 
-  return computeIsAssignedCore({
-    eventDate,
-    deadlineDate,
-    inCohort: cohortMemberIds.has(user.id),
-    dismissed: userDismissed,
-    onboarding,
-    user,
-    includeSuspended,
-    includeDismissed,
-  });
+  return (
+    computeAssignmentCore({
+      eventDate,
+      deadlineDate,
+      inCohort: cohortMemberIds.has(user.id),
+      dismissed: userDismissed,
+      onboarding,
+      user,
+      includeSuspended,
+      includeDismissed,
+    }) === CoreAssignment.Required
+  );
 }
 
 /**

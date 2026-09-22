@@ -5,8 +5,9 @@ import {
 } from "@alliance/common/actionActivity";
 import type { User } from "src/user/entities/user.entity";
 import {
+  ActionAssignment,
+  computeActionAssignment,
   computeContractSignedAfterOnboardingStart,
-  computeIsAssignedToAction,
   computeIsAwayDuringWindow,
   computeMemberActionAwayStatus,
   hasMemberActionStarted,
@@ -38,7 +39,8 @@ export type UserActionStatus = {
   /**
    * Is the viewer assigned this action? Cohort membership plus the contract
    * rule (onboarding → first contract signed at/after phase start; otherwise →
-   * active contract across the member-action window).
+   * a contract held at the end of the member-action window, which is
+   * `optional` where it didn't cover the whole window).
    *
    * Unlike the legacy `shouldParticipate` field, dismissal does NOT revoke
    * assignment — it's a view-only overlay (see `dismissed`).
@@ -106,6 +108,11 @@ export enum ViewerOptionalReason {
   /** The viewer's contract missed part of the member-action window. */
   ContractGap = "contract_gap",
 }
+
+/** Assigned as a pair, so the union's correlation survives the assignment. */
+type ViewerOptionality =
+  | { optional: boolean; optionalReason: null }
+  | { optional: true; optionalReason: ViewerOptionalReason };
 
 export type UserActionWithdrawal = {
   reason: WithdrawalOption;
@@ -175,6 +182,7 @@ export function resolveUserActionStatus(params: {
     User,
     | "contractEvents"
     | "hasActiveContractInFullRange"
+    | "hasActiveContractAt"
     | "awayRanges"
     | "isAwayAtAnyPointInRange"
     | "staff"
@@ -220,14 +228,21 @@ export function resolveUserActionStatus(params: {
     }
   }
 
-  const assigned = computeIsAssignedToAction({
+  const assignment = computeActionAssignment({
     action,
     user,
     inCohort,
     // Dismissal is an overlay, not an assignment input (unlike the legacy
     // `shouldParticipate` field, which still folds it in).
     dismissed: false,
+    now,
   });
+  const assigned = assignment !== ActionAssignment.Unassigned;
+  const optionality: ViewerOptionality = action.optional
+    ? { optional: true, optionalReason: null }
+    : assignment === ActionAssignment.Optional
+      ? { optional: true, optionalReason: ViewerOptionalReason.ContractGap }
+      : { optional: false, optionalReason: null };
 
   const awayDuringWindow = computeIsAwayDuringWindow({ action, user });
 
@@ -245,8 +260,7 @@ export function resolveUserActionStatus(params: {
 
   return {
     assigned,
-    optional: action.optional,
-    optionalReason: null,
+    ...optionality,
     canComplete: computeCanCompleteAction({ action, user, inCohort }),
     relation,
     withdrawal,
@@ -259,7 +273,7 @@ export function resolveUserActionStatus(params: {
     display: resolveUserActionPillStatus({
       isJoined: isParticipant,
       isAway: inCohort && awayDuringWindow,
-      optional: action.optional,
+      optional: optionality.optional,
       deadlinePassed,
       activityStatus,
     }),

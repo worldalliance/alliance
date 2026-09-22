@@ -94,9 +94,11 @@ import {
   userActionNotifsEnabled_text,
 } from "src/user/user.utils";
 import {
+  ActionAssignment,
+  computeActionAssignment,
   computeIsAssignedAndPresent,
-  computeIsAssignedToAction,
   computeIsAwayDuringWindow,
+  computeIsRequiredForAction,
   computeIsTaggedOrInManualCohort,
   computeMemberActionAwayStatus,
 } from "src/utils/action-user";
@@ -956,12 +958,14 @@ export class ActionsService {
           user,
           session,
         });
-        const shouldParticipate = computeIsAssignedToAction({
-          action,
-          user,
-          inCohort,
-          dismissed: actionsDismissed.has(action.id),
-        });
+        const shouldParticipate =
+          computeActionAssignment({
+            action,
+            user,
+            inCohort,
+            dismissed: actionsDismissed.has(action.id),
+            now,
+          }) !== ActionAssignment.Unassigned;
 
         if (action.followUpForms) {
           action.followUpForms = await this.filterFollowUpFormsByCohort({
@@ -1208,12 +1212,14 @@ export class ActionsService {
       canParticipate: user
         ? computeCanCompleteAction({ action, user, inCohort })
         : false,
-      shouldParticipate: computeIsAssignedToAction({
-        action,
-        user,
-        inCohort,
-        dismissed,
-      }),
+      shouldParticipate:
+        computeActionAssignment({
+          action,
+          user,
+          inCohort,
+          dismissed,
+          now,
+        }) !== ActionAssignment.Unassigned,
       userRelation: user
         ? resolveUserActionRelation({
             activities: new CachedFilter(activities),
@@ -3411,6 +3417,9 @@ export class ActionsService {
         (action) =>
           action.status !== ActionStatus.Draft &&
           action.shouldParticipate &&
+          // Action-wide optional tasks stay; reminder groups drop those
+          // through `excludeOptionalActions`.
+          !(action.viewer?.optional && !action.optional) &&
           action.userRelation !== UserActionRelation.Completed,
       )
       .sort((a, b) => b.priority - a.priority);
@@ -5146,8 +5155,10 @@ export class ActionsService {
         // isAwayAtAnyPointInRange -> false), so every
         // computeIsInCohortExpression caller has to load them. `dismissed:
         // false` because dismissal is an overlay, not an assignment input
-        // (same as resolveUserActionStatus).
-        return computeIsAssignedToAction({
+        // (same as resolveUserActionStatus). Required only, again to agree
+        // with the roster: a mid-window joiner is assigned but not held to
+        // the action, so they don't belong in a cohort of its members.
+        return computeIsRequiredForAction({
           action,
           user,
           inCohort,

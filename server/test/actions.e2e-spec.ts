@@ -1418,7 +1418,7 @@ describe("Actions (e2e)", () => {
       await userRepo.delete(leaderOnlyUser.id);
     });
 
-    it("excludes shouldComplete flag for users without eligible contracts when not an onboarding action", async () => {
+    it("excludes shouldComplete flag for users without a contract when not an onboarding action, and assigns a mid-window signer optionally", async () => {
       const { action, event } = await createPublishedAction(
         "Contract Restricted Action",
         {
@@ -1495,12 +1495,54 @@ describe("Actions (e2e)", () => {
       expect(unsignedAction).toBeDefined();
       expect(unsignedAction!.shouldParticipate).toBe(false);
       expect(lateAction).toBeDefined();
-      expect(lateAction!.shouldParticipate).toBe(false);
+      expect(lateAction!.shouldParticipate).toBe(true);
+      expect(lateAction!.viewer?.optional).toBe(true);
+      expect(lateAction!.viewer?.optionalReason).toBe("contract_gap");
       expect(eligibleAction).toBeDefined();
       expect(eligibleAction!.shouldParticipate).toBe(true);
+      expect(eligibleAction!.viewer?.optional).toBe(false);
 
       await actionRepo.delete(action.id);
       await userRepo.delete(unsignedUser.id);
+      await userRepo.delete(lateSigner.id);
+      await userRepo.delete(eligibleUser.id);
+    });
+
+    it("leaves an action optional only for a mid-window signer out of their reminder task list", async () => {
+      const { action, event } = await createPublishedAction(
+        "Reminder Scope Action",
+        {
+          status: ActionStatus.MemberAction,
+          actionOverrides: {},
+        },
+      );
+
+      const signedAt = async (label: string, offsetMs: number) =>
+        userService.create({
+          email: `${label}-${Date.now()}@example.com`,
+          password: "Password123!",
+          name: label,
+          contractEvents: [
+            {
+              type: ContractEventType.SIGNED,
+              date: new Date(event.date.getTime() + offsetMs),
+              automatic: false,
+              contractId: ctx.defaultContractId,
+            },
+          ],
+          tags: [ctx.defaultTag],
+        });
+      const lateSigner = await signedAt("late", 1000);
+      const eligibleUser = await signedAt("eligible", -1000);
+
+      const actionsService = ctx.app.get(ActionsService);
+      const taskIds = async (userId: number) =>
+        (await actionsService.findUncompletedTasks(userId)).map((a) => a.id);
+
+      expect(await taskIds(lateSigner.id)).not.toContain(action.id);
+      expect(await taskIds(eligibleUser.id)).toContain(action.id);
+
+      await actionRepo.delete(action.id);
       await userRepo.delete(lateSigner.id);
       await userRepo.delete(eligibleUser.id);
     });

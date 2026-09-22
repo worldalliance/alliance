@@ -2,38 +2,51 @@ import { millisecondsInSecond } from "date-fns/constants";
 import { ActionStatus } from "../actions/entities/action-event.entity";
 import type { User } from "../user/entities/user.entity";
 import {
+  ActionAssignment,
+  computeActionAssignment,
   computeContractSignedAfterOnboardingStart,
   computeIsAssignedFromCohortSet,
-  computeIsAssignedToAction,
+  computeIsRequiredForAction,
 } from "./action-user";
 
-type Params = Parameters<typeof computeIsAssignedToAction>[0];
+type Params = Parameters<typeof computeActionAssignment>[0];
 
 const PHASE_START = new Date("2020-01-01");
+const DEADLINE = new Date("2020-02-01");
+const NOW = new Date("2020-01-15");
 
-function userWithContractSignedAt(
-  date: Date | null,
-): Pick<User, "contractEvents" | "hasActiveContractInFullRange"> {
+type ContractUser = Pick<
+  User,
+  "contractEvents" | "hasActiveContractInFullRange" | "hasActiveContractAt"
+>;
+
+function userWithContractSignedAt(date: Date | null): ContractUser {
   return {
     contractEvents: date ? [{ date }] : [],
     hasActiveContractInFullRange: () => false,
-  } as unknown as Pick<User, "contractEvents" | "hasActiveContractInFullRange">;
+    hasActiveContractAt: () => false,
+  } as unknown as ContractUser;
 }
 
 function makeAction(
   opts: {
     hasMemberActionEvent?: boolean;
     onboarding?: boolean;
+    openEnded?: boolean;
   } = {},
 ): Params["action"] {
-  const { hasMemberActionEvent = true, onboarding = false } = opts;
+  const {
+    hasMemberActionEvent = true,
+    onboarding = false,
+    openEnded = false,
+  } = opts;
   return {
     events: hasMemberActionEvent
-      ? [{ newStatus: ActionStatus.MemberAction, date: new Date("2020-01-01") }]
+      ? [{ newStatus: ActionStatus.MemberAction, date: PHASE_START }]
       : [
           {
             newStatus: ActionStatus.OfficeAction,
-            date: new Date("2020-01-01"),
+            date: PHASE_START,
           },
         ],
     onboarding,
@@ -41,8 +54,8 @@ function makeAction(
     // from `events`: no member-action event means an empty phase.
     memberActionPhase: hasMemberActionEvent
       ? {
-          event: { date: new Date("2020-01-01") },
-          deadlineEvent: { date: new Date("2020-02-01") },
+          event: { date: PHASE_START },
+          deadlineEvent: openEnded ? null : { date: DEADLINE },
         }
       : { event: null, deadlineEvent: null },
   } as unknown as Params["action"];
@@ -52,6 +65,15 @@ function makeUser(hasActiveContract: boolean): Params["user"] {
   return {
     contractEvents: [],
     hasActiveContractInFullRange: () => hasActiveContract,
+    hasActiveContractAt: () => hasActiveContract,
+  } as unknown as Params["user"];
+}
+
+function makeMidWindowJoiner(atWindowEnd = true): Params["user"] {
+  return {
+    contractEvents: [],
+    hasActiveContractInFullRange: () => false,
+    hasActiveContractAt: () => atWindowEnd,
   } as unknown as Params["user"];
 }
 
@@ -61,59 +83,120 @@ function input(overrides: Partial<Params> = {}): Params {
     user: makeUser(true),
     inCohort: true,
     dismissed: false,
+    now: NOW,
     ...overrides,
   };
 }
 
-describe("computeIsAssignedToAction", () => {
-  it("participates when in cohort, with a contract active over the member action", () => {
-    expect(computeIsAssignedToAction(input())).toBe(true);
+describe("computeActionAssignment", () => {
+  it("is required when in cohort, with a contract active over the member action", () => {
+    expect(computeActionAssignment(input())).toBe(ActionAssignment.Required);
   });
 
-  it("does not participate for a logged-out viewer", () => {
-    expect(computeIsAssignedToAction(input({ user: null }))).toBe(false);
+  it("is unassigned for a logged-out viewer", () => {
+    expect(computeActionAssignment(input({ user: null }))).toBe(
+      ActionAssignment.Unassigned,
+    );
   });
 
-  it("does not participate when the action has no member-action event", () => {
+  it("is unassigned when the action has no member-action event", () => {
     expect(
-      computeIsAssignedToAction(
+      computeActionAssignment(
         input({ action: makeAction({ hasMemberActionEvent: false }) }),
       ),
-    ).toBe(false);
+    ).toBe(ActionAssignment.Unassigned);
   });
 
-  it("does not participate when the user has dismissed the action", () => {
-    expect(computeIsAssignedToAction(input({ dismissed: true }))).toBe(false);
+  it("is unassigned when the user has dismissed the action", () => {
+    expect(computeActionAssignment(input({ dismissed: true }))).toBe(
+      ActionAssignment.Unassigned,
+    );
   });
 
-  it("does not participate when the user is not in the cohort", () => {
-    expect(computeIsAssignedToAction(input({ inCohort: false }))).toBe(false);
+  it("is unassigned when the user is not in the cohort", () => {
+    expect(computeActionAssignment(input({ inCohort: false }))).toBe(
+      ActionAssignment.Unassigned,
+    );
   });
 
   describe("contract requirement", () => {
-    it("does not participate without an active contract", () => {
-      expect(computeIsAssignedToAction(input({ user: makeUser(false) }))).toBe(
-        false,
+    it("is unassigned without any active contract", () => {
+      expect(computeActionAssignment(input({ user: makeUser(false) }))).toBe(
+        ActionAssignment.Unassigned,
       );
     });
 
-    it("participates without an active contract for an onboarding action", () => {
+    it("is required without an active contract for an onboarding action", () => {
       expect(
-        computeIsAssignedToAction(
+        computeActionAssignment(
           input({
             action: makeAction({ onboarding: true }),
             user: makeUser(false),
           }),
         ),
-      ).toBe(true);
+      ).toBe(ActionAssignment.Required);
     });
   });
 
-  describe("onboarding join timing", () => {
-    // Excluded even when in the cohort: onboarding targets new members only.
-    it("excludes an existing member who joined before the phase began", () => {
+  describe("mid-window joiner", () => {
+    it("is optional when the contract covers the deadline but not the window", () => {
       expect(
-        computeIsAssignedToAction(
+        computeActionAssignment(input({ user: makeMidWindowJoiner() })),
+      ).toBe(ActionAssignment.Optional);
+    });
+
+    it("is unassigned when the contract does not reach the deadline", () => {
+      expect(
+        computeActionAssignment(input({ user: makeMidWindowJoiner(false) })),
+      ).toBe(ActionAssignment.Unassigned);
+    });
+
+    it("anchors an open-ended window on now", () => {
+      const atCalls: Date[] = [];
+      const user = {
+        contractEvents: [],
+        hasActiveContractInFullRange: () => false,
+        hasActiveContractAt: (date: Date) => {
+          atCalls.push(date);
+          return true;
+        },
+      } as unknown as Params["user"];
+      expect(
+        computeActionAssignment(
+          input({ action: makeAction({ openEnded: true }), user }),
+        ),
+      ).toBe(ActionAssignment.Optional);
+      expect(atCalls).toEqual([NOW]);
+    });
+
+    it("anchors a closed window on the deadline, not now", () => {
+      const atCalls: Date[] = [];
+      const user = {
+        contractEvents: [],
+        hasActiveContractInFullRange: () => false,
+        hasActiveContractAt: (date: Date) => {
+          atCalls.push(date);
+          return true;
+        },
+      } as unknown as Params["user"];
+      computeActionAssignment(input({ user }));
+      expect(atCalls).toEqual([DEADLINE]);
+    });
+
+    it("stays unassigned before the phase opens", () => {
+      expect(
+        computeActionAssignment(
+          input({
+            user: makeMidWindowJoiner(),
+            now: new Date(PHASE_START.getTime() - millisecondsInSecond),
+          }),
+        ),
+      ).toBe(ActionAssignment.Unassigned);
+    });
+
+    it("stays unassigned for an onboarding action", () => {
+      expect(
+        computeActionAssignment(
           input({
             action: makeAction({ onboarding: true }),
             user: userWithContractSignedAt(
@@ -121,12 +204,28 @@ describe("computeIsAssignedToAction", () => {
             ),
           }),
         ),
-      ).toBe(false);
+      ).toBe(ActionAssignment.Unassigned);
+    });
+  });
+
+  describe("onboarding join timing", () => {
+    // Excluded even when in the cohort: onboarding targets new members only.
+    it("excludes an existing member who joined before the phase began", () => {
+      expect(
+        computeActionAssignment(
+          input({
+            action: makeAction({ onboarding: true }),
+            user: userWithContractSignedAt(
+              new Date(PHASE_START.getTime() - millisecondsInSecond),
+            ),
+          }),
+        ),
+      ).toBe(ActionAssignment.Unassigned);
     });
 
     it("includes a new member who joined at/after the phase began", () => {
       expect(
-        computeIsAssignedToAction(
+        computeActionAssignment(
           input({
             action: makeAction({ onboarding: true }),
             user: userWithContractSignedAt(
@@ -134,8 +233,20 @@ describe("computeIsAssignedToAction", () => {
             ),
           }),
         ),
-      ).toBe(true);
+      ).toBe(ActionAssignment.Required);
     });
+  });
+});
+
+describe("computeIsRequiredForAction", () => {
+  it("is true when the contract covers the whole window", () => {
+    expect(computeIsRequiredForAction(input())).toBe(true);
+  });
+
+  it("is false for a mid-window joiner", () => {
+    expect(
+      computeIsRequiredForAction(input({ user: makeMidWindowJoiner() })),
+    ).toBe(false);
   });
 });
 
@@ -145,6 +256,7 @@ describe("computeIsAssignedFromCohortSet", () => {
   function makePopulationUser(opts: {
     id?: number;
     hasContractInFullRange?: boolean;
+    hasContractAtWindowEnd?: boolean;
     contractSignedAt?: Date | null;
   }): {
     user: User;
@@ -153,6 +265,7 @@ describe("computeIsAssignedFromCohortSet", () => {
     const {
       id = 1,
       hasContractInFullRange = true,
+      hasContractAtWindowEnd = hasContractInFullRange,
       contractSignedAt = null,
     } = opts;
     const fullRangeCalls: { startDate?: Date | null; endDate?: Date | null }[] =
@@ -167,6 +280,7 @@ describe("computeIsAssignedFromCohortSet", () => {
         fullRangeCalls.push(range);
         return hasContractInFullRange;
       },
+      hasActiveContractAt: () => hasContractAtWindowEnd,
     } as unknown as User;
     return { user, fullRangeCalls };
   }
@@ -176,7 +290,7 @@ describe("computeIsAssignedFromCohortSet", () => {
   ): PopulationParams {
     return {
       eventDate: PHASE_START,
-      deadlineDate: new Date("2020-02-01"),
+      deadlineDate: DEADLINE,
       cohortMemberIds: new Set([1]),
       user: makePopulationUser({}).user,
       userDismissed: false,
@@ -218,7 +332,7 @@ describe("computeIsAssignedFromCohortSet", () => {
   it("still requires the full-window contract when the deadline is null", () => {
     // Regression: a null deadline used to skip the full-range check, so
     // lapsed-contract users were included here but excluded by the self-view
-    // predicate (computeIsAssignedToAction).
+    // predicate (computeActionAssignment).
     const { user, fullRangeCalls } = makePopulationUser({
       hasContractInFullRange: false,
     });
@@ -245,6 +359,16 @@ describe("computeIsAssignedFromCohortSet", () => {
       ),
     ).toBe(true);
     expect(fullRangeCalls).toEqual([]);
+  });
+
+  it("excludes a mid-window joiner the self-view predicate calls optional", () => {
+    const { user } = makePopulationUser({
+      hasContractInFullRange: false,
+      hasContractAtWindowEnd: true,
+    });
+    expect(computeIsAssignedFromCohortSet(populationInput({ user }))).toBe(
+      false,
+    );
   });
 
   describe("onboarding join timing", () => {

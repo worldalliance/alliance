@@ -186,6 +186,55 @@ describe("resolveUserActionStatus", () => {
     expect(status.display).toBe(UserActionRelationPillStatus.NotRequired);
   });
 
+  describe("mid-window joiner", () => {
+    const joinedMidWindow = () =>
+      makeUser({
+        contractEvents: [
+          signed(new Date(PHASE_START.getTime() + millisecondsInDay)),
+        ],
+      });
+
+    it("assigns the in-progress action as optional, naming the reason", () => {
+      const status = resolve({ user: joinedMidWindow() });
+      expect(status.assigned).toBe(true);
+      expect(status.optional).toBe(true);
+      expect(status.optionalReason).toBe(ViewerOptionalReason.ContractGap);
+      expect(status.canComplete).toBe(true);
+      expect(status.display).toBe(UserActionRelationPillStatus.OptionalTask);
+    });
+
+    it("leaves them optional rather than missing the deadline once it passes", () => {
+      const status = resolve({
+        user: joinedMidWindow(),
+        now: new Date(DEADLINE.getTime() + millisecondsInDay),
+      });
+      expect(status.deadlinePassed).toBe(true);
+      expect(status.display).toBe(UserActionRelationPillStatus.OptionalTask);
+    });
+
+    it("does not reach an action that closed before they signed", () => {
+      const status = resolve({
+        user: makeUser({
+          contractEvents: [
+            signed(new Date(DEADLINE.getTime() + millisecondsInDay)),
+          ],
+        }),
+      });
+      expect(status.assigned).toBe(false);
+      expect(status.optional).toBe(false);
+      expect(status.optionalReason).toBeNull();
+    });
+
+    it("reports no reason on an action that is optional for everyone", () => {
+      const status = resolve({
+        action: makeAction({ optional: true }),
+        user: joinedMidWindow(),
+      });
+      expect(status.optional).toBe(true);
+      expect(status.optionalReason).toBeNull();
+    });
+  });
+
   it("blocks both assignment and completion when an onboarding action predates the first contract", () => {
     const status = resolve({ action: makeAction({ onboarding: true }) });
     expect(status.assigned).toBe(false);
