@@ -33,7 +33,6 @@ import { evaluateVariable } from "@alliance/common/forms/variables";
 import {
   isElementCurrentlyVisible,
   isVisibleInSavedResponse,
-  replaysFromSavedResponse,
   stripHiddenListCells,
   type VisibilityValidatorResults,
 } from "@alliance/common/forms/visibility";
@@ -273,9 +272,12 @@ export const resolveOutputItems = ({
   const answers = stripHiddenListCells({
     pages: schema.pages,
     answers: storedAnswers,
-    extras: { ...context, ...conditionLookups },
-    canJudge: (subField) =>
-      replaysFromSavedResponse({ element: subField, ...savedResponse }),
+    isVisible: (subField, rowData) =>
+      isVisibleInSavedResponse({
+        element: subField,
+        data: rowData,
+        ...savedResponse,
+      }),
   });
 
   const isAnswerShown = (fieldId: string): boolean => {

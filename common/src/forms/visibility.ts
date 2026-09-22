@@ -271,8 +271,8 @@ type SavedResponseContext = {
 };
 
 function savedResponseReplay(
-  context: SavedResponseContext & { data?: Record<string, FormValue> },
-) {
+  context: SavedResponseContext & { data: Record<string, FormValue> },
+): (cond: Condition) => boolean {
   const {
     deviceType,
     visibilityValidatorResults,
@@ -293,9 +293,8 @@ function savedResponseReplay(
         const referenced = fieldLookup.get(cond.when);
         if (!referenced || elementReplays(referenced)) return true;
         return (
-          data !== undefined &&
           evaluateValueBasedCondition(cond, data[cond.when]) ===
-            evaluateValueBasedCondition(cond, undefined)
+          evaluateValueBasedCondition(cond, undefined)
         );
       }
       case "deviceType":
@@ -332,28 +331,17 @@ function savedResponseReplay(
     return replays;
   };
 
-  return { conditionReplays, elementReplays };
-}
-
-/**
- * Whether a saved response carries everything `element`'s visibility reads, so
- * re-evaluating it gives back the verdict the respondent saw. A response
- * records its own answers, and may record the device it came from and the
- * verdict each visibility validator returned; one saved by an older client
- * records neither. It never records the respondent's account state or another
- * form's answers. A condition on another field also reads whether that field is
- * visible, so that field has to replay too.
- */
-export function replaysFromSavedResponse(
-  params: SavedResponseContext & { element: AnyField | ListSubField },
-): boolean {
-  return savedResponseReplay(params).elementReplays(params.element);
+  return conditionReplays;
 }
 
 /**
  * Whether `element` showed when the response was saved, as far as the response
- * can tell. A condition it can't replay (see `replaysFromSavedResponse`) could
- * have gone either way, so the element counts as hidden only where the
+ * can tell. A response records its own answers, and may record the device it
+ * came from and the verdict each visibility validator returned; one saved by an
+ * older client records neither. It never records the respondent's account
+ * state or another form's answers. A condition on something it doesn't record,
+ * or on a field whose own visibility reads such a thing, can't be replayed and
+ * could have gone either way, so the element counts as hidden only where the
  * conditions it can replay rule it out on their own. A condition on a field
  * that doesn't replay still counts where that field's answer and no answer
  * give the same verdict, since a hidden field reads as unanswered.
@@ -365,7 +353,7 @@ export function isVisibleInSavedResponse(
   },
 ): boolean {
   const { element, data, groupByFieldId, pageByFieldId } = params;
-  const { conditionReplays } = savedResponseReplay(params);
+  const conditionReplays = savedResponseReplay(params);
   const extras: ConditionExtras = {
     deviceType: params.deviceType ?? "desktop",
     visibilityValidatorResults: params.visibilityValidatorResults,
@@ -585,7 +573,12 @@ export function stripHiddenAnswers(
     const withoutHiddenCells = stripHiddenListCells({
       pages,
       answers: data,
-      extras: { ...extras, fieldLookup, groupByFieldId },
+      isVisible: (subField, rowData) =>
+        isElementCurrentlyVisible(subField, rowData, {
+          ...extras,
+          fieldLookup,
+          groupByFieldId,
+        }),
     });
     if (withoutHiddenCells === data) {
       return data;
@@ -601,15 +594,16 @@ export function stripHiddenAnswers(
 export function stripHiddenListCells(params: {
   pages: Page[];
   answers: Record<string, FormValue>;
-  extras: ConditionExtras & { readOnly?: boolean };
   /**
-   * The sub-fields this caller's context can judge; omitted, it judges every
-   * one. A caller missing what a condition reads has to leave that cell alone,
-   * or it strips an answer the respondent gave in plain sight.
+   * Whether a row shows `subField`, given the form's answers with the row's
+   * cells on top.
    */
-  canJudge?: (subField: ListSubField) => boolean;
+  isVisible: (
+    subField: ListSubField,
+    rowData: Record<string, FormValue>,
+  ) => boolean;
 }): Record<string, FormValue> {
-  const { pages, answers, extras, canJudge } = params;
+  const { pages, answers, isVisible } = params;
   let stripped = answers;
   for (const page of pages) {
     for (const field of flattenPageItems(page.fields)) {
@@ -617,14 +611,13 @@ export function stripHiddenListCells(params: {
       const rows = asCards(answers[field.id]);
       if (!rows) continue;
       const subFields = field.fields ?? [];
-      const judged = canJudge ? subFields.filter(canJudge) : subFields;
       let changed = false;
       const nextRows = rows.map((row) => {
         const nextRow = stripHiddenRowCells({
-          subFields: judged,
+          subFields,
           row,
           data: answers,
-          extras,
+          isVisible,
         });
         if (nextRow !== row) changed = true;
         return nextRow;
@@ -639,14 +632,15 @@ function stripHiddenRowCells(params: {
   subFields: ListSubField[];
   row: Record<string, FormValue>;
   data: Record<string, FormValue>;
-  extras: ConditionExtras & { readOnly?: boolean };
+  isVisible: (
+    subField: ListSubField,
+    rowData: Record<string, FormValue>,
+  ) => boolean;
 }): Record<string, FormValue> {
-  const { subFields, row, data, extras } = params;
-  const visibleIds = new Set(
-    visibleListSubFields({ subFields, data, row, extras }).map((sub) => sub.id),
-  );
+  const { subFields, row, data, isVisible } = params;
+  const rowData = listRowData({ data, row });
   const hiddenIds = subFields
-    .filter((sub) => sub.id in row && !visibleIds.has(sub.id))
+    .filter((sub) => sub.id in row && !isVisible(sub, rowData))
     .map((sub) => sub.id);
   if (hiddenIds.length === 0) return row;
   const next = { ...row };

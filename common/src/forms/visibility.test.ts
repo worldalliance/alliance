@@ -9,7 +9,6 @@ import {
   isPageCurrentlyVisible,
   isVisibleInSavedResponse,
   listRowData,
-  replaysFromSavedResponse,
   stripHiddenAnswers,
   stripHiddenListCells,
   visibleListSubFields,
@@ -666,172 +665,38 @@ describe("stripHiddenListCells", () => {
     people: [{ note: "stale", city: "stale" }],
   };
 
-  it("leaves a sub-field the caller says it can't judge", () => {
+  it("strips a cell only where the caller says its row hides it", () => {
     expect(
       stripHiddenListCells({
         pages,
         answers,
-        extras,
-        canJudge: (subField) => subField.id !== "city",
+        isVisible: (subField) => subField.id !== "note",
       }),
     ).toEqual({ gate: "no", people: [{ city: "stale" }] });
   });
 
-  it("judges every sub-field without a rule saying otherwise", () => {
-    expect(stripHiddenListCells({ pages, answers, extras })).toEqual({
+  it("hands the caller the form's answers with the row's cells on top", () => {
+    const seen: Record<string, FormValue>[] = [];
+    stripHiddenListCells({
+      pages,
+      answers,
+      isVisible: (_subField, rowData) => {
+        seen.push(rowData);
+        return true;
+      },
+    });
+    expect(seen[0]).toEqual({
       gate: "no",
-      people: [{}],
+      people: [{ note: "stale", city: "stale" }],
+      note: "stale",
+      city: "stale",
     });
   });
 
-  it("returns the same answers when the caller can judge nothing", () => {
+  it("returns the same answers when the caller hides nothing", () => {
     expect(
-      stripHiddenListCells({ pages, answers, extras, canJudge: () => false }),
+      stripHiddenListCells({ pages, answers, isVisible: () => true }),
     ).toBe(answers);
-  });
-});
-
-describe("replaysFromSavedResponse", () => {
-  const replays = (
-    conditions: Record<string, Condition>,
-    response: Partial<Parameters<typeof replaysFromSavedResponse>[0]> = {},
-  ) =>
-    replaysFromSavedResponse({
-      element: textField("sub", { visibleIfFormula: formula(conditions) }),
-      deviceType: "desktop",
-      visibilityValidatorResults: {},
-      fieldLookup: new Map(),
-      groupByFieldId: new Map(),
-      pageByFieldId: new Map(),
-      ...response,
-    });
-
-  it("replays a condition on the response's own answers", () => {
-    expect(
-      replays({ c1: { kind: "equals", when: "gate", equals: "yes" } }),
-    ).toBe(true);
-  });
-
-  it("refuses a condition on another form's answers", () => {
-    expect(
-      replays({
-        c1: { kind: "equals", when: "gate", equals: "yes", sourceFormId: 7 },
-      }),
-    ).toBe(false);
-  });
-
-  it("refuses a condition on the respondent's account", () => {
-    expect(replays({ c1: { kind: "userHasCity", userHasCity: true } })).toBe(
-      false,
-    );
-  });
-
-  it("replays a validator condition whose verdict the response recorded", () => {
-    expect(
-      replays(
-        { c1: { kind: "validator", validatorId: 7 } },
-        { visibilityValidatorResults: { 7: false } },
-      ),
-    ).toBe(true);
-  });
-
-  it("refuses a validator condition whose verdict the response is missing", () => {
-    expect(replays({ c1: { kind: "validator", validatorId: 7 } })).toBe(false);
-  });
-
-  it("refuses a device condition when the response recorded no device", () => {
-    expect(
-      replays(
-        { c1: { kind: "deviceType", deviceType: ["mobile"] } },
-        { deviceType: undefined },
-      ),
-    ).toBe(false);
-  });
-
-  it("refuses a formula the moment one condition doesn't replay", () => {
-    expect(
-      replays({
-        c1: { kind: "equals", when: "gate", equals: "yes" },
-        c2: { kind: "validator", validatorId: 7 },
-      }),
-    ).toBe(false);
-  });
-
-  it("replays a sub-field with no formula at all", () => {
-    expect(replays({})).toBe(true);
-  });
-
-  const onGate = {
-    c1: { kind: "equals", when: "gate", equals: "yes" },
-  } as const;
-  const lookupWithGate = (gate: TextField) => new Map([["gate", gate]]);
-
-  it("refuses a condition on a field whose own visibility doesn't replay", () => {
-    const gate = textField("gate", {
-      visibleIfFormula: formula({
-        c1: { kind: "deviceType", deviceType: ["mobile"] },
-      }),
-    });
-    expect(
-      replays(onGate, {
-        deviceType: undefined,
-        fieldLookup: lookupWithGate(gate),
-      }),
-    ).toBe(false);
-  });
-
-  it("replays a condition on a field whose own visibility replays", () => {
-    const gate = textField("gate", {
-      visibleIfFormula: formula({
-        c1: { kind: "hasValue", when: "other", hasValue: true },
-      }),
-    });
-    expect(replays(onGate, { fieldLookup: lookupWithGate(gate) })).toBe(true);
-  });
-
-  it("refuses a field whose group doesn't replay", () => {
-    const group: FieldGroup = {
-      id: "g1",
-      type: "group",
-      kind: "group",
-      fields: [],
-      visibleIfFormula: formula({
-        c1: { kind: "userHasCity", userHasCity: true },
-      }),
-    };
-    expect(replays({}, { groupByFieldId: new Map([["sub", group]]) })).toBe(
-      false,
-    );
-  });
-
-  it("refuses a field whose page doesn't replay", () => {
-    const page: Page = {
-      id: "p1",
-      fields: [],
-      visibleIfFormula: formula({
-        c1: { kind: "userHasCity", userHasCity: true },
-      }),
-    };
-    expect(replays({}, { pageByFieldId: new Map([["sub", page]]) })).toBe(
-      false,
-    );
-  });
-
-  it("replays fields whose conditions reference each other", () => {
-    const gate = textField("gate", {
-      visibleIfFormula: formula({
-        c1: { kind: "equals", when: "sub", equals: "yes" },
-      }),
-    });
-    const sub = textField("sub", { visibleIfFormula: formula(onGate) });
-    expect(
-      replays(onGate, {
-        fieldLookup: new Map([
-          ["gate", gate],
-          ["sub", sub],
-        ]),
-      }),
-    ).toBe(true);
   });
 });
 
@@ -912,6 +777,72 @@ describe("isVisibleInSavedResponse", () => {
         ),
       ).toBe(true);
     });
+  });
+
+  it("shows an element a condition on another form's answers could have shown", () => {
+    expect(visible(formula({ c1: { ...gateIsYes, sourceFormId: 7 } }))).toBe(
+      true,
+    );
+  });
+
+  it("hides an element a validator verdict the response recorded rules out", () => {
+    expect(
+      visible(formula({ c1: { kind: "validator", validatorId: 7 } }), {
+        visibilityValidatorResults: { 7: false },
+      }),
+    ).toBe(false);
+  });
+
+  it("hides an element the device the response recorded rules out", () => {
+    expect(
+      visible(formula({ c1: { kind: "deviceType", deviceType: ["mobile"] } })),
+    ).toBe(false);
+  });
+
+  const gateIsEmpty = formula({
+    c1: { kind: "hasValue", when: "gate", hasValue: false },
+  });
+
+  it("hides an element a field's answer rules out when that field's own visibility replays", () => {
+    expect(
+      visible(gateIsEmpty, {
+        data: { gate: "no", other: "x" },
+        fieldLookup: new Map([
+          [
+            "gate",
+            textField("gate", {
+              visibleIfFormula: formula({
+                c1: { kind: "hasValue", when: "other", hasValue: true },
+              }),
+            }),
+          ],
+        ]),
+      }),
+    ).toBe(false);
+  });
+
+  it("replays through fields whose conditions reference each other", () => {
+    expect(
+      visible(gateIsEmpty, {
+        data: { gate: "yes", other: "yes" },
+        fieldLookup: new Map([
+          [
+            "gate",
+            textField("gate", {
+              visibleIfFormula: formula({
+                c1: { kind: "equals", when: "other", equals: "yes" },
+              }),
+            }),
+          ],
+          [
+            "other",
+            textField("other", {
+              visibleIfFormula: formula({ c1: gateIsYes }),
+            }),
+          ],
+        ]),
+      }),
+    ).toBe(false);
   });
 
   it("reads a device the response didn't record as unknown", () => {

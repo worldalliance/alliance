@@ -682,4 +682,27 @@ describe("resolveOutputItems and conditions the response partly replays", () => 
       ),
     ).toEqual([]);
   });
+
+  it("drops a cell its replayable conditions rule out", () => {
+    const [item] = resolveBlock(
+      [
+        {
+          id: "list",
+          type: "input",
+          kind: "list",
+          label: "Items",
+          fields: [
+            numberField("weight", "Weight"),
+            {
+              ...numberField("extra", "Extra"),
+              visibleIfFormula: ruledOutByWeight,
+            },
+          ],
+        },
+      ],
+      { list: [{ weight: 2, extra: 6 }] },
+    );
+    if (item.type !== "field") throw new Error("expected a field item");
+    expect(item.value).toEqual([{ weight: 2 }]);
+  });
 });
