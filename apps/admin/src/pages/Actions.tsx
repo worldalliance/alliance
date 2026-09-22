@@ -155,15 +155,16 @@ const ActionsList: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col h-screen p-5 gap-y-3">
       <title>Admin panel</title>
       <ActionTimeline
         actions={actions.filter(
           (a) => !a.archived && !a.onboarding && a.status !== "completed",
         )}
-        className="h-full"
+        mostRecentFirst
+        className="flex-shrink-0 max-h-[50vh] border border-zinc-200"
       />
-      <div className="flex items-center gap-x-2 px-5 my-4">
+      <div className="flex items-center gap-x-2 flex-shrink-0">
         <p className="font-bold ">All actions</p>
         <Button
           onClick={() => navigate("/actions/new")}
@@ -180,11 +181,11 @@ const ActionsList: React.FC = () => {
           New suite
         </Button>
       </div>
-      <p className="text-sm text-zinc-500 px-5">
+      <p className="text-sm text-zinc-500 flex-shrink-0">
         Grouped by suite and ordered by latest event (most recent first)
       </p>
 
-      <div className="space-y-5 flex-1 overflow-y-auto p-5 pt-0">
+      <div className="space-y-5 flex-1 min-h-0 overflow-y-auto rounded-lg border border-zinc-200 bg-white p-5">
         {groupedActions.map((suite) => (
           <div
             key={suite.id ?? "suite-unspecified"}

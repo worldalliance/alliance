@@ -25,6 +25,7 @@ interface ActionTimelineProps {
   reminders?: ReminderGroupDto[];
   onReminderClick?: (reminderId: number) => void;
   focusOnDate?: Date | string | number | null;
+  mostRecentFirst?: boolean;
 }
 
 interface TimelineData {
@@ -56,6 +57,9 @@ interface NormalizedReminder {
 
 const EMPTY_REMINDERS: ReminderGroupDto[] = [];
 
+const lastEventTime = ({ phases }: TimelineData): number =>
+  phases[phases.length - 1].startDate.getTime();
+
 const ActionTimeline: React.FC<ActionTimelineProps> = ({
   actions,
   title,
@@ -63,6 +67,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   reminders,
   onReminderClick,
   focusOnDate,
+  mostRecentFirst = false,
 }) => {
   const [scrollLeft, setScrollLeft] = useState(0);
   const [containerWidth, setContainerWidth] = useState(800);
@@ -72,11 +77,26 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
     id: number;
   } | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const namesContainerRef = useRef<HTMLDivElement>(null);
 
   const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
     const target = event.currentTarget;
     setScrollLeft(target.scrollLeft);
+    if (namesContainerRef.current) {
+      namesContainerRef.current.scrollTop = target.scrollTop;
+    }
   }, []);
+
+  // Setting a scrollTop that already matches fires no scroll event, so this
+  // two-way sync with the chart pane settles instead of looping.
+  const handleNamesScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = event.currentTarget.scrollTop;
+      }
+    },
+    [],
+  );
 
   const parseReminderDate = useCallback((value: unknown): Date | null => {
     if (!value && value !== 0) {
@@ -280,8 +300,10 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
         }
       }
 
-      const sortedActions = processedActions.sort(
-        (a, b) => a.startDate.getTime() - b.startDate.getTime(),
+      const sortedActions = processedActions.sort((a, b) =>
+        mostRecentFirst
+          ? lastEventTime(b) - lastEventTime(a)
+          : a.startDate.getTime() - b.startDate.getTime(),
       );
 
       const boundaryTimestamps: number[] = [];
@@ -334,7 +356,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
         globalEndDate: maxDate,
         totalDays: dayCount,
       };
-    }, [actions, normalizedReminders]);
+    }, [actions, normalizedReminders, mostRecentFirst]);
 
   const focusTimestamp = focusDate ? focusDate.getTime() : null;
   const scrollContainer = scrollContainerRef.current;
@@ -437,14 +459,14 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
 
   return (
     <div className={cn("bg-white rounded-lg flex flex-col", className)}>
-      <div className="flex-shrink-0">
+      <div className="flex flex-col flex-1 min-h-0">
         {/* Gantt chart area with frozen action names */}
         <div className="flex flex-1 min-h-0">
           {/* Fixed action names column */}
-          <div className="w-80 flex-shrink-0 bg-white border-r border-zinc-200">
+          <div className="w-80 flex-shrink-0 flex flex-col min-h-0 bg-white border-r border-zinc-200">
             {/* Actions header - fixed */}
             <div
-              className="sticky top-0 bg-zinc-50 border-b border-zinc-200 py-3 pr-4 text-xs font-medium text-zinc-700 z-20"
+              className="flex-shrink-0 bg-zinc-50 border-b border-zinc-200 py-3 pr-4 text-xs font-medium text-zinc-700 z-20"
               style={{ height: "50px" }}
             >
               {title ? (
@@ -457,8 +479,10 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
             </div>
             {/* Action names - scrollable vertically */}
             <div
-              className="overflow-y-auto"
-              style={{ height: `${timelineContentHeight}px` }}
+              className="flex-1 min-h-0 overflow-y-auto"
+              style={{ maxHeight: `${timelineContentHeight}px` }}
+              onScroll={handleNamesScroll}
+              ref={namesContainerRef}
             >
               {timelineData.map(({ action }) => (
                 <div

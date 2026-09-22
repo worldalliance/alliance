@@ -49,6 +49,26 @@ export interface TestContext {
   defaultContractId: number;
 }
 
+/**
+ * Polls `get` until `ready` accepts its value, for work an async listener does
+ * after the request returns. A fixed timer instead leaves the caller flaky on a
+ * loaded machine.
+ */
+export async function eventually<T>(
+  get: () => Promise<T>,
+  ready: (value: T) => boolean,
+  label = "the expected value",
+): Promise<T> {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const value = await get();
+    if (ready(value)) {
+      return value;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(`timed out waiting for ${label}`);
+}
+
 export function signAccessToken(
   jwtService: JwtService,
   user: { id: number; email: string },

@@ -6,7 +6,12 @@ import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
+import {
+  createTestApp,
+  eventually,
+  signAccessToken,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("Message Push Notifications (e2e)", () => {
   let ctx: TestContext;
@@ -47,7 +52,12 @@ describe("Message Push Notifications (e2e)", () => {
     return { user, token, expoPushToken };
   };
 
-  /** Send a message and wait briefly for the async EventEmitter listener. */
+  /**
+   * Sends the message and waits, because an async EventEmitter listener writes
+   * the push. Tests asserting a push exists poll with `pushesFor`; this fixed
+   * wait is only for the tests asserting none exists, which have nothing to
+   * poll for.
+   */
   const sendMessage = async (
     senderToken: string,
     conversationId: number,
@@ -58,10 +68,16 @@ describe("Message Push Notifications (e2e)", () => {
       .set("Authorization", `Bearer ${senderToken}`)
       .send({ conversationId, body })
       .expect(201);
-    // Give the async event listener time to process
     await new Promise((resolve) => setTimeout(resolve, 200));
     return res;
   };
+
+  const pushesFor = (expoPushToken: string) =>
+    eventually(
+      () => pushRepo.find({ where: { expoPushToken } }),
+      (pushes) => pushes.length > 0,
+      `a push for ${expoPushToken}`,
+    );
 
   const createDirectConversation = async (
     initiatorToken: string,
@@ -125,9 +141,7 @@ describe("Message Push Notifications (e2e)", () => {
 
       await sendMessage(senderToken, conversationId, "Hey, are you free?");
 
-      const pushes = await pushRepo.find({
-        where: { expoPushToken },
-      });
+      const pushes = await pushesFor(expoPushToken);
       expect(pushes).toHaveLength(1);
       expect(pushes[0].body).toContain("Hey, are you free?");
       expect(pushes[0].screen).toBe(`/messages/${conversationId}`);
@@ -167,9 +181,7 @@ describe("Message Push Notifications (e2e)", () => {
 
       await sendMessage(senderToken, conversationId, "Will you see this?");
 
-      const pushes = await pushRepo.find({
-        where: { expoPushToken },
-      });
+      const pushes = await pushRepo.find({ where: { expoPushToken } });
       expect(pushes).toHaveLength(0);
     });
 
@@ -186,9 +198,7 @@ describe("Message Push Notifications (e2e)", () => {
 
       await sendMessage(senderToken, conversationId, "No notifs please");
 
-      const pushes = await pushRepo.find({
-        where: { expoPushToken },
-      });
+      const pushes = await pushRepo.find({ where: { expoPushToken } });
       expect(pushes).toHaveLength(0);
     });
   });
@@ -221,8 +231,8 @@ describe("Message Push Notifications (e2e)", () => {
 
       await sendMessage(ownerToken, conversationId, "Hey everyone");
 
-      const pushesA = await pushRepo.find({ where: { expoPushToken: tokenA } });
-      const pushesB = await pushRepo.find({ where: { expoPushToken: tokenB } });
+      const pushesA = await pushesFor(tokenA);
+      const pushesB = await pushesFor(tokenB);
 
       expect(pushesA).toHaveLength(1);
       expect(pushesB).toHaveLength(1);
@@ -250,9 +260,7 @@ describe("Message Push Notifications (e2e)", () => {
         "Unique message",
       );
 
-      const pushes = await pushRepo.find({
-        where: { expoPushToken },
-      });
+      const pushes = await pushesFor(expoPushToken);
       expect(pushes).toHaveLength(1);
       expect(pushes[0].idempotencyKey).toContain(`msg-${msgRes.body.id}`);
     });
@@ -285,12 +293,8 @@ describe("Message Push Notifications (e2e)", () => {
 
       await sendMessage(senderToken, conversationId, "Multi-device test");
 
-      const pushes1 = await pushRepo.find({
-        where: { expoPushToken: token1 },
-      });
-      const pushes2 = await pushRepo.find({
-        where: { expoPushToken: token2 },
-      });
+      const pushes1 = await pushesFor(token1);
+      const pushes2 = await pushesFor(token2);
       expect(pushes1).toHaveLength(1);
       expect(pushes2).toHaveLength(1);
     });
