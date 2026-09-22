@@ -82,10 +82,10 @@ import {
   ScheduledPlansOverviewDto,
   SetPriorityDto,
   TimelineFeedItemDto,
-  UnwelcomedSignedContractMemberDto,
   UpdateActionDto,
   UpdateActionEventDto,
   UpdateActionUpdateDto,
+  WelcomeQueueDto,
 } from "./dto/action.dto";
 import { CommunityCompletedActionsCountDto } from "./dto/community-completed-actions-count.dto";
 import {
@@ -671,13 +671,9 @@ export class ActionsController {
 
   @Get("welcome-queue")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: [UnwelcomedSignedContractMemberDto] })
-  async getUnwelcomedSignedContractMembersAdmin(): Promise<
-    UnwelcomedSignedContractMemberDto[]
-  > {
-    return (
-      await this.actionsService.findUnwelcomedSignedContractMembers()
-    ).map((member) => new UnwelcomedSignedContractMemberDto(member));
+  @ApiOkResponse({ type: WelcomeQueueDto })
+  async getWelcomeQueueAdmin(): Promise<WelcomeQueueDto> {
+    return new WelcomeQueueDto(await this.actionsService.findWelcomeQueue());
   }
 
   @Post("evaluate-cohort")

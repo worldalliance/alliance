@@ -2504,13 +2504,17 @@ export type UpdateFollowUpFormDto = {
     formId?: number;
 };
 
-export type UnwelcomedSignedContractMemberDto = {
+export type WelcomeQueueMemberDto = {
     user: ProfileDto;
     actionId: number;
     activityId: number;
-    signedAt: string;
     completedAt: string;
     staffLikeCount: number;
+};
+
+export type WelcomeQueueDto = {
+    requiredActionCount: number;
+    members: Array<WelcomeQueueMemberDto>;
 };
 
 export type EvaluateCohortExpressionDto = {
@@ -9153,27 +9157,27 @@ export type ActionsGetIncompleteUsersAdminResponses = {
 
 export type ActionsGetIncompleteUsersAdminResponse = ActionsGetIncompleteUsersAdminResponses[keyof ActionsGetIncompleteUsersAdminResponses];
 
-export type ActionsGetUnwelcomedSignedContractMembersAdminData = {
+export type ActionsGetWelcomeQueueAdminData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/actions/welcome-queue';
 };
 
-export type ActionsGetUnwelcomedSignedContractMembersAdminErrors = {
+export type ActionsGetWelcomeQueueAdminErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type ActionsGetUnwelcomedSignedContractMembersAdminError = ActionsGetUnwelcomedSignedContractMembersAdminErrors[keyof ActionsGetUnwelcomedSignedContractMembersAdminErrors];
+export type ActionsGetWelcomeQueueAdminError = ActionsGetWelcomeQueueAdminErrors[keyof ActionsGetWelcomeQueueAdminErrors];
 
-export type ActionsGetUnwelcomedSignedContractMembersAdminResponses = {
-    200: Array<UnwelcomedSignedContractMemberDto>;
+export type ActionsGetWelcomeQueueAdminResponses = {
+    200: WelcomeQueueDto;
 };
 
-export type ActionsGetUnwelcomedSignedContractMembersAdminResponse = ActionsGetUnwelcomedSignedContractMembersAdminResponses[keyof ActionsGetUnwelcomedSignedContractMembersAdminResponses];
+export type ActionsGetWelcomeQueueAdminResponse = ActionsGetWelcomeQueueAdminResponses[keyof ActionsGetWelcomeQueueAdminResponses];
 
 export type ActionsEvaluateCohortAdminData = {
     body: EvaluateCohortExpressionDto;

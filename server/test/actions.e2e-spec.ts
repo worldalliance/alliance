@@ -3,6 +3,10 @@ import { milliseconds } from "date-fns";
 import { ActionsService } from "src/actions/actions.service";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { ContractService } from "src/contract/contract.service";
+import {
+  Comment,
+  CommentParentObject,
+} from "src/forum/entities/comment.entity";
 import { City } from "src/geo/city.entity";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import {
@@ -33,6 +37,7 @@ import {
   CreateActionDto,
   CreateActionEventDto,
   GlobalFeedItemType,
+  WelcomeQueueDto,
 } from "../src/actions/dto/action.dto";
 import {
   ActionEvent,
@@ -4383,6 +4388,443 @@ describe("Actions (e2e)", () => {
       ).toEqual([]);
 
       await userRepo.delete([eligible.id, excludedExplicitly.id, unsigned.id]);
+    });
+  });
+
+  describe("Welcome queue", () => {
+    const welcomeQueue = () =>
+      request(ctx.app.getHttpServer())
+        .get("/actions/welcome-queue")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+
+    beforeEach(async () => {
+      await actionRepo.update({ onboarding: true }, { onboarding: false });
+    });
+
+    const createWelcomeAction = async (
+      name: string,
+      options: Parameters<typeof createPublishedAction>[1] = {},
+    ) => {
+      const result = await createPublishedAction(name, options);
+      await eventRepo.update(result.event.id, { date: new Date("2018-01-01") });
+      return result;
+    };
+
+    const member = ({
+      signed = true,
+      signedAt = "2019-01-01",
+    }: { signed?: boolean; signedAt?: string } = {}) =>
+      userRepo.save(
+        userRepo.create({
+          email: `welcome-${crypto.randomUUID()}@example.com`,
+          password: "Password123!",
+          name: "Welcome member",
+          tags: [ctx.defaultTag],
+          contractEvents: signed
+            ? [
+                {
+                  type: ContractEventType.SIGNED,
+                  date: new Date(signedAt),
+                  contractId: ctx.defaultContractId,
+                },
+              ]
+            : [],
+        }),
+      );
+
+    const complete = (input: {
+      userId: number;
+      actionId: number;
+      date: string;
+    }) =>
+      activityRepo.save(
+        activityRepo.create({
+          userId: input.userId,
+          actionId: input.actionId,
+          type: ActionActivityType.USER_COMPLETED,
+          createdAt: new Date(input.date),
+        }),
+      );
+
+    it("returns an empty queue when there are no active required onboarding tasks", async () => {
+      const response = await welcomeQueue().expect(200);
+      expect(response.body).toEqual({ requiredActionCount: 0, members: [] });
+    });
+
+    it("keeps earlier members eligible when a new onboarding task starts", async () => {
+      const { action: first } = await createWelcomeAction("Existing task", {
+        actionOverrides: { onboarding: true },
+      });
+      const older = await member();
+      const newer = await member({ signedAt: "2020-01-01" });
+      const olderCompletion = await complete({
+        userId: older.id,
+        actionId: first.id,
+        date: "2019-01-02",
+      });
+      await complete({
+        userId: newer.id,
+        actionId: first.id,
+        date: "2020-01-02",
+      });
+      expect((await welcomeQueue().expect(200)).body.members).toHaveLength(2);
+
+      const { action: next, event } = await createWelcomeAction("New task", {
+        actionOverrides: { onboarding: true },
+      });
+      await eventRepo.update(event.id, { date: new Date("2020-01-01") });
+      const queue: WelcomeQueueDto = (await welcomeQueue().expect(200)).body;
+      expect(queue.members).toMatchObject([
+        { user: { id: older.id }, activityId: olderCompletion.id },
+      ]);
+      expect(queue.members).toHaveLength(1);
+      expect(queue.requiredActionCount).toBe(2);
+
+      const latest = await complete({
+        userId: newer.id,
+        actionId: next.id,
+        date: "2020-01-03",
+      });
+      expect((await welcomeQueue().expect(200)).body.members).toMatchObject([
+        { user: { id: newer.id }, activityId: latest.id },
+        { user: { id: older.id }, activityId: olderCompletion.id },
+      ]);
+    });
+
+    it("requires targeted tasks only for members in their cohort", async () => {
+      const { action: first } = await createWelcomeAction("Shared task", {
+        actionOverrides: { onboarding: true },
+      });
+      const targeted = await member();
+      const outside = await member();
+      for (const user of [targeted, outside]) {
+        await complete({
+          userId: user.id,
+          actionId: first.id,
+          date: "2020-01-01",
+        });
+      }
+      const { action: targetedTask } = await createWelcomeAction(
+        "Targeted task",
+        {
+          actionOverrides: {
+            onboarding: true,
+            cohortExpression: { type: "Manual", userIds: [targeted.id] },
+          },
+        },
+      );
+      const queue: WelcomeQueueDto = (await welcomeQueue().expect(200)).body;
+      expect(queue.members.map((entry) => entry.user.id)).toEqual([outside.id]);
+      const latest = await complete({
+        userId: targeted.id,
+        actionId: targetedTask.id,
+        date: "2020-01-02",
+      });
+      expect((await welcomeQueue().expect(200)).body.members).toMatchObject([
+        { user: { id: targeted.id }, activityId: latest.id },
+        { user: { id: outside.id }, actionId: first.id },
+      ]);
+    });
+
+    it("links only applicable completions and excludes members with no applicable tasks", async () => {
+      const user = await member();
+      const beforeOnboarding = await member({ signedAt: "2017-01-01" });
+      const { action: required } = await createWelcomeAction("Required task", {
+        actionOverrides: { onboarding: true },
+      });
+      const { action: other } = await createWelcomeAction(
+        "Another cohort's task",
+        {
+          actionOverrides: {
+            onboarding: true,
+            cohortExpression: { type: "Manual", userIds: [] },
+          },
+        },
+      );
+      const completion = await complete({
+        userId: user.id,
+        actionId: required.id,
+        date: "2020-01-01",
+      });
+      for (const action of [required, other]) {
+        await complete({
+          userId: beforeOnboarding.id,
+          actionId: action.id,
+          date: "2020-01-02",
+        });
+      }
+      await complete({
+        userId: user.id,
+        actionId: other.id,
+        date: "2020-01-03",
+      });
+      const queue: WelcomeQueueDto = (await welcomeQueue().expect(200)).body;
+      expect(queue.members).toHaveLength(1);
+      expect(queue.members[0]).toMatchObject({
+        user: { id: user.id },
+        activityId: completion.id,
+      });
+    });
+
+    it("requires a signing event and lists a member only once after repeated signatures or suspension", async () => {
+      const { action } = await createWelcomeAction("Onboarding task", {
+        actionOverrides: {
+          onboarding: true,
+          cohortExpression: {
+            type: "NOT",
+            child: { type: "Manual", userIds: [] },
+          },
+        },
+      });
+      const user = await member({ signed: false });
+      const completion = await complete({
+        userId: user.id,
+        actionId: action.id,
+        date: "2020-01-01",
+      });
+      expect((await welcomeQueue().expect(200)).body.members).toEqual([]);
+      const events = ctx.dataSource.getRepository(ContractEvent);
+      await events.save(
+        events.create({
+          user,
+          type: ContractEventType.SUSPENDED,
+          date: new Date("2020-01-02"),
+        }),
+      );
+      expect((await welcomeQueue().expect(200)).body.members).toEqual([]);
+      for (const date of ["2020-01-03", "2020-01-04"]) {
+        await events.save(
+          events.create({
+            user,
+            type: ContractEventType.SIGNED,
+            date: new Date(date),
+            contractId: ctx.defaultContractId,
+          }),
+        );
+      }
+      await events.save(
+        events.create({
+          user,
+          type: ContractEventType.SUSPENDED,
+          date: new Date("2020-01-05"),
+        }),
+      );
+      const queue: WelcomeQueueDto = (await welcomeQueue().expect(200)).body;
+      expect(queue.members).toMatchObject([
+        { user: { id: user.id }, activityId: completion.id },
+      ]);
+      expect(queue.members).toHaveLength(1);
+    });
+
+    it("requires every active onboarding task and links each member's latest completion, newest first", async () => {
+      const { action: first } = await createWelcomeAction(
+        "First onboarding task",
+        {
+          actionOverrides: { onboarding: true },
+        },
+      );
+      const { action: second } = await createWelcomeAction(
+        "Second onboarding task",
+        {
+          actionOverrides: { onboarding: true },
+        },
+      );
+      for (const actionOverrides of [
+        { onboarding: true, optional: true },
+        { onboarding: true, archived: true },
+        { onboarding: true, preventCompletion: true },
+        { onboarding: false },
+      ]) {
+        await createWelcomeAction("Not required", { actionOverrides });
+      }
+      for (const status of [
+        ActionStatus.Draft,
+        ActionStatus.Planned,
+        ActionStatus.Completed,
+      ]) {
+        await createWelcomeAction("Not active", {
+          status,
+          actionOverrides: { onboarding: true },
+        });
+      }
+      const future = await createWelcomeAction("Future task", {
+        actionOverrides: { onboarding: true },
+      });
+      await eventRepo.update(future.event.id, {
+        date: new Date(Date.now() + 86_400_000),
+      });
+      const older = await member();
+      const newer = await member();
+      const incomplete = await member();
+      await complete({
+        userId: incomplete.id,
+        actionId: first.id,
+        date: "2020-01-01",
+      });
+      await complete({
+        userId: incomplete.id,
+        actionId: first.id,
+        date: "2020-01-02",
+      });
+      await complete({
+        userId: older.id,
+        actionId: first.id,
+        date: "2020-01-01",
+      });
+      const olderLast = await complete({
+        userId: older.id,
+        actionId: second.id,
+        date: "2020-01-02",
+      });
+      await complete({
+        userId: newer.id,
+        actionId: second.id,
+        date: "2020-01-01",
+      });
+      const newerLast = await complete({
+        userId: newer.id,
+        actionId: first.id,
+        date: "2020-01-03",
+      });
+      const staff = await userRepo.save({ ...(await member()), staff: true });
+      await activityRepo.save({ ...newerLast, likes: [staff, older] });
+
+      const queue: WelcomeQueueDto = (await welcomeQueue().expect(200)).body;
+      expect(queue.members.map((entry) => entry.user.id)).toEqual([
+        newer.id,
+        older.id,
+      ]);
+      expect(queue.members).toMatchObject([
+        {
+          actionId: first.id,
+          activityId: newerLast.id,
+          completedAt: newerLast.createdAt.toISOString(),
+          staffLikeCount: 1,
+        },
+        {
+          actionId: second.id,
+          activityId: olderLast.id,
+          completedAt: olderLast.createdAt.toISOString(),
+          staffLikeCount: 0,
+        },
+      ]);
+    });
+
+    it("excludes a member who withdrew after completing and restores them after completing again", async () => {
+      const { action } = await createWelcomeAction("Withdrawable task", {
+        actionOverrides: { onboarding: true },
+      });
+      const user = await member();
+      await complete({
+        userId: user.id,
+        actionId: action.id,
+        date: "2020-01-01",
+      });
+      await activityRepo.save(
+        activityRepo.create({
+          userId: user.id,
+          actionId: action.id,
+          type: ActionActivityType.USER_WONT_COMPLETE,
+          createdAt: new Date("2020-01-02"),
+        }),
+      );
+      expect((await welcomeQueue().expect(200)).body.members).toEqual([]);
+      const latest = await complete({
+        userId: user.id,
+        actionId: action.id,
+        date: "2020-01-03",
+      });
+      expect((await welcomeQueue().expect(200)).body.members).toMatchObject([
+        { user: { id: user.id }, activityId: latest.id },
+      ]);
+    });
+
+    it("counts staff comments on any onboarding completion, including archived tasks", async () => {
+      const { action: current } = await createWelcomeAction(
+        "Current onboarding task",
+        {
+          actionOverrides: { onboarding: true },
+        },
+      );
+      const { action: archived } = await createWelcomeAction(
+        "Archived onboarding task",
+        {
+          actionOverrides: { onboarding: true, archived: true },
+        },
+      );
+      const { action: unrelated } = await createWelcomeAction("Unrelated task");
+      const staff = await userRepo.save({ ...(await member()), staff: true });
+      const expectedIds: number[] = [];
+      for (const scenario of [
+        {
+          action: current,
+          staff: true,
+          deleted: false,
+          type: ActionActivityType.USER_COMPLETED,
+          excluded: true,
+        },
+        {
+          action: archived,
+          staff: true,
+          deleted: false,
+          type: ActionActivityType.USER_COMPLETED,
+          excluded: true,
+        },
+        {
+          action: archived,
+          staff: true,
+          deleted: true,
+          type: ActionActivityType.USER_COMPLETED,
+          excluded: false,
+        },
+        {
+          action: archived,
+          staff: false,
+          deleted: false,
+          type: ActionActivityType.USER_COMPLETED,
+          excluded: false,
+        },
+        {
+          action: unrelated,
+          staff: true,
+          deleted: false,
+          type: ActionActivityType.USER_COMPLETED,
+          excluded: false,
+        },
+        {
+          action: archived,
+          staff: true,
+          deleted: false,
+          type: ActionActivityType.USER_SUBMITTED_FOLLOW_UP_FORM,
+          excluded: false,
+        },
+      ]) {
+        const user = await member();
+        await complete({
+          userId: user.id,
+          actionId: current.id,
+          date: "2020-01-01",
+        });
+        const activity = await activityRepo.save(
+          activityRepo.create({
+            actionId: scenario.action.id,
+            userId: user.id,
+            type: scenario.type,
+          }),
+        );
+        await ctx.dataSource.getRepository(Comment).save({
+          authorId: scenario.staff ? staff.id : ctx.testUserId,
+          parentObjectType: CommentParentObject.Activity,
+          parentObjectId: activity.id,
+          deleted: scenario.deleted,
+          editableContent: { body: "Hello", attachments: [] },
+        });
+        if (!scenario.excluded) expectedIds.push(user.id);
+      }
+      const queue: WelcomeQueueDto = (await welcomeQueue().expect(200)).body;
+      expect(
+        queue.members.map((entry) => entry.user.id).sort((a, b) => a - b),
+      ).toEqual(expectedIds);
     });
   });
 
