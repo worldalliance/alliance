@@ -12,12 +12,39 @@ const schema: FormSchema = {
     {
       id: "p1",
       fields: [
+        { id: "joined", type: "input", kind: "text", label: "Joined" },
         {
           id: "people",
           type: "input",
           kind: "list",
           label: "People",
-          fields: [{ id: "name", type: "input", kind: "text", label: "Name" }],
+          fields: [
+            { id: "name", type: "input", kind: "text", label: "Name" },
+            {
+              id: "secret",
+              type: "input",
+              kind: "text",
+              label: "Secret",
+              visibleIfFormula: {
+                conditions: {
+                  condition1: { kind: "equals", when: "joined", equals: "yes" },
+                },
+                formula: "condition1",
+              },
+            },
+            {
+              id: "phone",
+              type: "input",
+              kind: "text",
+              label: "Phone",
+              visibleIfFormula: {
+                conditions: {
+                  condition1: { kind: "deviceType", deviceType: ["mobile"] },
+                },
+                formula: "condition1",
+              },
+            },
+          ],
         },
       ],
     },
@@ -90,5 +117,40 @@ describe("OutputRenderer blank list cards", () => {
     ]);
 
     expect(screen.queryByText("People")).toBeNull();
+  });
+});
+
+describe("OutputRenderer list rows", () => {
+  it("leaves out a cell the response's own answers hide", () => {
+    renderOutput({ joined: "no", people: [{ name: "Ada", secret: "stale" }] });
+
+    expect(screen.getByDisplayValue("Ada")).toBeTruthy();
+    expect(screen.queryByText("Secret")).toBeNull();
+    expect(screen.queryByDisplayValue("stale")).toBeNull();
+  });
+
+  it("draws a cell the response's own answers reveal", () => {
+    renderOutput({ joined: "yes", people: [{ name: "Ada", secret: "kept" }] });
+
+    expect(screen.getByText("Secret")).toBeTruthy();
+    expect(screen.getByDisplayValue("kept")).toBeTruthy();
+  });
+
+  it("draws a device-gated cell when the response recorded no device", () => {
+    // The API sends a missing device as null, which the generated type leaves out.
+    const fromApi: FormResponseOutputDto = JSON.parse(
+      JSON.stringify({
+        ...submission,
+        deviceType: null,
+        answers: { people: [{ name: "Ada", phone: "typed on a phone" }] },
+      }),
+    );
+    render(
+      <SiteAppProvider>
+        <OutputRenderer schema={schema} viewId="v1" submission={fromApi} />
+      </SiteAppProvider>,
+    );
+
+    expect(screen.getByDisplayValue("typed on a phone")).toBeTruthy();
   });
 });

@@ -6,7 +6,6 @@ import {
   type AnyField,
   type FieldGroup,
   type FormValue,
-  type ListField,
   type ListSubField,
   type OutputFieldBlock,
   type Page,
@@ -262,6 +261,74 @@ export function evaluateCondition(
 }
 
 /**
+ * Whether a saved response carries everything `element`'s visibility reads, so
+ * re-evaluating it gives back the verdict the respondent saw. A response
+ * records its own answers, and may record the device it came from and the
+ * verdict each visibility validator returned; one saved by an older client
+ * records neither. It never records the respondent's account state or another
+ * form's answers. A condition on another field also reads whether that field is
+ * visible, so that field has to replay too.
+ */
+export function replaysFromSavedResponse(params: {
+  element: AnyField | ListSubField;
+  deviceType: DeviceVisibilityTarget | undefined;
+  visibilityValidatorResults: VisibilityValidatorResults;
+  fieldLookup: Map<string, AnyField>;
+  groupByFieldId: Map<string, FieldGroup>;
+}): boolean {
+  const {
+    deviceType,
+    visibilityValidatorResults,
+    fieldLookup,
+    groupByFieldId,
+  } = params;
+  const visiting = new Set<string>();
+
+  const formulaReplays = (formula: VisibleIfFormula | undefined): boolean =>
+    Object.values(formula?.conditions ?? {}).every((cond) => {
+      switch (cond.kind) {
+        case "equals":
+        case "includesOption":
+        case "anySelected":
+        case "hasValue": {
+          if (cond.sourceFormId != null) return false;
+          const referenced = fieldLookup.get(cond.when);
+          return !referenced || elementReplays(referenced);
+        }
+        case "deviceType":
+          return deviceType !== undefined;
+        case "validator":
+          return cond.validatorId in visibilityValidatorResults;
+        // `outputBlockVisible` never reaches a form field: the schema check
+        // rejects it outside an output view.
+        case "outputBlockVisible":
+        case "userHasCity":
+        case "userPropertyHasValue":
+        case "firstContractSigned":
+        case "completedActionCount":
+          return false;
+        default:
+          cond satisfies never;
+          return false;
+      }
+    });
+
+  const elementReplays = (element: AnyField | ListSubField): boolean => {
+    // Evaluation reads a field inside a reference cycle by its value alone,
+    // which the response has.
+    if (visiting.has(element.id)) return true;
+    visiting.add(element.id);
+    const replays =
+      formulaReplays(element.visibleIfFormula) &&
+      formulaReplays(groupByFieldId.get(element.id)?.visibleIfFormula);
+    visiting.delete(element.id);
+    return replays;
+  };
+
+  return elementReplays(params.element);
+}
+
+/**
  * Whether a field must be answered. A conditional rule replaces the static
  * `required` flag when present, and is evaluated against the same answers and
  * extras as visibility — so callers must pass the same context they use for
@@ -447,10 +514,10 @@ export function stripHiddenAnswers(
       }
       continue;
     }
-    const withoutHiddenCells = stripHiddenListCells(pages, data, {
-      ...extras,
-      fieldLookup,
-      groupByFieldId,
+    const withoutHiddenCells = stripHiddenListCells({
+      pages,
+      answers: data,
+      extras: { ...extras, fieldLookup, groupByFieldId },
     });
     if (withoutHiddenCells === data) {
       return data;
@@ -459,20 +526,38 @@ export function stripHiddenAnswers(
   }
 }
 
-function stripHiddenListCells(
-  pages: Page[],
-  data: Record<string, FormValue>,
-  extras: ConditionExtras & { readOnly?: boolean },
-): Record<string, FormValue> {
-  let stripped = data;
+/**
+ * `answers` without the list cells whose sub-field is hidden for their own row.
+ * Returns `answers` itself when nothing is stripped.
+ */
+export function stripHiddenListCells(params: {
+  pages: Page[];
+  answers: Record<string, FormValue>;
+  extras: ConditionExtras & { readOnly?: boolean };
+  /**
+   * The sub-fields this caller's context can judge; omitted, it judges every
+   * one. A caller missing what a condition reads has to leave that cell alone,
+   * or it strips an answer the respondent gave in plain sight.
+   */
+  canJudge?: (subField: ListSubField) => boolean;
+}): Record<string, FormValue> {
+  const { pages, answers, extras, canJudge } = params;
+  let stripped = answers;
   for (const page of pages) {
     for (const field of flattenPageItems(page.fields)) {
       if (!isQuestionField(field) || field.kind !== "list") continue;
-      const rows = asCards(data[field.id]);
+      const rows = asCards(answers[field.id]);
       if (!rows) continue;
+      const subFields = field.fields ?? [];
+      const judged = canJudge ? subFields.filter(canJudge) : subFields;
       let changed = false;
       const nextRows = rows.map((row) => {
-        const nextRow = stripHiddenRowCells(field, row, data, extras);
+        const nextRow = stripHiddenRowCells({
+          subFields: judged,
+          row,
+          data: answers,
+          extras,
+        });
         if (nextRow !== row) changed = true;
         return nextRow;
       });
@@ -482,13 +567,13 @@ function stripHiddenListCells(
   return stripped;
 }
 
-function stripHiddenRowCells(
-  list: ListField,
-  row: Record<string, FormValue>,
-  data: Record<string, FormValue>,
-  extras: ConditionExtras & { readOnly?: boolean },
-): Record<string, FormValue> {
-  const subFields = list.fields ?? [];
+function stripHiddenRowCells(params: {
+  subFields: ListSubField[];
+  row: Record<string, FormValue>;
+  data: Record<string, FormValue>;
+  extras: ConditionExtras & { readOnly?: boolean };
+}): Record<string, FormValue> {
+  const { subFields, row, data, extras } = params;
   const visibleIds = new Set(
     visibleListSubFields({ subFields, data, row, extras }).map((sub) => sub.id),
   );

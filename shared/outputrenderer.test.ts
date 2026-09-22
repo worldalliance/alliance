@@ -6,6 +6,7 @@ import type {
   NumberField,
   OutputFieldBlock,
 } from "@alliance/common/forms/form-schema";
+import type { Condition } from "@alliance/common/forms/visible-if-formula";
 import {
   __resetAnalyticsForTests,
   registerAnalytics,
@@ -326,5 +327,147 @@ describe("resolveOutputItems and blank list cards", () => {
 
     expect(logged).toEqual([]);
     expect(reported).toEqual([]);
+  });
+});
+
+describe("resolveOutputItems and hidden list cells", () => {
+  it("drops a list cell the row's own answers hide", () => {
+    const list: ListField = {
+      id: "list",
+      type: "input",
+      kind: "list",
+      label: "Items",
+      fields: [
+        numberField("weight", "Weight"),
+        {
+          ...numberField("extra", "Extra"),
+          visibleIfFormula: {
+            conditions: { c1: { kind: "equals", when: "weight", equals: 1 } },
+            formula: "c1",
+          },
+        },
+      ],
+    };
+    const { items } = resolveOutputItems({
+      schema: schemaWithVariable({
+        pages: [{ id: "p1", fields: [list] }],
+        variables: [],
+        outputViews: [
+          {
+            id: "v1",
+            type: "default",
+            blocks: [{ id: "ob1", fieldId: "list" }],
+          },
+        ],
+      }),
+      answers: {
+        list: [
+          { weight: 1, extra: 5 },
+          { weight: 2, extra: 6 },
+        ],
+      },
+      publicAnswers: { list: true },
+    });
+
+    const [item] = items;
+    if (item.type !== "field") throw new Error("expected a field item");
+    expect(item.value).toEqual([{ weight: 1, extra: 5 }, { weight: 2 }]);
+  });
+});
+
+describe("resolveOutputItems and a cell the response can't judge", () => {
+  const listGatedBy = (condition: Condition): ListField => ({
+    id: "list",
+    type: "input",
+    kind: "list",
+    label: "Items",
+    fields: [
+      numberField("weight", "Weight"),
+      {
+        ...numberField("extra", "Extra"),
+        visibleIfFormula: { conditions: { c1: condition }, formula: "c1" },
+      },
+    ],
+  });
+  const resolveGated = (
+    condition: Condition,
+    context: Partial<Parameters<typeof resolveOutputItems>[0]> = {},
+  ) => {
+    const { items } = resolveOutputItems({
+      schema: schemaWithVariable({
+        pages: [{ id: "p1", fields: [listGatedBy(condition)] }],
+        variables: [],
+        outputViews: [
+          {
+            id: "v1",
+            type: "default",
+            blocks: [{ id: "ob1", fieldId: "list" }],
+          },
+        ],
+      }),
+      answers: { list: [{ weight: 2, extra: 6 }] },
+      publicAnswers: { list: true },
+      ...context,
+    });
+    const [item] = items;
+    if (item.type !== "field") throw new Error("expected a field item");
+    return item.value;
+  };
+
+  it("keeps a cell gated on a validator the response recorded no verdict for", () => {
+    expect(resolveGated({ kind: "validator", validatorId: 7 })).toEqual([
+      { weight: 2, extra: 6 },
+    ]);
+  });
+
+  it("drops that cell once the response carries the verdict", () => {
+    expect(
+      resolveGated(
+        { kind: "validator", validatorId: 7 },
+        { validatorResults: { 7: false } },
+      ),
+    ).toEqual([{ weight: 2 }]);
+  });
+
+  it("keeps a cell gated on a device the response didn't record", () => {
+    expect(
+      resolveGated({ kind: "deviceType", deviceType: ["mobile"] }),
+    ).toEqual([{ weight: 2, extra: 6 }]);
+  });
+
+  it("keeps a cell gated on a field whose own device condition can't replay", () => {
+    const gate: NumberField = {
+      ...numberField("gate", "Gate"),
+      visibleIfFormula: {
+        conditions: { c1: { kind: "deviceType", deviceType: ["mobile"] } },
+        formula: "c1",
+      },
+    };
+    const { items } = resolveOutputItems({
+      schema: schemaWithVariable({
+        pages: [
+          {
+            id: "p1",
+            fields: [
+              gate,
+              listGatedBy({ kind: "equals", when: "gate", equals: 1 }),
+            ],
+          },
+        ],
+        variables: [],
+        outputViews: [
+          {
+            id: "v1",
+            type: "default",
+            blocks: [{ id: "ob1", fieldId: "list" }],
+          },
+        ],
+      }),
+      answers: { gate: 1, list: [{ weight: 2, extra: 6 }] },
+      publicAnswers: { list: true },
+    });
+    const [item] = items;
+    if (item.type !== "field") throw new Error("expected a field item");
+    expect(item.value).toEqual([{ weight: 2, extra: 6 }]);
   });
 });

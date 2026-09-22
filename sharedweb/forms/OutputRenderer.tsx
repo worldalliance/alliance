@@ -1,4 +1,7 @@
-import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
+import {
+  deviceVisibilityTargetSchema,
+  type DeviceVisibilityTarget,
+} from "@alliance/common/forms/device";
 import type { FormSchema, FormValue } from "@alliance/common/forms/form-schema";
 import type { VisibilityValidatorResults } from "@alliance/common/forms/visibility";
 import { R } from "@alliance/common/result";
@@ -88,7 +91,8 @@ export function OutputRenderer({
     [validatorResults, submission],
   );
   const resolvedDeviceType =
-    deviceType ?? (submission?.deviceType as DeviceVisibilityTarget);
+    deviceType ??
+    deviceVisibilityTargetSchema.safeParse(submission?.deviceType).data;
   const resolvedPublicAnswers = (
     submission as SubmissionWithPublicAnswers | undefined
   )?.publicAnswers;

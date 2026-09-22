@@ -47,8 +47,9 @@ No formula rewriting. After a rename, the type check reports the old name as a m
 `VariableResolutionContext` takes `isListSubFieldVisible(subField, data)`, where `data` is the form's answers with the row's cells on top, the same merge the list renderers and `getListSubFieldErrors` use. A hidden cell reads as `undefined` even if a value is still stored.
 
 - The live form (web and mobile, via `useFormVisibility`) passes `visibilityExtras` without `readOnly`. In read-only mode, `isElementCurrentlyVisible` treats any stored value as visible, which would break the requirement that stored values under hidden sub-fields don't count.
-- The output renderer passes the device type and validator results it already uses for block visibility.
 - The builder preview treats every sample cell as visible. Sample rows have no other answers to evaluate conditions against.
+- The server strips with the respondent's account state and device before storing, so a response saved from here on carries no hidden cell. One saved before still can, so `resolveOutputItems` strips again on the way out, against the same field lookup the server strips with, and the output view reads the same rows it draws.
+- That second strip only judges a sub-field whose conditions the response carries the context for, which `replaysFromSavedResponse` reports. A condition on the respondent's account state or on another form's answers never replays; one on the device or on a validator verdict replays only where the response recorded that, which an older one often didn't. Re-running any of the rest would drop a cell the respondent filled in plain sight. A whole field already gets this same re-check in `isAnswerShown`.
 
 ## Blank cards in an output view
 
