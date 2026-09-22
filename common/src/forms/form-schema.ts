@@ -171,13 +171,20 @@ const selectFieldSchema = z.strictObject({
 });
 export type SelectField = z.infer<typeof selectFieldSchema>;
 
-const multiSelectFieldSchema = z.strictObject({
-  ...baseFieldSchema.shape,
-  kind: z.literal("multiselect"),
-  options: optionListSchema,
-  randomizeOptions: z.boolean().optional(),
-  maxSelections: z.number().optional(),
-});
+const multiSelectFieldSchema = z
+  .strictObject({
+    ...baseFieldSchema.shape,
+    kind: z.literal("multiselect"),
+    dropdown: z.boolean().optional(),
+    searchable: z.boolean().optional(),
+    options: optionListSchema,
+    randomizeOptions: z.boolean().optional(),
+    maxSelections: z.number().optional(),
+  })
+  .refine((data) => !data.searchable || data.dropdown, {
+    message: "searchable requires dropdown",
+    path: ["searchable"],
+  });
 export type MultiSelectField = z.infer<typeof multiSelectFieldSchema>;
 
 const dateFieldSchema = z.strictObject({

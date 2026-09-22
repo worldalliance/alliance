@@ -52,6 +52,35 @@ describe("searchable dropdowns", () => {
   });
 });
 
+describe("multiselect display", () => {
+  it.each([
+    {},
+    { dropdown: false, searchable: false },
+    { dropdown: true },
+    { dropdown: true, searchable: false },
+    { dropdown: true, searchable: true },
+  ])("accepts %o", (flags) => {
+    expect(
+      anyFieldSchema.safeParse({
+        ...optionField("multiselect", ["a"]),
+        ...flags,
+      }).success,
+    ).toBe(true);
+  });
+
+  it.each([{ searchable: true }, { dropdown: false, searchable: true }])(
+    "rejects search without dropdown: %o",
+    (flags) => {
+      expect(
+        anyFieldSchema.safeParse({
+          ...optionField("multiselect", ["a"]),
+          ...flags,
+        }).success,
+      ).toBe(false);
+    },
+  );
+});
+
 describe("forEachCondition", () => {
   /** A condition tagged with the slot it was hung on, so order is checkable. */
   const marker = (when: string): Condition => ({
