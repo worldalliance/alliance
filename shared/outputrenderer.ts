@@ -17,6 +17,7 @@ import {
   asCards,
   collectFieldLookup,
   collectGroupByFieldId,
+  collectPageByFieldId,
   collectVariableResolutionFields,
   flattenPageItems,
   isQuestionField,
@@ -259,6 +260,7 @@ export const resolveOutputItems = ({
   const conditionLookups = {
     fieldLookup: collectFieldLookup(schema.pages),
     groupByFieldId: collectGroupByFieldId(schema.pages),
+    pageByFieldId: collectPageByFieldId(schema.pages),
   };
   const savedResponse = {
     deviceType,

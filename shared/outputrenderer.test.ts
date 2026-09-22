@@ -583,6 +583,37 @@ describe("resolveOutputItems and a field inside a group", () => {
   });
 });
 
+describe("resolveOutputItems and a field on a hidden page", () => {
+  it("hides a field whose page a recorded verdict hides", () => {
+    const { items } = resolveOutputItems({
+      schema: schemaWithVariable({
+        pages: [
+          {
+            id: "p1",
+            fields: [numberField("qty", "Quantity")],
+            visibleIfFormula: {
+              conditions: { c1: { kind: "validator", validatorId: 7 } },
+              formula: "c1",
+            },
+          },
+        ],
+        variables: [],
+        outputViews: [
+          {
+            id: "v1",
+            type: "default",
+            blocks: [{ id: "ob1", fieldId: "qty" }],
+          },
+        ],
+      }),
+      answers: { qty: 3 },
+      publicAnswers: { qty: true },
+      validatorResults: { 7: false },
+    });
+    expect(items).toEqual([]);
+  });
+});
+
 describe("resolveOutputItems and conditions the response partly replays", () => {
   const ruledOutByWeight = {
     conditions: {

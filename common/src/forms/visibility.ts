@@ -107,6 +107,7 @@ export type ConditionExtras = {
   userHasCity?: boolean;
   userPropertyHasValue?: UserPropertyPresence;
   groupByFieldId?: Map<string, FieldGroup>;
+  pageByFieldId?: Map<string, Page>;
   /**
    * ISO datetime of the user's earliest `signed` contract event;
    * null/undefined when they have never signed.
@@ -266,6 +267,7 @@ type SavedResponseContext = {
   visibilityValidatorResults: VisibilityValidatorResults;
   fieldLookup: Map<string, AnyField>;
   groupByFieldId: Map<string, FieldGroup>;
+  pageByFieldId: Map<string, Page>;
 };
 
 function savedResponseReplay(
@@ -276,6 +278,7 @@ function savedResponseReplay(
     visibilityValidatorResults,
     fieldLookup,
     groupByFieldId,
+    pageByFieldId,
     data,
   } = context;
   const visiting = new Set<string>();
@@ -323,7 +326,8 @@ function savedResponseReplay(
     visiting.add(element.id);
     const replays =
       formulaReplays(element.visibleIfFormula) &&
-      formulaReplays(groupByFieldId.get(element.id)?.visibleIfFormula);
+      formulaReplays(groupByFieldId.get(element.id)?.visibleIfFormula) &&
+      formulaReplays(pageByFieldId.get(element.id)?.visibleIfFormula);
     visiting.delete(element.id);
     return replays;
   };
@@ -360,13 +364,14 @@ export function isVisibleInSavedResponse(
     data: Record<string, FormValue>;
   },
 ): boolean {
-  const { element, data, groupByFieldId } = params;
+  const { element, data, groupByFieldId, pageByFieldId } = params;
   const { conditionReplays } = savedResponseReplay(params);
   const extras: ConditionExtras = {
     deviceType: params.deviceType ?? "desktop",
     visibilityValidatorResults: params.visibilityValidatorResults,
     fieldLookup: params.fieldLookup,
     groupByFieldId,
+    pageByFieldId,
   };
   const mayHold = (formula: VisibleIfFormula | undefined): boolean => {
     if (!hasEvaluableFormula(formula)) return true;
@@ -383,7 +388,8 @@ export function isVisibleInSavedResponse(
   };
   return (
     mayHold(element.visibleIfFormula) &&
-    mayHold(groupByFieldId.get(element.id)?.visibleIfFormula)
+    mayHold(groupByFieldId.get(element.id)?.visibleIfFormula) &&
+    mayHold(pageByFieldId.get(element.id)?.visibleIfFormula)
   );
 }
 
@@ -441,8 +447,11 @@ export function isElementCurrentlyVisible(
   const own = isOwnElementCurrentlyVisible(element, data, extras);
   if (!own) return false;
   const group = element.id ? extras.groupByFieldId?.get(element.id) : undefined;
-  if (!group) return true;
-  return isOwnElementCurrentlyVisible(group, data, extras);
+  if (group && !isOwnElementCurrentlyVisible(group, data, extras)) {
+    return false;
+  }
+  const page = element.id ? extras.pageByFieldId?.get(element.id) : undefined;
+  return !page || isPageCurrentlyVisible(page, data, extras);
 }
 
 function isOwnElementCurrentlyVisible(

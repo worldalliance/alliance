@@ -702,6 +702,7 @@ describe("replaysFromSavedResponse", () => {
       visibilityValidatorResults: {},
       fieldLookup: new Map(),
       groupByFieldId: new Map(),
+      pageByFieldId: new Map(),
       ...response,
     });
 
@@ -803,6 +804,19 @@ describe("replaysFromSavedResponse", () => {
     );
   });
 
+  it("refuses a field whose page doesn't replay", () => {
+    const page: Page = {
+      id: "p1",
+      fields: [],
+      visibleIfFormula: formula({
+        c1: { kind: "userHasCity", userHasCity: true },
+      }),
+    };
+    expect(replays({}, { pageByFieldId: new Map([["sub", page]]) })).toBe(
+      false,
+    );
+  });
+
   it("replays fields whose conditions reference each other", () => {
     const gate = textField("gate", {
       visibleIfFormula: formula({
@@ -835,6 +849,7 @@ describe("isVisibleInSavedResponse", () => {
       visibilityValidatorResults: {},
       fieldLookup: new Map(),
       groupByFieldId: new Map(),
+      pageByFieldId: new Map(),
       ...response,
     });
 
@@ -981,6 +996,52 @@ describe("isVisibleInSavedResponse", () => {
           groupByFieldId: new Map([["gate", group]]),
         }),
       ).toBe(false);
+    });
+
+    it("reads the field as unanswered when its page hid it", () => {
+      const gate = textField("gate");
+      const page: Page = {
+        id: "p1",
+        fields: [gate],
+        visibleIfFormula: hiddenByVerdict,
+      };
+      expect(
+        visible(formula({ c1: gateIsYes }), {
+          ...response,
+          fieldLookup: new Map([["gate", gate]]),
+          pageByFieldId: new Map([["gate", page]]),
+        }),
+      ).toBe(false);
+    });
+  });
+
+  describe("on a page", () => {
+    const visibleOnPage = (pageFormula: VisibleIfFormula) =>
+      visible(
+        { conditions: {}, formula: "" },
+        {
+          pageByFieldId: new Map([
+            ["sub", { id: "p1", fields: [], visibleIfFormula: pageFormula }],
+          ]),
+        },
+      );
+
+    it("hides an element whose page's replayable conditions rule it out", () => {
+      expect(
+        visibleOnPage({
+          conditions: { c1: gateIsYes, c2: hasCity },
+          formula: { op: "AND", left: "c1", right: "c2" },
+        }),
+      ).toBe(false);
+    });
+
+    it("shows an element whose page a condition it can't replay could have shown", () => {
+      expect(
+        visibleOnPage({
+          conditions: { c1: gateIsYes, c2: hasCity },
+          formula: { op: "OR", left: "c1", right: "c2" },
+        }),
+      ).toBe(true);
     });
   });
 });

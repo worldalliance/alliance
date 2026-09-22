@@ -469,6 +469,16 @@ export function collectGroupByFieldId(pages: Page[]): Map<string, FieldGroup> {
   return map;
 }
 
+export function collectPageByFieldId(pages: Page[]): Map<string, Page> {
+  const map = new Map<string, Page>();
+  for (const page of pages) {
+    for (const field of flattenPageItems(page.fields ?? [])) {
+      if (isQuestionField(field)) map.set(field.id, page);
+    }
+  }
+  return map;
+}
+
 export function collectFieldLookup(pages: Page[]): Map<string, AnyField> {
   const lookup = new Map<string, AnyField>();
   for (const page of pages) {
