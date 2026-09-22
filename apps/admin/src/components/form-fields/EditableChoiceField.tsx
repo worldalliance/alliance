@@ -15,6 +15,37 @@ import type { BaseFieldProps } from "./types";
 
 type ChoiceField = SelectField | MultiSelectField;
 
+enum MultiSelectDisplay {
+  Checkboxes = "checkboxes",
+  Dropdown = "dropdown",
+  SearchableDropdown = "searchable-dropdown",
+}
+
+const MULTISELECT_DISPLAYS: Record<
+  MultiSelectDisplay,
+  { label: string; flags: Pick<MultiSelectField, "dropdown" | "searchable"> }
+> = {
+  [MultiSelectDisplay.Checkboxes]: {
+    label: "Checkboxes",
+    flags: { dropdown: undefined, searchable: undefined },
+  },
+  [MultiSelectDisplay.Dropdown]: {
+    label: "Dropdown",
+    flags: { dropdown: true, searchable: undefined },
+  },
+  [MultiSelectDisplay.SearchableDropdown]: {
+    label: "Searchable dropdown",
+    flags: { dropdown: true, searchable: true },
+  },
+};
+
+function multiSelectDisplay(field: MultiSelectField): MultiSelectDisplay {
+  if (!field.dropdown) return MultiSelectDisplay.Checkboxes;
+  return field.searchable
+    ? MultiSelectDisplay.SearchableDropdown
+    : MultiSelectDisplay.Dropdown;
+}
+
 type EditableChoiceFieldProps = BaseFieldProps<ChoiceField>;
 
 export function EditableChoiceField({
@@ -173,6 +204,35 @@ export function EditableChoiceField({
           checked={!!field.searchable}
           onChange={(checked) => onUpdate({ searchable: checked })}
         />
+      )}
+
+      {field.kind === "multiselect" && (
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-gray-700">
+            Display
+            <select
+              value={multiSelectDisplay(field)}
+              onChange={(event) => {
+                const display = Object.values(MultiSelectDisplay).find(
+                  (value) => value === event.target.value,
+                );
+                if (!display) {
+                  throw new Error(`unknown display: ${event.target.value}`);
+                }
+                onUpdate(MULTISELECT_DISPLAYS[display].flags);
+              }}
+              className="mt-1 w-full rounded border border-gray-300 px-2 py-1 text-sm font-normal focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              {Object.entries(MULTISELECT_DISPLAYS).map(
+                ([value, { label }]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ),
+              )}
+            </select>
+          </label>
+        </div>
       )}
 
       {field.kind === "multiselect" && (
