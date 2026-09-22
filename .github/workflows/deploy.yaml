@@ -48,6 +48,7 @@ jobs:
             apps/frontend,
             apps/admin,
             apps/mobile,
+            scripts,
           ]
     uses: ./.github/workflows/test-unit.yaml
     with:
@@ -164,6 +165,9 @@ jobs:
   format-check:
     uses: ./.github/workflows/format-check.yaml
 
+  gitignore-check:
+    uses: ./.github/workflows/gitignore-check.yaml
+
   typecheck:
     strategy:
       fail-fast: false
@@ -196,6 +200,7 @@ jobs:
       - migrations-drift-check
       - typecheck
       - format-check
+      - gitignore-check
       - visual-regression
     steps:
       - run: echo "all checks passed"

@@ -1,0 +1,19 @@
+# Ignore rules allowed to match at every depth, as <gitignore path>:<pattern>.
+# Anything else has to name its directory: /android/, not android/.
+.gitignore:uploads/
+.gitignore:.worktree/
+.gitignore:.scratch/
+apps/mobile/.gitignore:node_modules/
+apps/mobile/.gitignore:.expo/
+apps/mobile/.gitignore:dist/
+apps/mobile/.gitignore:web-build/
+apps/mobile/.gitignore:.kotlin/
+server/.gitignore:.c9/
+server/.gitignore:.settings/
+# These mean one directory. Anchor them rather than copying them.
+apps/admin/.gitignore:.react-router/
+apps/admin/.gitignore:output/
+apps/frontend/.gitignore:.react-router/
+apps/frontend/.gitignore:output/
+citesting/.gitignore:ios-derived-data/
+citesting/.gitignore:screenshots-mobile/

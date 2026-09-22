@@ -28,6 +28,7 @@
     "test": "./scripts/test-all.sh",
     "format": "./scripts/format.sh",
     "format:check": "./scripts/format.sh --check",
+    "gitignore:check": "./scripts/check-gitignore.sh",
     "eas-build-pre-install": "bun install --frozen-lockfile"
   },
   "devDependencies": {

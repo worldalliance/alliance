@@ -1,19 +1,18 @@
 #!/usr/bin/env bash
-# Runs each workspace's unit tests from inside that workspace, so its own
+# Runs each directory's unit tests from inside that directory, so its own
 # bunfig.toml applies — the React packages preload a DOM there, and a bare
 # `bun test` at the repo root skips that preload and fails every DOM test.
 #
 # CI runs each package back through this script, so the skip rule below is the
 # same one locally and in CI. PACKAGES mirrors the test-unit matrices in
-# .github/workflows/ci.yaml and deploy.yaml, so a new workspace with tests goes
-# in all three. The typecheck matrices in those two files are a superset and can
-# list packages that are absent here; citesting is typechecked but has no tests.
+# .github/workflows/ci.yaml and deploy.yaml, so a new directory with tests goes
+# in all three.
 #
 #   scripts/test-all.sh              # every package below
 #   scripts/test-all.sh apps/admin   # only the named packages
 set -u
 
-PACKAGES=(server common shared sharedweb apps/frontend apps/admin apps/mobile)
+PACKAGES=(server common shared sharedweb apps/frontend apps/admin apps/mobile scripts)
 
 script_dir="$(cd "$(dirname "$0")" && pwd)" || exit 1
 cd "$script_dir/.." || exit 1
