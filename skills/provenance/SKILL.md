@@ -23,7 +23,7 @@ UUIDv7 makes directory listings sort by creation time. Inside, three files: `REQ
 
 ## REQUIREMENTS.md
 
-Open with frontmatter naming the task. Use the role `user` for the user field.
+Open with frontmatter naming the user and the task. Use `git config user.name` for the user field.
 
 Only what the user actually said: requirements, constraints, preferences, selections, clarifications. Copy or closely paraphrase only the minimum text needed to preserve meaning.
 
