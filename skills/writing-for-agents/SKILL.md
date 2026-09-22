@@ -92,8 +92,6 @@ Splitting one document into two spends one of the two loads, so split only when 
 
 A **leading word** is a compact concept already living in the model's pretraining that the agent thinks with while running the document (_lesson_, _fog of war_, _tracer bullets_). Repeated as a token, never as a sentence, it accumulates a distributed definition and anchors a whole region of behavior in the fewest tokens, by recruiting priors the model already holds. Coining your own works if you define it clearly, but a made-up word recruits no priors, so you pay in definition tokens what a pretrained word gives free. Reach for an existing word first.
 
-Its abstract-metaphor-noun rule targets the metaphor dropped once for flavor, where a plainer word does the same job. A leading word is defined where it first appears and repeated as the same token every time, which is the whole mechanism. Keep those.
-
 It anchors twice. In the body, _execution_: the agent reaches for the same behavior every time the word appears, and inside flat reference it focuses attention on a class of thing to look for. In a pointer, _invocation_: when the same word lives in your prompts, your docs, and your codebase, the agent links that shared language to the material and reaches it more reliably.
 
 Hunt for opportunities to refactor with leading words. A triad spelled out at three sites, a pointer spending a sentence to gesture at one idea. Each is a passage begging to collapse into a single token:
