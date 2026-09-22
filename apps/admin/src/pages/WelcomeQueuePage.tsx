@@ -6,6 +6,7 @@ import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
 
 type WelcomeQueueFilter = "all" | "staff-liked";
 
@@ -43,7 +44,7 @@ const WelcomeQueuePage: React.FC = () => {
               status: response.response.status,
               error: response.error,
               fallback: loadFailed,
-              sessionExpired: "Your session expired. Log in again.",
+              sessionExpired: sessionExpiredMessage,
             }),
           );
           return;

@@ -1,4 +1,5 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
+import { refusalMessage } from "@alliance/common/errorMessage";
 import {
   fieldHasOptions,
   flattenPageItems,
@@ -58,8 +59,15 @@ import {
   Users,
   UserX,
 } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
+import { z } from "zod";
 import ActionCompletionCurveChart from "../components/ActionCompletionCurveChart";
 import ActionFollowUpFormsTab from "../components/ActionFollowUpFormsTab";
 import ActionForm, { type ReviewerRow } from "../components/ActionForm";
@@ -77,6 +85,7 @@ import {
   changedActionImages,
   duplicatedActionImages,
 } from "../lib/actionImages";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { makeTempId } from "../lib/tempId";
 import { useCoverImage } from "../lib/useCoverImage";
 
@@ -124,6 +133,27 @@ type Tab =
 
 const imageUploadingMessage = "Wait for the cover image to finish uploading.";
 
+const actionSaveErrorSchema = z.object({
+  statusCode: z.number().int().min(400).max(599),
+});
+
+export const actionSaveErrorMessage = (error: unknown): string => {
+  const fallback = "Failed to save action";
+  const parsed = actionSaveErrorSchema.safeParse(error);
+  if (!parsed.success) return fallback;
+  return refusalMessage({
+    status: parsed.data.statusCode,
+    error,
+    fallback,
+    sessionExpired: sessionExpiredMessage,
+  });
+};
+
+const logActionSaveError = (error: unknown): string => {
+  console.error(error);
+  return actionSaveErrorMessage(error);
+};
+
 type ReadinessCheckItem = {
   id: string;
   label: string;
@@ -166,6 +196,12 @@ const ActionDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const errorMessage =
     error ?? (actionLoadFailed ? "Failed to load action" : null);
+  const errorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (errorMessage) {
+      errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [errorMessage]);
   const {
     key: imageKey,
     preview: imagePreview,
@@ -685,21 +721,23 @@ const ActionDashboard: React.FC = () => {
     };
 
     if (isNew) {
-      const result = await R.fromPromise(createAction(formData));
+      const result = await R.fromPromise(
+        createAction(formData),
+        logActionSaveError,
+      );
       if (!result.ok) {
-        setError("Failed to save action");
-        console.error(result.error);
+        setError(result.error);
         return;
       }
       handleActionCreated(result.value);
     } else if (actionId) {
       // The mutation invalidates the action query, so fresh data is
       // refetched before this resolves.
-      const result = await R.fromPromise(updateAction(formData));
-      if (!result.ok) {
-        setError("Failed to save action");
-        console.error(result.error);
-      }
+      const result = await R.fromPromise(
+        updateAction(formData),
+        logActionSaveError,
+      );
+      if (!result.ok) setError(result.error);
     }
   };
 
@@ -943,7 +981,11 @@ const ActionDashboard: React.FC = () => {
         </a>
       </p>
       {errorMessage && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div
+          ref={errorRef}
+          role="alert"
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
+        >
           {errorMessage}
         </div>
       )}

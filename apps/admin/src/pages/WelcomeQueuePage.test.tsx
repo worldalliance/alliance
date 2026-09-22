@@ -3,6 +3,7 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as config from "@alliance/sharedweb/lib/config";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
 import WelcomeQueuePage from "./WelcomeQueuePage";
 
 afterEach(cleanup);
@@ -152,7 +153,7 @@ for (const status of [401, 500, 503]) {
       expect(
         await screen.findByText(
           status === 401
-            ? "Your session expired. Log in again."
+            ? sessionExpiredMessage
             : "Unable to load members who need welcomes.",
         ),
       ).toBeTruthy();
