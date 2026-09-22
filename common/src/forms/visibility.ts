@@ -360,11 +360,13 @@ export function isVisibleInSavedResponse(
     data: Record<string, FormValue>;
   },
 ): boolean {
-  const { element, data } = params;
+  const { element, data, groupByFieldId } = params;
   const { conditionReplays } = savedResponseReplay(params);
   const extras: ConditionExtras = {
     deviceType: params.deviceType ?? "desktop",
     visibilityValidatorResults: params.visibilityValidatorResults,
+    fieldLookup: params.fieldLookup,
+    groupByFieldId,
   };
   const mayHold = (formula: VisibleIfFormula | undefined): boolean => {
     if (!hasEvaluableFormula(formula)) return true;
@@ -379,7 +381,10 @@ export function isVisibleInSavedResponse(
       evaluateVisibilityFormulaWithUnknowns(formula.formula, known) !== false
     );
   };
-  return mayHold(element.visibleIfFormula);
+  return (
+    mayHold(element.visibleIfFormula) &&
+    mayHold(groupByFieldId.get(element.id)?.visibleIfFormula)
+  );
 }
 
 /**

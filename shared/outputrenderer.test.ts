@@ -545,6 +545,44 @@ describe("resolveOutputItems and a whole field the response can't judge", () => 
   });
 });
 
+describe("resolveOutputItems and a field inside a group", () => {
+  it("hides a field whose group a recorded verdict hides", () => {
+    const { items } = resolveOutputItems({
+      schema: schemaWithVariable({
+        pages: [
+          {
+            id: "p1",
+            fields: [
+              {
+                id: "g1",
+                type: "group",
+                kind: "group",
+                fields: [numberField("qty", "Quantity")],
+                visibleIfFormula: {
+                  conditions: { c1: { kind: "validator", validatorId: 7 } },
+                  formula: "c1",
+                },
+              },
+            ],
+          },
+        ],
+        variables: [],
+        outputViews: [
+          {
+            id: "v1",
+            type: "default",
+            blocks: [{ id: "ob1", fieldId: "qty" }],
+          },
+        ],
+      }),
+      answers: { qty: 3 },
+      publicAnswers: { qty: true },
+      validatorResults: { 7: false },
+    });
+    expect(items).toEqual([]);
+  });
+});
+
 describe("resolveOutputItems and conditions the response partly replays", () => {
   const ruledOutByWeight = {
     conditions: {

@@ -910,6 +910,79 @@ describe("isVisibleInSavedResponse", () => {
       ),
     ).toBe(true);
   });
+
+  describe("inside a group", () => {
+    const visibleInGroup = (groupFormula: VisibleIfFormula) => {
+      const group: FieldGroup = {
+        id: "g1",
+        type: "group",
+        kind: "group",
+        fields: [],
+        visibleIfFormula: groupFormula,
+      };
+      return visible(
+        { conditions: {}, formula: "" },
+        { groupByFieldId: new Map([["sub", group]]) },
+      );
+    };
+
+    it("hides an element whose group's replayable conditions rule it out", () => {
+      expect(
+        visibleInGroup({
+          conditions: { c1: gateIsYes, c2: hasCity },
+          formula: { op: "AND", left: "c1", right: "c2" },
+        }),
+      ).toBe(false);
+    });
+
+    it("shows an element whose group a condition it can't replay could have shown", () => {
+      expect(
+        visibleInGroup({
+          conditions: { c1: gateIsYes, c2: hasCity },
+          formula: { op: "OR", left: "c1", right: "c2" },
+        }),
+      ).toBe(true);
+    });
+  });
+
+  describe("with a condition on a field a recorded verdict hid", () => {
+    const hiddenByVerdict = formula({
+      c1: { kind: "validator", validatorId: 7 },
+    });
+    const response = {
+      data: { gate: "yes" },
+      visibilityValidatorResults: { 7: false },
+    };
+
+    it("reads the field as unanswered when its own conditions hid it", () => {
+      expect(
+        visible(formula({ c1: gateIsYes }), {
+          ...response,
+          fieldLookup: new Map([
+            ["gate", textField("gate", { visibleIfFormula: hiddenByVerdict })],
+          ]),
+        }),
+      ).toBe(false);
+    });
+
+    it("reads the field as unanswered when its group hid it", () => {
+      const gate = textField("gate");
+      const group: FieldGroup = {
+        id: "g1",
+        type: "group",
+        kind: "group",
+        fields: [gate],
+        visibleIfFormula: hiddenByVerdict,
+      };
+      expect(
+        visible(formula({ c1: gateIsYes }), {
+          ...response,
+          fieldLookup: new Map([["gate", gate]]),
+          groupByFieldId: new Map([["gate", group]]),
+        }),
+      ).toBe(false);
+    });
+  });
 });
 
 describe("field groups", () => {
