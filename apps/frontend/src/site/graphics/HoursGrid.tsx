@@ -37,6 +37,12 @@ const cellClasses: Record<HoursGridSize, string> = {
   [HoursGridSize.Compact]: "rounded-[clamp(3px,0.8vh,8px)]",
 };
 
+/** The onboarding panel has no room for the grid's two anchors below desktop. */
+const anchorClasses: Record<HoursGridSize, string> = {
+  [HoursGridSize.Default]: "",
+  [HoursGridSize.Compact]: "max-lg:hidden",
+};
+
 const legendClasses: Record<HoursGridSize, string> = {
   [HoursGridSize.Default]: "gap-x-6 gap-y-2",
   [HoursGridSize.Compact]: "gap-x-3 gap-y-1",
@@ -86,11 +92,8 @@ function Grid({
           <div
             key={i}
             className={cn(
-              "relative aspect-square transition-opacity duration-500",
+              "relative aspect-square bg-white/[0.22] transition-opacity duration-500",
               cellClasses[size],
-              i === 0 || i === HOURS - 1
-                ? "border-[1.5px] border-white bg-transparent"
-                : "bg-white/[0.22]",
               inView ? "opacity-100" : "opacity-0",
             )}
             style={{ transitionDelay: `${column * 26 + row * 8}ms` }}
@@ -122,7 +125,13 @@ export function HoursGrid({
   const { ref, inView } = useInView<HTMLDivElement>(0.2);
 
   const startLabel = (
-    <p className={cn("mb-2 text-white/85", labelClasses[size])}>
+    <p
+      className={cn(
+        "mb-2 text-white/85",
+        labelClasses[size],
+        anchorClasses[size],
+      )}
+    >
       {HOURS_START_LABEL}
     </p>
   );
@@ -145,7 +154,7 @@ export function HoursGrid({
           {HOURS_LEGEND_TOTAL}
         </span>
       </span>
-      <span>{HOURS_END_LABEL}</span>
+      <span className={anchorClasses[size]}>{HOURS_END_LABEL}</span>
     </div>
   );
 

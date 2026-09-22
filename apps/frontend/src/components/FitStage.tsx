@@ -10,7 +10,7 @@ type FitSize = { width: number; height: number };
 // (Firefox for Android in particular) that a feature-detected CSS fallback
 // isn't reliable. Reads the layout box rather than `getBoundingClientRect`,
 // so an ancestor mid transform does not feed its own scale back in.
-function useFitScale({ width, height }: FitSize) {
+function useFitScale({ width, height, crop }: FitSize & { crop: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState<number | null>(null);
 
@@ -20,7 +20,12 @@ function useFitScale({ width, height }: FitSize) {
 
     const measure = () => {
       setScale(
-        Math.min(element.clientWidth / width, element.clientHeight / height),
+        crop
+          ? element.clientWidth / width
+          : Math.min(
+              element.clientWidth / width,
+              element.clientHeight / height,
+            ),
       );
     };
 
@@ -31,22 +36,32 @@ function useFitScale({ width, height }: FitSize) {
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [width, height]);
+  }, [width, height, crop]);
 
   return { ref, scale };
 }
 
 /**
  * Scales a box authored at a fixed pixel size to fit the space it is given, by
- * whichever axis runs out first, so nothing is ever cropped.
+ * whichever axis runs out first. Nothing is cropped unless `crop` says so.
  */
 export function FitStage({
   width,
   height,
+  crop = false,
   className,
   children,
-}: FitSize & { className?: string; children: ReactNode }) {
-  const { ref, scale } = useFitScale({ width, height });
+}: FitSize & {
+  /**
+   * Scales to the width alone and crops what runs past the foot, rather than
+   * shrinking the art until both axes fit. It also anchors the art at the top,
+   * so a box taller than the art leaves all its slack at the foot.
+   */
+  crop?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  const { ref, scale } = useFitScale({ width, height, crop });
 
   const style: StyleWithVars = {
     width,
@@ -55,7 +70,10 @@ export function FitStage({
   };
 
   return (
-    <div ref={ref} className={cn("fit-stage", className)}>
+    <div
+      ref={ref}
+      className={cn("fit-stage", crop && "fit-stage--crop", className)}
+    >
       <div className="fit-stage__box" style={style}>
         {children}
       </div>

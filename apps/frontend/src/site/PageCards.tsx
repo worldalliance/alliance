@@ -8,7 +8,7 @@ import {
   type FeaturedImpactAction,
 } from "../content/featuredImpactActions";
 import { useContract } from "../lib/useContract";
-import { DocProse } from "./DocProse";
+import { DocProse, DocProseSize } from "./DocProse";
 
 const progressCardStyle = { borderRadius: "var(--site-radius-card)" };
 
@@ -162,32 +162,40 @@ function ContractDescriptionList() {
   );
 }
 
-function ContractMarkdown() {
+function ContractMarkdown({ size }: { size: DocProseSize }) {
   const { latestContract } = useContract();
   const markdown = latestContract?.markdown ?? PLACEHOLDER_CONTRACT_MARKDOWN;
-  return <DocProse markdown={markdown} />;
+  return <DocProse markdown={markdown} size={size} />;
 }
 
 /** The membership contract, quoted the way the current site quotes it. */
+const CONTRACT_PAD: Record<DocProseSize, string> = {
+  [DocProseSize.Default]: "p-6 sm:p-8",
+  [DocProseSize.Compact]: "p-4",
+};
+
 export function ContractCard({
   caption,
   terms = false,
+  size = DocProseSize.Default,
 }: {
   caption?: string;
   /** Numbered description bullets from the live contract, instead of its markdown. */
   terms?: boolean;
+  size?: DocProseSize;
 }) {
   return (
     <figure className="flex flex-col gap-3">
       <div
         id="contract"
         className={cn(
-          "scroll-mt-32 bg-zinc-100 p-6 sm:p-8",
+          "scroll-mt-32 bg-zinc-100",
+          CONTRACT_PAD[size],
           terms && "ring-2 ring-[var(--color-green)]",
         )}
         style={{ borderRadius: "var(--site-radius-card)" }}
       >
-        {terms ? <ContractDescriptionList /> : <ContractMarkdown />}
+        {terms ? <ContractDescriptionList /> : <ContractMarkdown size={size} />}
       </div>
       {caption && (
         <figcaption className="text-sm text-zinc-500">{caption}</figcaption>

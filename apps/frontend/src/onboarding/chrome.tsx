@@ -11,23 +11,26 @@ export function riseStyle(index: number): CSSProperties {
   return { animationDelay: `${120 + index * 110}ms` };
 }
 
-export function ProgressTrack({ filled }: { filled: number }) {
+/** Bar height comes off `--ob-bar`, so a caller can run it thinner. */
+export function ProgressSegments({
+  segments,
+  filled,
+  className,
+}: {
+  segments: number;
+  filled: number;
+  className?: string;
+}) {
   return (
     <div
-      className="pointer-events-none absolute inset-x-5 z-20 grid gap-3 sm:inset-x-8 sm:gap-5 lg:inset-x-14"
-      style={{
-        // The panel's keyboard padding grows its padding box, which is what an
-        // absolute offset resolves against, so the track has to clear it too.
-        bottom:
-          "calc(var(--ob-progress-bottom) + var(--ob-keyboard-inset, 0px))",
-        gridTemplateColumns: `repeat(${PROGRESS_SEGMENTS}, minmax(0, 1fr))`,
-      }}
+      className={cn("pointer-events-none grid", className)}
+      style={{ gridTemplateColumns: `repeat(${segments}, minmax(0, 1fr))` }}
       aria-hidden
     >
-      {Array.from({ length: PROGRESS_SEGMENTS }, (_, i) => (
+      {Array.from({ length: segments }, (_, i) => (
         <span
           key={i}
-          className="h-[3px] overflow-hidden rounded-full bg-white/40"
+          className="h-[var(--ob-bar,3px)] overflow-hidden rounded-full bg-white/40"
         >
           <span
             className="block h-full origin-left rounded-full bg-white transition-transform duration-500 ease-out"
@@ -35,6 +38,26 @@ export function ProgressTrack({ filled }: { filled: number }) {
           />
         </span>
       ))}
+    </div>
+  );
+}
+
+export function ProgressTrack({ filled }: { filled: number }) {
+  return (
+    <div
+      className="pointer-events-none absolute inset-x-5 z-20 sm:inset-x-8 lg:inset-x-14"
+      style={{
+        // The panel's keyboard padding grows its padding box, which is what an
+        // absolute offset resolves against, so the track has to clear it too.
+        bottom:
+          "calc(var(--ob-progress-bottom) + var(--ob-keyboard-inset, 0px))",
+      }}
+    >
+      <ProgressSegments
+        segments={PROGRESS_SEGMENTS}
+        filled={filled}
+        className="gap-3 sm:gap-5"
+      />
     </div>
   );
 }
@@ -164,7 +187,10 @@ export function StepLayout({
   className?: string;
   /**
    * Caps the body at the height it was given instead of letting it grow the
-   * scroller, for a screen that absorbs a short viewport inside itself.
+   * scroller, for a screen that absorbs a short viewport inside itself. It
+   * gives up scrolling with it: the entry animation translates its subject down
+   * into place, and a translated box counts toward `scrollHeight`, which would
+   * flash a scrollbar for as long as the animation ran.
    */
   fill?: boolean;
 }) {
@@ -184,7 +210,10 @@ export function StepLayout({
       {eyebrow && <StepEyebrow>{eyebrow}</StepEyebrow>}
       <div
         ref={scroller.ref}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        className={cn(
+          "min-h-0 flex-1 overscroll-contain",
+          fill ? "overflow-hidden" : "overflow-y-auto",
+        )}
         style={{
           ...scroller.style,
           marginTop: eyebrow ? "var(--ob-band-gap)" : undefined,

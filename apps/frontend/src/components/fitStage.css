@@ -9,3 +9,11 @@
   left: 50%;
   transform: translate(-50%, -50%) scale(var(--fit-scale, 1));
 }
+
+/* Anchored at the top and scaled off the width alone, so a box shorter than the
+   scaled art shows the top of it instead of shrinking all of it to fit. */
+.fit-stage--crop .fit-stage__box {
+  top: 0;
+  transform: translateX(-50%) scale(var(--fit-scale, 1));
+  transform-origin: top center;
+}
