@@ -1,5 +1,6 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
 import type {
+  AnyField,
   FormSchema,
   FormValue,
   ListField,
@@ -469,5 +470,147 @@ describe("resolveOutputItems and a cell the response can't judge", () => {
     const [item] = items;
     if (item.type !== "field") throw new Error("expected a field item");
     expect(item.value).toEqual([{ weight: 2, extra: 6 }]);
+  });
+});
+
+describe("resolveOutputItems and a whole field the response can't judge", () => {
+  const resolveGatedField = (
+    condition: Condition,
+    context: Partial<Parameters<typeof resolveOutputItems>[0]> = {},
+  ) =>
+    resolveOutputItems({
+      schema: schemaWithVariable({
+        pages: [
+          {
+            id: "p1",
+            fields: [
+              {
+                ...numberField("qty", "Quantity"),
+                visibleIfFormula: {
+                  conditions: { c1: condition },
+                  formula: "c1",
+                },
+              },
+            ],
+          },
+        ],
+        variables: [],
+        outputViews: [
+          {
+            id: "v1",
+            type: "default",
+            blocks: [{ id: "ob1", fieldId: "qty" }],
+          },
+        ],
+      }),
+      answers: { qty: 3 },
+      publicAnswers: { qty: true },
+      ...context,
+    }).items;
+
+  it("shows a field gated on the respondent's account", () => {
+    expect(
+      resolveGatedField({ kind: "userHasCity", userHasCity: true }),
+    ).toHaveLength(1);
+  });
+
+  it("shows a field gated on a validator the response recorded no verdict for", () => {
+    expect(
+      resolveGatedField({ kind: "validator", validatorId: 7 }),
+    ).toHaveLength(1);
+  });
+
+  it("hides that field once the response carries the verdict", () => {
+    expect(
+      resolveGatedField(
+        { kind: "validator", validatorId: 7 },
+        { validatorResults: { 7: false } },
+      ),
+    ).toEqual([]);
+  });
+
+  it("shows a field gated on a device the response didn't record", () => {
+    expect(
+      resolveGatedField({ kind: "deviceType", deviceType: ["mobile"] }),
+    ).toHaveLength(1);
+  });
+
+  it("hides that field once the response records another device", () => {
+    expect(
+      resolveGatedField(
+        { kind: "deviceType", deviceType: ["mobile"] },
+        { deviceType: "desktop" },
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("resolveOutputItems and conditions the response partly replays", () => {
+  const ruledOutByWeight = {
+    conditions: {
+      c1: { kind: "equals", when: "weight", equals: 1 },
+      c2: { kind: "userHasCity", userHasCity: true },
+    },
+    formula: { op: "AND", left: "c1", right: "c2" },
+  } as const;
+  const resolveBlock = (
+    fields: AnyField[],
+    answers: Record<string, FormValue>,
+  ) =>
+    resolveOutputItems({
+      schema: schemaWithVariable({
+        pages: [{ id: "p1", fields }],
+        variables: [],
+        outputViews: [
+          {
+            id: "v1",
+            type: "default",
+            blocks: [{ id: "ob1", fieldId: fields[fields.length - 1].id }],
+          },
+        ],
+      }),
+      answers,
+      publicAnswers: { qty: true, list: true },
+    }).items;
+
+  it("hides a field its replayable conditions rule out", () => {
+    expect(
+      resolveBlock(
+        [
+          numberField("weight", "Weight"),
+          {
+            ...numberField("qty", "Quantity"),
+            visibleIfFormula: ruledOutByWeight,
+          },
+        ],
+        { weight: 2, qty: 3 },
+      ),
+    ).toEqual([]);
+  });
+
+  it("hides a field another field's answer rules out whether or not that field showed", () => {
+    expect(
+      resolveBlock(
+        [
+          {
+            ...numberField("weight", "Weight"),
+            visibleIfFormula: {
+              conditions: {
+                c1: { kind: "deviceType", deviceType: ["desktop", "mobile"] },
+              },
+              formula: "c1",
+            },
+          },
+          {
+            ...numberField("qty", "Quantity"),
+            visibleIfFormula: {
+              conditions: { c1: { kind: "equals", when: "weight", equals: 1 } },
+              formula: "c1",
+            },
+          },
+        ],
+        { weight: 2, qty: 3 },
+      ),
+    ).toEqual([]);
   });
 });

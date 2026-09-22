@@ -7,6 +7,7 @@ import {
   isElementCurrentlyVisible,
   isFieldConditionallyRequired,
   isPageCurrentlyVisible,
+  isVisibleInSavedResponse,
   listRowData,
   replaysFromSavedResponse,
   stripHiddenAnswers,
@@ -816,6 +817,97 @@ describe("replaysFromSavedResponse", () => {
           ["sub", sub],
         ]),
       }),
+    ).toBe(true);
+  });
+});
+
+describe("isVisibleInSavedResponse", () => {
+  const gateIsYes = { kind: "equals", when: "gate", equals: "yes" } as const;
+  const hasCity = { kind: "userHasCity", userHasCity: true } as const;
+  const visible = (
+    visibleIfFormula: VisibleIfFormula,
+    response: Partial<Parameters<typeof isVisibleInSavedResponse>[0]> = {},
+  ) =>
+    isVisibleInSavedResponse({
+      element: textField("sub", { visibleIfFormula }),
+      data: { gate: "no" },
+      deviceType: "desktop",
+      visibilityValidatorResults: {},
+      fieldLookup: new Map(),
+      groupByFieldId: new Map(),
+      ...response,
+    });
+
+  it("hides an element its replayable conditions rule out on their own", () => {
+    expect(
+      visible({
+        conditions: { c1: gateIsYes, c2: hasCity },
+        formula: { op: "AND", left: "c1", right: "c2" },
+      }),
+    ).toBe(false);
+  });
+
+  it("shows an element a condition it can't replay could have shown", () => {
+    expect(
+      visible({
+        conditions: { c1: gateIsYes, c2: hasCity },
+        formula: { op: "OR", left: "c1", right: "c2" },
+      }),
+    ).toBe(true);
+  });
+
+  it("shows an element whose only condition can't be replayed", () => {
+    expect(
+      visible({
+        conditions: { c1: { kind: "validator", validatorId: 7 } },
+        formula: { op: "NOT", operand: "c1" },
+      }),
+    ).toBe(true);
+  });
+
+  describe("with a condition on a field whose own visibility can't be replayed", () => {
+    const gatedOnCity = new Map([
+      [
+        "gate",
+        textField("gate", {
+          visibleIfFormula: { conditions: { c1: hasCity }, formula: "c1" },
+        }),
+      ],
+    ]);
+
+    it("hides an element the field's answer rules out whether or not the field showed", () => {
+      expect(
+        visible(
+          { conditions: { c1: gateIsYes }, formula: "c1" },
+          { fieldLookup: gatedOnCity },
+        ),
+      ).toBe(false);
+    });
+
+    it("shows an element the field's answer rules out only if the field showed", () => {
+      expect(
+        visible(
+          {
+            conditions: {
+              c1: { kind: "hasValue", when: "gate", hasValue: false },
+            },
+            formula: "c1",
+          },
+          { fieldLookup: gatedOnCity },
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it("reads a device the response didn't record as unknown", () => {
+    expect(
+      visible(
+        {
+          conditions: { c1: { kind: "deviceType", deviceType: ["mobile"] } },
+          formula: "c1",
+        },
+        { deviceType: undefined },
+      ),
     ).toBe(true);
   });
 });

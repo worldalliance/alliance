@@ -24,6 +24,7 @@ import {
   type Condition,
   type VisibleIfFormula,
   evaluateVisibilityFormula,
+  evaluateVisibilityFormulaWithUnknowns,
 } from "./visible-if-formula";
 
 /** The verdict each visibility validator returned, keyed by validator id. */
@@ -260,58 +261,60 @@ export function evaluateCondition(
   }
 }
 
-/**
- * Whether a saved response carries everything `element`'s visibility reads, so
- * re-evaluating it gives back the verdict the respondent saw. A response
- * records its own answers, and may record the device it came from and the
- * verdict each visibility validator returned; one saved by an older client
- * records neither. It never records the respondent's account state or another
- * form's answers. A condition on another field also reads whether that field is
- * visible, so that field has to replay too.
- */
-export function replaysFromSavedResponse(params: {
-  element: AnyField | ListSubField;
+type SavedResponseContext = {
   deviceType: DeviceVisibilityTarget | undefined;
   visibilityValidatorResults: VisibilityValidatorResults;
   fieldLookup: Map<string, AnyField>;
   groupByFieldId: Map<string, FieldGroup>;
-}): boolean {
+};
+
+function savedResponseReplay(
+  context: SavedResponseContext & { data?: Record<string, FormValue> },
+) {
   const {
     deviceType,
     visibilityValidatorResults,
     fieldLookup,
     groupByFieldId,
-  } = params;
+    data,
+  } = context;
   const visiting = new Set<string>();
 
-  const formulaReplays = (formula: VisibleIfFormula | undefined): boolean =>
-    Object.values(formula?.conditions ?? {}).every((cond) => {
-      switch (cond.kind) {
-        case "equals":
-        case "includesOption":
-        case "anySelected":
-        case "hasValue": {
-          if (cond.sourceFormId != null) return false;
-          const referenced = fieldLookup.get(cond.when);
-          return !referenced || elementReplays(referenced);
-        }
-        case "deviceType":
-          return deviceType !== undefined;
-        case "validator":
-          return cond.validatorId in visibilityValidatorResults;
-        // `outputBlockVisible` never reaches a form field: the schema check
-        // rejects it outside an output view.
-        case "outputBlockVisible":
-        case "userHasCity":
-        case "userPropertyHasValue":
-        case "firstContractSigned":
-        case "completedActionCount":
-          return false;
-        default:
-          cond satisfies never;
-          return false;
+  const conditionReplays = (cond: Condition): boolean => {
+    switch (cond.kind) {
+      case "equals":
+      case "includesOption":
+      case "anySelected":
+      case "hasValue": {
+        if (cond.sourceFormId != null) return false;
+        const referenced = fieldLookup.get(cond.when);
+        if (!referenced || elementReplays(referenced)) return true;
+        return (
+          data !== undefined &&
+          evaluateValueBasedCondition(cond, data[cond.when]) ===
+            evaluateValueBasedCondition(cond, undefined)
+        );
       }
-    });
+      case "deviceType":
+        return deviceType !== undefined;
+      case "validator":
+        return cond.validatorId in visibilityValidatorResults;
+      // `outputBlockVisible` never reaches a form field: the schema check
+      // rejects it outside an output view.
+      case "outputBlockVisible":
+      case "userHasCity":
+      case "userPropertyHasValue":
+      case "firstContractSigned":
+      case "completedActionCount":
+        return false;
+      default:
+        cond satisfies never;
+        return false;
+    }
+  };
+
+  const formulaReplays = (formula: VisibleIfFormula | undefined): boolean =>
+    Object.values(formula?.conditions ?? {}).every(conditionReplays);
 
   const elementReplays = (element: AnyField | ListSubField): boolean => {
     // Evaluation reads a field inside a reference cycle by its value alone,
@@ -325,7 +328,58 @@ export function replaysFromSavedResponse(params: {
     return replays;
   };
 
-  return elementReplays(params.element);
+  return { conditionReplays, elementReplays };
+}
+
+/**
+ * Whether a saved response carries everything `element`'s visibility reads, so
+ * re-evaluating it gives back the verdict the respondent saw. A response
+ * records its own answers, and may record the device it came from and the
+ * verdict each visibility validator returned; one saved by an older client
+ * records neither. It never records the respondent's account state or another
+ * form's answers. A condition on another field also reads whether that field is
+ * visible, so that field has to replay too.
+ */
+export function replaysFromSavedResponse(
+  params: SavedResponseContext & { element: AnyField | ListSubField },
+): boolean {
+  return savedResponseReplay(params).elementReplays(params.element);
+}
+
+/**
+ * Whether `element` showed when the response was saved, as far as the response
+ * can tell. A condition it can't replay (see `replaysFromSavedResponse`) could
+ * have gone either way, so the element counts as hidden only where the
+ * conditions it can replay rule it out on their own. A condition on a field
+ * that doesn't replay still counts where that field's answer and no answer
+ * give the same verdict, since a hidden field reads as unanswered.
+ */
+export function isVisibleInSavedResponse(
+  params: SavedResponseContext & {
+    element: AnyField | ListSubField;
+    data: Record<string, FormValue>;
+  },
+): boolean {
+  const { element, data } = params;
+  const { conditionReplays } = savedResponseReplay(params);
+  const extras: ConditionExtras = {
+    deviceType: params.deviceType ?? "desktop",
+    visibilityValidatorResults: params.visibilityValidatorResults,
+  };
+  const mayHold = (formula: VisibleIfFormula | undefined): boolean => {
+    if (!hasEvaluableFormula(formula)) return true;
+    const results = evaluateConditionResults(formula, data, extras);
+    const known = Object.fromEntries(
+      Object.entries(formula.conditions).map(([name, cond]) => [
+        name,
+        conditionReplays(cond) ? results[name] : undefined,
+      ]),
+    );
+    return (
+      evaluateVisibilityFormulaWithUnknowns(formula.formula, known) !== false
+    );
+  };
+  return mayHold(element.visibleIfFormula);
 }
 
 /**
@@ -593,6 +647,17 @@ function evaluateVisibleIfFormula(
   data: Record<string, FormValue>,
   extras: ConditionExtras & { readOnly?: boolean },
 ): boolean {
+  return evaluateVisibilityFormula(
+    formula.formula,
+    evaluateConditionResults(formula, data, extras),
+  );
+}
+
+function evaluateConditionResults(
+  formula: VisibleIfFormula,
+  data: Record<string, FormValue>,
+  extras: ConditionExtras & { readOnly?: boolean },
+): Record<string, boolean> {
   const visibilityMemo = extras.visibilityMemo ?? new Map<string, boolean>();
   const visibilityEvaluationStack =
     extras.visibilityEvaluationStack ?? new Set<string>();
@@ -666,5 +731,5 @@ function evaluateVisibleIfFormula(
         break;
     }
   }
-  return evaluateVisibilityFormula(formula.formula, results);
+  return results;
 }

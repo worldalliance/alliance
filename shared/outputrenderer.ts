@@ -31,6 +31,7 @@ import {
 import { evaluateVariable } from "@alliance/common/forms/variables";
 import {
   isElementCurrentlyVisible,
+  isVisibleInSavedResponse,
   replaysFromSavedResponse,
   stripHiddenListCells,
   type VisibilityValidatorResults,
@@ -259,6 +260,11 @@ export const resolveOutputItems = ({
     fieldLookup: collectFieldLookup(schema.pages),
     groupByFieldId: collectGroupByFieldId(schema.pages),
   };
+  const savedResponse = {
+    deviceType,
+    visibilityValidatorResults: context.visibilityValidatorResults,
+    ...conditionLookups,
+  };
   // A response stored before the server started stripping them can still hold a
   // cell under a sub-field its row hides. `isAnswerShown` already
   // re-checks a whole field this way.
@@ -267,12 +273,7 @@ export const resolveOutputItems = ({
     answers: storedAnswers,
     extras: { ...context, ...conditionLookups },
     canJudge: (subField) =>
-      replaysFromSavedResponse({
-        element: subField,
-        deviceType,
-        visibilityValidatorResults: context.visibilityValidatorResults,
-        ...conditionLookups,
-      }),
+      replaysFromSavedResponse({ element: subField, ...savedResponse }),
   });
 
   const isAnswerShown = (fieldId: string): boolean => {
@@ -280,7 +281,12 @@ export const resolveOutputItems = ({
     return (
       publicAnswers?.[fieldId] === true &&
       !isOutputValueMissing(answers[fieldId]) &&
-      (!field || isElementCurrentlyVisible(field, answers, context))
+      (!field ||
+        isVisibleInSavedResponse({
+          element: field,
+          data: answers,
+          ...savedResponse,
+        }))
     );
   };
 
