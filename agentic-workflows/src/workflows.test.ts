@@ -12,7 +12,14 @@ import { z } from "zod";
 import * as git from "./git";
 import * as jobs from "./jobs";
 import { snapshot, startJob, stepJob, stepMessages } from "./jobs";
-import { JobKind, JobStatus, RunMode, StepStatus, StepOutputFormat, type Job } from "./types";
+import {
+  JobKind,
+  JobStatus,
+  RunMode,
+  StepOutputFormat,
+  StepStatus,
+  type Job,
+} from "./types";
 import { reviewBaseSteps } from "./workflows";
 
 const sha = "a".repeat(40);
@@ -30,7 +37,7 @@ let draftRemoteTip: string;
 let currentBranch: string;
 
 const fakeAgent = `#!/usr/bin/env bun
-import { appendFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, mkdirSync, writeSync } from "node:fs";
 import { basename } from "node:path";
 const tool = basename(process.argv[1]);
 const args = process.argv.slice(2);
@@ -41,8 +48,8 @@ if (tool === "claude" && await Bun.file("review.json").exists()) {
   await Bun.write(".scratch/review/" + "a".repeat(40) + ".json", JSON.stringify(review));
 }
 const phase = tool === "claude" ? "claude" : args.includes("resume") ? "apply" : "assess";
-if (await Bun.file(phase + ".stderr").exists()) process.stderr.write(await Bun.file(phase + ".stderr").text());
-process.stdout.write(await Bun.file(phase + ".jsonl").text());
+if (await Bun.file(phase + ".stderr").exists()) writeSync(2, await Bun.file(phase + ".stderr").text());
+writeSync(1, await Bun.file(phase + ".jsonl").text());
 if (await Bun.file(phase + ".wait").exists()) await Bun.sleep(60000);
 process.exit(await Bun.file(phase + ".exit").exists() ? 1 : 0);
 `;
@@ -229,6 +236,7 @@ test("archives each round, clears scratch, and resumes the assessment session fo
     "Not pushed: this round needs a fresh review with no accepted findings.",
   ]);
   const commands = await calls();
+  expect(commands[0]?.args).toContain("--verbose");
   expect(commands.map((command) => command.tool)).toEqual([
     "claude",
     "codex",
@@ -498,22 +506,36 @@ test("an absent accepted-finding count cannot authorize a push", async () => {
 
 test("canceling a completed subprocess still prevents later publication steps", async () => {
   let published = false;
-  const started = R.unwrap(startJob({
-    kind: JobKind.ReviewBase,
-    label: "Synthetic cancellation",
-    worktree: fixture,
-    mode: RunMode.All,
-    steps: [
-      { id: "apply", title: "apply", command: "synthetic", outputFormat: StepOutputFormat.Text, run: async context => {
-        R.unwrap(jobs.cancelJob(context.job.id));
-        return R.success("Process already finished");
-      } },
-      { id: "push", title: "push", command: "synthetic", outputFormat: StepOutputFormat.Text, run: async () => {
-        published = true;
-        return R.success("Published");
-      } },
-    ],
-  }));
+  const started = R.unwrap(
+    startJob({
+      kind: JobKind.ReviewBase,
+      label: "Synthetic cancellation",
+      worktree: fixture,
+      mode: RunMode.All,
+      steps: [
+        {
+          id: "apply",
+          title: "apply",
+          command: "synthetic",
+          outputFormat: StepOutputFormat.Text,
+          run: async (context) => {
+            R.unwrap(jobs.cancelJob(context.job.id));
+            return R.success("Process already finished");
+          },
+        },
+        {
+          id: "push",
+          title: "push",
+          command: "synthetic",
+          outputFormat: StepOutputFormat.Text,
+          run: async () => {
+            published = true;
+            return R.success("Published");
+          },
+        },
+      ],
+    }),
+  );
   const job = await settled(started.id);
   expect(job.status).toBe(JobStatus.Canceled);
   expect(published).toBe(false);
@@ -522,26 +544,25 @@ test("canceling a completed subprocess still prevents later publication steps", 
 test("raw output is saved before a running agent is canceled", async () => {
   await Bun.write(join(fixture, "assess.wait"), "wait");
   const job = start(RunMode.All);
-  const log = Bun.file(
-    join(
-      fixture,
-      "state/alliance/agentic-review",
-      job.id,
-      "assess.stdout.jsonl",
-    ),
+  const logPath = join(
+    fixture,
+    "state/alliance/agentic-review",
+    job.id,
+    "assess.stdout.jsonl",
   );
   const expected = await Bun.file(join(fixture, "assess.jsonl")).text();
   for (let attempt = 0; attempt < 200; attempt++) {
+    const log = Bun.file(logPath);
     if ((await log.exists()) && (await log.text()) === expected) break;
     await Bun.sleep(10);
   }
-  expect(await log.text()).toBe(expected);
+  expect(await Bun.file(logPath).text()).toBe(expected);
   expect(snapshot().find((entry) => entry.id === job.id)?.status).toBe(
     JobStatus.Running,
   );
   R.unwrap(jobs.cancelJob(job.id));
   expect((await settled(job.id)).status).toBe(JobStatus.Canceled);
-  expect(await log.text()).toBe(expected);
+  expect(await Bun.file(logPath).text()).toBe(expected);
 });
 
 test("a new draft branch uses a lease requiring that it does not exist", async () => {

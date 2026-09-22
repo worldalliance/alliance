@@ -173,6 +173,7 @@ export async function spawnLogged(params: {
       return R.failure(`could not open process logs: ${opened.error.message}`);
   }
 
+  if (job.canceled) return R.failure("canceled");
   const spawned = R.fromThrowable(() =>
     Bun.spawn(params.command, {
       cwd: params.cwd,
@@ -260,21 +261,23 @@ async function runStep(job: JobRecord, index: number): Promise<boolean> {
   job.proc = null;
 
   let needsAttention = false;
-  const failure = outcome.ok
-    ? R.match(outcome.value, {
-        success: (output) => {
-          const attention = output !== null && typeof output === "object";
-          needsAttention = attention;
-          step.status = attention
-            ? StepStatus.NeedsAttention
-            : StepStatus.Succeeded;
-          step.output = attention ? output.needsAttention : output;
-          pending.outputs.set(definition.id, step.output ?? "");
-          return null;
-        },
-        failure: (error) => error,
-      })
-    : outcome.error.message;
+  const failure = job.canceled
+    ? "canceled"
+    : outcome.ok
+      ? R.match(outcome.value, {
+          success: (output) => {
+            const attention = output !== null && typeof output === "object";
+            needsAttention = attention;
+            step.status = attention
+              ? StepStatus.NeedsAttention
+              : StepStatus.Succeeded;
+            step.output = attention ? output.needsAttention : output;
+            pending.outputs.set(definition.id, step.output ?? "");
+            return null;
+          },
+          failure: (error) => error,
+        })
+      : outcome.error.message;
 
   if (failure === null) {
     if (!needsAttention) return true;

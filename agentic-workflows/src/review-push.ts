@@ -15,6 +15,32 @@ export type ReviewPushTarget = {
   draftTip: string;
 };
 
+function pushWithLease(params: {
+  context: StepContext;
+  path: string;
+  remote: string;
+  ref: string;
+  previousTip: string;
+  sha: string;
+}): Promise<Result<string, string>> {
+  return spawnLogged({
+    context: params.context,
+    command: [
+      "git",
+      "push",
+      "--porcelain",
+      "--no-follow-tags",
+      "--recurse-submodules=no",
+      `--force-with-lease=${params.ref}:${params.previousTip}`,
+      "--",
+      params.remote,
+      `${params.sha}:${params.ref}`,
+    ],
+    cwd: params.path,
+    onStdout: (line) => appendLog(params.context.step, line),
+  });
+}
+
 export async function resolveReviewPush(params: {
   path: string;
   selectedRemote: string;
@@ -120,21 +146,13 @@ export async function pushDraftBranch(params: {
   });
   if (!head.ok) return head;
   return R.map(
-    await spawnLogged({
+    await pushWithLease({
       context: params.context,
-      command: [
-        "git",
-        "push",
-        "--porcelain",
-        "--no-follow-tags",
-        "--recurse-submodules=no",
-        `--force-with-lease=${target.draftRef}:${target.draftTip}`,
-        "--",
-        DRAFT_REMOTE,
-        `${head.value.trim()}:${target.draftRef}`,
-      ],
-      cwd: params.path,
-      onStdout: (line) => appendLog(params.context.step, line),
+      path: params.path,
+      remote: DRAFT_REMOTE,
+      ref: target.draftRef,
+      previousTip: target.draftTip,
+      sha: head.value.trim(),
     }),
     () =>
       `Backed up committed work through ${head.value.trim()} to ${DRAFT_REMOTE}/${target.draftRef.slice("refs/heads/".length)}.`,
@@ -157,21 +175,13 @@ export async function pushReviewedCommit(params: {
     );
 
   return R.map(
-    await spawnLogged({
+    await pushWithLease({
       context: params.context,
-      command: [
-        "git",
-        "push",
-        "--porcelain",
-        "--no-follow-tags",
-        "--recurse-submodules=no",
-        `--force-with-lease=${target.ref}:${target.parent}`,
-        "--",
-        target.remote,
-        `${target.reviewedSha}:${target.ref}`,
-      ],
-      cwd: params.path,
-      onStdout: (line) => appendLog(params.context.step, line),
+      path: params.path,
+      remote: target.remote,
+      ref: target.ref,
+      previousTip: target.parent,
+      sha: target.reviewedSha,
     }),
     () =>
       `Pushed reviewed commit ${target.reviewedSha} to ${target.remote}/${target.ref.slice("refs/heads/".length)}.`,

@@ -271,10 +271,12 @@ it("leaves focus alone for a press that was never on the control", async () => {
   );
   await screen.findByText("comment 1");
 
-  expect(document.activeElement).toBe(document.body);
   // The name goes up with the load, since it has to be there for a move that
   // turns out not to happen, and comes back down once nobody has landed.
-  expect(screen.queryByRole("group", { name: "Comments" })).toBeNull();
+  await waitFor(() =>
+    expect(screen.queryByRole("group", { name: "Comments" })).toBeNull(),
+  );
+  expect(document.activeElement).toBe(document.body);
 });
 
 it("leaves focus alone once the retry the reader asked for has failed", async () => {
