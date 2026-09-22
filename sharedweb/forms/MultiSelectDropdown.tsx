@@ -1,10 +1,11 @@
-import { matchesOptionSearch } from "@alliance/shared/forms/optionSearch";
+import {
+  markdownPlainText,
+  matchesOptionSearch,
+} from "@alliance/shared/forms/optionSearch";
 import { cn } from "@alliance/shared/styles/util";
 import { Combobox } from "@base-ui/react/combobox";
 import { Select } from "@base-ui/react/select";
 import { Check, ChevronDown, X } from "lucide-react";
-import { fromMarkdown } from "mdast-util-from-markdown";
-import { toString } from "mdast-util-to-string";
 import { useMemo, useRef } from "react";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import { zIndex } from "../ui/zIndex";
@@ -71,7 +72,7 @@ export default function MultiSelectDropdown({
     () =>
       options.map((option) => ({
         ...option,
-        text: toString(fromMarkdown(option.label)),
+        text: markdownPlainText(option.label),
       })),
     [options],
   );
