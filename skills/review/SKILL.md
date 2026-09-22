@@ -35,6 +35,12 @@ For cleanup, establish the concrete benefit and the assumptions that make it saf
 
 Some claims resist testing (an external service, a race, a migration against production data). Report those as unverified and name what would settle it.
 
+Very few things require human intervention. One example of something that requires a human to verify a claim is logging in to a third-party service. If you have one of these in the final review, mark it as unverified and requiring human assistance.
+
+- You may load the staging data to verify claims about the prod db.
+- You may start up development servers as well. Stop all background tasks before your final output.
+- You may use playwright to check UI behavior on the web.
+
 # Tiers
 
 - **Must-fix** — shipping it is wrong. Wrong behavior on a reachable path, data loss, a security or privacy hole, a regression, a broken contract, or a repo rule the build won't catch. The author changes the code before merge.
