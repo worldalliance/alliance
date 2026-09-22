@@ -277,3 +277,26 @@ it("hands the caller the error body the server sent, which is no Error", async (
   });
   expect(query.result.current.error).not.toBeInstanceOf(Error);
 });
+
+it("a successful decline settles once the received requests have reloaded", async () => {
+  let received = [{ id: ALLOWED_USER, displayName: "Grace" }];
+  api.alsoServing({
+    "GET /user/friends/requests/received": () => Response.json(received),
+    "PATCH /user/friends/:requesterId/decline": () => {
+      received = [];
+      return new Response(null, { status: 200 });
+    },
+  });
+  const { client, wrapper } = queryWrapper();
+  const hooks = renderHook(
+    () => ({
+      list: useUserReceivedFriendRequestsQuery(),
+      decline: useDeclineFriendRequestMutation(),
+    }),
+    { wrapper },
+  );
+  await waitFor(() => expect(hooks.result.current.list.data).toHaveLength(1));
+
+  await hooks.result.current.decline.mutateAsync(ALLOWED_USER);
+  expect(client.getQueryData(userQueryKeys.receivedRequests())).toEqual([]);
+});

@@ -261,35 +261,41 @@ type UpdateProfileMutationOptions = UseMutationOptions<
   UpdateProfileDto
 >;
 
-const invalidateFriendRequests = (queryClient: QueryClient) => {
-  void queryClient.invalidateQueries({
-    queryKey: userQueryKeys.receivedRequests(),
-  });
-  void queryClient.invalidateQueries({
-    queryKey: userQueryKeys.sentRequests(),
-  });
-};
+const invalidateFriendRequests = (queryClient: QueryClient) =>
+  Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: userQueryKeys.receivedRequests(),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: userQueryKeys.sentRequests(),
+    }),
+  ]);
 
-const invalidateFriendships = (queryClient: QueryClient) => {
-  void queryClient.invalidateQueries({ queryKey: userQueryKeys.allFriends() });
-  void queryClient.invalidateQueries({
-    queryKey: userQueryKeys.messageableUsers(),
-  });
-  invalidateFriendRequests(queryClient);
-};
+const invalidateFriendships = (queryClient: QueryClient) =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: userQueryKeys.allFriends() }),
+    queryClient.invalidateQueries({
+      queryKey: userQueryKeys.messageableUsers(),
+    }),
+    invalidateFriendRequests(queryClient),
+  ]);
 
-const resyncFriend = (queryClient: QueryClient, userId: number) => {
-  void queryClient.invalidateQueries({
-    queryKey: userQueryKeys.friendStatus(userId),
-  });
-  invalidateFriendships(queryClient);
-};
+const resyncFriend = (queryClient: QueryClient, userId: number) =>
+  Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: userQueryKeys.friendStatus(userId),
+    }),
+    invalidateFriendships(queryClient),
+  ]);
 
 const useFriendMutation = (
   params: {
     call: (userId: number) => Promise<unknown>;
     statusOnSuccess: FriendStatusDto;
-    invalidateOnSuccess: (queryClient: QueryClient, userId: number) => void;
+    invalidateOnSuccess: (
+      queryClient: QueryClient,
+      userId: number,
+    ) => Promise<unknown>;
   },
   options?: FriendRequestMutationOptions,
 ) => {
@@ -299,16 +305,19 @@ const useFriendMutation = (
     mutationFn: async (userId) => {
       await call(userId);
     },
-    onSuccess: (data, userId, onMutateResult, context) => {
+    // Stays pending until the refetched lists land, so a caller that disables
+    // on isPending keeps an answered row locked until it leaves the list.
+    onSuccess: async (data, userId, onMutateResult, context) => {
       queryClient.setQueryData(
         userQueryKeys.friendStatus(userId),
         statusOnSuccess,
       );
-      invalidateOnSuccess(queryClient, userId);
+      const refetched = invalidateOnSuccess(queryClient, userId);
       options?.onSuccess?.(data, userId, onMutateResult, context);
+      await refetched;
     },
     onError: (error, userId, onMutateResult, context) => {
-      resyncFriend(queryClient, userId);
+      void resyncFriend(queryClient, userId);
       options?.onError?.(error, userId, onMutateResult, context);
     },
   });

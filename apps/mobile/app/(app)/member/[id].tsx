@@ -137,6 +137,8 @@ export default function UserProfileScreen() {
   const acceptFriendRequest = useAcceptFriendRequestMutation();
   const declineFriendRequest = useDeclineFriendRequestMutation();
   const removeFriend = useRemoveFriendMutation();
+  const answeringRequest =
+    acceptFriendRequest.isPending || declineFriendRequest.isPending;
   const updateProfileMutation = useUpdateProfileMutation(userId);
 
   const {
@@ -386,12 +388,14 @@ export default function UserProfileScreen() {
               color={ButtonColor.Green}
               size={ButtonSize.Small}
               onPress={handleAcceptFriendRequest}
+              disabled={answeringRequest}
             />
             <Button
               title="Decline"
               color={ButtonColor.Light}
               size={ButtonSize.Small}
               onPress={handleDeclineFriendRequest}
+              disabled={answeringRequest}
             />
           </View>
         );
@@ -417,6 +421,7 @@ export default function UserProfileScreen() {
     handleDeclineFriendRequest,
     handleRemoveFriend,
     friendActionsOpen,
+    answeringRequest,
   ]);
 
   const renderActionItem = useCallback(
@@ -551,18 +556,20 @@ export default function UserProfileScreen() {
               color={ButtonColor.Green}
               size={ButtonSize.Small}
               onPress={() => acceptFriendRequest.mutate(request.id)}
+              disabled={answeringRequest}
             />
             <Button
               title="Decline"
               color={ButtonColor.Light}
               size={ButtonSize.Small}
               onPress={() => declineFriendRequest.mutate(request.id)}
+              disabled={answeringRequest}
             />
           </View>
         </View>
       </View>
     ),
-    [acceptFriendRequest, declineFriendRequest],
+    [acceptFriendRequest, declineFriendRequest, answeringRequest],
   );
 
   const renderSentItem = useCallback(

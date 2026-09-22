@@ -7,6 +7,7 @@ interface FriendRequestButtonProps {
   handleSendFriendRequest: () => void;
   handleRemoveFriend: (e: React.MouseEvent<HTMLElement>) => void;
   handleAcceptFriendRequest: () => void;
+  accepting: boolean;
 }
 
 const FriendRequestButton = ({
@@ -14,6 +15,7 @@ const FriendRequestButton = ({
   handleSendFriendRequest,
   handleRemoveFriend,
   handleAcceptFriendRequest,
+  accepting,
 }: FriendRequestButtonProps) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -36,6 +38,7 @@ const FriendRequestButton = ({
           <Button
             color={ButtonColor.Green}
             onClick={handleAcceptFriendRequest}
+            disabled={accepting}
             className="!h-9"
           >
             Accept

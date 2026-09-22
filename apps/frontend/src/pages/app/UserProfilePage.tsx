@@ -486,6 +486,7 @@ const UserProfilePage: React.FC = () => {
                 handleSendFriendRequest={handleSendFriendRequest}
                 handleRemoveFriend={handleRemoveFriend}
                 handleAcceptFriendRequest={handleAcceptFriendRequest}
+                accepting={acceptFriendRequest.isPending}
               />
             )}
             {messagingEnabled &&
