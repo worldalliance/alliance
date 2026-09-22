@@ -13,7 +13,7 @@ top box and the suite list is the box underneath.
 
 ## Most-recent-first is by latest event date
 
-`ActionTimeline` sorted rows by each action's *first* event ascending. Recency of a row is its
+`ActionTimeline` sorted rows by each action's _first_ event ascending. Recency of a row is its
 latest event, so the new order is the last event's date descending. This also matches the caption
 already on the page: "ordered by latest event (most recent first)".
 
