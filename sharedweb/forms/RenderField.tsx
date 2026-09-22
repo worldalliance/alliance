@@ -583,7 +583,7 @@ export function RenderField({
           <select
             value={(value as string) ?? ""}
             onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-            required={required}
+            aria-required={required}
             disabled={disabled}
             aria-invalid={hasError}
             className={composeClassName(

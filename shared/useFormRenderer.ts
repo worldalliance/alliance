@@ -887,25 +887,15 @@ export function useFormValidation(args: {
         listFieldIds.length > 0 ? listFieldIds : undefined,
       );
 
-      const hasAnyError = Object.values(updates).some(
-        (msg) => msg && msg.trim().length > 0,
-      );
-      const firstInvalid = visibleFields.find((field) => {
-        const message = updates[field.id];
-        return !!(message && message.trim().length > 0);
-      });
-      // A list sub-field error has no field of its own to scroll to, so fall
-      // back to the `parentId` head of its `parentId:cardIndex:subId` key.
-      const firstInvalidFieldId =
-        firstInvalid?.id ??
-        (hasAnyError
-          ? (() => {
-              const key = Object.keys(updates).find(
-                (k) => updates[k] && updates[k]!.trim().length > 0,
-              );
-              return key?.includes(":") ? key.split(":")[0] : key;
-            })()
-          : undefined);
+      const hasError = (key: string) => !!updates[key]?.trim();
+      const invalidKeys = Object.keys(updates).filter(hasError);
+      const hasAnyError = invalidKeys.length > 0;
+      // A list sub-field error is keyed `parentId:cardIndex:subId`.
+      const firstInvalidFieldId = visibleFields.find(
+        (field) =>
+          hasError(field.id) ||
+          invalidKeys.some((key) => key.startsWith(`${field.id}:`)),
+      )?.id;
 
       return { isValid: !hasAnyError, firstInvalidFieldId };
     },
