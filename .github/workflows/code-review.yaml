@@ -249,6 +249,10 @@ jobs:
             echo "Empty response from OpenAI while linkifying; using original review text." >&2
           fi
 
+          # Escaped after linkifying so the model can't undo it; the Cursor links are the only Slack markup kept.
+          . .github/scripts/slack.sh
+          linkified=$(slack_escape "$linkified" | sed -E 's#&lt;(cursor://file[^|[:space:]&]*)(\|[^&]*)?&gt;#<\1\2>#g')
+
           echo "Linkified review:"
           echo "-----------------"
           printf '%s\n' "$linkified"
