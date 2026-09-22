@@ -8,6 +8,7 @@ import {
 import { cn } from "@alliance/shared/styles/util";
 import {
   addWeeks,
+  getDayOfYear,
   isTuesday,
   milliseconds,
   nextTuesday,
@@ -554,6 +555,9 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                       bottom: 0,
                     }}
                   >
+                    <div className="absolute inset-0 flex items-center justify-center text-[31.5px] leading-none text-gray-200">
+                      {Math.ceil(getDayOfYear(date) / 7) + 1}
+                    </div>
                     <div>
                       <div className="font-medium">{date.getDate()}</div>
                       <div>
