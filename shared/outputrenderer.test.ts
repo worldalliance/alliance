@@ -1,3 +1,4 @@
+import { ExceptionEvent } from "@alliance/common/analytics";
 import type {
   FormSchema,
   FormValue,
@@ -5,6 +6,12 @@ import type {
   NumberField,
   OutputFieldBlock,
 } from "@alliance/common/forms/form-schema";
+import {
+  __resetAnalyticsForTests,
+  registerAnalytics,
+  type AnalyticsProperties,
+} from "./lib/analytics";
+import { captureErrors } from "./lib/testing/captureErrors";
 import { resolveOutputItems } from "./outputrenderer";
 
 const numberField = (id: string, label: string): NumberField => ({
@@ -212,15 +219,17 @@ describe("resolveOutputItems and blank list cards", () => {
       format,
       publicAnswer = true,
       blocks = [{ id: "ob1", fieldId: list.id, format }],
+      field = list,
     }: {
       format?: OutputFieldBlock["format"];
       publicAnswer?: boolean;
       blocks?: OutputFieldBlock[];
+      field?: ListField;
     } = {},
   ) =>
     resolveOutputItems({
       schema: {
-        pages: [{ id: "p1", fields: [list] }],
+        pages: [{ id: "p1", fields: [field] }],
         outputViews: [
           {
             id: "v1",
@@ -232,6 +241,20 @@ describe("resolveOutputItems and blank list cards", () => {
       answers: { [list.id]: value },
       publicAnswers: { [list.id]: publicAnswer },
     }).items;
+
+  const reported: (AnalyticsProperties | undefined)[] = [];
+
+  beforeEach(() => {
+    reported.length = 0;
+    registerAnalytics({
+      capture: () => {},
+      captureException: (_error, properties) => reported.push(properties),
+    });
+  });
+
+  afterEach(() => {
+    __resetAnalyticsForTests();
+  });
 
   it("leaves out a list whose cards answer only what the view hides", () => {
     expect(resolveList([{ weight: "" }, { note: 3 }])).toEqual([]);
@@ -254,5 +277,54 @@ describe("resolveOutputItems and blank list cards", () => {
 
     if (item.type !== "field") throw new Error("expected a field item");
     expect(item.formattedValue).toBe("1 item");
+  });
+
+  it("reports a malformed list answer once when multiple blocks reference it", () => {
+    const logged = captureErrors(() => {
+      expect(
+        resolveList(["Ada"], {
+          blocks: [
+            { id: "ob1", fieldId: list.id },
+            { id: "ob2", fieldId: list.id, format: "textonly" },
+          ],
+        }),
+      ).toEqual([]);
+    });
+
+    expect(logged).toEqual([
+      ["Stored answer for list field shipment-weights is not a list of rows"],
+    ]);
+    expect(reported).toEqual([
+      expect.objectContaining({
+        event: ExceptionEvent.MalformedListAnswer,
+        properties: { fieldId: list.id },
+      }),
+    ]);
+  });
+
+  it("leaves out a malformed private answer without logging it", () => {
+    const logged = captureErrors(() => {
+      expect(resolveList(["Ada"], { publicAnswer: false })).toEqual([]);
+    });
+
+    expect(logged).toEqual([]);
+    expect(reported).toEqual([]);
+  });
+
+  it("leaves out a malformed answer to a hidden field without logging it", () => {
+    const hidden: ListField = {
+      ...list,
+      visibleIfFormula: {
+        conditions: { a: { kind: "equals", when: "gate", equals: "yes" } },
+        formula: "a",
+      },
+    };
+
+    const logged = captureErrors(() => {
+      expect(resolveList(["Ada"], { field: hidden })).toEqual([]);
+    });
+
+    expect(logged).toEqual([]);
+    expect(reported).toEqual([]);
   });
 });

@@ -1,3 +1,4 @@
+import { ExceptionEvent } from "@alliance/common/analytics";
 import { formatCityValue, parseCityValue } from "@alliance/common/forms/city";
 import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
@@ -35,6 +36,7 @@ import {
   isOutputValueMissing,
   outputCardSubFields,
 } from "./forms/outputValues";
+import { captureException } from "./lib/analytics";
 
 export type ResolvedOutputDisplayItem = {
   type: "display";
@@ -191,27 +193,15 @@ export const isOutputBlockVisible = (
   inputField?: AnyField,
   outputBlockVisibility?: Map<string, boolean>,
 ): boolean => {
-  const context = visibilityContext(validatorResults, deviceType);
-  if (inputField) {
-    const isVisible = isElementCurrentlyVisible(inputField, answers, context);
-    if (!isVisible) {
-      return false;
-    }
-  }
-  if ("fieldId" in block) {
-    const value = answers[block.fieldId];
-    if (isOutputValueMissing(value)) {
-      return false;
-    }
-    if (
-      inputField?.kind === "list" &&
-      drawnCards(inputField, value).length === 0
-    ) {
-      return false;
-    }
+  if (
+    "fieldId" in block &&
+    inputField?.kind === "list" &&
+    drawnCards(inputField, answers[block.fieldId]).length === 0
+  ) {
+    return false;
   }
   return isElementCurrentlyVisible(block, answers, {
-    ...context,
+    ...visibilityContext(validatorResults, deviceType),
     outputBlockVisibility,
   });
 };
@@ -260,11 +250,38 @@ export const resolveOutputItems = ({
     return { selectedView, items: [], fieldLookup };
   }
 
+  const context = visibilityContext(validatorResults, deviceType);
+  const isAnswerShown = (fieldId: string): boolean => {
+    const field = fieldLookup.get(fieldId);
+    return (
+      publicAnswers?.[fieldId] === true &&
+      !isOutputValueMissing(answers[fieldId]) &&
+      (!field || isElementCurrentlyVisible(field, answers, context))
+    );
+  };
+
+  const allBlocks = selectedView.blocks ?? [];
+  const referencedFieldIds = new Set(
+    allBlocks.flatMap((block) => ("fieldId" in block ? [block.fieldId] : [])),
+  );
+  for (const fieldId of referencedFieldIds) {
+    if (
+      fieldLookup.get(fieldId)?.kind === "list" &&
+      asCards(answers[fieldId]) === null &&
+      isAnswerShown(fieldId)
+    ) {
+      const message = `Stored answer for list field ${fieldId} is not a list of rows`;
+      console.error(message);
+      captureException(ExceptionEvent.MalformedListAnswer, new Error(message), {
+        fieldId,
+      });
+    }
+  }
+
   // Resolve visibility for every block, walking outputBlockVisible dependencies
   // first so a condition always sees a populated map. Any block (field or
   // display) can reference any other block by id. Cycles should be rejected by
   // validateFormSchema; the inProgress guard returns false if one slips past.
-  const allBlocks = selectedView.blocks ?? [];
   const blockById = new Map<string, OutputBlock>();
   for (const b of allBlocks) {
     if (b.id) blockById.set(b.id, b);
@@ -284,6 +301,7 @@ export const resolveOutputItems = ({
       );
     }
     return (
+      isAnswerShown(block.fieldId) &&
       isOutputBlockVisible(
         block,
         answers,
@@ -291,7 +309,7 @@ export const resolveOutputItems = ({
         deviceType,
         fieldLookup.get(block.fieldId),
         outputBlockVisibility,
-      ) && publicAnswers?.[block.fieldId] === true
+      )
     );
   };
 

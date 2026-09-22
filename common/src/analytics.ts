@@ -121,6 +121,7 @@ export enum ExceptionEvent {
   SessionLoadFailed = "session_load_failed",
   OAuthSignInFailed = "oauth_sign_in_failed",
   PasswordLoginFailed = "password_login_failed",
+  MalformedListAnswer = "malformed_list_answer",
 }
 
 export const SLACK_PROPERTY = "send_to_slack";
@@ -215,4 +216,5 @@ export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   [ExceptionEvent.SessionLoadFailed]: false,
   [ExceptionEvent.OAuthSignInFailed]: true,
   [ExceptionEvent.PasswordLoginFailed]: true,
+  [ExceptionEvent.MalformedListAnswer]: false,
 };

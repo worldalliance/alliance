@@ -1,5 +1,6 @@
 import type { FormSchema, FormValue } from "@alliance/common/forms/form-schema";
 import type { FormResponseOutputDto } from "@alliance/shared/client";
+import { captureErrors } from "@alliance/shared/lib/testing/captureErrors";
 import { cleanup, render, screen } from "@testing-library/react";
 import { SiteAppProvider } from "../ui/SiteAppProvider";
 import { OutputRenderer } from "./OutputRenderer";
@@ -77,10 +78,16 @@ describe("OutputRenderer blank list cards", () => {
   });
 
   it("leaves out a list whose answer is not a list of cards", () => {
-    renderSubmission({
-      ...submission,
-      answers: { people: [null, { name: "Ada" }] },
+    const logged = captureErrors(() => {
+      renderSubmission({
+        ...submission,
+        answers: { people: [null, { name: "Ada" }] },
+      });
     });
+
+    expect(logged).toEqual([
+      ["Stored answer for list field people is not a list of rows"],
+    ]);
 
     expect(screen.queryByText("People")).toBeNull();
   });
