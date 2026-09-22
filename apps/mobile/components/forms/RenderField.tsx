@@ -24,6 +24,7 @@ import {
   listCardWriters,
   resolveCards,
 } from "@alliance/shared/forms/listCards";
+import { markdownPlainText } from "@alliance/shared/forms/optionSearch";
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
 import {
   formatTimeForDisplay,
@@ -46,7 +47,9 @@ import { getImageSource } from "../../lib/config";
 import { pickImageDataUri } from "../../lib/pickImageDataUri";
 import { colors } from "../../lib/style/colors";
 import AppMarkdownWrapper from "../AppMarkdownWrapper";
-import BottomSheetOptionPicker from "../BottomSheetOptionPicker";
+import BottomSheetOptionPicker, {
+  BottomSheetMultiOptionPicker,
+} from "../BottomSheetOptionPicker";
 import InlineLabelMarkdownWrapper from "../InlineLabelMarkdownWrapper";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Card, { CardStyle } from "../system/Card";
@@ -534,6 +537,21 @@ export function RenderField({
       const maxReached =
         field.maxSelections !== undefined &&
         selectedCount >= field.maxSelections;
+      const setSelected = ({
+        value: optionValue,
+        selected,
+      }: {
+        value: string;
+        selected: boolean;
+      }) =>
+        onChange?.(
+          selected
+            ? [...selections, optionValue]
+            : selections.filter((v) => v !== optionValue),
+        );
+      const selectedOptions = options.filter((option) =>
+        selections.includes(option.value),
+      );
 
       return (
         <View>
@@ -543,36 +561,94 @@ export function RenderField({
             hideLabel={hideLabel}
             required={required}
           />
-          <View className={cn(hasError && "border-l-2 border-red-500 pl-3")}>
-            {options.map((option: ChoiceOption, optIndex: number) => {
-              const checked = selections.includes(option.value);
-              const disabledOption = disabled || (!checked && maxReached);
-              return (
-                <Checkbox
-                  key={optIndex}
-                  checked={checked}
-                  disabled={disabledOption}
-                  error={hasError}
-                  label={option.label}
-                  size={CheckboxSize.Small}
-                  className="py-2"
-                  onChange={(next) => {
-                    if (!onChange) return;
-                    const currentValues = Array.isArray(value)
-                      ? value.filter(
-                          (item): item is string => typeof item === "string",
-                        )
-                      : [];
-                    onChange(
-                      next
-                        ? [...currentValues, option.value]
-                        : currentValues.filter((v) => v !== option.value),
-                    );
-                  }}
-                />
-              );
-            })}
-          </View>
+          {field.dropdown ? (
+            <>
+              <TouchableOpacity
+                className={cn(
+                  inputBase,
+                  "flex-row items-center justify-between",
+                )}
+                onPress={() => setSelectOpen(true)}
+                disabled={disabled}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+              >
+                <Text
+                  className={cn(
+                    "text-base",
+                    selectedCount > 0 ? "text-zinc-900" : "text-zinc-400",
+                  )}
+                >
+                  {selectedCount > 0
+                    ? `${selectedCount} selected`
+                    : "Select options…"}
+                </Text>
+                <ChevronDown size={18} color={colors.text.icon} />
+              </TouchableOpacity>
+              {selectedOptions.length > 0 && (
+                <View className="mt-2 flex-row flex-wrap gap-2">
+                  {selectedOptions.map((option) => (
+                    <View
+                      key={option.value}
+                      className="max-w-full flex-row items-center gap-1 rounded-full bg-zinc-100 px-3 py-1"
+                    >
+                      <View className="shrink">
+                        <InlineLabelMarkdownWrapper>
+                          {option.label}
+                        </InlineLabelMarkdownWrapper>
+                      </View>
+                      {!disabled && onChange && (
+                        <TouchableOpacity
+                          onPress={() =>
+                            setSelected({
+                              value: option.value,
+                              selected: false,
+                            })
+                          }
+                          hitSlop={15}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remove ${markdownPlainText(option.label)}`}
+                        >
+                          <X size={14} color={colors.text.icon} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              )}
+              <BottomSheetMultiOptionPicker
+                visible={selectOpen}
+                onClose={() => setSelectOpen(false)}
+                title="Select"
+                searchable={field.searchable}
+                options={options}
+                values={selections}
+                maxReached={maxReached}
+                onToggle={setSelected}
+              />
+            </>
+          ) : (
+            <View className={cn(hasError && "border-l-2 border-red-500 pl-3")}>
+              {options.map((option: ChoiceOption, optIndex: number) => {
+                const checked = selections.includes(option.value);
+                const disabledOption = disabled || (!checked && maxReached);
+                return (
+                  <Checkbox
+                    key={optIndex}
+                    checked={checked}
+                    disabled={disabledOption}
+                    error={hasError}
+                    label={option.label}
+                    size={CheckboxSize.Small}
+                    className="py-2"
+                    onChange={(selected) =>
+                      setSelected({ value: option.value, selected })
+                    }
+                  />
+                );
+              })}
+            </View>
+          )}
           {field.maxSelections !== undefined && (
             <Text className="text-xs text-gray-500">
               Select up to {withCount(field.maxSelections, "option")}

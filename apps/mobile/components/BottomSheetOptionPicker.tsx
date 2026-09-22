@@ -1,9 +1,13 @@
-import { matchesOptionSearch } from "@alliance/shared/forms/optionSearch";
+import {
+  markdownPlainText,
+  matchesOptionSearch,
+} from "@alliance/shared/forms/optionSearch";
 import { cn } from "@alliance/shared/styles/util";
 import {
   type PropsWithChildren,
   type RefObject,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -20,6 +24,7 @@ import {
 } from "react-native-keyboard-controller";
 import { colors } from "../lib/style/colors";
 import FormModal from "./forms/FormModal";
+import Checkbox, { CheckboxSize } from "./system/Checkbox";
 import Text, { FontWeight } from "./system/Text";
 
 export type BottomSheetOption<V extends string | number> = {
@@ -93,6 +98,75 @@ function SearchableOptionList({
   );
 }
 
+function useQueryResetOnOpen(visible: boolean) {
+  const [query, setQuery] = useState("");
+  const [wasVisible, setWasVisible] = useState(visible);
+  if (wasVisible !== visible) {
+    setWasVisible(visible);
+    if (visible) setQuery("");
+  }
+  return [query, setQuery] as const;
+}
+
+function OptionSearch({
+  query,
+  onChangeQuery,
+  empty,
+}: {
+  query: string;
+  onChangeQuery: (query: string) => void;
+  empty: boolean;
+}) {
+  return (
+    <>
+      <TextInput
+        value={query}
+        onChangeText={onChangeQuery}
+        accessibilityLabel="Search options"
+        placeholder="Search options…"
+        placeholderTextColor={colors.text.light}
+        autoCorrect={false}
+        autoCapitalize="none"
+        className="mb-2 rounded-lg border border-zinc-200 px-3 py-2 text-base text-zinc-900"
+      />
+      {empty && <Text className="py-3 text-zinc-500">No matches</Text>}
+    </>
+  );
+}
+
+function OptionSheet({
+  visible,
+  onClose,
+  title,
+  search,
+  scrollRef,
+  children,
+}: PropsWithChildren<{
+  visible: boolean;
+  onClose: () => void;
+  title: string;
+  search?: Parameters<typeof OptionSearch>[0];
+  scrollRef: RefObject<ScrollView | null>;
+}>) {
+  return (
+    <FormModal visible={visible} onClose={onClose}>
+      <Text className="text-lg text-zinc-900 mb-2" weight={FontWeight.Semibold}>
+        {title}
+      </Text>
+      {search ? (
+        <>
+          <OptionSearch {...search} />
+          <SearchableOptionList scrollRef={scrollRef}>
+            {children}
+          </SearchableOptionList>
+        </>
+      ) : (
+        children
+      )}
+    </FormModal>
+  );
+}
+
 export default function BottomSheetOptionPicker<V extends string | number>({
   visible,
   searchable = false,
@@ -104,12 +178,7 @@ export default function BottomSheetOptionPicker<V extends string | number>({
 }: BottomSheetOptionPickerProps<V>) {
   const scrollRef = useRef<ScrollView>(null);
   const hasScrolledOnOpen = useRef(false);
-  const [query, setQuery] = useState("");
-  const [wasVisible, setWasVisible] = useState(visible);
-  if (wasVisible !== visible) {
-    setWasVisible(visible);
-    if (visible) setQuery("");
-  }
+  const [query, setQuery] = useQueryResetOnOpen(visible);
   useEffect(() => {
     if (!visible) hasScrolledOnOpen.current = false;
   }, [visible]);
@@ -142,32 +211,83 @@ export default function BottomSheetOptionPicker<V extends string | number>({
   ));
 
   return (
-    <FormModal visible={visible} onClose={onClose}>
-      <Text className="text-lg text-zinc-900 mb-2" weight={FontWeight.Semibold}>
-        {title}
-      </Text>
-      {searchable && (
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          accessibilityLabel="Search options"
-          placeholder="Search options…"
-          placeholderTextColor={colors.text.light}
-          autoCorrect={false}
-          autoCapitalize="none"
-          className="mb-2 rounded-lg border border-zinc-200 px-3 py-2 text-base text-zinc-900"
-        />
-      )}
-      {searchable && filtered.length === 0 && (
-        <Text className="py-3 text-zinc-500">No matches</Text>
-      )}
-      {searchable ? (
-        <SearchableOptionList scrollRef={scrollRef}>
-          {rows}
-        </SearchableOptionList>
-      ) : (
-        rows
-      )}
-    </FormModal>
+    <OptionSheet
+      visible={visible}
+      onClose={onClose}
+      title={title}
+      search={
+        searchable
+          ? { query, onChangeQuery: setQuery, empty: filtered.length === 0 }
+          : undefined
+      }
+      scrollRef={scrollRef}
+    >
+      {rows}
+    </OptionSheet>
+  );
+}
+
+export function BottomSheetMultiOptionPicker({
+  visible,
+  searchable = false,
+  onClose,
+  title,
+  options,
+  values,
+  maxReached,
+  onToggle,
+}: {
+  visible: boolean;
+  searchable?: boolean;
+  onClose: () => void;
+  title: string;
+  options: BottomSheetOption<string>[];
+  values: string[];
+  maxReached: boolean;
+  onToggle: (params: { value: string; selected: boolean }) => void;
+}) {
+  const scrollRef = useRef<ScrollView>(null);
+  const [query, setQuery] = useQueryResetOnOpen(visible);
+  const items = useMemo(
+    () =>
+      options.map((option) => ({
+        ...option,
+        text: markdownPlainText(option.label),
+      })),
+    [options],
+  );
+  const filtered = searchable
+    ? items.filter((item) => matchesOptionSearch({ label: item.text }, query))
+    : items;
+
+  const rows = filtered.map((option) => {
+    const checked = values.includes(option.value);
+    return (
+      <Checkbox
+        key={option.value}
+        checked={checked}
+        disabled={!checked && maxReached}
+        label={option.label}
+        size={CheckboxSize.Small}
+        className="py-3"
+        onChange={(selected) => onToggle({ value: option.value, selected })}
+      />
+    );
+  });
+
+  return (
+    <OptionSheet
+      visible={visible}
+      onClose={onClose}
+      title={title}
+      search={
+        searchable
+          ? { query, onChangeQuery: setQuery, empty: filtered.length === 0 }
+          : undefined
+      }
+      scrollRef={scrollRef}
+    >
+      {rows}
+    </OptionSheet>
   );
 }
