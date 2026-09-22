@@ -1,4 +1,5 @@
 import { Action, ActionEventDto, ActionStatus } from "@alliance/shared/client";
+import { startOfDay } from "date-fns";
 import { millisecondsInDay } from "date-fns/constants";
 import React from "react";
 
@@ -109,12 +110,16 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
       {phases.map((phase, phaseIndex) => {
         const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
 
-        const millisecondsSinceStart =
-          phase.startDate.getTime() - globalStartDate.getTime();
-        const phaseDurationMs =
-          phase.endDate.getTime() - phase.startDate.getTime();
+        // A week-wide column can't show the time of day an event fires, so
+        // bars span whole days and start on the gridline for their first one.
+        const barStart = startOfDay(phase.startDate);
+        const barEnd = startOfDay(phase.endDate);
 
-        const barLeft = millisecondsSinceStart * pixelsPerMillisecond + 4;
+        const millisecondsSinceStart =
+          barStart.getTime() - globalStartDate.getTime();
+        const phaseDurationMs = barEnd.getTime() - barStart.getTime();
+
+        const barLeft = millisecondsSinceStart * pixelsPerMillisecond;
         const barWidth = Math.max(
           2,
           phaseDurationMs * pixelsPerMillisecond - 2,
@@ -142,7 +147,7 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
           // Calculate fade-out gradient starting from current time
           const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
           const currentTimeOffsetFromStart =
-            currentTime.getTime() - phase.startDate.getTime();
+            currentTime.getTime() - barStart.getTime();
           const currentTimePositionInBar =
             currentTimeOffsetFromStart * pixelsPerMillisecond;
           const fadeDistancePx = 2 * pixelsPerDay; // 1 day of fade

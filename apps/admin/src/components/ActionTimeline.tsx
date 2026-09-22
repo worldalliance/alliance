@@ -6,7 +6,13 @@ import {
   ReminderGroupTimingMode,
 } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
-import { milliseconds } from "date-fns";
+import {
+  addWeeks,
+  isTuesday,
+  milliseconds,
+  nextTuesday,
+  startOfDay,
+} from "date-fns";
 import { millisecondsInDay, millisecondsInSecond } from "date-fns/constants";
 import React, {
   useCallback,
@@ -360,7 +366,8 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
 
   const focusTimestamp = focusDate ? focusDate.getTime() : null;
   const scrollContainer = scrollContainerRef.current;
-  const pixelsPerDay = 80;
+  const pixelsPerDay = 16;
+  const pixelsPerWeek = pixelsPerDay * 7;
   const chartWidth = Math.max(totalDays, 1) * pixelsPerDay;
   const rowHeight = 64;
   const hasReminderOverlay = normalizedReminders.length > 0;
@@ -417,18 +424,27 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
     scrollContainer,
   ]);
 
-  // Generate date ticks for the timeline
-  const dateTicks = useMemo(() => {
-    const ticks: Date[] = [];
-    const current = new Date(globalStartDate);
+  // globalStartDate falls at an arbitrary time of day, so ticks anchor to
+  // midnight rather than to it.
+  const weekTicks = useMemo(() => {
+    const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
+    const firstDay = startOfDay(globalStartDate);
+    const ticks: { date: Date; left: number }[] = [];
+
+    let current = isTuesday(firstDay) ? firstDay : nextTuesday(firstDay);
 
     while (current <= globalEndDate) {
-      ticks.push(new Date(current));
-      current.setDate(current.getDate() + 1);
+      ticks.push({
+        date: current,
+        left:
+          (current.getTime() - globalStartDate.getTime()) *
+          pixelsPerMillisecond,
+      });
+      current = addWeeks(current, 1);
     }
 
     return ticks;
-  }, [globalStartDate, globalEndDate]);
+  }, [globalStartDate, globalEndDate, pixelsPerDay]);
 
   // Effect to center current time on mount
   useEffect(() => {
@@ -527,13 +543,13 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                 className="bg-gray-50 border-b border-gray-200 sticky top-0 z-20 py-3"
                 style={{ width: `${chartWidth}px`, height: "50px" }}
               >
-                {dateTicks.map((date, index) => (
+                {weekTicks.map(({ date, left }) => (
                   <div
-                    key={index}
+                    key={date.getTime()}
                     className="absolute border-l border-gray-200 text-xs text-gray-500 px-1 flex flex-col justify-center"
                     style={{
-                      left: `${index * pixelsPerDay}px`,
-                      width: `${pixelsPerDay}px`,
+                      left: `${left}px`,
+                      width: `${pixelsPerWeek}px`,
                       top: 0,
                       bottom: 0,
                     }}
@@ -557,12 +573,12 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                   height: `${timelineContentHeight}px`,
                 }}
               >
-                {dateTicks.map((_, index) => (
+                {weekTicks.map(({ date, left }) => (
                   <div
-                    key={index}
+                    key={date.getTime()}
                     className="absolute border-l border-gray-100"
                     style={{
-                      left: `${index * pixelsPerDay}px`,
+                      left: `${left}px`,
                       top: 0,
                       height: `${timelineContentHeight}px`,
                     }}
