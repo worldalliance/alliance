@@ -1,4 +1,14 @@
 import {
+  ConversationType,
+  conversationTypesUsersCanLeave,
+  conversationTypesWithEditableInfo,
+  conversationTypesWithEditableMembers,
+} from "@alliance/common/conversationType";
+import {
+  ParticipantRole,
+  rolesWithAdminPowers,
+} from "@alliance/common/participantRole";
+import {
   BadRequestException,
   ForbiddenException,
   Injectable,
@@ -13,6 +23,7 @@ import { Friend, FriendStatus } from "src/user/entities/friend.entity";
 import { User } from "src/user/entities/user.entity";
 import { UserEvents, type FriendsAcceptedPayload } from "src/user/user.events";
 import type { Relations } from "src/utils/Repository";
+import { isUniqueViolation } from "src/utils/db-errors";
 import { In, type EntityManager, type Repository } from "typeorm";
 import {
   ConversationAdminSummaryDto,
@@ -23,13 +34,9 @@ import {
   UnreadMessageSummary,
   UpdateConversationDto,
 } from "./dto/messaging.dto";
-import { Conversation, ConversationType } from "./entities/conversation.entity";
+import { Conversation } from "./entities/conversation.entity";
 import { Message } from "./entities/message.entity";
-import {
-  Participant,
-  ParticipantRole,
-  ParticipantState,
-} from "./entities/participant.entity";
+import { Participant, ParticipantState } from "./entities/participant.entity";
 import { MessagingEvents } from "./messaging.events";
 
 @Injectable()
@@ -376,7 +383,7 @@ export class ConversationService {
 
     const conversation = await this.conversationRepository.save(
       this.conversationRepository.create({
-        title: dto.title.trim(),
+        title: dto.title,
         photo: photo ?? null,
         type: ConversationType.Multiple,
       }),
@@ -491,6 +498,9 @@ export class ConversationService {
     userId: number,
   ): Promise<ConversationDto> {
     const participant = await this.getParticipantOrFail(conversationId, userId);
+    if (participant.state !== ParticipantState.Invited) {
+      throw new ForbiddenException("There's no invite to decline.");
+    }
     await this.participantRepository.remove(participant);
     await this.touchConversation(conversationId);
     const conversation = await this.getConversationEntity(conversationId);
@@ -507,18 +517,24 @@ export class ConversationService {
     userId: number,
     dto: UpdateConversationDto,
   ): Promise<ConversationDto> {
+    await this.ensureConversationAdmin(conversationId, userId);
     const conversation = await this.getConversationEntity(conversationId);
 
-    if (conversation.type !== ConversationType.Direct) {
-      conversation.title = dto.title ?? conversation.title;
+    if (!conversationTypesWithEditableInfo[conversation.type]) {
+      throw new ForbiddenException(
+        "This conversation's name and photo cannot be changed.",
+      );
+    }
 
-      if (dto.photo?.startsWith("data:")) {
-        conversation.photo =
-          await this.imagesService.processAndUploadProfileImage(dto.photo);
-      }
+    conversation.title = dto.title ?? conversation.title;
+
+    if (dto.photo?.startsWith("data:")) {
+      conversation.photo =
+        await this.imagesService.processAndUploadProfileImage(dto.photo);
     }
 
     await this.conversationRepository.save(conversation);
+    await this.emitConversationUpdate(conversation);
     return new ConversationDto({ conversation, contextUserId: userId });
   }
 
@@ -531,6 +547,8 @@ export class ConversationService {
       conversationId,
       actingUserId,
     );
+
+    this.ensureMembersEditable(adminParticipant.conversation);
 
     const alreadyParticipant = adminParticipant.conversation.participants?.some(
       (participant) => participant.user.id === dto.userId,
@@ -556,7 +574,12 @@ export class ConversationService {
       joinedAt: new Date(),
     });
 
-    await this.participantRepository.save(participant);
+    try {
+      await this.participantRepository.save(participant);
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      return this.buildConversationDto(conversationId, actingUserId);
+    }
     await this.touchConversation(conversationId);
     const updatedConversation =
       await this.getConversationEntity(conversationId);
@@ -576,6 +599,8 @@ export class ConversationService {
       conversationId,
       actingUserId,
     );
+
+    this.ensureMembersEditable(adminParticipant.conversation);
 
     const targetParticipant = await this.participantRepository.findOne({
       where: {
@@ -612,6 +637,9 @@ export class ConversationService {
     userId: number,
   ): Promise<ConversationDto> {
     const participant = await this.getParticipantOrFail(conversationId, userId);
+    if (!conversationTypesUsersCanLeave[participant.conversation.type]) {
+      throw new ForbiddenException("This conversation can't be left.");
+    }
     await this.participantRepository.remove(participant);
     const updatedConversation =
       await this.getConversationEntity(conversationId);
@@ -834,6 +862,14 @@ export class ConversationService {
     return count > 0;
   }
 
+  private ensureMembersEditable(conversation: Conversation) {
+    if (!conversationTypesWithEditableMembers[conversation.type]) {
+      throw new ForbiddenException(
+        "This conversation's members cannot be changed.",
+      );
+    }
+  }
+
   private async ensureConversationAdmin(
     conversationId: number,
     userId: number,
@@ -1041,9 +1077,7 @@ export class ConversationService {
   }
 
   private isConversationAdmin(participant: Participant): boolean {
-    return [ParticipantRole.Admin, ParticipantRole.Owner].includes(
-      participant.role,
-    );
+    return rolesWithAdminPowers[participant.role];
   }
 
   async getUnreadMessages(userId: number): Promise<number> {

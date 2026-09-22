@@ -1,3 +1,4 @@
+import { ConversationType } from "@alliance/common/conversationType";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Community } from "src/community/entities/community.entity";
 import {
@@ -17,12 +18,6 @@ import {
 } from "typeorm";
 import { Message } from "./message.entity";
 import { Participant } from "./participant.entity";
-
-export enum ConversationType {
-  Direct = "direct",
-  Multiple = "multiple",
-  Community = "community",
-}
 
 @Entity()
 @Check(

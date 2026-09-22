@@ -1,10 +1,11 @@
-import {
-  Conversation,
-  ConversationType,
-} from "src/messaging/entities/conversation.entity";
+import { ConversationType } from "@alliance/common/conversationType";
+import { ParticipantRole } from "@alliance/common/participantRole";
+import { io } from "socket.io-client";
+import { Community } from "src/community/entities/community.entity";
+import { ConversationService } from "src/messaging/conversation.service";
+import { Conversation } from "src/messaging/entities/conversation.entity";
 import {
   Participant,
-  ParticipantRole,
   ParticipantState,
 } from "src/messaging/entities/participant.entity";
 import { MessagingModule } from "src/messaging/messaging.module";
@@ -18,6 +19,7 @@ describe("ConversationController (e2e)", () => {
   let userRepo: Repository<User>;
   let conversationRepo: Repository<Conversation>;
   let participantRepo: Repository<Participant>;
+  let communityRepo: Repository<Community>;
   let userCounter = 0;
 
   const createUserAndToken = async (
@@ -36,15 +38,41 @@ describe("ConversationController (e2e)", () => {
     return { user, token };
   };
 
+  const createCommunityChat = async () => {
+    const { user: leader, token: leaderToken } = await createUserAndToken();
+    const { user: member, token: memberToken } = await createUserAndToken();
+
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: "Community With Members",
+        description: "A community with a chat.",
+        public: false,
+        allowMemberInvites: false,
+        allowStaffAssignments: false,
+        users: [leader, member],
+        leaders: [leader],
+      }),
+    );
+
+    const conversation = await ctx.app
+      .get(ConversationService)
+      .syncCommunityConversationMembers(community.id);
+
+    return { conversation, leaderToken, member, memberToken };
+  };
+
   beforeAll(async () => {
     ctx = await createTestApp([MessagingModule]);
+    await ctx.app.listen(0);
     userRepo = ctx.dataSource.getRepository(User);
     conversationRepo = ctx.dataSource.getRepository(Conversation);
     participantRepo = ctx.dataSource.getRepository(Participant);
+    communityRepo = ctx.dataSource.getRepository(Community);
   }, 50000);
 
   afterAll(async () => {
     if (ctx?.app) {
+      ctx.app.getHttpServer().closeAllConnections();
       await ctx.app.close();
     }
   });
@@ -316,6 +344,58 @@ describe("ConversationController (e2e)", () => {
         .expect(403);
     });
 
+    it("refuses a rename from a member who is not an admin", async () => {
+      const { user: member, token: memberToken } = await createUserAndToken();
+      const { token: outsiderToken } = await createUserAndToken();
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Renameable Chat",
+          participantIds: [member.id],
+        })
+        .expect(201);
+
+      const conversationId = createResponse.body.id;
+
+      const acceptResponse = await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversationId}/accept`)
+        .set("Authorization", `Bearer ${memberToken}`)
+        .expect(201);
+
+      const memberParticipant = acceptResponse.body.participants.find(
+        (participant) => participant.user.id === member.id,
+      );
+      expect(memberParticipant?.role).toBe(ParticipantRole.Member);
+      expect(memberParticipant?.state).toBe(ParticipantState.Joined);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversationId}/update`)
+        .set("Authorization", `Bearer ${memberToken}`)
+        .send({ title: "Renamed By A Member" })
+        .expect(403);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversationId}/update`)
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .send({ title: "Renamed By An Outsider" })
+        .expect(403);
+
+      const storedConversation = await conversationRepo.findOne({
+        where: { id: conversationId },
+      });
+      expect(storedConversation?.title).toBe("Renameable Chat");
+
+      const renameResponse = await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversationId}/update`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "Renamed By The Owner" })
+        .expect(201);
+
+      expect(renameResponse.body.title).toBe("Renamed By The Owner");
+    });
+
     it("removes members who leave and blocks further access attempts", async () => {
       const { user: leavingUser, token: leavingToken } =
         await createUserAndToken();
@@ -365,6 +445,289 @@ describe("ConversationController (e2e)", () => {
         },
       });
       expect(participantRecords).toHaveLength(0);
+    });
+
+    it("lets the owner add a member", async () => {
+      const { user: member } = await createUserAndToken();
+      const { user: newcomer } = await createUserAndToken();
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "Growing Chat", participantIds: [member.id] })
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${createResponse.body.id}/participants`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ userId: newcomer.id })
+        .expect(201);
+
+      const added = await participantRepo.findOne({
+        where: {
+          conversation: { id: createResponse.body.id },
+          user: { id: newcomer.id },
+        },
+      });
+      expect(added?.state).toBe(ParticipantState.Invited);
+    });
+
+    it("adds a member once when adds for them arrive together", async () => {
+      const { user: member } = await createUserAndToken();
+      const { user: newcomer } = await createUserAndToken();
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "Doubled Chat", participantIds: [member.id] })
+        .expect(201);
+
+      const add = () =>
+        request(ctx.app.getHttpServer())
+          .post(
+            `/messaging/conversations/${createResponse.body.id}/participants`,
+          )
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({ userId: newcomer.id });
+      const responses = await Promise.all(Array.from({ length: 10 }, add));
+
+      expect(responses.map((response) => response.status)).toEqual(
+        Array(10).fill(201),
+      );
+      const rows = await participantRepo.count({
+        where: {
+          conversation: { id: createResponse.body.id },
+          user: { id: newcomer.id },
+        },
+      });
+      expect(rows).toBe(1);
+    });
+
+    it("lets the owner remove a member", async () => {
+      const { user: member } = await createUserAndToken();
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "Shrinking Chat", participantIds: [member.id] })
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .delete(
+          `/messaging/conversations/${createResponse.body.id}/participants/${member.id}`,
+        )
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const stillThere = await participantRepo.findOne({
+        where: {
+          conversation: { id: createResponse.body.id },
+          user: { id: member.id },
+        },
+      });
+      expect(stillThere).toBeNull();
+    });
+  });
+
+  describe("conversation info", () => {
+    it("refuses to rename a community chat", async () => {
+      const { conversation, leaderToken } = await createCommunityChat();
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversation.id}/update`)
+        .set("Authorization", `Bearer ${leaderToken}`)
+        .send({ title: "Renamed Community" })
+        .expect(403);
+
+      const storedConversation = await conversationRepo.findOne({
+        where: { id: conversation.id },
+      });
+      expect(storedConversation?.title).toBe("Community With Members");
+    });
+
+    it("refuses a blank group title and trims the one it stores", async () => {
+      const { user: member } = await createUserAndToken();
+
+      await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "   ", participantIds: [member.id] })
+        .expect(400);
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "  Named Chat  ", participantIds: [member.id] })
+        .expect(201);
+
+      expect(createResponse.body.title).toBe("Named Chat");
+
+      const conversationId = createResponse.body.id;
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversationId}/update`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "   " })
+        .expect(400);
+
+      const renameResponse = await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversationId}/update`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "  Padded Chat  " })
+        .expect(201);
+
+      expect(renameResponse.body.title).toBe("Padded Chat");
+    });
+
+    it("tells the other members when a group is renamed", async () => {
+      const { user: member, token: memberToken } = await createUserAndToken();
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "Broadcast Chat", participantIds: [member.id] })
+        .expect(201);
+
+      const conversationId = createResponse.body.id;
+      const socket = io(`${await ctx.app.getUrl()}/messaging/overview`, {
+        auth: { token: memberToken },
+        transports: ["websocket"],
+        reconnection: false,
+      });
+
+      try {
+        await new Promise<void>((resolve, reject) => {
+          socket.on("connect", () => resolve());
+          socket.on("connect_error", reject);
+        });
+        const renamed = new Promise<void>((resolve) => {
+          socket.on(
+            "conversation:unread",
+            (payload: { conversation: { id: number; title: string } }) => {
+              if (
+                payload.conversation.id === conversationId &&
+                payload.conversation.title === "Renamed Broadcast Chat"
+              ) {
+                resolve();
+              }
+            },
+          );
+        });
+
+        await request(ctx.app.getHttpServer())
+          .post(`/messaging/conversations/${conversationId}/update`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({ title: "Renamed Broadcast Chat" })
+          .expect(201);
+
+        await renamed;
+      } finally {
+        socket.disconnect();
+      }
+    }, 5000);
+  });
+
+  describe("community chat members", () => {
+    const participantIds = async (conversationId: number) =>
+      (
+        await participantRepo.find({
+          where: { conversation: { id: conversationId } },
+          relations: { user: true },
+        })
+      )
+        .map((participant) => participant.user.id)
+        .sort((a, b) => a - b);
+
+    it("refuses a leader adding someone from outside the community", async () => {
+      const { conversation, leaderToken } = await createCommunityChat();
+      const { user: outsider } = await createUserAndToken();
+      const before = await participantIds(conversation.id);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversation.id}/participants`)
+        .set("Authorization", `Bearer ${leaderToken}`)
+        .send({ userId: outsider.id })
+        .expect(403);
+
+      expect(await participantIds(conversation.id)).toEqual(before);
+    });
+
+    it("refuses a leader removing a member", async () => {
+      const { conversation, leaderToken, member } = await createCommunityChat();
+      const before = await participantIds(conversation.id);
+
+      await request(ctx.app.getHttpServer())
+        .delete(
+          `/messaging/conversations/${conversation.id}/participants/${member.id}`,
+        )
+        .set("Authorization", `Bearer ${leaderToken}`)
+        .expect(403);
+
+      expect(await participantIds(conversation.id)).toEqual(before);
+    });
+
+    it("refuses a member leaving", async () => {
+      const { conversation, memberToken } = await createCommunityChat();
+      const before = await participantIds(conversation.id);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversation.id}/leave`)
+        .set("Authorization", `Bearer ${memberToken}`)
+        .expect(403);
+
+      expect(await participantIds(conversation.id)).toEqual(before);
+    });
+
+    it("refuses a joined member declining", async () => {
+      const { conversation, memberToken } = await createCommunityChat();
+      const before = await participantIds(conversation.id);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversation.id}/decline`)
+        .set("Authorization", `Bearer ${memberToken}`)
+        .expect(403);
+
+      expect(await participantIds(conversation.id)).toEqual(before);
+    });
+  });
+
+  describe("leaving", () => {
+    it("lets a member leave a group", async () => {
+      const { user: member, token: memberToken } = await createUserAndToken();
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "Leavable Chat", participantIds: [member.id] })
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${createResponse.body.id}/leave`)
+        .set("Authorization", `Bearer ${memberToken}`)
+        .expect(201);
+
+      const stillThere = await participantRepo.findOne({
+        where: {
+          conversation: { id: createResponse.body.id },
+          user: { id: member.id },
+        },
+      });
+      expect(stillThere).toBeNull();
+    });
+
+    it("refuses leaving a direct conversation", async () => {
+      const { user: targetUser } = await createUserAndToken();
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/direct")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ targetUserId: targetUser.id })
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${createResponse.body.id}/leave`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(403);
     });
   });
 

@@ -1,3 +1,4 @@
+import { ConversationType } from "@alliance/common/conversationType";
 import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -6,7 +7,7 @@ import { conversationUrl } from "src/search/approutes";
 import { DetachedWorkTracker } from "src/utils/detached-work";
 import { Repository } from "typeorm";
 import { MessageDto } from "./dto/messaging.dto";
-import { Conversation, ConversationType } from "./entities/conversation.entity";
+import { Conversation } from "./entities/conversation.entity";
 import { Participant } from "./entities/participant.entity";
 import { MessagingEvents } from "./messaging.events";
 import { MessagingGateway } from "./messaging.gateway";

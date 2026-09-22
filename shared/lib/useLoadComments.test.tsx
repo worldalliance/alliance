@@ -1,7 +1,7 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { CommentDto, CommentParentObject } from "../client";
-import { registerAnalytics, type AnalyticsBackend } from "./analytics";
+import { recordExceptions } from "./testing/recordExceptions";
 import { routes, serveApi, type RouteHandler } from "./testing/serveApi";
 import { useLoadComments } from "./useLoadComments";
 
@@ -24,25 +24,7 @@ const THREAD_ROUTE: Record<CommentParentObject, string> = {
   action: "GET /forum/actions/:id/comments",
 };
 
-const reported: {
-  event: unknown;
-  error: unknown;
-  properties: unknown;
-}[] = [];
-
-// Recorded through the backend rather than a module mock of ./analytics: bun's
-// module mocks outlive the file that installs them, and analytics.test.ts tests
-// the real captureException.
-const recorder: AnalyticsBackend = {
-  capture: () => {},
-  captureException: (error, properties) => {
-    reported.push({
-      event: properties?.event,
-      error,
-      properties: properties?.properties,
-    });
-  },
-};
+const reported = recordExceptions();
 
 const comment = (id: number): CommentDto => ({
   id,
@@ -93,11 +75,6 @@ const api = serveApi(
     [THREAD_ROUTE.action]: answerThread("action"),
   }),
 );
-
-beforeEach(() => {
-  registerAnalytics(recorder);
-  reported.length = 0;
-});
 
 afterEach(() => {
   requests.length = 0;

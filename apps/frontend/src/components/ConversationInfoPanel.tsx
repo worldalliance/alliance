@@ -1,4 +1,4 @@
-import { errorMessage } from "@alliance/common/errorMessage";
+import { CONVERSATION_TITLE_MAX_LENGTH } from "@alliance/common/conversation";
 import {
   conversationAddParticipant,
   ConversationDto,
@@ -7,11 +7,23 @@ import {
   conversationUpdateInfo,
   ProfileDto,
 } from "@alliance/shared/client";
+import {
+  canEditConversationInfo,
+  canEditConversationMembers,
+  canLeaveConversation,
+} from "@alliance/shared/lib/messages";
+import {
+  type Explanation,
+  sendOrExplain,
+} from "@alliance/shared/lib/sendOrExplain";
+import { useOneAtATime } from "@alliance/shared/lib/useOneAtATime";
 import { CardStyle } from "@alliance/shared/styles/card";
+import { cn } from "@alliance/shared/styles/util";
 import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
+import CharacterLimitNotice from "@alliance/sharedweb/ui/CharacterLimitNotice";
 import List from "@alliance/sharedweb/ui/List";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { milliseconds } from "date-fns";
@@ -25,14 +37,12 @@ export interface ConversationInfoPanelProps {
   selectedConvo: ConversationDto;
   handleConversationUpdated: (conversation: ConversationDto) => void;
   friends: ProfileDto[] | null;
-  isAdmin: boolean;
   onLeave: () => void;
   onClose: () => void;
 }
 
 const ConversationInfoPanel = ({
   selectedConvo,
-  isAdmin,
   handleConversationUpdated,
   friends,
   onLeave,
@@ -40,38 +50,57 @@ const ConversationInfoPanel = ({
 }: ConversationInfoPanelProps) => {
   const { user } = useAuth();
 
-  const participantMe = useMemo(() => {
-    return selectedConvo.participants.find(
-      (participant) => participant.user.id === user?.id,
-    );
-  }, [selectedConvo, user]);
+  const canEditInfo = canEditConversationInfo(selectedConvo, user?.id);
+  const canEditMembers = canEditConversationMembers(selectedConvo, user?.id);
 
   const [addMemberSearch, setAddMemberSearch] = useState<string>("");
   const [isEditingGroup, setIsEditingGroup] = useState<boolean>(false);
-  const [editingGroupTitle, setEditingGroupTitle] = useState<string>(
-    selectedConvo.title,
-  );
+  const [editingGroupTitle, setEditingGroupTitle] = useState<string>("");
   const [editingGroupPhoto, setEditingGroupPhoto] = useState<string | null>(
-    selectedConvo.photo ?? null,
+    null,
   );
+  const { busy: changingMembers, run: changeMembers } = useOneAtATime();
+  const [error, setError] = useState<string | null>(null);
+  const showExplanation = ({ title, message }: Explanation) =>
+    setError(`${title}. ${message}`);
 
-  const handleRemoveParticipant = async (userId: number) => {
-    const response = await conversationRemoveParticipant({
-      path: { conversationId: selectedConvo.id, userId },
-    });
-    if (response.data) {
-      handleConversationUpdated(response.data);
-    }
-  };
+  useEffect(() => {
+    if (!canEditInfo) setIsEditingGroup(false);
+  }, [canEditInfo]);
 
-  const handleLeaveGroup = async () => {
-    const response = await conversationLeave({
-      path: { conversationId: selectedConvo.id },
+  const handleRemoveParticipant = (userId: number) =>
+    changeMembers(async () => {
+      setError(null);
+      const removed = await sendOrExplain({
+        send: conversationRemoveParticipant,
+        options: {
+          path: { conversationId: selectedConvo.id, userId },
+        },
+        action: "remove that member",
+      });
+      if (!removed.ok) {
+        showExplanation(removed.error);
+        return;
+      }
+      handleConversationUpdated(removed.value);
     });
-    if (response.data) {
+
+  const handleLeaveGroup = () =>
+    changeMembers(async () => {
+      setError(null);
+      const left = await sendOrExplain({
+        send: conversationLeave,
+        options: {
+          path: { conversationId: selectedConvo.id },
+        },
+        action: "leave the group",
+      });
+      if (!left.ok) {
+        showExplanation(left.error);
+        return;
+      }
       onLeave();
-    }
-  };
+    });
 
   const filteredFriends = useMemo(() => {
     if (addMemberSearch.length === 0) return [];
@@ -87,8 +116,7 @@ const ConversationInfoPanel = ({
   }, [friends, addMemberSearch, selectedConvo.participants]);
 
   const [justAddedMember, setJustAddedMember] = useState<number | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { busy: isSaving, run: save } = useOneAtATime();
 
   useEffect(() => {
     if (justAddedMember) {
@@ -101,45 +129,56 @@ const ConversationInfoPanel = ({
     }
   }, [justAddedMember]);
 
-  const handleSaveGroup = async () => {
-    setIsSaving(true);
-    const response = await conversationUpdateInfo({
-      path: { conversationId: selectedConvo.id },
-      body: { title: editingGroupTitle, photo: editingGroupPhoto ?? undefined },
-    });
-    if (response.data) {
-      handleConversationUpdated(response.data);
-      setIsEditingGroup(false);
-      setEditingGroupTitle(response.data.title);
-      setEditingGroupPhoto(response.data.photo ?? null);
+  const handleSaveGroup = () =>
+    save(async () => {
       setError(null);
-    } else {
-      setError(
-        errorMessage({
-          error: response.error,
-          fallback: "Failed to save group",
-        }),
-      );
-    }
-    setIsSaving(false);
-  };
-
-  const handleAddMember = async (userId: number) => {
-    const response = await conversationAddParticipant({
-      path: { conversationId: selectedConvo.id },
-      body: { userId },
+      const saved = await sendOrExplain({
+        send: conversationUpdateInfo,
+        options: {
+          path: { conversationId: selectedConvo.id },
+          body: {
+            title: editingGroupTitle,
+            photo: editingGroupPhoto ?? undefined,
+          },
+        },
+        action: "save the group",
+      });
+      if (!saved.ok) {
+        showExplanation(saved.error);
+        return;
+      }
+      handleConversationUpdated(saved.value);
+      setIsEditingGroup(false);
     });
-    if (response.data) {
-      handleConversationUpdated(response.data);
+
+  const handleAddMember = (userId: number) =>
+    changeMembers(async () => {
+      setError(null);
+      const added = await sendOrExplain({
+        send: conversationAddParticipant,
+        options: {
+          path: { conversationId: selectedConvo.id },
+          body: { userId },
+        },
+        action: "add that member",
+      });
+      if (!added.ok) {
+        showExplanation(added.error);
+        return;
+      }
+      handleConversationUpdated(added.value);
       setAddMemberSearch("");
       setJustAddedMember(userId);
-    }
-  };
+    });
 
   return (
-    <div className="overflow-y-auto my-auto">
-      <div className="flex-1 relative flex flex-col items-center justify-center">
-        {error && <p className="text-red-500">{error}</p>}
+    <div className="flex flex-col min-h-0 my-auto">
+      {error && (
+        <p role="alert" className="text-red-500 px-14 py-2 text-center">
+          {error}
+        </p>
+      )}
+      <div className="overflow-y-auto relative flex flex-col items-center">
         <div className="flex flex-col items-center px-8 w-full gap-y-2 mt-20">
           {isEditingGroup ? (
             <ImageEditor
@@ -177,17 +216,23 @@ const ConversationInfoPanel = ({
             </>
           ) : isEditingGroup ? (
             <div className="flex flex-row items-center gap-x-5">
-              <input
-                type="text"
-                className="font-semibold text-xl text-center active:outline-none focus:outline-none border-b border-zinc-200 pb-1"
-                disabled={selectedConvo.type === "community"}
-                value={editingGroupTitle}
-                onChange={(e) => setEditingGroupTitle(e.target.value)}
-              />
+              <div className="flex flex-col items-center">
+                <input
+                  type="text"
+                  className="font-semibold text-xl text-center active:outline-none focus:outline-none border-b border-zinc-200 pb-1"
+                  value={editingGroupTitle}
+                  maxLength={CONVERSATION_TITLE_MAX_LENGTH}
+                  onChange={(e) => setEditingGroupTitle(e.target.value)}
+                />
+                <CharacterLimitNotice
+                  value={editingGroupTitle}
+                  max={CONVERSATION_TITLE_MAX_LENGTH}
+                />
+              </div>
               <Button
                 color={ButtonColor.Stone}
                 onClick={handleSaveGroup}
-                disabled={isSaving}
+                disabled={isSaving || !editingGroupTitle.trim()}
                 className="flex flex-row items-center gap-x-2"
               >
                 {isSaving && <Spinner size="small" />}
@@ -199,13 +244,19 @@ const ConversationInfoPanel = ({
               <p className="font-semibold text-xl text-center break-words max-w-[500px]">
                 {selectedConvo.title}
               </p>
-              {selectedConvo.type !== "community" && (
-                <div
+              {canEditInfo && (
+                <button
+                  type="button"
+                  aria-label="Edit group"
                   className="cursor-pointer hover:bg-zinc-100 rounded-md p-2"
-                  onClick={() => setIsEditingGroup(true)}
+                  onClick={() => {
+                    setEditingGroupTitle(selectedConvo.title);
+                    setEditingGroupPhoto(selectedConvo.photo ?? null);
+                    setIsEditingGroup(true);
+                  }}
                 >
                   <SquarePen className="h-4 w-4 text-zinc-500" />
-                </div>
+                </button>
               )}
             </div>
           )}
@@ -231,85 +282,89 @@ const ConversationInfoPanel = ({
             )}
             <List className="w-full">
               {selectedConvo.participants.map((participant) => (
-                <Link
+                <div
                   key={participant.user.id}
-                  to={href("/member/:id", {
-                    id: participant.user.id.toString(),
-                  })}
-                  className="p-4 hover:bg-zinc-100 flex flex-row items-center gap-x-3 justify-between"
+                  className="hover:bg-zinc-100 flex flex-row items-center"
                 >
-                  <div className="flex flex-row items-center gap-x-3">
-                    <AvatarProfile
-                      pfp={participant.user.profilePicture}
-                      size="large"
-                    />
-                    <p>{participant.user.displayName}</p>
-                  </div>
-                  <div className="flex flex-row items-center gap-x-2">
+                  <Link
+                    to={href("/member/:id", {
+                      id: participant.user.id.toString(),
+                    })}
+                    className="p-4 flex-1 flex flex-row items-center gap-x-3 justify-between"
+                  >
+                    <div className="flex flex-row items-center gap-x-3">
+                      <AvatarProfile
+                        pfp={participant.user.profilePicture}
+                        size="large"
+                      />
+                      <p>{participant.user.displayName}</p>
+                    </div>
                     {participant.state == "invited" &&
                       (justAddedMember === participant.user.id ? (
                         <p className="text-green">Invite sent!</p>
                       ) : (
-                        <p className="text-zinc-500 mr-2">Invited</p>
+                        <p className="text-zinc-500">Invited</p>
                       ))}
-                    {isAdmin &&
-                      participant.user.id !== user?.id &&
-                      selectedConvo.type === "multiple" && (
-                        <Button
-                          color={ButtonColor.Transparent}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleRemoveParticipant(participant.user.id);
-                          }}
-                          className="hover:!bg-zinc-200 !px-2"
-                        >
-                          <X size="18" color="var(--color-red-400)" />
-                        </Button>
-                      )}
-                  </div>
-                </Link>
+                  </Link>
+                  {canEditMembers && participant.user.id !== user?.id && (
+                    <Button
+                      color={ButtonColor.Transparent}
+                      title={`Remove ${participant.user.displayName}`}
+                      onClick={() => {
+                        handleRemoveParticipant(participant.user.id);
+                      }}
+                      disabled={changingMembers}
+                      className="hover:!bg-zinc-200 !px-2 mr-4"
+                    >
+                      <X size="18" color="var(--color-red-400)" />
+                    </Button>
+                  )}
+                </div>
               ))}
             </List>
-            {selectedConvo.type === "multiple" &&
-              (participantMe?.role === "admin" ||
-                participantMe?.role === "owner") && (
-                <Card
-                  style={CardStyle.LightGrey}
-                  className="w-full !p-0 relative group"
-                >
-                  <input
-                    type="text"
-                    placeholder="Add member..."
-                    className="text-zinc-800 !bg-transparent p-4 active:outline-none focus:outline-none"
-                    value={addMemberSearch}
-                    onChange={(e) => setAddMemberSearch(e.target.value)}
-                  />
-                  {filteredFriends && filteredFriends.length > 0 && (
-                    <div className="absolute top-full bg-white w-full border border-zinc-200 rounded rounded-t-none">
-                      {filteredFriends.map((friend) => (
-                        <div
-                          key={friend.id}
-                          className="flex flex-row items-center gap-x-3 cursor-pointer hover:bg-zinc-100 p-4 rounded-md"
-                          onClick={() => {
-                            handleAddMember(friend.id);
-                          }}
-                        >
-                          <AvatarProfile
-                            pfp={friend.profilePicture}
-                            size="large"
-                          />
-                          <p>{friend.displayName}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </Card>
-              )}
+            {canEditMembers && (
+              <Card
+                style={CardStyle.LightGrey}
+                className="w-full !p-0 relative group"
+              >
+                <input
+                  type="text"
+                  placeholder="Add member..."
+                  className="text-zinc-800 !bg-transparent p-4 active:outline-none focus:outline-none"
+                  value={addMemberSearch}
+                  onChange={(e) => setAddMemberSearch(e.target.value)}
+                />
+                {filteredFriends && filteredFriends.length > 0 && (
+                  <div className="absolute top-full bg-white w-full border border-zinc-200 rounded rounded-t-none">
+                    {filteredFriends.map((friend) => (
+                      <div
+                        key={friend.id}
+                        className={cn(
+                          "flex flex-row items-center gap-x-3 cursor-pointer hover:bg-zinc-100 p-4 rounded-md",
+                          changingMembers &&
+                            "opacity-50 cursor-not-allowed pointer-events-none",
+                        )}
+                        onClick={() => {
+                          handleAddMember(friend.id);
+                        }}
+                      >
+                        <AvatarProfile
+                          pfp={friend.profilePicture}
+                          size="large"
+                        />
+                        <p>{friend.displayName}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            )}
 
-            {selectedConvo.type === "multiple" && (
+            {canLeaveConversation(selectedConvo) && (
               <Button
                 color={ButtonColor.Transparent}
                 onClick={handleLeaveGroup}
+                disabled={changingMembers}
                 className="self-end text-zinc-500"
               >
                 Leave group

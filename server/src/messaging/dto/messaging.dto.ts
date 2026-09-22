@@ -1,15 +1,18 @@
+import { CONVERSATION_TITLE_MAX_LENGTH } from "@alliance/common/conversation";
+import { ConversationType } from "@alliance/common/conversationType";
 import {
   ApiProperty,
   ApiPropertyOptional,
   OmitType,
   PickType,
 } from "@nestjs/swagger";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   ArrayNotEmpty,
   IsArray,
   IsInt,
   IsISO8601,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
@@ -20,10 +23,8 @@ import {
 import { CommunityDto } from "src/community/dto/community.dto";
 import { getImageSource } from "src/images/images.service";
 import { ProfileDto } from "src/user/dto/user.dto";
-import {
-  Conversation,
-  ConversationType,
-} from "../entities/conversation.entity";
+import { trim } from "src/utils/transforms";
+import { Conversation } from "../entities/conversation.entity";
 import { Message } from "../entities/message.entity";
 import { Participant, ParticipantState } from "../entities/participant.entity";
 
@@ -266,14 +267,16 @@ export class CreateDirectConversationDto {
   @ApiPropertyOptional({ type: String })
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxLength(CONVERSATION_TITLE_MAX_LENGTH)
   title?: string;
 }
 
 export class CreateGroupConversationDto {
   @ApiProperty({ type: String })
+  @Transform(trim)
   @IsString()
-  @MaxLength(500)
+  @IsNotEmpty()
+  @MaxLength(CONVERSATION_TITLE_MAX_LENGTH)
   title: string;
 
   @ApiPropertyOptional({ type: String })
@@ -320,8 +323,10 @@ export class CreateMessageDto {
 export class UpdateConversationDto {
   @ApiPropertyOptional({ type: String })
   @IsOptional()
+  @Transform(trim)
   @IsString()
-  @MaxLength(500)
+  @IsNotEmpty()
+  @MaxLength(CONVERSATION_TITLE_MAX_LENGTH)
   title?: string;
 
   @ApiPropertyOptional({ type: String })

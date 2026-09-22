@@ -1,4 +1,10 @@
 import {
+  conversationTypesUsersCanLeave,
+  conversationTypesWithEditableInfo,
+  conversationTypesWithEditableMembers,
+} from "@alliance/common/conversationType";
+import { rolesWithAdminPowers } from "@alliance/common/participantRole";
+import {
   ConversationDto,
   conversationGetMyConversations,
   conversationGetUnreadSummary,
@@ -50,16 +56,48 @@ export const getConversationTimestamp = (conversation: ConversationDto) => {
 };
 
 export const getParticipantState = (
-  conversation: ConversationDto,
+  conversation: ConversationDto | null | undefined,
   userId: number | null | undefined,
 ) => {
-  if (!userId) return null;
+  if (!conversation || !userId) return null;
   return (
     conversation.participants.find(
       (participant) => participant.user.id === userId,
     )?.state ?? null
   );
 };
+
+export const isConversationAdmin = (
+  conversation: ConversationDto | null | undefined,
+  userId: number | null | undefined,
+): boolean => {
+  if (!conversation || !userId) return false;
+  return conversation.participants.some(
+    (participant) =>
+      participant.user.id === userId && rolesWithAdminPowers[participant.role],
+  );
+};
+
+export const canEditConversationInfo = (
+  conversation: ConversationDto | null | undefined,
+  userId: number | null | undefined,
+): boolean =>
+  !!conversation &&
+  conversationTypesWithEditableInfo[conversation.type] &&
+  isConversationAdmin(conversation, userId);
+
+export const canEditConversationMembers = (
+  conversation: ConversationDto | null | undefined,
+  userId: number | null | undefined,
+): boolean =>
+  !!conversation &&
+  conversationTypesWithEditableMembers[conversation.type] &&
+  isConversationAdmin(conversation, userId);
+
+export const canLeaveConversation = (
+  conversation: ConversationDto | null | undefined,
+): boolean =>
+  !!conversation && conversationTypesUsersCanLeave[conversation.type];
 
 export const filterConversationsByParticipantState = (
   conversations: ConversationDto[] | null | undefined,

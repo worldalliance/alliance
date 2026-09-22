@@ -1,7 +1,7 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { CommentDto } from "@alliance/shared/client";
 import { act, cleanup, renderHook } from "@testing-library/react";
-import { registerAnalytics, type AnalyticsBackend } from "./analytics";
+import { recordExceptions } from "./testing/recordExceptions";
 import { routes, serveApi } from "./testing/serveApi";
 import { useDeleteComment } from "./useDeleteComment";
 
@@ -9,25 +9,7 @@ let unreachable = false;
 let refused: { statusCode: number; message: string } | null = null;
 const deleted: number[] = [];
 
-const reported: {
-  event: unknown;
-  error: unknown;
-  properties: unknown;
-}[] = [];
-
-// Recorded through the backend rather than a module mock of ./analytics: bun's
-// module mocks outlive the file that installs them, and analytics.test.ts tests
-// the real captureException.
-const recorder: AnalyticsBackend = {
-  capture: () => {},
-  captureException: (error, properties) => {
-    reported.push({
-      event: properties?.event,
-      error,
-      properties: properties?.properties,
-    });
-  },
-};
+const reported = recordExceptions();
 
 const api = serveApi(
   routes({
@@ -41,11 +23,6 @@ const api = serveApi(
     },
   }),
 );
-
-beforeEach(() => {
-  registerAnalytics(recorder);
-  reported.length = 0;
-});
 
 afterEach(() => {
   unreachable = false;
