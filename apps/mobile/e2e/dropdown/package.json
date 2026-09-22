@@ -1,0 +1,8 @@
+{
+  "name": "alliance-dropdown-fixture",
+  "private": true,
+  "main": "index.tsx",
+  "scripts": {
+    "start": "BROWSER=none expo start --dev-client --port $(bun ../../../../scripts/ports.ts mobile)"
+  }
+}

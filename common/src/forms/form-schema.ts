@@ -165,6 +165,7 @@ export type RadioField = z.infer<typeof radioFieldSchema>;
 const selectFieldSchema = z.strictObject({
   ...baseFieldSchema.shape,
   kind: z.literal("select"),
+  searchable: z.boolean().optional(),
   options: optionListSchema,
   randomizeOptions: z.boolean().optional(),
 });

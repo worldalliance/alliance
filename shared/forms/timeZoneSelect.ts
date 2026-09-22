@@ -4,9 +4,9 @@ import {
   millisecondsInSecond,
   minutesInHour,
 } from "date-fns/constants";
-import { deburr } from "es-toolkit";
 import { useEffect, useMemo, useState } from "react";
 import { minuteStart, useClockMinute } from "../lib/useClockMinute";
+import { fold } from "./optionSearch";
 
 export type TzOption = {
   group: string;
@@ -347,9 +347,6 @@ export function resetTimeZoneCaches(): void {
   cachedLabels = null;
   cachedBase = null;
 }
-
-// Both sides of a search fold, so "São Paulo" reaches a row spelled Sao Paulo.
-export const fold = (text: string) => deburr(text).toLowerCase();
 
 const WORD_CHAR = /[\p{L}\p{N}]/u;
 

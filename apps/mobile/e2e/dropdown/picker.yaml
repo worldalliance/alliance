@@ -1,0 +1,67 @@
+appId: ${APP_ID}
+---
+- assertVisible: Selected 30
+- tapOn: Open searchable picker
+- assertVisible: Search options
+- assertVisible: Option 30
+- assertNotVisible: Option 01
+- tapOn: Search options
+- inputText: zzz
+- assertVisible: No matches
+- eraseText: 3
+- assertVisible: Option 01
+- assertNotVisible: Option 30
+- inputText: "3"
+- assertVisible: Option 03
+- assertVisible: Option 30
+- eraseText: 1
+- assertVisible: Option 01
+- assertNotVisible: Option 30
+- tapOn:
+    point: 50%, 15%
+- assertVisible: Selected 30
+- tapOn: Open searchable picker
+- assertVisible: Option 30
+- assertNotVisible: Option 01
+- tapOn: Search options
+- inputText: "39"
+- assertVisible: Option 39
+- assertNotVisible: Option 30
+- tapOn: Option 39
+- assertVisible: Selected 39
+- tapOn: Open searchable picker
+- assertVisible: Option 39
+- assertVisible: Option 40
+- tapOn: Search options
+- inputText: NoSuchOption
+- assertVisible: No matches
+- assertNotVisible: Option 39
+- tapOn:
+    point: 50%, 15%
+- assertVisible: Selected 39
+- tapOn: Open searchable picker
+- assertNotVisible: No matches
+- assertVisible: Option 39
+- tapOn: Search options
+- inputText: Option
+- scrollUntilVisible:
+    element:
+      text: Option 01
+    direction: UP
+- assertVisible: Search options
+- tapOn: Search options
+- eraseText: 6
+- assertVisible: Option 01
+- assertNotVisible: Option 39
+- inputText: Option
+- scrollUntilVisible:
+    element:
+      text: Option 40
+    direction: DOWN
+- assertVisible: Search options
+- tapOn: Option 40
+- assertVisible: Selected 40
+- tapOn: Open plain picker
+- assertNotVisible: Search options
+- tapOn: Option 02
+- assertVisible: Plain selected 02

@@ -57,6 +57,7 @@ import { getCustomComponentById } from "./components";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import { shuffleWithSeed } from "./randomutils";
 import { RankingFieldInput } from "./RankingFieldInput";
+import SearchableSelect from "./SearchableSelect";
 import TimeZoneSelect from "./TimeZoneSelect";
 
 export type RenderFieldProps = {
@@ -110,6 +111,7 @@ const getRangeValues = (field: RangeField): number[] => {
 
 export function RenderLabel({
   field,
+  labelId,
   error,
   labelRightAddon,
   isOutputView,
@@ -117,6 +119,7 @@ export function RenderLabel({
   required,
 }: {
   field: AnyField;
+  labelId?: string;
   error?: string | null;
   labelRightAddon?: ReactNode;
   isOutputView?: boolean;
@@ -124,25 +127,25 @@ export function RenderLabel({
   /** Effective requiredness; defaults to the field's static `required` flag. */
   required?: boolean;
 }) {
-  if (hideLabel) return null;
+  if (hideLabel && !labelId) return null;
   const hasError = Boolean(error);
   const isRequired = required ?? !!field.required;
   return (
     <>
-      {!isRequired && !isOutputView && <OptionalLabelPrefix />}
+      {!hideLabel && !isRequired && !isOutputView && <OptionalLabelPrefix />}
       <label
         className={cn(
-          "block",
+          hideLabel ? "sr-only" : "block",
           hasError ? "text-red-600" : "text-zinc-700",
           labelRightAddon && "flex items-start justify-between gap-3",
         )}
       >
-        <span>
+        <span id={labelId}>
           {field.label !== null && (
             <FormMarkdownWrapper markdownContent={field.label} inline />
           )}
         </span>
-        {labelRightAddon ? (
+        {!hideLabel && labelRightAddon ? (
           <span className="shrink-0">{labelRightAddon}</span>
         ) : null}
       </label>
@@ -570,36 +573,54 @@ export function RenderField({
 
     case "select": {
       const options = randomizedOptions ?? field.options;
+      const labelId =
+        field.searchable && field.label?.trim()
+          ? `${fieldName}-label`
+          : undefined;
       return (
         <div className="space-y-1">
           <RenderLabel
             field={field}
+            labelId={labelId}
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
             required={required}
           />
-          <select
-            value={(value as string) ?? ""}
-            onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-            required={required}
-            disabled={disabled}
-            aria-invalid={hasError}
-            className={composeClassName(
-              sharedInputClasses +
-                " has-[option.placeholder:checked]:text-zinc-400",
-            )}
-          >
-            <option value="" className="placeholder" disabled>
-              Select an option
-            </option>
-            {options.map((option, optIndex) => (
-              <option key={optIndex} value={option.value}>
-                {option.label}
+          {field.searchable ? (
+            <SearchableSelect
+              options={options}
+              value={typeof value === "string" ? value : undefined}
+              onChange={onChange}
+              labelId={labelId}
+              required={required}
+              disabled={disabled}
+              invalid={hasError}
+              className={composeClassName(sharedInputClasses)}
+            />
+          ) : (
+            <select
+              value={(value as string) ?? ""}
+              onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+              aria-required={required}
+              disabled={disabled}
+              aria-invalid={hasError}
+              className={composeClassName(
+                sharedInputClasses +
+                  " has-[option.placeholder:checked]:text-zinc-400",
+              )}
+            >
+              <option value="" className="placeholder" disabled>
+                Select an option
               </option>
-            ))}
-          </select>
+              {options.map((option, optIndex) => (
+                <option key={optIndex} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          )}
           {renderValidationMessage()}
         </div>
       );

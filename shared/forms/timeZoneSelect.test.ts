@@ -3,9 +3,9 @@ import { millisecondsInMinute } from "date-fns/constants";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { resetClock } from "../lib/useClockMinute";
+import { fold } from "./optionSearch";
 import {
   TZ_OPTIONS,
-  fold,
   formatNowTimeInTz,
   getOffsetMinutes,
   resetTimeZoneCaches,

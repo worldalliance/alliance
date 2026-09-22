@@ -237,6 +237,13 @@ const FormRenderer = ({
     }
   });
   const formTopRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const fieldElements = useRef(new Map<string, HTMLDivElement>());
+  // A fresh object per failed attempt, so submitting twice on the same bad
+  // field re-runs the focus effect instead of being skipped as unchanged.
+  const [invalidFieldFocus, setInvalidFieldFocus] = useState<{
+    fieldId?: string;
+  } | null>(null);
   // Precedence: localStorage (active local edits) > draft (guest prefill, may
   // arrive after mount) > empty. Once either localStorage or a draft is applied,
   // we lock out later draft applies so we never stomp user edits.
@@ -614,6 +621,13 @@ const FormRenderer = ({
   });
   const { uploadingAny } = imageUpload;
 
+  // The form is `noValidate` so its own errors come first, in field order;
+  // the browser then checks what they don't cover, such as email syntax.
+  const reportNativeValidity = useCallback(
+    () => formRef.current?.reportValidity() !== false,
+    [],
+  );
+
   const handleNext = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -632,9 +646,11 @@ const FormRenderer = ({
     if (nextVisiblePageIndex !== null) {
       const result = await validatePage(currentPageIndex, true);
       if (!result.isValid) {
+        setInvalidFieldFocus({ fieldId: result.firstInvalidFieldId });
         trackValidationError(result.firstInvalidFieldId);
         return;
       }
+      if (!reportNativeValidity()) return;
       setCurrentPageIndex(nextVisiblePageIndex);
     }
   };
@@ -663,6 +679,7 @@ const FormRenderer = ({
     const result = await validateAllPages();
     if (!result.isValid && typeof result.firstInvalidPageIndex === "number") {
       setCurrentPageIndex(result.firstInvalidPageIndex);
+      setInvalidFieldFocus({ fieldId: result.firstInvalidFieldId });
     }
     return result;
   }, [validateAllPages]);
@@ -692,10 +709,11 @@ const FormRenderer = ({
 
     if (nextVisiblePageIndex !== null) {
       const result = await validatePage(currentPageIndex, true);
-      if (result.isValid) {
-        setCurrentPageIndex(nextVisiblePageIndex);
-      } else {
+      if (!result.isValid) {
+        setInvalidFieldFocus({ fieldId: result.firstInvalidFieldId });
         trackValidationError(result.firstInvalidFieldId);
+      } else if (reportNativeValidity()) {
+        setCurrentPageIndex(nextVisiblePageIndex);
       }
       return finishSubmit(false);
     }
@@ -704,6 +722,9 @@ const FormRenderer = ({
       await validateAllPagesAndShowFirstInvalid();
     if (!isValid) {
       trackValidationError(firstInvalidFieldId);
+      return finishSubmit(false);
+    }
+    if (!reportNativeValidity()) {
       return finishSubmit(false);
     }
 
@@ -751,6 +772,7 @@ const FormRenderer = ({
     onSubmit,
     phDistinctId,
     readOnly,
+    reportNativeValidity,
     resolvedPublicAnswers,
     searchParams,
     sessionReplayUrl,
@@ -891,37 +913,55 @@ const FormRenderer = ({
     setCurrentPageIndex(clamped);
   }, [initialPageIndex, persistKey, readOnly, pageCount]);
 
+  // `scrollIntoView` moves every scrollable ancestor, the document included,
+  // so a caller-supplied container is scrolled on its own instead.
+  const scrollElementIntoView = useCallback(
+    (element: HTMLElement) => {
+      const container = scrollContainerRef?.current;
+      if (!container) {
+        element.scrollIntoView({ behavior: "instant", block: "start" });
+        return;
+      }
+      const rawScrollMarginTop = parseFloat(
+        getComputedStyle(element).scrollMarginTop,
+      );
+      const scrollMarginTop = Number.isFinite(rawScrollMarginTop)
+        ? rawScrollMarginTop
+        : 0;
+      const targetTop =
+        element.getBoundingClientRect().top -
+        container.getBoundingClientRect().top +
+        container.scrollTop -
+        scrollMarginTop;
+      container.scrollTo({ top: Math.max(0, targetTop), behavior: "instant" });
+    },
+    [scrollContainerRef],
+  );
+
   const prevPageIndexRef = useRef(currentPageIndex);
   useEffect(() => {
     if (prevPageIndexRef.current === currentPageIndex) {
       return;
     }
     prevPageIndexRef.current = currentPageIndex;
-    const container = scrollContainerRef?.current;
     const top = formTopRef.current;
-    if (container && top) {
-      const rawScrollMarginTop = parseFloat(
-        getComputedStyle(top).scrollMarginTop,
-      );
-      const scrollMarginTop = Number.isFinite(rawScrollMarginTop)
-        ? rawScrollMarginTop
-        : 0;
-      const targetTop =
-        top.getBoundingClientRect().top -
-        container.getBoundingClientRect().top +
-        container.scrollTop -
-        scrollMarginTop;
-      container.scrollTo({
-        top: Math.max(0, targetTop),
-        behavior: "instant",
-      });
-    } else {
-      top?.scrollIntoView({
-        behavior: "instant",
-        block: "start",
-      });
-    }
+    if (top) scrollElementIntoView(top);
   }, [currentPageIndex]);
+
+  useEffect(() => {
+    if (!invalidFieldFocus?.fieldId) return;
+    const field = fieldElements.current.get(invalidFieldFocus.fieldId);
+    if (!field) return;
+    const invalid =
+      field.querySelector<HTMLElement>('[aria-invalid="true"]') ?? field;
+    const selector =
+      'input:not([type="hidden"]):not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled), [tabindex="0"]:not(:disabled)';
+    const control = invalid.matches(selector)
+      ? invalid
+      : invalid.querySelector<HTMLElement>(selector);
+    scrollElementIntoView(field);
+    (control ?? field).focus();
+  }, [invalidFieldFocus]);
 
   useEffect(() => {
     clearFieldErrors();
@@ -967,7 +1007,15 @@ const FormRenderer = ({
       : outputFieldPublicToggle.hidePublicly;
     const toggleChecked = useMakePublicToggle ? sharePublicly : !sharePublicly;
     return (
-      <div key={field.id || index}>
+      <div
+        key={field.id || index}
+        ref={(element) => {
+          if (element) fieldElements.current.set(field.id, element);
+          else fieldElements.current.delete(field.id);
+        }}
+        tabIndex={-1}
+        className="scroll-mt-24"
+      >
         <RenderField
           field={interpolateFieldText(field, variableValues)}
           value={effectiveFormData[field.id]}
@@ -1057,7 +1105,12 @@ const FormRenderer = ({
 
   return (
     <div ref={formTopRef} className="mx-auto scroll-mt-24">
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit}
+        noValidate
+        className="space-y-6"
+      >
         {/* Page Content */}
         <div
           className={cn(

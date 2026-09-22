@@ -512,6 +512,7 @@ export function RenderField({
             visible={selectOpen}
             onClose={() => setSelectOpen(false)}
             title="Select"
+            searchable={field.searchable}
             options={options}
             value={value as string | undefined}
             onSelect={(v) => onChange?.(v)}

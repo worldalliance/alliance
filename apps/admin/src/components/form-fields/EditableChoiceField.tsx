@@ -167,6 +167,14 @@ export function EditableChoiceField({
         />
       )}
 
+      {field.kind === "select" && (
+        <RequiredToggle
+          label="Dropdown with search"
+          checked={!!field.searchable}
+          onChange={(checked) => onUpdate({ searchable: checked })}
+        />
+      )}
+
       {field.kind === "multiselect" && (
         <div className="space-y-1">
           <label className="block text-xs font-medium text-gray-700">
