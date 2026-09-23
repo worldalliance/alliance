@@ -326,6 +326,40 @@ describe("getListSubFieldErrors", () => {
       ),
     ).toEqual({ "addresses:0:street": null });
   });
+
+  it("skips a cell hidden by its own row", () => {
+    const list = addresses({
+      fields: [
+        { id: "hasStreet", type: "input", kind: "text", label: "Has street" },
+        {
+          id: "street",
+          type: "input",
+          kind: "text",
+          label: "Street",
+          required: true,
+          visibleIfFormula: {
+            conditions: {
+              c1: { kind: "equals", when: "hasStreet", equals: "yes" },
+            },
+            formula: "c1",
+          },
+        },
+      ],
+    });
+    expect(
+      getListSubFieldErrors(
+        list,
+        [{ hasStreet: "no" }, { hasStreet: "yes" }],
+        {},
+        extras,
+      ),
+    ).toEqual({
+      "addresses:0:hasStreet": null,
+      "addresses:0:street": null,
+      "addresses:1:hasStreet": null,
+      "addresses:1:street": "This field is required.",
+    });
+  });
 });
 
 describe("restorableAnswers", () => {

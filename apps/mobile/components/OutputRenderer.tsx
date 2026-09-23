@@ -1,9 +1,13 @@
-import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
+import {
+  deviceVisibilityTargetSchema,
+  type DeviceVisibilityTarget,
+} from "@alliance/common/forms/device";
 import type {
   AnyField,
   FormSchema,
   FormValue,
 } from "@alliance/common/forms/form-schema";
+import { resolveOutputView } from "@alliance/common/forms/output-resolution";
 import type { VisibilityValidatorResults } from "@alliance/common/forms/visibility";
 import { R } from "@alliance/common/result";
 import type {
@@ -12,11 +16,11 @@ import type {
 } from "@alliance/shared/client";
 import {
   resolveOutputItems,
-  resolveOutputView,
   type ResolvedOutputFieldItem,
 } from "@alliance/shared/outputrenderer";
 import { parseVisibilityValidatorResults } from "@alliance/shared/parsed-dtos";
 import { cn } from "@alliance/shared/styles/util";
+import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import { useMemo } from "react";
 import { Image, View } from "react-native";
 import { getImageSource } from "../lib/config";
@@ -108,7 +112,8 @@ function OutputRenderer({
     [validatorResults, submission],
   );
   const resolvedDeviceType =
-    deviceType ?? (submission?.deviceType as DeviceVisibilityTarget);
+    deviceType ??
+    deviceVisibilityTargetSchema.safeParse(submission?.deviceType).data;
   const resolvedPublicAnswers = (
     submission as SubmissionWithPublicAnswers | undefined
   )?.publicAnswers;
@@ -201,6 +206,7 @@ function OutputRenderer({
                   value={item.value}
                   disabled
                   isOutputView
+                  fieldContext={staticFieldContext}
                 />
               ) : (
                 renderFormattedOutputFieldValue(item)

@@ -1,34 +1,29 @@
+import { ExceptionEvent } from "@alliance/common/analytics";
 import { formatCityValue, parseCityValue } from "@alliance/common/forms/city";
-import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
 import { outputBlockLabelOverride } from "@alliance/common/forms/element-descriptors";
 import type {
   AnyField,
-  FormSchema,
   FormValue,
   ListField,
-  OutputBlock,
   OutputFieldBlock,
   OutputViewSchema,
 } from "@alliance/common/forms/form-schema";
 import {
-  collectVariableInputFields,
-  flattenPageItems,
-  isQuestionField,
-  variableInputFieldsById,
-} from "@alliance/common/forms/form-schema";
+  collectOutputFieldMap,
+  drawnCards,
+  resolveOutputBlocks,
+  type ResolveOutputParams,
+} from "@alliance/common/forms/output-resolution";
+import { isOutputValueMissing } from "@alliance/common/forms/output-values";
 import { getRankingOptionLabel } from "@alliance/common/forms/ranking";
 import {
   interpolateDisplayBlock,
   interpolateFieldText,
   interpolateOutputFieldBlock,
 } from "@alliance/common/forms/variable-interpolation";
-import { resolveVariableValues } from "@alliance/common/forms/variables";
-import {
-  isElementCurrentlyVisible,
-  type VisibilityValidatorResults,
-} from "@alliance/common/forms/visibility";
 import { withCount } from "@alliance/common/plural";
+import { captureException } from "./lib/analytics";
 
 export type ResolvedOutputDisplayItem = {
   type: "display";
@@ -53,56 +48,6 @@ export type ResolvedOutputFieldItem = {
 export type ResolvedOutputItem =
   | ResolvedOutputDisplayItem
   | ResolvedOutputFieldItem;
-
-type ResolveOutputItemsParams = {
-  schema: FormSchema;
-  answers: Record<string, FormValue>;
-  viewId?: string;
-  validatorResults?: VisibilityValidatorResults;
-  deviceType?: DeviceVisibilityTarget;
-  publicAnswers?: Record<string, boolean>;
-};
-
-export const isOutputValueMissing = (value: FormValue | undefined): boolean => {
-  if (value === undefined || value === null || value === "") {
-    return true;
-  }
-  if (Array.isArray(value) && value.length === 0) {
-    return true;
-  }
-  return false;
-};
-
-export const collectOutputFieldMap = (
-  schema: FormSchema,
-): Map<string, AnyField> => {
-  const map = new Map<string, AnyField>();
-  schema.pages.forEach((page) => {
-    flattenPageItems(page.fields).forEach((field) => {
-      if (isQuestionField(field)) {
-        map.set(field.id, field);
-      }
-    });
-  });
-  return map;
-};
-
-export const resolveOutputView = (
-  schema: FormSchema,
-  viewId?: string,
-): OutputViewSchema | null => {
-  const views = schema.outputViews ?? [];
-  if (!views.length) {
-    return null;
-  }
-  if (viewId) {
-    const selected = views.find((candidate) => candidate.id === viewId);
-    if (selected) {
-      return selected;
-    }
-  }
-  return views.find((candidate) => candidate.type === "default") ?? views[0];
-};
 
 export const formatOutputFieldValue = (
   field: AnyField,
@@ -149,10 +94,8 @@ export const formatOutputFieldValue = (
       const city = parseCityValue(value);
       return city ? formatCityValue(city) : String(value);
     }
-    case "list": {
-      const listValue = Array.isArray(value) ? value : [];
-      return withCount(listValue.length, "item");
-    }
+    case "list":
+      return withCount(drawnCards(field, value).length, "item");
     case "file":
       return "";
     default:
@@ -171,33 +114,6 @@ export const getOutputFileValues = (value: FormValue | undefined): string[] => {
   return rawValues.filter(
     (entry): entry is string => typeof entry === "string" && entry.length > 0,
   );
-};
-
-export const isOutputBlockVisible = (
-  block: OutputBlock,
-  answers: Record<string, FormValue>,
-  validatorResults?: VisibilityValidatorResults,
-  deviceType?: DeviceVisibilityTarget,
-  inputField?: AnyField,
-  outputBlockVisibility?: Map<string, boolean>,
-): boolean => {
-  if (inputField) {
-    const isVisible = isElementCurrentlyVisible(inputField, answers, {
-      deviceType: deviceType ?? "desktop",
-      visibilityValidatorResults: validatorResults ?? {},
-    });
-    if (!isVisible) {
-      return false;
-    }
-  }
-  if ("fieldId" in block && isOutputValueMissing(answers[block.fieldId])) {
-    return false;
-  }
-  return isElementCurrentlyVisible(block, answers, {
-    deviceType: deviceType ?? "desktop",
-    visibilityValidatorResults: validatorResults ?? {},
-    outputBlockVisibility,
-  });
 };
 
 const buildOutputField = (
@@ -225,138 +141,79 @@ const buildOutputField = (
   return withLabel;
 };
 
-export const resolveOutputItems = ({
-  schema,
-  answers,
-  viewId,
-  validatorResults,
-  deviceType,
-  publicAnswers,
-}: ResolveOutputItemsParams): {
+export const resolveOutputItems = (
+  params: ResolveOutputParams,
+): {
   selectedView: OutputViewSchema | null;
   items: ResolvedOutputItem[];
   fieldLookup: Map<string, AnyField>;
 } => {
-  const fieldLookup = collectOutputFieldMap(schema);
-  const selectedView = resolveOutputView(schema, viewId);
-
-  if (!selectedView) {
-    return { selectedView, items: [], fieldLookup };
+  const resolved = resolveOutputBlocks(params);
+  if (!resolved) {
+    return {
+      selectedView: null,
+      items: [],
+      fieldLookup: collectOutputFieldMap(params.schema),
+    };
   }
+  const {
+    selectedView,
+    fieldLookup,
+    answers,
+    visibleBlocks,
+    variableValues,
+    malformedListFieldIds,
+  } = resolved;
 
-  // Resolve visibility for every block, walking outputBlockVisible dependencies
-  // first so a condition always sees a populated map. Any block (field or
-  // display) can reference any other block by id. Cycles should be rejected by
-  // validateFormSchema; the inProgress guard returns false if one slips past.
-  const allBlocks = selectedView.blocks ?? [];
-  const blockById = new Map<string, OutputBlock>();
-  for (const b of allBlocks) {
-    if (b.id) blockById.set(b.id, b);
+  for (const fieldId of malformedListFieldIds) {
+    const message = `Stored answer for list field ${fieldId} is not a list of rows`;
+    console.error(message);
+    captureException(ExceptionEvent.MalformedListAnswer, new Error(message), {
+      fieldId,
+    });
   }
-  const outputBlockVisibility = new Map<string, boolean>();
-  const inProgress = new Set<string>();
-
-  const evaluateBlockVisibility = (block: OutputBlock): boolean => {
-    if ("kind" in block) {
-      return isOutputBlockVisible(
-        block,
-        answers,
-        validatorResults,
-        deviceType,
-        undefined,
-        outputBlockVisibility,
-      );
-    }
-    return (
-      isOutputBlockVisible(
-        block,
-        answers,
-        validatorResults,
-        deviceType,
-        fieldLookup.get(block.fieldId),
-        outputBlockVisibility,
-      ) && publicAnswers?.[block.fieldId] === true
-    );
-  };
-
-  const computeVisibility = (block: OutputBlock): boolean => {
-    if (block.id) {
-      const cached = outputBlockVisibility.get(block.id);
-      if (cached !== undefined) return cached;
-      if (inProgress.has(block.id)) return false;
-      inProgress.add(block.id);
-    }
-    for (const cond of Object.values(
-      block.visibleIfFormula?.conditions ?? {},
-    )) {
-      if (cond.kind === "outputBlockVisible") {
-        const dep = blockById.get(cond.outputBlockVisible);
-        if (dep && dep.id && !outputBlockVisibility.has(dep.id)) {
-          computeVisibility(dep);
-        }
-      }
-    }
-    if (block.id) inProgress.delete(block.id);
-    const visible = evaluateBlockVisibility(block);
-    if (block.id) outputBlockVisibility.set(block.id, visible);
-    return visible;
-  };
-
-  for (const block of allBlocks) computeVisibility(block);
 
   // Substituted here rather than in each renderer so every consumer of an item
   // — label, override and field text alike — sees the same resolved values.
-  const variableValues = resolveVariableValues(schema.variables, {
-    answers,
-    fields: variableInputFieldsById(collectVariableInputFields(schema)),
-  });
+  const items = visibleBlocks.map((rawBlock, index): ResolvedOutputItem => {
+    const key =
+      "kind" in rawBlock
+        ? (rawBlock.id ?? `${rawBlock.kind}-${index}`)
+        : rawBlock.id;
 
-  const items = allBlocks
-    .filter((block) =>
-      block.id
-        ? (outputBlockVisibility.get(block.id) ?? false)
-        : evaluateBlockVisibility(block),
-    )
-    .map((rawBlock, index): ResolvedOutputItem => {
-      const key =
-        "kind" in rawBlock
-          ? (rawBlock.id ?? `${rawBlock.kind}-${index}`)
-          : rawBlock.id;
-
-      if ("kind" in rawBlock) {
-        return {
-          type: "display",
-          key,
-          block: interpolateDisplayBlock(
-            rawBlock as DisplayBlock,
-            variableValues,
-          ),
-        };
-      }
-
-      const block = interpolateOutputFieldBlock(rawBlock, variableValues);
-      const schemaField = fieldLookup.get(block.fieldId);
-      const field = schemaField
-        ? interpolateFieldText(schemaField, variableValues)
-        : undefined;
-
+    if ("kind" in rawBlock) {
       return {
-        type: "field",
+        type: "display",
         key,
-        block,
-        field,
-        renderField: field ? buildOutputField(field, block) : undefined,
-        label:
-          outputBlockLabelOverride(block) ?? field?.label ?? "Missing field",
-        showLabel: block.showLabel ?? true,
-        format: block.format ?? "field",
-        value: answers[block.fieldId],
-        formattedValue: field
-          ? formatOutputFieldValue(field, answers[block.fieldId])
-          : "",
-        fileValues: getOutputFileValues(answers[block.fieldId]),
+        block: interpolateDisplayBlock(
+          rawBlock as DisplayBlock,
+          variableValues,
+        ),
       };
-    });
+    }
+
+    const block = interpolateOutputFieldBlock(rawBlock, variableValues);
+    const schemaField = fieldLookup.get(block.fieldId);
+    const field = schemaField
+      ? interpolateFieldText(schemaField, variableValues)
+      : undefined;
+
+    return {
+      type: "field",
+      key,
+      block,
+      field,
+      renderField: field ? buildOutputField(field, block) : undefined,
+      label: outputBlockLabelOverride(block) ?? field?.label ?? "Missing field",
+      showLabel: block.showLabel ?? true,
+      format: block.format ?? "field",
+      value: answers[block.fieldId],
+      formattedValue: field
+        ? formatOutputFieldValue(field, answers[block.fieldId])
+        : "",
+      fileValues: getOutputFileValues(answers[block.fieldId]),
+    };
+  });
 
   return { selectedView, items, fieldLookup };
 };

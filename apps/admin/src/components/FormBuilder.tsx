@@ -17,6 +17,7 @@ import {
   flattenPageItems,
   isFieldGroup,
   isQuestionField,
+  syncSchemaVariableListInputs,
   type AnyField,
   type FieldGroup,
   type FieldKind,
@@ -814,6 +815,9 @@ export function FormBuilder(props: FormBuilderProps) {
     theirs: FormSchema;
     theirsSnapshotId: number;
   } | null>(null);
+  // VariableBuilder's cards only follow their variables through its own edits,
+  // so a schema loaded from a conflict remounts it with no sample answers.
+  const [conflictLoads, setConflictLoads] = useState(0);
   const [confirmUnresolvedVariables, setConfirmUnresolvedVariables] =
     useState(false);
 
@@ -1704,7 +1708,12 @@ export function FormBuilder(props: FormBuilderProps) {
     setSaveError(null);
 
     try {
-      const validationErrors = validateFormSchema(schema);
+      // List inputs name sub-fields added since the variable was last edited
+      // here, from labels that are final by now.
+      const syncedSchema = syncSchemaVariableListInputs(schema);
+      if (syncedSchema !== schema) setSchema(syncedSchema);
+
+      const validationErrors = validateFormSchema(syncedSchema);
       if (validationErrors.length > 0) {
         const summary = validationErrors
           .map((e) => `• Block ${e.blockId}: ${e.message}`)
@@ -1715,7 +1724,7 @@ export function FormBuilder(props: FormBuilderProps) {
       }
 
       const { schema: schemaForSave, resolvedDraftIds } =
-        await resolveCustomValidatorDrafts(schema);
+        await resolveCustomValidatorDrafts(syncedSchema);
       if (resolvedDraftIds.length > 0) {
         setSchema(schemaForSave);
       }
@@ -1955,6 +1964,7 @@ export function FormBuilder(props: FormBuilderProps) {
       return;
     }
     setSchema(conflict.theirs);
+    setConflictLoads((count) => count + 1);
     setLastSavedSchemaJSON(JSON.stringify(conflict.theirs));
     setBaseFormSnapshotId(conflict.theirsSnapshotId);
     setHasUnsavedChanges(false);
@@ -1973,6 +1983,7 @@ export function FormBuilder(props: FormBuilderProps) {
       return;
     }
     setSchema(result.value);
+    setConflictLoads((count) => count + 1);
     setLastSavedSchemaJSON(JSON.stringify(conflict.theirs));
     setBaseFormSnapshotId(conflict.theirsSnapshotId);
     setConflict(null);
@@ -2969,6 +2980,7 @@ export function FormBuilder(props: FormBuilderProps) {
                 />
               ) : activeEditor === "variables" ? (
                 <VariableBuilder
+                  key={conflictLoads}
                   schema={schema}
                   onSchemaChange={updateSchema}
                 />
@@ -2998,6 +3010,7 @@ export function FormBuilder(props: FormBuilderProps) {
                     userId={resolvedPreviewUserId}
                     user={resolvedPreviewUser}
                     adminPreviewUserId={resolvedPreviewUserId}
+                    showVariableError
                     initialPageIndex={selectedPageIndex}
                   />
                 </div>

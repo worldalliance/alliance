@@ -80,7 +80,7 @@ interface Array<T> {
   indexOf(search: T, from?: number): number;
   lastIndexOf(search: T, from?: number): number;
   at(index: number): T | undefined;
-  join(separator?: string): string;
+  join(this: ReadonlyArray<string | number | boolean>, separator?: string): string;
   flat<A, D extends number = 1>(this: A, depth?: D): FlatArray<A, D>[];
 }
 interface ReadonlyArray<T> extends Array<T> {}

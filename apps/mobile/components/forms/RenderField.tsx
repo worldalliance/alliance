@@ -21,6 +21,7 @@ import {
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
 import {
   CARD_ID_KEY,
+  cardSubFields,
   defaultCardCount,
   listCardWriters,
   resolveCards,
@@ -34,6 +35,7 @@ import {
 import { cancelImageUpload } from "@alliance/shared/lib/copy";
 import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
 import { cn } from "@alliance/shared/styles/util";
+import type { FieldConditionContext } from "@alliance/shared/useFormRenderer";
 import { ChevronDown, X } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -82,11 +84,7 @@ export type RenderFieldProps = {
   isOutputView?: boolean;
   user?: Omit<UserDto, "email">;
   hideLabel?: boolean;
-  formData?: Record<string, FormValue>;
-  isFieldRequired?: (
-    field: AnyField,
-    data?: Record<string, FormValue>,
-  ) => boolean;
+  fieldContext: FieldConditionContext;
 };
 
 const sharedInputClasses =
@@ -157,11 +155,10 @@ export function RenderField({
   isOutputView,
   user,
   hideLabel,
-  formData,
-  isFieldRequired,
+  fieldContext,
 }: RenderFieldProps) {
   const [selectOpen, setSelectOpen] = useState(false);
-  const required = isFieldRequired ? isFieldRequired(field) : !!field.required;
+  const required = fieldContext.isFieldRequired(field);
   const errorMessage =
     typeof error === "string" && error.trim().length > 0 ? error : null;
   const hasError = Boolean(errorMessage);
@@ -828,7 +825,6 @@ export function RenderField({
 
     case "list": {
       const listField = field as ListField;
-      const subFields = listField.fields ?? [];
       const defaultCount = defaultCardCount(listField);
       const minCards = Math.max(0, Math.floor(Number(listField.min || 0)));
       const maxCards =
@@ -836,12 +832,6 @@ export function RenderField({
           ? Math.floor(listField.max)
           : Infinity;
       const cards = resolveCards({ value, defaultCardCount: defaultCount });
-      const hiddenInOutputIds = new Set(
-        isOutputView ? (listField.outputViewHiddenFieldIds ?? []) : [],
-      );
-      const visibleSubFields = subFields.filter(
-        (subField) => !hiddenInOutputIds.has(subField.id),
-      );
       const canDelete = cards.length > minCards;
       const { addCard, removeCard, updateCard } = listCardWriters({
         onChange,
@@ -860,13 +850,23 @@ export function RenderField({
           <View className="gap-3">
             {cards.map((card, cardIndex) => {
               const cardId = card[CARD_ID_KEY];
+              const row = fieldContext.forRow(card);
+              const subFields = cardSubFields({
+                listField,
+                card,
+                row,
+                isOutputView,
+              });
+              if (isOutputView && subFields.length === 0) {
+                return null;
+              }
               return (
                 <Card
                   key={cardId}
                   cardStyle={CardStyle.White}
                   className="border border-zinc-200 gap-4"
                 >
-                  {visibleSubFields.map((subField) => (
+                  {subFields.map((subField) => (
                     <RenderField
                       key={subField.id}
                       field={subField}
@@ -900,14 +900,7 @@ export function RenderField({
                       disableOptionRandomization={disableOptionRandomization}
                       isOutputView={isOutputView}
                       user={user}
-                      // A sub-field's requiredIfFormula can reference either the
-                      // surrounding answers or its own card.
-                      isFieldRequired={
-                        isFieldRequired
-                          ? (sub: AnyField) =>
-                              isFieldRequired(sub, { ...formData, ...card })
-                          : undefined
-                      }
+                      fieldContext={row}
                     />
                   ))}
                   {!disabled && (

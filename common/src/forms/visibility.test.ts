@@ -1,4 +1,4 @@
-import type { FieldGroup, Page, TextField } from "./form-schema";
+import type { FieldGroup, FormValue, Page, TextField } from "./form-schema";
 import {
   emptyUserPropertyPresence,
   UserValueProperty,
@@ -7,7 +7,11 @@ import {
   isElementCurrentlyVisible,
   isFieldConditionallyRequired,
   isPageCurrentlyVisible,
+  isVisibleInSavedResponse,
+  listRowData,
   stripHiddenAnswers,
+  stripHiddenListCells,
+  visibleListSubFields,
 } from "./visibility";
 import type { Condition, VisibleIfFormula } from "./visible-if-formula";
 
@@ -347,6 +351,75 @@ describe("isFieldConditionallyRequired", () => {
   });
 });
 
+describe("listRowData", () => {
+  it("puts the row's cells over the form's answers", () => {
+    expect(
+      listRowData({ data: { gate: "yes", other: 1 }, row: { gate: "no" } }),
+    ).toEqual({ gate: "no", other: 1 });
+  });
+});
+
+describe("visibleListSubFields", () => {
+  const gated = textField("note", {
+    visibleIfFormula: formula({
+      c1: { kind: "equals", when: "gate", equals: "yes" },
+    }),
+  });
+  const subFields = [textField("gate"), gated];
+
+  it("reads a form answer the row's cells don't cover", () => {
+    expect(
+      visibleListSubFields({
+        subFields,
+        data: { gate: "yes" },
+        row: {},
+        extras,
+      }),
+    ).toEqual(subFields);
+    expect(
+      visibleListSubFields({
+        subFields,
+        data: { gate: "no" },
+        row: {},
+        extras,
+      }),
+    ).toEqual([subFields[0]]);
+  });
+
+  it("keeps a sub-field the row's cells reveal", () => {
+    expect(
+      visibleListSubFields({
+        subFields,
+        data: { gate: "no" },
+        row: { gate: "yes" },
+        extras,
+      }),
+    ).toEqual(subFields);
+  });
+
+  it("drops a sub-field the row's cells hide", () => {
+    expect(
+      visibleListSubFields({
+        subFields,
+        data: { gate: "yes" },
+        row: { gate: "no" },
+        extras,
+      }),
+    ).toEqual([subFields[0]]);
+  });
+
+  it("reads the row's cells with no form answers at all", () => {
+    expect(
+      visibleListSubFields({
+        subFields,
+        data: {},
+        row: { gate: "no" },
+        extras,
+      }),
+    ).toEqual([subFields[0]]);
+  });
+});
+
 describe("stripHiddenAnswers", () => {
   const equalsYes = (when: string): Condition => ({
     kind: "equals",
@@ -429,6 +502,478 @@ describe("stripHiddenAnswers", () => {
     expect(
       stripHiddenAnswers(pages, answers, { ...extras, readOnly: true }),
     ).toBe(answers);
+  });
+});
+
+describe("stripHiddenAnswers in list rows", () => {
+  const equalsYes = (when: string): Condition => ({
+    kind: "equals",
+    when,
+    equals: "yes",
+  });
+
+  const listPage = (fields: TextField[]) => [
+    page("p1", {
+      fields: [
+        textField("gate"),
+        { id: "people", type: "input", kind: "list", label: "People", fields },
+      ],
+    }),
+  ];
+
+  it("strips a cell hidden for its row and keeps the rest of the row", () => {
+    const pages = listPage([
+      textField("name"),
+      textField("note", {
+        visibleIfFormula: formula({ c1: equalsYes("name") }),
+      }),
+    ]);
+    expect(
+      stripHiddenAnswers(
+        pages,
+        {
+          people: [
+            { name: "yes", note: "shown", __cardId: "c0" },
+            { name: "no", note: "stale", __cardId: "c1" },
+          ],
+        },
+        extras,
+      ),
+    ).toEqual({
+      people: [
+        { name: "yes", note: "shown", __cardId: "c0" },
+        { name: "no", __cardId: "c1" },
+      ],
+    });
+  });
+
+  it("reads the form's answers under the row's cells", () => {
+    const pages = listPage([
+      textField("note", {
+        visibleIfFormula: formula({ c1: equalsYes("gate") }),
+      }),
+    ]);
+    expect(
+      stripHiddenAnswers(
+        pages,
+        { gate: "no", people: [{ note: "stale" }] },
+        extras,
+      ),
+    ).toEqual({ gate: "no", people: [{}] });
+  });
+
+  it("hides a cell whose chain of sibling conditions starts at a hidden cell", () => {
+    const pages = listPage([
+      textField("a"),
+      textField("b", { visibleIfFormula: formula({ c1: equalsYes("a") }) }),
+      textField("c", { visibleIfFormula: formula({ c1: equalsYes("b") }) }),
+    ]);
+    expect(
+      stripHiddenAnswers(
+        pages,
+        { people: [{ a: "no", b: "yes", c: "stale" }] },
+        extras,
+      ),
+    ).toEqual({ people: [{ a: "no" }] });
+  });
+
+  it("returns the same object when every answered cell is visible", () => {
+    const pages = listPage([
+      textField("name"),
+      textField("note", {
+        visibleIfFormula: formula({ c1: equalsYes("name") }),
+      }),
+    ]);
+    const answers: Record<string, FormValue> = {
+      people: [{ name: "yes", note: "shown" }, { name: "no" }],
+    };
+    expect(stripHiddenAnswers(pages, answers, extras)).toBe(answers);
+  });
+
+  it("keeps a cell that a negated condition on a hidden sibling reveals", () => {
+    const pages = listPage([
+      textField("a"),
+      textField("b", { visibleIfFormula: formula({ c1: equalsYes("a") }) }),
+      textField("c", {
+        visibleIfFormula: {
+          conditions: { c1: equalsYes("b") },
+          formula: { op: "NOT", operand: "c1" },
+        },
+      }),
+    ]);
+    expect(
+      stripHiddenAnswers(
+        pages,
+        {
+          people: [
+            { a: "yes", b: "yes" },
+            { a: "no", b: "yes", c: "shown" },
+          ],
+        },
+        extras,
+      ),
+    ).toEqual({
+      people: [
+        { a: "yes", b: "yes" },
+        { a: "no", c: "shown" },
+      ],
+    });
+  });
+
+  it("does not strip answered cells in readOnly", () => {
+    const pages = listPage([
+      textField("name"),
+      textField("note", {
+        visibleIfFormula: formula({ c1: equalsYes("name") }),
+      }),
+    ]);
+    const answers = { people: [{ name: "no", note: "answered" }] };
+    expect(
+      stripHiddenAnswers(pages, answers, { ...extras, readOnly: true }),
+    ).toBe(answers);
+  });
+});
+
+describe("stripHiddenListCells", () => {
+  const pages = [
+    page("p1", {
+      fields: [
+        textField("gate"),
+        {
+          id: "people",
+          type: "input",
+          kind: "list",
+          label: "People",
+          fields: [
+            textField("note", {
+              visibleIfFormula: formula({
+                c1: { kind: "equals", when: "gate", equals: "yes" },
+              }),
+            }),
+            textField("city", {
+              visibleIfFormula: formula({
+                c1: { kind: "userHasCity", userHasCity: true },
+              }),
+            }),
+          ],
+        },
+      ],
+    }),
+  ];
+  const answers: Record<string, FormValue> = {
+    gate: "no",
+    people: [{ note: "stale", city: "stale" }],
+  };
+
+  it("strips a cell only where the caller says its row hides it", () => {
+    expect(
+      stripHiddenListCells({
+        pages,
+        answers,
+        isVisible: (subField) => subField.id !== "note",
+      }),
+    ).toEqual({ gate: "no", people: [{ city: "stale" }] });
+  });
+
+  it("hands the caller the form's answers with the row's cells on top", () => {
+    const seen: Record<string, FormValue>[] = [];
+    stripHiddenListCells({
+      pages,
+      answers,
+      isVisible: (_subField, rowData) => {
+        seen.push(rowData);
+        return true;
+      },
+    });
+    expect(seen[0]).toEqual({
+      gate: "no",
+      people: [{ note: "stale", city: "stale" }],
+      note: "stale",
+      city: "stale",
+    });
+  });
+
+  it("returns the same answers when the caller hides nothing", () => {
+    expect(
+      stripHiddenListCells({ pages, answers, isVisible: () => true }),
+    ).toBe(answers);
+  });
+});
+
+describe("isVisibleInSavedResponse", () => {
+  const gateIsYes = { kind: "equals", when: "gate", equals: "yes" } as const;
+  const hasCity = { kind: "userHasCity", userHasCity: true } as const;
+  const visible = (
+    visibleIfFormula: VisibleIfFormula,
+    response: Partial<Parameters<typeof isVisibleInSavedResponse>[0]> = {},
+  ) =>
+    isVisibleInSavedResponse({
+      element: textField("sub", { visibleIfFormula }),
+      data: { gate: "no" },
+      deviceType: "desktop",
+      visibilityValidatorResults: {},
+      fieldLookup: new Map(),
+      groupByFieldId: new Map(),
+      pageByFieldId: new Map(),
+      ...response,
+    });
+
+  it("hides an element its replayable conditions rule out on their own", () => {
+    expect(
+      visible({
+        conditions: { c1: gateIsYes, c2: hasCity },
+        formula: { op: "AND", left: "c1", right: "c2" },
+      }),
+    ).toBe(false);
+  });
+
+  it("shows an element a condition it can't replay could have shown", () => {
+    expect(
+      visible({
+        conditions: { c1: gateIsYes, c2: hasCity },
+        formula: { op: "OR", left: "c1", right: "c2" },
+      }),
+    ).toBe(true);
+  });
+
+  it("shows an element whose only condition can't be replayed", () => {
+    expect(
+      visible({
+        conditions: { c1: { kind: "validator", validatorId: 7 } },
+        formula: { op: "NOT", operand: "c1" },
+      }),
+    ).toBe(true);
+  });
+
+  describe("with a condition on a field whose own visibility can't be replayed", () => {
+    const gatedOnCity = new Map([
+      [
+        "gate",
+        textField("gate", {
+          visibleIfFormula: { conditions: { c1: hasCity }, formula: "c1" },
+        }),
+      ],
+    ]);
+
+    it("hides an element the field's answer rules out whether or not the field showed", () => {
+      expect(
+        visible(
+          { conditions: { c1: gateIsYes }, formula: "c1" },
+          { fieldLookup: gatedOnCity },
+        ),
+      ).toBe(false);
+    });
+
+    it("shows an element the field's answer rules out only if the field showed", () => {
+      expect(
+        visible(
+          {
+            conditions: {
+              c1: { kind: "hasValue", when: "gate", hasValue: false },
+            },
+            formula: "c1",
+          },
+          { fieldLookup: gatedOnCity },
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it("shows an element a condition on another form's answers could have shown", () => {
+    expect(visible(formula({ c1: { ...gateIsYes, sourceFormId: 7 } }))).toBe(
+      true,
+    );
+  });
+
+  it("hides an element a validator verdict the response recorded rules out", () => {
+    expect(
+      visible(formula({ c1: { kind: "validator", validatorId: 7 } }), {
+        visibilityValidatorResults: { 7: false },
+      }),
+    ).toBe(false);
+  });
+
+  it("hides an element the device the response recorded rules out", () => {
+    expect(
+      visible(formula({ c1: { kind: "deviceType", deviceType: ["mobile"] } })),
+    ).toBe(false);
+  });
+
+  const gateIsEmpty = formula({
+    c1: { kind: "hasValue", when: "gate", hasValue: false },
+  });
+
+  it("hides an element a field's answer rules out when that field's own visibility replays", () => {
+    expect(
+      visible(gateIsEmpty, {
+        data: { gate: "no", other: "x" },
+        fieldLookup: new Map([
+          [
+            "gate",
+            textField("gate", {
+              visibleIfFormula: formula({
+                c1: { kind: "hasValue", when: "other", hasValue: true },
+              }),
+            }),
+          ],
+        ]),
+      }),
+    ).toBe(false);
+  });
+
+  it("replays through fields whose conditions reference each other", () => {
+    expect(
+      visible(gateIsEmpty, {
+        data: { gate: "yes", other: "yes" },
+        fieldLookup: new Map([
+          [
+            "gate",
+            textField("gate", {
+              visibleIfFormula: formula({
+                c1: { kind: "equals", when: "other", equals: "yes" },
+              }),
+            }),
+          ],
+          [
+            "other",
+            textField("other", {
+              visibleIfFormula: formula({ c1: gateIsYes }),
+            }),
+          ],
+        ]),
+      }),
+    ).toBe(false);
+  });
+
+  it("reads a device the response didn't record as unknown", () => {
+    expect(
+      visible(
+        {
+          conditions: { c1: { kind: "deviceType", deviceType: ["mobile"] } },
+          formula: "c1",
+        },
+        { deviceType: undefined },
+      ),
+    ).toBe(true);
+  });
+
+  describe("inside a group", () => {
+    const visibleInGroup = (groupFormula: VisibleIfFormula) => {
+      const group: FieldGroup = {
+        id: "g1",
+        type: "group",
+        kind: "group",
+        fields: [],
+        visibleIfFormula: groupFormula,
+      };
+      return visible(
+        { conditions: {}, formula: "" },
+        { groupByFieldId: new Map([["sub", group]]) },
+      );
+    };
+
+    it("hides an element whose group's replayable conditions rule it out", () => {
+      expect(
+        visibleInGroup({
+          conditions: { c1: gateIsYes, c2: hasCity },
+          formula: { op: "AND", left: "c1", right: "c2" },
+        }),
+      ).toBe(false);
+    });
+
+    it("shows an element whose group a condition it can't replay could have shown", () => {
+      expect(
+        visibleInGroup({
+          conditions: { c1: gateIsYes, c2: hasCity },
+          formula: { op: "OR", left: "c1", right: "c2" },
+        }),
+      ).toBe(true);
+    });
+  });
+
+  describe("with a condition on a field a recorded verdict hid", () => {
+    const hiddenByVerdict = formula({
+      c1: { kind: "validator", validatorId: 7 },
+    });
+    const response = {
+      data: { gate: "yes" },
+      visibilityValidatorResults: { 7: false },
+    };
+
+    it("reads the field as unanswered when its own conditions hid it", () => {
+      expect(
+        visible(formula({ c1: gateIsYes }), {
+          ...response,
+          fieldLookup: new Map([
+            ["gate", textField("gate", { visibleIfFormula: hiddenByVerdict })],
+          ]),
+        }),
+      ).toBe(false);
+    });
+
+    it("reads the field as unanswered when its group hid it", () => {
+      const gate = textField("gate");
+      const group: FieldGroup = {
+        id: "g1",
+        type: "group",
+        kind: "group",
+        fields: [gate],
+        visibleIfFormula: hiddenByVerdict,
+      };
+      expect(
+        visible(formula({ c1: gateIsYes }), {
+          ...response,
+          fieldLookup: new Map([["gate", gate]]),
+          groupByFieldId: new Map([["gate", group]]),
+        }),
+      ).toBe(false);
+    });
+
+    it("reads the field as unanswered when its page hid it", () => {
+      const gate = textField("gate");
+      const page: Page = {
+        id: "p1",
+        fields: [gate],
+        visibleIfFormula: hiddenByVerdict,
+      };
+      expect(
+        visible(formula({ c1: gateIsYes }), {
+          ...response,
+          fieldLookup: new Map([["gate", gate]]),
+          pageByFieldId: new Map([["gate", page]]),
+        }),
+      ).toBe(false);
+    });
+  });
+
+  describe("on a page", () => {
+    const visibleOnPage = (pageFormula: VisibleIfFormula) =>
+      visible(
+        { conditions: {}, formula: "" },
+        {
+          pageByFieldId: new Map([
+            ["sub", { id: "p1", fields: [], visibleIfFormula: pageFormula }],
+          ]),
+        },
+      );
+
+    it("hides an element whose page's replayable conditions rule it out", () => {
+      expect(
+        visibleOnPage({
+          conditions: { c1: gateIsYes, c2: hasCity },
+          formula: { op: "AND", left: "c1", right: "c2" },
+        }),
+      ).toBe(false);
+    });
+
+    it("shows an element whose page a condition it can't replay could have shown", () => {
+      expect(
+        visibleOnPage({
+          conditions: { c1: gateIsYes, c2: hasCity },
+          formula: { op: "OR", left: "c1", right: "c2" },
+        }),
+      ).toBe(true);
+    });
   });
 });
 

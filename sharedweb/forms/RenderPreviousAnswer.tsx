@@ -10,6 +10,7 @@ import {
   getVisiblePreviousAnswerSubFields,
   isPreviousAnswerValueEmpty,
 } from "@alliance/shared/lib/previousAnswers";
+import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import RenderField from "./RenderField";
 
 function EmptyPlaceholder({ block }: { block: PreviousAnswerBlock }) {
@@ -71,6 +72,7 @@ export default function RenderPreviousAnswer({
         value={value}
         disabled={true}
         hideLabel={block.showLabel === false}
+        fieldContext={staticFieldContext}
       />
     </div>
   );
@@ -111,6 +113,7 @@ function RenderPreviousAnswerList({
                 value={item[subField.id]}
                 disabled={true}
                 hideLabel={block.showLabel === false}
+                fieldContext={staticFieldContext}
               />
             ))}
           </div>

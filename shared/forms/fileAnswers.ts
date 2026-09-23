@@ -1,5 +1,8 @@
-import type { AnyField, FormValue } from "@alliance/common/forms/form-schema";
-import { asCards } from "./listCards";
+import {
+  asCards,
+  type AnyField,
+  type FormValue,
+} from "@alliance/common/forms/form-schema";
 
 function isUploadedImageKey(value: FormValue | undefined): boolean {
   return (

@@ -1081,6 +1081,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
                           userId={currentResponse?.user?.id}
                           user={currentResponse?.user ?? undefined}
                           adminPreviewUserId={currentResponse?.user?.id}
+                          showVariableError
                           disableOptionRandomization
                           fieldLabelRightContent={currentResponseAiInlineLabels}
                         />

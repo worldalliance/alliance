@@ -301,6 +301,90 @@ describe("useFormVisibility", () => {
     expect(moves).toEqual([0]);
   });
 
+  const noteField: TextField = {
+    ...textField("note"),
+    visibleIfFormula: {
+      conditions: {
+        c1: { kind: "equals", when: "name", equals: "Ada" },
+      },
+      formula: "c1",
+    },
+  };
+
+  const notesSchema: FormSchema = {
+    pages: [
+      {
+        id: "p1",
+        fields: [listField("people", [textField("name"), noteField])],
+      },
+    ],
+    outputViews: [],
+    variables: [
+      {
+        name: "notes",
+        inputs: {
+          input1: {
+            kind: "list",
+            fieldId: "people",
+            properties: { name: "name", note: "note" },
+          },
+        },
+        formula: "input1.map(p => p.name + ':' + (p.note ?? '-')).join()",
+      },
+    ],
+  };
+
+  const renderNotes = (params: {
+    readOnly: boolean;
+    formData: Record<string, FormValue>;
+  }) =>
+    renderHook(
+      (formData: Record<string, FormValue>) =>
+        useFormVisibility({
+          schema: notesSchema,
+          formData,
+          readOnly: params.readOnly,
+          currentPageIndex: 0,
+          setCurrentPageIndex: () => {},
+          effectiveDeviceType: "desktop",
+          visibilityValidatorResults: {},
+          fieldLookup: lookupFor(notesSchema),
+          previousAnswerData: undefined,
+          userHasCity: false,
+          firstContractSignedAt: null,
+          completedActionCount: 0,
+        }),
+      { initialProps: params.formData },
+    );
+
+  it("recomputes a list variable as rows change, leaving out a sub-field hidden for its row", () => {
+    const { result, rerender } = renderNotes({
+      readOnly: false,
+      formData: { people: [{ name: "Ada", note: "hi" }] },
+    });
+    expect(result.current.variableValues.get("notes")).toBe("Ada:hi");
+
+    rerender({
+      people: [
+        { name: "Ada", note: "hi" },
+        { name: "Lin", note: "kept from before" },
+      ],
+    });
+    expect(result.current.variableValues.get("notes")).toBe("Ada:hi,Lin:-");
+  });
+
+  it("reads a stored cell a read-only review shows, even with its condition false", () => {
+    const row = { name: "Lin", note: "answered" };
+    const { result } = renderNotes({
+      readOnly: true,
+      formData: { people: [row] },
+    });
+    expect(
+      result.current.fieldContext.forRow(row).visibleSubFields([noteField]),
+    ).toEqual([noteField]);
+    expect(result.current.variableValues.get("notes")).toBe("Lin:answered");
+  });
+
   it("stays put while the current page is visible", () => {
     const moves: number[] = [];
     renderVisibility({
@@ -310,6 +394,76 @@ describe("useFormVisibility", () => {
     });
 
     expect(moves).toEqual([]);
+  });
+
+  const noteSub: TextField = {
+    ...textField("note"),
+    requiredIfFormula: gatedOnYes,
+  };
+  const extraSub: TextField = {
+    ...textField("extra"),
+    visibleIfFormula: gatedOnYes,
+  };
+  const joinedOnYes = {
+    conditions: {
+      c1: { kind: "equals" as const, when: "joined", equals: "yes" },
+    },
+    formula: "c1",
+  };
+  const joinedSub: TextField = {
+    ...textField("since"),
+    visibleIfFormula: joinedOnYes,
+    requiredIfFormula: joinedOnYes,
+  };
+
+  it("reads a list row's conditions off that row's cells over the form's answers", () => {
+    const { result } = renderVisibility({
+      schema: schemaWith([
+        textField("joined"),
+        listField("people", [textField("gate"), noteSub, extraSub, joinedSub]),
+      ]),
+      formData: { joined: "yes" },
+    });
+    const answered = result.current.fieldContext.forRow({ gate: "yes" });
+    const blank = result.current.fieldContext.forRow({ gate: "no" });
+
+    expect(answered.isFieldRequired(noteSub)).toBe(true);
+    expect(blank.isFieldRequired(noteSub)).toBe(false);
+    expect(blank.isFieldRequired(joinedSub)).toBe(true);
+    expect(answered.visibleSubFields([noteSub, extraSub, joinedSub])).toEqual([
+      noteSub,
+      extraSub,
+      joinedSub,
+    ]);
+    expect(blank.visibleSubFields([noteSub, extraSub, joinedSub])).toEqual([
+      noteSub,
+      joinedSub,
+    ]);
+  });
+
+  it("reports a variable reading a field kind this build doesn't know", () => {
+    const { result } = renderVisibility({
+      schema: {
+        ...schemaWith([
+          JSON.parse(
+            '{ "id": "future", "type": "input", "kind": "future", "label": "Future" }',
+          ),
+        ]),
+        variables: [
+          {
+            name: "total",
+            inputs: { input1: { kind: "field", fieldId: "future" } },
+            formula: "input1 ?? 'n/a'",
+          },
+        ],
+      },
+      formData: { future: "answered" },
+    });
+
+    expect(result.current.variablesError).toBe(
+      "#{total}: Unknown field kind: future",
+    );
+    expect(result.current.variableValues.size).toBe(0);
   });
 });
 

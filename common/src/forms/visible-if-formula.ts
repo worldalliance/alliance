@@ -190,35 +190,42 @@ export function evaluateVisibilityFormula(
   node: FormulaNode,
   results: Record<string, boolean>,
 ): boolean {
-  if (typeof node === "string") return results[node] === true;
-  if (node.op === "NOT") {
-    const operand =
-      typeof node.operand === "string"
-        ? results[node.operand] === true
-        : evaluateVisibilityFormula(node.operand, results);
-    return !operand;
+  return evaluateVisibilityFormulaWithUnknowns(node, results) === true;
+}
+
+/**
+ * `evaluateVisibilityFormula` where a condition mapped to `undefined` could be
+ * either: the result is `undefined` when it turns on one of those.
+ */
+export function evaluateVisibilityFormulaWithUnknowns(
+  node: FormulaNode,
+  results: Record<string, boolean | undefined>,
+): boolean | undefined {
+  if (typeof node === "string") {
+    return Object.hasOwn(results, node) ? results[node] : false;
   }
-  if (node.op === "AND") {
-    const left =
-      typeof node.left === "string"
-        ? results[node.left] === true
-        : evaluateVisibilityFormula(node.left, results);
-    const right =
-      typeof node.right === "string"
-        ? results[node.right] === true
-        : evaluateVisibilityFormula(node.right, results);
-    return left && right;
+  switch (node.op) {
+    case "NOT": {
+      const operand = evaluateVisibilityFormulaWithUnknowns(
+        node.operand,
+        results,
+      );
+      return operand === undefined ? undefined : !operand;
+    }
+    case "AND": {
+      const left = evaluateVisibilityFormulaWithUnknowns(node.left, results);
+      const right = evaluateVisibilityFormulaWithUnknowns(node.right, results);
+      if (left === false || right === false) return false;
+      return left && right;
+    }
+    case "OR": {
+      const left = evaluateVisibilityFormulaWithUnknowns(node.left, results);
+      const right = evaluateVisibilityFormulaWithUnknowns(node.right, results);
+      if (left === true || right === true) return true;
+      return left === undefined || right === undefined ? undefined : false;
+    }
+    default:
+      node satisfies never;
+      return false;
   }
-  if (node.op === "OR") {
-    const left =
-      typeof node.left === "string"
-        ? results[node.left] === true
-        : evaluateVisibilityFormula(node.left, results);
-    const right =
-      typeof node.right === "string"
-        ? results[node.right] === true
-        : evaluateVisibilityFormula(node.right, results);
-    return left || right;
-  }
-  return false;
 }

@@ -6,6 +6,7 @@ import {
   displayBlockSchema,
   type ManualDisplayBlockContent,
 } from "./display-blocks";
+import { isListRow } from "./list-rows";
 import {
   categorizedOptionsShape,
   checkOptionCategories,
@@ -13,13 +14,15 @@ import {
 } from "./options-schema";
 import {
   formVariableSchema,
-  isFieldKindUsableAsVariableInput,
+  isFieldKindReadableByFieldInput,
+  syncVariableListInputs,
   type VariableInputField,
 } from "./variables";
 import type { Condition, VisibleIfFormula } from "./visible-if-formula";
 import { visibleIfFormulaSchema } from "./visible-if-formula";
 
 export type { CityFieldValue } from "./city";
+export { isListRow } from "./list-rows";
 
 export type ListFieldValue = Record<string, FormValue>[];
 export type FormValue =
@@ -29,6 +32,13 @@ export type FormValue =
   | string[]
   | CityFieldValue
   | ListFieldValue;
+
+export function asCards(value: FormValue | undefined): ListFieldValue | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  return value.every(isListRow) ? value : null;
+}
 
 export const formValueSchema: z.ZodType<FormValue> = z.lazy(() =>
   z.union([
@@ -458,6 +468,33 @@ export function collectGroupByFieldId(pages: Page[]): Map<string, FieldGroup> {
   return map;
 }
 
+export function collectPageByFieldId(pages: Page[]): Map<string, Page> {
+  const map = new Map<string, Page>();
+  for (const page of pages) {
+    for (const field of flattenPageItems(page.fields ?? [])) {
+      if (isQuestionField(field)) map.set(field.id, page);
+    }
+  }
+  return map;
+}
+
+export function collectFieldLookup(pages: Page[]): Map<string, AnyField> {
+  const lookup = new Map<string, AnyField>();
+  for (const page of pages) {
+    for (const element of flattenPageItems(page.fields)) {
+      if (!isQuestionField(element)) continue;
+      lookup.set(element.id, element);
+      // List sub-fields are looked up too, so a condition can reference one.
+      if (element.kind === "list") {
+        for (const sub of element.fields ?? []) {
+          lookup.set(sub.id, sub);
+        }
+      }
+    }
+  }
+  return lookup;
+}
+
 export function mapPageItems(
   items: PageItem[],
   mapLeaf: (item: AnyField | DisplayBlock) => AnyField | DisplayBlock,
@@ -487,32 +524,54 @@ export function fieldHasOptions(field: AnyField): field is OptionField {
 }
 
 /**
- * Returns page-level fields with one formula-readable answer. List sub-fields
- * are excluded because each list answer contains one value per row.
+ * Returns page-level fields a formula can read: those with one readable answer,
+ * and lists, which a formula reads as one record per row. List sub-fields are
+ * read only through their list.
  */
 export function collectVariableInputFields(schema: FormSchema): AnyField[] {
-  const fields: AnyField[] = [];
-  for (const page of schema.pages ?? []) {
-    for (const element of flattenPageItems(page.fields ?? [])) {
-      if (!isQuestionField(element)) continue;
-      if (!isFieldKindUsableAsVariableInput(element.kind)) continue;
-      fields.push(element);
-    }
+  return collectVariableResolutionFields(schema).filter(
+    (field) =>
+      field.kind === "list" || isFieldKindReadableByFieldInput(field.kind),
+  );
+}
+
+/**
+ * Every page-level question field, readable or not, so a variable reading a
+ * kind this build doesn't know fails instead of reading nothing.
+ */
+export function collectVariableResolutionFields(
+  schema: FormSchema,
+): AnyField[] {
+  return (schema.pages ?? []).flatMap((page) =>
+    flattenPageItems(page.fields ?? []).filter(isQuestionField),
+  );
+}
+
+function variableInputField(field: AnyField): VariableInputField {
+  if (fieldHasOptions(field)) {
+    return { kind: field.kind, options: field.options };
   }
-  return fields;
+  if (field.kind === "list") return { kind: field.kind, fields: field.fields };
+  return { kind: field.kind };
 }
 
 export function variableInputFieldsById(
   fields: readonly AnyField[],
 ): ReadonlyMap<string, VariableInputField> {
-  return new Map(
-    fields.map((field) => [
-      field.id,
-      fieldHasOptions(field)
-        ? { kind: field.kind, options: field.options }
-        : { kind: field.kind },
-    ]),
+  return new Map(fields.map((field) => [field.id, variableInputField(field)]));
+}
+
+/** Returns `schema` itself when every list input is already in sync. */
+export function syncSchemaVariableListInputs(schema: FormSchema): FormSchema {
+  const current = schema.variables;
+  if (current === undefined) return schema;
+  const variables = syncVariableListInputs(
+    current,
+    variableInputFieldsById(collectVariableInputFields(schema)),
   );
+  return variables.every((variable, index) => variable === current[index])
+    ? schema
+    : { ...schema, variables };
 }
 
 /**

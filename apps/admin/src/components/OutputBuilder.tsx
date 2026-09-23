@@ -128,6 +128,9 @@ const buildPreviewAnswers = (fields: AnyField[]): Record<string, FormValue> => {
       case "phone":
         answers[field.id] = "+14155552671";
         break;
+      case "list":
+        answers[field.id] = [buildPreviewAnswers(field.fields)];
+        break;
       default:
         answers[field.id] = `${elementInternalDescriptor(field)} response`;
         break;
