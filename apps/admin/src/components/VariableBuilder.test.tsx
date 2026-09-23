@@ -281,6 +281,30 @@ describe("VariableBuilder list inputs", () => {
 });
 
 describe("VariableBuilder variables", () => {
+  it("says why a formula that runs too long has no result", () => {
+    render(
+      <Harness
+        initial={{
+          pages: [{ id: "p1", fields: [town] }],
+          outputViews: [],
+          variables: [
+            {
+              name: "v",
+              inputs: {},
+              formula:
+                "'x'.repeat(10000).split('').filter(a => 'y'.repeat(10000).split('').includes(a)).length",
+            },
+          ],
+        }}
+        onSave={() => {}}
+      />,
+    );
+
+    expect(
+      screen.getByText("The formula takes too long to work out."),
+    ).toBeTruthy();
+  });
+
   it("keeps a variable's sample answers when a variable before it is deleted", () => {
     const readsTown = {
       inputs: { input1: { kind: "field", fieldId: "town" } },

@@ -527,12 +527,6 @@ function VariableCard({
     return checkVariableFormulaType(variable.formula, inputTypes);
   }, [compiled, variable.formula, inputTypes]);
 
-  const formulaError = compiled.ok
-    ? typed.ok
-      ? null
-      : typed.error
-    : compiled.error;
-
   const nameError = useMemo(() => {
     if (!VARIABLE_NAME_REGEX.test(variable.name)) {
       return "Name can't be empty.";
@@ -564,9 +558,16 @@ function VariableCard({
     const values = new Map<string, ExprValue>(
       [...readings].map(([name, reading]) => [name, reading.value]),
     );
-    const value = evaluateVariableText(compiled.value, values);
-    return value.ok ? value.value : "";
+    return evaluateVariableText(compiled.value, values);
   }, [compiled, typed, readings]);
+
+  const formulaError = compiled.ok
+    ? typed.ok
+      ? preview?.ok === false
+        ? preview.error
+        : null
+      : typed.error
+    : compiled.error;
 
   const helpInputs = useMemo<FormulaHelpInput[]>(
     () =>
@@ -854,7 +855,10 @@ function VariableCard({
         )}
         {formulaError === null && typed.ok ? (
           <p className="text-xs text-gray-500">
-            Result: <span className="font-mono">{preview || "—"}</span>{" "}
+            Result:{" "}
+            <span className="font-mono">
+              {(preview?.ok && preview.value) || "—"}
+            </span>{" "}
             <span className="text-gray-400">&middot; {typed.value}</span>
           </p>
         ) : (
