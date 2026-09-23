@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
 import {
-  Allow,
   IsDefined,
   IsEmail,
   IsEnum,
@@ -30,7 +29,7 @@ export class SignUpDto {
   @ApiProperty()
   readonly password: string;
 
-  @Allow()
+  @IsDefined()
   @IsEnum(TokenMode)
   @ApiProperty({ enum: TokenMode, enumName: "TokenMode" })
   mode: TokenMode;

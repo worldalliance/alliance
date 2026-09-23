@@ -685,6 +685,36 @@ it("retries a refused request with refreshed tokens", async () => {
   expect(await nextAuthorization()).toBe("Bearer refreshed");
 });
 
+it("refreshes once for requests refused together", async () => {
+  const answer = Promise.withResolvers<void>();
+  let refused = 0;
+  const refreshed = mock();
+  serveRefreshing({
+    "GET /auth/me": ({ request }) => {
+      if (request.headers.get("authorization") === "Bearer refreshed") {
+        return Response.json({ user: { id: 1 } });
+      }
+      if (++refused === 2) setTimeout(answer.resolve, 0);
+      return new Response(null, { status: 401 });
+    },
+    "POST /auth/refresh": async () => {
+      refreshed();
+      await answer.promise;
+      return Response.json({
+        access_token: "refreshed",
+        refresh_token: "next",
+      });
+    },
+  });
+  setAuthHeader("expired");
+
+  const [first, second] = await Promise.all([authMe(), authMe()]);
+
+  expect(first.data?.user.id).toBe(1);
+  expect(second.data?.user.id).toBe(1);
+  expect(refreshed).toHaveBeenCalledTimes(1);
+});
+
 it("loads the member with refreshed tokens", async () => {
   const { saveTokens } = serveRefreshing({
     "GET /auth/me": expiredMe,
@@ -1002,10 +1032,8 @@ it("drops a session refused by several requests once", async () => {
   dropSessionOnRefusal({ signedIn: true, dropSession });
   setAuthHeader("expired");
 
-  await Promise.all([
-    authMe({ throwOnError: false }),
-    authMe({ throwOnError: false }),
-  ]);
+  await authMe({ throwOnError: false });
+  await authMe({ throwOnError: false });
   dropping.resolve();
   await dropSession.mock.results[0]?.value;
 
@@ -1739,6 +1767,51 @@ it("resolves to no token when logout lands while the refresh is out", async () =
 
   expect(R.unwrap(await refreshed)).toBeUndefined();
   expect(saveTokens).not.toHaveBeenCalled();
+});
+
+it("refreshes a login's session apart from an earlier session's refresh", async () => {
+  const answer = Promise.withResolvers<void>();
+  const refreshed = mock();
+  api.throwingOnRefusal({
+    "POST /auth/logout": () => new Response(null, { status: 200 }),
+    "GET /auth/me": () => Response.json({ user: { id: 1 } }),
+    "POST /auth/refresh": async () => {
+      refreshed();
+      if (refreshed.mock.calls.length === 1) await answer.promise;
+      return Response.json({
+        access_token: "refreshed",
+        refresh_token: "next",
+      });
+    },
+  });
+
+  const earlier = refreshing();
+  await closeSession(cleared);
+  await openSession({
+    tokens,
+    saveTokens: async () => {},
+    clearTokens: cleared,
+  });
+  const later = refreshing();
+  answer.resolve();
+
+  expect(R.unwrap(await later)).toBe("refreshed");
+  expect(R.unwrap(await earlier)).toBeUndefined();
+  expect(refreshed).toHaveBeenCalledTimes(2);
+});
+
+it("rejects only to its caller when the refresh throws", async () => {
+  subscribeToSessionRefusal(() => {
+    throw new Error("listener failed");
+  });
+
+  await expect(
+    refreshSession({
+      session: openedSession(),
+      getRefreshToken: async () => null,
+      saveTokens: async () => {},
+    }),
+  ).rejects.toThrow("listener failed");
 });
 
 it("refreshes whatever session is open", async () => {

@@ -88,6 +88,9 @@ let tokenWrites: Promise<unknown> = Promise.resolve();
 // session.
 let lastTokenWrite: () => Promise<unknown> = async () => {};
 const sessionRefusalListeners = new Set<() => void>();
+let inflightRefresh:
+  | { session: number; refreshed: Promise<Result<string | undefined, Error>> }
+  | undefined;
 
 export function subscribeToSessionRefusal(listener: () => void): () => void {
   sessionRefusalListeners.add(listener);
@@ -158,6 +161,7 @@ export function __resetSessionForTests(): void {
   tokenWrites = Promise.resolve();
   lastTokenWrite = async () => {};
   sessionRefusalListeners.clear();
+  inflightRefresh = undefined;
 }
 
 /** Saves and sets a refreshed token, unless the session it was refreshed for
@@ -253,8 +257,24 @@ type RefreshDeps = {
  * having saved it and put it on the client. Resolves to no token when none is
  * stored, the server refuses the one that is, or the session closed
  * meanwhile. A missing or refused token for the current session also notifies
- * subscribeToSessionRefusal listeners. */
-export async function refreshSession(
+ * subscribeToSessionRefusal listeners. A call while a refresh of the same
+ * session is in flight resolves to that refresh's result. */
+export function refreshSession(
+  params: RefreshDeps & { session: number },
+): Promise<Result<string | undefined, Error>> {
+  if (inflightRefresh?.session === params.session) {
+    return inflightRefresh.refreshed;
+  }
+  const refreshed = sendRefresh(params);
+  inflightRefresh = { session: params.session, refreshed };
+  const clear = () => {
+    if (inflightRefresh?.refreshed === refreshed) inflightRefresh = undefined;
+  };
+  void refreshed.then(clear, clear);
+  return refreshed;
+}
+
+async function sendRefresh(
   params: RefreshDeps & { session: number },
 ): Promise<Result<string | undefined, Error>> {
   const refreshToken = await R.fromPromise(params.getRefreshToken());
@@ -269,7 +289,7 @@ export async function refreshSession(
       query: { mode: "header" },
       // setAuthHeader leaves the access token on the client, and this endpoint
       // authenticates with the refresh token.
-      headers: { Authorization: `Bearer ${refreshToken.value}` }, //TODO: mobile shouldnt have to manually set this - fix non-cookie mode somehow. or maybe use auth context?
+      headers: { Authorization: `Bearer ${refreshToken.value}` },
       throwOnError: false,
     }),
   );
