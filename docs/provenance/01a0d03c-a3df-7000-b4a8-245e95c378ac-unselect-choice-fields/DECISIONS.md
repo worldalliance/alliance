@@ -6,9 +6,13 @@ Web scale showed "Clear selection" on a disabled field; the shared condition (`!
 
 Per the follow-up request, no control checks `required`. A cleared required field is caught by the existing required-field validation on submit.
 
-## Dropdown `X` sits just right of the trigger, not inside it
+## Dropdown `X` sits inside the trigger, next to the chevron
 
-This departs from the approved "in the trigger, next to the chevron". The searchable trigger is a `<button>` and the native control is a `<select>`, neither of which can contain a button, and overlaying one would collide with the native `<select>` arrow, whose position shifts with padding. The `X` is a flex sibling after the trigger, which shrinks while it shows. Mobile does the same so the `X` stays its own accessibility element instead of merging into the trigger.
+The searchable trigger is a `<button>` and the native control is a `<select>`, neither of which can contain a button, so on web both dropdowns lay one shared `DropdownIcons` overlay, the `X` and a `ChevronDown`, over the trigger's right edge. The native `<select>` drops its platform arrow, whose position shifts with padding, so the `X` has a fixed spot beside the chevron. The trigger reserves the overlay's space, so its text width never changes when a value is picked or cleared. Mobile places the `X` as a sibling after the trigger so it stays its own accessibility element.
+
+## Clearing returns focus to the field
+
+The clear control unmounts once the answer is empty, which would drop keyboard focus to the page body. Clearing focuses the dropdown trigger, or the first radio or scale option.
 
 ## Mobile radio and scale clear on a second tap
 
@@ -20,7 +24,7 @@ Matches the existing mobile scale behavior, per the approved proposal. The gestu
 
 ## Radio and scale keep a text link on web
 
-A lone `X` beside a list of radios reads as ambiguous; the text link matches the existing scale control. Both now share `ClearSelectionButton`.
+A lone `X` beside a list of radios reads as ambiguous; the text link matches the existing scale control. Both now share `ClearSelectionButton`, and radio reserves the link's space as the scale does, so fields below don't move when an option is picked or cleared. Neither reserves it on a disabled field, where the link never shows.
 
 ## Out of scope
 

@@ -57,6 +57,11 @@ import NewButton, { ButtonColor, ButtonSize } from "../ui/NewButton";
 import PhoneNumberInput from "../ui/PhoneNumberInput";
 import YesNoToggle from "../ui/YesNoToggle";
 import CityAutosuggest from "./CityAutosuggest";
+import {
+  ClearSelectionButton,
+  DropdownIcons,
+  dropdownIconsPadding,
+} from "./ClearSelection";
 import { getCustomComponentById } from "./components";
 import MultiSelectDropdown from "./MultiSelectDropdown";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
@@ -177,6 +182,8 @@ export function RenderField({
     uploadError,
   } = resolveUploadSlot({ fileUpload, fileUploadSlot, fieldId: field.id });
   const [fileReadError, setFileReadError] = useState<string | null>(null);
+  const radioGroupRef = useRef<HTMLDivElement>(null);
+  const selectRef = useRef<HTMLSelectElement>(null);
   const required = fieldContext.isFieldRequired(field);
   const errorMessage =
     typeof error === "string" && error.trim().length > 0 ? error : null;
@@ -222,6 +229,13 @@ export function RenderField({
 
   const renderValidationMessage = () =>
     hasError ? <p className="text-sm text-red-600">{errorMessage}</p> : null;
+  const onClear = !disabled && onChange ? () => onChange("") : undefined;
+  const clearRadios = onClear
+    ? () => {
+        onClear();
+        radioGroupRef.current?.querySelector("input")?.focus();
+      }
+    : undefined;
 
   switch (field.kind) {
     case "text":
@@ -403,7 +417,7 @@ export function RenderField({
         : undefined;
 
       return (
-        <div className="relative pb-6">
+        <div className={cn("relative", clearRadios && "pb-6")}>
           <RenderLabel
             field={field}
             labelId={labelId}
@@ -418,6 +432,7 @@ export function RenderField({
             <span className="text-black">{field.endLabel}</span>
           </div>
           <div
+            ref={radioGroupRef}
             role="radiogroup"
             aria-labelledby={labelId}
             className="flex w-full divide-x divide-zinc-300 border-x border-zinc-300"
@@ -465,14 +480,11 @@ export function RenderField({
             })}
           </div>
           {renderValidationMessage()}
-          {!required && normalizedValue !== undefined && onChange && (
-            <button
-              type="button"
-              onClick={() => onChange("")}
-              className="text-xs text-zinc-600 hover:text-zinc-800 absolute bottom-0 right-0"
-            >
-              Clear selection
-            </button>
+          {clearRadios && normalizedValue !== undefined && (
+            <ClearSelectionButton
+              onClear={clearRadios}
+              className="absolute bottom-0 right-0"
+            />
           )}
         </div>
       );
@@ -532,56 +544,68 @@ export function RenderField({
     case "radio": {
       const options = randomizedOptions ?? field.options;
       return (
-        <div className="space-y-2">
-          <RenderLabel
-            field={field}
-            labelId={labelId}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <div
-            role="radiogroup"
-            aria-labelledby={labelId}
-            className={cn(
-              "space-y-2",
-              hasError && "border-l-2 border-red-500 pl-3",
-            )}
-          >
-            {options.map((option, optIndex) => (
-              <label key={optIndex} className="flex items-start">
-                <input
-                  type="radio"
-                  name={fieldName}
-                  value={option.value}
-                  checked={value === option.value}
-                  onChange={
-                    onChange ? (e) => onChange(e.target.value) : undefined
-                  }
-                  required={required}
-                  disabled={disabled}
-                  aria-invalid={hasError}
-                  className={composeClassName(
-                    `shrink-0 mt-1 mr-2 h-4 w-4 ${
-                      hasError ? "text-red-600" : "text-blue-600"
-                    } focus:outline-none`,
-                    {
-                      normal:
-                        "border border-zinc-300 focus:ring-blue-500 focus:ring-2",
-                      error:
-                        "border border-red-500 focus:ring-red-500 focus:ring-2",
-                    },
-                  )}
-                />
-                <span className={hasError ? "text-red-600" : "text-zinc-700"}>
-                  <FormMarkdownWrapper markdownContent={option.label} inline />
-                </span>
-              </label>
-            ))}
+        <div className={cn("relative", clearRadios && "pb-6")}>
+          <div className="space-y-2">
+            <RenderLabel
+              field={field}
+              labelId={labelId}
+              error={errorMessage}
+              labelRightAddon={labelRightAddon}
+              isOutputView={isOutputView}
+              hideLabel={hideLabel}
+              required={required}
+            />
+            <div
+              ref={radioGroupRef}
+              role="radiogroup"
+              aria-labelledby={labelId}
+              className={cn(
+                "space-y-2",
+                hasError && "border-l-2 border-red-500 pl-3",
+              )}
+            >
+              {options.map((option, optIndex) => (
+                <label key={optIndex} className="flex items-start">
+                  <input
+                    type="radio"
+                    name={fieldName}
+                    value={option.value}
+                    checked={value === option.value}
+                    onChange={
+                      onChange ? (e) => onChange(e.target.value) : undefined
+                    }
+                    required={required}
+                    disabled={disabled}
+                    aria-invalid={hasError}
+                    className={composeClassName(
+                      `shrink-0 mt-1 mr-2 h-4 w-4 ${
+                        hasError ? "text-red-600" : "text-blue-600"
+                      } focus:outline-none`,
+                      {
+                        normal:
+                          "border border-zinc-300 focus:ring-blue-500 focus:ring-2",
+                        error:
+                          "border border-red-500 focus:ring-red-500 focus:ring-2",
+                      },
+                    )}
+                  />
+                  <span className={hasError ? "text-red-600" : "text-zinc-700"}>
+                    <FormMarkdownWrapper
+                      markdownContent={option.label}
+                      inline
+                    />
+                  </span>
+                </label>
+              ))}
+            </div>
+            {renderValidationMessage()}
           </div>
-          {renderValidationMessage()}
+          {clearRadios && typeof value === "string" && value !== "" && (
+            <ClearSelectionButton
+              onClear={clearRadios}
+              className="absolute bottom-0 left-0"
+            />
+          )}
         </div>
       );
     }
@@ -603,6 +627,7 @@ export function RenderField({
               sections={sections ?? []}
               value={typeof value === "string" ? value : undefined}
               onChange={onChange}
+              onClear={onClear}
               labelId={labelId}
               required={required}
               disabled={disabled}
@@ -610,36 +635,51 @@ export function RenderField({
               className={composeClassName(sharedInputClasses)}
             />
           ) : (
-            <select
-              aria-labelledby={labelId}
-              value={(value as string) ?? ""}
-              onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-              aria-required={required}
-              disabled={disabled}
-              aria-invalid={hasError}
-              className={composeClassName(
-                sharedInputClasses +
-                  " has-[option.placeholder:checked]:text-zinc-400",
-              )}
-            >
-              <option value="" className="placeholder" disabled>
-                Select an option
-              </option>
-              {(sections ?? []).map(({ category, items }) => {
-                const rendered = items.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ));
-                return category ? (
-                  <optgroup key={category.id} label={category.name}>
-                    {rendered}
-                  </optgroup>
-                ) : (
-                  <Fragment key="">{rendered}</Fragment>
-                );
-              })}
-            </select>
+            <div className="relative">
+              <select
+                ref={selectRef}
+                aria-labelledby={labelId}
+                value={(value as string) ?? ""}
+                onChange={
+                  onChange ? (e) => onChange(e.target.value) : undefined
+                }
+                aria-required={required}
+                disabled={disabled}
+                aria-invalid={hasError}
+                className={composeClassName(
+                  `${sharedInputClasses} appearance-none ${dropdownIconsPadding} has-[option.placeholder:checked]:text-zinc-400`,
+                )}
+              >
+                <option value="" className="placeholder" disabled>
+                  Select an option
+                </option>
+                {(sections ?? []).map(({ category, items }) => {
+                  const rendered = items.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ));
+                  return category ? (
+                    <optgroup key={category.id} label={category.name}>
+                      {rendered}
+                    </optgroup>
+                  ) : (
+                    <Fragment key="">{rendered}</Fragment>
+                  );
+                })}
+              </select>
+              <DropdownIcons
+                onClear={
+                  onClear && typeof value === "string" && value !== ""
+                    ? () => {
+                        onClear();
+                        selectRef.current?.focus();
+                      }
+                    : undefined
+                }
+                placeholder={!value}
+              />
+            </div>
           )}
           {renderValidationMessage()}
         </div>

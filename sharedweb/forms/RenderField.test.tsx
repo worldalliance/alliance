@@ -1,7 +1,15 @@
-import type { AnyField } from "@alliance/common/forms/form-schema";
+import type { AnyField, FormValue } from "@alliance/common/forms/form-schema";
+import { resolveFormValue } from "@alliance/shared/forms/formValueUpdater";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { staticFieldContext } from "@alliance/shared/useFormRenderer";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
+import { useState } from "react";
 import { MemoryRouter } from "react-router";
 import { SiteAppProvider } from "../ui/SiteAppProvider";
 import { RenderField } from "./RenderField";
@@ -188,6 +196,102 @@ it("names the timezone button from its question and its selected zone", () => {
   expect(
     screen.getByRole("button", { name: /^Question India Standard Time/ }),
   ).toBeTruthy();
+});
+
+describe("clearing a selection", () => {
+  const clearable: { field: AnyField; value: string | number }[] = [
+    { field: { ...base, kind: "radio", options }, value: "first" },
+    { field: { ...base, kind: "select", options }, value: "first" },
+    {
+      field: { ...base, kind: "select", options, searchable: true },
+      value: "first",
+    },
+    { field: { ...base, kind: "range", optionCount: 3 }, value: 2 },
+  ];
+  function Field({
+    field,
+    initial,
+    disabled,
+  }: {
+    field: AnyField;
+    initial: string | number;
+    disabled?: boolean;
+  }) {
+    const [value, setValue] = useState<FormValue | undefined>(initial);
+    return (
+      <MemoryRouter>
+        <SiteAppProvider>
+          <RenderField
+            field={field}
+            value={value}
+            fieldContext={staticFieldContext}
+            onChange={(update) =>
+              setValue((previous) => resolveFormValue(update, previous))
+            }
+            disabled={disabled}
+          />
+          <output data-testid="answer">{JSON.stringify(value)}</output>
+        </SiteAppProvider>
+      </MemoryRouter>
+    );
+  }
+
+  it.each(
+    clearable.flatMap((entry) =>
+      [false, true].map((required) => ({
+        ...entry,
+        field: { ...entry.field, required },
+      })),
+    ),
+  )(
+    "clears a $field.kind with required=$field.required",
+    ({ field, value }) => {
+      render(<Field field={field} initial={value} />);
+      fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+      expect(screen.getByTestId("answer").textContent).toBe('""');
+      expect(
+        screen.queryByRole("button", { name: "Clear selection" }),
+      ).toBeNull();
+    },
+  );
+
+  it.each(clearable)(
+    "returns focus to the $field.kind after clearing",
+    ({ field, value }) => {
+      render(<Field field={field} initial={value} />);
+      const clear = screen.getByRole("button", { name: "Clear selection" });
+      clear.focus();
+      fireEvent.click(clear);
+      expect(document.activeElement).toBe(
+        screen.getAllByRole(field.kind === "select" ? "combobox" : "radio")[0],
+      );
+    },
+  );
+
+  it.each(clearable)(
+    "offers no clearing on a disabled $field.kind",
+    ({ field, value }) => {
+      render(<Field field={field} initial={value} disabled />);
+      expect(
+        screen.queryByRole("button", { name: "Clear selection" }),
+      ).toBeNull();
+    },
+  );
+
+  it.each(clearable.filter(({ field }) => field.kind !== "select"))(
+    "reserves no space for the link on a disabled $field.kind",
+    ({ field, value }) => {
+      const wrapperClass = (disabled: boolean) => {
+        const { container } = render(
+          <Field field={field} initial={value} disabled={disabled} />,
+        );
+        const className = container.firstElementChild?.className;
+        cleanup();
+        return className;
+      };
+      expect(wrapperClass(true)).not.toBe(wrapperClass(false));
+    },
+  );
 });
 
 describe("option categories", () => {
