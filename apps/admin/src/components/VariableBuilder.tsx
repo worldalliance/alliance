@@ -642,6 +642,13 @@ function VariableCard({
       /\b(input\d+)\b/g,
       (whole, name: string) => renames.get(name) ?? whole,
     );
+    setSamples((prev) =>
+      Object.fromEntries(
+        [...renames].flatMap(([oldName, newName]) =>
+          Object.hasOwn(prev, oldName) ? [[newName, prev[oldName]]] : [],
+        ),
+      ),
+    );
     onChange({ ...variable, inputs, formula });
   };
 

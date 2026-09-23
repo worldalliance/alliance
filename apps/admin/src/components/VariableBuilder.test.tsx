@@ -235,4 +235,47 @@ describe("VariableBuilder list inputs", () => {
     ).toBeTruthy();
     expect(screen.queryByText("input1.map(row => row.).join(', ')")).toBeNull();
   });
+
+  it("keeps an input's sample rows when an input before it is removed", () => {
+    render(
+      <Harness
+        initial={{
+          pages: [{ id: "p1", fields: [town, people] }],
+          outputViews: [],
+          variables: [
+            {
+              name: "v",
+              inputs: {
+                input1: { kind: "field", fieldId: "town" },
+                input2: {
+                  kind: "list",
+                  fieldId: "people",
+                  properties: { n: "name", a: "age" },
+                },
+              },
+              formula: "input2.map(row => row.name).join(', ')",
+            },
+          ],
+        }}
+        onSave={() => {}}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Sample answer for input1"), {
+      target: { value: "Oslo" },
+    });
+    fireEvent.click(screen.getByLabelText("Add sample row to input2"));
+    fireEvent.change(
+      screen.getByLabelText("Sample answer for input2 row 1, Name"),
+      { target: { value: "Ada" } },
+    );
+    fireEvent.click(screen.getByLabelText("Remove input1"));
+
+    expect(
+      screen.getByLabelText<HTMLInputElement>(
+        "Sample answer for input1 row 1, Name",
+      ).value,
+    ).toBe("Ada");
+    expect(screen.getByText("Ada")).toBeTruthy();
+  });
 });
