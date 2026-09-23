@@ -11,6 +11,9 @@ const ENV: ReadonlyMap<string, string> = new Map([
   ["flag", "boolean | undefined"],
   ["choice", `${CHOICE} | undefined`],
   ["choices", `${CHOICE}[] | undefined`],
+  ["rows", "{ name: string | undefined; age: number | undefined }[]"],
+  ["crew", `{ roles: ${CHOICE}[] | undefined; name: string | undefined }[]`],
+  ["city", "{ id: number; name: string; label: string } | undefined"],
 ]);
 
 const errorFor = (formula: string): string | null => {
@@ -129,20 +132,83 @@ describe("requires a formula to end on something readable", () => {
 
   it("says how to turn a list into a sentence", () => {
     expect(errorFor("choices")).toContain(
-      "input1.map(item => item.label).join(', ')",
+      ".map(item => item.label).join(', ')",
     );
   });
 
-  it("says to name a key when a record is left whole", () => {
-    expect(errorFor("choice")).toContain("Name a key");
+  it("says to name a key when a record has none worth suggesting", () => {
+    expect(errorFor("{ a: choices }")).toContain("Name a key.");
   });
 
-  it.each(["choices.join()", "choices.map(item => [item]).join()"])(
-    "rejects %s, which would show [object Object]",
+  it.each([
+    ["rows", "End it with .map(item => item.name).join(', ')"],
+    ["rows[0]", "End it with .name."],
+    ["crew", "End it with .map(item => item.name).join(', ')"],
+    ["city", "End it with .label."],
+    ["({ 'first name': text, n: num })", "End it with .n."],
+    ["(choice || city)", "End it with .label."],
+    [
+      "choices || []",
+      "Wrap it in parentheses and end it with .map(item => item.label).join(', ')",
+    ],
+    ["flag ? choice : city", "Wrap it in parentheses and end it with .label."],
+    ["[choice, city]", "End it with .map(item => item.label).join(', ')"],
+    ["({ $a: text })", "End it with .$a."],
+    [
+      "flag ? text : choices",
+      "In the part that gives it, add .map(item => item.label).join(', ')",
+    ],
+  ])("names a key %s actually has", (formula, advice) => {
+    expect(errorFor(formula)).toContain(advice);
+  });
+
+  it("suggests joining a list of text", () => {
+    expect(errorFor("text.split(',')")).toContain("End it with .join(', ')");
+  });
+
+  it.each([
+    ["rows.join(', ')", ", like .map(item => item.name).join(', ')"],
+    ["choices.join()", ", like .map(item => item.label).join(', ')"],
+    ["[choice, city].join()", ", like .map(item => item.label).join(', ')"],
+    ["(flag ? choices : rows).join()", ""],
+    ["choices.map(item => [item]).join()", ""],
+    ["crew.map(p => p.roles).join()", ""],
+  ])("rejects %s, which would show [object Object]", (formula, example) => {
+    expect(errorFor(formula)).toBe(
+      `join works on a list of text, numbers or yes/no. Name a part of each item first${example}, or flatten a list of lists with .flat().`,
+    );
+  });
+
+  it.each([
+    ["flag ? rows[0] : choice", "Name a key."],
+    ["flag ? text : flag ? rows[0] : choice", "Name a key."],
+    [
+      "flag ? text : flag ? choices : rows",
+      "In the part that gives it, add .length.",
+    ],
+  ])("names no key only one part of %s has", (formula, advice) => {
+    expect(errorFor(formula)).toContain(advice);
+  });
+
+  it.each([
+    [
+      "flag ? rows : rows[0]",
+      "Add .length to the part that gives a list, and .name to the part that gives a record.",
+    ],
+    [
+      "flag ? choices : ({ 'first name': text })",
+      "Add .length to the part that gives a list, and name a key in the part that gives a record.",
+    ],
+  ])("gives each part of %s its own fix", (formula, advice) => {
+    expect(errorFor(formula)).toContain(advice);
+  });
+
+  it.each(["choices.map(item => [item])", "rows.map(item => ({}))"])(
+    "doesn't suggest joining %s, whose items would show as [object Object]",
     (formula) => {
-      expect(errorFor(formula)).toBe(
-        "join works on a list of text, numbers or yes/no. Name a part of each item first, like .map(item => item.label).join(', '), or flatten a list of lists with .flat().",
-      );
+      const error = errorFor(formula);
+      expect(error).toContain("End it with .length.");
+      expect(error).not.toContain("join");
     },
   );
 
@@ -155,8 +221,13 @@ describe("requires a formula to end on something readable", () => {
     },
   );
 
-  it("says an arrow function is for a list method", () => {
-    expect(errorFor("(x => x)")).toContain(
+  it.each([
+    "(x => x)",
+    "flag ? choices : (x => 1)",
+    "flag ? (x => 1) : choices",
+    "flag ? city : (x => 1)",
+  ])("says an arrow function in %s is for a list method", (formula) => {
+    expect(errorFor(formula)).toContain(
       "this one gives a function. An arrow function is something to pass to a list method",
     );
   });

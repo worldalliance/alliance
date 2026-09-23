@@ -76,15 +76,55 @@ function virtualSource(
 const COMPILER_ADVICE = /\s*Do you need to change your target library\?.*$/s;
 
 // 2362 and 2363 suggest `bigint` or `enum`, which formulas do not support.
-// `join` is the only library member whose `this` type can fail to match, so
-// 2684 can only be a join on a list of records or lists.
 const MESSAGE_OVERRIDES: Readonly<Record<number, string>> = {
   2362: "The left of this operator has to be a number.",
   2363: "The right of this operator has to be a number.",
-  2684: "join works on a list of text, numbers or yes/no. Name a part of each item first, like .map(item => item.label).join(', '), or flatten a list of lists with .flat().",
 };
 
-function readMessage(diagnostic: ts.Diagnostic): string {
+// `join` is the only library member whose `this` type can fail to match, so
+// this can only be a join on a list of records or lists, and its span is that
+// list.
+const JOIN_THIS_MISMATCH = 2684;
+
+function nodeSpanning(
+  source: ts.SourceFile,
+  span: { start: number; end: number },
+): ts.Node | undefined {
+  const visit = (node: ts.Node): ts.Node | undefined =>
+    node.getStart(source) === span.start && node.end === span.end
+      ? node
+      : ts.forEachChild(node, (child) =>
+          child.getStart(source) <= span.start && span.end <= child.end
+            ? visit(child)
+            : undefined,
+        );
+  return visit(source);
+}
+
+function joinExample(
+  program: ts.Program | undefined,
+  diagnostic: ts.Diagnostic,
+): string {
+  const source = program?.getSourceFile(FORMULA_FILE);
+  const { start, length } = diagnostic;
+  if (!program || !source || start === undefined || length === undefined) {
+    return "";
+  }
+  const list = nodeSpanning(source, { start, end: start + length });
+  if (list === undefined) return "";
+  const checker = program.getTypeChecker();
+  const element = checker.getTypeAtLocation(list).getNumberIndexType();
+  const key = element && readableKey(checker, [element]);
+  return key === undefined ? "" : `, like .map(item => item.${key}).join(', ')`;
+}
+
+function readMessage(
+  program: ts.Program | undefined,
+  diagnostic: ts.Diagnostic,
+): string {
+  if (diagnostic.code === JOIN_THIS_MISMATCH) {
+    return `join works on a list of text, numbers or yes/no. Name a part of each item first${joinExample(program, diagnostic)}, or flatten a list of lists with .flat().`;
+  }
   const override = MESSAGE_OVERRIDES[diagnostic.code];
   if (override !== undefined) return override;
   const text = ts.flattenDiagnosticMessageText(diagnostic.messageText, " ");
@@ -101,33 +141,121 @@ const RENDERABLE_FLAGS =
   ts.TypeFlags.Null |
   ts.TypeFlags.Never;
 
-function unrenderableAdvice(checker: ts.TypeChecker, type: ts.Type): string {
-  if (checker.isArrayType(type) || checker.isTupleType(type)) {
-    return "Name a part or join it: input1.map(item => item.label).join(', '), or input1.length.";
-  }
+function unionParts(type: ts.Type): readonly ts.Type[] {
+  return type.isUnion() ? type.types : [type];
+}
+
+function isRenderable(part: ts.Type): boolean {
+  return Boolean(part.flags & RENDERABLE_FLAGS);
+}
+
+function unrenderablePart(type: ts.Type): ts.Type | undefined {
+  return unionParts(type).find((part) => !isRenderable(part));
+}
+
+function canFollowDot(name: string): boolean {
+  return (
+    name.length > 0 &&
+    [...name].every((char, index) =>
+      (index === 0 ? ts.isIdentifierStart : ts.isIdentifierPart)(
+        char.codePointAt(0) ?? 0,
+        COMPILER_OPTIONS.target,
+      ),
+    )
+  );
+}
+
+function readableKey(
+  checker: ts.TypeChecker,
+  types: readonly ts.Type[],
+): string | undefined {
+  const parts = types.flatMap(unionParts);
+  const isRecord = (part: ts.Type) =>
+    Boolean(part.flags & ts.TypeFlags.Object) && !checker.isArrayType(part);
+  if (parts.length === 0 || !parts.every(isRecord)) return undefined;
+  const readableKeys = (part: ts.Type) =>
+    checker
+      .getPropertiesOfType(part)
+      .filter(
+        (property) =>
+          canFollowDot(property.name) &&
+          unrenderablePart(checker.getTypeOfSymbol(property)) === undefined,
+      )
+      .map((property) => property.name);
+  const [first, ...rest] = parts.map(readableKeys);
+  const keys = first.filter((key) =>
+    rest.every((other) => other.includes(key)),
+  );
+  return keys.includes("label") ? "label" : keys[0];
+}
+
+function unrenderableAdvice({
+  checker,
+  type,
+  expression,
+  unrenderable,
+}: CheckedFormula & { unrenderable: ts.Type }): string {
   if (
-    type.getSymbol()?.valueDeclaration?.kind === ts.SyntaxKind.MethodSignature
+    unrenderable.getSymbol()?.valueDeclaration?.kind ===
+    ts.SyntaxKind.MethodSignature
   ) {
     return "Add () to call it.";
   }
-  if (type.getCallSignatures().length > 0) {
+  if (unrenderable.getCallSignatures().length > 0) {
     return "An arrow function is something to pass to a list method, not something to show.";
   }
-  return "Name a key: input1.label.";
+  const mixed = unionParts(type).some(isRenderable);
+  const targets = unionParts(type).filter((part) => !isRenderable(part));
+  // Text added after `a || b` binds only to `b`.
+  const endsOnOperator = !ts.isLeftHandSideExpression(expression);
+  const endIt = mixed
+    ? "In the part that gives it, add"
+    : endsOnOperator
+      ? "Wrap it in parentheses and end it with"
+      : "End it with";
+  const isList = (part: ts.Type) =>
+    checker.isArrayType(part) || checker.isTupleType(part);
+  if (targets.every(isList)) {
+    const elements = targets.map((part) => part.getNumberIndexType());
+    if (
+      elements.every(
+        (element) =>
+          element !== undefined && unrenderablePart(element) === undefined,
+      )
+    ) {
+      return `${endIt} .join(', ') or .length.`;
+    }
+    const key = elements.every((element) => element !== undefined)
+      ? readableKey(checker, elements)
+      : undefined;
+    return key === undefined
+      ? `${endIt} .length.`
+      : `${endIt} .map(item => item.${key}).join(', ') or .length.`;
+  }
+  if (targets.some(isList)) {
+    const recordKey = readableKey(
+      checker,
+      targets.filter((part) => !isList(part)),
+    );
+    const recordFix =
+      recordKey === undefined ? "name a key in" : `.${recordKey} to`;
+    return `Add .length to the part that gives a list, and ${recordFix} the part that gives a record.`;
+  }
+  const key = readableKey(checker, targets);
+  return key === undefined ? "Name a key." : `${endIt} .${key}.`;
 }
 
-function checkRenderable(
-  checker: ts.TypeChecker,
-  type: ts.Type,
-): string | undefined {
-  const parts = type.isUnion() ? type.types : [type];
-  const unrenderable = parts.find((part) => !(part.flags & RENDERABLE_FLAGS));
+function checkRenderable(checked: CheckedFormula): string | undefined {
+  const { checker, type } = checked;
+  const unrenderable =
+    unionParts(type).find((part) => part.getCallSignatures().length > 0) ??
+    unrenderablePart(type);
   if (unrenderable === undefined) return undefined;
   const described =
     unrenderable.getCallSignatures().length > 0
       ? "function"
       : checker.typeToString(unrenderable);
-  return `A formula has to end on text, a number or a yes/no, and this one gives a ${described}. ${unrenderableAdvice(checker, unrenderable)}`;
+  return `A formula has to end on text, a number or a yes/no, and this one gives a ${described}. ${unrenderableAdvice({ ...checked, unrenderable })}`;
 }
 
 function resultDeclaration(
@@ -141,7 +269,11 @@ function resultDeclaration(
   return undefined;
 }
 
-type CheckedFormula = { checker: ts.TypeChecker; type: ts.Type };
+type CheckedFormula = {
+  checker: ts.TypeChecker;
+  type: ts.Type;
+  expression: ts.Expression;
+};
 
 function checkFormula(
   formula: string,
@@ -154,15 +286,22 @@ function checkFormula(
     ...language.getSemanticDiagnostics(FORMULA_FILE),
   ].sort((left, right) => (left.start ?? 0) - (right.start ?? 0));
   if (diagnostics.length > 0) {
-    return R.failure(readMessage(diagnostics[0]));
+    return R.failure(readMessage(language.getProgram(), diagnostics[0]));
   }
 
   const program = language.getProgram();
   const source = program?.getSourceFile(FORMULA_FILE);
   const declaration = source && resultDeclaration(source);
-  // Reachable only if TypeScript reported no error on a file it could not
-  // parse into the one declaration this builds.
-  if (program === undefined || declaration === undefined) {
+  const wrapper = declaration?.initializer;
+  // Reachable only for a formula `compileVariableExpression` rejects: one that
+  // TypeScript parses without error, but not into the one parenthesized
+  // declaration this builds.
+  if (
+    program === undefined ||
+    declaration === undefined ||
+    wrapper === undefined ||
+    !ts.isParenthesizedExpression(wrapper)
+  ) {
     return R.failure("This formula could not be checked.");
   }
 
@@ -170,6 +309,7 @@ function checkFormula(
   return R.success({
     checker,
     type: checker.getTypeAtLocation(declaration.name),
+    expression: wrapper.expression,
   });
 }
 
@@ -191,7 +331,7 @@ export function checkVariableFormulaType(
   if (!checked.ok) return checked;
 
   const { checker, type } = checked.value;
-  const unrenderable = checkRenderable(checker, type);
+  const unrenderable = checkRenderable(checked.value);
   return unrenderable === undefined
     ? R.success(
         checker.typeToString(type, undefined, ts.TypeFormatFlags.NoTruncation),
