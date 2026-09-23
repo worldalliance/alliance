@@ -730,6 +730,19 @@ describe("searching the zone list", () => {
     expect(zonesMatching("greenwich")).toContain("Europe/London");
   });
 
+  it("finds a zone by a tzdb alias of it", () => {
+    expect(zonesMatching("calcutta")).toEqual(["Asia/Kolkata"]);
+  });
+
+  it("finds a zone by a tzdb country alias of it", () => {
+    expect(zonesMatching("prc")).toEqual(["Asia/Shanghai"]);
+  });
+
+  it("does not find a zone by a tzdb abbreviation linked to it", () => {
+    expect(zonesMatching("mst")).toEqual([]);
+    expect(zonesMatching("eet")).toEqual([]);
+  });
+
   it("finds a zone by a name spelled with the accents it carries", () => {
     expect(zonesMatching("Bogotá")).toContain("America/Bogota");
   });
@@ -760,6 +773,14 @@ describe("searching the zone list", () => {
 
   it("shows the search term a query matched on", () => {
     expect(subMatching("greenwich", "Europe/London")).toBe("Greenwich");
+  });
+
+  it("keeps the curated label where the query matched the identifier", () => {
+    expect(subMatching("asia", "Asia/Kolkata")).toBe("India, Sri Lanka Time");
+  });
+
+  it("shows the alias a query matched on", () => {
+    expect(subMatching("east", "America/Sao_Paulo")).toBe("Brazil/East");
   });
 
   it("keeps the curated label where the query matched a line on show", () => {

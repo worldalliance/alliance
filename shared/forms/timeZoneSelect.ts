@@ -7,6 +7,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { minuteStart, useClockMinute } from "../lib/useClockMinute";
 import { fold } from "./optionSearch";
+import { aliasesOf } from "./timeZoneAliases";
 
 export type TzOption = {
   group: string;
@@ -401,10 +402,11 @@ function namesMoreThan({
 function getBaseLabels(): BaseLabel[] {
   if (cachedLabels) return cachedLabels;
 
-  cachedLabels = TZ_OPTIONS.map(({ tz, label, searchTerms = [] }) => {
+  cachedLabels = TZ_OPTIONS.map(({ tz, label, searchTerms: curated = [] }) => {
     const generic = getGenericLabelFromIntl(tz);
     const city = prettyCityFromIana(tz);
     const left = `${generic ?? label} — ${city}`;
+    const searchTerms = [...curated, ...aliasesOf(tz)];
     const searchable = [left, ...(generic ? [label] : []), ...searchTerms, tz];
     return {
       tz,
@@ -445,13 +447,20 @@ function baseItems(minute: number): BaseItem[] {
 }
 
 // A row holding none of what was typed reads as a wrong answer, so a term that
-// matched off the row takes the second line while the query stands.
+// matched off the row takes the second line while the query stands. A row its
+// own identifier matched keeps its label, since an alias there would read as
+// the reason it matched.
 function subForQuery(
   item: TimeZoneSelectItem,
   foldedQuery: string,
 ): string | null {
   const shown = fold(`${item.labelLeft} ${item.labelSub ?? ""}`);
-  if (matchesQuery({ foldedText: shown, foldedQuery })) return item.labelSub;
+  if (
+    matchesQuery({ foldedText: shown, foldedQuery }) ||
+    matchesQuery({ foldedText: fold(item.tz), foldedQuery })
+  ) {
+    return item.labelSub;
+  }
   return (
     item.searchTerms.find((term) =>
       matchesQuery({ foldedText: fold(term), foldedQuery }),

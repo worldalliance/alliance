@@ -45,6 +45,8 @@ sections below this one carry the reasoning each step implements.
 5. **Search.** Match city, country, identifier, generic name, and alias, folding
    case and accents. Exact city and country matches rank first, then prefix
    matches, then other word matches.
+   Aliases are done: a row's search text carries every alias the catalog
+   maps to it, so `calcutta` finds Kolkata. Ranking is not.
 6. **Device row pinned.** The detected timezone sits above the unfiltered list.
 7. **Web combobox.** `sharedweb/forms/TimeZoneSelect.tsx` moves onto
    `@base-ui/react/combobox` with the search input inside the popup, deleting
