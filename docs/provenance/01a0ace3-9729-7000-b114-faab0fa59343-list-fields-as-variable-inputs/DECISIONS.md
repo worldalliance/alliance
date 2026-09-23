@@ -78,6 +78,8 @@ The type environment declares a list input as `{ name: T | undefined; … }[]`, 
 
 The existing renderability check already rejects a formula that ends on an array or a record, and the tests cover `input1`, `input1[0]`, and `input1.map(p => p.roles)`. Runtime formatting didn't change. A formula that passes validation can't end on a list or record, and changing `formatVariableValue` would change existing scalar behavior that a test pins down.
 
+`join` carries a `this` type in `formula-lib.ts`, so joining a list of rows, choices or lists is a type error rather than a formula that passes and shows `[object Object]`. TypeScript's wording for that error names the `this` context, so `MESSAGE_OVERRIDES` replaces it with one that says to name a part of each item first. `join` is the only library member whose `this` type can fail to match, and a test in `formula-lib.test.ts` holds that, so the override can't catch anything else.
+
 ## Scope and compatibility
 
 The list resolver lives in `common/src/forms/variables.ts`, which the web and mobile forms (`shared/useFormRenderer.ts`) and saved-response output (`shared/outputrenderer.ts`) already share. Variables recompute whenever answers or visibility extras change.

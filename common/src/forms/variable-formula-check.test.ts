@@ -137,6 +137,21 @@ describe("requires a formula to end on something readable", () => {
     expect(errorFor("choice")).toContain("Name a key");
   });
 
+  it.each(["choices.join()", "choices.map(item => [item]).join()"])(
+    "rejects %s, which would show [object Object]",
+    (formula) => {
+      expect(errorFor(formula)).toBe(
+        "join works on a list of text, numbers or yes/no. Name a part of each item first, like .map(item => item.label).join(', '), or flatten a list of lists with .flat().",
+      );
+    },
+  );
+
+  it("calls a method left uncalled a function", () => {
+    expect(errorFor("text.split(',').join")).toContain(
+      "this one gives a function.",
+    );
+  });
+
   it.each(["text", "num", "flag", "num ?? 'n/a'", "choices.length"])(
     "accepts %s",
     (formula) => {

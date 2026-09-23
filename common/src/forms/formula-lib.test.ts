@@ -104,3 +104,14 @@ describe("declares nothing the evaluator cannot run", () => {
     expect(mathOnly.sort()).toEqual([...MATH_FUNCTION_NAMES].sort());
   });
 });
+
+// MESSAGE_OVERRIDES answers 2684, a `this` mismatch, with advice about `join`.
+it("gives only join a `this` type that can fail to match", () => {
+  const thisTypes = [
+    ...FORMULA_LIB.matchAll(/^\s*(\w+)[^(\n]*\(this: ([^,)]+)/gm),
+  ].map(([, name, type]) => `${name}: ${type}`);
+  expect(thisTypes).toEqual([
+    "join: ReadonlyArray<string | number | boolean>",
+    "flat: A",
+  ]);
+});

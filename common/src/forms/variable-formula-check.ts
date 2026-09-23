@@ -75,10 +75,13 @@ function virtualSource(
 
 const COMPILER_ADVICE = /\s*Do you need to change your target library\?.*$/s;
 
-// These diagnostics suggest `bigint` or `enum`, which formulas do not support.
+// 2362 and 2363 suggest `bigint` or `enum`, which formulas do not support.
+// `join` is the only library member whose `this` type can fail to match, so
+// 2684 can only be a join on a list of records or lists.
 const MESSAGE_OVERRIDES: Readonly<Record<number, string>> = {
   2362: "The left of this operator has to be a number.",
   2363: "The right of this operator has to be a number.",
+  2684: "join works on a list of text, numbers or yes/no. Name a part of each item first, like .map(item => item.label).join(', '), or flatten a list of lists with .flat().",
 };
 
 function readMessage(diagnostic: ts.Diagnostic): string {
@@ -115,7 +118,11 @@ function checkRenderable(
   const parts = type.isUnion() ? type.types : [type];
   const unrenderable = parts.find((part) => !(part.flags & RENDERABLE_FLAGS));
   if (unrenderable === undefined) return undefined;
-  return `A formula has to end on text, a number or a yes/no, and this one gives a ${checker.typeToString(unrenderable)}. ${unrenderableAdvice(checker, unrenderable)}`;
+  const described =
+    unrenderable.getCallSignatures().length > 0
+      ? "function"
+      : checker.typeToString(unrenderable);
+  return `A formula has to end on text, a number or a yes/no, and this one gives a ${described}. ${unrenderableAdvice(checker, unrenderable)}`;
 }
 
 function resultDeclaration(
