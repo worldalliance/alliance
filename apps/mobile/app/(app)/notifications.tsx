@@ -1,10 +1,5 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
-import {
-  NotificationDto,
-  notifsFindAll,
-  notifsSetRead,
-  notifsSetReadAll,
-} from "@alliance/shared/client";
+import { NotificationDto, notifsSetRead } from "@alliance/shared/client";
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import {
   buildNotificationRenderItems,
@@ -17,7 +12,7 @@ import {
   getNotificationReadRequest,
 } from "@alliance/shared/lib/notificationIdentity";
 import { LegendList } from "@legendapp/list";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RelativePathString, router } from "expo-router";
 import { Ellipsis } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
@@ -35,6 +30,11 @@ import SwipeableNotification from "../../components/SwipeableNotification";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
+import {
+  fetchNotifications,
+  LOADED_AT_QUERY_KEY,
+  markAllNotificationsRead,
+} from "../../lib/notificationsLoadedAt";
 import { colors } from "../../lib/style/colors";
 
 const normalizeLocation = (location: string | null) => {
@@ -65,10 +65,13 @@ export default function NotificationsScreen() {
     refetch,
   } = useQuery({
     queryKey: ["notifications"],
-    queryFn: () =>
-      notifsFindAll().then((res) => {
-        return res.data;
-      }),
+    queryFn: ({ signal }) => fetchNotifications(queryClient, signal),
+  });
+
+  // Observed so the cache keeps it as long as the list it came with.
+  useQuery<string | null>({
+    queryKey: LOADED_AT_QUERY_KEY,
+    queryFn: skipToken,
   });
 
   const refreshNotifications = useCallback(() => {
@@ -128,10 +131,7 @@ export default function NotificationsScreen() {
     queryClient.setQueryData<number>(["notifications", "unreadCount"], 0);
 
     try {
-      const res = await notifsSetReadAll();
-      if (res && typeof res === "object" && "error" in res && res.error) {
-        throw (res as { error: unknown }).error;
-      }
+      await markAllNotificationsRead(queryClient);
     } catch {
       if (prevNotifications !== undefined) {
         queryClient.setQueryData(["notifications"], prevNotifications);

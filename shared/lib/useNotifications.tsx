@@ -1,4 +1,5 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
+import { NOTIFS_LOADED_AT_HEADER } from "@alliance/common/notifs";
 import {
   NotificationDto,
   notifsFindAll,
@@ -22,6 +23,8 @@ import {
   getNotificationIdentityKey,
   getNotificationReadRequest,
 } from "./notificationIdentity";
+
+const FIRST_LOAD_LIMIT = 20;
 
 export function getWebAppLocation(webAppLocation: string) {
   return webAppLocation.startsWith("/") ? webAppLocation : "/" + webAppLocation;
@@ -58,6 +61,8 @@ export const NotificationsProvider = ({
 }) => {
   const [notifications, setNotifications] = useState<NotificationDto[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const loadedAtRef = useRef<string | null>(null);
+  const lastLimitRef = useRef<number | undefined>(FIRST_LOAD_LIMIT);
 
   const navigate = useNavigate();
 
@@ -65,18 +70,25 @@ export const NotificationsProvider = ({
     async (options?: { limit?: number }) => {
       const limit = options?.limit;
       if (limit !== undefined) {
-        const [{ data }, { data: unreadCountData }] = await Promise.all([
-          notifsFindAll({ query: { limit } }),
-          notifsGetUnreadCount(),
-        ]);
-        if (data) setNotifications(data);
+        const [{ data, response }, { data: unreadCountData }] =
+          await Promise.all([
+            notifsFindAll({ query: { limit } }),
+            notifsGetUnreadCount(),
+          ]);
+        if (data) {
+          setNotifications(data);
+          lastLimitRef.current = limit;
+          loadedAtRef.current = response.headers.get(NOTIFS_LOADED_AT_HEADER);
+        }
         if (unreadCountData !== undefined) {
           setUnreadCount(unreadCountData.unreadCount);
         }
       } else {
-        const { data } = await notifsFindAll();
+        const { data, response } = await notifsFindAll();
         if (!data) return;
         setNotifications(data);
+        lastLimitRef.current = limit;
+        loadedAtRef.current = response.headers.get(NOTIFS_LOADED_AT_HEADER);
         setUnreadCount(data.filter((n) => !n.readAt).length);
       }
     },
@@ -84,7 +96,7 @@ export const NotificationsProvider = ({
   );
 
   useEffect(() => {
-    refreshNotifications({ limit: 20 });
+    refreshNotifications({ limit: FIRST_LOAD_LIMIT });
   }, [refreshNotifications]);
 
   const notificationsRef = useRef(notifications);
@@ -168,17 +180,22 @@ export const NotificationsProvider = ({
     [markNotificationRead],
   );
 
-  const handleMarkAllAsRead = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    notifsSetReadAll();
-    const readAt = new Date().toISOString();
-    setNotifications((prev) =>
-      prev.map((n) => ({ ...n, readAt }) satisfies NotificationDto),
-    );
-    setUnreadCount(0);
+  const handleMarkAllAsRead = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      notifsSetReadAll({
+        query: { loadedAt: loadedAtRef.current ?? undefined },
+      }).then(() => refreshNotifications({ limit: lastLimitRef.current }));
+      const readAt = new Date().toISOString();
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, readAt }) satisfies NotificationDto),
+      );
+      setUnreadCount(0);
 
-    captureEvent(AnalyticsEvent.NotificationsMarkedAllAsRead);
-  }, []);
+      captureEvent(AnalyticsEvent.NotificationsMarkedAllAsRead);
+    },
+    [refreshNotifications],
+  );
 
   const applyNotificationsReadByContent = useCallback(
     (contentType: UnreadContentType, contentIds: number[]) => {
