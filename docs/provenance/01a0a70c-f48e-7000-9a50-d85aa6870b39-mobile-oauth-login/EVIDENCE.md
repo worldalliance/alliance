@@ -31,3 +31,10 @@ The following checks ran on an earlier draft of this commit, before the refresh-
 - A login that lands while the launch reads a stored token: `session.test.ts` starts the login once the access token read, or the refresh token read after an empty access token, is out, and holds that read until `openSession` succeeds. With the check only after `/auth/me`, `bun test lib/session.test.ts` from `apps/mobile/` failed all five cases (83 passed, 5 failed): a stored access token replaced the login's header with the old one, an empty read settled on no member, and a failed read reported a failure. Without only the check after the refresh token read, the two refresh token cases failed (86 passed, 2 failed). With a check after each read, 88 passed, 0 failed.
 - A login that starts and fails while the launch `/auth/me` is still out: `session.test.ts` holds that response while `openSession`'s profile load answers 503, then answers with a member. `restoreSession` fails with `SessionOvertakenError` and neither drops nor reports the stored session, which the next launch restores. `bun test lib/session.test.ts` from `apps/mobile/` passed 88, failed 0.
 - A logout that lands while the launch `/auth/me` is still out: `session.test.ts` holds that response until `closeSession` settles, then answers with a member. Without the check after `/auth/me`, the case failed; with it, `restoreSession` fails with `SessionOvertakenError`, neither drops nor reports, and the session stays closed. `bun test lib/session.test.ts` from `apps/mobile/` passed 89, failed 0.
+
+# Launch retry screen checks
+
+Run in mobile web with playwright, seeding a synthetic access token and answering `/auth/me` with 503 until the step under test.
+
+- Before the fix, logging in from onboarding while the retry screen was up (the login answered with tokens minted for a local user, `/auth/me` let through) landed on the retry screen, not the app shell. After `startSession` cleared the flag, the same run landed on the app shell.
+- After the fix, the retry screen showed "Log in again". Tapping it went to `/onboarding` with the stored access token removed.

@@ -338,8 +338,8 @@ export async function loadSessionUser(): Promise<Result<UserDto, Error>> {
 }
 
 /** Loads the stored session's member at launch, resolving to no member when
- * no token is stored. Drops the session only when the server refuses it; any
- * other failure keeps the tokens for the next try. Fails with
+ * no token is stored or the server refuses the session, which it then drops.
+ * Any other failure keeps the tokens for the next try. Fails with
  * SessionOvertakenError, leaving the session alone, once a login or logout
  * starts while it loads. */
 export async function restoreSession(params: {
@@ -388,9 +388,9 @@ export async function restoreSession(params: {
   }
   if (loaded.error instanceof SessionRefusedError) {
     await params.dropSession();
-  } else {
-    fail(loaded.error);
+    return R.success(undefined);
   }
+  fail(loaded.error);
   return loaded;
 }
 

@@ -15,12 +15,7 @@ import React, {
   useState,
 } from "react";
 import { Alert } from "react-native";
-import {
-  appHealthCheck,
-  authMe,
-  UserDto,
-  type SessionTokensDto,
-} from "../../../shared/client";
+import { authMe, UserDto, type SessionTokensDto } from "../../../shared/client";
 import { clearGuestToken, getStoredGuestToken } from "./guestSession";
 import { signInWithProvider } from "./oauth";
 import { thrownFailure, type OAuthFailure } from "./oauthResult";
@@ -39,6 +34,7 @@ import {
   requestTokens,
   restoreSession,
   retryClearTokens,
+  SessionOvertakenError,
 } from "./session";
 import {
   getVisualTestAutoLoginCredentials,
@@ -54,7 +50,9 @@ export type LoginParams = {
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  canConnectToServer: boolean;
+  /** The launch couldn't load the session or rule it out. */
+  sessionUnavailable: boolean;
+  retrySession: () => void;
   user: UserDto | undefined;
   login: (params: LoginParams) => Promise<void>;
   /** Leaves navigation to the caller, as `navigateOnSuccess: false` does. */
@@ -93,7 +91,7 @@ export const AuthProvider: React.FC<
 > = ({ children, queryClient }) => {
   const [user, setUser] = useState<UserDto | undefined>(undefined);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [canConnectToServer, setCanConnectToServer] = useState<boolean>(false);
+  const [sessionUnavailable, setSessionUnavailable] = useState(false);
   const router = useRouter();
 
   useBackfillTimeZone(user);
@@ -111,6 +109,7 @@ export const AuthProvider: React.FC<
     const closed = closeSession(clearTokensAndReport);
     queryClient.clear();
     setUser(undefined);
+    setSessionUnavailable(false);
     return closed;
   }, [clearTokensAndReport, queryClient]);
 
@@ -140,50 +139,39 @@ export const AuthProvider: React.FC<
 
   const posthog = usePostHog();
 
-  useEffect(() => {
-    (async () => {
-      try {
-        // refreshingFetch refreshes an expired access token and retries
-        // before this call returns.
-        const restored = await restoreSession({
-          getAccessToken,
-          getRefreshToken,
-          dropSession: async () => {
-            captureEvent(AnalyticsEvent.AuthFailedToRefresh);
-            // No redirect: the app layout already sends an unauthenticated
-            // visitor to onboarding.
-            await clearSession();
-          },
-          reportFailure: (error) =>
-            captureException(ExceptionEvent.SessionLoadFailed, error),
-        });
-        if (restored.ok) {
-          setUser(restored.value);
+  const restoreStoredSession = useCallback(async () => {
+    setIsLoading(true);
+    setSessionUnavailable(false);
+    try {
+      // refreshingFetch refreshes an expired access token and retries
+      // before this call returns.
+      const restored = await restoreSession({
+        getAccessToken,
+        getRefreshToken,
+        dropSession: async () => {
+          captureEvent(AnalyticsEvent.AuthFailedToRefresh);
+          // No redirect: the app layout already sends an unauthenticated
+          // visitor to onboarding.
+          await clearSession();
+        },
+        reportFailure: (error) =>
+          captureException(ExceptionEvent.SessionLoadFailed, error),
+      });
+      if (!restored.ok) {
+        if (!(restored.error instanceof SessionOvertakenError)) {
+          setSessionUnavailable(true);
         }
-      } finally {
-        setIsLoading(false);
+        return;
       }
-    })();
+      setUser(restored.value);
+    } finally {
+      setIsLoading(false);
+    }
   }, [clearSession]);
 
   useEffect(() => {
-    let cancelled = false;
-    run(async () => {
-      try {
-        const resp = await appHealthCheck();
-        if (!cancelled) {
-          setCanConnectToServer(resp.response.ok);
-        }
-      } catch {
-        if (!cancelled) {
-          setCanConnectToServer(false);
-        }
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    run(restoreStoredSession);
+  }, [restoreStoredSession]);
 
   const startSession = useCallback(
     async (tokens: SessionTokensDto) => {
@@ -200,6 +188,7 @@ export const AuthProvider: React.FC<
 
       const user = opened.value;
       setUser(user);
+      setSessionUnavailable(false);
       posthog?.identify(user.id.toString(), {
         email: user.email,
         name: user.name,
@@ -293,7 +282,8 @@ export const AuthProvider: React.FC<
     loginWithProvider,
     logout,
     refreshUser,
-    canConnectToServer,
+    sessionUnavailable,
+    retrySession: () => run(restoreStoredSession),
     isLoading,
   };
 

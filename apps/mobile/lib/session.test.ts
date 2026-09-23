@@ -451,14 +451,15 @@ it("restores the member without dropping the session", async () => {
   expect(reportFailure).not.toHaveBeenCalled();
 });
 
-it("drops a session the server refuses at launch", async () => {
+it("drops a session the server refuses at launch and settles on no member", async () => {
   api.throwingOnRefusal({
     "GET /auth/me": () => new Response(null, { status: 401 }),
   });
 
   const { dropSession, reportFailure, restored } = restore();
-  await restored;
+  const result = await restored;
 
+  expect(result.ok && result.value).toBeUndefined();
   expect(dropSession).toHaveBeenCalled();
   expect(reportFailure).not.toHaveBeenCalled();
 });
