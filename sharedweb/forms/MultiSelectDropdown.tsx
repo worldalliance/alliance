@@ -1,15 +1,18 @@
+import { markdownPlainText } from "@alliance/shared/forms/optionSearch";
 import {
-  markdownPlainText,
-  matchesOptionSearch,
-} from "@alliance/shared/forms/optionSearch";
+  filterOptionSections,
+  type OptionSection,
+} from "@alliance/shared/forms/optionSections";
 import { cn } from "@alliance/shared/styles/util";
 import { Combobox } from "@base-ui/react/combobox";
 import { Select } from "@base-ui/react/select";
 import { Check, ChevronDown, X } from "lucide-react";
-import { useMemo, useRef } from "react";
+import { Fragment, useMemo, useRef } from "react";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import { zIndex } from "../ui/zIndex";
 import {
+  ComboboxSection,
+  groupLabelClassName,
   itemClassName,
   listClassName,
   OptionSearch,
@@ -18,11 +21,11 @@ import {
   useOptionSearch,
 } from "./optionPicker";
 
-type Option = { label: string; value: string };
+type Option = { label: string; value: string; category?: string };
 type Item = Option & { text: string };
 
 type Props = {
-  options: Option[];
+  sections: OptionSection<Option>[];
   value: string[];
   onChange?: (value: string[]) => void;
   searchable?: boolean;
@@ -55,7 +58,7 @@ function ItemContent({ label }: { label: string }) {
 }
 
 export default function MultiSelectDropdown({
-  options,
+  sections: sectionsProp,
   value,
   onChange,
   searchable,
@@ -68,15 +71,28 @@ export default function MultiSelectDropdown({
 }: Props) {
   const search = useOptionSearch();
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const items = useMemo(
+  const sections = useMemo(
     () =>
-      options.map((option) => ({
-        ...option,
-        text: markdownPlainText(option.label),
+      sectionsProp.map((section) => ({
+        ...section,
+        items: section.items.map((option) => ({
+          ...option,
+          text: markdownPlainText(option.label),
+        })),
       })),
-    [options],
+    [sectionsProp],
   );
-  const selected = items.filter((item) => value.includes(item.value));
+  const filtered = useMemo(
+    () =>
+      filterOptionSections(sections, {
+        query: search.query,
+        text: (item) => item.text,
+      }),
+    [sections, search.query],
+  );
+  const selected = sections
+    .flatMap((section) => section.items)
+    .filter((item) => value.includes(item.value));
   const isOptionDisabled = (option: Option) =>
     maxReached && !value.includes(option.value);
 
@@ -103,11 +119,11 @@ export default function MultiSelectDropdown({
   const picker = searchable ? (
     <Combobox.Root<Item, true>
       multiple
-      items={items}
+      items={sections}
+      filteredItems={filtered}
       value={selected}
       onValueChange={(next) => onChange?.(next.map((option) => option.value))}
       {...search.rootProps}
-      filter={(item, query) => matchesOptionSearch({ label: item.text }, query)}
       disabled={disabled}
     >
       <Combobox.Trigger {...trigger} onKeyDown={search.onTriggerKeyDown} />
@@ -116,15 +132,22 @@ export default function MultiSelectDropdown({
           <Combobox.Popup className={popupClassName}>
             <OptionSearch labelId={labelId} />
             <Combobox.List className={listClassName}>
-              {(option: Item) => (
-                <Combobox.Item
-                  key={option.value}
-                  value={option}
-                  disabled={isOptionDisabled(option)}
-                  className={multiItemClassName}
+              {(section: (typeof sections)[number]) => (
+                <ComboboxSection
+                  key={section.category?.id ?? ""}
+                  category={section.category}
                 >
-                  <ItemContent label={option.label} />
-                </Combobox.Item>
+                  {section.items.map((option) => (
+                    <Combobox.Item
+                      key={option.value}
+                      value={option}
+                      disabled={isOptionDisabled(option)}
+                      className={multiItemClassName}
+                    >
+                      <ItemContent label={option.label} />
+                    </Combobox.Item>
+                  ))}
+                </ComboboxSection>
               )}
             </Combobox.List>
           </Combobox.Popup>
@@ -147,17 +170,29 @@ export default function MultiSelectDropdown({
         >
           <Select.Popup className={popupClassName}>
             <Select.List className={listClassName}>
-              {items.map((option) => (
-                <Select.Item
-                  key={option.value}
-                  value={option.value}
-                  label={option.text}
-                  disabled={isOptionDisabled(option)}
-                  className={multiItemClassName}
-                >
-                  <ItemContent label={option.label} />
-                </Select.Item>
-              ))}
+              {sections.map(({ category, items }) => {
+                const rendered = items.map((option) => (
+                  <Select.Item
+                    key={option.value}
+                    value={option.value}
+                    label={option.text}
+                    disabled={isOptionDisabled(option)}
+                    className={multiItemClassName}
+                  >
+                    <ItemContent label={option.label} />
+                  </Select.Item>
+                ));
+                return category ? (
+                  <Select.Group key={category.id}>
+                    <Select.GroupLabel className={groupLabelClassName}>
+                      {category.name}
+                    </Select.GroupLabel>
+                    {rendered}
+                  </Select.Group>
+                ) : (
+                  <Fragment key="">{rendered}</Fragment>
+                );
+              })}
             </Select.List>
           </Select.Popup>
         </Select.Positioner>

@@ -7,6 +7,11 @@ import {
   type ManualDisplayBlockContent,
 } from "./display-blocks";
 import {
+  categorizedOptionsShape,
+  checkOptionCategories,
+  optionListSchema,
+} from "./options-schema";
+import {
   formVariableSchema,
   isFieldKindUsableAsVariableInput,
   type VariableInputField,
@@ -57,21 +62,6 @@ const baseFieldSchema = z.object({
   width: widthSchema.optional(),
   output: fieldOutputConfigSchema.optional(),
 });
-
-const optionSchema = z.strictObject({
-  label: z.string(),
-  value: z.string(),
-});
-
-// An option's identity is its value (answer matching, ranking order, React
-// keys), so duplicate values would make answers ambiguous.
-const optionListSchema = z
-  .array(optionSchema)
-  .refine(
-    (options) =>
-      new Set(options.map((option) => option.value)).size === options.length,
-    "option values must be unique",
-  );
 
 const textFieldSchema = z.strictObject({
   ...baseFieldSchema.shape,
@@ -163,13 +153,15 @@ const radioFieldSchema = z.strictObject({
 });
 export type RadioField = z.infer<typeof radioFieldSchema>;
 
-const selectFieldSchema = z.strictObject({
-  ...baseFieldSchema.shape,
-  kind: z.literal("select"),
-  searchable: z.boolean().optional(),
-  options: optionListSchema,
-  randomizeOptions: z.boolean().optional(),
-});
+const selectFieldSchema = z
+  .strictObject({
+    ...baseFieldSchema.shape,
+    kind: z.literal("select"),
+    searchable: z.boolean().optional(),
+    ...categorizedOptionsShape,
+    randomizeOptions: z.boolean().optional(),
+  })
+  .superRefine(checkOptionCategories);
 export type SelectField = z.infer<typeof selectFieldSchema>;
 
 const multiSelectFieldSchema = z
@@ -178,14 +170,15 @@ const multiSelectFieldSchema = z
     kind: z.literal("multiselect"),
     dropdown: z.boolean().optional(),
     searchable: z.boolean().optional(),
-    options: optionListSchema,
+    ...categorizedOptionsShape,
     randomizeOptions: z.boolean().optional(),
     maxSelections: z.number().optional(),
   })
   .refine((data) => !data.searchable || data.dropdown, {
     message: "searchable requires dropdown",
     path: ["searchable"],
-  });
+  })
+  .superRefine(checkOptionCategories);
 export type MultiSelectField = z.infer<typeof multiSelectFieldSchema>;
 
 const dateFieldSchema = z.strictObject({

@@ -1,11 +1,15 @@
+import type { OptionCategory } from "@alliance/common/forms/options-schema";
+import { markdownPlainText } from "@alliance/shared/forms/optionSearch";
 import {
-  markdownPlainText,
-  matchesOptionSearch,
-} from "@alliance/shared/forms/optionSearch";
+  filterOptionSections,
+  type OptionSection,
+  optionSections,
+} from "@alliance/shared/forms/optionSections";
 import { cn } from "@alliance/shared/styles/util";
 import { X } from "lucide-react-native";
 import {
   type PropsWithChildren,
+  type ReactNode,
   type RefObject,
   useEffect,
   useMemo,
@@ -31,7 +35,37 @@ import Text, { FontWeight } from "./system/Text";
 export type BottomSheetOption<V extends string | number> = {
   value: V;
   label: string;
+  category?: string;
 };
+
+function OptionCategoryHeading({ name }: { name: string }) {
+  return (
+    <Text
+      accessibilityRole="header"
+      className="pt-3 pb-1 text-xs uppercase tracking-wide text-zinc-500"
+      weight={FontWeight.Semibold}
+    >
+      {name}
+    </Text>
+  );
+}
+
+// Headings and rows share one flat list so a row's layout y is its offset in
+// the scroll content, which scroll-to-selection relies on.
+export function sectionedRows<O>(
+  sections: OptionSection<O>[],
+  renderRow: (option: O) => ReactNode,
+): ReactNode[] {
+  return sections.flatMap(({ category, items }) => [
+    category && (
+      <OptionCategoryHeading
+        key={`category:${category.id}`}
+        name={category.name}
+      />
+    ),
+    ...items.map(renderRow),
+  ]);
+}
 
 export function BottomSheetOptionRow({
   label,
@@ -70,6 +104,7 @@ interface BottomSheetOptionPickerProps<V extends string | number> {
   onClose: () => void;
   title: string;
   options: BottomSheetOption<V>[];
+  categories?: OptionCategory[];
   value: V | null | undefined;
   onSelect: (value: V) => void;
 }
@@ -84,12 +119,6 @@ function SearchableOptionList({
   return (
     <ScrollView
       ref={scrollRef}
-      onContentSizeChange={(_, contentHeight) => {
-        // Android retains its scroll offset when the content becomes empty.
-        if (contentHeight === 0) {
-          scrollRef.current?.scrollTo({ y: 0, animated: false });
-        }
-      }}
       style={{ maxHeight: (height - keyboardHeight) * 0.5 }}
       keyboardShouldPersistTaps="handled"
       nestedScrollEnabled
@@ -171,7 +200,13 @@ function OptionSheet({
       </View>
       {search ? (
         <>
-          <OptionSearch {...search} />
+          <OptionSearch
+            {...search}
+            onChangeQuery={(query) => {
+              search.onChangeQuery(query);
+              scrollRef.current?.scrollTo({ y: 0, animated: false });
+            }}
+          />
           <SearchableOptionList scrollRef={scrollRef}>
             {children}
           </SearchableOptionList>
@@ -189,6 +224,7 @@ export default function BottomSheetOptionPicker<V extends string | number>({
   onClose,
   title,
   options,
+  categories,
   value,
   onSelect,
 }: BottomSheetOptionPickerProps<V>) {
@@ -198,11 +234,15 @@ export default function BottomSheetOptionPicker<V extends string | number>({
   useEffect(() => {
     if (!visible) hasScrolledOnOpen.current = false;
   }, [visible]);
+  const sections = useMemo(
+    () => optionSections({ options, categories }),
+    [options, categories],
+  );
   const filtered = searchable
-    ? options.filter((option) => matchesOptionSearch(option, query))
-    : options;
+    ? filterOptionSections(sections, { query, text: (option) => option.label })
+    : sections;
 
-  const rows = filtered.map((option) => (
+  const rows = sectionedRows(filtered, (option) => (
     <BottomSheetOptionRow
       key={String(option.value)}
       label={option.label}
@@ -249,6 +289,7 @@ export function BottomSheetMultiOptionPicker({
   onClose,
   title,
   options,
+  categories,
   values,
   maxReached,
   onToggle,
@@ -258,25 +299,29 @@ export function BottomSheetMultiOptionPicker({
   onClose: () => void;
   title: string;
   options: BottomSheetOption<string>[];
+  categories?: OptionCategory[];
   values: string[];
   maxReached: boolean;
   onToggle: (params: { value: string; selected: boolean }) => void;
 }) {
   const scrollRef = useRef<ScrollView>(null);
   const [query, setQuery] = useQueryResetOnOpen(visible);
-  const items = useMemo(
+  const sections = useMemo(
     () =>
-      options.map((option) => ({
-        ...option,
-        text: markdownPlainText(option.label),
-      })),
-    [options],
+      optionSections({
+        options: options.map((option) => ({
+          ...option,
+          text: markdownPlainText(option.label),
+        })),
+        categories,
+      }),
+    [options, categories],
   );
   const filtered = searchable
-    ? items.filter((item) => matchesOptionSearch({ label: item.text }, query))
-    : items;
+    ? filterOptionSections(sections, { query, text: (item) => item.text })
+    : sections;
 
-  const rows = filtered.map((option) => {
+  const rows = sectionedRows(filtered, (option) => {
     const checked = values.includes(option.value);
     return (
       <Checkbox

@@ -1,9 +1,14 @@
-import { matchesOptionSearch } from "@alliance/shared/forms/optionSearch";
+import {
+  filterOptionSections,
+  type OptionSection,
+} from "@alliance/shared/forms/optionSections";
 import { cn } from "@alliance/shared/styles/util";
 import { Combobox } from "@base-ui/react/combobox";
 import { Check, ChevronDown } from "lucide-react";
+import { useMemo } from "react";
 import { zIndex } from "../ui/zIndex";
 import {
+  ComboboxSection,
   itemClassName,
   listClassName,
   OptionSearch,
@@ -12,10 +17,10 @@ import {
   useOptionSearch,
 } from "./optionPicker";
 
-type Option = { label: string; value: string };
+type Option = { label: string; value: string; category?: string };
 
 type Props = {
-  options: Option[];
+  sections: OptionSection<Option>[];
   value?: string;
   onChange?: (value: string) => void;
   labelId?: string;
@@ -26,7 +31,7 @@ type Props = {
 };
 
 export default function SearchableSelect({
-  options,
+  sections,
   value,
   onChange,
   labelId,
@@ -36,15 +41,27 @@ export default function SearchableSelect({
   className,
 }: Props) {
   const search = useOptionSearch();
+  const filtered = useMemo(
+    () =>
+      filterOptionSections(sections, {
+        query: search.query,
+        text: (option) => option.label,
+      }),
+    [sections, search.query],
+  );
   return (
     <Combobox.Root<Option>
-      items={options}
-      value={options.find((option) => option.value === value) ?? null}
+      items={sections}
+      filteredItems={filtered}
+      value={
+        sections
+          .flatMap((section) => section.items)
+          .find((option) => option.value === value) ?? null
+      }
       onValueChange={(option) => {
         if (option) onChange?.(option.value);
       }}
       {...search.rootProps}
-      filter={matchesOptionSearch}
       disabled={disabled}
     >
       <Combobox.Trigger
@@ -66,17 +83,24 @@ export default function SearchableSelect({
           <Combobox.Popup className={popupClassName}>
             <OptionSearch labelId={labelId} />
             <Combobox.List className={listClassName}>
-              {(option: Option) => (
-                <Combobox.Item
-                  key={option.value}
-                  value={option}
-                  className={itemClassName}
+              {(section: (typeof sections)[number]) => (
+                <ComboboxSection
+                  key={section.category?.id ?? ""}
+                  category={section.category}
                 >
-                  {option.label}
-                  <Combobox.ItemIndicator>
-                    <Check size={16} className="text-green" />
-                  </Combobox.ItemIndicator>
-                </Combobox.Item>
+                  {section.items.map((option) => (
+                    <Combobox.Item
+                      key={option.value}
+                      value={option}
+                      className={itemClassName}
+                    >
+                      {option.label}
+                      <Combobox.ItemIndicator>
+                        <Check size={16} className="text-green" />
+                      </Combobox.ItemIndicator>
+                    </Combobox.Item>
+                  ))}
+                </ComboboxSection>
               )}
             </Combobox.List>
           </Combobox.Popup>

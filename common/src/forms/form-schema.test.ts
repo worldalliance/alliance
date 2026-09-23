@@ -81,6 +81,98 @@ describe("multiselect display", () => {
   );
 });
 
+describe("option categories", () => {
+  const categorized = (
+    kind: "select" | "multiselect",
+    overrides: Record<string, unknown> = {},
+  ) =>
+    anyFieldSchema.safeParse({
+      ...optionField(kind, []),
+      categories: [
+        { id: "fruit", name: "Fruit" },
+        { id: "veg", name: "Vegetables" },
+        { id: "empty", name: "Empty" },
+      ],
+      options: [
+        { label: "Apple", value: "apple", category: "fruit" },
+        { label: "Other", value: "other" },
+        { label: "Kale", value: "kale", category: "veg" },
+      ],
+      ...overrides,
+    });
+
+  const kinds = ["select", "multiselect"] as const;
+
+  it.each(kinds)(
+    "accepts mixed categorized options and empty categories for %s",
+    (kind) => {
+      expect(categorized(kind).success).toBe(true);
+    },
+  );
+
+  it.each([
+    ["a blank name", [{ id: "a", name: "  " }]],
+    [
+      "names differing only by case and spaces",
+      [
+        { id: "a", name: "Fruit" },
+        { id: "b", name: " fruit " },
+      ],
+    ],
+    [
+      "duplicate ids",
+      [
+        { id: "a", name: "Fruit" },
+        { id: "a", name: "Vegetables" },
+      ],
+    ],
+    ["an empty id", [{ id: "", name: "Fruit" }]],
+  ])("rejects %s", (_, categories) => {
+    for (const kind of kinds) {
+      expect(categorized(kind, { categories, options: [] }).success).toBe(
+        false,
+      );
+    }
+  });
+
+  it.each(kinds)("rejects a reference to a missing category for %s", (kind) => {
+    expect(
+      categorized(kind, {
+        options: [{ label: "Apple", value: "apple", category: "missing" }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it.each(kinds)(
+    "rejects duplicate option values across categories for %s",
+    (kind) => {
+      expect(
+        categorized(kind, {
+          options: [
+            { label: "Apple", value: "a", category: "fruit" },
+            { label: "Artichoke", value: "a", category: "veg" },
+          ],
+        }).success,
+      ).toBe(false);
+    },
+  );
+
+  it.each(["radio", "ranking"] as const)("rejects categories on %s", (kind) => {
+    expect(
+      anyFieldSchema.safeParse({
+        ...optionField(kind, ["a"]),
+        categories: [{ id: "c", name: "C" }],
+      }).success,
+    ).toBe(false);
+    expect(
+      anyFieldSchema.safeParse({
+        ...optionField(kind, []),
+        options: [{ label: "A", value: "a", category: "c" }],
+      }).success,
+    ).toBe(false);
+  });
+});
+
 describe("forEachCondition", () => {
   /** A condition tagged with the slot it was hung on, so order is checkable. */
   const marker = (when: string): Condition => ({

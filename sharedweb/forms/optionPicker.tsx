@@ -1,6 +1,7 @@
+import type { OptionCategory } from "@alliance/common/forms/options-schema";
 import { cn } from "@alliance/shared/styles/util";
 import { Combobox } from "@base-ui/react/combobox";
-import { type KeyboardEvent, useState } from "react";
+import { type KeyboardEvent, type ReactNode, useState } from "react";
 
 export const popupClassName =
   "flex flex-col w-[var(--anchor-width)] max-h-[var(--available-height)] overflow-hidden rounded border border-zinc-300 bg-white shadow-lg";
@@ -8,6 +9,47 @@ export const listClassName =
   "min-h-0 max-h-72 overflow-y-auto overscroll-contain";
 export const itemClassName =
   "flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-zinc-900 data-highlighted:bg-zinc-100";
+
+export const groupLabelClassName =
+  "px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500";
+
+export function ComboboxSection({
+  category,
+  children,
+}: {
+  category: OptionCategory | null;
+  children: ReactNode;
+}) {
+  if (!category) return children;
+  return (
+    <Combobox.Group>
+      <Combobox.GroupLabel className={groupLabelClassName}>
+        {category.name}
+      </Combobox.GroupLabel>
+      {children}
+    </Combobox.Group>
+  );
+}
+
+export function CheckboxSection({
+  category,
+  headingId,
+  children,
+}: {
+  category: OptionCategory | null;
+  headingId: string;
+  children: ReactNode;
+}) {
+  if (!category) return children;
+  return (
+    <div role="group" aria-labelledby={headingId} className="space-y-2 pt-2">
+      <p id={headingId} className="text-sm font-semibold text-zinc-800">
+        {category.name}
+      </p>
+      {children}
+    </div>
+  );
+}
 
 export function triggerProps(params: {
   labelId?: string;
@@ -49,6 +91,7 @@ export function useOptionSearch() {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   return {
+    query,
     rootProps: {
       open,
       onOpenChange: (next: boolean) => {
