@@ -21,6 +21,7 @@ import { AuthProvider } from "../lib/AuthContext";
 import PostHogProvider from "../lib/PostHogProvider";
 import { SecureStorage, SecureStorageKey } from "../lib/SecureStorage";
 import { getApiUrl } from "../lib/config";
+import "../lib/setImmediatePolyfill";
 import { hideSplash } from "../lib/splash";
 
 // OtaUpdateGate decides when the app is ready to be seen, so the splash must
