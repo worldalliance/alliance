@@ -1,12 +1,15 @@
 import {
   ActionDto,
   actionsFindAllWithDraftsAdmin,
+  AdminActionDto,
 } from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
+import { parseActionDto } from "@alliance/shared/parsed-dtos";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link } from "react-router";
 import ActionListCard from "../components/ActionListCard";
 import ActionTimeline from "../components/ActionTimeline";
+import { describeCohortExpression } from "../lib/describeCohortExpression";
 
 export const getLastPastEventDate = (
   action: Pick<ActionDto, "events">,
@@ -37,16 +40,16 @@ export const getLastPastEventDate = (
 type ActionSuiteGroup = {
   id: number | null;
   name: string;
-  actions: ActionDto[];
+  actions: AdminActionDto[];
   sortVal: number;
   isArchivedOnly: boolean;
 };
 
 const ActionsList: React.FC = () => {
-  const [actions, setActions] = useState<ActionDto[]>([]);
+  const [actions, setActions] = useState<AdminActionDto[]>([]);
   const [actionsLoading, setActionsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const { tags } = useTagsAdmin();
 
   const loadActions = useCallback(async () => {
     try {
@@ -66,6 +69,24 @@ const ActionsList: React.FC = () => {
     loadActions();
   }, [loadActions]);
 
+  const participantsById = useMemo(() => {
+    const names = {
+      tagNames: new Map(tags.map((tag) => [tag.id, tag.name])),
+      actionNames: new Map(actions.map((action) => [action.id, action.name])),
+    };
+    return new Map(
+      actions.map((dto) => {
+        const { action, cohortExpressionError } = parseActionDto(dto);
+        return [
+          dto.id,
+          cohortExpressionError
+            ? [{ text: "Invalid cohort expression" }]
+            : describeCohortExpression(action.cohortExpression, names),
+        ];
+      }),
+    );
+  }, [actions, tags]);
+
   const groupedActions = useMemo<ActionSuiteGroup[]>(() => {
     if (actions.length === 0) {
       return [];
@@ -76,7 +97,7 @@ const ActionsList: React.FC = () => {
       {
         id: number | null;
         name: string;
-        actions: ActionDto[];
+        actions: AdminActionDto[];
       }
     >();
 
@@ -162,25 +183,9 @@ const ActionsList: React.FC = () => {
           (a) => !a.archived && !a.onboarding && a.status !== "completed",
         )}
         mostRecentFirst
+        participantsById={participantsById}
         className="flex-shrink-0 max-h-[50vh] border border-zinc-200"
       />
-      <div className="flex items-center gap-x-2 flex-shrink-0">
-        <p className="font-bold ">All actions</p>
-        <Button
-          onClick={() => navigate("/actions/new")}
-          className="hover:bg-green-2 text-white !px-3 !py-1 rounded-md text-sm"
-          color={ButtonColor.Green}
-        >
-          New action
-        </Button>
-        <Button
-          onClick={() => navigate("/new-suite")}
-          className="bg-green-3 !px-3 !py-1 rounded-md text-sm"
-          color={ButtonColor.White}
-        >
-          New suite
-        </Button>
-      </div>
       <p className="text-sm text-zinc-500 flex-shrink-0">
         Grouped by suite and ordered by latest event (most recent first)
       </p>

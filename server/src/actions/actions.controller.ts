@@ -435,14 +435,14 @@ export class ActionsController {
 
   @Get("all")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: [ActionDto] })
-  async findAllWithDraftsAdmin(): Promise<ActionDto[]> {
+  @ApiOkResponse({ type: [AdminActionDto] })
+  async findAllWithDraftsAdmin(): Promise<AdminActionDto[]> {
     const actions = await this.actionsService.findAllSorted({
       events: true,
       suite: true,
       reviewers: true,
     });
-    return actions.map((action) => new ActionDto(action));
+    return actions.map((action) => new AdminActionDto(action));
   }
 
   @Get("friendActivity/:actionId")

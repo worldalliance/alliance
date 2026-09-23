@@ -2,6 +2,7 @@ import { Action, ActionEventDto, ActionStatus } from "@alliance/shared/client";
 import { startOfDay } from "date-fns";
 import { millisecondsInDay } from "date-fns/constants";
 import React from "react";
+import { useNavigate } from "react-router";
 
 interface PhaseSegment {
   status: ActionStatus;
@@ -44,6 +45,7 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
   scrollLeft = 0,
   containerWidth = 800,
 }) => {
+  const navigate = useNavigate();
   const calculateStickyLabelPosition = (
     barLeft: number,
     barWidth: number,
@@ -99,7 +101,8 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
 
   return (
     <div
-      className="absolute border-b border-gray-100 hover:bg-gray-50"
+      className="absolute border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+      onClick={() => navigate(`/actions/${action.id}`)}
       style={{
         height: "64px",
         top: `${50 + rowIndex * 64}px`,

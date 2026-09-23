@@ -39,6 +39,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { LEAF_LABELS } from "../lib/describeCohortExpression";
 import CohortVisualization from "./CohortVisualization";
 import {
   formFieldsErrorReason,
@@ -59,17 +60,10 @@ interface CohortExpressionBuilderProps {
   _selectedExpr?: CohortExpression | null;
 }
 
-const LEAF_TYPES = [
-  { value: "Tag", label: "Tag" },
-  { value: "Manual", label: "Manual Users" },
-  { value: "CompletedAction", label: "Completed Action" },
-  { value: "InProgressAction", label: "In-Progress Action" },
-  { value: "MissedActionDeadline", label: "Missed Action Deadline" },
-  { value: "FormFieldValue", label: "Form Field Value" },
-  { value: "GroupLead", label: "Group Lead" },
-  { value: "USMember", label: "US Member" },
-  { value: "NonUSMember", label: "Non-US Member" },
-] as const;
+const LEAF_TYPES = Object.entries(LEAF_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
 
 const OPERATOR_TYPES = [
   { value: "AND", label: "AND" },

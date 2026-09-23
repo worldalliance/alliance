@@ -24,7 +24,9 @@ import React, {
   useState,
 } from "react";
 import { Link } from "react-router";
+import type { CohortSegment } from "../lib/describeCohortExpression";
 import ActionTimelineBar from "./ActionTimelineBar";
+import ActionTimelineRowMeta from "./ActionTimelineRowMeta";
 
 interface ActionTimelineProps {
   actions: ActionDto[];
@@ -34,6 +36,7 @@ interface ActionTimelineProps {
   onReminderClick?: (reminderId: number) => void;
   focusOnDate?: Date | string | number | null;
   mostRecentFirst?: boolean;
+  participantsById?: ReadonlyMap<number, CohortSegment[]>;
 }
 
 interface TimelineData {
@@ -65,6 +68,17 @@ interface NormalizedReminder {
 
 const EMPTY_REMINDERS: ReminderGroupDto[] = [];
 
+const SHOWS_BAR: Record<ActionStatus, boolean> = {
+  draft: true,
+  planned: true,
+  office_action: true,
+  member_action: true,
+  resolution: true,
+  completed: false,
+  failed: true,
+  abandoned: true,
+};
+
 const lastEventTime = ({ phases }: TimelineData): number =>
   phases[phases.length - 1].startDate.getTime();
 
@@ -76,6 +90,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   onReminderClick,
   focusOnDate,
   mostRecentFirst = false,
+  participantsById,
 }) => {
   const [scrollLeft, setScrollLeft] = useState(0);
   const [containerWidth, setContainerWidth] = useState(800);
@@ -467,6 +482,25 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
     }
   }, [timelineData, globalStartDate, globalEndDate, pixelsPerDay]);
 
+  const scrollToWeek = (weekStart: Date) => {
+    const weekEnd = addWeeks(weekStart, 1);
+    const index = timelineData.findIndex(({ phases }) =>
+      phases.some(
+        (phase) =>
+          SHOWS_BAR[phase.status] &&
+          startOfDay(phase.startDate) < weekEnd &&
+          startOfDay(phase.endDate) > weekStart,
+      ),
+    );
+    if (index === -1) {
+      return;
+    }
+    // Smooth scrolling would be cut short by the names-pane scroll sync.
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = index * rowHeight;
+    }
+  };
+
   if (timelineData.length === 0 && normalizedReminders.length === 0) {
     return (
       <div className={cn("p-8 text-center text-zinc-500", className)}>
@@ -503,21 +537,20 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
               ref={namesContainerRef}
             >
               {timelineData.map(({ action }) => (
-                <div
+                <Link
                   key={action.id}
-                  className="border-b border-zinc-100 py-3 pr-4 flex flex-col justify-center bg-white pl-5"
+                  to={`/actions/${action.id}`}
+                  className="border-b border-zinc-100 py-3 pr-4 flex flex-col justify-center bg-white hover:bg-zinc-50 pl-5"
                   style={{ height: "64px" }}
                 >
-                  <Link
-                    to={`/actions/${action.id}`}
-                    className="text-sm font-medium text-black truncate"
-                  >
+                  <div className="text-sm font-medium text-black truncate">
                     {action.name}
-                  </Link>
-                  <div className="text-xs text-zinc-500">
-                    <span>{action.status}</span>
                   </div>
-                </div>
+                  <ActionTimelineRowMeta
+                    status={action.status}
+                    participants={participantsById?.get(action.id)}
+                  />
+                </Link>
               ))}
             </div>
           </div>
@@ -545,28 +578,34 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                 className="bg-gray-50 border-b border-gray-200 sticky top-0 z-20 py-3"
                 style={{ width: `${chartWidth}px`, height: "50px" }}
               >
-                {weekTicks.map(({ date, left }) => (
-                  <div
-                    key={date.getTime()}
-                    className="absolute border-l border-gray-200 text-xs text-gray-500 px-1 flex flex-col justify-center"
-                    style={{
-                      left: `${left}px`,
-                      width: `${pixelsPerWeek}px`,
-                      top: 0,
-                      bottom: 0,
-                    }}
-                  >
-                    <div className="absolute inset-0 flex items-center justify-center text-[31.5px] leading-none text-gray-200">
-                      {Math.ceil(getDayOfYear(date) / 7) + 1}
-                    </div>
-                    <div>
-                      <div className="font-medium">{date.getDate()}</div>
-                      <div>
-                        {date.toLocaleDateString("en-US", { month: "short" })}
+                {weekTicks.map(({ date, left }) => {
+                  const weekNumber = Math.ceil(getDayOfYear(date) / 7) + 1;
+                  return (
+                    <button
+                      type="button"
+                      key={date.getTime()}
+                      onClick={() => scrollToWeek(date)}
+                      aria-label={`Scroll to actions active in week ${weekNumber}`}
+                      className="absolute border-l border-gray-200 text-xs text-left text-gray-500 px-1 flex flex-col justify-center cursor-pointer hover:bg-gray-100"
+                      style={{
+                        left: `${left}px`,
+                        width: `${pixelsPerWeek}px`,
+                        top: 0,
+                        bottom: 0,
+                      }}
+                    >
+                      <div className="absolute inset-0 flex items-center justify-center text-[31.5px] leading-none text-gray-200">
+                        {weekNumber}
                       </div>
-                    </div>
-                  </div>
-                ))}
+                      <div>
+                        <div className="font-medium">{date.getDate()}</div>
+                        <div>
+                          {date.toLocaleDateString("en-US", { month: "short" })}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Vertical grid lines */}

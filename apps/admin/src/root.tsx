@@ -1,6 +1,7 @@
 import { client } from "@alliance/shared/client/client.gen";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
 import { AuthoredLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
@@ -28,6 +29,14 @@ const queryClient = new QueryClient({
 client.setConfig({
   baseUrl: getApiUrl(),
 });
+
+export function HydrateFallback() {
+  return (
+    <div className="flex items-center justify-center h-screen">
+      <Spinner size="large" />
+    </div>
+  );
+}
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   if (!import.meta.env.PROD) {

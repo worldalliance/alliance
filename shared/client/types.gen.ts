@@ -2299,40 +2299,6 @@ export type SetPriorityDto = {
     generalUpdatePriorities: Array<SetGeneralUpdatePriorityDto>;
 };
 
-export type HomeFeedItemType = 'activity' | 'forum_comment';
-
-export type HomeFeedForumCommentDto = {
-    comment: CommentDto;
-    postId: number;
-    postTitle: string;
-    likedByMe: boolean;
-    likesCount: number;
-};
-
-export type HomeFeedItemDto = {
-    type: HomeFeedItemType;
-    date: string;
-    activity?: ActionActivityDto;
-    forumComment?: HomeFeedForumCommentDto;
-};
-
-export type CommunityCompletedActionsCountDto = {
-    /**
-     * Number of member action completions (user_completed activities) recorded for current members of this community
-     */
-    completedCount: number;
-};
-
-export type ActionSharePreviewDto = {
-    firstName?: string;
-    completedByReferrer: boolean;
-    validReferral: boolean;
-};
-
-export type ActionReferralCodeDto = {
-    referralCode: string;
-};
-
 export type AdminFollowUpFormDto = {
     id: number;
     name: string | null;
@@ -2479,6 +2445,40 @@ export type AdminActionDto = {
      */
     storedSquareThumbnailImage?: string;
     staffPreview: boolean;
+};
+
+export type HomeFeedItemType = 'activity' | 'forum_comment';
+
+export type HomeFeedForumCommentDto = {
+    comment: CommentDto;
+    postId: number;
+    postTitle: string;
+    likedByMe: boolean;
+    likesCount: number;
+};
+
+export type HomeFeedItemDto = {
+    type: HomeFeedItemType;
+    date: string;
+    activity?: ActionActivityDto;
+    forumComment?: HomeFeedForumCommentDto;
+};
+
+export type CommunityCompletedActionsCountDto = {
+    /**
+     * Number of member action completions (user_completed activities) recorded for current members of this community
+     */
+    completedCount: number;
+};
+
+export type ActionSharePreviewDto = {
+    firstName?: string;
+    completedByReferrer: boolean;
+    validReferral: boolean;
+};
+
+export type ActionReferralCodeDto = {
+    referralCode: string;
 };
 
 export type CreateFollowUpFormDto = {
@@ -8827,7 +8827,7 @@ export type ActionsFindAllWithDraftsAdminErrors = {
 export type ActionsFindAllWithDraftsAdminError = ActionsFindAllWithDraftsAdminErrors[keyof ActionsFindAllWithDraftsAdminErrors];
 
 export type ActionsFindAllWithDraftsAdminResponses = {
-    200: Array<ActionDto>;
+    200: Array<AdminActionDto>;
 };
 
 export type ActionsFindAllWithDraftsAdminResponse = ActionsFindAllWithDraftsAdminResponses[keyof ActionsFindAllWithDraftsAdminResponses];
