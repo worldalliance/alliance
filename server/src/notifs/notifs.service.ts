@@ -185,14 +185,23 @@ export class NotifsService {
   }
 
   async setReadAll(userId: number) {
+    const now = new Date();
     await Promise.all([
       this.notifsRepository.update(
-        { user: { id: userId }, readAt: IsNull() },
-        { readAt: new Date() },
+        {
+          user: { id: userId },
+          readAt: IsNull(),
+          sendTime: LessThan(now),
+        },
+        { readAt: now },
       ),
       this.unreadContentRepository.update(
-        { user: { id: userId }, readAt: IsNull() },
-        { readAt: new Date() },
+        {
+          user: { id: userId },
+          readAt: IsNull(),
+          sendTime: LessThan(now),
+        },
+        { readAt: now },
       ),
     ]);
   }

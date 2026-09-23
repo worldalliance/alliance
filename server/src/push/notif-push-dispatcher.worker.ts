@@ -63,7 +63,6 @@ export class NotifPushDispatcherWorker {
             AND n."shouldPush" = true
             AND n."pushClaimedBy" IS NULL
             AND n."pushDispatchedAt" IS NULL
-            -- Mark-all-read also marks scheduled notifications that aren't due yet; those still push.
             AND (n."readAt" IS NULL OR n."readAt" < n."sendTime")
           ORDER BY n."sendTime" ASC
           LIMIT 500
@@ -163,7 +162,7 @@ export class NotifPushDispatcherWorker {
             AND uc."shouldPush" = true
             AND uc."pushClaimedBy" IS NULL
             AND uc."pushDispatchedAt" IS NULL
-            -- Mark-all-read also marks scheduled content that isn't due yet; that still pushes.
+            -- A row read before it came due (e.g. an action update seen on its page) still pushes.
             AND (uc."readAt" IS NULL OR uc."readAt" < uc."sendTime")
           ORDER BY uc."sendTime" ASC
           LIMIT 500

@@ -165,6 +165,43 @@ describe("Notifications (e2e)", () => {
     ).toBe(true);
   });
 
+  it("mark all read leaves notifications that aren't due yet unread", async () => {
+    const user = await ctx.dataSource
+      .getRepository(User)
+      .findOneByOrFail({ id: ctx.testUserId });
+    const tomorrow = new Date(Date.now() + milliseconds({ days: 1 }));
+    const futureNotif = await notifRepo.save(
+      notifRepo.create({
+        user,
+        message: "Scheduled reminder",
+        category: NotificationCategory.ActionEvent,
+        webAppLocation: "test",
+        mobileAppLocation: "test",
+        sendTime: tomorrow,
+      }),
+    );
+    const futureContent = await unreadContentRepo.save(
+      unreadContentRepo.create({
+        user,
+        contentType: UnreadContentType.ForumReply,
+        contentId: unreadCommentId,
+        sendTime: tomorrow,
+        shouldPush: false,
+      }),
+    );
+
+    await ctx.agent.post("/notifs/read-all").expect(201);
+
+    const [notif, content] = await Promise.all([
+      notifRepo.findOneByOrFail({ id: futureNotif.id }),
+      unreadContentRepo.findOneByOrFail({ id: futureContent.id }),
+    ]);
+    await notifRepo.delete(futureNotif.id);
+    await unreadContentRepo.delete(futureContent.id);
+    expect(notif.readAt).toBeNull();
+    expect(content.readAt).toBeNull();
+  });
+
   it("user can mark unread content read by content id", async () => {
     await unreadContentRepo.update(unreadNotifId, {
       readAt: null as unknown as Date,
