@@ -2,13 +2,7 @@ import type { ProfileDto } from "@alliance/shared/client";
 import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AuthContext } from "../../lib/AuthContext";
 import { testAuthUser } from "../../stories/testData";
@@ -72,9 +66,7 @@ it("offers messageable users once a failed load succeeds on retry", async () => 
     </QueryWrapper>,
   );
 
-  fireEvent.click(
-    within(screen.getByText("Chats").parentElement!).getByRole("button"),
-  );
+  fireEvent.click(screen.getByRole("button", { name: "New chat" }));
   fireEvent.change(screen.getByPlaceholderText("Search by name"), {
     target: { value: "Gra" },
   });

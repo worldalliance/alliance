@@ -324,6 +324,7 @@ const MessagesPage = () => {
                 size="small"
                 onClick={handleCreateNewConversation}
                 className="!px-2"
+                title="New chat"
               >
                 <Plus size="18" />
               </Button>
