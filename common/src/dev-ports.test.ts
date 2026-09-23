@@ -14,7 +14,7 @@ import {
   type DevPorts,
   type PortContext,
 } from "./dev-ports";
-import { BASE_PORTS } from "./dev-ports-base";
+import { BASE_PORTS, MAX_PORT_SLOT, PORT_SLOT_STRIDE } from "./dev-ports-base";
 import { NodeEnv } from "./node-env";
 
 const fixtureRoot = path.join(
@@ -453,5 +453,19 @@ describe("resolveDevUrl", () => {
     expect(
       resolveDevUrl({ ports: WORKTREE_PORTS, which: DevUrl.App, override: "" }),
     ).toBe("http://localhost:5473");
+  });
+});
+
+describe("port slots", () => {
+  const allPorts = Array.from({ length: MAX_PORT_SLOT + 1 }, (_, slot) =>
+    Object.values(BASE_PORTS).map((base) => base + slot * PORT_SLOT_STRIDE),
+  ).flat();
+
+  it("never gives two services or slots the same port", () => {
+    expect(new Set(allPorts).size).toBe(allPorts.length);
+  });
+
+  it("stays below Linux's ephemeral range", () => {
+    expect(Math.max(...allPorts)).toBeLessThan(32768);
   });
 });

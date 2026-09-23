@@ -14,4 +14,5 @@ export const BASE_PORTS = {
 
 /** Slot n takes every base port plus n * PORT_SLOT_STRIDE; the main checkout is slot 0. */
 export const PORT_SLOT_STRIDE = 100;
-export const MAX_PORT_SLOT = 12;
+/** Keeps every port below 32768, where Linux's ephemeral range starts (macOS: 49152). */
+export const MAX_PORT_SLOT = 246;
