@@ -5,14 +5,12 @@ import {
   OAuthIntent,
   OAuthOutcome,
   OAuthProvider,
-  parseOAuthProvider,
 } from "@alliance/common/oauth";
 import { R, type Result } from "@alliance/common/result";
 import {
   BadRequestException,
   Body,
   Controller,
-  createParamDecorator,
   Delete,
   Get,
   HttpCode,
@@ -23,7 +21,6 @@ import {
   Res,
   UnauthorizedException,
   UseGuards,
-  type ExecutionContext,
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
@@ -51,8 +48,7 @@ import {
   OAUTH_STATE_COOKIE,
   type JwtRequest,
 } from "../tokens";
-import { AppleOAuthClient } from "./apple-oauth.client";
-import { GoogleOAuthClient } from "./google-oauth.client";
+import { beginMobileBrowserSession } from "./mobile-browser-session";
 import {
   addProof,
   mintProof,
@@ -62,11 +58,10 @@ import {
   type OAuthAuthentication,
   type OAuthState,
 } from "./oauth-auth.service";
-import type { OAuthClient, OAuthProfile } from "./oauth-client";
+import type { OAuthProfile } from "./oauth-client";
+import { OAuthClients } from "./oauth-clients";
 import {
   fallbackLoginUrl,
-  mobileOAuthRedirectUri,
-  mobileReturnUrl,
   mobileReturnUrlWith,
   oauthRedirectUri,
   resolveReturnTo,
@@ -82,6 +77,7 @@ import {
   OAuthStartDto,
   type SessionTokens,
 } from "./oauth.dto";
+import { ProviderParam } from "./provider-param";
 
 /** Outlives the state token it guards, so a slow consent screen still lands. */
 const STATE_COOKIE_MAX_AGE_MS = milliseconds({ minutes: 15 });
@@ -100,42 +96,17 @@ const OUTCOME_EVENT: Record<OAuthOutcome, AnalyticsEvent> = {
   [OAuthOutcome.Linked]: AnalyticsEvent.Login,
 };
 
-/**
- * Not a `@Param` with a pipe: Bun emits the enum object as the parameter's
- * design type, and the global ValidationPipe then tries to validate the string
- * as an instance of it.
- */
-const ProviderParam = createParamDecorator(
-  (_: unknown, ctx: ExecutionContext): OAuthProvider => {
-    const provider = parseOAuthProvider(
-      ctx.switchToHttp().getRequest<ExpressRequest>().params.provider,
-    );
-    if (!provider) {
-      throw new BadRequestException("unknown sign-in provider");
-    }
-    return provider;
-  },
-);
-
 @ApiBearerAuth()
 @ApiCookieAuth()
 @ApiParam({ name: "provider", enum: OAuthProvider, enumName: "OAuthProvider" })
 @Controller("auth/:provider")
 export class OAuthController {
-  private readonly clients: Record<OAuthProvider, OAuthClient>;
-
   constructor(
-    google: GoogleOAuthClient,
-    apple: AppleOAuthClient,
+    private clients: OAuthClients,
     private oauth: OAuthAuthService,
     private authService: AuthService,
     private posthog: PosthogService,
-  ) {
-    this.clients = {
-      [OAuthProvider.Google]: google,
-      [OAuthProvider.Apple]: apple,
-    };
-  }
+  ) {}
 
   /**
    * A top-level navigation, because the server answers with a redirect to
@@ -213,7 +184,7 @@ export class OAuthController {
       userId,
     });
 
-    return this.clients[provider].authorizationUrl({ redirectUri, state });
+    return this.clients.get(provider).authorizationUrl({ redirectUri, state });
   }
 
   @Public()
@@ -226,9 +197,9 @@ export class OAuthController {
     @ProviderParam() provider: OAuthProvider,
     @Body() body: MobileIdentityTokenDto,
   ): Promise<MobileOAuthSignInDto> {
-    const profile = await this.clients[provider].verifyIdentityToken(
-      body.identityToken,
-    );
+    const profile = await this.clients
+      .get(provider)
+      .verifyIdentityToken(body.identityToken);
     if (!profile.ok) {
       console.error("oauth identity token rejected", profile.error);
       return new MobileOAuthSignInDto(R.failure(OAuthError.Failed));
@@ -259,26 +230,16 @@ export class OAuthController {
   @Post("native/browser")
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: MobileOAuthBrowserSessionDto })
-  async startMobileBrowserSession(
+  startMobileBrowserSession(
     @ProviderParam() provider: OAuthProvider,
     @Request() req: ExpressRequest,
   ): Promise<MobileOAuthBrowserSessionDto> {
-    const { proof, proofHash } = mintProof();
-    const redirectUri = mobileOAuthRedirectUri({ req, provider });
-    const returnTo = mobileReturnUrl();
-    const state = await this.oauth.signState({
+    return beginMobileBrowserSession({
+      oauth: this.oauth,
+      client: this.clients.get(provider),
       provider,
+      req,
       intent: OAuthIntent.Authenticate,
-      origin: OAuthOrigin.Mobile,
-      redirectUri,
-      returnTo,
-      timeZone: DEFAULT_TIME_ZONE,
-      proofHash,
-    });
-    return new MobileOAuthBrowserSessionDto({
-      url: this.clients[provider].authorizationUrl({ redirectUri, state }),
-      proof,
-      returnTo,
     });
   }
 
@@ -523,20 +484,54 @@ export class OAuthController {
       return respond(R.failure(OAuthError.Failed));
     }
 
-    const signedIn = await this.oauth.signIn(profile.value);
-    if (!signedIn.ok) {
-      return respond(signedIn);
+    switch (state.intent) {
+      case OAuthIntent.Link: {
+        if (state.userId === undefined) {
+          return respond(R.failure(OAuthError.Failed));
+        }
+        const linkable = await this.oauth.linkable({
+          userId: state.userId,
+          profile: profile.value,
+        });
+        if (!linkable.ok) {
+          return respond(linkable);
+        }
+        const { subject, email } = profile.value;
+        respond(
+          R.success(
+            await this.oauth.signLinkHandoff({
+              userId: state.userId,
+              provider,
+              subject,
+              email,
+              proofHash: state.proofHash,
+            }),
+          ),
+        );
+        return;
+      }
+      case OAuthIntent.Authenticate: {
+        const signedIn = await this.oauth.signIn(profile.value);
+        if (!signedIn.ok) {
+          return respond(signedIn);
+        }
+        respond(
+          R.success(
+            await this.oauth.signHandoff({
+              userId: signedIn.value.user.id,
+              provider,
+              outcome: signedIn.value.outcome,
+              proofHash: state.proofHash,
+            }),
+          ),
+        );
+        return;
+      }
+      default:
+        throw new Error(
+          `unknown oauth intent: ${state.intent satisfies never}`,
+        );
     }
-    respond(
-      R.success(
-        await this.oauth.signHandoff({
-          userId: signedIn.value.user.id,
-          provider,
-          outcome: signedIn.value.outcome,
-          proofHash: state.proofHash,
-        }),
-      ),
-    );
   }
 
   private async exchangeCode(params: {
@@ -546,7 +541,7 @@ export class OAuthController {
     code: string;
   }): Promise<Result<OAuthProfile, Error>> {
     const { req, res, state } = params;
-    const profile = await this.clients[state.provider].exchangeCode({
+    const profile = await this.clients.get(state.provider).exchangeCode({
       code: params.code,
       redirectUri: state.redirectUri,
       callbackUser: this.takeAppleUser(req, res),

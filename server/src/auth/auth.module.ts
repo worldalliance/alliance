@@ -13,6 +13,8 @@ import { AppleOAuthClient } from "./oauth/apple-oauth.client";
 import { GoogleOAuthClient } from "./oauth/google-oauth.client";
 import { OAuthAccount } from "./oauth/oauth-account.entity";
 import { OAuthAuthService } from "./oauth/oauth-auth.service";
+import { OAuthClients } from "./oauth/oauth-clients";
+import { OAuthLinkController } from "./oauth/oauth-link.controller";
 import { OAuthController } from "./oauth/oauth.controller";
 import { SpentTokenService } from "./spent-token.service";
 
@@ -36,8 +38,9 @@ import { SpentTokenService } from "./spent-token.service";
     SpentTokenService,
     GoogleOAuthClient,
     AppleOAuthClient,
+    OAuthClients,
   ],
-  controllers: [AuthController, OAuthController],
+  controllers: [AuthController, OAuthController, OAuthLinkController],
   exports: [AuthService],
 })
 export class AuthModule {}

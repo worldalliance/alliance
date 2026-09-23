@@ -1,13 +1,16 @@
 import { OAuthError, OAuthIntent } from "@alliance/common/oauth";
 import type { Result } from "@alliance/common/result";
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import {
   IsDefined,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
 } from "class-validator";
+import { UserDto } from "src/user/dto/user.dto";
+import { User } from "src/user/entities/user.entity";
 import { IsTimeZoneIdentifier } from "src/utils/timezone";
 
 export class OAuthStartDto {
@@ -92,6 +95,24 @@ export class MobileOAuthHandoffDto {
   guestToken?: string;
 }
 
+export class MobileOAuthLinkIdentityTokenDto extends PickType(
+  MobileIdentityTokenDto,
+  ["identityToken"],
+) {
+  @ApiProperty({
+    description:
+      "The member the app started linking for, refused unless still signed in.",
+  })
+  @IsDefined()
+  @IsInt()
+  userId: number;
+}
+
+export class MobileOAuthLinkHandoffDto extends PickType(MobileOAuthHandoffDto, [
+  "handoff",
+  "proof",
+]) {}
+
 export type MobileOAuthBrowserSession = {
   url: string;
   proof: string;
@@ -148,6 +169,25 @@ export class MobileOAuthSignInDto {
   constructor(input: MobileOAuthSignIn) {
     if (input.ok) {
       this.session = new SessionTokensDto(input.value);
+    } else {
+      this.error = input.error;
+    }
+  }
+}
+
+export type OAuthLink = Result<User, OAuthError>;
+
+/** Exactly one of `user` and `error` is set. */
+export class OAuthLinkDto {
+  @ApiPropertyOptional({ type: () => UserDto })
+  user?: UserDto;
+
+  @ApiPropertyOptional({ enum: OAuthError, enumName: "OAuthError" })
+  error?: OAuthError;
+
+  constructor(input: OAuthLink) {
+    if (input.ok) {
+      this.user = new UserDto(input.value);
     } else {
       this.error = input.error;
     }
