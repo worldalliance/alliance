@@ -6,7 +6,7 @@ import {
 import { registerRootComponent } from "expo";
 import { useFonts } from "expo-font";
 import { useState } from "react";
-import { Button, View } from "react-native";
+import { Button, StyleSheet, View } from "react-native";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import BottomSheetOptionPicker, {
@@ -35,7 +35,11 @@ function useAnswer(initial: FormValue) {
   const onChange = (update: FormValueUpdater) =>
     setValue((previous) => resolveFormValue(update, previous));
   const text =
-    Array.isArray(value) && value.length > 0 ? value.join(",") : "none";
+    typeof value === "string"
+      ? value
+      : Array.isArray(value) && value.length > 0
+        ? value.join(",")
+        : "none";
   return { value, onChange, text };
 }
 
@@ -88,12 +92,90 @@ function MultiselectFixture() {
   );
 }
 
+const groupedCategories = [
+  { id: "alpha", name: "Alpha" },
+  { id: "bravo", name: "Bravo" },
+  { id: "charlie", name: "Charlie" },
+  { id: "delta", name: "Delta" },
+];
+
+const groupedOptions = options.map((option, index) =>
+  index < 5
+    ? option
+    : {
+        ...option,
+        category: index < 15 ? "alpha" : index < 25 ? "bravo" : "charlie",
+      },
+);
+
+function CategoriesFixture() {
+  const grouped = useAnswer("38");
+  const produce = useAnswer([]);
+  const groupedMulti = useAnswer([]);
+  return (
+    <View style={{ padding: 24, gap: 16 }}>
+      <RenderField
+        field={{
+          id: "grouped",
+          type: "input",
+          kind: "select",
+          label: "Grouped options",
+          searchable: true,
+          options: groupedOptions,
+          categories: groupedCategories,
+        }}
+        value={grouped.value}
+        onChange={grouped.onChange}
+      />
+      <Text>Grouped selected {grouped.text}</Text>
+      <RenderField
+        field={{
+          id: "produce",
+          type: "input",
+          kind: "multiselect",
+          label: "Produce",
+          options: [
+            { label: "Other produce", value: "other" },
+            { label: "Apple", value: "apple", category: "fruit" },
+            { label: "Kale", value: "kale", category: "veg" },
+            { label: "Banana", value: "banana", category: "fruit" },
+          ],
+          categories: [
+            { id: "fruit", name: "Fruit" },
+            { id: "empty", name: "Empty" },
+            { id: "veg", name: "Vegetables" },
+          ],
+        }}
+        value={produce.value}
+        onChange={produce.onChange}
+      />
+      <Text>Produce {produce.text}</Text>
+      <RenderField
+        field={{
+          id: "groupedMulti",
+          type: "input",
+          kind: "multiselect",
+          label: "Grouped multiselect",
+          dropdown: true,
+          searchable: true,
+          options: groupedOptions,
+          categories: groupedCategories,
+        }}
+        value={groupedMulti.value}
+        onChange={groupedMulti.onChange}
+      />
+      <Text>Grouped multi {groupedMulti.text}</Text>
+    </View>
+  );
+}
+
 function Fixture() {
   const [visible, setVisible] = useState(false);
   const [plainVisible, setPlainVisible] = useState(false);
   const [value, setValue] = useState("30");
   const [plainValue, setPlainValue] = useState("01");
   const [multiVisible, setMultiVisible] = useState(false);
+  const [categorized, setCategorized] = useState(false);
   const [loaded, error] = useFonts({
     "Source Sans 3": require("../../assets/fonts/SourceSans3-Regular.ttf"),
     "Source Sans 3 Semibold": require("../../assets/fonts/SourceSans3-Semibold.ttf"),
@@ -127,6 +209,10 @@ function Fixture() {
               </View>
             </View>
             <MultiselectFixture />
+            <Button
+              title="Show categorized fields"
+              onPress={() => setCategorized(true)}
+            />
           </View>
           <BottomSheetOptionPicker
             visible={visible}
@@ -155,6 +241,13 @@ function Fixture() {
             maxReached={false}
             onToggle={() => {}}
           />
+          {categorized && (
+            <View
+              style={[StyleSheet.absoluteFill, { backgroundColor: "white" }]}
+            >
+              <CategoriesFixture />
+            </View>
+          )}
         </SafeAreaView>
       </KeyboardProvider>
     </SafeAreaProvider>

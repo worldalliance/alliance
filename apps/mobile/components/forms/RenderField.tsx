@@ -26,7 +26,7 @@ import {
   resolveCards,
 } from "@alliance/shared/forms/listCards";
 import { markdownPlainText } from "@alliance/shared/forms/optionSearch";
-import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
+import { optionSections } from "@alliance/shared/forms/optionSections";
 import {
   formatTimeForDisplay,
   parseTimeInput,
@@ -50,6 +50,7 @@ import { colors } from "../../lib/style/colors";
 import AppMarkdownWrapper from "../AppMarkdownWrapper";
 import BottomSheetOptionPicker, {
   BottomSheetMultiOptionPicker,
+  sectionedRows,
 } from "../BottomSheetOptionPicker";
 import InlineLabelMarkdownWrapper from "../InlineLabelMarkdownWrapper";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
@@ -172,7 +173,7 @@ export function RenderField({
     randomizationKey && randomizationKey.length > 0
       ? `${randomizationKey}:${field.id}`
       : field.id;
-  const randomizedOptions = useMemo(() => {
+  const sections = useMemo(() => {
     if (
       field.kind !== "radio" &&
       field.kind !== "multiselect" &&
@@ -180,16 +181,19 @@ export function RenderField({
     ) {
       return null;
     }
-    const options = field.options ?? [];
-    if (
-      disableOptionRandomization ||
-      !field.randomizeOptions ||
-      options.length <= 1
-    ) {
-      return options;
-    }
-    return shuffleWithSeed(options, randomizationSeedBase);
+    return optionSections({
+      options: field.options ?? [],
+      categories: field.kind === "radio" ? undefined : field.categories,
+      shuffleSeed:
+        disableOptionRandomization || !field.randomizeOptions
+          ? undefined
+          : randomizationSeedBase,
+    });
   }, [field, randomizationSeedBase, disableOptionRandomization]);
+  const randomizedOptions = useMemo(
+    () => sections?.flatMap((section) => section.items),
+    [sections],
+  );
 
   const [filePreview, setFilePreview] = useState<FilePick | null>(null);
   const [pickerError, setPickerError] = useState<string | null>(null);
@@ -518,6 +522,7 @@ export function RenderField({
             title="Select"
             searchable={field.searchable}
             options={options}
+            categories={field.categories}
             value={value as string | undefined}
             onSelect={(v) => onChange?.(v)}
           />
@@ -623,6 +628,7 @@ export function RenderField({
                 title="Select"
                 searchable={field.searchable}
                 options={options}
+                categories={field.categories}
                 values={selections}
                 maxReached={maxReached}
                 onToggle={setSelected}
@@ -630,12 +636,12 @@ export function RenderField({
             </>
           ) : (
             <View className={cn(hasError && "border-l-2 border-red-500 pl-3")}>
-              {options.map((option: ChoiceOption, optIndex: number) => {
+              {sectionedRows(sections ?? [], (option) => {
                 const checked = selections.includes(option.value);
                 const disabledOption = disabled || (!checked && maxReached);
                 return (
                   <Checkbox
-                    key={optIndex}
+                    key={option.value}
                     checked={checked}
                     disabled={disabledOption}
                     error={hasError}
