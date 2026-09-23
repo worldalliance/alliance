@@ -31,6 +31,7 @@ import ActionTimelineRowMeta from "./ActionTimelineRowMeta";
 interface ActionTimelineProps {
   actions: ActionDto[];
   title?: string;
+  header?: React.ReactNode;
   className?: string;
   reminders?: ReminderGroupDto[];
   onReminderClick?: (reminderId: number) => void;
@@ -85,6 +86,7 @@ const lastEventTime = ({ phases }: TimelineData): number =>
 const ActionTimeline: React.FC<ActionTimelineProps> = ({
   actions,
   title,
+  header,
   className,
   reminders,
   onReminderClick,
@@ -374,7 +376,12 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
       const dayCount = Math.max(1, Math.ceil(span / millisecondsInDay));
 
       return {
-        timelineData: sortedActions,
+        timelineData: [
+          ...sortedActions,
+          ...actions
+            .filter((action) => !action.events?.length)
+            .map((action) => ({ action, phases: [] })),
+        ] satisfies Pick<TimelineData, "action" | "phases">[],
         globalStartDate,
         globalEndDate: maxDate,
         totalDays: dayCount,
@@ -502,9 +509,17 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   };
 
   if (timelineData.length === 0 && normalizedReminders.length === 0) {
-    return (
+    const emptyMessage = "No actions with timeline events found.";
+    return header ? (
+      <div className={cn("bg-white rounded-lg", className)}>
+        <div className="w-80 h-[50px] bg-zinc-50 border-b border-r border-zinc-200 py-3 pr-4 text-xs">
+          {header}
+        </div>
+        <div className="p-8 text-center text-zinc-500">{emptyMessage}</div>
+      </div>
+    ) : (
       <div className={cn("p-8 text-center text-zinc-500", className)}>
-        No actions with timeline events found.
+        {emptyMessage}
       </div>
     );
   }
@@ -521,7 +536,9 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
               className="flex-shrink-0 bg-zinc-50 border-b border-zinc-200 py-3 pr-4 text-xs font-medium text-zinc-700 z-20"
               style={{ height: "50px" }}
             >
-              {title ? (
+              {header ? (
+                <div className="h-full">{header}</div>
+              ) : title ? (
                 <div className="flex items-center h-full pl-4 font-bold text-black text-base">
                   {title}
                 </div>
