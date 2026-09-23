@@ -1267,3 +1267,24 @@ describe("a runtime that will not give a 24-hour clock", () => {
     });
   });
 });
+
+describe("reopening the picker", () => {
+  it("shows every zone after a pick made through search", () => {
+    const { result } = renderHook(() => useTimeZoneSelect({}));
+    act(() => result.current.setOpen(true));
+    act(() => result.current.setQuery("tokyo"));
+    act(() => result.current.commit("Asia/Tokyo"));
+    act(() => result.current.setOpen(true));
+    expect(result.current.query).toBe("");
+    expect(result.current.filtered).toEqual(result.current.items);
+  });
+
+  it("shows every zone after closing mid-search", () => {
+    const { result } = renderHook(() => useTimeZoneSelect({}));
+    act(() => result.current.setOpen(true));
+    act(() => result.current.setQuery("tokyo"));
+    act(() => result.current.setOpen(false));
+    act(() => result.current.setOpen(true));
+    expect(result.current.query).toBe("");
+  });
+});

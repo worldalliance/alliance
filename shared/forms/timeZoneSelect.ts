@@ -387,6 +387,12 @@ export function useTimeZoneSelect({
     setActiveIndex(query ? 0 : Math.max(selectedIndex, 0));
   }, [query, open, selectedIndex]);
 
+  // Cleared on close rather than on open: the mobile trigger scrolls the
+  // still-mounted list by index as it reopens, before a clear could render.
+  useEffect(() => {
+    if (!open) setQuery("");
+  }, [open]);
+
   const commit = (tz: string) => {
     if (disabled) return;
     if (value == null) setInternalValue(tz);
