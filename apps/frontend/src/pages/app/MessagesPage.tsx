@@ -7,6 +7,7 @@ import {
   conversationMarkRead,
   MessageDto,
 } from "@alliance/shared/client";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import {
   buildGroupConversationTitle,
   findMatchingConversation,
@@ -90,9 +91,10 @@ const MessagesPage = () => {
     onConversationUpdated: handleConversationUpdated,
   });
 
-  const { data: messageableUsers = null } = useMessageableUsersQuery({
+  const messageableUsersQuery = useMessageableUsersQuery({
     enabled: !!user,
   });
+  const messageableUsers = messageableUsersQuery.data ?? null;
 
   const [messagesOpen, setMessagesOpen] = useState(!!selectedConvoId);
   const isSmall = useMediaQuery("(max-width: 768px)");
@@ -439,6 +441,7 @@ const MessagesPage = () => {
               sendingNewMessageToIds={null}
               setSendingNewMessageToIds={null}
               handleCreateConversation={null}
+              recipientsFailure={null}
               friends={messageableUsers}
               onOptimisticMessage={addOptimisticMessage}
               onOptimisticMessageFailed={(tempId) =>
@@ -467,6 +470,14 @@ const MessagesPage = () => {
               sendingNewMessageToIds={sendingNewMessageToIds}
               setSendingNewMessageToIds={handleUpdateRecipientIds}
               handleCreateConversation={handleCreateConversation}
+              recipientsFailure={
+                failedToLoad(messageableUsersQuery)
+                  ? {
+                      onRetry: () => void messageableUsersQuery.refetch(),
+                      retrying: messageableUsersQuery.isFetching,
+                    }
+                  : null
+              }
               onOptimisticMessage={addOptimisticMessage}
               onOptimisticMessageFailed={(tempId) =>
                 removeOptimisticMessage(tempId)

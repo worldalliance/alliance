@@ -15,6 +15,7 @@ import { ChevronLeft, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
 import ConversationInfoPanel from "./ConversationInfoPanel";
+import LoadFailed from "./LoadFailed";
 import Message from "./Message";
 import MessageInput from "./MessageInput";
 import MessageRecipientSelect from "./MessageRecipientSelect";
@@ -46,6 +47,7 @@ type ConversationDetailPanelProps = {
       sendingNewMessageToIds: null;
       setSendingNewMessageToIds: null;
       handleCreateConversation: null;
+      recipientsFailure: null;
     }
   | {
       mode: "new";
@@ -56,6 +58,7 @@ type ConversationDetailPanelProps = {
       sendingNewMessageToIds: number[];
       setSendingNewMessageToIds: (ids: number[]) => void;
       handleCreateConversation: () => Promise<ConversationDto | null>;
+      recipientsFailure: { onRetry: () => void; retrying: boolean } | null;
     }
 );
 
@@ -75,6 +78,7 @@ const ConversationDetailPanel = ({
   sendingNewMessageToIds,
   setSendingNewMessageToIds,
   handleCreateConversation,
+  recipientsFailure,
   onOptimisticMessage,
   onOptimisticMessageFailed,
 }: ConversationDetailPanelProps) => {
@@ -421,11 +425,18 @@ const ConversationDetailPanel = ({
                   <p className="font-semibold text-lg">New message</p>
                   <div className="flex flex-row items-center gap-x-2">
                     <p className="font-medium">To:</p>
-                    <MessageRecipientSelect
-                      users={friends ?? []}
-                      selectedUserIds={sendingNewMessageToIds}
-                      onChange={setSendingNewMessageToIds}
-                    />
+                    {recipientsFailure ? (
+                      <LoadFailed
+                        message="Couldn't load the people you can message."
+                        {...recipientsFailure}
+                      />
+                    ) : (
+                      <MessageRecipientSelect
+                        users={friends ?? []}
+                        selectedUserIds={sendingNewMessageToIds}
+                        onChange={setSendingNewMessageToIds}
+                      />
+                    )}
                   </div>
                 </div>
               )}
