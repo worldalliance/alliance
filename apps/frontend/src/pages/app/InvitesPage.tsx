@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { formatInviteMessage } from "@alliance/common/inviteMessage";
 import { withCount } from "@alliance/common/plural";
 import { OnetimeInviteDto } from "@alliance/shared/client";

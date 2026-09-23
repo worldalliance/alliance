@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import type { AnyField } from "@alliance/common/forms/form-schema";
 import { withCount } from "@alliance/common/plural";
 import type {

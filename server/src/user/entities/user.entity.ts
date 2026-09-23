@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 /* eslint-disable @darraghor/nestjs-typed/all-properties-have-explicit-defined */
 /* eslint-disable @darraghor/nestjs-typed/all-properties-are-whitelisted */
 import { Temporal } from "@js-temporal/polyfill";

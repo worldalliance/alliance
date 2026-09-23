@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 /**
  * The headless half of the form renderer, shared by the web and native
  * renderers. Everything here is state, derivation and IO; anything that reads

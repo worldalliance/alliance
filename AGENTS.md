@@ -124,6 +124,10 @@ Put working files in `.scratch/`: notes, scripts, logs, dumps, downloads. Never 
 
 Follow YAGNI. Prefer one-liners. An abstraction earns its place at the second caller, a config option at the first person who sets it, an error branch at a state that can occur.
 
+## File size
+
+Aim for files under ~500 lines to help optimize this codebase for coding agents. When your change adds a separable unit (subcomponent, hook, helper) to a file past that, put the unit in its own file. Split along cohesive boundaries; a file doing one thing may run longer.
+
 ## Surgical changes
 
 Every changed line traces to the request. Adjacent code keeps its style, its formatting, and its comments, even where you would write it differently.

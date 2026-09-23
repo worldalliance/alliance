@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
 import { R, type Result } from "@alliance/common/result";

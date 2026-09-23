@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { R } from "@alliance/common/result";
 import {

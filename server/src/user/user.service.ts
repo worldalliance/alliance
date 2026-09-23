@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import {
   emptyUserPropertyPresence,

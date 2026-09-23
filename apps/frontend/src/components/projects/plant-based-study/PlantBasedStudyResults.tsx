@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { useEffect } from "react";
 import { initCharts } from "./charts-engine";
 import "./plant-based-study.css";

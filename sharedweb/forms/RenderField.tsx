@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { formatCityValue, parseCityValue } from "@alliance/common/forms/city";
 import type {
   AnyField,

@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { hoursInDay } from "@alliance/common/duration";
 import { analyticsGetActionCompletionCurvesAdmin } from "@alliance/shared/client";
 import { ActionCompletionCurveDto } from "@alliance/shared/client/types.gen";

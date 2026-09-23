@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 // Chart engine for /interactive-results — ported from the standalone vis
 // (interactive-vis/variations/v14-synthesis in the analysis repo). Framework-
 // free DOM/SVG code; React mounts it once via useEffect. All listeners attach

@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 // Formulas use JavaScript coercion and comparison rules inside a closed,
 // non-throwing evaluator. Missing inputs propagate as `undefined`, member
 // access on `undefined` is safe, and only the globals, properties, methods, and

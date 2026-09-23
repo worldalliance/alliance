@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { urlMatchesDomain } from "@alliance/common/url";

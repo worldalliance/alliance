@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { execFile, spawn } from "child_process";
 import { milliseconds } from "date-fns";
 import { promises as fs } from "fs";
