@@ -57,13 +57,22 @@ describe("formatjs-declined.jq", () => {
 });
 
 describe("tzdb-pr-declined.jq", () => {
-  const declined = (pr: { state: string; body: string; headlines: string[] }) =>
+  const declined = (pr: {
+    state: string;
+    body: string;
+    headlines: string[];
+    comments?: { login: string; body: string }[];
+  }) =>
     jq({
       filter: "scripts/tzdb-pr-declined.jq",
       input: {
         state: pr.state,
         body: pr.body,
         commits: pr.headlines.map((messageHeadline) => ({ messageHeadline })),
+        comments: (pr.comments ?? []).map(({ login, body }) => ({
+          author: { login },
+          body,
+        })),
       },
       env: { AFTER: HASH, HEADLINE: `add-all-tz.js SHA-1 ${HASH}` },
     });
@@ -187,6 +196,19 @@ describe("tzdb-pr-declined.jq", () => {
     ).toEqual([0]);
   });
 
+  test("counts tz data the watch's comment named after a force-push dropped its commit", () => {
+    const dropped = (state: string) =>
+      declined({
+        state,
+        body: "",
+        headlines: ["bump tzdb to 2026d"],
+        comments: [{ login: "github-actions", body: `SHA-1 ${HASH}` }],
+      });
+    expect(dropped("OPEN")).toEqual([1]);
+    expect(dropped("CLOSED")).toEqual([1]);
+    expect(dropped("MERGED")).toEqual([1]);
+  });
+
   test("counts tz data the body named after a force-push dropped its commit", () => {
     const dropped = (state: string) =>
       declined({
@@ -229,6 +251,56 @@ describe("tzdb-pr-declined.jq", () => {
         headlines: ["bump tzdb to 2026e"],
       }),
     ).toEqual([0]);
+  });
+
+  test("ignores tz data the watch's comment named while its commit stays", () => {
+    expect(
+      declined({
+        state: "OPEN",
+        body: "",
+        headlines: ["bump tzdb to 2026d", pushed],
+        comments: [{ login: "github-actions", body: `SHA-1 ${HASH}` }],
+      }),
+    ).toEqual([0]);
+  });
+
+  test("ignores tz data someone else's comment named", () => {
+    expect(
+      declined({
+        state: "MERGED",
+        body: "",
+        headlines: ["bump tzdb to 2026d"],
+        comments: [{ login: "someone", body: `please bump to ${HASH}` }],
+      }),
+    ).toEqual([0]);
+  });
+});
+
+describe("tzdb-pr-carried.jq", () => {
+  const carried = (pr: { body: string; headlines: string[] }) =>
+    jq({
+      filter: "scripts/tzdb-pr-carried.jq",
+      input: {
+        body: pr.body,
+        commits: pr.headlines.map((messageHeadline) => ({ messageHeadline })),
+      },
+      env: { TZDATA: HASH },
+    });
+
+  test("finds the tz data in the body or a headline", () => {
+    expect(carried({ body: `SHA-1 ${HASH}`, headlines: [] })).toEqual([true]);
+    expect(
+      carried({ body: "", headlines: [`add-all-tz.js SHA-1 ${HASH}: bump`] }),
+    ).toEqual([true]);
+  });
+
+  test("misses tz data the pull request never named", () => {
+    expect(
+      carried({
+        body: "SHA-1 ba9876543210",
+        headlines: ["bump tzdb to 2026d"],
+      }),
+    ).toEqual([false]);
   });
 });
 

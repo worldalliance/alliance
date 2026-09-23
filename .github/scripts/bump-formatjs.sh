@@ -4,8 +4,8 @@
 # merged or closed pull request outside a fork that the watch didn't close as
 # superseded, and no tzdb/ pull request the watch opened ends with that tz data
 # reverted, or merged naming it while the checkout lacks it, or lost the commit
-# its body proposed. Such a pull request means that tz data already landed or
-# someone declined it.
+# its body proposed or the watch's comment named. Such a pull request means that
+# tz data already landed or someone declined it.
 # Writes version, tzdata, and the bump's commit message to $GITHUB_OUTPUT when
 # it keeps the bump, and tzdata and the declining pull requests when it drops a
 # declined one.
@@ -32,7 +32,7 @@ if [ "$after" != "$before" ]; then
     --json number,headRefName --jq '.[] | select(.headRefName | startswith("tzdb/")) | .number')
   # One at a time: listing commits for many pull requests at once exceeds GitHub's GraphQL node limit.
   for pr in $catalog_prs; do
-    declines=$(gh pr view "$pr" --json state,body,commits \
+    declines=$(gh pr view "$pr" --json state,body,commits,comments \
       | AFTER="$after" HEADLINE="$headline" jq -f ../.github/scripts/tzdb-pr-declined.jq)
     if [ "$declines" -gt 0 ]; then
       declined_by+=("#$pr")

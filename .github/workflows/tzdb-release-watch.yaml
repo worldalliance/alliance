@@ -99,7 +99,7 @@ jobs:
 
             Read the diff to `common/src/timezone-catalog.gen.ts`. A row that disappears or an alias that moves changes what members with that timezone see.
 
-            The server's timezone rules come from `@formatjs/intl-datetimeformat`. ${{ steps.formatjs.outputs.version && format('Its own commit bumps it to {0}, the latest release within the major version in `server/package.json`, which changes its tz data (`add-all-tz.js` SHA-1 {1}). To decline it, revert that commit and keep git''s default message: the watch won''t propose that tz data again. Don''t reword that commit or squash it into another on this branch: the watch reads a branch without its message as declining that tz data. Squash-merging this pull request is fine.', steps.formatjs.outputs.version, steps.formatjs.outputs.tzdata) || steps.formatjs.outputs.declined && format('This leaves it alone: the latest release within the major version in `server/package.json` changes its tz data (`add-all-tz.js` SHA-1 {0}), but {1} declined that tz data.', steps.formatjs.outputs.tzdata, steps.formatjs.outputs.declined) || 'This leaves it alone: the latest release within the major version in `server/package.json` carries the tz data it has now.' }} Its changelog says which tzdb each release carries: https://github.com/formatjs/formatjs/blob/main/packages/intl-datetimeformat/CHANGELOG.md. If the server's FormatJS doesn't carry tzdb ${{ steps.bump.outputs.version }} yet, merging still updates the catalog, but the server keeps the older rules until FormatJS catches up.
+            The server's timezone rules come from `@formatjs/intl-datetimeformat`. ${{ steps.formatjs.outputs.version && format('Its own commit bumps it to {0}, the latest release within the major version in `server/package.json`, which changes its tz data (`add-all-tz.js` SHA-1 {1}).', steps.formatjs.outputs.version, steps.formatjs.outputs.tzdata) || steps.formatjs.outputs.declined && format('This leaves it alone: the latest release within the major version in `server/package.json` changes its tz data (`add-all-tz.js` SHA-1 {0}), but {1} declined that tz data.', steps.formatjs.outputs.tzdata, steps.formatjs.outputs.declined) || 'This leaves it alone: the latest release within the major version in `server/package.json` carries the tz data it has now.' }} Its changelog says which tzdb each release carries: https://github.com/formatjs/formatjs/blob/main/packages/intl-datetimeformat/CHANGELOG.md. If the server's FormatJS doesn't carry tzdb ${{ steps.bump.outputs.version }} yet, merging still updates the catalog, but the server keeps the older rules until FormatJS catches up. While this pull request is open, the watch pushes each FormatJS release that changes its tz data onto it, unless someone declined that data or this pull request already carried it. To decline a FormatJS bump, revert its commit and keep git's default message: the watch won't propose that tz data again. Don't reword a FormatJS bump's commit or squash it into another on this branch: the watch reads a branch without its message as declining that tz data. Squash-merging this pull request is fine.
 
             Typecheck and tests for `common`, and the server's typecheck and timezone test, passed in the job that opened this. CI hasn't run: close and reopen this pull request to start it.
 
@@ -113,16 +113,22 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # A second pull request would conflict with the open one on bun.lock, so
-      # the bump waits for it to close.
-      - name: Find an open catalog pull request
+      # A second pull request would conflict with the open one on bun.lock.
+      - name: Switch to the open catalog pull request
         id: open
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           head=$(gh pr list --state open --limit 1000 --json headRefName,author \
             --jq 'map(select(.author.login == "app/github-actions") | .headRefName | select(startswith("tzdb/"))) | first // empty')
-          echo "branch=$head" >> "$GITHUB_OUTPUT"
+          if [ -n "$head" ]; then
+            git fetch --quiet --depth 1 origin "$head"
+            git switch -c "$head" FETCH_HEAD
+            # Scripts run as of this run's revision, not the branch's, so their
+            # outputs match what this workflow reads.
+            git checkout "$GITHUB_SHA" -- .github
+            echo "branch=$head" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -134,7 +140,6 @@ jobs:
 
       - name: Update FormatJS
         id: bump
-        if: steps.open.outputs.branch == ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: .github/scripts/bump-formatjs.sh
@@ -144,8 +149,21 @@ jobs:
         if: steps.bump.outputs.version != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPEN: ${{ steps.open.outputs.branch }}
           TZDATA: ${{ steps.bump.outputs.tzdata }}
         run: |
+          set -o pipefail
+          if [ -n "$OPEN" ]; then
+            # Carried but gone from the branch, say by a revert with an edited message: someone removed it to decline it.
+            carried=$(gh pr view "$OPEN" --json body,commits \
+              | jq -f .github/scripts/tzdb-pr-carried.jq)
+            if [ "$carried" = true ]; then
+              echo "$OPEN already carried tz data $TZDATA."
+            else
+              echo "name=$OPEN" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
           # Named for the tz data, so a declined bump stays declined across FormatJS releases.
           branch="formatjs/$TZDATA"
           # A fork's pull request shares the name without being the watch's.
@@ -161,8 +179,25 @@ jobs:
         working-directory: server
         run: bun run typecheck && bun test src/intl-timezone.spec.ts
 
+      - name: Push onto the open pull request
+        if: steps.branch.outputs.name != '' && steps.open.outputs.branch != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.branch.outputs.name }}
+          MESSAGE: ${{ steps.bump.outputs.message }}
+          VERSION: ${{ steps.bump.outputs.version }}
+          TZDATA: ${{ steps.bump.outputs.tzdata }}
+        run: |
+          git commit -m "$MESSAGE" -- server/package.json bun.lock
+          git push origin "$BRANCH"
+          gh pr comment "$BRANCH" --body-file - <<EOF
+          This now bumps \`@formatjs/intl-datetimeformat\` to $VERSION, which changes its tz data (\`add-all-tz.js\` SHA-1 $TZDATA). Its changelog says which tzdb $VERSION carries: https://github.com/formatjs/formatjs/blob/main/packages/intl-datetimeformat/CHANGELOG.md. To decline this bump, revert its commit and keep git's default message: the watch won't propose that tz data again. Don't reword its commit or squash it into another on this branch: the watch reads a branch without its message as declining that tz data. Squash-merging this pull request is fine.
+
+          The server's typecheck and timezone test passed on this branch in the job that pushed it. CI hasn't run on the new commit: close and reopen this pull request to start it.
+          EOF
+
       - name: Open a pull request
-        if: steps.branch.outputs.name != ''
+        if: steps.branch.outputs.name != '' && steps.open.outputs.branch == ''
         uses: ./.github/actions/open-superseding-pr
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

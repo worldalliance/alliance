@@ -23,9 +23,9 @@ sections below this one carry the reasoning each step implements.
    The deploy ships the bunfig, the repl preloads the same file, and loading
    `AppModule` without FormatJS throws.
    The release watch bumps FormatJS in the same pull request as the catalog.
-   A FormatJS release that changes its tz data while no catalog pull request
-   is open goes into a new one that supersedes any open FormatJS one, unless
-   someone declined that tz data.
+   A FormatJS release that changes its tz data goes onto the open catalog
+   pull request, or into a new one that supersedes any open FormatJS one,
+   unless someone declined that tz data.
 3. **Shared validation.** A validator in `common` that accepts any identifier
    the runtime resolves, wired into every server write path: password signup,
    OAuth signup, profile update, form extraction, admin edits.
@@ -94,12 +94,13 @@ sections below this one carry the reasoning each step implements.
     surface after the force-push. A working tree with nothing staged ends the
     run rather than opening an empty pull request. It lists up to 1000 open
     pull requests, since the default of 30 would miss an old `tzdb/` one.
-    When the run opens no pull request and no `tzdb/` one github-actions
-    opened is open, a second job bumps FormatJS on `main`, and typechecks the
-    server and runs its timezone test. A second pull request would conflict
-    with an open catalog one on `bun.lock`, so the bump waits for it to close.
-    The jq filters that
-    decide what counts as declined or superseded live in `.jq`
+    When the run opens no pull request, a second job bumps FormatJS on the
+    open `tzdb/` branch github-actions opened if there is one, else `main`, and typechecks the
+    server and runs its timezone test.
+    On a `tzdb/` branch it runs `.github` as of the run's revision, not the
+    branch's, so a script's outputs match what the workflow reads, and it
+    commits only `server/package.json` and `bun.lock`. The jq filters that
+    decide what counts as declined, carried, or superseded live in `.jq`
     files, tested by `.github/scripts/jq-filters.test.ts`; `.github` joins
     the unit test packages for it, but not the typecheck ones, since it has
     no tsconfig. Scripts pipe `gh`'s JSON into `jq` rather than passing a
@@ -118,20 +119,27 @@ sections below this one carry the reasoning each step implements.
     it, except one labeled `superseded`: its bump comes back when the pull
     request that closed it doesn't merge.
     Skipping it in the catalog job too keeps a declined bump from coming
-    back inside the next catalog pull request. The catalog job's bump is its
-    own commit on the `tzdb/` branch, so a reviewer declines it by reverting
-    it. Its message names the tz data hash, as the pull request's body does.
-    The hash leads the headline,
+    back inside the next catalog pull request. On the `tzdb/` branch it pushes the bump and comments
+    on the pull request, since a second pull request would change the same
+    `bun.lock` and `server/package.json` lines and conflict with it after
+    either merged. A FormatJS bump on a `tzdb/` branch, the catalog job's or
+    a pushed one, is its own commit, so reverting it declines it the same way
+    in either job. Its message names the tz data hash, as the catalog pull
+    request's body does when it bumps FormatJS. The hash leads the headline,
     since GitHub cuts headlines off at 69 characters and a revert's adds
     `Revert "` in front. A revert of that revert, which git titles
     `Reapply "…"`, takes the decline back: an odd number of nested reverts
     leaves the tz data declined. Rewording the commit or squashing it into
-    another on the branch declines it too, so the body warns against both.
-    Squash-merging doesn't: the merged checkout carries the tz data. The script
+    another on the branch declines it too, so the body and the push's
+    comment warn against both. Squash-merging doesn't: the merged checkout
+    carries the tz data. The job
+    skips tz data the pull request already carried: gone from the branch,
+    someone removed it to decline it. The script
     also drops tz data a commit on any `tzdb/` pull request github-actions
     opened reverts, by a `Revert "…"` headline naming the hash, tz data
-    its body proposes but no headline there carries, since a force-push can
-    drop the commit, and tz data
+    its body proposes or the watch's comment on a push to one names but no
+    headline there carries, since both name the hash and a force-push can
+    drop the commit, whichever job made it, and tz data
     a merged `tzdb/` one named in its body or a headline but the checkout
     lacks, since a reviewer can remove it by hand too, so the decline
     outlives that pull request instead of the bump returning in the next
