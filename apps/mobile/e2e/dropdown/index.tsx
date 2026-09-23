@@ -9,7 +9,9 @@ import { useState } from "react";
 import { Button, View } from "react-native";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import BottomSheetOptionPicker from "../../components/BottomSheetOptionPicker";
+import BottomSheetOptionPicker, {
+  BottomSheetMultiOptionPicker,
+} from "../../components/BottomSheetOptionPicker";
 import { RenderField } from "../../components/forms/RenderField";
 import Text from "../../components/system/Text";
 import "../../global.css";
@@ -91,6 +93,7 @@ function Fixture() {
   const [plainVisible, setPlainVisible] = useState(false);
   const [value, setValue] = useState("30");
   const [plainValue, setPlainValue] = useState("01");
+  const [multiVisible, setMultiVisible] = useState(false);
   const [loaded, error] = useFonts({
     "Source Sans 3": require("../../assets/fonts/SourceSans3-Regular.ttf"),
     "Source Sans 3 Semibold": require("../../assets/fonts/SourceSans3-Semibold.ttf"),
@@ -109,10 +112,20 @@ function Fixture() {
               onPress={() => setVisible(true)}
             />
             <Text>Plain selected {plainValue}</Text>
-            <Button
-              title="Open plain picker"
-              onPress={() => setPlainVisible(true)}
-            />
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Button
+                  title="Open plain picker"
+                  onPress={() => setPlainVisible(true)}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Button
+                  title="Open multi picker"
+                  onPress={() => setMultiVisible(true)}
+                />
+              </View>
+            </View>
             <MultiselectFixture />
           </View>
           <BottomSheetOptionPicker
@@ -131,6 +144,16 @@ function Fixture() {
             options={options.slice(0, 3)}
             value={plainValue}
             onSelect={setPlainValue}
+          />
+          <BottomSheetMultiOptionPicker
+            visible={multiVisible}
+            searchable
+            onClose={() => setMultiVisible(false)}
+            title="Long options"
+            options={options}
+            values={[]}
+            maxReached={false}
+            onToggle={() => {}}
           />
         </SafeAreaView>
       </KeyboardProvider>

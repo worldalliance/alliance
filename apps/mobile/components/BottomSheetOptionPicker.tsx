@@ -84,12 +84,6 @@ function SearchableOptionList({
   return (
     <ScrollView
       ref={scrollRef}
-      onContentSizeChange={(_, contentHeight) => {
-        // Android retains its scroll offset when the content becomes empty.
-        if (contentHeight === 0) {
-          scrollRef.current?.scrollTo({ y: 0, animated: false });
-        }
-      }}
       style={{ maxHeight: (height - keyboardHeight) * 0.5 }}
       keyboardShouldPersistTaps="handled"
       nestedScrollEnabled
@@ -171,7 +165,13 @@ function OptionSheet({
       </View>
       {search ? (
         <>
-          <OptionSearch {...search} />
+          <OptionSearch
+            {...search}
+            onChangeQuery={(query) => {
+              search.onChangeQuery(query);
+              scrollRef.current?.scrollTo({ y: 0, animated: false });
+            }}
+          />
           <SearchableOptionList scrollRef={scrollRef}>
             {children}
           </SearchableOptionList>

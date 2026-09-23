@@ -44,10 +44,7 @@ appId: ${APP_ID}
 - assertVisible: Option 39
 - tapOn: Search options
 - inputText: Option
-- scrollUntilVisible:
-    element:
-      text: Option 01
-    direction: UP
+- assertVisible: Option 01
 - assertVisible: Search options
 - tapOn: Search options
 - eraseText: 6
