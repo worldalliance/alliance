@@ -1,6 +1,6 @@
 # Select and multiselect option categories
 
-Status: specification complete; implementation has not started. The product choices below were proposed by the agent and accepted together by the user, as recorded in REQUIREMENTS.md. Implementation guidance and verification cases are agent-authored elaborations of those choices.
+Status: implemented. The product choices below were proposed by the agent and accepted together by the user, as recorded in REQUIREMENTS.md. Implementation guidance and verification cases are agent-authored elaborations of those choices.
 
 ## Scope and presentation
 
@@ -48,7 +48,20 @@ These are agent-selected implementation choices, not separately stated user requ
 - Restrict grouping metadata to select and multiselect schemas, even where option schemas are shared with other field kinds. Keep category IDs local to the field when duplicating fields.
 - Centralize grouping, filtering, and within-section randomization where both web and mobile can consume them, so all display modes use the same ordering and matching rules.
 
+## Implementation
+
+- The schema stores `categories: [{ id, name }]` on select and multiselect fields and an optional `category` id on their options. Radio and ranking options reject both. Names compare after trimming and lowercasing; accents are not folded, so `Café` and `Cafe` are distinct names. One function reports name errors for both the schema and the builder, so their messages match.
+- Option and category schemas live in `common/src/forms/options-schema.ts`, outside the already oversized `form-schema.ts`.
+- `shared/forms/optionSections.ts` groups, shuffles, and filters options for web, mobile, and the admin preview. An option naming a category the field lacks, possible only in an unsaved draft, renders as uncategorized rather than disappearing. The uncategorized section shuffles with the field's existing seed, and each category with that seed plus its id. An uncategorized field therefore shuffles exactly as before, and renaming or reordering categories does not reshuffle options.
+- On web, the plain single-select renders categories as native `<optgroup>`s. The other dropdowns render the sections as Base UI groups with `Combobox.GroupLabel` or `Select.GroupLabel` headings, which keyboard navigation skips. The searchable ones receive the shared filter's result through `filteredItems` instead of filtering themselves, so the matching rule lives in one place. RenderField builds the sections once and passes them to the dropdowns, which do not regroup. Checkbox lists wrap each category in a `role="group"` labelled by its heading.
+- On mobile, headings are `Text` with the `header` accessibility role, placed in the same flat list as the rows. React Native has no cross-platform group role, and wrapping sections in views would break the single-select sheet's scroll-to-selection offsets.
+- The builder creates categories named `Category N`, counting up from one more than the number of existing categories until a name passes the name rules, with `crypto.randomUUID()` ids. Deleting the last category omits `categories`, returning the field to its legacy shape. Invalid names are flagged inline; saving fails through the server's schema validation, as with duplicate option values. The builder labels a blank-named category `(unnamed)` everywhere it appears, and lists an option naming a missing category as uncategorized through the same `optionSectionId` rule respondent views use. That option's Category select shows a disabled `(missing category)` entry, so choosing No category clears the reference that would otherwise block saving.
+- Field and page duplication already deep-copy fields, and category ids are field-local, so duplication needed no change. Response views, exports, conditions, and draft restoration read options by value and needed no change.
+- On mobile, the dropdown device fixture has a screen of categorized fields, and `categories.yaml` covers headings, category search in both the single- and multi-select sheets, and scrolling to a selection below a heading. Typing in a searchable sheet scrolls results to the top, so a matching category's heading stays in view.
+
 ## Acceptance checks for implementation
+
+No test covers builder duplication, save/reload through the server, or fields inside lists (check 2), or response views, exports, and snapshots (check 7). Those rest on the reasoning under Implementation that duplication deep-copies fields and those consumers read options by value.
 
 1. Schema tests accept legacy fields, mixed grouped/ungrouped options, and empty categories; reject blank or duplicate category names, duplicate category IDs, dangling references, and duplicate option values across categories.
 2. Builder checks cover category creation, renaming, reordering, deletion, assignment changes, within-section option reordering, invalid-name errors, save/reload, duplication, display-mode changes, and fields inside lists.
