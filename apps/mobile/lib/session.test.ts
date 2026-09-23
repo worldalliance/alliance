@@ -28,6 +28,7 @@ import {
   requestTokens,
   restoreSession,
   retryClearTokens,
+  SessionOvertakenError,
   SessionRefusedError,
   setAuthHeader,
 } from "./session";
@@ -503,6 +504,133 @@ it("keeps a session it couldn't reach the server for, without reporting it", asy
   expect(reportFailure).not.toHaveBeenCalled();
   expect(consoleError).toHaveBeenCalled();
 });
+
+it.each([
+  { outcome: "fails", launchMe: () => new Response(null, { status: 503 }) },
+  {
+    outcome: "is refused",
+    launchMe: () => new Response(null, { status: 401 }),
+  },
+  { outcome: "loads", launchMe: () => Response.json({ user: { id: 1 } }) },
+])(
+  "leaves a login that lands while the launch load $outcome alone",
+  async ({ launchMe }) => {
+    const launchSent = Promise.withResolvers<void>();
+    const launchAnswered = Promise.withResolvers<void>();
+    let calls = 0;
+    api.throwingOnRefusal({
+      "GET /auth/me": async () => {
+        if (++calls > 1) return Response.json({ user: { id: 2 } });
+        launchSent.resolve();
+        await launchAnswered.promise;
+        return launchMe();
+      },
+    });
+
+    const { dropSession, reportFailure, restored } = restore();
+    await launchSent.promise;
+    expect((await start().opened).ok).toBe(true);
+    launchAnswered.resolve();
+    const result = await restored;
+
+    expect(!result.ok && result.error).toBeInstanceOf(SessionOvertakenError);
+    expect(dropSession).not.toHaveBeenCalled();
+    expect(reportFailure).not.toHaveBeenCalled();
+  },
+);
+
+it("leaves the stored session alone when a login fails while the launch load is out", async () => {
+  const launchSent = Promise.withResolvers<void>();
+  const launchAnswered = Promise.withResolvers<void>();
+  let calls = 0;
+  api.throwingOnRefusal({
+    "GET /auth/me": async () => {
+      if (++calls > 1) return new Response(null, { status: 503 });
+      launchSent.resolve();
+      await launchAnswered.promise;
+      return Response.json({ user: { id: 1 } });
+    },
+  });
+
+  const { dropSession, reportFailure, restored } = restore();
+  await launchSent.promise;
+  expect((await start().opened).ok).toBe(false);
+  launchAnswered.resolve();
+  const result = await restored;
+
+  expect(!result.ok && result.error).toBeInstanceOf(SessionOvertakenError);
+  expect(dropSession).not.toHaveBeenCalled();
+  expect(reportFailure).not.toHaveBeenCalled();
+});
+
+it("leaves a logout that lands while the launch load is out alone", async () => {
+  const launchSent = Promise.withResolvers<void>();
+  const launchAnswered = Promise.withResolvers<void>();
+  api.throwingOnRefusal({
+    "GET /auth/me": async () => {
+      launchSent.resolve();
+      await launchAnswered.promise;
+      return Response.json({ user: { id: 1 } });
+    },
+    "POST /auth/logout": () => new Response(null, { status: 200 }),
+  });
+
+  const { dropSession, reportFailure, restored } = restore();
+  await launchSent.promise;
+  expect((await closeSession(cleared)).ok).toBe(true);
+  launchAnswered.resolve();
+  const result = await restored;
+
+  expect(!result.ok && result.error).toBeInstanceOf(SessionOvertakenError);
+  expect(dropSession).not.toHaveBeenCalled();
+  expect(reportFailure).not.toHaveBeenCalled();
+  expect(currentSession()).toBeUndefined();
+});
+
+it.each([
+  { token: "access", outcome: "finds one", read: () => "stored" },
+  { token: "access", outcome: "finds none", read: () => null },
+  {
+    token: "access",
+    outcome: "fails",
+    read: () => Promise.reject(new Error("keychain")),
+  },
+  { token: "refresh", outcome: "finds none", read: () => null },
+  {
+    token: "refresh",
+    outcome: "fails",
+    read: () => Promise.reject(new Error("keychain")),
+  },
+])(
+  "leaves a login that lands while the launch's $token token read $outcome alone",
+  async ({ token, read }) => {
+    api.throwingOnRefusal({
+      "GET /auth/me": () => Response.json({ user: { id: 2 } }),
+    });
+    const readStarted = Promise.withResolvers<void>();
+    const loginOpened = Promise.withResolvers<void>();
+    const delayedRead = async () => {
+      readStarted.resolve();
+      await loginOpened.promise;
+      return read();
+    };
+
+    const { dropSession, reportFailure, restored } = restore(
+      token === "access"
+        ? { getAccessToken: delayedRead }
+        : { getAccessToken: async () => null, getRefreshToken: delayedRead },
+    );
+    await readStarted.promise;
+    expect((await start().opened).ok).toBe(true);
+    loginOpened.resolve();
+    const result = await restored;
+
+    expect(!result.ok && result.error).toBeInstanceOf(SessionOvertakenError);
+    expect(dropSession).not.toHaveBeenCalled();
+    expect(reportFailure).not.toHaveBeenCalled();
+    expect(await nextAuthorization()).toBe("Bearer access");
+  },
+);
 
 const serveRefreshing = (
   table: RouteTable,

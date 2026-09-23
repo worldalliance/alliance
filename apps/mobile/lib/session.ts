@@ -316,6 +316,13 @@ export class SessionRefusedError extends Error {
   }
 }
 
+export class SessionOvertakenError extends Error {
+  constructor() {
+    super("A login or logout changed the session while it loaded");
+    this.name = "SessionOvertakenError";
+  }
+}
+
 export async function loadSessionUser(): Promise<Result<UserDto, Error>> {
   const sent = await R.fromPromise(authMe({ throwOnError: false }));
   if (!sent.ok) {
@@ -332,7 +339,9 @@ export async function loadSessionUser(): Promise<Result<UserDto, Error>> {
 
 /** Loads the stored session's member at launch, resolving to no member when
  * no token is stored. Drops the session only when the server refuses it; any
- * other failure keeps the tokens for the next try. */
+ * other failure keeps the tokens for the next try. Fails with
+ * SessionOvertakenError, leaving the session alone, once a login or logout
+ * starts while it loads. */
 export async function restoreSession(params: {
   getAccessToken: () => Promise<string | null>;
   getRefreshToken: () => Promise<string | null>;
@@ -345,7 +354,12 @@ export async function restoreSession(params: {
       params.reportFailure(error);
     }
   };
+  const restoring = currentSession();
+  const overtaken = () => currentSession() !== restoring;
   const accessToken = await R.fromPromise(params.getAccessToken());
+  if (overtaken()) {
+    return R.failure(new SessionOvertakenError());
+  }
   if (!accessToken.ok) {
     fail(accessToken.error);
     return accessToken;
@@ -354,6 +368,9 @@ export async function restoreSession(params: {
     setAuthHeader(accessToken.value);
   } else {
     const refreshToken = await R.fromPromise(params.getRefreshToken());
+    if (overtaken()) {
+      return R.failure(new SessionOvertakenError());
+    }
     if (!refreshToken.ok) {
       fail(refreshToken.error);
       return refreshToken;
@@ -363,6 +380,9 @@ export async function restoreSession(params: {
     }
   }
   const loaded = await loadSessionUser();
+  if (overtaken()) {
+    return R.failure(new SessionOvertakenError());
+  }
   if (loaded.ok) {
     return loaded;
   }
