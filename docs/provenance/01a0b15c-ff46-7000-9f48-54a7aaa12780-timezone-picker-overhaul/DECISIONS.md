@@ -72,7 +72,9 @@ sections below this one carry the reasoning each step implements.
     typechecks the server and runs its timezone test, and opens a pull
     request on `tzdb/<version>`. A release that already has a pull request on that
     branch, open or closed, is skipped, so a closed one means the release was
-    declined. A release that adds a zone the server's FormatJS lacks fails
+    declined. One from a fork doesn't count: the repository is public and
+    release names are easy to guess, so anyone could otherwise block a
+    release. A release that adds a zone the server's FormatJS lacks fails
     the timezone test until FormatJS ships the zone, so a later run opens its
     pull request. Runs don't overlap, or an older one's close step could take a
     newer one's pull request with it and the skip rule would retire that

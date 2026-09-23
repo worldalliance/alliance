@@ -48,7 +48,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           branch="tzdb/${{ steps.bump.outputs.version }}"
-          prs=$(gh pr list --head "$branch" --state all --json number --jq length)
+          # A fork's pull request shares the name without sharing the branch.
+          prs=$(gh api "repos/$GITHUB_REPOSITORY/pulls?head=$GITHUB_REPOSITORY_OWNER:$branch&state=all" --jq length)
           if [ "$prs" -gt 0 ]; then
             echo "$branch already has a pull request."
           else
