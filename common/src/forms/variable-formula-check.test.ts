@@ -146,9 +146,18 @@ describe("requires a formula to end on something readable", () => {
     },
   );
 
-  it("calls a method left uncalled a function", () => {
-    expect(errorFor("text.split(',').join")).toContain(
-      "this one gives a function.",
+  it.each(["text.split(',').join", "choices.map", "Math.max"])(
+    "says to call %s, a method left uncalled",
+    (formula) => {
+      expect(errorFor(formula)).toContain(
+        "this one gives a function. Add () to call it.",
+      );
+    },
+  );
+
+  it("says an arrow function is for a list method", () => {
+    expect(errorFor("(x => x)")).toContain(
+      "this one gives a function. An arrow function is something to pass to a list method",
     );
   });
 

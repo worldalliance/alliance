@@ -80,6 +80,8 @@ The existing renderability check already rejects a formula that ends on an array
 
 `join` carries a `this` type in `formula-lib.ts`, so joining a list of rows, choices or lists is a type error rather than a formula that passes and shows `[object Object]`. TypeScript's wording for that error names the `this` context, so `MESSAGE_OVERRIDES` replaces it with one that says to name a part of each item first. `join` is the only library member whose `this` type can fail to match, and a test in `formula-lib.test.ts` holds that, so the override can't catch anything else.
 
+A formula that ends on a method it never calls, like `.join`, gets "Add () to call it." instead of the arrow-function advice. A library member's type is declared by a method signature and an arrow function's isn't, which tells the two apart. The advice names no method, because `.map()` or `Math.max()` with no arguments would be wrong to suggest.
+
 ## Scope and compatibility
 
 The list resolver lives in `common/src/forms/variables.ts`, which the web and mobile forms (`shared/useFormRenderer.ts`) and saved-response output (`shared/outputrenderer.ts`) already share. Variables recompute whenever answers or visibility extras change.

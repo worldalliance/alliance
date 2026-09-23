@@ -105,6 +105,11 @@ function unrenderableAdvice(checker: ts.TypeChecker, type: ts.Type): string {
   if (checker.isArrayType(type) || checker.isTupleType(type)) {
     return "Name a part or join it: input1.map(item => item.label).join(', '), or input1.length.";
   }
+  if (
+    type.getSymbol()?.valueDeclaration?.kind === ts.SyntaxKind.MethodSignature
+  ) {
+    return "Add () to call it.";
+  }
   if (type.getCallSignatures().length > 0) {
     return "An arrow function is something to pass to a list method, not something to show.";
   }
