@@ -4,13 +4,14 @@ import {
   oAuthRedeemMobileHandoff,
   oAuthSignInWithIdentityToken,
   oAuthStartMobileBrowserSession,
-  type MobileOAuthSignInDto,
+  type MobileOAuthBrowserSessionDto,
 } from "@alliance/shared/client";
 import {
   handoffFromReturnLink,
   reportOAuthFailure,
   requestFailure,
   sessionResult,
+  type OAuthFailure,
   type SignInResult,
 } from "./oauthResult";
 
@@ -29,21 +30,27 @@ export type NativeSignIn = {
   }) => Promise<Result<string, OAuthError>>;
 };
 
-async function session(
-  request: Promise<{ data?: MobileOAuthSignInDto }>,
-): Promise<SignInResult> {
-  const response = await R.fromPromise(request, requestFailure);
-  return response.ok ? sessionResult(response.value.data) : response;
+type ProviderFlow<B, T> = {
+  withIdentityToken: (credential: NativeCredential) => Promise<{ data?: B }>;
+  startBrowserSession: () => Promise<{ data?: MobileOAuthBrowserSessionDto }>;
+  redeem: (body: { handoff: string; proof: string }) => Promise<{ data?: B }>;
+  result: (body: B | undefined) => Result<T, OAuthFailure>;
+};
+
+async function answer<B, T>(params: {
+  request: Promise<{ data?: B }>;
+  flow: ProviderFlow<B, T>;
+}): Promise<Result<T, OAuthFailure>> {
+  const response = await R.fromPromise(params.request, requestFailure);
+  return response.ok ? params.flow.result(response.value.data) : response;
 }
 
-async function signInInBrowser(params: {
-  provider: OAuthProvider;
-  guestToken: string | undefined;
+async function runInBrowser<B, T>(params: {
   native: NativeSignIn;
-}): Promise<SignInResult> {
-  const { provider, guestToken } = params;
+  flow: ProviderFlow<B, T>;
+}): Promise<Result<T, OAuthFailure>> {
   const started = await R.fromPromise(
-    oAuthStartMobileBrowserSession({ path: { provider } }),
+    params.flow.startBrowserSession(),
     requestFailure,
   );
   if (!started.ok) {
@@ -64,34 +71,57 @@ async function signInInBrowser(params: {
   if (!handoff.ok) {
     return handoff;
   }
-  return session(
-    oAuthRedeemMobileHandoff({
-      path: { provider },
-      body: { handoff: handoff.value, proof, guestToken },
-    }),
-  );
+  return answer({
+    request: params.flow.redeem({ handoff: handoff.value, proof }),
+    flow: params.flow,
+  });
+}
+
+export async function runProviderFlow<B, T>(params: {
+  provider: OAuthProvider;
+  native: NativeSignIn;
+  flow: ProviderFlow<B, T>;
+}): Promise<Result<T, OAuthFailure>> {
+  const credential = await params.native.credential[params.provider]();
+  if (credential === null) {
+    return runInBrowser(params);
+  }
+  if (!credential.ok) {
+    return credential;
+  }
+  return answer({
+    request: params.flow.withIdentityToken(credential.value),
+    flow: params.flow,
+  });
 }
 
 /**
  * Sign-in only: a provider address with no Alliance account comes back as
  * `OAuthError.NoAccount`, never as a new account.
  */
-export async function signInWithProvider(params: {
+export function signInWithProvider(params: {
   provider: OAuthProvider;
   guestToken: string | undefined;
   native: NativeSignIn;
 }): Promise<SignInResult> {
-  const credential = await params.native.credential[params.provider]();
-  if (credential === null) {
-    return signInInBrowser(params);
-  }
-  if (!credential.ok) {
-    return credential;
-  }
-  return session(
-    oAuthSignInWithIdentityToken({
-      path: { provider: params.provider },
-      body: { ...credential.value, guestToken: params.guestToken },
-    }),
-  );
+  const { provider, guestToken } = params;
+  return runProviderFlow({
+    provider,
+    native: params.native,
+    flow: {
+      withIdentityToken: (credential) =>
+        oAuthSignInWithIdentityToken({
+          path: { provider },
+          body: { ...credential, guestToken },
+        }),
+      startBrowserSession: () =>
+        oAuthStartMobileBrowserSession({ path: { provider } }),
+      redeem: (body) =>
+        oAuthRedeemMobileHandoff({
+          path: { provider },
+          body: { ...body, guestToken },
+        }),
+      result: sessionResult,
+    },
+  });
 }
