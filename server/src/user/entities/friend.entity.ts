@@ -25,12 +25,24 @@ export enum FriendStatus {
 
 @Entity()
 @Check(`"requesterId" <> "addresseeId"`)
-@Unique(["requester", "addressee"]) // a user can only request once per counterpart
+@Unique(["lowUserId", "highUserId"])
 export class Friend {
   // Fields
 
   @PrimaryGeneratedColumn()
   id: number;
+
+  @Column({
+    generatedType: "STORED",
+    asExpression: `LEAST("requesterId", "addresseeId")`,
+  })
+  lowUserId: number;
+
+  @Column({
+    generatedType: "STORED",
+    asExpression: `GREATEST("requesterId", "addresseeId")`,
+  })
+  highUserId: number;
 
   @Column({ type: "enum", enum: FriendStatus, default: FriendStatus.None })
   @ApiProperty({ enum: FriendStatus, enumName: "FriendStatus" })

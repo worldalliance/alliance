@@ -1,6 +1,5 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import type { CohortExpression } from "@alliance/common/cohort-expression";
-import { refusalMessage } from "@alliance/common/errorMessage";
 import {
   fieldHasOptions,
   flattenPageItems,
@@ -31,6 +30,7 @@ import type {
   ShareUrlStatsDto,
 } from "@alliance/shared/client/types.gen";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { useInvalidateFormsIndex } from "@alliance/shared/lib/useFormsAdmin";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
@@ -68,7 +68,6 @@ import React, {
   useState,
 } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
-import { z } from "zod";
 import ActionCompletionCurveChart from "../components/ActionCompletionCurveChart";
 import ActionFollowUpFormsTab from "../components/ActionFollowUpFormsTab";
 import ActionForm, { type ReviewerRow } from "../components/ActionForm";
@@ -134,21 +133,12 @@ type Tab =
 
 const imageUploadingMessage = "Wait for the cover image to finish uploading.";
 
-const actionSaveErrorSchema = z.object({
-  statusCode: z.number().int().min(400).max(599),
-});
-
-export const actionSaveErrorMessage = (error: unknown): string => {
-  const fallback = "Failed to save action";
-  const parsed = actionSaveErrorSchema.safeParse(error);
-  if (!parsed.success) return fallback;
-  return refusalMessage({
-    status: parsed.data.statusCode,
+export const actionSaveErrorMessage = (error: unknown): string =>
+  thrownRefusalMessage({
     error,
-    fallback,
+    fallback: "Failed to save action",
     sessionExpired: sessionExpiredMessage,
   });
-};
 
 const logActionSaveError = (error: unknown): string => {
   console.error(error);

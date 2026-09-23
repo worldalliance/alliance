@@ -20,6 +20,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
+  ApiConflictResponse,
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
@@ -256,19 +257,32 @@ export class UserController {
   @Post("friends/:targetUserId")
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: "Send a friend request" })
-  @ApiOkResponse({ description: "Friend request is now pending" })
+  @ApiOkResponse({ type: FriendStatusDto })
+  @ApiConflictResponse({ description: "Already friends" })
   async requestFriend(
     @Param("targetUserId", ParseIntPipe) targetUserId: number,
     @Request() req: JwtRequest,
-  ): Promise<void> {
-    await this.userService.createFriendRequest(req.user.sub, targetUserId);
-    this.posthog.capture({
-      event: AnalyticsEvent.FriendRequestSent,
-      distinctId: String(req.user.sub),
-      properties: {
-        targetUserId,
-      },
-    });
+  ): Promise<FriendStatusDto> {
+    const rel = await this.userService.createFriendRequest(
+      req.user.sub,
+      targetUserId,
+    );
+    this.posthog.capture(
+      rel.status === FriendStatus.Accepted
+        ? {
+            event: AnalyticsEvent.FriendRequestAccepted,
+            distinctId: String(req.user.sub),
+            properties: { requesterId: targetUserId },
+          }
+        : {
+            event: AnalyticsEvent.FriendRequestSent,
+            distinctId: String(req.user.sub),
+            properties: { targetUserId },
+          },
+    );
+    return new FriendStatusDto(
+      await this.userService.getRelationshipStatus(req.user.sub, targetUserId),
+    );
   }
 
   @Patch("friends/:requesterId/accept")

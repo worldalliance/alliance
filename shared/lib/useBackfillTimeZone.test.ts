@@ -110,6 +110,7 @@ describe("useBackfillTimeZone", () => {
     await waitFor(() =>
       expect(logged).toHaveBeenCalledWith(expect.any(String), {
         message: "offline",
+        statusCode: 500,
       }),
     );
   });

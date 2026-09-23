@@ -1,11 +1,11 @@
-import {
-  ActionDto,
-  actionsFindOne,
-  userListFriends,
-} from "@alliance/shared/client";
+import { ActionDto, actionsFindOne } from "@alliance/shared/client";
 import useActivities, {
   ActivityList,
 } from "@alliance/shared/lib/useActivities";
+import {
+  selectFriendIds,
+  useUserFriendsQuery,
+} from "@alliance/shared/lib/user";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
@@ -63,19 +63,9 @@ const ActionActivityFeedPage = () => {
     limit: 50,
   });
 
-  const [myFriends, setMyFriends] = useState<number[]>([]);
-
-  useEffect(() => {
-    const loadMyFriends = async () => {
-      if (!user) return;
-      const friendsRes = await userListFriends({
-        path: { id: user.id },
-      });
-      if (!friendsRes.data) return;
-      setMyFriends(friendsRes.data.map((friend) => friend.id));
-    };
-    loadMyFriends();
-  }, [user]);
+  const { data: myFriends = [] } = useUserFriendsQuery(user?.id, {
+    select: selectFriendIds,
+  });
 
   const friendsActivities = useMemo(
     () =>

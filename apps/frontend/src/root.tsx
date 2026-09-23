@@ -1,6 +1,8 @@
 import { MOBILE_OAUTH_RETURN_PATH } from "@alliance/common/oauth";
 import { client } from "@alliance/shared/client/client.gen";
 import { registerAnalytics } from "@alliance/shared/lib/analytics";
+import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
+import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
@@ -29,6 +31,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       gcTime: milliseconds({ days: 1 }),
+      retry: retryUnlessRefused(3),
     },
   },
 });
@@ -36,6 +39,8 @@ const queryClient = new QueryClient({
 client.setConfig({
   baseUrl: getApiUrl(),
 });
+
+registerErrorStatus(client);
 
 registerAnalytics(posthog);
 

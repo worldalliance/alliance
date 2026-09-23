@@ -1,6 +1,8 @@
+import { AnalyticsEvent } from "@alliance/common/analytics";
 import { toE164 } from "@alliance/common/phone";
 import { R } from "@alliance/common/result";
 import { Temporal } from "@js-temporal/polyfill";
+import { getRepositoryToken } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { AuthService } from "src/auth/auth.service";
 import { TokenMode } from "src/auth/dto/signin.dto";
@@ -10,6 +12,7 @@ import {
   Notification,
   NotificationCategory,
 } from "src/notifs/entities/notification.entity";
+import { PosthogService } from "src/posthog/posthog.service";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import { StoredInviteAssignmentKind } from "src/share-urls/invite-assignment";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
@@ -19,12 +22,12 @@ import {
 } from "src/user/entities/onetime-invite.entity";
 import { UserService } from "src/user/user.service";
 import request from "supertest";
-import type { Repository } from "typeorm";
+import { IsNull, type Repository } from "typeorm";
 import { Community } from "../src/community/entities/community.entity";
 import { City } from "../src/geo/city.entity";
 import { GeoModule } from "../src/geo/geo.module";
 import { getImageSource } from "../src/images/images.service";
-import { FriendStatus } from "../src/user/entities/friend.entity";
+import { Friend, FriendStatus } from "../src/user/entities/friend.entity";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
 import {
   createTestApp,
@@ -513,6 +516,10 @@ describe("Users (e2e)", () => {
       .set("Authorization", `Bearer ${userAToken}`);
 
     expect([200, 201]).toContain(res.status);
+    expect(res.body).toEqual({
+      status: FriendStatus.Pending,
+      didReceiveRequest: false,
+    });
 
     const status = await request(ctx.app.getHttpServer())
       .get(`/user/myfriendrelationship/${userBId}`)
@@ -601,6 +608,110 @@ describe("Users (e2e)", () => {
     expect(res.body.status).toBe(FriendStatus.Accepted);
   });
 
+  it("Re-sending a request to a friend leaves the friendship accepted", async () => {
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(409);
+
+    const status = await request(ctx.app.getHttpServer())
+      .get(`/user/myfriendrelationship/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`);
+    expect(status.body.status).toBe(FriendStatus.Accepted);
+  });
+
+  it("A request from the friend who accepted leaves the friendship accepted", async () => {
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userAId}`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(409);
+
+    const status = await request(ctx.app.getHttpServer())
+      .get(`/user/myfriendrelationship/${userAId}`)
+      .set("Authorization", `Bearer ${userBToken}`);
+    expect(status.body.status).toBe(FriendStatus.Accepted);
+  });
+
+  it("User A can send again after User B declines", async () => {
+    await request(ctx.app.getHttpServer())
+      .delete(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(200);
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(201);
+    await request(ctx.app.getHttpServer())
+      .patch(`/user/friends/${userAId}/decline`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(200);
+
+    const capture = jest.spyOn(ctx.app.get(PosthogService), "capture");
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(201);
+    expect(capture.mock.calls.map(([{ event }]) => event)).toEqual([
+      AnalyticsEvent.FriendRequestSent,
+    ]);
+    capture.mockRestore();
+
+    const status = await request(ctx.app.getHttpServer())
+      .get(`/user/myfriendrelationship/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`);
+    expect(status.body.status).toBe(FriendStatus.Pending);
+
+    const recv = await request(ctx.app.getHttpServer())
+      .get("/user/friends/requests/received")
+      .set("Authorization", `Bearer ${userBToken}`);
+    expect(recv.body.map((u) => u.id)).toEqual([userAId]);
+
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(201);
+
+    const unread = await ctx.dataSource.getRepository(Notification).count({
+      where: {
+        user: { id: userBId },
+        category: NotificationCategory.FriendRequest,
+        readAt: IsNull(),
+      },
+    });
+    expect(unread).toBe(1);
+  });
+
+  it("User B sending a request back accepts User A's pending one", async () => {
+    const capture = jest.spyOn(ctx.app.get(PosthogService), "capture");
+    const res = await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userAId}`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(201);
+    expect(res.body).toEqual({
+      status: FriendStatus.Accepted,
+      didReceiveRequest: false,
+    });
+    expect(capture.mock.calls.map(([{ event }]) => event)).toEqual([
+      AnalyticsEvent.FriendRequestAccepted,
+    ]);
+    capture.mockRestore();
+
+    for (const [token, otherId] of [
+      [userAToken, userBId],
+      [userBToken, userAId],
+    ] as const) {
+      const status = await request(ctx.app.getHttpServer())
+        .get(`/user/myfriendrelationship/${otherId}`)
+        .set("Authorization", `Bearer ${token}`);
+      expect(status.body.status).toBe(FriendStatus.Accepted);
+    }
+
+    const aFriends = await request(ctx.app.getHttpServer())
+      .get(`/user/listfriends/${userAId}`)
+      .set("Authorization", `Bearer ${userAToken}`);
+    expect(aFriends.body.map((u) => u.id)).toEqual([userBId]);
+  });
+
   it("Either user can un-friend the other", async () => {
     const res = await request(ctx.app.getHttpServer())
       .delete(`/user/friends/${userAId}`)
@@ -635,6 +746,134 @@ describe("Users (e2e)", () => {
       .set("Authorization", `Bearer ${userAToken}`);
     expect(status.status).toBe(200);
     expect(status.body.status).toBe(FriendStatus.Declined);
+  });
+
+  it("User B can send a request to User A after declining theirs", async () => {
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userAId}`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(201);
+
+    const status = await request(ctx.app.getHttpServer())
+      .get(`/user/myfriendrelationship/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`);
+    expect(status.body).toEqual({
+      status: FriendStatus.Pending,
+      didReceiveRequest: true,
+    });
+
+    await request(ctx.app.getHttpServer())
+      .patch(`/user/friends/${userBId}/accept`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(200);
+
+    for (const [token, otherId] of [
+      [userAToken, userBId],
+      [userBToken, userAId],
+    ] as const) {
+      const after = await request(ctx.app.getHttpServer())
+        .get(`/user/myfriendrelationship/${otherId}`)
+        .set("Authorization", `Bearer ${token}`);
+      expect(after.body.status).toBe(FriendStatus.Accepted);
+    }
+  });
+
+  it("A request that crosses the other user's accepts it", async () => {
+    await request(ctx.app.getHttpServer())
+      .delete(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(200);
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(201);
+
+    // B's two lookups miss A's row, as if A's insert committed right after them.
+    const findOne = jest
+      .spyOn(
+        ctx.app.get<Repository<Friend>>(getRepositoryToken(Friend)),
+        "findOne",
+      )
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userAId}`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(201);
+    findOne.mockRestore();
+
+    const rows = await ctx.dataSource.getRepository(Friend).find({
+      where: [
+        { requester: { id: userAId }, addressee: { id: userBId } },
+        { requester: { id: userBId }, addressee: { id: userAId } },
+      ],
+    });
+    expect(rows.map((row) => row.status)).toEqual([FriendStatus.Accepted]);
+  });
+
+  const expectRemovalMarksRequestRead = async (
+    removerToken: string,
+    removedUserId: number,
+  ) => {
+    const countUnreadRequests = () =>
+      ctx.dataSource.getRepository(Notification).count({
+        where: {
+          user: { id: userBId },
+          category: NotificationCategory.FriendRequest,
+          readAt: IsNull(),
+        },
+      });
+    await request(ctx.app.getHttpServer())
+      .delete(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(200);
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(201);
+    expect(await countUnreadRequests()).toBe(1);
+
+    await request(ctx.app.getHttpServer())
+      .delete(`/user/friends/${removedUserId}`)
+      .set("Authorization", `Bearer ${removerToken}`)
+      .expect(200);
+
+    expect(await countUnreadRequests()).toBe(0);
+  };
+
+  it("Cancelling a request marks its notification read", async () => {
+    await expectRemovalMarksRequestRead(userAToken, userBId);
+  });
+
+  it("Removing a received request marks its notification read", async () => {
+    await expectRemovalMarksRequestRead(userBToken, userAId);
+  });
+
+  it("Un-friending marks the accepted notification read", async () => {
+    const countUnreadAccepted = () =>
+      ctx.dataSource.getRepository(Notification).count({
+        where: {
+          user: { id: userAId },
+          category: NotificationCategory.FriendRequestAccepted,
+          readAt: IsNull(),
+        },
+      });
+    const unreadBefore = await countUnreadAccepted();
+
+    await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set("Authorization", `Bearer ${userAToken}`)
+      .expect(201);
+    await request(ctx.app.getHttpServer())
+      .patch(`/user/friends/${userAId}/accept`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(200);
+    await request(ctx.app.getHttpServer())
+      .delete(`/user/friends/${userAId}`)
+      .set("Authorization", `Bearer ${userBToken}`)
+      .expect(200);
+
+    expect(await countUnreadAccepted()).toBe(unreadBefore);
   });
 
   /* ────────────────────────────────────────────────────────────

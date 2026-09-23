@@ -4790,20 +4790,15 @@ export type UserRequestFriendData = {
 
 export type UserRequestFriendErrors = {
     /**
-     * Default error response for hey-api
+     * Already friends
      */
-    default: HeyApiError;
+    409: HeyApiError;
 };
 
 export type UserRequestFriendError = UserRequestFriendErrors[keyof UserRequestFriendErrors];
 
 export type UserRequestFriendResponses = {
-    /**
-     * Friend request is now pending
-     */
-    200: {
-        [key: string]: never;
-    };
+    200: FriendStatusDto;
 };
 
 export type UserRequestFriendResponse = UserRequestFriendResponses[keyof UserRequestFriendResponses];

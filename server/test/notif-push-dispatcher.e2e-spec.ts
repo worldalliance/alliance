@@ -1,10 +1,19 @@
 import { milliseconds } from "date-fns";
 import { Expo } from "expo-server-sdk";
+import {
+  Comment,
+  CommentParentObject,
+} from "src/forum/entities/comment.entity";
+import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { MessagingModule } from "src/messaging/messaging.module";
 import {
   Notification,
   NotificationCategory,
 } from "src/notifs/entities/notification.entity";
+import {
+  UnreadContent,
+  UnreadContentType,
+} from "src/notifs/entities/unread-content.entity";
 import { NotifPushDispatcherWorker } from "src/push/notif-push-dispatcher.worker";
 import { Push } from "src/push/push.entity";
 import { EXPO_CLIENT, PushService } from "src/push/push.service";
@@ -19,6 +28,7 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
   let deviceRepo: Repository<UserDevice>;
   let pushRepo: Repository<Push>;
   let notifRepo: Repository<Notification>;
+  let unreadContentRepo: Repository<UnreadContent>;
   let pushService: PushService;
   let dispatcher: NotifPushDispatcherWorker;
   let mockSendPush: jest.Mock;
@@ -75,12 +85,43 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
     return notifRepo.save(notif);
   };
 
+  const createForumReplyUnreadContent = async (
+    user: User,
+    sendTime: Date,
+    readAt: Date,
+  ): Promise<UnreadContent> => {
+    const editableContent = await ctx.dataSource
+      .getRepository(EditableContent)
+      .save({ body: "Test reply body", attachments: [] });
+    const comment = await ctx.dataSource.getRepository(Comment).save({
+      author: user,
+      authorId: user.id,
+      editableContent,
+      parentObjectType: CommentParentObject.Post,
+      parentObjectId: 1,
+      deleted: false,
+      pinned: false,
+      likesCount: 0,
+    });
+    return unreadContentRepo.save(
+      unreadContentRepo.create({
+        user,
+        contentType: UnreadContentType.ForumReply,
+        contentId: comment.id,
+        sendTime,
+        readAt,
+        shouldPush: true,
+      }),
+    );
+  };
+
   beforeAll(async () => {
     ctx = await createTestApp([MessagingModule]);
     userRepo = ctx.dataSource.getRepository(User);
     deviceRepo = ctx.dataSource.getRepository(UserDevice);
     pushRepo = ctx.dataSource.getRepository(Push);
     notifRepo = ctx.dataSource.getRepository(Notification);
+    unreadContentRepo = ctx.dataSource.getRepository(UnreadContent);
     pushService = ctx.app.get(PushService);
     dispatcher = ctx.app.get(NotifPushDispatcherWorker);
 
@@ -106,6 +147,7 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
   beforeEach(async () => {
     await pushRepo.query("DELETE FROM push");
     await notifRepo.query("DELETE FROM notification");
+    await unreadContentRepo.query("DELETE FROM unread_content");
     await deviceRepo.query("DELETE FROM user_device");
     mockSendPush.mockClear();
   });
@@ -306,6 +348,78 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
       expect(messages).toHaveLength(1);
       expect(messages[0].expoPushToken).toBe(oldDevice.expoPushToken);
       expect(messages[0].expoPushToken).not.toBe(newDevice.expoPushToken);
+    });
+
+    it("does not push a notification read after it was due", async () => {
+      const user = await createUser();
+      const now = new Date();
+      const oneHourAgo = new Date(now.getTime() - milliseconds({ hours: 1 }));
+      const fiveMinutesAgo = new Date(
+        now.getTime() - milliseconds({ minutes: 5 }),
+      );
+
+      await createDevice(user, oneHourAgo);
+      await createNotification(user, fiveMinutesAgo, { readAt: now });
+
+      const messages = await dispatcher.findNotificationPushes(
+        "test-dispatch-read-after-due",
+      );
+
+      expect(messages).toHaveLength(0);
+    });
+
+    it("pushes a notification read before it was due", async () => {
+      const user = await createUser();
+      const now = new Date();
+      const oneHourAgo = new Date(now.getTime() - milliseconds({ hours: 1 }));
+      const fiveMinutesAgo = new Date(
+        now.getTime() - milliseconds({ minutes: 5 }),
+      );
+
+      await createDevice(user, oneHourAgo);
+      await createNotification(user, fiveMinutesAgo, { readAt: oneHourAgo });
+
+      const messages = await dispatcher.findNotificationPushes(
+        "test-dispatch-read-before-due",
+      );
+
+      expect(messages).toHaveLength(1);
+    });
+
+    it("does not push unread content read after it was due", async () => {
+      const user = await createUser();
+      const now = new Date();
+      const oneHourAgo = new Date(now.getTime() - milliseconds({ hours: 1 }));
+      const fiveMinutesAgo = new Date(
+        now.getTime() - milliseconds({ minutes: 5 }),
+      );
+
+      await createDevice(user, oneHourAgo);
+      await createForumReplyUnreadContent(user, fiveMinutesAgo, now);
+
+      const messages = await dispatcher.findUnreadContentPushes(
+        "test-dispatch-unread-read-after-due",
+      );
+
+      expect(messages).toHaveLength(0);
+    });
+
+    it("pushes unread content read before it was due", async () => {
+      const user = await createUser();
+      const now = new Date();
+      const oneHourAgo = new Date(now.getTime() - milliseconds({ hours: 1 }));
+      const fiveMinutesAgo = new Date(
+        now.getTime() - milliseconds({ minutes: 5 }),
+      );
+
+      await createDevice(user, oneHourAgo);
+      await createForumReplyUnreadContent(user, fiveMinutesAgo, oneHourAgo);
+
+      const messages = await dispatcher.findUnreadContentPushes(
+        "test-dispatch-unread-read-before-due",
+      );
+
+      expect(messages).toHaveLength(1);
     });
   });
 });

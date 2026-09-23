@@ -32,11 +32,14 @@ export function useMyCommunities(params?: {
     data: communities = [],
     isLoading,
     isFetching,
+    isError,
     refetch,
   } = useQuery({
     queryKey: QUERY_KEY,
     queryFn: () =>
-      communityGetMyCommunities().then((response) => response.data ?? []),
+      communityGetMyCommunities({ throwOnError: true }).then(
+        (response) => response.data,
+      ),
     enabled,
   });
 
@@ -112,6 +115,7 @@ export function useMyCommunities(params?: {
     communityIds,
     isLoading,
     isFetching,
+    isError,
     refetch,
     refreshCommunities,
     removeCommunity,

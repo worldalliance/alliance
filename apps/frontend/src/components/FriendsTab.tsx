@@ -1,12 +1,13 @@
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import {
-  ProfileDto,
-  userAcceptFriendRequest,
-  userDeclineFriendRequest,
-  userListFriends,
-  userListReceivedRequests,
-  userListSentRequests,
-  userRemoveFriend,
-} from "@alliance/shared/client";
+  friendMutationErrorMessage,
+  useAcceptFriendRequestMutation,
+  useDeclineFriendRequestMutation,
+  useRemoveFriendMutation,
+  useUserFriendsQuery,
+  useUserReceivedFriendRequestsQuery,
+  useUserSentFriendRequestsQuery,
+} from "@alliance/shared/lib/user";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -14,7 +15,6 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import List from "@alliance/sharedweb/ui/List";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
 import { Link, href } from "react-router";
 
@@ -22,38 +22,78 @@ interface FriendsTabProps {
   userId: number;
   isMe?: boolean;
   originalTab?: "friends" | "received" | "sent";
-  friends?: ProfileDto[];
   className?: string;
 }
+
+const LoadFailed = ({
+  onRetry,
+  retrying,
+}: {
+  onRetry: () => void;
+  retrying: boolean;
+}) => (
+  <div className="flex flex-col items-center gap-y-2 py-4">
+    <p className="text-center text-zinc-500 text-sm">
+      Couldn&apos;t load this list.
+    </p>
+    <Button
+      color={ButtonColor.BlueOutline}
+      onClick={onRetry}
+      disabled={retrying}
+      size="small"
+    >
+      Try again
+    </Button>
+  </div>
+);
+
+const tabLabel = (params: {
+  label: string;
+  count: number;
+  didFail: boolean;
+}) => (params.didFail ? params.label : `${params.label} (${params.count})`);
 
 const FriendsTab: React.FC<FriendsTabProps> = ({
   userId,
   isMe = false,
   originalTab = "friends",
-  friends: initialFriends = [],
   className,
 }: FriendsTabProps) => {
-  const queryClient = useQueryClient();
+  const friendsQuery = useUserFriendsQuery(userId);
+  const {
+    data: friends = [],
+    isLoading: isLoadingFriends,
+    isFetching: isFetchingFriends,
+    refetch: refetchFriends,
+  } = friendsQuery;
+  const didFriendsFail = failedToLoad(friendsQuery);
 
-  const { data: friends = initialFriends, isLoading: isLoadingFriends } =
-    useQuery({
-      queryKey: ["userListFriends", userId],
-      queryFn: () =>
-        userListFriends({ path: { id: userId } }).then((res) => res.data ?? []),
-    });
+  const receivedQuery = useUserReceivedFriendRequestsQuery();
+  const {
+    data: receivedRequests = [],
+    isLoading: isLoadingReceived,
+    isFetching: isFetchingReceived,
+    refetch: refetchReceived,
+  } = receivedQuery;
+  const didReceivedFail = failedToLoad(receivedQuery);
 
-  const { data: receivedRequests = [], isLoading: isLoadingReceived } =
-    useQuery({
-      queryKey: ["userListReceivedRequests"],
-      queryFn: () => userListReceivedRequests({}).then((res) => res.data ?? []),
-    });
+  const sentQuery = useUserSentFriendRequestsQuery();
+  const {
+    data: sentRequests = [],
+    isLoading: isLoadingSent,
+    isFetching: isFetchingSent,
+    refetch: refetchSent,
+  } = sentQuery;
+  const didSentFail = failedToLoad(sentQuery);
 
-  const { data: sentRequests = [], isLoading: isLoadingSent } = useQuery({
-    queryKey: ["userListSentRequests"],
-    queryFn: () => userListSentRequests({}).then((res) => res.data ?? []),
-  });
+  const acceptFriendRequest = useAcceptFriendRequestMutation();
+  const declineFriendRequest = useDeclineFriendRequestMutation();
+  const removeFriend = useRemoveFriendMutation();
 
-  const loading = isLoadingFriends || isLoadingReceived || isLoadingSent;
+  const loading =
+    (isLoadingFriends && !didFriendsFail) ||
+    (isLoadingReceived && !didReceivedFail) ||
+    (isLoadingSent && !didSentFail);
 
   const [activeTab, setActiveTab] = useState<"friends" | "received" | "sent">(
     originalTab,
@@ -61,7 +101,10 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
   const [processingIds, setProcessingIds] = useState<Record<string, boolean>>(
     {},
   );
-  const { confirm } = useToast();
+  const { confirm, error: errorToast } = useToast();
+
+  const showFailure = (title: string, error: unknown) =>
+    errorToast(friendMutationErrorMessage(error), title);
 
   const startProcessing = (userId: number) => {
     setProcessingIds((prev) => ({ ...prev, [userId]: true }));
@@ -72,18 +115,13 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
   };
 
   const handleAcceptRequest = async (requesterId: number) => {
-    console.log("requesterId", requesterId);
     startProcessing(requesterId);
 
     try {
-      const response = await userAcceptFriendRequest({ path: { requesterId } });
-      console.log("response", response);
-      queryClient.invalidateQueries({ queryKey: ["userListFriends"] });
-      queryClient.invalidateQueries({
-        queryKey: ["userListReceivedRequests"],
-      });
+      await acceptFriendRequest.mutateAsync(requesterId);
     } catch (error) {
       console.error("Error accepting friend request:", error);
+      showFailure("Couldn't accept friend request", error);
     } finally {
       endProcessing(requesterId);
     }
@@ -93,12 +131,10 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
     startProcessing(requesterId);
 
     try {
-      await userDeclineFriendRequest({ path: { requesterId } });
-      queryClient.invalidateQueries({
-        queryKey: ["userListReceivedRequests"],
-      });
+      await declineFriendRequest.mutateAsync(requesterId);
     } catch (error) {
       console.error("Error declining friend request:", error);
+      showFailure("Couldn't decline friend request", error);
     } finally {
       endProcessing(requesterId);
     }
@@ -122,10 +158,10 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
     startProcessing(friendId);
 
     try {
-      await userRemoveFriend({ path: { targetUserId: friendId } });
-      queryClient.invalidateQueries({ queryKey: ["userListFriends"] });
+      await removeFriend.mutateAsync(friendId);
     } catch (error) {
       console.error("Error removing friend:", error);
+      showFailure("Couldn't remove friend", error);
     } finally {
       endProcessing(friendId);
     }
@@ -135,10 +171,10 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
     startProcessing(userId);
 
     try {
-      await userRemoveFriend({ path: { targetUserId: userId } });
-      queryClient.invalidateQueries({ queryKey: ["userListSentRequests"] });
+      await removeFriend.mutateAsync(userId);
     } catch (error) {
       console.error("Error canceling friend request:", error);
+      showFailure("Couldn't cancel friend request", error);
     } finally {
       endProcessing(userId);
     }
@@ -160,9 +196,16 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
   const friendsList: React.ReactNode = (
     <>
       {friends.length === 0 ? (
-        <p className="text-center text-zinc-500 py-4 text-sm">
-          No friends yet.
-        </p>
+        didFriendsFail ? (
+          <LoadFailed
+            onRetry={() => void refetchFriends()}
+            retrying={isFetchingFriends}
+          />
+        ) : (
+          <p className="text-center text-zinc-500 py-4 text-sm">
+            No friends yet.
+          </p>
+        )
       ) : (
         <List>
           {friends
@@ -216,7 +259,11 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
           )}
           onClick={() => setActiveTab("friends")}
         >
-          Friends ({friends.length})
+          {tabLabel({
+            label: "Friends",
+            count: friends.length,
+            didFail: didFriendsFail,
+          })}
         </span>
         {isMe && (
           <span
@@ -226,7 +273,11 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
             )}
             onClick={() => setActiveTab("received")}
           >
-            Received Requests ({receivedRequests.length})
+            {tabLabel({
+              label: "Received Requests",
+              count: receivedRequests.length,
+              didFail: didReceivedFail,
+            })}
           </span>
         )}
         {isMe && (
@@ -237,7 +288,11 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
             )}
             onClick={() => setActiveTab("sent")}
           >
-            Sent Requests ({sentRequests.length})
+            {tabLabel({
+              label: "Sent Requests",
+              count: sentRequests.length,
+              didFail: didSentFail,
+            })}
           </span>
         )}
       </div>
@@ -248,9 +303,16 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
         {activeTab === "received" && isMe && (
           <>
             {receivedRequests.length === 0 ? (
-              <p className="text-center text-zinc-500 py-4">
-                No pending friend requests.
-              </p>
+              didReceivedFail ? (
+                <LoadFailed
+                  onRetry={() => void refetchReceived()}
+                  retrying={isFetchingReceived}
+                />
+              ) : (
+                <p className="text-center text-zinc-500 py-4">
+                  No pending friend requests.
+                </p>
+              )
             ) : (
               <List>
                 {receivedRequests.map((request) => (
@@ -293,9 +355,16 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
         {activeTab === "sent" && (
           <>
             {sentRequests.length === 0 ? (
-              <p className="text-center text-zinc-500 py-4 text-sm">
-                You haven&apos;t sent any friend requests.
-              </p>
+              didSentFail ? (
+                <LoadFailed
+                  onRetry={() => void refetchSent()}
+                  retrying={isFetchingSent}
+                />
+              ) : (
+                <p className="text-center text-zinc-500 py-4 text-sm">
+                  You haven&apos;t sent any friend requests.
+                </p>
+              )
             ) : (
               <List>
                 {sentRequests.map((request) => (

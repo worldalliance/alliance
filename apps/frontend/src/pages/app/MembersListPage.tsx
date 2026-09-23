@@ -1,10 +1,12 @@
 import {
   ProfileDtoWithFriends,
-  userListFriends,
-  userListSentRequests,
   userMembersWithFriends,
 } from "@alliance/shared/client";
 
+import {
+  useUserFriendsQuery,
+  useUserSentFriendRequestsQuery,
+} from "@alliance/shared/lib/user";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import List from "@alliance/sharedweb/ui/List";
@@ -44,17 +46,10 @@ const MembersListPage = () => {
   );
 
   const { data: sentRequests = [], isLoading: isLoadingSentRequests } =
-    useQuery({
-      queryKey: ["userListSentRequests"],
-      queryFn: () => userListSentRequests().then((res) => res.data ?? []),
-    });
+    useUserSentFriendRequestsQuery();
 
-  const { data: friendsData = [], isPending: isPendingFriends } = useQuery({
-    queryKey: ["userListFriends", user?.id],
-    queryFn: () =>
-      userListFriends({ path: { id: user!.id } }).then((res) => res.data ?? []),
-    enabled: !!user,
-  });
+  const { data: friendsData = [], isPending: isPendingFriends } =
+    useUserFriendsQuery(user?.id);
 
   const sentRequestIds = useMemo(
     () => new Set(sentRequests.map((req) => req.id)),

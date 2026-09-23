@@ -1,3 +1,6 @@
+import { refusalMessage } from "@alliance/common/errorMessage";
+import type { Client } from "@hey-api/client-fetch";
+import { z } from "zod";
 import { CreateClientConfig } from "../client/client.gen";
 
 const isReactNative = (): boolean =>
@@ -58,4 +61,30 @@ export const createClientConfig: CreateClientConfig = (config) => {
     fetch: wrappedFetch,
     throwOnError: false,
   };
+};
+
+// Attach the HTTP status because the error body may omit it.
+export const registerErrorStatus = (client: Client): void => {
+  client.interceptors.error.use((error, response) => ({
+    ...(typeof error === "object" && error !== null && !Array.isArray(error)
+      ? error
+      : { body: error }),
+    statusCode: response.status,
+  }));
+};
+
+const thrownStatusSchema = z.object({
+  statusCode: z.number().int().min(400).max(599),
+});
+
+// registerErrorStatus puts a status on every error response, so an error
+// without one never reached the server.
+export const thrownRefusalMessage = (params: {
+  error: unknown;
+  fallback: string;
+  sessionExpired: string;
+}): string => {
+  const thrown = thrownStatusSchema.safeParse(params.error);
+  if (!thrown.success) return params.fallback;
+  return refusalMessage({ ...params, status: thrown.data.statusCode });
 };

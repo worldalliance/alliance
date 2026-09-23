@@ -1,4 +1,6 @@
 import { client } from "@alliance/shared/client/client.gen";
+import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
+import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
 import { useFonts } from "expo-font";
@@ -31,12 +33,14 @@ void SplashScreen.preventAutoHideAsync().catch(() => {});
 const SPLASH_WATCHDOG_MS = milliseconds({ seconds: 30 });
 setTimeout(hideSplash, SPLASH_WATCHDOG_MS);
 
+registerErrorStatus(client);
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: milliseconds({ minutes: 5 }),
       gcTime: milliseconds({ minutes: 30 }),
-      retry: 2,
+      retry: retryUnlessRefused(2),
       refetchOnWindowFocus: false,
     },
   },

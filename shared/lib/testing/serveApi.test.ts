@@ -16,6 +16,28 @@ it("answers the client from the route the request matched", async () => {
   expect(data).toEqual({ name: "one" });
 });
 
+it("answers a route the test added, and the file's routes for the rest", async () => {
+  api.alsoServing({
+    "GET /probe/:name": () => Response.json({ name: "added" }),
+  });
+
+  expect((await client.get({ url: "/probe/one" })).data).toEqual({
+    name: "added",
+  });
+  expect((await client.get({ url: "/refuse" })).error).toEqual({
+    message: "no",
+    statusCode: 403,
+  });
+});
+
+it("records a request no route matched once the test added its own", async () => {
+  api.alsoServing({ "GET /probe/:name": () => Response.json({}) });
+
+  await client.get({ url: "/nowhere" }).catch(() => {});
+
+  expect(() => endServedTest()).toThrow(UnroutedRequest);
+});
+
 it("records a request no route matched, and throws it from the restore", async () => {
   await client.get({ url: "/nowhere" }).catch(() => {});
 
@@ -41,6 +63,7 @@ it("throws the refusal where the test asked the client to", async () => {
 
   await expect(client.get({ url: "/probe/one" })).rejects.toEqual({
     message: "no",
+    statusCode: 403,
   });
 });
 
@@ -49,7 +72,7 @@ it("throws the refusal where the test asked the client to", async () => {
 it("serves the base handler again after a throwing test", async () => {
   const { error } = await client.get({ url: "/refuse" });
 
-  expect(error).toEqual({ message: "no" });
+  expect(error).toEqual({ message: "no", statusCode: 403 });
 });
 
 // Has to stay last: ending on the base handler leaves throwOnError already
@@ -61,6 +84,7 @@ it("leaves the throwing config for the restore to take off", async () => {
 
   await expect(client.get({ url: "/probe/one" })).rejects.toEqual({
     message: "no",
+    statusCode: 403,
   });
 });
 

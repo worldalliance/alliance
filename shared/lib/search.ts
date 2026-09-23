@@ -110,10 +110,10 @@ export const useSearchResults = (
     setLoading(true);
     const timeout = setTimeout(() => {
       setError(null);
-      searchAll({ query: { query } })
+      searchAll({ query: { query }, throwOnError: true })
         .then((response) => {
           if (cancelled) return;
-          const { grouped, ordered } = groupSearchItems(response.data ?? []);
+          const { grouped, ordered } = groupSearchItems(response.data);
 
           setItems(ordered);
           setItemsByCategory(grouped);

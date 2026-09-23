@@ -63,6 +63,7 @@ export class NotifPushDispatcherWorker {
             AND n."shouldPush" = true
             AND n."pushClaimedBy" IS NULL
             AND n."pushDispatchedAt" IS NULL
+            AND (n."readAt" IS NULL OR n."readAt" < n."sendTime")
           ORDER BY n."sendTime" ASC
           LIMIT 500
           FOR UPDATE SKIP LOCKED
@@ -148,7 +149,7 @@ export class NotifPushDispatcherWorker {
     return messages;
   }
 
-  private async findUnreadContentPushes(
+  async findUnreadContentPushes(
     dispatchID: string,
   ): Promise<CreatePushMessage[]> {
     const claimed: { id: number }[] = (
@@ -161,6 +162,8 @@ export class NotifPushDispatcherWorker {
             AND uc."shouldPush" = true
             AND uc."pushClaimedBy" IS NULL
             AND uc."pushDispatchedAt" IS NULL
+            -- A row read before it came due (e.g. an action update seen on its page) still pushes.
+            AND (uc."readAt" IS NULL OR uc."readAt" < uc."sendTime")
           ORDER BY uc."sendTime" ASC
           LIMIT 500
           FOR UPDATE SKIP LOCKED

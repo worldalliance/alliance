@@ -9,6 +9,7 @@ import {
 } from "@alliance/shared/client";
 import { type FeedActionActivityDto } from "@alliance/shared/lib/actionActivity";
 import { roleBadges } from "@alliance/shared/lib/copy";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { ParsedHomeFeedItemDto } from "@alliance/shared/lib/feedHelpers";
 import useActivities, {
   ActivityList,
@@ -16,6 +17,7 @@ import useActivities, {
 import useUserFeed from "@alliance/shared/lib/useUserFeed";
 import {
   buildForumActivityItems,
+  friendMutationErrorMessage,
   useAcceptFriendRequestMutation,
   useDeclineFriendRequestMutation,
   useMessageableUsersQuery,
@@ -35,8 +37,20 @@ import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { useQuery } from "@tanstack/react-query";
 import { RelativePathString, router, useLocalSearchParams } from "expo-router";
-import { ChevronDown, Edit, Menu, MessageSquare } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ChevronDown,
+  Edit,
+  Menu,
+  MessageSquare,
+  RefreshCw,
+} from "lucide-react-native";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentProps,
+} from "react";
 import {
   Alert,
   FlatList,
@@ -80,6 +94,29 @@ enum FriendsTab {
   Sent = "sent",
 }
 
+function LoadFailed({
+  onRetry,
+  retrying,
+}: {
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  return (
+    <View className="items-center gap-2 py-6 px-4">
+      <Text className="text-center text-zinc-500">
+        Couldn&apos;t load this list.
+      </Text>
+      <Button
+        title="Try again"
+        color={ButtonColor.White}
+        size={ButtonSize.Small}
+        onPress={onRetry}
+        loading={retrying}
+      />
+    </View>
+  );
+}
+
 const PROFILE_TABS_ORDER: ProfileTab[] = [
   ProfileTab.Activity,
   ProfileTab.ActionsCompleted,
@@ -104,6 +141,9 @@ const FRIENDS_TAB_LABELS: Record<FriendsTab, string> = {
   [FriendsTab.Sent]: "Sent",
 };
 
+const alertFriendFailure = (title: string, error: unknown) =>
+  Alert.alert(title, friendMutationErrorMessage(error));
+
 export default function UserProfileScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const rawId = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -117,18 +157,42 @@ export default function UserProfileScreen() {
     isPending: profilePending,
     isError: profileError,
   } = useUserProfileQuery(userId);
-  const { data: friendStatus } = useUserFriendStatusQuery(userId, {
+  const friendStatusQuery = useUserFriendStatusQuery(userId, {
     enabled: isAuthenticated && !isMe,
   });
+  const {
+    data: friendStatus,
+    isFetching: isFetchingFriendStatus,
+    refetch: refetchFriendStatus,
+  } = friendStatusQuery;
+  const didFriendStatusFail = failedToLoad(friendStatusQuery);
   const { data: forumPosts = [] } = useUserForumPostsQuery(userId);
   const { data: forumComments = [] } = useUserForumCommentsQuery(userId);
-  const { data: friends = [] } = useUserFriendsQuery(userId);
-  const { data: receivedRequests = [] } = useUserReceivedFriendRequestsQuery({
+  const friendsQuery = useUserFriendsQuery(userId);
+  const {
+    data: friends = [],
+    isFetching: isFetchingFriends,
+    refetch: refetchFriends,
+  } = friendsQuery;
+  const didFriendsFail = failedToLoad(friendsQuery);
+  const receivedQuery = useUserReceivedFriendRequestsQuery({
     enabled: isMe,
   });
-  const { data: sentRequests = [] } = useUserSentFriendRequestsQuery({
+  const {
+    data: receivedRequests = [],
+    isFetching: isFetchingReceived,
+    refetch: refetchReceived,
+  } = receivedQuery;
+  const didReceivedFail = failedToLoad(receivedQuery);
+  const sentQuery = useUserSentFriendRequestsQuery({
     enabled: isMe,
   });
+  const {
+    data: sentRequests = [],
+    isFetching: isFetchingSent,
+    refetch: refetchSent,
+  } = sentQuery;
+  const didSentFail = failedToLoad(sentQuery);
   const { ids: messageableIds } = useMessageableUsersQuery({
     enabled: isAuthenticated,
   });
@@ -137,6 +201,8 @@ export default function UserProfileScreen() {
   const acceptFriendRequest = useAcceptFriendRequestMutation();
   const declineFriendRequest = useDeclineFriendRequestMutation();
   const removeFriend = useRemoveFriendMutation();
+  const answeringRequest =
+    acceptFriendRequest.isPending || declineFriendRequest.isPending;
   const updateProfileMutation = useUpdateProfileMutation(userId);
 
   const {
@@ -270,6 +336,7 @@ export default function UserProfileScreen() {
       await sendFriendRequest.mutateAsync(userId);
     } catch (error) {
       console.error("Failed to send friend request", error);
+      alertFriendFailure("Couldn't send friend request", error);
     }
   }, [userId, sendFriendRequest]);
 
@@ -279,6 +346,7 @@ export default function UserProfileScreen() {
       await acceptFriendRequest.mutateAsync(userId);
     } catch (error) {
       console.error("Failed to accept friend request", error);
+      alertFriendFailure("Couldn't accept friend request", error);
     }
   }, [userId, acceptFriendRequest]);
 
@@ -288,6 +356,7 @@ export default function UserProfileScreen() {
       await declineFriendRequest.mutateAsync(userId);
     } catch (error) {
       console.error("Failed to decline friend request", error);
+      alertFriendFailure("Couldn't decline friend request", error);
     }
   }, [userId, declineFriendRequest]);
 
@@ -298,6 +367,7 @@ export default function UserProfileScreen() {
       setFriendActionsOpen(false);
     } catch (error) {
       console.error("Failed to remove friend", error);
+      alertFriendFailure("Couldn't remove friend", error);
     }
   }, [userId, removeFriend]);
 
@@ -314,7 +384,12 @@ export default function UserProfileScreen() {
         {
           text: "Cancel request",
           style: "destructive",
-          onPress: () => removeFriend.mutate(targetId),
+          onPress: () =>
+            removeFriend
+              .mutateAsync(targetId)
+              .catch((error) =>
+                alertFriendFailure("Couldn't cancel friend request", error),
+              ),
         },
       ]);
     },
@@ -322,101 +397,126 @@ export default function UserProfileScreen() {
   );
 
   const renderFriendAction = useCallback(() => {
-    if (!isAuthenticated || isMe || !friendStatus) return null;
+    if (!isAuthenticated || isMe) return null;
 
-    if (friendStatus.status === "none") {
+    if (!friendStatus) {
+      if (!didFriendStatusFail) return null;
       return (
         <Button
-          title="Send friend request"
           color={ButtonColor.White}
           size={ButtonSize.Small}
-          onPress={handleSendFriendRequest}
-        />
+          onPress={() => void refetchFriendStatus()}
+          loading={isFetchingFriendStatus}
+          accessibilityLabel="Retry loading friend status"
+        >
+          <RefreshCw size={14} color="#27272a" />
+        </Button>
       );
     }
 
-    if (friendStatus.status === "accepted") {
-      return (
-        <View className="relative">
-          {friendActionsOpen ? (
-            <Pressable
-              className="absolute -inset-4"
-              onPress={() => setFriendActionsOpen(false)}
-            />
-          ) : null}
+    const status = friendStatus.status ?? "none";
+    switch (status) {
+      case "none":
+      case "declined":
+        return (
           <Button
+            title="Send friend request"
             color={ButtonColor.White}
             size={ButtonSize.Small}
-            onPress={() => setFriendActionsOpen((prev) => !prev)}
-          >
-            <View className="flex-row items-center gap-1">
-              <Text className="text-zinc-800" weight={FontWeight.Medium}>
-                Friends
-              </Text>
-              <ChevronDown size={14} color="#27272a" />
-            </View>
-          </Button>
-          {friendActionsOpen ? (
-            <View className="absolute left-0 top-full z-20 self-start rounded-sm border border-stone-300 bg-white">
-              <TouchableOpacity
-                className="flex-row self-start px-3 py-2"
-                onPress={handleRemoveFriend}
-                activeOpacity={0.8}
-              >
-                <View className="flex-row gap-1">
-                  <Text className="shrink-0 text-sm text-red-600">Remove</Text>
-                  <Text className="shrink-0 text-sm text-red-600">friend</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-          ) : null}
-        </View>
-      );
-    }
-
-    if (friendStatus.status === "pending") {
-      if (friendStatus.didReceiveRequest) {
+            onPress={handleSendFriendRequest}
+          />
+        );
+      case "accepted":
         return (
-          <View className="flex-row items-center gap-2">
-            <Text className="text-zinc-600 text-sm">
-              Sent you a friend request
-            </Text>
+          <View className="relative">
+            {friendActionsOpen ? (
+              <Pressable
+                className="absolute -inset-4"
+                onPress={() => setFriendActionsOpen(false)}
+              />
+            ) : null}
             <Button
-              title="Accept"
-              color={ButtonColor.Green}
+              color={ButtonColor.White}
               size={ButtonSize.Small}
-              onPress={handleAcceptFriendRequest}
-            />
-            <Button
-              title="Decline"
-              color={ButtonColor.Light}
-              size={ButtonSize.Small}
-              onPress={handleDeclineFriendRequest}
-            />
+              onPress={() => setFriendActionsOpen((prev) => !prev)}
+            >
+              <View className="flex-row items-center gap-1">
+                <Text className="text-zinc-800" weight={FontWeight.Medium}>
+                  Friends
+                </Text>
+                <ChevronDown size={14} color="#27272a" />
+              </View>
+            </Button>
+            {friendActionsOpen ? (
+              <View className="absolute left-0 top-full z-20 self-start rounded-sm border border-stone-300 bg-white">
+                <TouchableOpacity
+                  className="flex-row self-start px-3 py-2"
+                  onPress={handleRemoveFriend}
+                  activeOpacity={0.8}
+                >
+                  <View className="flex-row gap-1">
+                    <Text className="shrink-0 text-sm text-red-600">
+                      Remove
+                    </Text>
+                    <Text className="shrink-0 text-sm text-red-600">
+                      friend
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </View>
         );
-      }
-      return (
-        <Button
-          title="Friend request sent"
-          color={ButtonColor.Light}
-          size={ButtonSize.Small}
-          onPress={handleSendFriendRequest}
-          disabled
-        />
-      );
+      case "pending":
+        if (friendStatus.didReceiveRequest) {
+          return (
+            <View className="flex-row items-center gap-2">
+              <Text className="text-zinc-600 text-sm">
+                Sent you a friend request
+              </Text>
+              <Button
+                title="Accept"
+                color={ButtonColor.Green}
+                size={ButtonSize.Small}
+                onPress={handleAcceptFriendRequest}
+                disabled={answeringRequest}
+              />
+              <Button
+                title="Decline"
+                color={ButtonColor.Light}
+                size={ButtonSize.Small}
+                onPress={handleDeclineFriendRequest}
+                disabled={answeringRequest}
+              />
+            </View>
+          );
+        }
+        return (
+          <Button
+            title="Friend request sent"
+            color={ButtonColor.Light}
+            size={ButtonSize.Small}
+            onPress={handleSendFriendRequest}
+            disabled
+          />
+        );
+      default:
+        status satisfies never;
+        return null;
     }
-
-    return null;
   }, [
     isAuthenticated,
     isMe,
     friendStatus,
+    didFriendStatusFail,
+    isFetchingFriendStatus,
+    refetchFriendStatus,
     handleSendFriendRequest,
     handleAcceptFriendRequest,
     handleDeclineFriendRequest,
     handleRemoveFriend,
     friendActionsOpen,
+    answeringRequest,
   ]);
 
   const renderActionItem = useCallback(
@@ -550,19 +650,36 @@ export default function UserProfileScreen() {
               title="Accept"
               color={ButtonColor.Green}
               size={ButtonSize.Small}
-              onPress={() => acceptFriendRequest.mutate(request.id)}
+              onPress={() =>
+                acceptFriendRequest
+                  .mutateAsync(request.id)
+                  .catch((error) =>
+                    alertFriendFailure("Couldn't accept friend request", error),
+                  )
+              }
+              disabled={answeringRequest}
             />
             <Button
               title="Decline"
               color={ButtonColor.Light}
               size={ButtonSize.Small}
-              onPress={() => declineFriendRequest.mutate(request.id)}
+              onPress={() =>
+                declineFriendRequest
+                  .mutateAsync(request.id)
+                  .catch((error) =>
+                    alertFriendFailure(
+                      "Couldn't decline friend request",
+                      error,
+                    ),
+                  )
+              }
+              disabled={answeringRequest}
             />
           </View>
         </View>
       </View>
     ),
-    [acceptFriendRequest, declineFriendRequest],
+    [acceptFriendRequest, declineFriendRequest, answeringRequest],
   );
 
   const renderSentItem = useCallback(
@@ -722,6 +839,31 @@ export default function UserProfileScreen() {
   );
 
   const listEmptyComponent = useMemo(() => {
+    const friendsFailure = (): ComponentProps<typeof LoadFailed> | null => {
+      switch (friendsTab) {
+        case FriendsTab.Received:
+          return didReceivedFail
+            ? {
+                onRetry: () => void refetchReceived(),
+                retrying: isFetchingReceived,
+              }
+            : null;
+        case FriendsTab.Sent:
+          return didSentFail
+            ? { onRetry: () => void refetchSent(), retrying: isFetchingSent }
+            : null;
+        case FriendsTab.Friends:
+          return didFriendsFail
+            ? {
+                onRetry: () => void refetchFriends(),
+                retrying: isFetchingFriends,
+              }
+            : null;
+        default:
+          throw new Error(`Unknown friends tab: ${friendsTab satisfies never}`);
+      }
+    };
+
     const friendsEmptyMessage = (): string => {
       switch (friendsTab) {
         case FriendsTab.Received:
@@ -734,6 +876,10 @@ export default function UserProfileScreen() {
           throw new Error(`Unknown friends tab: ${friendsTab satisfies never}`);
       }
     };
+
+    const failure =
+      selectedTab === ProfileTab.Friends ? friendsFailure() : null;
+    if (failure) return <LoadFailed {...failure} />;
 
     let message: string;
     switch (selectedTab) {
@@ -756,7 +902,20 @@ export default function UserProfileScreen() {
     return (
       <Text className="text-center text-zinc-500 py-6 px-4">{message}</Text>
     );
-  }, [selectedTab, friendsTab, isMe]);
+  }, [
+    selectedTab,
+    friendsTab,
+    isMe,
+    didFriendsFail,
+    didReceivedFail,
+    didSentFail,
+    isFetchingFriends,
+    isFetchingReceived,
+    isFetchingSent,
+    refetchFriends,
+    refetchReceived,
+    refetchSent,
+  ]);
 
   if (!userId) {
     return (

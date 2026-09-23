@@ -11,6 +11,7 @@ import { R, type Result } from "@alliance/common/result";
 import { Temporal } from "@js-temporal/polyfill";
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
@@ -61,7 +62,7 @@ import {
   type StoredInviteAssignment,
 } from "src/share-urls/invite-assignment";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
-import { isForeignKeyViolation } from "src/utils/db-errors";
+import { isForeignKeyViolation, isUniqueViolation } from "src/utils/db-errors";
 import { PaginationQueryDto } from "src/utils/pagination.dto";
 import type {
   Relations,
@@ -746,6 +747,19 @@ export class UserService {
     requesterId: number,
     addresseeId: number,
   ): Promise<Friend> {
+    try {
+      return await this.saveFriendRequest(requesterId, addresseeId);
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      // Another request for the pair committed after our reads; the retry sees it.
+      return this.saveFriendRequest(requesterId, addresseeId);
+    }
+  }
+
+  private async saveFriendRequest(
+    requesterId: number,
+    addresseeId: number,
+  ): Promise<Friend> {
     if (requesterId === addresseeId) {
       throw new BadRequestException("Cannot friend yourself");
     }
@@ -756,26 +770,67 @@ export class UserService {
     let rel = await this.friendRepository.findOne({
       where: { requester: { id: requesterId }, addressee: { id: addresseeId } },
     });
+    const reverse = await this.friendRepository.findOne({
+      where: { requester: { id: addresseeId }, addressee: { id: requesterId } },
+    });
+
+    if (reverse) {
+      switch (reverse.status) {
+        case FriendStatus.Accepted:
+          throw new ConflictException("Already friends");
+        case FriendStatus.Pending:
+          return this.updateFriendRequestStatus(
+            addresseeId,
+            requesterId,
+            FriendStatus.Accepted,
+          );
+        case FriendStatus.Declined:
+        case FriendStatus.None:
+          break;
+        default:
+          throw new Error(
+            `unknown friend status: ${reverse.status satisfies never}`,
+          );
+      }
+    }
 
     if (rel) {
-      rel.status = FriendStatus.Pending; // reset to pending / resend
+      switch (rel.status) {
+        case FriendStatus.Accepted:
+          throw new ConflictException("Already friends");
+        case FriendStatus.Pending:
+          break;
+        case FriendStatus.Declined:
+        case FriendStatus.None:
+          rel.status = FriendStatus.Pending;
+          rel.sentNotif = this.createFriendRequestNotif(requester, addressee);
+          break;
+        default:
+          throw new Error(
+            `unknown friend status: ${rel.status satisfies never}`,
+          );
+      }
     } else {
-      const notif = this.notifsService.createNotif({
-        user: addressee,
-        category: NotificationCategory.FriendRequest,
-        message: `${requester.name} wants to be friends`,
-        webAppLocation: profileUrl(requesterId),
-        associatedUsers: [requester],
-      } satisfies CreateNotifParams);
-
+      // Reverses a declined request instead of adding a second row for the pair.
       rel = this.friendRepository.create({
+        ...reverse,
         requester,
         addressee,
         status: FriendStatus.Pending,
-        sentNotif: notif,
+        sentNotif: this.createFriendRequestNotif(requester, addressee),
       });
     }
     return this.friendRepository.save(rel);
+  }
+
+  private createFriendRequestNotif(requester: User, addressee: User) {
+    return this.notifsService.createNotif({
+      user: addressee,
+      category: NotificationCategory.FriendRequest,
+      message: `${requester.name} wants to be friends`,
+      webAppLocation: profileUrl(requester.id),
+      associatedUsers: [requester],
+    } satisfies CreateNotifParams);
   }
 
   /** Accept / decline a pending request (requester → addressee). */
@@ -846,14 +901,29 @@ export class UserService {
 
   /** Cancel a request OR un-friend an accepted friend in either direction. */
   async removeFriend(userId: number, targetUserId: number): Promise<void> {
-    await this.friendRepository
-      .createQueryBuilder()
-      .delete()
-      .where(
-        `(requesterId = :u AND addresseeId = :t) OR (requesterId = :t AND addresseeId = :u)`,
-        { u: userId, t: targetUserId },
-      )
-      .execute();
+    const rel = await this.friendRepository.findOne({
+      where: [
+        { requester: { id: userId }, addressee: { id: targetUserId } },
+        { requester: { id: targetUserId }, addressee: { id: userId } },
+      ],
+      relations: {
+        requester: true,
+        addressee: true,
+        sentNotif: true,
+        acceptedNotif: true,
+      },
+    });
+    if (!rel) {
+      return;
+    }
+    if (rel.addressee && rel.sentNotif) {
+      await this.notifsService.setRead(rel.sentNotif.id, rel.addressee.id);
+    }
+    if (rel.requester && rel.acceptedNotif) {
+      await this.notifsService.setRead(rel.acceptedNotif.id, rel.requester.id);
+    }
+
+    await this.friendRepository.delete(rel.id);
   }
 
   async findFriends(userId: number): Promise<User[]> {

@@ -6,12 +6,14 @@ import {
   actionsUserCompletedCount,
 } from "@alliance/shared/client";
 import { roleBadges } from "@alliance/shared/lib/copy";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { Features } from "@alliance/shared/lib/features";
 import useActivities, {
   ActivityList,
 } from "@alliance/shared/lib/useActivities";
 import {
   buildForumActivityItems,
+  friendMutationErrorMessage,
   useAcceptFriendRequestMutation,
   useRemoveFriendMutation,
   useSendFriendRequestMutation,
@@ -38,7 +40,7 @@ import {
   TooltipTrigger,
 } from "@alliance/sharedweb/ui/Tooltip";
 import { useQuery } from "@tanstack/react-query";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, RefreshCw } from "lucide-react";
 import React, {
   useCallback,
   useEffect,
@@ -86,7 +88,7 @@ const UserProfilePage: React.FC = () => {
   const { state } = useLocation();
   const { openFriendRequest } = state || false;
   const { openFriends } = state || false;
-  const { confirm } = useToast();
+  const { confirm, error: errorToast } = useToast();
 
   const userId = id ? parseInt(id, 10) : undefined;
   if (!userId) {
@@ -99,13 +101,21 @@ const UserProfilePage: React.FC = () => {
     isError: profileError,
   } = useUserProfileQuery(userId);
 
-  const { data: friendStatus } = useUserFriendStatusQuery(userId, {
+  const friendStatusQuery = useUserFriendStatusQuery(userId, {
     enabled: isAuthenticated && !isMe,
   });
+  const {
+    data: friendStatus,
+    isFetching: isFetchingFriendStatus,
+    refetch: refetchFriendStatus,
+  } = friendStatusQuery;
+  const didFriendStatusFail = failedToLoad(friendStatusQuery);
 
   const { data: forumPosts = [] } = useUserForumPostsQuery(userId);
   const { data: forumComments = [] } = useUserForumCommentsQuery(userId);
-  const { data: friends = [] } = useUserFriendsQuery(userId);
+  const friendsQuery = useUserFriendsQuery(userId);
+  const { data: friends = [] } = friendsQuery;
+  const didFriendsFail = failedToLoad(friendsQuery);
 
   const [selectedTab, setSelectedTab] = useState(ProfileTabs.Activity);
   const [isEditing, setIsEditing] = useState(false);
@@ -224,8 +234,12 @@ const UserProfilePage: React.FC = () => {
       await sendFriendRequest.mutateAsync(userId);
     } catch (error) {
       console.error("Error sending friend request:", error);
+      errorToast(
+        friendMutationErrorMessage(error),
+        "Couldn't send friend request",
+      );
     }
-  }, [userId, user, sendFriendRequest]);
+  }, [userId, user, sendFriendRequest, errorToast]);
 
   const handleAcceptFriendRequest = useCallback(async () => {
     if (!userId || !user) return;
@@ -233,8 +247,12 @@ const UserProfilePage: React.FC = () => {
       await acceptFriendRequest.mutateAsync(userId);
     } catch (error) {
       console.error("Error accepting friend request:", error);
+      errorToast(
+        friendMutationErrorMessage(error),
+        "Couldn't accept friend request",
+      );
     }
-  }, [userId, user, acceptFriendRequest]);
+  }, [userId, user, acceptFriendRequest, errorToast]);
 
   const navigate = useNavigate();
 
@@ -254,9 +272,10 @@ const UserProfilePage: React.FC = () => {
         await removeFriend.mutateAsync(userId);
       } catch (error) {
         console.error("Error removing friend:", error);
+        errorToast(friendMutationErrorMessage(error), "Couldn't remove friend");
       }
     },
-    [userId, user, confirm, removeFriend],
+    [userId, user, confirm, removeFriend, errorToast],
   );
 
   const handleSave = async () => {
@@ -472,7 +491,7 @@ const UserProfilePage: React.FC = () => {
               onClick={() => setSelectedTab(ProfileTabs.Forum)}
             />
             <PillTab
-              number={friends.length}
+              number={didFriendsFail ? undefined : friends.length}
               label={forCount(friends.length, "friend")}
               selected={selectedTab === ProfileTabs.Friends}
               onClick={() => setSelectedTab(ProfileTabs.Friends)}
@@ -480,12 +499,24 @@ const UserProfilePage: React.FC = () => {
           </div>
           {/* button row */}
           <div className="absolute right-0 top-0 space-x-3 flex flex-row p-5">
+            {isAuthenticated && !isMe && didFriendStatusFail && (
+              <Button
+                color={ButtonColor.White}
+                onClick={() => void refetchFriendStatus()}
+                disabled={isFetchingFriendStatus}
+                title="Retry loading friend status"
+                className="!h-9 flex flex-row items-center !px-3"
+              >
+                <RefreshCw size={16} className="text-zinc-600" />
+              </Button>
+            )}
             {isAuthenticated && !isMe && friendStatus != null && (
               <FriendRequestButton
                 friendStatus={friendStatus}
                 handleSendFriendRequest={handleSendFriendRequest}
                 handleRemoveFriend={handleRemoveFriend}
                 handleAcceptFriendRequest={handleAcceptFriendRequest}
+                accepting={acceptFriendRequest.isPending}
               />
             )}
             {messagingEnabled &&
@@ -643,7 +674,6 @@ const UserProfilePage: React.FC = () => {
               userId={profile.id}
               isMe={isMe}
               originalTab={openFriendRequest ? "received" : "friends"}
-              friends={friends}
               className="mt-4"
             />
           )}
