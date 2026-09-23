@@ -42,6 +42,7 @@ Show a search input only in Searchable dropdown mode. Show `No matches` when fil
 - Answers keep the order in which options were selected, as checkbox mode does; only chips follow option order.
 - Restoring a draft, on web and mobile, drops multiselect selections of options the field no longer has, including inside list cards. An answer left with none stays an empty selection, which is how a cleared field is stored, so restoring it does not bring back the field's default. Filtering on restore, rather than in each renderer, keeps display, the selection limit, and validation working from the same values in every display mode.
 - The mobile sheet does not scroll to a selection on opening, unlike the single-select sheet, because several selections have no single target.
+- The mobile close button is an `X` icon labelled `Close` beside the sheet title. Only the multiselect sheet shows it; the single-select sheet closes on selection.
 
 ## Verification for implementation
 

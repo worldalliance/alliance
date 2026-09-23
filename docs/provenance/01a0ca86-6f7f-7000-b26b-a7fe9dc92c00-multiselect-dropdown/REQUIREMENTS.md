@@ -18,3 +18,7 @@ task: Multiselect dropdown display option
 - Approved the agent's boolean mapping and rejection of search without dropdown mode, with omitted flags treated as false and mode changes preserving answers and other field settings. See DECISIONS.md for the mapping.
 - Approved the agent's proposed search matching, query lifecycle, and visibility of selected options during filtering. See DECISIONS.md for those behaviors.
 - Approved fixing an agent's review finding: a restored answer can still hold multiselect values for options an admin has since removed. The plain dropdown kept those values while the searchable dropdown dropped them on the next change, and in every mode they counted toward the selection limit without being shown.
+
+## Later requirements (Alex Dorey)
+
+- The mobile multiselect sheet has a close button in its top-right corner.
