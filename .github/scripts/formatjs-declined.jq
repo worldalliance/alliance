@@ -1,1 +1,1 @@
-.[] | select(.isCrossRepository | not) | select(.state != "OPEN" and all(.labels[]; .name != "superseded")) | .number
+.[] | select(.state == "closed" and all(.labels[]; .name != "superseded")) | .number

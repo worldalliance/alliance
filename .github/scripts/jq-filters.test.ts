@@ -27,30 +27,20 @@ describe("formatjs-declined.jq", () => {
   const declined = (prs: unknown[]) =>
     jq({ filter: "scripts/formatjs-declined.jq", input: prs });
 
-  test("picks closed and merged pull requests", () => {
+  test("picks closed pull requests, merged ones included", () => {
     expect(
       declined([
-        { number: 1, state: "CLOSED", labels: [] },
-        { number: 2, state: "MERGED", labels: [] },
-        { number: 3, state: "CLOSED", labels: [{ name: "dependencies" }] },
+        { number: 1, state: "closed", labels: [] },
+        { number: 2, state: "closed", labels: [{ name: "dependencies" }] },
       ]),
-    ).toEqual([1, 2, 3]);
+    ).toEqual([1, 2]);
   });
 
   test("ignores open ones and ones closed as superseded", () => {
     expect(
       declined([
-        { number: 1, state: "OPEN", labels: [] },
-        { number: 2, state: "CLOSED", labels: [{ name: "superseded" }] },
-      ]),
-    ).toEqual([]);
-  });
-
-  test("ignores a fork's pull requests", () => {
-    expect(
-      declined([
-        { number: 1, state: "CLOSED", labels: [], isCrossRepository: true },
-        { number: 2, state: "MERGED", labels: [], isCrossRepository: true },
+        { number: 1, state: "open", labels: [] },
+        { number: 2, state: "closed", labels: [{ name: "superseded" }] },
       ]),
     ).toEqual([]);
   });
