@@ -27,6 +27,7 @@ import {
   userRequestFriend,
   userUpdate,
 } from "../client";
+import { failedToLoad } from "./failedToLoad";
 import { thrownRefusalMessage } from "./hey-api";
 import { queryKeys } from "./queryKeys";
 
@@ -55,7 +56,7 @@ export type ForumActivityItem =
       comment: UserCommentDto;
     };
 
-export const buildForumActivityItems = (
+const buildForumActivityItems = (
   posts: PostDto[] = [],
   comments: UserCommentDto[] = [],
 ): ForumActivityItem[] => {
@@ -186,6 +187,28 @@ export const useUserForumCommentsQuery = (
     },
     enabled: defaultQueryEnabled(userId, options?.enabled),
   });
+
+export const useUserForumActivity = (userId: number) => {
+  const postsQuery = useUserForumPostsQuery(userId);
+  const commentsQuery = useUserForumCommentsQuery(userId);
+  const didPostsFail = failedToLoad(postsQuery);
+  const didCommentsFail = failedToLoad(commentsQuery);
+  const items = useMemo(
+    () => buildForumActivityItems(postsQuery.data, commentsQuery.data),
+    [postsQuery.data, commentsQuery.data],
+  );
+  return {
+    items,
+    didFail: didPostsFail || didCommentsFail,
+    retry: () => {
+      if (didPostsFail) void postsQuery.refetch();
+      if (didCommentsFail) void commentsQuery.refetch();
+    },
+    retrying:
+      (didPostsFail && postsQuery.isFetching) ||
+      (didCommentsFail && commentsQuery.isFetching),
+  };
+};
 
 export const selectFriendIds = (friends: ProfileDto[]) =>
   friends.map((friend) => friend.id);

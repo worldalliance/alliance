@@ -1,12 +1,15 @@
 import type {
   FriendStatusDto,
+  PostDto,
   ProfileDto,
+  UserCommentDto,
   UserCompletedActionsCountDto,
 } from "@alliance/shared/client";
 import { pending, type Pending } from "@alliance/shared/lib/testing/pending";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { userQueryKeys } from "@alliance/shared/lib/user";
+import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
@@ -32,6 +35,42 @@ const GRACE: ProfileDto = {
   displayName: "Grace",
   hasActiveContract: true,
   isCommunityLeader: false,
+};
+
+const POST: PostDto = {
+  id: 7,
+  title: "Grace's post",
+  authorId: GRACE.id,
+  author: GRACE,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  pinned: false,
+  deleted: false,
+  qaMode: false,
+  expertLabel: null,
+  expertIds: [],
+  authorIds: [],
+  notifyForReplies: false,
+  showClusterTags: false,
+  editableContent: { body: "Hello", attachments: [] },
+};
+
+const PARENT_TITLE = "Someone else's post";
+
+const COMMENT: UserCommentDto = {
+  id: 9,
+  parentObjectType: "post",
+  parentObjectId: 3,
+  parentTitle: PARENT_TITLE,
+  deleted: false,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  pinned: false,
+  tagId: null,
+  author: GRACE,
+  likes: [],
+  likesCount: 0,
+  editableContent: { body: "Reply", attachments: [] },
 };
 
 const empty = () => Response.json([]);
@@ -72,11 +111,13 @@ const renderProfile = () => {
     <QueryWrapper>
       <ToastProvider>
         <AuthContext.Provider value={authValue({ user: testAuthUser })}>
-          <MemoryRouter initialEntries={[`/user/${GRACE.id}`]}>
-            <Routes>
-              <Route path="/user/:id" element={<UserProfilePage />} />
-            </Routes>
-          </MemoryRouter>
+          <SiteAppProvider>
+            <MemoryRouter initialEntries={[`/user/${GRACE.id}`]}>
+              <Routes>
+                <Route path="/user/:id" element={<UserProfilePage />} />
+              </Routes>
+            </MemoryRouter>
+          </SiteAppProvider>
         </AuthContext.Provider>
       </ToastProvider>
     </QueryWrapper>,
@@ -147,4 +188,101 @@ it("keeps a loaded friend status without a retry when a refetch fails", async ()
 
   screen.getByText("Send friend request");
   expect(screen.queryByTitle("Retry loading friend status")).toBeNull();
+});
+
+it("offers a retry when forum activity fails to load", async () => {
+  api.alsoServing({
+    "GET /forum/posts/user/:id/comments": () =>
+      Response.json({ message: "Internal server error" }, { status: 500 }),
+  });
+  renderProfile();
+  const pillLabel = (await screen.findAllByText("posts"))[0];
+  fireEvent.click(pillLabel);
+
+  await screen.findByText("Couldn't load forum activity.");
+  expect(screen.queryByText("No forum activity yet")).toBeNull();
+  expect(pillLabel.closest("div")?.textContent).not.toMatch(/\d/);
+
+  const retries: Pending<Response>[] = [];
+  api.alsoServing({
+    "GET /forum/posts/user/:id/comments": () => pending(retries),
+  });
+  fireEvent.click(screen.getByText("Try again"));
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+  expect(screen.getByText("Try again").closest("button")?.disabled).toBe(true);
+  expect(screen.queryByText("No forum activity yet")).toBeNull();
+
+  retries[0]?.resolve(Response.json([]));
+  await screen.findByText("No forum activity yet");
+  expect(screen.queryByText("Couldn't load forum activity.")).toBeNull();
+});
+
+const POSTS_ROUTE = "GET /forum/posts/user/:id";
+const COMMENTS_ROUTE = "GET /forum/posts/user/:id/comments";
+
+it.each([
+  {
+    failing: COMMENTS_ROUTE,
+    loaded: POSTS_ROUTE,
+    body: [POST],
+    shown: POST.title,
+  },
+  {
+    failing: POSTS_ROUTE,
+    loaded: COMMENTS_ROUTE,
+    body: [COMMENT],
+    shown: PARENT_TITLE,
+  },
+])(
+  "keeps loaded activity under the notice and retries only $failing",
+  async ({ failing, loaded, body, shown }) => {
+    let loadedRequests = 0;
+    const serveLoaded = () => {
+      loadedRequests++;
+      return Response.json(body);
+    };
+    api.alsoServing({
+      [loaded]: serveLoaded,
+      [failing]: () =>
+        Response.json({ message: "Internal server error" }, { status: 500 }),
+    });
+    renderProfile();
+    const pillLabel = (await screen.findAllByText("posts"))[0];
+    expect(pillLabel.closest("div")?.textContent).not.toMatch(/\d/);
+    fireEvent.click(pillLabel);
+
+    await screen.findByText("Couldn't load forum activity.");
+    screen.getByText(shown);
+
+    const requestsBeforeRetry = loadedRequests;
+    const retries: Pending<Response>[] = [];
+    api.alsoServing({
+      [loaded]: serveLoaded,
+      [failing]: () => pending(retries),
+    });
+    fireEvent.click(screen.getByText("Try again"));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(retries).toHaveLength(1);
+    expect(loadedRequests).toBe(requestsBeforeRetry);
+  },
+);
+
+it("keeps Try again enabled while only the loaded forum query refetches", async () => {
+  api.alsoServing({
+    [POSTS_ROUTE]: () => Response.json([POST]),
+    [COMMENTS_ROUTE]: () =>
+      Response.json({ message: "Internal server error" }, { status: 500 }),
+  });
+  const { client } = renderProfile();
+  fireEvent.click((await screen.findAllByText("posts"))[0]);
+  await screen.findByText("Couldn't load forum activity.");
+
+  const refetches: Pending<Response>[] = [];
+  api.alsoServing({ [POSTS_ROUTE]: () => pending(refetches) });
+  void client.invalidateQueries({
+    queryKey: userQueryKeys.forumPosts(GRACE.id),
+  });
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+  expect(refetches).toHaveLength(1);
+  expect(screen.getByText("Try again").closest("button")?.disabled).toBe(false);
 });
