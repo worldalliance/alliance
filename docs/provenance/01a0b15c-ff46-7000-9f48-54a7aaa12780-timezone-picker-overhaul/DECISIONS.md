@@ -95,7 +95,23 @@ sections below this one carry the reasoning each step implements.
     `.github/scripts/bump-formatjs.sh` does the bump: it updates
     `@formatjs/intl-datetimeformat` within its major version and keeps the
     update only when it changes `add-all-tz.js`, since most FormatJS releases
-    carry the same tz data as the one before.
+    carry the same tz data as the one before. The bump is its own commit on
+    the `tzdb/` branch, so a reviewer declines it by reverting it. Its message
+    names the tz data hash, the first 12 hex digits of `add-all-tz.js`'s
+    SHA-1, as the pull request's body does. The hash leads the headline,
+    since GitHub cuts headlines off at 69 characters and a revert's adds
+    `Revert "` in front. The script drops tz data a commit on any `tzdb/`
+    pull request github-actions opened reverts, by a `Revert "…"` headline
+    naming the hash, and tz data a merged `tzdb/` one named in its body or a
+    headline but the checkout lacks, since a reviewer can remove it by hand
+    too, so the decline outlives that pull request instead of the bump
+    returning in the next catalog pull request. A revert of that revert,
+    which git titles `Reapply "…"`, takes the decline back: an odd number of
+    nested reverts leaves the tz data declined. When it drops declined tz
+    data, the script names the declining pull requests in a job notice and
+    the catalog pull request's body, since a merged pull request that lost
+    its bump by accident, say while resolving a `bun.lock` conflict, would
+    otherwise keep that tz data out without anyone seeing why.
 
 ## Catalog
 

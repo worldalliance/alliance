@@ -64,6 +64,8 @@ jobs:
       - name: Update FormatJS
         id: formatjs
         if: steps.branch.outputs.name != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: .github/scripts/bump-formatjs.sh
 
       # A pull request opened with GITHUB_TOKEN triggers no workflows, so CI
@@ -76,6 +78,13 @@ jobs:
           (cd common && bun run typecheck)
           scripts/test-all.sh common
           (cd server && bun run typecheck && bun test src/intl-timezone.spec.ts)
+
+      # Its own commit, so a reviewer declines it by reverting it.
+      - name: Commit the FormatJS bump
+        if: steps.formatjs.outputs.message != ''
+        env:
+          MESSAGE: ${{ steps.formatjs.outputs.message }}
+        run: git commit -m "$MESSAGE" -- server/package.json bun.lock
 
       - name: Open a pull request
         if: steps.branch.outputs.name != ''
@@ -90,6 +99,6 @@ jobs:
 
             Read the diff to `common/src/timezone-catalog.gen.ts`. A row that disappears or an alias that moves changes what members with that timezone see.
 
-            The server's timezone rules come from `@formatjs/intl-datetimeformat`. ${{ steps.formatjs.outputs.version && format('This bumps it to {0}, the latest release within the major version in `server/package.json`, which changes its tz data.', steps.formatjs.outputs.version) || 'This leaves it alone: the latest release within the major version in `server/package.json` carries the tz data it has now.' }} Its changelog says which tzdb each release carries: https://github.com/formatjs/formatjs/blob/main/packages/intl-datetimeformat/CHANGELOG.md. If the server's FormatJS doesn't carry tzdb ${{ steps.bump.outputs.version }} yet, merging still updates the catalog, but the server keeps the older rules until FormatJS catches up.
+            The server's timezone rules come from `@formatjs/intl-datetimeformat`. ${{ steps.formatjs.outputs.version && format('Its own commit bumps it to {0}, the latest release within the major version in `server/package.json`, which changes its tz data (`add-all-tz.js` SHA-1 {1}). To decline it, revert that commit and keep git''s default message: the watch won''t propose that tz data again.', steps.formatjs.outputs.version, steps.formatjs.outputs.tzdata) || steps.formatjs.outputs.declined && format('This leaves it alone: the latest release within the major version in `server/package.json` changes its tz data (`add-all-tz.js` SHA-1 {0}), but {1} declined that tz data.', steps.formatjs.outputs.tzdata, steps.formatjs.outputs.declined) || 'This leaves it alone: the latest release within the major version in `server/package.json` carries the tz data it has now.' }} Its changelog says which tzdb each release carries: https://github.com/formatjs/formatjs/blob/main/packages/intl-datetimeformat/CHANGELOG.md. If the server's FormatJS doesn't carry tzdb ${{ steps.bump.outputs.version }} yet, merging still updates the catalog, but the server keeps the older rules until FormatJS catches up.
 
             Typecheck and tests for `common`, and the server's typecheck and timezone test, passed in the job that opened this. CI hasn't run: close and reopen this pull request to start it.

@@ -21,6 +21,136 @@ function jq(params: {
     .map((line) => JSON.parse(line));
 }
 
+const HASH = "0123456789ab";
+
+describe("tzdb-pr-declined.jq", () => {
+  const declined = (pr: { state: string; body: string; headlines: string[] }) =>
+    jq({
+      filter: "scripts/tzdb-pr-declined.jq",
+      input: {
+        state: pr.state,
+        body: pr.body,
+        commits: pr.headlines.map((messageHeadline) => ({ messageHeadline })),
+      },
+      env: { AFTER: HASH, HEADLINE: `add-all-tz.js SHA-1 ${HASH}` },
+    });
+  const pushed = `add-all-tz.js SHA-1 ${HASH}: bump @formatjs/intl-datetimeformat to 7.9.0`;
+
+  test("counts a revert of the pushed bump on an open pull request", () => {
+    expect(
+      declined({
+        state: "OPEN",
+        body: "",
+        headlines: [pushed, `Revert "${pushed}"`],
+      }),
+    ).toEqual([1]);
+  });
+
+  test("counts a revert whose headline GitHub cut off", () => {
+    const cut = (headline: string) => `${headline.slice(0, 69)}…`;
+    expect(
+      declined({
+        state: "OPEN",
+        body: "",
+        headlines: [cut(pushed), cut(`Revert "${pushed}"`)],
+      }),
+    ).toEqual([1]);
+    expect(
+      declined({
+        state: "OPEN",
+        body: "",
+        headlines: [cut(pushed), cut(`Revert "Reapply "${pushed}""`)],
+      }),
+    ).toEqual([1]);
+  });
+
+  test("takes the decline back when git reapplies the bump, and counts a revert of that", () => {
+    const reverted = `Revert "${pushed}"`;
+    const reapplied = `Reapply "${pushed}"`;
+    expect(
+      declined({
+        state: "CLOSED",
+        body: "",
+        headlines: [pushed, reverted, reapplied],
+      }),
+    ).toEqual([0]);
+    expect(
+      declined({
+        state: "CLOSED",
+        body: "",
+        headlines: [pushed, reverted, reapplied, `Revert "${reapplied}"`],
+      }),
+    ).toEqual([1]);
+  });
+
+  test("takes the decline back when an older git reverts the revert", () => {
+    const reverted = `Revert "${pushed}"`;
+    expect(
+      declined({
+        state: "CLOSED",
+        body: "",
+        headlines: [pushed, reverted, `Revert "${reverted}"`],
+      }),
+    ).toEqual([0]);
+  });
+
+  test("counts a second revert of the pushed bump after git reapplies it", () => {
+    expect(
+      declined({
+        state: "CLOSED",
+        body: "",
+        headlines: [
+          pushed,
+          `Revert "${pushed}"`,
+          `Reapply "${pushed}"`,
+          `Revert "${pushed}"`,
+        ],
+      }),
+    ).toEqual([1]);
+  });
+
+  test("ignores a revert of other tz data", () => {
+    expect(
+      declined({
+        state: "OPEN",
+        body: "",
+        headlines: [`Revert "add-all-tz.js SHA-1 ba9876543210: bump"`],
+      }),
+    ).toEqual([0]);
+  });
+
+  test("counts a merged pull request that named the tz data in its body or a headline", () => {
+    expect(
+      declined({ state: "MERGED", body: `SHA-1 ${HASH}`, headlines: [] }),
+    ).toEqual([1]);
+    expect(
+      declined({ state: "MERGED", body: "", headlines: [pushed] }),
+    ).toEqual([1]);
+  });
+
+  test("ignores a merged pull request that named other tz data", () => {
+    const other = "ba9876543210";
+    expect(
+      declined({
+        state: "MERGED",
+        body: `SHA-1 ${other}`,
+        headlines: [
+          `add-all-tz.js SHA-1 ${other}: bump @formatjs/intl-datetimeformat to 7.8.0`,
+        ],
+      }),
+    ).toEqual([0]);
+  });
+
+  test("ignores an open or closed pull request that named the tz data without reverting it", () => {
+    expect(
+      declined({ state: "OPEN", body: `SHA-1 ${HASH}`, headlines: [pushed] }),
+    ).toEqual([0]);
+    expect(
+      declined({ state: "CLOSED", body: `SHA-1 ${HASH}`, headlines: [pushed] }),
+    ).toEqual([0]);
+  });
+});
+
 describe("superseded.jq", () => {
   const pr = (number: number, headRefName: string) => ({
     number,
