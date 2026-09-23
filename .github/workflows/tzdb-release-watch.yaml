@@ -167,8 +167,8 @@ jobs:
           fi
           # Named for the tz data, so a declined bump stays declined across FormatJS releases.
           branch="formatjs/$TZDATA"
-          # A fork's pull request shares the name without being the watch's.
-          prs=$(gh pr list --head "$branch" --json isCrossRepository --jq 'map(select(.isCrossRepository | not)) | length')
+          # A fork's pull request shares the name without sharing the branch.
+          prs=$(gh api "repos/$GITHUB_REPOSITORY/pulls?head=$GITHUB_REPOSITORY_OWNER:$branch&state=open" --jq length)
           if [ "$prs" -gt 0 ]; then
             echo "$branch already has an open pull request."
           else
