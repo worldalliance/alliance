@@ -5,6 +5,7 @@ import {
   actionsDismissGeneralUpdate,
   actionsUnreadGeneralUpdates,
 } from "../client";
+import { failedToLoad } from "./failedToLoad";
 import { parseGeneralUpdate, type ParsedGeneralUpdate } from "./generalUpdates";
 import { queryKeys } from "./queryKeys";
 
@@ -18,13 +19,7 @@ const ALL_QUERY_KEY = queryKeys.generalUpdatesAll();
 export function useUnreadGeneralUpdates() {
   const queryClient = useQueryClient();
 
-  const {
-    data: generalUpdates = [],
-    isLoading,
-    isPending,
-    isError,
-    refetch,
-  } = useQuery({
+  const query = useQuery({
     queryKey: UNREAD_QUERY_KEY,
     queryFn: () =>
       actionsUnreadGeneralUpdates({ throwOnError: true }).then((response) =>
@@ -33,6 +28,14 @@ export function useUnreadGeneralUpdates() {
     // Both home screens hold their main content until this settles.
     retry: false,
   });
+  const {
+    data: generalUpdates = [],
+    isLoading,
+    isPending,
+    isError,
+    isFetching,
+    refetch,
+  } = query;
 
   const dismissGeneralUpdate = useCallback(
     async (generalUpdateId: number) => {
@@ -50,24 +53,35 @@ export function useUnreadGeneralUpdates() {
     isLoading,
     isPending,
     isError,
+    isFetching,
+    didFail: failedToLoad(query),
     refetch,
     dismissGeneralUpdate,
   };
 }
 
 export function useAllGeneralUpdates() {
-  const {
-    data: generalUpdates = [],
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery({
+  const query = useQuery({
     queryKey: ALL_QUERY_KEY,
     queryFn: () =>
       actionsAllGeneralUpdates({ throwOnError: true }).then((response) =>
         response.data.map(parseGeneralUpdate),
       ),
   });
+  const {
+    data: generalUpdates = [],
+    isLoading,
+    isError,
+    isFetching,
+    refetch,
+  } = query;
 
-  return { generalUpdates, isLoading, isError, refetch };
+  return {
+    generalUpdates,
+    isLoading,
+    isError,
+    isFetching,
+    didFail: failedToLoad(query),
+    refetch,
+  };
 }

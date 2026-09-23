@@ -14,6 +14,7 @@ export function useTaskActionsData(options?: {
 }): {
   actions: ActionWithAwayStatus[] | null;
   generalUpdates: ParsedGeneralUpdate[] | null;
+  generalUpdatesFailure: { onRetry: () => void; retrying: boolean } | null;
   loading: boolean;
   handleDismissAction: (actionId: number) => Promise<void>;
   handleDismissGeneralUpdate: (generalUpdateId: number) => Promise<void>;
@@ -27,11 +28,14 @@ export function useTaskActionsData(options?: {
   const {
     generalUpdates: generalUpdatesData,
     isLoading: generalUpdatesLoading,
-    isError: generalUpdatesError,
+    isFetching: generalUpdatesFetching,
+    didFail: didGeneralUpdatesFail,
+    refetch: refetchGeneralUpdates,
     dismissGeneralUpdate,
   } = useUnreadGeneralUpdates();
 
-  const loading = actionsLoading || generalUpdatesLoading;
+  const loading =
+    actionsLoading || (generalUpdatesLoading && !didGeneralUpdatesFail);
 
   const actions = useMemo<ActionWithAwayStatus[] | null>(() => {
     if (loading || actionsError) {
@@ -45,11 +49,11 @@ export function useTaskActionsData(options?: {
   }, [actionsData, loading, actionsError]);
 
   const generalUpdates = useMemo<ParsedGeneralUpdate[] | null>(() => {
-    if (loading || generalUpdatesError) {
+    if (loading) {
       return null;
     }
     return generalUpdatesData;
-  }, [generalUpdatesData, loading, generalUpdatesError]);
+  }, [generalUpdatesData, loading]);
 
   const handleDismissAction = useCallback(
     async (actionId: number) => {
@@ -69,6 +73,12 @@ export function useTaskActionsData(options?: {
   return {
     actions,
     generalUpdates,
+    generalUpdatesFailure: didGeneralUpdatesFail
+      ? {
+          onRetry: () => void refetchGeneralUpdates(),
+          retrying: generalUpdatesFetching,
+        }
+      : null,
     loading,
     handleDismissAction,
     handleDismissGeneralUpdate: dismissGeneralUpdate,

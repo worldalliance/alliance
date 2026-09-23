@@ -36,6 +36,7 @@ it.each(generalUpdateHooks)(
 
     await waitFor(() => expect(hook.result.current.isError).toBe(true));
     expect(hook.result.current.generalUpdates).toEqual([]);
+    expect(hook.result.current.didFail).toBe(true);
   },
 );
 
@@ -49,6 +50,7 @@ it.each(generalUpdateHooks)(
 
     await waitFor(() => expect(hook.result.current.isError).toBe(true));
     expect(hook.result.current.generalUpdates).toBe(cached);
+    expect(hook.result.current.didFail).toBe(false);
   },
 );
 

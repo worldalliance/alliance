@@ -33,6 +33,7 @@ import ForumCommentCard from "../../components/ForumCommentCard";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 import LargeActionCard from "../../components/LargeActionCard";
 import LargeGeneralUpdateCard from "../../components/LargeGeneralUpdateCard";
+import LoadFailed from "../../components/LoadFailed";
 import ProfileImage from "../../components/ProfileImage";
 import SuccessOverlay from "../../components/SuccessOverlay";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
@@ -95,6 +96,8 @@ export default function HomeScreen() {
   const {
     generalUpdates,
     isPending: generalUpdatesPending,
+    didFail: didGeneralUpdatesFail,
+    isFetching: isFetchingGeneralUpdates,
     refetch: refetchGeneralUpdates,
     dismissGeneralUpdate: handleDismissGeneralUpdate,
   } = useUnreadGeneralUpdates();
@@ -115,7 +118,8 @@ export default function HomeScreen() {
     [actions, refetch],
   );
 
-  const loading = isPending || generalUpdatesPending;
+  const loading =
+    isPending || (generalUpdatesPending && !didGeneralUpdatesFail);
 
   const actionsWithAwayStatus = useMemo((): ActionWithAwayStatus[] => {
     if (!actions) return [];
@@ -406,6 +410,22 @@ export default function HomeScreen() {
 
   const showHomeFeedList = !homeFeedLoading && homeFeedItems.length > 0;
 
+  const generalUpdatesNotice = didGeneralUpdatesFail && (
+    <LoadFailed
+      message="Couldn't load general updates."
+      onRetry={() => void refetchGeneralUpdates()}
+      retrying={isFetchingGeneralUpdates}
+    />
+  );
+  const homeBody = currentItem ? (
+    <>
+      {generalUpdatesNotice}
+      {body}
+    </>
+  ) : (
+    generalUpdatesNotice || body
+  );
+
   const header = (
     <SimplePageTitle title={title}>
       {showTaskNavigator ? (
@@ -473,7 +493,7 @@ export default function HomeScreen() {
             }}
             ListHeaderComponent={
               <>
-                <View onLayout={handleHomeBodyLayout}>{body}</View>
+                <View onLayout={handleHomeBodyLayout}>{homeBody}</View>
                 <View className="px-4 pt-4 pb-2 bg-white">
                   <Text className="text-xl">Activity</Text>
                 </View>
@@ -505,7 +525,7 @@ export default function HomeScreen() {
             }
             testID="vr-home-ready"
           >
-            {body}
+            {homeBody}
           </KeyboardAwareScrollView>
         )}
       </Anchor>
