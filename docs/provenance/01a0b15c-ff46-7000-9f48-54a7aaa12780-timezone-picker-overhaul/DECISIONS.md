@@ -125,9 +125,13 @@ sections below this one carry the reasoning each step implements.
     since GitHub cuts headlines off at 69 characters and a revert's adds
     `Revert "` in front. A revert of that revert, which git titles
     `Reapply "…"`, takes the decline back: an odd number of nested reverts
-    leaves the tz data declined. The script
+    leaves the tz data declined. Rewording the commit or squashing it into
+    another on the branch declines it too, so the body warns against both.
+    Squash-merging doesn't: the merged checkout carries the tz data. The script
     also drops tz data a commit on any `tzdb/` pull request github-actions
-    opened reverts, by a `Revert "…"` headline naming the hash, and tz data
+    opened reverts, by a `Revert "…"` headline naming the hash, tz data
+    its body proposes but no headline there carries, since a force-push can
+    drop the commit, and tz data
     a merged `tzdb/` one named in its body or a headline but the checkout
     lacks, since a reviewer can remove it by hand too, so the decline
     outlives that pull request instead of the bump returning in the next

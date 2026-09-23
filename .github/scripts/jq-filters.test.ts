@@ -68,6 +68,7 @@ describe("tzdb-pr-declined.jq", () => {
       env: { AFTER: HASH, HEADLINE: `add-all-tz.js SHA-1 ${HASH}` },
     });
   const pushed = `add-all-tz.js SHA-1 ${HASH}: bump @formatjs/intl-datetimeformat to 7.9.0`;
+  const proposed = `Its own commit bumps it to 7.9.0, which changes its tz data (\`add-all-tz.js\` SHA-1 ${HASH}).`;
 
   test("counts a revert of the pushed bump on an open pull request", () => {
     expect(
@@ -157,6 +158,9 @@ describe("tzdb-pr-declined.jq", () => {
       declined({ state: "MERGED", body: `SHA-1 ${HASH}`, headlines: [] }),
     ).toEqual([1]);
     expect(
+      declined({ state: "MERGED", body: proposed, headlines: [] }),
+    ).toEqual([1]);
+    expect(
       declined({ state: "MERGED", body: "", headlines: [pushed] }),
     ).toEqual([1]);
   });
@@ -180,6 +184,50 @@ describe("tzdb-pr-declined.jq", () => {
     ).toEqual([0]);
     expect(
       declined({ state: "CLOSED", body: `SHA-1 ${HASH}`, headlines: [pushed] }),
+    ).toEqual([0]);
+  });
+
+  test("counts tz data the body named after a force-push dropped its commit", () => {
+    const dropped = (state: string) =>
+      declined({
+        state,
+        body: proposed,
+        headlines: ["bump tzdb to 2026d"],
+      });
+    expect(dropped("OPEN")).toEqual([1]);
+    expect(dropped("CLOSED")).toEqual([1]);
+  });
+
+  test("ignores tz data the body proposed while its commit stays", () => {
+    const kept = (state: string) =>
+      declined({
+        state,
+        body: proposed,
+        headlines: [pushed, "bump tzdb to 2026d"],
+      });
+    expect(kept("OPEN")).toEqual([0]);
+    expect(kept("CLOSED")).toEqual([0]);
+  });
+
+  test("matches the sentence tzdb-release-watch.yaml's body proposes a bump with", async () => {
+    const filter = await Bun.file(
+      `${import.meta.dir}/tzdb-pr-declined.jq`,
+    ).text();
+    const sentence = filter.match(/contains\("(Its own commit[^"]*)"\)/)?.[1];
+    expect(sentence).toBeDefined();
+    const workflow = await Bun.file(
+      `${import.meta.dir}/../workflows/tzdb-release-watch.yaml`,
+    ).text();
+    expect(workflow).toContain(sentence ?? "");
+  });
+
+  test("ignores a body saying another pull request declined the tz data", () => {
+    expect(
+      declined({
+        state: "CLOSED",
+        body: `This leaves it alone: the latest release changes its tz data (\`add-all-tz.js\` SHA-1 ${HASH}), but #12 declined that tz data.`,
+        headlines: ["bump tzdb to 2026e"],
+      }),
     ).toEqual([0]);
   });
 });

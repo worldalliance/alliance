@@ -3,8 +3,9 @@
 # keeps the bump only when it changes add-all-tz.js, formatjs/<hash> has no
 # merged or closed pull request outside a fork that the watch didn't close as
 # superseded, and no tzdb/ pull request the watch opened ends with that tz data
-# reverted, or merged naming it while the checkout lacks it. Such a pull request
-# means that tz data already landed or someone declined it.
+# reverted, or merged naming it while the checkout lacks it, or lost the commit
+# its body proposed. Such a pull request means that tz data already landed or
+# someone declined it.
 # Writes version, tzdata, and the bump's commit message to $GITHUB_OUTPUT when
 # it keeps the bump, and tzdata and the declining pull requests when it drops a
 # declined one.
