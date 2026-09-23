@@ -301,6 +301,90 @@ describe("useFormVisibility", () => {
     expect(moves).toEqual([0]);
   });
 
+  const noteField: TextField = {
+    ...textField("note"),
+    visibleIfFormula: {
+      conditions: {
+        c1: { kind: "equals", when: "name", equals: "Ada" },
+      },
+      formula: "c1",
+    },
+  };
+
+  const notesSchema: FormSchema = {
+    pages: [
+      {
+        id: "p1",
+        fields: [listField("people", [textField("name"), noteField])],
+      },
+    ],
+    outputViews: [],
+    variables: [
+      {
+        name: "notes",
+        inputs: {
+          input1: {
+            kind: "list",
+            fieldId: "people",
+            properties: { name: "name", note: "note" },
+          },
+        },
+        formula: "input1.map(p => p.name + ':' + (p.note ?? '-')).join()",
+      },
+    ],
+  };
+
+  const renderNotes = (params: {
+    readOnly: boolean;
+    formData: Record<string, FormValue>;
+  }) =>
+    renderHook(
+      (formData: Record<string, FormValue>) =>
+        useFormVisibility({
+          schema: notesSchema,
+          formData,
+          readOnly: params.readOnly,
+          currentPageIndex: 0,
+          setCurrentPageIndex: () => {},
+          effectiveDeviceType: "desktop",
+          visibilityValidatorResults: {},
+          fieldLookup: lookupFor(notesSchema),
+          previousAnswerData: undefined,
+          userHasCity: false,
+          firstContractSignedAt: null,
+          completedActionCount: 0,
+        }),
+      { initialProps: params.formData },
+    );
+
+  it("recomputes a list variable as rows change, leaving out a sub-field hidden for its row", () => {
+    const { result, rerender } = renderNotes({
+      readOnly: false,
+      formData: { people: [{ name: "Ada", note: "hi" }] },
+    });
+    expect(result.current.variableValues.get("notes")).toBe("Ada:hi");
+
+    rerender({
+      people: [
+        { name: "Ada", note: "hi" },
+        { name: "Lin", note: "kept from before" },
+      ],
+    });
+    expect(result.current.variableValues.get("notes")).toBe("Ada:hi,Lin:-");
+  });
+
+  it("reads a stored cell a read-only review shows, even with its condition false", () => {
+    const row = { name: "Lin", note: "answered" };
+    const { result } = renderNotes({
+      readOnly: true,
+      formData: { people: [row] },
+    });
+    expect(
+      result.current.fieldContext.forRow(row).visibleSubFields([noteField]),
+    ).toEqual([noteField]);
+    expect(result.current.variableValues.get("notes")).toBe("Lin:answered");
+  });
+
   it("stays put while the current page is visible", () => {
     const moves: number[] = [];
     renderVisibility({

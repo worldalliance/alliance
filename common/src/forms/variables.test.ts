@@ -6,6 +6,7 @@ import type {
   FileField,
   FormSchema,
   ListField,
+  ListSubField,
   MultiSelectField,
   NumberField,
   OutputFieldBlock,
@@ -41,6 +42,7 @@ import {
   VARIABLE_NAME_REGEX,
   type FormVariable,
   type VariableInputField,
+  type VariableResolutionContext,
 } from "./variables";
 
 const numberField = (id: string): NumberField => ({
@@ -253,8 +255,11 @@ describe("collectVariableInputFields", () => {
     ).toEqual(["qty", "note", "where"]);
   });
 
-  it("leaves out a list and its sub-fields, which answer once per row", () => {
-    expect(offered([numberField("qty"), listWithSubFields])).toEqual(["qty"]);
+  it("offers a list but not its sub-fields, which answer once per row", () => {
+    expect(offered([numberField("qty"), listWithSubFields])).toEqual([
+      "qty",
+      "items",
+    ]);
   });
 
   it("leaves out a kind with no answer a formula can read", () => {
@@ -512,6 +517,250 @@ describe("resolveVariableValues", () => {
     expect(values).toEqual({
       ok: false,
       error: expect.stringMatching(/^#\{broken\}: /),
+    });
+  });
+});
+
+describe("list inputs", () => {
+  const people: ListField = {
+    id: "people",
+    type: "input",
+    kind: "list",
+    label: "People",
+    fields: [
+      { ...textField("n"), label: "Name" },
+      { ...numberField("a"), label: "Age" },
+      { ...multiSelectField("r", ["Engineer", "Chair"]), label: "Roles" },
+      fileField("photo"),
+    ],
+  };
+
+  const properties = { n: "name", a: "age", r: "roles" };
+
+  const listVariable = (formula: string): FormVariable =>
+    variable({
+      inputs: { input1: { kind: "list", fieldId: "people", properties } },
+      formula,
+    });
+
+  const evaluateList = (
+    formula: string,
+    answers: VariableResolutionContext["answers"],
+  ) =>
+    evaluateVariable(listVariable(formula), {
+      answers,
+      fields: variableInputFieldsById([people]),
+    });
+
+  describe("evaluateVariable", () => {
+    it("reads one record per row, each cell converted like its field", () => {
+      const result = evaluateList(
+        "input1.map(p => [p.name, p.age + 1, p.roles.map(r => r.label).join('/')].join(' ')).join('; ')",
+        {
+          people: [
+            { n: "Ada", a: "34", r: ["value0", "value1"] },
+            { n: "Lin" },
+          ],
+        },
+      );
+      expect(result).toEqual({
+        ok: true,
+        value: "Ada 35 Engineer/Chair; Lin  ",
+      });
+    });
+
+    it("reads a blank or unusable cell as undefined", () => {
+      const result = evaluateList(
+        "input1.map(p => [p.name ?? '-', p.age ?? '-', p.roles ?? '-'].join()).join('|')",
+        { people: [{ n: "  ", a: "abc", r: [] }, {}] },
+      );
+      expect(result).toEqual({ ok: true, value: "-,-,-|-,-,-" });
+    });
+
+    it("reads an empty or unanswered list as no rows", () => {
+      expect(evaluateList("input1.length", { people: [] })).toEqual({
+        ok: true,
+        value: "0",
+      });
+      expect(evaluateList("input1.length", {})).toEqual({
+        ok: true,
+        value: "0",
+      });
+    });
+
+    it("fails on a sub-field of a kind this build doesn't know", () => {
+      const future: ListSubField = JSON.parse(
+        '{ "id": "sig", "type": "input", "kind": "future", "label": "Sig" }',
+      );
+      const result = evaluateVariable(
+        variable({
+          inputs: {
+            input1: {
+              kind: "list",
+              fieldId: "people",
+              properties: { ...properties, sig: "sig" },
+            },
+          },
+          formula: "input1.map(p => p.sig ?? 'unsigned').join()",
+        }),
+        {
+          answers: { people: [{ n: "Ada", sig: "signed" }] },
+          fields: variableInputFieldsById([
+            { ...people, fields: [...people.fields, future] },
+          ]),
+        },
+      );
+      expect(result).toEqual({
+        ok: false,
+        error: "Unknown field kind: future",
+      });
+    });
+
+    it("counts the rows of a list with nothing else to read", () => {
+      const onlyFiles: ListField = { ...people, fields: [fileField("photo")] };
+      const result = evaluateVariable(
+        variable({
+          inputs: {
+            input1: { kind: "list", fieldId: "people", properties: {} },
+          },
+          formula: "input1.length",
+        }),
+        {
+          answers: { people: [{ photo: "a" }, {}] },
+          fields: variableInputFieldsById([onlyFiles]),
+        },
+      );
+      expect(result).toEqual({ ok: true, value: "2" });
+    });
+  });
+
+  describe("validateFormSchema", () => {
+    const errorsFor = (variables: FormVariable[], list = people) =>
+      validateFormSchema(
+        schema({ pages: [page("p1", [list])], variables }),
+      ).map((error) => error.message);
+
+    it("accepts a formula that reduces the rows to text", () => {
+      expect(
+        errorsFor([listVariable("input1.map(p => p.name).join(', ')")]),
+      ).toEqual([]);
+      expect(errorsFor([listVariable("input1.length")])).toEqual([]);
+    });
+
+    it.each(["input1", "input1[0]", "input1.map(p => p.roles)"])(
+      "rejects %s, which ends on a list or a record",
+      (formula) => {
+        const errors = errorsFor([listVariable(formula)]);
+        expect(errors).toHaveLength(1);
+        expect(errors[0]).toContain("has to end on text");
+      },
+    );
+
+    it("rejects a property no sub-field has", () => {
+      const errors = errorsFor([listVariable("input1.map(p => p.photo)[0]")]);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain("photo");
+    });
+
+    it("rejects a readable sub-field without a name, and a name without one", () => {
+      const v = variable({
+        inputs: {
+          input1: {
+            kind: "list",
+            fieldId: "people",
+            properties: { n: "name", a: "age", photo: "photo" },
+          },
+        },
+        formula: "input1.length",
+      });
+      expect(errorsFor([v])).toEqual([
+        'Input "input1" has no property name for sub-field "r"',
+        'Input "input1" names property "photo" for "photo", which is not a readable sub-field of list "people"',
+      ]);
+    });
+
+    it("rejects reading a sub-field of a kind this build doesn't know", () => {
+      const future: ListSubField = JSON.parse(
+        '{ "id": "sig", "type": "input", "kind": "future", "label": "Sig" }',
+      );
+      const v = variable({
+        inputs: {
+          input1: {
+            kind: "list",
+            fieldId: "people",
+            properties: { ...properties, sig: "sig" },
+          },
+        },
+        formula: "input1.map(p => p.sig).join()",
+      });
+      expect(
+        errorsFor([v], { ...people, fields: [...people.fields, future] }),
+      ).toEqual([
+        'Input "input1" reads sub-field "sig", whose kind (future) this build doesn\'t know. Reload the page',
+      ]);
+    });
+
+    it("rejects a repeated or reserved property name", () => {
+      const v = variable({
+        inputs: {
+          input1: {
+            kind: "list",
+            fieldId: "people",
+            properties: { n: "name", a: "name", r: "constructor" },
+          },
+        },
+        formula: "input1.length",
+      });
+      expect(errorsFor([v])).toEqual([
+        'Input "input1" uses property name "name" more than once',
+        'Input "input1" cannot use "constructor" as a property name',
+      ]);
+    });
+
+    it("rejects a property name a formula cannot write", () => {
+      const v = variable({
+        inputs: {
+          input1: {
+            kind: "list",
+            fieldId: "people",
+            properties: { ...properties, n: "" },
+          },
+        },
+        formula: "input1.length",
+      });
+      const errors = errorsFor([v]);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('property "" has to start with a letter');
+    });
+
+    it("rejects a list read as a single field, and a field read as a list", () => {
+      expect(
+        errorsFor([
+          variable({
+            inputs: { input1: { kind: "field", fieldId: "people" } },
+            formula: "input1",
+          }),
+        ]),
+      ).toEqual([
+        'Input "input1" reads list "people" as a single field. Read it as a list input',
+      ]);
+      expect(
+        validateFormSchema(
+          schema({
+            pages: [page("p1", [numberField("qty")])],
+            variables: [
+              variable({
+                inputs: {
+                  input1: { kind: "list", fieldId: "qty", properties: {} },
+                },
+                formula: "input1.length",
+              }),
+            ],
+          }),
+        ).map((error) => error.message),
+      ).toEqual([
+        'Input "input1" reads field "qty" as a list, but its kind is number',
+      ]);
     });
   });
 });
@@ -826,17 +1075,23 @@ describe("validateFormSchema: variables", () => {
     ]);
   });
 
-  it("rejects an input of a kind this build doesn't know", () => {
+  it.each([
+    '{ "kind": "future", "fieldId": "qty" }',
+    '{ "kind": "future", "fieldId": "cell" }',
+    '{ "kind": "future", "listId": "list" }',
+  ])("rejects an input of a kind this build doesn't know: %s", (input) => {
+    const list: ListField = {
+      id: "list",
+      type: "input",
+      kind: "list",
+      label: "Items",
+      fields: [numberField("cell")],
+    };
     expect(
       errorsFor({
-        pages: [page("p1", [numberField("qty")])],
+        pages: [page("p1", [numberField("qty"), list])],
         variables: [
-          {
-            ...variable(),
-            inputs: JSON.parse(
-              '{ "input1": { "kind": "future", "fieldId": "qty" } }',
-            ),
-          },
+          { ...variable(), inputs: JSON.parse(`{ "input1": ${input} }`) },
         ],
       }),
     ).toEqual([

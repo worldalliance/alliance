@@ -6,6 +6,7 @@ import {
   displayBlockSchema,
   type ManualDisplayBlockContent,
 } from "./display-blocks";
+import { isListRow } from "./list-rows";
 import {
   categorizedOptionsShape,
   checkOptionCategories,
@@ -13,13 +14,14 @@ import {
 } from "./options-schema";
 import {
   formVariableSchema,
-  isFieldKindUsableAsVariableInput,
+  isFieldKindReadableByFieldInput,
   type VariableInputField,
 } from "./variables";
 import type { Condition, VisibleIfFormula } from "./visible-if-formula";
 import { visibleIfFormulaSchema } from "./visible-if-formula";
 
 export type { CityFieldValue } from "./city";
+export { isListRow } from "./list-rows";
 
 export type ListFieldValue = Record<string, FormValue>[];
 export type FormValue =
@@ -29,10 +31,6 @@ export type FormValue =
   | string[]
   | CityFieldValue
   | ListFieldValue;
-
-export function isListRow(value: unknown): value is Record<string, FormValue> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 export function asCards(value: FormValue | undefined): ListFieldValue | null {
   if (!Array.isArray(value)) {
@@ -525,12 +523,14 @@ export function fieldHasOptions(field: AnyField): field is OptionField {
 }
 
 /**
- * Returns page-level fields with one formula-readable answer. List sub-fields
- * are excluded because each list answer contains one value per row.
+ * Returns page-level fields a formula can read: those with one readable answer,
+ * and lists, which a formula reads as one record per row. List sub-fields are
+ * read only through their list.
  */
 export function collectVariableInputFields(schema: FormSchema): AnyField[] {
-  return collectVariableResolutionFields(schema).filter((field) =>
-    isFieldKindUsableAsVariableInput(field.kind),
+  return collectVariableResolutionFields(schema).filter(
+    (field) =>
+      field.kind === "list" || isFieldKindReadableByFieldInput(field.kind),
   );
 }
 
@@ -546,17 +546,18 @@ export function collectVariableResolutionFields(
   );
 }
 
+function variableInputField(field: AnyField): VariableInputField {
+  if (fieldHasOptions(field)) {
+    return { kind: field.kind, options: field.options };
+  }
+  if (field.kind === "list") return { kind: field.kind, fields: field.fields };
+  return { kind: field.kind };
+}
+
 export function variableInputFieldsById(
   fields: readonly AnyField[],
 ): ReadonlyMap<string, VariableInputField> {
-  return new Map(
-    fields.map((field) => [
-      field.id,
-      fieldHasOptions(field)
-        ? { kind: field.kind, options: field.options }
-        : { kind: field.kind },
-    ]),
-  );
+  return new Map(fields.map((field) => [field.id, variableInputField(field)]));
 }
 
 /**

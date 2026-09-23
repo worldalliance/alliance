@@ -30,6 +30,10 @@ The user approved the agent's proposals that:
 
 The user left alias-renaming behavior to the implementation agent because the preferred behavior depends on maintenance cost. The implementation may rewrite safe formula references or report a validation error after the rename. It must not change a formula's meaning silently.
 
+## Compatibility
+
+A reviewing agent reported that an app build crashes on a form whose variable uses an input kind added after that build. The user asked for future builds not to crash this way and said app versions already released need no handling.
+
 ## Variable failures
 
 A reviewing agent reported that an app build treated a variable input kind it didn't know as an empty value, so the form showed fallback or blank text with no sign anything was wrong. Asked how to fail loudly, the user approved the agent's proposal to block the form the way an unknown element or condition kind already does, and stated the requirement:

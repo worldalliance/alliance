@@ -185,6 +185,122 @@ describe("resolveOutputItems interpolates variables", () => {
     expect(renderField.fields[0].label).toBe("Weight of 42");
   });
 
+  it("reads a list input's rows as stored, whatever account state their conditions name", () => {
+    const list: ListField = {
+      id: "list",
+      type: "input",
+      kind: "list",
+      label: "Items",
+      fields: [
+        numberField("weight", "Weight"),
+        {
+          ...numberField("extra", "Extra"),
+          visibleIfFormula: {
+            conditions: { c1: { kind: "userHasCity", userHasCity: true } },
+            formula: "c1",
+          },
+        },
+      ],
+    };
+    const { items } = resolveOutputItems({
+      schema: schemaWithVariable({
+        pages: [{ id: "p1", fields: [list] }],
+        variables: [
+          {
+            name: "summary",
+            inputs: {
+              input1: {
+                kind: "list",
+                fieldId: "list",
+                properties: { weight: "weight", extra: "extra" },
+              },
+            },
+            formula:
+              "input1.map(row => row.weight + ':' + (row.extra ?? '-')).join()",
+          },
+        ],
+        outputViews: [
+          {
+            id: "v1",
+            type: "default",
+            blocks: [
+              { id: "ob1", type: "display", kind: "text", text: "#{summary}" },
+            ],
+          },
+        ],
+      }),
+      answers: {
+        list: [
+          { weight: 1, extra: 5 },
+          { weight: 2, extra: 6 },
+        ],
+      },
+    });
+
+    const [item] = items;
+    if (item.type !== "display") throw new Error("expected a display item");
+    if (item.block.kind !== "text") throw new Error("expected a text block");
+    expect(item.block.text).toBe("1:5,2:6");
+  });
+
+  it("reads a stored cell its row hides as unanswered in a list input", () => {
+    const list: ListField = {
+      id: "list",
+      type: "input",
+      kind: "list",
+      label: "Items",
+      fields: [
+        numberField("weight", "Weight"),
+        {
+          ...numberField("extra", "Extra"),
+          visibleIfFormula: {
+            conditions: { c1: { kind: "equals", when: "weight", equals: 1 } },
+            formula: "c1",
+          },
+        },
+      ],
+    };
+    const { items } = resolveOutputItems({
+      schema: schemaWithVariable({
+        pages: [{ id: "p1", fields: [list] }],
+        variables: [
+          {
+            name: "summary",
+            inputs: {
+              input1: {
+                kind: "list",
+                fieldId: "list",
+                properties: { weight: "weight", extra: "extra" },
+              },
+            },
+            formula:
+              "input1.map(row => row.weight + ':' + (row.extra ?? '-')).join()",
+          },
+        ],
+        outputViews: [
+          {
+            id: "v1",
+            type: "default",
+            blocks: [
+              { id: "ob1", type: "display", kind: "text", text: "#{summary}" },
+            ],
+          },
+        ],
+      }),
+      answers: {
+        list: [
+          { weight: 1, extra: 5 },
+          { weight: 2, extra: 6 },
+        ],
+      },
+    });
+
+    const [item] = items;
+    if (item.type !== "display") throw new Error("expected a display item");
+    if (item.block.kind !== "text") throw new Error("expected a text block");
+    expect(item.block.text).toBe("1:5,2:-");
+  });
+
   it("substitutes into display blocks", () => {
     const [item] = resolve(
       schemaWithVariable({

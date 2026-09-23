@@ -653,7 +653,10 @@ export function VariableBuilder({
 }: VariableBuilderProps) {
   const variables = useMemo(() => schema.variables ?? [], [schema.variables]);
   const eligibleFields = useMemo(
-    () => collectVariableInputFields(schema),
+    () =>
+      collectVariableInputFields(schema).filter(
+        (field) => field.kind !== "list",
+      ),
     [schema],
   );
 

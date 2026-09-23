@@ -123,7 +123,7 @@ const LENGTH_PROPERTY = "length";
 
 // Property reads never touch a prototype. Reject these names at compile time so
 // attempts produce an error instead of `undefined`.
-const FORBIDDEN_PROPERTIES: ReadonlySet<string> = new Set([
+export const FORBIDDEN_PROPERTIES: ReadonlySet<string> = new Set([
   "__proto__",
   "constructor",
   "prototype",

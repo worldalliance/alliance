@@ -8,6 +8,7 @@ import {
   type FieldGroup,
   type FormSchema,
   type ListField,
+  type ListSubField,
   type OutputFieldBlock,
   type OutputViewSchema,
   type PageItem,
@@ -15,8 +16,9 @@ import {
 import { compileVariableExpression } from "./variable-expression";
 import { checkVariableFormulaType } from "./variable-formula-check";
 import {
-  isFieldKindUsableAsVariableInput,
+  isFieldKindReadableByFieldInput,
   isKnownFieldKind,
+  listInputPropertyErrors,
   VARIABLE_NAME_REGEX,
   variableTypeEnv,
   type FormVariable,
@@ -102,6 +104,7 @@ type CollectedField = {
   // List sub-fields are collected so references to them are rejected as
   // unsupported rather than missing.
   insideList: boolean;
+  subFields: readonly ListSubField[];
 };
 
 function collectFieldKinds(schema: FormSchema): Map<string, CollectedField> {
@@ -122,9 +125,9 @@ function collectVariableErrors(
   const fieldKinds = collectFieldKinds(schema);
   const declared = new Set<string>();
 
-  // An input the picker could never have offered is absent here rather than
-  // wrongly typed, which leaves it `any` so `checkVariableInputs` reports one
-  // focused error instead of the type checker adding one per use.
+  // An input the picker could never have offered reads as `any`, so
+  // `checkVariableInputs` reports one focused error instead of the type checker
+  // adding one per use.
   const readableFields = variableInputFieldsById(
     collectVariableInputFields(schema),
   );
@@ -170,35 +173,63 @@ function checkVariableInputs(
   push: (message: string) => void,
 ): void {
   for (const [inputName, input] of Object.entries(variable.inputs)) {
-    switch (input.kind) {
+    const topLevelField = (): CollectedField | undefined => {
+      const field = fields.get(input.fieldId);
+      if (field === undefined) {
+        push(
+          `Input "${inputName}" references missing field "${input.fieldId}"`,
+        );
+        return undefined;
+      }
+      if (field.insideList) {
+        push(
+          `Input "${inputName}" reads field "${input.fieldId}", which is inside a list. Read the whole list instead`,
+        );
+        return undefined;
+      }
+      return field;
+    };
+    const { kind } = input;
+    switch (kind) {
       case "field": {
-        const field = fields.get(input.fieldId);
-        if (field === undefined) {
+        const field = topLevelField();
+        if (field === undefined) break;
+        if (field.kind === "list") {
           push(
-            `Input "${inputName}" references missing field "${input.fieldId}"`,
+            `Input "${inputName}" reads list "${input.fieldId}" as a single field. Read it as a list input`,
           );
-          break;
-        }
-        if (field.insideList) {
-          push(
-            `Input "${inputName}" reads field "${input.fieldId}", which is inside a list — a list has one answer per row, so variables can't read it`,
-          );
-          break;
-        }
-        if (!isKnownFieldKind(field.kind)) {
+        } else if (!isKnownFieldKind(field.kind)) {
           push(
             `Input "${inputName}" reads field "${input.fieldId}", whose kind (${field.kind}) this build doesn't know. Reload the page`,
           );
-        } else if (!isFieldKindUsableAsVariableInput(field.kind)) {
+        } else if (!isFieldKindReadableByFieldInput(field.kind)) {
           push(
             `Input "${inputName}" reads field "${input.fieldId}", whose kind (${field.kind}) has no value a formula can read`,
           );
         }
         break;
       }
+      case "list": {
+        const field = topLevelField();
+        if (field === undefined) break;
+        if (field.kind !== "list") {
+          push(
+            `Input "${inputName}" reads field "${input.fieldId}" as a list, but its kind is ${field.kind}`,
+          );
+          break;
+        }
+        for (const message of listInputPropertyErrors({
+          inputName,
+          input,
+          subFields: field.subFields,
+        })) {
+          push(message);
+        }
+        break;
+      }
       default:
         push(
-          `Input "${inputName}" has a kind (${input.kind satisfies never}) this build doesn't know. Reload the page`,
+          `Input "${inputName}" has a kind (${kind satisfies never}) this build doesn't know. Reload the page`,
         );
     }
   }
@@ -318,11 +349,10 @@ function collectFieldKindsFromItem(
     return;
   }
   if (!isQuestionField(item)) return;
-  fields.set(item.id, { kind: item.kind, insideList: false });
-  if (item.kind === "list") {
-    for (const sub of (item as ListField).fields ?? []) {
-      fields.set(sub.id, { kind: sub.kind, insideList: true });
-    }
+  const subFields = item.kind === "list" ? (item.fields ?? []) : [];
+  fields.set(item.id, { kind: item.kind, insideList: false, subFields });
+  for (const sub of subFields) {
+    fields.set(sub.id, { kind: sub.kind, insideList: true, subFields: [] });
   }
 }
 

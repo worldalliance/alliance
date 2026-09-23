@@ -3,11 +3,13 @@
 import z from "zod";
 import { R, type Result } from "../result";
 import { formatCityValue, parseCityValue } from "./city";
-import type { FieldKind, FormValue } from "./form-schema";
+import type { FieldKind, FormValue, ListSubField } from "./form-schema";
+import { isListRow } from "./list-rows";
 import {
   compileVariableExpression,
   evaluateVariableExpression,
   exprValueToText,
+  FORBIDDEN_PROPERTIES,
   type ExprRecord,
   type ExprValue,
 } from "./variable-expression";
@@ -51,8 +53,17 @@ const variableFieldInputSchema = z.strictObject({
   fieldId: z.string(),
 });
 
+const variableListInputSchema = z.strictObject({
+  kind: z.literal("list"),
+  fieldId: z.string(),
+  /** Row property name for each readable sub-field, keyed by sub-field id. */
+  properties: z.record(z.string(), z.string().regex(VARIABLE_INPUT_NAME_REGEX)),
+});
+export type VariableListInput = z.infer<typeof variableListInputSchema>;
+
 export const variableInputSchema = z.discriminatedUnion("kind", [
   variableFieldInputSchema,
+  variableListInputSchema,
 ]);
 export type VariableInput = z.infer<typeof variableInputSchema>;
 
@@ -103,9 +114,9 @@ export const FIELD_KIND_VARIABLE_INPUT_MODE: Record<
   multiselect: VariableInputMode.Choices,
   ranking: VariableInputMode.Choices,
   city: VariableInputMode.City,
-  // A list holds one answer per row, a file holds an upload id, and a custom
-  // component stores whatever it likes: none of the three has a reading a
-  // formula could put in a sentence.
+  // A list is read through a `list` input, one record per row. A file holds an
+  // upload id and a custom component stores whatever it likes: neither has a
+  // reading a formula could put in a sentence.
   list: VariableInputMode.None,
   file: VariableInputMode.None,
   custom: VariableInputMode.None,
@@ -122,14 +133,75 @@ function variableInputMode(kind: FieldKind): VariableInputMode {
     : VariableInputMode.None;
 }
 
-export function isFieldKindUsableAsVariableInput(kind: FieldKind): boolean {
+export function isFieldKindReadableByFieldInput(kind: FieldKind): boolean {
   return variableInputMode(kind) !== VariableInputMode.None;
 }
 
 export type VariableInputField = {
   kind: FieldKind;
   options?: readonly { label: string; value: string }[];
+  fields?: readonly ListSubField[];
 };
+
+export function readableListSubFields(
+  subFields: readonly ListSubField[],
+): ListSubField[] {
+  return subFields.filter((sub) => isFieldKindReadableByFieldInput(sub.kind));
+}
+
+export function listInputPropertyErrors(params: {
+  inputName: string;
+  input: VariableListInput;
+  subFields: readonly ListSubField[];
+}): string[] {
+  const { inputName, input, subFields } = params;
+  const errors: string[] = [];
+  const readableIds = new Set(
+    readableListSubFields(subFields).map((sub) => sub.id),
+  );
+  for (const id of readableIds) {
+    if (!Object.hasOwn(input.properties, id)) {
+      errors.push(
+        `Input "${inputName}" has no property name for sub-field "${id}"`,
+      );
+    }
+  }
+  const unknownKinds = new Map(
+    subFields
+      .filter((sub) => !isKnownFieldKind(sub.kind))
+      .map((sub) => [sub.id, sub.kind]),
+  );
+  const seen = new Set<string>();
+  for (const [id, name] of Object.entries(input.properties)) {
+    const unknownKind = unknownKinds.get(id);
+    if (unknownKind !== undefined) {
+      errors.push(
+        `Input "${inputName}" reads sub-field "${id}", whose kind (${unknownKind}) this build doesn't know. Reload the page`,
+      );
+    } else if (!readableIds.has(id)) {
+      errors.push(
+        `Input "${inputName}" names property "${name}" for "${id}", which is not a readable sub-field of list "${input.fieldId}"`,
+      );
+    }
+    if (!VARIABLE_INPUT_NAME_REGEX.test(name)) {
+      errors.push(
+        `Input "${inputName}" property "${name}" has to start with a letter or underscore and use only letters, numbers and underscores`,
+      );
+    }
+    if (FORBIDDEN_PROPERTIES.has(name)) {
+      errors.push(
+        `Input "${inputName}" cannot use "${name}" as a property name`,
+      );
+    }
+    if (seen.has(name)) {
+      errors.push(
+        `Input "${inputName}" uses property name "${name}" more than once`,
+      );
+    }
+    seen.add(name);
+  }
+  return errors;
+}
 
 // Keep these as strings so form renderers can import this module without
 // pulling in TypeScript. `variable-formula-check.ts` writes them into its
@@ -159,15 +231,58 @@ export function variableInputType(kind: FieldKind | undefined): string {
     : `${VARIABLE_INPUT_TYPE[FIELD_KIND_VARIABLE_INPUT_MODE[kind]]} | undefined`;
 }
 
+function listInputType(
+  input: VariableListInput,
+  field: VariableInputField | undefined,
+): string {
+  if (field?.kind !== "list") return "any";
+  // Invalid and repeated names stay out of the type and an unknown kind reads as
+  // `any`, so validation reports each once instead of the type checker adding
+  // a syntax, duplicate or missing-property error.
+  const properties = new Map<string, string>();
+  for (const sub of field.fields ?? []) {
+    const name = input.properties[sub.id];
+    if (
+      !Object.hasOwn(input.properties, sub.id) ||
+      !VARIABLE_INPUT_NAME_REGEX.test(name) ||
+      properties.has(name)
+    ) {
+      continue;
+    }
+    if (!isKnownFieldKind(sub.kind)) {
+      properties.set(name, "any");
+    } else if (isFieldKindReadableByFieldInput(sub.kind)) {
+      properties.set(name, variableInputType(sub.kind));
+    }
+  }
+  const members = [...properties].map(([name, type]) => `${name}: ${type}`);
+  return `{ ${members.join("; ")} }[]`;
+}
+
 export function variableTypeEnv(
   variable: FormVariable,
   fields: ReadonlyMap<string, VariableInputField>,
 ): ReadonlyMap<string, string> {
   return new Map(
-    Object.entries(variable.inputs).map(([name, input]) => [
-      name,
-      variableInputType(fields.get(input.fieldId)?.kind),
-    ]),
+    Object.entries(variable.inputs).map(([name, input]) => {
+      const field = fields.get(input.fieldId);
+      switch (input.kind) {
+        case "field":
+          return [
+            name,
+            variableInputType(
+              field !== undefined && isFieldKindReadableByFieldInput(field.kind)
+                ? field.kind
+                : undefined,
+            ),
+          ];
+        case "list":
+          return [name, listInputType(input, field)];
+        default:
+          input satisfies never;
+          return [name, variableInputType(undefined)];
+      }
+    }),
   );
 }
 
@@ -292,6 +407,35 @@ export type VariableResolutionContext = {
   fields: ReadonlyMap<string, VariableInputField>;
 };
 
+function resolveListInput(
+  input: VariableListInput,
+  context: VariableResolutionContext,
+): Result<ExprValue, string> {
+  const field = context.fields.get(input.fieldId);
+  if (field?.kind !== "list") return R.success(undefined);
+  const named = (field.fields ?? []).filter((sub) =>
+    Object.hasOwn(input.properties, sub.id),
+  );
+  const unknown = named.find((sub) => !isKnownFieldKind(sub.kind));
+  if (unknown !== undefined) {
+    return R.failure(`Unknown field kind: ${unknown.kind}`);
+  }
+  const rows = context.answers[input.fieldId];
+  if (!Array.isArray(rows)) return R.success([]);
+  const subFields = readableListSubFields(named);
+  return R.success(
+    rows.map((row: unknown): ExprRecord => {
+      const cells = isListRow(row) ? row : {};
+      return Object.fromEntries(
+        subFields.map((sub) => [
+          input.properties[sub.id],
+          formValueToExprValue(cells[sub.id], sub),
+        ]),
+      );
+    }),
+  );
+}
+
 function resolveFieldInput(
   input: Extract<VariableInput, { kind: "field" }>,
   context: VariableResolutionContext,
@@ -312,6 +456,8 @@ function resolveInput(
   switch (kind) {
     case "field":
       return resolveFieldInput(input, context);
+    case "list":
+      return resolveListInput(input, context);
     default:
       // A newer admin can save an input kind this build predates.
       return R.failure(`Unknown input kind: ${kind satisfies never}`);
