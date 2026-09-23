@@ -19,8 +19,7 @@ appId: ${APP_ID}
 - eraseText: 4
 - inputText: zzz
 - assertVisible: No matches
-- tapOn:
-    point: 50%, 10%
+- tapOn: Close
 - assertVisible: Places p4,p2,p3
 - assertVisible: 3 selected
 - assertVisible: Remove New Jersey

@@ -3,6 +3,7 @@ import {
   matchesOptionSearch,
 } from "@alliance/shared/forms/optionSearch";
 import { cn } from "@alliance/shared/styles/util";
+import { X } from "lucide-react-native";
 import {
   type PropsWithChildren,
   type RefObject,
@@ -140,6 +141,7 @@ function OptionSheet({
   title,
   search,
   scrollRef,
+  showCloseButton = false,
   children,
 }: PropsWithChildren<{
   visible: boolean;
@@ -147,12 +149,26 @@ function OptionSheet({
   title: string;
   search?: Parameters<typeof OptionSearch>[0];
   scrollRef: RefObject<ScrollView | null>;
+  showCloseButton?: boolean;
 }>) {
   return (
     <FormModal visible={visible} onClose={onClose}>
-      <Text className="text-lg text-zinc-900 mb-2" weight={FontWeight.Semibold}>
-        {title}
-      </Text>
+      <View className="flex-row items-center justify-between mb-2">
+        <Text className="text-lg text-zinc-900" weight={FontWeight.Semibold}>
+          {title}
+        </Text>
+        {showCloseButton && (
+          <TouchableOpacity
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            hitSlop={8}
+            className="p-1"
+          >
+            <X size={20} color={colors.text.icon} />
+          </TouchableOpacity>
+        )}
+      </View>
       {search ? (
         <>
           <OptionSearch {...search} />
@@ -286,6 +302,7 @@ export function BottomSheetMultiOptionPicker({
           : undefined
       }
       scrollRef={scrollRef}
+      showCloseButton
     >
       {rows}
     </OptionSheet>
