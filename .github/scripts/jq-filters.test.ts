@@ -23,6 +23,39 @@ function jq(params: {
 
 const HASH = "0123456789ab";
 
+describe("formatjs-declined.jq", () => {
+  const declined = (prs: unknown[]) =>
+    jq({ filter: "scripts/formatjs-declined.jq", input: prs });
+
+  test("picks closed and merged pull requests", () => {
+    expect(
+      declined([
+        { number: 1, state: "CLOSED", labels: [] },
+        { number: 2, state: "MERGED", labels: [] },
+        { number: 3, state: "CLOSED", labels: [{ name: "dependencies" }] },
+      ]),
+    ).toEqual([1, 2, 3]);
+  });
+
+  test("ignores open ones and ones closed as superseded", () => {
+    expect(
+      declined([
+        { number: 1, state: "OPEN", labels: [] },
+        { number: 2, state: "CLOSED", labels: [{ name: "superseded" }] },
+      ]),
+    ).toEqual([]);
+  });
+
+  test("ignores a fork's pull requests", () => {
+    expect(
+      declined([
+        { number: 1, state: "CLOSED", labels: [], isCrossRepository: true },
+        { number: 2, state: "MERGED", labels: [], isCrossRepository: true },
+      ]),
+    ).toEqual([]);
+  });
+});
+
 describe("tzdb-pr-declined.jq", () => {
   const declined = (pr: { state: string; body: string; headlines: string[] }) =>
     jq({
@@ -158,26 +191,27 @@ describe("superseded.jq", () => {
     author: { login: "app/github-actions" },
   });
 
-  test("picks the author's other pull requests on the prefix", () => {
+  test("picks the author's other pull requests on any of the prefixes", () => {
     expect(
       jq({
         filter: "actions/open-superseding-pr/superseded.jq",
         input: [
           pr(1, "tzdb/2026c"),
+          pr(2, "formatjs/ba9876543210"),
           pr(3, "tzdb/2026d"),
           pr(4, "auto-fix/abc"),
           {
             number: 5,
-            headRefName: "tzdb/by-hand",
+            headRefName: "formatjs/upgrade-v8",
             author: { login: "someone" },
           },
         ],
         env: {
           AUTHOR: "app/github-actions",
-          PREFIX: "tzdb/",
+          PREFIXES: "tzdb/ formatjs/",
           BRANCH: "tzdb/2026d",
         },
       }),
-    ).toEqual([1]);
+    ).toEqual([1, 2]);
   });
 });

@@ -23,6 +23,9 @@ sections below this one carry the reasoning each step implements.
    The deploy ships the bunfig, the repl preloads the same file, and loading
    `AppModule` without FormatJS throws.
    The release watch bumps FormatJS in the same pull request as the catalog.
+   A FormatJS release that changes its tz data while no catalog pull request
+   is open goes into a new one that supersedes any open FormatJS one, unless
+   someone declined that tz data.
 3. **Shared validation.** A validator in `common` that accepts any identifier
    the runtime resolves, wired into every server write path: password signup,
    OAuth signup, profile update, form extraction, admin edits.
@@ -75,43 +78,70 @@ sections below this one carry the reasoning each step implements.
     newer one's pull request with it and the skip rule would retire that
     release. A branch a failed run left without a pull request gets
     force-pushed over. Opening a pull request closes any other open one
-    github-actions opened on a `tzdb/` branch, which the new release
-    supersedes, with a comment linking the pull request that replaced it, and
-    deletes its branch. Someone's own branch that shares the prefix stays
-    open: the action closes only pull requests by the new one's author, so the
-    token a caller passes decides whose it closes. A composite
-    action, `open-superseding-pr`, holds the commit, push, open, and close,
-    since the FormatJS bump opens its pull requests the same way. It refuses an
-    empty branch prefix, which would match every branch and close every open
-    pull request, and a missing token or git identity, which would otherwise
+    github-actions opened on a `tzdb/` or `formatjs/` branch, which the new
+    release supersedes, labels it
+    `superseded`, comments with a link to the pull request that replaced it,
+    and deletes its branch. One it labels but fails to close loses the label
+    again unless GitHub reports it closed, so a later close by hand reads as
+    declined. Someone's own branch that shares a prefix, such as
+    `formatjs/upgrade-v7`, stays open: the action closes only pull requests by
+    the new one's author, so the token a caller passes decides whose it closes.
+    A composite action, `open-superseding-pr`, holds
+    the commit, push, open, and close, since the FormatJS bump opens its pull
+    requests the same way. It takes a list of branch prefixes and refuses an
+    empty one, which would match every branch and close every open pull
+    request, and a missing token or git identity, which would otherwise
     surface after the force-push. A working tree with nothing staged ends the
     run rather than opening an empty pull request. It lists up to 1000 open
     pull requests, since the default of 30 would miss an old `tzdb/` one.
-    Its jq filter lives in a `.jq` file, tested by
-    `.github/scripts/jq-filters.test.ts`; `.github` joins the unit test
-    packages for it, but not the typecheck ones, since it has no tsconfig.
-    The action pipes `gh`'s JSON into `jq` rather than passing the filter to
-    `gh --jq`, whose built-in gojq is not the engine the test runs.
-    `.github/scripts/bump-formatjs.sh` does the bump: it updates
-    `@formatjs/intl-datetimeformat` within its major version and keeps the
-    update only when it changes `add-all-tz.js`, since most FormatJS releases
-    carry the same tz data as the one before. The bump is its own commit on
-    the `tzdb/` branch, so a reviewer declines it by reverting it. Its message
-    names the tz data hash, the first 12 hex digits of `add-all-tz.js`'s
-    SHA-1, as the pull request's body does. The hash leads the headline,
+    When the run opens no pull request and no `tzdb/` one github-actions
+    opened is open, a second job bumps FormatJS on `main`, and typechecks the
+    server and runs its timezone test. A second pull request would conflict
+    with an open catalog one on `bun.lock`, so the bump waits for it to close.
+    The jq filters that
+    decide what counts as declined or superseded live in `.jq`
+    files, tested by `.github/scripts/jq-filters.test.ts`; `.github` joins
+    the unit test packages for it, but not the typecheck ones, since it has
+    no tsconfig. Scripts pipe `gh`'s JSON into `jq` rather than passing a
+    filter to `gh --jq`, whose built-in gojq is not the engine the test runs.
+    `.github/scripts/bump-formatjs.sh` does the bump for both jobs: it
+    updates `@formatjs/intl-datetimeformat` within its major version and
+    keeps the update only when it changes `add-all-tz.js`, since most
+    FormatJS releases carry the same tz data as the one before, and
+    `formatjs/<hash>` has no merged or closed pull request outside a fork,
+    where `<hash>` is the first 12 hex digits of `add-all-tz.js`'s SHA-1.
+    The repository is public, so anyone can open a fork's pull request on
+    that branch name, and the hash is computable from the npm release.
+    A same-repository one still counts, since opening its own pull request
+    there would force-push over that branch. A merged one
+    already landed that tz data, and a closed one means someone declined
+    it, except one labeled `superseded`: its bump comes back when the pull
+    request that closed it doesn't merge.
+    Skipping it in the catalog job too keeps a declined bump from coming
+    back inside the next catalog pull request. The catalog job's bump is its
+    own commit on the `tzdb/` branch, so a reviewer declines it by reverting
+    it. Its message names the tz data hash, as the pull request's body does.
+    The hash leads the headline,
     since GitHub cuts headlines off at 69 characters and a revert's adds
-    `Revert "` in front. The script drops tz data a commit on any `tzdb/`
-    pull request github-actions opened reverts, by a `Revert "…"` headline
-    naming the hash, and tz data a merged `tzdb/` one named in its body or a
-    headline but the checkout lacks, since a reviewer can remove it by hand
-    too, so the decline outlives that pull request instead of the bump
-    returning in the next catalog pull request. A revert of that revert,
-    which git titles `Reapply "…"`, takes the decline back: an odd number of
-    nested reverts leaves the tz data declined. When it drops declined tz
-    data, the script names the declining pull requests in a job notice and
-    the catalog pull request's body, since a merged pull request that lost
-    its bump by accident, say while resolving a `bun.lock` conflict, would
-    otherwise keep that tz data out without anyone seeing why.
+    `Revert "` in front. A revert of that revert, which git titles
+    `Reapply "…"`, takes the decline back: an odd number of nested reverts
+    leaves the tz data declined. The script
+    also drops tz data a commit on any `tzdb/` pull request github-actions
+    opened reverts, by a `Revert "…"` headline naming the hash, and tz data
+    a merged `tzdb/` one named in its body or a headline but the checkout
+    lacks, since a reviewer can remove it by hand too, so the decline
+    outlives that pull request instead of the bump returning in the next
+    catalog pull request, or as a `formatjs/` one after it merges. On `main` it opens a pull request on `formatjs/<hash>`,
+    unless one outside a fork is already open there. A branch named for the version would let a declined bump
+    come back, and replace an open one, at the next FormatJS release, which
+    usually carries the same tz data. The new pull request closes any other
+    open `formatjs/` one and labels it `superseded`. Pushing new tz data onto
+    an open `formatjs/` branch instead would leave its name behind the data
+    it carries. When it drops declined tz data, the script names the
+    declining pull requests in a job notice and, in the catalog job, the
+    pull request's body, since a merged pull request that lost its bump by
+    accident, say while resolving a `bun.lock` conflict, would otherwise keep
+    that tz data out without anyone seeing why.
 
 ## Catalog
 
@@ -130,7 +160,7 @@ sections below this one carry the reasoning each step implements.
 - Validate timezone values on every write path, including password signup, OAuth signup, profile updates, form extraction, admin edits, and backfill.
 - The server's `Intl.DateTimeFormat` is FormatJS's, not Bun's. Bun bundles its ICU, so its tzdb only moves with a Bun release: Linux Bun 1.3.6 carries 2024a, with no `America/Coyhaique` and none of the rule changes since. FormatJS ships 2026d and published it three days after IANA. Upgrading Bun on every tzdb release would leave members' reminders wrong between Bun releases; an adapter over our own compiled rules is further off (see Out of scope).
 - Bun reads `server/bunfig.toml`, and so preloads FormatJS, only when it runs from `server/`. The deploy zip carries the bunfig. `bun run repl` runs on Node through ts-node, since Bun has no `repl.start`, so it preloads the file with `-r`. `app.module.ts` throws on import when `Intl.DateTimeFormat` isn't FormatJS's, so the server, the repl, and any script that boots the app refuse to run on the runtime's own rules, and a deploy that loses the preload fails its health check.
-- The release watch bumps FormatJS within its major version. A major can move the files `intl-timezone.ts` imports, so it waits for someone to take it by hand.
+- The release watch bumps FormatJS within its major version. A major can move the files `intl-timezone.ts` imports, so it waits for someone to take it by hand. FormatJS ships each tzdb release a few days after IANA, usually after the catalog's pull request has opened, so the watch also bumps FormatJS when only FormatJS has new tz data.
 - The swap costs speed and reach. Converting between an instant and a zone's local time runs about 2.4 to 3.7 times slower, roughly 13 to 36 µs each on a development Mac. Loading every zone adds about 53 MB of memory and 25 ms of startup to each server and `bun test` process. It also covers every `Intl.DateTimeFormat` and `Date.prototype.toLocale*String` on the server, and FormatJS's `toLocale*String` returns `"Invalid Date"` instead of throwing. Only `en` locale data loads, since the server formats only `en-US`.
 - The server's local time zone is UTC. FormatJS takes UTC as the local zone whatever the host says, so the preload also sets `TZ=UTC` and `Date` agrees with it. The prod host was already on UTC with no `TZ` set (checked 2026-09-18), so crons and log timestamps there don't move. A development machine in another zone now fires crons and prints logs in UTC, as prod does. Passing the host's zone to FormatJS instead would keep development local, at the cost of development and prod disagreeing.
 - FormatJS 7.8.0 reads every line of tzdb's `backward` file as a link, so its link table holds entries like `"-5:00": "EST5EDT"` and it drops the zones `backward` defines. In tzdb 2026d, `GMT` throws, in `Intl` and in Temporal. `EST5EDT`, `CST6CDT`, `MST7MDT`, and `PST8PDT` resolve to no zone, so Temporal computes them as UTC, hours off. None of the four is a catalog row or alias. `Africa/Abidjan`, `Etc/UTC`, and `Etc/GMT` have no rules either, and come out right only because they are UTC+0. The staging copy of prod taken on 2026-09-18 saves none of these names.

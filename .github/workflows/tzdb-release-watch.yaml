@@ -93,7 +93,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ steps.branch.outputs.name }}
           title: bump tzdb to ${{ steps.bump.outputs.version }}
-          supersedes: tzdb/
+          supersedes: tzdb/ formatjs/
           body: |
             IANA released tzdb ${{ steps.bump.outputs.version }}: https://data.iana.org/time-zones/tzdb-${{ steps.bump.outputs.version }}/NEWS
 
@@ -102,3 +102,76 @@ jobs:
             The server's timezone rules come from `@formatjs/intl-datetimeformat`. ${{ steps.formatjs.outputs.version && format('Its own commit bumps it to {0}, the latest release within the major version in `server/package.json`, which changes its tz data (`add-all-tz.js` SHA-1 {1}). To decline it, revert that commit and keep git''s default message: the watch won''t propose that tz data again.', steps.formatjs.outputs.version, steps.formatjs.outputs.tzdata) || steps.formatjs.outputs.declined && format('This leaves it alone: the latest release within the major version in `server/package.json` changes its tz data (`add-all-tz.js` SHA-1 {0}), but {1} declined that tz data.', steps.formatjs.outputs.tzdata, steps.formatjs.outputs.declined) || 'This leaves it alone: the latest release within the major version in `server/package.json` carries the tz data it has now.' }} Its changelog says which tzdb each release carries: https://github.com/formatjs/formatjs/blob/main/packages/intl-datetimeformat/CHANGELOG.md. If the server's FormatJS doesn't carry tzdb ${{ steps.bump.outputs.version }} yet, merging still updates the catalog, but the server keeps the older rules until FormatJS catches up.
 
             Typecheck and tests for `common`, and the server's typecheck and timezone test, passed in the job that opened this. CI hasn't run: close and reopen this pull request to start it.
+
+  # FormatJS ships a tzdb release days after IANA, usually after the bump job
+  # has opened its pull request.
+  formatjs:
+    needs: bump
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # A second pull request would conflict with the open one on bun.lock, so
+      # the bump waits for it to close.
+      - name: Find an open catalog pull request
+        id: open
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          head=$(gh pr list --state open --limit 1000 --json headRefName,author \
+            --jq 'map(select(.author.login == "app/github-actions") | .headRefName | select(startswith("tzdb/"))) | first // empty')
+          echo "branch=$head" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Update FormatJS
+        id: bump
+        if: steps.open.outputs.branch == ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: .github/scripts/bump-formatjs.sh
+
+      - name: Pick the branch
+        id: branch
+        if: steps.bump.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TZDATA: ${{ steps.bump.outputs.tzdata }}
+        run: |
+          # Named for the tz data, so a declined bump stays declined across FormatJS releases.
+          branch="formatjs/$TZDATA"
+          # A fork's pull request shares the name without being the watch's.
+          prs=$(gh pr list --head "$branch" --json isCrossRepository --jq 'map(select(.isCrossRepository | not)) | length')
+          if [ "$prs" -gt 0 ]; then
+            echo "$branch already has an open pull request."
+          else
+            echo "name=$branch" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Typecheck server, test server timezones
+        if: steps.branch.outputs.name != ''
+        working-directory: server
+        run: bun run typecheck && bun test src/intl-timezone.spec.ts
+
+      - name: Open a pull request
+        if: steps.branch.outputs.name != ''
+        uses: ./.github/actions/open-superseding-pr
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.branch.outputs.name }}
+          title: bump @formatjs/intl-datetimeformat to ${{ steps.bump.outputs.version }}
+          supersedes: formatjs/
+          body: |
+            The server computes local times from the tzdb inside `@formatjs/intl-datetimeformat`. Its changelog says which tzdb ${{ steps.bump.outputs.version }} carries: https://github.com/formatjs/formatjs/blob/main/packages/intl-datetimeformat/CHANGELOG.md
+
+            Leaving this closed declines its tz data (`add-all-tz.js` SHA-1 ${{ steps.bump.outputs.tzdata }}): the watch won't propose that tz data again.
+
+            The server's typecheck and timezone test passed in the job that opened this. CI hasn't run: close and reopen this pull request to start it.
