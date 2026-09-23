@@ -134,7 +134,7 @@ export class NotifsService {
   }
 
   async getUnreadCount(userId: number): Promise<number> {
-    const [notifCount, unreadContentCount] = await Promise.all([
+    const [notifCount, unreadContents] = await Promise.all([
       this.notifsRepository.count({
         where: {
           user: { id: userId },
@@ -142,7 +142,7 @@ export class NotifsService {
           readAt: IsNull(),
         },
       }),
-      this.unreadContentRepository.count({
+      this.unreadContentRepository.find({
         where: {
           user: { id: userId },
           sendTime: LessThan(new Date()),
@@ -150,7 +150,9 @@ export class NotifsService {
         },
       }),
     ]);
-    return notifCount + unreadContentCount;
+    // Counts only what findAll can show: rows whose content is gone never render.
+    const shown = await this.hydrateUnreadContentDtos(unreadContents);
+    return notifCount + shown.length;
   }
 
   findOne(id: number) {

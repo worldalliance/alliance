@@ -379,6 +379,68 @@ describe("Notifications (e2e)", () => {
     },
   );
 
+  it("unread count leaves out a deleted reply that mark all read with loadedAt leaves unread", async () => {
+    await ctx.agent.post("/notifs/read-all").expect(201);
+    const user = await ctx.dataSource
+      .getRepository(User)
+      .findOneByOrFail({ id: ctx.testUserId });
+    const shownNotif = await notifRepo.save(
+      notifRepo.create({
+        user,
+        message: "Shown",
+        category: NotificationCategory.FriendRequest,
+        webAppLocation: "test",
+        mobileAppLocation: "test",
+        sendTime: new Date(Date.now() - milliseconds({ hours: 1 })),
+      }),
+    );
+    const reply = await commentRepo.save(
+      commentRepo.create({
+        author: user,
+        authorId: user.id,
+        editableContent: await editableContentRepo.save(
+          editableContentRepo.create({
+            body: "Deleted reply",
+            attachments: [],
+          }),
+        ),
+        parentObjectType: CommentParentObject.Post,
+        parentObjectId: 1,
+        deleted: true,
+        pinned: false,
+        likes: [],
+        likesCount: 0,
+        children: [],
+      }),
+    );
+    const listResponse = await ctx.agent.get("/notifs").expect(200);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const hiddenContent = await unreadContentRepo.save(
+      unreadContentRepo.create({
+        user,
+        contentType: UnreadContentType.ForumReply,
+        contentId: reply.id,
+        sendTime: new Date(Date.now() - milliseconds({ minutes: 1 })),
+        shouldPush: false,
+      }),
+    );
+
+    const countBefore = (
+      await ctx.agent.get("/notifs/unread-count").expect(200)
+    ).body.unreadCount;
+    await ctx.agent
+      .post("/notifs/read-all")
+      .query({ loadedAt: listResponse.headers[NOTIFS_LOADED_AT_HEADER] })
+      .expect(201);
+    const countAfter = (await ctx.agent.get("/notifs/unread-count").expect(200))
+      .body.unreadCount;
+
+    await notifRepo.delete(shownNotif.id);
+    await unreadContentRepo.delete(hiddenContent.id);
+    expect(countBefore).toBe(1);
+    expect(countAfter).toBe(0);
+  });
+
   it("user can mark unread content read by content id", async () => {
     await unreadContentRepo.update(unreadNotifId, {
       readAt: null,
