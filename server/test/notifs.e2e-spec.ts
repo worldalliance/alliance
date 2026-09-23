@@ -153,10 +153,8 @@ describe("Notifications (e2e)", () => {
   });
 
   it("user can mark all notifications read", async () => {
-    await notifRepo.update(legacyNotifId, { readAt: null as unknown as Date });
-    await unreadContentRepo.update(unreadNotifId, {
-      readAt: null as unknown as Date,
-    });
+    await notifRepo.update(legacyNotifId, { readAt: null });
+    await unreadContentRepo.update(unreadNotifId, { readAt: null });
 
     await ctx.agent.post("/notifs/read-all").expect(201);
 
@@ -383,7 +381,7 @@ describe("Notifications (e2e)", () => {
 
   it("user can mark unread content read by content id", async () => {
     await unreadContentRepo.update(unreadNotifId, {
-      readAt: null as unknown as Date,
+      readAt: null,
       contentType: UnreadContentType.ForumReply,
       contentId: unreadCommentId,
       shouldPush: false,
