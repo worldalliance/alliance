@@ -11,7 +11,10 @@ import {
   redactToOutput,
   type ResolveOutputParams,
 } from "@alliance/common/forms/output-resolution";
-import type { Condition } from "@alliance/common/forms/visible-if-formula";
+import type {
+  Condition,
+  VisibleIfFormula,
+} from "@alliance/common/forms/visible-if-formula";
 import {
   __resetAnalyticsForTests,
   registerAnalytics,
@@ -840,6 +843,101 @@ describe("resolveOutputItems and a field on a hidden page", () => {
       }),
       answers: { qty: 3 },
       publicAnswers: { qty: true },
+      validatorResults: { 7: false },
+    });
+    expect(items).toEqual([]);
+  });
+
+  const blockOnQty = (pageFormula: VisibleIfFormula) =>
+    resolveOutputItems({
+      schema: schemaWithVariable({
+        pages: [
+          {
+            id: "p1",
+            fields: [numberField("qty", "Quantity")],
+            visibleIfFormula: pageFormula,
+          },
+        ],
+        variables: [],
+        outputViews: [
+          {
+            id: "v1",
+            type: "default",
+            blocks: [
+              {
+                id: "ob1",
+                type: "display",
+                kind: "text",
+                text: "Has a quantity",
+                visibleIfFormula: {
+                  conditions: {
+                    c1: { kind: "hasValue", when: "qty", hasValue: true },
+                  },
+                  formula: "c1",
+                },
+              },
+            ],
+          },
+        ],
+      }),
+      answers: { qty: 3 },
+      validatorResults: { 7: false },
+    }).items.map((item) => item.key);
+
+  it("reads a field its page hides as unanswered in a block's condition", () => {
+    expect(
+      blockOnQty({
+        conditions: { c1: { kind: "validator", validatorId: 7 } },
+        formula: "c1",
+      }),
+    ).toEqual([]);
+  });
+
+  it("reads a field in a block's condition when its page could have shown", () => {
+    expect(
+      blockOnQty({
+        conditions: { c1: { kind: "userHasCity", userHasCity: true } },
+        formula: "c1",
+      }),
+    ).toEqual(["ob1"]);
+  });
+
+  it("reads a field its page hides as unanswered in a field block's condition", () => {
+    const { items } = resolveOutputItems({
+      schema: schemaWithVariable({
+        pages: [
+          {
+            id: "p1",
+            fields: [numberField("qty", "Quantity")],
+            visibleIfFormula: {
+              conditions: { c1: { kind: "validator", validatorId: 7 } },
+              formula: "c1",
+            },
+          },
+          { id: "p2", fields: [numberField("price", "Price")] },
+        ],
+        variables: [],
+        outputViews: [
+          {
+            id: "v1",
+            type: "default",
+            blocks: [
+              {
+                id: "ob1",
+                fieldId: "price",
+                visibleIfFormula: {
+                  conditions: {
+                    c1: { kind: "hasValue", when: "qty", hasValue: true },
+                  },
+                  formula: "c1",
+                },
+              },
+            ],
+          },
+        ],
+      }),
+      answers: { qty: 3, price: 5 },
+      publicAnswers: { price: true },
       validatorResults: { 7: false },
     });
     expect(items).toEqual([]);

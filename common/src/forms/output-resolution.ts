@@ -149,8 +149,8 @@ export const resolveOutputBlocks = ({
     ...conditionLookups,
   };
   // A response stored before the server started stripping them can still hold a
-  // cell under a sub-field its row hides. `isAnswerShown` already
-  // re-checks a whole field this way.
+  // cell under a sub-field its row hides. `visibleAnswers` already drops a
+  // whole field this way.
   const answers = stripHiddenListCells({
     pages: schema.pages,
     answers: storedAnswers,
@@ -162,19 +162,23 @@ export const resolveOutputBlocks = ({
       }),
   });
 
-  const isAnswerShown = (fieldId: string): boolean => {
-    const field = fieldLookup.get(fieldId);
-    return (
-      publicAnswers?.[fieldId] === true &&
-      !isOutputValueMissing(answers[fieldId]) &&
-      (!field ||
+  const visibleAnswers = Object.fromEntries(
+    Object.entries(answers).filter(([fieldId]) => {
+      const field = fieldLookup.get(fieldId);
+      return (
+        !field ||
         isVisibleInSavedResponse({
           element: field,
           data: answers,
           ...savedResponse,
-        }))
-    );
-  };
+        })
+      );
+    }),
+  );
+
+  const isAnswerShown = (fieldId: string): boolean =>
+    publicAnswers?.[fieldId] === true &&
+    !isOutputValueMissing(visibleAnswers[fieldId]);
 
   const allBlocks = selectedView.blocks ?? [];
 
@@ -193,7 +197,7 @@ export const resolveOutputBlocks = ({
     if ("kind" in block) {
       return isOutputBlockVisible(
         block,
-        answers,
+        visibleAnswers,
         validatorResults,
         deviceType,
         undefined,
@@ -204,7 +208,7 @@ export const resolveOutputBlocks = ({
       isAnswerShown(block.fieldId) &&
       isOutputBlockVisible(
         block,
-        answers,
+        visibleAnswers,
         validatorResults,
         deviceType,
         fieldLookup.get(block.fieldId),
