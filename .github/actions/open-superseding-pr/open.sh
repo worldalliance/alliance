@@ -31,8 +31,9 @@ url=$(gh pr create --head "$BRANCH" --title "$TITLE" --body "$BODY")
 # shares the prefix is never closed and deleted.
 AUTHOR=$(gh pr view "$url" --json author --jq .author.login)
 export AUTHOR
+# jq rather than gh's --jq, whose built-in gojq is not what jq-filters.test.ts runs.
 superseded=$(gh pr list --state open --limit 1000 --json number,headRefName,author \
-  --jq '.[] | select(.author.login == env.AUTHOR) | select(.headRefName | startswith(env.PREFIX)) | select(.headRefName != env.BRANCH) | .number')
+  | jq -r -f "$(dirname "$0")/superseded.jq")
 for pr in $superseded; do
   gh pr close "$pr" --delete-branch --comment "Superseded by $url." \
     || echo "::warning::gh pr close --delete-branch failed for #$pr; check whether it is still open and its branch still exists."

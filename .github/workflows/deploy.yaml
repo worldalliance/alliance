@@ -49,6 +49,7 @@ jobs:
             apps/admin,
             apps/mobile,
             scripts,
+            .github,
           ]
     uses: ./.github/workflows/test-unit.yaml
     with:

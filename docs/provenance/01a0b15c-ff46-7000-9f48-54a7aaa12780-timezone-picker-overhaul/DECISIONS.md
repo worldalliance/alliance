@@ -87,6 +87,11 @@ sections below this one carry the reasoning each step implements.
     surface after the force-push. A working tree with nothing staged ends the
     run rather than opening an empty pull request. It lists up to 1000 open
     pull requests, since the default of 30 would miss an old `tzdb/` one.
+    Its jq filter lives in a `.jq` file, tested by
+    `.github/scripts/jq-filters.test.ts`; `.github` joins the unit test
+    packages for it, but not the typecheck ones, since it has no tsconfig.
+    The action pipes `gh`'s JSON into `jq` rather than passing the filter to
+    `gh --jq`, whose built-in gojq is not the engine the test runs.
     `.github/scripts/bump-formatjs.sh` does the bump: it updates
     `@formatjs/intl-datetimeformat` within its major version and keeps the
     update only when it changes `add-all-tz.js`, since most FormatJS releases
