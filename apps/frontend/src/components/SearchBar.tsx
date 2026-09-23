@@ -9,6 +9,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import LoadFailed from "./LoadFailed";
 
 const SearchBar = ({
   autofocus,
@@ -25,8 +26,15 @@ const SearchBar = ({
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
 
-  const { items, itemsByCategory, selectedItem, setSelectedItem, loading } =
-    useSearchResults(search, { debounceMs: 50, autoselectFirst: true });
+  const {
+    items,
+    itemsByCategory,
+    selectedItem,
+    setSelectedItem,
+    loading,
+    error,
+    retry,
+  } = useSearchResults(search, { debounceMs: 50, autoselectFirst: true });
 
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -160,9 +168,17 @@ const SearchBar = ({
       />
       {open && items.length === 0 && search.length > 0 && !loading && (
         <div className="absolute top-full left-0 right-0 z-10 w-full bg-white -mt-[3px] rounded-b-md py-2 px-2 flex flex-col max-h-[min(calc(100vh-50px),400px)] overflow-y-auto shadow-lg">
-          <p className="text-black text-sm font-medium pl-3 pb-1 w-full">
-            No results found
-          </p>
+          {error ? (
+            <LoadFailed
+              message="Couldn't search."
+              onRetry={retry}
+              retrying={false}
+            />
+          ) : (
+            <p className="text-black text-sm font-medium pl-3 pb-1 w-full">
+              No results found
+            </p>
+          )}
         </div>
       )}
       {open && items.length > 0 && (

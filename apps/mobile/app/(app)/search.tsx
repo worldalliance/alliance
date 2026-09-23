@@ -18,6 +18,7 @@ import {
   View,
 } from "react-native";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
+import LoadFailed from "../../components/LoadFailed";
 import ProfileImage from "../../components/ProfileImage";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../components/system/Text";
@@ -49,8 +50,15 @@ const openWebLocation = (location: string) => {
 
 export default function SearchScreen() {
   const [search, setSearch] = useState("");
-  const { items, itemsByCategory, selectedItem, setSelectedItem } =
-    useSearchResults(search, { debounceMs: 50, autoselectFirst: true });
+  const {
+    items,
+    itemsByCategory,
+    selectedItem,
+    setSelectedItem,
+    loading,
+    error,
+    retry,
+  } = useSearchResults(search, { debounceMs: 50, autoselectFirst: true });
 
   const inputRef = useRef<TextInput>(null);
 
@@ -105,9 +113,17 @@ export default function SearchScreen() {
             </View>
           </View>
 
-          {search.length > 0 && items.length === 0 && (
+          {search.length > 0 && items.length === 0 && !loading && (
             <View className="border border-zinc-200 rounded mt-3 bg-white px-3 py-2">
-              <Text className="text-sm text-zinc-500">No results found</Text>
+              {error ? (
+                <LoadFailed
+                  message="Couldn't search."
+                  onRetry={retry}
+                  retrying={false}
+                />
+              ) : (
+                <Text className="text-sm text-zinc-500">No results found</Text>
+              )}
             </View>
           )}
 
