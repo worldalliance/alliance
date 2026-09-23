@@ -152,6 +152,7 @@ describe("without a native sheet", () => {
     expect(device.openBrowserSession).toHaveBeenCalledWith({
       url: "https://appleid.apple.com/auth/authorize",
       returnTo: MOBILE_OAUTH_RETURN_URL,
+      markAuthTab: true,
     });
     expect(redeemed).toHaveBeenCalledWith({
       handoff: "abc",

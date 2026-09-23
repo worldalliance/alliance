@@ -93,17 +93,29 @@ export const thrownFailure = (error: unknown): OAuthFailure => {
   return OAuthError.Failed;
 };
 
+export function answerResult<T>(params: {
+  value: T | undefined;
+  error: unknown;
+  missing: string;
+}): Result<T, OAuthFailure> {
+  if (params.value) {
+    return R.success(params.value);
+  }
+  const error = parseOAuthError(params.error);
+  if (!error) {
+    reportOAuthFailure(params.missing);
+  }
+  return R.failure(error ?? OAuthError.Failed);
+}
+
 export function sessionResult(
   body: MobileOAuthSignInDto | undefined,
 ): SignInResult {
-  if (body?.session) {
-    return R.success(body.session);
-  }
-  const error = parseOAuthError(body?.error);
-  if (!error) {
-    reportOAuthFailure("oauth sign-in answered with no session or known error");
-  }
-  return R.failure(error ?? OAuthError.Failed);
+  return answerResult({
+    value: body?.session,
+    error: body?.error,
+    missing: "oauth sign-in answered with no session or known error",
+  });
 }
 
 export function handoffFromReturnLink(url: string): Result<string, OAuthError> {

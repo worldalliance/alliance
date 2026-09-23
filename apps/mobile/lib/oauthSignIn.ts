@@ -27,10 +27,12 @@ export type NativeSignIn = {
   openBrowserSession: (params: {
     url: string;
     returnTo: string;
+    markAuthTab: boolean;
   }) => Promise<Result<string, OAuthError>>;
 };
 
 type ProviderFlow<B, T> = {
+  markAuthTab: boolean;
   withIdentityToken: (credential: NativeCredential) => Promise<{ data?: B }>;
   startBrowserSession: () => Promise<{ data?: MobileOAuthBrowserSessionDto }>;
   redeem: (body: { handoff: string; proof: string }) => Promise<{ data?: B }>;
@@ -62,7 +64,11 @@ async function runInBrowser<B, T>(params: {
   }
   const { url, proof, returnTo } = started.value.data;
 
-  const returned = await params.native.openBrowserSession({ url, returnTo });
+  const returned = await params.native.openBrowserSession({
+    url,
+    returnTo,
+    markAuthTab: params.flow.markAuthTab,
+  });
   if (!returned.ok) {
     return returned;
   }
@@ -109,6 +115,7 @@ export function signInWithProvider(params: {
     provider,
     native: params.native,
     flow: {
+      markAuthTab: true,
       withIdentityToken: (credential) =>
         oAuthSignInWithIdentityToken({
           path: { provider },

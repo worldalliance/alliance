@@ -85,6 +85,11 @@ export const parseOAuthOutcome = (value: unknown): OAuthOutcome | null =>
 export const parseOAuthError = (value: unknown): OAuthError | null =>
   z.enum(OAuthError).safeParse(value).data ?? null;
 
+const linkedMessage = (label: string) => `Your ${label} account is now linked.`;
+
+export const oauthLinkedMessage = (provider: OAuthProvider): string =>
+  linkedMessage(OAUTH_PROVIDER_LABEL[provider]);
+
 /** Null where the page the member lands on already says it. */
 const OUTCOME_MESSAGE: Record<
   OAuthOutcome,
@@ -92,7 +97,7 @@ const OUTCOME_MESSAGE: Record<
 > = {
   [OAuthOutcome.SignedIn]: null,
   [OAuthOutcome.SignedUp]: null,
-  [OAuthOutcome.Linked]: (label) => `Your ${label} account is now linked.`,
+  [OAuthOutcome.Linked]: linkedMessage,
 };
 
 export function oauthOutcomeMessage(

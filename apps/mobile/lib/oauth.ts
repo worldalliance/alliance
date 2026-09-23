@@ -10,6 +10,7 @@ import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
 import { Platform } from "react-native";
 import { authTab } from "../modules/auth-tab";
+import { linkWithProvider, type LinkResult } from "./oauthLink";
 import {
   reportOAuthFailure,
   returnLinkFromAuthTab,
@@ -119,13 +120,16 @@ async function appleCredential(): Promise<Result<
 async function openBrowserSession(params: {
   url: string;
   returnTo: string;
+  markAuthTab: boolean;
 }): Promise<Result<string, OAuthError>> {
   const tab = authTab();
   if (tab) {
+    const open = () =>
+      tab.open({ url: params.url, redirectUrl: params.returnTo });
     return returnLinkFromAuthTab(
-      await whileAuthTabOpen(AsyncStorage, () =>
-        tab.open({ url: params.url, redirectUrl: params.returnTo }),
-      ),
+      await (params.markAuthTab
+        ? whileAuthTabOpen(AsyncStorage, open)
+        : open()),
     );
   }
   return returnLinkFromBrowser(
@@ -148,4 +152,11 @@ export function signInWithProvider(params: {
   guestToken: string | undefined;
 }): Promise<SignInResult> {
   return signIn({ ...params, native: NATIVE });
+}
+
+export function linkProvider(params: {
+  provider: OAuthProvider;
+  userId: number;
+}): Promise<LinkResult> {
+  return linkWithProvider({ ...params, native: NATIVE });
 }
