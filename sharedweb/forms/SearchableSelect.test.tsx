@@ -1,3 +1,4 @@
+import { optionSections } from "@alliance/shared/forms/optionSections";
 import {
   cleanup,
   fireEvent,
@@ -22,7 +23,7 @@ function Select() {
     <>
       <span id="location-label">Location</span>
       <SearchableSelect
-        options={options}
+        sections={optionSections({ options })}
         value={value}
         onChange={setValue}
         labelId="location-label"
@@ -82,7 +83,7 @@ it("keeps the selection for no matches and Escape, then supports keyboard select
 });
 
 it("cannot open when disabled", () => {
-  render(<SearchableSelect options={options} disabled />);
+  render(<SearchableSelect sections={optionSections({ options })} disabled />);
   fireEvent.click(screen.getByRole("combobox", { name: "Options" }));
   expect(screen.queryByRole("combobox", { name: "Search options" })).toBeNull();
 });
@@ -136,4 +137,40 @@ it("leaves Space and modifier shortcuts on the closed trigger out of the search"
   expect(screen.queryByRole("combobox", { name: "Search options" })).toBeNull();
   const input = await open();
   expect((input as HTMLInputElement).value).toBe("");
+});
+
+it("groups options under category headings and searches category names", async () => {
+  const onChange = jest.fn();
+  render(
+    <SearchableSelect
+      onChange={onChange}
+      sections={optionSections({
+        options: [
+          { label: "Kale", value: "kale", category: "veg" },
+          { label: "Other", value: "other" },
+          { label: "Apple", value: "apple", category: "fruit" },
+        ],
+        categories: [
+          { id: "fruit", name: "Fruit" },
+          { id: "veg", name: "Vegetables" },
+        ],
+      })}
+    />,
+  );
+  fireEvent.click(screen.getByRole("combobox", { name: "Options" }));
+  const input = await screen.findByRole("combobox", { name: "Search options" });
+  const optionNames = () =>
+    screen.getAllByRole("option").map((node) => node.textContent);
+  expect(optionNames()).toEqual(["Other", "Apple", "Kale"]);
+  expect(
+    screen.getByRole("group", { name: "Vegetables" }).textContent,
+  ).toContain("Kale");
+  fireEvent.input(input, {
+    target: { value: "veg" },
+    inputType: "insertText",
+  });
+  await waitFor(() => expect(optionNames()).toEqual(["Kale"]));
+  expect(screen.queryByText("Fruit")).toBeNull();
+  fireEvent.keyDown(input, { key: "Enter" });
+  await waitFor(() => expect(onChange).toHaveBeenCalledWith("kale"));
 });

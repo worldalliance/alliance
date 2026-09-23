@@ -169,3 +169,109 @@ it("names the timezone button from its question and its selected zone", () => {
     screen.getByRole("button", { name: /^Question India Standard Time/ }),
   ).toBeTruthy();
 });
+
+describe("option categories", () => {
+  const categorized = {
+    ...base,
+    categories: [
+      { id: "fruit", name: "Fruit" },
+      { id: "empty", name: "Empty" },
+      { id: "veg", name: "Vegetables" },
+    ],
+    options: [
+      { label: "Kale", value: "kale", category: "veg" },
+      { label: "Apple", value: "apple", category: "fruit" },
+      { label: "Other", value: "other" },
+      { label: "Banana", value: "banana", category: "fruit" },
+    ],
+  };
+  const renderField = (field: AnyField, value?: string[]) =>
+    render(
+      <MemoryRouter>
+        <SiteAppProvider>
+          <RenderField field={field} value={value} onChange={() => {}} />
+        </SiteAppProvider>
+      </MemoryRouter>,
+    );
+
+  it("groups a native select into optgroups after uncategorized options", () => {
+    const { container } = renderField({ ...categorized, kind: "select" });
+    const select = screen.getByRole("combobox", { name: "Question" });
+    expect(
+      Array.from(select.children).map((child) =>
+        child.tagName === "OPTGROUP"
+          ? [
+              child.getAttribute("label"),
+              Array.from(child.children).map((option) => option.textContent),
+            ]
+          : child.textContent,
+      ),
+    ).toEqual([
+      "Select an option",
+      "Other",
+      ["Fruit", ["Apple", "Banana"]],
+      ["Vegetables", ["Kale"]],
+    ]);
+    expect(container.querySelector("optgroup[label=Empty]")).toBeNull();
+  });
+
+  it("groups checkboxes under labelled headings, keeping the field-wide limit", () => {
+    renderField({ ...categorized, kind: "multiselect", maxSelections: 1 }, [
+      "kale",
+    ]);
+    const fruit = screen.getByRole("group", { name: "Fruit" });
+    expect(
+      within(fruit)
+        .getAllByRole("checkbox")
+        .map((box) => box.parentElement?.textContent),
+    ).toEqual(["Apple", "Banana"]);
+    const vegetables = screen.getByRole("group", { name: "Vegetables" });
+    expect(
+      within(vegetables).getByRole("checkbox", { name: "Kale" }),
+    ).toHaveProperty("checked", true);
+    expect(
+      within(fruit).getByRole("checkbox", { name: "Apple" }),
+    ).toHaveProperty("disabled", true);
+    expect(screen.getByRole("checkbox", { name: "Other" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+    expect(screen.queryByText("Empty")).toBeNull();
+  });
+
+  it("marks only the first displayed checkbox of a required field required", () => {
+    renderField({ ...categorized, kind: "multiselect", required: true });
+    expect(
+      screen
+        .getAllByRole("checkbox")
+        .filter((box) => box.hasAttribute("required"))
+        .map((box) => box.parentElement?.textContent),
+    ).toEqual(["Other"]);
+  });
+
+  it("randomizes options only within their categories", () => {
+    const many = {
+      ...categorized,
+      kind: "multiselect" as const,
+      randomizeOptions: true,
+      options: Array.from({ length: 12 }, (_, index) => ({
+        label: `Option ${index}`,
+        value: `${index}`,
+        category: index < 6 ? "fruit" : "veg",
+      })),
+    };
+    renderField(many);
+    const names = (group: string) =>
+      within(screen.getByRole("group", { name: group }))
+        .getAllByRole("checkbox")
+        .map((box) => box.parentElement?.textContent);
+    const fruit = names("Fruit");
+    expect([...fruit].sort()).toEqual(
+      [0, 1, 2, 3, 4, 5].map((index) => `Option ${index}`),
+    );
+    expect(fruit).not.toEqual([...fruit].sort());
+    expect([...names("Vegetables")].sort()).toEqual(
+      [6, 7, 8, 9, 10, 11].map((index) => `Option ${index}`).sort(),
+    );
+  });
+});

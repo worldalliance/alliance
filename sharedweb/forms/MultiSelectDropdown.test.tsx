@@ -1,3 +1,4 @@
+import { optionSections } from "@alliance/shared/forms/optionSections";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
@@ -26,14 +27,29 @@ const markdownOptions = [
   { label: "[Our site](https://example.org)", value: "s" },
 ];
 
+const categories = [
+  { id: "east", name: "East coast" },
+  { id: "empty", name: "Empty" },
+  { id: "west", name: "West coast" },
+];
+const categorizedOptions = [
+  { label: "California", value: "ca", category: "west" },
+  { label: "New York", value: "ny", category: "east" },
+  { label: "Côte d'Ivoire", value: "ci" },
+  { label: "New Jersey", value: "nj", category: "east" },
+  { label: "Oregon", value: "or", category: "west" },
+];
+
 function Field({
   options: fieldOptions = options,
+  categories: fieldCategories,
   initial = [],
   searchable = false,
   maxSelections,
   disabled,
 }: {
-  options?: { label: string; value: string }[];
+  options?: { label: string; value: string; category?: string }[];
+  categories?: { id: string; name: string }[];
   initial?: string[];
   searchable?: boolean;
   maxSelections?: number;
@@ -46,7 +62,10 @@ function Field({
         <SiteAppProvider>
           <span id="places-label">Places</span>
           <MultiSelectDropdown
-            options={fieldOptions}
+            sections={optionSections({
+              options: fieldOptions,
+              categories: fieldCategories,
+            })}
             value={value}
             onChange={setValue}
             searchable={searchable}
@@ -294,4 +313,116 @@ it("opens the search with a character typed on the closed trigger", async () => 
   await waitFor(() => expect(document.activeElement === input).toBe(true));
   fireEvent.keyDown(input, { key: "Enter" });
   await waitFor(() => expect(answer()).toBe("ci"));
+});
+
+describe("categories", () => {
+  const groups = () =>
+    screen.getAllByRole("group").map((group) => [
+      group.getAttribute("aria-labelledby") &&
+        document.getElementById(group.getAttribute("aria-labelledby")!)
+          ?.textContent,
+      within(group)
+        .getAllByRole("option")
+        .map((node) => node.textContent),
+    ]);
+
+  describe.each([false, true])("searchable=%s", (searchable) => {
+    it("lists uncategorized options first, then labelled groups in order", async () => {
+      render(
+        <Field
+          searchable={searchable}
+          options={categorizedOptions}
+          categories={categories}
+          initial={["or", "ci", "ny"]}
+        />,
+      );
+      expect(chips()).toEqual(["Côte d'Ivoire", "New York", "Oregon"]);
+      await open();
+      expect(optionNames()).toEqual([
+        "Côte d'Ivoire",
+        "New York",
+        "New Jersey",
+        "California",
+        "Oregon",
+      ]);
+      expect(groups()).toEqual([
+        ["East coast", ["New York", "New Jersey"]],
+        ["West coast", ["California", "Oregon"]],
+      ]);
+      expect(screen.queryByText("Empty")).toBeNull();
+      expect(screen.getByText("East coast").getAttribute("role")).not.toBe(
+        "option",
+      );
+    });
+  });
+
+  it("moves from the last uncategorized option into the first group by keyboard", async () => {
+    render(<Field options={categorizedOptions} categories={categories} />);
+    trigger().focus();
+    fireEvent.keyDown(trigger(), { key: "ArrowDown" });
+    await screen.findByRole("listbox");
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe("Côte d'Ivoire"),
+    );
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe("New York"),
+    );
+    fireEvent.keyDown(document.activeElement!, { key: "Enter" });
+    await waitFor(() => expect(answer()).toBe("ny"));
+  });
+
+  it("searches category names and option labels without orphaned headings", async () => {
+    render(
+      <Field
+        searchable
+        options={categorizedOptions}
+        categories={categories}
+        initial={["ca"]}
+      />,
+    );
+    const input = await openSearch();
+    fireEvent.change(input, { target: { value: "west" } });
+    await waitFor(() =>
+      expect(groups()).toEqual([["West coast", ["California", "Oregon"]]]),
+    );
+    fireEvent.change(input, { target: { value: "new j" } });
+    await waitFor(() =>
+      expect(groups()).toEqual([["East coast", ["New Jersey"]]]),
+    );
+    expect(screen.queryByText("West coast")).toBeNull();
+    fireEvent.change(input, { target: { value: "co" } });
+    await waitFor(() =>
+      expect(optionNames()).toEqual([
+        "Côte d'Ivoire",
+        "New York",
+        "New Jersey",
+        "California",
+        "Oregon",
+      ]),
+    );
+    fireEvent.change(input, { target: { value: "zzz" } });
+    await waitFor(() =>
+      expect(screen.queryAllByRole("option")).toHaveLength(0),
+    );
+    expect(screen.queryAllByRole("group")).toHaveLength(0);
+    expect(screen.getByText("No matches")).toBeTruthy();
+    expect(chips()).toEqual(["California"]);
+  });
+
+  it("toggles the first grouped match on Enter after typing a query", async () => {
+    render(
+      <Field searchable options={categorizedOptions} categories={categories} />,
+    );
+    const input = await openSearch();
+    fireEvent.input(input, {
+      target: { value: "east" },
+      inputType: "insertText",
+    });
+    await waitFor(() =>
+      expect(optionNames()).toEqual(["New York", "New Jersey"]),
+    );
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(answer()).toBe("ny"));
+  });
 });

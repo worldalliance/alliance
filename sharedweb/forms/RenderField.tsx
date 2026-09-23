@@ -23,6 +23,7 @@ import {
   listCardWriters,
   resolveCards,
 } from "@alliance/shared/forms/listCards";
+import { optionSections } from "@alliance/shared/forms/optionSections";
 import {
   formatTimeForDisplay,
   parseTimeInput,
@@ -35,6 +36,7 @@ import { cn } from "@alliance/shared/styles/util";
 import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
 import { ChevronDown, Plus, X } from "lucide-react";
 import {
+  Fragment,
   useEffect,
   useId,
   useMemo,
@@ -57,7 +59,7 @@ import CityAutosuggest from "./CityAutosuggest";
 import { getCustomComponentById } from "./components";
 import MultiSelectDropdown from "./MultiSelectDropdown";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
-import { shuffleWithSeed } from "./randomutils";
+import { CheckboxSection } from "./optionPicker";
 import { RankingFieldInput } from "./RankingFieldInput";
 import SearchableSelect from "./SearchableSelect";
 import TimeZoneSelect from "./TimeZoneSelect";
@@ -197,7 +199,7 @@ export function RenderField({
     randomizationKey && randomizationKey.length > 0
       ? `${randomizationKey}:${field.id}`
       : field.id;
-  const randomizedOptions = useMemo(() => {
+  const sections = useMemo(() => {
     if (
       field.kind !== "radio" &&
       field.kind !== "multiselect" &&
@@ -205,16 +207,19 @@ export function RenderField({
     ) {
       return null;
     }
-    const options = field.options ?? [];
-    if (
-      disableOptionRandomization ||
-      !field.randomizeOptions ||
-      options.length <= 1
-    ) {
-      return options;
-    }
-    return shuffleWithSeed(options, randomizationSeedBase);
+    return optionSections({
+      options: field.options ?? [],
+      categories: field.kind === "radio" ? undefined : field.categories,
+      shuffleSeed:
+        disableOptionRandomization || !field.randomizeOptions
+          ? undefined
+          : randomizationSeedBase,
+    });
   }, [field, randomizationSeedBase, disableOptionRandomization]);
+  const randomizedOptions = useMemo(
+    () => sections?.flatMap((section) => section.items),
+    [sections],
+  );
 
   const composeClassName = (
     base: string,
@@ -596,7 +601,6 @@ export function RenderField({
     }
 
     case "select": {
-      const options = randomizedOptions ?? field.options;
       return (
         <div className="space-y-1">
           <RenderLabel
@@ -610,7 +614,7 @@ export function RenderField({
           />
           {field.searchable ? (
             <SearchableSelect
-              options={options}
+              sections={sections ?? []}
               value={typeof value === "string" ? value : undefined}
               onChange={onChange}
               labelId={labelId}
@@ -635,11 +639,20 @@ export function RenderField({
               <option value="" className="placeholder" disabled>
                 Select an option
               </option>
-              {options.map((option, optIndex) => (
-                <option key={optIndex} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
+              {(sections ?? []).map(({ category, items }) => {
+                const rendered = items.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ));
+                return category ? (
+                  <optgroup key={category.id} label={category.name}>
+                    {rendered}
+                  </optgroup>
+                ) : (
+                  <Fragment key="">{rendered}</Fragment>
+                );
+              })}
             </select>
           )}
           {renderValidationMessage()}
@@ -653,7 +666,6 @@ export function RenderField({
           ? (value as string[])
           : [];
       const selectedCount = selections.length;
-      const options = randomizedOptions ?? field.options ?? [];
       const maxSelections =
         typeof field.maxSelections === "number" && field.maxSelections > 0
           ? field.maxSelections
@@ -674,7 +686,7 @@ export function RenderField({
           />
           {field.dropdown ? (
             <MultiSelectDropdown
-              options={options}
+              sections={sections ?? []}
               value={selections}
               onChange={onChange}
               searchable={field.searchable}
@@ -694,56 +706,73 @@ export function RenderField({
                 hasError && "border-l-2 border-red-500 pl-3",
               )}
             >
-              {options.map((option, optIndex) => (
-                <label key={optIndex} className="flex">
-                  <input
-                    type="checkbox"
-                    name={fieldName}
-                    checked={selections.includes(option.value)}
-                    onChange={
-                      onChange
-                        ? (e) => {
-                            const currentValues: string[] =
-                              Array.isArray(value) &&
-                              value.every((e) => typeof e === "string")
-                                ? (value as string[])
-                                : [];
-                            if (e.target.checked) {
-                              onChange([...currentValues, option.value]);
-                            } else {
-                              onChange(
-                                currentValues.filter((v) => v !== option.value),
-                              );
-                            }
-                          }
-                        : undefined
-                    }
-                    required={required && selectedCount === 0 && optIndex === 0}
-                    disabled={
-                      disabled ||
-                      (!selections.includes(option.value) && maxReached)
-                    }
-                    aria-invalid={hasError}
-                    style={{ marginTop: "4px" }}
-                    className={composeClassName(
-                      `shrink-0 mr-2 h-4 w-4 disabled:ring-1 disabled:ring-zinc-400 ${
-                        hasError ? "text-red-600" : "text-blue-600"
-                      } focus:outline-none rounded`,
-                      {
-                        normal:
-                          "border border-zinc-300 focus:ring-blue-500 focus:ring-2",
-                        error:
-                          "border border-red-500 focus:ring-red-500 focus:ring-2",
-                      },
-                    )}
-                  />
-                  <span className={hasError ? "text-red-600" : "text-zinc-700"}>
-                    <FormMarkdownWrapper
-                      markdownContent={option.label}
-                      inline
-                    />
-                  </span>
-                </label>
+              {(sections ?? []).map(({ category, items }, sectionIndex) => (
+                <CheckboxSection
+                  key={category?.id ?? ""}
+                  category={category}
+                  headingId={`${fieldName}-category-${sectionIndex}`}
+                >
+                  {items.map((option, itemIndex) => (
+                    <label key={option.value} className="flex">
+                      <input
+                        type="checkbox"
+                        name={fieldName}
+                        checked={selections.includes(option.value)}
+                        onChange={
+                          onChange
+                            ? (e) => {
+                                const currentValues: string[] =
+                                  Array.isArray(value) &&
+                                  value.every((e) => typeof e === "string")
+                                    ? (value as string[])
+                                    : [];
+                                if (e.target.checked) {
+                                  onChange([...currentValues, option.value]);
+                                } else {
+                                  onChange(
+                                    currentValues.filter(
+                                      (v) => v !== option.value,
+                                    ),
+                                  );
+                                }
+                              }
+                            : undefined
+                        }
+                        required={
+                          required &&
+                          selectedCount === 0 &&
+                          sectionIndex === 0 &&
+                          itemIndex === 0
+                        }
+                        disabled={
+                          disabled ||
+                          (!selections.includes(option.value) && maxReached)
+                        }
+                        aria-invalid={hasError}
+                        style={{ marginTop: "4px" }}
+                        className={composeClassName(
+                          `shrink-0 mr-2 h-4 w-4 disabled:ring-1 disabled:ring-zinc-400 ${
+                            hasError ? "text-red-600" : "text-blue-600"
+                          } focus:outline-none rounded`,
+                          {
+                            normal:
+                              "border border-zinc-300 focus:ring-blue-500 focus:ring-2",
+                            error:
+                              "border border-red-500 focus:ring-red-500 focus:ring-2",
+                          },
+                        )}
+                      />
+                      <span
+                        className={hasError ? "text-red-600" : "text-zinc-700"}
+                      >
+                        <FormMarkdownWrapper
+                          markdownContent={option.label}
+                          inline
+                        />
+                      </span>
+                    </label>
+                  ))}
+                </CheckboxSection>
               ))}
             </div>
           )}
