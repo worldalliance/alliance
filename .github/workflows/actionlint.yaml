@@ -1,0 +1,22 @@
+name: Actionlint
+
+on:
+  workflow_call:
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Lint Workflows
+        uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color
+
+      # actionlint opens a composite action's action.yml to check the inputs its
+      # callers pass, and stops there, so the scripts they run need their own pass.
+      # A library a `run:` block sources is outside its reach the same way.
+      - name: Lint Shell Scripts
+        run: shellcheck .github/actions/*/*.sh .github/scripts/*.sh

@@ -158,6 +158,19 @@ describe("OAuth sign-in (e2e)", () => {
     });
   });
 
+  describe("timeZone", () => {
+    it.each(["not-a-zone", "-08:00"])("refuses %p", async (timeZone) => {
+      await client()
+        .get(path("start"))
+        .query({
+          intent: OAuthIntent.Authenticate,
+          returnTo: RETURN_TO,
+          timeZone,
+        })
+        .expect(400);
+    });
+  });
+
   describe("returnTo", () => {
     it("refuses an origin that is not ours", async () => {
       await client()

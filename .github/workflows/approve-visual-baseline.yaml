@@ -28,33 +28,46 @@ env:
   AWS_REGION: us-west-2
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  SHA: ${{ inputs.sha }}
+  ENV_NAME: ${{ inputs.environment }}
+  SUITE: ${{ inputs.suite }}
 
 jobs:
   approve-baseline:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Validate SHA screenshots exist
         run: |
-          if [ "${{ inputs.suite }}" = "mobile-ios" ]; then
-            PREFIX="visual-regression/mobile/ios/${{ inputs.environment }}"
+          case "$SHA" in
+            "" | *[!0-9a-fA-F]*)
+              echo "sha must be hex, got: $SHA"
+              exit 1
+              ;;
+          esac
+
+          if [ "$SUITE" = "mobile-ios" ]; then
+            PREFIX="visual-regression/mobile/ios/${ENV_NAME}"
           else
-            PREFIX="visual-regression/${{ inputs.environment }}"
+            PREFIX="visual-regression/${ENV_NAME}"
           fi
 
-          COUNT=$(aws s3 ls "s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/${PREFIX}/${{ inputs.sha }}/" | wc -l)
+          COUNT=$(aws s3 ls "s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/${PREFIX}/${SHA}/" | wc -l)
           if [ "$COUNT" -eq 0 ]; then
-            echo "No screenshots found for SHA ${{ inputs.sha }} in ${{ inputs.environment }} (${{ inputs.suite }})"
+            echo "No screenshots found for SHA ${SHA} in ${ENV_NAME} (${SUITE})"
             exit 1
           fi
-          echo "Found $COUNT screenshots for SHA ${{ inputs.sha }}"
+          echo "Found $COUNT screenshots for SHA ${SHA}"
 
       - name: Download old baseline and new screenshots
         run: |
-          if [ "${{ inputs.suite }}" = "mobile-ios" ]; then
-            PREFIX="visual-regression/mobile/ios/${{ inputs.environment }}"
+          if [ "$SUITE" = "mobile-ios" ]; then
+            PREFIX="visual-regression/mobile/ios/${ENV_NAME}"
           else
-            PREFIX="visual-regression/${{ inputs.environment }}"
+            PREFIX="visual-regression/${ENV_NAME}"
           fi
 
           mkdir -p /tmp/vr-baseline /tmp/vr-current
@@ -63,14 +76,11 @@ jobs:
             /tmp/vr-baseline/ \
             || echo "No existing baseline found"
           aws s3 sync \
-            "s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/${PREFIX}/${{ inputs.sha }}/" \
+            "s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/${PREFIX}/${SHA}/" \
             /tmp/vr-current/
 
       - name: Notify visual regression channel
         run: |
-          SHA="${{ inputs.sha }}"
-          ENV_NAME="${{ inputs.environment }}"
-          SUITE="${{ inputs.suite }}"
           BASELINE_DIR="/tmp/vr-baseline"
           CURRENT_DIR="/tmp/vr-current"
           TOKEN="${{ secrets.SLACK_BOT_TOKEN }}"
@@ -169,20 +179,22 @@ jobs:
 
       - name: Promote to baseline
         run: |
-          if [ "${{ inputs.suite }}" = "mobile-ios" ]; then
-            PREFIX="visual-regression/mobile/ios/${{ inputs.environment }}"
+          if [ "$SUITE" = "mobile-ios" ]; then
+            PREFIX="visual-regression/mobile/ios/${ENV_NAME}"
           else
-            PREFIX="visual-regression/${{ inputs.environment }}"
+            PREFIX="visual-regression/${ENV_NAME}"
           fi
 
           aws s3 sync \
-            "s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/${PREFIX}/${{ inputs.sha }}/" \
+            "s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/${PREFIX}/${SHA}/" \
             "s3://${{ secrets.VISUAL_REGRESSION_BUCKET }}/${PREFIX}/latest/" \
             --delete
-          echo "${{ inputs.environment }} (${{ inputs.suite }}) baseline updated to SHA ${{ inputs.sha }}"
+          echo "${ENV_NAME} (${SUITE}) baseline updated to SHA ${SHA}"
 
       - name: Notify deployment channel
+        env:
+          WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
         run: |
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"Visual baseline (${{ inputs.environment }}, ${{ inputs.suite }}) approved and updated to \`${{ inputs.sha }}\`. Re-run the failed deploy to continue.\"}" \
-            ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
+          . .github/scripts/slack.sh
+          slack_post "$WEBHOOK" \
+            "Visual baseline ($ENV_NAME, $SUITE) approved and updated to \`$SHA\`. Re-run the failed deploy to continue."

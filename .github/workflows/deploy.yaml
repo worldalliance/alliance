@@ -49,6 +49,7 @@ jobs:
             apps/admin,
             apps/mobile,
             scripts,
+            .github,
           ]
     uses: ./.github/workflows/test-unit.yaml
     with:
@@ -162,6 +163,9 @@ jobs:
           name: admin-build
           path: apps/admin/admin-build.zip
 
+  actionlint:
+    uses: ./.github/workflows/actionlint.yaml
+
   format-check:
     uses: ./.github/workflows/format-check.yaml
 
@@ -201,6 +205,7 @@ jobs:
       - typecheck
       - format-check
       - gitignore-check
+      - actionlint
       - visual-regression
     steps:
       - run: echo "all checks passed"
@@ -609,7 +614,6 @@ jobs:
           fi
 
           SHA="${{ github.sha }}"
-          ENV_NAME="${{ env.env_name }}"
           BASELINE_DIR="${{ github.workspace }}/screenshots/baseline"
           CURRENT_DIR="${{ github.workspace }}/screenshots/current"
           TOKEN="${{ secrets.SLACK_BOT_TOKEN }}"
@@ -720,6 +724,7 @@ jobs:
             bunfig.toml \
             tsconfig.base.json \
             server/package.json \
+            server/bunfig.toml \
             server/tsconfig.json \
             server/src \
             server/migrations \
@@ -954,6 +959,8 @@ jobs:
       - verify-deployment
       - verify-https
       - verify-api
+      - mobile-fingerprint-check
+      - publish-mobile-ota
     if: always()
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     steps:
@@ -966,12 +973,30 @@ jobs:
         with:
           github-username: ${{ github.actor }}
 
-      - name: Post webhook if any upstream failed/cancelled
-        if: ${{ contains(join(needs.*.result, ','), 'failure') || contains(join(needs.*.result, ','), 'skipped') }}
+      # publish-mobile-ota is skipped on staging by design, so only a failure
+      # there is worth an alert. For the rest a skip means an upstream failed.
+      - name: Post webhook if any upstream did not succeed
+        if: >-
+          ${{ always() && (needs.deploy-nest-backend.result != 'success'
+          || needs.verify-deployment.result != 'success'
+          || needs.verify-https.result != 'success'
+          || needs.verify-api.result != 'success'
+          || needs.mobile-fingerprint-check.result != 'success'
+          || needs.publish-mobile-ota.result == 'failure'
+          || needs.publish-mobile-ota.result == 'cancelled') }}
+        env:
+          WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
+          MENTION: ${{ steps.slack_mention.outputs.mention }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          NEEDS: ${{ toJSON(needs) }}
         run: |
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"${{ steps.slack_mention.outputs.mention }} Deploy ${{ github.ref_name == 'production' && 'production' || 'staging' }} failed for ${{ github.event.head_commit.message }}. <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Open run>\"}" \
-            ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
+          set -euo pipefail
+          . .github/scripts/slack.sh
+          SUBJECT=$(slack_commit_subject "$COMMIT_MESSAGE")
+          FAILED=$(jq -r '[to_entries[] | select(.value.result == "failure" or .value.result == "cancelled") | .key] | join(", ")' <<<"$NEEDS")
+          slack_post "$WEBHOOK" \
+            "${MENTION:+$MENTION }Deploy $env_name did not succeed for $SUBJECT${FAILED:+ ($FAILED)}. <$RUN_URL|Open run>"
 
   # Publishes an over-the-air JS/asset update to the production EAS Update
   # channel. Only JS/asset changes ship this way; native changes still require a
@@ -980,6 +1005,7 @@ jobs:
   # talks to an API older than itself.
   publish-mobile-ota:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs:
       - deploy-nest-backend
     if: ${{ github.ref_name == 'production' }}

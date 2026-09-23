@@ -41,6 +41,12 @@ Read before the matching task:
 
 `bun run format [FILE...]` from the repo root, all files when none are named; `bun run format:check [FILE...]` to only report.
 
+## Workflows
+
+`actionlint` from the repo root after editing `.github/workflows/`; CI and deploys fail on its findings. Without `shellcheck` on `PATH` it skips the shell in `run:` blocks and still passes; `brew install actionlint shellcheck`.
+
+`shellcheck .github/actions/*/*.sh .github/scripts/*.sh` after editing either directory; actionlint skips those scripts, and CI and deploys run it too.
+
 ## Testing
 
 `bun run test` from the repo root; scope by package: `bun run test apps/admin sharedweb`. From inside a package, run bare `bun test`.

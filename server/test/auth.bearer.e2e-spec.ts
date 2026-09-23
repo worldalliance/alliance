@@ -592,7 +592,7 @@ describe("Auth (e2e)", () => {
       expect(newUser.timeZone).toBe("Europe/Berlin");
     });
 
-    it.each([["not-a-zone"], [""], [undefined]])(
+    it.each([["not-a-zone"], ["-08:00"], [""], [undefined]])(
       "rejects a signup carrying %p as its time zone",
       async (timeZone) => {
         const res = await request(ctx.app.getHttpServer())

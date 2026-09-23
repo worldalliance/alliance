@@ -342,6 +342,51 @@ describe("Users (e2e)", () => {
     );
   });
 
+  describe("time zone on /user/update", () => {
+    const timeZoneOf = async (id: number) =>
+      (await userRepo.findOneByOrFail({ id })).timeZone ?? null;
+
+    const update = (body: Record<string, unknown>) =>
+      request(ctx.app.getHttpServer())
+        .post("/user/update")
+        .send(body)
+        .set("Authorization", `Bearer ${userAToken}`);
+
+    it.each(["Europe/Berlin", "US/Pacific", "Etc/GMT+8", "GMT"])(
+      "stores %p as given",
+      async (timeZone) => {
+        const res = await update({ timeZone });
+
+        expect(res.status).toBe(201);
+        expect(await timeZoneOf(userAId)).toBe(timeZone);
+      },
+    );
+
+    it("keeps the saved value for null and saves the rest", async () => {
+      await update({ timeZone: "Europe/Berlin", pushesForLikes: false });
+
+      const res = await update({ timeZone: null, pushesForLikes: true });
+
+      expect(res.status).toBe(201);
+      expect(await timeZoneOf(userAId)).toBe("Europe/Berlin");
+      expect(
+        (await userRepo.findOneByOrFail({ id: userAId })).pushesForLikes,
+      ).toBe(true);
+    });
+
+    it.each(["not-a-zone", "-08:00", "america/new_york", "", 42])(
+      "rejects %p and keeps the saved value",
+      async (invalid) => {
+        await update({ timeZone: "Europe/Berlin" });
+
+        const res = await update({ timeZone: invalid });
+
+        expect(res.status).toBe(400);
+        expect(await timeZoneOf(userAId)).toBe("Europe/Berlin");
+      },
+    );
+  });
+
   describe("preferred reminder time on /user/update", () => {
     const reminderTimeOf = async (id: number) =>
       (
