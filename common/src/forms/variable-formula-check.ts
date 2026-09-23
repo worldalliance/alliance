@@ -245,7 +245,7 @@ function unrenderableAdvice({
   return key === undefined ? "Name a key." : `${endIt} .${key}.`;
 }
 
-function checkRenderable(checked: CheckedFormula): string | undefined {
+function unrenderableReason(checked: CheckedFormula): string | undefined {
   const { checker, type } = checked;
   const unrenderable =
     unionParts(type).find((part) => part.getCallSignatures().length > 0) ??
@@ -255,7 +255,41 @@ function checkRenderable(checked: CheckedFormula): string | undefined {
     unrenderable.getCallSignatures().length > 0
       ? "function"
       : checker.typeToString(unrenderable);
-  return `A formula has to end on text, a number or a yes/no, and this one gives a ${described}. ${unrenderableAdvice({ ...checked, unrenderable })}`;
+  return `gives a ${described}. ${unrenderableAdvice({ ...checked, unrenderable })}`;
+}
+
+function checkRenderable(checked: CheckedFormula): string | undefined {
+  const reason = unrenderableReason(checked);
+  return reason === undefined
+    ? undefined
+    : `A formula has to end on text, a number or a yes/no, and this one ${reason}`;
+}
+
+// TypeScript lets `+` join text with anything, and the evaluator would show a
+// list or record as its JavaScript text.
+function checkAddedToText({
+  checker,
+  expression,
+}: CheckedFormula): string | undefined {
+  const visit = (node: ts.Node): string | undefined => {
+    if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind === ts.SyntaxKind.PlusToken
+    ) {
+      for (const operand of [node.left, node.right]) {
+        const reason = unrenderableReason({
+          checker,
+          type: checker.getTypeAtLocation(operand),
+          expression: operand,
+        });
+        if (reason !== undefined) {
+          return `Only text, a number or a yes/no can be added to text, and \`${operand.getText()}\` ${reason}`;
+        }
+      }
+    }
+    return ts.forEachChild(node, visit);
+  };
+  return visit(expression);
 }
 
 function resultDeclaration(
@@ -331,7 +365,8 @@ export function checkVariableFormulaType(
   if (!checked.ok) return checked;
 
   const { checker, type } = checked.value;
-  const unrenderable = checkRenderable(checked.value);
+  const unrenderable =
+    checkRenderable(checked.value) ?? checkAddedToText(checked.value);
   return unrenderable === undefined
     ? R.success(
         checker.typeToString(type, undefined, ts.TypeFormatFlags.NoTruncation),

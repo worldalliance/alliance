@@ -240,6 +240,44 @@ describe("requires a formula to end on something readable", () => {
   );
 });
 
+describe("keeps a list or record out of text it adds to", () => {
+  it.each([
+    ["'x' + rows[0]", "`rows[0]` gives a", "End it with .name."],
+    ["text + choice", "`choice` gives a", "End it with .label."],
+    ["city + '!'", "`city` gives a", "End it with .label."],
+    [
+      "choices + text",
+      "`choices` gives a",
+      "End it with .map(item => item.label).join(', ')",
+    ],
+    [
+      "'x' + rows.map(p => p.name)",
+      "`rows.map(p => p.name)` gives a",
+      "End it with .join(', ')",
+    ],
+    ["rows.map(p => 'x' + p).join()", "`p` gives a", "End it with .name."],
+    ["'x' + choices.map", "gives a function", "Add () to call it."],
+  ])(
+    "rejects %s, which JavaScript would turn into text",
+    (formula, part, advice) => {
+      const error = errorFor(formula);
+      expect(error).toContain(
+        "Only text, a number or a yes/no can be added to text",
+      );
+      expect(error).toContain(part);
+      expect(error).toContain(advice);
+    },
+  );
+
+  it.each([
+    "'x' + choice.label",
+    "'rows: ' + rows.length",
+    "rows.map(p => 'x' + p.name).join()",
+  ])("accepts %s", (formula) => {
+    expect(errorFor(formula)).toBeNull();
+  });
+});
+
 describe("infers the type a formula produces", () => {
   it.each([
     ["num", "number"],
