@@ -877,6 +877,27 @@ export type OAuthCallbackDto = {
     user?: string;
 };
 
+export type MobileOAuthLinkIdentityTokenDto = {
+    /**
+     * The id token the provider's native SDK issued.
+     */
+    identityToken: string;
+    /**
+     * The member the app started linking for, refused unless still signed in.
+     */
+    userId: number;
+};
+
+export type OAuthLinkDto = {
+    user?: UserDto;
+    error?: OAuthError;
+};
+
+export type MobileOAuthLinkHandoffDto = {
+    handoff: string;
+    proof: string;
+};
+
 export type ClusterSummaryDto = {
     id: number;
     displayName: string;
@@ -4470,6 +4491,78 @@ export type OAuthUnlinkResponses = {
 };
 
 export type OAuthUnlinkResponse = OAuthUnlinkResponses[keyof OAuthUnlinkResponses];
+
+export type OAuthLinkWithIdentityTokenData = {
+    body: MobileOAuthLinkIdentityTokenDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/link/native';
+};
+
+export type OAuthLinkWithIdentityTokenErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type OAuthLinkWithIdentityTokenError = OAuthLinkWithIdentityTokenErrors[keyof OAuthLinkWithIdentityTokenErrors];
+
+export type OAuthLinkWithIdentityTokenResponses = {
+    200: OAuthLinkDto;
+};
+
+export type OAuthLinkWithIdentityTokenResponse = OAuthLinkWithIdentityTokenResponses[keyof OAuthLinkWithIdentityTokenResponses];
+
+export type OAuthLinkStartBrowserSessionData = {
+    body?: never;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/link/browser';
+};
+
+export type OAuthLinkStartBrowserSessionErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type OAuthLinkStartBrowserSessionError = OAuthLinkStartBrowserSessionErrors[keyof OAuthLinkStartBrowserSessionErrors];
+
+export type OAuthLinkStartBrowserSessionResponses = {
+    200: MobileOAuthBrowserSessionDto;
+};
+
+export type OAuthLinkStartBrowserSessionResponse = OAuthLinkStartBrowserSessionResponses[keyof OAuthLinkStartBrowserSessionResponses];
+
+export type OAuthLinkRedeemHandoffData = {
+    body: MobileOAuthLinkHandoffDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/link/redeem';
+};
+
+export type OAuthLinkRedeemHandoffErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type OAuthLinkRedeemHandoffError = OAuthLinkRedeemHandoffErrors[keyof OAuthLinkRedeemHandoffErrors];
+
+export type OAuthLinkRedeemHandoffResponses = {
+    200: OAuthLinkDto;
+};
+
+export type OAuthLinkRedeemHandoffResponse = OAuthLinkRedeemHandoffResponses[keyof OAuthLinkRedeemHandoffResponses];
 
 export type UserFindMeData = {
     body?: never;
