@@ -1,0 +1,34 @@
+appId: ${APP_ID}
+---
+- tapOn: Show clearing fields
+- tapOn:
+    text: "2"
+    below: Optional Score
+- assertVisible: Optional Score is none
+- tapOn:
+    text: "2"
+    below: Required Score
+- assertVisible: Required Score is none
+- tapOn:
+    text: Red
+    below: Optional Colour
+- assertVisible: Optional Colour is none
+- tapOn:
+    text: Blue
+    below: Optional Colour
+- assertVisible: Optional Colour is Blue
+- tapOn:
+    text: Red
+    below: Required Colour
+- assertVisible: Required Colour is none
+- tapOn:
+    text: Clear selection
+    below: Optional Pet
+- assertVisible: Optional Pet is none
+- scrollUntilVisible:
+    element: Required Pet is Cat
+- tapOn:
+    text: Clear selection
+    below: Required Pet
+- assertVisible: Required Pet is none
+- assertNotVisible: Clear selection
