@@ -279,3 +279,36 @@ describe("VariableBuilder list inputs", () => {
     expect(screen.getByText("Ada")).toBeTruthy();
   });
 });
+
+describe("VariableBuilder variables", () => {
+  it("keeps a variable's sample answers when a variable before it is deleted", () => {
+    const readsTown = {
+      inputs: { input1: { kind: "field", fieldId: "town" } },
+      formula: "input1",
+    } as const;
+    render(
+      <Harness
+        initial={{
+          pages: [{ id: "p1", fields: [town] }],
+          outputViews: [],
+          variables: [
+            { name: "a", ...readsTown },
+            { name: "b", ...readsTown },
+          ],
+        }}
+        onSave={() => {}}
+      />,
+    );
+
+    const [first, second] = screen.getAllByLabelText<HTMLInputElement>(
+      "Sample answer for input1",
+    );
+    fireEvent.change(first!, { target: { value: "Oslo" } });
+    fireEvent.change(second!, { target: { value: "Lima" } });
+    fireEvent.click(screen.getByLabelText("Delete variable a"));
+
+    expect(
+      screen.getByLabelText<HTMLInputElement>("Sample answer for input1").value,
+    ).toBe("Lima");
+  });
+});

@@ -43,6 +43,7 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { milliseconds } from "date-fns";
 import { Check, Copy, Info, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { makeTempId } from "../lib/tempId";
 import {
   INPUT_MODE_HELP,
   LIST_INPUT_HELP,
@@ -905,6 +906,15 @@ export function VariableBuilder({
     [schema.variables, eligibleFields],
   );
 
+  // Cards hold sample answers in their own state, so a key has to follow its
+  // variable when an earlier one is deleted. Names repeat and change as typed.
+  const [cardKeys, setCardKeys] = useState(() =>
+    variables.map(() => makeTempId()),
+  );
+  if (cardKeys.length !== variables.length) {
+    setCardKeys(variables.map((_, index) => cardKeys[index] ?? makeTempId()));
+  }
+
   const unresolvedReferences = useMemo(
     () => collectUnresolvedVariableReferences(schema),
     [schema],
@@ -974,7 +984,7 @@ export function VariableBuilder({
           <div className="space-y-4">
             {variables.map((variable, index) => (
               <VariableCard
-                key={index}
+                key={cardKeys[index]}
                 variable={variable}
                 allVariables={variables}
                 eligibleFields={eligibleFields}
@@ -985,9 +995,10 @@ export function VariableBuilder({
                     ),
                   )
                 }
-                onRemove={() =>
-                  setVariables(variables.filter((_, i) => i !== index))
-                }
+                onRemove={() => {
+                  setCardKeys(cardKeys.filter((_, i) => i !== index));
+                  setVariables(variables.filter((_, i) => i !== index));
+                }}
               />
             ))}
           </div>
