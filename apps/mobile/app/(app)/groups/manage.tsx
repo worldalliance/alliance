@@ -33,6 +33,7 @@ import {
 } from "react-native";
 import { CreateGroupForm } from "../../../components/groups/CreateGroupForm";
 import KeyboardAwareScrollView from "../../../components/KeyboardAwareScrollView";
+import LoadFailed from "../../../components/LoadFailed";
 import Button, {
   ButtonColor,
   ButtonSize,
@@ -79,6 +80,8 @@ export default function GroupManageScreen() {
   const {
     communities,
     isLoading: myCommunitiesLoading,
+    didFail: didGroupsFail,
+    isFetching: myCommunitiesFetching,
     refreshCommunities,
   } = useMyCommunities({});
   const {
@@ -174,7 +177,7 @@ export default function GroupManageScreen() {
     void refreshAll().finally(() => setRefreshing(false));
   }, [refreshAll]);
 
-  const loading = myCommunitiesLoading || publicLoading;
+  const loading = (myCommunitiesLoading && !didGroupsFail) || publicLoading;
 
   const handleCreateCommunity = useCallback(async () => {
     const name = newCommunity.name.trim();
@@ -472,6 +475,15 @@ export default function GroupManageScreen() {
             )}
 
             <View className="flex flex-col gap-y-4">
+              {didGroupsFail && (
+                <View className="bg-white">
+                  <LoadFailed
+                    message="Couldn't load your groups."
+                    onRetry={() => void refreshCommunities()}
+                    retrying={myCommunitiesFetching}
+                  />
+                </View>
+              )}
               <View className="p-4 bg-white">
                 <Text
                   className="text-xl font-semibold text-zinc-900"
@@ -491,7 +503,7 @@ export default function GroupManageScreen() {
                       />
                     ))}
                   </View>
-                ) : (
+                ) : didGroupsFail ? null : (
                   <View className="px-4 py-4">
                     <Text className="text-sm text-zinc-500">
                       You don&apos;t lead any groups yet.
@@ -549,7 +561,7 @@ export default function GroupManageScreen() {
                       />
                     ))}
                   </View>
-                ) : (
+                ) : didGroupsFail ? null : (
                   <View className="flex flex-col gap-y-3 items-center py-4 px-2">
                     <Text className="text-center text-sm text-zinc-500">
                       You are not a member of any group.

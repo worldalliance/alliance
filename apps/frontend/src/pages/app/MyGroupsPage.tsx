@@ -30,6 +30,7 @@ import {
 } from "react";
 import CommunityCreateForm from "../../components/CommunityCreateForm";
 import CommunityInviteList from "../../components/CommunityInviteList";
+import LoadFailed from "../../components/LoadFailed";
 import { useAuth } from "../../lib/AuthContext";
 
 export type MyGroupsPageProps = {
@@ -39,11 +40,15 @@ export type MyGroupsPageProps = {
 
 const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
   const { user, refreshUser } = useAuth();
-  const { communities, removeCommunity, refreshCommunities } = useMyCommunities(
-    {
-      selectedCommunityId: null,
-    },
-  );
+  const {
+    communities,
+    didFail: didGroupsFail,
+    isFetching,
+    removeCommunity,
+    refreshCommunities,
+  } = useMyCommunities({
+    selectedCommunityId: null,
+  });
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [leavingCommunityId, setLeavingCommunityId] = useState<number | null>(
     null,
@@ -275,6 +280,13 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
           <ChevronLeft size="16" /> Back to group
         </Button>
       )}
+      {didGroupsFail && (
+        <LoadFailed
+          message="Couldn't load your groups."
+          onRetry={() => void refreshCommunities()}
+          retrying={isFetching}
+        />
+      )}
       {/* Leader groups */}
       <div className="flex flex-col gap-y-4">
         <div className="flex flex-col gap-y-1">
@@ -485,7 +497,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
               );
             })}
           </List>
-        ) : (
+        ) : didGroupsFail ? null : (
           <div className="flex flex-col gap-y-2 mx-auto items-center py-4">
             <span>
               You are not a member of any group.

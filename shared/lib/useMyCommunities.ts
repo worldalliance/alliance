@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CommunityDto, communityGetMyCommunities } from "../client";
+import { failedToLoad } from "./failedToLoad";
 
 const QUERY_KEY = ["communityGetMyCommunities"] as const;
 
@@ -28,13 +29,7 @@ export function useMyCommunities(params?: {
   const { selectedCommunityId = null, enabled = true } = params ?? {};
   const queryClient = useQueryClient();
 
-  const {
-    data: communities = [],
-    isLoading,
-    isFetching,
-    isError,
-    refetch,
-  } = useQuery({
+  const query = useQuery({
     queryKey: QUERY_KEY,
     queryFn: () =>
       communityGetMyCommunities({ throwOnError: true }).then(
@@ -42,6 +37,13 @@ export function useMyCommunities(params?: {
       ),
     enabled,
   });
+  const {
+    data: communities = [],
+    isLoading,
+    isFetching,
+    isError,
+    refetch,
+  } = query;
 
   const communityIds = useMemo(
     () => new Set(communities.map((community) => community.id)),
@@ -116,6 +118,7 @@ export function useMyCommunities(params?: {
     isLoading,
     isFetching,
     isError,
+    didFail: failedToLoad(query),
     refetch,
     refreshCommunities,
     removeCommunity,

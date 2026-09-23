@@ -19,6 +19,7 @@ it("a failed communities fetch reports an error", async () => {
 
   await waitFor(() => expect(hook.result.current.isError).toBe(true));
   expect(hook.result.current.communities).toEqual([]);
+  expect(hook.result.current.didFail).toBe(true);
 });
 
 it("a failed communities refetch keeps the communities it had", async () => {
@@ -29,4 +30,5 @@ it("a failed communities refetch keeps the communities it had", async () => {
 
   await waitFor(() => expect(hook.result.current.isError).toBe(true));
   expect(hook.result.current.communities).toBe(cached);
+  expect(hook.result.current.didFail).toBe(false);
 });

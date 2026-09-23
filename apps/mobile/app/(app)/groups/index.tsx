@@ -45,6 +45,7 @@ import FormModal from "../../../components/forms/FormModal";
 import { GroupMemberRow } from "../../../components/GroupMemberRow";
 import { CreateGroupForm } from "../../../components/groups/CreateGroupForm";
 import KeyboardAwareScrollView from "../../../components/KeyboardAwareScrollView";
+import LoadFailed from "../../../components/LoadFailed";
 import ProfileImage from "../../../components/ProfileImage";
 import Button, {
   ButtonColor,
@@ -75,6 +76,8 @@ export default function GroupsScreen() {
   const {
     communities,
     isLoading,
+    didFail,
+    isFetching,
     refreshCommunities,
     updateCommunity: onCommunityUpdated,
   } = useMyCommunities({});
@@ -127,7 +130,7 @@ export default function GroupsScreen() {
     }
   }, [tab, amLeader]);
 
-  if (isLoading) {
+  if (isLoading && !didFail) {
     return <ScreenWithLoading title="Groups" loading />;
   }
 
@@ -148,17 +151,30 @@ export default function GroupsScreen() {
             name={WalkthroughAnchor.Group}
             className="items-center rounded-lg p-4"
           >
-            <Text className="text-sm text-zinc-500 text-center">
-              You are not in any groups yet.
-            </Text>
-            <TouchableOpacity
-              onPress={() => router.push("/groups/manage")}
-              className="mt-4 px-4 py-2 bg-zinc-900 rounded-lg"
-            >
-              <Text className="text-sm text-white" weight={FontWeight.Medium}>
-                Manage groups
-              </Text>
-            </TouchableOpacity>
+            {didFail ? (
+              <LoadFailed
+                message="Couldn't load your groups."
+                onRetry={() => void refreshCommunities()}
+                retrying={isFetching}
+              />
+            ) : (
+              <>
+                <Text className="text-sm text-zinc-500 text-center">
+                  You are not in any groups yet.
+                </Text>
+                <TouchableOpacity
+                  onPress={() => router.push("/groups/manage")}
+                  className="mt-4 px-4 py-2 bg-zinc-900 rounded-lg"
+                >
+                  <Text
+                    className="text-sm text-white"
+                    weight={FontWeight.Medium}
+                  >
+                    Manage groups
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
           </Anchor>
         </View>
       </View>
