@@ -815,6 +815,9 @@ export function FormBuilder(props: FormBuilderProps) {
     theirs: FormSchema;
     theirsSnapshotId: number;
   } | null>(null);
+  // VariableBuilder's cards only follow their variables through its own edits,
+  // so a schema loaded from a conflict remounts it with no sample answers.
+  const [conflictLoads, setConflictLoads] = useState(0);
   const [confirmUnresolvedVariables, setConfirmUnresolvedVariables] =
     useState(false);
 
@@ -1961,6 +1964,7 @@ export function FormBuilder(props: FormBuilderProps) {
       return;
     }
     setSchema(conflict.theirs);
+    setConflictLoads((count) => count + 1);
     setLastSavedSchemaJSON(JSON.stringify(conflict.theirs));
     setBaseFormSnapshotId(conflict.theirsSnapshotId);
     setHasUnsavedChanges(false);
@@ -1979,6 +1983,7 @@ export function FormBuilder(props: FormBuilderProps) {
       return;
     }
     setSchema(result.value);
+    setConflictLoads((count) => count + 1);
     setLastSavedSchemaJSON(JSON.stringify(conflict.theirs));
     setBaseFormSnapshotId(conflict.theirsSnapshotId);
     setConflict(null);
@@ -2975,6 +2980,7 @@ export function FormBuilder(props: FormBuilderProps) {
                 />
               ) : activeEditor === "variables" ? (
                 <VariableBuilder
+                  key={conflictLoads}
                   schema={schema}
                   onSchemaChange={updateSchema}
                 />
