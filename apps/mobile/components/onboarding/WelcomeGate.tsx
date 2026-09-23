@@ -1,3 +1,4 @@
+import type { OAuthProvider } from "@alliance/common/oauth";
 import type { ReferrerProfileDto } from "@alliance/shared/client";
 import { Image } from "expo-image";
 import { memo, useEffect, useRef } from "react";
@@ -11,6 +12,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
+import type { ProviderFailure } from "../../lib/oauthResult";
 import {
   GATE_SUBLINE,
   GATE_TITLE,
@@ -171,6 +173,9 @@ export function WelcomeGate({
   notice,
   submitting,
   onForgotPassword,
+  pendingProvider,
+  providerFailure,
+  onContinueWithProvider,
   inviteUsed,
   inviter,
 }: {
@@ -184,6 +189,9 @@ export function WelcomeGate({
   notice: string | null;
   submitting: boolean;
   onForgotPassword: () => void;
+  pendingProvider: OAuthProvider | null;
+  providerFailure: ProviderFailure | null;
+  onContinueWithProvider: (provider: OAuthProvider) => void;
   inviteUsed: boolean;
   inviter: ReferrerProfileDto | null;
 }) {
@@ -235,6 +243,9 @@ export function WelcomeGate({
           notice={notice}
           submitting={submitting}
           onForgotPassword={onForgotPassword}
+          pendingProvider={pendingProvider}
+          providerFailure={providerFailure}
+          onContinueWithProvider={onContinueWithProvider}
           inviteUsed={inviteUsed}
           inviter={inviter}
           onFieldFocus={onFieldFocus}

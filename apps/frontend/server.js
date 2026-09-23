@@ -71,6 +71,13 @@ app.use((req, res, next) => {
   next();
 });
 
+// express.static skips dot-directories, and Android and iOS read their app
+// association files from /.well-known.
+app.use(
+  "/.well-known",
+  express.static("build/client/.well-known", { maxAge: "1h" }),
+);
+
 // Everything else (like favicon.ico) is cached for an hour. You may want to be
 // more aggressive with this caching.
 app.use(express.static("build/client", { maxAge: "1h" }));

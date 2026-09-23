@@ -12,6 +12,8 @@ import { useSharedValue, withSpring } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 import AnimatedSidebar from "../../components/AnimatedSidebar";
+import Button, { ButtonColor } from "../../components/system/Button";
+import Text from "../../components/system/Text";
 // import { Walkthrough } from "../../components/onboarding/Walkthrough";
 import Sidebar from "../../components/Sidebar";
 import TabBar from "../../components/TabBar";
@@ -140,8 +142,37 @@ function AppContent() {
   );
 }
 
+function SessionUnavailable({
+  onRetry,
+  onLogIn,
+}: {
+  onRetry: () => void;
+  onLogIn: () => void;
+}) {
+  return (
+    <View className="flex-1 items-center justify-center gap-4 px-8">
+      <Text className="text-center">
+        We couldn&apos;t load your account. Check your connection and try again,
+        or log in again.
+      </Text>
+      <Button title="Try again" onPress={onRetry} />
+      <Button
+        title="Log in again"
+        color={ButtonColor.Outline}
+        onPress={onLogIn}
+      />
+    </View>
+  );
+}
+
 export default function AppLayout() {
-  const { isAuthenticated, isLoading, canConnectToServer } = useAuth();
+  const {
+    isAuthenticated,
+    isLoading,
+    sessionUnavailable,
+    retrySession,
+    logout,
+  } = useAuth();
   const dimensions = useWindowDimensions();
 
   if (isLoading) {
@@ -152,7 +183,11 @@ export default function AppLayout() {
     );
   }
 
-  if (!isAuthenticated && canConnectToServer) {
+  if (sessionUnavailable) {
+    return <SessionUnavailable onRetry={retrySession} onLogIn={logout} />;
+  }
+
+  if (!isAuthenticated) {
     if (isVisualTestMode) {
       return (
         <View className="flex-1 items-center justify-center">

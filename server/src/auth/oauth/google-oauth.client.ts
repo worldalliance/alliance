@@ -63,7 +63,9 @@ export class GoogleOAuthClient implements OAuthClient {
 
   /**
    * The native SDKs are configured with the web client id as their server
-   * client, so a token from either platform carries the same audience.
+   * client, so a token from either platform carries the same audience. The
+   * mobile app hardcodes that id in `apps/mobile/lib/oauth.ts`, so rotating
+   * `GOOGLE_CLIENT_ID` takes a change there too.
    */
   async verifyIdentityToken(
     identityToken: string,
@@ -73,6 +75,7 @@ export class GoogleOAuthClient implements OAuthClient {
         idToken: identityToken,
         audience: this.config().clientId,
       }),
+      () => new Error("Google id token rejected"),
     );
     if (!ticket.ok) {
       return ticket;

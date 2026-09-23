@@ -7,6 +7,7 @@ import {
   OAuthProvider,
   parseOAuthProvider,
 } from "@alliance/common/oauth";
+import { R, type Result } from "@alliance/common/result";
 import {
   BadRequestException,
   Body,
@@ -56,24 +57,42 @@ import {
   addProof,
   mintProof,
   OAuthAuthService,
+  OAuthOrigin,
   spendProof,
+  type OAuthAuthentication,
   type OAuthState,
 } from "./oauth-auth.service";
-import type { OAuthClient } from "./oauth-client";
+import type { OAuthClient, OAuthProfile } from "./oauth-client";
 import {
   fallbackLoginUrl,
+  mobileOAuthRedirectUri,
+  mobileReturnUrl,
+  mobileReturnUrlWith,
   oauthRedirectUri,
   resolveReturnTo,
   returnUrlWithError,
   returnUrlWithOutcome,
 } from "./oauth-urls";
-import { OAuthCallbackDto, OAuthStartDto } from "./oauth.dto";
+import {
+  MobileIdentityTokenDto,
+  MobileOAuthBrowserSessionDto,
+  MobileOAuthHandoffDto,
+  MobileOAuthSignInDto,
+  OAuthCallbackDto,
+  OAuthStartDto,
+  type SessionTokens,
+} from "./oauth.dto";
 
 /** Outlives the state token it guards, so a slow consent screen still lands. */
 const STATE_COOKIE_MAX_AGE_MS = milliseconds({ minutes: 15 });
 
 /** Only has to survive the bounce below, which is a single redirect. */
 const APPLE_USER_COOKIE_MAX_AGE_MS = milliseconds({ minutes: 5 });
+
+const CANCEL_ERROR: Record<OAuthProvider, string> = {
+  [OAuthProvider.Google]: "access_denied",
+  [OAuthProvider.Apple]: "user_cancelled_authorize",
+};
 
 const OUTCOME_EVENT: Record<OAuthOutcome, AnalyticsEvent> = {
   [OAuthOutcome.SignedUp]: AnalyticsEvent.NewUser,
@@ -185,6 +204,7 @@ export class OAuthController {
     const state = await this.oauth.signState({
       provider,
       intent: input.intent,
+      origin: OAuthOrigin.Web,
       redirectUri,
       returnTo: returnTo.toString(),
       timeZone: input.timeZone ?? DEFAULT_TIME_ZONE,
@@ -194,6 +214,101 @@ export class OAuthController {
     });
 
     return this.clients[provider].authorizationUrl({ redirectUri, state });
+  }
+
+  @Public()
+  @UseGuards(ThrottlerGuard)
+  @OnlyThrottle(OAUTH_THROTTLE)
+  @Post("native")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: MobileOAuthSignInDto })
+  async signInWithIdentityToken(
+    @ProviderParam() provider: OAuthProvider,
+    @Body() body: MobileIdentityTokenDto,
+  ): Promise<MobileOAuthSignInDto> {
+    const profile = await this.clients[provider].verifyIdentityToken(
+      body.identityToken,
+    );
+    if (!profile.ok) {
+      console.error("oauth identity token rejected", profile.error);
+      return new MobileOAuthSignInDto(R.failure(OAuthError.Failed));
+    }
+    const signedIn = await this.oauth.signIn(profile.value);
+    if (!signedIn.ok) {
+      return new MobileOAuthSignInDto(signedIn);
+    }
+    return new MobileOAuthSignInDto(
+      R.success(
+        await this.startMobileSession({
+          ...signedIn.value,
+          provider,
+          guestToken: body.guestToken,
+        }),
+      ),
+    );
+  }
+
+  /**
+   * For a platform with no native sheet for this provider. The app opens `url`
+   * in a system browser session, which comes back to it at `returnTo` with a
+   * handoff that only `proof` redeems.
+   */
+  @Public()
+  @UseGuards(ThrottlerGuard)
+  @OnlyThrottle(OAUTH_THROTTLE)
+  @Post("native/browser")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: MobileOAuthBrowserSessionDto })
+  async startMobileBrowserSession(
+    @ProviderParam() provider: OAuthProvider,
+    @Request() req: ExpressRequest,
+  ): Promise<MobileOAuthBrowserSessionDto> {
+    const { proof, proofHash } = mintProof();
+    const redirectUri = mobileOAuthRedirectUri({ req, provider });
+    const returnTo = mobileReturnUrl();
+    const state = await this.oauth.signState({
+      provider,
+      intent: OAuthIntent.Authenticate,
+      origin: OAuthOrigin.Mobile,
+      redirectUri,
+      returnTo,
+      timeZone: DEFAULT_TIME_ZONE,
+      proofHash,
+    });
+    return new MobileOAuthBrowserSessionDto({
+      url: this.clients[provider].authorizationUrl({ redirectUri, state }),
+      proof,
+      returnTo,
+    });
+  }
+
+  @Public()
+  @UseGuards(ThrottlerGuard)
+  @OnlyThrottle(OAUTH_THROTTLE)
+  @Post("native/redeem")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: MobileOAuthSignInDto })
+  async redeemMobileHandoff(
+    @ProviderParam() provider: OAuthProvider,
+    @Body() body: MobileOAuthHandoffDto,
+  ): Promise<MobileOAuthSignInDto> {
+    const redeemed = await this.oauth.redeemHandoff({
+      token: body.handoff,
+      proof: body.proof,
+      provider,
+    });
+    if (!redeemed.ok) {
+      return new MobileOAuthSignInDto(redeemed);
+    }
+    return new MobileOAuthSignInDto(
+      R.success(
+        await this.startMobileSession({
+          ...redeemed.value,
+          provider,
+          guestToken: body.guestToken,
+        }),
+      ),
+    );
   }
 
   /**
@@ -242,9 +357,24 @@ export class OAuthController {
       ? await this.oauth.verifyState(query.state)
       : null;
 
-    // Without valid state there is no vetted return address, so fall back to
-    // the canonical app rather than trusting anything else in the request.
     if (!state || state.provider !== provider) {
+      const expiredReturnTo = query.state
+        ? await this.oauth.expiredMobileReturnTo({
+            token: query.state,
+            provider,
+          })
+        : null;
+      if (expiredReturnTo) {
+        res.redirect(
+          mobileReturnUrlWith({
+            returnTo: expiredReturnTo,
+            handoff: R.failure(OAuthError.Expired),
+          }),
+        );
+        return;
+      }
+      // Without valid state there is no vetted return address, so fall back to
+      // the canonical app rather than trusting anything else in the request.
       res.redirect(
         returnUrlWithError({
           returnTo: fallbackLoginUrl(req),
@@ -256,24 +386,29 @@ export class OAuthController {
     }
 
     try {
-      await this.finishFlow({ req, res, query, state });
+      switch (state.origin) {
+        case OAuthOrigin.Web:
+          await this.finishWebFlow({ req, res, query, state });
+          break;
+        case OAuthOrigin.Mobile:
+          await this.finishMobileFlow({ req, res, query, state });
+          break;
+        default:
+          throw new Error(
+            `unknown oauth origin: ${state.origin satisfies never}`,
+          );
+      }
     } catch (error) {
       // The member is mid-navigation, where an exception filter's JSON body
       // would strand them. A verified state always carries a way back.
       console.error("oauth callback failed", error);
       if (!res.headersSent) {
-        res.redirect(
-          returnUrlWithError({
-            returnTo: state.returnTo,
-            provider,
-            error: OAuthError.Failed,
-          }),
-        );
+        res.redirect(this.failureUrl(state, OAuthError.Failed));
       }
     }
   }
 
-  private async finishFlow(params: {
+  private async finishWebFlow(params: {
     req: ExpressRequest;
     res: Response;
     query: OAuthCallbackDto;
@@ -292,13 +427,13 @@ export class OAuthController {
       return fail(OAuthError.Cancelled);
     }
 
-    const profile = await this.clients[provider].exchangeCode({
+    const profile = await this.exchangeCode({
+      req,
+      res,
+      state,
       code: query.code,
-      redirectUri: state.redirectUri,
-      callbackUser: this.takeAppleUser(req, res),
     });
     if (!profile.ok) {
-      console.error("oauth code exchange failed", profile.error);
       return fail(OAuthError.Failed);
     }
 
@@ -355,6 +490,73 @@ export class OAuthController {
     }
   }
 
+  // No proof cookie to check. The system browser shares no cookies with the
+  // app, so the proof comes back at redeem instead.
+  private async finishMobileFlow(params: {
+    req: ExpressRequest;
+    res: Response;
+    query: OAuthCallbackDto;
+    state: OAuthState;
+  }): Promise<void> {
+    const { req, res, query, state } = params;
+    const { provider, returnTo } = state;
+    const respond = (handoff: Result<string, OAuthError>) =>
+      res.redirect(mobileReturnUrlWith({ returnTo, handoff }));
+
+    if (query.error || !query.code) {
+      return respond(
+        R.failure(
+          query.error === CANCEL_ERROR[provider]
+            ? OAuthError.Cancelled
+            : OAuthError.Failed,
+        ),
+      );
+    }
+
+    const profile = await this.exchangeCode({
+      req,
+      res,
+      state,
+      code: query.code,
+    });
+    if (!profile.ok) {
+      return respond(R.failure(OAuthError.Failed));
+    }
+
+    const signedIn = await this.oauth.signIn(profile.value);
+    if (!signedIn.ok) {
+      return respond(signedIn);
+    }
+    respond(
+      R.success(
+        await this.oauth.signHandoff({
+          userId: signedIn.value.user.id,
+          provider,
+          outcome: signedIn.value.outcome,
+          proofHash: state.proofHash,
+        }),
+      ),
+    );
+  }
+
+  private async exchangeCode(params: {
+    req: ExpressRequest;
+    res: Response;
+    state: OAuthState;
+    code: string;
+  }): Promise<Result<OAuthProfile, Error>> {
+    const { req, res, state } = params;
+    const profile = await this.clients[state.provider].exchangeCode({
+      code: params.code,
+      redirectUri: state.redirectUri,
+      callbackUser: this.takeAppleUser(req, res),
+    });
+    if (!profile.ok) {
+      console.error("oauth code exchange failed", profile.error);
+    }
+    return profile;
+  }
+
   @Delete("link")
   @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.OK)
@@ -375,6 +577,40 @@ export class OAuthController {
     return new AuthMeResponseDto({
       user: await this.authService.getProfile(unlinked.value.email),
     });
+  }
+
+  private failureUrl(state: OAuthState, error: OAuthError): string {
+    switch (state.origin) {
+      case OAuthOrigin.Web:
+        return returnUrlWithError({
+          returnTo: state.returnTo,
+          provider: state.provider,
+          error,
+        });
+      case OAuthOrigin.Mobile:
+        return mobileReturnUrlWith({
+          returnTo: state.returnTo,
+          handoff: R.failure(error),
+        });
+      default:
+        throw new Error(
+          `unknown oauth origin: ${state.origin satisfies never}`,
+        );
+    }
+  }
+
+  private async startMobileSession(
+    params: OAuthAuthentication & {
+      provider: OAuthProvider;
+      guestToken: string | undefined;
+    },
+  ): Promise<SessionTokens> {
+    this.capture(params);
+    await this.authService.mergeGuestFromToken(
+      params.guestToken,
+      params.user.id,
+    );
+    return this.issueTokens(params.user);
   }
 
   private browserStartedFlow(
@@ -423,9 +659,7 @@ export class OAuthController {
     });
   }
 
-  private async issueTokens(
-    user: User,
-  ): Promise<{ access_token: string; refresh_token: string }> {
+  private async issueTokens(user: User): Promise<SessionTokens> {
     return {
       access_token: await this.authService.generateAccessToken(user),
       refresh_token: await this.authService.generateRefreshToken(user),

@@ -1,11 +1,16 @@
 import { currentNodeEnv, isDeployed } from "@alliance/common/node-env";
 import {
+  MOBILE_OAUTH_ERROR_PARAM,
+  MOBILE_OAUTH_HANDOFF_PARAM,
+  MOBILE_OAUTH_RETURN_PATH,
+  MOBILE_OAUTH_RETURN_URL,
   oauthErrorParam,
   oauthOutcomeParam,
   type OAuthError,
   type OAuthOutcome,
   type OAuthProvider,
 } from "@alliance/common/oauth";
+import type { Result } from "@alliance/common/result";
 import { BadRequestException } from "@nestjs/common";
 import { socketCorsOrigins } from "src/utils/cors-origins";
 
@@ -61,6 +66,56 @@ function allowedOrigins(): (string | RegExp)[] {
     .map((url) => `${url.protocol}//www.${url.host}`);
 
   return [...configured, ...www];
+}
+
+/**
+ * The caller never picks this. Whoever starts a flow holds its proof, so a
+ * return link another app can claim hands that app the member's session.
+ * Deployed, it is the https path, which Android verifies against the
+ * production package's signing certificate. When the browser keeps the
+ * redirect, the page there opens whichever app has the package name,
+ * certificate unchecked. A local server answers with the scheme, which a dev
+ * build can claim.
+ */
+export function mobileReturnUrl(): string {
+  if (!deployed()) {
+    return MOBILE_OAUTH_RETURN_URL;
+  }
+  return `${appUrl().origin}${MOBILE_OAUTH_RETURN_PATH}`;
+}
+
+/**
+ * A mobile-started flow has no web origin to come back to, so its callback
+ * runs on the web app's, which each provider already has registered.
+ */
+export function mobileOAuthRedirectUri(params: {
+  req: OriginRequest;
+  provider: OAuthProvider;
+}): string {
+  return oauthRedirectUri({
+    ...params,
+    returnTo: deployed() ? appUrl() : new URL(requestOrigin(params.req)),
+  });
+}
+
+function appUrl(): URL {
+  if (!process.env.APP_URL) {
+    throw new Error("APP_URL is not set");
+  }
+  return new URL(process.env.APP_URL);
+}
+
+export function mobileReturnUrlWith(params: {
+  returnTo: string;
+  handoff: Result<string, OAuthError>;
+}): string {
+  const url = new URL(params.returnTo);
+  if (params.handoff.ok) {
+    url.searchParams.set(MOBILE_OAUTH_HANDOFF_PARAM, params.handoff.value);
+  } else {
+    url.searchParams.set(MOBILE_OAUTH_ERROR_PARAM, params.handoff.error);
+  }
+  return url.toString();
 }
 
 export function fallbackLoginUrl(req: OriginRequest): string {

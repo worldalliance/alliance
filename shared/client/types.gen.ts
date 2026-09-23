@@ -14,8 +14,10 @@ export type MobileFingerprintsDto = {
     android: MobilePlatformFingerprintDto;
 };
 
+export type TokenMode = 'cookie' | 'header';
+
 export type SignInDto = {
-    mode: 'cookie' | 'header';
+    mode: TokenMode;
     email: string;
     password: string;
     guestToken?: string;
@@ -26,8 +28,6 @@ export type SignInResponseDto = {
     access_token?: string;
     refresh_token?: string;
 };
-
-export type TokenMode = 'cookie' | 'header';
 
 export type SignUpDto = {
     name: string;
@@ -825,6 +825,47 @@ export type ResetPasswordDto = {
 };
 
 export type OAuthIntent = 'authenticate' | 'link';
+
+export type MobileIdentityTokenDto = {
+    /**
+     * The id token the provider's native SDK issued.
+     */
+    identityToken: string;
+    guestToken?: string;
+};
+
+export type SessionTokensDto = {
+    access_token: string;
+    refresh_token: string;
+};
+
+export type OAuthError = 'cancelled' | 'failed' | 'no_account' | 'email_not_verified' | 'claimed_by_another_account' | 'invite_required' | 'last_sign_in_method' | 'provider_already_connected' | 'expired';
+
+export type MobileOAuthSignInDto = {
+    session?: SessionTokensDto;
+    error?: OAuthError;
+};
+
+export type MobileOAuthBrowserSessionDto = {
+    /**
+     * The provider's consent screen.
+     */
+    url: string;
+    /**
+     * Sent back with the handoff to redeem it.
+     */
+    proof: string;
+    /**
+     * The link the browser session comes back to the app on.
+     */
+    returnTo: string;
+};
+
+export type MobileOAuthHandoffDto = {
+    handoff: string;
+    proof: string;
+    guestToken?: string;
+};
 
 export type OAuthCallbackDto = {
     code?: string;
@@ -4099,7 +4140,7 @@ export type AuthRefreshTokensData = {
     body?: never;
     path?: never;
     query?: {
-        mode?: 'cookie' | 'header';
+        mode?: TokenMode;
     };
     url: '/auth/refresh';
 };
@@ -4271,6 +4312,78 @@ export type OAuthRedirectToProviderResponses = {
 };
 
 export type OAuthRedirectToProviderResponse = OAuthRedirectToProviderResponses[keyof OAuthRedirectToProviderResponses];
+
+export type OAuthSignInWithIdentityTokenData = {
+    body: MobileIdentityTokenDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/native';
+};
+
+export type OAuthSignInWithIdentityTokenErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type OAuthSignInWithIdentityTokenError = OAuthSignInWithIdentityTokenErrors[keyof OAuthSignInWithIdentityTokenErrors];
+
+export type OAuthSignInWithIdentityTokenResponses = {
+    200: MobileOAuthSignInDto;
+};
+
+export type OAuthSignInWithIdentityTokenResponse = OAuthSignInWithIdentityTokenResponses[keyof OAuthSignInWithIdentityTokenResponses];
+
+export type OAuthStartMobileBrowserSessionData = {
+    body?: never;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/native/browser';
+};
+
+export type OAuthStartMobileBrowserSessionErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type OAuthStartMobileBrowserSessionError = OAuthStartMobileBrowserSessionErrors[keyof OAuthStartMobileBrowserSessionErrors];
+
+export type OAuthStartMobileBrowserSessionResponses = {
+    200: MobileOAuthBrowserSessionDto;
+};
+
+export type OAuthStartMobileBrowserSessionResponse = OAuthStartMobileBrowserSessionResponses[keyof OAuthStartMobileBrowserSessionResponses];
+
+export type OAuthRedeemMobileHandoffData = {
+    body: MobileOAuthHandoffDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/auth/{provider}/native/redeem';
+};
+
+export type OAuthRedeemMobileHandoffErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type OAuthRedeemMobileHandoffError = OAuthRedeemMobileHandoffErrors[keyof OAuthRedeemMobileHandoffErrors];
+
+export type OAuthRedeemMobileHandoffResponses = {
+    200: MobileOAuthSignInDto;
+};
+
+export type OAuthRedeemMobileHandoffResponse = OAuthRedeemMobileHandoffResponses[keyof OAuthRedeemMobileHandoffResponses];
 
 export type OAuthCallbackData = {
     body?: never;

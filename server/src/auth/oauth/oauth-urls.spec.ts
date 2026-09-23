@@ -1,11 +1,14 @@
 import { NodeEnv } from "@alliance/common/node-env";
 import {
+  MOBILE_OAUTH_RETURN_URL,
   OAuthError,
   OAuthOutcome,
   OAuthProvider,
 } from "@alliance/common/oauth";
 import { BadRequestException } from "@nestjs/common";
 import {
+  mobileOAuthRedirectUri,
+  mobileReturnUrl,
   oauthRedirectUri,
   resolveReturnTo,
   returnUrlWithError,
@@ -110,6 +113,35 @@ describe("oauthRedirectUri", () => {
           returnTo: new URL("http://localhost:5173/login"),
         }),
       ).toBe("http://localhost:3005/auth/google/callback");
+    });
+  });
+});
+
+describe("mobileOAuthRedirectUri", () => {
+  it("is APP_URL's callback under the /api prefix once deployed", () => {
+    withEnv(DEPLOYED_ENV, () => {
+      expect(
+        mobileOAuthRedirectUri({
+          req: asRequest("https://thealliance.org"),
+          provider: OAuthProvider.Apple,
+        }),
+      ).toBe("https://worldalliance.org/api/auth/apple/callback");
+    });
+  });
+});
+
+describe("mobileReturnUrl", () => {
+  it("is the https path Android verifies once deployed", () => {
+    withEnv(DEPLOYED_ENV, () => {
+      expect(mobileReturnUrl()).toBe(
+        "https://worldalliance.org/mobile/oauth-callback",
+      );
+    });
+  });
+
+  it("is the scheme a dev build can claim in development", () => {
+    withEnv({ ...DEPLOYED_ENV, NODE_ENV: NodeEnv.Development }, () => {
+      expect(mobileReturnUrl()).toBe(MOBILE_OAUTH_RETURN_URL);
     });
   });
 });

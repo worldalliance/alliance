@@ -36,11 +36,12 @@ import { OnlyThrottle } from "src/utils/throttle";
 import { AuthService } from "./auth.service";
 import {
   AuthMeResponseDto,
+  type RefreshTokensResponse,
   RefreshTokensResponseDto,
 } from "./dto/authtokens.dto";
 import ForgotPasswordDto, { ResetPasswordDto } from "./dto/forgotpassword.dto";
 import { SignUpDto } from "./dto/sign-up.dto";
-import { SignInDto, SignInResponseDto, type TokenMode } from "./dto/signin.dto";
+import { SignInDto, SignInResponseDto, TokenMode } from "./dto/signin.dto";
 import { AdminGuard } from "./guards/admin.guard";
 import { AuthGuard } from "./guards/auth.guard";
 import { RefreshTokenGuard } from "./guards/refresh.guard";
@@ -53,10 +54,15 @@ import {
   sessionFromRequest,
 } from "./tokens";
 
+const MODE_USES_COOKIES: Record<TokenMode, boolean> = {
+  [TokenMode.Cookie]: true,
+  [TokenMode.Header]: false,
+};
+
 class TokenModeQuery {
-  @ApiPropertyOptional({ enum: ["cookie", "header"] })
+  @ApiPropertyOptional({ enum: TokenMode, enumName: "TokenMode" })
   @IsOptional()
-  @IsEnum(["cookie", "header"])
+  @IsEnum(TokenMode)
   mode?: TokenMode;
 }
 
@@ -83,6 +89,7 @@ export class AuthController {
     @Body() signInDto: SignInDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<SignInResponseDto> {
+    this.clearHeaderModeCookies(res, signInDto.mode);
     const { access_token, refresh_token, isAdmin, userId, switchedDomainAt } =
       await this.authService.login(signInDto.email, signInDto.password);
 
@@ -90,14 +97,13 @@ export class AuthController {
     // here only to have the web app bounce them is a loop. Header sessions are
     // the mobile app, which has one API host and never moves.
     if (
-      signInDto.mode === "cookie" &&
+      MODE_USES_COOKIES[signInDto.mode] &&
       switchedDomainAt !== null &&
       isLegacyAllianceHost(req.get("host") ?? "")
     ) {
       throw new ConflictException(ACCOUNT_MOVED_MESSAGE);
     }
 
-    this.authService.setAuthCookies(res, access_token, refresh_token);
     await this.mergeGuestSession(signInDto.guestToken, req, res, userId);
     this.posthog.identify({
       distinctId: String(userId),
@@ -108,10 +114,15 @@ export class AuthController {
       distinctId: String(userId),
       properties: { isAdmin },
     });
-    if (signInDto.mode === "header") {
-      return new SignInResponseDto({ access_token, refresh_token, isAdmin });
-    }
-    return new SignInResponseDto({ isAdmin });
+    return new SignInResponseDto({
+      ...this.deliverTokens({
+        res,
+        mode: signInDto.mode,
+        access_token,
+        refresh_token,
+      }),
+      isAdmin,
+    });
   }
 
   @Public()
@@ -124,10 +135,10 @@ export class AuthController {
     @Body() signInDto: SignInDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<SignInResponseDto> {
+    this.clearHeaderModeCookies(res, signInDto.mode);
     const { access_token, refresh_token, isAdmin, userId } =
       await this.authService.login(signInDto.email, signInDto.password, true);
 
-    this.authService.setAuthCookies(res, access_token, refresh_token);
     await this.mergeGuestSession(signInDto.guestToken, req, res, userId);
     this.posthog.identify({
       distinctId: String(userId),
@@ -138,10 +149,44 @@ export class AuthController {
       distinctId: String(userId),
       properties: { isAdmin: true },
     });
-    if (signInDto.mode === "header") {
-      return new SignInResponseDto({ access_token, refresh_token, isAdmin });
+    return new SignInResponseDto({
+      ...this.deliverTokens({
+        res,
+        mode: signInDto.mode,
+        access_token,
+        refresh_token,
+      }),
+      isAdmin,
+    });
+  }
+
+  // `extractAccessToken` falls back to the access cookie, so a cookie beside
+  // header-mode tokens is a second session the client doesn't track. Clearing
+  // before the handler's work also drops it when the sign-in is rejected.
+  private clearHeaderModeCookies(res: Response, mode: TokenMode): void {
+    if (!MODE_USES_COOKIES[mode]) {
+      this.authService.clearAuthCookies(res);
     }
-    return new SignInResponseDto({ isAdmin: true });
+  }
+
+  private deliverTokens(params: {
+    res: Response;
+    mode: TokenMode;
+    access_token: string;
+    refresh_token: string;
+  }): RefreshTokensResponse {
+    if (MODE_USES_COOKIES[params.mode]) {
+      this.authService.setAuthCookies(
+        params.res,
+        params.access_token,
+        params.refresh_token,
+      );
+      return {};
+    }
+    return {
+      access_token: params.access_token,
+      refresh_token: params.refresh_token,
+    };
   }
 
   private async mergeGuestSession(
@@ -175,12 +220,12 @@ export class AuthController {
     @Body() signUp: SignUpDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<SignInResponseDto> {
+    this.clearHeaderModeCookies(res, signUp.mode);
     await this.authService.register(signUp);
 
     const { access_token, refresh_token, isAdmin, userId } =
       await this.authService.login(signUp.email, signUp.password);
 
-    this.authService.setAuthCookies(res, access_token, refresh_token);
     await this.mergeGuestSession(signUp.guestToken, req, res, userId);
     this.posthog.identify({
       distinctId: String(userId),
@@ -195,10 +240,15 @@ export class AuthController {
         referral_code: signUp.referralCode,
       },
     });
-    if (signUp.mode === "header") {
-      return new SignInResponseDto({ access_token, refresh_token, isAdmin });
-    }
-    return new SignInResponseDto({ isAdmin });
+    return new SignInResponseDto({
+      ...this.deliverTokens({
+        res,
+        mode: signUp.mode,
+        access_token,
+        refresh_token,
+      }),
+      isAdmin,
+    });
   }
 
   @Post("refresh")
@@ -210,21 +260,20 @@ export class AuthController {
     @Query() query: TokenModeQuery,
     @Res({ passthrough: true }) res: Response,
   ): Promise<RefreshTokensResponseDto> {
+    const mode: TokenMode =
+      query.mode === TokenMode.Header
+        ? TokenMode.Header
+        : extractRefreshTokenFromCookie(req)
+          ? TokenMode.Cookie
+          : TokenMode.Header;
+    this.clearHeaderModeCookies(res, mode);
     const userId: number = req.user.sub;
     const isImpersonation = req.user.isImpersonation ?? false;
     const { access_token, refresh_token } =
       await this.authService.refreshTokens(userId, isImpersonation);
-    const mode: TokenMode =
-      query.mode === "header"
-        ? "header"
-        : extractRefreshTokenFromCookie(req)
-          ? "cookie"
-          : "header";
-    if (mode === "cookie") {
-      this.authService.setAuthCookies(res, access_token, refresh_token);
-      return new RefreshTokensResponseDto({});
-    }
-    return new RefreshTokensResponseDto({ access_token, refresh_token });
+    return new RefreshTokensResponseDto(
+      this.deliverTokens({ res, mode, access_token, refresh_token }),
+    );
   }
 
   @Get("/me")

@@ -1,11 +1,11 @@
 import { CreateClientConfig } from "../client/client.gen";
 
+const isReactNative = (): boolean =>
+  typeof navigator !== "undefined" && navigator.product === "ReactNative";
+
 export const AuthEvents = {
   onUnauthorized: () => {
-    if (
-      typeof navigator !== "undefined" &&
-      navigator.product === "ReactNative"
-    ) {
+    if (isReactNative()) {
       return;
     }
     if (typeof window !== "undefined") {
@@ -51,7 +51,10 @@ export const createClientConfig: CreateClientConfig = (config) => {
 
   return {
     baseUrl,
-    credentials: "include",
+    // The app authenticates by header and keeps its tokens in secure storage. A
+    // cookie it still carries would sign it in besides, as a session it can
+    // neither see nor end.
+    credentials: isReactNative() ? "omit" : "include",
     fetch: wrappedFetch,
     throwOnError: false,
   };

@@ -1,4 +1,5 @@
 import { ACCOUNT_MOVED_MESSAGE } from "@alliance/common/url";
+import { AuthMeResponseDto } from "src/auth/dto/authtokens.dto";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import TestAgent from "supertest/lib/agent";
@@ -48,6 +49,10 @@ describe("Auth via Http-Only cookies (e2e)", () => {
         referralCode,
       })
       .expect(201);
+
+    const me: AuthMeResponseDto = (await ctx.agent.get("/auth/me").expect(200))
+      .body;
+    expect(me.user.email).toBe("newuser2@test.com");
   });
 
   it("user can login", async () => {

@@ -1,7 +1,8 @@
-import { AnalyticsEvent } from "@alliance/common/analytics";
+import { AnalyticsEvent, ExceptionEvent } from "@alliance/common/analytics";
+import type { OAuthProvider } from "@alliance/common/oauth";
+import { R, type Result } from "@alliance/common/result";
 import { run } from "@alliance/common/run";
-import { client } from "@alliance/shared/client/client.gen";
-import { captureEvent } from "@alliance/shared/lib/analytics";
+import { captureEvent, captureException } from "@alliance/shared/lib/analytics";
 import { useBackfillTimeZone } from "@alliance/shared/lib/useBackfillTimeZone";
 import type { QueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
@@ -13,15 +14,29 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import {
-  appHealthCheck,
-  authLogin,
-  authLogout,
-  authMe,
-  UserDto,
-} from "../../../shared/client";
+import { Alert } from "react-native";
+import { authMe, UserDto, type SessionTokensDto } from "../../../shared/client";
 import { clearGuestToken, getStoredGuestToken } from "./guestSession";
-import { SecureStorage, SecureStorageKey } from "./SecureStorage";
+import { signInWithProvider } from "./oauth";
+import { thrownFailure, type OAuthFailure } from "./oauthResult";
+import {
+  getAccessToken,
+  getRefreshToken,
+  saveSessionTokens,
+  SecureStorage,
+  SecureStorageKey,
+} from "./SecureStorage";
+import {
+  clearClosedSessionTokens,
+  clearStoredTokens,
+  closeSession,
+  dropSessionOnRefusal,
+  openSession,
+  requestTokens,
+  restoreSession,
+  retryClearTokens,
+  SessionOvertakenError,
+} from "./session";
 import {
   getVisualTestAutoLoginCredentials,
   isVisualTestMode,
@@ -36,15 +51,39 @@ export type LoginParams = {
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  canConnectToServer: boolean;
+  /** The launch couldn't load the session or rule it out. */
+  sessionUnavailable: boolean;
+  retrySession: () => void;
   user: UserDto | undefined;
   login: (params: LoginParams) => Promise<void>;
+  /** Leaves navigation to the caller, as `navigateOnSuccess: false` does. */
+  loginWithProvider: (
+    provider: OAuthProvider,
+  ) => Promise<Result<void, OAuthFailure>>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const clearSessionTokens = () =>
+  clearStoredTokens(SecureStorage, [
+    SecureStorageKey.ACCESS_TOKEN,
+    SecureStorageKey.REFRESH_TOKEN,
+  ]);
+
+const askToRetryLogout = () =>
+  new Promise<boolean>((resolve) =>
+    Alert.alert(
+      "Couldn't finish logging out",
+      "Your login is still saved on this device, so the app will sign you back in the next time it opens.",
+      [
+        { text: "Close", style: "cancel", onPress: () => resolve(false) },
+        { text: "Try again", onPress: () => resolve(true) },
+      ],
+    ),
+  );
 
 export const AuthProvider: React.FC<
   React.PropsWithChildren<{
@@ -53,39 +92,59 @@ export const AuthProvider: React.FC<
 > = ({ children, queryClient }) => {
   const [user, setUser] = useState<UserDto | undefined>(undefined);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [canConnectToServer, setCanConnectToServer] = useState<boolean>(false);
+  const [sessionUnavailable, setSessionUnavailable] = useState(false);
   const router = useRouter();
 
   useBackfillTimeZone(user);
 
-  const saveTokens = useCallback(async (access: string, refresh: string) => {
-    await SecureStorage.setItem(SecureStorageKey.ACCESS_TOKEN, access);
-    await SecureStorage.setItem(SecureStorageKey.REFRESH_TOKEN, refresh);
+  const clearTokensAndReport = useCallback(async () => {
+    const cleared = await clearSessionTokens();
+    if (!cleared.ok) {
+      console.error("failed to clear the session tokens", cleared.error);
+      captureException(ExceptionEvent.ClearSessionTokensFailed, cleared.error);
+    }
+    return cleared;
   }, []);
 
-  const clearTokens = useCallback(async () => {
-    await Promise.all([
-      SecureStorage.deleteItem(SecureStorageKey.ACCESS_TOKEN),
-      SecureStorage.deleteItem(SecureStorageKey.REFRESH_TOKEN),
-    ]);
-  }, []);
-
-  const getAccessToken = useCallback(async () => {
-    return await SecureStorage.getItem(SecureStorageKey.ACCESS_TOKEN);
-  }, []);
   const clearSession = useCallback(() => {
-    authLogout();
-    clearTokens();
+    const closed = closeSession(clearTokensAndReport);
     queryClient.clear();
     setUser(undefined);
-  }, [clearTokens, queryClient]);
+    setSessionUnavailable(false);
+    return closed;
+  }, [clearTokensAndReport, queryClient]);
 
   const logout = useCallback(() => {
-    clearSession();
+    run(async () => {
+      const closed = await clearSession();
+      if (!closed.ok) {
+        await retryClearTokens({
+          clearTokens: () => clearClosedSessionTokens(clearSessionTokens),
+          askToRetry: askToRetryLogout,
+        });
+      }
+    });
     if (!isVisualTestMode) {
       router.replace("/onboarding");
     }
   }, [router, clearSession]);
+
+  // A failed token delete gets no retry prompt: the stored tokens can't
+  // refresh, so the next launch drops them. No redirect: the app layout already
+  // sends an unauthenticated visitor to onboarding.
+  const dropRefusedSession = useCallback(async () => {
+    captureEvent(AnalyticsEvent.AuthFailedToRefresh);
+    await clearSession();
+  }, [clearSession]);
+
+  useEffect(
+    () =>
+      dropSessionOnRefusal({
+        signedIn: !!user,
+        dropSession: dropRefusedSession,
+      }),
+    [user, dropRefusedSession],
+  );
 
   const refreshUser = useCallback(async () => {
     try {
@@ -98,96 +157,73 @@ export const AuthProvider: React.FC<
 
   const posthog = usePostHog();
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const accessToken = await getAccessToken();
-        if (accessToken) {
-          client.setConfig({
-            ...client.getConfig(),
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          });
+  const restoreStoredSession = useCallback(async () => {
+    setIsLoading(true);
+    setSessionUnavailable(false);
+    try {
+      // refreshingFetch refreshes an expired access token and retries
+      // before this call returns.
+      const restored = await restoreSession({
+        getAccessToken,
+        getRefreshToken,
+        dropSession: dropRefusedSession,
+        reportFailure: (error) =>
+          captureException(ExceptionEvent.SessionLoadFailed, error),
+      });
+      if (!restored.ok) {
+        if (!(restored.error instanceof SessionOvertakenError)) {
+          setSessionUnavailable(true);
         }
-        // If the access token is expired, the fetch wrapper in _layout.tsx
-        // will intercept the 401 and transparently refresh before retrying.
-        const profile = (await authMe()).data;
-        setUser(profile?.user);
-      } catch {
-        captureEvent(AnalyticsEvent.AuthFailedToRefresh);
-        // No redirect: a first launch has no session to lose, and the app
-        // layout already sends an unauthenticated visitor to onboarding.
-        clearSession();
-      } finally {
-        setIsLoading(false);
+        return;
       }
-    })();
-  }, [clearSession, getAccessToken]);
+      setUser(restored.value);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [dropRefusedSession]);
 
   useEffect(() => {
-    let cancelled = false;
-    run(async () => {
-      try {
-        const resp = await appHealthCheck();
-        if (!cancelled) {
-          setCanConnectToServer(resp.response.ok);
-        }
-      } catch {
-        if (!cancelled) {
-          setCanConnectToServer(false);
-        }
+    run(restoreStoredSession);
+  }, [restoreStoredSession]);
+
+  const startSession = useCallback(
+    async (tokens: SessionTokensDto) => {
+      queryClient.clear();
+
+      const opened = await openSession({
+        tokens,
+        saveTokens: saveSessionTokens,
+        clearTokens: clearTokensAndReport,
+      });
+      if (!opened.ok) {
+        throw opened.error;
       }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+
+      const user = opened.value;
+      setUser(user);
+      setSessionUnavailable(false);
+      posthog?.identify(user.id.toString(), {
+        email: user.email,
+        name: user.name,
+      });
+    },
+    [clearTokensAndReport, posthog, queryClient],
+  );
 
   const login = useCallback(
     async ({ email, password, navigateOnSuccess = true }: LoginParams) => {
       setIsLoading(true);
       try {
         const guestToken = (await getStoredGuestToken()) ?? undefined;
-        const response = await authLogin({
-          body: { email, password, mode: "header", guestToken },
-        });
+        const requested = await requestTokens({ email, password, guestToken });
+        if (!requested.ok) {
+          throw requested.error;
+        }
         if (guestToken) {
           await clearGuestToken();
         }
 
-        if (response.error || !response.data) {
-          throw new Error("Login failed");
-        }
-
-        client.setConfig({
-          ...client.getConfig(),
-          headers: {
-            Authorization: `Bearer ${response.data.access_token}`,
-          },
-        });
-
-        if (response.data.access_token && response.data.refresh_token) {
-          await saveTokens(
-            response.data.access_token,
-            response.data.refresh_token,
-          );
-        } else {
-          console.error("didn't recieve tokens: something went wrong");
-        }
-
-        queryClient.clear();
-
-        const user = (await authMe()).data?.user;
-        if (!user) {
-          throw new Error("Failed to fetch user profile");
-        }
-
-        setUser(user);
-        posthog?.identify(user.id.toString(), {
-          email: user.email,
-          name: user.name,
-        });
+        await startSession(requested.value);
 
         if (!isVisualTestMode && navigateOnSuccess) {
           router.replace("/");
@@ -198,7 +234,29 @@ export const AuthProvider: React.FC<
         setIsLoading(false);
       }
     },
-    [router, saveTokens, posthog, queryClient],
+    [router, startSession],
+  );
+
+  const loginWithProvider = useCallback(
+    async (provider: OAuthProvider): Promise<Result<void, OAuthFailure>> => {
+      const attempt = await R.fromPromiseFn(
+        async (): Promise<Result<void, OAuthFailure>> => {
+          const guestToken = (await getStoredGuestToken()) ?? undefined;
+          const signedIn = await signInWithProvider({ provider, guestToken });
+          if (!signedIn.ok) {
+            return signedIn;
+          }
+          if (guestToken) {
+            await clearGuestToken();
+          }
+          await startSession(signedIn.value);
+          return R.success(undefined);
+        },
+        thrownFailure,
+      );
+      return R.flatMap(attempt, (result) => result);
+    },
+    [startSession],
   );
 
   useEffect(() => {
@@ -234,9 +292,11 @@ export const AuthProvider: React.FC<
     isAuthenticated: !!user,
     user,
     login,
+    loginWithProvider,
     logout,
     refreshUser,
-    canConnectToServer,
+    sessionUnavailable,
+    retrySession: () => run(restoreStoredSession),
     isLoading,
   };
 

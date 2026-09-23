@@ -1,4 +1,3 @@
-import { authRefreshTokens } from "@alliance/shared/client";
 import { client } from "@alliance/shared/client/client.gen";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
@@ -19,8 +18,9 @@ import UpdateAvailableModal from "../components/UpdateAvailableModal";
 import "../global.css";
 import { AuthProvider } from "../lib/AuthContext";
 import PostHogProvider from "../lib/PostHogProvider";
-import { SecureStorage, SecureStorageKey } from "../lib/SecureStorage";
+import { getRefreshToken, saveSessionTokens } from "../lib/SecureStorage";
 import { getApiUrl } from "../lib/config";
+import { refreshingFetch } from "../lib/session";
 import "../lib/setImmediatePolyfill";
 import { hideSplash } from "../lib/splash";
 
@@ -64,61 +64,13 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    const originalFetch = fetch.bind(globalThis);
-
-    const wrappedFetch = async (
-      input: RequestInfo | URL,
-      init?: RequestInit,
-    ) => {
-      const req = new Request(input, init);
-      const retryReq = req.clone();
-      const res = await originalFetch(req);
-
-      if (res.status !== 401 || req.url.includes("auth/refresh")) {
-        return res;
-      }
-
-      const refreshToken = await SecureStorage.getItem(
-        SecureStorageKey.REFRESH_TOKEN,
-      );
-      if (!refreshToken) return res;
-
-      const refreshRes = await authRefreshTokens({
-        query: { mode: "header" },
-        headers: { Authorization: `Bearer ${refreshToken}` },
-      });
-
-      if (refreshRes.response.ok && refreshRes.data?.access_token) {
-        await SecureStorage.setItem(
-          SecureStorageKey.ACCESS_TOKEN,
-          refreshRes.data.access_token,
-        );
-        if (refreshRes.data.refresh_token) {
-          await SecureStorage.setItem(
-            SecureStorageKey.REFRESH_TOKEN,
-            refreshRes.data.refresh_token,
-          );
-        }
-        client.setConfig({
-          baseUrl: getApiUrl(),
-          headers: { Authorization: `Bearer ${refreshRes.data.access_token}` },
-          fetch: wrappedFetch,
-          throwOnError: true,
-        });
-        const retryHeaders = new Headers(retryReq.headers);
-        retryHeaders.set(
-          "Authorization",
-          `Bearer ${refreshRes.data.access_token}`,
-        );
-        return originalFetch(new Request(retryReq, { headers: retryHeaders }));
-      }
-
-      return res;
-    };
-
     client.setConfig({
       baseUrl: getApiUrl(),
-      fetch: wrappedFetch,
+      fetch: refreshingFetch({
+        fetch: fetch.bind(globalThis),
+        getRefreshToken,
+        saveTokens: saveSessionTokens,
+      }),
       throwOnError: true,
     });
   }, []);

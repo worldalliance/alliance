@@ -1,4 +1,5 @@
 import {
+  MOBILE_OAUTH_RETURN_URL,
   OAuthError,
   OAuthIntent,
   OAuthOutcome,
@@ -7,11 +8,17 @@ import {
 import { R } from "@alliance/common/result";
 import { BadRequestException } from "@nestjs/common";
 import { AuthService } from "src/auth/auth.service";
+import { Guest } from "src/auth/entities/guest.entity";
 import { AppleOAuthClient } from "src/auth/oauth/apple-oauth.client";
 import { GoogleOAuthClient } from "src/auth/oauth/google-oauth.client";
-import { OAuthAuthService } from "src/auth/oauth/oauth-auth.service";
+import { mintProof, OAuthAuthService } from "src/auth/oauth/oauth-auth.service";
 import type { OAuthProfile } from "src/auth/oauth/oauth-client";
-import { GUEST_COOKIE } from "src/auth/tokens";
+import { SpentTokenService } from "src/auth/spent-token.service";
+import { GUEST_COOKIE, JWTTokenType } from "src/auth/tokens";
+import {
+  OnetimeInvite,
+  OnetimeInviteStatus,
+} from "src/user/entities/onetime-invite.entity";
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import request from "supertest";
 import TestAgent from "supertest/lib/agent";
@@ -233,6 +240,32 @@ describe("OAuth sign-in (e2e)", () => {
       expect(String(finished.headers["set-cookie"])).toContain("access_token=");
     });
 
+    it("sends an expired flow to the web login rather than the app", async () => {
+      const agent = client();
+      const started = await agent.get(path("start")).query({
+        intent: OAuthIntent.Authenticate,
+        returnTo: RETURN_TO,
+      });
+      const {
+        exp: _exp,
+        iat: _iat,
+        ...claims
+      } = claimsOf(stateOf(started.headers.location)) as Record<
+        string,
+        unknown
+      >;
+
+      const finished = await agent.get(path("callback")).query({
+        code: "code",
+        state: ctx.jwtService.sign(claims, { expiresIn: -60 }),
+      });
+
+      expect(
+        finished.headers.location.startsWith(MOBILE_OAUTH_RETURN_URL),
+      ).toBe(false);
+      expect(errorOf(finished.headers.location)).toBe(OAuthError.Failed);
+    });
+
     // Otherwise an attacker finishes their own consent, hands the callback url
     // to a member, and that member's browser is signed into their account.
     it("is the only one that can finish it", async () => {
@@ -441,6 +474,40 @@ describe("OAuth sign-in (e2e)", () => {
       expect(errorOf(finished.headers.location)).toBe(OAuthError.NoAccount);
     });
 
+    it("is created by an invite that resolves, with the provider connected", async () => {
+      const inviter = await freshMember();
+      const invites = ctx.dataSource.getRepository(OnetimeInvite);
+      const invite = await invites.save(
+        invites.create({
+          invitee: "invited@example.com",
+          code: `invite-${inviter.id}`,
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          invitingUser: { id: inviter.id },
+        }),
+      );
+      profile = { ...profile, subject: "invited", email: invite.invitee };
+
+      const { finished } = await signIn({ referralCode: invite.code });
+
+      expect(outcomeOf(finished.headers.location)).toBe(OAuthOutcome.SignedUp);
+      const created = await ctx.dataSource.getRepository(User).findOneOrFail({
+        where: { email: profile.email },
+        relations: {
+          oauthAccounts: true,
+          referredBy: true,
+          referredByInvite: true,
+        },
+      });
+      expect(created.referredBy?.id).toBe(inviter.id);
+      expect(created.referredByInvite?.id).toBe(invite.id);
+      expect(created.emailVerified).toBe(true);
+      expect(created.oauthAccounts).toMatchObject([
+        { provider: profile.provider, email: profile.email },
+      ]);
+      const spent = await invites.findOneByOrFail({ id: invite.id });
+      expect(spent.status).toBe(OnetimeInviteStatus.LINK_USED);
+    });
+
     // A spent invite throws from inside the signup path, where an exception has
     // nowhere to go but the member's screen.
     it("is sent back with a reason when the invite does not resolve", async () => {
@@ -528,6 +595,401 @@ describe("OAuth sign-in (e2e)", () => {
 
         expect(statuses.sort()).toEqual([200, 400]);
       }
+    });
+  });
+  describe("the mobile app", () => {
+    const users = () => ctx.dataSource.getRepository(User);
+
+    const nativeSignIn = async (identityToken = "valid") =>
+      (await client().post(path("native")).send({ identityToken }).expect(200))
+        .body;
+
+    const sessionUser = async (accessToken: string) =>
+      (
+        await client()
+          .get("/auth/me")
+          .set("Authorization", `Bearer ${accessToken}`)
+          .expect(200)
+      ).body.user;
+
+    describe("with a native id token", () => {
+      it("signs in to the account the identity is connected to", async () => {
+        const member = await freshMember();
+        profile = {
+          ...profile,
+          subject: `native-${member.id}`,
+          email: member.email,
+        };
+        await nativeSignIn();
+
+        // Apple hides the address behind a relay whenever the member asks,
+        // and a connected identity still gets in.
+        profile = { ...profile, email: "relay@privaterelay.appleid.com" };
+        const signedIn = await nativeSignIn();
+
+        expect((await sessionUser(signedIn.session.access_token)).id).toBe(
+          member.id,
+        );
+      });
+
+      it("accepts an id token it has already accepted", async () => {
+        const member = await freshMember();
+        profile = {
+          ...profile,
+          subject: `native-again-${member.id}`,
+          email: member.email,
+        };
+        await nativeSignIn();
+
+        const signedIn = await nativeSignIn();
+
+        expect((await sessionUser(signedIn.session.access_token)).id).toBe(
+          member.id,
+        );
+      });
+
+      it("connects a verified address that matches and signs in", async () => {
+        const member = await freshMember();
+        profile = {
+          ...profile,
+          subject: `native-match-${member.id}`,
+          email: member.email,
+        };
+
+        const signedIn = await nativeSignIn();
+
+        const user = await sessionUser(signedIn.session.access_token);
+        expect(user.id).toBe(member.id);
+        expect(linkedEmails(user)).toEqual({ google: member.email });
+      });
+
+      it("refuses an address the provider has not verified", async () => {
+        const member = await freshMember();
+        profile = {
+          ...profile,
+          subject: `native-unverified-${member.id}`,
+          email: member.email,
+          emailVerified: false,
+        };
+
+        expect(await nativeSignIn()).toEqual({
+          error: OAuthError.EmailNotVerified,
+        });
+      });
+
+      it("turns away an address with no account and creates none", async () => {
+        profile = {
+          ...profile,
+          subject: "native-stranger",
+          email: "native-stranger@example.com",
+        };
+
+        expect(await nativeSignIn()).toEqual({ error: OAuthError.NoAccount });
+        expect(await users().findOneBy({ email: profile.email })).toBeNull();
+      });
+
+      it("merges the guest the app carried into the member", async () => {
+        const member = await freshMember();
+        profile = {
+          ...profile,
+          subject: `native-guest-${member.id}`,
+          email: member.email,
+        };
+        const { guestId, guestToken } = await ctx.app
+          .get(AuthService)
+          .createGuestSession();
+
+        await client()
+          .post(path("native"))
+          .send({ identityToken: "valid", guestToken })
+          .expect(200);
+
+        const guest = await ctx.dataSource.getRepository(Guest).findOneOrFail({
+          where: { id: guestId },
+          relations: { linkedUser: true },
+        });
+        expect(guest.linkedUser?.id).toBe(member.id);
+      });
+
+      it("reports a second identity from a provider the account already has", async () => {
+        const member = await freshMember();
+        profile = {
+          ...profile,
+          subject: `native-first-${member.id}`,
+          email: member.email,
+        };
+        await nativeSignIn();
+
+        profile = { ...profile, subject: `native-second-${member.id}` };
+
+        expect(await nativeSignIn()).toEqual({
+          error: OAuthError.ProviderAlreadyConnected,
+        });
+      });
+
+      it("fails a token the provider did not sign", async () => {
+        expect(await nativeSignIn("forged")).toEqual({
+          error: OAuthError.Failed,
+        });
+      });
+    });
+
+    describe("through a browser session", () => {
+      const startBrowserSession = async () => {
+        const started = await client().post(path("native/browser")).expect(200);
+        return {
+          proof: String(started.body.proof),
+          state: stateOf(started.body.url),
+        };
+      };
+
+      /** A fresh agent: the system browser shares no cookies with the app. */
+      const finishInBrowser = async (query: Record<string, unknown>) => {
+        const finished = await client().get(path("callback")).query(query);
+        expect(
+          finished.headers.location.startsWith(MOBILE_OAUTH_RETURN_URL),
+        ).toBe(true);
+        expect(String(finished.headers["set-cookie"])).not.toContain(
+          "access_token=",
+        );
+        return new URL(finished.headers.location).searchParams;
+      };
+
+      const redeem = async (params: { handoff: string; proof: string }) =>
+        (await client().post(path("native/redeem")).send(params).expect(200))
+          .body;
+
+      it("hands the session only to the proof that started it", async () => {
+        const member = await freshMember();
+        profile = {
+          ...profile,
+          subject: `browser-${member.id}`,
+          email: member.email,
+        };
+        const { proof, state } = await startBrowserSession();
+        const returned = await finishInBrowser({ code: "code", state });
+        const handoff = String(returned.get("handoff"));
+
+        // Another app can register the same scheme and catch the deep link.
+        expect(await redeem({ handoff, proof: mintProof().proof })).toEqual({
+          error: OAuthError.Failed,
+        });
+
+        const redeemed = await redeem({ handoff, proof });
+        expect((await sessionUser(redeemed.session.access_token)).id).toBe(
+          member.id,
+        );
+      });
+
+      it("finishes an Apple form post", async () => {
+        const member = await freshMember();
+        profile = {
+          ...profile,
+          provider: OAuthProvider.Apple,
+          subject: `apple-browser-${member.id}`,
+          email: member.email,
+        };
+        const { proof, state } = await startBrowserSession();
+        const browser = client();
+        const posted = await browser
+          .post(path("callback"))
+          .type("form")
+          .send({ code: "code", state })
+          .expect(303);
+
+        const finished = await browser.get(
+          `${path("callback")}${posted.headers.location}`,
+        );
+        expect(
+          finished.headers.location.startsWith(MOBILE_OAUTH_RETURN_URL),
+        ).toBe(true);
+        const handoff = String(
+          new URL(finished.headers.location).searchParams.get("handoff"),
+        );
+
+        const redeemed = await redeem({ handoff, proof });
+        expect((await sessionUser(redeemed.session.access_token)).id).toBe(
+          member.id,
+        );
+      });
+
+      it("redeems a handoff once", async () => {
+        const member = await freshMember();
+        profile = {
+          ...profile,
+          subject: `browser-replay-${member.id}`,
+          email: member.email,
+        };
+        const { proof, state } = await startBrowserSession();
+        const returned = await finishInBrowser({ code: "code", state });
+        const handoff = String(returned.get("handoff"));
+
+        const redeemed = await redeem({ handoff, proof });
+        expect((await sessionUser(redeemed.session.access_token)).id).toBe(
+          member.id,
+        );
+
+        expect(await redeem({ handoff, proof })).toEqual({
+          error: OAuthError.Failed,
+        });
+      });
+
+      it("comes back on the link it chose, whatever the caller asks for", async () => {
+        const started = await client()
+          .post(path("native/browser"))
+          .send({ returnTo: "https://evil.example.com/mobile/oauth-callback" })
+          .expect(200);
+
+        expect(started.body.returnTo).toBe(MOBILE_OAUTH_RETURN_URL);
+        expect(claimsOf(stateOf(started.body.url))).toMatchObject({
+          returnTo: MOBILE_OAUTH_RETURN_URL,
+        });
+      });
+
+      it("sends a cancellation back to the app", async () => {
+        const { state } = await startBrowserSession();
+
+        const returned = await finishInBrowser({
+          error: "access_denied",
+          state,
+        });
+
+        expect(returned.get("error")).toBe(OAuthError.Cancelled);
+      });
+
+      it("sends Apple's cancellation back to the app", async () => {
+        profile = { ...profile, provider: OAuthProvider.Apple };
+        const { state } = await startBrowserSession();
+
+        const returned = await finishInBrowser({
+          error: "user_cancelled_authorize",
+          state,
+        });
+
+        expect(returned.get("error")).toBe(OAuthError.Cancelled);
+      });
+
+      it("sends any other provider error back to the app as a failure", async () => {
+        const { state } = await startBrowserSession();
+
+        const returned = await finishInBrowser({
+          error: "server_error",
+          state,
+        });
+
+        expect(returned.get("error")).toBe(OAuthError.Failed);
+      });
+
+      it("sends a missing account back to the app and creates none", async () => {
+        profile = {
+          ...profile,
+          subject: "browser-stranger",
+          email: "browser-stranger@example.com",
+        };
+        const { state } = await startBrowserSession();
+
+        const returned = await finishInBrowser({ code: "code", state });
+
+        expect(returned.get("error")).toBe(OAuthError.NoAccount);
+        expect(await users().findOneBy({ email: profile.email })).toBeNull();
+      });
+
+      it("sends an expired flow back to the app", async () => {
+        const { state } = await startBrowserSession();
+        const {
+          exp: _exp,
+          iat: _iat,
+          ...claims
+        } = claimsOf(state) as Record<string, unknown>;
+        const expired = ctx.jwtService.sign(claims, { expiresIn: -60 });
+
+        const returned = await finishInBrowser({
+          code: "code",
+          state: expired,
+        });
+
+        expect(returned.get("error")).toBe(OAuthError.Expired);
+      });
+
+      it("refuses the state token the app also holds", async () => {
+        const { proof, state } = await startBrowserSession();
+
+        expect(await redeem({ handoff: String(state), proof })).toEqual({
+          error: OAuthError.Failed,
+        });
+      });
+
+      it("refuses a handoff minted for another provider", async () => {
+        const { proof, proofHash } = mintProof();
+        const handoff = ctx.jwtService.sign({
+          tokenType: JWTTokenType.oauthHandoff,
+          userId: ctx.testUserId,
+          provider: OAuthProvider.Apple,
+          outcome: OAuthOutcome.SignedIn,
+          proofHash,
+        });
+
+        // `path` follows `profile.provider`, which is Google here.
+        expect(await redeem({ handoff, proof })).toEqual({
+          error: OAuthError.Failed,
+        });
+      });
+
+      it("refuses an expired handoff as expired", async () => {
+        const { proof, proofHash } = mintProof();
+        const handoff = ctx.jwtService.sign(
+          {
+            tokenType: JWTTokenType.oauthHandoff,
+            userId: ctx.testUserId,
+            provider: profile.provider,
+            outcome: OAuthOutcome.SignedIn,
+            proofHash,
+          },
+          { expiresIn: -60 },
+        );
+
+        expect(await redeem({ handoff, proof })).toEqual({
+          error: OAuthError.Expired,
+        });
+      });
+    });
+  });
+  describe("spent credentials", () => {
+    it("forgets one that has expired and holds on to one that has not", async () => {
+      const spentTokens = ctx.app.get(SpentTokenService);
+      await spentTokens.spend({
+        credential: "still-alive",
+        retainForMs: 60_000,
+      });
+      await spentTokens.spend({
+        credential: "long-gone",
+        retainForMs: -60_000,
+      });
+
+      await spentTokens.forgetExpired();
+
+      expect(
+        await spentTokens.spend({
+          credential: "long-gone",
+          retainForMs: 60_000,
+        }),
+      ).toBe(true);
+      expect(
+        await spentTokens.spend({
+          credential: "still-alive",
+          retainForMs: 60_000,
+        }),
+      ).toBe(false);
+    });
+
+    it("lets one of many concurrent spends through", async () => {
+      const spentTokens = ctx.app.get(SpentTokenService);
+      const results = await Promise.all(
+        Array.from({ length: 20 }, () =>
+          spentTokens.spend({ credential: "raced", retainForMs: 60_000 }),
+        ),
+      );
+      expect(results.filter(Boolean)).toHaveLength(1);
     });
   });
 });

@@ -1,12 +1,14 @@
-import { AnalyticsEvent } from "@alliance/common/analytics";
+import { AnalyticsEvent, ExceptionEvent } from "@alliance/common/analytics";
 import { errorMessage } from "@alliance/common/errorMessage";
+import type { OAuthProvider } from "@alliance/common/oauth";
+import { run } from "@alliance/common/run";
 import {
   authForgotPassword,
   authRegister,
   contractGetCurrent,
   contractSignContract,
 } from "@alliance/shared/client";
-import { captureEvent } from "@alliance/shared/lib/analytics";
+import { captureEvent, captureException } from "@alliance/shared/lib/analytics";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
 import { deviceTimeZone } from "@alliance/shared/lib/timeZone";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
@@ -39,6 +41,13 @@ import {
 import { WelcomeGate } from "../../components/onboarding/WelcomeGate";
 import Text from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
+import { takeInterruptedAuthTab } from "../../lib/oauth";
+import {
+  interruptedFailure,
+  providerFailureFor,
+  UNFINISHED_FAILURE,
+  type ProviderFailure,
+} from "../../lib/oauthResult";
 import {
   AccountMode,
   FILLED_SEGMENTS,
@@ -55,6 +64,7 @@ import {
   onboardingColors,
   useOnboardingScale,
 } from "../../lib/onboarding/scale";
+import { passwordLoginFailure } from "../../lib/session";
 
 const TONE_BACKGROUND: Record<PanelTone, string> = {
   [PanelTone.Navy]: onboardingColors.navy,
@@ -70,10 +80,15 @@ const TONE_INK: Record<PanelTone, string> = {
 const OnboardingScreen = () => {
   const router = useRouter();
   const scale = useOnboardingScale();
-  const { login } = useAuth();
-  const { ref: referralCode, step: stepParam } = useLocalSearchParams<{
+  const { login, loginWithProvider, isAuthenticated, isLoading } = useAuth();
+  const {
+    ref: referralCode,
+    step: stepParam,
+    oauthInterrupted,
+  } = useLocalSearchParams<{
     ref?: string;
     step?: string;
+    oauthInterrupted?: string;
   }>();
 
   // `?step=` opens any screen without registering, so the later ones can be
@@ -87,6 +102,11 @@ const OnboardingScreen = () => {
   const [password, setPassword] = useState("");
   const [signedName, setSignedName] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [pendingProvider, setPendingProvider] = useState<OAuthProvider | null>(
+    null,
+  );
+  const [providerFailure, setProviderFailure] =
+    useState<ProviderFailure | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [received, setReceived] = useState(false);
@@ -108,6 +128,26 @@ const OnboardingScreen = () => {
   });
 
   const { used: inviteUsed, inviter } = useInvite(referralCode ?? null);
+
+  // A stale return link can cold-start the app for a member already signed in.
+  // The param is cleared once read, so a later login here still fades out.
+  useEffect(() => {
+    if (!oauthInterrupted || isLoading) return;
+    if (isAuthenticated) {
+      router.replace("/");
+      return;
+    }
+    setProviderFailure(interruptedFailure(oauthInterrupted));
+    router.setParams({ oauthInterrupted: undefined });
+  }, [oauthInterrupted, isLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    run(async () => {
+      if (await takeInterruptedAuthTab()) {
+        setProviderFailure(UNFINISHED_FAILURE);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     if (!referralCode) return;
@@ -138,16 +178,44 @@ const OnboardingScreen = () => {
   const submitAccount = useCallback(async () => {
     setError(null);
     setNotice(null);
+    setProviderFailure(null);
     setSubmitting(true);
     try {
       await login({ email, password, navigateOnSuccess: false });
       enterPlatform();
-    } catch {
-      setError("Invalid email or password");
+    } catch (error) {
+      const failure = passwordLoginFailure(error);
+      if (failure.report) {
+        console.error("password login failed", error);
+        captureException(ExceptionEvent.PasswordLoginFailed, error);
+      }
+      setError(failure.message);
     } finally {
       setSubmitting(false);
     }
   }, [email, password, login, enterPlatform]);
+
+  const continueWithProvider = useCallback(
+    async (provider: OAuthProvider) => {
+      if (submitting || pendingProvider) return;
+      setError(null);
+      setNotice(null);
+      setProviderFailure(null);
+      setPendingProvider(provider);
+      const signedIn = await loginWithProvider(provider);
+      if (signedIn.ok) {
+        // Left set through the fade, so a tap on the way out can't start a
+        // second sign-in behind the screen.
+        enterPlatform();
+        return;
+      }
+      setPendingProvider(null);
+      setProviderFailure(
+        providerFailureFor({ provider, failure: signedIn.error }),
+      );
+    },
+    [submitting, pendingProvider, loginWithProvider, enterPlatform],
+  );
 
   const forgotPassword = useCallback(async () => {
     if (submitting) return;
@@ -156,6 +224,7 @@ const OnboardingScreen = () => {
       return;
     }
     setError(null);
+    setProviderFailure(null);
     setSubmitting(true);
     const res = await authForgotPassword({ body: { email } });
     setNotice(res.error ? null : forgotPasswordCopy.sendSuccess.message);
@@ -266,6 +335,9 @@ const OnboardingScreen = () => {
             notice={notice}
             submitting={submitting}
             onForgotPassword={forgotPassword}
+            pendingProvider={pendingProvider}
+            providerFailure={providerFailure}
+            onContinueWithProvider={continueWithProvider}
             inviteUsed={inviteUsed}
             inviter={inviter}
           />
