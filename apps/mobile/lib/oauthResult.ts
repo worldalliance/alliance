@@ -89,7 +89,7 @@ export const thrownFailure = (error: unknown): OAuthFailure => {
   if (error instanceof Error && isNetworkFailure(error.cause)) {
     return ClientFailure.Network;
   }
-  reportOAuthFailure("oauth sign-in threw", error);
+  reportOAuthFailure("oauth flow threw", error);
   return OAuthError.Failed;
 };
 

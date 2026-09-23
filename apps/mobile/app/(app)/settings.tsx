@@ -1,8 +1,7 @@
-import { authForgotPassword, City } from "@alliance/shared/client";
+import { City } from "@alliance/shared/client";
 import { useSeedSettingsForm } from "@alliance/shared/lib/useSeedSettingsForm";
 import { useSettingsAutosave } from "@alliance/shared/lib/useSettingsAutosave";
 import { cn } from "@alliance/shared/styles/util";
-import { useMutation } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import {
   Alert,
@@ -17,6 +16,7 @@ import PhoneNumberInput from "../../components/forms/PhoneNumberInput";
 import ReminderTimeSelect from "../../components/forms/ReminderTimeSelect";
 import TimeZoneSelect from "../../components/forms/TimeZoneSelect";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
+import AccountSection from "../../components/settings/AccountSection";
 import Button, {
   ButtonColor,
   ButtonSize,
@@ -88,10 +88,6 @@ export default function SettingsPage() {
 
   const [statusTaps, setStatusTaps] = useState(0);
 
-  const [passwordResetMessage, setPasswordResetMessage] = useState<
-    string | null
-  >(null);
-
   const handleLogout = useCallback(async () => {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
       { text: "Cancel", style: "cancel" },
@@ -104,18 +100,6 @@ export default function SettingsPage() {
       },
     ]);
   }, [logout]);
-
-  const forgotPassword = useMutation({
-    mutationFn: (email: string) => authForgotPassword({ body: { email } }),
-  });
-
-  const handlePasswordReset = useCallback(async () => {
-    setPasswordResetMessage(null);
-    if (!user?.email) {
-      return;
-    }
-    forgotPassword.mutate(user.email);
-  }, [user?.email, forgotPassword]);
 
   const loading = useSeedSettingsForm({ user, setSavedProfile, setLocation });
 
@@ -438,36 +422,9 @@ export default function SettingsPage() {
             <Text className="text-sm text-zinc-500 mt-2">
               You will still be able to control visibility for specific tasks.
             </Text>
-
-            <View className="mt-6">
-              <Button
-                color={ButtonColor.Black}
-                onPress={handlePasswordReset}
-                disabled={forgotPassword.isPending}
-                title={
-                  forgotPassword.isPending
-                    ? "Sending reset link..."
-                    : "Reset password"
-                }
-              />
-              {!passwordResetMessage && (
-                <Text className="text-sm text-zinc-500 mt-2">
-                  We&apos;ll send the reset link to{" "}
-                  {user.email || "your account email"}.
-                </Text>
-              )}
-              {passwordResetMessage && (
-                <Text className="text-sm text-green-600 mt-2">
-                  {passwordResetMessage}
-                </Text>
-              )}
-              {forgotPassword.isError && (
-                <Text className="text-sm text-red-700 mt-2">
-                  {forgotPassword.error?.message}
-                </Text>
-              )}
-            </View>
           </Card>
+
+          <AccountSection user={user} />
 
           {statusTaps >= BUILD_INFO_TAPS && <BuildInfoCard />}
 
