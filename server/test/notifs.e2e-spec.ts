@@ -1,3 +1,4 @@
+import { NOTIFS_LOADED_AT_HEADER } from "@alliance/common/notifs";
 import { milliseconds } from "date-fns";
 import {
   ActionUpdate,
@@ -201,6 +202,184 @@ describe("Notifications (e2e)", () => {
     expect(notif.readAt).toBeNull();
     expect(content.readAt).toBeNull();
   });
+
+  it("mark all read with loadedAt leaves notifications due after it unread", async () => {
+    const user = await ctx.dataSource
+      .getRepository(User)
+      .findOneByOrFail({ id: ctx.testUserId });
+    const loadedAt = new Date(Date.now() - milliseconds({ minutes: 10 }));
+    const createdAt = new Date(Date.now() - milliseconds({ hours: 2 }));
+    const shownSendTime = new Date(Date.now() - milliseconds({ hours: 1 }));
+    const laterSendTime = new Date(Date.now() - milliseconds({ minutes: 1 }));
+    const [shownNotif, laterNotif] = await notifRepo.save(
+      [shownSendTime, laterSendTime].map((sendTime) =>
+        notifRepo.create({
+          user,
+          message: "Reminder",
+          category: NotificationCategory.ActionEvent,
+          webAppLocation: "test",
+          mobileAppLocation: "test",
+          sendTime,
+        }),
+      ),
+    );
+    const laterContent = await unreadContentRepo.save(
+      unreadContentRepo.create({
+        user,
+        contentType: UnreadContentType.ForumReply,
+        contentId: unreadCommentId,
+        sendTime: laterSendTime,
+        shouldPush: false,
+      }),
+    );
+    await notifRepo.update([shownNotif.id, laterNotif.id], { createdAt });
+    await unreadContentRepo.update(laterContent.id, { createdAt });
+
+    await ctx.agent
+      .post("/notifs/read-all")
+      .query({ loadedAt: loadedAt.toISOString() })
+      .expect(201);
+
+    const [shown, later, content] = await Promise.all([
+      notifRepo.findOneByOrFail({ id: shownNotif.id }),
+      notifRepo.findOneByOrFail({ id: laterNotif.id }),
+      unreadContentRepo.findOneByOrFail({ id: laterContent.id }),
+    ]);
+    await notifRepo.delete([shownNotif.id, laterNotif.id]);
+    await unreadContentRepo.delete(laterContent.id);
+    expect(shown.readAt).not.toBeNull();
+    expect(later.readAt).toBeNull();
+    expect(content.readAt).toBeNull();
+  });
+
+  it("mark all read with loadedAt includes a notification due and created in its millisecond", async () => {
+    const user = await ctx.dataSource
+      .getRepository(User)
+      .findOneByOrFail({ id: ctx.testUserId });
+    const notif = await notifRepo.save(
+      notifRepo.create({
+        user,
+        message: "Default sendTime",
+        category: NotificationCategory.FriendRequest,
+        webAppLocation: "test",
+        mobileAppLocation: "test",
+      }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const listed = (await ctx.agent.get("/notifs").expect(200)).body.find(
+      (item: { id: number; sourceType: string }) =>
+        item.id === notif.id &&
+        item.sourceType === NotificationSourceType.Notification,
+    );
+
+    await ctx.agent
+      .post("/notifs/read-all")
+      .query({ loadedAt: listed.sendTime })
+      .expect(201);
+
+    const read = await notifRepo.findOneByOrFail({ id: notif.id });
+    await notifRepo.delete(notif.id);
+    expect(read.readAt).not.toBeNull();
+  });
+
+  it("mark all read with the list's loadedAt marks backdated notifications below the loaded page and leaves ones created after the load unread", async () => {
+    const user = await ctx.dataSource
+      .getRepository(User)
+      .findOneByOrFail({ id: ctx.testUserId });
+    const backdated = (): UnreadContent =>
+      unreadContentRepo.create({
+        user,
+        contentType: UnreadContentType.ForumReply,
+        contentId: unreadCommentId,
+        sendTime: new Date(Date.now() - milliseconds({ days: 1 })),
+        shouldPush: false,
+      });
+    const pageNotifs = await notifRepo.save(
+      [1, 2].map(() =>
+        notifRepo.create({
+          user,
+          message: "Fresh",
+          category: NotificationCategory.FriendRequest,
+          webAppLocation: "test",
+          mobileAppLocation: "test",
+        }),
+      ),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const belowPageContent = await unreadContentRepo.save(backdated());
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const listResponse = await ctx.agent
+      .get("/notifs")
+      .query({ limit: 2 })
+      .expect(200);
+    const page: { id: number }[] = listResponse.body;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const lateContent = await unreadContentRepo.save(backdated());
+
+    await ctx.agent
+      .post("/notifs/read-all")
+      .query({ loadedAt: listResponse.headers[NOTIFS_LOADED_AT_HEADER] })
+      .expect(201);
+
+    const [belowPage, late] = await Promise.all([
+      unreadContentRepo.findOneByOrFail({ id: belowPageContent.id }),
+      unreadContentRepo.findOneByOrFail({ id: lateContent.id }),
+    ]);
+    await notifRepo.delete(pageNotifs.map((n) => n.id));
+    await unreadContentRepo.delete([belowPageContent.id, lateContent.id]);
+    expect(new Set(page.map((n) => n.id))).toEqual(
+      new Set(pageNotifs.map((n) => n.id)),
+    );
+    expect(belowPage.readAt).not.toBeNull();
+    expect(late.readAt).toBeNull();
+  });
+
+  it("mark all read with a loadedAt in the future leaves notifications that aren't due yet unread", async () => {
+    const user = await ctx.dataSource
+      .getRepository(User)
+      .findOneByOrFail({ id: ctx.testUserId });
+    const futureNotif = await notifRepo.save(
+      notifRepo.create({
+        user,
+        message: "Scheduled reminder",
+        category: NotificationCategory.ActionEvent,
+        webAppLocation: "test",
+        mobileAppLocation: "test",
+        sendTime: new Date(Date.now() + milliseconds({ hours: 1 })),
+      }),
+    );
+
+    await ctx.agent
+      .post("/notifs/read-all")
+      .query({
+        loadedAt: new Date(
+          Date.now() + milliseconds({ hours: 2 }),
+        ).toISOString(),
+      })
+      .expect(201);
+
+    const notif = await notifRepo.findOneByOrFail({ id: futureNotif.id });
+    await notifRepo.delete(futureNotif.id);
+    expect(notif.readAt).toBeNull();
+  });
+
+  it.each([
+    "2026-W39-3",
+    "1",
+    "2026-09-23T10:00",
+    "2026-02-30T00:00:00.000Z",
+    "March 7",
+  ])(
+    "mark all read rejects loadedAt=%s, which isn't an RFC 3339 date-time",
+    async (loadedAt) => {
+      await notifRepo.update(legacyNotifId, { readAt: null });
+
+      await ctx.agent.post("/notifs/read-all").query({ loadedAt }).expect(400);
+
+      const notif = await notifRepo.findOneByOrFail({ id: legacyNotifId });
+      expect(notif.readAt).toBeNull();
+    },
+  );
 
   it("user can mark unread content read by content id", async () => {
     await unreadContentRepo.update(unreadNotifId, {

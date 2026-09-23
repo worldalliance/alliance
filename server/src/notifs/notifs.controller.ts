@@ -1,3 +1,4 @@
+import { NOTIFS_LOADED_AT_HEADER } from "@alliance/common/notifs";
 import {
   Body,
   Controller,
@@ -7,9 +8,11 @@ import {
   Post,
   Query,
   Request,
+  Res,
   UseGuards,
 } from "@nestjs/common";
 import { ApiOkResponse, ApiQuery } from "@nestjs/swagger";
+import type { Response } from "express";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import type { JwtRequest } from "src/auth/tokens";
 import { AuthGuard } from "../auth/guards/auth.guard";
@@ -17,6 +20,7 @@ import { NotifClickDto, NotifClickResponseDto } from "./dto/notifclick.dto";
 import { NotificationDto } from "./dto/notification.dto";
 import {
   MarkUnreadContentReadDto,
+  ReadAllNotificationsQueryDto,
   ReadNotificationQueryDto,
 } from "./dto/unread-content.dto";
 import { UnreadCountDto } from "./dto/unread-count.dto";
@@ -30,12 +34,26 @@ export class NotifsController {
   @Get()
   @UseGuards(AuthGuard)
   @ApiQuery({ name: "limit", required: false, type: Number })
-  @ApiOkResponse({ type: [NotificationDto] })
+  @ApiOkResponse({
+    type: [NotificationDto],
+    headers: {
+      [NOTIFS_LOADED_AT_HEADER]: {
+        schema: { type: "string", format: "date-time" },
+        description: "When the list was read. Send it as read-all's loadedAt.",
+      },
+    },
+  })
   async findAll(
     @Request() req: JwtRequest,
+    @Res({ passthrough: true }) res: Response,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ): Promise<NotificationDto[]> {
-    return this.notifsService.findAll(req.user.sub, limit);
+    const { loadedAt, notifications } = await this.notifsService.findAll(
+      req.user.sub,
+      limit,
+    );
+    res.setHeader(NOTIFS_LOADED_AT_HEADER, loadedAt.toISOString());
+    return notifications;
   }
 
   @Get("unread-count")
@@ -61,8 +79,11 @@ export class NotifsController {
   @Post("read-all")
   @UseGuards(AuthGuard)
   @ApiOkResponse()
-  async setReadAll(@Request() req: JwtRequest): Promise<void> {
-    return this.notifsService.setReadAll(req.user.sub);
+  async setReadAll(
+    @Query() query: ReadAllNotificationsQueryDto,
+    @Request() req: JwtRequest,
+  ): Promise<void> {
+    return this.notifsService.setReadAll(req.user.sub, query);
   }
 
   @Post("read-content")
