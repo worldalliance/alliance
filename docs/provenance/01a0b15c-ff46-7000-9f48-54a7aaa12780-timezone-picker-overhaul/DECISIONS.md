@@ -49,8 +49,23 @@ sections below this one carry the reasoning each step implements.
 7. **Web combobox.** `sharedweb/forms/TimeZoneSelect.tsx` moves onto
    `@base-ui/react/combobox` with the search input inside the popup, deleting
    the hand-rolled keyboard handling, backdrop, and open state.
-8. **Mobile list.** `apps/mobile/components/forms/TimeZoneSelect.tsx` swaps its
-   `ScrollView` for a virtualized `FlatList` that opens on the selected row.
+8. **Mobile list.** Done. `apps/mobile/components/forms/TimeZoneSelect.tsx`
+   swaps its `ScrollView` for a virtualized `FlatList` that opens on the
+   selected row. It scrolls by index rather than by a guessed row height,
+   since a row's height follows its wrapping and the member's font scale.
+   Without `getItemLayout` the list ends at the last row it has measured, so
+   a scroll to a row past them is cut short a screen further down. The list
+   renders every row up to the selected one on open, which lets it get there
+   in one scroll where retries would walk a screen at a time, visibly, across
+   the hundreds of rows a full zone list holds. The list keeps its first
+   `initialNumToRender` rows mounted, so the count drops back once the scroll
+   lands or the member types. A failed scroll still steps toward
+   the row and retries. The scroll runs once per open and is dropped once the
+   member types, since a queued retry's index can outrun the filtered rows
+   and `scrollToIndex` throws on it. Those rules live in
+   `selectedRowScroller.ts` so they can be tested without a renderer.
+   `FormModal` takes `scrollable={false}` so the list is not nested in its
+   `ScrollView`.
 9. **Mobile detection.** `expo-localization` replaces `react-native-localize`,
    and the dependency goes once `getTimeZone` has no caller.
 10. **Signup capture.** Web signup, mobile signup, and the OAuth redirect send a
