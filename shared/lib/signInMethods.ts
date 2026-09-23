@@ -5,13 +5,9 @@ import {
   useQueryClient,
   type QueryClient,
 } from "@tanstack/react-query";
-import {
-  authMe,
-  oAuthUnlink,
-  type OAuthAccountDto,
-  type UserDto,
-} from "../client";
+import { oAuthUnlink, type OAuthAccountDto, type UserDto } from "../client";
 import { thrownRefusalMessage } from "./hey-api";
+import { meQuery } from "./meQuery";
 
 export type SignInMethods = {
   hasPassword: boolean;
@@ -47,8 +43,6 @@ export function canDisconnect(
   );
 }
 
-const signInMethodsQueryKey = () => ["authMe", "signInMethods"] as const;
-
 /**
  * Stores what a link or unlink answered with, then refetches, so the next
  * change waits on the server's own view rather than on a guess.
@@ -58,23 +52,19 @@ function settleSignInMethods(
   user: UserDto | undefined,
 ): Promise<void> {
   if (user) {
-    queryClient.setQueryData(signInMethodsQueryKey(), signInMethods(user));
+    queryClient.setQueryData(meQuery.queryKey, user);
   }
-  return queryClient.invalidateQueries({ queryKey: signInMethodsQueryKey() });
+  return queryClient.invalidateQueries({ queryKey: meQuery.queryKey });
 }
 
 export function useSignInMethods() {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: signInMethodsQueryKey(),
-    queryFn: async () => {
-      const response = await authMe();
-      if (!response.data) {
-        throw response.error;
-      }
-      return signInMethods(response.data.user);
-    },
+    ...meQuery,
+    select: signInMethods,
+    // The settings form fetches this user fresh right before the list mounts.
+    refetchOnMount: false,
   });
 
   const disconnect = useMutation({

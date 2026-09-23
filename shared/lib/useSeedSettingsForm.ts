@@ -1,10 +1,7 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import {
-  authMe,
-  userMyLocation,
-  type City,
-  type UpdateProfileDto,
-} from "../client";
+import { userMyLocation, type City, type UpdateProfileDto } from "../client";
+import { fetchMe, meQuery } from "./meQuery";
 import type { SettingsAutosaveState } from "./useSettingsAutosave";
 
 /**
@@ -17,6 +14,7 @@ export function useSeedSettingsForm(params: {
   setLocation: (city: City) => void;
 }): boolean {
   const { user, setSavedProfile, setLocation } = params;
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   // refreshUser hands back a new user object, and re-seeding the form off it
   // would drop whatever the member has typed and not yet saved.
@@ -28,14 +26,13 @@ export function useSeedSettingsForm(params: {
     }
     seededForUserId.current = user.id;
 
-    authMe()
-      .then((response) => {
-        if (!response.data) {
-          throw response.error;
-        }
-        setSavedProfile(response.data.user);
+    fetchMe()
+      .then((me) => {
+        queryClient.setQueryData(meQuery.queryKey, me);
+        setSavedProfile(me);
       })
       .catch((error: unknown) => {
+        queryClient.removeQueries({ queryKey: meQuery.queryKey });
         console.error("failed to load the settings form", error);
       })
       .finally(() => {
@@ -52,7 +49,7 @@ export function useSeedSettingsForm(params: {
         );
       }
     });
-  }, [user, setSavedProfile, setLocation]);
+  }, [user, setSavedProfile, setLocation, queryClient]);
 
   return loading;
 }

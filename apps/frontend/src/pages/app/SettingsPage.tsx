@@ -1,6 +1,5 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
-  authForgotPassword,
   City,
   CitySearchDto,
   PublicFormResponseDefault,
@@ -21,10 +20,13 @@ import YesNoToggle from "@alliance/sharedweb/ui/YesNoToggle";
 import React, { useCallback, useEffect, useState } from "react";
 import { href, useLocation, useNavigate } from "react-router";
 import CityAutosuggest from "../../components/CityAutosuggest";
+import AccountSettings, {
+  ACCOUNT_SECTION_ID,
+} from "../../components/settings/AccountSettings";
 import { useAuth } from "../../lib/AuthContext";
 
 const SettingsPage: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isImpersonation } = useAuth();
 
   const [location, setLocation] = useState<City | null>(null);
   const {
@@ -40,14 +42,6 @@ const SettingsPage: React.FC = () => {
     saveError,
     retrySave,
   } = useSettingsAutosave(user?.id, location?.countryCode);
-
-  const [passwordResetMessage, setPasswordResetMessage] = useState<
-    string | null
-  >(null);
-  const [passwordResetError, setPasswordResetError] = useState<string | null>(
-    null,
-  );
-  const [passwordResetLoading, setPasswordResetLoading] = useState(false);
 
   const navigate = useNavigate();
   const { hash } = useLocation();
@@ -67,38 +61,6 @@ const SettingsPage: React.FC = () => {
     },
     [updateEditableUser],
   );
-
-  const handlePasswordReset = useCallback(async () => {
-    if (!user?.email) {
-      setPasswordResetMessage(null);
-      setPasswordResetError("No email available for password reset.");
-      return;
-    }
-
-    setPasswordResetMessage(null);
-    setPasswordResetError(null);
-    setPasswordResetLoading(true);
-
-    try {
-      const resp = await authForgotPassword({
-        body: { email: user.email },
-      });
-
-      if (resp.error) {
-        setPasswordResetError("Error sending password reset email.");
-        console.error(resp.error);
-      } else {
-        setPasswordResetMessage(
-          "A link to reset your password has been sent to your email address.",
-        );
-      }
-    } catch (error) {
-      console.error(error);
-      setPasswordResetError("Error sending password reset email.");
-    } finally {
-      setPasswordResetLoading(false);
-    }
-  }, [user?.email]);
 
   const loading = useSeedSettingsForm({ user, setSavedProfile, setLocation });
 
@@ -558,40 +520,17 @@ const SettingsPage: React.FC = () => {
           </div>
         </Card>
 
-        <Card style={CardStyle.White} className="p-6">
+        <Card
+          id={ACCOUNT_SECTION_ID}
+          style={CardStyle.White}
+          className="p-6 scroll-mt-[calc(var(--navbar-top-bar-height)+1rem)]"
+        >
           <h2 className="!font-semibold !text-2xl mb-4">Account</h2>
-          <div className="flex flex-col md:flex-row w-full items-start gap-4 *:gap-x-1">
-            <div className="flex-1 flex flex-col w-full">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <Button
-                  color={ButtonColor.Black}
-                  className="sm:self-start"
-                  onClick={handlePasswordReset}
-                  disabled={passwordResetLoading}
-                >
-                  {passwordResetLoading
-                    ? "Sending reset link..."
-                    : "Reset password"}
-                </Button>
-                {!passwordResetMessage && (
-                  <p className="text-sm text-zinc-500">
-                    We&apos;ll send the reset link to{" "}
-                    {user.email || "your account email"}.
-                  </p>
-                )}
-              </div>
-              {passwordResetMessage && (
-                <p className="text-sm text-green mt-2">
-                  {passwordResetMessage}
-                </p>
-              )}
-              {passwordResetError && (
-                <p className="text-sm text-red-700 mt-2">
-                  {passwordResetError}
-                </p>
-              )}
-            </div>
-          </div>
+          <AccountSettings
+            email={user.email}
+            saveStatus={saveStatus}
+            impersonating={isImpersonation}
+          />
         </Card>
       </div>
     </CenterLayout>
