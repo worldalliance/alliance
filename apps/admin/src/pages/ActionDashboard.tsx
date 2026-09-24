@@ -1616,12 +1616,10 @@ const ActionDashboard: React.FC = () => {
               />
             )}
             {activeTab === "responses" && action && (
-              <div className="-mx-5">
-                <ActionMergedResponsesTab
-                  actionId={action.id}
-                  paramNamespace="resp"
-                />
-              </div>
+              <ActionMergedResponsesTab
+                actionId={action.id}
+                paramNamespace="resp"
+              />
             )}
           </div>
         </div>
