@@ -18,7 +18,11 @@ import {
 import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
 import type { Repository } from "src/utils/Repository";
 import { MailService } from "../mail/mail.service";
-import { ReferralSource, User } from "../user/entities/user.entity";
+import {
+  hasPassword,
+  ReferralSource,
+  User,
+} from "../user/entities/user.entity";
 import {
   type LegacyMailedJwtPayload,
   type PWResetJwtPayload,
@@ -428,6 +432,7 @@ export class AuthService {
       email: user.email,
       name: user.name,
       resetToken: token,
+      hasPassword: hasPassword(user),
     });
     return user;
   }

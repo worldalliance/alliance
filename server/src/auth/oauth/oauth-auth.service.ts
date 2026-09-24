@@ -10,7 +10,7 @@ import { JwtService, TokenExpiredError } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { User } from "src/user/entities/user.entity";
+import { hasPassword, User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { Not, type Repository } from "typeorm";
 import { z } from "zod";
@@ -483,7 +483,7 @@ export class OAuthAuthService {
           userId: params.userId,
           provider: Not(params.provider),
         });
-        if (!user.password && others === 0) {
+        if (!hasPassword(user) && others === 0) {
           return false;
         }
         await accounts.delete({

@@ -729,3 +729,7 @@ export function sqlUserHasActiveContractAt(
     LIMIT 1
   ) = '${ContractEventType.SIGNED}'`;
 }
+
+export function hasPassword(user: Pick<User, "password">): boolean {
+  return Boolean(user.password);
+}

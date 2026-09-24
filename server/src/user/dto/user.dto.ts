@@ -36,7 +36,7 @@ import {
 } from "../entities/contract-event.entity";
 import { FriendStatus } from "../entities/friend.entity";
 import { OnetimeInvite } from "../entities/onetime-invite.entity";
-import { ReferralSource, User } from "../entities/user.entity";
+import { hasPassword, ReferralSource, User } from "../entities/user.entity";
 import type { ReferrerResolution } from "../user.service";
 
 export type FriendStatusDtoArgs = {
@@ -340,7 +340,7 @@ export class UserDto extends PickType(User, [
     this.oauthAccounts = user.oauthAccounts?.map(
       (account) => new OAuthAccountDto(account),
     );
-    this.hasPassword = Boolean(user.password);
+    this.hasPassword = hasPassword(user);
   }
 }
 
