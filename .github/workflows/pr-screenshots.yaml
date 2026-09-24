@@ -118,7 +118,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pr-screenshots-${{ inputs.platform }}
-          path: .scratch/pr-screenshots/evidence/
+          path: |
+            .scratch/pr-screenshots/evidence/*.png
+            .scratch/pr-screenshots/evidence/report.json
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
 

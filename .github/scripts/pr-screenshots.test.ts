@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   markdownText,
+  resolveRequest,
   validateEvidence,
   validateRequest,
 } from "./pr-screenshots.cjs";
@@ -43,6 +44,49 @@ describe("remote screenshot request", () => {
       { pr: { ...pr, head: { ...pr.head, repo: null } } },
     ]) {
       expect(() => validateRequest({ ...input, ...change })).toThrow();
+    }
+  });
+
+  test("a rerun by a reader cannot reuse a writer's authorization", async () => {
+    const previous = process.env.RERUN_ACTOR;
+    process.env.RERUN_ACTOR = "reader";
+    let fetchedPr = false;
+    try {
+      await expect(
+        resolveRequest({
+          context: { actor: "writer", repo: { owner: "example", repo: "app" } },
+          core: {
+            setOutput: () => {
+              throw new Error("Unexpected output");
+            },
+          },
+          github: {
+            rest: {
+              repos: {
+                getCollaboratorPermissionLevel: async ({
+                  username,
+                }: {
+                  username: string;
+                }) => ({
+                  data: {
+                    permission: username === "writer" ? "write" : "read",
+                  },
+                }),
+              },
+              pulls: {
+                get: async () => {
+                  fetchedPr = true;
+                  return { data: pr };
+                },
+              },
+            },
+          },
+        }),
+      ).rejects.toThrow("Only repository writers");
+      expect(fetchedPr).toBe(false);
+    } finally {
+      if (previous === undefined) delete process.env.RERUN_ACTOR;
+      else process.env.RERUN_ACTOR = previous;
     }
   });
 });
@@ -121,6 +165,26 @@ describe("untrusted screenshot artifacts", () => {
       expect(() => validateEvidence(directory)).toThrow();
       writeFileSync(resolve(directory, "report.json"), " ".repeat(65537));
       expect(() => validateEvidence(directory)).toThrow();
+    });
+  });
+
+  test("rejects malformed reports, oversized text, and too many pairs", () => {
+    withEvidence((directory) => {
+      for (const invalid of [
+        null,
+        [],
+        {},
+        { ...report, summary: 42 },
+        { ...report, limitations: "x".repeat(4001) },
+        { ...report, pairs: Array(9).fill(report.pairs[0]) },
+        { ...report, pairs: [null] },
+      ]) {
+        writeFileSync(
+          resolve(directory, "report.json"),
+          JSON.stringify(invalid),
+        );
+        expect(() => validateEvidence(directory)).toThrow();
+      }
     });
   });
 
