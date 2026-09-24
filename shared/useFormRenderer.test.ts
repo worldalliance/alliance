@@ -349,9 +349,9 @@ describe("useFormVisibility", () => {
         {
           fields: scoreFields,
           responses: [
-            { answers: { score: 2 }, fields: scoreFields },
-            { answers: {}, fields: scoreFields },
-            { answers: { score: 3 }, fields: scoreFields },
+            { id: 1, answers: { score: 2 }, fields: scoreFields },
+            { id: 2, answers: {}, fields: scoreFields },
+            { id: 3, answers: { score: 3 }, fields: scoreFields },
           ],
         },
       ],

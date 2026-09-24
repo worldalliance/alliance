@@ -1,5 +1,6 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { VariableSourceHistory } from "@alliance/common/forms/variable-evaluation";
+import { readSourceHistory } from "@alliance/common/forms/variable-source-history";
 import { variableHistoryFormIds } from "@alliance/common/forms/variables";
 import { R, type Result } from "@alliance/common/result";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -8,7 +9,6 @@ import {
   tasksGetMyFormResponseHistory,
 } from "../client";
 import { thrownStatus } from "../lib/hey-api";
-import { parseFormResponseHistory } from "../parsed-dtos";
 
 export enum HistoryReader {
   /** A guest, or an admin preview with no member picked: no submissions. */
@@ -118,7 +118,7 @@ async function fetchHistory(
         }),
         historyError,
       );
-      return R.flatMap(response, ({ data }) => parseFormResponseHistory(data));
+      return R.flatMap(response, ({ data }) => readSourceHistory(data));
     }
     case HistoryReader.Member: {
       const response = await R.fromPromise(
@@ -128,7 +128,7 @@ async function fetchHistory(
         }),
         historyError,
       );
-      return R.flatMap(response, ({ data }) => parseFormResponseHistory(data));
+      return R.flatMap(response, ({ data }) => readSourceHistory(data));
     }
     default:
       throw new Error(`unknown history reader: ${reader satisfies never}`);

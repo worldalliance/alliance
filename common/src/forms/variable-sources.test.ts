@@ -67,7 +67,8 @@ const history = (
   answers: Record<string, FormValue>[],
 ): VariableSourceHistory => ({
   fields: variableInputFieldsById(fields),
-  responses: answers.map((response) => ({
+  responses: answers.map((response, index) => ({
+    id: index + 1,
     answers: response,
     fields: variableInputFieldsById(fields),
   })),
@@ -248,10 +249,12 @@ describe("evaluateVariable with inputs from another form", () => {
               fields: variableInputFieldsById([current]),
               responses: [
                 {
+                  id: 1,
                   answers: { color: "red" },
                   fields: variableInputFieldsById([original]),
                 },
                 {
+                  id: 2,
                   answers: { color: "red" },
                   fields: variableInputFieldsById([current]),
                 },
@@ -274,6 +277,7 @@ describe("evaluateVariable with inputs from another form", () => {
               fields: new Map(),
               responses: [
                 {
+                  id: 1,
                   answers: { score: 3 },
                   fields: variableInputFieldsById([numberField("score")]),
                 },
@@ -295,6 +299,7 @@ describe("evaluateVariable with inputs from another form", () => {
             fields: variableInputFieldsById([numberField("score")]),
             responses: [
               {
+                id: 1,
                 answers: { score: "high" },
                 fields: variableInputFieldsById([textField("score")]),
               },
@@ -324,6 +329,7 @@ describe("evaluateVariable with inputs from another form", () => {
               ]),
               responses: [
                 {
+                  id: 1,
                   answers: { score: "high" },
                   fields: variableInputFieldsById([textField("score")]),
                 },
@@ -349,6 +355,7 @@ describe("evaluateVariable with inputs from another form", () => {
             fields: variableInputFieldsById([people]),
             responses: [
               {
+                id: 1,
                 answers: { people: [{ name: "Ada", age: "old" }] },
                 fields: variableInputFieldsById([peopleWithTextAge]),
               },
