@@ -96,7 +96,17 @@ sections below this one carry the reasoning each step implements.
    `calcutta` finds Kolkata, and its city and country with `&` spelled `and`,
    a straight apostrophe, and `St` spelled `Saint`, since CLDR writes
    `Trinidad & Tobago`, `Côte d’Ivoire`, and `St. Lucia`, and tzdb
-   `St Johns`. Search also matches the offset on the second
+   `St Johns`. `timeZoneCuratedNames.ts` also carries the English names
+   people type where CLDR writes another, so `uae`, `ivory coast`,
+   `czech republic`, `east timor`, `palestine`, `swaziland`, `holland`,
+   `drc`, and `dr congo` find their zones rather than nothing, and London
+   carries `Great Britain`. The Congos carry their names with and without
+   `the`, since a query matches as one run from a word's start. Brazzaville
+   carries `Republic of the Congo`, since that query otherwise finds only
+   the DRC zones, whose name it sits inside. They match as place names
+   rather than curated names, so partial typing ranks them like any other
+   place: as curated names they opened `ho` on Amsterdam and `sw` on
+   Mbabane. Search also matches the offset on the second
    line, so `utc+5:30` and `+5:45` find the zones at that offset. Only a
    query reading as an offset, such as `gmt+01:00`, `-3`, or `utc 5`,
    reaches the offsets, rewritten to the form the row writes, so `u` keeps

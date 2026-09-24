@@ -939,6 +939,36 @@ describe("searching the zone list", () => {
     expect(zonesMatching("st. kitts and nevis")).toEqual(["America/St_Kitts"]);
   });
 
+  it.each([
+    ["uae", ["Asia/Dubai"]],
+    ["ivory coast", ["Africa/Abidjan"]],
+    ["czech republic", ["Europe/Prague"]],
+    ["east timor", ["Asia/Dili"]],
+    ["palestine", ["Asia/Gaza", "Asia/Hebron"]],
+    ["swaziland", ["Africa/Mbabane"]],
+    ["holland", ["Europe/Amsterdam"]],
+    ["drc", ["Africa/Kinshasa", "Africa/Lubumbashi"]],
+    ["dr congo", ["Africa/Kinshasa", "Africa/Lubumbashi"]],
+    [
+      "democratic republic of the congo",
+      ["Africa/Kinshasa", "Africa/Lubumbashi"],
+    ],
+    ["democratic republic of congo", ["Africa/Kinshasa", "Africa/Lubumbashi"]],
+  ])("finds a country by its common English name, %s", (query, tzs) => {
+    expect(zonesMatching(query)).toEqual(tzs);
+  });
+
+  it.each(["republic of the congo", "republic of congo"])(
+    "opens %s on Brazzaville, not inside the DRC's name",
+    (query) => {
+      expect(zonesMatching(query)[0]).toBe("Africa/Brazzaville");
+    },
+  );
+
+  it("ranks a common English name no higher than a place on partial typing", () => {
+    expect(zonesMatching("ho")[0]).toBe("Pacific/Honolulu");
+  });
+
   it("finds a zone by the offset under its name", () => {
     expect(zonesMatching("utc+5:30")).toEqual(["Asia/Colombo", "Asia/Kolkata"]);
     expect(zonesMatching("+5:45")).toEqual(["Asia/Kathmandu"]);
@@ -1120,6 +1150,7 @@ describe("searching the zone list", () => {
   it("finds a zone by a place no name or alias spells", () => {
     expect(zonesMatching("uk")[0]).toBe("Europe/London");
     expect(zonesMatching("britain")).toEqual(["Europe/London"]);
+    expect(zonesMatching("great britain")).toEqual(["Europe/London"]);
     expect(zonesMatching("western australia")).toEqual(["Australia/Perth"]);
   });
 

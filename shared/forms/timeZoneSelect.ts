@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { minuteStart, useClockMinute } from "../lib/useClockMinute";
 import { fold } from "./optionSearch";
 import { aliasesOf } from "./timeZoneAliases";
-import { curatedNamesOf } from "./timeZoneCuratedNames";
+import { commonCountryNamesOf, curatedNamesOf } from "./timeZoneCuratedNames";
 import {
   formatTimeAtOffset,
   formatTimeInTz,
@@ -171,6 +171,7 @@ function labelFor({ tz, city, country }: TimeZoneCatalogEntry): BaseLabel {
         ...typedPlaces(city),
         ...(country ? [country, ...typedPlaces(country)] : []),
         ...curated,
+        ...commonCountryNamesOf(tz),
       ].map(fold),
     ),
   ];
