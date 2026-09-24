@@ -22,6 +22,7 @@ import { captureEvent } from "./analytics";
 import {
   getNotificationIdentityKey,
   getNotificationReadRequest,
+  isClearedByContentRead,
 } from "./notificationIdentity";
 
 const FIRST_LOAD_LIMIT = 20;
@@ -244,10 +245,11 @@ export const NotificationsProvider = ({
         let markedCount = 0;
         const next = prev.map((notification) => {
           if (
-            notification.readAt ||
-            notification.contentType !== contentType ||
-            notification.contentId === undefined ||
-            !ids.has(notification.contentId)
+            !isClearedByContentRead({
+              notification,
+              contentType,
+              contentIds: ids,
+            })
           ) {
             return notification;
           }

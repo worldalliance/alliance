@@ -1,4 +1,5 @@
 import { NotificationDto, UnreadContentType } from "@alliance/shared/client";
+import { isClearedByContentRead } from "@alliance/shared/lib/notificationIdentity";
 import { QueryClient } from "@tanstack/react-query";
 
 export function markCachedNotificationsReadByContent(params: {
@@ -11,12 +12,9 @@ export function markCachedNotificationsReadByContent(params: {
   const readAt = new Date().toISOString();
   queryClient.setQueryData<NotificationDto[]>(["notifications"], (oldData) =>
     oldData?.map((notification) =>
-      notification.readAt ||
-      notification.contentType !== contentType ||
-      notification.contentId === undefined ||
-      !ids.has(notification.contentId)
-        ? notification
-        : { ...notification, readAt },
+      isClearedByContentRead({ notification, contentType, contentIds: ids })
+        ? { ...notification, readAt }
+        : notification,
     ),
   );
   void queryClient.invalidateQueries({
