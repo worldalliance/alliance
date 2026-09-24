@@ -29,6 +29,6 @@ The launch commands restart the fixture so selection starts at Option 30. The fl
 
 `categories.yaml` runs the same way, after the same restart, on a screen of categorized fields opened from the fixture. It checks category headings in a checkbox list, omission of an empty category, scrolling to a selection below a heading on opening, a category-name search keeping that category's options under its heading, and selection from the filtered results, in both the single- and multi-select sheets. Headings render uppercase, so their selectors ignore case.
 
-`clearing.yaml` runs the same way, after the same restart, on a screen of optional and required scale, radio, and select fields opened from the fixture. It checks that tapping a scale or radio's selected option clears it, and that a select's clear button empties it and then hides, whether or not the field is required.
+`clearing.yaml` runs the same way, after the same restart, on a screen of optional and required scale, radio, and select fields opened from the fixture. It checks that scale and radio options report whether they are checked, that tapping a selected option clears it, and that a select's clear button empties it and then hides, whether or not the field is required.
 
 The fixture also runs in an iOS development client. Open the same development-client URL with `xcrun simctl openurl booted`. The Maestro flow targets Android because the current iOS modal groups its contents into one accessibility element, preventing individual input and row selectors.

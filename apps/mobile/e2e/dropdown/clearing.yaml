@@ -1,10 +1,18 @@
 appId: ${APP_ID}
 ---
 - tapOn: Show clearing fields
+- assertVisible:
+    text: "2"
+    below: Optional Score
+    checked: true
 - tapOn:
     text: "2"
     below: Optional Score
 - assertVisible: Optional Score is none
+- assertVisible:
+    text: "2"
+    below: Optional Score
+    checked: false
 - tapOn:
     text: "2"
     below: Required Score
@@ -13,10 +21,18 @@ appId: ${APP_ID}
     text: Red
     below: Optional Colour
 - assertVisible: Optional Colour is none
+- assertVisible:
+    text: Red
+    below: Optional Colour
+    checked: false
 - tapOn:
     text: Blue
     below: Optional Colour
 - assertVisible: Optional Colour is Blue
+- assertVisible:
+    text: Blue
+    below: Optional Colour
+    checked: true
 - tapOn:
     text: Red
     below: Required Colour

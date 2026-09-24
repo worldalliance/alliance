@@ -401,6 +401,8 @@ export function RenderField({
                         }
                   }
                   disabled={disabled}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked, disabled }}
                 >
                   <Text
                     className={cn(
@@ -455,6 +457,8 @@ export function RenderField({
                   onPress={() => onChange?.(selected ? "" : option.value)}
                   disabled={disabled}
                   activeOpacity={0.7}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selected, disabled }}
                 >
                   <View
                     className={cn(
