@@ -27,7 +27,7 @@ import {
   emptyUserPropertyPresence,
   type UserPropertyPresence,
 } from "@alliance/common/forms/user-properties";
-import { resolveVariableValues } from "@alliance/common/forms/variables";
+import { resolveVariableValues } from "@alliance/common/forms/variable-evaluation";
 import {
   isElementCurrentlyVisible as isElementCurrentlyVisibleShared,
   isFieldConditionallyRequired,

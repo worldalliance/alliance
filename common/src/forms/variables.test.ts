@@ -23,6 +23,11 @@ import {
 } from "./form-schema";
 import { validateFormSchema } from "./form-schema-validate";
 import {
+  evaluateVariable,
+  resolveVariableValues,
+  type VariableResolutionContext,
+} from "./variable-evaluation";
+import {
   collectUnresolvedVariableReferences,
   forEachInterpolatableText,
   interpolateDisplayBlock,
@@ -31,12 +36,10 @@ import {
 } from "./variable-interpolation";
 import {
   collectVariableReferences,
-  evaluateVariable,
   formatVariableValue,
   formValueToExprValue,
   formVariableSchema,
   interpolateVariables,
-  resolveVariableValues,
   sanitizeVariableName,
   syncListInputProperties,
   syncVariableListInputs,
@@ -44,7 +47,6 @@ import {
   VARIABLE_NAME_REGEX,
   type FormVariable,
   type VariableInputField,
-  type VariableResolutionContext,
 } from "./variables";
 
 const numberField = (id: string): NumberField => ({

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 // the variable builder and schema validator need formula type-checking.
 const RENDER_PATH_ENTRIES = [
   "./variables.ts",
+  "./variable-evaluation.ts",
   "./form-schema.ts",
   "./variable-interpolation.ts",
   "./visibility.ts",
