@@ -74,6 +74,9 @@ jobs:
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
 
+      - name: Install ffmpeg
+        run: sudo apt-get update -q && sudo apt-get install -yq ffmpeg
+
       - name: Install Maestro
         run: |
           curl -Ls "https://get.maestro.mobile.dev" | bash
@@ -178,9 +181,13 @@ jobs:
       - name: Comment on PR
         working-directory: out
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PR_SCREENSHOTS_GH_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::PR_SCREENSHOTS_GH_TOKEN is not set; gh pr comment --attach needs a user token"
+            exit 1
+          fi
           attachments=()
           for file in *; do
             [ "$file" = comment.md ] || attachments+=(--attach "./$file")

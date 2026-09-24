@@ -3,7 +3,8 @@ import { useSeedSettingsForm } from "@alliance/shared/lib/useSeedSettingsForm";
 import { useSettingsAutosave } from "@alliance/shared/lib/useSettingsAutosave";
 import { cn } from "@alliance/shared/styles/util";
 import { useMutation } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { ChevronDown } from "lucide-react-native";
+import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -12,6 +13,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, {
+  FadeInDown,
+  FadeOutUp,
+  LinearTransition,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import BuildInfoCard from "../../components/BuildInfoCard";
 import PhoneNumberInput from "../../components/forms/PhoneNumberInput";
 import ReminderTimeSelect from "../../components/forms/ReminderTimeSelect";
@@ -87,6 +96,14 @@ export default function SettingsPage() {
   } = useSettingsAutosave(user?.id, location?.countryCode);
 
   const [statusTaps, setStatusTaps] = useState(0);
+  const [notificationsOpen, setNotificationsOpen] = useState(true);
+  const chevronRotation = useSharedValue(180);
+  useEffect(() => {
+    chevronRotation.value = withSpring(notificationsOpen ? 180 : 0);
+  }, [chevronRotation, notificationsOpen]);
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${chevronRotation.value}deg` }],
+  }));
 
   const [passwordResetMessage, setPasswordResetMessage] = useState<
     string | null
@@ -252,134 +269,151 @@ export default function SettingsPage() {
 
           {/* Notifications Section */}
           <Card cardStyle={CardStyle.White}>
-            <Text className="text-2xl mb-4" weight={FontWeight.Semibold}>
-              Notifications
-            </Text>
-
-            <Text className="mb-2" weight={FontWeight.Medium}>
-              Receive action announcements / reminders via:
-            </Text>
-            {!(
-              editableUser.emailNotifsForActions ||
-              editableUser.textNotifsForActions ||
-              editableUser.pushNotifsForActions
-            ) && (
-              <Text className="text-sm text-zinc-500 mb-2">
-                You will not receive any notifications. Please keep a
-                notification channel enabled if you need reminders to complete
-                actions on time.
+            <Pressable
+              onPress={() => setNotificationsOpen((open) => !open)}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: notificationsOpen }}
+              className="flex-row items-center justify-between mb-4"
+            >
+              <Text className="text-2xl" weight={FontWeight.Semibold}>
+                Notifications
               </Text>
+              <Animated.View style={chevronStyle}>
+                <ChevronDown size={24} color={colors.text.primary} />
+              </Animated.View>
+            </Pressable>
+            {notificationsOpen && (
+              <Animated.View
+                entering={FadeInDown.duration(450).springify()}
+                exiting={FadeOutUp.duration(300)}
+                layout={LinearTransition}
+              >
+                <Text className="mb-2" weight={FontWeight.Medium}>
+                  Receive action announcements / reminders via:
+                </Text>
+                {!(
+                  editableUser.emailNotifsForActions ||
+                  editableUser.textNotifsForActions ||
+                  editableUser.pushNotifsForActions
+                ) && (
+                  <Text className="text-sm text-zinc-500 mb-2">
+                    You will not receive any notifications. Please keep a
+                    notification channel enabled if you need reminders to
+                    complete actions on time.
+                  </Text>
+                )}
+
+                <View className="gap-3 mb-4">
+                  <SettingsToggleRow
+                    label="Email"
+                    value={!!editableUser.emailNotifsForActions}
+                    onChange={(value) =>
+                      updateEditableUser({ emailNotifsForActions: value })
+                    }
+                  />
+                  <SettingsToggleRow
+                    label="Text/SMS"
+                    value={!!editableUser.textNotifsForActions}
+                    onChange={(value) =>
+                      updateEditableUser({ textNotifsForActions: value })
+                    }
+                  />
+                  <SettingsToggleRow
+                    label="Push"
+                    value={!!editableUser.pushNotifsForActions}
+                    onChange={(value) =>
+                      updateEditableUser({ pushNotifsForActions: value })
+                    }
+                  />
+                </View>
+
+                <View className="gap-3 mb-4">
+                  {user.leaderOfIds.length > 0 ? (
+                    <SettingsToggleRow
+                      label="Receive reminders for group members with uncompleted tasks?"
+                      value={!!editableUser.remindAboutUncompletedGroupMembers}
+                      onChange={(value) =>
+                        updateEditableUser({
+                          remindAboutUncompletedGroupMembers: value,
+                        })
+                      }
+                    />
+                  ) : null}
+                  <SettingsToggleRow
+                    label="Allow notifications when you receive a reply in an ongoing action discussion?"
+                    value={!!editableUser.receiveReplyNotifications}
+                    onChange={(value) =>
+                      updateEditableUser({
+                        receiveReplyNotifications: value,
+                      })
+                    }
+                  />
+                </View>
+
+                <Text className="mb-2 mt-4" weight={FontWeight.Medium}>
+                  Receive push notifications for:
+                </Text>
+                <View className="gap-3 mb-4">
+                  <SettingsToggleRow
+                    label="Likes"
+                    value={editableUser.pushesForLikes ?? false}
+                    onChange={(value) =>
+                      updateEditableUser({ pushesForLikes: value })
+                    }
+                  />
+                  <SettingsToggleRow
+                    label="Comments"
+                    value={editableUser.pushesForComments ?? false}
+                    onChange={(value) =>
+                      updateEditableUser({ pushesForComments: value })
+                    }
+                  />
+                  <SettingsToggleRow
+                    label="Friend requests"
+                    value={editableUser.pushesForFriendRequests ?? false}
+                    onChange={(value) =>
+                      updateEditableUser({ pushesForFriendRequests: value })
+                    }
+                  />
+                  <SettingsToggleRow
+                    label="Messages"
+                    value={editableUser.pushesForMessages ?? false}
+                    onChange={(value) =>
+                      updateEditableUser({ pushesForMessages: value })
+                    }
+                  />
+                  <SettingsToggleRow
+                    label="Action updates"
+                    value={editableUser.pushesForActionUpdates ?? false}
+                    onChange={(value) =>
+                      updateEditableUser({ pushesForActionUpdates: value })
+                    }
+                  />
+                </View>
+
+                <View className="mb-4">
+                  <Text className="mb-2" weight={FontWeight.Medium}>
+                    Preferred reminder time:
+                  </Text>
+                  <ReminderTimeSelect
+                    value={editableUser.preferredReminderTime}
+                    onChange={(preferredReminderTime) =>
+                      updateEditableUser({ preferredReminderTime })
+                    }
+                  />
+                </View>
+
+                <View>
+                  <Text className="mb-2" weight={FontWeight.Medium}>
+                    Your time zone for reminders:
+                  </Text>
+                  <TimeZoneSelect
+                    value={editableUser.timeZone}
+                    onChange={(tz) => updateEditableUser({ timeZone: tz })}
+                  />
+                </View>
+              </Animated.View>
             )}
-
-            <View className="gap-3 mb-4">
-              <SettingsToggleRow
-                label="Email"
-                value={!!editableUser.emailNotifsForActions}
-                onChange={(value) =>
-                  updateEditableUser({ emailNotifsForActions: value })
-                }
-              />
-              <SettingsToggleRow
-                label="Text/SMS"
-                value={!!editableUser.textNotifsForActions}
-                onChange={(value) =>
-                  updateEditableUser({ textNotifsForActions: value })
-                }
-              />
-              <SettingsToggleRow
-                label="Push"
-                value={!!editableUser.pushNotifsForActions}
-                onChange={(value) =>
-                  updateEditableUser({ pushNotifsForActions: value })
-                }
-              />
-            </View>
-
-            <View className="gap-3 mb-4">
-              {user.leaderOfIds.length > 0 ? (
-                <SettingsToggleRow
-                  label="Receive reminders for group members with uncompleted tasks?"
-                  value={!!editableUser.remindAboutUncompletedGroupMembers}
-                  onChange={(value) =>
-                    updateEditableUser({
-                      remindAboutUncompletedGroupMembers: value,
-                    })
-                  }
-                />
-              ) : null}
-              <SettingsToggleRow
-                label="Allow notifications when you receive a reply in an ongoing action discussion?"
-                value={!!editableUser.receiveReplyNotifications}
-                onChange={(value) =>
-                  updateEditableUser({
-                    receiveReplyNotifications: value,
-                  })
-                }
-              />
-            </View>
-
-            <Text className="mb-2 mt-4" weight={FontWeight.Medium}>
-              Receive push notifications for:
-            </Text>
-            <View className="gap-3 mb-4">
-              <SettingsToggleRow
-                label="Likes"
-                value={editableUser.pushesForLikes ?? false}
-                onChange={(value) =>
-                  updateEditableUser({ pushesForLikes: value })
-                }
-              />
-              <SettingsToggleRow
-                label="Comments"
-                value={editableUser.pushesForComments ?? false}
-                onChange={(value) =>
-                  updateEditableUser({ pushesForComments: value })
-                }
-              />
-              <SettingsToggleRow
-                label="Friend requests"
-                value={editableUser.pushesForFriendRequests ?? false}
-                onChange={(value) =>
-                  updateEditableUser({ pushesForFriendRequests: value })
-                }
-              />
-              <SettingsToggleRow
-                label="Messages"
-                value={editableUser.pushesForMessages ?? false}
-                onChange={(value) =>
-                  updateEditableUser({ pushesForMessages: value })
-                }
-              />
-              <SettingsToggleRow
-                label="Action updates"
-                value={editableUser.pushesForActionUpdates ?? false}
-                onChange={(value) =>
-                  updateEditableUser({ pushesForActionUpdates: value })
-                }
-              />
-            </View>
-
-            <View className="mb-4">
-              <Text className="mb-2" weight={FontWeight.Medium}>
-                Preferred reminder time:
-              </Text>
-              <ReminderTimeSelect
-                value={editableUser.preferredReminderTime}
-                onChange={(preferredReminderTime) =>
-                  updateEditableUser({ preferredReminderTime })
-                }
-              />
-            </View>
-
-            <View>
-              <Text className="mb-2" weight={FontWeight.Medium}>
-                Your time zone for reminders:
-              </Text>
-              <TimeZoneSelect
-                value={editableUser.timeZone}
-                onChange={(tz) => updateEditableUser({ timeZone: tz })}
-              />
-            </View>
           </Card>
 
           {/* Groups Section */}
