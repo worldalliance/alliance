@@ -32,6 +32,7 @@ import {
   TestCustomExpressionDto,
   TestCustomExpressionResponseDto,
 } from "./customvalidator.dto";
+import { FormResponseHistoryDto } from "./form-response-history.dto";
 import {
   CreateFormDto,
   FormAggregateViewsDto,
@@ -208,6 +209,33 @@ export class TasksController {
     return new FormResponseDto({
       response: await this.tasksService.getMyFormResponse(req.user.sub, id),
     });
+  }
+
+  @Get("myResponseHistory/:id")
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: FormResponseHistoryDto })
+  async getMyFormResponseHistory(
+    @Param("id", ParseIntPipe) id: number,
+    @Request() req: JwtRequest,
+  ): Promise<FormResponseHistoryDto> {
+    return new FormResponseHistoryDto(
+      await this.tasksService.getFormResponseHistory({
+        userId: req.user.sub,
+        formId: id,
+      }),
+    );
+  }
+
+  @Get("responseHistory/:formId/user/:userId")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: FormResponseHistoryDto })
+  async getMemberFormResponseHistoryAdmin(
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("userId", ParseIntPipe) userId: number,
+  ): Promise<FormResponseHistoryDto> {
+    return new FormResponseHistoryDto(
+      await this.tasksService.getFormResponseHistory({ userId, formId }),
+    );
   }
 
   @Get("guestResponse/:id")

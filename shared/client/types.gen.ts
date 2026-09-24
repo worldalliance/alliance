@@ -3636,6 +3636,23 @@ export type MigrateResponseSnapshotsResultDto = {
     updatedCount: number;
 };
 
+export type FormResponseHistoryEntryDto = {
+    id: number;
+    answers: {
+        [key: string]: unknown;
+    };
+    schemaSnapshot: {
+        [key: string]: unknown;
+    };
+};
+
+export type FormResponseHistoryDto = {
+    schema: {
+        [key: string]: unknown;
+    };
+    responses: Array<FormResponseHistoryEntryDto>;
+};
+
 export type GuestFormResponseDto = {
     response?: FormResponseDto;
 };
@@ -11915,6 +11932,55 @@ export type TasksGetMyFormResponseResponses = {
 };
 
 export type TasksGetMyFormResponseResponse = TasksGetMyFormResponseResponses[keyof TasksGetMyFormResponseResponses];
+
+export type TasksGetMyFormResponseHistoryData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/tasks/myResponseHistory/{id}';
+};
+
+export type TasksGetMyFormResponseHistoryErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type TasksGetMyFormResponseHistoryError = TasksGetMyFormResponseHistoryErrors[keyof TasksGetMyFormResponseHistoryErrors];
+
+export type TasksGetMyFormResponseHistoryResponses = {
+    200: FormResponseHistoryDto;
+};
+
+export type TasksGetMyFormResponseHistoryResponse = TasksGetMyFormResponseHistoryResponses[keyof TasksGetMyFormResponseHistoryResponses];
+
+export type TasksGetMemberFormResponseHistoryAdminData = {
+    body?: never;
+    path: {
+        formId: number;
+        userId: number;
+    };
+    query?: never;
+    url: '/tasks/responseHistory/{formId}/user/{userId}';
+};
+
+export type TasksGetMemberFormResponseHistoryAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type TasksGetMemberFormResponseHistoryAdminError = TasksGetMemberFormResponseHistoryAdminErrors[keyof TasksGetMemberFormResponseHistoryAdminErrors];
+
+export type TasksGetMemberFormResponseHistoryAdminResponses = {
+    200: FormResponseHistoryDto;
+};
+
+export type TasksGetMemberFormResponseHistoryAdminResponse = TasksGetMemberFormResponseHistoryAdminResponses[keyof TasksGetMemberFormResponseHistoryAdminResponses];
 
 export type TasksGetGuestFormResponseData = {
     body?: never;

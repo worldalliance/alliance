@@ -124,6 +124,7 @@ import {
   FormSnapshot,
   SnapshotHistoryOwner,
 } from "./entities/formsnapshot.entity";
+import { type FormResponseHistory } from "./form-response-history.dto";
 import { formSchemaOf } from "./form-snapshot-schema";
 import {
   CreateFormDto,
@@ -1502,6 +1503,24 @@ export class TasksService {
       throw new NotFoundException("Form response not found");
     }
     return parseFormResponse(response);
+  }
+
+  async getFormResponseHistory(params: {
+    userId: number;
+    formId: number;
+  }): Promise<FormResponseHistory> {
+    const { userId, formId } = params;
+    const form = await this.formRepository.findOne({
+      where: { id: formId },
+      relations: { formSnapshot: true },
+    });
+    if (!form) throw new NotFoundException("Form not found");
+    const responses = await this.formResponseRepository.find({
+      where: { formId, user: { id: userId } },
+      relations: { formSnapshot: true },
+      order: { createdAt: "ASC", id: "ASC" },
+    });
+    return { form, responses };
   }
 
   async getGuestFormResponse(
