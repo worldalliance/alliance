@@ -5,6 +5,7 @@ import {
   conversationRemoveParticipant,
   conversationUpdateInfo,
 } from "@alliance/shared/client";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import {
   canEditConversationInfo,
   canEditConversationMembers,
@@ -28,6 +29,7 @@ import {
   View,
 } from "react-native";
 import KeyboardAwareScrollView from "../../../../components/KeyboardAwareScrollView";
+import LoadFailed from "../../../../components/LoadFailed";
 import ProfileImage from "../../../../components/ProfileImage";
 import Button, { ButtonColor } from "../../../../components/system/Button";
 import CharacterLimitNotice from "../../../../components/system/CharacterLimitNotice";
@@ -79,8 +81,12 @@ export default function ConversationInfoScreen() {
   const { busy: saving, run: save } = useOneAtATime();
   const [search, setSearch] = useState("");
   const { busy: changingMembers, run: changeMembers } = useOneAtATime();
+  const messageableUsersQuery = useMessageableUsersQuery({
+    enabled: canEditMembers,
+  });
   const { data: messageableUsers = [], isLoading: loadingUsers } =
-    useMessageableUsersQuery({ enabled: canEditMembers });
+    messageableUsersQuery;
+  const didUsersFail = failedToLoad(messageableUsersQuery);
   const canPickPhoto = canEditInfo && isEditing;
 
   useEffect(() => {
@@ -383,20 +389,28 @@ export default function ConversationInfoScreen() {
         {canEditMembers && (
           <View className="px-4 mt-6">
             <Text className="text-sm text-zinc-500 mb-2">Add member</Text>
-            <View className="border border-zinc-200 rounded-lg px-3 py-2 flex-row items-center gap-2">
-              <Plus size={16} color="#71717a" />
-              <TextInput
-                value={search}
-                onChangeText={setSearch}
-                placeholder={
-                  loadingUsers ? "Loading members..." : "Search by name"
-                }
-                placeholderTextColor="#9ca3af"
-                editable={!loadingUsers}
-                className="flex-1 text-base text-zinc-900"
+            {didUsersFail ? (
+              <LoadFailed
+                message="Couldn't load the people you can add."
+                onRetry={() => void messageableUsersQuery.refetch()}
+                retrying={messageableUsersQuery.isFetching}
               />
-            </View>
-            {search.trim().length > 0 && (
+            ) : (
+              <View className="border border-zinc-200 rounded-lg px-3 py-2 flex-row items-center gap-2">
+                <Plus size={16} color="#71717a" />
+                <TextInput
+                  value={search}
+                  onChangeText={setSearch}
+                  placeholder={
+                    loadingUsers ? "Loading members..." : "Search by name"
+                  }
+                  placeholderTextColor="#9ca3af"
+                  editable={!loadingUsers}
+                  className="flex-1 text-base text-zinc-900"
+                />
+              </View>
+            )}
+            {!didUsersFail && search.trim().length > 0 && (
               <View className="border border-zinc-200 rounded-lg mt-2 overflow-hidden">
                 {filteredUsers.length === 0 ? (
                   <View className="px-3 py-2">

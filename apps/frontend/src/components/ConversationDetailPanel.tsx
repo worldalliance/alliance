@@ -27,6 +27,7 @@ type ConversationDetailPanelProps = {
   onClose: () => void;
   onLeave: () => void;
   friends: ProfileDto[] | null;
+  friendsFailure: { onRetry: () => void; retrying: boolean } | null;
   handleConversationUpdated: (conversation: ConversationDto) => void;
   onOptimisticMessage?: (message: MessageDto) => void;
   onOptimisticMessageFailed?: (
@@ -47,7 +48,6 @@ type ConversationDetailPanelProps = {
       sendingNewMessageToIds: null;
       setSendingNewMessageToIds: null;
       handleCreateConversation: null;
-      recipientsFailure: null;
     }
   | {
       mode: "new";
@@ -58,7 +58,6 @@ type ConversationDetailPanelProps = {
       sendingNewMessageToIds: number[];
       setSendingNewMessageToIds: (ids: number[]) => void;
       handleCreateConversation: () => Promise<ConversationDto | null>;
-      recipientsFailure: { onRetry: () => void; retrying: boolean } | null;
     }
 );
 
@@ -78,7 +77,7 @@ const ConversationDetailPanel = ({
   sendingNewMessageToIds,
   setSendingNewMessageToIds,
   handleCreateConversation,
-  recipientsFailure,
+  friendsFailure,
   onOptimisticMessage,
   onOptimisticMessageFailed,
 }: ConversationDetailPanelProps) => {
@@ -375,6 +374,7 @@ const ConversationDetailPanel = ({
           selectedConvo={selectedConvo}
           handleConversationUpdated={handleConversationUpdated}
           friends={friends}
+          friendsFailure={friendsFailure}
           onLeave={onLeave}
           onClose={() => setGroupInfoOpen(false)}
         />
@@ -425,10 +425,10 @@ const ConversationDetailPanel = ({
                   <p className="font-semibold text-lg">New message</p>
                   <div className="flex flex-row items-center gap-x-2">
                     <p className="font-medium">To:</p>
-                    {recipientsFailure ? (
+                    {friendsFailure ? (
                       <LoadFailed
                         message="Couldn't load the people you can message."
-                        {...recipientsFailure}
+                        {...friendsFailure}
                       />
                     ) : (
                       <MessageRecipientSelect

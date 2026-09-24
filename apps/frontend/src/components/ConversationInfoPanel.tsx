@@ -32,11 +32,13 @@ import { useEffect, useMemo, useState } from "react";
 import { href, Link } from "react-router";
 import { useAuth } from "../lib/AuthContext";
 import ImageEditor from "./ImageEditor";
+import LoadFailed from "./LoadFailed";
 
 export interface ConversationInfoPanelProps {
   selectedConvo: ConversationDto;
   handleConversationUpdated: (conversation: ConversationDto) => void;
   friends: ProfileDto[] | null;
+  friendsFailure: { onRetry: () => void; retrying: boolean } | null;
   onLeave: () => void;
   onClose: () => void;
 }
@@ -45,6 +47,7 @@ const ConversationInfoPanel = ({
   selectedConvo,
   handleConversationUpdated,
   friends,
+  friendsFailure,
   onLeave,
   onClose,
 }: ConversationInfoPanelProps) => {
@@ -322,7 +325,13 @@ const ConversationInfoPanel = ({
                 </div>
               ))}
             </List>
-            {canEditMembers && (
+            {canEditMembers && friendsFailure && (
+              <LoadFailed
+                message="Couldn't load the people you can add."
+                {...friendsFailure}
+              />
+            )}
+            {canEditMembers && !friendsFailure && (
               <Card
                 style={CardStyle.LightGrey}
                 className="w-full !p-0 relative group"

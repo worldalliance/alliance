@@ -95,6 +95,12 @@ const MessagesPage = () => {
     enabled: !!user,
   });
   const messageableUsers = messageableUsersQuery.data ?? null;
+  const messageableUsersFailure = failedToLoad(messageableUsersQuery)
+    ? {
+        onRetry: () => void messageableUsersQuery.refetch(),
+        retrying: messageableUsersQuery.isFetching,
+      }
+    : null;
 
   const [messagesOpen, setMessagesOpen] = useState(!!selectedConvoId);
   const isSmall = useMediaQuery("(max-width: 768px)");
@@ -441,8 +447,8 @@ const MessagesPage = () => {
               sendingNewMessageToIds={null}
               setSendingNewMessageToIds={null}
               handleCreateConversation={null}
-              recipientsFailure={null}
               friends={messageableUsers}
+              friendsFailure={messageableUsersFailure}
               onOptimisticMessage={addOptimisticMessage}
               onOptimisticMessageFailed={(tempId) =>
                 removeOptimisticMessage(tempId)
@@ -467,17 +473,10 @@ const MessagesPage = () => {
               handleAcceptMessageRequest={null}
               handleDeclineMessageRequest={null}
               friends={messageableUsers}
+              friendsFailure={messageableUsersFailure}
               sendingNewMessageToIds={sendingNewMessageToIds}
               setSendingNewMessageToIds={handleUpdateRecipientIds}
               handleCreateConversation={handleCreateConversation}
-              recipientsFailure={
-                failedToLoad(messageableUsersQuery)
-                  ? {
-                      onRetry: () => void messageableUsersQuery.refetch(),
-                      retrying: messageableUsersQuery.isFetching,
-                    }
-                  : null
-              }
               onOptimisticMessage={addOptimisticMessage}
               onOptimisticMessageFailed={(tempId) =>
                 removeOptimisticMessage(tempId)

@@ -1,5 +1,9 @@
 import type { ProfileDto } from "@alliance/shared/client";
 import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
+import {
+  makeConversation,
+  makeParticipant,
+} from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
@@ -38,6 +42,8 @@ serveApi(
       ++messageableUsersCalls === 1
         ? Response.json({ message: "Internal server error" }, { status: 500 })
         : (heldRetry ?? Response.json([GRACE])),
+    "POST /messaging/conversations/:conversationId/read": () =>
+      new Response(null, { status: 201 }),
   }),
 );
 
@@ -59,19 +65,24 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-const renderPage = (queries: Parameters<typeof queryWrapper>[0]) => {
+const renderPage = (
+  queries: Parameters<typeof queryWrapper>[0],
+  path: string = "/",
+) => {
   const { wrapper: QueryWrapper } = queryWrapper(queries);
   render(
     <QueryWrapper>
       <AuthContext.Provider value={authValue({ user: testAuthUser })}>
-        <MemoryRouter>
+        <MemoryRouter initialEntries={[path]}>
           <MessagesPage />
         </MemoryRouter>
       </AuthContext.Provider>
     </QueryWrapper>,
   );
-  fireEvent.click(screen.getByRole("button", { name: "New chat" }));
 };
+
+const openNewChat = () =>
+  fireEvent.click(screen.getByRole("button", { name: "New chat" }));
 
 const searchRecipients = async (value: string) =>
   fireEvent.change(await screen.findByPlaceholderText("Search by name"), {
@@ -80,6 +91,7 @@ const searchRecipients = async (value: string) =>
 
 it("offers messageable users once a failed load succeeds on retry", async () => {
   renderPage({ retry: retryUnlessRefused(3), retryDelay: 0 });
+  openNewChat();
   await searchRecipients("Gra");
 
   await screen.findByText("Grace");
@@ -87,6 +99,7 @@ it("offers messageable users once a failed load succeeds on retry", async () => 
 
 it("offers a retry in place of the picker when messageable users fail to load", async () => {
   renderPage({});
+  openNewChat();
 
   await screen.findByText("Couldn't load the people you can message.");
   expect(screen.queryByPlaceholderText("Search by name")).toBeNull();
@@ -109,5 +122,30 @@ it("offers a retry in place of the picker when messageable users fail to load", 
   await screen.findByText("Grace");
   expect(
     screen.queryByText("Couldn't load the people you can message."),
+  ).toBeNull();
+});
+
+it("offers a retry in place of the add-member field when messageable users fail to load", async () => {
+  const group = makeConversation([
+    makeParticipant(testAuthUser.id, "admin"),
+    makeParticipant(GRACE.id + 1, "member"),
+  ]);
+  jest.spyOn(messagesModule, "useConversations").mockReturnValue({
+    conversations: [group],
+    setConversations: () => {},
+    loading: false,
+    refreshConversations: async () => {},
+  });
+  renderPage({}, `/?chat=${group.id}`);
+  fireEvent.click(screen.getByText(group.title, { selector: "p" }));
+
+  await screen.findByText("Couldn't load the people you can add.");
+  expect(screen.queryByPlaceholderText("Add member...")).toBeNull();
+
+  fireEvent.click(screen.getByText("Try again"));
+
+  await screen.findByPlaceholderText("Add member...");
+  expect(
+    screen.queryByText("Couldn't load the people you can add."),
   ).toBeNull();
 });

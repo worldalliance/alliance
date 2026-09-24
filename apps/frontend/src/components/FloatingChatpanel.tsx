@@ -71,13 +71,13 @@ const FloatingChatPanel = ({
           onClose={() => {}}
           onLeave={() => {}}
           friends={[]}
+          friendsFailure={null}
           handleConversationUpdated={setConversation}
           handleAcceptMessageRequest={() => {}}
           handleDeclineMessageRequest={() => {}}
           sendingNewMessageToIds={null}
           setSendingNewMessageToIds={null}
           handleCreateConversation={null}
-          recipientsFailure={null}
           compact={true}
           onOptimisticMessage={addOptimisticMessage}
           onOptimisticMessageFailed={(tempId) =>
