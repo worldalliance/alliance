@@ -39,6 +39,12 @@ import {
   type SetFieldValue,
 } from "@alliance/shared/forms/formValueUpdater";
 import { stripCardIds } from "@alliance/shared/forms/listCards";
+import {
+  historySubject,
+  NO_SOURCE_HISTORIES,
+  SourceHistoriesStatus,
+  useVariableSourceHistories,
+} from "@alliance/shared/forms/useVariableSourceHistories";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import {
   cancelAllImageUploads,
@@ -92,6 +98,7 @@ import {
 } from "./formAnalytics";
 import RenderDisplayBlock from "./RenderDisplayBlock";
 import RenderField from "./RenderField";
+import { sourceHistoriesGate } from "./sourceHistoriesGate";
 
 const WITHDRAWAL_OPTION_ICONS: Record<WithdrawalOption, LucideIcon> = {
   out_of_time: Clock,
@@ -443,6 +450,11 @@ const FormRenderer = ({
   const { previousAnswerSchemas, previousAnswerData } =
     usePreviousAnswerSources({ schema, previewUserId: adminPreviewUserId });
 
+  const sourceHistories = useVariableSourceHistories({
+    schema,
+    subject: historySubject({ adminPreviewUserId, signedIn: !!user }),
+  });
+
   // --- Apply guest draft answers when they arrive after mount ---
   // The draft query is fired in parallel with the form render so we don't
   // block paint on it; apply it here if the user hasn't started editing and
@@ -541,6 +553,10 @@ const FormRenderer = ({
     visibilityValidatorResults,
     fieldLookup,
     previousAnswerData,
+    variableSources:
+      sourceHistories.status === SourceHistoriesStatus.Ready
+        ? sourceHistories.sources
+        : NO_SOURCE_HISTORIES,
     userHasCity,
     userPropertyHasValue,
     firstContractSignedAt,
@@ -1085,6 +1101,9 @@ const FormRenderer = ({
       />
     );
   };
+
+  const gate = sourceHistoriesGate(sourceHistories);
+  if (gate !== null) return gate;
 
   if (unknownKind || variablesError !== null) {
     return (

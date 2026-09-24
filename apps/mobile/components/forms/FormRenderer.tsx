@@ -49,6 +49,12 @@ import {
   type SetFieldValue,
 } from "@alliance/shared/forms/formValueUpdater";
 import { stripCardIds } from "@alliance/shared/forms/listCards";
+import {
+  historySubject,
+  NO_SOURCE_HISTORIES,
+  SourceHistoriesStatus,
+  useVariableSourceHistories,
+} from "@alliance/shared/forms/useVariableSourceHistories";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import {
   cancelAllImageUploads,
@@ -111,6 +117,7 @@ import FormModal from "./FormModal";
 import HtmlBlock from "./HtmlBlock";
 import { RenderField } from "./RenderField";
 import RenderPreviousAnswer from "./RenderPreviousAnswer";
+import { sourceHistoriesGate } from "./sourceHistoriesGate";
 import VideoPlayer from "./VideoPlayer";
 
 type FormRendererProps = {
@@ -682,6 +689,14 @@ const FormRenderer = ({
   const { previousAnswerSchemas, previousAnswerData } =
     usePreviousAnswerSources({ schema });
 
+  const sourceHistories = useVariableSourceHistories({
+    schema,
+    subject: historySubject({
+      adminPreviewUserId: undefined,
+      signedIn: !!user,
+    }),
+  });
+
   const clampPageIndex = (idx: number): number => {
     if (!Number.isFinite(idx)) return 0;
     const normalized = Math.floor(idx);
@@ -936,6 +951,10 @@ const FormRenderer = ({
     visibilityValidatorResults,
     fieldLookup,
     previousAnswerData,
+    variableSources:
+      sourceHistories.status === SourceHistoriesStatus.Ready
+        ? sourceHistories.sources
+        : NO_SOURCE_HISTORIES,
     userHasCity,
     userPropertyHasValue,
     firstContractSignedAt,
@@ -1158,6 +1177,9 @@ const FormRenderer = ({
     }
     return false;
   };
+
+  const gate = sourceHistoriesGate(sourceHistories);
+  if (gate !== null) return gate;
 
   if (unknownKind || variablesError !== null) {
     return (

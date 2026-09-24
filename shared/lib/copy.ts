@@ -272,6 +272,9 @@ export const imageUploadFailed = "Failed to upload image";
 export const draftSaveFailed =
   "Couldn't save your progress to your account, so you won't be able to pick this up on another device. Your answers are still saved on this one.";
 
+export const sourceAnswersLoadFailed =
+  "Couldn't load the earlier answers this form uses.";
+
 export const photoPickFailed = "Couldn't open your photo library.";
 
 export const unreadablePhotos = (count: number, of: number) =>

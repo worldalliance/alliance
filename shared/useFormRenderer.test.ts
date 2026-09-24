@@ -7,7 +7,9 @@ import {
   type ListField,
   type TextField,
 } from "@alliance/common/forms/form-schema";
+import type { VariableSourceHistory } from "@alliance/common/forms/variable-evaluation";
 import { act, cleanup, renderHook } from "@testing-library/react";
+import { NO_SOURCE_HISTORIES } from "./forms/useVariableSourceHistories";
 import { routes, serveApi } from "./lib/testing/serveApi";
 import {
   useFieldErrors,
@@ -251,6 +253,7 @@ function renderVisibility(args: {
   formData: Record<string, FormValue>;
   currentPageIndex?: number;
   setCurrentPageIndex?: (index: number) => void;
+  variableSources?: ReadonlyMap<number, VariableSourceHistory>;
 }) {
   const schema = args.schema ?? twoPageSchema;
   return renderHook(() =>
@@ -264,6 +267,7 @@ function renderVisibility(args: {
       visibilityValidatorResults: {},
       fieldLookup: lookupFor(schema),
       previousAnswerData: undefined,
+      variableSources: args.variableSources ?? NO_SOURCE_HISTORIES,
       userHasCity: false,
       firstContractSignedAt: null,
       completedActionCount: 0,
@@ -299,6 +303,88 @@ describe("useFormVisibility", () => {
     });
 
     expect(moves).toEqual([0]);
+  });
+
+  it("recomputes a variable combining another form's answers with a local one as the local answer changes", () => {
+    const schema: FormSchema = {
+      ...schemaWith([
+        { id: "bonus", type: "input", kind: "number", label: "bonus" },
+      ]),
+      variables: [
+        {
+          name: "total",
+          inputs: {
+            input1: { kind: "sourceField", fieldId: "score", sourceFormId: 7 },
+            input2: { kind: "field", fieldId: "bonus" },
+          },
+          formula:
+            "input1.reduce((sum, n) => sum + (n ?? 0), 0) + (input2 ?? 0)",
+        },
+      ],
+    };
+    const scoreFields = new Map([["score", { kind: "number" as const }]]);
+    const variableSources = new Map<number, VariableSourceHistory>([
+      [
+        7,
+        {
+          fields: scoreFields,
+          responses: [
+            { answers: { score: 2 }, fields: scoreFields },
+            { answers: {}, fields: scoreFields },
+            { answers: { score: 3 }, fields: scoreFields },
+          ],
+        },
+      ],
+    ]);
+    const { result, rerender } = renderHook(
+      (formData: Record<string, FormValue>) =>
+        useFormVisibility({
+          schema,
+          formData,
+          readOnly: false,
+          currentPageIndex: 0,
+          setCurrentPageIndex: () => {},
+          effectiveDeviceType: "desktop",
+          visibilityValidatorResults: {},
+          fieldLookup: lookupFor(schema),
+          previousAnswerData: undefined,
+          variableSources,
+          userHasCity: false,
+          firstContractSignedAt: null,
+          completedActionCount: 0,
+        }),
+      { initialProps: { bonus: "1" } },
+    );
+
+    expect(result.current.variableValues.get("total")).toBe("6");
+    rerender({ bonus: "10" });
+    expect(result.current.variableValues.get("total")).toBe("15");
+  });
+
+  it("blocks the form while another form's answers are missing", () => {
+    const { result } = renderVisibility({
+      schema: {
+        ...schemaWith([textField("bonus")]),
+        variables: [
+          {
+            name: "count",
+            inputs: {
+              input1: {
+                kind: "sourceField",
+                fieldId: "score",
+                sourceFormId: 7,
+              },
+            },
+            formula: "input1.length",
+          },
+        ],
+      },
+      formData: {},
+    });
+
+    expect(result.current.variablesError).toBe(
+      "#{count}: Answers from form 7 are not loaded",
+    );
   });
 
   const noteField: TextField = {
@@ -350,6 +436,7 @@ describe("useFormVisibility", () => {
           visibilityValidatorResults: {},
           fieldLookup: lookupFor(notesSchema),
           previousAnswerData: undefined,
+          variableSources: NO_SOURCE_HISTORIES,
           userHasCity: false,
           firstContractSignedAt: null,
           completedActionCount: 0,
@@ -484,6 +571,7 @@ function renderValidation(args: {
         visibilityValidatorResults: {},
         fieldLookup: lookupFor(args.schema),
         previousAnswerData: undefined,
+        variableSources: NO_SOURCE_HISTORIES,
         userHasCity: false,
         firstContractSignedAt: null,
         completedActionCount: 0,

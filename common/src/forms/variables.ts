@@ -129,6 +129,19 @@ export type VariableFieldScope = {
   sourceFields: ReadonlyMap<number, VariableInputFields>;
 };
 
+export function variableSourceFormIds(
+  variables: readonly FormVariable[] | undefined,
+): number[] {
+  const ids = new Set<number>();
+  for (const variable of variables ?? []) {
+    for (const input of Object.values(variable.inputs)) {
+      const sourceFormId = inputSourceFormId(input);
+      if (sourceFormId !== undefined) ids.add(sourceFormId);
+    }
+  }
+  return [...ids].sort((a, b) => a - b);
+}
+
 export function readsSourceForm(variable: FormVariable): boolean {
   return Object.values(variable.inputs).some(
     (input) => inputSourceFormId(input) !== undefined,

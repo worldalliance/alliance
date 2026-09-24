@@ -17,7 +17,11 @@ import {
 } from "./variable-evaluation";
 import { variableInputSchema } from "./variable-inputs";
 import { syncSchemaVariableListInputs } from "./variable-scope";
-import { variableTypeEnv, type FormVariable } from "./variables";
+import {
+  variableSourceFormIds,
+  variableTypeEnv,
+  type FormVariable,
+} from "./variables";
 
 const SOURCE = 7;
 
@@ -593,5 +597,44 @@ describe("syncSchemaVariableListInputs with inputs from another form", () => {
 
   it("leaves the input alone while its source form isn't loaded", () => {
     expect(syncSchemaVariableListInputs(schema, new Map())).toBe(schema);
+  });
+});
+
+describe("variableSourceFormIds", () => {
+  it("lists each form the variables read once, in ascending order", () => {
+    expect(
+      variableSourceFormIds([
+        {
+          name: "a",
+          inputs: {
+            input1: { kind: "sourceField", fieldId: "score", sourceFormId: 9 },
+            input2: { kind: "field", fieldId: "local" },
+            input3: { ...peopleInput, sourceFormId: 3 },
+          },
+          formula: "1",
+        },
+        scoresVariable("1"),
+        {
+          name: "b",
+          inputs: {
+            input1: { kind: "sourceField", fieldId: "other", sourceFormId: 9 },
+          },
+          formula: "1",
+        },
+      ]),
+    ).toEqual([3, SOURCE, 9]);
+  });
+
+  it("is empty for variables reading only this form", () => {
+    expect(
+      variableSourceFormIds([
+        {
+          name: "a",
+          inputs: { input1: { kind: "field", fieldId: "local" } },
+          formula: "1",
+        },
+      ]),
+    ).toEqual([]);
+    expect(variableSourceFormIds(undefined)).toEqual([]);
   });
 });

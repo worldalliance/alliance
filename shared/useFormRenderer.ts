@@ -27,7 +27,10 @@ import {
   emptyUserPropertyPresence,
   type UserPropertyPresence,
 } from "@alliance/common/forms/user-properties";
-import { resolveVariableValues } from "@alliance/common/forms/variable-evaluation";
+import {
+  resolveVariableValues,
+  type VariableSourceHistory,
+} from "@alliance/common/forms/variable-evaluation";
 import {
   isElementCurrentlyVisible as isElementCurrentlyVisibleShared,
   isFieldConditionallyRequired,
@@ -610,6 +613,7 @@ export function useFormVisibility(args: {
   visibilityValidatorResults: Record<number, boolean>;
   fieldLookup: Map<string, AnyField>;
   previousAnswerData: ConditionExtras["previousAnswerData"];
+  variableSources: ReadonlyMap<number, VariableSourceHistory>;
   userHasCity: boolean;
   userPropertyHasValue?: UserPropertyPresence;
   firstContractSignedAt: string | null;
@@ -625,6 +629,7 @@ export function useFormVisibility(args: {
     visibilityValidatorResults,
     fieldLookup,
     previousAnswerData,
+    variableSources,
     userHasCity,
     userPropertyHasValue,
     firstContractSignedAt,
@@ -692,8 +697,9 @@ export function useFormVisibility(args: {
       resolveVariableValues(schema.variables, {
         answers: effectiveFormData,
         fields: variableInputFields,
+        sources: variableSources,
       }),
-    [schema.variables, effectiveFormData, variableInputFields],
+    [schema.variables, effectiveFormData, variableInputFields, variableSources],
   );
 
   const isElementCurrentlyVisible = useCallback(

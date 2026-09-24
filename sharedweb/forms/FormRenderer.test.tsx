@@ -21,7 +21,7 @@ import FormRenderer from "./FormRenderer";
 
 afterEach(cleanup);
 
-serveApi(routes({}));
+const api = serveApi(routes({}));
 
 const form: FormSchema = {
   pages: [
@@ -149,6 +149,78 @@ describe("FormRenderer preview", () => {
     );
 
     expect(screen.getByText('#{total}: "this" is not allowed.')).toBeTruthy();
+  });
+
+  it("waits for the previewed member's answers from another form, offering a retry when they fail", async () => {
+    const scoreSchema = {
+      pages: [
+        {
+          id: "p1",
+          fields: [{ id: "score", type: "input", kind: "number", label: "S" }],
+        },
+      ],
+      outputViews: [],
+    };
+    let answer = () => Response.json({ message: "down" }, { status: 500 });
+    api.alsoServing({
+      "GET /tasks/responseHistory/:formId/user/:userId": ({ params }) =>
+        params.formId === "7" && params.userId === "3"
+          ? answer()
+          : Response.json({}, { status: 404 }),
+    });
+
+    renderPreview(
+      {
+        pages: [
+          {
+            id: "p1",
+            fields: [
+              {
+                id: "t",
+                type: "display",
+                kind: "text",
+                text: "Total #{total}",
+              },
+            ],
+          },
+        ],
+        outputViews: [],
+        variables: [
+          {
+            name: "total",
+            inputs: {
+              input1: {
+                kind: "sourceField",
+                fieldId: "score",
+                sourceFormId: 7,
+              },
+            },
+            formula: "input1.reduce((sum, n) => sum + (n ?? 0), 0)",
+          },
+        ],
+      },
+      { adminPreviewUserId: 3 },
+    );
+
+    expect(
+      await screen.findByText(
+        "Couldn't load the earlier answers this form uses.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Total/)).toBeNull();
+
+    answer = () =>
+      Response.json({
+        schema: scoreSchema,
+        responses: [4, 5].map((score, id) => ({
+          id,
+          answers: { score },
+          schemaSnapshot: scoreSchema,
+        })),
+      });
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByText("Total 9")).toBeTruthy();
   });
 
   it("won't draw a form whose variable reads an input kind this build doesn't know", () => {
