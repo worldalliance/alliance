@@ -35,12 +35,16 @@ const mine: FormSchema = {
   ],
 };
 
-function renderBuilder() {
+function renderBuilder(initialSchema: FormSchema = mine) {
   const router = createMemoryRouter([
     {
       path: "/",
       element: (
-        <FormBuilder formId={1} initialSchema={mine} setFormId={() => {}} />
+        <FormBuilder
+          formId={1}
+          initialSchema={initialSchema}
+          setFormId={() => {}}
+        />
       ),
     },
   ]);
@@ -63,10 +67,13 @@ describe("FormBuilder save conflict", () => {
     const theirs = { ...mine, variables: [{ name: "b", ...readsTown }] };
     client.setConfig({
       baseUrl: "http://localhost",
-      fetch: async (request: Request) =>
-        request.method === "GET"
-          ? Response.json({ id: 1, schema: theirs, formSnapshotId: 2 })
-          : new Response(null, { status: 409 }),
+      fetch: async (request: Request) => {
+        if (request.method !== "GET")
+          return new Response(null, { status: 409 });
+        return new URL(request.url).pathname === "/tasks/listForms"
+          ? Response.json([])
+          : Response.json({ id: 1, schema: theirs, formSnapshotId: 2 });
+      },
     });
     jest.spyOn(window, "confirm").mockReturnValue(true);
   });
@@ -100,4 +107,216 @@ describe("FormBuilder save conflict", () => {
       ).toBe("");
     },
   );
+});
+
+describe("FormBuilder save while a source form loads", () => {
+  const { baseUrl, fetch } = client.getConfig();
+  afterEach(() => client.setConfig({ baseUrl, fetch }));
+
+  it("waits for the source form's questions instead of calling it missing", async () => {
+    const writes: string[] = [];
+    client.setConfig({
+      baseUrl: "http://localhost",
+      fetch: async (request: Request) => {
+        const { pathname } = new URL(request.url);
+        if (request.method !== "GET") {
+          writes.push(pathname);
+          return Response.json({});
+        }
+        if (pathname === "/tasks/listForms") return Response.json([]);
+        return new Promise<Response>(() => {});
+      },
+    });
+    renderBuilder({
+      ...mine,
+      variables: [
+        {
+          name: "scores",
+          inputs: {
+            input1: { kind: "sourceField", sourceFormId: 9, fieldId: "score" },
+          },
+          formula: "input1.length",
+        },
+      ],
+    });
+    fireEvent.change(screen.getByPlaceholderText("Page title"), {
+      target: { value: "Where" },
+    });
+    fireEvent.click(screen.getByText("Save Form"));
+
+    expect(
+      await screen.findByText(
+        "Still loading the questions of forms your variables read. Try again in a moment.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/doesn't exist/)).toBeNull();
+    expect(writes).toEqual([]);
+  });
+});
+
+describe("FormBuilder save conflict while a source form loads", () => {
+  const { baseUrl, fetch } = client.getConfig();
+  afterEach(() => client.setConfig({ baseUrl, fetch }));
+
+  it("waits for the source form instead of calling the edits overlapping", async () => {
+    const theirs: FormSchema = {
+      ...mine,
+      variables: [
+        {
+          name: "scores",
+          inputs: {
+            input1: { kind: "sourceField", sourceFormId: 9, fieldId: "score" },
+          },
+          formula: "input1.length",
+        },
+      ],
+    };
+    client.setConfig({
+      baseUrl: "http://localhost",
+      fetch: async (request: Request) => {
+        const { pathname } = new URL(request.url);
+        if (request.method !== "GET")
+          return new Response(null, { status: 409 });
+        if (pathname === "/tasks/listForms") return Response.json([]);
+        if (pathname === "/tasks/slug/9")
+          return new Promise<Response>(() => {});
+        return Response.json({ id: 1, schema: theirs, formSnapshotId: 2 });
+      },
+    });
+    renderBuilder();
+    fireEvent.change(screen.getByPlaceholderText("Page title"), {
+      target: { value: "Where" },
+    });
+    fireEvent.click(screen.getByText("Save Form"));
+
+    expect(
+      await screen.findByText("Loading the forms your variables read…"),
+    ).toBeTruthy();
+    expect(screen.queryByText(/can't be merged/)).toBeNull();
+    expect(screen.queryByText("Merge changes")).toBeNull();
+  });
+
+  it("says a source form failed to load instead of calling the edits overlapping", async () => {
+    const theirs: FormSchema = {
+      ...mine,
+      variables: [
+        {
+          name: "scores",
+          inputs: {
+            input1: { kind: "sourceField", sourceFormId: 9, fieldId: "score" },
+          },
+          formula: "input1.length",
+        },
+      ],
+    };
+    client.setConfig({
+      baseUrl: "http://localhost",
+      fetch: async (request: Request) => {
+        const { pathname } = new URL(request.url);
+        if (request.method !== "GET")
+          return new Response(null, { status: 409 });
+        if (pathname === "/tasks/listForms") return Response.json([]);
+        if (pathname === "/tasks/slug/9")
+          return new Response(null, { status: 404 });
+        return Response.json({ id: 1, schema: theirs, formSnapshotId: 2 });
+      },
+    });
+    renderBuilder();
+    fireEvent.change(screen.getByPlaceholderText("Page title"), {
+      target: { value: "Where" },
+    });
+    fireEvent.click(screen.getByText("Save Form"));
+
+    expect(
+      await screen.findByText(
+        "A form your variables read couldn't be loaded, so these edits can't be merged automatically. Keep your version or take theirs.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/overlap/)).toBeNull();
+    expect(screen.queryByText("Merge changes")).toBeNull();
+  });
+});
+
+describe("FormBuilder save once a source form loads", () => {
+  const { baseUrl, fetch } = client.getConfig();
+  afterEach(() => client.setConfig({ baseUrl, fetch }));
+
+  it("names a sub-field the source form's list added since", async () => {
+    const saved: unknown[] = [];
+    const source: FormSchema = {
+      pages: [
+        {
+          id: "p1",
+          fields: [
+            {
+              id: "pets",
+              type: "input",
+              kind: "list",
+              label: "Pets",
+              fields: [
+                { id: "pn", type: "input", kind: "text", label: "Pet" },
+                { id: "pa", type: "input", kind: "number", label: "Age" },
+              ],
+            },
+          ],
+        },
+      ],
+      outputViews: [],
+    };
+    client.setConfig({
+      baseUrl: "http://localhost",
+      fetch: async (request: Request) => {
+        const { pathname } = new URL(request.url);
+        if (request.method !== "GET") {
+          saved.push(await request.json());
+          return Response.json({ id: 1, formSnapshotId: 3 });
+        }
+        if (pathname === "/tasks/listForms")
+          return Response.json([{ id: 9, title: "Survey" }]);
+        return Response.json({ id: 9, schema: source, formSnapshotId: 1 });
+      },
+    });
+    renderBuilder({
+      ...mine,
+      variables: [
+        {
+          name: "pets",
+          inputs: {
+            input1: {
+              kind: "sourceList",
+              sourceFormId: 9,
+              fieldId: "pets",
+              properties: { pn: "pet" },
+            },
+          },
+          formula: "input1.length",
+        },
+      ],
+    });
+    jest.spyOn(window, "confirm").mockReturnValue(true);
+    fireEvent.change(screen.getByPlaceholderText("Page title"), {
+      target: { value: "Where" },
+    });
+    fireEvent.click(screen.getByText("Variables"));
+    await screen.findByRole("option", { name: /^Pets \(list\)/ });
+    fireEvent.click(screen.getByText("Save Form"));
+
+    await waitFor(() => expect(saved).toHaveLength(1));
+    expect(saved[0]).toMatchObject({
+      schema: {
+        variables: [
+          {
+            inputs: {
+              input1: {
+                kind: "sourceList",
+                sourceFormId: 9,
+                fieldId: "pets",
+                properties: { pn: "pet", pa: "age" },
+              },
+            },
+          },
+        ],
+      },
+    });
+  });
 });

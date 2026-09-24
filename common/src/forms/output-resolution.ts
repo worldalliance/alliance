@@ -17,13 +17,14 @@ import {
   type OutputViewSchema,
 } from "./form-schema";
 import { isOutputValueMissing, outputCardSubFields } from "./output-values";
+import { evaluateVariable } from "./variable-evaluation";
 import {
   forEachInterpolatableText,
   interpolateDisplayBlock,
   interpolateFieldText,
   interpolateOutputFieldBlock,
 } from "./variable-interpolation";
-import { collectVariableReferences, evaluateVariable } from "./variables";
+import { collectVariableReferences } from "./variables";
 import {
   isElementCurrentlyVisible,
   isVisibleInSavedResponse,

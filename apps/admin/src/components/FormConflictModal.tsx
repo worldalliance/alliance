@@ -1,4 +1,5 @@
 import { type FormSchema } from "@alliance/common/forms/form-schema";
+import type { FormSchemaValidationContext } from "@alliance/common/forms/form-schema-validate";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Modal, {
   ModalActions,
@@ -20,6 +21,9 @@ interface FormConflictModalProps {
   mine: FormSchema;
   /** Current server schema. */
   theirs: FormSchema;
+  validation: FormSchemaValidationContext;
+  sourceFormsLoading: boolean;
+  sourceFormsFailed: boolean;
   saving: boolean;
   onMerge: () => void;
   onKeepMine: () => void;
@@ -33,6 +37,9 @@ export const FormConflictModal: React.FC<FormConflictModalProps> = ({
   base,
   mine,
   theirs,
+  validation,
+  sourceFormsLoading,
+  sourceFormsFailed,
   saving,
   onMerge,
   onKeepMine,
@@ -41,8 +48,11 @@ export const FormConflictModal: React.FC<FormConflictModalProps> = ({
   onCancel,
 }) => {
   const merge = useMemo(
-    () => mergeFormSchemas(base, mine, theirs),
-    [base, mine, theirs],
+    () =>
+      sourceFormsLoading || sourceFormsFailed
+        ? undefined
+        : mergeFormSchemas({ base, mine, theirs, validation }),
+    [base, mine, theirs, validation, sourceFormsLoading, sourceFormsFailed],
   );
 
   return (
@@ -83,7 +93,17 @@ export const FormConflictModal: React.FC<FormConflictModalProps> = ({
       </ModalBody>
 
       <ModalFooter className="p-4">
-        {merge.ok ? (
+        {sourceFormsLoading ? (
+          <p className="mb-3 text-sm text-zinc-600">
+            Loading the forms your variables read…
+          </p>
+        ) : merge === undefined ? (
+          <p className="mb-3 text-sm text-amber-700">
+            A form your variables read couldn&apos;t be loaded, so these edits
+            can&apos;t be merged automatically. Keep your version or take
+            theirs.
+          </p>
+        ) : merge.ok ? (
           <p className="mb-3 text-sm text-green-700">
             These edits don&apos;t overlap — they can be merged automatically.
             Review the merged result before saving.
@@ -120,7 +140,7 @@ export const FormConflictModal: React.FC<FormConflictModalProps> = ({
             >
               Take theirs
             </Button>
-            {merge.ok && (
+            {merge?.ok && (
               <Button
                 color={ButtonColor.Black}
                 size="small"
@@ -131,7 +151,7 @@ export const FormConflictModal: React.FC<FormConflictModalProps> = ({
               </Button>
             )}
             <Button
-              color={merge.ok ? ButtonColor.White : ButtonColor.Black}
+              color={merge?.ok ? ButtonColor.White : ButtonColor.Black}
               size="small"
               onClick={onKeepMine}
               disabled={saving}

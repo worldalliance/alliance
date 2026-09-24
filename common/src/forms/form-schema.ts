@@ -15,7 +15,6 @@ import {
 import {
   formVariableSchema,
   isFieldKindReadableByFieldInput,
-  syncVariableListInputs,
   type VariableInputField,
 } from "./variables";
 import type { Condition, VisibleIfFormula } from "./visible-if-formula";
@@ -40,16 +39,23 @@ export function asCards(value: FormValue | undefined): ListFieldValue | null {
   return value.every(isListRow) ? value : null;
 }
 
-export const formValueSchema: z.ZodType<FormValue> = z.lazy(() =>
-  z.union([
-    z.string(),
-    z.number(),
-    z.boolean(),
-    z.array(z.string()),
-    cityFieldValueSchema,
-    z.array(z.record(z.string(), formValueSchema)),
-  ]),
-);
+export function formValueSchemaWith(
+  citySchema: z.ZodType<CityFieldValue>,
+): z.ZodType<FormValue> {
+  const self: z.ZodType<FormValue> = z.lazy(() =>
+    z.union([
+      z.string(),
+      z.number(),
+      z.boolean(),
+      z.array(z.string()),
+      citySchema,
+      z.array(z.record(z.string(), self)),
+    ]),
+  );
+  return self;
+}
+
+export const formValueSchema = formValueSchemaWith(cityFieldValueSchema);
 
 const widthSchema = z.enum(["full", "1/2", "1/3"]);
 
@@ -529,7 +535,13 @@ export function fieldHasOptions(field: AnyField): field is OptionField {
  * read only through their list.
  */
 export function collectVariableInputFields(schema: FormSchema): AnyField[] {
-  return collectVariableResolutionFields(schema).filter(
+  return readableVariableInputFields(collectVariableResolutionFields(schema));
+}
+
+export function readableVariableInputFields(
+  fields: readonly AnyField[],
+): AnyField[] {
+  return fields.filter(
     (field) =>
       field.kind === "list" || isFieldKindReadableByFieldInput(field.kind),
   );
@@ -559,19 +571,6 @@ export function variableInputFieldsById(
   fields: readonly AnyField[],
 ): ReadonlyMap<string, VariableInputField> {
   return new Map(fields.map((field) => [field.id, variableInputField(field)]));
-}
-
-/** Returns `schema` itself when every list input is already in sync. */
-export function syncSchemaVariableListInputs(schema: FormSchema): FormSchema {
-  const current = schema.variables;
-  if (current === undefined) return schema;
-  const variables = syncVariableListInputs(
-    current,
-    variableInputFieldsById(collectVariableInputFields(schema)),
-  );
-  return variables.every((variable, index) => variable === current[index])
-    ? schema
-    : { ...schema, variables };
 }
 
 /**

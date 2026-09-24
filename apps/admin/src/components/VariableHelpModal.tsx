@@ -79,6 +79,23 @@ export const LIST_INPUT_HELP = {
       : `${input}.map(row => row.${property}).join(', ')`,
 };
 
+export const SOURCE_INPUT_HELP = {
+  notes:
+    "One entry per time the member submitted that form, oldest first; no submissions reads as []. A submission that skipped the question holds undefined, or [] for a list, so inputs from the same form line up by position. Use ?? to skip or replace it.",
+  example: ({
+    input,
+    each,
+    holdsArray,
+  }: {
+    input: string;
+    each: string;
+    holdsArray: boolean;
+  }) =>
+    each === ""
+      ? `${input}.length`
+      : `${input}.filter(answer => ${holdsArray ? "(answer ?? []).length > 0" : "(answer ?? '') !== ''"}).map(answer => ${each}).join(', ')`,
+};
+
 const MODE_IS_DOCUMENTED: Record<VariableInputMode, boolean> = {
   [VariableInputMode.Number]: true,
   [VariableInputMode.Text]: true,
@@ -314,6 +331,21 @@ export function VariableHelpModal({
               </tr>
             </tbody>
           </table>
+        </Section>
+
+        <Section title="Answers from another form">
+          <p>
+            An input reading another form wraps that question&apos;s type in a
+            list: <Code>number | undefined</Code> becomes{" "}
+            <Code>(number | undefined)[]</Code>. {SOURCE_INPUT_HELP.notes}
+          </p>
+          <p className="font-mono text-xs text-gray-500">
+            {SOURCE_INPUT_HELP.example({
+              input: "input1",
+              each: "answer * 2",
+              holdsArray: false,
+            })}
+          </p>
         </Section>
 
         <Section title="Unanswered fields">

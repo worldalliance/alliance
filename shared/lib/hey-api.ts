@@ -77,14 +77,17 @@ const thrownStatusSchema = z.object({
   statusCode: z.number().int().min(400).max(599),
 });
 
-// registerErrorStatus puts a status on every error response, so an error
-// without one never reached the server.
+/** The status registerErrorStatus put on a thrown error response, or
+ * undefined for an error that never reached the server. */
+export const thrownStatus = (error: unknown): number | undefined =>
+  thrownStatusSchema.safeParse(error).data?.statusCode;
+
 export const thrownRefusalMessage = (params: {
   error: unknown;
   fallback: string;
   sessionExpired: string;
 }): string => {
-  const thrown = thrownStatusSchema.safeParse(params.error);
-  if (!thrown.success) return params.fallback;
-  return refusalMessage({ ...params, status: thrown.data.statusCode });
+  const status = thrownStatus(params.error);
+  if (status === undefined) return params.fallback;
+  return refusalMessage({ ...params, status });
 };

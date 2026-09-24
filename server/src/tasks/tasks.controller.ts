@@ -32,6 +32,7 @@ import {
   TestCustomExpressionDto,
   TestCustomExpressionResponseDto,
 } from "./customvalidator.dto";
+import { FormResponseHistoryDto } from "./form-response-history.dto";
 import {
   CreateFormDto,
   FormAggregateViewsDto,
@@ -210,6 +211,33 @@ export class TasksController {
     });
   }
 
+  @Get("myResponseHistory/:id")
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: FormResponseHistoryDto })
+  async getMyFormResponseHistory(
+    @Param("id", ParseIntPipe) id: number,
+    @Request() req: JwtRequest,
+  ): Promise<FormResponseHistoryDto> {
+    return new FormResponseHistoryDto(
+      await this.tasksService.getFormResponseHistory({
+        userId: req.user.sub,
+        formId: id,
+      }),
+    );
+  }
+
+  @Get("responseHistory/:formId/user/:userId")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: FormResponseHistoryDto })
+  async getMemberFormResponseHistoryAdmin(
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("userId", ParseIntPipe) userId: number,
+  ): Promise<FormResponseHistoryDto> {
+    return new FormResponseHistoryDto(
+      await this.tasksService.getFormResponseHistory({ userId, formId }),
+    );
+  }
+
   @Get("guestResponse/:id")
   @Public()
   @ApiOkResponse({ type: GuestFormResponseDto })
@@ -305,6 +333,11 @@ export class TasksController {
   @Delete(":id")
   @UseGuards(AdminGuard)
   @ApiOkResponse()
+  @ApiResponse({
+    status: 409,
+    description:
+      "Another form's current version has a variable reading this form's answers.",
+  })
   async deleteFormAdmin(@Param("id", ParseIntPipe) id: number): Promise<void> {
     return this.tasksService.deleteForm(id);
   }

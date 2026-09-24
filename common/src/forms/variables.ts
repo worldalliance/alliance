@@ -2,20 +2,22 @@
 
 import { camelCase, deburr, isEqual } from "es-toolkit";
 import z from "zod";
-import { R, type Result } from "../result";
 import { formatCityValue, parseCityValue } from "./city";
-import type { FieldKind, FormValue, ListSubField } from "./form-schema";
-import { withStepBudget } from "./formula-step-budget";
-import { isListRow } from "./list-rows";
+import type { FieldKind, ListSubField } from "./form-schema";
 import {
-  compileVariableExpression,
-  evaluateVariableExpression,
   exprValueToText,
   FORBIDDEN_PROPERTIES,
-  type ExprNode,
   type ExprRecord,
   type ExprValue,
 } from "./variable-expression";
+import {
+  inputSourceFormId,
+  isListInput,
+  VARIABLE_INPUT_NAME_REGEX,
+  variableInputSchema,
+  type VariableInput,
+  type VariableListInput,
+} from "./variable-inputs";
 
 /**
  * Names appear only inside `#{…}`, never as an identifier in a formula (the
@@ -43,32 +45,6 @@ export function variableReferencePattern(): RegExp {
 }
 
 export const VARIABLE_INPUT_NAME_PREFIX = "input";
-
-/**
- * Input names are written verbatim into the formula, so unlike variable names
- * they must be parseable as identifiers — a name outside this shape could never
- * be referenced by the formula that depends on it.
- */
-export const VARIABLE_INPUT_NAME_REGEX = /^[A-Za-z_][A-Za-z0-9_]*$/;
-
-const variableFieldInputSchema = z.strictObject({
-  kind: z.literal("field"),
-  fieldId: z.string(),
-});
-
-const variableListInputSchema = z.strictObject({
-  kind: z.literal("list"),
-  fieldId: z.string(),
-  /** Row property name for each readable sub-field, keyed by sub-field id. */
-  properties: z.record(z.string(), z.string().regex(VARIABLE_INPUT_NAME_REGEX)),
-});
-export type VariableListInput = z.infer<typeof variableListInputSchema>;
-
-export const variableInputSchema = z.discriminatedUnion("kind", [
-  variableFieldInputSchema,
-  variableListInputSchema,
-]);
-export type VariableInput = z.infer<typeof variableInputSchema>;
 
 export const formVariableSchema = z.strictObject({
   name: z.string().regex(VARIABLE_NAME_REGEX),
@@ -130,7 +106,7 @@ export function isKnownFieldKind(kind: string): kind is FieldKind {
   return Object.hasOwn(FIELD_KIND_VARIABLE_INPUT_MODE, kind);
 }
 
-function variableInputMode(kind: FieldKind): VariableInputMode {
+export function variableInputMode(kind: FieldKind): VariableInputMode {
   return isKnownFieldKind(kind)
     ? FIELD_KIND_VARIABLE_INPUT_MODE[kind]
     : VariableInputMode.None;
@@ -145,6 +121,42 @@ export type VariableInputField = {
   options?: readonly { label: string; value: string }[];
   fields?: readonly ListSubField[];
 };
+
+export type VariableInputFields = ReadonlyMap<string, VariableInputField>;
+
+export type VariableFieldScope = {
+  fields: VariableInputFields;
+  sourceFields: ReadonlyMap<number, VariableInputFields>;
+};
+
+export function variableSourceFormIds(
+  variables: readonly FormVariable[] | undefined,
+): number[] {
+  const ids = new Set<number>();
+  for (const variable of variables ?? []) {
+    for (const input of Object.values(variable.inputs)) {
+      const sourceFormId = inputSourceFormId(input);
+      if (sourceFormId !== undefined) ids.add(sourceFormId);
+    }
+  }
+  return [...ids].sort((a, b) => a - b);
+}
+
+export function readsSourceForm(variable: FormVariable): boolean {
+  return Object.values(variable.inputs).some(
+    (input) => inputSourceFormId(input) !== undefined,
+  );
+}
+
+function inputFields(
+  input: VariableInput,
+  scope: VariableFieldScope,
+): VariableInputFields | undefined {
+  const sourceFormId = inputSourceFormId(input);
+  return sourceFormId === undefined
+    ? scope.fields
+    : scope.sourceFields.get(sourceFormId);
+}
 
 export function readableListSubFields(
   subFields: readonly ListSubField[],
@@ -250,17 +262,20 @@ export function listInputPropertyErrors(params: {
   return errors;
 }
 
-/** Brings every list input in line with its list's current sub-fields. */
+/**
+ * Brings every list input in line with its list's current sub-fields. An input
+ * whose source form's fields aren't in `scope` stays as it is.
+ */
 export function syncVariableListInputs(
   variables: readonly FormVariable[],
-  fields: ReadonlyMap<string, VariableInputField>,
+  scope: VariableFieldScope,
 ): FormVariable[] {
   return variables.map((variable) => {
     let changed = false;
     const inputs = Object.fromEntries(
       Object.entries(variable.inputs).map(([name, input]) => {
-        const field = fields.get(input.fieldId);
-        if (input.kind !== "list" || field?.kind !== "list") {
+        const field = inputFields(input, scope)?.get(input.fieldId);
+        if (!isListInput(input) || field?.kind !== "list") {
           return [name, input];
         }
         const properties = syncListInputProperties(
@@ -334,29 +349,41 @@ function listInputType(
   return `{ ${members.join("; ")} }[]`;
 }
 
+function inputType(
+  input: VariableInput,
+  field: VariableInputField | undefined,
+): string {
+  switch (input.kind) {
+    case "field":
+    case "sourceField":
+      return variableInputType(
+        field !== undefined && isFieldKindReadableByFieldInput(field.kind)
+          ? field.kind
+          : undefined,
+      );
+    case "list":
+    case "sourceList":
+      return listInputType(input, field);
+    default:
+      input satisfies never;
+      return variableInputType(undefined);
+  }
+}
+
+/** An input reading another form gets one element per submission. */
 export function variableTypeEnv(
   variable: FormVariable,
-  fields: ReadonlyMap<string, VariableInputField>,
+  scope: VariableFieldScope,
 ): ReadonlyMap<string, string> {
   return new Map(
     Object.entries(variable.inputs).map(([name, input]) => {
-      const field = fields.get(input.fieldId);
-      switch (input.kind) {
-        case "field":
-          return [
-            name,
-            variableInputType(
-              field !== undefined && isFieldKindReadableByFieldInput(field.kind)
-                ? field.kind
-                : undefined,
-            ),
-          ];
-        case "list":
-          return [name, listInputType(input, field)];
-        default:
-          input satisfies never;
-          return [name, variableInputType(undefined)];
-      }
+      const fields = inputFields(input, scope);
+      if (fields === undefined) return [name, variableInputType(undefined)];
+      const type = inputType(input, fields.get(input.fieldId));
+      return [
+        name,
+        inputSourceFormId(input) === undefined ? type : `(${type})[]`,
+      ];
     }),
   );
 }
@@ -477,115 +504,6 @@ export function formValueToExprValue(
   return ANSWER_READERS[variableInputMode(field.kind)](value, field);
 }
 
-export type VariableResolutionContext = {
-  answers: Record<string, FormValue>;
-  fields: ReadonlyMap<string, VariableInputField>;
-};
-
-function resolveListInput(
-  input: VariableListInput,
-  context: VariableResolutionContext,
-): Result<ExprValue, string> {
-  const field = context.fields.get(input.fieldId);
-  if (field?.kind !== "list") return R.success(undefined);
-  const named = (field.fields ?? []).filter((sub) =>
-    Object.hasOwn(input.properties, sub.id),
-  );
-  const unknown = named.find((sub) => !isKnownFieldKind(sub.kind));
-  if (unknown !== undefined) {
-    return R.failure(`Unknown field kind: ${unknown.kind}`);
-  }
-  const rows = context.answers[input.fieldId];
-  if (!Array.isArray(rows)) return R.success([]);
-  const subFields = readableListSubFields(named);
-  return R.success(
-    rows.map((row: unknown): ExprRecord => {
-      const cells = isListRow(row) ? row : {};
-      return Object.fromEntries(
-        subFields.map((sub) => [
-          input.properties[sub.id],
-          formValueToExprValue(cells[sub.id], sub),
-        ]),
-      );
-    }),
-  );
-}
-
-function resolveFieldInput(
-  input: Extract<VariableInput, { kind: "field" }>,
-  context: VariableResolutionContext,
-): Result<ExprValue, string> {
-  const field = context.fields.get(input.fieldId);
-  if (field === undefined) return R.success(undefined);
-  if (!isKnownFieldKind(field.kind)) {
-    return R.failure(`Unknown field kind: ${field.kind}`);
-  }
-  return R.success(formValueToExprValue(context.answers[input.fieldId], field));
-}
-
-function resolveInput(
-  input: VariableInput,
-  context: VariableResolutionContext,
-): Result<ExprValue, string> {
-  const { kind } = input;
-  switch (kind) {
-    case "field":
-      return resolveFieldInput(input, context);
-    case "list":
-      return resolveListInput(input, context);
-    default:
-      // A newer admin can save an input kind this build predates.
-      return R.failure(`Unknown input kind: ${kind satisfies never}`);
-  }
-}
-
 export function formatVariableValue(value: ExprValue): string {
   return exprValueToText(value) ?? "";
-}
-
-/** Evaluates and formats under one step budget, and fails past it. */
-export function evaluateVariableText(
-  node: ExprNode,
-  inputs: ReadonlyMap<string, ExprValue>,
-): Result<string, string> {
-  return R.fromThrowable(
-    () =>
-      withStepBudget(() =>
-        formatVariableValue(evaluateVariableExpression(node, inputs)),
-      ),
-    (error) => R.toError(error).message,
-  );
-}
-
-export function evaluateVariable(
-  variable: FormVariable,
-  context: VariableResolutionContext,
-): Result<string, string> {
-  const compiled = compileVariableExpression(
-    variable.formula,
-    new Set(Object.keys(variable.inputs)),
-  );
-  if (!compiled.ok) return compiled;
-
-  const inputs = new Map<string, ExprValue>();
-  for (const [name, input] of Object.entries(variable.inputs)) {
-    const value = resolveInput(input, context);
-    if (!value.ok) return value;
-    inputs.set(name, value.value);
-  }
-
-  return evaluateVariableText(compiled.value, inputs);
-}
-
-export function resolveVariableValues(
-  variables: readonly FormVariable[] | undefined,
-  context: VariableResolutionContext,
-): Result<Map<string, string>, string> {
-  const values = new Map<string, string>();
-  for (const variable of variables ?? []) {
-    const result = evaluateVariable(variable, context);
-    if (!result.ok) return R.failure(`#{${variable.name}}: ${result.error}`);
-    values.set(variable.name, result.value);
-  }
-  return R.success(values);
 }

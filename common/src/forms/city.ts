@@ -11,25 +11,27 @@ export type CityFieldValue = z.infer<typeof cityFieldValueSchema>;
 
 // Stored answers may predate optional keys or contain extra keys, so reads
 // accept both.
-const storedCityValueSchema = z.looseObject({
-  id: z.number(),
-  name: z.string(),
-  admin1: z.string().optional(),
-  countryCode: z.string().optional(),
-  countryName: z.string().optional(),
-});
+export const storedCityValueSchema = z
+  .looseObject({
+    id: z.number(),
+    name: z.string(),
+    admin1: z.string().optional(),
+    countryCode: z.string().optional(),
+    countryName: z.string().optional(),
+  })
+  .transform(
+    ({
+      id,
+      name,
+      admin1 = "",
+      countryCode = "",
+      countryName = "",
+    }): CityFieldValue => ({ id, name, admin1, countryCode, countryName }),
+  );
 
 export function parseCityValue(value: unknown): CityFieldValue | undefined {
   const parsed = storedCityValueSchema.safeParse(value);
-  if (!parsed.success) return undefined;
-  const {
-    id,
-    name,
-    admin1 = "",
-    countryCode = "",
-    countryName = "",
-  } = parsed.data;
-  return { id, name, admin1, countryCode, countryName };
+  return parsed.success ? parsed.data : undefined;
 }
 
 export function formatCityValue(city: CityFieldValue): string {

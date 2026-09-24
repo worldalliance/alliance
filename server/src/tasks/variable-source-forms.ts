@@ -1,0 +1,45 @@
+import { type FormSchema } from "@alliance/common/forms/form-schema";
+import { storedQuestionFields } from "@alliance/common/forms/stored-schema";
+import { type SourceFormFields } from "@alliance/common/forms/variable-scope";
+import { variableSourceFormIds } from "@alliance/common/forms/variables";
+import { In, type Repository } from "typeorm";
+import type { Form } from "./entities/form.entity";
+import { formSchemaOf } from "./form-snapshot-schema";
+
+/**
+ * The current question fields of every form `schema`'s variables read. A form
+ * that is gone or unreadable is left out, which validation reports.
+ */
+export async function loadVariableSourceForms(params: {
+  formRepository: Repository<Form>;
+  schema: FormSchema;
+}): Promise<SourceFormFields> {
+  const ids = variableSourceFormIds(params.schema.variables);
+  if (ids.length === 0) return new Map();
+  const forms = await params.formRepository.find({
+    where: { id: In(ids) },
+    relations: { formSnapshot: true },
+  });
+  return new Map(
+    forms.flatMap((form) => {
+      const fields = storedQuestionFields(formSchemaOf(form.formSnapshot));
+      return fields.ok ? [[form.id, fields.value] as const] : [];
+    }),
+  );
+}
+
+/** Forms whose current version has a variable reading `formId`'s answers. */
+export function findFormsReadingForm(params: {
+  formRepository: Repository<Form>;
+  formId: number;
+}): Promise<Form[]> {
+  return params.formRepository
+    .createQueryBuilder("form")
+    .innerJoin("form.formSnapshot", "snapshot")
+    .where(
+      `jsonb_path_exists(snapshot.schema, '$.variables[*].inputs.*.sourceFormId ? (@ == $id)', jsonb_build_object('id', :formId::int))`,
+      { formId: params.formId },
+    )
+    .orderBy("form.id")
+    .getMany();
+}
