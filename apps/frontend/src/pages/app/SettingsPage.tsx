@@ -181,7 +181,9 @@ const SettingsPage: React.FC = () => {
           </div>
         )}
         <Card style={CardStyle.White} className="p-6">
-          <h2 className="font-semibold! text-2xl! mb-4">Profile</h2>
+          <h2 className="font-semibold! text-2xl! mb-4 text-blue-700">
+            Your profile
+          </h2>
           <div className="flex flex-col gap-y-4">
             <div className="flex flex-col md:flex-row w-full items-center gap-4 *:gap-x-1">
               <div className="flex-1 flex flex-col w-full">

@@ -236,8 +236,8 @@ export default function SettingsPage() {
 
           {/* Show name / anonymous — toggle is "show my name" (green when on) */}
           <Card cardStyle={CardStyle.White}>
-            <Text className="mb-2" weight={FontWeight.Medium}>
-              Profile visibility
+            <Text className="mb-2 text-blue-700" weight={FontWeight.Medium}>
+              Who can see your name
             </Text>
             <Text className="text-zinc-500 text-sm mb-4">
               When off, other members will not be able to see your name
