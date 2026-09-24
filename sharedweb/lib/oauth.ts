@@ -12,7 +12,7 @@ import {
 } from "@alliance/common/oauth";
 import { deviceTimeZone } from "@alliance/shared/lib/timeZone";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router";
+import { useLocation, useNavigate, useSearchParams } from "react-router";
 
 /**
  * For a top-level navigation, not a fetch. The server answers with a redirect
@@ -90,24 +90,25 @@ function readNotice(params: URLSearchParams): OAuthNotice | null {
  * outcome sees it on its first run.
  */
 export function useOAuthNotice(): OAuthNotice | null {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
+  const { hash } = useLocation();
+  const navigate = useNavigate();
   const [notice] = useState(() => readNotice(searchParams));
 
   useEffect(() => {
-    if (!notice) {
+    if (!notice || !readNotice(searchParams)) {
       return;
     }
-    setSearchParams(
-      (current) => {
-        const next = new URLSearchParams(current);
-        clearOAuthParams(next);
-        return next;
-      },
+    const next = new URLSearchParams(searchParams);
+    clearOAuthParams(next);
+    // Not setSearchParams, which drops the hash.
+    navigate(
+      { search: next.toString(), hash },
       // Without this, ScrollRestoration answers the strip by scrolling the
       // member to the top of whatever they were reading.
       { replace: true, preventScrollReset: true },
     );
-  }, [notice, setSearchParams]);
+  }, [notice, searchParams, hash, navigate]);
 
   return notice;
 }
