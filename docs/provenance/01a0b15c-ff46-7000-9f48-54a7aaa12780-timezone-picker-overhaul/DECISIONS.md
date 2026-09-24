@@ -96,12 +96,17 @@ sections below this one carry the reasoning each step implements.
    `calcutta` finds Kolkata, and its city and country with `&` spelled `and`,
    a straight apostrophe, and `St` spelled `Saint`, since CLDR writes
    `Trinidad & Tobago`, `Côte d’Ivoire`, and `St. Lucia`, and tzdb
-   `St Johns`. `timeZoneCuratedNames.ts` also carries the English names
-   people type where CLDR writes another, so `uae`, `ivory coast`,
-   `czech republic`, `east timor`, `palestine`, `swaziland`, `holland`,
-   `drc`, and `dr congo` find their zones rather than nothing, and London
-   carries `Great Britain`. The Congos carry their names with and without
-   `the`, since a query matches as one run from a word's start. Brazzaville
+   `St Johns`. A place is also searchable with its periods, apostrophes, and
+   parentheses dropped and each hyphen and the spaces around it as one
+   space, so `us virgin islands`, `guinea bissau`, `cote divoire`,
+   `myanmar burma`, and `congo brazzaville`, which CLDR writes
+   `Congo - Brazzaville`, find their zones.
+   `timeZoneCuratedNames.ts` also carries the English names people type
+   where CLDR writes another, so `uae`, `ivory coast`, `czech republic`,
+   `east timor`, `palestine`, `swaziland`, `holland`, `drc`, and `dr congo`
+   find their zones rather than nothing, and London carries
+   `Great Britain`. The Congos carry their names with and without `the`,
+   since a query matches as one run from a word's start. Brazzaville
    carries `Republic of the Congo`, since that query otherwise finds only
    the DRC zones, whose name it sits inside. They match as place names
    rather than curated names, so partial typing ranks them like any other

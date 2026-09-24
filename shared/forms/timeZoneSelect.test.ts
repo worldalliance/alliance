@@ -940,6 +940,20 @@ describe("searching the zone list", () => {
   });
 
   it.each([
+    ["guinea bissau", "Africa/Bissau"],
+    ["timor leste", "Asia/Dili"],
+    ["us virgin islands", "America/St_Thomas"],
+    ["st kitts and nevis", "America/St_Kitts"],
+    ["port au prince", "America/Port-au-Prince"],
+    ["congo brazzaville", "Africa/Brazzaville"],
+    ["cote divoire", "Africa/Abidjan"],
+    ["myanmar burma", "Asia/Yangon"],
+    ["cocos keeling islands", "Indian/Cocos"],
+  ])("finds a place typed without its punctuation, %s", (query, tz) => {
+    expect(zonesMatching(query)).toEqual([tz]);
+  });
+
+  it.each([
     ["uae", ["Asia/Dubai"]],
     ["ivory coast", ["Africa/Abidjan"]],
     ["czech republic", ["Europe/Prague"]],

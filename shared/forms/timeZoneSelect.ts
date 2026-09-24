@@ -153,11 +153,16 @@ const TRAILING_TIME = /\s+t(?:i(?:me?)?)?$/;
 // second line already shows.
 const OFFSET_NAME = /^GMT[+-]/;
 
-// CLDR writes "Trinidad & Tobago", "Côte d’Ivoire", and "St. Lucia", and tzdb
-// "St Johns", where many type "and", "'", or "Saint".
+// CLDR writes "Trinidad & Tobago", "Côte d’Ivoire", "St. Lucia",
+// "Guinea-Bissau", "U.S. Virgin Islands", and "Myanmar (Burma)", and tzdb
+// "St Johns", where many type "and", "'", "Saint", or no punctuation.
 function typedPlaces(name: string): string[] {
   const spelled = name.replace(/&/g, "and").replace(/’/g, "'");
-  return [spelled, spelled.replace(/\bSt\.? /g, "Saint ")];
+  return [
+    spelled,
+    spelled.replace(/\bSt\.? /g, "Saint "),
+    spelled.replace(/[.'()]/g, "").replace(/\s*-\s*/g, " "),
+  ];
 }
 
 function labelFor({ tz, city, country }: TimeZoneCatalogEntry): BaseLabel {
