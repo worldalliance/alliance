@@ -7,7 +7,6 @@ import {
   CommentParentObject,
   CreateCommentDto,
   CreateEditableContentDto,
-  NotificationDto,
   PostTagDto,
   UserDto,
   forumCreateComment,
@@ -67,6 +66,7 @@ import {
 } from "react-native";
 import type { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useAuth } from "../lib/AuthContext";
+import { markCachedNotificationsReadByContent } from "../lib/notificationsCache";
 import { colors } from "../lib/style/colors";
 import { useAnnounceOnIos } from "../lib/useAnnounceOnIos";
 import BottomSheetOptionPicker from "./BottomSheetOptionPicker";
@@ -1080,40 +1080,12 @@ export default function Comments({
     contentType: "forum_reply",
     contentIds: commentIds,
     enabled: !!user && commentIds.length > 0,
-    onMarked: (contentType, contentIds) => {
-      const ids = new Set(contentIds);
-      const readAt = new Date().toISOString();
-      queryClient.setQueryData(
-        ["notifications"],
-        (
-          oldData:
-            | {
-                data?: NotificationDto[];
-              }
-            | undefined,
-        ) => {
-          if (!oldData || !Array.isArray(oldData.data)) {
-            return oldData;
-          }
-
-          return {
-            ...oldData,
-            data: oldData.data.map((notification) => {
-              if (
-                notification.readAt ||
-                notification.contentType !== contentType ||
-                typeof notification.contentId !== "number" ||
-                !ids.has(notification.contentId)
-              ) {
-                return notification;
-              }
-
-              return { ...notification, readAt };
-            }),
-          };
-        },
-      );
-    },
+    onMarked: (contentType, contentIds) =>
+      markCachedNotificationsReadByContent({
+        queryClient,
+        contentType,
+        contentIds,
+      }),
   });
 
   return (
