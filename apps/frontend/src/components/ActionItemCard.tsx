@@ -35,21 +35,6 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
     return copyToClipboard(url);
   }, [action.id]);
 
-  const shareButton = (
-    <ShareButton
-      onClick={handleShareAction}
-      icon={Link2Icon}
-      label={clipboardCopy.copyLink}
-      copiedLabel={clipboardCopy.copiedToClipboard}
-      className={cn(
-        "relative text-zinc-500 hover:text-zinc-700",
-        zIndex.raised,
-      )}
-      iconClassName="h-4 w-4 shrink-0"
-      iconOnly
-    />
-  );
-
   return (
     <div
       className={cn(
@@ -68,14 +53,25 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
                 >
                   {action.name}
                 </Link>
-                {action.userRelation === "completed" && <CheckIcon size={20} />}
+                <div className="flex flex-row items-center gap-x-2">
+                  <ShareButton
+                    onClick={handleShareAction}
+                    icon={Link2Icon}
+                    label={clipboardCopy.copyLink}
+                    copiedLabel={clipboardCopy.copiedToClipboard}
+                    className={cn(
+                      "relative text-zinc-500 hover:text-zinc-700",
+                      zIndex.raised,
+                    )}
+                    iconClassName="h-4 w-4 shrink-0"
+                    iconOnly
+                  />
+                  {action.userRelation === "completed" && (
+                    <CheckIcon size={20} />
+                  )}
+                </div>
               </div>
-              <div className="flex flex-row items-start justify-between gap-x-4">
-                <p className="text-zinc-500">{action.shortDescription}</p>
-                {shouldShowCompletedBar && (
-                  <div className="mt-1">{shareButton}</div>
-                )}
-              </div>
+              <p className="text-zinc-500">{action.shortDescription}</p>
             </div>
           </div>
         </div>
@@ -90,9 +86,6 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
           barFillClassName="shadow-[0_0_4px] shadow-green/50 transition-shadow group-hover/card:shadow-[0_0_7px] group-hover/card:shadow-green/40"
           dark
         />
-      )}
-      {!shouldShowCompletedBar && (
-        <div className="mt-4 flex justify-end">{shareButton}</div>
       )}
     </div>
   );
