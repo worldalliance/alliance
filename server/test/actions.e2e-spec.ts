@@ -49,6 +49,7 @@ import {
 } from "../src/actions/entities/action-reviewer.entity";
 import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
 import { FollowUpForm } from "../src/actions/entities/follow-up-form.entity";
+import { Project } from "../src/actions/entities/project.entity";
 import {
   ReminderCohortType,
   ReminderGroup,
@@ -433,6 +434,37 @@ describe("Actions (e2e)", () => {
       expect(res.status).toBe(200);
       expect(res.body.status).toBe(ActionStatus.Draft);
       expect(res.body.name).toBe("Test Draft Action");
+    });
+
+    it("action page returns the action's project as { id, name }", async () => {
+      const project = await ctx.dataSource
+        .getRepository(Project)
+        .save({ name: "Test Project" });
+      const action = await actionRepo.save({
+        name: "Project Step Action",
+        category: "Test",
+        body: "Test",
+        project,
+      });
+
+      const res = await request(ctx.app.getHttpServer())
+        .get(`/actions/slug/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.project).toEqual({
+        id: project.id,
+        name: "Test Project",
+      });
+    });
+
+    it("action page returns a null project for an action without one", async () => {
+      const res = await request(ctx.app.getHttpServer())
+        .get(`/actions/slug/${testDraftAction.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.project).toBeNull();
     });
 
     it("shows actions to outsider if showToNonparticipating is true", async () => {

@@ -81,6 +81,7 @@ import {
 } from "../user-action-status";
 import { AdminFollowUpFormDto, FollowUpFormDto } from "./follow-up-form.dto";
 import { GeneralUpdateDto } from "./general-update.dto";
+import { ProjectDto } from "./project.dto";
 
 export class CreateReminderGroupDto extends PickType(ReminderGroup, [
   "name",
@@ -476,6 +477,10 @@ export class ActionDto extends PickType(Action, [
   @Type(() => ProfileDto)
   authors?: ProfileDto[];
 
+  @ApiPropertyOptional({ type: () => ProjectDto, nullable: true })
+  @Type(() => ProjectDto)
+  project?: ProjectDto | null;
+
   constructor(action: ParsedAction, extra?: ActionDtoExtra) {
     super();
     this.id = action.id;
@@ -521,6 +526,7 @@ export class ActionDto extends PickType(Action, [
       .sort((a, b) => a.position - b.position)
       .map((reviewer) => new ActionReviewerResponseDto(reviewer));
     this.suite = action.suite;
+    this.project = action.project && new ProjectDto(action.project);
     this.status = (action.events && action.status) ?? ActionStatus.Draft;
     this.events =
       action.events?.map((event) => new ActionEventDto(event)) || [];

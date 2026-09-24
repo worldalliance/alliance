@@ -353,6 +353,14 @@ export default function ActionDetailScreen() {
           <View className="self-start mb-4">
             <BackButton fallbackRoute="/actions" />
           </View>
+          {action.project && (
+            <Text
+              className="text-lg text-green-800 mb-1"
+              weight={FontWeight.Semibold}
+            >
+              {action.project.name}
+            </Text>
+          )}
           <Text
             className="text-2xl text-zinc-900 mb-2"
             family={FontFamily.Serif}

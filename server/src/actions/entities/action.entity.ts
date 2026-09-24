@@ -44,6 +44,7 @@ import {
   parseFollowUpForm,
   type ParsedFollowUpForm,
 } from "./follow-up-form.entity";
+import { Project } from "./project.entity";
 
 export enum CustomActionStat {
   NONE = "none",
@@ -350,6 +351,12 @@ export class Action {
   @Type(() => ActionSuite)
   @IsOptional()
   suite?: Relation<ActionSuite> | null;
+
+  @ManyToOne(() => Project, (project) => project.actions, { nullable: true })
+  @ApiPropertyOptional({ type: () => Project })
+  @Type(() => Project)
+  @IsOptional()
+  project?: Relation<Project> | null;
 
   @ManyToMany(() => User, (user) => user.authoredActions, { cascade: true })
   @JoinTable()

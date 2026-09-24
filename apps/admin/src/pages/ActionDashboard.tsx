@@ -73,6 +73,10 @@ import ActionFollowUpFormsTab from "../components/ActionFollowUpFormsTab";
 import ActionForm, { type ReviewerRow } from "../components/ActionForm";
 import ActionFormVariantsTab from "../components/ActionFormVariantsTab";
 import ActionMergedResponsesTab from "../components/ActionMergedResponsesTab";
+import {
+  ActionProjectControls,
+  ActionProjectSteps,
+} from "../components/ActionProjectControls";
 import ActionUpdatesTab from "../components/ActionUpdatesTab";
 import EventManagementTab from "../components/EventManagementTab";
 import { FormBuilder } from "../components/FormBuilder";
@@ -1051,6 +1055,10 @@ const ActionDashboard: React.FC = () => {
               <div className="space-y-4 pb-4">
                 {/* Current Status */}
                 <div className="flex flex-row gap-2 flex-wrap">
+                  <ActionProjectControls
+                    actionId={action.id}
+                    project={action.project ?? null}
+                  />
                   {action.suite !== undefined && (
                     <Button
                       onClick={() => {
@@ -1129,6 +1137,12 @@ const ActionDashboard: React.FC = () => {
                     {action.archived ? "Unarchive Action" : "Archive Action"}
                   </Button>
                 </div>
+                {action.project && (
+                  <ActionProjectSteps
+                    actionId={action.id}
+                    projectId={action.project.id}
+                  />
+                )}
                 {/* Status Header */}
                 <Card style={CardStyle.White}>
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

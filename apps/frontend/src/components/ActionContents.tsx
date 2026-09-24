@@ -183,6 +183,11 @@ const ActionContents = () => {
       <div className="flex flex-row justify-between items-start mb-6">
         {action !== undefined && (
           <div className="flex flex-col gap-y-3 w-full">
+            {action.project && (
+              <p className="text-lg font-semibold text-green-800">
+                {action.project.name}
+              </p>
+            )}
             <div className="flex flex-row justify-between items-start gap-x-4">
               <p className="text-title">{action.name}</p>
               <ShareButton
