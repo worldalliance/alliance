@@ -1,7 +1,7 @@
-import { spawn, type ChildProcess } from "child_process";
 import { promises as fs } from "fs";
 import path from "path";
 import process from "process";
+import { run, type OnSpawn } from "./run-command";
 import { screenshotDatabase } from "./screenshot-database";
 
 const repoRoot = path.resolve(__dirname, "..", "..");
@@ -17,40 +17,6 @@ export const dbPass = process.env.DB_PASSWORD ?? "postgres";
 
 const psqlBase = ["-h", dbHost, "-p", dbPort, "-U", dbUser];
 const pgEnv: NodeJS.ProcessEnv = { ...process.env, PGPASSWORD: dbPass };
-
-type OnSpawn = (child: ChildProcess) => void;
-
-const run = (
-  command: string,
-  args: string[],
-  options: {
-    cwd: string;
-    env: NodeJS.ProcessEnv;
-    stdin?: string;
-    onSpawn?: OnSpawn;
-  },
-) =>
-  new Promise<void>((resolve, reject) => {
-    const child = spawn(command, args, {
-      cwd: options.cwd,
-      env: options.env,
-      stdio: [
-        options.stdin === undefined ? "inherit" : "pipe",
-        "inherit",
-        "inherit",
-      ],
-    });
-    options.onSpawn?.(child);
-
-    if (options.stdin !== undefined) child.stdin?.end(options.stdin);
-
-    child.on("error", (error) => reject(error));
-    child.on("close", (code) => {
-      if (code === 0) resolve();
-      else
-        reject(new Error(`${command} ${args.join(" ")} exited with ${code}`));
-    });
-  });
 
 const psql = ({
   database,

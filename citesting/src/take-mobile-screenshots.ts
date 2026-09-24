@@ -6,6 +6,7 @@ import os from "os";
 import path from "path";
 import process from "process";
 import { mobileScreenshotTargets } from "./mobile-screenshot-targets";
+import { run } from "./run-command";
 import { screenshotDatabase } from "./screenshot-database";
 import { dbHost, dbPass, dbPort, dbUser, seedDatabase } from "./seed-database";
 import { testUserEmail, testUserPassword } from "./test-user";
@@ -133,24 +134,7 @@ const execFileCapture = (
   });
 
 const runCommand = (command: string, args: string[], options: SpawnOptions) =>
-  new Promise<void>((resolve, reject) => {
-    const child = trackChildProcess(
-      spawn(command, args, {
-        cwd: options.cwd,
-        env: options.env,
-        stdio: "inherit",
-      }),
-    );
-
-    child.on("error", (error) => reject(error));
-    child.on("close", (code) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(`${command} ${args.join(" ")} exited with ${code}`));
-      }
-    });
-  });
+  run(command, args, { ...options, onSpawn: trackChildProcess });
 
 const tryRunCommand = async (
   command: string,

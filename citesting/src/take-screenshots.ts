@@ -5,6 +5,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import process from "process";
 import { devPorts, PortCaller } from "../../common/src/dev-ports";
+import { run } from "./run-command";
 import { screenshotDatabase } from "./screenshot-database";
 import { screenshotTargets } from "./screenshot-targets";
 import { dbHost, dbPass, dbPort, dbUser, seedDatabase } from "./seed-database";
@@ -140,24 +141,7 @@ const waitForHttp = async (url: string, timeoutMs: number) => {
 };
 
 const runCommand = (command: string, args: string[], options: SpawnOptions) =>
-  new Promise<void>((resolve, reject) => {
-    const child = trackChildProcess(
-      spawn(command, args, {
-        cwd: options.cwd,
-        env: options.env,
-        stdio: "inherit",
-      }),
-    );
-
-    child.on("error", (error) => reject(error));
-    child.on("close", (code) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(`${command} ${args.join(" ")} exited with ${code}`));
-      }
-    });
-  });
+  run(command, args, { ...options, onSpawn: trackChildProcess });
 
 const fileExists = async (filePath: string) => {
   try {
