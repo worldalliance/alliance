@@ -17,7 +17,8 @@ import {
   type OutputViewSchema,
 } from "./form-schema";
 import { isOutputValueMissing, outputCardSubFields } from "./output-values";
-import { evaluateVariable } from "./variables";
+import { forEachInterpolatableText } from "./variable-interpolation";
+import { collectVariableReferences, evaluateVariable } from "./variables";
 import {
   isElementCurrentlyVisible,
   isVisibleInSavedResponse,
@@ -80,6 +81,12 @@ export const resolveOutputView = (
   }
   return views.find((candidate) => candidate.type === "default") ?? views[0];
 };
+
+const blockFieldIds = (blocks: OutputBlock[]): string[] => [
+  ...new Set(
+    blocks.flatMap((block) => ("fieldId" in block ? [block.fieldId] : [])),
+  ),
+];
 
 const isOutputBlockVisible = (
   block: OutputBlock,
@@ -226,6 +233,30 @@ export const resolveOutputBlocks = ({
 
   for (const block of allBlocks) computeVisibility(block);
 
+  const visibleBlocks = allBlocks.filter((block) =>
+    block.id
+      ? (outputBlockVisibility.get(block.id) ?? false)
+      : evaluateBlockVisibility(block),
+  );
+
+  const referenced = new Set<string>();
+  forEachInterpolatableText(
+    {
+      pages: [
+        {
+          id: "output",
+          fields: blockFieldIds(visibleBlocks).flatMap((fieldId) => {
+            const field = fieldLookup.get(fieldId);
+            return field ? [field] : [];
+          }),
+        },
+      ],
+      outputViews: [{ ...selectedView, blocks: visibleBlocks }],
+    },
+    (text) => {
+      for (const name of collectVariableReferences(text)) referenced.add(name);
+    },
+  );
   const variableContext = {
     answers,
     fields: variableInputFieldsById(collectVariableResolutionFields(schema)),
@@ -233,15 +264,10 @@ export const resolveOutputBlocks = ({
   // A variable that fails stays out, so its `#{name}` shows as written.
   const variableValues = new Map<string, string>();
   for (const variable of schema.variables ?? []) {
+    if (!referenced.has(variable.name)) continue;
     const value = evaluateVariable(variable, variableContext);
     if (value.ok) variableValues.set(variable.name, value.value);
   }
-
-  const visibleBlocks = allBlocks.filter((block) =>
-    block.id
-      ? (outputBlockVisibility.get(block.id) ?? false)
-      : evaluateBlockVisibility(block),
-  );
 
   return {
     selectedView,
@@ -249,13 +275,7 @@ export const resolveOutputBlocks = ({
     answers,
     visibleBlocks,
     variableValues,
-    malformedListFieldIds: [
-      ...new Set(
-        allBlocks.flatMap((block) =>
-          "fieldId" in block ? [block.fieldId] : [],
-        ),
-      ),
-    ].filter(
+    malformedListFieldIds: blockFieldIds(allBlocks).filter(
       (fieldId) =>
         fieldLookup.get(fieldId)?.kind === "list" &&
         asCards(answers[fieldId]) === null &&

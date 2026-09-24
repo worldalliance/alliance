@@ -320,6 +320,118 @@ describe("resolveOutputItems interpolates variables", () => {
     if (item.block.kind !== "text") throw new Error("expected a text block");
     expect(item.block.text).toBe("42 kg");
   });
+
+  it("leaves no reference behind in any text the view draws", () => {
+    const names: string[] = [];
+    const ref = () => {
+      const name = `v${names.length}`;
+      names.push(name);
+      return `#{${name}}`;
+    };
+    const schema = schemaWithVariable({
+      pages: [
+        {
+          id: "p1",
+          fields: [
+            {
+              ...numberField("qty", ref()),
+              description: ref(),
+            },
+            {
+              id: "memo",
+              type: "input",
+              kind: "text",
+              label: ref(),
+              placeholder: ref(),
+            },
+            {
+              id: "pick",
+              type: "input",
+              kind: "radio",
+              label: ref(),
+              options: [{ value: "a", label: ref() }],
+            },
+            {
+              id: "rows",
+              type: "input",
+              kind: "list",
+              label: ref(),
+              fields: [numberField("weight", ref())],
+            },
+          ],
+        },
+      ],
+      outputViews: [
+        {
+          id: "v1",
+          type: "default",
+          blocks: [
+            { id: "o-qty", fieldId: "qty", showLabel: true },
+            { id: "o-memo", fieldId: "memo" },
+            { id: "o-pick", fieldId: "pick", labelOverride: ref() },
+            { id: "o-rows", fieldId: "rows" },
+            { type: "display", kind: "header", text: ref() },
+            { type: "display", kind: "text", text: ref() },
+            { type: "display", kind: "label", text: ref() },
+            { type: "display", kind: "quote", text: ref(), userName: ref() },
+            { type: "display", kind: "copytext", text: ref(), title: ref() },
+            { type: "display", kind: "biglink", text: ref(), url: "x" },
+            { type: "display", kind: "video", src: "x", caption: ref() },
+            {
+              type: "display",
+              kind: "images",
+              images: [{ src: "x", alt: ref(), caption: ref() }],
+            },
+            {
+              type: "display",
+              kind: "chatTranscript",
+              leftName: ref(),
+              rightName: ref(),
+              messages: [{ side: "left", text: ref() }],
+            },
+            {
+              type: "display",
+              kind: "previousAnswer",
+              sourceFormId: 1,
+              sourceFieldId: "x",
+              title: ref(),
+              emptyText: ref(),
+              showLabel: true,
+            },
+            {
+              type: "display",
+              kind: "userLocation",
+              title: ref(),
+              emptyText: ref(),
+            },
+            {
+              type: "display",
+              kind: "accordion",
+              sections: [
+                {
+                  title: ref(),
+                  blocks: [{ type: "display", kind: "text", text: ref() }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    schema.variables = names.map((name) => ({
+      name,
+      inputs: { input1: { kind: "field", fieldId: "qty" } },
+      formula: "input1 * 2",
+    }));
+    const { items } = resolveOutputItems({
+      schema,
+      answers: { qty: 21, memo: "m", pick: "a", rows: [{ weight: 1 }] },
+      publicAnswers: { qty: true, memo: true, pick: true, rows: true },
+    });
+
+    expect(items).toHaveLength(16);
+    expect(JSON.stringify(items)).not.toContain("#{");
+  });
 });
 
 describe("resolveOutputItems and blank list cards", () => {
