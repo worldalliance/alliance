@@ -401,6 +401,8 @@ export function RenderField({
                         }
                   }
                   disabled={disabled}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked, disabled }}
                 >
                   <Text
                     className={cn(
@@ -452,9 +454,11 @@ export function RenderField({
                 <TouchableOpacity
                   key={optIndex}
                   className="flex-row items-start py-2"
-                  onPress={() => onChange?.(option.value)}
+                  onPress={() => onChange?.(selected ? "" : option.value)}
                   disabled={disabled}
                   activeOpacity={0.7}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selected, disabled }}
                 >
                   <View
                     className={cn(
@@ -497,22 +501,51 @@ export function RenderField({
             hideLabel={hideLabel}
             required={required}
           />
-          <TouchableOpacity
-            className={cn(inputBase, "flex-row items-center justify-between")}
-            onPress={() => setSelectOpen(true)}
-            disabled={disabled}
-            activeOpacity={0.8}
-          >
-            <Text
-              className={cn(
-                "text-base",
-                selectedLabel ? "text-zinc-900" : "text-zinc-400",
-              )}
+          <View>
+            <TouchableOpacity
+              className={cn(inputBase, "pr-20")}
+              onPress={() => setSelectOpen(true)}
+              disabled={disabled}
+              activeOpacity={0.8}
             >
-              {selectedLabel || "Select an option"}
-            </Text>
-            <ChevronDown size={18} color={colors.text.icon} />
-          </TouchableOpacity>
+              <Text
+                className={cn(
+                  "text-base",
+                  selectedLabel ? "text-zinc-900" : "text-zinc-400",
+                )}
+              >
+                {selectedLabel || "Select an option"}
+              </Text>
+            </TouchableOpacity>
+            <View
+              className={cn(
+                "absolute inset-y-0 right-3 flex-row items-center",
+                disabled && "opacity-60",
+              )}
+              pointerEvents="box-none"
+            >
+              {!disabled &&
+                onChange &&
+                typeof value === "string" &&
+                value !== "" && (
+                  <TouchableOpacity
+                    className="p-2"
+                    onPress={() => onChange("")}
+                    hitSlop={{ top: 8, bottom: 8, left: 8 }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Clear selection"
+                  >
+                    <X size={18} color={colors.text.icon} />
+                  </TouchableOpacity>
+                )}
+              <View pointerEvents="none">
+                <ChevronDown
+                  size={18}
+                  color={selectedLabel ? colors.text.icon : colors.text.light}
+                />
+              </View>
+            </View>
+          </View>
           <BottomSheetOptionPicker
             visible={selectOpen}
             onClose={() => setSelectOpen(false)}

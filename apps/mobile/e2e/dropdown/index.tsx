@@ -7,7 +7,7 @@ import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import { registerRootComponent } from "expo";
 import { useFonts } from "expo-font";
 import { useState } from "react";
-import { Button, StyleSheet, View } from "react-native";
+import { Button, ScrollView, StyleSheet, View } from "react-native";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import BottomSheetOptionPicker, {
@@ -176,6 +176,66 @@ function CategoriesFixture() {
   );
 }
 
+const clearingFields = [
+  { kind: "range", label: "Score" },
+  { kind: "radio", label: "Colour", options: ["Red", "Blue"] },
+  { kind: "select", label: "Pet", options: ["Cat", "Dog"] },
+] as const;
+
+function ClearingField({
+  field,
+  required,
+}: {
+  field: (typeof clearingFields)[number];
+  required: boolean;
+}) {
+  const label = `${required ? "Required" : "Optional"} ${field.label}`;
+  const answer = useAnswer(field.kind === "range" ? 2 : field.options[0]);
+  return (
+    <>
+      <RenderField
+        field={{
+          id: label,
+          type: "input",
+          label,
+          required,
+          ...(field.kind === "range"
+            ? { kind: field.kind, optionCount: 3 }
+            : {
+                kind: field.kind,
+                options: field.options.map((option) => ({
+                  label: option,
+                  value: option,
+                })),
+              }),
+        }}
+        fieldContext={staticFieldContext}
+        value={answer.value}
+        onChange={answer.onChange}
+      />
+      <Text>
+        {label} is {answer.value === "" ? "none" : String(answer.value)}
+      </Text>
+    </>
+  );
+}
+
+function ClearingFixture() {
+  return (
+    <ScrollView contentContainerStyle={{ padding: 24, gap: 8 }}>
+      {clearingFields.flatMap((field) =>
+        [false, true].map((required) => (
+          <ClearingField
+            key={`${field.kind}-${required}`}
+            field={field}
+            required={required}
+          />
+        )),
+      )}
+    </ScrollView>
+  );
+}
+
 function Fixture() {
   const [visible, setVisible] = useState(false);
   const [plainVisible, setPlainVisible] = useState(false);
@@ -183,6 +243,7 @@ function Fixture() {
   const [plainValue, setPlainValue] = useState("01");
   const [multiVisible, setMultiVisible] = useState(false);
   const [categorized, setCategorized] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [loaded, error] = useFonts({
     "Source Sans 3": require("../../assets/fonts/SourceSans3-Regular.ttf"),
     "Source Sans 3 Semibold": require("../../assets/fonts/SourceSans3-Semibold.ttf"),
@@ -216,10 +277,20 @@ function Fixture() {
               </View>
             </View>
             <MultiselectFixture />
-            <Button
-              title="Show categorized fields"
-              onPress={() => setCategorized(true)}
-            />
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Button
+                  title="Show categorized fields"
+                  onPress={() => setCategorized(true)}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Button
+                  title="Show clearing fields"
+                  onPress={() => setClearing(true)}
+                />
+              </View>
+            </View>
           </View>
           <BottomSheetOptionPicker
             visible={visible}
@@ -254,6 +325,13 @@ function Fixture() {
             >
               <CategoriesFixture />
             </View>
+          )}
+          {clearing && (
+            <SafeAreaView
+              style={[StyleSheet.absoluteFill, { backgroundColor: "white" }]}
+            >
+              <ClearingFixture />
+            </SafeAreaView>
           )}
         </SafeAreaView>
       </KeyboardProvider>
