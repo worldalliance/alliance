@@ -33,6 +33,20 @@ jobs:
       AVD_IMAGE: system-images;android-34;google_apis;x86_64
 
     steps:
+      - name: Require write access from whoever labeled
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SENDER: ${{ github.event.sender.login }}
+        run: |
+          permission="$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$SENDER/permission" -q .permission)"
+          case "$permission" in
+            admin | write) ;;
+            *)
+              echo "::error::$SENDER has $permission access; labeling needs write to run the agent"
+              exit 1
+              ;;
+          esac
+
       - name: Checkout PR head
         uses: actions/checkout@v4
         with:
