@@ -2,7 +2,7 @@ import { City } from "@alliance/shared/client";
 import { useSeedSettingsForm } from "@alliance/shared/lib/useSeedSettingsForm";
 import { useSettingsAutosave } from "@alliance/shared/lib/useSettingsAutosave";
 import { cn } from "@alliance/shared/styles/util";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import BuildInfoCard from "../../components/BuildInfoCard";
 import PhoneNumberInput from "../../components/forms/PhoneNumberInput";
 import ReminderTimeSelect from "../../components/forms/ReminderTimeSelect";
@@ -87,6 +88,7 @@ export default function SettingsPage() {
   } = useSettingsAutosave(user?.id, location?.countryCode);
 
   const [statusTaps, setStatusTaps] = useState(0);
+  const scrollViewRef = useRef<KeyboardAwareScrollViewRef>(null);
 
   const handleLogout = useCallback(async () => {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
@@ -148,7 +150,7 @@ export default function SettingsPage() {
           </Text>
         </Pressable>
       </SimplePageTitle>
-      <KeyboardAwareScrollView className="flex-1">
+      <KeyboardAwareScrollView ref={scrollViewRef} className="flex-1">
         <View className=" px-2 pb-8 pt-2 flex flex-col gap-2">
           {saveError && (
             <View className="flex-row items-center justify-between gap-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3">
@@ -424,7 +426,10 @@ export default function SettingsPage() {
             </Text>
           </Card>
 
-          <AccountSection user={user} />
+          <AccountSection
+            user={user}
+            scrollTo={(y) => scrollViewRef.current?.scrollTo({ y })}
+          />
 
           {statusTaps >= BUILD_INFO_TAPS && <BuildInfoCard />}
 

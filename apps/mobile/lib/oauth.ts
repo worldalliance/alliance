@@ -12,6 +12,7 @@ import { Platform } from "react-native";
 import { authTab } from "../modules/auth-tab";
 import { linkWithProvider, type LinkResult } from "./oauthLink";
 import {
+  AuthTabFlow,
   reportOAuthFailure,
   returnLinkFromAuthTab,
   returnLinkFromBrowser,
@@ -120,16 +121,16 @@ async function appleCredential(): Promise<Result<
 async function openBrowserSession(params: {
   url: string;
   returnTo: string;
-  markAuthTab: boolean;
+  authTabFlow: AuthTabFlow;
 }): Promise<Result<string, OAuthError>> {
   const tab = authTab();
   if (tab) {
-    const open = () =>
-      tab.open({ url: params.url, redirectUrl: params.returnTo });
     return returnLinkFromAuthTab(
-      await (params.markAuthTab
-        ? whileAuthTabOpen(AsyncStorage, open)
-        : open()),
+      await whileAuthTabOpen({
+        storage: AsyncStorage,
+        flow: params.authTabFlow,
+        open: () => tab.open({ url: params.url, redirectUrl: params.returnTo }),
+      }),
     );
   }
   return returnLinkFromBrowser(
@@ -137,7 +138,8 @@ async function openBrowserSession(params: {
   );
 }
 
-export const takeInterruptedAuthTab = () => takeInterrupted(AsyncStorage);
+export const takeInterruptedAuthTab = (flow: AuthTabFlow) =>
+  takeInterrupted(AsyncStorage, flow);
 
 const NATIVE: NativeSignIn = {
   credential: {

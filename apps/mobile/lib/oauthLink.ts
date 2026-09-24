@@ -1,7 +1,9 @@
 import {
+  OAUTH_ERROR_MESSAGE,
   OAuthError,
   oauthErrorMessage,
   oauthLinkedMessage,
+  parseOAuthError,
   type OAuthProvider,
 } from "@alliance/common/oauth";
 import { type Result } from "@alliance/common/result";
@@ -13,7 +15,13 @@ import {
   type UserDto,
 } from "@alliance/shared/client";
 import { NETWORK_FAILURE_MESSAGE } from "./network";
-import { answerResult, ClientFailure, type OAuthFailure } from "./oauthResult";
+import {
+  answerResult,
+  ANY_PROVIDER_LABEL,
+  AuthTabFlow,
+  ClientFailure,
+  type OAuthFailure,
+} from "./oauthResult";
 import { runProviderFlow, type NativeSignIn } from "./oauthSignIn";
 
 export type LinkResult = Result<UserDto, OAuthFailure>;
@@ -41,8 +49,7 @@ export function linkWithProvider(params: {
     provider,
     native: params.native,
     flow: {
-      // Onboarding reports a marked Auth Tab as an unfinished sign-in.
-      markAuthTab: false,
+      authTabFlow: AuthTabFlow.Link,
       withIdentityToken: (credential) =>
         oAuthLinkWithIdentityToken({
           path: { provider },
@@ -76,5 +83,22 @@ export function linkFeedback(params: {
       failure === ClientFailure.Network
         ? NETWORK_FAILURE_MESSAGE
         : oauthErrorMessage(params.provider, failure),
+  };
+}
+
+/**
+ * For a link Android cut short by killing the app, from the `oauthInterrupted`
+ * reason settings opens with. Null for a cancellation.
+ */
+export function interruptedLinkFeedback(reason: string): LinkFeedback | null {
+  const failure = parseOAuthError(reason);
+  if (failure === OAuthError.Cancelled) {
+    return null;
+  }
+  return {
+    ok: false,
+    message: failure
+      ? OAUTH_ERROR_MESSAGE[failure](ANY_PROVIDER_LABEL)
+      : "Connecting that account didn't finish. Please try again.",
   };
 }

@@ -8,8 +8,12 @@ import { makeUser } from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { afterAll, describe, expect, it, mock, spyOn } from "bun:test";
 import { NETWORK_FAILURE_MESSAGE } from "./network";
-import { linkFeedback, linkWithProvider } from "./oauthLink";
-import { ClientFailure } from "./oauthResult";
+import {
+  interruptedLinkFeedback,
+  linkFeedback,
+  linkWithProvider,
+} from "./oauthLink";
+import { AuthTabFlow, ClientFailure, UNFINISHED } from "./oauthResult";
 import type { NativeCredential, NativeSignIn } from "./oauthSignIn";
 
 const consoleError = spyOn(console, "error").mockImplementation(() => {});
@@ -122,7 +126,7 @@ describe("without a native sheet", () => {
     expect(device.openBrowserSession).toHaveBeenCalledWith({
       url: "https://accounts.google.com/o/oauth2/v2/auth",
       returnTo: MOBILE_OAUTH_RETURN_URL,
-      markAuthTab: false,
+      authTabFlow: AuthTabFlow.Link,
     });
     expect(redeemed).toHaveBeenCalledWith({ handoff: "abc", proof: "proof" });
   });
@@ -153,5 +157,28 @@ describe("linkFeedback", () => {
       ok: false,
       message: NETWORK_FAILURE_MESSAGE,
     });
+  });
+});
+
+describe("interruptedLinkFeedback", () => {
+  it("says a cut-off connect didn't finish", () => {
+    expect(interruptedLinkFeedback(UNFINISHED)).toEqual({
+      ok: false,
+      message: "Connecting that account didn't finish. Please try again.",
+    });
+  });
+
+  it("names both providers in a refusal, since the flow that knew which died", () => {
+    expect(interruptedLinkFeedback(OAuthError.ClaimedByAnotherAccount)).toEqual(
+      {
+        ok: false,
+        message:
+          "That Google or Apple account is already linked to a different Alliance account.",
+      },
+    );
+  });
+
+  it("says nothing for a cancellation", () => {
+    expect(interruptedLinkFeedback(OAuthError.Cancelled)).toBeNull();
   });
 });

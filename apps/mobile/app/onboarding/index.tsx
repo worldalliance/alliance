@@ -43,6 +43,7 @@ import Text from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
 import { takeInterruptedAuthTab } from "../../lib/oauth";
 import {
+  AuthTabFlow,
   interruptedFailure,
   providerFailureFor,
   UNFINISHED_FAILURE,
@@ -129,12 +130,13 @@ const OnboardingScreen = () => {
 
   const { used: inviteUsed, inviter } = useInvite(referralCode ?? null);
 
-  // A stale return link can cold-start the app for a member already signed in.
-  // The param is cleared once read, so a later login here still fades out.
+  // A signed-in member opens a browser session only to connect an account, so
+  // their cut-off return link belongs to settings. The param is cleared once
+  // read, so a later login here still fades out.
   useEffect(() => {
     if (!oauthInterrupted || isLoading) return;
     if (isAuthenticated) {
-      router.replace("/");
+      router.replace({ pathname: "/settings", params: { oauthInterrupted } });
       return;
     }
     setProviderFailure(interruptedFailure(oauthInterrupted));
@@ -143,9 +145,12 @@ const OnboardingScreen = () => {
 
   useEffect(() => {
     run(async () => {
-      if (await takeInterruptedAuthTab()) {
+      if (await takeInterruptedAuthTab(AuthTabFlow.SignIn)) {
         setProviderFailure(UNFINISHED_FAILURE);
       }
+      // A connect cut off before a signed-out launch would otherwise send
+      // whoever signs in next to settings about a connect they didn't start.
+      void takeInterruptedAuthTab(AuthTabFlow.Link);
     });
   }, []);
 

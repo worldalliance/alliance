@@ -29,6 +29,7 @@ import { AppDrawerProvider, useAppDrawer } from "../../lib/AppDrawerContext";
 import { useAuth } from "../../lib/AuthContext";
 import { WalkthroughAnchorProvider } from "../../lib/onboarding/walkthrough";
 import { colors } from "../../lib/style/colors";
+import { useInterruptedLinkRedirect } from "../../lib/useInterruptedLinkRedirect";
 import { isVisualTestMode } from "../../lib/visualTest";
 
 function AppContent() {
@@ -36,6 +37,7 @@ function AppContent() {
   const { isPermanent, isOpen, openDrawer } = useAppDrawer();
   const { width: screenWidth } = useWindowDimensions();
   const sidebarWidth = Math.round(screenWidth * APP_DRAWER_SIDEBAR_RATIO);
+  useInterruptedLinkRedirect();
   const drawerTranslateX = useSharedValue(-sidebarWidth);
 
   const canGoBack = useNavigationState((state) => {

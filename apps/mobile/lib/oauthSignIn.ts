@@ -7,6 +7,7 @@ import {
   type MobileOAuthBrowserSessionDto,
 } from "@alliance/shared/client";
 import {
+  AuthTabFlow,
   handoffFromReturnLink,
   reportOAuthFailure,
   requestFailure,
@@ -27,12 +28,12 @@ export type NativeSignIn = {
   openBrowserSession: (params: {
     url: string;
     returnTo: string;
-    markAuthTab: boolean;
+    authTabFlow: AuthTabFlow;
   }) => Promise<Result<string, OAuthError>>;
 };
 
 type ProviderFlow<B, T> = {
-  markAuthTab: boolean;
+  authTabFlow: AuthTabFlow;
   withIdentityToken: (credential: NativeCredential) => Promise<{ data?: B }>;
   startBrowserSession: () => Promise<{ data?: MobileOAuthBrowserSessionDto }>;
   redeem: (body: { handoff: string; proof: string }) => Promise<{ data?: B }>;
@@ -67,7 +68,7 @@ async function runInBrowser<B, T>(params: {
   const returned = await params.native.openBrowserSession({
     url,
     returnTo,
-    markAuthTab: params.flow.markAuthTab,
+    authTabFlow: params.flow.authTabFlow,
   });
   if (!returned.ok) {
     return returned;
@@ -115,7 +116,7 @@ export function signInWithProvider(params: {
     provider,
     native: params.native,
     flow: {
-      markAuthTab: true,
+      authTabFlow: AuthTabFlow.SignIn,
       withIdentityToken: (credential) =>
         oAuthSignInWithIdentityToken({
           path: { provider },

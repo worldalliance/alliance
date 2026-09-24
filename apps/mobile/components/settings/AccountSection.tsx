@@ -9,11 +9,15 @@ import {
   type SignInMethods,
 } from "@alliance/shared/lib/signInMethods";
 import { useMutation } from "@tanstack/react-query";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, AppState, View } from "react-native";
 import { linkProvider } from "../../lib/oauth";
-import { linkFeedback, type LinkFeedback } from "../../lib/oauthLink";
+import {
+  interruptedLinkFeedback,
+  linkFeedback,
+  type LinkFeedback,
+} from "../../lib/oauthLink";
 import { thrownFailure } from "../../lib/oauthResult";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Card, { CardStyle } from "../system/Card";
@@ -75,12 +79,31 @@ function PasswordAccess({
   );
 }
 
-export default function AccountSection({ user }: { user: UserDto }) {
+export default function AccountSection(props: {
+  user: UserDto;
+  scrollTo: (y: number) => void;
+}) {
+  const { user } = props;
   const signIn = useSignInMethods();
   const { reload, settle } = signIn;
   const [connecting, setConnecting] = useState<OAuthProvider | null>(null);
   const [feedback, setFeedback] = useState<LinkFeedback | null>(null);
   const focusedBefore = useRef(false);
+  const revealPending = useRef(false);
+  const router = useRouter();
+  const { oauthInterrupted } = useLocalSearchParams<{
+    oauthInterrupted?: string;
+  }>();
+
+  useEffect(() => {
+    if (!oauthInterrupted) {
+      return;
+    }
+    const interrupted = interruptedLinkFeedback(oauthInterrupted);
+    setFeedback(interrupted);
+    revealPending.current = interrupted !== null;
+    router.setParams({ oauthInterrupted: undefined });
+  }, [oauthInterrupted, router]);
 
   // A password set from the email, or a change on another device, lands here
   // when the member comes back to this screen or to the app. The first focus
@@ -145,8 +168,18 @@ export default function AccountSection({ user }: { user: UserDto }) {
   const { methods } = signIn;
   const locked = signIn.busy || connecting !== null;
 
+  // The feedback line changes the card's height, so a layout follows the
+  // effect that sets revealPending.
   return (
-    <Card cardStyle={CardStyle.White}>
+    <Card
+      cardStyle={CardStyle.White}
+      onLayout={(event) => {
+        if (revealPending.current) {
+          revealPending.current = false;
+          props.scrollTo(event.nativeEvent.layout.y);
+        }
+      }}
+    >
       <Text className="text-2xl mb-4" weight={FontWeight.Semibold}>
         Account
       </Text>
