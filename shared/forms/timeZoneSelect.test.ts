@@ -4,10 +4,9 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { resetClock } from "../lib/useClockMinute";
 import { fold } from "./optionSearch";
+import { formatNowTimeInTz, getOffsetMinutes } from "./timeZoneIntl";
 import {
   TZ_OPTIONS,
-  formatNowTimeInTz,
-  getOffsetMinutes,
   resetTimeZoneCaches,
   useTimeZoneSelect,
 } from "./timeZoneSelect";
@@ -669,26 +668,6 @@ describe("the clock beside a zone", () => {
 });
 
 describe("the offset a zone sorts by", () => {
-  const january = new Date(Date.UTC(2026, 0, 15, 12));
-  const july = new Date(Date.UTC(2026, 6, 15, 12));
-
-  it("reads a zone ahead of UTC", () => {
-    expect(getOffsetMinutes("Asia/Tokyo", january)).toBe(540);
-  });
-
-  it("reads a zone behind UTC", () => {
-    expect(getOffsetMinutes("America/Phoenix", january)).toBe(-420);
-  });
-
-  it("reads a zone that is not a whole hour off", () => {
-    expect(getOffsetMinutes("Asia/Kathmandu", january)).toBe(345);
-  });
-
-  it("follows a zone across its own DST boundary", () => {
-    expect(getOffsetMinutes("America/Los_Angeles", january)).toBe(-480);
-    expect(getOffsetMinutes("America/Los_Angeles", july)).toBe(-420);
-  });
-
   it("follows one a picker sat mounted through", () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date(Date.UTC(2026, 2, 8, 9, 30)));
