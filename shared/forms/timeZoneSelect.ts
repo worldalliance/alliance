@@ -262,6 +262,9 @@ function selectedLabel(tz: string): BaseLabel | null {
 
 type BaseItem = Omit<TimeZoneSelectItem, "timeLabel">;
 
+// localeCompare costs Hermes on Android twelve times what one collator does.
+const collator = new Intl.Collator();
+
 let cachedBase: { minute: number; items: BaseItem[] } | null = null;
 
 // Keyed on the minute and shared by every picker on the page, so opening one a
@@ -279,7 +282,7 @@ function baseItems(minute: number): BaseItem[] {
     (a, b) =>
       Number(a.offsetMins === null) - Number(b.offsetMins === null) ||
       (a.offsetMins ?? 0) - (b.offsetMins ?? 0) ||
-      a.labelLeft.localeCompare(b.labelLeft),
+      collator.compare(a.labelLeft, b.labelLeft),
   );
 
   cachedBase = { minute, items };
