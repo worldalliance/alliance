@@ -43,6 +43,27 @@ export function canDisconnect(
   );
 }
 
+enum PasswordAction {
+  Set = "set",
+  Reset = "reset",
+}
+
+const PASSWORD_ACTION: Record<PasswordAction, { label: string; verb: string }> =
+  {
+    [PasswordAction.Set]: { label: "Set password", verb: "set" },
+    [PasswordAction.Reset]: { label: "Reset password", verb: "reset" },
+  };
+
+/** Reset until the load shows the member has no password. */
+export function passwordAction(methods: SignInMethods | null): {
+  label: string;
+  verb: string;
+} {
+  return PASSWORD_ACTION[
+    methods?.hasPassword === false ? PasswordAction.Set : PasswordAction.Reset
+  ];
+}
+
 /**
  * Stores what a link or unlink answered with, then refetches, so the next
  * change waits on the server's own view rather than on a guess.

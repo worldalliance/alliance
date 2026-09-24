@@ -10,6 +10,7 @@ import { authForgotPassword, authRefreshTokens } from "@alliance/shared/client";
 import type { SettingsSaveStatus } from "@alliance/shared/lib/settings";
 import {
   canDisconnect,
+  passwordAction,
   useSignInMethods,
   type SignInMethods,
 } from "@alliance/shared/lib/signInMethods";
@@ -110,17 +111,6 @@ async function refreshSession(label: string): Promise<Result<void, string>> {
     : R.success(undefined);
 }
 
-enum PasswordAction {
-  Set = "set",
-  Reset = "reset",
-}
-
-const PASSWORD_ACTION: Record<PasswordAction, { label: string; verb: string }> =
-  {
-    [PasswordAction.Set]: { label: "Set password", verb: "set" },
-    [PasswordAction.Reset]: { label: "Reset password", verb: "reset" },
-  };
-
 function PasswordAccess({
   email,
   methods,
@@ -130,10 +120,7 @@ function PasswordAccess({
   methods: SignInMethods | null;
   loadFailed: boolean;
 }) {
-  const { label, verb } =
-    PASSWORD_ACTION[
-      methods?.hasPassword === false ? PasswordAction.Set : PasswordAction.Reset
-    ];
+  const { label, verb } = passwordAction(methods);
   const send = useMutation({
     mutationFn: async () => {
       const response = await authForgotPassword({ body: { email } });

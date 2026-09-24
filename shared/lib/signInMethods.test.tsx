@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import type { UserDto } from "../client";
 import {
   canDisconnect,
+  passwordAction,
   signInMethods,
   useSignInMethods,
 } from "./signInMethods";
@@ -36,6 +37,26 @@ describe("canDisconnect", () => {
 
     expect(canDisconnect(methods, OAuthProvider.Google)).toBe(true);
     expect(canDisconnect(methods, OAuthProvider.Apple)).toBe(true);
+  });
+});
+
+describe("passwordAction", () => {
+  it("offers to set a password to a member without one", () => {
+    const methods = signInMethods(
+      makeUser({ hasPassword: false, oauthAccounts: [google] }),
+    );
+
+    expect(passwordAction(methods).label).toBe("Set password");
+  });
+
+  it("offers a reset to a member with a password", () => {
+    const methods = signInMethods(makeUser({ oauthAccounts: [] }));
+
+    expect(passwordAction(methods).label).toBe("Reset password");
+  });
+
+  it("offers a reset while the methods are unknown", () => {
+    expect(passwordAction(null).label).toBe("Reset password");
   });
 });
 
