@@ -5,6 +5,7 @@ import Card from "@alliance/sharedweb/ui/Card";
 import FormInput from "@alliance/sharedweb/ui/FormInput";
 import { useEffect, useState } from "react";
 import { href, useNavigate } from "react-router";
+import type { LoginNotice } from "../../onboarding/AccountStep";
 
 const ResetPasswordPage = () => {
   const [token, setToken] = useState<string | null>(null);
@@ -56,7 +57,9 @@ const ResetPasswordPage = () => {
     }
 
     navigate(href("/login"), {
-      state: { message: "Password reset successful! Please log in." },
+      state: {
+        message: "Password reset successful! Please log in.",
+      } satisfies LoginNotice,
     });
   };
 

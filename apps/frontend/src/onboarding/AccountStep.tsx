@@ -15,7 +15,8 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import OAuthButtons from "@alliance/sharedweb/ui/OAuthButtons";
 import { useState, type FormEvent, type ReactNode } from "react";
-import { href, useNavigate } from "react-router";
+import { href, useLocation, useNavigate } from "react-router";
+import { z } from "zod";
 import { useAuth } from "../lib/AuthContext";
 import { getApiUrl, isFeatureEnabled } from "../lib/config";
 import { JOIN_MAILTO } from "../site/content";
@@ -26,6 +27,11 @@ const FIELD =
   "h-11 w-full rounded-md border border-zinc-300 bg-white px-3.5 text-sm text-black outline-none transition-colors placeholder:text-zinc-500 focus:border-[var(--ob-navy)]";
 
 const CARD_BUTTON = "w-full gap-2 py-2.5";
+
+const handedNotice = z.object({ message: z.string() });
+
+/** The navigation state a page sends to `/login` to show under the fields. */
+export type LoginNotice = z.infer<typeof handedNotice>;
 
 function credentialsFrom(form: HTMLFormElement) {
   const data = new FormData(form);
@@ -79,7 +85,11 @@ export function AccountStep({
     (!!referralCode && !inviteUsed && !inviteUnresolved);
   const [loggingIn, setLoggingIn] = useState(startInLogin);
   const [error, setError] = useState<ReactNode>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const location = useLocation();
+  const [notice, setNotice] = useState<string | null>(() => {
+    const handed = handedNotice.safeParse(location.state);
+    return handed.success ? handed.data.message : null;
+  });
   const [pending, setPending] = useState(false);
   const showForm = loggingIn || (!inviteOnly && !invitePending);
 
