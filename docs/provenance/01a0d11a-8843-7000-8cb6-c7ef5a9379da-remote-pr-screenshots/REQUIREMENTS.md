@@ -8,3 +8,5 @@ task: Remote PR screenshots
 - Give the agent access to an Android emulator; iOS support is also desirable.
 - Let the agent choose its own simulator interactions rather than restricting it to predetermined tests.
 - After discussing GitHub-hosted macOS runners, the user requested implementation, a sample PR, and a workflow run against that PR.
+
+- Replace Codex with `claude -p --dangerously-skip-permissions` and streaming JSON output, and run the workflow with Claude. The user spelled the output format `json-stream`.

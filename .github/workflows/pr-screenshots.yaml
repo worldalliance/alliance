@@ -82,6 +82,11 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
       - name: Prepare device and host tools
         timeout-minutes: 15
         env:
@@ -97,17 +102,30 @@ jobs:
         run: |
           mkdir -p .scratch/pr-screenshots/evidence
           jq -n '{pr: env.PR_NUMBER, base: env.BASE_SHA, head: env.HEAD_SHA, platform: env.NATIVE_PLATFORM, focus: env.CAPTURE_FOCUS}' > .scratch/pr-screenshots/context.json
+      - name: Start isolated Claude credential proxy
+        env:
+          CLAUDE_CREDENTIAL: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          test -n "$CLAUDE_CREDENTIAL"
+          proxy_info="$PWD/.scratch/pr-screenshots/claude-proxy.json"
+          sudo -n env -u CLAUDE_CREDENTIAL -u NODE_OPTIONS "$(command -v node)" --disable-sigusr1 controller/.github/scripts/claude-proxy.cjs "$proxy_info" <<< "$CLAUDE_CREDENTIAL" &
+          for _ in {1..30}; do
+            if [ -s "$proxy_info" ]; then exit 0; fi
+            sleep 1
+          done
+          echo 'Claude credential proxy did not start' >&2
+          exit 1
+      - name: Remove privileged access before executing PR code
+        run: |
+          if [ "$RUNNER_ENVIRONMENT" != github-hosted ]; then exit 1; fi
+          if [ "$RUNNER_OS" = Linux ]; then
+            sudo find /run -type s -user root -exec chmod go-rwx {} +
+          fi
+          sudo sh -c 'printf "\n%s ALL=(ALL:ALL) !ALL\n" "$1" >> /etc/sudoers' sh "$(id -un)"
+          if sudo -n true 2>/dev/null; then exit 1; fi
       - name: Explore and capture before and after
         timeout-minutes: 65
-        uses: openai/codex-action@86365089eb2b84e0a8fb0717b304f8bdcb13b20e
-        with:
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          safety-strategy: drop-sudo
-          sandbox: danger-full-access
-          model: gpt-5.5
-          effort: high
-          prompt-file: controller/skills/pr-screenshots/REMOTE.md
-          output-file: .scratch/pr-screenshots/agent-summary.txt
+        run: bash controller/.github/scripts/pr-screenshots-claude.sh
         env:
           CI: "true"
           BROWSER: none
