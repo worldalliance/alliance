@@ -70,7 +70,7 @@ describe("reportOAuthFailure", () => {
       cause,
     });
     expect(captured[0].properties).toMatchObject({
-      event: ExceptionEvent.OAuthSignInFailed,
+      event: ExceptionEvent.OAuthFailed,
     });
   });
 

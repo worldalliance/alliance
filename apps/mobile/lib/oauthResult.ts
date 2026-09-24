@@ -49,7 +49,7 @@ export function reportOAuthFailure(
 ): void {
   console.error(message, ...details);
   captureException(
-    ExceptionEvent.OAuthSignInFailed,
+    ExceptionEvent.OAuthFailed,
     new Error(message, {
       cause: details.find((detail) => detail instanceof Error),
     }),
