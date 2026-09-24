@@ -3,7 +3,6 @@ import { NotificationDto, notifsSetRead } from "@alliance/shared/client";
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import {
   buildNotificationRenderItems,
-  getNotificationTime,
   LikesBucket,
   NotificationRenderItem,
 } from "@alliance/shared/lib/notificationBucketing";
@@ -81,12 +80,7 @@ export default function NotificationsScreen() {
     });
   }, [refetch, queryClient]);
 
-  const notifications = useMemo(() => {
-    if (!response) return [];
-    return response.filter(
-      (notif) => getNotificationTime(notif).getTime() <= Date.now(),
-    );
-  }, [response]);
+  const notifications = useMemo(() => response ?? [], [response]);
 
   const unreadTotal = useMemo(() => {
     return response?.filter((n) => !n.readAt).length ?? 0;
