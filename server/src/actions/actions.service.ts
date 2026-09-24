@@ -2137,7 +2137,7 @@ export class ActionsService {
       answer: string,
       selections: Record<string, boolean>,
     ) => {
-      if (selections?.[answer] === false) {
+      if (selections?.[answer] !== true) {
         return false;
       }
       return schema.pages.some((page) =>

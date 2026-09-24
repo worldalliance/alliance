@@ -4365,8 +4365,30 @@ describe("Actions (e2e)", () => {
         schema: contentfulFormSchema,
         publicAnswers: {},
       },
+      {
+        output: "only a display block beside an answer with no public flag",
+        schema: {
+          ...contentfulFormSchema,
+          outputViews: [
+            {
+              id: "view-1",
+              type: "default",
+              blocks: [
+                {
+                  id: "block-header",
+                  type: "display",
+                  kind: "header",
+                  text: "Done",
+                },
+                { id: "block-published", fieldId: "published" },
+              ],
+            },
+          ],
+        },
+        publicAnswers: {},
+      },
     ])(
-      "leaves out a friend's completion with $output",
+      "leaves out a friend's completion and its output with $output",
       async ({ schema, publicAnswers }) => {
         const viewer = await userService.create({
           email: `feed-empty-viewer-${Date.now()}@example.com`,
@@ -4393,7 +4415,7 @@ describe("Actions (e2e)", () => {
           },
         );
 
-        await activityRepo.save(
+        const activity = await activityRepo.save(
           activityRepo.create({
             type: ActionActivityType.USER_COMPLETED,
             actionId: action.id,
@@ -4412,6 +4434,14 @@ describe("Actions (e2e)", () => {
         expect(feed.some((i) => i.activity?.actionName === action.name)).toBe(
           false,
         );
+        const page = await request(ctx.app.getHttpServer())
+          .get(`/actions/activities/${activity.id}`)
+          .set(
+            "Authorization",
+            `Bearer ${signAccessToken(ctx.jwtService, viewer)}`,
+          )
+          .expect(200);
+        expect(page.body.formResponseOutput).toBeUndefined();
 
         await actionRepo.delete(action.id);
         await formRepo.delete(form.id);
