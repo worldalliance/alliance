@@ -34,6 +34,28 @@ describe("storedQuestionFields", () => {
     ]);
   });
 
+  it("keeps the rest of a group around a question it cannot read", () => {
+    const fields = storedQuestionFields({
+      pages: [
+        {
+          id: "one",
+          fields: [
+            {
+              id: "g",
+              type: "group",
+              kind: "group",
+              fields: [staleBlock, textField("a", "First")],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(fields.ok && fields.value.map((field) => field.label)).toEqual([
+      "First",
+    ]);
+  });
+
   it("leaves out display blocks it can read", () => {
     const fields = storedQuestionFields({
       pages: [
