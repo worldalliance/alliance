@@ -616,3 +616,114 @@ describe("lists, records and the methods that read them", () => {
     expect(run("input1['length']", { input1: { label: "a" } })).toBeUndefined();
   });
 });
+
+describe("the step budget", () => {
+  const nestedLoop =
+    "'x'.repeat(10000).split('').filter(a => 'y'.repeat(10000).split('').includes(a))";
+
+  it("stops a formula that runs past it, even inside a callback", () => {
+    expect(() => run(nestedLoop)).toThrow("too long");
+  });
+
+  it("starts afresh for the next formula", () => {
+    expect(() => run(nestedLoop)).toThrow();
+    expect(
+      run("input1.map(n => n * 2).reduce((a, b) => a + b, 0)", {
+        input1: Array.from({ length: 1000 }, () => 1),
+      }),
+    ).toBe(2000);
+  });
+
+  const longTexts = Array.from({ length: 1000 }, () => "y".repeat(1000));
+
+  it.each([
+    "({ k: 1 })[input1]",
+    "input1 < 'z'",
+    "input1 == 'z'",
+    "'z'.includes(input1)",
+    "[input1].join('')",
+    "[input1].sort()",
+    "[1, 2].sort(() => input1)",
+  ])("counts turning a list into text in %s", (formula) => {
+    expect(() => run(formula, { input1: longTexts })).toThrow("too long");
+  });
+
+  it("counts the length of a list of empty items turned into text", () => {
+    expect(() =>
+      run("input1.map(x => ({ k: 1 })[input1])", {
+        input1: Array.from({ length: 10000 }, () => ""),
+      }),
+    ).toThrow("too long");
+  });
+
+  it("blanks a result past the size limit rather than charging for it", () => {
+    expect(run("'ab'.repeat(2000000) ?? 'none'")).toBe("none");
+  });
+
+  it.each([
+    "input1 < 'z'",
+    "input1 * 1",
+    "-input1",
+    "Math.abs(input1)",
+    "input2[input1]",
+    "'z'[input1]",
+  ])("counts reading text as a number in %s", (formula) => {
+    expect(() =>
+      run(`input2.map(x => ${formula})`, {
+        input1: "1".repeat(10000),
+        input2: Array.from({ length: 200 }, () => 1),
+      }),
+    ).toThrow("too long");
+  });
+
+  const doublings = JSON.stringify(Array.from({ length: 26 }, (_, i) => i));
+
+  it("counts the text `+` builds", () => {
+    expect(() =>
+      run("input1.map(a => input1.map(b => a + b))", {
+        input1: Array.from({ length: 100 }, () => "y".repeat(9999)),
+      }),
+    ).toThrow("too long");
+  });
+
+  it("counts every nested item `flat` copies", () => {
+    expect(() =>
+      run(
+        `${doublings}.slice(0, 19).reduce((a, b) => ({ v: [a.v, a.v] }), { v: [1] }).v.flat(30)`,
+      ),
+    ).toThrow("too long");
+  });
+
+  it("counts a list a callback returns after coming back out of a method", () => {
+    expect(() =>
+      run("input2.sort(input2.reduce((acc, x) => acc, a => input1)).length", {
+        input1: longTexts,
+        input2: Array.from({ length: 200 }, () => 1),
+      }),
+    ).toThrow("too long");
+  });
+
+  it("charges nothing for a list a callback returns unless it is read", () => {
+    const ones = Array.from({ length: 1000 }, () => 1);
+    expect(
+      run("input1.reduce((acc, x) => acc.concat([x]), []).length", {
+        input1: ones,
+      }),
+    ).toBe(1000);
+    expect(
+      run("input1.reduce((acc, x) => acc, input2).length", {
+        input1: ones,
+        input2: ones,
+      }),
+    ).toBe(1000);
+  });
+
+  it("charges nothing for comparing two lists or reading one item", () => {
+    expect(run("input1 == input1", { input1: longTexts })).toBe(true);
+    expect(
+      run("input1.map((x, i) => input1.at(i - 1)).length", {
+        input1: Array.from({ length: 1000 }, (_, i) => i),
+      }),
+    ).toBe(1000);
+  });
+});

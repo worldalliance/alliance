@@ -415,6 +415,17 @@ describe("evaluateVariable", () => {
     });
   });
 
+  it("counts turning the result into text against the step budget", () => {
+    const doublings = JSON.stringify(Array.from({ length: 26 }, (_, i) => i));
+    const v = variable({
+      formula: `${doublings}.reduce((a, b) => ({ v: [a.v, a.v] }), { v: [1] }).v`,
+    });
+    expect(evaluate(v, {})).toEqual({
+      ok: false,
+      error: "The formula takes too long to work out.",
+    });
+  });
+
   it("writes out the choices behind a multi-select answer", () => {
     const v = variable({
       inputs: { input1: { kind: "field", fieldId: "pick" } },

@@ -5,12 +5,14 @@ import z from "zod";
 import { R, type Result } from "../result";
 import { formatCityValue, parseCityValue } from "./city";
 import type { FieldKind, FormValue, ListSubField } from "./form-schema";
+import { withStepBudget } from "./formula-step-budget";
 import { isListRow } from "./list-rows";
 import {
   compileVariableExpression,
   evaluateVariableExpression,
   exprValueToText,
   FORBIDDEN_PROPERTIES,
+  type ExprNode,
   type ExprRecord,
   type ExprValue,
 } from "./variable-expression";
@@ -541,6 +543,20 @@ export function formatVariableValue(value: ExprValue): string {
   return exprValueToText(value) ?? "";
 }
 
+/** Evaluates and formats under one step budget, and fails past it. */
+export function evaluateVariableText(
+  node: ExprNode,
+  inputs: ReadonlyMap<string, ExprValue>,
+): Result<string, string> {
+  return R.fromThrowable(
+    () =>
+      withStepBudget(() =>
+        formatVariableValue(evaluateVariableExpression(node, inputs)),
+      ),
+    (error) => R.toError(error).message,
+  );
+}
+
 export function evaluateVariable(
   variable: FormVariable,
   context: VariableResolutionContext,
@@ -558,12 +574,7 @@ export function evaluateVariable(
     inputs.set(name, value.value);
   }
 
-  const value = R.fromThrowable(() =>
-    evaluateVariableExpression(compiled.value, inputs),
-  );
-  if (!value.ok) return R.failure(value.error.message);
-
-  return R.success(formatVariableValue(value.value));
+  return evaluateVariableText(compiled.value, inputs);
 }
 
 export function resolveVariableValues(

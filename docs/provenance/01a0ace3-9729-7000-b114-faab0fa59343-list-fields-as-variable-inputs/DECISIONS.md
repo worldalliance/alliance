@@ -82,11 +82,19 @@ The existing renderability check already rejects a formula that ends on an array
 
 A formula that ends on a method it never calls, like `.join`, gets "Add () to call it." instead of the arrow-function advice. A library member's type is declared by a method signature and an arrow function's isn't, which tells the two apart. The advice names no method, because `.map()` or `Math.max()` with no arguments would be wrong to suggest.
 
+## Step budget
+
+A formula fails once it runs past a million steps, rather than holding the thread running it. The server fills in variables for every activity it sends, so one slow formula would stall every request, not one viewer's device. Formulas are written by admins, but a short one like `input1.filter(a => input2.includes(a))` grows with how long respondents' answers are.
+
+Counting only formula nodes isn't enough. A formula of literals that uses one 10,000-item list as a record key inside a loop stays under 400,000 nodes and took 7.7s with no budget, because turning the list into text happens inside one node. So method calls also cost what they read of their receiver and the length of their result, and every place a list becomes text costs its length plus its items' sizes. Items are measured in full because the same list can appear many times inside another at no cost to build it. A wall-clock limit would be simpler, but a formula would then pass on the admin's laptop and fail on a slow phone.
+
+A method result over the 10,000 text or list limit blanks without counting against the budget, so `?? fallback` catches it however large it is.
+
 ## Scope and compatibility
 
 The list resolver lives in `common/src/forms/variables.ts`, which the web and mobile forms (`shared/useFormRenderer.ts`) and saved-response output (`common/src/forms/output-resolution.ts`) already share. Variables recompute whenever answers or visibility extras change.
 
-Any variable that fails blocks the form, web and mobile, with the "This form can't be displayed" notice an unknown element or condition kind already gets. I read "the variable calculation fails" as every failure `evaluateVariable` reports, not only an unknown input kind. The evaluator doesn't throw on answers, and the admin rejects a formula that doesn't compile, so a failure in practice means a newer admin saved something this build can't calculate. Answers typed mid-form shouldn't trip it. The admin's builder preview renders the unsaved schema, so it shows the same notice while a formula there is broken. There the notice names the variable and why it failed, in place of the line about refreshing, which can't fix a draft. The admin's response views get the same message, since refreshing can't fix a formula in a response's snapshot either.
+Any variable that fails blocks the form, web and mobile, with the "This form can't be displayed" notice an unknown element or condition kind already gets. I read "the variable calculation fails" as every failure `evaluateVariable` reports, not only an unknown input kind. The evaluator throws on answers only past its step budget, and the admin rejects a formula that doesn't compile, so a failure in practice means a newer admin saved something this build can't calculate, or answers long enough to push a formula past the budget. Freezing the respondent's device for seconds would be worse than the notice. The admin's builder preview renders the unsaved schema, so it shows the same notice while a formula there is broken. There the notice names the variable and why it failed, in place of the line about refreshing, which can't fix a draft. The admin's response views get the same message, since refreshing can't fix a formula in a response's snapshot either.
 
 An output view isn't blocked. A variable that fails there gets no value, so its `#{name}` shows as written, which is what `interpolateVariables` already does for a name it has no value for. The other variables still fill in. One bad variable in a feed card shouldn't hide the card, and the raw token still shows something is wrong.
 

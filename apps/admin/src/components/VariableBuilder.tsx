@@ -13,15 +13,14 @@ import {
 } from "@alliance/common/forms/form-schema";
 import {
   compileVariableExpression,
-  evaluateVariableExpression,
   type ExprRecord,
   type ExprValue,
 } from "@alliance/common/forms/variable-expression";
 import { checkVariableFormulaType } from "@alliance/common/forms/variable-formula-check";
 import { collectUnresolvedVariableReferences } from "@alliance/common/forms/variable-interpolation";
 import {
+  evaluateVariableText,
   FIELD_KIND_VARIABLE_INPUT_MODE,
-  formatVariableValue,
   formValueToExprValue,
   listInputPropertyErrors,
   readableListSubFields,
@@ -37,7 +36,6 @@ import {
   type VariableInput,
   type VariableListInput,
 } from "@alliance/common/forms/variables";
-import { R } from "@alliance/common/result";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { milliseconds } from "date-fns";
@@ -566,12 +564,8 @@ function VariableCard({
     const values = new Map<string, ExprValue>(
       [...readings].map(([name, reading]) => [name, reading.value]),
     );
-    // Evaluated during render, unlike the live form's, so a formula that throws
-    // has to end as an empty preview rather than as a blank screen.
-    const value = R.fromThrowable(() =>
-      evaluateVariableExpression(compiled.value, values),
-    );
-    return value.ok ? formatVariableValue(value.value) : "";
+    const value = evaluateVariableText(compiled.value, values);
+    return value.ok ? value.value : "";
   }, [compiled, typed, readings]);
 
   const helpInputs = useMemo<FormulaHelpInput[]>(
