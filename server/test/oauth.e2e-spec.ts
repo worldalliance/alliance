@@ -22,7 +22,12 @@ import {
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import request from "supertest";
 import TestAgent from "supertest/lib/agent";
-import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
+import {
+  createTestApp,
+  signAccessToken,
+  signImpersonationToken,
+  TestContext,
+} from "./e2e-test-utils";
 
 const RETURN_TO = "http://localhost:5173/login";
 const FRESH_MEMBER_PASSWORD = "pass";
@@ -371,6 +376,17 @@ describe("OAuth sign-in (e2e)", () => {
       expect(linkedEmails(me.body.user).google).toBe("user@example.com");
     });
 
+    it("refuses to start for an admin impersonating the member", async () => {
+      await client()
+        .get(path("start"))
+        .set(
+          "Authorization",
+          `Bearer ${signImpersonationToken(ctx.jwtService, member)}`,
+        )
+        .query({ intent: OAuthIntent.Link, returnTo: RETURN_TO })
+        .expect(403);
+    });
+
     // A throw would otherwise reach the member as an exception filter's JSON,
     // mid-navigation, with no way back to the app.
     it("sends the member back when the write throws", async () => {
@@ -563,6 +579,26 @@ describe("OAuth sign-in (e2e)", () => {
         .delete(path("link"))
         .set("Authorization", `Bearer ${accessToken}`)
         .expect(400);
+    });
+
+    it("refuses an admin impersonating the member", async () => {
+      const member = await freshMember();
+      profile = { ...profile, subject: `impersonated-${member.id}` };
+      await linkInBrowser(member.accessToken);
+
+      await client()
+        .delete(path("link"))
+        .set(
+          "Authorization",
+          `Bearer ${signImpersonationToken(ctx.jwtService, member)}`,
+        )
+        .expect(403);
+
+      const me = await client()
+        .get("/auth/me")
+        .set("Authorization", `Bearer ${member.accessToken}`)
+        .expect(200);
+      expect(linkedEmails(me.body.user).google).toBe(profile.email);
     });
 
     it("allows it once another provider is linked", async () => {

@@ -78,6 +78,15 @@ export function signAccessToken(
   });
 }
 
+export function signImpersonationToken(
+  jwtService: JwtService,
+  user: { id: number; email: string },
+): string {
+  return jwtService.sign(accessTokenPayload({ user, isImpersonation: true }), {
+    secret: process.env.JWT_SECRET,
+  });
+}
+
 export async function createTestApp(
   modules: Type<unknown>[],
   options: { enableThrottle?: boolean } = {},

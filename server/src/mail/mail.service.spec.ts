@@ -1,4 +1,4 @@
-import { MailerService } from "@nestjs-modules/mailer";
+import { MailerService, type ISendMailOptions } from "@nestjs-modules/mailer";
 import { Test } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { Action } from "src/actions/entities/action.entity";
@@ -194,7 +194,9 @@ describe("sendMail", () => {
   const originalEnv = { ...process.env };
 
   async function harness(
-    sendMail: () => Promise<{ accepted: string[]; messageId: string }>,
+    sendMail: (
+      options: ISendMailOptions,
+    ) => Promise<{ accepted: string[]; messageId: string }>,
   ) {
     const saves: Mail[] = [];
     const moduleRef = await Test.createTestingModule({
@@ -271,4 +273,33 @@ describe("sendMail", () => {
     await expect(send(service)).rejects.toThrow("MAIL_FROM is unset");
     expect(attempted).toBe(false);
   });
+
+  it.each([
+    { hasPassword: true, verb: "reset" },
+    { hasPassword: false, verb: "set" },
+  ])(
+    "offers to $verb the password when hasPassword is $hasPassword",
+    async ({ hasPassword, verb }) => {
+      const sent: ISendMailOptions[] = [];
+      const { service, saves } = await harness((options) => {
+        sent.push(options);
+        return Promise.resolve({
+          accepted: ["member@example.org"],
+          messageId: "<abc@mg>",
+        });
+      });
+
+      await service.sendPasswordResetEmail({
+        email: "member@example.org",
+        name: "Jane",
+        resetToken: "token",
+        hasPassword,
+      });
+
+      expect(sent[0].subject).toBe(`a link to ${verb} your password`);
+      expect(saves.at(-1)?.renderedHtml).toContain(
+        `Use this link to ${verb} your password`,
+      );
+    },
+  );
 });

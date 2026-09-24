@@ -10,13 +10,18 @@ import { JwtService, TokenExpiredError } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { User } from "src/user/entities/user.entity";
+import { hasPassword, User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { Not, type Repository } from "typeorm";
 import { z } from "zod";
 import { AuthService } from "../auth.service";
 import { SpentTokenService } from "../spent-token.service";
 import { JWTTokenType } from "../tokens";
+import {
+  decryptIdentity,
+  encryptIdentity,
+  type LinkedIdentity,
+} from "./link-identity";
 import { OAuthAccount } from "./oauth-account.entity";
 import type { OAuthProfile } from "./oauth-client";
 
@@ -60,6 +65,28 @@ const handoffSchema = z.object({
 });
 
 export type OAuthHandoff = z.infer<typeof handoffSchema>;
+
+/**
+ * What the callback of a mobile-started link sends back to the app: the
+ * identity the member consented with, written only at redeem, by the member
+ * who started the flow and with the proof the app kept.
+ *
+ * The identity is encrypted because the handoff rides the return link's query
+ * string, which browser history and the web host's logs can record.
+ */
+const linkHandoffSchema = z.object({
+  tokenType: z.literal(JWTTokenType.oauthLinkHandoff),
+  userId: z.number(),
+  provider: z.enum(OAuthProvider),
+  identity: z.string(),
+  proofHash: z.string(),
+});
+
+export type OAuthLinkHandoff = Omit<
+  z.infer<typeof linkHandoffSchema>,
+  "tokenType" | "identity"
+> &
+  LinkedIdentity;
 
 export type OAuthProof = {
   proof: string;
@@ -203,11 +230,79 @@ export class OAuthAuthService {
     );
   }
 
+  async signLinkHandoff(handoff: OAuthLinkHandoff): Promise<string> {
+    const { subject, email, ...claims } = handoff;
+    return this.jwtService.signAsync(
+      {
+        ...claims,
+        identity: await encryptIdentity({ subject, email }),
+        tokenType: JWTTokenType.oauthLinkHandoff,
+      },
+      { expiresIn: HANDOFF_LIFETIME_MS / 1000 },
+    );
+  }
+
   async redeemHandoff(params: {
     token: string;
     proof: string;
     provider: OAuthProvider;
   }): Promise<Result<OAuthAuthentication, OAuthError>> {
+    const handoff = await this.spendHandoff({
+      ...params,
+      schema: handoffSchema,
+      belongsToCaller: () => true,
+    });
+    if (!handoff.ok) {
+      return handoff;
+    }
+    const user = await this.userRepository.findOneBy({
+      id: handoff.value.userId,
+    });
+    if (!user) {
+      return R.failure(OAuthError.Failed);
+    }
+    return R.success({ user, outcome: handoff.value.outcome });
+  }
+
+  /**
+   * Links the identity a mobile browser session came back with, for the member
+   * who started it. Another member signed in on the device since is refused.
+   */
+  async redeemLinkHandoff(params: {
+    token: string;
+    proof: string;
+    provider: OAuthProvider;
+    userId: number;
+  }): Promise<Result<User, OAuthError>> {
+    const handoff = await this.spendHandoff({
+      ...params,
+      schema: linkHandoffSchema,
+      belongsToCaller: (claims) => claims.userId === params.userId,
+    });
+    if (!handoff.ok) {
+      return handoff;
+    }
+    const identity = await decryptIdentity(handoff.value.identity);
+    if (!identity.ok) {
+      console.error("oauth link handoff identity unreadable", identity.error);
+      return R.failure(OAuthError.Failed);
+    }
+    const { userId, provider } = handoff.value;
+    return this.link({
+      userId,
+      profile: { ...identity.value, provider, emailVerified: true, name: null },
+    });
+  }
+
+  private async spendHandoff<
+    T extends { provider: OAuthProvider; proofHash: string },
+  >(params: {
+    token: string;
+    proof: string;
+    provider: OAuthProvider;
+    schema: z.ZodType<T>;
+    belongsToCaller: (claims: T) => boolean;
+  }): Promise<Result<T, OAuthError>> {
     const payload = await R.fromPromise(
       this.jwtService.verifyAsync(params.token, {
         secret: process.env.JWT_SECRET,
@@ -220,11 +315,12 @@ export class OAuthAuthService {
           : OAuthError.Failed,
       );
     }
-    const handoff = handoffSchema.safeParse(payload.value);
+    const handoff = params.schema.safeParse(payload.value);
     if (
       !handoff.success ||
       handoff.data.provider !== params.provider ||
-      !proofMatches(params.proof, handoff.data.proofHash)
+      !proofMatches(params.proof, handoff.data.proofHash) ||
+      !params.belongsToCaller(handoff.data)
     ) {
       return R.failure(OAuthError.Failed);
     }
@@ -237,13 +333,7 @@ export class OAuthAuthService {
     if (!first) {
       return R.failure(OAuthError.Failed);
     }
-    const user = await this.userRepository.findOneBy({
-      id: handoff.data.userId,
-    });
-    if (!user) {
-      return R.failure(OAuthError.Failed);
-    }
-    return R.success({ user, outcome: handoff.data.outcome });
+    return R.success(handoff.data);
   }
 
   /**
@@ -393,7 +483,7 @@ export class OAuthAuthService {
           userId: params.userId,
           provider: Not(params.provider),
         });
-        if (!user.password && others === 0) {
+        if (!hasPassword(user) && others === 0) {
           return false;
         }
         await accounts.delete({

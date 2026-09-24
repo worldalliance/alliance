@@ -15,6 +15,7 @@ import { WebBrowserResultType } from "expo-web-browser/build/WebBrowser.types";
 import { FetchError } from "expo/src/winter/fetch/FetchErrors";
 import { AuthTabResultType } from "../modules/auth-tab/src/AuthTab.types";
 import {
+  AuthTabFlow,
   ClientFailure,
   FailureTone,
   handoffFromReturnLink,
@@ -70,7 +71,7 @@ describe("reportOAuthFailure", () => {
       cause,
     });
     expect(captured[0].properties).toMatchObject({
-      event: ExceptionEvent.OAuthSignInFailed,
+      event: ExceptionEvent.OAuthFailed,
     });
   });
 
@@ -379,7 +380,7 @@ describe("interruptedFailure", () => {
       FailureTone.Notice,
     );
     expect(interruptedFailure(OAuthError.Expired).message).toBe(
-      "Google or Apple sign-in took too long. Please try again.",
+      "That took too long. Please try again.",
     );
   });
 });
@@ -399,29 +400,51 @@ describe("the Auth Tab marker", () => {
     };
   };
 
+  const signIn = AuthTabFlow.SignIn;
+
   it("reports a tab a killed launch left open, once", async () => {
     const storage = memoryStorage();
     storage.items.set("oauthAuthTabOpen", "an earlier launch");
 
-    expect(await takeInterruptedAuthTab(storage)).toBe(true);
-    expect(await takeInterruptedAuthTab(storage)).toBe(false);
+    expect(await takeInterruptedAuthTab(storage, signIn)).toBe(true);
+    expect(await takeInterruptedAuthTab(storage, signIn)).toBe(false);
+  });
+
+  it("keeps a link's tab apart from a sign-in's", async () => {
+    const storage = memoryStorage();
+    storage.items.set("oauthLinkAuthTabOpen", "an earlier launch");
+
+    expect(await takeInterruptedAuthTab(storage, signIn)).toBe(false);
+    expect(await takeInterruptedAuthTab(storage, AuthTabFlow.Link)).toBe(true);
   });
 
   it("ignores the tab this launch has open", async () => {
     const storage = memoryStorage();
-    await whileAuthTabOpen(storage, async () => {
-      expect(await takeInterruptedAuthTab(storage)).toBe(false);
+    await whileAuthTabOpen({
+      storage,
+      flow: signIn,
+      open: async () => {
+        expect(await takeInterruptedAuthTab(storage, signIn)).toBe(false);
+      },
     });
   });
 
   it("clears the marker once the tab returns, even when opening it throws", async () => {
     const storage = memoryStorage();
-    expect(await whileAuthTabOpen(storage, async () => "returned")).toBe(
-      "returned",
-    );
+    expect(
+      await whileAuthTabOpen({
+        storage,
+        flow: signIn,
+        open: async () => "returned",
+      }),
+    ).toBe("returned");
     await expect(
-      whileAuthTabOpen(storage, async () => {
-        throw new Error("already open");
+      whileAuthTabOpen({
+        storage,
+        flow: signIn,
+        open: async () => {
+          throw new Error("already open");
+        },
       }),
     ).rejects.toThrow("already open");
     expect(storage.items.size).toBe(0);
@@ -439,10 +462,14 @@ describe("the Auth Tab marker", () => {
         throw new Error("disk");
       },
     };
-    expect(await whileAuthTabOpen(storage, async () => "returned")).toBe(
-      "returned",
-    );
-    expect(await takeInterruptedAuthTab(storage)).toBe(false);
+    expect(
+      await whileAuthTabOpen({
+        storage,
+        flow: signIn,
+        open: async () => "returned",
+      }),
+    ).toBe("returned");
+    expect(await takeInterruptedAuthTab(storage, signIn)).toBe(false);
     expect(consoleError).toHaveBeenCalledTimes(3);
   });
 });

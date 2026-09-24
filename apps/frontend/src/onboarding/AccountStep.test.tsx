@@ -10,7 +10,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { useState } from "react";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, type InitialEntry } from "react-router";
 import { AuthContext, type AuthContextType } from "../lib/AuthContext";
 import { AccountStep } from "./AccountStep";
 
@@ -89,12 +89,12 @@ const authValue: AuthContextType = {
   loading: false,
 };
 
-const Harness = () => {
+const Harness = ({ entry = "/" }: { entry?: InitialEntry }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [tick, setTick] = useState(0);
   return (
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[entry]}>
       <QueryClientProvider client={new QueryClient()}>
         <AuthContext.Provider value={authValue}>
           <button type="button" onClick={() => setTick((n) => n + 1)}>
@@ -197,6 +197,16 @@ describe("AccountStep", () => {
         },
       ]);
     });
+  });
+
+  it("shows the message the page that sent the member here hands over", () => {
+    render(
+      <Harness
+        entry={{ pathname: "/login", state: { message: "Handed over." } }}
+      />,
+    );
+
+    expect(screen.getByText("Handed over.")).toBeDefined();
   });
 
   it("sends a migrated account to the new domain instead of signing it in", async () => {

@@ -10,7 +10,9 @@ import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
 import { Platform } from "react-native";
 import { authTab } from "../modules/auth-tab";
+import { linkWithProvider, type LinkResult } from "./oauthLink";
 import {
+  AuthTabFlow,
   reportOAuthFailure,
   returnLinkFromAuthTab,
   returnLinkFromBrowser,
@@ -119,13 +121,16 @@ async function appleCredential(): Promise<Result<
 async function openBrowserSession(params: {
   url: string;
   returnTo: string;
+  authTabFlow: AuthTabFlow;
 }): Promise<Result<string, OAuthError>> {
   const tab = authTab();
   if (tab) {
     return returnLinkFromAuthTab(
-      await whileAuthTabOpen(AsyncStorage, () =>
-        tab.open({ url: params.url, redirectUrl: params.returnTo }),
-      ),
+      await whileAuthTabOpen({
+        storage: AsyncStorage,
+        flow: params.authTabFlow,
+        open: () => tab.open({ url: params.url, redirectUrl: params.returnTo }),
+      }),
     );
   }
   return returnLinkFromBrowser(
@@ -133,7 +138,8 @@ async function openBrowserSession(params: {
   );
 }
 
-export const takeInterruptedAuthTab = () => takeInterrupted(AsyncStorage);
+export const takeInterruptedAuthTab = (flow: AuthTabFlow) =>
+  takeInterrupted(AsyncStorage, flow);
 
 const NATIVE: NativeSignIn = {
   credential: {
@@ -148,4 +154,11 @@ export function signInWithProvider(params: {
   guestToken: string | undefined;
 }): Promise<SignInResult> {
   return signIn({ ...params, native: NATIVE });
+}
+
+export function linkProvider(params: {
+  provider: OAuthProvider;
+  userId: number;
+}): Promise<LinkResult> {
+  return linkWithProvider({ ...params, native: NATIVE });
 }

@@ -1,0 +1,121 @@
+import { OAuthProvider } from "@alliance/common/oauth";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
+import { oAuthUnlink, type OAuthAccountDto, type UserDto } from "../client";
+import { thrownRefusalMessage } from "./hey-api";
+import { meQuery } from "./meQuery";
+
+export type SignInMethods = {
+  hasPassword: boolean;
+  accounts: Record<OAuthProvider, OAuthAccountDto | null>;
+};
+
+export function signInMethods(user: UserDto): SignInMethods {
+  const accounts = user.oauthAccounts;
+  if (!accounts) {
+    throw new Error("user carries no oauthAccounts");
+  }
+  const connected = (provider: OAuthProvider) =>
+    accounts.find((account) => account.provider === provider) ?? null;
+  return {
+    hasPassword: user.hasPassword,
+    accounts: {
+      [OAuthProvider.Google]: connected(OAuthProvider.Google),
+      [OAuthProvider.Apple]: connected(OAuthProvider.Apple),
+    },
+  };
+}
+
+/** The server refuses the same; this only keeps the member from asking. */
+export function canDisconnect(
+  methods: SignInMethods,
+  provider: OAuthProvider,
+): boolean {
+  return (
+    methods.hasPassword ||
+    Object.values(OAuthProvider).some(
+      (other) => other !== provider && methods.accounts[other] !== null,
+    )
+  );
+}
+
+enum PasswordAction {
+  Set = "set",
+  Reset = "reset",
+}
+
+const PASSWORD_ACTION: Record<PasswordAction, { label: string; verb: string }> =
+  {
+    [PasswordAction.Set]: { label: "Set password", verb: "set" },
+    [PasswordAction.Reset]: { label: "Reset password", verb: "reset" },
+  };
+
+/** Reset until the load shows the member has no password. */
+export function passwordAction(methods: SignInMethods | null): {
+  label: string;
+  verb: string;
+} {
+  return PASSWORD_ACTION[
+    methods?.hasPassword === false ? PasswordAction.Set : PasswordAction.Reset
+  ];
+}
+
+/**
+ * Stores what a link or unlink answered with, then refetches, so the next
+ * change waits on the server's own view rather than on a guess.
+ */
+function settleSignInMethods(
+  queryClient: QueryClient,
+  user: UserDto | undefined,
+): Promise<void> {
+  if (user) {
+    queryClient.setQueryData(meQuery.queryKey, user);
+  }
+  return queryClient.invalidateQueries({ queryKey: meQuery.queryKey });
+}
+
+export function useSignInMethods() {
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    ...meQuery,
+    select: signInMethods,
+    // The settings form fetches this user fresh right before the list mounts.
+    refetchOnMount: false,
+  });
+
+  const disconnect = useMutation({
+    mutationFn: async (provider: OAuthProvider) => {
+      const response = await oAuthUnlink({ path: { provider } });
+      if (!response.data) {
+        throw response.error;
+      }
+      return response.data.user;
+    },
+    onSettled: (user) => settleSignInMethods(queryClient, user),
+  });
+
+  return {
+    /** Null rather than stale once a reload fails. */
+    methods: query.isError ? null : (query.data ?? null),
+    loadFailed: query.isError && !query.isFetching,
+    reload: query.refetch,
+    /** Connection controls wait while a change or a reload is unsettled. */
+    busy: disconnect.isPending || query.isFetching,
+    disconnect: disconnect.mutate,
+    disconnectError: disconnect.error
+      ? thrownRefusalMessage({
+          error: disconnect.error,
+          fallback: "Couldn't disconnect. Please try again.",
+          sessionExpired: "Your session has expired. Sign in again.",
+        })
+      : null,
+    resetDisconnect: disconnect.reset,
+    settle: (user: UserDto | undefined) =>
+      settleSignInMethods(queryClient, user),
+  };
+}

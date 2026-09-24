@@ -256,16 +256,19 @@ export class MailService {
     email: string;
     name: string;
     resetToken: string;
+    hasPassword: boolean;
   }): Promise<Mail> {
-    const { email, name, resetToken } = params;
+    const { email, name, resetToken, hasPassword } = params;
     const url = this.getPasswordResetUrl(resetToken);
+    const verb = hasPassword ? "reset" : "set";
     return this.sendMail({
       recipient: email,
       emailType: EmailType.PasswordReset,
-      subject: "a link to reset your password",
+      subject: `a link to ${verb} your password`,
       context: {
         name,
         url,
+        verb,
       },
       cid: null,
     });

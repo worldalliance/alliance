@@ -1,4 +1,5 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import { useSeedSettingsForm } from "./useSeedSettingsForm";
 
@@ -34,7 +35,7 @@ const seed = (user: { id: number }) => {
   const setLocation = jest.fn();
   const view = renderHook(
     ({ user }) => useSeedSettingsForm({ user, setSavedProfile, setLocation }),
-    { initialProps: { user } },
+    { initialProps: { user }, wrapper: queryWrapper().wrapper },
   );
   return { setSavedProfile, view };
 };

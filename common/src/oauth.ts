@@ -54,7 +54,8 @@ export const OAUTH_ERROR_MESSAGE: Record<
   (label: string) => string
 > = {
   [OAuthError.Cancelled]: (label) => `${label} sign-in was cancelled.`,
-  [OAuthError.Failed]: (label) => `${label} sign-in failed. Please try again.`,
+  [OAuthError.Failed]: (label) =>
+    `Continuing with ${label} didn't work. Please try again.`,
   [OAuthError.NoAccount]: (label) =>
     `No Alliance account uses that ${label} address. The Alliance is invite-only, so ask whoever invited you for a link.`,
   [OAuthError.EmailNotVerified]: (label) =>
@@ -67,8 +68,7 @@ export const OAUTH_ERROR_MESSAGE: Record<
     `${label} is the only way into your account. Set a password or connect another account first.`,
   [OAuthError.ProviderAlreadyConnected]: (label) =>
     `A different ${label} account is already connected to your Alliance account. Disconnect that one first.`,
-  [OAuthError.Expired]: (label) =>
-    `${label} sign-in took too long. Please try again.`,
+  [OAuthError.Expired]: () => "That took too long. Please try again.",
 };
 
 export function oauthErrorMessage(
@@ -85,6 +85,11 @@ export const parseOAuthOutcome = (value: unknown): OAuthOutcome | null =>
 export const parseOAuthError = (value: unknown): OAuthError | null =>
   z.enum(OAuthError).safeParse(value).data ?? null;
 
+const linkedMessage = (label: string) => `Your ${label} account is now linked.`;
+
+export const oauthLinkedMessage = (provider: OAuthProvider): string =>
+  linkedMessage(OAUTH_PROVIDER_LABEL[provider]);
+
 /** Null where the page the member lands on already says it. */
 const OUTCOME_MESSAGE: Record<
   OAuthOutcome,
@@ -92,7 +97,7 @@ const OUTCOME_MESSAGE: Record<
 > = {
   [OAuthOutcome.SignedIn]: null,
   [OAuthOutcome.SignedUp]: null,
-  [OAuthOutcome.Linked]: (label) => `Your ${label} account is now linked.`,
+  [OAuthOutcome.Linked]: linkedMessage,
 };
 
 export function oauthOutcomeMessage(

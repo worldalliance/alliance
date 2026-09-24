@@ -5,6 +5,7 @@ import Card from "@alliance/sharedweb/ui/Card";
 import FormInput from "@alliance/sharedweb/ui/FormInput";
 import { useEffect, useState } from "react";
 import { href, useNavigate } from "react-router";
+import type { LoginNotice } from "../../onboarding/AccountStep";
 
 const ResetPasswordPage = () => {
   const [token, setToken] = useState<string | null>(null);
@@ -49,14 +50,16 @@ const ResetPasswordPage = () => {
 
     if (!reset.response.ok) {
       setError(
-        "error resetting password. Please try again, or request a new token. ",
+        "Couldn't save your password. Try again, or request a new link.",
       );
       setLoading(false);
       return;
     }
 
     navigate(href("/login"), {
-      state: { message: "Password reset successful! Please log in." },
+      state: {
+        message: "Your password is saved. Please log in.",
+      } satisfies LoginNotice,
     });
   };
 
@@ -116,7 +119,7 @@ const ResetPasswordPage = () => {
             type="submit"
             disabled={loading}
           >
-            {loading ? "Resetting password..." : "Set new password"}
+            {loading ? "Saving password..." : "Set new password"}
           </Button>
         </div>
       </form>

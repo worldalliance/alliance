@@ -49,7 +49,7 @@ export function reportOAuthFailure(
 ): void {
   console.error(message, ...details);
   captureException(
-    ExceptionEvent.OAuthSignInFailed,
+    ExceptionEvent.OAuthFailed,
     new Error(message, {
       cause: details.find((detail) => detail instanceof Error),
     }),
@@ -89,21 +89,33 @@ export const thrownFailure = (error: unknown): OAuthFailure => {
   if (error instanceof Error && isNetworkFailure(error.cause)) {
     return ClientFailure.Network;
   }
-  reportOAuthFailure("oauth sign-in threw", error);
+  reportOAuthFailure("oauth flow threw", error);
   return OAuthError.Failed;
 };
+
+export function answerResult<T>(params: {
+  value: T | undefined;
+  error: unknown;
+  missing: string;
+}): Result<T, OAuthFailure> {
+  if (params.value) {
+    return R.success(params.value);
+  }
+  const error = parseOAuthError(params.error);
+  if (!error) {
+    reportOAuthFailure(params.missing);
+  }
+  return R.failure(error ?? OAuthError.Failed);
+}
 
 export function sessionResult(
   body: MobileOAuthSignInDto | undefined,
 ): SignInResult {
-  if (body?.session) {
-    return R.success(body.session);
-  }
-  const error = parseOAuthError(body?.error);
-  if (!error) {
-    reportOAuthFailure("oauth sign-in answered with no session or known error");
-  }
-  return R.failure(error ?? OAuthError.Failed);
+  return answerResult({
+    value: body?.session,
+    error: body?.error,
+    missing: "oauth sign-in answered with no session or known error",
+  });
 }
 
 export function handoffFromReturnLink(url: string): Result<string, OAuthError> {
@@ -192,9 +204,9 @@ export function isOAuthReturnLink(path: string): boolean {
 }
 
 /** Names every provider: the flow that knew which one died with the process. */
-const ANY_PROVIDER_LABEL = "Google or Apple";
+export const ANY_PROVIDER_LABEL = "Google or Apple";
 
-const UNFINISHED = "unfinished";
+export const UNFINISHED = "unfinished";
 
 export const UNFINISHED_FAILURE: ProviderFailure = {
   tone: FailureTone.Error,
@@ -234,7 +246,16 @@ type KeyValueStorage = {
   removeItem: (key: string) => Promise<void>;
 };
 
-const AUTH_TAB_OPEN_KEY = "oauthAuthTabOpen";
+export enum AuthTabFlow {
+  SignIn = "sign_in",
+  Link = "link",
+}
+
+// Separate keys, so onboarding never reads a cut-off link as an unfinished sign-in.
+const AUTH_TAB_OPEN_KEY: Record<AuthTabFlow, string> = {
+  [AuthTabFlow.SignIn]: "oauthAuthTabOpen",
+  [AuthTabFlow.Link]: "oauthLinkAuthTabOpen",
+};
 
 // Tells the marker this launch wrote apart from one a killed launch left.
 const LAUNCH_ID = `${Date.now()}-${Math.random()}`;
@@ -244,20 +265,21 @@ const LAUNCH_ID = `${Date.now()}-${Math.random()}`;
  * Android kills while it is open leaves no link to route. The marker is what
  * the next launch finds instead.
  */
-export async function whileAuthTabOpen<T>(
-  storage: KeyValueStorage,
-  open: () => Promise<T>,
-): Promise<T> {
-  const marked = await R.fromPromise(
-    storage.setItem(AUTH_TAB_OPEN_KEY, LAUNCH_ID),
-  );
+export async function whileAuthTabOpen<T>(params: {
+  storage: KeyValueStorage;
+  flow: AuthTabFlow;
+  open: () => Promise<T>;
+}): Promise<T> {
+  const { storage } = params;
+  const key = AUTH_TAB_OPEN_KEY[params.flow];
+  const marked = await R.fromPromise(storage.setItem(key, LAUNCH_ID));
   if (!marked.ok) {
     reportOAuthFailure("couldn't mark the auth tab open", marked.error);
   }
   try {
-    return await open();
+    return await params.open();
   } finally {
-    const cleared = await R.fromPromise(storage.removeItem(AUTH_TAB_OPEN_KEY));
+    const cleared = await R.fromPromise(storage.removeItem(key));
     if (!cleared.ok) {
       reportOAuthFailure("couldn't clear the auth tab marker", cleared.error);
     }
@@ -267,8 +289,10 @@ export async function whileAuthTabOpen<T>(
 /** True once for an Auth Tab an earlier launch opened and never heard back from. */
 export async function takeInterruptedAuthTab(
   storage: KeyValueStorage,
+  flow: AuthTabFlow,
 ): Promise<boolean> {
-  const marker = await R.fromPromise(storage.getItem(AUTH_TAB_OPEN_KEY));
+  const key = AUTH_TAB_OPEN_KEY[flow];
+  const marker = await R.fromPromise(storage.getItem(key));
   if (!marker.ok) {
     reportOAuthFailure("couldn't read the auth tab marker", marker.error);
     return false;
@@ -276,7 +300,7 @@ export async function takeInterruptedAuthTab(
   if (marker.value === null || marker.value === LAUNCH_ID) {
     return false;
   }
-  const cleared = await R.fromPromise(storage.removeItem(AUTH_TAB_OPEN_KEY));
+  const cleared = await R.fromPromise(storage.removeItem(key));
   if (!cleared.ok) {
     reportOAuthFailure("couldn't clear the auth tab marker", cleared.error);
   }

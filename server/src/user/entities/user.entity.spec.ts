@@ -1,4 +1,4 @@
-import { User } from "./user.entity";
+import { hasPassword, User } from "./user.entity";
 
 describe("hashPassword", () => {
   it("leaves a null password null", async () => {
@@ -34,5 +34,15 @@ describe("checkPassword", () => {
     const user = new User({ password: "hunter2" });
     await user.hashPassword();
     expect(await user.checkPassword("hunter3")).toBe(false);
+  });
+});
+
+describe("hasPassword", () => {
+  it.each([
+    { password: "hunter2", expected: true },
+    { password: "", expected: false },
+    { password: null, expected: false },
+  ])("is $expected for password $password", ({ password, expected }) => {
+    expect(hasPassword({ password })).toBe(expected);
   });
 });

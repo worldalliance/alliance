@@ -119,7 +119,7 @@ export enum ExceptionEvent {
   RequestFailed = "request_failed",
   ClearSessionTokensFailed = "clear_session_tokens_failed",
   SessionLoadFailed = "session_load_failed",
-  OAuthSignInFailed = "oauth_sign_in_failed",
+  OAuthFailed = "oauth_failed",
   PasswordLoginFailed = "password_login_failed",
   MalformedListAnswer = "malformed_list_answer",
 }
@@ -214,7 +214,7 @@ export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   [ExceptionEvent.RequestFailed]: false,
   [ExceptionEvent.ClearSessionTokensFailed]: true,
   [ExceptionEvent.SessionLoadFailed]: false,
-  [ExceptionEvent.OAuthSignInFailed]: true,
+  [ExceptionEvent.OAuthFailed]: true,
   [ExceptionEvent.PasswordLoginFailed]: true,
   [ExceptionEvent.MalformedListAnswer]: false,
 };

@@ -7,7 +7,7 @@ import { R, type Result } from "@alliance/common/result";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { afterAll, describe, expect, it, mock, spyOn } from "bun:test";
 import { FetchError } from "expo/src/winter/fetch/FetchErrors";
-import { ClientFailure } from "./oauthResult";
+import { AuthTabFlow, ClientFailure } from "./oauthResult";
 import {
   signInWithProvider,
   type NativeCredential,
@@ -152,6 +152,7 @@ describe("without a native sheet", () => {
     expect(device.openBrowserSession).toHaveBeenCalledWith({
       url: "https://appleid.apple.com/auth/authorize",
       returnTo: MOBILE_OAUTH_RETURN_URL,
+      authTabFlow: AuthTabFlow.SignIn,
     });
     expect(redeemed).toHaveBeenCalledWith({
       handoff: "abc",

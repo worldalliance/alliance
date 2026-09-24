@@ -7,6 +7,7 @@ import type {
   ParticipantRole,
   ProfileDto,
   UserActionStatusDto,
+  UserDto,
 } from "../client/types.gen";
 import type { ActionWithAwayStatus } from "./actionUtils";
 
@@ -147,5 +148,52 @@ export function makeConversation(
     hasUnread: false,
     isMessageRequest: false,
     unreadCount: 0,
+  };
+}
+
+export function makeUser(overrides: Partial<UserDto> = {}): UserDto {
+  return {
+    id: 1,
+    name: "Ada Member",
+    email: "ada@example.com",
+    phoneNumber: null,
+    preferredReminderTime: null,
+    customCityString: null,
+    admin: false,
+    referralCode: "ref",
+    referralSource: "onetime_invite",
+    referredById: null,
+    referredByCampaignId: null,
+    anonymous: false,
+    forumDigestPreference: "off",
+    switchedDomainAt: null,
+    emailNotifsForActions: false,
+    textNotifsForActions: false,
+    pushNotifsForActions: false,
+    turnedOffAllNotifs: false,
+    staff: false,
+    ambassador: false,
+    hasActiveContract: false,
+    shareEmailWithCommunityLead: false,
+    sharePhoneNumberWithCommunityLead: false,
+    profilePicture: null,
+    profileDescription: null,
+    communities: [],
+    tags: [],
+    formDataPreference: "public",
+    shareInfoPublicly: false,
+    pushesForLikes: false,
+    pushesForComments: false,
+    pushesForFriendRequests: false,
+    undergoingGroupAssignment: false,
+    remindAboutUncompletedGroupMembers: false,
+    receiveReplyNotifications: false,
+    leaderOfIds: [],
+    pushesForMessages: false,
+    pushesForActionUpdates: false,
+    clusterId: null,
+    hasPassword: true,
+    oauthAccounts: [],
+    ...overrides,
   };
 }
