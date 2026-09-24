@@ -4068,7 +4068,13 @@ describe("Actions (e2e)", () => {
           ],
         },
       ],
-      outputViews: [],
+      outputViews: [
+        {
+          id: "view-1",
+          type: "default",
+          blocks: [{ id: "block-published", fieldId: "published" }],
+        },
+      ],
     };
 
     const signedContract = () => [
@@ -4131,6 +4137,7 @@ describe("Actions (e2e)", () => {
             formSnapshotId: snapshot.id,
             user: filler,
             answers: { published: "Shown" },
+            publicAnswers: { published: true },
           }),
         }),
       );
@@ -4332,6 +4339,7 @@ describe("Actions (e2e)", () => {
             formSnapshotId: snapshot.id,
             user: friend,
             answers: { published: "Shown" },
+            publicAnswers: { published: true },
           }),
         }),
       );
@@ -4345,6 +4353,71 @@ describe("Actions (e2e)", () => {
       await formRepo.delete(form.id);
       await userRepo.delete([viewer.id, friend.id]);
     });
+
+    it.each([
+      {
+        output: "no output view",
+        schema: { ...contentfulFormSchema, outputViews: [] },
+        publicAnswers: { published: true },
+      },
+      {
+        output: "no public flag on its only answer",
+        schema: contentfulFormSchema,
+        publicAnswers: {},
+      },
+    ])(
+      "leaves out a friend's completion with $output",
+      async ({ schema, publicAnswers }) => {
+        const viewer = await userService.create({
+          email: `feed-empty-viewer-${Date.now()}@example.com`,
+          password: "Password123!",
+          name: "Feed Empty Viewer",
+          tags: [ctx.defaultTag],
+        });
+        const friend = await userService.create({
+          email: `feed-empty-friend-${Date.now()}@example.com`,
+          password: "Password123!",
+          name: "Feed Empty Friend",
+          tags: [ctx.defaultTag],
+        });
+        await userService.makeFriendsAutomated(viewer.id, friend.id);
+
+        const { action } = await createPublishedAction("Home Feed Empty", {
+          status: ActionStatus.MemberAction,
+        });
+        const { form, snapshot } = await createFormWithSnapshot(
+          ctx.dataSource,
+          {
+            title: "Home Feed Empty Form",
+            schema,
+          },
+        );
+
+        await activityRepo.save(
+          activityRepo.create({
+            type: ActionActivityType.USER_COMPLETED,
+            actionId: action.id,
+            userId: friend.id,
+            taskFormResponse: formResponseRepo.create({
+              formId: form.id,
+              formSnapshotId: snapshot.id,
+              user: friend,
+              answers: { published: "Shown" },
+              publicAnswers,
+            }),
+          }),
+        );
+
+        const feed = await homeFeed(viewer);
+        expect(feed.some((i) => i.activity?.actionName === action.name)).toBe(
+          false,
+        );
+
+        await actionRepo.delete(action.id);
+        await formRepo.delete(form.id);
+        await userRepo.delete([viewer.id, friend.id]);
+      },
+    );
 
     it("pickActiveUserIdsForSeed excludes given ids and users without a signed contract", async () => {
       const now = Date.now();

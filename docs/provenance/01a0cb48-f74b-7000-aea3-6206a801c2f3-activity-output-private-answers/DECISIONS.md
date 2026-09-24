@@ -25,7 +25,7 @@ The feed only draws the default view (no caller passes a `viewId`), so the serve
 
 The server now runs admin-written variable formulas for every activity it sends. `resolveOutputBlocks` evaluates only the variables named in the visible blocks' and drawn fields' text, so a variable the view doesn't show costs nothing.
 
-The home feed decides whether an activity has output with `hasPublicOutputAnswer`, the cheap check `buildOutputFormResponse` starts with, rather than building the output twice and reporting a malformed list answer twice.
+The home feed keeps an activity only when `buildOutputFormResponse` returns an output, and hands that output on to the DTO, so it builds each output once and reports a malformed list answer once. `hasPublicOutputAnswer` alone let through activities whose view shows nothing: it ignores the view, and counts an answer with no `publicAnswers` entry as public where the renderer doesn't. Building the output costs more for candidates the feed turns down, but `hasPublicOutputAnswer` still turns away most of them before any formula runs.
 
 ## Where the resolution lives
 

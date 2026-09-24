@@ -2240,8 +2240,14 @@ export class ActionsService {
     activities: ActionActivity[];
     requestingUserId?: number;
     comments: boolean;
+    outputs?: Map<number, ParsedFormResponse>;
   }): Promise<ActionActivityDto[]> {
-    const { activities, requestingUserId, comments: includeComments } = params;
+    const {
+      activities,
+      requestingUserId,
+      comments: includeComments,
+      outputs,
+    } = params;
     const activityIds = activities.map((activity) => activity.id);
     const likedIds = requestingUserId
       ? await this.getLikedActivityIds(activityIds, requestingUserId)
@@ -2259,9 +2265,8 @@ export class ActionsService {
       const comments = commentsByActivity?.get(activity.id) ?? [];
       return new ActionActivityDto(activity, {
         comments,
-        formResponseOutput: activity.taskFormResponse
-          ? this.buildOutputFormResponse(activity)
-          : undefined,
+        formResponseOutput:
+          outputs?.get(activity.id) ?? this.buildOutputFormResponse(activity),
         likedByMe: likedIds.has(activity.id),
         requestingUserId,
         facepile: facepiles(activity.id),
@@ -2681,6 +2686,7 @@ export class ActionsService {
 
     const batchSize = limit * 2;
     const contentful: ActionActivity[] = [];
+    const outputs = new Map<number, ParsedFormResponse>();
     let cursor = before;
 
     while (contentful.length < limit && allUserIds.length > 0) {
@@ -2701,8 +2707,10 @@ export class ActionsService {
         if (!visibleIds.has(a.actionId)) {
           continue;
         }
-        if (this.hasPublicOutputAnswer(a)) {
+        const output = this.buildOutputFormResponse(a);
+        if (output) {
           contentful.push(a);
+          outputs.set(a.id, output);
           if (contentful.length >= limit) break;
         }
       }
@@ -2722,6 +2730,7 @@ export class ActionsService {
       activities: contentful,
       requestingUserId: userId,
       comments: !!comments,
+      outputs,
     });
 
     const activityItems = activityDtos.map(
