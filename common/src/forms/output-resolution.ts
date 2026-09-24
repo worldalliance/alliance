@@ -48,11 +48,6 @@ const visibilityContext = (
   visibilityValidatorResults: validatorResults ?? {},
 });
 
-export const isOutputAnswerShown = (
-  isPublic: boolean | undefined,
-  value: FormValue | undefined,
-): boolean => isPublic === true && !isOutputValueMissing(value);
-
 export const drawnCards = (
   listField: ListField,
   value: FormValue | undefined,
@@ -60,6 +55,31 @@ export const drawnCards = (
   (asCards(value) ?? []).filter(
     (card) => outputCardSubFields(listField, card).length > 0,
   );
+
+type OutputAnswer = {
+  isPublic: boolean | undefined;
+  field: AnyField | undefined;
+  value: FormValue | undefined;
+};
+
+export const isOutputAnswerShown = ({
+  isPublic,
+  field,
+  value,
+}: OutputAnswer): boolean =>
+  isPublic === true &&
+  !isOutputValueMissing(value) &&
+  (field?.kind !== "list" || drawnCards(field, value).length > 0);
+
+export const isMalformedListAnswer = ({
+  isPublic,
+  field,
+  value,
+}: OutputAnswer): boolean =>
+  isPublic === true &&
+  !isOutputValueMissing(value) &&
+  field?.kind === "list" &&
+  asCards(value) === null;
 
 export const collectOutputFieldMap = (
   schema: FormSchema,
@@ -103,21 +123,12 @@ const isOutputBlockVisible = (
   answers: Record<string, FormValue>,
   validatorResults?: VisibilityValidatorResults,
   deviceType?: DeviceVisibilityTarget,
-  inputField?: AnyField,
   outputBlockVisibility?: Map<string, boolean>,
-): boolean => {
-  if (
-    "fieldId" in block &&
-    inputField?.kind === "list" &&
-    drawnCards(inputField, answers[block.fieldId]).length === 0
-  ) {
-    return false;
-  }
-  return isElementCurrentlyVisible(block, answers, {
+): boolean =>
+  isElementCurrentlyVisible(block, answers, {
     ...visibilityContext(validatorResults, deviceType),
     outputBlockVisibility,
   });
-};
 
 export const savedOutputAnswers = ({
   schema,
@@ -205,7 +216,11 @@ export const resolveOutputBlocks = ({
   });
 
   const isAnswerShown = (fieldId: string): boolean =>
-    isOutputAnswerShown(publicAnswers?.[fieldId], visibleAnswers[fieldId]);
+    isOutputAnswerShown({
+      isPublic: publicAnswers?.[fieldId],
+      field: fieldLookup.get(fieldId),
+      value: visibleAnswers[fieldId],
+    });
 
   const allBlocks = selectedView.blocks ?? [];
 
@@ -227,7 +242,6 @@ export const resolveOutputBlocks = ({
         visibleAnswers,
         validatorResults,
         deviceType,
-        undefined,
         outputBlockVisibility,
       );
     }
@@ -238,7 +252,6 @@ export const resolveOutputBlocks = ({
         visibleAnswers,
         validatorResults,
         deviceType,
-        fieldLookup.get(block.fieldId),
         outputBlockVisibility,
       )
     );
@@ -311,11 +324,12 @@ export const resolveOutputBlocks = ({
     answers,
     visibleBlocks,
     variableValues,
-    malformedListFieldIds: blockFieldIds(allBlocks).filter(
-      (fieldId) =>
-        fieldLookup.get(fieldId)?.kind === "list" &&
-        asCards(answers[fieldId]) === null &&
-        isAnswerShown(fieldId),
+    malformedListFieldIds: blockFieldIds(allBlocks).filter((fieldId) =>
+      isMalformedListAnswer({
+        isPublic: publicAnswers?.[fieldId],
+        field: fieldLookup.get(fieldId),
+        value: visibleAnswers[fieldId],
+      }),
     ),
   };
 };

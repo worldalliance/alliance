@@ -18,12 +18,11 @@ import {
   emptyDisplayOnlySchema,
   type DisplayOnlySchema,
 } from "@alliance/common/forms/display-only-schema";
-import {
-  flattenPageItems,
-  type FormSchema,
-} from "@alliance/common/forms/form-schema";
+import { type FormSchema } from "@alliance/common/forms/form-schema";
 import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
 import {
+  collectOutputFieldMap,
+  isMalformedListAnswer,
   isOutputAnswerShown,
   redactToOutput,
   savedOutputAnswers,
@@ -2137,15 +2136,7 @@ export class ActionsService {
     schema: FormSchema,
     response: ParsedFormResponse,
   ): boolean {
-    const isOutputField = (answer: string) =>
-      schema.pages.some((page) =>
-        flattenPageItems(page.fields).some(
-          (field) =>
-            field.id === answer &&
-            "label" in field &&
-            field.output?.output === true,
-        ),
-      );
+    const fieldLookup = collectOutputFieldMap(schema);
 
     const { visibleAnswers: answers } = savedOutputAnswers({
       schema,
@@ -2156,10 +2147,18 @@ export class ActionsService {
     const publicAnswers = response.publicAnswers ?? {};
 
     const answersPrunedObj = Object.fromEntries(
-      Object.entries(answers).filter(
-        ([key, value]) =>
-          isOutputAnswerShown(publicAnswers[key], value) && isOutputField(key),
-      ),
+      Object.entries(answers).filter(([key, value]) => {
+        const answer = {
+          isPublic: publicAnswers[key],
+          field: fieldLookup.get(key),
+          value,
+        };
+        // A malformed list still counts, so buildOutputFormResponse reports it.
+        return (
+          answer.field?.output?.output === true &&
+          (isOutputAnswerShown(answer) || isMalformedListAnswer(answer))
+        );
+      }),
     );
 
     return Object.keys(answersPrunedObj).length > 0;
