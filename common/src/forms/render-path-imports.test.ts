@@ -9,6 +9,10 @@ const RENDER_PATH_ENTRIES = [
   "./form-schema.ts",
   "./variable-interpolation.ts",
   "./visibility.ts",
+  "./output-resolution.ts",
+  "./ranking.ts",
+  "./element-descriptors.ts",
+  "./display-only-schema.ts",
 ];
 
 // Matches imports, re-exports, and side-effect imports.
