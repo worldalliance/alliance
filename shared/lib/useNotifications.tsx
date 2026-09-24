@@ -63,18 +63,23 @@ export const NotificationsProvider = ({
   const [unreadCount, setUnreadCount] = useState(0);
   const loadedAtRef = useRef<string | null>(null);
   const lastLimitRef = useRef<number | undefined>(FIRST_LOAD_LIMIT);
+  const wholeListsStartedRef = useRef(0);
+  const wholeListsInFlightRef = useRef(0);
+  const lastWholeListShownRef = useRef(0);
 
   const navigate = useNavigate();
 
-  const refreshNotifications = useCallback(
+  const loadNotifications = useCallback(
     async (options?: { limit?: number }) => {
       const limit = options?.limit;
       if (limit !== undefined) {
+        const wholeListShownBefore = lastWholeListShownRef.current;
         const [{ data, response }, { data: unreadCountData }] =
           await Promise.all([
             notifsFindAll({ query: { limit } }),
             notifsGetUnreadCount(),
           ]);
+        if (lastWholeListShownRef.current !== wholeListShownBefore) return;
         if (data) {
           setNotifications(data);
           lastLimitRef.current = limit;
@@ -84,8 +89,13 @@ export const NotificationsProvider = ({
           setUnreadCount(unreadCountData.unreadCount);
         }
       } else {
-        const { data, response } = await notifsFindAll();
-        if (!data) return;
+        const wholeList = ++wholeListsStartedRef.current;
+        wholeListsInFlightRef.current++;
+        const { data, response } = await notifsFindAll().finally(() => {
+          wholeListsInFlightRef.current--;
+        });
+        if (!data || wholeList < lastWholeListShownRef.current) return;
+        lastWholeListShownRef.current = wholeList;
         setNotifications(data);
         lastLimitRef.current = limit;
         loadedAtRef.current = response.headers.get(NOTIFS_LOADED_AT_HEADER);
@@ -95,9 +105,18 @@ export const NotificationsProvider = ({
     [],
   );
 
+  const refreshNotifications = useCallback(
+    (options?: { limit?: number }) =>
+      loadNotifications({
+        // A whole list still in flight may predate the caller's write.
+        limit: wholeListsInFlightRef.current > 0 ? undefined : options?.limit,
+      }),
+    [loadNotifications],
+  );
+
   useEffect(() => {
-    refreshNotifications({ limit: FIRST_LOAD_LIMIT });
-  }, [refreshNotifications]);
+    loadNotifications({ limit: FIRST_LOAD_LIMIT });
+  }, [loadNotifications]);
 
   const notificationsRef = useRef(notifications);
   notificationsRef.current = notifications;

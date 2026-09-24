@@ -46,6 +46,7 @@ const dueLater: NotificationDto = {
 let listed = [notification];
 let wholeListServed = Promise.resolve();
 let failingListLoads = 0;
+let limitedListServed = Promise.resolve();
 
 serveApi(
   routes({
@@ -56,8 +57,9 @@ serveApi(
         failingListLoads--;
         return new Response(null, { status: 500 });
       }
-      if (!query.has("limit")) await wholeListServed;
-      return Response.json(listed, {
+      const limit = query.get("limit");
+      await (limit === null ? wholeListServed : limitedListServed);
+      return Response.json(listed.slice(0, Number(limit ?? listed.length)), {
         headers: loadedAtHeader
           ? { [NOTIFS_LOADED_AT_HEADER]: loadedAtHeader }
           : {},
@@ -77,6 +79,7 @@ afterEach(() => {
   listed = [notification];
   wholeListServed = Promise.resolve();
   failingListLoads = 0;
+  limitedListServed = Promise.resolve();
   listQueries.length = 0;
   readAllQueries.length = 0;
   cleanup();
@@ -217,4 +220,82 @@ it("refetches the dropdown's page after marking all read when the first load fai
   fireEvent.click(screen.getByRole("button", { name: "0 loaded" }));
   await waitFor(() => expect(listQueries).toHaveLength(2));
   expect(listQueries[1].get("limit")).toBe("20");
+});
+
+it("keeps the whole list when the provider's first load lands after it", async () => {
+  const limitedList = Promise.withResolvers<void>();
+  limitedListServed = limitedList.promise;
+  listed = Array.from({ length: 21 }, (_, i) => ({ ...notification, id: i }));
+  renderMarkAll(WholeListPage);
+  await screen.findByRole("button", { name: "21 loaded" });
+  limitedList.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(screen.getByRole("button", { name: "21 loaded" })).toBeTruthy();
+});
+
+it("keeps the whole list when mark-all's reload lands after it", async () => {
+  listed = Array.from({ length: 21 }, (_, i) => ({ ...notification, id: i }));
+  renderMarkAll();
+  const markAll = await screen.findByRole("button", { name: "20 loaded" });
+  const limitedList = Promise.withResolvers<void>();
+  limitedListServed = limitedList.promise;
+  fireEvent.click(markAll);
+  await waitFor(() => expect(listQueries).toHaveLength(2));
+  fireEvent.click(screen.getByRole("button", { name: "Load all" }));
+  await screen.findByRole("button", { name: "21 loaded" });
+  limitedList.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(screen.getByRole("button", { name: "21 loaded" })).toBeTruthy();
+});
+
+it("shows the provider's first load when the whole list fails alongside it", async () => {
+  const limitedList = Promise.withResolvers<void>();
+  limitedListServed = limitedList.promise;
+  failingListLoads = 1;
+  unreadCount = 21;
+  listed = Array.from({ length: 21 }, (_, i) => ({ ...notification, id: i }));
+  renderMarkAll(WholeListPage);
+  await waitFor(() => expect(listQueries).toHaveLength(2));
+  expect(listQueries[0].has("limit")).toBe(false);
+  limitedList.resolve();
+  await screen.findByRole("button", { name: "20 loaded" });
+  expect(screen.getByRole("status").textContent).toBe("21 unread");
+});
+
+it("refetches the whole list after marking all read while the page's whole list is still loading", async () => {
+  const wholeList = Promise.withResolvers<void>();
+  wholeListServed = wholeList.promise;
+  renderMarkAll(WholeListPage);
+  fireEvent.click(await screen.findByRole("button", { name: "1 loaded" }));
+  await waitFor(() => expect(listQueries).toHaveLength(3));
+  expect(listQueries[2].has("limit")).toBe(false);
+  wholeList.resolve();
+});
+
+it("refetches the whole list for a dropdown refresh while the page's whole list is still loading", async () => {
+  const wholeList = Promise.withResolvers<void>();
+  wholeListServed = wholeList.promise;
+  renderMarkAll(WholeListPage);
+  await screen.findByRole("button", { name: "1 loaded" });
+  fireEvent.click(screen.getByRole("button", { name: "Load 20" }));
+  await waitFor(() => expect(listQueries).toHaveLength(3));
+  expect(listQueries[2].has("limit")).toBe(false);
+  wholeList.resolve();
+});
+
+it("keeps a newer whole list when an older one lands after it", async () => {
+  renderMarkAll();
+  await screen.findByRole("button", { name: "1 loaded" });
+  const olderList = Promise.withResolvers<void>();
+  wholeListServed = olderList.promise;
+  fireEvent.click(screen.getByRole("button", { name: "Load all" }));
+  await waitFor(() => expect(listQueries).toHaveLength(2));
+  wholeListServed = Promise.resolve();
+  listed = [notification, dueLater];
+  fireEvent.click(screen.getByRole("button", { name: "Load all" }));
+  await screen.findByRole("button", { name: "2 loaded" });
+  listed = [notification];
+  olderList.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(screen.getByRole("button", { name: "2 loaded" })).toBeTruthy();
 });
