@@ -7,7 +7,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { MemoryRouter } from "react-router";
 import { routes, serveApi } from "./testing/serveApi";
 import { NotificationsProvider, useNotifications } from "./useNotifications";
@@ -107,11 +107,20 @@ const MarkAll = () => {
 };
 
 const WholeListPage = () => {
-  const { refreshNotifications } = useNotifications();
-  useEffect(() => {
-    void refreshNotifications();
-  }, [refreshNotifications]);
+  const { showWholeList } = useNotifications();
+  useEffect(showWholeList, [showWholeList]);
   return <MarkAll />;
+};
+
+const ClosableWholeListPage = () => {
+  const [open, setOpen] = useState(true);
+  if (!open) return <MarkAll />;
+  return (
+    <>
+      <WholeListPage />
+      <button onClick={() => setOpen(false)}>Close page</button>
+    </>
+  );
 };
 
 const renderMarkAll = (Page = MarkAll) =>
@@ -298,4 +307,36 @@ it("keeps a newer whole list when an older one lands after it", async () => {
   olderList.resolve();
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(screen.getByRole("button", { name: "2 loaded" })).toBeTruthy();
+});
+
+it("keeps the whole list for a dropdown refresh while the page is open", async () => {
+  listed = Array.from({ length: 21 }, (_, i) => ({ ...notification, id: i }));
+  renderMarkAll(WholeListPage);
+  await screen.findByRole("button", { name: "21 loaded" });
+  fireEvent.click(screen.getByRole("button", { name: "Load 20" }));
+  await waitFor(() => expect(listQueries).toHaveLength(3));
+  expect(listQueries[2].has("limit")).toBe(false);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(screen.getByRole("button", { name: "21 loaded" })).toBeTruthy();
+});
+
+it("loads the dropdown's page once the page closes", async () => {
+  listed = Array.from({ length: 21 }, (_, i) => ({ ...notification, id: i }));
+  renderMarkAll(ClosableWholeListPage);
+  await screen.findByRole("button", { name: "21 loaded" });
+  fireEvent.click(screen.getByRole("button", { name: "Close page" }));
+  fireEvent.click(screen.getByRole("button", { name: "Load 20" }));
+  await screen.findByRole("button", { name: "20 loaded" });
+});
+
+it("refetches the whole list for a dropdown refresh after the page closes with its whole list still loading", async () => {
+  const wholeList = Promise.withResolvers<void>();
+  wholeListServed = wholeList.promise;
+  renderMarkAll(ClosableWholeListPage);
+  await screen.findByRole("button", { name: "1 loaded" });
+  fireEvent.click(screen.getByRole("button", { name: "Close page" }));
+  fireEvent.click(screen.getByRole("button", { name: "Load 20" }));
+  await waitFor(() => expect(listQueries).toHaveLength(3));
+  expect(listQueries[2].has("limit")).toBe(false);
+  wholeList.resolve();
 });

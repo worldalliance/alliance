@@ -12,12 +12,10 @@ const NotificationsPage = () => {
     handleMarkAsRead,
     handleNotifClick,
     refreshNotifications,
+    showWholeList,
   } = useNotifications();
 
-  // Refresh notifications when the page is mounted
-  useEffect(() => {
-    refreshNotifications();
-  }, [refreshNotifications]);
+  useEffect(showWholeList, [showWholeList]);
 
   const unreadCount = notifications.filter(
     (notification) => !notification.readAt,

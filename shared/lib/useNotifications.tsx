@@ -44,6 +44,8 @@ interface NotificationsContextType {
   ) => () => void;
   handleMarkAllAsRead: (e: React.MouseEvent) => void;
   refreshNotifications: (options?: { limit?: number }) => Promise<void>;
+  /** Loads the whole list and keeps later refreshes whole until the returned cleanup runs. */
+  showWholeList: () => () => void;
   applyNotificationsReadByContent: (
     contentType: UnreadContentType,
     contentIds: number[],
@@ -66,6 +68,7 @@ export const NotificationsProvider = ({
   const wholeListsStartedRef = useRef(0);
   const wholeListsInFlightRef = useRef(0);
   const lastWholeListShownRef = useRef(0);
+  const wholeListViewsRef = useRef(0);
 
   const navigate = useNavigate();
 
@@ -108,11 +111,23 @@ export const NotificationsProvider = ({
   const refreshNotifications = useCallback(
     (options?: { limit?: number }) =>
       loadNotifications({
-        // A whole list still in flight may predate the caller's write.
-        limit: wholeListsInFlightRef.current > 0 ? undefined : options?.limit,
+        limit:
+          wholeListViewsRef.current > 0 ||
+          // A whole list still in flight may predate the caller's write.
+          wholeListsInFlightRef.current > 0
+            ? undefined
+            : options?.limit,
       }),
     [loadNotifications],
   );
+
+  const showWholeList = useCallback(() => {
+    wholeListViewsRef.current++;
+    void loadNotifications();
+    return () => {
+      wholeListViewsRef.current--;
+    };
+  }, [loadNotifications]);
 
   useEffect(() => {
     loadNotifications({ limit: FIRST_LOAD_LIMIT });
@@ -260,6 +275,7 @@ export const NotificationsProvider = ({
         handleMarkAsRead,
         handleMarkAllAsRead,
         refreshNotifications,
+        showWholeList,
         applyNotificationsReadByContent,
       }}
     >
