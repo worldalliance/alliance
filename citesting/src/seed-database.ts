@@ -149,3 +149,10 @@ export const seedDatabase = async ({
   console.log(`${logPrefix} Shifting timestamps to current date...`);
   await shiftTimestamps(database, onSpawn);
 };
+
+if (require.main === module) {
+  seedDatabase({ logPrefix: "[citesting:seed]" }).catch((error: unknown) => {
+    console.error(error);
+    process.exit(1);
+  });
+}
