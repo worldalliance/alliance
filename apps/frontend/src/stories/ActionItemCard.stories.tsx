@@ -28,3 +28,14 @@ export const WithFriends: Story = {
     })),
   },
 };
+
+export const WithFriendsCompleted: Story = {
+  args: {
+    ...WithFriends.args,
+    action: { ...testActions[0], userRelation: "completed" },
+  },
+};
+
+export const Closed: Story = {
+  args: { action: { ...testActions[0], status: "completed" } },
+};

@@ -35,6 +35,21 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
     return copyToClipboard(url);
   }, [action.id]);
 
+  const shareButton = (
+    <ShareButton
+      onClick={handleShareAction}
+      icon={Link2Icon}
+      label={clipboardCopy.copyLink}
+      copiedLabel={clipboardCopy.copiedToClipboard}
+      className={cn(
+        "relative text-zinc-500 hover:text-zinc-700",
+        zIndex.raised,
+      )}
+      iconClassName="h-4 w-4 shrink-0"
+      iconOnly
+    />
+  );
+
   return (
     <div
       className={cn(
@@ -57,18 +72,9 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
               </div>
               <div className="flex flex-row items-start justify-between gap-x-4">
                 <p className="text-zinc-500">{action.shortDescription}</p>
-                <ShareButton
-                  onClick={handleShareAction}
-                  icon={Link2Icon}
-                  label={clipboardCopy.copyLink}
-                  copiedLabel={clipboardCopy.copiedToClipboard}
-                  className={cn(
-                    "relative mt-1 text-zinc-500 hover:text-zinc-700",
-                    zIndex.raised,
-                  )}
-                  iconClassName="h-4 w-4 shrink-0"
-                  iconOnly
-                />
+                {shouldShowCompletedBar && (
+                  <div className="mt-1">{shareButton}</div>
+                )}
               </div>
             </div>
           </div>
@@ -84,6 +90,9 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
           barFillClassName="shadow-[0_0_4px] shadow-green/50 transition-shadow group-hover/card:shadow-[0_0_7px] group-hover/card:shadow-green/40"
           dark
         />
+      )}
+      {!shouldShowCompletedBar && (
+        <div className="mt-4 flex justify-end">{shareButton}</div>
       )}
     </div>
   );
