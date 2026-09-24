@@ -7,6 +7,7 @@ import path from "path";
 import process from "process";
 import { mobileScreenshotTargets } from "./mobile-screenshot-targets";
 import { screenshotDatabase } from "./screenshot-database";
+import { seedDatabase } from "./seed-database";
 import { testUserEmail, testUserPassword } from "./test-user";
 
 type ChildProcessHandle = ReturnType<typeof spawn>;
@@ -306,140 +307,6 @@ const waitForHttp = async (url: string, timeoutMs: number) => {
     await delay(milliseconds({ seconds: 1 }));
   }
   throw new Error(`Timed out waiting for ${url}`);
-};
-
-/* ------------------------------------------------------------------ */
-/*  Database setup                                                     */
-/* ------------------------------------------------------------------ */
-
-const setupDatabase = async () => {
-  console.log(`${logPrefix} Setting up database "${dbName}"...`);
-
-  const pgEnv: NodeJS.ProcessEnv = { ...process.env, PGPASSWORD: dbPass };
-  const psqlBase = ["-h", dbHost, "-p", dbPort, "-U", dbUser];
-
-  await runCommand(
-    "psql",
-    [
-      ...psqlBase,
-      "-d",
-      "postgres",
-      "-c",
-      `DROP DATABASE IF EXISTS "${dbName}"`,
-    ],
-    { cwd: repoRoot, env: pgEnv },
-  );
-  await runCommand(
-    "psql",
-    [...psqlBase, "-d", "postgres", "-c", `CREATE DATABASE "${dbName}"`],
-    { cwd: repoRoot, env: pgEnv },
-  );
-
-  console.log(`${logPrefix} Running migrations...`);
-  await runCommand(
-    "bunx",
-    [
-      "typeorm-ts-node-commonjs",
-      "--dataSource",
-      "src/datasources/dataSource.ts",
-      "migration:run",
-    ],
-    {
-      cwd: path.join(repoRoot, "server"),
-      env: {
-        ...process.env,
-        DB_HOST: dbHost,
-        DB_PORT: dbPort,
-        DB_USERNAME: dbUser,
-        DB_PASSWORD: dbPass,
-        DB_NAME: dbName,
-        NODE_ENV: "test",
-      },
-    },
-  );
-
-  console.log(`${logPrefix} Loading seed dump...`);
-  await loadSeedData(psqlBase, pgEnv);
-
-  console.log(`${logPrefix} Shifting timestamps to current date...`);
-  await shiftTimestamps(psqlBase, pgEnv);
-};
-
-const loadSeedData = async (psqlBase: string[], pgEnv: NodeJS.ProcessEnv) => {
-  const seedFile = path.join(
-    repoRoot,
-    "citesting",
-    "fixtures",
-    "seed_dataonly.sql",
-  );
-  let seedContent = await fs.readFile(seedFile, "utf8");
-
-  seedContent = seedContent
-    .split("\n")
-    .filter((line) => {
-      if (/^SET\s+transaction_timeout\s*=/i.test(line)) return false;
-      if (/^\\restrict\b/.test(line)) return false;
-      if (/^\\unrestrict\b/.test(line)) return false;
-      return true;
-    })
-    .join("\n");
-
-  return new Promise<void>((resolve, reject) => {
-    const child = spawn(
-      "psql",
-      [...psqlBase, "-d", dbName, "-v", "ON_ERROR_STOP=1"],
-      {
-        cwd: repoRoot,
-        env: pgEnv,
-        stdio: ["pipe", "inherit", "inherit"],
-      },
-    );
-
-    child.stdin.write("SET session_replication_role = 'replica';\n");
-    child.stdin.write(seedContent);
-    child.stdin.write("\nSET session_replication_role = 'origin';\n");
-    child.stdin.end();
-
-    child.on("error", (error) => reject(error));
-    child.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`psql seed loading failed with exit code ${code}`));
-    });
-  });
-};
-
-const SEED_REFERENCE_DATE = "2026-02-10T18:00:00Z";
-
-const shiftTimestamps = async (
-  psqlBase: string[],
-  pgEnv: NodeJS.ProcessEnv,
-) => {
-  const sql = `
-    DO $$
-    DECLARE
-      r RECORD;
-      delta INTERVAL := NOW() - '${SEED_REFERENCE_DATE}'::timestamptz;
-    BEGIN
-      FOR r IN
-        SELECT table_name, column_name
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND data_type IN ('timestamp with time zone',
-                            'timestamp without time zone')
-      LOOP
-        EXECUTE format(
-          'UPDATE %I SET %I = %I + $1 WHERE %I IS NOT NULL',
-          r.table_name, r.column_name, r.column_name, r.column_name
-        ) USING delta;
-      END LOOP;
-    END
-    $$;
-  `;
-
-  await runCommand("psql", [...psqlBase, "-d", dbName, "-c", sql], {
-    cwd: repoRoot,
-    env: pgEnv,
-  });
 };
 
 /* ------------------------------------------------------------------ */
@@ -758,7 +625,7 @@ const captureScreenshots = async (udid: string, simulatorName: string) => {
 
   console.log(`${logPrefix} Output directory: ${outputDir}`);
 
-  await setupDatabase();
+  await seedDatabase({ database: dbName, logPrefix });
   startBackend();
   await waitForHttp(
     `http://127.0.0.1:${backendPort}/`,
