@@ -31,6 +31,7 @@ jobs:
     env:
       OUTPUT_DIR: ${{ github.workspace }}/.scratch/pr-screenshots
       AVD_IMAGE: system-images;android-34;google_apis;x86_64
+      APP_VARIANT: development
       PGHOST: localhost
       PGUSER: postgres
       PGPASSWORD: postgres
@@ -130,19 +131,44 @@ jobs:
           cache: gradle
           cache-dependency-path: bun.lock
 
-      - name: Build and install Android app
+      - name: Fingerprint Android app
+        id: fingerprint
+        working-directory: apps/mobile
+        run: |
+          hash="$(node --input-type=module -e "import { createFingerprintAsync } from '@expo/fingerprint'; console.log((await createFingerprintAsync('.', { platforms: ['android'] })).hash)")"
+          echo "hash=$hash" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Android app
+        id: apk-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/app-debug.apk
+          key: pr-screenshots-apk-${{ steps.fingerprint.outputs.hash }}-${{ hashFiles('.github/workflows/pr-screenshots.yaml') }}
+
+      - name: Build Android app
+        if: steps.apk-cache.outputs.cache-hit != 'true'
         working-directory: apps/mobile
         env:
-          APP_VARIANT: development
           CI: "true"
         run: |
           bunx expo prebuild --platform android
           (cd android && ./gradlew app:assembleDebug -PreactNativeArchitectures=x86_64)
+          cp android/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/app-debug.apk"
+
+      - name: Save Android app
+        if: steps.apk-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/app-debug.apk
+          key: ${{ steps.apk-cache.outputs.cache-primary-key }}
+
+      - name: Install Android app
+        run: |
           timeout 600 adb wait-for-device
           booted() { [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ]; }
           for _ in $(seq 120); do booted && break; sleep 5; done
           booted
-          adb install android/app/build/outputs/apk/debug/app-debug.apk
+          adb install "$RUNNER_TEMP/app-debug.apk"
 
       - name: Install Claude Code
         run: npm i -g @anthropic-ai/claude-code
