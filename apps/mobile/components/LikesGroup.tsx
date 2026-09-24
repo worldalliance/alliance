@@ -1,12 +1,11 @@
 import { forCount, withCount } from "@alliance/common/plural";
 import { NotificationDto } from "@alliance/shared/client";
 import {
-  getNotificationTime,
+  formatNotificationTime,
   getUnreadLikesCount,
   LikesBucket,
 } from "@alliance/shared/lib/notificationBucketing";
 import { getNotificationIdentityKey } from "@alliance/shared/lib/notificationIdentity";
-import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { CheckCheck, ChevronDown, ChevronUp, Heart } from "lucide-react-native";
 import { useState } from "react";
@@ -59,9 +58,7 @@ function LikesGroupNotification({
       </View>
       <View className="flex-row items-center justify-between mt-1">
         <Text className="text-xs text-zinc-500">
-          {formatTime(getNotificationTime(notification), {
-            addSuffix: true,
-          })}
+          {formatNotificationTime(notification)}
         </Text>
         {!notification.readAt && onMarkRead && (
           <TouchableOpacity
