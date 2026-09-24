@@ -8,6 +8,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
+import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { Link2Icon } from "lucide-react";
 import React, { useCallback } from "react";
 import { Link, href } from "react-router";
@@ -74,7 +75,10 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
           icon={Link2Icon}
           label={clipboardCopy.copyLink}
           copiedLabel={clipboardCopy.copiedToClipboard}
-          className="relative z-10 text-zinc-500 hover:text-zinc-700"
+          className={cn(
+            "relative text-zinc-500 hover:text-zinc-700",
+            zIndex.raised,
+          )}
           iconClassName="h-4 w-4 shrink-0"
           iconOnly
         />
