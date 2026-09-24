@@ -527,6 +527,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
           </p>
           <CommunityInviteList
             invites={pendingCommunityInvites}
+            acceptDisabled={didGroupsFail}
             onAccept={handleAcceptInvite}
             onDecline={handleDeclineInvite}
           />
@@ -561,7 +562,8 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
                 community.maxCapacity !== null &&
                 memberCount >= community.maxCapacity;
               const isJoining = joiningCommunityId === community.id;
-              const joinDisabled = isMember || isLeader || isFull || isJoining;
+              const joinDisabled =
+                didGroupsFail || isMember || isLeader || isFull || isJoining;
 
               const joinLabel = isLeader
                 ? "Leader"

@@ -610,7 +610,7 @@ export default function GroupManageScreen() {
                             onPress={() => handleAcceptInvite(invite)}
                             color={ButtonColor.Green}
                             size={ButtonSize.Small}
-                            disabled={inviteRowBusy}
+                            disabled={inviteRowBusy || didGroupsFail}
                             loading={acceptingInviteId === invite.id}
                           />
                           <Button
@@ -657,7 +657,11 @@ export default function GroupManageScreen() {
                         memberCount >= community.maxCapacity;
                       const isJoining = joiningCommunityId === community.id;
                       const joinDisabled =
-                        isMember || isLeader || isFull || isJoining;
+                        didGroupsFail ||
+                        isMember ||
+                        isLeader ||
+                        isFull ||
+                        isJoining;
                       const joinLabel = isLeader
                         ? "Leader"
                         : isMember
