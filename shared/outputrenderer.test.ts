@@ -7,6 +7,10 @@ import type {
   NumberField,
   OutputFieldBlock,
 } from "@alliance/common/forms/form-schema";
+import {
+  redactToOutput,
+  type ResolveOutputParams,
+} from "@alliance/common/forms/output-resolution";
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
 import {
   __resetAnalyticsForTests,
@@ -932,5 +936,174 @@ describe("resolveOutputItems and conditions the response partly replays", () => 
     );
     if (item.type !== "field") throw new Error("expected a field item");
     expect(item.value).toEqual([{ weight: 2 }]);
+  });
+});
+
+describe("redactToOutput", () => {
+  const gateIs = (value: string) =>
+    ({
+      conditions: { c1: { kind: "equals", when: "gate", equals: value } },
+      formula: "c1",
+    }) as const;
+  const schema: FormSchema = {
+    pages: [
+      {
+        id: "p1",
+        fields: [
+          { id: "gate", type: "input", kind: "text", label: "Gate" },
+          numberField("secret", "Secret"),
+          {
+            ...numberField("shown", "Shown"),
+            visibleIfFormula: gateIs("open"),
+          },
+          {
+            ...numberField("hidden", "Hidden"),
+            visibleIfFormula: gateIs("shut"),
+          },
+          {
+            id: "list",
+            type: "input",
+            kind: "list",
+            label: "Items",
+            fields: [
+              { id: "name", type: "input", kind: "text", label: "Name" },
+              {
+                ...numberField("extra", "Extra"),
+                visibleIfFormula: gateIs("shut"),
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    variables: [
+      {
+        name: "double",
+        inputs: { input1: { kind: "field", fieldId: "secret" } },
+        formula: "input1 * 2",
+      },
+    ],
+    outputViews: [
+      {
+        id: "v1",
+        type: "default",
+        blocks: [
+          {
+            type: "display",
+            kind: "text",
+            text: "Twice: #{double}",
+          },
+          { id: "b-shown", fieldId: "shown" },
+          { id: "b-hidden", fieldId: "hidden" },
+          { id: "b-list", fieldId: "list" },
+          {
+            type: "display",
+            kind: "text",
+            text: "Open",
+            visibleIfFormula: gateIs("open"),
+          },
+        ],
+      },
+    ],
+  };
+  const params = {
+    schema,
+    answers: {
+      gate: "open",
+      secret: 21,
+      shown: 1,
+      hidden: 2,
+      list: [{ name: "Ada", extra: 3 }],
+    },
+    publicAnswers: { shown: true, hidden: true, list: true },
+  };
+  const redacted = redactToOutput(params);
+  const drawn = (resolved: ReturnType<typeof resolveOutputItems>) =>
+    resolved.items.map((item) =>
+      item.type === "display"
+        ? {
+            key: item.key,
+            block: { ...item.block, visibleIfFormula: undefined },
+          }
+        : {
+            key: item.key,
+            label: item.label,
+            value: item.value,
+            formattedValue: item.formattedValue,
+          },
+    );
+
+  it("draws the same items as the whole response", () => {
+    expect(
+      drawn(
+        resolveOutputItems({
+          ...redacted,
+          publicAnswers: params.publicAnswers,
+        }),
+      ),
+    ).toEqual(drawn(resolveOutputItems(params)));
+  });
+
+  it("keeps only the answers the view draws", () => {
+    expect(redacted.answers).toEqual({ shown: 1, list: [{ name: "Ada" }] });
+  });
+
+  it("keeps no condition or variable that could read the rest", () => {
+    const text = JSON.stringify(redacted.schema);
+    expect(text).not.toContain("visibleIfFormula");
+    expect(text).not.toContain("secret");
+    expect(text).not.toContain("gate");
+    expect(redacted.schema.variables).toEqual([]);
+  });
+
+  it("drops the list cells and rows the view hides", () => {
+    const listSchema: FormSchema = {
+      pages: [
+        {
+          id: "p1",
+          fields: [
+            {
+              id: "people",
+              type: "input",
+              kind: "list",
+              label: "People",
+              outputViewHiddenFieldIds: ["phone"],
+              fields: [
+                { id: "name", type: "input", kind: "text", label: "Name" },
+                { id: "phone", type: "input", kind: "text", label: "Phone" },
+              ],
+            },
+          ],
+        },
+      ],
+      outputViews: [
+        {
+          id: "v1",
+          type: "default",
+          blocks: [{ id: "b-people", fieldId: "people" }],
+        },
+      ],
+    };
+    const listParams: ResolveOutputParams = {
+      schema: listSchema,
+      answers: {
+        people: [{ name: "Ada", phone: "555-0100" }, { phone: "555-0101" }],
+      },
+      publicAnswers: { people: true },
+    };
+    const redactedList = redactToOutput(listParams);
+
+    expect(redactedList.answers).toEqual({ people: [{ name: "Ada" }] });
+    expect(JSON.stringify(redactedList)).not.toContain("phone");
+    expect(
+      resolveOutputItems({
+        ...redactedList,
+        publicAnswers: listParams.publicAnswers,
+      }).items.map((item) => item.type === "field" && item.formattedValue),
+    ).toEqual(
+      resolveOutputItems(listParams).items.map(
+        (item) => item.type === "field" && item.formattedValue,
+      ),
+    );
   });
 });

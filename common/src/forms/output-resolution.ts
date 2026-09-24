@@ -17,7 +17,12 @@ import {
   type OutputViewSchema,
 } from "./form-schema";
 import { isOutputValueMissing, outputCardSubFields } from "./output-values";
-import { forEachInterpolatableText } from "./variable-interpolation";
+import {
+  forEachInterpolatableText,
+  interpolateDisplayBlock,
+  interpolateFieldText,
+  interpolateOutputFieldBlock,
+} from "./variable-interpolation";
 import { collectVariableReferences, evaluateVariable } from "./variables";
 import {
   isElementCurrentlyVisible,
@@ -281,5 +286,90 @@ export const resolveOutputBlocks = ({
         asCards(answers[fieldId]) === null &&
         isAnswerShown(fieldId),
     ),
+  };
+};
+
+const drawnField = (field: AnyField): AnyField => {
+  const bare = { ...field, visibleIfFormula: undefined };
+  if (bare.kind !== "list") return bare;
+  const hiddenInOutputIds = new Set(bare.outputViewHiddenFieldIds ?? []);
+  return {
+    ...bare,
+    outputViewHiddenFieldIds: undefined,
+    fields: bare.fields
+      .filter((sub) => !hiddenInOutputIds.has(sub.id))
+      .map((sub) => ({ ...sub, visibleIfFormula: undefined })),
+  };
+};
+
+const drawnAnswer = (
+  field: AnyField | undefined,
+  value: FormValue,
+): FormValue =>
+  field?.kind === "list"
+    ? drawnCards(field, value).map((card) =>
+        Object.fromEntries(
+          outputCardSubFields(field, card).map((sub) => [sub.id, card[sub.id]]),
+        ),
+      )
+    : value;
+
+/**
+ * A saved response cut down to what its output view shows, for a viewer who
+ * mustn't read the rest of it: the view's visible blocks, the fields they draw
+ * and those fields' answers, with variables already filled in and no
+ * visibility conditions left to evaluate. Resolving it gives the items the
+ * whole response would.
+ */
+export const redactToOutput = (
+  params: ResolveOutputParams,
+): {
+  schema: FormSchema;
+  answers: Record<string, FormValue>;
+  malformedListFieldIds: string[];
+} => {
+  const resolved = resolveOutputBlocks(params);
+  if (!resolved) {
+    return {
+      schema: { pages: [], outputViews: [] },
+      answers: {},
+      malformedListFieldIds: [],
+    };
+  }
+  const {
+    selectedView,
+    fieldLookup,
+    answers,
+    visibleBlocks,
+    variableValues,
+    malformedListFieldIds,
+  } = resolved;
+  const blocks = visibleBlocks.map((block) => ({
+    ...("kind" in block
+      ? interpolateDisplayBlock(block, variableValues)
+      : interpolateOutputFieldBlock(block, variableValues)),
+    visibleIfFormula: undefined,
+  }));
+  const fieldIds = blockFieldIds(visibleBlocks);
+  const fields = fieldIds.flatMap((fieldId) => {
+    const field = fieldLookup.get(fieldId);
+    return field
+      ? [drawnField(interpolateFieldText(field, variableValues))]
+      : [];
+  });
+  return {
+    schema: {
+      pages: [{ id: "output", fields }],
+      outputViews: [{ ...selectedView, blocks }],
+      variables: [],
+    },
+    answers: Object.fromEntries(
+      fieldIds.flatMap((fieldId) =>
+        fieldId in answers
+          ? [[fieldId, drawnAnswer(fieldLookup.get(fieldId), answers[fieldId])]]
+          : [],
+      ),
+    ),
+    malformedListFieldIds,
   };
 };

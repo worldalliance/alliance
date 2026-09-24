@@ -5,6 +5,7 @@ import {
   WITHDRAWAL_OPTION_LABELS,
   withdrawalOptionFromFlags,
 } from "@alliance/common/actionActivity";
+import { ExceptionEvent } from "@alliance/common/analytics";
 import {
   cohortExpressionSchema,
   expressionReferencesTag,
@@ -19,6 +20,7 @@ import {
 } from "@alliance/common/forms/display-only-schema";
 import { flattenPageItems } from "@alliance/common/forms/form-schema";
 import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
+import { redactToOutput } from "@alliance/common/forms/output-resolution";
 import { echoesStoredKey } from "@alliance/common/image-src";
 import { run } from "@alliance/common/run";
 import { Assert } from "@alliance/common/types";
@@ -61,6 +63,7 @@ import { PreviewNotificationPlanDto } from "src/notifs/dto/notification-plan.dto
 import { LikeNotificationService } from "src/notifs/like-notification.service";
 import { NotificationChannel } from "src/notifs/notif-utils";
 import { NotifsService } from "src/notifs/notifs.service";
+import { PosthogService } from "src/posthog/posthog.service";
 import { actionActivityUrl } from "src/search/approutes";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
@@ -346,6 +349,7 @@ export class ActionsService {
     private readonly actionFormVariantService: ActionFormVariantService,
     private readonly facepileService: FacepileService,
     private readonly formSnapshotService: FormSnapshotService,
+    private readonly posthogService: PosthogService,
   ) {}
 
   async applyAssignedFormIds(
@@ -2122,11 +2126,9 @@ export class ActionsService {
     });
   }
 
-  buildOutputFormResponse(
-    activity: ActionActivity,
-  ): ParsedFormResponse | undefined {
+  private hasPublicOutputAnswer(activity: ActionActivity): boolean {
     if (!activity.taskFormResponse) {
-      return undefined;
+      return false;
     }
 
     const schema = formSchemaOf(activity.taskFormResponse.formSnapshot);
@@ -2151,24 +2153,65 @@ export class ActionsService {
     const answers = activity.taskFormResponse.answers;
     const publicAnswers = activity.taskFormResponse.publicAnswers ?? {};
 
-    //TODO: for now we dont use pruned so that we can use non-output fields
-    // to evaluate the conditional visibility of output fields - maybe just cache?
     const answersPrunedObj = Object.fromEntries(
       Object.entries(answers).filter(([key]) =>
         answerToIsPublic(key, publicAnswers),
       ),
     );
 
-    if (!Object.keys(answersPrunedObj).length) {
+    return Object.keys(answersPrunedObj).length > 0;
+  }
+
+  buildOutputFormResponse(
+    activity: ActionActivity,
+  ): ParsedFormResponse | undefined {
+    if (!activity.taskFormResponse || !this.hasPublicOutputAnswer(activity)) {
       return undefined;
     }
 
-    return parseFormResponse(
+    const schema = formSchemaOf(activity.taskFormResponse.formSnapshot);
+    const answers = activity.taskFormResponse.answers;
+    const publicAnswers = activity.taskFormResponse.publicAnswers ?? {};
+    const response = parseFormResponse(
       Object.assign(new FormResponse(), {
         ...activity.taskFormResponse,
         answers,
       }),
     );
+    const output = redactToOutput({
+      schema,
+      answers: response.answers,
+      validatorResults: response.visibilityValidatorResults,
+      deviceType: response.deviceType,
+      publicAnswers,
+    });
+    for (const fieldId of output.malformedListFieldIds) {
+      const message = `Form response ${response.id}: stored answer for list field ${fieldId} is not a list of rows`;
+      this.logger.error(message);
+      this.posthogService.captureException({
+        event: ExceptionEvent.MalformedListAnswer,
+        error: new Error(message),
+        properties: { formResponseId: response.id, fieldId },
+      });
+    }
+    const [view] = output.schema.outputViews;
+    if (!view?.blocks.length) {
+      return undefined;
+    }
+    return Object.assign(response, {
+      answers: output.answers,
+      // The web and mobile cards, released app builds included, draw the
+      // output only when publicAnswers has an entry. The view id gives it one
+      // when only display blocks show, without naming any answer.
+      publicAnswers: {
+        [view.id]: true,
+        ...Object.fromEntries(
+          Object.keys(output.answers).map((fieldId) => [fieldId, true]),
+        ),
+      },
+      visibilityValidatorResults: {},
+      formSnapshot: { ...response.formSnapshot, schema: output.schema },
+    });
   }
 
   async getActionActivities(
@@ -2658,7 +2701,7 @@ export class ActionsService {
         if (!visibleIds.has(a.actionId)) {
           continue;
         }
-        if (this.buildOutputFormResponse(a) !== undefined) {
+        if (this.hasPublicOutputAnswer(a)) {
           contentful.push(a);
           if (contentful.length >= limit) break;
         }
