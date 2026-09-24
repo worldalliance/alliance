@@ -906,6 +906,18 @@ describe("searching the zone list", () => {
     expect(zonesMatching("sri lanka")).toEqual(["Asia/Colombo"]);
   });
 
+  it.each([
+    ["trinidad and tobago", "America/Port_of_Spain"],
+    ["trinidad & tobago", "America/Port_of_Spain"],
+    ["cote d'ivoire", "Africa/Abidjan"],
+    ["côte d’ivoire", "Africa/Abidjan"],
+  ])(
+    "finds a country spelled as typed or as CLDR writes it, %s",
+    (query, tz) => {
+      expect(zonesMatching(query)).toEqual([tz]);
+    },
+  );
+
   it("finds a zone by the offset under its name", () => {
     expect(zonesMatching("utc+5:30")).toEqual(["Asia/Colombo", "Asia/Kolkata"]);
     expect(zonesMatching("+5:45")).toEqual(["Asia/Kathmandu"]);

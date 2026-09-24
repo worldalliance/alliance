@@ -157,7 +157,11 @@ function labelFor({ tz, city, country }: TimeZoneCatalogEntry): BaseLabel {
   const intlName = getGenericLabelFromIntl(tz);
   const generic = intlName && !OFFSET_NAME.test(intlName) ? intlName : null;
   const curated = curatedNamesOf(tz);
-  const places = [city, country, ...curated].filter((name) => name != null);
+  // CLDR writes "Trinidad & Tobago" and "Côte d’Ivoire", which few type.
+  const typedCountry = country?.replace(/&/g, "and").replace(/’/g, "'");
+  const places = [city, country, typedCountry, ...curated].filter(
+    (name) => name != null,
+  );
   return {
     tz,
     city,
