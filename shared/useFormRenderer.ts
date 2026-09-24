@@ -27,10 +27,8 @@ import {
   emptyUserPropertyPresence,
   type UserPropertyPresence,
 } from "@alliance/common/forms/user-properties";
-import {
-  resolveVariableValues,
-  type VariableSourceHistory,
-} from "@alliance/common/forms/variable-evaluation";
+import { resolveVariableValues } from "@alliance/common/forms/variable-evaluation";
+import { variableSourceFormIds } from "@alliance/common/forms/variables";
 import {
   isElementCurrentlyVisible as isElementCurrentlyVisibleShared,
   isFieldConditionallyRequired,
@@ -64,6 +62,10 @@ import {
   resolveFieldDefaultValue,
   validateFieldValue as validateFieldValueShared,
 } from "./formrenderer";
+import {
+  evaluatedSources,
+  type SourceHistories,
+} from "./forms/useVariableSourceHistories";
 import { parseVisibilityValidatorResults } from "./parsed-dtos";
 
 export type FieldErrorUpdater = (
@@ -613,7 +615,7 @@ export function useFormVisibility(args: {
   visibilityValidatorResults: Record<number, boolean>;
   fieldLookup: Map<string, AnyField>;
   previousAnswerData: ConditionExtras["previousAnswerData"];
-  variableSources: ReadonlyMap<number, VariableSourceHistory>;
+  sourceHistories: SourceHistories;
   userHasCity: boolean;
   userPropertyHasValue?: UserPropertyPresence;
   firstContractSignedAt: string | null;
@@ -629,7 +631,7 @@ export function useFormVisibility(args: {
     visibilityValidatorResults,
     fieldLookup,
     previousAnswerData,
-    variableSources,
+    sourceHistories,
     userHasCity,
     userPropertyHasValue,
     firstContractSignedAt,
@@ -692,15 +694,24 @@ export function useFormVisibility(args: {
     [schema],
   );
 
-  const variables = useMemo(
-    () =>
-      resolveVariableValues(schema.variables, {
-        answers: effectiveFormData,
-        fields: variableInputFields,
-        sources: variableSources,
-      }),
-    [schema.variables, effectiveFormData, variableInputFields, variableSources],
-  );
+  const variables = useMemo(() => {
+    const { sources, deletedFormIds } = evaluatedSources(sourceHistories);
+    // A variable reading a deleted form stays out, so its `#{name}` shows as
+    // written, the way shared output leaves a variable it can't resolve.
+    const resolvable = schema.variables?.filter((variable) =>
+      variableSourceFormIds([variable]).every((id) => !deletedFormIds.has(id)),
+    );
+    return resolveVariableValues(resolvable, {
+      answers: effectiveFormData,
+      fields: variableInputFields,
+      sources,
+    });
+  }, [
+    schema.variables,
+    effectiveFormData,
+    variableInputFields,
+    sourceHistories,
+  ]);
 
   const isElementCurrentlyVisible = useCallback(
     (element: AnyField | DisplayBlock): boolean =>

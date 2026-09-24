@@ -46,7 +46,10 @@ export function historySubject(params: {
 export enum SourceHistoriesStatus {
   Loading = "loading",
   Failed = "failed",
-  /** A source form no longer exists, so no retry can load it. */
+  /**
+   * A source form no longer exists, so no retry can load it. Every other
+   * source has loaded.
+   */
   SourceDeleted = "sourceDeleted",
   Ready = "ready",
 }
@@ -54,7 +57,11 @@ export enum SourceHistoriesStatus {
 export type SourceHistories =
   | { status: SourceHistoriesStatus.Loading }
   | { status: SourceHistoriesStatus.Failed; retry: () => void }
-  | { status: SourceHistoriesStatus.SourceDeleted }
+  | {
+      status: SourceHistoriesStatus.SourceDeleted;
+      sources: ReadonlyMap<number, VariableSourceHistory>;
+      deletedFormIds: ReadonlySet<number>;
+    }
   | {
       status: SourceHistoriesStatus.Ready;
       sources: ReadonlyMap<number, VariableSourceHistory>;
@@ -62,6 +69,27 @@ export type SourceHistories =
 
 export const NO_SOURCE_HISTORIES: ReadonlyMap<number, VariableSourceHistory> =
   new Map();
+
+const NO_FORM_IDS: ReadonlySet<number> = new Set();
+
+export function evaluatedSources(histories: SourceHistories): {
+  sources: ReadonlyMap<number, VariableSourceHistory>;
+  deletedFormIds: ReadonlySet<number>;
+} {
+  switch (histories.status) {
+    case SourceHistoriesStatus.Loading:
+    case SourceHistoriesStatus.Failed:
+      return { sources: NO_SOURCE_HISTORIES, deletedFormIds: NO_FORM_IDS };
+    case SourceHistoriesStatus.SourceDeleted:
+      return histories;
+    case SourceHistoriesStatus.Ready:
+      return { sources: histories.sources, deletedFormIds: NO_FORM_IDS };
+    default:
+      throw new Error(
+        `unknown source histories status: ${histories satisfies never}`,
+      );
+  }
+}
 
 const EMPTY_HISTORY: VariableSourceHistory = {
   fields: new Map(),
@@ -185,24 +213,25 @@ export function useVariableSourceHistories(params: {
       };
     }
     const results = formIds.map((formId) => byForm?.get(formId));
-    if (results.some((result) => result === undefined)) {
-      return { status: SourceHistoriesStatus.Loading };
-    }
-    if (
-      results.some(
-        (result) =>
-          result?.ok === false && result.error instanceof SourceFormDeleted,
-      )
-    ) {
-      return { status: SourceHistoriesStatus.SourceDeleted };
-    }
     const sources = new Map<number, VariableSourceHistory>();
+    const deletedFormIds = new Set<number>();
+    let failed = false;
     for (const [index, result] of results.entries()) {
-      if (result === undefined || !result.ok) {
-        return { status: SourceHistoriesStatus.Failed, retry };
+      if (result === undefined) {
+        return { status: SourceHistoriesStatus.Loading };
       }
-      sources.set(formIds[index], result.value);
+      if (result.ok) {
+        sources.set(formIds[index], result.value);
+      } else if (result.error instanceof SourceFormDeleted) {
+        deletedFormIds.add(formIds[index]);
+      } else {
+        failed = true;
+      }
     }
-    return { status: SourceHistoriesStatus.Ready, sources };
+    // A failure a retry may clear outranks a deletion none can.
+    if (failed) return { status: SourceHistoriesStatus.Failed, retry };
+    return deletedFormIds.size > 0
+      ? { status: SourceHistoriesStatus.SourceDeleted, sources, deletedFormIds }
+      : { status: SourceHistoriesStatus.Ready, sources };
   }, [subject.reader, formIds, byForm, retry]);
 }

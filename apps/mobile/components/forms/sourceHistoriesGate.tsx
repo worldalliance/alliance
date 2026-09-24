@@ -12,10 +12,16 @@ import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { colors } from "../../lib/style/colors";
 import Text from "../system/Text";
 
-/** What a form renders in place of itself until its source histories are ready. */
-export function sourceHistoriesGate(
-  histories: SourceHistories,
-): ReactElement | null {
+/**
+ * What a form renders in place of itself until its source histories are ready.
+ * A read-only form reading a deleted form still shows, with the variables
+ * reading it unresolved.
+ */
+export function sourceHistoriesGate(params: {
+  histories: SourceHistories;
+  readOnly: boolean;
+}): ReactElement | null {
+  const { histories, readOnly } = params;
   switch (histories.status) {
     case SourceHistoriesStatus.Loading:
       return (
@@ -42,6 +48,7 @@ export function sourceHistoriesGate(
         </View>
       );
     case SourceHistoriesStatus.SourceDeleted:
+      if (readOnly) return null;
       return (
         <View className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
           <Text className="text-sm text-amber-800">{sourceFormDeleted}</Text>

@@ -10,10 +10,16 @@ import { RotateCw } from "lucide-react";
 import type { ReactElement } from "react";
 import Spinner from "../ui/Spinner";
 
-/** What a form renders in place of itself until its source histories are ready. */
-export function sourceHistoriesGate(
-  histories: SourceHistories,
-): ReactElement | null {
+/**
+ * What a form renders in place of itself until its source histories are ready.
+ * A read-only form reading a deleted form still shows, with the variables
+ * reading it unresolved.
+ */
+export function sourceHistoriesGate(params: {
+  histories: SourceHistories;
+  readOnly: boolean;
+}): ReactElement | null {
+  const { histories, readOnly } = params;
   switch (histories.status) {
     case SourceHistoriesStatus.Loading:
       return (
@@ -40,6 +46,7 @@ export function sourceHistoriesGate(
         </div>
       );
     case SourceHistoriesStatus.SourceDeleted:
+      if (readOnly) return null;
       return (
         <div
           className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"

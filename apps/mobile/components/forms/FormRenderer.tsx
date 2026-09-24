@@ -51,8 +51,6 @@ import {
 import { stripCardIds } from "@alliance/shared/forms/listCards";
 import {
   historySubject,
-  NO_SOURCE_HISTORIES,
-  SourceHistoriesStatus,
   useVariableSourceHistories,
 } from "@alliance/shared/forms/useVariableSourceHistories";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
@@ -951,10 +949,7 @@ const FormRenderer = ({
     visibilityValidatorResults,
     fieldLookup,
     previousAnswerData,
-    variableSources:
-      sourceHistories.status === SourceHistoriesStatus.Ready
-        ? sourceHistories.sources
-        : NO_SOURCE_HISTORIES,
+    sourceHistories,
     userHasCity,
     userPropertyHasValue,
     firstContractSignedAt,
@@ -1178,7 +1173,7 @@ const FormRenderer = ({
     return false;
   };
 
-  const gate = sourceHistoriesGate(sourceHistories);
+  const gate = sourceHistoriesGate({ histories: sourceHistories, readOnly });
   if (gate !== null) return gate;
 
   if (unknownKind || variablesError !== null) {

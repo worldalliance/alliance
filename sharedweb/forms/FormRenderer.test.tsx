@@ -258,6 +258,53 @@ describe("FormRenderer preview", () => {
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
+  it("shows a completed response reading a deleted form, leaving that variable unresolved", async () => {
+    api.alsoServing({
+      "GET /tasks/responseHistory/:formId/user/:userId": () =>
+        Response.json({ message: "Form not found" }, { status: 404 }),
+    });
+
+    renderPreview(
+      {
+        pages: [
+          {
+            id: "p1",
+            fields: [
+              {
+                id: "t",
+                type: "display",
+                kind: "text",
+                text: "Total #{total}",
+              },
+            ],
+          },
+        ],
+        outputViews: [],
+        variables: [
+          {
+            name: "total",
+            inputs: {
+              input1: {
+                kind: "sourceField",
+                fieldId: "score",
+                sourceFormId: 7,
+              },
+            },
+            formula: "input1.length",
+          },
+        ],
+      },
+      { adminPreviewUserId: 3, renderFormAsCompleted: true },
+    );
+
+    expect(await screen.findByText("Total #{total}")).toBeTruthy();
+    expect(
+      screen.queryByText(
+        "This form uses answers from a form that has been deleted, so it can't be shown.",
+      ),
+    ).toBeNull();
+  });
+
   it("won't draw a form whose variable reads an input kind this build doesn't know", () => {
     renderPreview({
       ...form,

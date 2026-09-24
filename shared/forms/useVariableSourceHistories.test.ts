@@ -161,7 +161,24 @@ describe("useVariableSourceHistories", () => {
     });
     await settle();
 
-    expect(result.current.status).toBe(SourceHistoriesStatus.SourceDeleted);
+    const histories = result.current;
+    if (histories.status !== SourceHistoriesStatus.SourceDeleted) {
+      throw new Error(`expected a deleted source, got ${histories.status}`);
+    }
+    expect(histories.deletedFormIds).toEqual(new Set([8]));
+    expect([...histories.sources.keys()]).toEqual([7]);
+  });
+
+  it("offers a retry for a failed load even beside a deleted form", async () => {
+    mine["7"] = async () => json({ message: "down" }, 500);
+    mine["8"] = async () => json({ message: "Form not found" }, 404);
+
+    const { result } = render(readingForms(7, 8), {
+      reader: HistoryReader.Self,
+    });
+    await settle();
+
+    expect(result.current.status).toBe(SourceHistoriesStatus.Failed);
   });
 
   it("drops a late answer for the member an admin switched away from", async () => {

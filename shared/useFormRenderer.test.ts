@@ -9,7 +9,11 @@ import {
 } from "@alliance/common/forms/form-schema";
 import type { VariableSourceHistory } from "@alliance/common/forms/variable-evaluation";
 import { act, cleanup, renderHook } from "@testing-library/react";
-import { NO_SOURCE_HISTORIES } from "./forms/useVariableSourceHistories";
+import {
+  NO_SOURCE_HISTORIES,
+  SourceHistoriesStatus,
+  type SourceHistories,
+} from "./forms/useVariableSourceHistories";
 import { routes, serveApi } from "./lib/testing/serveApi";
 import {
   useFieldErrors,
@@ -248,12 +252,17 @@ function lookupFor(schema: FormSchema): Map<string, AnyField> {
   );
 }
 
+const NO_SOURCES_READY: SourceHistories = {
+  status: SourceHistoriesStatus.Ready,
+  sources: NO_SOURCE_HISTORIES,
+};
+
 function renderVisibility(args: {
   schema?: FormSchema;
   formData: Record<string, FormValue>;
   currentPageIndex?: number;
   setCurrentPageIndex?: (index: number) => void;
-  variableSources?: ReadonlyMap<number, VariableSourceHistory>;
+  sourceHistories?: SourceHistories;
 }) {
   const schema = args.schema ?? twoPageSchema;
   return renderHook(() =>
@@ -267,7 +276,7 @@ function renderVisibility(args: {
       visibilityValidatorResults: {},
       fieldLookup: lookupFor(schema),
       previousAnswerData: undefined,
-      variableSources: args.variableSources ?? NO_SOURCE_HISTORIES,
+      sourceHistories: args.sourceHistories ?? NO_SOURCES_READY,
       userHasCity: false,
       firstContractSignedAt: null,
       completedActionCount: 0,
@@ -323,7 +332,7 @@ describe("useFormVisibility", () => {
       ],
     };
     const scoreFields = new Map([["score", { kind: "number" as const }]]);
-    const variableSources = new Map<number, VariableSourceHistory>([
+    const sources = new Map<number, VariableSourceHistory>([
       [
         7,
         {
@@ -348,7 +357,7 @@ describe("useFormVisibility", () => {
           visibilityValidatorResults: {},
           fieldLookup: lookupFor(schema),
           previousAnswerData: undefined,
-          variableSources,
+          sourceHistories: { status: SourceHistoriesStatus.Ready, sources },
           userHasCity: false,
           firstContractSignedAt: null,
           completedActionCount: 0,
@@ -385,6 +394,41 @@ describe("useFormVisibility", () => {
     expect(result.current.variablesError).toBe(
       "#{count}: Answers from form 7 are not loaded",
     );
+  });
+
+  it("leaves a variable reading a deleted form unresolved, and resolves the rest", () => {
+    const { result } = renderVisibility({
+      schema: {
+        ...schemaWith([textField("bonus")]),
+        variables: [
+          {
+            name: "count",
+            inputs: {
+              input1: {
+                kind: "sourceField",
+                fieldId: "score",
+                sourceFormId: 7,
+              },
+            },
+            formula: "input1.length",
+          },
+          {
+            name: "bonus",
+            inputs: { input1: { kind: "field", fieldId: "bonus" } },
+            formula: "input1",
+          },
+        ],
+      },
+      formData: { bonus: "4" },
+      sourceHistories: {
+        status: SourceHistoriesStatus.SourceDeleted,
+        sources: NO_SOURCE_HISTORIES,
+        deletedFormIds: new Set([7]),
+      },
+    });
+
+    expect(result.current.variablesError).toBeNull();
+    expect([...result.current.variableValues]).toEqual([["bonus", "4"]]);
   });
 
   const noteField: TextField = {
@@ -436,7 +480,7 @@ describe("useFormVisibility", () => {
           visibilityValidatorResults: {},
           fieldLookup: lookupFor(notesSchema),
           previousAnswerData: undefined,
-          variableSources: NO_SOURCE_HISTORIES,
+          sourceHistories: NO_SOURCES_READY,
           userHasCity: false,
           firstContractSignedAt: null,
           completedActionCount: 0,
@@ -571,7 +615,7 @@ function renderValidation(args: {
         visibilityValidatorResults: {},
         fieldLookup: lookupFor(args.schema),
         previousAnswerData: undefined,
-        variableSources: NO_SOURCE_HISTORIES,
+        sourceHistories: NO_SOURCES_READY,
         userHasCity: false,
         firstContractSignedAt: null,
         completedActionCount: 0,
