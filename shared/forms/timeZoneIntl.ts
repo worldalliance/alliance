@@ -133,11 +133,34 @@ function offsetFromWallClock(tz: string, when: Date): number | null {
     },
     locale: enUS(),
   });
+  if (!fmt) return null;
 
-  // A 12-hour reading lands near enough to UTC for the range check below to
+  let wall = checkedWallClocks.has(fmt) ? wallFromString(fmt, when) : null;
+  if (wall === null) {
+    wall = wallFromParts(fmt, when);
+    if (
+      wall !== null &&
+      askIntl(() => fmt.resolvedOptions().locale) === "en-US" &&
+      wallFromString(fmt, when) === wall
+    ) {
+      checkedWallClocks.add(fmt);
+    }
+  }
+  if (wall === null) return null;
+
+  // The parts carry whole seconds, so the instant has to as well for the
+  // difference to be the offset rather than the offset less a stray -0.4ms.
+  const truncated =
+    Math.floor(when.getTime() / millisecondsInSecond) * millisecondsInSecond;
+  const offset = Math.round((wall - truncated) / millisecondsInMinute);
+  return Math.abs(offset) > MAX_OFFSET_MINUTES ? null : offset;
+}
+
+function wallFromParts(fmt: Intl.DateTimeFormat, when: Date): number | null {
+  // A 12-hour reading lands near enough to UTC for the range check above to
   // take it, and an engine can answer for the cycle it resolved or for the
   // dayPeriod without answering for both, so each is refused on its own.
-  const resolved = fmt && askIntl(() => fmt.resolvedOptions());
+  const resolved = askIntl(() => fmt.resolvedOptions());
   if (!resolved || resolved.hour12) return null;
 
   const parts = partsOf(fmt, when);
@@ -155,13 +178,23 @@ function offsetFromWallClock(tz: string, when: Date): number | null {
     at("minute"),
     at("second"),
   );
-  if (Number.isNaN(wall)) return null;
-  // The parts carry whole seconds, so the instant has to as well for the
-  // difference to be the offset rather than the offset less a stray -0.4ms.
-  const truncated =
-    Math.floor(when.getTime() / millisecondsInSecond) * millisecondsInSecond;
-  const offset = Math.round((wall - truncated) / millisecondsInMinute);
-  return Math.abs(offset) > MAX_OFFSET_MINUTES ? null : offset;
+  return Number.isNaN(wall) ? null : wall;
+}
+
+// formatToParts costs Hermes on Android about twenty times what format does,
+// and the list reads every zone's offset each minute it is open. An en-US
+// formatter whose string once read the same wall clock as its parts writes
+// that layout every time, so its string answers from then on.
+const checkedWallClocks = new WeakSet<Intl.DateTimeFormat>();
+
+const EN_US_WALL_CLOCK = /^(\d{2})\/(\d{2})\/(\d{4}), (\d{2}):(\d{2}):(\d{2})$/;
+
+function wallFromString(fmt: Intl.DateTimeFormat, when: Date): number | null {
+  const written: unknown = askIntl(() => fmt.format(when));
+  const m = typeof written === "string" && EN_US_WALL_CLOCK.exec(written);
+  if (!m) return null;
+  const [month, day, year, hour, minute, second] = m.slice(1).map(Number);
+  return Date.UTC(year, month - 1, day, hour % 24, minute, second);
 }
 
 // The wall clock asks Intl for six fields and four options that shortOffset
