@@ -53,6 +53,7 @@ import { isFeatureEnabled } from "../../lib/config";
 import { useMediaQuery } from "../../lib/useMediaQuery";
 import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
 import MyGroupsPage from "./MyGroupsPage";
+import PageSpinner from "./PageSpinner";
 
 export type Tab = "activity" | "members" | "groups" | "invites";
 
@@ -84,11 +85,13 @@ const CommunityPage = () => {
   const {
     communities,
     communityIds,
+    isLoading: areGroupsLoading,
+    didFail: didGroupsFail,
     refreshCommunities,
     removeCommunity,
     selectedCommunity: community,
     removeMemberFromCommunity,
-    updateSelectedCommunity,
+    updateCommunity,
   } = useMyCommunities({
     selectedCommunityId: communityId ? Number(communityId) : null,
   });
@@ -316,7 +319,7 @@ const CommunityPage = () => {
       });
 
       if (response.data) {
-        updateSelectedCommunity(response.data);
+        updateCommunity(response.data);
         setIsEditing(false);
       } else {
         setError(
@@ -345,7 +348,7 @@ const CommunityPage = () => {
     isSaving,
     useMaxCapacity,
     memberCount,
-    updateSelectedCommunity,
+    updateCommunity,
   ]);
 
   const handleCancel = useCallback(() => {
@@ -441,6 +444,10 @@ const CommunityPage = () => {
       onBack={() => setParams({ tab: null })}
     />
   );
+
+  if (areGroupsLoading && !didGroupsFail) {
+    return <PageSpinner />;
+  }
 
   if (!community) {
     return (

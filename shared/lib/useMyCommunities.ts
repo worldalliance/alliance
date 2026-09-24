@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { CommunityDto, communityGetMyCommunities } from "../client";
 import { failedToLoad } from "./failedToLoad";
 
@@ -83,7 +83,7 @@ export function useMyCommunities(params?: {
     [queryClient],
   );
 
-  /** Upsert a single community into the cached list (does not touch selection). */
+  /** Upsert a single community into the cached list. */
   const updateCommunity = useCallback(
     (community: CommunityDto) => {
       queryClient.setQueryData<CommunityDto[]>(QUERY_KEY, (old) => {
@@ -96,20 +96,9 @@ export function useMyCommunities(params?: {
     [queryClient],
   );
 
-  const [selectedCommunity, setSelectedCommunity] =
-    useState<CommunityDto | null>(() =>
-      findCommunityById(communities, selectedCommunityId),
-    );
-  useEffect(() => {
-    setSelectedCommunity(findCommunityById(communities, selectedCommunityId));
-  }, [communities, selectedCommunityId]);
-
-  const updateSelectedCommunity = useCallback(
-    (community: CommunityDto) => {
-      updateCommunity(community);
-      setSelectedCommunity(findCommunityById(communities, community.id));
-    },
-    [updateCommunity, communities],
+  const selectedCommunity = useMemo(
+    () => findCommunityById(communities, selectedCommunityId),
+    [communities, selectedCommunityId],
   );
 
   return {
@@ -125,6 +114,5 @@ export function useMyCommunities(params?: {
     removeMemberFromCommunity,
     updateCommunity,
     selectedCommunity,
-    updateSelectedCommunity,
   };
 }
