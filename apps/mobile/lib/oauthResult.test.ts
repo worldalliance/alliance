@@ -379,7 +379,7 @@ describe("interruptedFailure", () => {
       FailureTone.Notice,
     );
     expect(interruptedFailure(OAuthError.Expired).message).toBe(
-      "Google or Apple sign-in took too long. Please try again.",
+      "That took too long. Please try again.",
     );
   });
 });
