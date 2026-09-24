@@ -14,17 +14,19 @@ import {
   type ExprValue,
 } from "@alliance/common/forms/variable-expression";
 import { checkVariableFormulaType } from "@alliance/common/forms/variable-formula-check";
+import {
+  VARIABLE_INPUT_NAME_REGEX,
+  type VariableInput,
+} from "@alliance/common/forms/variable-inputs";
 import { collectUnresolvedVariableReferences } from "@alliance/common/forms/variable-interpolation";
 import {
   sanitizeVariableName,
   syncListInputProperties,
   syncVariableListInputs,
-  VARIABLE_INPUT_NAME_REGEX,
   VARIABLE_NAME_REGEX,
   variableInputNameForIndex,
   variableTypeEnv,
   type FormVariable,
-  type VariableInput,
 } from "@alliance/common/forms/variables";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -107,8 +109,10 @@ const inputHelp = (
 ): InputModeHelp => {
   switch (input.kind) {
     case "field":
+    case "sourceField":
       return INPUT_MODE_HELP[inputModeOf(field)];
     case "list":
+    case "sourceList":
       return {
         notes: LIST_INPUT_HELP.notes,
         example: (name) =>
@@ -127,8 +131,10 @@ const inputHelp = (
 const exampleFormula = (input: VariableInput): string => {
   switch (input.kind) {
     case "field":
+    case "sourceField":
       return "input1";
     case "list":
+    case "sourceList":
       return inputHelp(input, undefined).example("input1");
     default:
       throw new Error(`unknown input kind: ${input satisfies never}`);
@@ -177,7 +183,11 @@ function VariableCard({
   );
 
   const inputTypes = useMemo(
-    () => variableTypeEnv(variable, variableInputFieldsById(eligibleFields)),
+    () =>
+      variableTypeEnv(variable, {
+        fields: variableInputFieldsById(eligibleFields),
+        sourceFields: new Map(),
+      }),
     [variable, eligibleFields],
   );
 
@@ -556,10 +566,10 @@ export function VariableBuilder({
   // any edit here stores them.
   const variables = useMemo(
     () =>
-      syncVariableListInputs(
-        schema.variables ?? [],
-        variableInputFieldsById(eligibleFields),
-      ),
+      syncVariableListInputs(schema.variables ?? [], {
+        fields: variableInputFieldsById(eligibleFields),
+        sourceFields: new Map(),
+      }),
     [schema.variables, eligibleFields],
   );
 

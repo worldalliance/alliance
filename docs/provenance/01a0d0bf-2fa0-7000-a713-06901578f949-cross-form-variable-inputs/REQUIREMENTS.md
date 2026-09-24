@@ -35,3 +35,7 @@ The following choices originated with the agent; the user approved them during t
 - Each variable input has a form picker defaulting to “This form,” followed by a field picker. Retain the sample-value formula preview.
 - Show broken references in the builder and prevent saving them.
 - Wait for required source answers before displaying the destination form. A failed load shows an error with retry rather than behaving as an unanswered question.
+
+## User clarifications after implementation
+
+- A question's type changing between submissions to a source form can be assumed not to happen, and the implementation may ignore that case for now. A future guard may stop admins from changing a question's type.

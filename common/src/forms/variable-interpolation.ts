@@ -3,6 +3,7 @@
 
 import type { DisplayBlock, DisplayKind } from "./display-blocks";
 import {
+  collectFieldLookup,
   isFieldGroup,
   isQuestionField,
   type AnyField,
@@ -11,7 +12,11 @@ import {
   type OutputFieldBlock,
   type PageItem,
 } from "./form-schema";
-import { collectVariableReferences, interpolateVariables } from "./variables";
+import {
+  collectVariableReferences,
+  interpolateVariables,
+  readsSourceForm,
+} from "./variables";
 
 // HTML is excluded because `dangerouslySetInnerHTML` would turn an interpolated
 // answer into markup.
@@ -192,76 +197,111 @@ export function interpolateOutputFieldBlock<T extends OutputFieldBlock>(
   return interpolateStringProps(block, INTERPOLATED_OUTPUT_FIELD_PROPS, values);
 }
 
+type TextVisitor = (text: string, location: string) => void;
+
+function visitProps(
+  source: object,
+  props: readonly string[],
+  location: string,
+  visit: TextVisitor,
+): void {
+  for (const prop of props) {
+    const value: unknown = Reflect.get(source, prop);
+    if (typeof value === "string") visit(value, `${location}.${prop}`);
+  }
+}
+
+function visitElementText(element: PageItem, visit: TextVisitor): void {
+  if (isFieldGroup(element)) {
+    for (const child of element.fields) visitElementText(child, visit);
+    return;
+  }
+  const location = element.id ?? `<${element.kind}>`;
+  if (isQuestionField(element)) {
+    visitProps(element, INTERPOLATED_FIELD_PROPS, location, visit);
+    if (hasOptionLabels(element)) {
+      element.options.forEach((option, index) =>
+        visit(option.label, `${location}.options[${index}].label`),
+      );
+    }
+    if (element.kind === "list") {
+      for (const sub of element.fields ?? []) visitElementText(sub, visit);
+    }
+    return;
+  }
+  visitProps(
+    element,
+    INTERPOLATED_DISPLAY_FIELDS[element.kind] ?? [],
+    location,
+    visit,
+  );
+  if (element.kind === "images") {
+    element.images.forEach((image, index) =>
+      visitProps(
+        image,
+        IMAGES_ITEM_PROPS,
+        `${location}.images[${index}]`,
+        visit,
+      ),
+    );
+  }
+  if (element.kind === "chatTranscript") {
+    element.messages.forEach((message, index) =>
+      visit(message.text, `${location}.messages[${index}].text`),
+    );
+  }
+  if (element.kind === "accordion") {
+    element.sections.forEach((section, index) => {
+      visit(section.title, `${location}.sections[${index}].title`);
+      for (const nested of section.blocks) visitElementText(nested, visit);
+    });
+  }
+}
+
+function visitOutputFieldBlock(block: OutputFieldBlock, visit: TextVisitor) {
+  visitProps(
+    block,
+    INTERPOLATED_OUTPUT_FIELD_PROPS,
+    block.id ?? "<output>",
+    visit,
+  );
+}
+
 export function forEachInterpolatableText(
   schema: FormSchema,
-  visit: (text: string, location: string) => void,
+  visit: TextVisitor,
 ): void {
-  const visitProps = (
-    source: object,
-    props: readonly string[],
-    location: string,
-  ): void => {
-    for (const prop of props) {
-      const value: unknown = Reflect.get(source, prop);
-      if (typeof value === "string") visit(value, `${location}.${prop}`);
-    }
-  };
-
-  const visitElement = (element: PageItem): void => {
-    if (isFieldGroup(element)) {
-      for (const child of element.fields) visitElement(child);
-      return;
-    }
-    const location = element.id ?? `<${element.kind}>`;
-    if (isQuestionField(element)) {
-      visitProps(element, INTERPOLATED_FIELD_PROPS, location);
-      if (hasOptionLabels(element)) {
-        element.options.forEach((option, index) =>
-          visit(option.label, `${location}.options[${index}].label`),
-        );
-      }
-      if (element.kind === "list") {
-        for (const sub of element.fields ?? []) visitElement(sub);
-      }
-      return;
-    }
-    visitProps(
-      element,
-      INTERPOLATED_DISPLAY_FIELDS[element.kind] ?? [],
-      location,
-    );
-    if (element.kind === "images") {
-      element.images.forEach((image, index) =>
-        visitProps(image, IMAGES_ITEM_PROPS, `${location}.images[${index}]`),
-      );
-    }
-    if (element.kind === "chatTranscript") {
-      element.messages.forEach((message, index) =>
-        visit(message.text, `${location}.messages[${index}].text`),
-      );
-    }
-    if (element.kind === "accordion") {
-      element.sections.forEach((section, index) => {
-        visit(section.title, `${location}.sections[${index}].title`);
-        for (const nested of section.blocks) visitElement(nested);
-      });
-    }
-  };
-
   for (const page of schema.pages ?? []) {
-    for (const element of page.fields ?? []) visitElement(element);
+    for (const element of page.fields ?? []) visitElementText(element, visit);
   }
   for (const view of schema.outputViews ?? []) {
     for (const block of view.blocks ?? []) {
-      if ("fieldId" in block) {
-        visitProps(
-          block,
-          INTERPOLATED_OUTPUT_FIELD_PROPS,
-          block.id ?? "<output>",
-        );
+      if ("fieldId" in block) visitOutputFieldBlock(block, visit);
+      else visitElementText(block, visit);
+    }
+  }
+}
+
+/**
+ * Every text an output view renders, including the question text its field
+ * blocks reuse.
+ */
+function forEachSharedOutputText(
+  schema: FormSchema,
+  visit: (text: string, location: string, viewId: string) => void,
+): void {
+  const fields = collectFieldLookup(schema.pages ?? []);
+  for (const view of schema.outputViews ?? []) {
+    const visitInView: TextVisitor = (text, location) =>
+      visit(text, location, view.id);
+    for (const block of view.blocks ?? []) {
+      if (!("fieldId" in block)) {
+        visitElementText(block, visitInView);
         continue;
       }
-      visitElement(block);
+      visitOutputFieldBlock(block, visitInView);
+      const field = fields.get(block.fieldId);
+      if (field) visitElementText(field, visitInView);
     }
   }
 }
@@ -293,4 +333,25 @@ export function collectUnresolvedVariableReferences(
   });
 
   return [...found].map(([name, locations]) => ({ name, locations }));
+}
+
+/**
+ * References to variables that read another form's answers from text an output
+ * view renders. Shared output never loads those answers, so each would show as
+ * its raw `#{name}`.
+ */
+export function sourceVariablesInSharedOutput(
+  schema: FormSchema,
+): { name: string; location: string; viewId: string }[] {
+  const readingSources = new Set(
+    (schema.variables ?? []).filter(readsSourceForm).map(({ name }) => name),
+  );
+  const found: { name: string; location: string; viewId: string }[] = [];
+  if (readingSources.size === 0) return found;
+  forEachSharedOutputText(schema, (text, location, viewId) => {
+    for (const name of collectVariableReferences(text)) {
+      if (readingSources.has(name)) found.push({ name, location, viewId });
+    }
+  });
+  return found;
 }

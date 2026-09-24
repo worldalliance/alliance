@@ -1,17 +1,20 @@
 import {
-  collectVariableInputFields,
   isFieldGroup,
   isQuestionField,
-  variableInputFieldsById,
   type AnyField,
   type FormSchema,
   type ListSubField,
   type PageItem,
 } from "./form-schema";
-import type { FormSchemaValidationError } from "./form-schema-validate";
+import type {
+  FormSchemaValidationContext,
+  FormSchemaValidationError,
+} from "./form-schema-validate";
 import { evaluateVariable } from "./variable-evaluation";
 import { compileVariableExpression } from "./variable-expression";
 import { checkVariableFormulaType } from "./variable-formula-check";
+import { inputSourceFormId } from "./variable-inputs";
+import { variableFieldScope } from "./variable-scope";
 import {
   isFieldKindReadableByFieldInput,
   isKnownFieldKind,
@@ -29,31 +32,48 @@ type CollectedField = {
   subFields: readonly ListSubField[];
 };
 
-function collectFieldKinds(schema: FormSchema): Map<string, CollectedField> {
+function collectFieldKinds(
+  items: readonly PageItem[],
+): Map<string, CollectedField> {
   const fields = new Map<string, CollectedField>();
-  for (const page of schema.pages ?? []) {
-    for (const item of page.fields ?? []) {
-      collectFieldKindsFromItem(item, fields);
-    }
-  }
+  for (const item of items) collectFieldKindsFromItem(item, fields);
   return fields;
 }
 
 export function collectVariableErrors(
   schema: FormSchema,
+  context: FormSchemaValidationContext,
   errors: FormSchemaValidationError[],
 ): void {
   const variables = schema.variables ?? [];
-  const fieldKinds = collectFieldKinds(schema);
+  const fieldKinds: FieldKindScope = {
+    fields: collectFieldKinds(
+      (schema.pages ?? []).flatMap((page) => page.fields ?? []),
+    ),
+    sourceFields: new Map(
+      [...context.sourceForms].map(([formId, fields]) => [
+        formId,
+        collectFieldKinds(fields),
+      ]),
+    ),
+    formId: context.formId,
+  };
   const declared = new Set<string>();
 
   // An input the picker could never have offered reads as `any`, so
   // `checkVariableInputs` reports one focused error instead of the type checker
   // adding one per use.
-  const readableFields = variableInputFieldsById(
-    collectVariableInputFields(schema),
-  );
-  const unansweredContext = { answers: {}, fields: readableFields };
+  const readableFields = variableFieldScope(schema, context.sourceForms);
+  const unansweredContext = {
+    answers: {},
+    fields: readableFields.fields,
+    sources: new Map(
+      [...readableFields.sourceFields].map(([formId, fields]) => [
+        formId,
+        { fields, responses: [] },
+      ]),
+    ),
+  };
 
   for (const variable of variables) {
     const blockId = `variable:${variable.name}`;
@@ -100,17 +120,46 @@ export function collectVariableErrors(
   }
 }
 
+type FieldKindScope = {
+  fields: Map<string, CollectedField>;
+  sourceFields: Map<number, Map<string, CollectedField>>;
+  formId: number | undefined;
+};
+
 function checkVariableInputs(
   variable: FormVariable,
-  fields: Map<string, CollectedField>,
+  scope: FieldKindScope,
   push: (message: string) => void,
 ): void {
   for (const [inputName, input] of Object.entries(variable.inputs)) {
+    const sourceFormId = inputSourceFormId(input);
+    if (sourceFormId !== undefined && sourceFormId === scope.formId) {
+      push(
+        `Input "${inputName}" reads this form as another form. Pick "This form" instead`,
+      );
+      continue;
+    }
+    const fields =
+      sourceFormId === undefined
+        ? scope.fields
+        : scope.sourceFields.get(sourceFormId);
+    if (fields === undefined) {
+      push(
+        `Input "${inputName}" reads form ${sourceFormId}, which doesn't exist or couldn't be loaded`,
+      );
+      continue;
+    }
     const topLevelField = (): CollectedField | undefined => {
+      if (input.fieldId === "") {
+        push(`Input "${inputName}" has no question picked`);
+        return undefined;
+      }
       const field = fields.get(input.fieldId);
       if (field === undefined) {
         push(
-          `Input "${inputName}" references missing field "${input.fieldId}"`,
+          sourceFormId === undefined
+            ? `Input "${inputName}" references missing field "${input.fieldId}"`
+            : `Input "${inputName}" references field "${input.fieldId}", which form ${sourceFormId} no longer has`,
         );
         return undefined;
       }
@@ -124,7 +173,8 @@ function checkVariableInputs(
     };
     const { kind } = input;
     switch (kind) {
-      case "field": {
+      case "field":
+      case "sourceField": {
         const field = topLevelField();
         if (field === undefined) break;
         if (field.kind === "list") {
@@ -142,7 +192,8 @@ function checkVariableInputs(
         }
         break;
       }
-      case "list": {
+      case "list":
+      case "sourceList": {
         const field = topLevelField();
         if (field === undefined) break;
         if (field.kind !== "list") {

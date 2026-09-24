@@ -49,13 +49,13 @@ These are implementation discretion, not release acceptance requirements. Record
 
 As implemented:
 
-- **Question type changes:** each answer is read with its own snapshot's field kind. When a snapshot reads the question (or a named list sub-field) as a different input mode than the source form's current version, the variable fails with an unsupported-type error. The formula editor still shows only the current type; a union catalog across snapshots was not built.
+- **Question type changes:** REQUIREMENTS lets the implementation ignore this case. Each answer is read with its own snapshot's field kind. When a snapshot reads the question (or a named list sub-field) as a different input mode than the source form's current version, the variable fails with an unsupported-type error. The formula editor still shows only the current type; a union catalog across snapshots was not built.
 - **Question removed:** runtime keeps reading each submission's snapshot, so an open form still works. Builder and server validation reject the reference, so the next save needs a repair.
 - **Source form deleted:** the history endpoint returns 404, which the renderer shows as a load failure with retry. Validation reports the form as missing.
 
 ## Implementation choices
 
-- **Stored shape:** `sourceFormId` is an optional positive integer on both `field` and `list` inputs. Absent means "This form", so stored schemas need no migration.
+- **Stored shape:** an input reading another form is a `sourceField` or `sourceList` input, with a required `sourceFormId` bounded to a Postgres integer. `field` and `list` keep reading this form, so stored schemas need no migration. The separate kinds make a build that predates them fail the variable as an unknown input kind; an optional id on `field` would be ignored there, and the old build would read this form's answers instead.
 - **Endpoints:** `GET tasks/myResponseHistory/:id` reads the session's member; `GET tasks/responseHistory/:formId/user/:userId` is admin-only. Each returns the source form's current schema plus every submitted response (`id`, `createdAt`, `answers`, `schemaSnapshot`), ordered by `createdAt`, then `id`. Each response embeds its snapshot rather than de-duplicating snapshots: members rarely submit a form many times, and one flat shape is simpler to parse.
 - **One request per source form:** the client fetches each source once per destination and subject, so every input reading that form shares one ordered list. Retry refetches only the forms that failed.
 - **Subject:** web and mobile renderers read the signed-in member's own history. An admin renderer reads the selected member through the admin endpoint. A guest, or the builder's synthetic "preview" user, gets empty history without a request. An admin preview id that isn't a user id never falls back to the admin's own answers.
@@ -64,7 +64,7 @@ As implemented:
 - **Validation context:** `validateFormSchema` takes `{ formId, sourceForms }`, the current page-level question fields of every source form. The server loads them from the database, and the builder loads them through the form-fields query cache. Reading the form's own id as a source is rejected, since "This form" never exposes the destination's earlier submissions.
 - **Shared output:** every output view counts as shared output. The check covers display blocks, field-block label overrides, and the referenced question's label, description, placeholder, option labels, and list sub-field text, matching `interpolateFieldText`.
 - **Conflict merge:** `mergeFormSchemas` validates with the same context. The builder loads source forms referenced by either its own schema or the conflicting server schema.
-- **File splits:** variable evaluation (`variable-evaluation.ts`), variable validation (`variable-validate.ts`) and the builder's sample editors (`VariableSamples.tsx`) moved into their own files. Their parents had passed the 500-line guideline.
+- **File splits:** variable evaluation (`variable-evaluation.ts`), variable validation (`variable-validate.ts`), the input schemas (`variable-inputs.ts`), the variable field scope (`variable-scope.ts`), and the builder's sample editors (`VariableSamples.tsx`) moved into their own files. Their parents had passed the 500-line guideline.
 
 ## Compatibility and storage
 

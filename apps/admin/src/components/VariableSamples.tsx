@@ -10,13 +10,15 @@ import type {
   ExprValue,
 } from "@alliance/common/forms/variable-expression";
 import {
+  type VariableInput,
+  type VariableListInput,
+} from "@alliance/common/forms/variable-inputs";
+import {
   FIELD_KIND_VARIABLE_INPUT_MODE,
   formValueToExprValue,
   listInputPropertyErrors,
   readableListSubFields,
   VariableInputMode,
-  type VariableInput,
-  type VariableListInput,
 } from "@alliance/common/forms/variables";
 import { cn } from "@alliance/shared/styles/util";
 import { Plus, Trash2 } from "lucide-react";
@@ -131,8 +133,10 @@ export const readInputSample = (
 ): SampleReading => {
   switch (input.kind) {
     case "field":
+    case "sourceField":
       return readSampleAnswer(field, sample);
     case "list":
+    case "sourceList":
       return readListSample(input, field, sample);
     default:
       throw new Error(`unknown input kind: ${input satisfies never}`);

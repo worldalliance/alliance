@@ -625,7 +625,10 @@ describe("list inputs", () => {
 
     it("leaves a variable whose inputs are in sync as the same object", () => {
       const synced = listVariable("input1.length");
-      const fields = variableInputFieldsById([people]);
+      const fields = {
+        fields: variableInputFieldsById([people]),
+        sourceFields: new Map(),
+      };
       expect(syncVariableListInputs([synced], fields)[0]).toBe(synced);
       const stale = variable({
         inputs: {

@@ -10,6 +10,14 @@ import {
   type ExprRecord,
   type ExprValue,
 } from "./variable-expression";
+import {
+  inputSourceFormId,
+  isListInput,
+  VARIABLE_INPUT_NAME_REGEX,
+  variableInputSchema,
+  type VariableInput,
+  type VariableListInput,
+} from "./variable-inputs";
 
 /**
  * Names appear only inside `#{…}`, never as an identifier in a formula (the
@@ -37,32 +45,6 @@ export function variableReferencePattern(): RegExp {
 }
 
 export const VARIABLE_INPUT_NAME_PREFIX = "input";
-
-/**
- * Input names are written verbatim into the formula, so unlike variable names
- * they must be parseable as identifiers — a name outside this shape could never
- * be referenced by the formula that depends on it.
- */
-export const VARIABLE_INPUT_NAME_REGEX = /^[A-Za-z_][A-Za-z0-9_]*$/;
-
-const variableFieldInputSchema = z.strictObject({
-  kind: z.literal("field"),
-  fieldId: z.string(),
-});
-
-const variableListInputSchema = z.strictObject({
-  kind: z.literal("list"),
-  fieldId: z.string(),
-  /** Row property name for each readable sub-field, keyed by sub-field id. */
-  properties: z.record(z.string(), z.string().regex(VARIABLE_INPUT_NAME_REGEX)),
-});
-export type VariableListInput = z.infer<typeof variableListInputSchema>;
-
-export const variableInputSchema = z.discriminatedUnion("kind", [
-  variableFieldInputSchema,
-  variableListInputSchema,
-]);
-export type VariableInput = z.infer<typeof variableInputSchema>;
 
 export const formVariableSchema = z.strictObject({
   name: z.string().regex(VARIABLE_NAME_REGEX),
@@ -124,7 +106,7 @@ export function isKnownFieldKind(kind: string): kind is FieldKind {
   return Object.hasOwn(FIELD_KIND_VARIABLE_INPUT_MODE, kind);
 }
 
-function variableInputMode(kind: FieldKind): VariableInputMode {
+export function variableInputMode(kind: FieldKind): VariableInputMode {
   return isKnownFieldKind(kind)
     ? FIELD_KIND_VARIABLE_INPUT_MODE[kind]
     : VariableInputMode.None;
@@ -139,6 +121,29 @@ export type VariableInputField = {
   options?: readonly { label: string; value: string }[];
   fields?: readonly ListSubField[];
 };
+
+export type VariableInputFields = ReadonlyMap<string, VariableInputField>;
+
+export type VariableFieldScope = {
+  fields: VariableInputFields;
+  sourceFields: ReadonlyMap<number, VariableInputFields>;
+};
+
+export function readsSourceForm(variable: FormVariable): boolean {
+  return Object.values(variable.inputs).some(
+    (input) => inputSourceFormId(input) !== undefined,
+  );
+}
+
+function inputFields(
+  input: VariableInput,
+  scope: VariableFieldScope,
+): VariableInputFields | undefined {
+  const sourceFormId = inputSourceFormId(input);
+  return sourceFormId === undefined
+    ? scope.fields
+    : scope.sourceFields.get(sourceFormId);
+}
 
 export function readableListSubFields(
   subFields: readonly ListSubField[],
@@ -244,17 +249,20 @@ export function listInputPropertyErrors(params: {
   return errors;
 }
 
-/** Brings every list input in line with its list's current sub-fields. */
+/**
+ * Brings every list input in line with its list's current sub-fields. An input
+ * whose source form's fields aren't in `scope` stays as it is.
+ */
 export function syncVariableListInputs(
   variables: readonly FormVariable[],
-  fields: ReadonlyMap<string, VariableInputField>,
+  scope: VariableFieldScope,
 ): FormVariable[] {
   return variables.map((variable) => {
     let changed = false;
     const inputs = Object.fromEntries(
       Object.entries(variable.inputs).map(([name, input]) => {
-        const field = fields.get(input.fieldId);
-        if (input.kind !== "list" || field?.kind !== "list") {
+        const field = inputFields(input, scope)?.get(input.fieldId);
+        if (!isListInput(input) || field?.kind !== "list") {
           return [name, input];
         }
         const properties = syncListInputProperties(
@@ -328,29 +336,41 @@ function listInputType(
   return `{ ${members.join("; ")} }[]`;
 }
 
+function inputType(
+  input: VariableInput,
+  field: VariableInputField | undefined,
+): string {
+  switch (input.kind) {
+    case "field":
+    case "sourceField":
+      return variableInputType(
+        field !== undefined && isFieldKindReadableByFieldInput(field.kind)
+          ? field.kind
+          : undefined,
+      );
+    case "list":
+    case "sourceList":
+      return listInputType(input, field);
+    default:
+      input satisfies never;
+      return variableInputType(undefined);
+  }
+}
+
+/** An input reading another form gets one element per submission. */
 export function variableTypeEnv(
   variable: FormVariable,
-  fields: ReadonlyMap<string, VariableInputField>,
+  scope: VariableFieldScope,
 ): ReadonlyMap<string, string> {
   return new Map(
     Object.entries(variable.inputs).map(([name, input]) => {
-      const field = fields.get(input.fieldId);
-      switch (input.kind) {
-        case "field":
-          return [
-            name,
-            variableInputType(
-              field !== undefined && isFieldKindReadableByFieldInput(field.kind)
-                ? field.kind
-                : undefined,
-            ),
-          ];
-        case "list":
-          return [name, listInputType(input, field)];
-        default:
-          input satisfies never;
-          return [name, variableInputType(undefined)];
-      }
+      const fields = inputFields(input, scope);
+      if (fields === undefined) return [name, variableInputType(undefined)];
+      const type = inputType(input, fields.get(input.fieldId));
+      return [
+        name,
+        inputSourceFormId(input) === undefined ? type : `(${type})[]`,
+      ];
     }),
   );
 }

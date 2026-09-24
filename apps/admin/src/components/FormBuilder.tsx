@@ -17,7 +17,6 @@ import {
   flattenPageItems,
   isFieldGroup,
   isQuestionField,
-  syncSchemaVariableListInputs,
   type AnyField,
   type FieldGroup,
   type FieldKind,
@@ -33,6 +32,7 @@ import {
   collectUnresolvedVariableReferences,
   type UnresolvedVariableReference,
 } from "@alliance/common/forms/variable-interpolation";
+import { syncSchemaVariableListInputs } from "@alliance/common/forms/variable-scope";
 import {
   type Condition,
   type VisibleIfFormula,
@@ -1710,7 +1710,7 @@ export function FormBuilder(props: FormBuilderProps) {
     try {
       // List inputs name sub-fields added since the variable was last edited
       // here, from labels that are final by now.
-      const syncedSchema = syncSchemaVariableListInputs(schema);
+      const syncedSchema = syncSchemaVariableListInputs(schema, new Map());
       if (syncedSchema !== schema) setSchema(syncedSchema);
 
       const validationErrors = validateFormSchema(syncedSchema);

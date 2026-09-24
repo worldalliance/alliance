@@ -15,7 +15,6 @@ import {
 import {
   formVariableSchema,
   isFieldKindReadableByFieldInput,
-  syncVariableListInputs,
   type VariableInputField,
 } from "./variables";
 import type { Condition, VisibleIfFormula } from "./visible-if-formula";
@@ -529,7 +528,13 @@ export function fieldHasOptions(field: AnyField): field is OptionField {
  * read only through their list.
  */
 export function collectVariableInputFields(schema: FormSchema): AnyField[] {
-  return collectVariableResolutionFields(schema).filter(
+  return readableVariableInputFields(collectVariableResolutionFields(schema));
+}
+
+export function readableVariableInputFields(
+  fields: readonly AnyField[],
+): AnyField[] {
+  return fields.filter(
     (field) =>
       field.kind === "list" || isFieldKindReadableByFieldInput(field.kind),
   );
@@ -559,19 +564,6 @@ export function variableInputFieldsById(
   fields: readonly AnyField[],
 ): ReadonlyMap<string, VariableInputField> {
   return new Map(fields.map((field) => [field.id, variableInputField(field)]));
-}
-
-/** Returns `schema` itself when every list input is already in sync. */
-export function syncSchemaVariableListInputs(schema: FormSchema): FormSchema {
-  const current = schema.variables;
-  if (current === undefined) return schema;
-  const variables = syncVariableListInputs(
-    current,
-    variableInputFieldsById(collectVariableInputFields(schema)),
-  );
-  return variables.every((variable, index) => variable === current[index])
-    ? schema
-    : { ...schema, variables };
 }
 
 /**

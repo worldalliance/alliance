@@ -10,6 +10,8 @@ import {
   type OutputViewSchema,
   type PageItem,
 } from "./form-schema";
+import { sourceVariablesInSharedOutput } from "./variable-interpolation";
+import type { SourceFormFields } from "./variable-scope";
 import { collectVariableErrors } from "./variable-validate";
 import {
   CONDITION_KIND_IS_ACCOUNT_DERIVED,
@@ -25,8 +27,16 @@ export type FormSchemaValidationError = {
 
 type ContextKind = "input" | "output";
 
+export type FormSchemaValidationContext = {
+  /** Unset while the form is being created. */
+  formId?: number;
+  /** Must hold every form a variable input reads. */
+  sourceForms: SourceFormFields;
+};
+
 export function validateFormSchema(
   schema: FormSchema,
+  context: FormSchemaValidationContext = { sourceForms: new Map() },
 ): FormSchemaValidationError[] {
   const errors: FormSchemaValidationError[] = [];
 
@@ -58,7 +68,16 @@ export function validateFormSchema(
     }
   }
 
-  collectVariableErrors(schema, errors);
+  collectVariableErrors(schema, context, errors);
+  for (const { name, location, viewId } of sourceVariablesInSharedOutput(
+    schema,
+  )) {
+    errors.push({
+      viewId,
+      blockId: location,
+      message: `Output views can't show #{${name}}, which reads answers from another form`,
+    });
+  }
 
   for (const view of schema.outputViews ?? []) {
     const outputBlockIds = new Set<string>();
