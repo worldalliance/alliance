@@ -34,6 +34,7 @@ import {
 } from "./variables";
 
 export type VariableSourceResponse = {
+  id: number;
   answers: Readonly<Record<string, FormValue>>;
   /** The fields of the form version this response was submitted against. */
   fields: VariableInputFields;
