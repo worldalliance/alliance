@@ -5,11 +5,13 @@ import {
   messageSendMessage,
   ProfileDto,
 } from "@alliance/shared/client";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import LoadFailed from "../../../components/LoadFailed";
 import MessageComposer from "../../../components/messages/MessageComposer";
 import MessageRecipientSelect from "../../../components/messages/MessageRecipientSelect";
 import BackButton from "../../../components/system/BackButton";
@@ -28,8 +30,9 @@ export default function NewMessageScreen() {
   const { to } = useLocalSearchParams<{ to?: string }>();
   const { conversations, setConversations } = useConversations(null);
 
+  const messageableUsersQuery = useMessageableUsersQuery();
   const { data: messageableUsers = [], isLoading: loadingUsers } =
-    useMessageableUsersQuery();
+    messageableUsersQuery;
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const [message, setMessage] = useState("");
   const [attachments, setAttachments] = useState<string[]>([]);
@@ -166,7 +169,15 @@ export default function NewMessageScreen() {
       >
         <View className="border border-zinc-200 rounded bg-white px-4 flex flex-row items-center">
           <Text className="text-sm text-zinc-600 mr-2">To:</Text>
-          {loadingUsers ? (
+          {failedToLoad(messageableUsersQuery) ? (
+            <View className="flex-1">
+              <LoadFailed
+                message="Couldn't load the people you can message."
+                onRetry={() => void messageableUsersQuery.refetch()}
+                retrying={messageableUsersQuery.isFetching}
+              />
+            </View>
+          ) : loadingUsers ? (
             <ActivityIndicator size="small" color={colors.green} />
           ) : (
             <MessageRecipientSelect

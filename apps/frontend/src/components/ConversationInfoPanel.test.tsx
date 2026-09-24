@@ -79,6 +79,7 @@ const panel = (
         selectedConvo={convo}
         handleConversationUpdated={() => {}}
         friends={[]}
+        friendsFailure={null}
         onLeave={() => {}}
         onClose={() => {}}
         {...props}
@@ -172,6 +173,32 @@ it("offers a group admin the field to add members", () => {
   renderPanel("admin");
 
   expect(screen.getByPlaceholderText("Add member...")).toBeTruthy();
+});
+
+it("offers a retry in place of the field to add members when they failed to load", () => {
+  const retry = jest.fn();
+  render(
+    panel(groupWith("admin"), {
+      friendsFailure: { onRetry: retry, retrying: false },
+    }),
+  );
+
+  expect(screen.queryByPlaceholderText("Add member...")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+  expect(retry).toHaveBeenCalled();
+});
+
+it("keeps the add-member retry from a group member who is not an admin", () => {
+  render(
+    panel(groupWith("member"), {
+      friendsFailure: { onRetry: () => {}, retrying: false },
+    }),
+  );
+
+  expect(
+    screen.queryByText("Couldn't load the people you can add."),
+  ).toBeNull();
 });
 
 it("keeps the field to add members from a community chat admin", () => {

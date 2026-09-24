@@ -1,4 +1,5 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
+import { NOTIFS_LOADED_AT_HEADER } from "@alliance/common/notifs";
 import {
   NotificationDto,
   notifsFindAll,
@@ -21,7 +22,10 @@ import { captureEvent } from "./analytics";
 import {
   getNotificationIdentityKey,
   getNotificationReadRequest,
+  isClearedByContentRead,
 } from "./notificationIdentity";
+
+const FIRST_LOAD_LIMIT = 20;
 
 export function getWebAppLocation(webAppLocation: string) {
   return webAppLocation.startsWith("/") ? webAppLocation : "/" + webAppLocation;
@@ -41,6 +45,8 @@ interface NotificationsContextType {
   ) => () => void;
   handleMarkAllAsRead: (e: React.MouseEvent) => void;
   refreshNotifications: (options?: { limit?: number }) => Promise<void>;
+  /** Loads the whole list and keeps later refreshes whole until the returned cleanup runs. */
+  showWholeList: () => () => void;
   applyNotificationsReadByContent: (
     contentType: UnreadContentType,
     contentIds: number[],
@@ -58,34 +64,75 @@ export const NotificationsProvider = ({
 }) => {
   const [notifications, setNotifications] = useState<NotificationDto[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const loadedAtRef = useRef<string | null>(null);
+  const lastLimitRef = useRef<number | undefined>(FIRST_LOAD_LIMIT);
+  const wholeListsStartedRef = useRef(0);
+  const wholeListsInFlightRef = useRef(0);
+  const lastWholeListShownRef = useRef(0);
+  const wholeListViewsRef = useRef(0);
 
   const navigate = useNavigate();
 
-  const refreshNotifications = useCallback(
+  const loadNotifications = useCallback(
     async (options?: { limit?: number }) => {
       const limit = options?.limit;
       if (limit !== undefined) {
-        const [{ data }, { data: unreadCountData }] = await Promise.all([
-          notifsFindAll({ query: { limit } }),
-          notifsGetUnreadCount(),
-        ]);
-        if (data) setNotifications(data);
+        const wholeListShownBefore = lastWholeListShownRef.current;
+        const [{ data, response }, { data: unreadCountData }] =
+          await Promise.all([
+            notifsFindAll({ query: { limit } }),
+            notifsGetUnreadCount(),
+          ]);
+        if (lastWholeListShownRef.current !== wholeListShownBefore) return;
+        if (data) {
+          setNotifications(data);
+          lastLimitRef.current = limit;
+          loadedAtRef.current = response.headers.get(NOTIFS_LOADED_AT_HEADER);
+        }
         if (unreadCountData !== undefined) {
           setUnreadCount(unreadCountData.unreadCount);
         }
       } else {
-        const { data } = await notifsFindAll();
-        if (!data) return;
+        const wholeList = ++wholeListsStartedRef.current;
+        wholeListsInFlightRef.current++;
+        const { data, response } = await notifsFindAll().finally(() => {
+          wholeListsInFlightRef.current--;
+        });
+        if (!data || wholeList < lastWholeListShownRef.current) return;
+        lastWholeListShownRef.current = wholeList;
         setNotifications(data);
+        lastLimitRef.current = limit;
+        loadedAtRef.current = response.headers.get(NOTIFS_LOADED_AT_HEADER);
         setUnreadCount(data.filter((n) => !n.readAt).length);
       }
     },
     [],
   );
 
+  const refreshNotifications = useCallback(
+    (options?: { limit?: number }) =>
+      loadNotifications({
+        limit:
+          wholeListViewsRef.current > 0 ||
+          // A whole list still in flight may predate the caller's write.
+          wholeListsInFlightRef.current > 0
+            ? undefined
+            : options?.limit,
+      }),
+    [loadNotifications],
+  );
+
+  const showWholeList = useCallback(() => {
+    wholeListViewsRef.current++;
+    void loadNotifications();
+    return () => {
+      wholeListViewsRef.current--;
+    };
+  }, [loadNotifications]);
+
   useEffect(() => {
-    refreshNotifications({ limit: 20 });
-  }, [refreshNotifications]);
+    loadNotifications({ limit: FIRST_LOAD_LIMIT });
+  }, [loadNotifications]);
 
   const notificationsRef = useRef(notifications);
   notificationsRef.current = notifications;
@@ -168,17 +215,22 @@ export const NotificationsProvider = ({
     [markNotificationRead],
   );
 
-  const handleMarkAllAsRead = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    notifsSetReadAll();
-    const readAt = new Date().toISOString();
-    setNotifications((prev) =>
-      prev.map((n) => ({ ...n, readAt }) satisfies NotificationDto),
-    );
-    setUnreadCount(0);
+  const handleMarkAllAsRead = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      notifsSetReadAll({
+        query: { loadedAt: loadedAtRef.current ?? undefined },
+      }).then(() => refreshNotifications({ limit: lastLimitRef.current }));
+      const readAt = new Date().toISOString();
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, readAt }) satisfies NotificationDto),
+      );
+      setUnreadCount(0);
 
-    captureEvent(AnalyticsEvent.NotificationsMarkedAllAsRead);
-  }, []);
+      captureEvent(AnalyticsEvent.NotificationsMarkedAllAsRead);
+    },
+    [refreshNotifications],
+  );
 
   const applyNotificationsReadByContent = useCallback(
     (contentType: UnreadContentType, contentIds: number[]) => {
@@ -193,10 +245,11 @@ export const NotificationsProvider = ({
         let markedCount = 0;
         const next = prev.map((notification) => {
           if (
-            notification.readAt ||
-            notification.contentType !== contentType ||
-            notification.contentId === undefined ||
-            !ids.has(notification.contentId)
+            !isClearedByContentRead({
+              notification,
+              contentType,
+              contentIds: ids,
+            })
           ) {
             return notification;
           }
@@ -224,6 +277,7 @@ export const NotificationsProvider = ({
         handleMarkAsRead,
         handleMarkAllAsRead,
         refreshNotifications,
+        showWholeList,
         applyNotificationsReadByContent,
       }}
     >

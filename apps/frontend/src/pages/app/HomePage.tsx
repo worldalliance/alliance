@@ -34,6 +34,7 @@ import GlobalFeed from "../../components/GlobalFeed";
 import HomeFeed from "../../components/HomeFeed";
 import HomeUpdatesRow from "../../components/HomeUpdatesRow";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
+import LoadFailed from "../../components/LoadFailed";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
 import { useAuth } from "../../lib/AuthContext";
 import {
@@ -76,6 +77,7 @@ const HomePage = () => {
   const {
     actions: liveActions,
     generalUpdates,
+    generalUpdatesFailure,
     loading,
     handleDismissAction,
     handleDismissGeneralUpdate,
@@ -397,6 +399,12 @@ const HomePage = () => {
           {isLargeScreen && (
             <>
               <HomeUpdatesRow />
+              {generalUpdatesFailure && (
+                <LoadFailed
+                  message="Couldn't load general updates."
+                  {...generalUpdatesFailure}
+                />
+              )}
               {sortedGeneralUpdates.length > 0 && (
                 <div className="flex flex-col gap-3">
                   {sortedGeneralUpdates.map((generalUpdate) => (
@@ -530,6 +538,12 @@ const HomePage = () => {
         {!isLargeScreen && (
           <div className="flex flex-col gap-4">
             <HomeUpdatesRow />
+            {generalUpdatesFailure && (
+              <LoadFailed
+                message="Couldn't load general updates."
+                {...generalUpdatesFailure}
+              />
+            )}
             {sortedGeneralUpdates.length > 0 && (
               <div className="flex flex-col gap-3">
                 {sortedGeneralUpdates.map((generalUpdate) => (
@@ -558,6 +572,7 @@ const HomePage = () => {
     handleDismissAction,
     handleDismissGeneralUpdate,
     sortedGeneralUpdates,
+    generalUpdatesFailure,
     taskNavigatorListContent,
     queryClient,
     activeCompletableFollowUpForms,

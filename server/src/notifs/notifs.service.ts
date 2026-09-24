@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { addMilliseconds } from "date-fns";
 import { toString as mdastToString } from "mdast-util-to-string";
 import { remark } from "remark";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
@@ -30,7 +31,10 @@ import {
   NotificationDto,
   NotificationSourceType,
 } from "./dto/notification.dto";
-import { MarkUnreadContentReadDto } from "./dto/unread-content.dto";
+import {
+  MarkUnreadContentReadDto,
+  ReadAllNotificationsQueryDto,
+} from "./dto/unread-content.dto";
 import { ActionEventNotif } from "./entities/action-event-notif.entity";
 import {
   NOTIFICATION_CATEGORY_PRIORITIES,
@@ -70,6 +74,10 @@ function getPreviewText(body: string) {
     : plainText;
 }
 
+// Timestamps are stored to the microsecond but serialized to the
+// millisecond, so a bound covers its whole millisecond.
+const throughMillisecond = (date: Date): Date => addMilliseconds(date, 1);
+
 @Injectable()
 export class NotifsService {
   constructor(
@@ -89,14 +97,23 @@ export class NotifsService {
     private readonly mmsService: MmsService,
   ) {}
 
-  async findAll(userId: number, limit?: number): Promise<NotificationDto[]> {
+  async findAll(
+    userId: number,
+    limit?: number,
+  ): Promise<{ loadedAt: Date; notifications: NotificationDto[] }> {
+    // The database's clock, which createdAt uses; read-all bounds both
+    // sendTime and createdAt by it.
+    const [{ loadedAt }] = await this.notifsRepository.query<
+      { loadedAt: Date }[]
+    >('SELECT now() AS "loadedAt"');
+    const due = LessThan(throughMillisecond(loadedAt));
     const [notifs, unreadContents] = await Promise.all([
       this.notifsRepository.find({
-        where: { user: { id: userId }, sendTime: LessThan(new Date()) },
+        where: { user: { id: userId }, sendTime: due },
         relations: { associatedUsers: true, actionUpdate: true, comment: true },
       }),
       this.unreadContentRepository.find({
-        where: { user: { id: userId }, sendTime: LessThan(new Date()) },
+        where: { user: { id: userId }, sendTime: due },
         order: { sendTime: "DESC", createdAt: "DESC" },
       }),
     ]);
@@ -110,15 +127,14 @@ export class NotifsService {
         new Date(a.sendTime || a.createdAt).getTime(),
     );
 
-    const filtered = merged.filter(
-      (n) => new Date(n.sendTime).getTime() <= new Date().getTime(),
-    );
-
-    return limit !== undefined ? filtered.slice(0, limit) : filtered;
+    return {
+      loadedAt,
+      notifications: limit !== undefined ? merged.slice(0, limit) : merged,
+    };
   }
 
   async getUnreadCount(userId: number): Promise<number> {
-    const [notifCount, unreadContentCount] = await Promise.all([
+    const [notifCount, unreadContents] = await Promise.all([
       this.notifsRepository.count({
         where: {
           user: { id: userId },
@@ -126,7 +142,7 @@ export class NotifsService {
           readAt: IsNull(),
         },
       }),
-      this.unreadContentRepository.count({
+      this.unreadContentRepository.find({
         where: {
           user: { id: userId },
           sendTime: LessThan(new Date()),
@@ -134,7 +150,9 @@ export class NotifsService {
         },
       }),
     ]);
-    return notifCount + unreadContentCount;
+    // Counts only what findAll can show: rows whose content is gone never render.
+    const shown = await this.hydrateUnreadContentDtos(unreadContents);
+    return notifCount + shown.length;
   }
 
   findOne(id: number) {
@@ -184,25 +202,18 @@ export class NotifsService {
     );
   }
 
-  async setReadAll(userId: number) {
+  async setReadAll(userId: number, query: ReadAllNotificationsQueryDto) {
     const now = new Date();
+    const through = query.loadedAt && throughMillisecond(query.loadedAt);
+    const where = {
+      user: { id: userId },
+      readAt: IsNull(),
+      sendTime: LessThan(through && through < now ? through : now),
+      ...(through && { createdAt: LessThan(through) }),
+    };
     await Promise.all([
-      this.notifsRepository.update(
-        {
-          user: { id: userId },
-          readAt: IsNull(),
-          sendTime: LessThan(now),
-        },
-        { readAt: now },
-      ),
-      this.unreadContentRepository.update(
-        {
-          user: { id: userId },
-          readAt: IsNull(),
-          sendTime: LessThan(now),
-        },
-        { readAt: now },
-      ),
+      this.notifsRepository.update(where, { readAt: now }),
+      this.unreadContentRepository.update(where, { readAt: now }),
     ]);
   }
 

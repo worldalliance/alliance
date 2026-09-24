@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { CommunityDto, communityGetMyCommunities } from "../client";
+import { failedToLoad } from "./failedToLoad";
 
 const QUERY_KEY = ["communityGetMyCommunities"] as const;
 
@@ -28,13 +29,7 @@ export function useMyCommunities(params?: {
   const { selectedCommunityId = null, enabled = true } = params ?? {};
   const queryClient = useQueryClient();
 
-  const {
-    data: communities = [],
-    isLoading,
-    isFetching,
-    isError,
-    refetch,
-  } = useQuery({
+  const query = useQuery({
     queryKey: QUERY_KEY,
     queryFn: () =>
       communityGetMyCommunities({ throwOnError: true }).then(
@@ -42,6 +37,13 @@ export function useMyCommunities(params?: {
       ),
     enabled,
   });
+  const {
+    data: communities = [],
+    isLoading,
+    isFetching,
+    isError,
+    refetch,
+  } = query;
 
   const communityIds = useMemo(
     () => new Set(communities.map((community) => community.id)),
@@ -81,7 +83,7 @@ export function useMyCommunities(params?: {
     [queryClient],
   );
 
-  /** Upsert a single community into the cached list (does not touch selection). */
+  /** Upsert a single community into the cached list. */
   const updateCommunity = useCallback(
     (community: CommunityDto) => {
       queryClient.setQueryData<CommunityDto[]>(QUERY_KEY, (old) => {
@@ -94,20 +96,9 @@ export function useMyCommunities(params?: {
     [queryClient],
   );
 
-  const [selectedCommunity, setSelectedCommunity] =
-    useState<CommunityDto | null>(() =>
-      findCommunityById(communities, selectedCommunityId),
-    );
-  useEffect(() => {
-    setSelectedCommunity(findCommunityById(communities, selectedCommunityId));
-  }, [communities, selectedCommunityId]);
-
-  const updateSelectedCommunity = useCallback(
-    (community: CommunityDto) => {
-      updateCommunity(community);
-      setSelectedCommunity(findCommunityById(communities, community.id));
-    },
-    [updateCommunity, communities],
+  const selectedCommunity = useMemo(
+    () => findCommunityById(communities, selectedCommunityId),
+    [communities, selectedCommunityId],
   );
 
   return {
@@ -116,12 +107,12 @@ export function useMyCommunities(params?: {
     isLoading,
     isFetching,
     isError,
+    didFail: failedToLoad(query),
     refetch,
     refreshCommunities,
     removeCommunity,
     removeMemberFromCommunity,
     updateCommunity,
     selectedCommunity,
-    updateSelectedCommunity,
   };
 }

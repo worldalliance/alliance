@@ -6,7 +6,7 @@ import {
 } from "@alliance/shared/lib/testFixtures";
 import * as globalFeedModule from "@alliance/shared/lib/useGlobalFeed";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { addDays } from "date-fns";
 import { MemoryRouter } from "react-router";
 import * as homeFeedModule from "../../components/HomeFeed";
@@ -20,6 +20,8 @@ import HomePage from "./HomePage";
 import * as largeActionCardModule from "./LargeActionCard";
 
 let actions: ActionWithAwayStatus[] = [];
+let generalUpdatesFailure: { onRetry: () => void; retrying: boolean } | null =
+  null;
 
 beforeEach(() => {
   jest
@@ -27,6 +29,7 @@ beforeEach(() => {
     .mockImplementation(() => ({
       actions,
       generalUpdates: [],
+      generalUpdatesFailure,
       loading: false,
       handleDismissAction: async () => {},
       handleDismissGeneralUpdate: async () => {},
@@ -42,7 +45,10 @@ beforeEach(() => {
     .mockImplementation(() => <div />);
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  generalUpdatesFailure = null;
+  cleanup();
+});
 
 const deadlineInDays = (days: number) => [
   makeEvent({
@@ -120,5 +126,18 @@ describe("HomePage current-week summary", () => {
     expect(screen.getByText(/left/).closest("p")?.textContent).toBe(
       "2 left (10 minutes required)",
     );
+  });
+});
+
+describe("HomePage general updates", () => {
+  it("offers a retry when general updates fail to load", () => {
+    const retry = jest.fn();
+    generalUpdatesFailure = { onRetry: retry, retrying: false };
+
+    renderHomePage();
+    fireEvent.click(screen.getByText("Try again"));
+
+    screen.getByText("Couldn't load general updates.");
+    expect(retry).toHaveBeenCalledTimes(1);
   });
 });

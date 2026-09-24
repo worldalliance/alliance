@@ -16,7 +16,10 @@ import type {
   CommunityInviteDto,
   CreateCommunityDto,
 } from "@alliance/shared/client/types.gen";
-import { getMemberCount } from "@alliance/shared/lib/communityUtils";
+import {
+  getMemberCount,
+  groupAssignmentLabels,
+} from "@alliance/shared/lib/communityUtils";
 import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
@@ -33,6 +36,7 @@ import {
 } from "react-native";
 import { CreateGroupForm } from "../../../components/groups/CreateGroupForm";
 import KeyboardAwareScrollView from "../../../components/KeyboardAwareScrollView";
+import LoadFailed from "../../../components/LoadFailed";
 import Button, {
   ButtonColor,
   ButtonSize,
@@ -79,6 +83,8 @@ export default function GroupManageScreen() {
   const {
     communities,
     isLoading: myCommunitiesLoading,
+    didFail: didGroupsFail,
+    isFetching: myCommunitiesFetching,
     refreshCommunities,
   } = useMyCommunities({});
   const {
@@ -174,7 +180,7 @@ export default function GroupManageScreen() {
     void refreshAll().finally(() => setRefreshing(false));
   }, [refreshAll]);
 
-  const loading = myCommunitiesLoading || publicLoading;
+  const loading = (myCommunitiesLoading && !didGroupsFail) || publicLoading;
 
   const handleCreateCommunity = useCallback(async () => {
     const name = newCommunity.name.trim();
@@ -402,12 +408,10 @@ export default function GroupManageScreen() {
   const inviteRowBusy =
     acceptingInviteId !== null || decliningInviteId !== null;
 
-  const memberSectionSubtitle = useMemo(() => {
-    if (!user?.undergoingGroupAssignment) {
-      return null;
-    }
-    return memberCommunities.length ? " (reassigning...)" : " (assigning...)";
-  }, [user?.undergoingGroupAssignment, memberCommunities.length]);
+  const assignmentLabels = groupAssignmentLabels({
+    isMember: memberCommunities.length > 0,
+    didGroupsFail,
+  });
 
   return (
     <View className="flex-1">
@@ -472,6 +476,15 @@ export default function GroupManageScreen() {
             )}
 
             <View className="flex flex-col gap-y-4">
+              {didGroupsFail && (
+                <View className="bg-white">
+                  <LoadFailed
+                    message="Couldn't load your groups."
+                    onRetry={() => void refreshCommunities()}
+                    retrying={myCommunitiesFetching}
+                  />
+                </View>
+              )}
               <View className="p-4 bg-white">
                 <Text
                   className="text-xl font-semibold text-zinc-900"
@@ -491,7 +504,7 @@ export default function GroupManageScreen() {
                       />
                     ))}
                   </View>
-                ) : (
+                ) : didGroupsFail ? null : (
                   <View className="px-4 py-4">
                     <Text className="text-sm text-zinc-500">
                       You don&apos;t lead any groups yet.
@@ -508,7 +521,9 @@ export default function GroupManageScreen() {
                       weight={FontWeight.Semibold}
                     >
                       Groups you&apos;re a member of
-                      {memberSectionSubtitle ?? ""}
+                      {user?.undergoingGroupAssignment
+                        ? assignmentLabels.headingSuffix
+                        : ""}
                     </Text>
                     <Text className="text-base text-zinc-500 mt-0.5">
                       For now, you can only be a member of one group.
@@ -516,11 +531,7 @@ export default function GroupManageScreen() {
                   </View>
                   {user?.undergoingGroupAssignment ? (
                     <Button
-                      title={
-                        memberCommunities.length
-                          ? "Cancel reassignment"
-                          : "Cancel assignment"
-                      }
+                      title={assignmentLabels.cancelLabel}
                       onPress={() => void handleCancelAssignment()}
                       color={ButtonColor.Black}
                       size={ButtonSize.Small}
@@ -549,7 +560,7 @@ export default function GroupManageScreen() {
                       />
                     ))}
                   </View>
-                ) : (
+                ) : didGroupsFail ? null : (
                   <View className="flex flex-col gap-y-3 items-center py-4 px-2">
                     <Text className="text-center text-sm text-zinc-500">
                       You are not a member of any group.
@@ -598,7 +609,7 @@ export default function GroupManageScreen() {
                             onPress={() => handleAcceptInvite(invite)}
                             color={ButtonColor.Green}
                             size={ButtonSize.Small}
-                            disabled={inviteRowBusy}
+                            disabled={inviteRowBusy || didGroupsFail}
                             loading={acceptingInviteId === invite.id}
                           />
                           <Button
@@ -645,7 +656,11 @@ export default function GroupManageScreen() {
                         memberCount >= community.maxCapacity;
                       const isJoining = joiningCommunityId === community.id;
                       const joinDisabled =
-                        isMember || isLeader || isFull || isJoining;
+                        didGroupsFail ||
+                        isMember ||
+                        isLeader ||
+                        isFull ||
+                        isJoining;
                       const joinLabel = isLeader
                         ? "Leader"
                         : isMember

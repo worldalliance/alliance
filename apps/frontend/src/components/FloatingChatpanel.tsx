@@ -71,6 +71,7 @@ const FloatingChatPanel = ({
           onClose={() => {}}
           onLeave={() => {}}
           friends={[]}
+          friendsFailure={null}
           handleConversationUpdated={setConversation}
           handleAcceptMessageRequest={() => {}}
           handleDeclineMessageRequest={() => {}}

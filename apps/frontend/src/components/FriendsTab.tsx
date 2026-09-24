@@ -17,6 +17,7 @@ import List from "@alliance/sharedweb/ui/List";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useState } from "react";
 import { Link, href } from "react-router";
+import LoadFailed from "./LoadFailed";
 
 interface FriendsTabProps {
   userId: number;
@@ -25,27 +26,7 @@ interface FriendsTabProps {
   className?: string;
 }
 
-const LoadFailed = ({
-  onRetry,
-  retrying,
-}: {
-  onRetry: () => void;
-  retrying: boolean;
-}) => (
-  <div className="flex flex-col items-center gap-y-2 py-4">
-    <p className="text-center text-zinc-500 text-sm">
-      Couldn&apos;t load this list.
-    </p>
-    <Button
-      color={ButtonColor.BlueOutline}
-      onClick={onRetry}
-      disabled={retrying}
-      size="small"
-    >
-      Try again
-    </Button>
-  </div>
-);
+const LIST_LOAD_FAILED = "Couldn't load this list.";
 
 const tabLabel = (params: {
   label: string;
@@ -198,6 +179,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
       {friends.length === 0 ? (
         didFriendsFail ? (
           <LoadFailed
+            message={LIST_LOAD_FAILED}
             onRetry={() => void refetchFriends()}
             retrying={isFetchingFriends}
           />
@@ -305,6 +287,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
             {receivedRequests.length === 0 ? (
               didReceivedFail ? (
                 <LoadFailed
+                  message={LIST_LOAD_FAILED}
                   onRetry={() => void refetchReceived()}
                   retrying={isFetchingReceived}
                 />
@@ -357,6 +340,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
             {sentRequests.length === 0 ? (
               didSentFail ? (
                 <LoadFailed
+                  message={LIST_LOAD_FAILED}
                   onRetry={() => void refetchSent()}
                   retrying={isFetchingSent}
                 />

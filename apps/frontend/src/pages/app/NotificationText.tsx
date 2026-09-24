@@ -1,5 +1,5 @@
 import { NotificationDto } from "@alliance/shared/client";
-import { formatTime } from "@alliance/shared/lib/utils";
+import { formatNotificationTime } from "@alliance/shared/lib/notificationBucketing";
 import { AvatarGroup, AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { CheckCheck } from "lucide-react";
 
@@ -37,12 +37,7 @@ const NotificationText = ({
       </h3>
       <div className="flex items-center justify-between">
         <p className="text-zinc-500 text-sm">
-          {formatTime(
-            new Date(notification.sendTime || notification.createdAt),
-            {
-              addSuffix: true,
-            },
-          )}
+          {formatNotificationTime(notification)}
         </p>
         {!notification.readAt && handleMarkAsRead && (
           <button

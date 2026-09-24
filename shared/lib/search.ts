@@ -4,7 +4,7 @@ import {
   SearchItemType,
 } from "@alliance/shared/client";
 import { groupBy } from "es-toolkit";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export const SEARCH_CATEGORIES: SearchItemType[] = [
   "recent",
@@ -95,6 +95,7 @@ export const useSearchResults = (
   const [selectedItem, setSelectedItem] = useState<SearchItemDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,7 +137,9 @@ export const useSearchResults = (
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [autoselectFirst, debounceMs, query]);
+  }, [autoselectFirst, debounceMs, query, attempt]);
+
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
   return {
     items,
@@ -145,5 +148,6 @@ export const useSearchResults = (
     setSelectedItem,
     loading,
     error,
+    retry,
   };
 };

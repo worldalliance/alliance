@@ -7,6 +7,7 @@ import {
   conversationMarkRead,
   MessageDto,
 } from "@alliance/shared/client";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import {
   buildGroupConversationTitle,
   findMatchingConversation,
@@ -90,9 +91,16 @@ const MessagesPage = () => {
     onConversationUpdated: handleConversationUpdated,
   });
 
-  const { data: messageableUsers = null } = useMessageableUsersQuery({
+  const messageableUsersQuery = useMessageableUsersQuery({
     enabled: !!user,
   });
+  const messageableUsers = messageableUsersQuery.data ?? null;
+  const messageableUsersFailure = failedToLoad(messageableUsersQuery)
+    ? {
+        onRetry: () => void messageableUsersQuery.refetch(),
+        retrying: messageableUsersQuery.isFetching,
+      }
+    : null;
 
   const [messagesOpen, setMessagesOpen] = useState(!!selectedConvoId);
   const isSmall = useMediaQuery("(max-width: 768px)");
@@ -324,6 +332,7 @@ const MessagesPage = () => {
                 size="small"
                 onClick={handleCreateNewConversation}
                 className="!px-2"
+                title="New chat"
               >
                 <Plus size="18" />
               </Button>
@@ -439,6 +448,7 @@ const MessagesPage = () => {
               setSendingNewMessageToIds={null}
               handleCreateConversation={null}
               friends={messageableUsers}
+              friendsFailure={messageableUsersFailure}
               onOptimisticMessage={addOptimisticMessage}
               onOptimisticMessageFailed={(tempId) =>
                 removeOptimisticMessage(tempId)
@@ -463,6 +473,7 @@ const MessagesPage = () => {
               handleAcceptMessageRequest={null}
               handleDeclineMessageRequest={null}
               friends={messageableUsers}
+              friendsFailure={messageableUsersFailure}
               sendingNewMessageToIds={sendingNewMessageToIds}
               setSendingNewMessageToIds={handleUpdateRecipientIds}
               handleCreateConversation={handleCreateConversation}

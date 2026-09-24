@@ -7049,7 +7049,12 @@ export type NotifsSetReadResponse = NotifsSetReadResponses[keyof NotifsSetReadRe
 export type NotifsSetReadAllData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * The list's x-notifs-loaded-at header. Marks only rows due and created at or before this time, to the millisecond. The server caps the due bound at now.
+         */
+        loadedAt?: string;
+    };
     url: '/notifs/read-all';
 };
 

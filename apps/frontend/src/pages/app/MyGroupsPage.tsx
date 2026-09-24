@@ -7,7 +7,10 @@ import {
   userJoinGroupAssignment,
   userLeaveGroupAssignment,
 } from "@alliance/shared/client";
-import { getMemberCount } from "@alliance/shared/lib/communityUtils";
+import {
+  getMemberCount,
+  groupAssignmentLabels,
+} from "@alliance/shared/lib/communityUtils";
 import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
@@ -30,6 +33,7 @@ import {
 } from "react";
 import CommunityCreateForm from "../../components/CommunityCreateForm";
 import CommunityInviteList from "../../components/CommunityInviteList";
+import LoadFailed from "../../components/LoadFailed";
 import { useAuth } from "../../lib/AuthContext";
 
 export type MyGroupsPageProps = {
@@ -39,11 +43,15 @@ export type MyGroupsPageProps = {
 
 const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
   const { user, refreshUser } = useAuth();
-  const { communities, removeCommunity, refreshCommunities } = useMyCommunities(
-    {
-      selectedCommunityId: null,
-    },
-  );
+  const {
+    communities,
+    didFail: didGroupsFail,
+    isFetching,
+    removeCommunity,
+    refreshCommunities,
+  } = useMyCommunities({
+    selectedCommunityId: null,
+  });
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [leavingCommunityId, setLeavingCommunityId] = useState<number | null>(
     null,
@@ -96,6 +104,10 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
         ) ?? [],
     };
   }, [communities, user?.id]);
+  const assignmentLabels = groupAssignmentLabels({
+    isMember: nonLeaderCommunities.length > 0,
+    didGroupsFail,
+  });
 
   const memberCommunityIds = useMemo(() => {
     return new Set((communities ?? []).map((community) => community.id));
@@ -275,6 +287,13 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
           <ChevronLeft size="16" /> Back to group
         </Button>
       )}
+      {didGroupsFail && (
+        <LoadFailed
+          message="Couldn't load your groups."
+          onRetry={() => void refreshCommunities()}
+          retrying={isFetching}
+        />
+      )}
       {/* Leader groups */}
       <div className="flex flex-col gap-y-4">
         <div className="flex flex-col gap-y-1">
@@ -350,11 +369,9 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
           <div className="flex flex-col gap-y-1">
             <p className="font-semibold text-xl md:text-2xl">
               Groups you&apos;re a member of
-              {!user?.undergoingGroupAssignment
-                ? ""
-                : nonLeaderCommunities.length
-                  ? " (reassigning...)"
-                  : " (assigning...)"}
+              {user?.undergoingGroupAssignment
+                ? assignmentLabels.headingSuffix
+                : ""}
             </p>
             <p className="text-zinc-500 text-base">
               For now, you can only be a member of one group.
@@ -362,9 +379,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
           </div>
           {user?.undergoingGroupAssignment ? (
             <Button color={ButtonColor.Black} onClick={handleCancelAssignment}>
-              {nonLeaderCommunities.length
-                ? "Cancel reassignment"
-                : "Cancel assignment"}
+              {assignmentLabels.cancelLabel}
             </Button>
           ) : nonLeaderCommunities.length ? (
             <Button
@@ -485,7 +500,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
               );
             })}
           </List>
-        ) : (
+        ) : didGroupsFail ? null : (
           <div className="flex flex-col gap-y-2 mx-auto items-center py-4">
             <span>
               You are not a member of any group.
@@ -515,6 +530,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
           </p>
           <CommunityInviteList
             invites={pendingCommunityInvites}
+            acceptDisabled={didGroupsFail}
             onAccept={handleAcceptInvite}
             onDecline={handleDeclineInvite}
           />
@@ -549,7 +565,8 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
                 community.maxCapacity !== null &&
                 memberCount >= community.maxCapacity;
               const isJoining = joiningCommunityId === community.id;
-              const joinDisabled = isMember || isLeader || isFull || isJoining;
+              const joinDisabled =
+                didGroupsFail || isMember || isLeader || isFull || isJoining;
 
               const joinLabel = isLeader
                 ? "Leader"

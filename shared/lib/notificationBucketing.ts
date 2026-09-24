@@ -1,5 +1,6 @@
 import { NotificationDto } from "@alliance/shared/client";
 import { getNotificationIdentityKey } from "./notificationIdentity";
+import { formatTime } from "./utils";
 
 export type LikesBucket = {
   dayKeys: string[];
@@ -27,6 +28,18 @@ export function getNotificationTime(notification: {
   createdAt: string;
 }) {
   return new Date(notification.sendTime || notification.createdAt);
+}
+
+// The server lists rows due by its clock, which can run ahead of the device's.
+export function formatNotificationTime(notification: {
+  sendTime?: string | null;
+  createdAt: string;
+}) {
+  const time = Math.min(
+    getNotificationTime(notification).getTime(),
+    Date.now(),
+  );
+  return formatTime(new Date(time), { addSuffix: true });
 }
 
 export function getUnreadLikesCount(bucket: LikesBucket) {

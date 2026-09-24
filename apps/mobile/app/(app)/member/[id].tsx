@@ -16,7 +16,6 @@ import useActivities, {
 } from "@alliance/shared/lib/useActivities";
 import useUserFeed from "@alliance/shared/lib/useUserFeed";
 import {
-  buildForumActivityItems,
   friendMutationErrorMessage,
   useAcceptFriendRequestMutation,
   useDeclineFriendRequestMutation,
@@ -24,8 +23,7 @@ import {
   useRemoveFriendMutation,
   useSendFriendRequestMutation,
   useUpdateProfileMutation,
-  useUserForumCommentsQuery,
-  useUserForumPostsQuery,
+  useUserForumActivity,
   useUserFriendStatusQuery,
   useUserFriendsQuery,
   useUserProfileQuery,
@@ -64,6 +62,7 @@ import EditableContentRenderer from "../../../components/EditableContentRenderer
 import ForumCommentCard from "../../../components/ForumCommentCard";
 import { ImageLightboxModal } from "../../../components/ImageLightbox";
 import KeyboardAwareScrollView from "../../../components/KeyboardAwareScrollView";
+import LoadFailed from "../../../components/LoadFailed";
 import ProfileImage, {
   resolveProfileImageUri,
 } from "../../../components/ProfileImage";
@@ -92,29 +91,6 @@ enum FriendsTab {
   Friends = "friends",
   Received = "received",
   Sent = "sent",
-}
-
-function LoadFailed({
-  onRetry,
-  retrying,
-}: {
-  onRetry: () => void;
-  retrying: boolean;
-}) {
-  return (
-    <View className="items-center gap-2 py-6 px-4">
-      <Text className="text-center text-zinc-500">
-        Couldn&apos;t load this list.
-      </Text>
-      <Button
-        title="Try again"
-        color={ButtonColor.White}
-        size={ButtonSize.Small}
-        onPress={onRetry}
-        loading={retrying}
-      />
-    </View>
-  );
 }
 
 const PROFILE_TABS_ORDER: ProfileTab[] = [
@@ -166,8 +142,12 @@ export default function UserProfileScreen() {
     refetch: refetchFriendStatus,
   } = friendStatusQuery;
   const didFriendStatusFail = failedToLoad(friendStatusQuery);
-  const { data: forumPosts = [] } = useUserForumPostsQuery(userId);
-  const { data: forumComments = [] } = useUserForumCommentsQuery(userId);
+  const {
+    items: forumActivityItems,
+    didFail: didForumFail,
+    retry: retryForum,
+    retrying: isRetryingForum,
+  } = useUserForumActivity(userId);
   const friendsQuery = useUserFriendsQuery(userId);
   const {
     data: friends = [],
@@ -248,11 +228,6 @@ export default function UserProfileScreen() {
     enabled: Boolean(userId),
   });
   const completedActionCount = completedCountData?.completedCount ?? 0;
-
-  const forumActivityItems = useMemo(
-    () => buildForumActivityItems(forumPosts, forumComments),
-    [forumPosts, forumComments],
-  );
 
   const {
     activities: completedActivities,
@@ -839,7 +814,10 @@ export default function UserProfileScreen() {
   );
 
   const listEmptyComponent = useMemo(() => {
-    const friendsFailure = (): ComponentProps<typeof LoadFailed> | null => {
+    const friendsFailure = (): Omit<
+      ComponentProps<typeof LoadFailed>,
+      "message"
+    > | null => {
       switch (friendsTab) {
         case FriendsTab.Received:
           return didReceivedFail
@@ -879,7 +857,10 @@ export default function UserProfileScreen() {
 
     const failure =
       selectedTab === ProfileTab.Friends ? friendsFailure() : null;
-    if (failure) return <LoadFailed {...failure} />;
+    if (failure) {
+      return <LoadFailed message="Couldn't load this list." {...failure} />;
+    }
+    if (selectedTab === ProfileTab.Forum && didForumFail) return null;
 
     let message: string;
     switch (selectedTab) {
@@ -915,6 +896,7 @@ export default function UserProfileScreen() {
     refetchFriends,
     refetchReceived,
     refetchSent,
+    didForumFail,
   ]);
 
   if (!userId) {
@@ -1134,6 +1116,15 @@ export default function UserProfileScreen() {
             />
           </View>
         </View>
+      </View>
+    ) : selectedTab === ProfileTab.Forum && didForumFail ? (
+      <View>
+        {profileHeader}
+        <LoadFailed
+          message="Couldn't load forum activity."
+          onRetry={retryForum}
+          retrying={isRetryingForum}
+        />
       </View>
     ) : (
       profileHeader

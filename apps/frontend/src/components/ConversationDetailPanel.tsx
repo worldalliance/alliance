@@ -15,6 +15,7 @@ import { ChevronLeft, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
 import ConversationInfoPanel from "./ConversationInfoPanel";
+import LoadFailed from "./LoadFailed";
 import Message from "./Message";
 import MessageInput from "./MessageInput";
 import MessageRecipientSelect from "./MessageRecipientSelect";
@@ -26,6 +27,7 @@ type ConversationDetailPanelProps = {
   onClose: () => void;
   onLeave: () => void;
   friends: ProfileDto[] | null;
+  friendsFailure: { onRetry: () => void; retrying: boolean } | null;
   handleConversationUpdated: (conversation: ConversationDto) => void;
   onOptimisticMessage?: (message: MessageDto) => void;
   onOptimisticMessageFailed?: (
@@ -75,6 +77,7 @@ const ConversationDetailPanel = ({
   sendingNewMessageToIds,
   setSendingNewMessageToIds,
   handleCreateConversation,
+  friendsFailure,
   onOptimisticMessage,
   onOptimisticMessageFailed,
 }: ConversationDetailPanelProps) => {
@@ -371,6 +374,7 @@ const ConversationDetailPanel = ({
           selectedConvo={selectedConvo}
           handleConversationUpdated={handleConversationUpdated}
           friends={friends}
+          friendsFailure={friendsFailure}
           onLeave={onLeave}
           onClose={() => setGroupInfoOpen(false)}
         />
@@ -421,11 +425,18 @@ const ConversationDetailPanel = ({
                   <p className="font-semibold text-lg">New message</p>
                   <div className="flex flex-row items-center gap-x-2">
                     <p className="font-medium">To:</p>
-                    <MessageRecipientSelect
-                      users={friends ?? []}
-                      selectedUserIds={sendingNewMessageToIds}
-                      onChange={setSendingNewMessageToIds}
-                    />
+                    {friendsFailure ? (
+                      <LoadFailed
+                        message="Couldn't load the people you can message."
+                        {...friendsFailure}
+                      />
+                    ) : (
+                      <MessageRecipientSelect
+                        users={friends ?? []}
+                        selectedUserIds={sendingNewMessageToIds}
+                        onChange={setSendingNewMessageToIds}
+                      />
+                    )}
                   </div>
                 </div>
               )}

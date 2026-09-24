@@ -12,14 +12,12 @@ import useActivities, {
   ActivityList,
 } from "@alliance/shared/lib/useActivities";
 import {
-  buildForumActivityItems,
   friendMutationErrorMessage,
   useAcceptFriendRequestMutation,
   useRemoveFriendMutation,
   useSendFriendRequestMutation,
   useUpdateProfileMutation,
-  useUserForumCommentsQuery,
-  useUserForumPostsQuery,
+  useUserForumActivity,
   useUserFriendStatusQuery,
   useUserFriendsQuery,
   useUserProfileQuery,
@@ -41,13 +39,7 @@ import {
 } from "@alliance/sharedweb/ui/Tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { MessageSquare, RefreshCw } from "lucide-react";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { href, useLocation, useNavigate, useParams } from "react-router";
 import { Route } from "../../../.react-router/types/src/pages/app/+types/UserProfilePage";
 import ForumActivityCommentCard from "../../components/ForumActivityCommentCard";
@@ -56,6 +48,7 @@ import ForumListPost from "../../components/ForumListPost";
 import FriendRequestButton from "../../components/FriendRequestButton";
 import FriendsTab from "../../components/FriendsTab";
 import ImageEditor from "../../components/ImageEditor";
+import LoadFailed from "../../components/LoadFailed";
 import PillTab from "../../components/PillTab";
 import UserActivityCard from "../../components/UserActivityCard";
 import { useAuth } from "../../lib/AuthContext";
@@ -111,8 +104,12 @@ const UserProfilePage: React.FC = () => {
   } = friendStatusQuery;
   const didFriendStatusFail = failedToLoad(friendStatusQuery);
 
-  const { data: forumPosts = [] } = useUserForumPostsQuery(userId);
-  const { data: forumComments = [] } = useUserForumCommentsQuery(userId);
+  const {
+    items: forumActivityItems,
+    didFail: didForumFail,
+    retry: retryForum,
+    retrying: isRetryingForum,
+  } = useUserForumActivity(userId);
   const friendsQuery = useUserFriendsQuery(userId);
   const { data: friends = [] } = friendsQuery;
   const didFriendsFail = failedToLoad(friendsQuery);
@@ -134,11 +131,6 @@ const UserProfilePage: React.FC = () => {
   const currentProfilePicture = profile?.profilePicture ?? null;
   const isProfileImageUploadPending =
     isSavingProfile && editAvatarUrl !== currentProfilePicture;
-
-  const forumActivityItems = useMemo(
-    () => buildForumActivityItems(forumPosts, forumComments),
-    [forumPosts, forumComments],
-  );
 
   const forumActivityCount = forumActivityItems.length;
 
@@ -485,8 +477,10 @@ const UserProfilePage: React.FC = () => {
               onClick={() => setSelectedTab(ProfileTabs.ActionsCompleted)}
             />
             <PillTab
-              number={forumActivityCount}
-              label={forCount(forumActivityCount, "post")}
+              number={didForumFail ? undefined : forumActivityCount}
+              label={
+                didForumFail ? "posts" : forCount(forumActivityCount, "post")
+              }
               selected={selectedTab === ProfileTabs.Forum}
               onClick={() => setSelectedTab(ProfileTabs.Forum)}
             />
@@ -640,10 +634,19 @@ const UserProfilePage: React.FC = () => {
 
           {selectedTab === ProfileTabs.Forum && (
             <div className="flex flex-col gap-y-1">
+              {didForumFail && (
+                <LoadFailed
+                  message="Couldn't load forum activity."
+                  onRetry={retryForum}
+                  retrying={isRetryingForum}
+                />
+              )}
               {forumActivityItems.length === 0 ? (
-                <p className="my-4 text-center text-zinc-500">
-                  No forum activity yet
-                </p>
+                !didForumFail && (
+                  <p className="my-4 text-center text-zinc-500">
+                    No forum activity yet
+                  </p>
+                )
               ) : (
                 <List className="mb-10">
                   {forumActivityItems.map((item) => {
