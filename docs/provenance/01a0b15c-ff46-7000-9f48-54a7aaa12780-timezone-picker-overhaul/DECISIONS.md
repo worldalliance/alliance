@@ -93,7 +93,28 @@ sections below this one carry the reasoning each step implements.
    folding case and accents. Exact city and country matches rank first, then
    prefix matches, then other word matches.
    A row's search text carries every alias the catalog maps to it, so
-   `calcutta` finds Kolkata. "Prefix" means a city or country the query
+   `calcutta` finds Kolkata. Search also matches the offset on the second
+   line, so `utc+5:30` and `+5:45` find the zones at that offset. Only a
+   query reading as an offset, such as `gmt+01:00`, `-3`, or `utc 5`,
+   reaches the offsets, rewritten to the form the row writes, so `u` keeps
+   no row by its offset, and `utc+5:` and `+5:` open on the same row. A query
+   with no letters matches no place, since `-` would otherwise open on the Congo zones
+   CLDR writes `Congo - Kinshasa`. What the query matches by name lists
+   first, so `gmt+0`, which aliases name UTC, opens on UTC ahead of the other
+   zones at UTC+0 rather than on Abidjan. Among the offsets, a row at exactly
+   the typed one lists first, so `utc-1` opens on UTC-1 rather than on
+   UTC-11, which sorts ahead of it, and UTC lists first among the rows at
+   its offset, so `utc+0` and `+0` open on UTC rather than on Abidjan, which
+   sorts ahead of it by city. Packed digits take two of
+   hour where those are 14 or less, so `+053` is partway to UTC+5:30 rather
+   than UTC+0:53 and the list stays filled while `+0530` goes in, and
+   `+530` still reads as UTC+5:30. Two hour digits or a colon end the hour,
+   so `utc+01` and `utc+1:` keep UTC+1 alone rather than UTC+10 through
+   UTC+14 with it, and two minute digits, or a `0`, which starts no zone's
+   minutes, end the offset. A pasted `−` (U+2212), as Wikipedia writes
+   offsets, reads as `-`.
+   An offset followed by `time` finds what
+   it finds alone. "Prefix" means a city or country the query
    starts, so `india` puts Kolkata ahead of the Indiana zones, which only an
    identifier word matches. Each rank keeps the offset order.
    `shared/forms/timeZoneCuratedNames.ts` gives London and Perth the places
@@ -322,7 +343,7 @@ sections below this one carry the reasoning each step implements.
 - Its secondary line shows country and current UTC offset. Show current local time at the trailing edge.
 - Omit abbreviations such as `CST`, which identify several unrelated zones.
 - Pin the detected device timezone above the unfiltered list. Sort the remaining rows by current UTC offset, then location name.
-- Search matches city, country, IANA identifier, generic name, and compatibility aliases. It ignores case and accents. Exact city and country matches rank before prefix matches, followed by other word matches.
+- Search matches city, country, IANA identifier, generic name, compatibility aliases, and the offset shown under the name. It ignores case and accents. Exact city and country matches rank before prefix matches, followed by other word matches.
 - Use the runtime locale for clock, offset, and names available through `Intl`. Generated city and country fallbacks remain English. Translated fallback dictionaries are outside this change.
 - Use the runtime's 12-hour or 24-hour preference rather than a global default.
 

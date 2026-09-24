@@ -906,6 +906,120 @@ describe("searching the zone list", () => {
     expect(zonesMatching("sri lanka")).toEqual(["Asia/Colombo"]);
   });
 
+  it("finds a zone by the offset under its name", () => {
+    expect(zonesMatching("utc+5:30")).toEqual(["Asia/Colombo", "Asia/Kolkata"]);
+    expect(zonesMatching("+5:45")).toEqual(["Asia/Kathmandu"]);
+  });
+
+  it.each(["utc+", "utc+0", "+0", "utc+00:00"])(
+    "opens %s on UTC ahead of the other zones at its offset",
+    (query) => {
+      expect(zonesMatching(query)[0]).toBe("UTC");
+    },
+  );
+
+  it.each([
+    ["utc-1", -60],
+    ["-3", -180],
+    ["utc-9", -540],
+    ["utc+1", 60],
+    ["utc+5", 300],
+  ])("opens %s on that offset, ahead of the ones it starts", (query, mins) => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(Date.UTC(2026, 0, 15, 12)));
+    const { result } = renderOpen();
+    act(() => result.current.setQuery(query));
+
+    expect(result.current.filtered[0].offsetMins).toBe(mins);
+  });
+
+  it.each([
+    ["gmt+1", "utc+1"],
+    ["utc+01:00", "utc+1"],
+    ["+0530", "utc+5:30"],
+    ["utc 5", "utc+5"],
+    ["utc-0", "utc+0"],
+    ["utc+5:3", "utc+5:3"],
+    ["+053", "utc+5:3"],
+    ["-093", "utc-9:3"],
+    ["+530", "utc+5:30"],
+    ["utc\u22125", "utc-5"],
+  ])("reads %s as the offset a row writes as %s", (query, written) => {
+    const { result } = renderOpen();
+    act(() => result.current.setQuery(query));
+    const offsets = result.current.filtered.map((i) =>
+      i.labelSub?.split(" · ").at(-1)?.toLowerCase(),
+    );
+
+    expect(offsets.length).toBeGreaterThan(0);
+    expect(offsets.every((o) => o?.startsWith(written))).toBe(true);
+  });
+
+  it.each([
+    ["utc+01:00", 60],
+    ["utc+5:00", 300],
+    ["+0530", 330],
+    ["utc+01", 60],
+    ["utc+1:", 60],
+    ["utc+5:0", 300],
+    ["+050", 300],
+  ])("keeps only the offset %s writes out in full", (query, mins) => {
+    const { result } = renderOpen();
+    act(() => result.current.setQuery(query));
+
+    expect(result.current.filtered.length).toBeGreaterThan(0);
+    expect(
+      result.current.filtered.every(({ offsetMins }) => offsetMins === mins),
+    ).toBe(true);
+  });
+
+  it.each(["gmt+0", "gmt-0"])(
+    "opens %s on UTC, which it names, ahead of the other zones at UTC+0",
+    (query) => {
+      const found = zonesMatching(query);
+
+      expect(found[0]).toBe("UTC");
+      expect(found).toContain("Africa/Abidjan");
+    },
+  );
+
+  it.each([
+    ["utc+", 1],
+    ["+", 1],
+    ["utc-", -1],
+    ["-", -1],
+  ])(
+    "keeps every offset with the sign of %s while the digits go in",
+    (query, sign) => {
+      const { result } = renderOpen();
+      act(() => result.current.setQuery(query));
+
+      expect(
+        result.current.filtered.every(
+          ({ offsetMins }) =>
+            offsetMins !== null &&
+            (offsetMins === 0 || Math.sign(offsetMins) === sign),
+        ),
+      ).toBe(true);
+      expect(result.current.filtered.length).toBeGreaterThan(0);
+    },
+  );
+
+  it.each(["utc+5:", "+5:"])(
+    "opens %s on UTC+5 while the minutes go in",
+    (query) => {
+      const { result } = renderOpen();
+      act(() => result.current.setQuery(query));
+
+      expect(result.current.filtered[0].offsetMins).toBe(300);
+    },
+  );
+
+  it("reads no offset into a query that has not reached its sign", () => {
+    expect(zonesMatching("ut")).toEqual(["UTC"]);
+    expect(zonesMatching("u")).not.toContain("Pacific/Niue");
+  });
+
   it("finds that country on a runtime with no name for the zone", () => {
     rejecting("longGeneric", () => {
       expect(zonesMatching("sri lanka")).toEqual(["Asia/Colombo"]);
@@ -1033,6 +1147,13 @@ describe("searching the zone list", () => {
   it("finds a place followed by the word time", () => {
     expect(zonesMatching("hawaii time")[0]).toBe("Pacific/Honolulu");
     expect(zonesMatching("moscow time")[0]).toBe("Europe/Moscow");
+  });
+
+  it("finds an offset followed by the word time", () => {
+    for (const query of ["gmt+1", "+5", "utc-9:30"]) {
+      expect(zonesMatching(`${query} time`)).toEqual(zonesMatching(query));
+      expect(zonesMatching(query).length).toBeGreaterThan(0);
+    }
   });
 
   it("keeps finding a place while the word time is typed after it", () => {
