@@ -942,6 +942,38 @@ describe("resolveOutputItems and a field on a hidden page", () => {
     });
     expect(items).toEqual([]);
   });
+
+  it("reads a field its page hides as unanswered in a variable", () => {
+    const [item] = resolveOutputItems({
+      schema: schemaWithVariable({
+        pages: [
+          {
+            id: "p1",
+            fields: [numberField("qty", "Quantity")],
+            visibleIfFormula: {
+              conditions: { c1: { kind: "validator", validatorId: 7 } },
+              formula: "c1",
+            },
+          },
+        ],
+        outputViews: [
+          {
+            id: "v1",
+            type: "default",
+            blocks: [
+              { id: "ob1", type: "display", kind: "text", text: "#{total} kg" },
+            ],
+          },
+        ],
+      }),
+      answers: { qty: 3 },
+      validatorResults: { 7: false },
+    }).items;
+
+    if (item.type !== "display") throw new Error("expected a display item");
+    if (item.block.kind !== "text") throw new Error("expected a text block");
+    expect(item.block.text).toBe(" kg");
+  });
 });
 
 describe("resolveOutputItems and conditions the response partly replays", () => {

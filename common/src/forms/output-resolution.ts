@@ -267,7 +267,7 @@ export const resolveOutputBlocks = ({
     },
   );
   const variableContext = {
-    answers,
+    answers: visibleAnswers,
     fields: variableInputFieldsById(collectVariableResolutionFields(schema)),
   };
   // A variable that fails stays out, so its `#{name}` shows as written.
