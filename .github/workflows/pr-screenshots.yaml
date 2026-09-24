@@ -1,0 +1,159 @@
+name: PR screenshots
+run-name: "PR screenshots · #${{ inputs.pr }} · ${{ inputs.platform }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number
+        required: true
+        type: string
+      head_sha:
+        description: Exact reviewed PR head SHA (40 characters)
+        required: true
+        type: string
+      platform:
+        description: Native device available to the agent (browser is always available)
+        required: true
+        type: choice
+        default: ios
+        options:
+          - ios
+          - android
+      focus:
+        description: Optional journey or behavior to investigate
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-screenshots-${{ inputs.pr }}-${{ inputs.platform }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-24.04
+    outputs:
+      pr: ${{ steps.request.outputs.pr }}
+      base: ${{ steps.request.outputs.base }}
+      head: ${{ steps.request.outputs.head }}
+      head_repo: ${{ steps.request.outputs.head_repo }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/github-script@v8
+        id: request
+        env:
+          PR_NUMBER: ${{ inputs.pr }}
+          EXPECTED_HEAD: ${{ inputs.head_sha }}
+          RERUN_ACTOR: ${{ github.triggering_actor }}
+        with:
+          script: |
+            const { resolveRequest } = require('./.github/scripts/pr-screenshots.cjs');
+            await resolveRequest({ github, context, core });
+
+  capture:
+    needs: resolve
+    runs-on: ${{ inputs.platform == 'ios' && 'macos-26' || 'ubuntu-24.04' }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: controller
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve.outputs.base }}
+          path: before
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: ${{ needs.resolve.outputs.head_repo }}
+          ref: ${{ needs.resolve.outputs.head }}
+          path: after
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Prepare device and host tools
+        timeout-minutes: 15
+        env:
+          NATIVE_PLATFORM: ${{ inputs.platform }}
+        run: bash controller/.github/scripts/pr-screenshots-setup.sh
+      - name: Write capture context
+        env:
+          PR_NUMBER: ${{ needs.resolve.outputs.pr }}
+          BASE_SHA: ${{ needs.resolve.outputs.base }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head }}
+          NATIVE_PLATFORM: ${{ inputs.platform }}
+          CAPTURE_FOCUS: ${{ inputs.focus }}
+        run: |
+          mkdir -p .scratch/pr-screenshots/evidence
+          jq -n '{pr: env.PR_NUMBER, base: env.BASE_SHA, head: env.HEAD_SHA, platform: env.NATIVE_PLATFORM, focus: env.CAPTURE_FOCUS}' > .scratch/pr-screenshots/context.json
+      - name: Explore and capture before and after
+        timeout-minutes: 65
+        uses: openai/codex-action@86365089eb2b84e0a8fb0717b304f8bdcb13b20e
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          safety-strategy: drop-sudo
+          sandbox: danger-full-access
+          model: gpt-5.5
+          effort: high
+          prompt-file: controller/skills/pr-screenshots/REMOTE.md
+          output-file: .scratch/pr-screenshots/agent-summary.txt
+        env:
+          CI: "true"
+          BROWSER: none
+          MAESTRO_CLI_NO_ANALYTICS: "1"
+          EXPO_NO_TELEMETRY: "1"
+      - name: Upload capture evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-screenshots-${{ inputs.platform }}
+          path: .scratch/pr-screenshots/evidence/
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    needs: [resolve, capture]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: pr-screenshots-${{ inputs.platform }}
+          path: .scratch/pr-screenshots/evidence
+      - name: Install GitHub CLI with attachment support
+        run: |
+          mkdir -p .scratch/gh
+          cd .scratch/gh
+          curl --fail --silent --show-error --location --remote-name https://github.com/cli/cli/releases/download/v2.100.0/gh_2.100.0_linux_amd64.tar.gz
+          curl --fail --silent --show-error --location --remote-name https://github.com/cli/cli/releases/download/v2.100.0/gh_2.100.0_checksums.txt
+          grep ' gh_2.100.0_linux_amd64.tar.gz$' gh_2.100.0_checksums.txt | sha256sum --check
+          tar -xzf gh_2.100.0_linux_amd64.tar.gz
+          echo "$PWD/gh_2.100.0_linux_amd64/bin" >> "$GITHUB_PATH"
+      - uses: actions/github-script@v8
+        env:
+          PR_NUMBER: ${{ needs.resolve.outputs.pr }}
+          BASE_SHA: ${{ needs.resolve.outputs.base }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head }}
+          NATIVE_PLATFORM: ${{ inputs.platform }}
+          GH_TOKEN: ${{ github.token }}
+        with:
+          script: |
+            const { publishEvidence } = require('./.github/scripts/pr-screenshots.cjs');
+            await publishEvidence({ github, context });

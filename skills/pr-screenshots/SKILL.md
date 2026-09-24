@@ -1,44 +1,15 @@
 ---
 name: pr-screenshots
-description: Take screenshots/videos for this PR
+description: Capture before/after PR screenshots remotely with GitHub Actions
 disable-model-invocation: true
 ---
 
 # PR screenshots
 
-Take screenshots or videos of any of the user journeys that have changed in this branch. Capture both before and after.
+Resolve the PR number and current head SHA with `gh pr view`. Dispatch `pr-screenshots.yaml` from the repository's trusted default branch with inputs `pr`, `head_sha`, and `platform` (`ios` or `android`). Choose the platform relevant to the change; both runners provide browser tooling. Supply `focus` when the user identifies a particular journey.
 
-Post as one comment on the PR, with the assets inside tables.
+The dispatcher must have repository write access. A fork PR is supported, but dispatch only after reviewing the exact head being authorized. The workflow runs PR code on a disposable host without application secrets or GitHub write access; the model proxy remains usable during the bounded run. A new head requires a new dispatch.
 
-## Attach with `gh`
+Follow the resulting run with `gh run watch`. Success requires the publishing job to post one comment containing before/after image tables. If capture fails, inspect the failed step and report the blocker instead of treating uploaded artifacts as a successful capture. Link the run and comment when finished.
 
-To post comments with `gh`:
-
-```bash
-gh issue comment <number> --body "<comment>"
-gh pr comment <number> --body "<comment>"
-```
-
-To include an image inline at a specific place in the comment, reference the local file in Markdown and also pass the same file with `--attach`:
-
-```bash
-gh pr comment <number> \
-  --body $'Before\n\n![result](./result.png)\n\nAfter' \
-  --attach ./result.png
-```
-
-`gh` uploads `./result.png` and rewrites `![result](./result.png)` to the uploaded GitHub asset URL.
-
-If placement does not matter, just use:
-
-```bash
-gh pr comment <number> --body "<comment>" --attach ./result.png
-```
-
-The attachment will be appended to the comment.
-
-Optional alt text:
-
-```bash
---attach './result.png#Description of image'
-```
+The remote agent follows [REMOTE.md](REMOTE.md), chooses its own interactions, and uses synthetic data. The workflow requires the repository's `OPENAI_API_KEY` secret. `workflow_dispatch` becomes available after the workflow exists on the default branch; testing an unmerged version needs an explicitly authorized temporary trigger on a test branch.
