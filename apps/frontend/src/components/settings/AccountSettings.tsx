@@ -7,6 +7,7 @@ import {
 } from "@alliance/common/oauth";
 import { R, type Result } from "@alliance/common/result";
 import { authForgotPassword, authRefreshTokens } from "@alliance/shared/client";
+import { disconnectAccount, passwordLink } from "@alliance/shared/lib/copy";
 import type { SettingsSaveStatus } from "@alliance/shared/lib/settings";
 import {
   canDisconnect,
@@ -144,7 +145,7 @@ function PasswordAccess({
         </Button>
         {!send.isSuccess && (
           <p className="text-sm text-zinc-500">
-            We&apos;ll send a link to {verb} your password to {email}.
+            {passwordLink.hint({ verb, email })}
           </p>
         )}
       </div>
@@ -153,12 +154,12 @@ function PasswordAccess({
           send.isSuccess
             ? {
                 tone: FeedbackTone.Success,
-                message: `A link to ${verb} your password has been sent to ${email}.`,
+                message: passwordLink.sent({ verb, email }),
               }
             : send.isError
               ? {
                   tone: FeedbackTone.Error,
-                  message: "Couldn't send the email. Please try again.",
+                  message: passwordLink.failed,
                 }
               : null
         }
@@ -251,9 +252,9 @@ export default function AccountSettings({
     const label = OAUTH_PROVIDER_LABEL[provider];
     setConfirming(true);
     const ok = await confirm({
-      title: `Disconnect ${label}?`,
-      message: `You won't be able to log in with ${label} until you connect it again.`,
-      confirmLabel: `Disconnect ${label}`,
+      title: disconnectAccount.title(label),
+      message: disconnectAccount.message(label),
+      confirmLabel: disconnectAccount.confirm(label),
       cancelLabel: "Cancel",
       anchorEl,
     });
@@ -267,7 +268,7 @@ export default function AccountSettings({
       onSuccess: () =>
         setFeedback({
           tone: FeedbackTone.Success,
-          message: `${label} disconnected.`,
+          message: disconnectAccount.done(label),
         }),
     });
   };
@@ -351,8 +352,7 @@ export default function AccountSettings({
                   </div>
                   {account && !removable && (
                     <p className="text-sm text-zinc-500 mt-1 mb-0">
-                      {label} is your only way to log in. Set a password or
-                      connect another account before disconnecting it.
+                      {disconnectAccount.onlyWayIn(label)}
                     </p>
                   )}
                 </li>

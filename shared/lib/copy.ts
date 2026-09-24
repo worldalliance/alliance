@@ -323,6 +323,24 @@ export const forgotPassword = {
   },
 } as const;
 
+export const passwordLink = {
+  hint: (params: { verb: string; email: string }) =>
+    `We'll send a link to ${params.verb} your password to ${params.email}.`,
+  sent: (params: { verb: string; email: string }) =>
+    `A link to ${params.verb} your password has been sent to ${params.email}.`,
+  failed: "Couldn't send the email. Please try again.",
+} as const;
+
+export const disconnectAccount = {
+  title: (label: string) => `Disconnect ${label}?`,
+  message: (label: string) =>
+    `You won't be able to log in with ${label} until you connect it again.`,
+  confirm: (label: string) => `Disconnect ${label}`,
+  done: (label: string) => `${label} disconnected.`,
+  onlyWayIn: (label: string) =>
+    `${label} is your only way to log in. Set a password or connect another account before disconnecting it.`,
+} as const;
+
 /**
  * The 1,000-member milestone, named in four places: the onboarding Scale screen
  * on web and mobile, and the milestone tracks on the site and redesign pages.
