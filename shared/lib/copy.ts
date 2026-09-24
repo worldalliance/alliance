@@ -238,6 +238,7 @@ export const referralQrCopy = {
 
 export const clipboardCopy = {
   share: "Share",
+  copyLink: "Copy link",
   copiedToClipboard: "Copied to clipboard",
   exportJson: "Export JSON",
   inClipboard: "in clipboard",

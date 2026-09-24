@@ -5,7 +5,7 @@ import {
 import { cn } from "@alliance/shared/styles/util";
 import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
 import InfoTooltip from "@alliance/sharedweb/ui/InfoTooltip";
-import { ReactNode, useMemo } from "react";
+import { useMemo } from "react";
 import { href, Link } from "react-router";
 import UserProfilePicRow from "../../components/UserProfilePicRow";
 
@@ -16,7 +16,6 @@ interface ActionCompletedBarWithInfoProps extends ActionCompletedBarWithInfoProp
   showInfoTooltip?: boolean;
   seeAllLink?: boolean;
   dark?: boolean;
-  labelAction?: ReactNode;
 }
 
 const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
@@ -28,7 +27,6 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
   showInfoTooltip = false,
   seeAllLink = false,
   dark = false,
-  labelAction,
 }: ActionCompletedBarWithInfoProps) => {
   const { labelString, percentage } = getCompletedPercentage(action);
 
@@ -51,7 +49,6 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
           <p className={cn(`text-${textSize}`, `text-${textColor}`)}>
             {labelString}
           </p>
-          {labelAction}
           {showInfoTooltip && (
             <InfoTooltip
               content={

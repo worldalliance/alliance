@@ -25,7 +25,7 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import ExternalLinkPreview from "@alliance/sharedweb/ui/ExternalLinkPreview";
 import LinkedInIcon from "@alliance/sharedweb/ui/icons/LinkedInIcon";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLinkIcon } from "lucide-react";
+import { Link2Icon } from "lucide-react";
 import { Fragment, useEffect, useMemo, type ReactNode } from "react";
 import {
   Link,
@@ -182,17 +182,19 @@ const ActionContents = () => {
 
       <div className="flex flex-row justify-between items-start mb-6">
         {action !== undefined && (
-          <div className="flex flex-col gap-y-3">
-            <ShareButton
-              onClick={handleShareAction}
-              icon={ExternalLinkIcon}
-              label={clipboardCopy.share}
-              copiedLabel={clipboardCopy.copiedToClipboard}
-              className="self-start text-zinc-500 hover:text-zinc-700"
-              iconClassName="w-3.5 h-3.5 shrink-0"
-              labelClassName="text-sm order-first"
-            />
-            <p className="text-title">{action.name}</p>
+          <div className="flex flex-col gap-y-3 w-full">
+            <div className="flex flex-row justify-between items-start gap-x-4">
+              <p className="text-title">{action.name}</p>
+              <ShareButton
+                onClick={handleShareAction}
+                icon={Link2Icon}
+                label={clipboardCopy.copyLink}
+                copiedLabel={clipboardCopy.copiedToClipboard}
+                className="mt-2 text-zinc-500 hover:text-zinc-700"
+                iconClassName="w-5 h-5 shrink-0"
+                iconOnly
+              />
+            </div>
             {loggedInMode ? (
               <p className="text-base md:text-lg">{action.shortDescription}</p>
             ) : (
