@@ -16,6 +16,9 @@ interface ActionCompletedBarWithInfoProps extends ActionCompletedBarWithInfoProp
   showInfoTooltip?: boolean;
   seeAllLink?: boolean;
   dark?: boolean;
+  barRounded?: string;
+  barClassName?: string;
+  barFillClassName?: string;
 }
 
 const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
@@ -27,6 +30,9 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
   showInfoTooltip = false,
   seeAllLink = false,
   dark = false,
+  barRounded,
+  barClassName,
+  barFillClassName,
 }: ActionCompletedBarWithInfoProps) => {
   const { labelString, percentage } = getCompletedPercentage(action);
 
@@ -73,7 +79,13 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
           <UserProfilePicRow users={completedFriends} />
         )}
       </div>
-      <CompletedBar percentage={percentage} dark={dark} />
+      <CompletedBar
+        percentage={percentage}
+        dark={dark}
+        rounded={barRounded}
+        className={barClassName}
+        fillClassName={barFillClassName}
+      />
     </div>
   );
 };

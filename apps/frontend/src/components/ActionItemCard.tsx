@@ -38,51 +38,53 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
   return (
     <div
       className={cn(
-        "relative p-3 md:p-4 border-1 border-zinc-200 rounded-[7px] hover:bg-white/50",
+        "group/card relative p-3 md:p-4 border-1 border-zinc-200 rounded-[7px] hover:bg-white/50",
         className,
       )}
     >
-      <Link
-        to={href("/actions/:id", { id: action.id.toString() })}
-        className="block after:absolute after:inset-0"
-      >
-        <div className="flex flex-row gap-x-3 md:gap-x-4">
-          <div className="flex flex-col justify-between flex-1">
-            <div className="flex flex-row items-start gap-x-8">
-              <div className="flex-1 flex flex-col">
-                <div className="flex flex-row items-center justify-between gap-x-2">
-                  <p className="font-medium text-black">{action.name}</p>
-                  {action.userRelation === "completed" && (
-                    <CheckIcon size={20} />
-                  )}
-                </div>
+      <div className="flex flex-row gap-x-3 md:gap-x-4">
+        <div className="flex flex-col justify-between flex-1">
+          <div className="flex flex-row items-start gap-x-8">
+            <div className="flex-1 flex flex-col">
+              <div className="flex flex-row items-center justify-between gap-x-2">
+                <Link
+                  to={href("/actions/:id", { id: action.id.toString() })}
+                  className="font-medium text-black after:absolute after:inset-0"
+                >
+                  {action.name}
+                </Link>
+                {action.userRelation === "completed" && <CheckIcon size={20} />}
+              </div>
+              <div className="flex flex-row items-start justify-between gap-x-4">
                 <p className="text-zinc-500">{action.shortDescription}</p>
+                <ShareButton
+                  onClick={handleShareAction}
+                  icon={Link2Icon}
+                  label={clipboardCopy.copyLink}
+                  copiedLabel={clipboardCopy.copiedToClipboard}
+                  className={cn(
+                    "relative mt-1 text-zinc-500 hover:text-zinc-700",
+                    zIndex.raised,
+                  )}
+                  iconClassName="h-4 w-4 shrink-0"
+                  iconOnly
+                />
               </div>
             </div>
           </div>
         </div>
-      </Link>
-      <div className="mt-4 flex flex-row items-end justify-end gap-x-4">
-        {shouldShowCompletedBar && (
-          <ActionCompletedBarWithInfo
-            action={action}
-            friendActivities={friendCommitmentActivities ?? null}
-            className="flex-1"
-          />
-        )}
-        <ShareButton
-          onClick={handleShareAction}
-          icon={Link2Icon}
-          label={clipboardCopy.copyLink}
-          copiedLabel={clipboardCopy.copiedToClipboard}
-          className={cn(
-            "relative text-zinc-500 hover:text-zinc-700",
-            zIndex.raised,
-          )}
-          iconClassName="h-4 w-4 shrink-0"
-          iconOnly
-        />
       </div>
+      {shouldShowCompletedBar && (
+        <ActionCompletedBarWithInfo
+          action={action}
+          friendActivities={friendCommitmentActivities ?? null}
+          className="mt-4"
+          barRounded="rounded-[3px]"
+          barClassName="inset-shadow-sm"
+          barFillClassName="shadow-[0_0_4px] shadow-green/50 transition-shadow group-hover/card:shadow-[0_0_7px] group-hover/card:shadow-green/40"
+          dark
+        />
+      )}
     </div>
   );
 };

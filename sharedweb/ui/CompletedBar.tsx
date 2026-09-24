@@ -5,12 +5,16 @@ export interface CompletedBarProps extends React.HTMLAttributes<HTMLDivElement> 
   percentage: number;
   dark?: boolean;
   height?: string;
+  rounded?: string;
+  fillClassName?: string;
 }
 
 const CompletedBar: React.FC<CompletedBarProps> = ({
   percentage,
   dark = false,
   height = "h-3",
+  rounded = "rounded-full",
+  fillClassName,
   className,
   ...props
 }: CompletedBarProps) => {
@@ -18,8 +22,9 @@ const CompletedBar: React.FC<CompletedBarProps> = ({
     <div
       {...props}
       className={cn(
-        "w-full rounded-full  mt-0.5",
+        "w-full  mt-0.5",
         height,
+        rounded,
         dark ? "bg-zinc-200" : "bg-zinc-100",
         className,
       )}
@@ -28,7 +33,9 @@ const CompletedBar: React.FC<CompletedBarProps> = ({
         <div
           className={cn(
             height,
-            "bg-green outline outline-green rounded-full overflow-hidden",
+            rounded,
+            "bg-green outline outline-green overflow-hidden",
+            fillClassName,
           )}
           style={{ width: `${percentage}%` }}
         ></div>
