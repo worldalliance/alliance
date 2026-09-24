@@ -6,9 +6,11 @@ import {
 } from "date-fns/constants";
 
 const formatterCache = new Map<string, Intl.DateTimeFormat | null>();
+let defaultIsEnUS: boolean | null = null;
 
 export function resetFormatterCache(): void {
   formatterCache.clear();
+  defaultIsEnUS = null;
 }
 
 type FormatterRequest = {
@@ -35,6 +37,15 @@ function getFormatter({
     formatterCache.set(key, fmt);
   }
   return fmt;
+}
+
+// Hermes on Android builds a formatter for a locale it is handed in about three
+// times the time it takes for its default one.
+function enUS(): string | undefined {
+  defaultIsEnUS ??=
+    askIntl(() => new Intl.DateTimeFormat().resolvedOptions().locale) ===
+    "en-US";
+  return defaultIsEnUS ? undefined : "en-US";
 }
 
 // A runtime can build a formatter that formats and still not write parts, so
@@ -106,7 +117,7 @@ function offsetFromWallClock(tz: string, when: Date): number | null {
       minute: "2-digit",
       second: "2-digit",
     },
-    locale: "en-US",
+    locale: enUS(),
   });
 
   // A 12-hour reading lands near enough to UTC for the range check below to
@@ -186,7 +197,7 @@ export function getGenericLabelFromIntl(tz: string): string | null {
       timeZone: tz,
       timeZoneName: "longGeneric",
     },
-    locale: "en-US",
+    locale: enUS(),
   });
 
   const locale = fmt && askIntl(() => fmt.resolvedOptions().locale);

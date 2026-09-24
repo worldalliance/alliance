@@ -829,6 +829,30 @@ describe("the offset a zone sorts by", () => {
   });
 });
 
+describe("the locale a formatter is built for", () => {
+  const localesAsked = (defaultLocale: string) => {
+    const real = Intl.DateTimeFormat;
+    const asked: unknown[] = [];
+
+    standingInFor(
+      (locales, options) => {
+        if (options?.timeZone) asked.push(locales);
+        return new real(locales ?? defaultLocale, options);
+      },
+      () => renderOpen(),
+    );
+    return new Set(asked);
+  };
+
+  it("is the runtime's own where that is en-US, which Hermes builds faster", () => {
+    expect(localesAsked("en-US").has("en-US")).toBe(false);
+  });
+
+  it("is en-US where the runtime's own is another", () => {
+    expect(localesAsked("de-DE").has("en-US")).toBe(true);
+  });
+});
+
 describe("searching the zone list", () => {
   const zonesMatching = (query: string) => {
     const { result } = renderOpen();
