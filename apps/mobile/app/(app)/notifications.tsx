@@ -83,12 +83,9 @@ export default function NotificationsScreen() {
 
   const notifications = useMemo(() => {
     if (!response) return [];
-    return response
-      .sort(
-        (a, b) =>
-          getNotificationTime(b).getTime() - getNotificationTime(a).getTime(),
-      )
-      .filter((notif) => getNotificationTime(notif).getTime() <= Date.now());
+    return response.filter(
+      (notif) => getNotificationTime(notif).getTime() <= Date.now(),
+    );
   }, [response]);
 
   const unreadTotal = useMemo(() => {
