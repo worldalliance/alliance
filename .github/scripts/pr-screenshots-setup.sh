@@ -27,14 +27,20 @@ case "$NATIVE_PLATFORM" in
     sdkmanager 'platform-tools' 'platforms;android-35' 'system-images;android-35;google_apis;x86_64' 'emulator'
     echo no | avdmanager create avd --force --name screenshots --package 'system-images;android-35;google_apis;x86_64' --device pixel_6
     "$ANDROID_HOME/emulator/emulator" -avd screenshots -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > .scratch/pr-screenshots/emulator.log 2>&1 &
-    adb wait-for-device
+    emulator_pid=$!
     for _ in {1..120}; do
-      if [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" == 1 ]]; then
+      if ! kill -0 "$emulator_pid" 2>/dev/null; then
+        cat .scratch/pr-screenshots/emulator.log >&2
+        echo 'Android emulator exited before booting' >&2
+        exit 1
+      fi
+      if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == 1 ]]; then
         adb shell input keyevent 82
         exit 0
       fi
       sleep 2
     done
+    cat .scratch/pr-screenshots/emulator.log >&2
     echo 'Android emulator did not finish booting' >&2
     exit 1
     ;;
