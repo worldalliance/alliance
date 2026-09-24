@@ -1,6 +1,5 @@
-const { lstatSync, readFileSync, writeFileSync } = require("node:fs");
+const { lstatSync, readFileSync } = require("node:fs");
 const { resolve } = require("node:path");
-const { execFileSync } = require("node:child_process");
 
 function validateRequest({ pr, number, expectedHead, repo }) {
   if (!/^[1-9]\d*$/.test(number) || !/^[a-f0-9]{40}$/.test(expectedHead)) {
@@ -120,6 +119,8 @@ function markdownText(value) {
 }
 
 async function publishEvidence({ github, context }) {
+  if (!process.env.ARTIFACT_URL)
+    throw new Error("Screenshot artifact URL is missing");
   const directory = resolve(".scratch/pr-screenshots/evidence");
   const report = validateEvidence(directory);
   const number = process.env.PR_NUMBER;
@@ -138,8 +139,9 @@ async function publishEvidence({ github, context }) {
     "",
     markdownText(report.summary),
     "",
+    `[Download before/after screenshots](${process.env.ARTIFACT_URL}) (GitHub sign-in required; retained for 14 days).`,
+    "",
   ];
-  const attachments = new Set();
   for (const pair of report.pairs) {
     lines.push(
       `**${markdownText(pair.title)}**`,
@@ -148,30 +150,17 @@ async function publishEvidence({ github, context }) {
       "",
       "| Before | After |",
       "| --- | --- |",
-      `| ![Before](./${pair.before}) | ![After](./${pair.after}) |`,
+      `| \`${pair.before}\` | \`${pair.after}\` |`,
       "",
     );
-    attachments.add(pair.before);
-    attachments.add(pair.after);
   }
   if (report.limitations)
     lines.push(`Limitations: ${markdownText(report.limitations)}`, "");
-  const bodyFile = resolve(".scratch/pr-screenshots/comment.md");
-  writeFileSync(bodyFile, lines.join("\n"));
-  execFileSync(
-    "gh",
-    [
-      "pr",
-      "comment",
-      number,
-      "--repo",
-      repo,
-      "--body-file",
-      bodyFile,
-      ...Array.from(attachments).flatMap((name) => ["--attach", `./${name}`]),
-    ],
-    { cwd: directory, stdio: "inherit" },
-  );
+  await github.rest.issues.createComment({
+    ...context.repo,
+    issue_number: Number(number),
+    body: lines.join("\n"),
+  });
 }
 
 module.exports = {

@@ -56,6 +56,8 @@ jobs:
 
   capture:
     needs: resolve
+    outputs:
+      artifact_url: ${{ steps.evidence.outputs.artifact-url }}
     runs-on: ${{ inputs.platform == 'ios' && 'macos-26' || 'ubuntu-24.04' }}
     timeout-minutes: 90
     steps:
@@ -132,6 +134,7 @@ jobs:
           MAESTRO_CLI_NO_ANALYTICS: "1"
           EXPO_NO_TELEMETRY: "1"
       - name: Upload capture evidence
+        id: evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -158,22 +161,13 @@ jobs:
         with:
           name: pr-screenshots-${{ inputs.platform }}
           path: .scratch/pr-screenshots/evidence
-      - name: Install GitHub CLI with attachment support
-        run: |
-          mkdir -p .scratch/gh
-          cd .scratch/gh
-          curl --fail --silent --show-error --location --remote-name https://github.com/cli/cli/releases/download/v2.100.0/gh_2.100.0_linux_amd64.tar.gz
-          curl --fail --silent --show-error --location --remote-name https://github.com/cli/cli/releases/download/v2.100.0/gh_2.100.0_checksums.txt
-          grep ' gh_2.100.0_linux_amd64.tar.gz$' gh_2.100.0_checksums.txt | sha256sum --check
-          tar -xzf gh_2.100.0_linux_amd64.tar.gz
-          echo "$PWD/gh_2.100.0_linux_amd64/bin" >> "$GITHUB_PATH"
       - uses: actions/github-script@v8
         env:
           PR_NUMBER: ${{ needs.resolve.outputs.pr }}
           BASE_SHA: ${{ needs.resolve.outputs.base }}
           HEAD_SHA: ${{ needs.resolve.outputs.head }}
           NATIVE_PLATFORM: ${{ inputs.platform }}
-          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_URL: ${{ needs.capture.outputs.artifact_url }}
         with:
           script: |
             const { publishEvidence } = require('./.github/scripts/pr-screenshots.cjs');

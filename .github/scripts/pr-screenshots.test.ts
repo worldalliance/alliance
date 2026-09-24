@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { resolve } from "node:path";
 import {
   markdownText,
@@ -124,6 +131,57 @@ describe("untrusted screenshot artifacts", () => {
   test("accepts regular PNG pairs", () => {
     withEvidence((directory) => {
       expect(validateEvidence(directory)).toEqual(report);
+    });
+  });
+
+  test("publishes an artifact link with the built-in token and rejects a moved PR head", () => {
+    withEvidence((directory) => {
+      const evidence = resolve(directory, ".scratch/pr-screenshots/evidence");
+      mkdirSync(evidence, { recursive: true });
+      for (const name of ["before.png", "after.png", "report.json"])
+        copyFileSync(resolve(directory, name), resolve(evidence, name));
+      for (const expectedHead of [sha, "c".repeat(40)]) {
+        const result = Bun.spawnSync(
+          [
+            "node",
+            "-e",
+            `const { publishEvidence } = require(process.argv[1]);
+          publishEvidence({
+            context: { repo: { owner: 'example', repo: 'app' }, serverUrl: 'https://github.com', runId: 123 },
+            github: { rest: {
+              pulls: { get: async () => ({ data: JSON.parse(process.argv[2]) }) },
+              issues: { createComment: async (comment) => console.log(JSON.stringify(comment)) }
+            } }
+          }).catch(() => { process.exitCode = 1; });`,
+            resolve(import.meta.dir, "pr-screenshots.cjs"),
+            JSON.stringify(pr),
+          ],
+          {
+            cwd: directory,
+            env: {
+              ...process.env,
+              PR_NUMBER: "42",
+              HEAD_SHA: expectedHead,
+              BASE_SHA: "b".repeat(40),
+              NATIVE_PLATFORM: "ios",
+              ARTIFACT_URL:
+                "https://github.com/example/app/actions/runs/123/artifacts/456",
+            },
+          },
+        );
+        if (expectedHead !== sha) {
+          expect(result.exitCode).toBe(1);
+          expect(result.stdout.toString()).toBe("");
+          continue;
+        }
+        expect(result.exitCode).toBe(0);
+        const comment = JSON.parse(result.stdout.toString());
+        expect(comment.issue_number).toBe(42);
+        expect(comment.body).toContain(
+          "[Download before/after screenshots](https://github.com/example/app/actions/runs/123/artifacts/456)",
+        );
+        expect(comment.body).toContain("| `before.png` | `after.png` |");
+      }
     });
   });
 
