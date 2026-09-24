@@ -4387,9 +4387,32 @@ describe("Actions (e2e)", () => {
         },
         publicAnswers: {},
       },
+      {
+        output: "only a display block beside a public answer left empty",
+        schema: {
+          ...contentfulFormSchema,
+          outputViews: [
+            {
+              id: "view-1",
+              type: "default",
+              blocks: [
+                {
+                  id: "block-header",
+                  type: "display",
+                  kind: "header",
+                  text: "Done",
+                },
+                { id: "block-published", fieldId: "published" },
+              ],
+            },
+          ],
+        },
+        answers: { published: "" },
+        publicAnswers: { published: true },
+      },
     ])(
       "leaves out a friend's completion and its output with $output",
-      async ({ schema, publicAnswers }) => {
+      async ({ schema, answers, publicAnswers }) => {
         const viewer = await userService.create({
           email: `feed-empty-viewer-${Date.now()}@example.com`,
           password: "Password123!",
@@ -4424,7 +4447,7 @@ describe("Actions (e2e)", () => {
               formId: form.id,
               formSnapshotId: snapshot.id,
               user: friend,
-              answers: { published: "Shown" },
+              answers: answers ?? { published: "Shown" },
               publicAnswers,
             }),
           }),

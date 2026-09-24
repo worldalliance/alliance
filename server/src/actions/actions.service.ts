@@ -21,6 +21,7 @@ import {
 import { flattenPageItems } from "@alliance/common/forms/form-schema";
 import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
 import { redactToOutput } from "@alliance/common/forms/output-resolution";
+import { isOutputValueMissing } from "@alliance/common/forms/output-values";
 import { echoesStoredKey } from "@alliance/common/image-src";
 import { run } from "@alliance/common/run";
 import { Assert } from "@alliance/common/types";
@@ -2154,8 +2155,9 @@ export class ActionsService {
     const publicAnswers = activity.taskFormResponse.publicAnswers ?? {};
 
     const answersPrunedObj = Object.fromEntries(
-      Object.entries(answers).filter(([key]) =>
-        answerToIsPublic(key, publicAnswers),
+      Object.entries(answers).filter(
+        ([key, value]) =>
+          !isOutputValueMissing(value) && answerToIsPublic(key, publicAnswers),
       ),
     );
 
