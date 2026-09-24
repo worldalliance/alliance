@@ -28,6 +28,8 @@ Findings and the judgment behind each field come from the review skill. Report t
 
 Before you start reviewing, initialize `.scratch/review/<base-sha>.json` with `{"base": <sha>, "summary": "", "findings": []}` without reading a previous file at that path. Create, modify, or delete findings as you review the commit. Put the reproduction or execution trace in each finding's `evidence`.
 
+Your last message says where the file is, in addition to the markdown-style review, with the same sections as specified in `review`.
+
 Do not delete this file after your review. It will be read later.
 
 # Applying fixes
