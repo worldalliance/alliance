@@ -1,4 +1,6 @@
+import { isCatalogued, isTimeZoneIdentifier } from "@alliance/common/timezone";
 import {
+  TIME_ZONE_ALIASES,
   TIME_ZONE_CATALOG,
   type TimeZoneCatalogEntry,
 } from "@alliance/common/timezone-catalog.gen";
@@ -253,12 +255,21 @@ function warmWhileIdle(): void {
   warming = requestIdleCallback(step, WARM_STEP_TIMEOUT);
 }
 
+// A saved or detected zone the catalog lacks, such as a device's Etc/GMT+8 or
+// a zone newer than the pinned tzdb, is still the member's own, so it gets a
+// row named after its identifier.
+function uncataloguedLabel(tz: string): BaseLabel | null {
+  if (isCatalogued(tz)) return null;
+  if (!isTimeZoneIdentifier(tz)) return null;
+  return labelFor({ tz, city: tz, country: null });
+}
+
 const CATALOG_BY_TZ = new Map(
   TIME_ZONE_CATALOG.map((entry) => [entry.tz, entry]),
 );
 
 function selectedLabel(tz: string): BaseLabel | null {
-  const entry = CATALOG_BY_TZ.get(tz);
+  const entry = CATALOG_BY_TZ.get(TIME_ZONE_ALIASES.get(tz) ?? tz);
   return entry ? labelFor(entry) : null;
 }
 
@@ -380,16 +391,28 @@ export function useTimeZoneSelect({
   );
   const loading = !labelled && canWarm();
 
+  const uncatalogued = useMemo(
+    () => uncataloguedLabel(internalValue),
+    [internalValue],
+  );
+
   const items = useMemo<TimeZoneSelectItem[]>(() => {
     if (listedMinute === null || loading) return [];
     const when = minuteStart(listedMinute);
-    return baseItems(listedMinute).map((item) => ({
+    const base = baseItems(listedMinute);
+    const rows = uncatalogued
+      ? [...base, withOffset(uncatalogued, when)].sort(byOffsetThenLocation)
+      : base;
+    return rows.map((item) => ({
       ...item,
       timeLabel: clockOf(item, hour12, when),
     }));
-  }, [listedMinute, loading, hour12]);
+  }, [listedMinute, loading, uncatalogued, hour12]);
 
-  const label = useMemo(() => selectedLabel(internalValue), [internalValue]);
+  const label = useMemo(
+    () => selectedLabel(internalValue) ?? uncatalogued,
+    [internalValue, uncatalogued],
+  );
 
   const selected = useMemo<TimeZoneSelectItem>(() => {
     const when = minuteStart(minute);

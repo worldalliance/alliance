@@ -36,8 +36,7 @@ sections below this one carry the reasoning each step implements.
    instead of logging and skipping the value. No admin endpoint writes a
    member's timezone. An admin changing it while impersonating goes through
    `/user/update`.
-4. **Rows from the catalog.** Done, except the uncatalogued row and the saved
-   alias. `shared/forms/timeZoneSelect.ts` drops the 50-row
+4. **Rows from the catalog.** Done. `shared/forms/timeZoneSelect.ts` drops the 50-row
    `TZ_OPTIONS` and builds its rows from the catalog, with the generic name and
    location as the primary label, country and offset under it, and local time at
    the trailing edge. Sorted by offset, then location. A saved or detected
@@ -49,7 +48,12 @@ sections below this one carry the reasoning each step implements.
    country alone. Many rows share a generic name, country, and offset, such
    as the twelve `Argentina Standard Time` rows, so where the first line runs
    out of room the web cuts the generic name and keeps the city whole, and
-   mobile cuts the middle. The curated labels and
+   mobile cuts the middle. The uncatalogued row reads
+   `<generic> · <identifier>`, its location the raw identifier, since a
+   device's `Etc/GMT+8` names an offset with the opposite sign and has no
+   city. It lasts while the value holds that identifier. A saved alias shows
+   its catalog row as selected and stays the stored value until the member
+   picks a row. The curated labels and
    extra search terms go with `TZ_OPTIONS`. Aliases bring back most of what
    they found, such as `arizona` through `US/Arizona`, and step 5 covers
    the rest. The generic name still comes from

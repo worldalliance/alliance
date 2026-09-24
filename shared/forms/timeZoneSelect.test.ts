@@ -418,6 +418,44 @@ describe("a runtime that rejects every zone", () => {
   });
 });
 
+describe("a saved zone the catalog has no row for", () => {
+  it("shows an alias as the row it names", () => {
+    const { result } = renderOpen({ value: "US/Pacific" });
+
+    expect(result.current.selected.tz).toBe("America/Los_Angeles");
+    expect(result.current.items).toHaveLength(TIME_ZONE_CATALOG.length);
+  });
+
+  it("gets a row of its own when the runtime resolves it", () => {
+    const { result } = renderOpen({ value: "Etc/GMT+8" });
+
+    expect(result.current.items).toHaveLength(TIME_ZONE_CATALOG.length + 1);
+    expect(result.current.selected).toMatchObject({
+      tz: "Etc/GMT+8",
+      labelSub: "UTC-8",
+      offsetMins: -480,
+    });
+    expect(result.current.selected.labelLeft).toContain("Etc/GMT+8");
+  });
+
+  it("sorts that row among the zones it shares an offset with", () => {
+    const { result } = renderOpen({ value: "Etc/GMT-14" });
+
+    expect(result.current.items.slice(-2).map(({ tz }) => tz)).toEqual([
+      "Etc/GMT-14",
+      "Pacific/Kiritimati",
+    ]);
+  });
+
+  it("drops that row once the member picks a listed zone", () => {
+    const { result } = renderOpen({ defaultValue: "Etc/GMT+8" });
+
+    act(() => result.current.commit("America/Los_Angeles"));
+
+    expect(result.current.items).toHaveLength(TIME_ZONE_CATALOG.length);
+  });
+});
+
 describe("a picker nobody has opened", () => {
   it("builds no list", () => {
     const { result } = renderHook(() => useTimeZoneSelect({}));
@@ -425,18 +463,32 @@ describe("a picker nobody has opened", () => {
     expect(result.current.items).toEqual([]);
   });
 
-  it("still labels the zone on its trigger", () => {
+  it.each(["America/Los_Angeles", "US/Pacific"])(
+    "still labels %s on its trigger",
+    (value) => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(Date.UTC(2026, 0, 15, 12)));
+      const { result } = renderHook(() => useTimeZoneSelect({ value }));
+
+      expect(result.current.selected).toMatchObject({
+        tz: "America/Los_Angeles",
+        labelLeft: "Pacific Time · Los Angeles",
+        labelSub: "United States · UTC-8",
+      });
+    },
+  );
+
+  it("labels a zone the catalog lacks the way its row would", () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date(Date.UTC(2026, 0, 15, 12)));
-    const { result } = renderHook(() =>
-      useTimeZoneSelect({ value: "America/Los_Angeles" }),
-    );
+    const closed = renderHook(() => useTimeZoneSelect({ value: "Etc/GMT+8" }));
+    const opened = renderOpen({ value: "Etc/GMT+8" });
 
-    expect(result.current.selected).toMatchObject({
-      tz: "America/Los_Angeles",
-      labelLeft: "Pacific Time · Los Angeles",
-      labelSub: "United States · UTC-8",
-    });
+    expect(opened.result.current.items).toContainEqual(
+      closed.result.current.selected,
+    );
+    closed.unmount();
+    opened.unmount();
   });
 
   it("keeps its list once the picker closes", () => {
