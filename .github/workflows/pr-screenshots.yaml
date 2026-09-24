@@ -152,6 +152,10 @@ jobs:
           CI: "true"
         run: |
           bunx expo prebuild --platform android
+          # CI-only: expo-dev-client's plugin options would change the OTA fingerprint and hide the menu in every dev build.
+          sed -i 's#</application>#<meta-data android:name="EXDevMenuShowFloatingActionButton" android:value="false"/><meta-data android:name="EXDevMenuIsOnboardingFinished" android:value="true"/><meta-data android:name="EXDevMenuShowsAtLaunch" android:value="false"/></application>#' \
+            android/app/src/main/AndroidManifest.xml
+          grep -q EXDevMenuShowsAtLaunch android/app/src/main/AndroidManifest.xml
           (cd android && ./gradlew app:assembleDebug -PreactNativeArchitectures=x86_64)
           cp android/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/app-debug.apk"
 
