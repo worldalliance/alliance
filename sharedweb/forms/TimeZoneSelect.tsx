@@ -5,7 +5,7 @@ import {
 import { cn } from "@alliance/shared/styles/util";
 import { Check } from "lucide-react";
 import type React from "react";
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
 import { zIndex } from "../ui/zIndex";
 
 type Props = {
@@ -22,6 +22,10 @@ type Props = {
   hour12?: boolean;
 };
 
+function scrollToRow(list: HTMLElement | null, index: number) {
+  list?.children[index]?.scrollIntoView({ block: "nearest" });
+}
+
 export default function TimeZoneSelectPretty({
   labelId,
   value,
@@ -36,6 +40,7 @@ export default function TimeZoneSelectPretty({
   const {
     filtered,
     selected,
+    selectedIndex,
     query,
     setQuery,
     activeIndex,
@@ -50,6 +55,38 @@ export default function TimeZoneSelectPretty({
     hour12,
     disabled,
   });
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // WebKit sends a mousemove at the same coordinates when the list or page
+  // scrolls under a still pointer, and can report a real move with no
+  // movementX. The baseline is wherever the pointer last was on the page, and
+  // the capture listener runs before React's row handlers read the result.
+  const pointerMoved = useRef(false);
+  useEffect(() => {
+    let last: { x: number; y: number } | null = null;
+    const onMove = (e: MouseEvent) => {
+      pointerMoved.current =
+        last != null && (last.x !== e.clientX || last.y !== e.clientY);
+      last = { x: e.clientX, y: e.clientY };
+    };
+    document.addEventListener("mousemove", onMove, { capture: true });
+    return () =>
+      document.removeEventListener("mousemove", onMove, { capture: true });
+  }, []);
+
+  const moveTo = (index: number) => {
+    setActiveIndex(index);
+    scrollToRow(listRef.current, index);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    if (query || selectedIndex < 0) {
+      listRef.current?.scrollTo({ top: 0 });
+      return;
+    }
+    scrollToRow(listRef.current, selectedIndex);
+  }, [open, query, selectedIndex]);
 
   function onTriggerKeyDown(e: React.KeyboardEvent) {
     if (disabled) return;
@@ -60,7 +97,6 @@ export default function TimeZoneSelectPretty({
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setOpen(true);
-      setActiveIndex(0);
     }
   }
 
@@ -72,12 +108,12 @@ export default function TimeZoneSelectPretty({
     }
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+      moveTo(Math.min(activeIndex + 1, filtered.length - 1));
       return;
     }
     if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActiveIndex((i) => Math.max(i - 1, 0));
+      moveTo(Math.max(activeIndex - 1, 0));
       return;
     }
     if (e.key === "Enter") {
@@ -155,7 +191,7 @@ export default function TimeZoneSelectPretty({
               />
             </div>
 
-            <div className="max-h-[320px] overflow-auto">
+            <div ref={listRef} className="max-h-[320px] overflow-auto">
               {filtered.length === 0 ? (
                 <div className="p-3 text-zinc-500">No matches</div>
               ) : (
@@ -168,7 +204,9 @@ export default function TimeZoneSelectPretty({
                     <button
                       key={item.tz}
                       type="button"
-                      onMouseEnter={() => setActiveIndex(idx)}
+                      onMouseMove={() => {
+                        if (pointerMoved.current) setActiveIndex(idx);
+                      }}
                       onClick={() => commit(item.tz)}
                       className={[
                         "w-full px-3 py-3 text-left",

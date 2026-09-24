@@ -35,6 +35,7 @@ export default function TimeZoneSelect({
   const {
     filtered,
     selected,
+    selectedIndex,
     query,
     setQuery,
     setActiveIndex,
@@ -56,7 +57,6 @@ export default function TimeZoneSelect({
       onLanded: () => setReaching(false),
     }),
   );
-  const selectedIndex = filtered.findIndex((i) => i.tz === selected.tz);
   const scrollToSelected = () => scroller.scroll(selectedIndex);
 
   // The trigger has one line under the name, so the label shares it with the

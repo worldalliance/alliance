@@ -530,9 +530,11 @@ export function useTimeZoneSelect({
       .map((i) => ({ ...i, labelSub: subForQuery(i, q) }));
   }, [items, query]);
 
+  const selectedIndex = filtered.findIndex((i) => i.tz === selected.tz);
+
   useEffect(() => {
-    setActiveIndex(0);
-  }, [query, open]);
+    setActiveIndex(query ? 0 : Math.max(selectedIndex, 0));
+  }, [query, open, selectedIndex]);
 
   const commit = (tz: string) => {
     if (disabled) return;
@@ -545,6 +547,7 @@ export function useTimeZoneSelect({
     items,
     filtered,
     selected,
+    selectedIndex,
     query,
     setQuery,
     activeIndex,

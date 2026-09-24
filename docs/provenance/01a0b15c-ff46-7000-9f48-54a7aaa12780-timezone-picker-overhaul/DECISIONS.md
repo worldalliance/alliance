@@ -51,6 +51,12 @@ sections below this one carry the reasoning each step implements.
 7. **Web combobox.** `sharedweb/forms/TimeZoneSelect.tsx` moves onto
    `@base-ui/react/combobox` with the search input inside the popup, deleting
    the hand-rolled keyboard handling, backdrop, and open state.
+   Until then, the hand-rolled list opens with the selected row active and
+   scrolled into view, and the arrow keys keep the active row in view. It
+   scrolls to the nearest edge rather than the center, since
+   `scrollIntoView` scrolls the page too, and centering would move the page
+   whenever the row sat off its middle. A search scrolls the list back to
+   the top, where the search moves the active row.
 8. **Mobile list.** Done. `apps/mobile/components/forms/TimeZoneSelect.tsx`
    swaps its `ScrollView` for a virtualized `FlatList` that opens on the
    selected row. It scrolls by index rather than by a guessed row height,
