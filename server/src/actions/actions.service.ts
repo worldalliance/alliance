@@ -20,8 +20,10 @@ import {
 } from "@alliance/common/forms/display-only-schema";
 import { flattenPageItems } from "@alliance/common/forms/form-schema";
 import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
-import { redactToOutput } from "@alliance/common/forms/output-resolution";
-import { isOutputValueMissing } from "@alliance/common/forms/output-values";
+import {
+  isOutputAnswerShown,
+  redactToOutput,
+} from "@alliance/common/forms/output-resolution";
 import { echoesStoredKey } from "@alliance/common/image-src";
 import { run } from "@alliance/common/run";
 import { Assert } from "@alliance/common/types";
@@ -2134,14 +2136,8 @@ export class ActionsService {
 
     const schema = formSchemaOf(activity.taskFormResponse.formSnapshot);
 
-    const answerToIsPublic = (
-      answer: string,
-      selections: Record<string, boolean>,
-    ) => {
-      if (selections?.[answer] !== true) {
-        return false;
-      }
-      return schema.pages.some((page) =>
+    const isOutputField = (answer: string) =>
+      schema.pages.some((page) =>
         flattenPageItems(page.fields).some(
           (field) =>
             field.id === answer &&
@@ -2149,7 +2145,6 @@ export class ActionsService {
             field.output?.output === true,
         ),
       );
-    };
 
     const answers = activity.taskFormResponse.answers;
     const publicAnswers = activity.taskFormResponse.publicAnswers ?? {};
@@ -2157,7 +2152,7 @@ export class ActionsService {
     const answersPrunedObj = Object.fromEntries(
       Object.entries(answers).filter(
         ([key, value]) =>
-          !isOutputValueMissing(value) && answerToIsPublic(key, publicAnswers),
+          isOutputAnswerShown(publicAnswers[key], value) && isOutputField(key),
       ),
     );
 

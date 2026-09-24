@@ -48,6 +48,11 @@ const visibilityContext = (
   visibilityValidatorResults: validatorResults ?? {},
 });
 
+export const isOutputAnswerShown = (
+  isPublic: boolean | undefined,
+  value: FormValue | undefined,
+): boolean => isPublic === true && !isOutputValueMissing(value);
+
 export const drawnCards = (
   listField: ListField,
   value: FormValue | undefined,
@@ -177,8 +182,7 @@ export const resolveOutputBlocks = ({
   );
 
   const isAnswerShown = (fieldId: string): boolean =>
-    publicAnswers?.[fieldId] === true &&
-    !isOutputValueMissing(visibleAnswers[fieldId]);
+    isOutputAnswerShown(publicAnswers?.[fieldId], visibleAnswers[fieldId]);
 
   const allBlocks = selectedView.blocks ?? [];
 
