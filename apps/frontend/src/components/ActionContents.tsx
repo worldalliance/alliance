@@ -192,6 +192,9 @@ const ActionContents = () => {
               iconClassName="w-3.5 h-3.5 shrink-0"
               labelClassName="text-sm order-first"
             />
+            {action.project && (
+              <p className="text-sm text-zinc-500">{action.project.name}</p>
+            )}
             <p className="text-title">{action.name}</p>
             {loggedInMode ? (
               <p className="text-base md:text-lg">{action.shortDescription}</p>

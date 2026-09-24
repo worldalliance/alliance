@@ -6,6 +6,8 @@ const onetimeInvitesAdminAll = () => ["userGetOnetimeInvitesAdmin"] as const;
  * invalidates the index and the per-form field lists together. */
 const formsAdminAll = () => ["formsAdmin"] as const;
 
+const projectsAdminAll = () => ["projectsAdmin"] as const;
+
 /**
  * Central registry of react-query keys
  */
@@ -54,6 +56,10 @@ export const queryKeys = {
     [...onetimeInvitesAdminAll(), page, limit] as const,
   onetimeInviteMemberStatsAdmin: () =>
     ["userGetOnetimeInviteMemberStatsAdmin"] as const,
+  projectsAdminAll,
+  projectsAdmin: () => [...projectsAdminAll(), "list"] as const,
+  projectAdmin: (projectId: number) =>
+    [...projectsAdminAll(), projectId] as const,
   outreachPartnershipResponsesAdmin: () =>
     ["actionPartnershipsFindAllResponsesAdmin"] as const,
   reminderGroupClickRatesAdmin: () =>

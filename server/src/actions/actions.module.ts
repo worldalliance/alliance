@@ -45,8 +45,11 @@ import { Action } from "./entities/action.entity";
 import { FollowUpForm } from "./entities/follow-up-form.entity";
 import { GeneralUpdateActivity } from "./entities/general-update-activity.entity";
 import { GeneralUpdate } from "./entities/general-update.entity";
+import { Project } from "./entities/project.entity";
 import { ReminderGroup } from "./entities/reminder-group.entity";
 import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
+import { ProjectsController } from "./projects.controller";
+import { ProjectsService } from "./projects.service";
 import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
 
 @Module({
@@ -73,6 +76,7 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
       GeneralUpdateActivity,
       OnetimeInvite,
       Post,
+      Project,
       ReminderGroup,
       Tag,
       Community,
@@ -90,9 +94,10 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
     FormSnapshotModule,
     forwardRef(() => ShareUrlsModule),
   ],
-  controllers: [ActionsController],
+  controllers: [ActionsController, ProjectsController],
   providers: [
     ActionsService,
+    ProjectsService,
     ActionFormVariantService,
     ActionsGateway,
     ActionEventNotifWorker,

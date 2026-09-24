@@ -1184,6 +1184,7 @@ export class ActionsService {
         activities: true,
         updates: { schemaSnapshot: true },
         suite: true,
+        project: true,
         authors: true,
         followUpForms: { form: true },
         reviewers: true,
@@ -3536,6 +3537,7 @@ export class ActionsService {
       updates: _updates,
       followUpForms: _followUpForms,
       reviewers,
+      project: _project,
       ...actionCols
     } = importaction;
 

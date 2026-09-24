@@ -324,6 +324,14 @@ export type ActionSuite = {
     events: Array<ActionEvent>;
 };
 
+export type Project = {
+    id: number;
+    name: string;
+    createdAt: string;
+    updatedAt: string;
+    actions?: Array<Action>;
+};
+
 /**
  * Icon shown next to the reviewer name
  */
@@ -470,6 +478,7 @@ export type Action = {
     followUpForms: Array<FollowUpForm>;
     formVariants: Array<ActionFormVariant>;
     suite?: ActionSuite;
+    project?: Project;
     authors?: Array<User>;
     reviewers?: Array<ActionReviewer>;
     status: ActionStatus;
@@ -2070,6 +2079,11 @@ export type UserActionStatusDto = {
     display: UserActionRelationPillStatus;
 };
 
+export type ProjectDto = {
+    id: number;
+    name: string;
+};
+
 export type ActionDto = {
     /**
      * Unique identifier for the action
@@ -2184,6 +2198,7 @@ export type ActionDto = {
     viewer?: UserActionStatusDto;
     reqAuthenticated?: boolean;
     authors?: Array<ProfileDto>;
+    project?: ProjectDto | null;
 };
 
 export type GeneralUpdateDto = {
@@ -2471,6 +2486,7 @@ export type AdminActionDto = {
     viewer?: UserActionStatusDto;
     reqAuthenticated?: boolean;
     authors?: Array<ProfileDto>;
+    project?: ProjectDto | null;
     /**
      * Cohort expression tree defining who participates
      */
@@ -3110,6 +3126,7 @@ export type ExportActionDto = {
     updates: Array<ActionUpdate>;
     followUpForms: Array<FollowUpForm>;
     suite?: ActionSuite;
+    project?: Project;
     authors?: Array<User>;
     reviewers?: Array<ActionReviewer>;
     taskForm?: Form;
@@ -3210,6 +3227,29 @@ export type TimelineFeedItemDto = {
     action: ActionDto;
     actionUpdate?: ActionUpdateDto;
     actionEvent?: ActionEventDto;
+};
+
+export type ProjectStepDto = {
+    actionId: number;
+    actionName: string;
+    memberActionAt: string | null;
+};
+
+export type ProjectWithStepsDto = {
+    id: number;
+    name: string;
+    /**
+     * The project's actions, ordered by member-action start
+     */
+    steps: Array<ProjectStepDto>;
+};
+
+export type ProjectNameDto = {
+    name: string;
+};
+
+export type AssignProjectDto = {
+    projectId: number | null;
 };
 
 export type CreateEditableContentDto = {
@@ -10566,6 +10606,150 @@ export type ActionsGetTimelineFeedResponses = {
 };
 
 export type ActionsGetTimelineFeedResponse = ActionsGetTimelineFeedResponses[keyof ActionsGetTimelineFeedResponses];
+
+export type ProjectsFindAllAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/projects';
+};
+
+export type ProjectsFindAllAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ProjectsFindAllAdminError = ProjectsFindAllAdminErrors[keyof ProjectsFindAllAdminErrors];
+
+export type ProjectsFindAllAdminResponses = {
+    200: Array<ProjectDto>;
+};
+
+export type ProjectsFindAllAdminResponse = ProjectsFindAllAdminResponses[keyof ProjectsFindAllAdminResponses];
+
+export type ProjectsCreateAdminData = {
+    body: ProjectNameDto;
+    path?: never;
+    query?: never;
+    url: '/projects';
+};
+
+export type ProjectsCreateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ProjectsCreateAdminError = ProjectsCreateAdminErrors[keyof ProjectsCreateAdminErrors];
+
+export type ProjectsCreateAdminResponses = {
+    200: ProjectDto;
+};
+
+export type ProjectsCreateAdminResponse = ProjectsCreateAdminResponses[keyof ProjectsCreateAdminResponses];
+
+export type ProjectsRemoveAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/projects/{id}';
+};
+
+export type ProjectsRemoveAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ProjectsRemoveAdminError = ProjectsRemoveAdminErrors[keyof ProjectsRemoveAdminErrors];
+
+export type ProjectsRemoveAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type ProjectsRemoveAdminResponse = ProjectsRemoveAdminResponses[keyof ProjectsRemoveAdminResponses];
+
+export type ProjectsFindOneAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/projects/{id}';
+};
+
+export type ProjectsFindOneAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ProjectsFindOneAdminError = ProjectsFindOneAdminErrors[keyof ProjectsFindOneAdminErrors];
+
+export type ProjectsFindOneAdminResponses = {
+    200: ProjectWithStepsDto;
+};
+
+export type ProjectsFindOneAdminResponse = ProjectsFindOneAdminResponses[keyof ProjectsFindOneAdminResponses];
+
+export type ProjectsRenameAdminData = {
+    body: ProjectNameDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/projects/{id}';
+};
+
+export type ProjectsRenameAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ProjectsRenameAdminError = ProjectsRenameAdminErrors[keyof ProjectsRenameAdminErrors];
+
+export type ProjectsRenameAdminResponses = {
+    200: ProjectDto;
+};
+
+export type ProjectsRenameAdminResponse = ProjectsRenameAdminResponses[keyof ProjectsRenameAdminResponses];
+
+export type ProjectsAssignActionAdminData = {
+    body: AssignProjectDto;
+    path: {
+        actionId: number;
+    };
+    query?: never;
+    url: '/projects/actions/{actionId}';
+};
+
+export type ProjectsAssignActionAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ProjectsAssignActionAdminError = ProjectsAssignActionAdminErrors[keyof ProjectsAssignActionAdminErrors];
+
+export type ProjectsAssignActionAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type ProjectsAssignActionAdminResponse = ProjectsAssignActionAdminResponses[keyof ProjectsAssignActionAdminResponses];
 
 export type ForumFindAllPostsData = {
     body?: never;
