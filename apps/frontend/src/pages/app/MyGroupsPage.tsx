@@ -7,7 +7,10 @@ import {
   userJoinGroupAssignment,
   userLeaveGroupAssignment,
 } from "@alliance/shared/client";
-import { getMemberCount } from "@alliance/shared/lib/communityUtils";
+import {
+  getMemberCount,
+  groupAssignmentLabels,
+} from "@alliance/shared/lib/communityUtils";
 import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
@@ -101,6 +104,10 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
         ) ?? [],
     };
   }, [communities, user?.id]);
+  const assignmentLabels = groupAssignmentLabels({
+    isMember: nonLeaderCommunities.length > 0,
+    didGroupsFail,
+  });
 
   const memberCommunityIds = useMemo(() => {
     return new Set((communities ?? []).map((community) => community.id));
@@ -362,11 +369,9 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
           <div className="flex flex-col gap-y-1">
             <p className="font-semibold text-xl md:text-2xl">
               Groups you&apos;re a member of
-              {!user?.undergoingGroupAssignment || didGroupsFail
-                ? ""
-                : nonLeaderCommunities.length
-                  ? " (reassigning...)"
-                  : " (assigning...)"}
+              {user?.undergoingGroupAssignment
+                ? assignmentLabels.headingSuffix
+                : ""}
             </p>
             <p className="text-zinc-500 text-base">
               For now, you can only be a member of one group.
@@ -374,11 +379,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
           </div>
           {user?.undergoingGroupAssignment ? (
             <Button color={ButtonColor.Black} onClick={handleCancelAssignment}>
-              {didGroupsFail
-                ? "Cancel group assignment"
-                : nonLeaderCommunities.length
-                  ? "Cancel reassignment"
-                  : "Cancel assignment"}
+              {assignmentLabels.cancelLabel}
             </Button>
           ) : nonLeaderCommunities.length ? (
             <Button

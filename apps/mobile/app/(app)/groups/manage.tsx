@@ -16,7 +16,10 @@ import type {
   CommunityInviteDto,
   CreateCommunityDto,
 } from "@alliance/shared/client/types.gen";
-import { getMemberCount } from "@alliance/shared/lib/communityUtils";
+import {
+  getMemberCount,
+  groupAssignmentLabels,
+} from "@alliance/shared/lib/communityUtils";
 import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
@@ -405,16 +408,10 @@ export default function GroupManageScreen() {
   const inviteRowBusy =
     acceptingInviteId !== null || decliningInviteId !== null;
 
-  const memberSectionSubtitle = useMemo(() => {
-    if (!user?.undergoingGroupAssignment || didGroupsFail) {
-      return null;
-    }
-    return memberCommunities.length ? " (reassigning...)" : " (assigning...)";
-  }, [
-    user?.undergoingGroupAssignment,
+  const assignmentLabels = groupAssignmentLabels({
+    isMember: memberCommunities.length > 0,
     didGroupsFail,
-    memberCommunities.length,
-  ]);
+  });
 
   return (
     <View className="flex-1">
@@ -524,7 +521,9 @@ export default function GroupManageScreen() {
                       weight={FontWeight.Semibold}
                     >
                       Groups you&apos;re a member of
-                      {memberSectionSubtitle ?? ""}
+                      {user?.undergoingGroupAssignment
+                        ? assignmentLabels.headingSuffix
+                        : ""}
                     </Text>
                     <Text className="text-base text-zinc-500 mt-0.5">
                       For now, you can only be a member of one group.
@@ -532,13 +531,7 @@ export default function GroupManageScreen() {
                   </View>
                   {user?.undergoingGroupAssignment ? (
                     <Button
-                      title={
-                        didGroupsFail
-                          ? "Cancel group assignment"
-                          : memberCommunities.length
-                            ? "Cancel reassignment"
-                            : "Cancel assignment"
-                      }
+                      title={assignmentLabels.cancelLabel}
                       onPress={() => void handleCancelAssignment()}
                       color={ButtonColor.Black}
                       size={ButtonSize.Small}
