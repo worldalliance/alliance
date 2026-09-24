@@ -4491,6 +4491,46 @@ describe("Actions (e2e)", () => {
         publicAnswers: { published: true },
       },
       {
+        output:
+          "only a display block beside a public list that isn't a list of rows",
+        schema: {
+          pages: [
+            {
+              id: "page-1",
+              fields: [
+                {
+                  id: "published",
+                  type: "input",
+                  kind: "list",
+                  label: "Published",
+                  output: { output: true },
+                  fields: [
+                    { id: "name", type: "input", kind: "text", label: "Name" },
+                  ],
+                },
+              ],
+            },
+          ],
+          outputViews: [
+            {
+              id: "view-1",
+              type: "default",
+              blocks: [
+                {
+                  id: "block-header",
+                  type: "display",
+                  kind: "header",
+                  text: "Done",
+                },
+                { id: "block-published", fieldId: "published" },
+              ],
+            },
+          ],
+        },
+        answers: { published: "not rows" },
+        publicAnswers: { published: true },
+      },
+      {
         output: "only a display block beside a public answer the form hides",
         schema: {
           pages: [

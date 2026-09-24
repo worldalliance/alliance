@@ -56,7 +56,7 @@ export const drawnCards = (
     (card) => outputCardSubFields(listField, card).length > 0,
   );
 
-type OutputAnswer = {
+export type OutputAnswer = {
   isPublic: boolean | undefined;
   field: AnyField | undefined;
   value: FormValue | undefined;

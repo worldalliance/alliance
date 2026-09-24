@@ -26,6 +26,7 @@ import {
   isOutputAnswerShown,
   redactToOutput,
   savedOutputAnswers,
+  type OutputAnswer,
 } from "@alliance/common/forms/output-resolution";
 import { echoesStoredKey } from "@alliance/common/image-src";
 import { run } from "@alliance/common/run";
@@ -2132,10 +2133,10 @@ export class ActionsService {
     });
   }
 
-  private hasPublicOutputAnswer(
+  private outputAnswers(
     schema: FormSchema,
     response: ParsedFormResponse,
-  ): boolean {
+  ): OutputAnswer[] {
     const fieldLookup = collectOutputFieldMap(schema);
 
     const { visibleAnswers: answers } = savedOutputAnswers({
@@ -2146,22 +2147,13 @@ export class ActionsService {
     });
     const publicAnswers = response.publicAnswers ?? {};
 
-    const answersPrunedObj = Object.fromEntries(
-      Object.entries(answers).filter(([key, value]) => {
-        const answer = {
-          isPublic: publicAnswers[key],
-          field: fieldLookup.get(key),
-          value,
-        };
-        // A malformed list still counts, so buildOutputFormResponse reports it.
-        return (
-          answer.field?.output?.output === true &&
-          (isOutputAnswerShown(answer) || isMalformedListAnswer(answer))
-        );
-      }),
-    );
-
-    return Object.keys(answersPrunedObj).length > 0;
+    return Object.entries(answers)
+      .map(([key, value]) => ({
+        isPublic: publicAnswers[key],
+        field: fieldLookup.get(key),
+        value,
+      }))
+      .filter((answer) => answer.field?.output?.output === true);
   }
 
   buildOutputFormResponse(
@@ -2180,7 +2172,10 @@ export class ActionsService {
         answers,
       }),
     );
-    if (!this.hasPublicOutputAnswer(schema, response)) {
+    const outputAnswers = this.outputAnswers(schema, response);
+    const isAnswerShown = outputAnswers.some(isOutputAnswerShown);
+    // A malformed list alone still builds the output, so it gets reported.
+    if (!isAnswerShown && !outputAnswers.some(isMalformedListAnswer)) {
       return undefined;
     }
     const output = redactToOutput({
@@ -2198,6 +2193,9 @@ export class ActionsService {
         error: new Error(message),
         properties: { formResponseId: response.id, fieldId },
       });
+    }
+    if (!isAnswerShown) {
+      return undefined;
     }
     const [view] = output.schema.outputViews;
     if (!view?.blocks.length) {
