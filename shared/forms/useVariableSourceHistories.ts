@@ -7,6 +7,7 @@ import {
   tasksGetMemberFormResponseHistoryAdmin,
   tasksGetMyFormResponseHistory,
 } from "../client";
+import { thrownStatus } from "../lib/hey-api";
 import { parseFormResponseHistory } from "../parsed-dtos";
 
 export enum HistoryReader {
@@ -45,12 +46,15 @@ export function historySubject(params: {
 export enum SourceHistoriesStatus {
   Loading = "loading",
   Failed = "failed",
+  /** A source form no longer exists, so no retry can load it. */
+  SourceDeleted = "sourceDeleted",
   Ready = "ready",
 }
 
 export type SourceHistories =
   | { status: SourceHistoriesStatus.Loading }
   | { status: SourceHistoriesStatus.Failed; retry: () => void }
+  | { status: SourceHistoriesStatus.SourceDeleted }
   | {
       status: SourceHistoriesStatus.Ready;
       sources: ReadonlyMap<number, VariableSourceHistory>;
@@ -64,6 +68,14 @@ const EMPTY_HISTORY: VariableSourceHistory = {
   responses: [],
 };
 
+class SourceFormDeleted extends Error {}
+
+// Both history endpoints answer 404 only for a form that doesn't exist.
+const historyError = (error: unknown): Error =>
+  thrownStatus(error) === 404
+    ? new SourceFormDeleted("Source form not found", { cause: error })
+    : R.toError(error);
+
 async function fetchHistory(
   formId: number,
   subject: Exclude<HistorySubject, { reader: HistoryReader.Nobody }>,
@@ -76,6 +88,7 @@ async function fetchHistory(
           path: { id: formId },
           throwOnError: true,
         }),
+        historyError,
       );
       return R.flatMap(response, ({ data }) => parseFormResponseHistory(data));
     }
@@ -85,6 +98,7 @@ async function fetchHistory(
           path: { formId, userId: subject.userId },
           throwOnError: true,
         }),
+        historyError,
       );
       return R.flatMap(response, ({ data }) => parseFormResponseHistory(data));
     }
@@ -173,6 +187,14 @@ export function useVariableSourceHistories(params: {
     const results = formIds.map((formId) => byForm?.get(formId));
     if (results.some((result) => result === undefined)) {
       return { status: SourceHistoriesStatus.Loading };
+    }
+    if (
+      results.some(
+        (result) =>
+          result?.ok === false && result.error instanceof SourceFormDeleted,
+      )
+    ) {
+      return { status: SourceHistoriesStatus.SourceDeleted };
     }
     const sources = new Map<number, VariableSourceHistory>();
     for (const [index, result] of results.entries()) {

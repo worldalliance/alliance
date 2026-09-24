@@ -223,6 +223,41 @@ describe("FormRenderer preview", () => {
     expect(await screen.findByText("Total 9")).toBeTruthy();
   });
 
+  it("says a form its variables read was deleted, with no retry", async () => {
+    api.alsoServing({
+      "GET /tasks/responseHistory/:formId/user/:userId": () =>
+        Response.json({ message: "Form not found" }, { status: 404 }),
+    });
+
+    renderPreview(
+      {
+        pages: [{ id: "p1", fields: [] }],
+        outputViews: [],
+        variables: [
+          {
+            name: "total",
+            inputs: {
+              input1: {
+                kind: "sourceField",
+                fieldId: "score",
+                sourceFormId: 7,
+              },
+            },
+            formula: "input1.length",
+          },
+        ],
+      },
+      { adminPreviewUserId: 3 },
+    );
+
+    expect(
+      await screen.findByText(
+        "This form uses answers from a form that has been deleted, so it can't be shown.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
   it("won't draw a form whose variable reads an input kind this build doesn't know", () => {
     renderPreview({
       ...form,

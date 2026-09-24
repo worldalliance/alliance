@@ -152,6 +152,18 @@ describe("useVariableSourceHistories", () => {
     expect(requests).toEqual(["me:7", "me:8", "me:8"]);
   });
 
+  it("reports a deleted source form apart from a failed load, since retrying can't help", async () => {
+    mine["7"] = async () => json(historyBody([1]));
+    mine["8"] = async () => json({ message: "Form not found" }, 404);
+
+    const { result } = render(readingForms(7, 8), {
+      reader: HistoryReader.Self,
+    });
+    await settle();
+
+    expect(result.current.status).toBe(SourceHistoriesStatus.SourceDeleted);
+  });
+
   it("drops a late answer for the member an admin switched away from", async () => {
     let landFirst: (response: Response) => void = () => {};
     member["1:7"] = () => new Promise((resolve) => (landFirst = resolve));

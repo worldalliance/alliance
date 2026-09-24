@@ -275,6 +275,9 @@ export const draftSaveFailed =
 export const sourceAnswersLoadFailed =
   "Couldn't load the earlier answers this form uses.";
 
+export const sourceFormDeleted =
+  "This form uses answers from a form that has been deleted, so it can't be shown.";
+
 export const photoPickFailed = "Couldn't open your photo library.";
 
 export const unreadablePhotos = (count: number, of: number) =>

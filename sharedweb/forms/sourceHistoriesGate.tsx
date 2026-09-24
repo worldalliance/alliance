@@ -2,7 +2,10 @@ import {
   SourceHistoriesStatus,
   type SourceHistories,
 } from "@alliance/shared/forms/useVariableSourceHistories";
-import { sourceAnswersLoadFailed } from "@alliance/shared/lib/copy";
+import {
+  sourceAnswersLoadFailed,
+  sourceFormDeleted,
+} from "@alliance/shared/lib/copy";
 import { RotateCw } from "lucide-react";
 import type { ReactElement } from "react";
 import Spinner from "../ui/Spinner";
@@ -34,6 +37,15 @@ export function sourceHistoriesGate(
           >
             <RotateCw className="h-4 w-4" />
           </button>
+        </div>
+      );
+    case SourceHistoriesStatus.SourceDeleted:
+      return (
+        <div
+          className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          role="alert"
+        >
+          {sourceFormDeleted}
         </div>
       );
     case SourceHistoriesStatus.Ready:

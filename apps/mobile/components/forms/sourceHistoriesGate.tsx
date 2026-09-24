@@ -2,7 +2,10 @@ import {
   SourceHistoriesStatus,
   type SourceHistories,
 } from "@alliance/shared/forms/useVariableSourceHistories";
-import { sourceAnswersLoadFailed } from "@alliance/shared/lib/copy";
+import {
+  sourceAnswersLoadFailed,
+  sourceFormDeleted,
+} from "@alliance/shared/lib/copy";
 import { RotateCw } from "lucide-react-native";
 import type { ReactElement } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
@@ -36,6 +39,12 @@ export function sourceHistoriesGate(
             {/* amber-800 */}
             <RotateCw size={16} color="#92400e" />
           </TouchableOpacity>
+        </View>
+      );
+    case SourceHistoriesStatus.SourceDeleted:
+      return (
+        <View className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
+          <Text className="text-sm text-amber-800">{sourceFormDeleted}</Text>
         </View>
       );
     case SourceHistoriesStatus.Ready:
