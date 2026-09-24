@@ -1,4 +1,3 @@
-/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { chromium, type Page } from "@playwright/test";
 import { spawn } from "child_process";
 import { milliseconds } from "date-fns";
@@ -8,6 +7,7 @@ import process from "process";
 import { devPorts, PortCaller } from "../../common/src/dev-ports";
 import { screenshotDatabase } from "./screenshot-database";
 import { screenshotTargets } from "./screenshot-targets";
+import { dbHost, dbPass, dbPort, dbUser, seedDatabase } from "./seed-database";
 import { testUserEmail, testUserPassword } from "./test-user";
 
 type ChildProcessHandle = ReturnType<typeof spawn>;
@@ -42,10 +42,6 @@ const outputDir = path.isAbsolute(rawOutputDir)
   ? rawOutputDir
   : path.join(repoRoot, rawOutputDir);
 
-const dbHost = process.env.DB_HOST ?? "localhost";
-const dbPort = process.env.DB_PORT ?? "5432";
-const dbUser = process.env.DB_USERNAME ?? "postgres";
-const dbPass = process.env.DB_PASSWORD ?? "postgres";
 const dbName = screenshotDatabase();
 
 const childProcesses: ChildProcessHandle[] = [];
@@ -170,153 +166,6 @@ const fileExists = async (filePath: string) => {
   } catch {
     return false;
   }
-};
-
-/* ------------------------------------------------------------------ */
-/*  Database setup                                                     */
-/* ------------------------------------------------------------------ */
-
-const setupDatabase = async () => {
-  console.log(`${logPrefix} Setting up database "${dbName}"...`);
-
-  const pgEnv: NodeJS.ProcessEnv = { ...process.env, PGPASSWORD: dbPass };
-  const psqlBase = ["-h", dbHost, "-p", dbPort, "-U", dbUser];
-
-  // Drop and recreate the database so every run starts clean.
-  await runCommand(
-    "psql",
-    [
-      ...psqlBase,
-      "-d",
-      "postgres",
-      "-c",
-      `DROP DATABASE IF EXISTS "${dbName}"`,
-    ],
-    { cwd: repoRoot, env: pgEnv },
-  );
-  await runCommand(
-    "psql",
-    [...psqlBase, "-d", "postgres", "-c", `CREATE DATABASE "${dbName}"`],
-    { cwd: repoRoot, env: pgEnv },
-  );
-
-  // Run migrations to create the schema from source of truth.
-  console.log(`${logPrefix} Running migrations...`);
-  await runCommand(
-    "bunx",
-    [
-      "typeorm-ts-node-commonjs",
-      "--dataSource",
-      "src/datasources/dataSource.ts",
-      "migration:run",
-    ],
-    {
-      cwd: path.join(repoRoot, "server"),
-      env: {
-        ...process.env,
-        DB_HOST: dbHost,
-        DB_PORT: dbPort,
-        DB_USERNAME: dbUser,
-        DB_PASSWORD: dbPass,
-        DB_NAME: dbName,
-        NODE_ENV: "test",
-      },
-    },
-  );
-
-  // Load the data-only dump. Using session_replication_role =
-  // replica disables FK triggers during the bulk insert so row ordering
-  // doesn't matter (handles circular FKs such as comment → comment).
-  console.log(`${logPrefix} Loading seed dump...`);
-  await loadSeedData(psqlBase, pgEnv);
-
-  // Shift all timestamps forward so relative times ("2 days ago") are
-  // stable regardless of when the test runs.  The seed was dumped on
-  // SEED_REFERENCE_DATE; we add (NOW() - reference) to every timestamp column.
-  console.log(`${logPrefix} Shifting timestamps to current date...`);
-  await shiftTimestamps(psqlBase, pgEnv);
-};
-
-const loadSeedData = async (psqlBase: string[], pgEnv: NodeJS.ProcessEnv) => {
-  const seedFile = path.join(
-    repoRoot,
-    "citesting",
-    "fixtures",
-    "seed_dataonly.sql",
-  );
-  let seedContent = await fs.readFile(seedFile, "utf8");
-
-  // Strip pg17-only constructs so the dump loads on older Postgres versions.
-  seedContent = seedContent
-    .split("\n")
-    .filter((line) => {
-      if (/^SET\s+transaction_timeout\s*=/i.test(line)) return false;
-      if (/^\\restrict\b/.test(line)) return false;
-      if (/^\\unrestrict\b/.test(line)) return false;
-      return true;
-    })
-    .join("\n");
-
-  return new Promise<void>((resolve, reject) => {
-    const child = spawn(
-      "psql",
-      [...psqlBase, "-d", dbName, "-v", "ON_ERROR_STOP=1"],
-      {
-        cwd: repoRoot,
-        env: pgEnv,
-        stdio: ["pipe", "inherit", "inherit"],
-      },
-    );
-
-    child.stdin.write("SET session_replication_role = 'replica';\n");
-    child.stdin.write(seedContent);
-    child.stdin.write("\nSET session_replication_role = 'origin';\n");
-    child.stdin.end();
-
-    child.on("error", (error) => reject(error));
-    child.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`psql seed loading failed with exit code ${code}`));
-    });
-  });
-};
-
-// Date the seed dump was created — used to compute the time shift.
-const SEED_REFERENCE_DATE = "2026-02-10T18:00:00Z";
-
-const shiftTimestamps = async (
-  psqlBase: string[],
-  pgEnv: NodeJS.ProcessEnv,
-) => {
-  // Dynamically discover every timestamp/timestamptz column in the public
-  // schema and shift it forward by (NOW() - SEED_REFERENCE_DATE).  This keeps
-  // relative time strings ("2 days ago") stable across runs.
-  const sql = `
-    DO $$
-    DECLARE
-      r RECORD;
-      delta INTERVAL := NOW() - '${SEED_REFERENCE_DATE}'::timestamptz;
-    BEGIN
-      FOR r IN
-        SELECT table_name, column_name
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND data_type IN ('timestamp with time zone',
-                            'timestamp without time zone')
-      LOOP
-        EXECUTE format(
-          'UPDATE %I SET %I = %I + $1 WHERE %I IS NOT NULL',
-          r.table_name, r.column_name, r.column_name, r.column_name
-        ) USING delta;
-      END LOOP;
-    END
-    $$;
-  `;
-
-  await runCommand("psql", [...psqlBase, "-d", dbName, "-c", sql], {
-    cwd: repoRoot,
-    env: pgEnv,
-  });
 };
 
 /* ------------------------------------------------------------------ */
@@ -506,7 +355,10 @@ const takeScreenshots = async () => {
   await fs.mkdir(outputDir, { recursive: true });
   console.log(`${logPrefix} Output directory: ${outputDir}`);
 
-  await setupDatabase();
+  await seedDatabase({
+    logPrefix,
+    onSpawn: trackChildProcess,
+  });
 
   startBackend();
   await startFrontend();
