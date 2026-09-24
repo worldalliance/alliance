@@ -190,7 +190,7 @@ function Fixture() {
           <View style={{ padding: 24, gap: 16 }}>
             <Text>Selected {value}</Text>
             <Button
-              title="Open searchable picker"
+              title="Search 40 options"
               onPress={() => setVisible(true)}
             />
             <Text>Plain selected {plainValue}</Text>
@@ -218,7 +218,7 @@ function Fixture() {
             visible={visible}
             searchable
             onClose={() => setVisible(false)}
-            title="Searchable options"
+            title="Find your option"
             options={options}
             value={value}
             onSelect={setValue}

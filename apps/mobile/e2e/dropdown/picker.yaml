@@ -1,7 +1,7 @@
 appId: ${APP_ID}
 ---
 - assertVisible: Selected 30
-- tapOn: Open searchable picker
+- tapOn: Search 40 options
 - assertVisible: Search options
 - assertVisible: Option 30
 - assertNotVisible: Option 01
@@ -20,7 +20,7 @@ appId: ${APP_ID}
 - tapOn:
     point: 50%, 15%
 - assertVisible: Selected 30
-- tapOn: Open searchable picker
+- tapOn: Search 40 options
 - assertVisible: Option 30
 - assertNotVisible: Option 01
 - tapOn: Search options
@@ -29,7 +29,7 @@ appId: ${APP_ID}
 - assertNotVisible: Option 30
 - tapOn: Option 39
 - assertVisible: Selected 39
-- tapOn: Open searchable picker
+- tapOn: Search 40 options
 - assertVisible: Option 39
 - assertVisible: Option 40
 - tapOn: Search options
@@ -39,7 +39,7 @@ appId: ${APP_ID}
 - tapOn:
     point: 50%, 15%
 - assertVisible: Selected 39
-- tapOn: Open searchable picker
+- tapOn: Search 40 options
 - assertNotVisible: No matches
 - assertVisible: Option 39
 - tapOn: Search options
