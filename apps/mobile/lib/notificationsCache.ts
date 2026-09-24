@@ -19,4 +19,8 @@ export function markCachedNotificationsReadByContent(params: {
         : { ...notification, readAt },
     ),
   );
+  void queryClient.invalidateQueries({
+    queryKey: ["notifications", "unreadCount"],
+    exact: true,
+  });
 }

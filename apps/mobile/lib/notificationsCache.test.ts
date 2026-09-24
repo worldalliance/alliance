@@ -43,6 +43,21 @@ it("marks the cached notifications for the read content, and only those", () => 
   expect(cached?.map((n) => n.readAt !== null)).toEqual([true, false, false]);
 });
 
+it("refetches the unread badge count", () => {
+  const queryClient = new QueryClient();
+  queryClient.setQueryData<number>(["notifications", "unreadCount"], 3);
+
+  markCachedNotificationsReadByContent({
+    queryClient,
+    contentType: "forum_reply",
+    contentIds: [10],
+  });
+
+  expect(
+    queryClient.getQueryState(["notifications", "unreadCount"])?.isInvalidated,
+  ).toBe(true);
+});
+
 it("leaves an unloaded list unloaded", () => {
   const queryClient = new QueryClient();
   markCachedNotificationsReadByContent({
