@@ -43,7 +43,7 @@ The user said the following cases can be assumed not to happen. They accepted th
 
 - **Question type changes between submissions:** Prefer preserving each snapshot's value type and showing the possible types in the formula editor. Reuse existing union-type support if practical. Avoid building a historical schema catalog solely for this case; an explicit unsupported-type error is an acceptable simpler fallback. Never silently reinterpret an old answer using a newer type.
 - **Question removed from the current source form:** Prefer continuing to read historical answers from response snapshots while flagging the reference and requiring repair before another builder save. If supporting that distinction requires disproportionate machinery, fail explicitly rather than substituting another question or silently dropping history.
-- **Source form deleted:** Prefer a load error because deletion also removes its responses. Use the normal failure path; do not add dependency tracking, deletion prevention, or recovery infrastructure solely for this case.
+- **Source form deleted:** Prefer a load error because deletion also removes its responses. Use the normal failure path rather than recovery infrastructure.
 
 These are implementation discretion, not release acceptance requirements. Record any simpler choice and its reason here during implementation.
 
@@ -51,7 +51,7 @@ As implemented:
 
 - **Question type changes:** REQUIREMENTS lets the implementation ignore this case. Each answer is read with its own snapshot's field kind. When a snapshot reads the question (or a named list sub-field) as a different input mode than the source form's current version, the variable fails with an unsupported-type error. The formula editor still shows only the current type; a union catalog across snapshots was not built.
 - **Question removed:** runtime keeps reading each submission's snapshot, so an open form still works. Builder and server validation reject the reference, so the next save needs a repair.
-- **Source form deleted:** the history endpoint returns 404, which the renderer shows as a load failure with retry. Validation reports the form as missing.
+- **Source form deleted:** the server refuses to delete a form while another form's current version reads it, and names those forms. The user chose this guard when asked during review, over the spec's normal-failure-path preference. A source deleted anyway, one only older versions read, makes the history endpoint return 404, which the renderer shows as a load failure with retry. Validation reports the form as missing. The guard and a save that starts reading the form take no lock, so two admins deleting and saving in the same instant can still leave a form reading a deleted one. It then behaves like any other deleted source; locking the save path wasn't worth it for a race that needs two admins at once.
 
 ## Implementation choices
 

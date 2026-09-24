@@ -12161,9 +12161,9 @@ export type TasksDeleteFormAdminData = {
 
 export type TasksDeleteFormAdminErrors = {
     /**
-     * Default error response for hey-api
+     * Another form's current version has a variable reading this form's answers.
      */
-    default: HeyApiError;
+    409: HeyApiError;
 };
 
 export type TasksDeleteFormAdminError = TasksDeleteFormAdminErrors[keyof TasksDeleteFormAdminErrors];

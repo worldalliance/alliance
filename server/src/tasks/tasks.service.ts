@@ -140,6 +140,7 @@ import {
   UpdateFormDto,
 } from "./form.dto";
 import { FormSnapshotService } from "./formsnapshot.service";
+import { findFormsReadingForm } from "./variable-source-forms";
 
 /**
  * Validator verdicts arrive from HTTP as arbitrary JSON — class-validator
@@ -1365,6 +1366,18 @@ export class TasksService {
 
   async deleteForm(formId: number): Promise<void> {
     const form = await this.getForm(formId);
+    const readers = await findFormsReadingForm({
+      formRepository: this.formRepository,
+      formId,
+    });
+    if (readers.length > 0) {
+      const names = readers
+        .map((reader) => `"${reader.title || "Untitled"}" (#${reader.id})`)
+        .join(", ");
+      throw new ConflictException(
+        `Variables in ${names} read this form's answers. Change them to stop reading it, then delete it`,
+      );
+    }
     await this.formRepository.remove(form);
   }
 
