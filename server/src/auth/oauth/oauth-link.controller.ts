@@ -12,6 +12,7 @@ import {
 import { ApiBearerAuth, ApiOkResponse, ApiParam } from "@nestjs/swagger";
 import { AuthService } from "../auth.service";
 import { AuthGuard } from "../guards/auth.guard";
+import { NotImpersonatingGuard } from "../guards/not-impersonating.guard";
 import type { JwtRequest } from "../tokens";
 import { beginMobileBrowserSession } from "./mobile-browser-session";
 import { OAuthAuthService } from "./oauth-auth.service";
@@ -32,7 +33,7 @@ import { ProviderParam } from "./provider-param";
 @ApiBearerAuth()
 @ApiParam({ name: "provider", enum: OAuthProvider, enumName: "OAuthProvider" })
 @Controller("auth/:provider/link")
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, NotImpersonatingGuard)
 export class OAuthLinkController {
   constructor(
     private clients: OAuthClients,

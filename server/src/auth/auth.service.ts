@@ -135,13 +135,16 @@ export class AuthService {
     return { guestId: guest.id, guestToken };
   }
 
-  async getAuthenticatedUserId(req: Request): Promise<number | null> {
+  async getAuthenticatedSession(req: Request): Promise<JwtPayload | null> {
     try {
-      const payload = await sessionFromRequest(this.jwtService, req);
-      return payload.sub;
+      return await sessionFromRequest(this.jwtService, req);
     } catch {
       return null;
     }
+  }
+
+  async getAuthenticatedUserId(req: Request): Promise<number | null> {
+    return (await this.getAuthenticatedSession(req))?.sub ?? null;
   }
 
   async verifyGuestToken(token: string): Promise<GuestJwtPayload | null> {

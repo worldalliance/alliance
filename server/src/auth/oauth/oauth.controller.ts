@@ -39,6 +39,7 @@ import { OnlyThrottle } from "src/utils/throttle";
 import { AuthService } from "../auth.service";
 import { AuthMeResponseDto } from "../dto/authtokens.dto";
 import { AuthGuard } from "../guards/auth.guard";
+import { NotImpersonatingGuard } from "../guards/not-impersonating.guard";
 import { Public } from "../public.decorator";
 import {
   APPLE_USER_COOKIE,
@@ -46,6 +47,7 @@ import {
   extractGuestTokenFromCookie,
   extractOAuthStateFromCookie,
   OAUTH_STATE_COOKIE,
+  refuseImpersonation,
   type JwtRequest,
 } from "../tokens";
 import { beginMobileBrowserSession } from "./mobile-browser-session";
@@ -154,12 +156,12 @@ export class OAuthController {
     let userId: number | undefined;
     switch (input.intent) {
       case OAuthIntent.Link: {
-        const authenticated =
-          await this.authService.getAuthenticatedUserId(req);
-        if (authenticated === null) {
+        const session = await this.authService.getAuthenticatedSession(req);
+        if (session === null) {
           throw new UnauthorizedException();
         }
-        userId = authenticated;
+        refuseImpersonation(session);
+        userId = session.sub;
         break;
       }
       case OAuthIntent.Authenticate:
@@ -553,7 +555,7 @@ export class OAuthController {
   }
 
   @Delete("link")
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, NotImpersonatingGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: AuthMeResponseDto })
   async unlink(

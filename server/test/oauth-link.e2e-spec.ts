@@ -14,7 +14,12 @@ import { JWTTokenType } from "src/auth/tokens";
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import request from "supertest";
 import TestAgent from "supertest/lib/agent";
-import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
+import {
+  createTestApp,
+  signAccessToken,
+  signImpersonationToken,
+  TestContext,
+} from "./e2e-test-utils";
 
 type Member = { id: number; email: string; accessToken: string };
 
@@ -129,6 +134,29 @@ describe("OAuth linking from the mobile app (e2e)", () => {
       emailVerified: true,
       name: "Provider Name",
     };
+  });
+
+  it("refuses an admin impersonating the member on every route", async () => {
+    const member = await freshMember();
+    const impersonated = `Bearer ${signImpersonationToken(ctx.jwtService, member)}`;
+
+    await client()
+      .post(path("link/native"))
+      .set("Authorization", impersonated)
+      .send({ identityToken: "valid", userId: member.id })
+      .expect(403);
+    await client()
+      .post(path("link/browser"))
+      .set("Authorization", impersonated)
+      .expect(403);
+    const { proof, handoff } = await linkInBrowser(member);
+    await client()
+      .post(path("link/redeem"))
+      .set("Authorization", impersonated)
+      .send({ handoff, proof })
+      .expect(403);
+
+    expect(await connected(member)).toEqual([]);
   });
 
   describe("with a native id token", () => {

@@ -1,5 +1,5 @@
 import { GUEST_HEADER } from "@alliance/common/guest";
-import { UnauthorizedException } from "@nestjs/common";
+import { ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import type { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
 import { z } from "zod";
@@ -142,6 +142,17 @@ export async function sessionFromRequest(
     throw new UnauthorizedException();
   }
   return verifyAccessToken(jwtService, token);
+}
+
+/**
+ * Connected accounts are the member's to change. A link made while
+ * impersonating would also let the admin sign in as the member after
+ * impersonation ends.
+ */
+export function refuseImpersonation(session: JwtPayload): void {
+  if (session.isImpersonation) {
+    throw new ForbiddenException("Not allowed while impersonating.");
+  }
 }
 
 export interface JwtRequest extends Request {
