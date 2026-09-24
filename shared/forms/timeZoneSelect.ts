@@ -153,15 +153,27 @@ const TRAILING_TIME = /\s+t(?:i(?:me?)?)?$/;
 // second line already shows.
 const OFFSET_NAME = /^GMT[+-]/;
 
+// CLDR writes "Trinidad & Tobago", "Côte d’Ivoire", and "St. Lucia", and tzdb
+// "St Johns", where many type "and", "'", or "Saint".
+function typedPlaces(name: string): string[] {
+  const spelled = name.replace(/&/g, "and").replace(/’/g, "'");
+  return [spelled, spelled.replace(/\bSt\.? /g, "Saint ")];
+}
+
 function labelFor({ tz, city, country }: TimeZoneCatalogEntry): BaseLabel {
   const intlName = getGenericLabelFromIntl(tz);
   const generic = intlName && !OFFSET_NAME.test(intlName) ? intlName : null;
   const curated = curatedNamesOf(tz);
-  // CLDR writes "Trinidad & Tobago" and "Côte d’Ivoire", which few type.
-  const typedCountry = country?.replace(/&/g, "and").replace(/’/g, "'");
-  const places = [city, country, typedCountry, ...curated].filter(
-    (name) => name != null,
-  );
+  const placeNames = [
+    ...new Set(
+      [
+        city,
+        ...typedPlaces(city),
+        ...(country ? [country, ...typedPlaces(country)] : []),
+        ...curated,
+      ].map(fold),
+    ),
+  ];
   return {
     tz,
     city,
@@ -169,9 +181,9 @@ function labelFor({ tz, city, country }: TimeZoneCatalogEntry): BaseLabel {
     zoneName: generic,
     labelLeft: generic ? `${generic} · ${city}` : city,
     searchText: fold(
-      [generic, ...places, tz, ...aliasesOf(tz)].filter(Boolean).join(" "),
+      [generic, ...placeNames, tz, ...aliasesOf(tz)].filter(Boolean).join(" "),
     ),
-    placeNames: places.map(fold),
+    placeNames,
     curatedNames: curated.map(fold),
   };
 }

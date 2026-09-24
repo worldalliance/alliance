@@ -93,9 +93,10 @@ sections below this one carry the reasoning each step implements.
    folding case and accents. Exact city and country matches rank first, then
    prefix matches, then other word matches.
    A row's search text carries every alias the catalog maps to it, so
-   `calcutta` finds Kolkata, and its country with `&` spelled `and` and a
-   straight apostrophe, since CLDR writes `Trinidad & Tobago` and
-   `Côte d’Ivoire`. Search also matches the offset on the second
+   `calcutta` finds Kolkata, and its city and country with `&` spelled `and`,
+   a straight apostrophe, and `St` spelled `Saint`, since CLDR writes
+   `Trinidad & Tobago`, `Côte d’Ivoire`, and `St. Lucia`, and tzdb
+   `St Johns`. Search also matches the offset on the second
    line, so `utc+5:30` and `+5:45` find the zones at that offset. Only a
    query reading as an offset, such as `gmt+01:00`, `-3`, or `utc 5`,
    reaches the offsets, rewritten to the form the row writes, so `u` keeps

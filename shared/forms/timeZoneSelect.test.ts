@@ -918,6 +918,27 @@ describe("searching the zone list", () => {
     },
   );
 
+  it("finds a place CLDR or tzdb writes with St spelled Saint", () => {
+    expect(zonesMatching("saint lucia")).toEqual(["America/St_Lucia"]);
+    expect(zonesMatching("saint johns")).toEqual(["America/St_Johns"]);
+    expect(zonesMatching("saint martin")).toEqual(["America/Marigot"]);
+    expect(zonesMatching("saint vincent and grenadines")).toEqual([
+      "America/St_Vincent",
+    ]);
+  });
+
+  it("keeps each spelling of a row's places once", () => {
+    const { items } = renderOpen().result.current;
+
+    for (const { placeNames } of items) {
+      expect(placeNames).toEqual([...new Set(placeNames)]);
+    }
+  });
+
+  it("finds a place with & spelled and while St. stays as written", () => {
+    expect(zonesMatching("st. kitts and nevis")).toEqual(["America/St_Kitts"]);
+  });
+
   it("finds a zone by the offset under its name", () => {
     expect(zonesMatching("utc+5:30")).toEqual(["Asia/Colombo", "Asia/Kolkata"]);
     expect(zonesMatching("+5:45")).toEqual(["Asia/Kathmandu"]);
