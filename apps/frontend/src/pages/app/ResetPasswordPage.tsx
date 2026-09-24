@@ -50,7 +50,7 @@ const ResetPasswordPage = () => {
 
     if (!reset.response.ok) {
       setError(
-        "error resetting password. Please try again, or request a new token. ",
+        "Couldn't save your password. Try again, or request a new link.",
       );
       setLoading(false);
       return;
@@ -58,7 +58,7 @@ const ResetPasswordPage = () => {
 
     navigate(href("/login"), {
       state: {
-        message: "Password reset successful! Please log in.",
+        message: "Your password is saved. Please log in.",
       } satisfies LoginNotice,
     });
   };
@@ -119,7 +119,7 @@ const ResetPasswordPage = () => {
             type="submit"
             disabled={loading}
           >
-            {loading ? "Resetting password..." : "Set new password"}
+            {loading ? "Saving password..." : "Set new password"}
           </Button>
         </div>
       </form>
