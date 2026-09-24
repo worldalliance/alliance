@@ -6,7 +6,13 @@ import {
 import { cn } from "@alliance/shared/styles/util";
 import { ChevronDown, Clock } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
-import { FlatList, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { getTimeZone } from "react-native-localize";
 import { colors } from "../../lib/style/colors";
 import Text, { FontWeight } from "../system/Text";
@@ -42,6 +48,7 @@ export default function TimeZoneSelect({
     commit,
     open,
     setOpen,
+    loading,
   } = useTimeZoneSelect({
     value,
     defaultValue: getDeviceTimeZone(),
@@ -154,7 +161,15 @@ export default function TimeZoneSelect({
           }
           onLayout={scrollToSelected}
           ListEmptyComponent={
-            <Text className="text-zinc-500 p-3 text-center">No matches</Text>
+            loading ? (
+              <ActivityIndicator
+                className="p-3"
+                color={colors.green}
+                accessibilityLabel="Loading time zones"
+              />
+            ) : (
+              <Text className="text-zinc-500 p-3 text-center">No matches</Text>
+            )
           }
           renderItem={({ item, index }) => {
             const isSelected = item.tz === selected.tz;

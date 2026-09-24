@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { minuteStart, useClockMinute } from "../lib/useClockMinute";
 import { fold } from "./optionSearch";
 import { aliasesOf } from "./timeZoneAliases";
@@ -235,22 +235,50 @@ function getBaseLabels(): BaseLabel[] {
   return cachedLabels;
 }
 
-// Building every zone's formatters is slow on Android's Hermes, so a
+const canWarm = () => typeof requestIdleCallback === "function";
+
+// A browser that never idles would leave the list spinning, so it runs a step
+// after this long regardless, with no time remaining, and the step labels for
+// FORCED_STEP_MS. React Native flags a step this late as timed out yet still
+// gives it idle time, so only a step starting with none is forced, and a
+// React Native step yields once the scheduler takes that time back.
+const WARM_STEP_TIMEOUT = { timeout: 100 };
+const FORCED_STEP_MS = 8;
+
+const labelledListeners = new Set<() => void>();
+
+function subscribeLabelled(listener: () => void): () => void {
+  labelledListeners.add(listener);
+  return () => labelledListeners.delete(listener);
+}
+
+// Building every zone's formatters takes seconds on Android's Hermes, so a
 // mounted picker builds them a zone at a time while the runtime is idle, and
-// an open finds them cached.
+// an open before that ends waits for it rather than freezing the app.
 function warmWhileIdle(): void {
-  if (typeof requestIdleCallback !== "function") return;
+  if (!canWarm()) return;
   if (warming !== null || allLabelled()) return;
   const step = (deadline: IdleDeadline) => {
     const now = new Date();
+    const forced = deadline.didTimeout && deadline.timeRemaining() <= 0;
+    const forcedUntil = performance.now() + FORCED_STEP_MS;
     while (!allLabelled()) {
       const { tz } = labelNext();
       getOffsetMinutes(tz, now);
-      if (deadline.timeRemaining() <= 0) break;
+      if (
+        deadline.timeRemaining() <= 0 &&
+        (!forced || performance.now() >= forcedUntil)
+      )
+        break;
     }
-    warming = allLabelled() ? null : requestIdleCallback(step);
+    if (!allLabelled()) {
+      warming = requestIdleCallback(step, WARM_STEP_TIMEOUT);
+      return;
+    }
+    warming = null;
+    for (const listener of labelledListeners) listener();
   };
-  warming = requestIdleCallback(step);
+  warming = requestIdleCallback(step, WARM_STEP_TIMEOUT);
 }
 
 const OPTION_BY_TZ = new Map(TZ_OPTIONS.map((option) => [option.tz, option]));
@@ -346,22 +374,29 @@ export function useTimeZoneSelect({
   }, [value]);
 
   // The closed trigger shows only the selected zone, so mounting a page of
-  // pickers labels no other zone until the runtime is idle. The list stays
-  // once built, since the mobile modal keeps showing it as it fades out, but
-  // refreshes only while open.
+  // pickers labels other zones only a zone at a time in the background. The
+  // list stays once built, since the mobile modal keeps showing it as it fades
+  // out, but refreshes only while open.
   const [listedMinute, setListedMinute] = useState<number | null>(null);
   if (open && listedMinute !== minute) setListedMinute(minute);
 
   useEffect(warmWhileIdle, []);
 
+  const labelled = useSyncExternalStore(
+    subscribeLabelled,
+    allLabelled,
+    allLabelled,
+  );
+  const loading = !labelled && canWarm();
+
   const items = useMemo<TimeZoneSelectItem[]>(() => {
-    if (listedMinute === null) return [];
+    if (listedMinute === null || loading) return [];
     const when = minuteStart(listedMinute);
     return baseItems(listedMinute).map((item) => ({
       ...item,
       timeLabel: clockOf(item, hour12, when),
     }));
-  }, [listedMinute, hour12]);
+  }, [listedMinute, loading, hour12]);
 
   const label = useMemo(() => selectedLabel(internalValue), [internalValue]);
 
@@ -421,5 +456,6 @@ export function useTimeZoneSelect({
     open,
     setOpen,
     disabled,
+    loading,
   };
 }

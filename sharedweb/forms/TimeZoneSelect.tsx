@@ -6,6 +6,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { Check } from "lucide-react";
 import type React from "react";
 import { useEffect, useId, useRef } from "react";
+import Spinner from "../ui/Spinner";
 import { zIndex } from "../ui/zIndex";
 
 type Props = {
@@ -48,6 +49,7 @@ export default function TimeZoneSelectPretty({
     commit,
     open,
     setOpen,
+    loading,
   } = useTimeZoneSelect({
     value,
     defaultValue,
@@ -192,7 +194,11 @@ export default function TimeZoneSelectPretty({
             </div>
 
             <div ref={listRef} className="max-h-[320px] overflow-auto">
-              {filtered.length === 0 ? (
+              {loading ? (
+                <div className="p-3 flex justify-center">
+                  <Spinner size="small" />
+                </div>
+              ) : filtered.length === 0 ? (
                 <div className="p-3 text-zinc-500">No matches</div>
               ) : (
                 filtered.map((item, idx) => {

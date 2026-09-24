@@ -430,12 +430,15 @@ describe("a picker nobody has opened", () => {
 describe("a picker mounted on a runtime with idle time", () => {
   let pending: IdleRequestCallback | null;
   let requested: number;
+  let options: IdleRequestOptions | undefined;
 
   beforeEach(() => {
     pending = null;
     requested = 0;
-    globalThis.requestIdleCallback = (callback) => {
+    options = undefined;
+    globalThis.requestIdleCallback = (callback, requestOptions) => {
       pending = callback;
+      options = requestOptions;
       return ++requested;
     };
     globalThis.cancelIdleCallback = () => {
@@ -443,16 +446,25 @@ describe("a picker mounted on a runtime with idle time", () => {
     };
   });
   afterEach(() => {
+    jest.restoreAllMocks();
     resetTimeZoneCaches();
     Reflect.deleteProperty(globalThis, "requestIdleCallback");
     Reflect.deleteProperty(globalThis, "cancelIdleCallback");
   });
 
-  const runIdle = ({ steps, msEach }: { steps: number; msEach: number }) => {
+  const runIdle = ({
+    steps,
+    msEach,
+    didTimeout = false,
+  }: {
+    steps: number;
+    msEach: number;
+    didTimeout?: boolean;
+  }) => {
     for (let run = 0; run < steps; run++) {
       const callback = pending;
       pending = null;
-      callback?.({ didTimeout: false, timeRemaining: () => msEach });
+      callback?.({ didTimeout, timeRemaining: () => msEach });
     }
   };
 
@@ -494,25 +506,91 @@ describe("a picker mounted on a runtime with idle time", () => {
     });
   });
 
-  it("lists the rows a cold open would when opened part way through", () => {
+  it("keeps labelling in a late step while it has idle time left", () => {
+    renderHook(() => useTimeZoneSelect({}));
+
+    runIdle({ steps: 1, msEach: 50, didTimeout: true });
+
+    expect(pending).toBeNull();
+  });
+
+  it("yields a late step once its idle time is taken back", () => {
+    jest.spyOn(performance, "now").mockReturnValue(0);
+    renderHook(() => useTimeZoneSelect({}));
+    let calls = 0;
+
+    const callback = pending;
+    pending = null;
+    callback?.({
+      didTimeout: true,
+      timeRemaining: () => (calls++ === 0 ? 50 : 0),
+    });
+
+    expect(pending).not.toBeNull();
+  });
+
+  it("labels for a few ms in a step forced with no idle time left", () => {
+    let now = 0;
+    const clock = jest.spyOn(performance, "now").mockImplementation(() => now);
+    renderHook(() => useTimeZoneSelect({}));
+
+    runIdle({ steps: 1, msEach: 0, didTimeout: true });
+    expect(pending).toBeNull();
+
+    resetTimeZoneCaches();
+    renderHook(() => useTimeZoneSelect({}));
+    clock.mockImplementation(() => now++);
+    runIdle({ steps: 1, msEach: 0, didTimeout: true });
+    expect(pending).not.toBeNull();
+  });
+
+  it("shows no rows while it warms rather than labelling the rest at once", () => {
+    countingFormatters((built) => {
+      const { result } = renderHook(() => useTimeZoneSelect({}));
+      runIdle({ steps: 1, msEach: 0 });
+      const beforeOpen = built();
+
+      act(() => result.current.setOpen(true));
+
+      expect(result.current.loading).toBe(true);
+      expect(result.current.items).toEqual([]);
+      expect(built()).toBe(beforeOpen);
+    });
+  });
+
+  it("lists the rows a cold open would once warming ends", () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date(Date.UTC(2026, 0, 15, 12)));
+    const idle = globalThis.requestIdleCallback;
+    Reflect.deleteProperty(globalThis, "requestIdleCallback");
     const cold = renderOpen().result.current.items;
+    globalThis.requestIdleCallback = idle;
     resetTimeZoneCaches();
+    expect(cold).toHaveLength(TZ_OPTIONS.length);
 
     const { result } = renderHook(() => useTimeZoneSelect({}));
     runIdle({ steps: Math.floor(TZ_OPTIONS.length / 2), msEach: 0 });
     act(() => result.current.setOpen(true));
+    act(() => runIdle({ steps: TZ_OPTIONS.length, msEach: 0 }));
 
+    expect(result.current.loading).toBe(false);
     expect(result.current.items).toEqual(cold);
   });
 
-  it("stops warming once an open has labelled every zone", () => {
-    const { result } = renderHook(() => useTimeZoneSelect({}));
-    runIdle({ steps: 1, msEach: 0 });
-    act(() => result.current.setOpen(true));
+  it("asks for every step with a timeout", () => {
+    renderHook(() => useTimeZoneSelect({}));
+    expect(options?.timeout).toBeGreaterThan(0);
 
-    expect(() => runIdle({ steps: 1, msEach: 0 })).not.toThrow();
+    runIdle({ steps: 1, msEach: 0 });
+
+    expect(pending).not.toBeNull();
+    expect(options?.timeout).toBeGreaterThan(0);
+  });
+
+  it("stops warming once every zone is labelled", () => {
+    renderHook(() => useTimeZoneSelect({}));
+    runIdle({ steps: TZ_OPTIONS.length, msEach: 0 });
+
     expect(pending).toBeNull();
   });
 

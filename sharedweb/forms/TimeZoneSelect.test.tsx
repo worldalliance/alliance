@@ -47,6 +47,33 @@ it("leaves a row alone where the curated label repeats its name", () => {
   expect(screen.queryByText("Dubai Time")).toBeNull();
 });
 
+it("shows a spinner, not an empty list, while the zones warm", () => {
+  let pending: IdleRequestCallback | null = null;
+  globalThis.requestIdleCallback = (callback) => {
+    pending = callback;
+    return 1;
+  };
+  globalThis.cancelIdleCallback = () => {
+    pending = null;
+  };
+  try {
+    render(<TimeZoneSelect />);
+    fireEvent.click(screen.getByRole("button"));
+
+    expect(screen.getByRole("status")).toBeDefined();
+    expect(screen.queryByText("No matches")).toBeNull();
+
+    act(() => pending?.({ didTimeout: false, timeRemaining: () => Infinity }));
+
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByText("Japan Standard Time — Tokyo")).toBeDefined();
+  } finally {
+    resetTimeZoneCaches();
+    Reflect.deleteProperty(globalThis, "requestIdleCallback");
+    Reflect.deleteProperty(globalThis, "cancelIdleCallback");
+  }
+});
+
 describe("opening the list", () => {
   let scrolledTo: Element[] = [];
   beforeEach(() => {

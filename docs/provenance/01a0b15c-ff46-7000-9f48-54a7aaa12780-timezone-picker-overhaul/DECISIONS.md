@@ -54,8 +54,16 @@ sections below this one carry the reasoning each step implements.
    simulator, so a mounted picker builds them in `requestIdleCallback` a zone
    at a time, and the open then took 117 to 145 ms and 12 to 21 ms. The
    warm-up is shared by every picker and takes about as long as the cold
-   build did, so an open before it ends finishes the rest itself. A runtime
-   without `requestIdleCallback` builds on open as before.
+   build did. An open before it ends shows a spinner until it does rather
+   than labelling the rest at once. In a browser a step runs within 100 ms
+   even while the runtime never idles, labelling zones for 8 ms, so a busy
+   app still fills the list, in a few steps rather than a zone each 100 ms.
+   React Native schedules a step without that timeout, but flags it
+   `didTimeout` once it starts over 100 ms late and still gives it up to
+   50 ms, which it takes back for urgent work, so only a step starting with
+   no time remaining is forced, and any other stops on `timeRemaining`
+   alone. A runtime without
+   `requestIdleCallback` builds on open as before.
 5. **Search.** Match city, country, identifier, generic name, and alias, folding
    case and accents. Exact city and country matches rank first, then prefix
    matches, then other word matches.
