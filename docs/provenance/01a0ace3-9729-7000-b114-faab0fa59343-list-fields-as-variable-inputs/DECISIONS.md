@@ -90,6 +90,8 @@ Counting only formula nodes isn't enough. A formula of literals that uses one 10
 
 A method result over the 10,000 text or list limit blanks without counting against the budget, so `?? fallback` catches it however large it is.
 
+Saving runs each formula once with every input unanswered and rejects one that runs past the budget there, since the form then can't be displayed to anyone who hasn't answered its inputs. A formula that runs past it only on long answers still saves: what respondents will type isn't known at save time.
+
 ## Scope and compatibility
 
 The list resolver lives in `common/src/forms/variables.ts`, which the web and mobile forms (`shared/useFormRenderer.ts`) and saved-response output (`common/src/forms/output-resolution.ts`) already share. Variables recompute whenever answers or visibility extras change.
