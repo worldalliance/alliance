@@ -140,7 +140,10 @@ import {
   UpdateFormDto,
 } from "./form.dto";
 import { FormSnapshotService } from "./formsnapshot.service";
-import { findFormsReadingForm } from "./variable-source-forms";
+import {
+  findFormsReadingForm,
+  loadVariableSourceForms,
+} from "./variable-source-forms";
 
 /**
  * Validator verdicts arrive from HTTP as arbitrary JSON — class-validator
@@ -289,7 +292,10 @@ export class TasksService {
   }
 
   async createForm(createFormDto: CreateFormDto): Promise<Form> {
-    const schema = this.parseSchemaOrThrow(createFormDto.schema);
+    const schema = await this.parseSchemaOrThrow(
+      createFormDto.schema,
+      undefined,
+    );
     const snapshot = await this.formSnapshotService.findOrCreate(schema);
     const form = await this.formRepository.save({
       title: createFormDto.title,
@@ -304,9 +310,10 @@ export class TasksService {
     return form;
   }
 
-  private validateSchema(
+  private async validateSchema(
     schema: unknown,
-  ): Result<FormSchema, FormSchemaValidationError[]> {
+    formId: number | undefined,
+  ): Promise<Result<FormSchema, FormSchemaValidationError[]>> {
     const parsed = formSchema.safeParse(schema);
     if (!parsed.success) {
       return R.failure(
@@ -316,15 +323,24 @@ export class TasksService {
         })),
       );
     }
-    const errors = validateFormSchema(parsed.data);
+    const errors = validateFormSchema(parsed.data, {
+      formId,
+      sourceForms: await loadVariableSourceForms({
+        formRepository: this.formRepository,
+        schema: parsed.data,
+      }),
+    });
     if (errors.length > 0) {
       return R.failure(errors);
     }
     return R.success(parsed.data);
   }
 
-  private parseSchemaOrThrow(schema: unknown): FormSchema {
-    const validated = this.validateSchema(schema);
+  private async parseSchemaOrThrow(
+    schema: unknown,
+    formId: number | undefined,
+  ): Promise<FormSchema> {
+    const validated = await this.validateSchema(schema, formId);
     if (!validated.ok) {
       throw new BadRequestException({
         message: "Invalid form schema",
@@ -734,7 +750,10 @@ export class TasksService {
     let nextSnapshotId = form.formSnapshotId;
     let snapshotChanged = false;
     if (updateFormDto.schema) {
-      const schema = this.parseSchemaOrThrow(updateFormDto.schema);
+      const schema = await this.parseSchemaOrThrow(
+        updateFormDto.schema,
+        formId,
+      );
       this.stripContractFromSchema(schema);
       const snapshot = await this.formSnapshotService.findOrCreate(schema);
       if (snapshot.id !== form.formSnapshotId) {
