@@ -15,6 +15,9 @@ case "$NATIVE_PLATFORM" in
     xcrun simctl list devices available
     ;;
   android)
+    export ANDROID_AVD_HOME="$PWD/.scratch/pr-screenshots/avd"
+    mkdir -p "$ANDROID_AVD_HOME"
+    echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
     for sdk_bin in "$ANDROID_HOME/cmdline-tools/latest/bin" "$ANDROID_HOME/platform-tools" "$ANDROID_HOME/emulator"; do
       export PATH="$sdk_bin:$PATH"
       echo "$sdk_bin" >> "$GITHUB_PATH"
