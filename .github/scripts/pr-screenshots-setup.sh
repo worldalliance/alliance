@@ -15,6 +15,10 @@ case "$NATIVE_PLATFORM" in
     xcrun simctl list devices available
     ;;
   android)
+    for sdk_bin in "$ANDROID_HOME/cmdline-tools/latest/bin" "$ANDROID_HOME/platform-tools" "$ANDROID_HOME/emulator"; do
+      export PATH="$sdk_bin:$PATH"
+      echo "$sdk_bin" >> "$GITHUB_PATH"
+    done
     sudo apt-get update -qq
     sudo apt-get install -y postgresql libnss3 libatk-bridge2.0-0 libxkbcommon0 libgbm1 libasound2t64
     sudo service postgresql start
