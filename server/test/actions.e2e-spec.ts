@@ -4410,6 +4410,49 @@ describe("Actions (e2e)", () => {
         answers: { published: "" },
         publicAnswers: { published: true },
       },
+      {
+        output: "only a display block beside a public answer the form hides",
+        schema: {
+          pages: [
+            {
+              id: "page-1",
+              fields: [
+                { id: "gate", type: "input", kind: "text", label: "Gate" },
+                {
+                  id: "published",
+                  type: "input",
+                  kind: "text",
+                  label: "Published",
+                  output: { output: true },
+                  visibleIfFormula: {
+                    conditions: {
+                      c1: { kind: "equals", when: "gate", equals: "yes" },
+                    },
+                    formula: "c1",
+                  },
+                },
+              ],
+            },
+          ],
+          outputViews: [
+            {
+              id: "view-1",
+              type: "default",
+              blocks: [
+                {
+                  id: "block-header",
+                  type: "display",
+                  kind: "header",
+                  text: "Done",
+                },
+                { id: "block-published", fieldId: "published" },
+              ],
+            },
+          ],
+        },
+        answers: { gate: "no", published: "Shown" },
+        publicAnswers: { published: true },
+      },
     ])(
       "leaves out a friend's completion and its output with $output",
       async ({ schema, answers, publicAnswers }) => {

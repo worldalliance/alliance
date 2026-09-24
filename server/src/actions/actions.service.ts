@@ -18,11 +18,15 @@ import {
   emptyDisplayOnlySchema,
   type DisplayOnlySchema,
 } from "@alliance/common/forms/display-only-schema";
-import { flattenPageItems } from "@alliance/common/forms/form-schema";
+import {
+  flattenPageItems,
+  type FormSchema,
+} from "@alliance/common/forms/form-schema";
 import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
 import {
   isOutputAnswerShown,
   redactToOutput,
+  savedOutputAnswers,
 } from "@alliance/common/forms/output-resolution";
 import { echoesStoredKey } from "@alliance/common/image-src";
 import { run } from "@alliance/common/run";
@@ -2129,13 +2133,10 @@ export class ActionsService {
     });
   }
 
-  private hasPublicOutputAnswer(activity: ActionActivity): boolean {
-    if (!activity.taskFormResponse) {
-      return false;
-    }
-
-    const schema = formSchemaOf(activity.taskFormResponse.formSnapshot);
-
+  private hasPublicOutputAnswer(
+    schema: FormSchema,
+    response: ParsedFormResponse,
+  ): boolean {
     const isOutputField = (answer: string) =>
       schema.pages.some((page) =>
         flattenPageItems(page.fields).some(
@@ -2146,8 +2147,13 @@ export class ActionsService {
         ),
       );
 
-    const answers = activity.taskFormResponse.answers;
-    const publicAnswers = activity.taskFormResponse.publicAnswers ?? {};
+    const { visibleAnswers: answers } = savedOutputAnswers({
+      schema,
+      answers: response.answers,
+      validatorResults: response.visibilityValidatorResults,
+      deviceType: response.deviceType,
+    });
+    const publicAnswers = response.publicAnswers ?? {};
 
     const answersPrunedObj = Object.fromEntries(
       Object.entries(answers).filter(
@@ -2162,7 +2168,7 @@ export class ActionsService {
   buildOutputFormResponse(
     activity: ActionActivity,
   ): ParsedFormResponse | undefined {
-    if (!activity.taskFormResponse || !this.hasPublicOutputAnswer(activity)) {
+    if (!activity.taskFormResponse) {
       return undefined;
     }
 
@@ -2175,6 +2181,9 @@ export class ActionsService {
         answers,
       }),
     );
+    if (!this.hasPublicOutputAnswer(schema, response)) {
+      return undefined;
+    }
     const output = redactToOutput({
       schema,
       answers: response.answers,

@@ -119,29 +119,19 @@ const isOutputBlockVisible = (
   });
 };
 
-export const resolveOutputBlocks = ({
+export const savedOutputAnswers = ({
   schema,
   answers: storedAnswers,
-  viewId,
   validatorResults,
   deviceType,
-  publicAnswers,
-}: ResolveOutputParams): {
-  selectedView: OutputViewSchema;
-  fieldLookup: Map<string, AnyField>;
+}: Pick<
+  ResolveOutputParams,
+  "schema" | "answers" | "validatorResults" | "deviceType"
+>): {
   answers: Record<string, FormValue>;
-  visibleBlocks: OutputBlock[];
-  variableValues: Map<string, string>;
-  /** Public list answers the view draws that aren't a list of rows. */
-  malformedListFieldIds: string[];
-} | null => {
+  visibleAnswers: Record<string, FormValue>;
+} => {
   const fieldLookup = collectOutputFieldMap(schema);
-  const selectedView = resolveOutputView(schema, viewId);
-
-  if (!selectedView) {
-    return null;
-  }
-
   const context = visibilityContext(validatorResults, deviceType);
   const conditionLookups = {
     fieldLookup: collectFieldLookup(schema.pages),
@@ -180,6 +170,39 @@ export const resolveOutputBlocks = ({
       );
     }),
   );
+
+  return { answers, visibleAnswers };
+};
+
+export const resolveOutputBlocks = ({
+  schema,
+  answers: storedAnswers,
+  viewId,
+  validatorResults,
+  deviceType,
+  publicAnswers,
+}: ResolveOutputParams): {
+  selectedView: OutputViewSchema;
+  fieldLookup: Map<string, AnyField>;
+  answers: Record<string, FormValue>;
+  visibleBlocks: OutputBlock[];
+  variableValues: Map<string, string>;
+  /** Public list answers the view draws that aren't a list of rows. */
+  malformedListFieldIds: string[];
+} | null => {
+  const fieldLookup = collectOutputFieldMap(schema);
+  const selectedView = resolveOutputView(schema, viewId);
+
+  if (!selectedView) {
+    return null;
+  }
+
+  const { answers, visibleAnswers } = savedOutputAnswers({
+    schema,
+    answers: storedAnswers,
+    validatorResults,
+    deviceType,
+  });
 
   const isAnswerShown = (fieldId: string): boolean =>
     isOutputAnswerShown(publicAnswers?.[fieldId], visibleAnswers[fieldId]);
