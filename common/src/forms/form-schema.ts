@@ -39,16 +39,23 @@ export function asCards(value: FormValue | undefined): ListFieldValue | null {
   return value.every(isListRow) ? value : null;
 }
 
-export const formValueSchema: z.ZodType<FormValue> = z.lazy(() =>
-  z.union([
-    z.string(),
-    z.number(),
-    z.boolean(),
-    z.array(z.string()),
-    cityFieldValueSchema,
-    z.array(z.record(z.string(), formValueSchema)),
-  ]),
-);
+export function formValueSchemaWith(
+  citySchema: z.ZodType<CityFieldValue>,
+): z.ZodType<FormValue> {
+  const self: z.ZodType<FormValue> = z.lazy(() =>
+    z.union([
+      z.string(),
+      z.number(),
+      z.boolean(),
+      z.array(z.string()),
+      citySchema,
+      z.array(z.record(z.string(), self)),
+    ]),
+  );
+  return self;
+}
+
+export const formValueSchema = formValueSchemaWith(cityFieldValueSchema);
 
 const widthSchema = z.enum(["full", "1/2", "1/3"]);
 

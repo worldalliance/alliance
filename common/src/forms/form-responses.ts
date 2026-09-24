@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { R, type Result } from "../result";
-import { formValueSchema } from "./form-schema";
+import { storedCityValueSchema } from "./city";
+import { formValueSchema, formValueSchemaWith } from "./form-schema";
 
 export const FORM_RESPONSES_BY_FORMS_MAX_BATCH = 100;
 
@@ -17,6 +18,22 @@ export function readFormAnswers(
   value: unknown,
 ): Result<FormAnswers, z.ZodError> {
   const parsed = formAnswersSchema.safeParse(value);
+  return parsed.success ? R.success(parsed.data) : R.failure(parsed.error);
+}
+
+const storedFormAnswersSchema = z.record(
+  z.string(),
+  formValueSchemaWith(storedCityValueSchema),
+);
+
+/**
+ * Reads answers already saved, which {@link readFormAnswers} can reject: a city
+ * saved with keys since dropped still reads, without them.
+ */
+export function readStoredFormAnswers(
+  value: unknown,
+): Result<FormAnswers, z.ZodError> {
+  const parsed = storedFormAnswersSchema.safeParse(value);
   return parsed.success ? R.success(parsed.data) : R.failure(parsed.error);
 }
 
