@@ -61,14 +61,14 @@ const group = (id: number, name: string): CommunityDto => ({
   leaders: [],
 });
 
-const renderPage = () => {
+const renderPage = ({ undergoingGroupAssignment = false } = {}) => {
   const { wrapper: QueryWrapper } = queryWrapper();
   render(
     <QueryWrapper>
       <ToastProvider>
         <AuthContext.Provider
           value={authValue({
-            user: { ...testAuthUser, undergoingGroupAssignment: false },
+            user: { ...testAuthUser, undergoingGroupAssignment },
           })}
         >
           <IncomingCommunityInvitesProvider>
@@ -116,4 +116,11 @@ it("holds off joining or accepting a group until your groups load", async () => 
 
   await waitFor(() => expect(isDisabled("Join")).toBe(false));
   expect(isDisabled("Accept")).toBe(false);
+});
+
+it("claims no kind of assignment while your groups won't load", async () => {
+  renderPage({ undergoingGroupAssignment: true });
+  await screen.findByText("Couldn't load your groups.");
+  expect(screen.getByText("Cancel group assignment")).toBeTruthy();
+  expect(screen.queryByText(/assigning/)).toBeNull();
 });

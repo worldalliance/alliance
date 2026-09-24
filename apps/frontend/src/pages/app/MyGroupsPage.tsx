@@ -362,7 +362,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
           <div className="flex flex-col gap-y-1">
             <p className="font-semibold text-xl md:text-2xl">
               Groups you&apos;re a member of
-              {!user?.undergoingGroupAssignment
+              {!user?.undergoingGroupAssignment || didGroupsFail
                 ? ""
                 : nonLeaderCommunities.length
                   ? " (reassigning...)"
@@ -374,9 +374,11 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
           </div>
           {user?.undergoingGroupAssignment ? (
             <Button color={ButtonColor.Black} onClick={handleCancelAssignment}>
-              {nonLeaderCommunities.length
-                ? "Cancel reassignment"
-                : "Cancel assignment"}
+              {didGroupsFail
+                ? "Cancel group assignment"
+                : nonLeaderCommunities.length
+                  ? "Cancel reassignment"
+                  : "Cancel assignment"}
             </Button>
           ) : nonLeaderCommunities.length ? (
             <Button

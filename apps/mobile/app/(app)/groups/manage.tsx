@@ -406,11 +406,15 @@ export default function GroupManageScreen() {
     acceptingInviteId !== null || decliningInviteId !== null;
 
   const memberSectionSubtitle = useMemo(() => {
-    if (!user?.undergoingGroupAssignment) {
+    if (!user?.undergoingGroupAssignment || didGroupsFail) {
       return null;
     }
     return memberCommunities.length ? " (reassigning...)" : " (assigning...)";
-  }, [user?.undergoingGroupAssignment, memberCommunities.length]);
+  }, [
+    user?.undergoingGroupAssignment,
+    didGroupsFail,
+    memberCommunities.length,
+  ]);
 
   return (
     <View className="flex-1">
@@ -529,9 +533,11 @@ export default function GroupManageScreen() {
                   {user?.undergoingGroupAssignment ? (
                     <Button
                       title={
-                        memberCommunities.length
-                          ? "Cancel reassignment"
-                          : "Cancel assignment"
+                        didGroupsFail
+                          ? "Cancel group assignment"
+                          : memberCommunities.length
+                            ? "Cancel reassignment"
+                            : "Cancel assignment"
                       }
                       onPress={() => void handleCancelAssignment()}
                       color={ButtonColor.Black}
