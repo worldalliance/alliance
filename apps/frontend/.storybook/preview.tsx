@@ -1,5 +1,7 @@
+import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import type { Preview } from "@storybook/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import {
   reactRouterParameters,
@@ -26,9 +28,17 @@ const preview: Preview = {
   decorators: [
     withRouter,
     (Story: React.ComponentType) => (
-      <ToastProvider>
-        <Story />
-      </ToastProvider>
+      <QueryClientProvider
+        client={
+          new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        }
+      >
+        <SiteAppProvider>
+          <ToastProvider>
+            <Story />
+          </ToastProvider>
+        </SiteAppProvider>
+      </QueryClientProvider>
     ),
   ],
 };
