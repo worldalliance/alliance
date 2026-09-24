@@ -3,6 +3,7 @@ import { minuteStart, useClockMinute } from "../lib/useClockMinute";
 import { fold } from "./optionSearch";
 import { aliasesOf } from "./timeZoneAliases";
 import {
+  formatTimeAtOffset,
   formatTimeInTz,
   getGenericLabelFromIntl,
   getOffsetMinutes,
@@ -237,7 +238,7 @@ function getBaseLabels(): BaseLabel[] {
 // Building every zone's formatters is slow on Android's Hermes, so a
 // mounted picker builds them a zone at a time while the runtime is idle, and
 // an open finds them cached.
-function warmWhileIdle(hour12: boolean): void {
+function warmWhileIdle(): void {
   if (typeof requestIdleCallback !== "function") return;
   if (warming !== null || allLabelled()) return;
   const step = (deadline: IdleDeadline) => {
@@ -245,7 +246,6 @@ function warmWhileIdle(hour12: boolean): void {
     while (!allLabelled()) {
       const { tz } = labelNext();
       getOffsetMinutes(tz, now);
-      formatTimeInTz(tz, hour12, now);
       if (deadline.timeRemaining() <= 0) break;
     }
     warming = allLabelled() ? null : requestIdleCallback(step);
@@ -261,6 +261,11 @@ function selectedLabel(tz: string): BaseLabel | null {
 }
 
 type BaseItem = Omit<TimeZoneSelectItem, "timeLabel">;
+
+const clockOf = (item: BaseItem, hour12: boolean, when: Date) =>
+  item.offsetMins === null
+    ? formatTimeInTz(item.tz, hour12, when)
+    : formatTimeAtOffset(item.offsetMins, hour12, when);
 
 // localeCompare costs Hermes on Android twelve times what one collator does.
 const collator = new Intl.Collator();
@@ -347,14 +352,14 @@ export function useTimeZoneSelect({
   const [listedMinute, setListedMinute] = useState<number | null>(null);
   if (open && listedMinute !== minute) setListedMinute(minute);
 
-  useEffect(() => warmWhileIdle(hour12), [hour12]);
+  useEffect(warmWhileIdle, []);
 
   const items = useMemo<TimeZoneSelectItem[]>(() => {
     if (listedMinute === null) return [];
     const when = minuteStart(listedMinute);
     return baseItems(listedMinute).map((item) => ({
       ...item,
-      timeLabel: formatTimeInTz(item.tz, hour12, when),
+      timeLabel: clockOf(item, hour12, when),
     }));
   }, [listedMinute, hour12]);
 
@@ -373,7 +378,7 @@ export function useTimeZoneSelect({
           searchText: fold(internalValue),
           offsetMins,
         };
-    return { ...item, timeLabel: formatTimeInTz(item.tz, hour12, when) };
+    return { ...item, timeLabel: clockOf(item, hour12, when) };
   }, [label, internalValue, hour12, minute]);
 
   const filtered = useMemo(() => {

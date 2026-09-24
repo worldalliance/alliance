@@ -85,6 +85,20 @@ export function formatTimeInTz(
   return fmt ? askIntl(() => fmt.format(when)) : null;
 }
 
+// One formatter writes every zone's clock off its offset, since building one
+// per zone costs Hermes on Android over a millisecond each.
+export function formatTimeAtOffset(
+  offsetMins: number,
+  hour12: boolean,
+  when: Date,
+): string | null {
+  return formatTimeInTz(
+    "UTC",
+    hour12,
+    new Date(when.getTime() + offsetMins * millisecondsInMinute),
+  );
+}
+
 export function formatNowTimeInTz(
   tz: string,
   hour12: boolean = true,

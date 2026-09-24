@@ -352,6 +352,18 @@ describe("TZ_OPTIONS", () => {
     expect(TZ_OPTIONS.map(({ tz }) => tz)).toContain("Asia/Kolkata");
     expect(getOffsetMinutes("Asia/Kolkata")).toBe(330);
   });
+
+  it("writes each zone's clock as a formatter in that zone would", () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(Date.UTC(2026, 6, 15, 12, 34)));
+    const { result } = renderOpen();
+
+    const wrong = result.current.items.filter(
+      ({ tz, timeLabel }) => timeLabel !== formatNowTimeInTz(tz),
+    );
+
+    expect(wrong).toEqual([]);
+  });
 });
 
 describe("a zone Intl rejects", () => {
@@ -535,7 +547,7 @@ describe("a picker mounted on a runtime with idle time", () => {
 
       runIdle({ steps: 1, msEach: 0 });
 
-      expect(built() - atMount).toBe(3);
+      expect(built() - atMount).toBe(2);
       expect(pending).not.toBeNull();
     });
   });
