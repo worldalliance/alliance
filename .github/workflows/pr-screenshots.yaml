@@ -63,7 +63,11 @@ jobs:
           "$sdkmanager" "emulator" "platform-tools" "$AVD_IMAGE" > /dev/null
           echo "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
+          mkdir -p "$ANDROID_AVD_HOME"
           echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n pr -k "$AVD_IMAGE" -d pixel_7
+          "$ANDROID_HOME/emulator/emulator" -list-avds | grep -qx pr
           nohup "$ANDROID_HOME/emulator/emulator" -avd pr -no-window -no-audio -no-boot-anim -no-snapshot \
             -gpu swiftshader_indirect -memory 4096 > "$RUNNER_TEMP/emulator.log" 2>&1 &
 
