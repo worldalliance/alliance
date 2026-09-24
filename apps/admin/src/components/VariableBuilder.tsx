@@ -6,7 +6,7 @@ import type {
 } from "@alliance/common/forms/form-schema";
 import {
   collectVariableInputFields,
-  variableInputFieldsById,
+  readableVariableInputFields,
 } from "@alliance/common/forms/form-schema";
 import { evaluateVariableText } from "@alliance/common/forms/variable-evaluation";
 import {
@@ -15,10 +15,14 @@ import {
 } from "@alliance/common/forms/variable-expression";
 import { checkVariableFormulaType } from "@alliance/common/forms/variable-formula-check";
 import {
-  VARIABLE_INPUT_NAME_REGEX,
+  inputSourceFormId,
+  isListInput,
+  isSourceInput,
+  type VariableFieldInput,
   type VariableInput,
 } from "@alliance/common/forms/variable-inputs";
 import { collectUnresolvedVariableReferences } from "@alliance/common/forms/variable-interpolation";
+import { variableFieldScope } from "@alliance/common/forms/variable-scope";
 import {
   sanitizeVariableName,
   syncListInputProperties,
@@ -28,28 +32,29 @@ import {
   variableTypeEnv,
   type FormVariable,
 } from "@alliance/common/forms/variables";
+import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { milliseconds } from "date-fns";
+import { omit } from "es-toolkit";
 import { Check, Copy, Info, Plus, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { renameKeys } from "../lib/renameKeys";
 import { makeTempId } from "../lib/tempId";
+import { useVariableSourceForms } from "../lib/useVariableSourceForms";
+import { FormPickerError, FormPickerErrorReason } from "./FormPickerError";
+import { SharedOutputSourceWarning } from "./SharedOutputSourceWarning";
+import { VariableHelpModal, type FormulaHelpInput } from "./VariableHelpModal";
+import { type InputSources } from "./VariableInputPickers";
+import { VariableInputRow } from "./VariableInputRow";
 import {
-  INPUT_MODE_HELP,
-  LIST_INPUT_HELP,
-  VariableHelpModal,
-  type FormulaHelpInput,
-  type InputModeHelp,
-} from "./VariableHelpModal";
-import {
-  inputModeOf,
   inputPad,
   inputText,
-  ListInputEditor,
   readInputSample,
-  SampleAnswer,
-  sampleRows,
+  readSubmissionSamples,
+  type SubmissionSample,
 } from "./VariableSamples";
+import { answerHelp, inputHelp } from "./variableInputHelp";
 
 function CopyableReference({ name }: { name: string }) {
   const [copied, setCopied] = useState(false);
@@ -87,46 +92,30 @@ function CopyableReference({ name }: { name: string }) {
   );
 }
 
-const inputForField = (field: AnyField): VariableInput =>
-  field.kind === "list"
-    ? {
-        kind: "list",
-        fieldId: field.id,
-        properties: syncListInputProperties({}, field.fields),
-      }
-    : { kind: "field", fieldId: field.id };
+const unpickedInput = (sourceFormId: number | undefined): VariableFieldInput =>
+  sourceFormId === undefined
+    ? { kind: "field", fieldId: "" }
+    : { kind: "sourceField", sourceFormId, fieldId: "" };
+
+const inputForField = (
+  field: AnyField,
+  sourceFormId: number | undefined,
+): VariableInput => {
+  if (field.kind !== "list") {
+    return { ...unpickedInput(sourceFormId), fieldId: field.id };
+  }
+  const properties = syncListInputProperties({}, field.fields);
+  return sourceFormId === undefined
+    ? { kind: "list", fieldId: field.id, properties }
+    : { kind: "sourceList", sourceFormId, fieldId: field.id, properties };
+};
 
 const fieldReadBy = (input: VariableInput, eligibleFields: AnyField[]) =>
   eligibleFields.find(
     (candidate) =>
       candidate.id === input.fieldId &&
-      (candidate.kind === "list") === (input.kind === "list"),
+      (candidate.kind === "list") === isListInput(input),
   );
-
-const inputHelp = (
-  input: VariableInput,
-  field: AnyField | undefined,
-): InputModeHelp => {
-  switch (input.kind) {
-    case "field":
-    case "sourceField":
-      return INPUT_MODE_HELP[inputModeOf(field)];
-    case "list":
-    case "sourceList":
-      return {
-        notes: LIST_INPUT_HELP.notes,
-        example: (name) =>
-          LIST_INPUT_HELP.example(
-            name,
-            Object.values(input.properties).find((property) =>
-              VARIABLE_INPUT_NAME_REGEX.test(property),
-            ),
-          ),
-      };
-    default:
-      throw new Error(`unknown input kind: ${input satisfies never}`);
-  }
-};
 
 const exampleFormula = (input: VariableInput): string => {
   switch (input.kind) {
@@ -135,7 +124,7 @@ const exampleFormula = (input: VariableInput): string => {
       return "input1";
     case "list":
     case "sourceList":
-      return inputHelp(input, undefined).example("input1");
+      return answerHelp(input, undefined).example("input1");
     default:
       throw new Error(`unknown input kind: ${input satisfies never}`);
   }
@@ -152,7 +141,7 @@ const uniqueVariableName = (existing: FormVariable[]): string => {
 type VariableCardProps = {
   variable: FormVariable;
   allVariables: FormVariable[];
-  eligibleFields: AnyField[];
+  sources: InputSources;
   onChange: (next: FormVariable) => void;
   onRemove: () => void;
 };
@@ -160,11 +149,14 @@ type VariableCardProps = {
 function VariableCard({
   variable,
   allVariables,
-  eligibleFields,
+  sources,
   onChange,
   onRemove,
 }: VariableCardProps) {
   const [samples, setSamples] = useState<Record<string, FormValue>>({});
+  const [submissionSamples, setSubmissionSamples] = useState<
+    Record<string, SubmissionSample[]>
+  >({});
   const [helpOpen, setHelpOpen] = useState(false);
   const [replacedFormula, setReplacedFormula] = useState<string | null>(null);
   const formulaRef = useRef<HTMLTextAreaElement>(null);
@@ -183,12 +175,14 @@ function VariableCard({
   );
 
   const inputTypes = useMemo(
-    () =>
-      variableTypeEnv(variable, {
-        fields: variableInputFieldsById(eligibleFields),
-        sourceFields: new Map(),
-      }),
-    [variable, eligibleFields],
+    () => variableTypeEnv(variable, sources.scope),
+    [variable, sources.scope],
+  );
+
+  const fieldOf = useCallback(
+    (input: VariableInput) =>
+      fieldReadBy(input, sources.fieldsFor(inputSourceFormId(input))),
+    [sources],
   );
 
   const typed = useMemo(() => {
@@ -212,14 +206,21 @@ function VariableCard({
     () =>
       new Map(
         inputNames.map((name) => {
-          const field = fieldReadBy(variable.inputs[name], eligibleFields);
+          const input = variable.inputs[name];
+          const field = fieldOf(input);
           return [
             name,
-            readInputSample(variable.inputs[name], field, samples[name]),
+            isSourceInput(input)
+              ? readSubmissionSamples(
+                  input,
+                  field,
+                  submissionSamples[name] ?? [],
+                )
+              : readInputSample(input, field, samples[name]),
           ] as const;
         }),
       ),
-    [inputNames, samples, eligibleFields, variable.inputs],
+    [inputNames, samples, submissionSamples, fieldOf, variable.inputs],
   );
 
   const preview = useMemo(() => {
@@ -242,7 +243,7 @@ function VariableCard({
     () =>
       inputNames.map((name) => {
         const input = variable.inputs[name];
-        const field = fieldReadBy(input, eligibleFields);
+        const field = fieldOf(input);
         const example = inputHelp(input, field).example(name);
         return {
           name,
@@ -250,7 +251,7 @@ function VariableCard({
           example: field && example !== "" ? example : null,
         };
       }),
-    [inputNames, variable.inputs, eligibleFields, inputTypes],
+    [inputNames, variable.inputs, fieldOf, inputTypes],
   );
 
   // A formula is a single expression, so a snippet appended to one already
@@ -282,13 +283,34 @@ function VariableCard({
   const setInput = (name: string, next: VariableInput) =>
     onChange({ ...variable, inputs: { ...variable.inputs, [name]: next } });
 
+  const localFields = sources.fieldsFor(undefined);
+
+  // Another form's questions load only once an input reads it, so picking its
+  // first question would depend on what else the builder reads. Its input
+  // always waits on a pick instead.
+  const setInputSource = (name: string, sourceFormId: number | undefined) => {
+    const first = sourceFormId === undefined ? localFields[0] : undefined;
+    setSamples((prev) => omit(prev, [name]));
+    setSubmissionSamples((prev) => omit(prev, [name]));
+    setInput(
+      name,
+      first ? inputForField(first, sourceFormId) : unpickedInput(sourceFormId),
+    );
+  };
+
+  const canAddInput = localFields.length > 0 || sources.forms.length > 0;
+
   const addInput = () => {
-    const field = eligibleFields[0];
-    if (!field) return;
+    const field = localFields[0];
     const name = variableInputNameForIndex(inputNames.length);
     onChange({
       ...variable,
-      inputs: { ...variable.inputs, [name]: inputForField(field) },
+      inputs: {
+        ...variable.inputs,
+        [name]: field
+          ? inputForField(field, undefined)
+          : unpickedInput(undefined),
+      },
     });
   };
 
@@ -307,13 +329,8 @@ function VariableCard({
       /\b(input\d+)\b/g,
       (whole, name: string) => renames.get(name) ?? whole,
     );
-    setSamples((prev) =>
-      Object.fromEntries(
-        [...renames].flatMap(([oldName, newName]) =>
-          Object.hasOwn(prev, oldName) ? [[newName, prev[oldName]]] : [],
-        ),
-      ),
-    );
+    setSamples((prev) => renameKeys(prev, renames));
+    setSubmissionSamples((prev) => renameKeys(prev, renames));
     onChange({ ...variable, inputs, formula });
   };
 
@@ -367,7 +384,7 @@ function VariableCard({
           <button
             type="button"
             onClick={addInput}
-            disabled={eligibleFields.length === 0}
+            disabled={!canAddInput}
             title="Add input"
             aria-label="Add input"
             className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-40"
@@ -377,98 +394,38 @@ function VariableCard({
         </div>
         {inputNames.length === 0 ? (
           <p className="text-xs text-gray-500">
-            {eligibleFields.length === 0
+            {!canAddInput
               ? "Add a question field to the form first."
               : "No inputs yet."}
           </p>
         ) : (
           inputNames.map((name) => {
             const input = variable.inputs[name];
-            const field = fieldReadBy(input, eligibleFields);
-            const help = inputHelp(input, field);
-            const reading = readings.get(name);
+            const sourceFormId = inputSourceFormId(input);
             return (
-              <div key={name} className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-14 shrink-0 font-mono text-xs text-gray-600">
-                    {name}
-                  </span>
-                  <select
-                    value={input.fieldId}
-                    aria-label={`Field read by ${name}`}
-                    onChange={(event) => {
-                      const picked = eligibleFields.find(
-                        (candidate) => candidate.id === event.target.value,
-                      );
-                      if (picked) setInput(name, inputForField(picked));
-                    }}
-                    className={cn(
-                      inputText,
-                      "bg-white flex-1",
-                      !field && "border-red-400",
-                    )}
-                  >
-                    {/* Keep an explicit option for deleted or unusable fields.
-                        Otherwise the browser displays the first eligible field. */}
-                    {!field && (
-                      <option value={input.fieldId}>
-                        Missing or unusable field — {input.fieldId}
-                      </option>
-                    )}
-                    {eligibleFields.map((candidate) => (
-                      <option key={candidate.id} value={candidate.id}>
-                        {candidate.label || "(no label)"} ({candidate.kind}) —{" "}
-                        {candidate.id}
-                      </option>
-                    ))}
-                  </select>
-                  {input.kind === "field" && (
-                    <SampleAnswer
-                      inputName={name}
-                      field={field}
-                      value={samples[name]}
-                      error={reading?.error}
-                      onChange={(next) =>
-                        setSamples((prev) => ({ ...prev, [name]: next }))
-                      }
-                    />
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => removeInput(name)}
-                    title="Remove input"
-                    aria-label={`Remove ${name}`}
-                    className="p-1 text-gray-400 hover:text-red-500"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-                {field && (
-                  <p
-                    className="pl-16 font-mono text-[10px] text-gray-500"
-                    title={help.notes}
-                  >
-                    {name}: {inputTypes.get(name)}
-                  </p>
-                )}
-                {input.kind === "list" && field?.kind === "list" && (
-                  <ListInputEditor
-                    inputName={name}
-                    input={input}
-                    field={field}
-                    rows={sampleRows(samples[name])}
-                    onInputChange={(next) => setInput(name, next)}
-                    onRowsChange={(next) =>
-                      setSamples((prev) => ({ ...prev, [name]: next }))
-                    }
-                  />
-                )}
-                {reading?.error && (
-                  <p className="pl-16 text-[10px] text-red-500">
-                    {reading.error} Reads as undefined.
-                  </p>
-                )}
-              </div>
+              <VariableInputRow
+                key={name}
+                name={name}
+                input={input}
+                field={fieldOf(input)}
+                sources={sources}
+                type={inputTypes.get(name)}
+                readingError={readings.get(name)?.error}
+                sample={samples[name]}
+                submissions={submissionSamples[name] ?? []}
+                onInputChange={(next) => setInput(name, next)}
+                onFieldPick={(picked) =>
+                  setInput(name, inputForField(picked, sourceFormId))
+                }
+                onSourceChange={(next) => setInputSource(name, next)}
+                onSampleChange={(next) =>
+                  setSamples((prev) => ({ ...prev, [name]: next }))
+                }
+                onSubmissionsChange={(next) =>
+                  setSubmissionSamples((prev) => ({ ...prev, [name]: next }))
+                }
+                onRemove={() => removeInput(name)}
+              />
             );
           })
         )}
@@ -550,11 +507,14 @@ function VariableCard({
 }
 
 interface VariableBuilderProps {
+  /** Unset while the form is being created. */
+  formId: number | undefined;
   schema: FormSchema;
   onSchemaChange: (schema: FormSchema) => void;
 }
 
 export function VariableBuilder({
+  formId,
   schema,
   onSchemaChange,
 }: VariableBuilderProps) {
@@ -562,15 +522,45 @@ export function VariableBuilder({
     () => collectVariableInputFields(schema),
     [schema],
   );
+  const {
+    options,
+    isLoading: optionsLoading,
+    isError: optionsError,
+  } = useFormOptions();
+  const { sourceForms, statusByForm } = useVariableSourceForms(
+    schema.variables,
+  );
+  const scope = useMemo(
+    () => variableFieldScope(schema, sourceForms),
+    [schema, sourceForms],
+  );
+  const sources = useMemo(
+    (): InputSources => ({
+      fieldsFor: (sourceFormId) =>
+        sourceFormId === undefined
+          ? eligibleFields
+          : readableVariableInputFields(sourceForms.get(sourceFormId) ?? []),
+      statusOf: (sourceFormId) => statusByForm[sourceFormId],
+      forms: options.filter(({ id }) => id !== formId),
+      formsLoaded: !optionsLoading && !optionsError,
+      scope,
+    }),
+    [
+      eligibleFields,
+      sourceForms,
+      statusByForm,
+      options,
+      optionsLoading,
+      optionsError,
+      formId,
+      scope,
+    ],
+  );
   // Shows the names a save would give sub-fields added since the last edit;
   // any edit here stores them.
   const variables = useMemo(
-    () =>
-      syncVariableListInputs(schema.variables ?? [], {
-        fields: variableInputFieldsById(eligibleFields),
-        sourceFields: new Map(),
-      }),
-    [schema.variables, eligibleFields],
+    () => syncVariableListInputs(schema.variables ?? [], scope),
+    [schema.variables, scope],
   );
 
   // Cards hold sample answers in their own state, so a key has to follow its
@@ -595,7 +585,7 @@ export function VariableBuilder({
 
   const addVariable = () => {
     const field = eligibleFields[0];
-    const input = field && inputForField(field);
+    const input = field && inputForField(field, undefined);
     setVariables([
       ...variables,
       {
@@ -617,11 +607,20 @@ export function VariableBuilder({
             </Button>
           </div>
           <p className="text-sm text-gray-600">
-            Compute a value from the answers on this form, then write it into
-            any text or field label as{" "}
-            <span className="font-mono">#{"{name}"}</span>.
+            Compute a value from the answers on this form or the member&apos;s
+            answers to other forms, then write it into any text or field label
+            as <span className="font-mono">#{"{name}"}</span>.
           </p>
         </div>
+
+        {optionsError && (
+          <FormPickerError
+            reason={FormPickerErrorReason.FormList}
+            className="mb-6"
+          />
+        )}
+
+        <SharedOutputSourceWarning schema={schema} />
 
         {unresolvedReferences.length > 0 && (
           <div className="mb-6 rounded border border-amber-300 bg-amber-50 p-3 space-y-1">
@@ -654,7 +653,7 @@ export function VariableBuilder({
                 key={cardKeys[index]}
                 variable={variable}
                 allVariables={variables}
-                eligibleFields={eligibleFields}
+                sources={sources}
                 onChange={(next) =>
                   setVariables(
                     variables.map((current, i) =>

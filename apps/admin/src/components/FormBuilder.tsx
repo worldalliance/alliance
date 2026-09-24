@@ -47,6 +47,7 @@ import {
   type UserDto,
 } from "@alliance/shared/client";
 import { useInvalidateFormsAdmin } from "@alliance/shared/lib/useFormsAdmin";
+import { FormFieldsStatus } from "@alliance/shared/lib/useFormSchema";
 import { cn } from "@alliance/shared/styles/util";
 import { customComponentRegistry } from "@alliance/sharedweb/forms/components";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
@@ -59,6 +60,7 @@ import { addressedWrite } from "../lib/displayBlockById";
 import { mergeFormSchemas } from "../lib/formSchemaMerge";
 import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
 import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
+import { useVariableSourceForms } from "../lib/useVariableSourceForms";
 import { AggregateBuilder } from "./AggregateBuilder";
 import ConfirmDialog from "./ConfirmDialog";
 import { createDisplayBlock, PerViewerOptions } from "./display-blocks";
@@ -74,6 +76,7 @@ import {
 import { EditableFieldGroup } from "./form-fields/EditableFieldGroup";
 import { renderFieldEditor } from "./form-fields/fieldEditors";
 import { FormConflictModal } from "./FormConflictModal";
+import { formFieldsErrorReason } from "./FormPickerError";
 import { FormVariablesProvider } from "./FormVariablesContext";
 import { OutputBuilder } from "./OutputBuilder";
 import { PreviewAsUserBar } from "./PreviewAsUserBar";
@@ -820,6 +823,23 @@ export function FormBuilder(props: FormBuilderProps) {
   const [conflictLoads, setConflictLoads] = useState(0);
   const [confirmUnresolvedVariables, setConfirmUnresolvedVariables] =
     useState(false);
+
+  const referencedVariables = useMemo(
+    () => [...(schema.variables ?? []), ...(conflict?.theirs.variables ?? [])],
+    [schema.variables, conflict],
+  );
+  const { sourceForms, statusByForm: sourceFormStatus } =
+    useVariableSourceForms(referencedVariables);
+  const sourceFormsLoading = Object.values(sourceFormStatus).includes(
+    FormFieldsStatus.Pending,
+  );
+  const sourceFormsFailed = Object.values(sourceFormStatus).some(
+    (status) => formFieldsErrorReason(status) !== null,
+  );
+  const validation = useMemo(
+    () => ({ formId, sourceForms }),
+    [formId, sourceForms],
+  );
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -1708,12 +1728,19 @@ export function FormBuilder(props: FormBuilderProps) {
     setSaveError(null);
 
     try {
+      if (sourceFormsLoading) {
+        showErrorToast(
+          "Still loading the questions of forms your variables read. Try again in a moment.",
+        );
+        return;
+      }
+
       // List inputs name sub-fields added since the variable was last edited
       // here, from labels that are final by now.
-      const syncedSchema = syncSchemaVariableListInputs(schema, new Map());
+      const syncedSchema = syncSchemaVariableListInputs(schema, sourceForms);
       if (syncedSchema !== schema) setSchema(syncedSchema);
 
-      const validationErrors = validateFormSchema(syncedSchema);
+      const validationErrors = validateFormSchema(syncedSchema, validation);
       if (validationErrors.length > 0) {
         const summary = validationErrors
           .map((e) => `• Block ${e.blockId}: ${e.message}`)
@@ -1838,6 +1865,9 @@ export function FormBuilder(props: FormBuilderProps) {
     setFormId,
     showErrorToast,
     showSuccessToast,
+    sourceForms,
+    sourceFormsLoading,
+    validation,
   ]);
 
   // A dangling `#{name}` renders as written rather than breaking the form, so
@@ -1973,11 +2003,12 @@ export function FormBuilder(props: FormBuilderProps) {
 
   const handleMerge = useCallback(() => {
     if (!conflict) return;
-    const result = mergeFormSchemas(
-      conflict.base,
-      conflict.mine,
-      conflict.theirs,
-    );
+    const result = mergeFormSchemas({
+      base: conflict.base,
+      mine: conflict.mine,
+      theirs: conflict.theirs,
+      validation,
+    });
     if (!result.ok) {
       showErrorToast("Can't auto-merge — there are conflicting edits");
       return;
@@ -1988,7 +2019,7 @@ export function FormBuilder(props: FormBuilderProps) {
     setBaseFormSnapshotId(conflict.theirsSnapshotId);
     setConflict(null);
     showSuccessToast("Merged their changes with yours — review and save");
-  }, [conflict, showErrorToast, showSuccessToast]);
+  }, [conflict, showErrorToast, showSuccessToast, validation]);
 
   const handleCopyMine = useCallback(() => {
     if (!conflict) return;
@@ -2641,6 +2672,9 @@ export function FormBuilder(props: FormBuilderProps) {
           base={conflict.base}
           mine={conflict.mine}
           theirs={conflict.theirs}
+          validation={validation}
+          sourceFormsLoading={sourceFormsLoading}
+          sourceFormsFailed={sourceFormsFailed}
           saving={isSaving}
           onMerge={handleMerge}
           onKeepMine={handleKeepMine}
@@ -2981,6 +3015,7 @@ export function FormBuilder(props: FormBuilderProps) {
               ) : activeEditor === "variables" ? (
                 <VariableBuilder
                   key={conflictLoads}
+                  formId={formId}
                   schema={schema}
                   onSchemaChange={updateSchema}
                 />

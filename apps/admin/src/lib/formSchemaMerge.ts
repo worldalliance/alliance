@@ -2,7 +2,10 @@ import {
   formSchema,
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
-import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
+import {
+  validateFormSchema,
+  type FormSchemaValidationContext,
+} from "@alliance/common/forms/form-schema-validate";
 import { syncSchemaVariableListInputs } from "@alliance/common/forms/variable-scope";
 import { R, type Result } from "@alliance/common/result";
 import jsonStableStringify from "json-stable-stringify";
@@ -219,11 +222,14 @@ function mergeKeyedList(
 }
 
 /** Three-way merge; overlapping edits return conflicts. */
-export function mergeFormSchemas(
-  base: FormSchema,
-  mine: FormSchema,
-  theirs: FormSchema,
-): Result<FormSchema, string[]> {
+export function mergeFormSchemas(params: {
+  base: FormSchema;
+  mine: FormSchema;
+  theirs: FormSchema;
+  /** Must hold every form a variable on either side reads. */
+  validation: FormSchemaValidationContext;
+}): Result<FormSchema, string[]> {
+  const { base, mine, theirs, validation } = params;
   const ctx: Ctx = { conflicts: [] };
   const merged = merge3(base, mine, theirs, "", ctx);
 
@@ -237,8 +243,11 @@ export function mergeFormSchemas(
     return R.failure(["The merged result is not a valid form schema"]);
   }
 
-  const synced = syncSchemaVariableListInputs(parsed.data, new Map());
-  const refErrors = validateFormSchema(synced);
+  const synced = syncSchemaVariableListInputs(
+    parsed.data,
+    validation.sourceForms,
+  );
+  const refErrors = validateFormSchema(synced, validation);
   if (refErrors.length > 0) {
     return R.failure(refErrors.map((e) => `${e.blockId}: ${e.message}`));
   }

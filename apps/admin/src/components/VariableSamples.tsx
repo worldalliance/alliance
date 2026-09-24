@@ -9,9 +9,10 @@ import type {
   ExprRecord,
   ExprValue,
 } from "@alliance/common/forms/variable-expression";
-import {
-  type VariableInput,
-  type VariableListInput,
+import type {
+  VariableInput,
+  VariableListInput,
+  VariableSourceInput,
 } from "@alliance/common/forms/variable-inputs";
 import {
   FIELD_KIND_VARIABLE_INPUT_MODE,
@@ -254,34 +255,28 @@ export function SampleAnswer({
 
 const DISALLOWED_PROPERTY_NAME_CHARS = /[^A-Za-z0-9_]/g;
 
-type ListInputEditorProps = {
+type ListPropertyNamesProps = {
   inputName: string;
   input: VariableListInput;
   field: ListField;
-  rows: ListFieldValue;
   onInputChange: (next: VariableListInput) => void;
-  onRowsChange: (next: ListFieldValue) => void;
 };
 
-export function ListInputEditor({
+export function ListPropertyNames({
   inputName,
   input,
   field,
-  rows,
   onInputChange,
-  onRowsChange,
-}: ListInputEditorProps) {
+}: ListPropertyNamesProps) {
   const subFields = readableListSubFields(field.fields);
   const propertyErrors = listInputPropertyErrors({
     inputName,
     input,
     subFields: field.fields,
   });
-  const setRow = (index: number, next: Record<string, FormValue>) =>
-    onRowsChange(rows.map((row, i) => (i === index ? next : row)));
 
   return (
-    <div className="pl-16 space-y-2">
+    <>
       {subFields.length === 0 ? (
         <p className="text-[10px] text-gray-500">
           No sub-field a formula can read.{" "}
@@ -323,44 +318,178 @@ export function ListInputEditor({
           {message}
         </p>
       ))}
-      <div className="space-y-1">
-        {rows.map((row, index) => (
-          <div key={index} className="flex flex-wrap items-center gap-2">
-            <span className="w-10 shrink-0 text-[10px] text-gray-500">
-              row {index + 1}
-            </span>
-            {subFields.map((sub) => (
-              <SampleAnswer
-                key={sub.id}
-                inputName={`${inputName} row ${index + 1}, ${sub.label || sub.id}`}
-                field={sub}
-                value={row[sub.id]}
-                error={readSampleAnswer(sub, row[sub.id]).error}
-                onChange={(next) => setRow(index, { ...row, [sub.id]: next })}
-              />
-            ))}
-            <button
-              type="button"
-              onClick={() => onRowsChange(rows.filter((_, i) => i !== index))}
-              title="Remove sample row"
-              aria-label={`Remove sample row ${index + 1} of ${inputName}`}
-              className="p-1 text-gray-400 hover:text-red-500"
-            >
-              <Trash2 size={12} />
-            </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          onClick={() => onRowsChange([...rows, {}])}
-          title="Add sample row"
-          aria-label={`Add sample row to ${inputName}`}
-          className="flex items-center gap-1 p-1 text-[10px] text-gray-400 hover:text-blue-600"
-        >
-          <Plus size={12} />
-          {rows.length === 0 && "sample row"}
-        </button>
-      </div>
+    </>
+  );
+}
+
+type SampleRowsProps = {
+  inputName: string;
+  field: ListField;
+  rows: ListFieldValue;
+  onRowsChange: (next: ListFieldValue) => void;
+};
+
+function SampleRows({ inputName, field, rows, onRowsChange }: SampleRowsProps) {
+  const subFields = readableListSubFields(field.fields);
+  const setRow = (index: number, next: Record<string, FormValue>) =>
+    onRowsChange(rows.map((row, i) => (i === index ? next : row)));
+
+  return (
+    <div className="space-y-1">
+      {rows.map((row, index) => (
+        <div key={index} className="flex flex-wrap items-center gap-2">
+          <span className="w-10 shrink-0 text-[10px] text-gray-500">
+            row {index + 1}
+          </span>
+          {subFields.map((sub) => (
+            <SampleAnswer
+              key={sub.id}
+              inputName={`${inputName} row ${index + 1}, ${sub.label || sub.id}`}
+              field={sub}
+              value={row[sub.id]}
+              error={readSampleAnswer(sub, row[sub.id]).error}
+              onChange={(next) => setRow(index, { ...row, [sub.id]: next })}
+            />
+          ))}
+          <button
+            type="button"
+            onClick={() => onRowsChange(rows.filter((_, i) => i !== index))}
+            title="Remove sample row"
+            aria-label={`Remove sample row ${index + 1} of ${inputName}`}
+            className="p-1 text-gray-400 hover:text-red-500"
+          >
+            <Trash2 size={12} />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onRowsChange([...rows, {}])}
+        title="Add sample row"
+        aria-label={`Add sample row to ${inputName}`}
+        className="flex items-center gap-1 p-1 text-[10px] text-gray-400 hover:text-blue-600"
+      >
+        <Plus size={12} />
+        {rows.length === 0 && "sample row"}
+      </button>
+    </div>
+  );
+}
+
+type ListInputEditorProps = ListPropertyNamesProps & {
+  rows: ListFieldValue;
+  onRowsChange: (next: ListFieldValue) => void;
+};
+
+export function ListInputEditor({
+  rows,
+  onRowsChange,
+  ...names
+}: ListInputEditorProps) {
+  return (
+    <div className="pl-16 space-y-2">
+      <ListPropertyNames {...names} />
+      <SampleRows
+        inputName={names.inputName}
+        field={names.field}
+        rows={rows}
+        onRowsChange={onRowsChange}
+      />
+    </div>
+  );
+}
+
+export type SubmissionSample = FormValue | undefined;
+
+export const readSubmissionSamples = (
+  input: VariableSourceInput,
+  field: AnyField | undefined,
+  submissions: readonly SubmissionSample[],
+): SampleReading => {
+  let error: string | undefined;
+  const value = submissions.map((sample, index) => {
+    const reading = readInputSample(input, field, sample);
+    if (reading.error) error ??= `Submission ${index + 1}: ${reading.error}`;
+    return reading.value;
+  });
+  return { value, error };
+};
+
+type SubmissionSamplesProps = {
+  inputName: string;
+  input: VariableSourceInput;
+  field: AnyField | undefined;
+  submissions: readonly SubmissionSample[];
+  onChange: (next: SubmissionSample[]) => void;
+};
+
+/** Sample answers for an input reading another form, one per submission. */
+export function SubmissionSamples({
+  inputName,
+  input,
+  field,
+  submissions,
+  onChange,
+}: SubmissionSamplesProps) {
+  const setSubmission = (index: number, next: SubmissionSample) =>
+    onChange(submissions.map((sample, i) => (i === index ? next : sample)));
+
+  const editor = (index: number, sample: SubmissionSample) => {
+    const label = `${inputName} submission ${index + 1}`;
+    switch (input.kind) {
+      case "sourceField":
+        return (
+          <SampleAnswer
+            inputName={label}
+            field={field}
+            value={sample}
+            error={readSampleAnswer(field, sample).error}
+            onChange={(next) => setSubmission(index, next)}
+          />
+        );
+      case "sourceList":
+        return field?.kind === "list" ? (
+          <SampleRows
+            inputName={label}
+            field={field}
+            rows={sampleRows(sample)}
+            onRowsChange={(rows) => setSubmission(index, rows)}
+          />
+        ) : null;
+      default:
+        throw new Error(`unknown input kind: ${input satisfies never}`);
+    }
+  };
+
+  return (
+    <div className="pl-16 space-y-1">
+      {submissions.map((sample, index) => (
+        <div key={index} className="flex flex-wrap items-start gap-2">
+          <span className="w-20 shrink-0 pt-1.5 text-[10px] text-gray-500">
+            submission {index + 1}
+          </span>
+          {editor(index, sample)}
+          <button
+            type="button"
+            onClick={() => onChange(submissions.filter((_, i) => i !== index))}
+            title="Remove sample submission"
+            aria-label={`Remove sample submission ${index + 1} of ${inputName}`}
+            className="p-1 text-gray-400 hover:text-red-500"
+          >
+            <Trash2 size={12} />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange([...submissions, undefined])}
+        title="Add sample submission"
+        aria-label={`Add sample submission to ${inputName}`}
+        className="flex items-center gap-1 p-1 text-[10px] text-gray-400 hover:text-blue-600"
+      >
+        <Plus size={12} />
+        {submissions.length === 0 && "sample submission"}
+      </button>
     </div>
   );
 }

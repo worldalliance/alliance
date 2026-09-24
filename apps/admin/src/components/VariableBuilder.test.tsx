@@ -1,9 +1,15 @@
 import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
+import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { useState } from "react";
-import { VariableBuilder } from "./VariableBuilder";
+import { Harness, town } from "./VariableBuilder.testHarness";
 
 afterEach(cleanup);
+
+serveApi(
+  routes({
+    "GET /tasks/listForms": () => Response.json([{ id: 1, title: "This one" }]),
+  }),
+);
 
 const people: AnyField = {
   id: "people",
@@ -15,13 +21,6 @@ const people: AnyField = {
     { id: "a", type: "input", kind: "number", label: "Age" },
     { id: "f", type: "input", kind: "file", label: "Photo" },
   ],
-};
-
-const town: AnyField = {
-  id: "town",
-  type: "input",
-  kind: "text",
-  label: "Town",
 };
 
 const schema: FormSchema = {
@@ -38,29 +37,10 @@ const schema: FormSchema = {
   ],
 };
 
-function Harness({
-  initial = schema,
-  onSave,
-}: {
-  initial?: FormSchema;
-  onSave: (schema: FormSchema) => void;
-}) {
-  const [current, setCurrent] = useState(initial);
-  return (
-    <VariableBuilder
-      schema={current}
-      onSchemaChange={(next) => {
-        setCurrent(next);
-        onSave(next);
-      }}
-    />
-  );
-}
-
 describe("VariableBuilder list inputs", () => {
   it("names new sub-fields and previews sample rows like a live form", () => {
     const saved: FormSchema[] = [];
-    render(<Harness onSave={(next) => saved.push(next)} />);
+    render(<Harness initial={schema} onSave={(next) => saved.push(next)} />);
 
     expect(
       screen.getByLabelText<HTMLInputElement>("input1 property name for Name")
@@ -105,7 +85,7 @@ describe("VariableBuilder list inputs", () => {
   });
 
   it("shows the property-name errors validation would report", () => {
-    render(<Harness onSave={() => {}} />);
+    render(<Harness initial={schema} onSave={() => {}} />);
 
     for (const label of ["Name", "Age"]) {
       fireEvent.change(
@@ -209,7 +189,7 @@ describe("VariableBuilder list inputs", () => {
   });
 
   it("flags a sample cell that doesn't read as its kind", () => {
-    render(<Harness onSave={() => {}} />);
+    render(<Harness initial={schema} onSave={() => {}} />);
 
     fireEvent.click(screen.getByLabelText("Add sample row to input1"));
     fireEvent.change(
@@ -223,7 +203,7 @@ describe("VariableBuilder list inputs", () => {
   });
 
   it("builds the help example from a valid property name", () => {
-    render(<Harness onSave={() => {}} />);
+    render(<Harness initial={schema} onSave={() => {}} />);
 
     fireEvent.change(screen.getByLabelText("input1 property name for Name"), {
       target: { value: "" },
