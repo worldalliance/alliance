@@ -5,6 +5,7 @@ import {
   WITHDRAWAL_OPTION_LABELS,
   withdrawalOptionFromFlags,
 } from "@alliance/common/actionActivity";
+import { ExceptionEvent } from "@alliance/common/analytics";
 import {
   cohortExpressionSchema,
   expressionReferencesTag,
@@ -17,8 +18,16 @@ import {
   emptyDisplayOnlySchema,
   type DisplayOnlySchema,
 } from "@alliance/common/forms/display-only-schema";
-import { flattenPageItems } from "@alliance/common/forms/form-schema";
+import { type FormSchema } from "@alliance/common/forms/form-schema";
 import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
+import {
+  collectOutputFieldMap,
+  isMalformedListAnswer,
+  isOutputAnswerShown,
+  redactToOutput,
+  savedOutputAnswers,
+  type OutputAnswer,
+} from "@alliance/common/forms/output-resolution";
 import { echoesStoredKey } from "@alliance/common/image-src";
 import { run } from "@alliance/common/run";
 import { Assert } from "@alliance/common/types";
@@ -61,6 +70,7 @@ import { PreviewNotificationPlanDto } from "src/notifs/dto/notification-plan.dto
 import { LikeNotificationService } from "src/notifs/like-notification.service";
 import { NotificationChannel } from "src/notifs/notif-utils";
 import { NotifsService } from "src/notifs/notifs.service";
+import { PosthogService } from "src/posthog/posthog.service";
 import { actionActivityUrl } from "src/search/approutes";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
@@ -346,6 +356,7 @@ export class ActionsService {
     private readonly actionFormVariantService: ActionFormVariantService,
     private readonly facepileService: FacepileService,
     private readonly formSnapshotService: FormSnapshotService,
+    private readonly posthogService: PosthogService,
   ) {}
 
   async applyAssignedFormIds(
@@ -2122,6 +2133,29 @@ export class ActionsService {
     });
   }
 
+  private outputAnswers(
+    schema: FormSchema,
+    response: ParsedFormResponse,
+  ): OutputAnswer[] {
+    const fieldLookup = collectOutputFieldMap(schema);
+
+    const { visibleAnswers: answers } = savedOutputAnswers({
+      schema,
+      answers: response.answers,
+      validatorResults: response.visibilityValidatorResults,
+      deviceType: response.deviceType,
+    });
+    const publicAnswers = response.publicAnswers ?? {};
+
+    return Object.entries(answers)
+      .map(([key, value]) => ({
+        isPublic: publicAnswers[key],
+        field: fieldLookup.get(key),
+        value,
+      }))
+      .filter((answer) => answer.field?.output?.output === true);
+  }
+
   buildOutputFormResponse(
     activity: ActionActivity,
   ): ParsedFormResponse | undefined {
@@ -2130,45 +2164,57 @@ export class ActionsService {
     }
 
     const schema = formSchemaOf(activity.taskFormResponse.formSnapshot);
-
-    const answerToIsPublic = (
-      answer: string,
-      selections: Record<string, boolean>,
-    ) => {
-      if (selections?.[answer] === false) {
-        return false;
-      }
-      return schema.pages.some((page) =>
-        flattenPageItems(page.fields).some(
-          (field) =>
-            field.id === answer &&
-            "label" in field &&
-            field.output?.output === true,
-        ),
-      );
-    };
-
     const answers = activity.taskFormResponse.answers;
     const publicAnswers = activity.taskFormResponse.publicAnswers ?? {};
-
-    //TODO: for now we dont use pruned so that we can use non-output fields
-    // to evaluate the conditional visibility of output fields - maybe just cache?
-    const answersPrunedObj = Object.fromEntries(
-      Object.entries(answers).filter(([key]) =>
-        answerToIsPublic(key, publicAnswers),
-      ),
-    );
-
-    if (!Object.keys(answersPrunedObj).length) {
-      return undefined;
-    }
-
-    return parseFormResponse(
+    const response = parseFormResponse(
       Object.assign(new FormResponse(), {
         ...activity.taskFormResponse,
         answers,
       }),
     );
+    const outputAnswers = this.outputAnswers(schema, response);
+    const isAnswerShown = outputAnswers.some(isOutputAnswerShown);
+    // A malformed list alone still builds the output, so it gets reported.
+    if (!isAnswerShown && !outputAnswers.some(isMalformedListAnswer)) {
+      return undefined;
+    }
+    const output = redactToOutput({
+      schema,
+      answers: response.answers,
+      validatorResults: response.visibilityValidatorResults,
+      deviceType: response.deviceType,
+      publicAnswers,
+    });
+    for (const fieldId of output.malformedListFieldIds) {
+      const message = `Form response ${response.id}: stored answer for list field ${fieldId} is not a list of rows`;
+      this.logger.error(message);
+      this.posthogService.captureException({
+        event: ExceptionEvent.MalformedListAnswer,
+        error: new Error(message),
+        properties: { formResponseId: response.id, fieldId },
+      });
+    }
+    if (!isAnswerShown) {
+      return undefined;
+    }
+    const [view] = output.schema.outputViews;
+    if (!view?.blocks.length) {
+      return undefined;
+    }
+    return Object.assign(response, {
+      answers: output.answers,
+      // The web and mobile cards, released app builds included, draw the
+      // output only when publicAnswers has an entry. The view id gives it one
+      // when only display blocks show, without naming any answer.
+      publicAnswers: {
+        [view.id]: true,
+        ...Object.fromEntries(
+          Object.keys(output.answers).map((fieldId) => [fieldId, true]),
+        ),
+      },
+      visibilityValidatorResults: {},
+      formSnapshot: { ...response.formSnapshot, schema: output.schema },
+    });
   }
 
   async getActionActivities(
@@ -2197,8 +2243,14 @@ export class ActionsService {
     activities: ActionActivity[];
     requestingUserId?: number;
     comments: boolean;
+    outputs?: Map<number, ParsedFormResponse>;
   }): Promise<ActionActivityDto[]> {
-    const { activities, requestingUserId, comments: includeComments } = params;
+    const {
+      activities,
+      requestingUserId,
+      comments: includeComments,
+      outputs,
+    } = params;
     const activityIds = activities.map((activity) => activity.id);
     const likedIds = requestingUserId
       ? await this.getLikedActivityIds(activityIds, requestingUserId)
@@ -2216,9 +2268,8 @@ export class ActionsService {
       const comments = commentsByActivity?.get(activity.id) ?? [];
       return new ActionActivityDto(activity, {
         comments,
-        formResponseOutput: activity.taskFormResponse
-          ? this.buildOutputFormResponse(activity)
-          : undefined,
+        formResponseOutput:
+          outputs?.get(activity.id) ?? this.buildOutputFormResponse(activity),
         likedByMe: likedIds.has(activity.id),
         requestingUserId,
         facepile: facepiles(activity.id),
@@ -2638,6 +2689,7 @@ export class ActionsService {
 
     const batchSize = limit * 2;
     const contentful: ActionActivity[] = [];
+    const outputs = new Map<number, ParsedFormResponse>();
     let cursor = before;
 
     while (contentful.length < limit && allUserIds.length > 0) {
@@ -2658,8 +2710,10 @@ export class ActionsService {
         if (!visibleIds.has(a.actionId)) {
           continue;
         }
-        if (this.buildOutputFormResponse(a) !== undefined) {
+        const output = this.buildOutputFormResponse(a);
+        if (output) {
           contentful.push(a);
+          outputs.set(a.id, output);
           if (contentful.length >= limit) break;
         }
       }
@@ -2679,6 +2733,7 @@ export class ActionsService {
       activities: contentful,
       requestingUserId: userId,
       comments: !!comments,
+      outputs,
     });
 
     const activityItems = activityDtos.map(

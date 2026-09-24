@@ -4068,7 +4068,13 @@ describe("Actions (e2e)", () => {
           ],
         },
       ],
-      outputViews: [],
+      outputViews: [
+        {
+          id: "view-1",
+          type: "default",
+          blocks: [{ id: "block-published", fieldId: "published" }],
+        },
+      ],
     };
 
     const signedContract = () => [
@@ -4131,6 +4137,7 @@ describe("Actions (e2e)", () => {
             formSnapshotId: snapshot.id,
             user: filler,
             answers: { published: "Shown" },
+            publicAnswers: { published: true },
           }),
         }),
       );
@@ -4332,6 +4339,7 @@ describe("Actions (e2e)", () => {
             formSnapshotId: snapshot.id,
             user: friend,
             answers: { published: "Shown" },
+            publicAnswers: { published: true },
           }),
         }),
       );
@@ -4345,6 +4353,287 @@ describe("Actions (e2e)", () => {
       await formRepo.delete(form.id);
       await userRepo.delete([viewer.id, friend.id]);
     });
+
+    it.each([
+      {
+        output: "no output view",
+        schema: { ...contentfulFormSchema, outputViews: [] },
+        publicAnswers: { published: true },
+      },
+      {
+        output: "no public flag on its only answer",
+        schema: contentfulFormSchema,
+        publicAnswers: {},
+      },
+      {
+        output: "only a display block beside an answer with no public flag",
+        schema: {
+          ...contentfulFormSchema,
+          outputViews: [
+            {
+              id: "view-1",
+              type: "default",
+              blocks: [
+                {
+                  id: "block-header",
+                  type: "display",
+                  kind: "header",
+                  text: "Done",
+                },
+                { id: "block-published", fieldId: "published" },
+              ],
+            },
+          ],
+        },
+        publicAnswers: {},
+      },
+      {
+        output: "only a display block beside a public answer left empty",
+        schema: {
+          ...contentfulFormSchema,
+          outputViews: [
+            {
+              id: "view-1",
+              type: "default",
+              blocks: [
+                {
+                  id: "block-header",
+                  type: "display",
+                  kind: "header",
+                  text: "Done",
+                },
+                { id: "block-published", fieldId: "published" },
+              ],
+            },
+          ],
+        },
+        answers: { published: "" },
+        publicAnswers: { published: true },
+      },
+      {
+        output: "only a display block beside a public list of blank rows",
+        schema: {
+          pages: [
+            {
+              id: "page-1",
+              fields: [
+                {
+                  id: "published",
+                  type: "input",
+                  kind: "list",
+                  label: "Published",
+                  output: { output: true },
+                  fields: [
+                    { id: "name", type: "input", kind: "text", label: "Name" },
+                  ],
+                },
+              ],
+            },
+          ],
+          outputViews: [
+            {
+              id: "view-1",
+              type: "default",
+              blocks: [
+                {
+                  id: "block-header",
+                  type: "display",
+                  kind: "header",
+                  text: "Done",
+                },
+                { id: "block-published", fieldId: "published" },
+              ],
+            },
+          ],
+        },
+        answers: { published: [{ name: "" }] },
+        publicAnswers: { published: true },
+      },
+      {
+        output:
+          "only a display block beside a public list whose filled cells the view hides",
+        schema: {
+          pages: [
+            {
+              id: "page-1",
+              fields: [
+                {
+                  id: "published",
+                  type: "input",
+                  kind: "list",
+                  label: "Published",
+                  output: { output: true },
+                  fields: [
+                    { id: "name", type: "input", kind: "text", label: "Name" },
+                  ],
+                  outputViewHiddenFieldIds: ["name"],
+                },
+              ],
+            },
+          ],
+          outputViews: [
+            {
+              id: "view-1",
+              type: "default",
+              blocks: [
+                {
+                  id: "block-header",
+                  type: "display",
+                  kind: "header",
+                  text: "Done",
+                },
+                { id: "block-published", fieldId: "published" },
+              ],
+            },
+          ],
+        },
+        answers: { published: [{ name: "Shown" }] },
+        publicAnswers: { published: true },
+      },
+      {
+        output:
+          "only a display block beside a public list that isn't a list of rows",
+        schema: {
+          pages: [
+            {
+              id: "page-1",
+              fields: [
+                {
+                  id: "published",
+                  type: "input",
+                  kind: "list",
+                  label: "Published",
+                  output: { output: true },
+                  fields: [
+                    { id: "name", type: "input", kind: "text", label: "Name" },
+                  ],
+                },
+              ],
+            },
+          ],
+          outputViews: [
+            {
+              id: "view-1",
+              type: "default",
+              blocks: [
+                {
+                  id: "block-header",
+                  type: "display",
+                  kind: "header",
+                  text: "Done",
+                },
+                { id: "block-published", fieldId: "published" },
+              ],
+            },
+          ],
+        },
+        answers: { published: "not rows" },
+        publicAnswers: { published: true },
+      },
+      {
+        output: "only a display block beside a public answer the form hides",
+        schema: {
+          pages: [
+            {
+              id: "page-1",
+              fields: [
+                { id: "gate", type: "input", kind: "text", label: "Gate" },
+                {
+                  id: "published",
+                  type: "input",
+                  kind: "text",
+                  label: "Published",
+                  output: { output: true },
+                  visibleIfFormula: {
+                    conditions: {
+                      c1: { kind: "equals", when: "gate", equals: "yes" },
+                    },
+                    formula: "c1",
+                  },
+                },
+              ],
+            },
+          ],
+          outputViews: [
+            {
+              id: "view-1",
+              type: "default",
+              blocks: [
+                {
+                  id: "block-header",
+                  type: "display",
+                  kind: "header",
+                  text: "Done",
+                },
+                { id: "block-published", fieldId: "published" },
+              ],
+            },
+          ],
+        },
+        answers: { gate: "no", published: "Shown" },
+        publicAnswers: { published: true },
+      },
+    ])(
+      "leaves out a friend's completion and its output with $output",
+      async ({ schema, answers, publicAnswers }) => {
+        const viewer = await userService.create({
+          email: `feed-empty-viewer-${Date.now()}@example.com`,
+          password: "Password123!",
+          name: "Feed Empty Viewer",
+          tags: [ctx.defaultTag],
+        });
+        const friend = await userService.create({
+          email: `feed-empty-friend-${Date.now()}@example.com`,
+          password: "Password123!",
+          name: "Feed Empty Friend",
+          tags: [ctx.defaultTag],
+        });
+        await userService.makeFriendsAutomated(viewer.id, friend.id);
+
+        const { action } = await createPublishedAction("Home Feed Empty", {
+          status: ActionStatus.MemberAction,
+        });
+        const { form, snapshot } = await createFormWithSnapshot(
+          ctx.dataSource,
+          {
+            title: "Home Feed Empty Form",
+            schema,
+          },
+        );
+
+        const activity = await activityRepo.save(
+          activityRepo.create({
+            type: ActionActivityType.USER_COMPLETED,
+            actionId: action.id,
+            userId: friend.id,
+            taskFormResponse: formResponseRepo.create({
+              formId: form.id,
+              formSnapshotId: snapshot.id,
+              user: friend,
+              answers: answers ?? { published: "Shown" },
+              publicAnswers,
+            }),
+          }),
+        );
+
+        const feed = await homeFeed(viewer);
+        expect(feed.some((i) => i.activity?.actionName === action.name)).toBe(
+          false,
+        );
+        const page = await request(ctx.app.getHttpServer())
+          .get(`/actions/activities/${activity.id}`)
+          .set(
+            "Authorization",
+            `Bearer ${signAccessToken(ctx.jwtService, viewer)}`,
+          )
+          .expect(200);
+        expect(page.body.formResponseOutput).toBeUndefined();
+
+        await actionRepo.delete(action.id);
+        await formRepo.delete(form.id);
+        await userRepo.delete([viewer.id, friend.id]);
+      },
+    );
 
     it("pickActiveUserIdsForSeed excludes given ids and users without a signed contract", async () => {
       const now = Date.now();

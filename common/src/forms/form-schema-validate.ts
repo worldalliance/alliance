@@ -16,6 +16,7 @@ import {
 import { compileVariableExpression } from "./variable-expression";
 import { checkVariableFormulaType } from "./variable-formula-check";
 import {
+  evaluateVariable,
   isFieldKindReadableByFieldInput,
   isKnownFieldKind,
   listInputPropertyErrors,
@@ -131,6 +132,7 @@ function collectVariableErrors(
   const readableFields = variableInputFieldsById(
     collectVariableInputFields(schema),
   );
+  const unansweredContext = { answers: {}, fields: readableFields };
 
   for (const variable of variables) {
     const blockId = `variable:${variable.name}`;
@@ -146,6 +148,7 @@ function collectVariableErrors(
     }
     declared.add(variable.name);
 
+    const errorCountBeforeInputs = errors.length;
     checkVariableInputs(variable, fieldKinds, push);
 
     const compiled = compileVariableExpression(
@@ -163,6 +166,15 @@ function collectVariableErrors(
     );
     if (!typed.ok) {
       push(`Formula for "${variable.name}": ${typed.error}`);
+      continue;
+    }
+
+    if (errors.length > errorCountBeforeInputs) continue;
+
+    // Past the budget unanswered, it blocks the form for anyone yet to answer.
+    const unanswered = evaluateVariable(variable, unansweredContext);
+    if (!unanswered.ok) {
+      push(`Formula for "${variable.name}": ${unanswered.error}`);
     }
   }
 }

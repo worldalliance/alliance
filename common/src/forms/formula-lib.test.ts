@@ -5,7 +5,7 @@ import {
   type NumberMethodName,
   type StringMethodName,
 } from "./variable-expression";
-import { checkVariableFormulaType } from "./variable-formula-check";
+import { variableFormulaType } from "./variable-formula-check";
 
 const ARRAY_CALLS: Record<ArrayMethodName, string> = {
   map: "list.map(item => item)",
@@ -65,10 +65,8 @@ const ENV: ReadonlyMap<string, string> = new Map([
   ["num", "number"],
 ]);
 
-// Coerce each call to text so these checks cover method availability, not
-// whether its return type can render.
 const accepts = (call: string): string | null => {
-  const checked = checkVariableFormulaType(`'' + (${call})`, ENV);
+  const checked = variableFormulaType(call, ENV);
   return checked.ok ? null : checked.error;
 };
 

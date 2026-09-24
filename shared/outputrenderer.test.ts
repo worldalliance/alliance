@@ -7,7 +7,14 @@ import type {
   NumberField,
   OutputFieldBlock,
 } from "@alliance/common/forms/form-schema";
-import type { Condition } from "@alliance/common/forms/visible-if-formula";
+import {
+  redactToOutput,
+  type ResolveOutputParams,
+} from "@alliance/common/forms/output-resolution";
+import type {
+  Condition,
+  VisibleIfFormula,
+} from "@alliance/common/forms/visible-if-formula";
 import {
   __resetAnalyticsForTests,
   registerAnalytics,
@@ -319,6 +326,118 @@ describe("resolveOutputItems interpolates variables", () => {
     if (item.type !== "display") throw new Error("expected a display item");
     if (item.block.kind !== "text") throw new Error("expected a text block");
     expect(item.block.text).toBe("42 kg");
+  });
+
+  it("leaves no reference behind in any text the view draws", () => {
+    const names: string[] = [];
+    const ref = () => {
+      const name = `v${names.length}`;
+      names.push(name);
+      return `#{${name}}`;
+    };
+    const schema = schemaWithVariable({
+      pages: [
+        {
+          id: "p1",
+          fields: [
+            {
+              ...numberField("qty", ref()),
+              description: ref(),
+            },
+            {
+              id: "memo",
+              type: "input",
+              kind: "text",
+              label: ref(),
+              placeholder: ref(),
+            },
+            {
+              id: "pick",
+              type: "input",
+              kind: "radio",
+              label: ref(),
+              options: [{ value: "a", label: ref() }],
+            },
+            {
+              id: "rows",
+              type: "input",
+              kind: "list",
+              label: ref(),
+              fields: [numberField("weight", ref())],
+            },
+          ],
+        },
+      ],
+      outputViews: [
+        {
+          id: "v1",
+          type: "default",
+          blocks: [
+            { id: "o-qty", fieldId: "qty", showLabel: true },
+            { id: "o-memo", fieldId: "memo" },
+            { id: "o-pick", fieldId: "pick", labelOverride: ref() },
+            { id: "o-rows", fieldId: "rows" },
+            { type: "display", kind: "header", text: ref() },
+            { type: "display", kind: "text", text: ref() },
+            { type: "display", kind: "label", text: ref() },
+            { type: "display", kind: "quote", text: ref(), userName: ref() },
+            { type: "display", kind: "copytext", text: ref(), title: ref() },
+            { type: "display", kind: "biglink", text: ref(), url: "x" },
+            { type: "display", kind: "video", src: "x", caption: ref() },
+            {
+              type: "display",
+              kind: "images",
+              images: [{ src: "x", alt: ref(), caption: ref() }],
+            },
+            {
+              type: "display",
+              kind: "chatTranscript",
+              leftName: ref(),
+              rightName: ref(),
+              messages: [{ side: "left", text: ref() }],
+            },
+            {
+              type: "display",
+              kind: "previousAnswer",
+              sourceFormId: 1,
+              sourceFieldId: "x",
+              title: ref(),
+              emptyText: ref(),
+              showLabel: true,
+            },
+            {
+              type: "display",
+              kind: "userLocation",
+              title: ref(),
+              emptyText: ref(),
+            },
+            {
+              type: "display",
+              kind: "accordion",
+              sections: [
+                {
+                  title: ref(),
+                  blocks: [{ type: "display", kind: "text", text: ref() }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    schema.variables = names.map((name) => ({
+      name,
+      inputs: { input1: { kind: "field", fieldId: "qty" } },
+      formula: "input1 * 2",
+    }));
+    const { items } = resolveOutputItems({
+      schema,
+      answers: { qty: 21, memo: "m", pick: "a", rows: [{ weight: 1 }] },
+      publicAnswers: { qty: true, memo: true, pick: true, rows: true },
+    });
+
+    expect(items).toHaveLength(16);
+    expect(JSON.stringify(items)).not.toContain("#{");
   });
 });
 
@@ -728,6 +847,133 @@ describe("resolveOutputItems and a field on a hidden page", () => {
     });
     expect(items).toEqual([]);
   });
+
+  const blockOnQty = (pageFormula: VisibleIfFormula) =>
+    resolveOutputItems({
+      schema: schemaWithVariable({
+        pages: [
+          {
+            id: "p1",
+            fields: [numberField("qty", "Quantity")],
+            visibleIfFormula: pageFormula,
+          },
+        ],
+        variables: [],
+        outputViews: [
+          {
+            id: "v1",
+            type: "default",
+            blocks: [
+              {
+                id: "ob1",
+                type: "display",
+                kind: "text",
+                text: "Has a quantity",
+                visibleIfFormula: {
+                  conditions: {
+                    c1: { kind: "hasValue", when: "qty", hasValue: true },
+                  },
+                  formula: "c1",
+                },
+              },
+            ],
+          },
+        ],
+      }),
+      answers: { qty: 3 },
+      validatorResults: { 7: false },
+    }).items.map((item) => item.key);
+
+  it("reads a field its page hides as unanswered in a block's condition", () => {
+    expect(
+      blockOnQty({
+        conditions: { c1: { kind: "validator", validatorId: 7 } },
+        formula: "c1",
+      }),
+    ).toEqual([]);
+  });
+
+  it("reads a field in a block's condition when its page could have shown", () => {
+    expect(
+      blockOnQty({
+        conditions: { c1: { kind: "userHasCity", userHasCity: true } },
+        formula: "c1",
+      }),
+    ).toEqual(["ob1"]);
+  });
+
+  it("reads a field its page hides as unanswered in a field block's condition", () => {
+    const { items } = resolveOutputItems({
+      schema: schemaWithVariable({
+        pages: [
+          {
+            id: "p1",
+            fields: [numberField("qty", "Quantity")],
+            visibleIfFormula: {
+              conditions: { c1: { kind: "validator", validatorId: 7 } },
+              formula: "c1",
+            },
+          },
+          { id: "p2", fields: [numberField("price", "Price")] },
+        ],
+        variables: [],
+        outputViews: [
+          {
+            id: "v1",
+            type: "default",
+            blocks: [
+              {
+                id: "ob1",
+                fieldId: "price",
+                visibleIfFormula: {
+                  conditions: {
+                    c1: { kind: "hasValue", when: "qty", hasValue: true },
+                  },
+                  formula: "c1",
+                },
+              },
+            ],
+          },
+        ],
+      }),
+      answers: { qty: 3, price: 5 },
+      publicAnswers: { price: true },
+      validatorResults: { 7: false },
+    });
+    expect(items).toEqual([]);
+  });
+
+  it("reads a field its page hides as unanswered in a variable", () => {
+    const [item] = resolveOutputItems({
+      schema: schemaWithVariable({
+        pages: [
+          {
+            id: "p1",
+            fields: [numberField("qty", "Quantity")],
+            visibleIfFormula: {
+              conditions: { c1: { kind: "validator", validatorId: 7 } },
+              formula: "c1",
+            },
+          },
+        ],
+        outputViews: [
+          {
+            id: "v1",
+            type: "default",
+            blocks: [
+              { id: "ob1", type: "display", kind: "text", text: "#{total} kg" },
+            ],
+          },
+        ],
+      }),
+      answers: { qty: 3 },
+      validatorResults: { 7: false },
+    }).items;
+
+    if (item.type !== "display") throw new Error("expected a display item");
+    if (item.block.kind !== "text") throw new Error("expected a text block");
+    expect(item.block.text).toBe(" kg");
+  });
 });
 
 describe("resolveOutputItems and conditions the response partly replays", () => {
@@ -820,5 +1066,174 @@ describe("resolveOutputItems and conditions the response partly replays", () => 
     );
     if (item.type !== "field") throw new Error("expected a field item");
     expect(item.value).toEqual([{ weight: 2 }]);
+  });
+});
+
+describe("redactToOutput", () => {
+  const gateIs = (value: string) =>
+    ({
+      conditions: { c1: { kind: "equals", when: "gate", equals: value } },
+      formula: "c1",
+    }) as const;
+  const schema: FormSchema = {
+    pages: [
+      {
+        id: "p1",
+        fields: [
+          { id: "gate", type: "input", kind: "text", label: "Gate" },
+          numberField("secret", "Secret"),
+          {
+            ...numberField("shown", "Shown"),
+            visibleIfFormula: gateIs("open"),
+          },
+          {
+            ...numberField("hidden", "Hidden"),
+            visibleIfFormula: gateIs("shut"),
+          },
+          {
+            id: "list",
+            type: "input",
+            kind: "list",
+            label: "Items",
+            fields: [
+              { id: "name", type: "input", kind: "text", label: "Name" },
+              {
+                ...numberField("extra", "Extra"),
+                visibleIfFormula: gateIs("shut"),
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    variables: [
+      {
+        name: "double",
+        inputs: { input1: { kind: "field", fieldId: "secret" } },
+        formula: "input1 * 2",
+      },
+    ],
+    outputViews: [
+      {
+        id: "v1",
+        type: "default",
+        blocks: [
+          {
+            type: "display",
+            kind: "text",
+            text: "Twice: #{double}",
+          },
+          { id: "b-shown", fieldId: "shown" },
+          { id: "b-hidden", fieldId: "hidden" },
+          { id: "b-list", fieldId: "list" },
+          {
+            type: "display",
+            kind: "text",
+            text: "Open",
+            visibleIfFormula: gateIs("open"),
+          },
+        ],
+      },
+    ],
+  };
+  const params = {
+    schema,
+    answers: {
+      gate: "open",
+      secret: 21,
+      shown: 1,
+      hidden: 2,
+      list: [{ name: "Ada", extra: 3 }],
+    },
+    publicAnswers: { shown: true, hidden: true, list: true },
+  };
+  const redacted = redactToOutput(params);
+  const drawn = (resolved: ReturnType<typeof resolveOutputItems>) =>
+    resolved.items.map((item) =>
+      item.type === "display"
+        ? {
+            key: item.key,
+            block: { ...item.block, visibleIfFormula: undefined },
+          }
+        : {
+            key: item.key,
+            label: item.label,
+            value: item.value,
+            formattedValue: item.formattedValue,
+          },
+    );
+
+  it("draws the same items as the whole response", () => {
+    expect(
+      drawn(
+        resolveOutputItems({
+          ...redacted,
+          publicAnswers: params.publicAnswers,
+        }),
+      ),
+    ).toEqual(drawn(resolveOutputItems(params)));
+  });
+
+  it("keeps only the answers the view draws", () => {
+    expect(redacted.answers).toEqual({ shown: 1, list: [{ name: "Ada" }] });
+  });
+
+  it("keeps no condition or variable that could read the rest", () => {
+    const text = JSON.stringify(redacted.schema);
+    expect(text).not.toContain("visibleIfFormula");
+    expect(text).not.toContain("secret");
+    expect(text).not.toContain("gate");
+    expect(redacted.schema.variables).toEqual([]);
+  });
+
+  it("drops the list cells and rows the view hides", () => {
+    const listSchema: FormSchema = {
+      pages: [
+        {
+          id: "p1",
+          fields: [
+            {
+              id: "people",
+              type: "input",
+              kind: "list",
+              label: "People",
+              outputViewHiddenFieldIds: ["phone"],
+              fields: [
+                { id: "name", type: "input", kind: "text", label: "Name" },
+                { id: "phone", type: "input", kind: "text", label: "Phone" },
+              ],
+            },
+          ],
+        },
+      ],
+      outputViews: [
+        {
+          id: "v1",
+          type: "default",
+          blocks: [{ id: "b-people", fieldId: "people" }],
+        },
+      ],
+    };
+    const listParams: ResolveOutputParams = {
+      schema: listSchema,
+      answers: {
+        people: [{ name: "Ada", phone: "555-0100" }, { phone: "555-0101" }],
+      },
+      publicAnswers: { people: true },
+    };
+    const redactedList = redactToOutput(listParams);
+
+    expect(redactedList.answers).toEqual({ people: [{ name: "Ada" }] });
+    expect(JSON.stringify(redactedList)).not.toContain("phone");
+    expect(
+      resolveOutputItems({
+        ...redactedList,
+        publicAnswers: listParams.publicAnswers,
+      }).items.map((item) => item.type === "field" && item.formattedValue),
+    ).toEqual(
+      resolveOutputItems(listParams).items.map(
+        (item) => item.type === "field" && item.formattedValue,
+      ),
+    );
   });
 });

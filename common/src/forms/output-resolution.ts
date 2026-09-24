@@ -17,7 +17,13 @@ import {
   type OutputViewSchema,
 } from "./form-schema";
 import { isOutputValueMissing, outputCardSubFields } from "./output-values";
-import { evaluateVariable } from "./variables";
+import {
+  forEachInterpolatableText,
+  interpolateDisplayBlock,
+  interpolateFieldText,
+  interpolateOutputFieldBlock,
+} from "./variable-interpolation";
+import { collectVariableReferences, evaluateVariable } from "./variables";
 import {
   isElementCurrentlyVisible,
   isVisibleInSavedResponse,
@@ -50,6 +56,31 @@ export const drawnCards = (
     (card) => outputCardSubFields(listField, card).length > 0,
   );
 
+export type OutputAnswer = {
+  isPublic: boolean | undefined;
+  field: AnyField | undefined;
+  value: FormValue | undefined;
+};
+
+export const isOutputAnswerShown = ({
+  isPublic,
+  field,
+  value,
+}: OutputAnswer): boolean =>
+  isPublic === true &&
+  !isOutputValueMissing(value) &&
+  (field?.kind !== "list" || drawnCards(field, value).length > 0);
+
+export const isMalformedListAnswer = ({
+  isPublic,
+  field,
+  value,
+}: OutputAnswer): boolean =>
+  isPublic === true &&
+  !isOutputValueMissing(value) &&
+  field?.kind === "list" &&
+  asCards(value) === null;
+
 export const collectOutputFieldMap = (
   schema: FormSchema,
 ): Map<string, AnyField> => {
@@ -81,25 +112,77 @@ export const resolveOutputView = (
   return views.find((candidate) => candidate.type === "default") ?? views[0];
 };
 
+const blockFieldIds = (blocks: OutputBlock[]): string[] => [
+  ...new Set(
+    blocks.flatMap((block) => ("fieldId" in block ? [block.fieldId] : [])),
+  ),
+];
+
 const isOutputBlockVisible = (
   block: OutputBlock,
   answers: Record<string, FormValue>,
   validatorResults?: VisibilityValidatorResults,
   deviceType?: DeviceVisibilityTarget,
-  inputField?: AnyField,
   outputBlockVisibility?: Map<string, boolean>,
-): boolean => {
-  if (
-    "fieldId" in block &&
-    inputField?.kind === "list" &&
-    drawnCards(inputField, answers[block.fieldId]).length === 0
-  ) {
-    return false;
-  }
-  return isElementCurrentlyVisible(block, answers, {
+): boolean =>
+  isElementCurrentlyVisible(block, answers, {
     ...visibilityContext(validatorResults, deviceType),
     outputBlockVisibility,
   });
+
+export const savedOutputAnswers = ({
+  schema,
+  answers: storedAnswers,
+  validatorResults,
+  deviceType,
+}: Pick<
+  ResolveOutputParams,
+  "schema" | "answers" | "validatorResults" | "deviceType"
+>): {
+  answers: Record<string, FormValue>;
+  visibleAnswers: Record<string, FormValue>;
+} => {
+  const fieldLookup = collectOutputFieldMap(schema);
+  const context = visibilityContext(validatorResults, deviceType);
+  const conditionLookups = {
+    fieldLookup: collectFieldLookup(schema.pages),
+    groupByFieldId: collectGroupByFieldId(schema.pages),
+    pageByFieldId: collectPageByFieldId(schema.pages),
+  };
+  const savedResponse = {
+    deviceType,
+    visibilityValidatorResults: context.visibilityValidatorResults,
+    ...conditionLookups,
+  };
+  // A response stored before the server started stripping them can still hold a
+  // cell under a sub-field its row hides. `visibleAnswers` already drops a
+  // whole field this way.
+  const answers = stripHiddenListCells({
+    pages: schema.pages,
+    answers: storedAnswers,
+    isVisible: (subField, rowData) =>
+      isVisibleInSavedResponse({
+        element: subField,
+        data: rowData,
+        ...savedResponse,
+      }),
+  });
+
+  const visibleAnswers = Object.fromEntries(
+    Object.entries(answers).filter(([fieldId]) => {
+      const field = fieldLookup.get(fieldId);
+      return (
+        !field ||
+        isVisibleInSavedResponse({
+          element: field,
+          data: answers,
+          ...savedResponse,
+        })
+      );
+    }),
+  );
+
+  return { answers, visibleAnswers };
 };
 
 export const resolveOutputBlocks = ({
@@ -125,44 +208,19 @@ export const resolveOutputBlocks = ({
     return null;
   }
 
-  const context = visibilityContext(validatorResults, deviceType);
-  const conditionLookups = {
-    fieldLookup: collectFieldLookup(schema.pages),
-    groupByFieldId: collectGroupByFieldId(schema.pages),
-    pageByFieldId: collectPageByFieldId(schema.pages),
-  };
-  const savedResponse = {
-    deviceType,
-    visibilityValidatorResults: context.visibilityValidatorResults,
-    ...conditionLookups,
-  };
-  // A response stored before the server started stripping them can still hold a
-  // cell under a sub-field its row hides. `isAnswerShown` already
-  // re-checks a whole field this way.
-  const answers = stripHiddenListCells({
-    pages: schema.pages,
+  const { answers, visibleAnswers } = savedOutputAnswers({
+    schema,
     answers: storedAnswers,
-    isVisible: (subField, rowData) =>
-      isVisibleInSavedResponse({
-        element: subField,
-        data: rowData,
-        ...savedResponse,
-      }),
+    validatorResults,
+    deviceType,
   });
 
-  const isAnswerShown = (fieldId: string): boolean => {
-    const field = fieldLookup.get(fieldId);
-    return (
-      publicAnswers?.[fieldId] === true &&
-      !isOutputValueMissing(answers[fieldId]) &&
-      (!field ||
-        isVisibleInSavedResponse({
-          element: field,
-          data: answers,
-          ...savedResponse,
-        }))
-    );
-  };
+  const isAnswerShown = (fieldId: string): boolean =>
+    isOutputAnswerShown({
+      isPublic: publicAnswers?.[fieldId],
+      field: fieldLookup.get(fieldId),
+      value: visibleAnswers[fieldId],
+    });
 
   const allBlocks = selectedView.blocks ?? [];
 
@@ -181,10 +239,9 @@ export const resolveOutputBlocks = ({
     if ("kind" in block) {
       return isOutputBlockVisible(
         block,
-        answers,
+        visibleAnswers,
         validatorResults,
         deviceType,
-        undefined,
         outputBlockVisibility,
       );
     }
@@ -192,10 +249,9 @@ export const resolveOutputBlocks = ({
       isAnswerShown(block.fieldId) &&
       isOutputBlockVisible(
         block,
-        answers,
+        visibleAnswers,
         validatorResults,
         deviceType,
-        fieldLookup.get(block.fieldId),
         outputBlockVisibility,
       )
     );
@@ -226,22 +282,41 @@ export const resolveOutputBlocks = ({
 
   for (const block of allBlocks) computeVisibility(block);
 
-  const variableContext = {
-    answers,
-    fields: variableInputFieldsById(collectVariableResolutionFields(schema)),
-  };
-  // A variable that fails stays out, so its `#{name}` shows as written.
-  const variableValues = new Map<string, string>();
-  for (const variable of schema.variables ?? []) {
-    const value = evaluateVariable(variable, variableContext);
-    if (value.ok) variableValues.set(variable.name, value.value);
-  }
-
   const visibleBlocks = allBlocks.filter((block) =>
     block.id
       ? (outputBlockVisibility.get(block.id) ?? false)
       : evaluateBlockVisibility(block),
   );
+
+  const referenced = new Set<string>();
+  forEachInterpolatableText(
+    {
+      pages: [
+        {
+          id: "output",
+          fields: blockFieldIds(visibleBlocks).flatMap((fieldId) => {
+            const field = fieldLookup.get(fieldId);
+            return field ? [field] : [];
+          }),
+        },
+      ],
+      outputViews: [{ ...selectedView, blocks: visibleBlocks }],
+    },
+    (text) => {
+      for (const name of collectVariableReferences(text)) referenced.add(name);
+    },
+  );
+  const variableContext = {
+    answers: visibleAnswers,
+    fields: variableInputFieldsById(collectVariableResolutionFields(schema)),
+  };
+  // A variable that fails stays out, so its `#{name}` shows as written.
+  const variableValues = new Map<string, string>();
+  for (const variable of schema.variables ?? []) {
+    if (!referenced.has(variable.name)) continue;
+    const value = evaluateVariable(variable, variableContext);
+    if (value.ok) variableValues.set(variable.name, value.value);
+  }
 
   return {
     selectedView,
@@ -249,17 +324,97 @@ export const resolveOutputBlocks = ({
     answers,
     visibleBlocks,
     variableValues,
-    malformedListFieldIds: [
-      ...new Set(
-        allBlocks.flatMap((block) =>
-          "fieldId" in block ? [block.fieldId] : [],
-        ),
-      ),
-    ].filter(
-      (fieldId) =>
-        fieldLookup.get(fieldId)?.kind === "list" &&
-        asCards(answers[fieldId]) === null &&
-        isAnswerShown(fieldId),
+    malformedListFieldIds: blockFieldIds(allBlocks).filter((fieldId) =>
+      isMalformedListAnswer({
+        isPublic: publicAnswers?.[fieldId],
+        field: fieldLookup.get(fieldId),
+        value: visibleAnswers[fieldId],
+      }),
     ),
+  };
+};
+
+const drawnField = (field: AnyField): AnyField => {
+  const bare = { ...field, visibleIfFormula: undefined };
+  if (bare.kind !== "list") return bare;
+  const hiddenInOutputIds = new Set(bare.outputViewHiddenFieldIds ?? []);
+  return {
+    ...bare,
+    outputViewHiddenFieldIds: undefined,
+    fields: bare.fields
+      .filter((sub) => !hiddenInOutputIds.has(sub.id))
+      .map((sub) => ({ ...sub, visibleIfFormula: undefined })),
+  };
+};
+
+const drawnAnswer = (
+  field: AnyField | undefined,
+  value: FormValue,
+): FormValue =>
+  field?.kind === "list"
+    ? drawnCards(field, value).map((card) =>
+        Object.fromEntries(
+          outputCardSubFields(field, card).map((sub) => [sub.id, card[sub.id]]),
+        ),
+      )
+    : value;
+
+/**
+ * A saved response cut down to what its output view shows, for a viewer who
+ * mustn't read the rest of it: the view's visible blocks, the fields they draw
+ * and those fields' answers, with variables already filled in and no
+ * visibility conditions left to evaluate. Resolving it gives the items the
+ * whole response would.
+ */
+export const redactToOutput = (
+  params: ResolveOutputParams,
+): {
+  schema: FormSchema;
+  answers: Record<string, FormValue>;
+  malformedListFieldIds: string[];
+} => {
+  const resolved = resolveOutputBlocks(params);
+  if (!resolved) {
+    return {
+      schema: { pages: [], outputViews: [] },
+      answers: {},
+      malformedListFieldIds: [],
+    };
+  }
+  const {
+    selectedView,
+    fieldLookup,
+    answers,
+    visibleBlocks,
+    variableValues,
+    malformedListFieldIds,
+  } = resolved;
+  const blocks = visibleBlocks.map((block) => ({
+    ...("kind" in block
+      ? interpolateDisplayBlock(block, variableValues)
+      : interpolateOutputFieldBlock(block, variableValues)),
+    visibleIfFormula: undefined,
+  }));
+  const fieldIds = blockFieldIds(visibleBlocks);
+  const fields = fieldIds.flatMap((fieldId) => {
+    const field = fieldLookup.get(fieldId);
+    return field
+      ? [drawnField(interpolateFieldText(field, variableValues))]
+      : [];
+  });
+  return {
+    schema: {
+      pages: [{ id: "output", fields }],
+      outputViews: [{ ...selectedView, blocks }],
+      variables: [],
+    },
+    answers: Object.fromEntries(
+      fieldIds.flatMap((fieldId) =>
+        fieldId in answers
+          ? [[fieldId, drawnAnswer(fieldLookup.get(fieldId), answers[fieldId])]]
+          : [],
+      ),
+    ),
+    malformedListFieldIds,
   };
 };

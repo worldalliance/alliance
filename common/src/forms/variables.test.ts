@@ -415,6 +415,17 @@ describe("evaluateVariable", () => {
     });
   });
 
+  it("counts turning the result into text against the step budget", () => {
+    const doublings = JSON.stringify(Array.from({ length: 26 }, (_, i) => i));
+    const v = variable({
+      formula: `${doublings}.reduce((a, b) => ({ v: [a.v, a.v] }), { v: [1] }).v`,
+    });
+    expect(evaluate(v, {})).toEqual({
+      ok: false,
+      error: "The formula takes too long to work out.",
+    });
+  });
+
   it("writes out the choices behind a multi-select answer", () => {
     const v = variable({
       inputs: { input1: { kind: "field", fieldId: "pick" } },
@@ -1118,6 +1129,77 @@ describe("validateFormSchema: variables", () => {
     });
     expect(errors).toHaveLength(1);
     expect(errors[0]).toContain("not available");
+  });
+
+  it("rejects a formula that runs too long with every input unanswered", () => {
+    expect(
+      errorsFor({
+        pages: [page("p1", [numberField("qty")])],
+        variables: [
+          variable({
+            formula:
+              "'x'.repeat(10000).split('').filter(a => 'y'.repeat(10000).split('').includes(a)).length",
+          }),
+        ],
+      }),
+    ).toEqual(['Formula for "total": The formula takes too long to work out.']);
+  });
+
+  it("accepts a formula that runs too long only on long answers", () => {
+    expect(
+      errorsFor({
+        pages: [page("p1", [textField("qty")])],
+        variables: [
+          variable({
+            formula:
+              "input1.split('').filter(a => input1.split('').includes(a)).length",
+          }),
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  describe("an unanswered list reads as empty", () => {
+    const tooLong =
+      "'x'.repeat(10000).split('').filter(a => 'y'.repeat(10000).split('').includes(a)).length";
+    const errorsForListFormula = (formula: string) =>
+      errorsFor({
+        pages: [
+          page("p1", [
+            {
+              id: "people",
+              type: "input",
+              kind: "list",
+              label: "People",
+              fields: [textField("n")],
+            } satisfies ListField,
+          ]),
+        ],
+        variables: [
+          variable({
+            inputs: {
+              input1: {
+                kind: "list",
+                fieldId: "people",
+                properties: { n: "name" },
+              },
+            },
+            formula,
+          }),
+        ],
+      });
+
+    it("rejects a formula that runs too long on an empty list", () => {
+      expect(
+        errorsForListFormula(`input1.length === 0 ? ${tooLong} : 0`),
+      ).toEqual([
+        'Formula for "total": The formula takes too long to work out.',
+      ]);
+    });
+
+    it("accepts a formula that runs too long only on a missing list", () => {
+      expect(errorsForListFormula(`input1.length ?? ${tooLong}`)).toEqual([]);
+    });
   });
 
   it("rejects an input pointing at a missing field", () => {

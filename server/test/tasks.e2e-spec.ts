@@ -1,4 +1,5 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { ExceptionEvent } from "@alliance/common/analytics";
 import { devPorts, PortCaller } from "@alliance/common/dev-ports";
 import {
   FORM_DRAFT_MAX_ANSWER_BYTES,
@@ -26,6 +27,7 @@ import {
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { Post } from "src/forum/entities/post.entity";
 import { MmsService } from "src/mms/mms.service";
+import { PosthogService } from "src/posthog/posthog.service";
 import { CustomValidatorTypeDto } from "src/tasks/customvalidator.dto";
 import {
   CustomValidator,
@@ -694,46 +696,18 @@ describe("Tasks (e2e)", () => {
     ).toBe(1000);
   });
 
-  it("hides privateByDefault output fields in public output while keeping normal output fields visible", async () => {
-    const outputSchema: FormSchema = {
-      pages: [
-        {
-          id: "page-1",
-          fields: [
-            {
-              id: "private-output",
-              type: "input",
-              kind: "text",
-              label: "Private output",
-              required: true,
-              output: {
-                output: true,
-                privateByDefault: true,
-              },
-            },
-            {
-              id: "public-output",
-              type: "input",
-              kind: "text",
-              label: "Public output",
-              required: true,
-              output: {
-                output: true,
-              },
-            },
-            {
-              id: "non-output",
-              type: "input",
-              kind: "text",
-              label: "Non output",
-            },
-          ],
-        },
-      ],
-      outputViews: [],
-      aggregateViews: [],
+  const completedActivityOutput = async ({
+    schema,
+    submission,
+    afterSubmit,
+  }: {
+    schema: FormSchema;
+    submission: {
+      answers: Record<string, unknown>;
+      publicAnswers: Record<string, boolean>;
     };
-
+    afterSubmit?: () => Promise<void>;
+  }) => {
     const action = await actionRepo.save(
       actionRepo.create({
         name: "Output Visibility Action",
@@ -770,7 +744,7 @@ describe("Tasks (e2e)", () => {
       .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .send({
         title: "Output Visibility",
-        schema: outputSchema,
+        schema,
       })
       .expect(201);
 
@@ -781,20 +755,14 @@ describe("Tasks (e2e)", () => {
       .post(`/tasks/submitForm/${createdFormId}`)
       .set("Authorization", `Bearer ${ctx.accessToken}`)
       .send({
-        answers: {
-          "private-output": "should-be-hidden-by-default",
-          "public-output": "should-be-visible-by-default",
-          "non-output": "not-an-output-field",
-        },
+        ...submission,
         formSnapshotId: createFormResponse.body.formSnapshotId as number,
         actionId: action.id,
-        publicAnswers: {
-          "private-output": false,
-          "public-output": true,
-        },
         deviceType: "desktop" as const,
       })
       .expect(201);
+
+    await afterSubmit?.();
 
     const activitiesResponse = await request(ctx.app.getHttpServer())
       .get(`/actions/${action.id}/activities`)
@@ -815,26 +783,229 @@ describe("Tasks (e2e)", () => {
       | undefined;
 
     expect(completionActivity).toBeDefined();
-    expect(completionActivity?.formResponseOutput).toBeDefined();
+    return completionActivity?.formResponseOutput;
+  };
 
-    const publicAnswers = completionActivity?.formResponseOutput?.publicAnswers;
-    const answers = completionActivity?.formResponseOutput?.answers ?? {};
-    expect(publicAnswers?.["private-output"]).toBe(false);
-    expect(publicAnswers?.["public-output"]).toBe(true);
+  it("sends an activity only the answers its output view shows", async () => {
+    const outputSchema: FormSchema = {
+      pages: [
+        {
+          id: "page-1",
+          fields: [
+            {
+              id: "private-output",
+              type: "input",
+              kind: "text",
+              label: "Private output",
+              required: true,
+              output: {
+                output: true,
+                privateByDefault: true,
+              },
+            },
+            {
+              id: "public-output",
+              type: "input",
+              kind: "text",
+              label: "Public output",
+              required: true,
+              output: {
+                output: true,
+              },
+            },
+            {
+              id: "non-output",
+              type: "input",
+              kind: "text",
+              label: "Non output",
+            },
+          ],
+        },
+      ],
+      outputViews: [
+        {
+          id: "view-1",
+          type: "default",
+          blocks: [
+            { id: "block-private", fieldId: "private-output" },
+            {
+              id: "block-public",
+              fieldId: "public-output",
+              visibleIfFormula: {
+                conditions: {
+                  c1: {
+                    kind: "equals",
+                    when: "non-output",
+                    equals: "not-an-output-field",
+                  },
+                },
+                formula: "c1",
+              },
+            },
+          ],
+        },
+      ],
+      aggregateViews: [],
+    };
 
-    const outputFieldIds = new Set(["private-output", "public-output"]);
-    const publicOutputAnswers = Object.fromEntries(
-      Object.entries(answers).filter(([fieldId]) => {
-        if (!outputFieldIds.has(fieldId)) {
-          return false;
-        }
-        return publicAnswers?.[fieldId] !== false;
-      }),
-    );
-
-    expect(publicOutputAnswers).toEqual({
+    const output = await completedActivityOutput({
+      schema: outputSchema,
+      submission: {
+        answers: {
+          "private-output": "should-be-hidden-by-default",
+          "public-output": "should-be-visible-by-default",
+          "non-output": "not-an-output-field",
+        },
+        publicAnswers: {
+          "private-output": false,
+          "public-output": true,
+        },
+      },
+    });
+    expect(output?.publicAnswers).toEqual({
+      "view-1": true,
+      "public-output": true,
+    });
+    expect(output?.answers).toEqual({
       "public-output": "should-be-visible-by-default",
     });
+    const payload = JSON.stringify(output);
+    expect(payload).not.toContain("should-be-hidden-by-default");
+    expect(payload).not.toContain("not-an-output-field");
+  });
+
+  const displayOnlySchema = (textVisibleIf?: string): FormSchema => ({
+    pages: [
+      {
+        id: "page-1",
+        fields: [
+          {
+            id: "published",
+            type: "input",
+            kind: "text",
+            label: "Published",
+            output: { output: true },
+          },
+          { id: "score", type: "input", kind: "number", label: "Score" },
+        ],
+      },
+    ],
+    variables: [
+      {
+        name: "total",
+        inputs: { input1: { kind: "field", fieldId: "score" } },
+        formula: "input1",
+      },
+    ],
+    outputViews: [
+      {
+        id: "view-1",
+        type: "default",
+        blocks: [
+          {
+            id: "block-text",
+            type: "display",
+            kind: "text",
+            text: "You scored #{total}",
+            ...(textVisibleIf && {
+              visibleIfFormula: {
+                conditions: {
+                  c1: {
+                    kind: "equals",
+                    when: "published",
+                    equals: textVisibleIf,
+                  },
+                },
+                formula: "c1",
+              },
+            }),
+          },
+        ],
+      },
+    ],
+    aggregateViews: [],
+  });
+
+  it("sends an output whose view shows only display blocks", async () => {
+    const output = await completedActivityOutput({
+      schema: displayOnlySchema(),
+      submission: {
+        answers: { published: "Ada", score: 7 },
+        publicAnswers: { published: true },
+      },
+    });
+
+    expect(output?.answers).toEqual({});
+    expect(output?.publicAnswers).toEqual({ "view-1": true });
+    expect(JSON.stringify(output)).toContain("You scored 7");
+  });
+
+  it("sends no output when its view shows nothing", async () => {
+    const output = await completedActivityOutput({
+      schema: displayOnlySchema("never"),
+      submission: {
+        answers: { published: "Ada", score: 7 },
+        publicAnswers: { published: true },
+      },
+    });
+
+    expect(output).toBeUndefined();
+  });
+
+  it("reports a stored list answer that isn't a list of rows", async () => {
+    const captureException = jest.spyOn(
+      ctx.app.get(PosthogService),
+      "captureException",
+    );
+    const listSchema: FormSchema = {
+      pages: [
+        {
+          id: "page-1",
+          fields: [
+            {
+              id: "items",
+              type: "input",
+              kind: "list",
+              label: "Items",
+              output: { output: true },
+              fields: [
+                { id: "name", type: "input", kind: "text", label: "Name" },
+              ],
+            },
+          ],
+        },
+      ],
+      outputViews: [
+        {
+          id: "view-1",
+          type: "default",
+          blocks: [{ id: "block-items", fieldId: "items" }],
+        },
+      ],
+      aggregateViews: [],
+    };
+
+    const output = await completedActivityOutput({
+      schema: listSchema,
+      submission: {
+        answers: { items: [{ name: "Ada" }] },
+        publicAnswers: { items: true },
+      },
+      afterSubmit: async () => {
+        await ctx.dataSource.query(
+          "UPDATE form_response SET answers = $1 WHERE id = (SELECT max(id) FROM form_response)",
+          [JSON.stringify({ items: "not rows" })],
+        );
+      },
+    });
+
+    expect(output).toBeUndefined();
+    expect(captureException).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: ExceptionEvent.MalformedListAnswer,
+        properties: expect.objectContaining({ fieldId: "items" }),
+      }),
+    );
   });
 
   describe("Form drafts", () => {

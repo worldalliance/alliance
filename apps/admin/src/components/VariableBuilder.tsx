@@ -13,15 +13,14 @@ import {
 } from "@alliance/common/forms/form-schema";
 import {
   compileVariableExpression,
-  evaluateVariableExpression,
   type ExprRecord,
   type ExprValue,
 } from "@alliance/common/forms/variable-expression";
 import { checkVariableFormulaType } from "@alliance/common/forms/variable-formula-check";
 import { collectUnresolvedVariableReferences } from "@alliance/common/forms/variable-interpolation";
 import {
+  evaluateVariableText,
   FIELD_KIND_VARIABLE_INPUT_MODE,
-  formatVariableValue,
   formValueToExprValue,
   listInputPropertyErrors,
   readableListSubFields,
@@ -37,7 +36,6 @@ import {
   type VariableInput,
   type VariableListInput,
 } from "@alliance/common/forms/variables";
-import { R } from "@alliance/common/result";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { milliseconds } from "date-fns";
@@ -529,12 +527,6 @@ function VariableCard({
     return checkVariableFormulaType(variable.formula, inputTypes);
   }, [compiled, variable.formula, inputTypes]);
 
-  const formulaError = compiled.ok
-    ? typed.ok
-      ? null
-      : typed.error
-    : compiled.error;
-
   const nameError = useMemo(() => {
     if (!VARIABLE_NAME_REGEX.test(variable.name)) {
       return "Name can't be empty.";
@@ -566,13 +558,16 @@ function VariableCard({
     const values = new Map<string, ExprValue>(
       [...readings].map(([name, reading]) => [name, reading.value]),
     );
-    // Evaluated during render, unlike the live form's, so a formula that throws
-    // has to end as an empty preview rather than as a blank screen.
-    const value = R.fromThrowable(() =>
-      evaluateVariableExpression(compiled.value, values),
-    );
-    return value.ok ? formatVariableValue(value.value) : "";
+    return evaluateVariableText(compiled.value, values);
   }, [compiled, typed, readings]);
+
+  const formulaError = compiled.ok
+    ? typed.ok
+      ? preview?.ok === false
+        ? preview.error
+        : null
+      : typed.error
+    : compiled.error;
 
   const helpInputs = useMemo<FormulaHelpInput[]>(
     () =>
@@ -860,7 +855,10 @@ function VariableCard({
         )}
         {formulaError === null && typed.ok ? (
           <p className="text-xs text-gray-500">
-            Result: <span className="font-mono">{preview || "—"}</span>{" "}
+            Result:{" "}
+            <span className="font-mono">
+              {(preview?.ok && preview.value) || "—"}
+            </span>{" "}
             <span className="text-gray-400">&middot; {typed.value}</span>
           </p>
         ) : (

@@ -1,13 +1,22 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
-// Formulas use JavaScript coercion and comparison rules inside a closed,
-// non-throwing evaluator. Missing inputs propagate as `undefined`, member
-// access on `undefined` is safe, and only the globals, properties, methods, and
-// AST node kinds explicitly listed below are reachable.
+// Formulas use JavaScript coercion and comparison rules inside a closed
+// evaluator that throws past its step budget and where a native coercion
+// fails. Missing inputs propagate as `undefined`, member access on `undefined`
+// is safe, and only the globals, properties, methods, and AST node kinds
+// explicitly listed below are reachable.
 
 import arrowPlugin, { type ArrowExpression } from "@jsep-plugin/arrow";
 import objectPlugin, { type ObjectExpression } from "@jsep-plugin/object";
 import jsep from "jsep";
 import { R, type Result } from "../result";
+import {
+  EvaluationTooLong,
+  sizeOf,
+  spendOnNested,
+  spendOnReceiver,
+  spendSteps,
+  withStepBudget,
+} from "./formula-step-budget";
 
 jsep.plugins.register(arrowPlugin, objectPlugin);
 
@@ -592,15 +601,21 @@ export function exprValueToText(value: ExprValue): string | undefined {
 }
 
 function joinValues(values: readonly ExprValue[], separator: string): string {
-  return values.map((value) => exprValueToText(value) ?? "").join(separator);
+  spendSteps(values.length);
+  return values
+    .map((value) => {
+      spendSteps(sizeOf(value));
+      return exprValueToText(value) ?? "";
+    })
+    .join(separator);
 }
 
 function concatText(left: ExprValue, right: ExprValue): ExprValue {
   const leftText = exprValueToText(left);
   const rightText = exprValueToText(right);
-  return leftText === undefined || rightText === undefined
-    ? undefined
-    : leftText + rightText;
+  if (leftText === undefined || rightText === undefined) return undefined;
+  spendSteps(leftText.length + rightText.length);
+  return leftText + rightText;
 }
 
 function toPrimitive(
@@ -616,6 +631,7 @@ function toNumber(value: ExprValue): number {
   const primitive = toPrimitive(value);
   if (typeof primitive === "number") return primitive;
   if (typeof primitive === "boolean") return primitive ? 1 : 0;
+  spendSteps(primitive.length);
   return Number(primitive);
 }
 
@@ -710,10 +726,35 @@ const KNOWN_METHODS: ReadonlySet<string> = new Set([
 // pure.
 const REWRITES_ITS_LIST: ReadonlySet<string> = new Set(["sort", "reverse"]);
 
-function toNativeArgument(value: ExprValue): unknown {
-  return value instanceof ExprLambda
-    ? (...args: ExprValue[]) => value.call(args)
-    : value;
+// These turn a list their callback returns into text, or copy it. The others
+// only store it, pass it on, or test whether it is truthy.
+const READS_RETURNED_LIST: ReadonlySet<string> = new Set([
+  "sort",
+  "replace",
+  "replaceAll",
+  "flatMap",
+]);
+
+function toNativeArgument(value: ExprValue, method: string): unknown {
+  const native: unknown = value;
+  // A callback wrapped for one method can come back out of it, as the value
+  // `reduce` starts from does, and still has to pay here.
+  const call =
+    value instanceof ExprLambda
+      ? (args: ExprValue[]) => value.call(args)
+      : typeof native === "function"
+        ? (args: ExprValue[]): ExprValue =>
+            Reflect.apply(native, undefined, args)
+        : undefined;
+  if (call === undefined) return value;
+  if (!READS_RETURNED_LIST.has(method)) {
+    return (...args: ExprValue[]) => call(args);
+  }
+  return (...args: ExprValue[]) => {
+    const result = call(args);
+    if (isExprArray(result)) spendOnNested(result);
+    return result;
+  };
 }
 
 // Cap each step because chained calls can allocate the limit repeatedly.
@@ -742,10 +783,21 @@ function callMethod(
 
   const receiver =
     isExprArray(target) && REWRITES_ITS_LIST.has(method) ? [...target] : target;
+  spendOnReceiver(target, method);
+  // Native methods turn list arguments into text wherever they read text.
+  args.forEach(spendOnNested);
   const called = R.fromThrowable(() =>
-    native.apply(receiver, args.map(toNativeArgument)),
+    native.apply(
+      receiver,
+      args.map((argument) => toNativeArgument(argument, method)),
+    ),
   );
-  if (!called.ok || !withinBounds(called.value)) return undefined;
+  if (!called.ok) {
+    if (called.error instanceof EvaluationTooLong) throw called.error;
+    return undefined;
+  }
+  if (!withinBounds(called.value)) return undefined;
+  spendSteps(sizeOf(called.value));
   // Allowlisted methods return ExprValue-compatible values. A callback passed
   // to a non-callback parameter may return as a native function, which the
   // evaluator treats like ExprLambda: it has no text or readable properties.
@@ -755,7 +807,7 @@ function callMethod(
 // Match canonical JavaScript indexes: "1" is an index, while "01", " 1", and
 // "1.0" are property names.
 function arrayIndex(key: ExprValue, length: number): number | undefined {
-  const index = typeof key === "string" ? Number(key) : key;
+  const index = typeof key === "string" ? toNumber(key) : key;
   if (typeof index !== "number" || !Number.isInteger(index)) return undefined;
   if (typeof key === "string" && String(index) !== key) return undefined;
   return index >= 0 && index < length ? index : undefined;
@@ -791,8 +843,29 @@ function readMember(target: ExprValue, key: ExprValue): ExprValue {
  * Evaluates a compiled formula. Arithmetic and relational operators propagate
  * unanswered inputs as `undefined`; equality still compares them, and `??`
  * supplies a default. `NaN` and `Infinity` are left to the display layer.
+ * Throws once it runs past its step budget, and where a native coercion fails,
+ * as `({ toString: 1 }) == 'x'` does.
  */
 export function evaluateVariableExpression(
+  node: ExprNode,
+  inputs: ReadonlyMap<string, ExprValue>,
+): ExprValue {
+  return withStepBudget(() => {
+    spendSteps(1);
+    return evaluateNode(node, inputs);
+  });
+}
+
+// `==` may turn a list compared with anything but a list into text.
+function looseEquals(left: ExprValue, right: ExprValue): boolean {
+  if (isExprArray(left) !== isExprArray(right)) {
+    spendOnNested(left);
+    spendOnNested(right);
+  }
+  return left == right;
+}
+
+function evaluateNode(
   node: ExprNode,
   inputs: ReadonlyMap<string, ExprValue>,
 ): ExprValue {
@@ -933,11 +1006,11 @@ function evaluateBinary(
   // blank.
   switch (op) {
     case BinaryOp.Equal:
-      return left == right;
+      return looseEquals(left, right);
     case BinaryOp.StrictEqual:
       return left === right;
     case BinaryOp.NotEqual:
-      return left != right;
+      return !looseEquals(left, right);
     case BinaryOp.StrictNotEqual:
       return left !== right;
     default:
