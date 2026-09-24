@@ -1,7 +1,9 @@
 name: PR screenshots
-run-name: "PR screenshots · #${{ inputs.pr }} · ${{ inputs.platform }}"
+run-name: "PR screenshots · #${{ (inputs.pr || '201') }} · ${{ (inputs.platform || 'ios') }}"
 
 on:
+  push:
+    branches: [codex/pr-screenshots-sample]
   workflow_dispatch:
     inputs:
       pr:
@@ -28,7 +30,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pr-screenshots-${{ inputs.pr }}-${{ inputs.platform }}
+  group: pr-screenshots-${{ (inputs.pr || '201') }}-${{ (inputs.platform || 'ios') }}
   cancel-in-progress: false
 
 jobs:
@@ -46,8 +48,8 @@ jobs:
       - uses: actions/github-script@v8
         id: request
         env:
-          PR_NUMBER: ${{ inputs.pr }}
-          EXPECTED_HEAD: ${{ inputs.head_sha }}
+          PR_NUMBER: ${{ (inputs.pr || '201') }}
+          EXPECTED_HEAD: ${{ (inputs.head_sha || github.sha) }}
           RERUN_ACTOR: ${{ github.triggering_actor }}
         with:
           script: |
@@ -56,7 +58,7 @@ jobs:
 
   capture:
     needs: resolve
-    runs-on: ${{ inputs.platform == 'ios' && 'macos-26' || 'ubuntu-24.04' }}
+    runs-on: ${{ (inputs.platform || 'ios') == 'ios' && 'macos-26' || 'ubuntu-24.04' }}
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
@@ -85,15 +87,15 @@ jobs:
       - name: Prepare device and host tools
         timeout-minutes: 15
         env:
-          NATIVE_PLATFORM: ${{ inputs.platform }}
+          NATIVE_PLATFORM: ${{ (inputs.platform || 'ios') }}
         run: bash controller/.github/scripts/pr-screenshots-setup.sh
       - name: Write capture context
         env:
           PR_NUMBER: ${{ needs.resolve.outputs.pr }}
           BASE_SHA: ${{ needs.resolve.outputs.base }}
           HEAD_SHA: ${{ needs.resolve.outputs.head }}
-          NATIVE_PLATFORM: ${{ inputs.platform }}
-          CAPTURE_FOCUS: ${{ inputs.focus }}
+          NATIVE_PLATFORM: ${{ (inputs.platform || 'ios') }}
+          CAPTURE_FOCUS: ${{ inputs.focus || 'Exercise the synthetic dropdown fixture on the native iOS simulator. Capture the launcher and open searchable picker before and after, choosing your own interactions. Search and select an option to verify the flow.' }}
         run: |
           mkdir -p .scratch/pr-screenshots/evidence
           jq -n '{pr: env.PR_NUMBER, base: env.BASE_SHA, head: env.HEAD_SHA, platform: env.NATIVE_PLATFORM, focus: env.CAPTURE_FOCUS}' > .scratch/pr-screenshots/context.json
@@ -117,7 +119,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pr-screenshots-${{ inputs.platform }}
+          name: pr-screenshots-${{ (inputs.platform || 'ios') }}
           path: .scratch/pr-screenshots/evidence/
           if-no-files-found: error
           retention-days: 14
@@ -135,7 +137,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          name: pr-screenshots-${{ inputs.platform }}
+          name: pr-screenshots-${{ (inputs.platform || 'ios') }}
           path: .scratch/pr-screenshots/evidence
       - name: Install GitHub CLI with attachment support
         run: |
@@ -151,7 +153,7 @@ jobs:
           PR_NUMBER: ${{ needs.resolve.outputs.pr }}
           BASE_SHA: ${{ needs.resolve.outputs.base }}
           HEAD_SHA: ${{ needs.resolve.outputs.head }}
-          NATIVE_PLATFORM: ${{ inputs.platform }}
+          NATIVE_PLATFORM: ${{ (inputs.platform || 'ios') }}
           GH_TOKEN: ${{ github.token }}
         with:
           script: |
