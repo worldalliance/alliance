@@ -141,12 +141,15 @@ type BaseLabel = {
   searchTerms: string[];
   searchText: string;
 };
-let cachedLabels: BaseLabel[] | null = null;
+const cachedLabels: BaseLabel[] = [];
+let warming: number | null = null;
 
 export function resetTimeZoneCaches(): void {
   resetFormatterCache();
-  cachedLabels = null;
+  cachedLabels.length = 0;
   cachedBase = null;
+  if (warming !== null) cancelIdleCallback(warming);
+  warming = null;
 }
 
 const WORD_CHAR = /[\p{L}\p{N}]/u;
@@ -199,25 +202,62 @@ function namesMoreThan({
 //
 // It stays searchable where Intl's name displaces it: Intl calls Asia/Kolkata
 // "India Standard Time", which answers nobody searching for Sri Lanka.
+function labelFor({
+  tz,
+  label,
+  searchTerms: curated = [],
+}: TzOption): BaseLabel {
+  const generic = getGenericLabelFromIntl(tz);
+  const city = prettyCityFromIana(tz);
+  const left = `${generic ?? label} — ${city}`;
+  const searchTerms = [...curated, ...aliasesOf(tz)];
+  const searchable = [left, ...(generic ? [label] : []), ...searchTerms, tz];
+  return {
+    tz,
+    labelLeft: left,
+    labelSub: generic && namesMoreThan({ label, shown: left }) ? label : null,
+    searchTerms,
+    searchText: fold(searchable.join(" ")),
+  };
+}
+
+const allLabelled = () => cachedLabels.length === TZ_OPTIONS.length;
+
+function labelNext(): TzOption {
+  const option = TZ_OPTIONS[cachedLabels.length];
+  cachedLabels.push(labelFor(option));
+  return option;
+}
+
 function getBaseLabels(): BaseLabel[] {
-  if (cachedLabels) return cachedLabels;
-
-  cachedLabels = TZ_OPTIONS.map(({ tz, label, searchTerms: curated = [] }) => {
-    const generic = getGenericLabelFromIntl(tz);
-    const city = prettyCityFromIana(tz);
-    const left = `${generic ?? label} — ${city}`;
-    const searchTerms = [...curated, ...aliasesOf(tz)];
-    const searchable = [left, ...(generic ? [label] : []), ...searchTerms, tz];
-    return {
-      tz,
-      labelLeft: left,
-      labelSub: generic && namesMoreThan({ label, shown: left }) ? label : null,
-      searchTerms,
-      searchText: fold(searchable.join(" ")),
-    };
-  });
-
+  while (!allLabelled()) labelNext();
   return cachedLabels;
+}
+
+// Building every zone's formatters is slow on Android's Hermes, so a
+// mounted picker builds them a zone at a time while the runtime is idle, and
+// an open finds them cached.
+function warmWhileIdle(hour12: boolean): void {
+  if (typeof requestIdleCallback !== "function") return;
+  if (warming !== null || allLabelled()) return;
+  const step = (deadline: IdleDeadline) => {
+    const now = new Date();
+    while (!allLabelled()) {
+      const { tz } = labelNext();
+      getOffsetMinutes(tz, now);
+      formatTimeInTz(tz, hour12, now);
+      if (deadline.timeRemaining() <= 0) break;
+    }
+    warming = allLabelled() ? null : requestIdleCallback(step);
+  };
+  warming = requestIdleCallback(step);
+}
+
+const OPTION_BY_TZ = new Map(TZ_OPTIONS.map((option) => [option.tz, option]));
+
+function selectedLabel(tz: string): BaseLabel | null {
+  const option = OPTION_BY_TZ.get(tz);
+  return option ? labelFor(option) : null;
 }
 
 type BaseItem = Omit<TimeZoneSelectItem, "timeLabel">;
@@ -297,30 +337,41 @@ export function useTimeZoneSelect({
     if (value != null) setInternalValue(value);
   }, [value]);
 
-  const base = useMemo(() => baseItems(minute), [minute]);
+  // The closed trigger shows only the selected zone, so mounting a page of
+  // pickers labels no other zone until the runtime is idle. The list stays
+  // once built, since the mobile modal keeps showing it as it fades out, but
+  // refreshes only while open.
+  const [listedMinute, setListedMinute] = useState<number | null>(null);
+  if (open && listedMinute !== minute) setListedMinute(minute);
+
+  useEffect(() => warmWhileIdle(hour12), [hour12]);
 
   const items = useMemo<TimeZoneSelectItem[]>(() => {
-    const when = minuteStart(minute);
-    return base.map((item) => ({
+    if (listedMinute === null) return [];
+    const when = minuteStart(listedMinute);
+    return baseItems(listedMinute).map((item) => ({
       ...item,
       timeLabel: formatTimeInTz(item.tz, hour12, when),
     }));
-  }, [base, hour12, minute]);
+  }, [listedMinute, hour12]);
+
+  const label = useMemo(() => selectedLabel(internalValue), [internalValue]);
 
   const selected = useMemo<TimeZoneSelectItem>(() => {
     const when = minuteStart(minute);
-    return (
-      items.find((i) => i.tz === internalValue) ?? {
-        tz: internalValue,
-        labelLeft: internalValue,
-        labelSub: null,
-        searchTerms: [],
-        searchText: fold(internalValue),
-        offsetMins: getOffsetMinutes(internalValue, when),
-        timeLabel: formatTimeInTz(internalValue, hour12, when),
-      }
-    );
-  }, [items, internalValue, hour12, minute]);
+    const offsetMins = getOffsetMinutes(internalValue, when);
+    const item: BaseItem = label
+      ? { ...label, offsetMins }
+      : {
+          tz: internalValue,
+          labelLeft: internalValue,
+          labelSub: null,
+          searchTerms: [],
+          searchText: fold(internalValue),
+          offsetMins,
+        };
+    return { ...item, timeLabel: formatTimeInTz(item.tz, hour12, when) };
+  }, [label, internalValue, hour12, minute]);
 
   const filtered = useMemo(() => {
     const q = fold(query.trim());

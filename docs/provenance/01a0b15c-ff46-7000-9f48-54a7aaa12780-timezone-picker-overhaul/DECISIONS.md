@@ -42,6 +42,20 @@ sections below this one carry the reasoning each step implements.
    the trailing edge. Sorted by offset, then location. A saved or detected
    identifier the runtime resolves but neither the catalog nor its aliases
    carry gets a row of its own, labeled from `Intl` and the identifier.
+   Landed ahead of the catalog rows, on the curated ones:
+   A closed picker labels only its selected zone and builds the list the first
+   time it opens, since every picker on a screen otherwise labels all ~420
+   zones at mount, about 5 times the work of the 51 curated rows. The list
+   stays once built, since the mobile modal shows it through its fade-out,
+   and refreshes its clocks only while open, since otherwise every picker
+   opened once relabels all ~420 zones each minute.
+   Building every zone's formatters on open took 1.9 to 2.2 s in an Android
+   release build on the emulator and about 135 ms in a debug build on the iOS
+   simulator, so a mounted picker builds them in `requestIdleCallback` a zone
+   at a time, and the open then took 117 to 145 ms and 12 to 21 ms. The
+   warm-up is shared by every picker and takes about as long as the cold
+   build did, so an open before it ends finishes the rest itself. A runtime
+   without `requestIdleCallback` builds on open as before.
 5. **Search.** Match city, country, identifier, generic name, and alias, folding
    case and accents. Exact city and country matches rank first, then prefix
    matches, then other word matches.

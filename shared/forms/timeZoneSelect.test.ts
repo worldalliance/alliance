@@ -9,6 +9,7 @@ import {
   TZ_OPTIONS,
   resetTimeZoneCaches,
   useTimeZoneSelect,
+  type UseTimeZoneSelectParams,
 } from "./timeZoneSelect";
 
 beforeEach(() => {
@@ -327,8 +328,14 @@ const resolvingTo = (
     body,
   );
 
+function renderOpen(params: UseTimeZoneSelectParams = {}) {
+  const hook = renderHook(() => useTimeZoneSelect(params));
+  act(() => hook.result.current.setOpen(true));
+  return hook;
+}
+
 const labelIn = (tz: string) => {
-  const { result } = renderHook(() => useTimeZoneSelect({}));
+  const { result } = renderOpen();
   return result.current.items.find((i) => i.tz === tz)?.labelLeft;
 };
 
@@ -351,7 +358,7 @@ describe("a zone Intl rejects", () => {
   it("keeps its row, with no clock rather than no zone", () => {
     TZ_OPTIONS.push({ group: "Asia", label: "Nowhere", tz: "Not/AZone" });
     try {
-      const { result } = renderHook(() => useTimeZoneSelect({}));
+      const { result } = renderOpen();
 
       expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
       expect(
@@ -365,7 +372,7 @@ describe("a zone Intl rejects", () => {
   it("sorts after every zone that has an offset", () => {
     TZ_OPTIONS.push({ group: "Asia", label: "Nowhere", tz: "Not/AZone" });
     try {
-      const { result } = renderHook(() => useTimeZoneSelect({}));
+      const { result } = renderOpen();
       const offsets = result.current.items.map(({ offsetMins }) => offsetMins);
       const firstMissing = offsets.indexOf(null);
 
@@ -396,7 +403,7 @@ describe("a runtime that rejects every zone", () => {
       tz: "Not/AZone",
     });
     try {
-      const { result } = renderHook(() => useTimeZoneSelect({}));
+      const { result } = renderOpen();
 
       expect(result.current.items).toEqual([
         {
@@ -423,7 +430,7 @@ describe("a runtime that rejects every zone", () => {
       { group: "Asia", label: "Alpha", tz: "Not/CZone" },
     );
     try {
-      const { result } = renderHook(() => useTimeZoneSelect({}));
+      const { result } = renderOpen();
 
       expect(result.current.items.map(({ tz }) => tz)).toEqual([
         "Not/CZone",
@@ -436,10 +443,136 @@ describe("a runtime that rejects every zone", () => {
   });
 });
 
+describe("a picker nobody has opened", () => {
+  it("builds no list", () => {
+    const { result } = renderHook(() => useTimeZoneSelect({}));
+
+    expect(result.current.items).toEqual([]);
+  });
+
+  it("still labels the zone on its trigger", () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(Date.UTC(2026, 0, 15, 12)));
+    const { result } = renderHook(() =>
+      useTimeZoneSelect({ value: "Asia/Kolkata" }),
+    );
+
+    expect(result.current.selected).toMatchObject({
+      tz: "Asia/Kolkata",
+      labelLeft: "India Standard Time — Kolkata",
+      labelSub: "India, Sri Lanka Time",
+    });
+  });
+
+  it("keeps its list once the picker closes", () => {
+    const { result } = renderOpen();
+
+    act(() => result.current.setOpen(false));
+
+    expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
+  });
+});
+
+describe("a picker mounted on a runtime with idle time", () => {
+  let pending: IdleRequestCallback | null;
+  let requested: number;
+
+  beforeEach(() => {
+    pending = null;
+    requested = 0;
+    globalThis.requestIdleCallback = (callback) => {
+      pending = callback;
+      return ++requested;
+    };
+    globalThis.cancelIdleCallback = () => {
+      pending = null;
+    };
+  });
+  afterEach(() => {
+    resetTimeZoneCaches();
+    Reflect.deleteProperty(globalThis, "requestIdleCallback");
+    Reflect.deleteProperty(globalThis, "cancelIdleCallback");
+  });
+
+  const runIdle = ({ steps, msEach }: { steps: number; msEach: number }) => {
+    for (let run = 0; run < steps; run++) {
+      const callback = pending;
+      pending = null;
+      callback?.({ didTimeout: false, timeRemaining: () => msEach });
+    }
+  };
+
+  const countingFormatters = (body: (built: () => number) => void) => {
+    const real = Intl.DateTimeFormat;
+    let built = 0;
+    standingInFor(
+      (locales, options) => {
+        built++;
+        return new real(locales, options);
+      },
+      () => body(() => built),
+    );
+  };
+
+  it("builds no formatter on open once the runtime has been idle", () => {
+    countingFormatters((built) => {
+      const { result } = renderHook(() => useTimeZoneSelect({}));
+      runIdle({ steps: 1, msEach: Infinity });
+      const beforeOpen = built();
+
+      act(() => result.current.setOpen(true));
+
+      expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
+      expect(built()).toBe(beforeOpen);
+    });
+  });
+
+  it("hands the runtime back after a zone once its idle time runs out", () => {
+    countingFormatters((built) => {
+      // The trigger has already built the selected zone's formatters.
+      renderHook(() => useTimeZoneSelect({ value: "Pacific/Kiritimati" }));
+      const atMount = built();
+
+      runIdle({ steps: 1, msEach: 0 });
+
+      expect(built() - atMount).toBe(3);
+      expect(pending).not.toBeNull();
+    });
+  });
+
+  it("lists the rows a cold open would when opened part way through", () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(Date.UTC(2026, 0, 15, 12)));
+    const cold = renderOpen().result.current.items;
+    resetTimeZoneCaches();
+
+    const { result } = renderHook(() => useTimeZoneSelect({}));
+    runIdle({ steps: Math.floor(TZ_OPTIONS.length / 2), msEach: 0 });
+    act(() => result.current.setOpen(true));
+
+    expect(result.current.items).toEqual(cold);
+  });
+
+  it("stops warming once an open has labelled every zone", () => {
+    const { result } = renderHook(() => useTimeZoneSelect({}));
+    runIdle({ steps: 1, msEach: 0 });
+    act(() => result.current.setOpen(true));
+
+    expect(() => runIdle({ steps: 1, msEach: 0 })).not.toThrow();
+    expect(pending).toBeNull();
+  });
+
+  it("warms once however many pickers a screen mounts", () => {
+    [1, 2, 3].map(() => renderHook(() => useTimeZoneSelect({})));
+
+    expect(requested).toBe(1);
+  });
+});
+
 describe("a runtime that formats without writing parts", () => {
   it("keeps the clocks it can format and gives up the offsets", () => {
     writingNoParts(() => {
-      const { result } = renderHook(() => useTimeZoneSelect({}));
+      const { result } = renderOpen();
 
       const row = result.current.items.find(
         ({ tz }) => tz === "America/New_York",
@@ -454,7 +587,7 @@ describe("a runtime that formats without writing parts", () => {
     writingPartsNoOneCanWalk(() => {
       expect(getOffsetMinutes("America/New_York")).toBeNull();
 
-      const { result } = renderHook(() => useTimeZoneSelect({}));
+      const { result } = renderOpen();
 
       expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
       expect(
@@ -470,7 +603,7 @@ describe("a runtime that formats without writing parts", () => {
 describe("a runtime that refuses at the read rather than at the constructor", () => {
   it("keeps its rows, with a curated name and no clock or offset", () => {
     refusingAtRead(new RangeError("no data"), () => {
-      const { result } = renderHook(() => useTimeZoneSelect({}));
+      const { result } = renderOpen();
 
       expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
       expect(
@@ -497,7 +630,7 @@ describe("a runtime refusing with something other than a RangeError", () => {
         throw new TypeError("not the error the spec names");
       },
       () => {
-        const { result } = renderHook(() => useTimeZoneSelect({}));
+        const { result } = renderOpen();
 
         expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
         expect(formatNowTimeInTz("America/New_York")).toBeNull();
@@ -527,7 +660,7 @@ describe("a zone sitting on UTC", () => {
       { group: "Asia", label: "Anywhere", tz: "Not/AZone" },
     );
     try {
-      const { result } = renderHook(() => useTimeZoneSelect({}));
+      const { result } = renderOpen();
       const place = (tz: string) =>
         result.current.items.findIndex((i) => i.tz === tz);
 
@@ -610,14 +743,27 @@ describe("the clock beside a zone", () => {
     );
   });
 
-  it("refreshes the list on a picker nobody has opened", () => {
+  it("leaves the list alone on a picker opened once and closed", () => {
     jest.useFakeTimers();
-    const { result } = renderHook(() => useTimeZoneSelect({}));
-    const atMount = result.current.items.at(0)?.timeLabel;
+    const { result } = renderOpen();
+    act(() => result.current.setOpen(false));
+    const atClose = result.current.items;
 
     act(() => jest.advanceTimersByTime(millisecondsInMinute));
 
-    expect(result.current.items.at(0)?.timeLabel).not.toBe(atMount);
+    expect(result.current.items).toBe(atClose);
+  });
+
+  it("refreshes the list when that picker opens again", () => {
+    jest.useFakeTimers();
+    const { result } = renderOpen();
+    act(() => result.current.setOpen(false));
+    const atClose = result.current.items.at(0)?.timeLabel;
+
+    act(() => jest.advanceTimersByTime(millisecondsInMinute));
+    act(() => result.current.setOpen(true));
+
+    expect(result.current.items.at(0)?.timeLabel).not.toBe(atClose);
   });
 
   it("renders on a server, which has no timer to subscribe to", () => {
@@ -671,7 +817,7 @@ describe("the offset a zone sorts by", () => {
   it("follows one a picker sat mounted through", () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date(Date.UTC(2026, 2, 8, 9, 30)));
-    const { result } = renderHook(() => useTimeZoneSelect({}));
+    const { result } = renderOpen();
 
     jest.setSystemTime(new Date(Date.UTC(2026, 2, 8, 10, 30)));
     act(() => jest.advanceTimersByTime(millisecondsInMinute));
@@ -685,7 +831,7 @@ describe("the offset a zone sorts by", () => {
 
 describe("searching the zone list", () => {
   const zonesMatching = (query: string) => {
-    const { result } = renderHook(() => useTimeZoneSelect({}));
+    const { result } = renderOpen();
     act(() => result.current.setQuery(query));
     return result.current.filtered.map(({ tz }) => tz);
   };
@@ -745,7 +891,7 @@ describe("searching the zone list", () => {
   });
 
   const subMatching = (query: string, tz: string) => {
-    const { result } = renderHook(() => useTimeZoneSelect({}));
+    const { result } = renderOpen();
     act(() => result.current.setQuery(query));
     return result.current.filtered.find((i) => i.tz === tz)?.labelSub;
   };
@@ -778,7 +924,7 @@ describe("searching the zone list", () => {
   });
 
   const labelSubOf = (tz: string) => {
-    const { result } = renderHook(() => useTimeZoneSelect({}));
+    const { result } = renderOpen();
     return result.current.items.find((i) => i.tz === tz)?.labelSub;
   };
 
@@ -800,7 +946,7 @@ describe("searching the zone list", () => {
   // The sweep folds as the search does, or a row reading "Türkiye" would pass a
   // sweep looking for "Turkey".
   it("carries nothing any row already says", () => {
-    const { result } = renderHook(() => useTimeZoneSelect({}));
+    const { result } = renderOpen();
 
     const saidTwice: string[] = [];
     for (const { tz, labelLeft, labelSub } of result.current.items) {
@@ -816,7 +962,7 @@ describe("searching the zone list", () => {
   });
 
   it("carries every place its row leaves unnamed", () => {
-    const { result } = renderHook(() => useTimeZoneSelect({}));
+    const { result } = renderOpen();
     const curated = new Map(TZ_OPTIONS.map(({ tz, label }) => [tz, label]));
 
     const leftOut: string[] = [];
@@ -842,7 +988,7 @@ describe("searching the zone list", () => {
 describe("a runtime missing a timeZoneName style", () => {
   it("keeps every clock and every offset when shortOffset is missing", () => {
     rejecting("shortOffset", () => {
-      const { result } = renderHook(() => useTimeZoneSelect({}));
+      const { result } = renderOpen();
 
       expect(
         result.current.items.every(
@@ -854,7 +1000,7 @@ describe("a runtime missing a timeZoneName style", () => {
 
   it("still sorts by offset when shortOffset is missing", () => {
     rejecting("shortOffset", () => {
-      const { result } = renderHook(() => useTimeZoneSelect({}));
+      const { result } = renderOpen();
       const offsets = result.current.items.map(({ offsetMins }) => offsetMins!);
 
       expect(offsets).toEqual([...offsets].sort((a, b) => a - b));
@@ -864,7 +1010,7 @@ describe("a runtime missing a timeZoneName style", () => {
 
   it("falls back to the curated label when longGeneric is missing", () => {
     rejecting("longGeneric", () => {
-      const { result } = renderHook(() => useTimeZoneSelect({}));
+      const { result } = renderOpen();
 
       const row = result.current.items.find(
         ({ tz }) => tz === "America/New_York",
@@ -876,7 +1022,7 @@ describe("a runtime missing a timeZoneName style", () => {
 
   it("names every zone rather than reading one back as a path", () => {
     rejecting("longGeneric", () => {
-      const { result } = renderHook(() => useTimeZoneSelect({}));
+      const { result } = renderOpen();
 
       for (const { labelLeft } of result.current.items) {
         expect(labelLeft).not.toContain("/");
@@ -965,7 +1111,7 @@ describe.each(["japanese", "chinese"])(
 describe("a runtime writing a zone name that is not a string", () => {
   it("keeps its rows rather than throwing at the slice", () => {
     writingTheZoneNameAs(undefined, () => {
-      const { result } = renderHook(() => useTimeZoneSelect({}));
+      const { result } = renderOpen();
 
       expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
       expect(labelIn("Asia/Kolkata")).toBe("India, Sri Lanka Time — Kolkata");
@@ -976,7 +1122,7 @@ describe("a runtime writing a zone name that is not a string", () => {
 describe("a runtime naming its locale as something other than a string", () => {
   it("keeps its rows rather than throwing at the guard", () => {
     namingTheLocale(Symbol("vi"), () => {
-      const { result } = renderHook(() => useTimeZoneSelect({}));
+      const { result } = renderOpen();
 
       expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
       expect(labelIn("Asia/Kolkata")).toBe("India, Sri Lanka Time — Kolkata");
@@ -987,7 +1133,7 @@ describe("a runtime naming its locale as something other than a string", () => {
 describe("a runtime that writes an empty zone name", () => {
   it("falls back to the curated label rather than a bare dash", () => {
     blankingTheZoneName(() => {
-      const { result } = renderHook(() => useTimeZoneSelect({}));
+      const { result } = renderOpen();
 
       const row = result.current.items.find(
         ({ tz }) => tz === "America/New_York",
