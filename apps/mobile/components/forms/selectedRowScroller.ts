@@ -1,48 +1,33 @@
 import type { FlatList } from "react-native";
 
-type List = Pick<FlatList<unknown>, "scrollToIndex" | "scrollToOffset">;
-
-type ScrollToIndexFailure = { index: number; averageItemLength: number };
+type List = Pick<FlatList<unknown>, "scrollToIndex">;
 
 export function createSelectedRowScroller({
   getList,
-  onLanded,
-  nextFrame = requestAnimationFrame,
 }: {
   getList: () => List | null;
-  onLanded: () => void;
-  nextFrame?: (run: () => void) => void;
 }) {
   let pending = false;
-
-  const scroll = (index: number) => {
-    const list = getList();
-    if (!pending || index < 0 || !list) return;
-    pending = false;
-    list.scrollToIndex({ index, viewPosition: 0.5, animated: false });
-    // A failed scroll re-arms pending before scrollToIndex returns.
-    if (!pending) onLanded();
-  };
+  // Without getItemLayout, scrollToIndex throws on a row past the measured
+  // ones, and the list only gets getItemLayout once a row is measured.
+  let measured = false;
 
   return {
     open: () => {
       pending = true;
     },
-    // A retry queued before a search narrowed the rows would carry an index
-    // past the end of them, which scrollToIndex throws on.
+    // Once the member types, the rows are theirs to scroll.
     cancel: () => {
       pending = false;
     },
-    scroll,
-    // Rows vary in height, so a row past the measured ones has no offset yet,
-    // and the list ends at the last measured row: step toward it and retry.
-    failed: ({ index, averageItemLength }: ScrollToIndexFailure) => {
-      pending = true;
-      getList()?.scrollToOffset({
-        offset: averageItemLength * index,
-        animated: false,
-      });
-      nextFrame(() => scroll(index));
+    measured: () => {
+      measured = true;
+    },
+    scroll: (index: number) => {
+      const list = getList();
+      if (!pending || !measured || index < 0 || !list) return;
+      pending = false;
+      list.scrollToIndex({ index, viewPosition: 0.5, animated: false });
     },
   };
 }

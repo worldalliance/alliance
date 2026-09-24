@@ -5,7 +5,7 @@ import {
 } from "@alliance/shared/forms/timeZoneSelect";
 import { cn } from "@alliance/shared/styles/util";
 import { ChevronDown, Clock } from "lucide-react-native";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FlatList, TextInput, TouchableOpacity, View } from "react-native";
 import { getTimeZone } from "react-native-localize";
 import { colors } from "../../lib/style/colors";
@@ -50,14 +50,19 @@ export default function TimeZoneSelect({
     disabled,
   });
   const listRef = useRef<FlatList<TimeZoneSelectItem>>(null);
-  const [reaching, setReaching] = useState(false);
+  // Every row holds one line of each text, so any one laid out gives the
+  // height of all of them, and the list reaches the selected row without
+  // rendering the rows before it.
+  const [rowHeight, setRowHeight] = useState<number | null>(null);
   const [scroller] = useState(() =>
-    createSelectedRowScroller({
-      getList: () => listRef.current,
-      onLanded: () => setReaching(false),
-    }),
+    createSelectedRowScroller({ getList: () => listRef.current }),
   );
   const scrollToSelected = () => scroller.scroll(selectedIndex);
+  useEffect(() => {
+    if (rowHeight === null) return;
+    scroller.measured();
+    scroller.scroll(selectedIndex);
+  }, [rowHeight, scroller, selectedIndex]);
 
   // The trigger has one line under the name, so the label shares it with the
   // clock.
@@ -72,7 +77,6 @@ export default function TimeZoneSelect({
         disabled={disabled}
         onPress={() => {
           scroller.open();
-          setReaching(true);
           setOpen(true);
           // iOS keeps the list mounted through the modal's fade-out, so a
           // reopen before it ends lays out nothing new.
@@ -120,7 +124,6 @@ export default function TimeZoneSelect({
             value={query}
             onChangeText={(q) => {
               scroller.cancel();
-              setReaching(false);
               setQuery(q);
             }}
             placeholder="Search time zones…"
@@ -136,47 +139,56 @@ export default function TimeZoneSelect({
           keyboardShouldPersistTaps="handled"
           style={{ maxHeight: 420 }}
           contentContainerClassName="pb-2"
-          // The list ends at the last row it has measured, so rendering every
-          // row up to the selected one lets the open reach it in one scroll
-          // rather than a screen per retry. The list keeps its first
-          // initialNumToRender rows mounted, so the count drops once the
-          // scroll lands or the member types.
-          initialNumToRender={
-            reaching ? Math.max(10, selectedIndex + 10) : undefined
+          getItemLayout={
+            rowHeight === null
+              ? undefined
+              : (_, index) => ({
+                  length: rowHeight,
+                  offset: rowHeight * index,
+                  index,
+                })
           }
           onLayout={scrollToSelected}
-          onScrollToIndexFailed={scroller.failed}
           ListEmptyComponent={
             <Text className="text-zinc-500 p-3 text-center">No matches</Text>
           }
           renderItem={({ item, index }) => {
             const isSelected = item.tz === selected.tz;
             return (
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => commit(item.tz)}
-                onFocus={() => setActiveIndex(index)}
-                className={cn(
-                  "px-3 py-3 rounded-lg mb-2 border flex-row justify-between",
-                  isSelected
-                    ? "border-green-600 bg-green-50"
-                    : "border-zinc-200 bg-white",
-                )}
+              <View
+                className="pb-2"
+                onLayout={(e) => setRowHeight(e.nativeEvent.layout.height)}
               >
-                <View className="flex-1 pr-3">
-                  <Text className="text-base text-zinc-900">
-                    {item.labelLeft}
-                  </Text>
-                  {item.labelSub ? (
-                    <Text className="text-xs text-zinc-500">
-                      {item.labelSub}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => commit(item.tz)}
+                  onFocus={() => setActiveIndex(index)}
+                  className={cn(
+                    "px-3 py-3 rounded-lg border flex-row justify-between",
+                    isSelected
+                      ? "border-green-600 bg-green-50"
+                      : "border-zinc-200 bg-white",
+                  )}
+                >
+                  <View className="flex-1 pr-3">
+                    {/* The city ends the name and tells apart the zones
+                        sharing one, so the cut falls mid-name. */}
+                    <Text
+                      className="text-base text-zinc-900"
+                      numberOfLines={1}
+                      ellipsizeMode="middle"
+                    >
+                      {item.labelLeft}
                     </Text>
-                  ) : null}
-                </View>
-                <Text className="text-xs text-zinc-600 mt-1 shrink-0">
-                  {item.timeLabel ?? NO_TIME_LABEL}
-                </Text>
-              </TouchableOpacity>
+                    <Text className="text-xs text-zinc-500" numberOfLines={1}>
+                      {item.labelSub ?? " "}
+                    </Text>
+                  </View>
+                  <Text className="text-xs text-zinc-600 mt-1 shrink-0">
+                    {item.timeLabel ?? NO_TIME_LABEL}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             );
           }}
         />

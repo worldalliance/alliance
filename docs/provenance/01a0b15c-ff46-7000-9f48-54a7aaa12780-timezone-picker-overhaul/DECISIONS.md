@@ -59,18 +59,18 @@ sections below this one carry the reasoning each step implements.
    the top, where the search moves the active row.
 8. **Mobile list.** Done. `apps/mobile/components/forms/TimeZoneSelect.tsx`
    swaps its `ScrollView` for a virtualized `FlatList` that opens on the
-   selected row. It scrolls by index rather than by a guessed row height,
-   since a row's height follows its wrapping and the member's font scale.
-   Without `getItemLayout` the list ends at the last row it has measured, so
-   a scroll to a row past them is cut short a screen further down. The list
-   renders every row up to the selected one on open, which lets it get there
-   in one scroll where retries would walk a screen at a time, visibly, across
-   the hundreds of rows a full zone list holds. The list keeps its first
-   `initialNumToRender` rows mounted, so the count drops back once the scroll
-   lands or the member types. A failed scroll still steps toward
-   the row and retries. The scroll runs once per open and is dropped once the
-   member types, since a queued retry's index can outrun the filtered rows
-   and `scrollToIndex` throws on it. Those rules live in
+   selected row. Each row holds one line of name and one under it, cut short
+   with an ellipsis, so every row is the height of any one laid out, whatever
+   the member's font scale. The name is cut mid-way rather than at its end,
+   since the city ends it and is what tells apart the zones sharing a generic
+   name. The list measures every row it lays out, so a font scale changed
+   while the picker stays mounted updates the height, and passes
+   `getItemLayout`, so it scrolls straight to the selected row by index.
+   Rendering every row up to the selected one instead, as it did before, means
+   around 400 rows at once over the catalog's rows for a member east of
+   Europe. The scroll waits for that measurement, since without
+   `getItemLayout` `scrollToIndex` throws on an unmeasured row, runs once per
+   open, and is dropped once the member types. Those rules live in
    `selectedRowScroller.ts` so they can be tested without a renderer.
    `FormModal` takes `scrollable={false}` so the list is not nested in its
    `ScrollView`.
