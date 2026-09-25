@@ -5,11 +5,12 @@ import {
 } from "@alliance/shared/forms/timeZoneSelect";
 import { deviceTimeZone } from "@alliance/shared/lib/timeZone";
 import { cn } from "@alliance/shared/styles/util";
+import { Combobox } from "@base-ui/react/combobox";
 import { Check, MonitorSmartphone } from "lucide-react";
-import type React from "react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import Spinner from "../ui/Spinner";
 import { zIndex } from "../ui/zIndex";
+import { itemClassName, listClassName, popupClassName } from "./optionPicker";
 
 type Props = {
   labelId?: string;
@@ -35,10 +36,6 @@ function ZoneLabel({ zoneName, city }: TimeZoneSelectItem) {
   );
 }
 
-function scrollToRow(list: HTMLElement | null, index: number) {
-  list?.children[index]?.scrollIntoView({ block: "nearest" });
-}
-
 export default function TimeZoneSelectPretty({
   labelId,
   value,
@@ -54,16 +51,12 @@ export default function TimeZoneSelectPretty({
   const {
     filtered,
     selected,
-    selectedIndex,
     deviceTz,
     query,
     setQuery,
-    activeIndex,
-    setActiveIndex,
     commit,
     open,
     setOpen,
-    loading,
   } = useTimeZoneSelect({
     value,
     defaultValue,
@@ -72,12 +65,27 @@ export default function TimeZoneSelectPretty({
     disabled,
     deviceTimeZone: detected,
   });
-  const listRef = useRef<HTMLDivElement>(null);
+
+  // Base UI finds the selected row, to highlight and scroll to on open, only
+  // while closed, and the rows are built on the first open and wait for the
+  // warm-up, so it opens a commit after they arrive.
+  const [listed, setListed] = useState(false);
+  useLayoutEffect(
+    () => setListed((was) => open && (was || filtered.length > 0)),
+    [open, filtered.length],
+  );
+  // Base UI counts itself closed until then, so the trigger cancels the open.
+  // A mouse press acts on mousedown, a keyboard press on a click of detail 0.
+  const waiting = open && !listed;
+  const cancelWaiting = (e: { preventBaseUIHandler: () => void }) => {
+    setOpen(false);
+    e.preventBaseUIHandler();
+  };
 
   // WebKit sends a mousemove at the same coordinates when the list or page
   // scrolls under a still pointer, and can report a real move with no
   // movementX. The baseline is wherever the pointer last was on the page, and
-  // the capture listener runs before React's row handlers read the result.
+  // the capture listener runs before the rows' handlers read the result.
   const pointerMoved = useRef(false);
   useEffect(() => {
     let last: { x: number; y: number } | null = null;
@@ -91,154 +99,113 @@ export default function TimeZoneSelectPretty({
       document.removeEventListener("mousemove", onMove, { capture: true });
   }, []);
 
-  const moveTo = (index: number) => {
-    setActiveIndex(index);
-    scrollToRow(listRef.current, index);
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    if (query || selectedIndex < 0) {
-      listRef.current?.scrollTo({ top: 0 });
-      return;
-    }
-    scrollToRow(listRef.current, selectedIndex);
-  }, [open, query, selectedIndex]);
-
-  function onTriggerKeyDown(e: React.KeyboardEvent) {
-    if (disabled) return;
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      setOpen((v) => !v);
-    }
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setOpen(true);
-    }
-  }
-
-  function onListKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      setOpen(false);
-      return;
-    }
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      moveTo(Math.min(activeIndex + 1, filtered.length - 1));
-      return;
-    }
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      moveTo(Math.max(activeIndex - 1, 0));
-      return;
-    }
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const item = filtered[activeIndex];
-      if (item) commit(item.tz);
-      return;
-    }
-  }
-
   return (
     <div className={className ?? ""}>
-      <div className="relative max-w-[700px]">
-        <button
-          aria-labelledby={labelId ? `${labelId} ${valueId}` : undefined}
-          type="button"
+      <div className="max-w-[700px]">
+        <Combobox.Root<TimeZoneSelectItem>
+          items={filtered}
+          filteredItems={filtered}
+          value={selected}
+          isItemEqualToValue={(item, other) => item.tz === other.tz}
+          onValueChange={(item) => {
+            if (item) commit(item.tz);
+          }}
+          open={open && listed}
+          onOpenChange={setOpen}
+          inputValue={query}
+          onInputValueChange={(next, details) => {
+            if (details.reason !== "input-clear") setQuery(next);
+          }}
+          autoHighlight
           disabled={disabled}
-          onClick={() => !disabled && setOpen((v) => !v)}
-          onKeyDown={onTriggerKeyDown}
-          className={[
-            "w-full rounded border border-zinc-300 bg-white px-3 py-3 text-left",
-            "hover:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300",
-            "disabled:opacity-50 disabled:cursor-not-allowed",
-          ].join(" ")}
         >
-          <div id={valueId} className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              {selected.labelLeft ? (
-                <ZoneLabel {...selected} />
-              ) : (
-                <div className="truncate text-zinc-900">{placeholder}</div>
-              )}
-              {selected.labelSub && (
-                <div className="truncate text-[13px] text-zinc-500">
-                  {selected.labelSub}
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="text-sm">
-                {selected.timeLabel ?? NO_TIME_LABEL}
-              </div>
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 20 20"
-                className="opacity-70"
-              >
-                <path
-                  d="M5.5 7.5L10 12l4.5-4.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-          </div>
-        </button>
-
-        {open && !disabled && (
-          <div
-            className={cn(
-              zIndex.popover,
-              "absolute w-full rounded border border-zinc-200 bg-white shadow-lg overflow-hidden",
-            )}
-            onKeyDown={onListKeyDown}
+          <Combobox.Trigger
+            aria-labelledby={labelId ? `${labelId} ${valueId}` : valueId}
+            onMouseDown={(e) => {
+              if (waiting) cancelWaiting(e);
+            }}
+            onClick={(e) => {
+              if (waiting && e.detail === 0) cancelWaiting(e);
+            }}
+            onKeyDown={(e) => {
+              if (waiting && e.key === "Escape") cancelWaiting(e);
+            }}
+            onBlur={(e) => {
+              if (waiting) cancelWaiting(e);
+            }}
+            className={[
+              "w-full rounded border border-zinc-300 bg-white px-3 py-3 text-left",
+              "hover:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300",
+              "disabled:opacity-50 disabled:cursor-not-allowed",
+            ].join(" ")}
           >
-            <div className="p-2 border-b border-zinc-100">
-              <input
-                autoFocus
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search time zones…"
-                className="w-full rounded-lg px-3 py-2 focus:outline-none"
-              />
-            </div>
-
-            <div ref={listRef} className="max-h-[320px] overflow-auto">
-              {loading ? (
-                <div className="p-3 flex justify-center">
-                  <Spinner size="small" />
+            <div
+              id={valueId}
+              className="flex items-center justify-between gap-3"
+            >
+              <div className="min-w-0">
+                {selected.labelLeft ? (
+                  <ZoneLabel {...selected} />
+                ) : (
+                  <div className="truncate text-zinc-900">{placeholder}</div>
+                )}
+                {selected.labelSub && (
+                  <div className="truncate text-[13px] text-zinc-500">
+                    {selected.labelSub}
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="text-sm">
+                  {selected.timeLabel ?? NO_TIME_LABEL}
                 </div>
-              ) : filtered.length === 0 ? (
-                <div className="p-3 text-zinc-500">No matches</div>
-              ) : (
-                filtered.map((item, idx) => {
-                  const isActive = idx === activeIndex;
-                  const isSelected = item.tz === selected.tz;
-                  const time = item.timeLabel ?? NO_TIME_LABEL;
-
-                  return (
-                    <button
+                {waiting ? (
+                  <Spinner size="small" />
+                ) : (
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 20 20"
+                    className="opacity-70"
+                  >
+                    <path
+                      d="M5.5 7.5L10 12l4.5-4.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </div>
+            </div>
+          </Combobox.Trigger>
+          <Combobox.Portal>
+            <Combobox.Positioner sideOffset={4} className={zIndex.popover}>
+              <Combobox.Popup className={popupClassName}>
+                <div className="p-2 border-b border-zinc-100">
+                  <Combobox.Input
+                    aria-label="Search time zones"
+                    placeholder="Search time zones…"
+                    className="w-full rounded-lg px-3 py-2 focus:outline-none"
+                  />
+                </div>
+                <Combobox.Empty className="p-3 text-zinc-500 empty:p-0">
+                  No matches
+                </Combobox.Empty>
+                <Combobox.List className={listClassName}>
+                  {(item: TimeZoneSelectItem) => (
+                    <Combobox.Item
                       key={item.tz}
-                      type="button"
-                      onMouseMove={() => {
-                        if (pointerMoved.current) setActiveIndex(idx);
+                      value={item}
+                      onMouseMove={(e) => {
+                        if (!pointerMoved.current) e.preventBaseUIHandler();
                       }}
-                      onClick={() => commit(item.tz)}
-                      className={[
-                        "w-full px-3 py-3 text-left",
-                        "flex items-center justify-between gap-3",
-                        isActive ? "bg-zinc-100" : "bg-white",
-                        selected.tz === item.tz
-                          ? "!bg-green/10 text-white"
-                          : "",
-                      ].join(" ")}
+                      className={cn(
+                        itemClassName,
+                        "gap-3 py-3 data-selected:bg-green/10!",
+                      )}
                     >
                       <div className="min-w-0">
                         <ZoneLabel {...item} />
@@ -258,34 +225,23 @@ export default function TimeZoneSelectPretty({
                           </MonitorSmartphone>
                         )}
                         <div className="text-[14px] tabular-nums text-zinc-800">
-                          {time}
+                          {item.timeLabel ?? NO_TIME_LABEL}
                         </div>
-                        {isSelected && (
+                        <Combobox.ItemIndicator>
                           <Check
                             className="w-4 h-4 text-green"
                             strokeWidth={3}
                           />
-                        )}
+                        </Combobox.ItemIndicator>
                       </div>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        )}
+                    </Combobox.Item>
+                  )}
+                </Combobox.List>
+              </Combobox.Popup>
+            </Combobox.Positioner>
+          </Combobox.Portal>
+        </Combobox.Root>
       </div>
-
-      {open && (
-        <button
-          type="button"
-          className={cn(zIndex.popoverBackdrop, "fixed inset-0 cursor-default")}
-          onClick={() => setOpen(false)}
-          aria-label="Close"
-          tabIndex={-1}
-          style={{ background: "transparent" }}
-        />
-      )}
     </div>
   );
 }

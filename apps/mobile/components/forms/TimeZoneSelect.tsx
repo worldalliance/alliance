@@ -46,7 +46,6 @@ export default function TimeZoneSelect({
     deviceTz,
     query,
     setQuery,
-    setActiveIndex,
     commit,
     open,
     setOpen,
@@ -174,7 +173,7 @@ export default function TimeZoneSelect({
               <Text className="text-zinc-500 p-3 text-center">No matches</Text>
             )
           }
-          renderItem={({ item, index }) => {
+          renderItem={({ item }) => {
             const isSelected = item.tz === selected.tz;
             return (
               <View
@@ -184,7 +183,6 @@ export default function TimeZoneSelect({
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => commit(item.tz)}
-                  onFocus={() => setActiveIndex(index)}
                   className={cn(
                     "px-3 py-3 rounded-lg border flex-row justify-between",
                     isSelected
