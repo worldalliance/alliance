@@ -131,10 +131,10 @@ Add the decision table with these columns:
 
 - user and action
 - included or excluded
-- reason: launch, signing, prerequisites resolved, backfill, resolved after deadline, or staff correction
+- reason: launch, signing, or resolved after deadline
 - resolution time
 
-A unique constraint on user and action makes retries and concurrent evaluation converge on one row.
+A unique constraint on user and action makes retries and concurrent evaluation converge on one row. The reason enum holds only the values a shipped writer produces; stages 3–5 add backfill, staff correction, and prerequisites resolved alongside their writers.
 
 Add the common resolver. It decides at launch for members ready then, on signing or re-signing inside an open window, and from a catch-up job for missed work. It loads each member's profile once per batch so alternative country branches see the same inputs. It stops issuing ordinary assignments at the enrollment cutoff. It records the processing-failure exception as an exclusion with the resolved-after-deadline reason. It evaluates membership without the tag path's contract term. Draft and future actions get no decisions.
 

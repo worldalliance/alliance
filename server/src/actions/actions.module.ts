@@ -35,6 +35,7 @@ import { ActionsService } from "./actions.service";
 import { ContractReminderWorker } from "./contract-reminder.worker";
 import { ContractSuspenderWorker } from "./contract-suspender.worker";
 import { ActionActivity } from "./entities/action-activity.entity";
+import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import { ActionEvent } from "./entities/action-event.entity";
 import { ActionFormAssignment } from "./entities/action-form-assignment.entity";
 import { ActionFormVariant } from "./entities/action-form-variant.entity";
@@ -58,6 +59,7 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
       User,
       Action,
       ActionActivity,
+      ActionCohortDecision,
       ActionEvent,
       ActionEventNotif,
       ActionFormAssignment,
