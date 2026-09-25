@@ -1,6 +1,9 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { VariableSourceHistory } from "@alliance/common/forms/variable-evaluation";
-import { readSourceHistory } from "@alliance/common/forms/variable-source-history";
+import {
+  EMPTY_HISTORY,
+  readSourceHistory,
+} from "@alliance/common/forms/variable-source-history";
 import { variableHistoryFormIds } from "@alliance/common/forms/variables";
 import { R, type Result } from "@alliance/common/result";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -95,11 +98,6 @@ export function evaluatedSources(histories: SourceHistories): {
       );
   }
 }
-
-const EMPTY_HISTORY: VariableSourceHistory = {
-  fields: new Map(),
-  responses: [],
-};
 
 class SourceFormDeleted extends Error {}
 

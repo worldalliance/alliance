@@ -4,6 +4,12 @@ import { variableInputFieldsById } from "./form-schema";
 import { storedQuestionFields, submittedQuestionFields } from "./stored-schema";
 import type { VariableSourceHistory } from "./variable-evaluation";
 
+/** A form's history for a reader with no submissions to it, like a guest. */
+export const EMPTY_HISTORY: VariableSourceHistory = {
+  fields: new Map(),
+  responses: [],
+};
+
 export type StoredSourceHistory = {
   /** The source form's current schema. */
   schema: unknown;

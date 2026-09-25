@@ -53,6 +53,7 @@ const response = (
   publicAnswers: {},
   schemaSnapshot: { ...schema },
   visibilityValidatorResults: {},
+  formulaChoices: {},
   ...overrides,
 });
 

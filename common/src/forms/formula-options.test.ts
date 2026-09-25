@@ -2,14 +2,26 @@ import { describe, expect, it } from "bun:test";
 import { R } from "../result";
 import {
   formSchema,
+  variableInputFieldsById,
   type AnyField,
   type FormSchema,
+  type FormValue,
   type ListField,
   type MultiSelectField,
   type SelectField,
 } from "./form-schema";
 import { validateFormSchema } from "./form-schema-validate";
-import { formulaSourceFormIds, readOptionsResult } from "./formula-options";
+import {
+  formulaSourceFormIds,
+  readOptionsResult,
+  resolveFormulaOptions,
+  selectedFormulaChoices,
+  selectsFormulaChoice,
+} from "./formula-options";
+import type {
+  VariableSourceHistory,
+  VariableSourceResponse,
+} from "./variable-evaluation";
 import type { VariableInput } from "./variable-inputs";
 
 const SOURCE = 7;
@@ -70,6 +82,35 @@ const colorsField = multiselect("colors", [
   choice("green", "Green"),
 ]);
 
+const history = (
+  submissions: (FormValue | undefined)[],
+): VariableSourceHistory => ({
+  fields: variableInputFieldsById([colorsField]),
+  responses: submissions.map(
+    (colors, index): VariableSourceResponse => ({
+      id: index + 1,
+      answers: colors === undefined ? {} : { colors },
+      fields: variableInputFieldsById([colorsField]),
+    }),
+  ),
+});
+
+const resolve = (params: {
+  fields: AnyField[];
+  answers?: Record<string, FormValue>;
+  submissions?: (FormValue | undefined)[];
+}) =>
+  resolveFormulaOptions({
+    schema: schemaOf(params.fields),
+    answers: params.answers ?? {},
+    sources: new Map([[SOURCE, history(params.submissions ?? [])]]),
+  });
+
+const optionsOf = (
+  result: ReturnType<typeof resolveFormulaOptions>,
+  fieldId: string,
+) => R.unwrap(result).options.get(fieldId);
+
 const LATEST = "input1.at(-1) ?? []";
 const ALL = "input1.flatMap(answer => answer ?? [])";
 
@@ -112,6 +153,308 @@ describe("readOptionsResult", () => {
     ["an empty value", [{ label: "A", value: "" }]],
   ])("rejects %s", (_name, value) => {
     expect(R.isFailure(readOptionsResult(value))).toBe(true);
+  });
+});
+
+describe("resolveFormulaOptions from another form's submissions", () => {
+  const field = (formula: string) =>
+    formulaSelect("pick", { input1: sourceColors }, formula);
+
+  it.each([
+    ["no submissions", [], LATEST, []],
+    ["one submission", [["red", "blue"]], LATEST, ["red", "blue"]],
+    [
+      "the latest of several",
+      [["red"], ["green", "blue"]],
+      LATEST,
+      ["green", "blue"],
+    ],
+    ["an unanswered latest submission", [["red"], undefined], LATEST, []],
+    ["no submissions, all of them", [], ALL, []],
+    [
+      "every submission, repeats merged",
+      [["red", "blue"], undefined, ["green", "red"]],
+      ALL,
+      ["red", "blue", "green"],
+    ],
+  ])("offers %s", (_name, submissions, formula, values) => {
+    const options = optionsOf(
+      resolve({ fields: [field(formula)], submissions }),
+      "pick",
+    );
+    expect(options?.map((option) => option.value)).toEqual(values);
+  });
+
+  it("uses the labels each submission's form version gave", () => {
+    const options = optionsOf(
+      resolve({ fields: [field(LATEST)], submissions: [["red"]] }),
+      "pick",
+    );
+    expect(options).toEqual([choice("red", "Red")]);
+  });
+
+  it("unions the latest selections of two forms, with a fixed choice", () => {
+    const schema = schemaOf([
+      formulaMultiselect(
+        "pick",
+        {
+          input1: sourceColors,
+          input2: { ...sourceColors, sourceFormId: OTHER_SOURCE },
+        },
+        '(input1.at(-1) ?? []).concat(input2.at(-1) ?? [], [{ label: "Other", value: "other" }])',
+      ),
+    ]);
+    const result = resolveFormulaOptions({
+      schema,
+      answers: {},
+      sources: new Map([
+        [SOURCE, history([["red"]])],
+        [OTHER_SOURCE, history([["red", "green"]])],
+      ]),
+    });
+    expect(optionsOf(result, "pick")).toEqual([
+      choice("red", "Red"),
+      choice("green", "Green"),
+      choice("other", "Other"),
+    ]);
+  });
+
+  it("keeps values apart when a formula renames them", () => {
+    const schema = schemaOf([
+      formulaSelect(
+        "pick",
+        {
+          input1: sourceColors,
+          input2: { ...sourceColors, sourceFormId: OTHER_SOURCE },
+        },
+        '(input1.at(-1) ?? []).map(c => ({ label: c.label, value: "a:" + c.value })).concat((input2.at(-1) ?? []).map(c => ({ label: c.label, value: "b:" + c.value })))',
+      ),
+    ]);
+    const result = resolveFormulaOptions({
+      schema,
+      answers: {},
+      sources: new Map([
+        [SOURCE, history([["red"]])],
+        [OTHER_SOURCE, history([["red"]])],
+      ]),
+    });
+    expect(optionsOf(result, "pick")?.map((option) => option.value)).toEqual([
+      "a:red",
+      "b:red",
+    ]);
+  });
+
+  it("fails when the history isn't loaded", () => {
+    const result = resolveFormulaOptions({
+      schema: schemaOf([field(LATEST)]),
+      answers: {},
+    });
+    expect(R.isFailure(result) && result.error).toContain("not loaded");
+  });
+
+  it("fails on a formula that can give nothing", () => {
+    const result = resolve({ fields: [field("input1.at(-1)")] });
+    expect(R.isFailure(result) && result.error).toContain('"pick"');
+  });
+});
+
+describe("resolveFormulaOptions from this form's answers", () => {
+  const source = multiselect("source", [choice("a", "A"), choice("b", "B")]);
+
+  it("reads a list's rows", () => {
+    const people: ListField = {
+      id: "people",
+      type: "input",
+      kind: "list",
+      label: "People",
+      fields: [{ id: "name", type: "input", kind: "text", label: "Name" }],
+    };
+    const result = resolve({
+      fields: [
+        people,
+        formulaSelect(
+          "pick",
+          {
+            input1: {
+              kind: "list",
+              fieldId: "people",
+              properties: { name: "name" },
+            },
+          },
+          "input1.filter(p => p.name).map(p => ({ label: p.name, value: p.name }))",
+        ),
+      ],
+      answers: { people: [{ name: "Ada" }, {}, { name: "Lin" }] },
+    });
+    expect(optionsOf(result, "pick")).toEqual([
+      choice("Ada", "Ada"),
+      choice("Lin", "Lin"),
+    ]);
+  });
+
+  it("drops an unavailable select answer and only the unavailable multiselect values", () => {
+    const result = resolve({
+      fields: [
+        source,
+        formulaSelect(
+          "one",
+          { input1: { kind: "field", fieldId: "source" } },
+          "input1 ?? []",
+        ),
+        formulaMultiselect(
+          "many",
+          { input1: { kind: "field", fieldId: "source" } },
+          "input1 ?? []",
+        ),
+      ],
+      answers: { source: ["a"], one: "b", many: ["b", "a"] },
+    });
+    expect(R.unwrap(result).answers).toEqual({ source: ["a"], many: ["a"] });
+  });
+
+  it("resolves a formula after the one whose answer it reads, with that one's labels", () => {
+    const result = resolve({
+      fields: [
+        formulaMultiselect(
+          "second",
+          { input1: { kind: "field", fieldId: "first" } },
+          "input1 ?? []",
+        ),
+        formulaMultiselect("first", { input1: sourceColors }, ALL),
+      ],
+      submissions: [["red", "blue"]],
+      answers: { first: ["blue", "green"] },
+    });
+    expect(optionsOf(result, "second")).toEqual([choice("blue", "Blue")]);
+    expect(R.unwrap(result).answers).toEqual({ first: ["blue"] });
+  });
+
+  it("fails on a formula reading its own answer", () => {
+    const result = resolve({
+      fields: [
+        formulaSelect(
+          "self",
+          { input1: { kind: "field", fieldId: "self" } },
+          "[]",
+        ),
+      ],
+    });
+    expect(R.isFailure(result) && result.error).toContain("self → self");
+  });
+
+  it("fails on formulas reading each other", () => {
+    const result = resolve({
+      fields: [
+        formulaSelect("a", { input1: { kind: "field", fieldId: "b" } }, "[]"),
+        formulaSelect("b", { input1: { kind: "field", fieldId: "a" } }, "[]"),
+      ],
+    });
+    expect(R.isFailure(result) && result.error).toContain("a → b → a");
+  });
+
+  it("fails on a list sub-field reading its own list", () => {
+    const list: ListField = {
+      id: "rows",
+      type: "input",
+      kind: "list",
+      label: "Rows",
+      fields: [
+        formulaSelect(
+          "cell",
+          {
+            input1: {
+              kind: "list",
+              fieldId: "rows",
+              properties: { cell: "cell" },
+            },
+          },
+          "[]",
+        ),
+      ],
+    };
+    const result = resolve({ fields: [list] });
+    expect(R.isFailure(result) && result.error).toContain("cell → cell");
+  });
+});
+
+describe("list sub-fields with an options formula", () => {
+  const list: ListField = {
+    id: "rows",
+    type: "input",
+    kind: "list",
+    label: "Rows",
+    fields: [
+      formulaMultiselect("cell", { input1: sourceColors }, LATEST),
+      { id: "note", type: "input", kind: "text", label: "Note" },
+    ],
+  };
+  const answers: Record<string, FormValue> = {
+    rows: [
+      { cell: ["red", "green"], note: "x" },
+      { cell: ["green"] },
+      { note: "y" },
+    ],
+  };
+
+  it("clears unavailable selections in every row", () => {
+    const result = resolve({
+      fields: [list],
+      answers,
+      submissions: [["red", "blue"]],
+    });
+    expect(R.unwrap(result).answers).toEqual({
+      rows: [{ cell: ["red"], note: "x" }, {}, { note: "y" }],
+    });
+  });
+
+  it("saves the selected choices of every row once, in offered order", () => {
+    const schema = schemaOf([list]);
+    const options = new Map([
+      [
+        "cell",
+        [
+          choice("green", "Green"),
+          choice("red", "Red"),
+          choice("blue", "Blue"),
+        ],
+      ],
+    ]);
+    expect(selectedFormulaChoices({ schema, answers, options })).toEqual({
+      cell: [choice("green", "Green"), choice("red", "Red")],
+    });
+  });
+});
+
+describe("saved formula choices", () => {
+  it("name only the choices selected", () => {
+    const schema = schemaOf([formulaMultiselect("pick", {}, "[]")]);
+    expect(
+      selectedFormulaChoices({
+        schema,
+        answers: { pick: ["b"] },
+        options: new Map([["pick", [choice("a"), choice("b")]]]),
+      }),
+    ).toEqual({ pick: [choice("b")] });
+  });
+
+  it("count a selection in any row, but not a cleared select", () => {
+    const schema = schemaOf([
+      formulaSelect("pick", {}, "[]"),
+      {
+        id: "rows",
+        type: "input",
+        kind: "list",
+        label: "Rows",
+        fields: [formulaMultiselect("cell", {}, "[]")],
+      },
+    ]);
+    expect(
+      selectsFormulaChoice(schema, { pick: "", rows: [{ cell: [] }] }),
+    ).toBe(false);
+    expect(selectsFormulaChoice(schema, { pick: "a" })).toBe(true);
+    expect(selectsFormulaChoice(schema, { rows: [{}, { cell: ["b"] }] })).toBe(
+      true,
+    );
   });
 });
 

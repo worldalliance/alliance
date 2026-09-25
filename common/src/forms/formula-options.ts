@@ -1,8 +1,14 @@
+import { omit } from "es-toolkit";
+import z from "zod";
 import { R, type Result } from "../result";
 import {
+  asCards,
   collectVariableResolutionFields,
+  isListRow,
+  variableInputFieldsById,
   type AnyField,
   type FormSchema,
+  type FormValue,
   type ListSubField,
   type MultiSelectField,
   type SelectField,
@@ -21,12 +27,18 @@ import {
 } from "./variable-expression";
 import { variableSourceFormIds, type OptionsFormula } from "./variables";
 
+export const FORMULA_SOURCES_CHANGED =
+  "Your answers to another form changed since you opened this one. Reload it to see its current options.";
+
 export type ChoiceOption = { label: string; value: string };
 
 type ChoiceField = SelectField | MultiSelectField;
 export type FormulaChoiceField = ChoiceField & {
   optionsFormula: OptionsFormula;
 };
+
+/** Keyed by field id, list sub-fields included. */
+export type ResolvedOptions = ReadonlyMap<string, readonly ChoiceOption[]>;
 
 export type FormulaFieldEntry = {
   field: FormulaChoiceField;
@@ -65,6 +77,14 @@ export function formulaSourceFormIds(schema: FormSchema): number[] {
       ({ field }) => field.optionsFormula,
     ),
   ]);
+}
+
+export function optionsFormulaSourceFormIds(schema: FormSchema): number[] {
+  return variableSourceFormIds(
+    collectOptionsFormulaFields(schema).map(
+      ({ field }) => field.optionsFormula,
+    ),
+  );
 }
 
 function dependencies(
@@ -193,4 +213,183 @@ export function evaluateOptionsFormula(
   return R.flatMap(prepareFormula(formula, context), ({ node, inputs }) =>
     evaluateOptionsExpression(node, inputs),
   );
+}
+
+/** A choice field reading a formula gets `options`'s; other fields are kept. */
+export function withResolvedOptions<T extends AnyField | ListSubField>(
+  field: T,
+  options: ResolvedOptions,
+): T {
+  if (isFormulaChoiceField(field)) {
+    return { ...field, options: [...(options.get(field.id) ?? [])] };
+  }
+  if (field.kind !== "list") return field;
+  const fields = field.fields.map((sub) => withResolvedOptions(sub, options));
+  return fields.every((sub, index) => sub === field.fields[index])
+    ? field
+    : { ...field, fields };
+}
+
+const REMOVE = Symbol("remove");
+
+function availableChoice(
+  value: FormValue | undefined,
+  field: ChoiceField,
+  available: ReadonlySet<string>,
+): FormValue | undefined | typeof REMOVE {
+  // A cleared select stores "", which no formula can offer.
+  if (value == null || value === "") return value;
+  switch (field.kind) {
+    case "select":
+      return typeof value === "string" && available.has(value) ? value : REMOVE;
+    case "multiselect": {
+      if (!Array.isArray(value)) return REMOVE;
+      const kept = value.filter(
+        (item): item is string =>
+          typeof item === "string" && available.has(item),
+      );
+      if (kept.length === value.length) return value;
+      return kept.length > 0 ? kept : REMOVE;
+    }
+    default:
+      throw new Error(`unknown choice field kind: ${field satisfies never}`);
+  }
+}
+
+function keepAvailable(params: {
+  answers: Record<string, FormValue>;
+  entry: FormulaFieldEntry;
+  options: readonly ChoiceOption[];
+}): Record<string, FormValue> {
+  const { answers, entry, options } = params;
+  const available = new Set(options.map((option) => option.value));
+  const { field, listId } = entry;
+  if (listId === undefined) {
+    const kept = availableChoice(answers[field.id], field, available);
+    if (kept === answers[field.id]) return answers;
+    return kept === REMOVE || kept === undefined
+      ? omit(answers, [field.id])
+      : { ...answers, [field.id]: kept };
+  }
+  const rows = asCards(answers[listId]);
+  if (rows === null) return answers;
+  let changed = false;
+  const nextRows = rows.map((row) => {
+    const kept = availableChoice(row[field.id], field, available);
+    if (kept === row[field.id]) return row;
+    changed = true;
+    return kept === REMOVE || kept === undefined
+      ? omit(row, [field.id])
+      : { ...row, [field.id]: kept };
+  });
+  return changed ? { ...answers, [listId]: nextRows } : answers;
+}
+
+export type ResolvedFormulaOptions = {
+  options: ResolvedOptions;
+  /** The answers without selections the options no longer offer. */
+  answers: Record<string, FormValue>;
+};
+
+/**
+ * Resolves every options formula against `answers`, each after the formulas
+ * whose answers it reads, so a formula reads another choice field's answer
+ * with the labels that field offered and without selections it dropped.
+ */
+export function resolveFormulaOptions(params: {
+  schema: FormSchema;
+  answers: Record<string, FormValue>;
+  sources?: VariableResolutionContext["sources"];
+}): Result<ResolvedFormulaOptions, string> {
+  const { schema, sources } = params;
+  const entries = collectOptionsFormulaFields(schema);
+  if (entries.length === 0) {
+    return R.success({ options: new Map(), answers: params.answers });
+  }
+  const order = optionsFormulaOrder(entries);
+  if (!order.ok) return R.failure(optionsCycleMessage(order.error));
+
+  const pageFields = collectVariableResolutionFields(schema);
+  const options = new Map<string, readonly ChoiceOption[]>();
+  let answers = params.answers;
+  for (const entry of order.value) {
+    const resolved = evaluateOptionsFormula(entry.field.optionsFormula, {
+      answers,
+      fields: variableInputFieldsById(
+        pageFields.map((field) => withResolvedOptions(field, options)),
+      ),
+      sources,
+    });
+    if (!resolved.ok) {
+      return R.failure(
+        `Options of question "${entry.field.id}": ${resolved.error}`,
+      );
+    }
+    options.set(entry.field.id, resolved.value);
+    answers = keepAvailable({ answers, entry, options: resolved.value });
+  }
+  return R.success({ options, answers });
+}
+
+const formulaChoicesSchema = z.record(
+  z.string(),
+  z.array(z.strictObject({ label: z.string(), value: z.string() })),
+);
+
+/**
+ * The choices a response selected from each options formula's offer, keyed by
+ * field id, in the order offered. A list sub-field's covers every row, since
+ * the rows share one offer.
+ */
+export type FormulaChoices = z.infer<typeof formulaChoicesSchema>;
+
+export function readFormulaChoices(
+  value: unknown,
+): Result<FormulaChoices, z.ZodError> {
+  const parsed = formulaChoicesSchema.safeParse(value);
+  return parsed.success ? R.success(parsed.data) : R.failure(parsed.error);
+}
+
+function selectedValues(value: FormValue | undefined): readonly unknown[] {
+  if (value === undefined || value === "") return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function selectedIn(
+  answers: Record<string, FormValue>,
+  { field, listId }: FormulaFieldEntry,
+): ReadonlySet<unknown> {
+  const rows = listId === undefined ? [answers] : answers[listId];
+  if (!Array.isArray(rows)) return new Set();
+  return new Set(
+    rows.flatMap((row: unknown) =>
+      isListRow(row) ? selectedValues(row[field.id]) : [],
+    ),
+  );
+}
+
+export function selectsFormulaChoice(
+  schema: FormSchema,
+  answers: Record<string, FormValue>,
+): boolean {
+  return collectOptionsFormulaFields(schema).some(
+    (entry) => selectedIn(answers, entry).size > 0,
+  );
+}
+
+export function selectedFormulaChoices(params: {
+  schema: FormSchema;
+  answers: Record<string, FormValue>;
+  options: ResolvedOptions;
+}): FormulaChoices {
+  const { schema, answers, options } = params;
+  const choices: FormulaChoices = {};
+  for (const entry of collectOptionsFormulaFields(schema)) {
+    const selected = selectedIn(answers, entry);
+    const offered = (options.get(entry.field.id) ?? []).filter((option) =>
+      selected.has(option.value),
+    );
+    if (offered.length > 0) choices[entry.field.id] = offered;
+  }
+  return choices;
 }

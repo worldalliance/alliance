@@ -60,6 +60,12 @@ import {
   VariableAggregatesDto,
 } from "./variable-aggregates.dto";
 
+const formulaSourcesChangedResponse = {
+  status: 409,
+  description:
+    "The member's answers to a form an options formula reads changed since the form loaded them.",
+} as const;
+
 @Controller("tasks")
 export class TasksController {
   constructor(
@@ -70,6 +76,7 @@ export class TasksController {
   @Post("submitForm/:id")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: FormResponseDto })
+  @ApiResponse(formulaSourcesChangedResponse)
   async submitForm(
     @Request() req: JwtRequest,
     @Param("id", ParseIntPipe) id: number,
@@ -113,6 +120,7 @@ export class TasksController {
   @Post("submitFollowUpForm/:followUpFormId")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: FormResponseDto })
+  @ApiResponse(formulaSourcesChangedResponse)
   async submitFollowUpForm(
     @Request() req: JwtRequest,
     @Param("followUpFormId", ParseIntPipe) followUpFormId: number,

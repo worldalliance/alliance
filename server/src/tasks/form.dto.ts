@@ -8,6 +8,7 @@ import {
   type FormAnswers,
 } from "@alliance/common/forms/form-responses";
 import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
+import type { FormulaChoices } from "@alliance/common/forms/formula-options";
 import { MIGRATE_RESPONSE_SNAPSHOTS_MAX_BATCH } from "@alliance/common/forms/snapshot-migration";
 import type { VisibilityValidatorResults } from "@alliance/common/forms/visibility";
 import {
@@ -26,6 +27,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  ValidateNested,
 } from "class-validator";
 import type { LinkedAction } from "src/actions/actions.service";
 import { Action } from "src/actions/entities/action.entity";
@@ -63,6 +65,18 @@ export class UpdateFormDto extends PickType(CreateFormDto, ["schema"]) {
   expectedFormSnapshotId?: number;
 }
 
+export class FormulaSourceDto {
+  @ApiProperty()
+  @IsInt()
+  formId: number;
+
+  /** Oldest first. */
+  @ApiProperty({ type: Number, isArray: true })
+  @IsArray()
+  @IsInt({ each: true })
+  responseIds: number[];
+}
+
 export class SubmitFormDto extends PickType(FormResponse, [
   "answers",
   "phDistinctId",
@@ -90,6 +104,17 @@ export class SubmitFormDto extends PickType(FormResponse, [
   @ApiProperty()
   @IsInt()
   actionId: number;
+
+  /**
+   * The submitted responses each options formula read, per source form, as
+   * the form loaded them.
+   */
+  @ApiPropertyOptional({ type: () => FormulaSourceDto, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FormulaSourceDto)
+  formulaSources?: FormulaSourceDto[];
 
   // class-validator can't express the id-keyed record; the service parses it.
   @ApiPropertyOptional({ type: Object })
@@ -236,6 +261,12 @@ export class FormResponseDto extends PickType(FormResponse, [
   @Type(() => Object)
   visibilityValidatorResults: VisibilityValidatorResults;
 
+  /** The labels of the choices selected from each options formula. */
+  @ApiProperty({ type: Object })
+  @IsDefined()
+  @Type(() => Object)
+  formulaChoices: FormulaChoices;
+
   @ApiPropertyOptional({ type: () => UserDto })
   @IsOptional()
   @Type(() => UserDto)
@@ -255,6 +286,7 @@ export class FormResponseDto extends PickType(FormResponse, [
     this.answers = response.answers;
     this.schemaSnapshot = response.formSnapshot.schema;
     this.visibilityValidatorResults = response.visibilityValidatorResults;
+    this.formulaChoices = response.formulaChoices;
     this.publicAnswers = response.publicAnswers;
     this.deviceType = response.deviceType;
     this.sessionReplayUrl = response.sessionReplayUrl;

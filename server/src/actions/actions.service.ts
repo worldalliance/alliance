@@ -2495,6 +2495,7 @@ export class ActionsService {
         "taskFormResponse.publicAnswers",
         "taskFormResponse.formSnapshotId",
         "taskFormResponse.visibilityValidatorResults",
+        "taskFormResponse.formulaChoices",
         "taskFormResponse.deviceType",
         "taskFormSnapshot.id",
         "taskFormSnapshot.schema",
