@@ -91,6 +91,12 @@ const thrownStatusSchema = z.object({
 export const thrownStatus = (error: unknown): number | undefined =>
   thrownStatusSchema.safeParse(error).data?.statusCode;
 
+/** Rejection handler for a delete: a 404 means another client already
+ * deleted it, so the caller carries on as if its own delete worked. */
+export const rethrowUnlessNotFound = (error: unknown): void => {
+  if (thrownStatus(error) !== 404) throw error;
+};
+
 export const thrownRefusalMessage = (params: {
   error: unknown;
   fallback: string;

@@ -9,8 +9,8 @@ import type {
   ExternalShareTargetDto,
 } from "@alliance/shared/client/types.gen";
 import {
+  rethrowUnlessNotFound,
   thrownRefusalMessage,
-  thrownStatus,
 } from "@alliance/shared/lib/hey-api";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -125,13 +125,7 @@ const ExternalShareTargetsPage: React.FC = () => {
       externalShareTargetsRemoveAdmin({
         path: { id },
         throwOnError: true,
-      }).then(
-        () => undefined,
-        (err: unknown) => {
-          // Already deleted elsewhere: the card goes, same as a delete that worked.
-          if (thrownStatus(err) !== 404) throw err;
-        },
-      ),
+      }).then(() => undefined, rethrowUnlessNotFound),
     onMutate: (id) => {
       setDeletingIds((prev) => new Set(prev).add(id));
     },

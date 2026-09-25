@@ -4,8 +4,8 @@ import {
 } from "@alliance/shared/client";
 import type { VideoListItemDto } from "@alliance/shared/client/types.gen";
 import {
+  rethrowUnlessNotFound,
   thrownRefusalMessage,
-  thrownStatus,
 } from "@alliance/shared/lib/hey-api";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
@@ -43,10 +43,7 @@ const VideoManagement: React.FC = () => {
   const { mutate: deleteVideo } = useMutation({
     mutationFn: (id: number) =>
       videosDeleteVideoAdmin({ path: { id }, throwOnError: true }).catch(
-        (err: unknown) => {
-          // Already deleted elsewhere: the row goes, same as a delete that worked.
-          if (thrownStatus(err) !== 404) throw err;
-        },
+        rethrowUnlessNotFound,
       ),
     onSuccess: async (_data, id) => {
       // A refetch started before the delete would land the deleted video
