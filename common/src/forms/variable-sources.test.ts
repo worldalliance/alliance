@@ -533,7 +533,7 @@ describe("validateFormSchema with inputs from another form", () => {
         viewId: "view",
         blockId,
         message:
-          "Output views can't show #{scores}, which reads answers from another form",
+          "Output views can't show #{scores}, which reads submitted answers",
       })),
     );
   });

@@ -96,6 +96,13 @@ export const SOURCE_INPUT_HELP = {
       : `${input}.filter(answer => ${holdsArray ? "(answer ?? []).length > 0" : "(answer ?? '') !== ''"}).map(answer => ${each}).join(', ')`,
 };
 
+export const AGGREGATE_INPUT_HELP = {
+  notes:
+    "How many members chose each option, keyed by the option's .value; an option no one chose reads 0. Each member counts once, from their latest submission. Guests and withdrawals don't count. The counts stay put while the form is open.",
+  example: (input: string, value: string | undefined) =>
+    `${input}[${JSON.stringify(value ?? "option-value")}] ?? 0`,
+};
+
 const MODE_IS_DOCUMENTED: Record<VariableInputMode, boolean> = {
   [VariableInputMode.Number]: true,
   [VariableInputMode.Text]: true,

@@ -124,6 +124,7 @@ const exampleFormula = (input: VariableInput): string => {
       return "input1";
     case "list":
     case "sourceList":
+    case "aggregate":
       return answerHelp(input, undefined).example("input1");
     default:
       throw new Error(`unknown input kind: ${input satisfies never}`);

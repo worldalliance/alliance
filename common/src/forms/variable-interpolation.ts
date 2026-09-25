@@ -336,7 +336,7 @@ export function collectUnresolvedVariableReferences(
 }
 
 /**
- * References to variables that read another form's answers from text an output
+ * References to variables that read submitted answers from text an output
  * view renders. Shared output never loads those answers, so each would show as
  * its raw `#{name}`.
  */

@@ -139,6 +139,8 @@ export const readInputSample = (
     case "list":
     case "sourceList":
       return readListSample(input, field, sample);
+    case "aggregate":
+      return { value: undefined };
     default:
       throw new Error(`unknown input kind: ${input satisfies never}`);
   }

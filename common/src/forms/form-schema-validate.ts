@@ -75,7 +75,7 @@ export function validateFormSchema(
     errors.push({
       viewId,
       blockId: location,
-      message: `Output views can't show #{${name}}, which reads answers from another form`,
+      message: `Output views can't show #{${name}}, which reads submitted answers`,
     });
   }
 

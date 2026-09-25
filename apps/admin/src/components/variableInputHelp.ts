@@ -1,11 +1,15 @@
-import type { AnyField } from "@alliance/common/forms/form-schema";
 import {
-  inputSourceFormId,
+  fieldHasOptions,
+  type AnyField,
+} from "@alliance/common/forms/form-schema";
+import {
+  isSourceInput,
   VARIABLE_INPUT_NAME_REGEX,
   type VariableInput,
 } from "@alliance/common/forms/variable-inputs";
 import { VariableInputMode } from "@alliance/common/forms/variables";
 import {
+  AGGREGATE_INPUT_HELP,
   INPUT_MODE_HELP,
   LIST_INPUT_HELP,
   SOURCE_INPUT_HELP,
@@ -18,7 +22,7 @@ export const inputHelp = (
   field: AnyField | undefined,
 ): InputModeHelp => {
   const help = answerHelp(input, field);
-  return inputSourceFormId(input) === undefined
+  return !isSourceInput(input)
     ? help
     : {
         notes: `${SOURCE_INPUT_HELP.notes} ${help.notes}`,
@@ -53,6 +57,14 @@ export const answerHelp = (
             ),
           ),
       };
+    case "aggregate": {
+      const value =
+        field && fieldHasOptions(field) ? field.options[0]?.value : undefined;
+      return {
+        notes: AGGREGATE_INPUT_HELP.notes,
+        example: (name) => AGGREGATE_INPUT_HELP.example(name, value),
+      };
+    }
     default:
       throw new Error(`unknown input kind: ${input satisfies never}`);
   }

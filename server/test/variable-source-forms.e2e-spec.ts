@@ -20,6 +20,24 @@ const sourceSchema: FormSchema = {
   outputViews: [],
 };
 
+const surveySchema: FormSchema = {
+  pages: [
+    {
+      id: "p1",
+      fields: [
+        {
+          id: "employers",
+          type: "input",
+          kind: "multiselect",
+          label: "Employers",
+          options: [{ label: "Company A", value: "a" }],
+        },
+      ],
+    },
+  ],
+  outputViews: [],
+};
+
 const readsScore = (sourceFormId: number): FormVariable => ({
   name: "scores",
   inputs: { input1: { kind: "sourceField", fieldId: "score", sourceFormId } },
@@ -151,7 +169,7 @@ describe("Variables reading another form (e2e)", () => {
           viewId: "view",
           blockId: "summary.text",
           message:
-            "Output views can't show #{scores}, which reads answers from another form",
+            "Output views can't show #{scores}, which reads submitted answers",
         },
       ]);
     });
@@ -190,6 +208,57 @@ describe("Variables reading another form (e2e)", () => {
       await create(destinationSchema(readsScore(other.id))).expect(201);
 
       await remove(source.id).expect(200);
+    });
+
+    it("allows deleting a form whose aggregate counts its own answers", async () => {
+      const created = await create(surveySchema).expect(201);
+      const ownId: number = created.body.id;
+      await request(ctx.app.getHttpServer())
+        .put(`/tasks/updateForm/${ownId}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          schema: {
+            ...surveySchema,
+            variables: [
+              {
+                name: "count",
+                inputs: {
+                  counts: {
+                    kind: "aggregate",
+                    sourceFormId: ownId,
+                    fieldId: "employers",
+                  },
+                },
+                formula: "counts.a ?? 0",
+              },
+            ],
+          },
+        })
+        .expect(200);
+
+      await remove(ownId).expect(200);
+    });
+
+    it("refuses while another form's aggregate counts it", async () => {
+      const { form: survey } = await createFormWithSnapshot(ctx.dataSource, {
+        title: "Survey",
+        schema: surveySchema,
+      });
+      await create(
+        destinationSchema({
+          name: "count",
+          inputs: {
+            counts: {
+              kind: "aggregate",
+              sourceFormId: survey.id,
+              fieldId: "employers",
+            },
+          },
+          formula: "counts.a ?? 0",
+        }),
+      ).expect(201);
+
+      await remove(survey.id).expect(409);
     });
   });
 });

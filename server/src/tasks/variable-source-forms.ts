@@ -28,7 +28,10 @@ export async function loadVariableSourceForms(params: {
   );
 }
 
-/** Forms whose current version has a variable reading `formId`'s answers. */
+/**
+ * Other forms whose current version has a variable reading `formId`'s
+ * answers. A form counting its own answers doesn't keep itself from deletion.
+ */
 export function findFormsReadingForm(params: {
   formRepository: Repository<Form>;
   formId: number;
@@ -40,6 +43,7 @@ export function findFormsReadingForm(params: {
       `jsonb_path_exists(snapshot.schema, '$.variables[*].inputs.*.sourceFormId ? (@ == $id)', jsonb_build_object('id', :formId::int))`,
       { formId: params.formId },
     )
+    .andWhere("form.id != :formId")
     .orderBy("form.id")
     .getMany();
 }

@@ -28,7 +28,7 @@ import {
   type UserPropertyPresence,
 } from "@alliance/common/forms/user-properties";
 import { resolveVariableValues } from "@alliance/common/forms/variable-evaluation";
-import { variableSourceFormIds } from "@alliance/common/forms/variables";
+import { variableHistoryFormIds } from "@alliance/common/forms/variables";
 import {
   isElementCurrentlyVisible as isElementCurrentlyVisibleShared,
   isFieldConditionallyRequired,
@@ -699,7 +699,7 @@ export function useFormVisibility(args: {
     // A variable reading a deleted form stays out, so its `#{name}` shows as
     // written, the way shared output leaves a variable it can't resolve.
     const resolvable = schema.variables?.filter((variable) =>
-      variableSourceFormIds([variable]).every((id) => !deletedFormIds.has(id)),
+      variableHistoryFormIds([variable]).every((id) => !deletedFormIds.has(id)),
     );
     return resolveVariableValues(resolvable, {
       answers: effectiveFormData,

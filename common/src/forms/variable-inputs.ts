@@ -43,11 +43,20 @@ const variableSourceListInputSchema = z.strictObject({
   properties: listPropertiesSchema,
 });
 
+// A kind of its own, so a build that predates it fails the variable as an
+// unknown input kind rather than reading the member's own answers.
+const variableAggregateInputSchema = z.strictObject({
+  kind: z.literal("aggregate"),
+  sourceFormId: sourceFormIdSchema,
+  fieldId: z.string(),
+});
+
 export const variableInputSchema = z.discriminatedUnion("kind", [
   variableFieldInputSchema,
   variableListInputSchema,
   variableSourceFieldInputSchema,
   variableSourceListInputSchema,
+  variableAggregateInputSchema,
 ]);
 export type VariableInput = z.infer<typeof variableInputSchema>;
 export type VariableFieldInput = Extract<
@@ -62,12 +71,17 @@ export type VariableSourceInput = Extract<
   VariableInput,
   { kind: "sourceField" | "sourceList" }
 >;
+export type VariableAggregateInput = Extract<
+  VariableInput,
+  { kind: "aggregate" }
+>;
 
 const LIST_INPUT_KINDS: Record<VariableInput["kind"], boolean> = {
   field: false,
   list: true,
   sourceField: false,
   sourceList: true,
+  aggregate: false,
 };
 
 export function isListInput(input: VariableInput): input is VariableListInput {
@@ -79,14 +93,30 @@ const SOURCE_INPUT_KINDS: Record<VariableInput["kind"], boolean> = {
   list: false,
   sourceField: true,
   sourceList: true,
+  aggregate: false,
 };
 
+/** Reads the member's own submissions to another form. */
 export function isSourceInput(
   input: VariableInput,
 ): input is VariableSourceInput {
   return SOURCE_INPUT_KINDS[input.kind];
 }
 
+/** The stored form an input reads, or `undefined` for this form's live answers. */
 export function inputSourceFormId(input: VariableInput): number | undefined {
-  return isSourceInput(input) ? input.sourceFormId : undefined;
+  const { kind } = input;
+  switch (kind) {
+    case "field":
+    case "list":
+      return undefined;
+    case "sourceField":
+    case "sourceList":
+    case "aggregate":
+      return input.sourceFormId;
+    default:
+      // Evaluation fails an input kind this build predates.
+      kind satisfies never;
+      return undefined;
+  }
 }
