@@ -4,6 +4,7 @@ import { camelCase, deburr, isEqual } from "es-toolkit";
 import z from "zod";
 import { formatCityValue, parseCityValue } from "./city";
 import type { FieldKind, ListSubField } from "./form-schema";
+import { AGGREGATE_INPUT_TYPE } from "./variable-aggregates";
 import {
   exprValueToText,
   FORBIDDEN_PROPERTIES,
@@ -13,6 +14,7 @@ import {
 import {
   inputSourceFormId,
   isListInput,
+  isSourceInput,
   VARIABLE_INPUT_NAME_REGEX,
   variableInputSchema,
   type VariableInput,
@@ -129,17 +131,32 @@ export type VariableFieldScope = {
   sourceFields: ReadonlyMap<number, VariableInputFields>;
 };
 
-export function variableSourceFormIds(
+function formIdsRead(
   variables: readonly FormVariable[] | undefined,
+  include: (input: VariableInput) => boolean,
 ): number[] {
   const ids = new Set<number>();
   for (const variable of variables ?? []) {
     for (const input of Object.values(variable.inputs)) {
       const sourceFormId = inputSourceFormId(input);
-      if (sourceFormId !== undefined) ids.add(sourceFormId);
+      if (sourceFormId !== undefined && include(input)) ids.add(sourceFormId);
     }
   }
   return [...ids].sort((a, b) => a - b);
+}
+
+/** Every stored form these variables read, aggregates included. */
+export function variableSourceFormIds(
+  variables: readonly FormVariable[] | undefined,
+): number[] {
+  return formIdsRead(variables, () => true);
+}
+
+/** The forms whose submitted history these variables read. */
+export function variableHistoryFormIds(
+  variables: readonly FormVariable[] | undefined,
+): number[] {
+  return formIdsRead(variables, isSourceInput);
 }
 
 export function readsSourceForm(variable: FormVariable): boolean {
@@ -364,13 +381,15 @@ function inputType(
     case "list":
     case "sourceList":
       return listInputType(input, field);
+    case "aggregate":
+      return field?.kind === "multiselect" ? AGGREGATE_INPUT_TYPE : "any";
     default:
       input satisfies never;
       return variableInputType(undefined);
   }
 }
 
-/** An input reading another form gets one element per submission. */
+/** An input reading submitted history gets one element per submission. */
 export function variableTypeEnv(
   variable: FormVariable,
   scope: VariableFieldScope,
@@ -380,10 +399,7 @@ export function variableTypeEnv(
       const fields = inputFields(input, scope);
       if (fields === undefined) return [name, variableInputType(undefined)];
       const type = inputType(input, fields.get(input.fieldId));
-      return [
-        name,
-        inputSourceFormId(input) === undefined ? type : `(${type})[]`,
-      ];
+      return [name, isSourceInput(input) ? `(${type})[]` : type];
     }),
   );
 }

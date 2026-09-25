@@ -16,14 +16,72 @@ export type InputSources = {
   statusOf: (sourceFormId: number) => FormFieldsStatus | undefined;
   /** Every form but this one. */
   forms: FormOption[];
+  /** This form, once saved, for an aggregate counting its own answers. */
+  ownForm: FormOption | undefined;
   /** False while `forms` is loading or failed to load. */
   formsLoaded: boolean;
   scope: VariableFieldScope;
 };
 
+export const fieldChoices = (input: VariableInput, sources: InputSources) => {
+  const fields = sources.fieldsFor(inputSourceFormId(input));
+  return input.kind === "aggregate"
+    ? fields.filter((field) => field.kind === "multiselect")
+    : fields;
+};
+
+export enum InputMode {
+  Answers = "answers",
+  Counts = "counts",
+}
+
+const KIND_INPUT_MODE: Record<VariableInput["kind"], InputMode> = {
+  field: InputMode.Answers,
+  list: InputMode.Answers,
+  sourceField: InputMode.Answers,
+  sourceList: InputMode.Answers,
+  aggregate: InputMode.Counts,
+};
+
+export const inputModeOfInput = (input: VariableInput): InputMode =>
+  KIND_INPUT_MODE[input.kind];
+
+export function InputModePicker({
+  inputName,
+  mode,
+  countsAvailable,
+  onChange,
+}: {
+  inputName: string;
+  mode: InputMode;
+  countsAvailable: boolean;
+  onChange: (mode: InputMode) => void;
+}) {
+  return (
+    <select
+      value={mode}
+      aria-label={`What ${inputName} reads`}
+      onChange={(event) =>
+        onChange(
+          event.target.value === InputMode.Counts
+            ? InputMode.Counts
+            : InputMode.Answers,
+        )
+      }
+      className={cn(inputText, "bg-white w-36 shrink-0")}
+    >
+      <option value={InputMode.Answers}>Answers</option>
+      <option value={InputMode.Counts} disabled={!countsAvailable}>
+        Aggregate counts
+      </option>
+    </select>
+  );
+}
+
 type SourceFormPickerProps = {
   inputName: string;
   sourceFormId: number | undefined;
+  counting: boolean;
   sources: InputSources;
   onChange: (sourceFormId: number | undefined) => void;
 };
@@ -31,12 +89,16 @@ type SourceFormPickerProps = {
 export function SourceFormPicker({
   inputName,
   sourceFormId,
+  counting,
   sources,
   onChange,
 }: SourceFormPickerProps) {
+  const forms =
+    counting && sources.ownForm
+      ? [sources.ownForm, ...sources.forms]
+      : sources.forms;
   const listed =
-    sourceFormId === undefined ||
-    sources.forms.some(({ id }) => id === sourceFormId);
+    sourceFormId === undefined || forms.some(({ id }) => id === sourceFormId);
   const missing = !listed && sources.formsLoaded;
   return (
     <select
@@ -53,7 +115,7 @@ export function SourceFormPicker({
         missing && "border-red-400",
       )}
     >
-      <option value="">This form</option>
+      {!counting && <option value="">This form</option>}
       {!listed && (
         <option value={sourceFormId}>
           {missing
@@ -61,9 +123,10 @@ export function SourceFormPicker({
             : `Form #${sourceFormId}`}
         </option>
       )}
-      {sources.forms.map((form) => (
+      {forms.map((form) => (
         <option key={form.id} value={form.id}>
-          {form.title} (#{form.id})
+          {form === sources.ownForm ? "This form's submissions" : form.title} (#
+          {form.id})
         </option>
       ))}
     </select>
@@ -80,10 +143,12 @@ const sourceStatus = (
     : (sources.statusOf(sourceFormId) ?? FormFieldsStatus.Pending);
 };
 
-const unreadFieldLabel = (
-  input: VariableInput,
-  sources: InputSources,
-): string => {
+const unreadFieldLabel = (params: {
+  input: VariableInput;
+  sources: InputSources;
+  choices: AnyField[];
+}): string => {
+  const { input, sources, choices } = params;
   const status = sourceStatus(input, sources);
   switch (status) {
     case FormFieldsStatus.Pending:
@@ -92,9 +157,12 @@ const unreadFieldLabel = (
     case FormFieldsStatus.SchemaUnreadable:
       return input.fieldId === "" ? "Pick a question" : input.fieldId;
     case FormFieldsStatus.Ready:
-      return input.fieldId === ""
-        ? "Pick a question"
-        : `Missing or unusable field — ${input.fieldId}`;
+      if (input.fieldId !== "") {
+        return `Missing or unusable field — ${input.fieldId}`;
+      }
+      return input.kind === "aggregate" && choices.length === 0
+        ? "No multiselect questions on this form"
+        : "Pick a question";
     default:
       throw new Error(`unknown status: ${status satisfies never}`);
   }
@@ -153,7 +221,7 @@ export function FieldPicker({
           field. */}
       {!field && (
         <option value={input.fieldId}>
-          {unreadFieldLabel(input, sources)}
+          {unreadFieldLabel({ input, sources, choices })}
         </option>
       )}
       {choices.map((candidate) => (

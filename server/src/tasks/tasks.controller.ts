@@ -20,6 +20,7 @@ import { ActionActivityDto, OptOutActionDto } from "src/actions/dto/action.dto";
 import { AuthService } from "src/auth/auth.service";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import { AuthGuard } from "src/auth/guards/auth.guard";
+import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
 import { Public } from "src/auth/public.decorator";
 import { extractGuestToken, type JwtRequest } from "src/auth/tokens";
 import {
@@ -54,6 +55,10 @@ import {
   UpdateFormDto,
 } from "./form.dto";
 import { TasksService } from "./tasks.service";
+import {
+  CountVariableAggregatesDto,
+  VariableAggregatesDto,
+} from "./variable-aggregates.dto";
 
 @Controller("tasks")
 export class TasksController {
@@ -236,6 +241,34 @@ export class TasksController {
     return new FormResponseHistoryDto(
       await this.tasksService.getFormResponseHistory({ userId, formId }),
     );
+  }
+
+  /** Anyone who can open the form, guests included, gets the same counts. */
+  @Get("variableAggregates/:formId/snapshot/:formSnapshotId")
+  @UseGuards(AuthOptionalGuard)
+  @ApiOkResponse({ type: VariableAggregatesDto })
+  async getVariableAggregates(
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("formSnapshotId", ParseIntPipe) formSnapshotId: number,
+  ): Promise<VariableAggregatesDto> {
+    return new VariableAggregatesDto({
+      aggregates: await this.tasksService.countFormVersionAggregates({
+        formId,
+        formSnapshotId,
+      }),
+    });
+  }
+
+  /** Counts any questions, for previewing a form not yet saved. */
+  @Post("variableAggregates")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: VariableAggregatesDto })
+  async countVariableAggregatesAdmin(
+    @Body() body: CountVariableAggregatesDto,
+  ): Promise<VariableAggregatesDto> {
+    return new VariableAggregatesDto({
+      aggregates: await this.tasksService.countVariableAggregates(body.sources),
+    });
   }
 
   @Get("guestResponse/:id")

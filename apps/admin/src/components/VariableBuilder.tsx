@@ -42,10 +42,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { renameKeys } from "../lib/renameKeys";
 import { makeTempId } from "../lib/tempId";
 import { useVariableSourceForms } from "../lib/useVariableSourceForms";
+import { readCountSample, type CountSample } from "./CountSamples";
 import { FormPickerError, FormPickerErrorReason } from "./FormPickerError";
 import { SharedOutputSourceWarning } from "./SharedOutputSourceWarning";
 import { VariableHelpModal, type FormulaHelpInput } from "./VariableHelpModal";
-import { type InputSources } from "./VariableInputPickers";
+import {
+  fieldChoices,
+  InputMode,
+  type InputSources,
+} from "./VariableInputPickers";
 import { VariableInputRow } from "./VariableInputRow";
 import {
   inputPad,
@@ -110,8 +115,8 @@ const inputForField = (
     : { kind: "sourceList", sourceFormId, fieldId: field.id, properties };
 };
 
-const fieldReadBy = (input: VariableInput, eligibleFields: AnyField[]) =>
-  eligibleFields.find(
+const fieldReadBy = (input: VariableInput, sources: InputSources) =>
+  fieldChoices(input, sources).find(
     (candidate) =>
       candidate.id === input.fieldId &&
       (candidate.kind === "list") === isListInput(input),
@@ -124,6 +129,7 @@ const exampleFormula = (input: VariableInput): string => {
       return "input1";
     case "list":
     case "sourceList":
+    case "aggregate":
       return answerHelp(input, undefined).example("input1");
     default:
       throw new Error(`unknown input kind: ${input satisfies never}`);
@@ -157,6 +163,9 @@ function VariableCard({
   const [submissionSamples, setSubmissionSamples] = useState<
     Record<string, SubmissionSample[]>
   >({});
+  const [countSamples, setCountSamples] = useState<Record<string, CountSample>>(
+    {},
+  );
   const [helpOpen, setHelpOpen] = useState(false);
   const [replacedFormula, setReplacedFormula] = useState<string | null>(null);
   const formulaRef = useRef<HTMLTextAreaElement>(null);
@@ -180,8 +189,7 @@ function VariableCard({
   );
 
   const fieldOf = useCallback(
-    (input: VariableInput) =>
-      fieldReadBy(input, sources.fieldsFor(inputSourceFormId(input))),
+    (input: VariableInput) => fieldReadBy(input, sources),
     [sources],
   );
 
@@ -208,19 +216,27 @@ function VariableCard({
         inputNames.map((name) => {
           const input = variable.inputs[name];
           const field = fieldOf(input);
-          return [
-            name,
-            isSourceInput(input)
-              ? readSubmissionSamples(
-                  input,
-                  field,
-                  submissionSamples[name] ?? [],
-                )
-              : readInputSample(input, field, samples[name]),
-          ] as const;
+          const reading =
+            input.kind === "aggregate"
+              ? readCountSample(field, countSamples[name] ?? {})
+              : isSourceInput(input)
+                ? readSubmissionSamples(
+                    input,
+                    field,
+                    submissionSamples[name] ?? [],
+                  )
+                : readInputSample(input, field, samples[name]);
+          return [name, reading] as const;
         }),
       ),
-    [inputNames, samples, submissionSamples, fieldOf, variable.inputs],
+    [
+      inputNames,
+      samples,
+      submissionSamples,
+      countSamples,
+      fieldOf,
+      variable.inputs,
+    ],
   );
 
   const preview = useMemo(() => {
@@ -285,17 +301,48 @@ function VariableCard({
 
   const localFields = sources.fieldsFor(undefined);
 
+  const clearSamples = (name: string) => {
+    setSamples((prev) => omit(prev, [name]));
+    setSubmissionSamples((prev) => omit(prev, [name]));
+    setCountSamples((prev) => omit(prev, [name]));
+  };
+
   // Another form's questions load only once an input reads it, so picking its
   // first question would depend on what else the builder reads. Its input
   // always waits on a pick instead.
   const setInputSource = (name: string, sourceFormId: number | undefined) => {
+    clearSamples(name);
+    if (
+      variable.inputs[name].kind === "aggregate" &&
+      sourceFormId !== undefined
+    ) {
+      setInput(name, { kind: "aggregate", sourceFormId, fieldId: "" });
+      return;
+    }
     const first = sourceFormId === undefined ? localFields[0] : undefined;
-    setSamples((prev) => omit(prev, [name]));
-    setSubmissionSamples((prev) => omit(prev, [name]));
     setInput(
       name,
       first ? inputForField(first, sourceFormId) : unpickedInput(sourceFormId),
     );
+  };
+
+  const countedForm = sources.ownForm ?? sources.forms[0];
+
+  const setInputMode = (name: string, mode: InputMode) => {
+    const current = variable.inputs[name];
+    const sourceFormId = inputSourceFormId(current) ?? countedForm?.id;
+    switch (mode) {
+      case InputMode.Answers:
+        if (current.kind === "aggregate") setInputSource(name, undefined);
+        return;
+      case InputMode.Counts:
+        if (current.kind === "aggregate" || sourceFormId === undefined) return;
+        clearSamples(name);
+        setInput(name, { kind: "aggregate", sourceFormId, fieldId: "" });
+        return;
+      default:
+        throw new Error(`unknown input mode: ${mode satisfies never}`);
+    }
   };
 
   const canAddInput = localFields.length > 0 || sources.forms.length > 0;
@@ -331,6 +378,7 @@ function VariableCard({
     );
     setSamples((prev) => renameKeys(prev, renames));
     setSubmissionSamples((prev) => renameKeys(prev, renames));
+    setCountSamples((prev) => renameKeys(prev, renames));
     onChange({ ...variable, inputs, formula });
   };
 
@@ -413,9 +461,17 @@ function VariableCard({
                 readingError={readings.get(name)?.error}
                 sample={samples[name]}
                 submissions={submissionSamples[name] ?? []}
+                counts={countSamples[name] ?? {}}
+                countsAvailable={countedForm !== undefined}
+                onModeChange={(mode) => setInputMode(name, mode)}
                 onInputChange={(next) => setInput(name, next)}
                 onFieldPick={(picked) =>
-                  setInput(name, inputForField(picked, sourceFormId))
+                  setInput(
+                    name,
+                    input.kind === "aggregate"
+                      ? { ...input, fieldId: picked.id }
+                      : inputForField(picked, sourceFormId),
+                  )
                 }
                 onSourceChange={(next) => setInputSource(name, next)}
                 onSampleChange={(next) =>
@@ -423,6 +479,9 @@ function VariableCard({
                 }
                 onSubmissionsChange={(next) =>
                   setSubmissionSamples((prev) => ({ ...prev, [name]: next }))
+                }
+                onCountsChange={(next) =>
+                  setCountSamples((prev) => ({ ...prev, [name]: next }))
                 }
                 onRemove={() => removeInput(name)}
               />
@@ -542,6 +601,7 @@ export function VariableBuilder({
           : readableVariableInputFields(sourceForms.get(sourceFormId) ?? []),
       statusOf: (sourceFormId) => statusByForm[sourceFormId],
       forms: options.filter(({ id }) => id !== formId),
+      ownForm: options.find(({ id }) => id === formId),
       formsLoaded: !optionsLoading && !optionsError,
       scope,
     }),
@@ -607,9 +667,10 @@ export function VariableBuilder({
             </Button>
           </div>
           <p className="text-sm text-gray-600">
-            Compute a value from the answers on this form or the member&apos;s
-            answers to other forms, then write it into any text or field label
-            as <span className="font-mono">#{"{name}"}</span>.
+            Compute a value from the answers on this form, the member&apos;s
+            answers to other forms, or how many members chose each option of a
+            form&apos;s question, then write it into any text or field label as{" "}
+            <span className="font-mono">#{"{name}"}</span>.
           </p>
         </div>
 

@@ -10,7 +10,7 @@ import type {
   ExprValue,
 } from "@alliance/common/forms/variable-expression";
 import type {
-  VariableInput,
+  VariableFieldInput,
   VariableListInput,
   VariableSourceInput,
 } from "@alliance/common/forms/variable-inputs";
@@ -128,7 +128,7 @@ const readListSample = (
 };
 
 export const readInputSample = (
-  input: VariableInput,
+  input: VariableFieldInput | VariableListInput,
   field: AnyField | undefined,
   sample: FormValue | undefined,
 ): SampleReading => {

@@ -12,7 +12,7 @@ export function SharedOutputSourceWarning({ schema }: { schema: FormSchema }) {
     <div className="mb-6 rounded border border-red-300 bg-red-50 p-3 space-y-1">
       <p className="text-sm font-medium text-red-900">
         Output views can&apos;t show a variable that reads another form&apos;s
-        answers. Remove these references to save:
+        answers or aggregate counts. Remove these references to save:
       </p>
       {references.map(({ name, location, viewId }) => (
         <p

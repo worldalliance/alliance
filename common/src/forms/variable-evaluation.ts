@@ -3,6 +3,10 @@ import type { FormValue } from "./form-schema";
 import { withStepBudget } from "./formula-step-budget";
 import { isListRow } from "./list-rows";
 import {
+  aggregateSourceKey,
+  type VariableAggregateCounts,
+} from "./variable-aggregates";
+import {
   compileVariableExpression,
   evaluateVariableExpression,
   type ExprNode,
@@ -11,6 +15,7 @@ import {
 } from "./variable-expression";
 import {
   isListInput,
+  type VariableAggregateInput,
   type VariableFieldInput,
   type VariableInput,
   type VariableListInput,
@@ -48,6 +53,11 @@ export type VariableResolutionContext = {
    * caller that never loaded the history cannot pass it off as no submissions.
    */
   sources?: ReadonlyMap<number, VariableSourceHistory>;
+  /**
+   * Keyed by `aggregateSourceKey`. An input whose counts are missing here
+   * fails, so a caller that never loaded them cannot pass them off as zeros.
+   */
+  aggregates?: ReadonlyMap<string, VariableAggregateCounts>;
 };
 
 type LocalAnswers = Pick<VariableResolutionContext, "answers" | "fields">;
@@ -162,6 +172,18 @@ function resolveSourceInput(
   return R.success(values);
 }
 
+function resolveAggregateInput(
+  input: VariableAggregateInput,
+  aggregates: VariableResolutionContext["aggregates"],
+): Result<ExprValue, string> {
+  const counts = aggregates?.get(aggregateSourceKey(input));
+  return counts === undefined
+    ? R.failure(
+        `Counts for question "${input.fieldId}" of form ${input.sourceFormId} are not loaded`,
+      )
+    : R.success(counts);
+}
+
 function resolveInput(
   input: VariableInput,
   context: VariableResolutionContext,
@@ -175,6 +197,8 @@ function resolveInput(
     case "sourceField":
     case "sourceList":
       return resolveSourceInput(input, context.sources);
+    case "aggregate":
+      return resolveAggregateInput(input, context.aggregates);
     default:
       // A newer admin can save an input kind this build predates.
       return R.failure(`Unknown input kind: ${kind satisfies never}`);

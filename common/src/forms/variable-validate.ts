@@ -10,11 +10,16 @@ import type {
   FormSchemaValidationContext,
   FormSchemaValidationError,
 } from "./form-schema-validate";
+import { storedQuestionFields } from "./stored-schema";
+import {
+  aggregateSourceKey,
+  variableAggregateSources,
+} from "./variable-aggregates";
 import { evaluateVariable } from "./variable-evaluation";
 import { compileVariableExpression } from "./variable-expression";
 import { checkVariableFormulaType } from "./variable-formula-check";
-import { inputSourceFormId } from "./variable-inputs";
-import { variableFieldScope } from "./variable-scope";
+import { inputSourceFormId, isSourceInput } from "./variable-inputs";
+import { variableFieldScope, type SourceFormFields } from "./variable-scope";
 import {
   isFieldKindReadableByFieldInput,
   isKnownFieldKind,
@@ -40,18 +45,36 @@ function collectFieldKinds(
   return fields;
 }
 
+/**
+ * A form reading its own answers is checked against the schema being saved,
+ * not the stored version it replaces.
+ */
+function withOwnFields(
+  schema: FormSchema,
+  context: FormSchemaValidationContext,
+): SourceFormFields {
+  const { formId, sourceForms } = context;
+  if (formId === undefined) return sourceForms;
+  const merged = new Map(sourceForms);
+  const own = storedQuestionFields(schema);
+  if (own.ok) merged.set(formId, own.value);
+  else merged.delete(formId);
+  return merged;
+}
+
 export function collectVariableErrors(
   schema: FormSchema,
   context: FormSchemaValidationContext,
   errors: FormSchemaValidationError[],
 ): void {
   const variables = schema.variables ?? [];
+  const sourceForms = withOwnFields(schema, context);
   const fieldKinds: FieldKindScope = {
     fields: collectFieldKinds(
       (schema.pages ?? []).flatMap((page) => page.fields ?? []),
     ),
     sourceFields: new Map(
-      [...context.sourceForms].map(([formId, fields]) => [
+      [...sourceForms].map(([formId, fields]) => [
         formId,
         collectFieldKinds(fields),
       ]),
@@ -63,7 +86,7 @@ export function collectVariableErrors(
   // An input the picker could never have offered reads as `any`, so
   // `checkVariableInputs` reports one focused error instead of the type checker
   // adding one per use.
-  const readableFields = variableFieldScope(schema, context.sourceForms);
+  const readableFields = variableFieldScope(schema, sourceForms);
   const unansweredContext = {
     answers: {},
     fields: readableFields.fields,
@@ -71,6 +94,12 @@ export function collectVariableErrors(
       [...readableFields.sourceFields].map(([formId, fields]) => [
         formId,
         { fields, responses: [] },
+      ]),
+    ),
+    aggregates: new Map(
+      variableAggregateSources(variables).map((source) => [
+        aggregateSourceKey(source),
+        {},
       ]),
     ),
   };
@@ -133,7 +162,8 @@ function checkVariableInputs(
 ): void {
   for (const [inputName, input] of Object.entries(variable.inputs)) {
     const sourceFormId = inputSourceFormId(input);
-    if (sourceFormId !== undefined && sourceFormId === scope.formId) {
+    // An aggregate may count this form's own submissions.
+    if (isSourceInput(input) && sourceFormId === scope.formId) {
       push(
         `Input "${inputName}" reads this form as another form. Pick "This form" instead`,
       );
@@ -165,7 +195,7 @@ function checkVariableInputs(
       }
       if (field.insideList) {
         push(
-          `Input "${inputName}" reads field "${input.fieldId}", which is inside a list. Read the whole list instead`,
+          `Input "${inputName}" reads field "${input.fieldId}", which is inside a list. ${input.kind === "aggregate" ? "Only a multiselect outside a list can be counted" : "Read the whole list instead"}`,
         );
         return undefined;
       }
@@ -208,6 +238,15 @@ function checkVariableInputs(
           subFields: field.subFields,
         })) {
           push(message);
+        }
+        break;
+      }
+      case "aggregate": {
+        const field = topLevelField();
+        if (field !== undefined && field.kind !== "multiselect") {
+          push(
+            `Input "${inputName}" counts answers to "${input.fieldId}", whose kind is ${field.kind}. Pick a multiselect question`,
+          );
         }
         break;
       }

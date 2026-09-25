@@ -10,6 +10,10 @@ import {
 import type { VariableSourceHistory } from "@alliance/common/forms/variable-evaluation";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import {
+  VariableAggregatesStatus,
+  type VariableAggregates,
+} from "./forms/useVariableAggregates";
+import {
   NO_SOURCE_HISTORIES,
   SourceHistoriesStatus,
   type SourceHistories,
@@ -257,12 +261,18 @@ const NO_SOURCES_READY: SourceHistories = {
   sources: NO_SOURCE_HISTORIES,
 };
 
+const NO_AGGREGATES_READY: VariableAggregates = {
+  status: VariableAggregatesStatus.Ready,
+  aggregates: new Map(),
+};
+
 function renderVisibility(args: {
   schema?: FormSchema;
   formData: Record<string, FormValue>;
   currentPageIndex?: number;
   setCurrentPageIndex?: (index: number) => void;
   sourceHistories?: SourceHistories;
+  variableAggregates?: VariableAggregates;
 }) {
   const schema = args.schema ?? twoPageSchema;
   return renderHook(() =>
@@ -277,6 +287,7 @@ function renderVisibility(args: {
       fieldLookup: lookupFor(schema),
       previousAnswerData: undefined,
       sourceHistories: args.sourceHistories ?? NO_SOURCES_READY,
+      variableAggregates: args.variableAggregates ?? NO_AGGREGATES_READY,
       userHasCity: false,
       firstContractSignedAt: null,
       completedActionCount: 0,
@@ -358,6 +369,7 @@ describe("useFormVisibility", () => {
           fieldLookup: lookupFor(schema),
           previousAnswerData: undefined,
           sourceHistories: { status: SourceHistoriesStatus.Ready, sources },
+          variableAggregates: NO_AGGREGATES_READY,
           userHasCity: false,
           firstContractSignedAt: null,
           completedActionCount: 0,
@@ -431,6 +443,77 @@ describe("useFormVisibility", () => {
     expect([...result.current.variableValues]).toEqual([["bonus", "4"]]);
   });
 
+  const companyCount = (): FormSchema => ({
+    ...schemaWith([
+      {
+        id: "company",
+        type: "input",
+        kind: "select",
+        label: "Company",
+        options: [
+          { label: "A", value: "a" },
+          { label: "B", value: "b" },
+        ],
+      },
+    ]),
+    variables: [
+      {
+        name: "count",
+        inputs: {
+          counts: { kind: "aggregate", sourceFormId: 7, fieldId: "employers" },
+          company: { kind: "field", fieldId: "company" },
+        },
+        formula: "company ? (counts[company.value] ?? 0) : 0",
+      },
+    ],
+  });
+
+  it("looks up a loaded count by the member's live answer", () => {
+    const schema = companyCount();
+    const variableAggregates: VariableAggregates = {
+      status: VariableAggregatesStatus.Ready,
+      aggregates: new Map([["7:employers", { a: 12, b: 0 }]]),
+    };
+    const { result, rerender } = renderHook(
+      (formData: Record<string, FormValue>) =>
+        useFormVisibility({
+          schema,
+          formData,
+          readOnly: false,
+          currentPageIndex: 0,
+          setCurrentPageIndex: () => {},
+          effectiveDeviceType: "desktop",
+          visibilityValidatorResults: {},
+          fieldLookup: lookupFor(schema),
+          previousAnswerData: undefined,
+          sourceHistories: NO_SOURCES_READY,
+          variableAggregates,
+          userHasCity: false,
+          firstContractSignedAt: null,
+          completedActionCount: 0,
+        }),
+      { initialProps: { company: "a" } },
+    );
+
+    expect(result.current.variableValues.get("count")).toBe("12");
+    rerender({ company: "b" });
+    expect(result.current.variableValues.get("count")).toBe("0");
+  });
+
+  it("leaves a variable whose counts are unavailable unresolved", () => {
+    const { result } = renderVisibility({
+      schema: companyCount(),
+      formData: { company: "a" },
+      variableAggregates: {
+        status: VariableAggregatesStatus.SourceUnavailable,
+        aggregates: new Map(),
+      },
+    });
+
+    expect(result.current.variablesError).toBeNull();
+    expect(result.current.variableValues.has("count")).toBe(false);
+  });
+
   const noteField: TextField = {
     ...textField("note"),
     visibleIfFormula: {
@@ -481,6 +564,7 @@ describe("useFormVisibility", () => {
           fieldLookup: lookupFor(notesSchema),
           previousAnswerData: undefined,
           sourceHistories: NO_SOURCES_READY,
+          variableAggregates: NO_AGGREGATES_READY,
           userHasCity: false,
           firstContractSignedAt: null,
           completedActionCount: 0,
@@ -616,6 +700,7 @@ function renderValidation(args: {
         fieldLookup: lookupFor(args.schema),
         previousAnswerData: undefined,
         sourceHistories: NO_SOURCES_READY,
+        variableAggregates: NO_AGGREGATES_READY,
         userHasCity: false,
         firstContractSignedAt: null,
         completedActionCount: 0,

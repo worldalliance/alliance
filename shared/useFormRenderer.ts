@@ -27,8 +27,12 @@ import {
   emptyUserPropertyPresence,
   type UserPropertyPresence,
 } from "@alliance/common/forms/user-properties";
+import {
+  aggregateSourceKey,
+  variableAggregateSources,
+} from "@alliance/common/forms/variable-aggregates";
 import { resolveVariableValues } from "@alliance/common/forms/variable-evaluation";
-import { variableSourceFormIds } from "@alliance/common/forms/variables";
+import { variableHistoryFormIds } from "@alliance/common/forms/variables";
 import {
   isElementCurrentlyVisible as isElementCurrentlyVisibleShared,
   isFieldConditionallyRequired,
@@ -62,6 +66,10 @@ import {
   resolveFieldDefaultValue,
   validateFieldValue as validateFieldValueShared,
 } from "./formrenderer";
+import {
+  evaluatedAggregates,
+  type VariableAggregates,
+} from "./forms/useVariableAggregates";
 import {
   evaluatedSources,
   type SourceHistories,
@@ -616,6 +624,7 @@ export function useFormVisibility(args: {
   fieldLookup: Map<string, AnyField>;
   previousAnswerData: ConditionExtras["previousAnswerData"];
   sourceHistories: SourceHistories;
+  variableAggregates: VariableAggregates;
   userHasCity: boolean;
   userPropertyHasValue?: UserPropertyPresence;
   firstContractSignedAt: string | null;
@@ -632,6 +641,7 @@ export function useFormVisibility(args: {
     fieldLookup,
     previousAnswerData,
     sourceHistories,
+    variableAggregates,
     userHasCity,
     userPropertyHasValue,
     firstContractSignedAt,
@@ -696,21 +706,31 @@ export function useFormVisibility(args: {
 
   const variables = useMemo(() => {
     const { sources, deletedFormIds } = evaluatedSources(sourceHistories);
-    // A variable reading a deleted form stays out, so its `#{name}` shows as
-    // written, the way shared output leaves a variable it can't resolve.
-    const resolvable = schema.variables?.filter((variable) =>
-      variableSourceFormIds([variable]).every((id) => !deletedFormIds.has(id)),
+    const aggregates = evaluatedAggregates(variableAggregates);
+    // A variable reading a deleted form or question stays out, so its
+    // `#{name}` shows as written, the way shared output leaves a variable it
+    // can't resolve.
+    const resolvable = schema.variables?.filter(
+      (variable) =>
+        variableHistoryFormIds([variable]).every(
+          (id) => !deletedFormIds.has(id),
+        ) &&
+        variableAggregateSources([variable]).every((source) =>
+          aggregates.has(aggregateSourceKey(source)),
+        ),
     );
     return resolveVariableValues(resolvable, {
       answers: effectiveFormData,
       fields: variableInputFields,
       sources,
+      aggregates,
     });
   }, [
     schema.variables,
     effectiveFormData,
     variableInputFields,
     sourceHistories,
+    variableAggregates,
   ]);
 
   const isElementCurrentlyVisible = useCallback(

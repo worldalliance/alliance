@@ -1,6 +1,6 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { VariableSourceHistory } from "@alliance/common/forms/variable-evaluation";
-import { variableSourceFormIds } from "@alliance/common/forms/variables";
+import { variableHistoryFormIds } from "@alliance/common/forms/variables";
 import { R, type Result } from "@alliance/common/result";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -151,7 +151,7 @@ export function useVariableSourceHistories(params: {
   subject: HistorySubject;
 }): SourceHistories {
   const { schema, subject } = params;
-  const idsKey = variableSourceFormIds(schema.variables).join(",");
+  const idsKey = variableHistoryFormIds(schema.variables).join(",");
   const formIds = useMemo(
     () => (idsKey === "" ? [] : idsKey.split(",").map(Number)),
     [idsKey],

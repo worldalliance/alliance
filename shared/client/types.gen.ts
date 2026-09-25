@@ -3718,6 +3718,27 @@ export type FormResponseHistoryDto = {
     responses: Array<FormResponseHistoryEntryDto>;
 };
 
+export type VariableAggregateDto = {
+    sourceFormId: number;
+    fieldId: string;
+    counts: {
+        [key: string]: number;
+    } | null;
+};
+
+export type VariableAggregatesDto = {
+    aggregates: Array<VariableAggregateDto>;
+};
+
+export type VariableAggregateSourceDto = {
+    sourceFormId: number;
+    fieldId: string;
+};
+
+export type CountVariableAggregatesDto = {
+    sources: Array<VariableAggregateSourceDto>;
+};
+
 export type GuestFormResponseDto = {
     response?: FormResponseDto;
 };
@@ -12195,6 +12216,53 @@ export type TasksGetMemberFormResponseHistoryAdminResponses = {
 };
 
 export type TasksGetMemberFormResponseHistoryAdminResponse = TasksGetMemberFormResponseHistoryAdminResponses[keyof TasksGetMemberFormResponseHistoryAdminResponses];
+
+export type TasksGetVariableAggregatesData = {
+    body?: never;
+    path: {
+        formId: number;
+        formSnapshotId: number;
+    };
+    query?: never;
+    url: '/tasks/variableAggregates/{formId}/snapshot/{formSnapshotId}';
+};
+
+export type TasksGetVariableAggregatesErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type TasksGetVariableAggregatesError = TasksGetVariableAggregatesErrors[keyof TasksGetVariableAggregatesErrors];
+
+export type TasksGetVariableAggregatesResponses = {
+    200: VariableAggregatesDto;
+};
+
+export type TasksGetVariableAggregatesResponse = TasksGetVariableAggregatesResponses[keyof TasksGetVariableAggregatesResponses];
+
+export type TasksCountVariableAggregatesAdminData = {
+    body: CountVariableAggregatesDto;
+    path?: never;
+    query?: never;
+    url: '/tasks/variableAggregates';
+};
+
+export type TasksCountVariableAggregatesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type TasksCountVariableAggregatesAdminError = TasksCountVariableAggregatesAdminErrors[keyof TasksCountVariableAggregatesAdminErrors];
+
+export type TasksCountVariableAggregatesAdminResponses = {
+    200: VariableAggregatesDto;
+};
+
+export type TasksCountVariableAggregatesAdminResponse = TasksCountVariableAggregatesAdminResponses[keyof TasksCountVariableAggregatesAdminResponses];
 
 export type TasksGetGuestFormResponseData = {
     body?: never;
