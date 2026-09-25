@@ -1,24 +1,18 @@
-import { actionPartnershipsFindAllResponsesAdmin } from "@alliance/shared/client";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
 import { isProduction } from "@alliance/sharedweb/lib/config";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { LogOut, PanelLeft } from "lucide-react";
 import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { Outlet } from "react-router";
 import SidebarNav from "./components/SidebarNav";
 import { useAuth } from "./lib/AuthContext";
 import { useGroupAssignment } from "./lib/GroupAssignmentContext";
+import { outreachPartnershipResponsesQuery } from "./lib/outreachPartnershipResponsesQuery";
 
 const Sidebar: React.FC = () => {
-  const queryClient = useQueryClient();
-  const { data: partnershipResponses = [] } = useQuery({
-    queryKey: queryKeys.outreachPartnershipResponsesAdmin(),
-    queryFn: () =>
-      actionPartnershipsFindAllResponsesAdmin({ throwOnError: true }).then(
-        (response) => response.data,
-      ),
-  });
+  const { data: partnershipResponses = [] } = useQuery(
+    outreachPartnershipResponsesQuery,
+  );
   const pendingOutreachPartnershipCount = useMemo(
     () =>
       partnershipResponses.filter(
@@ -38,24 +32,6 @@ const Sidebar: React.FC = () => {
       logout();
     }
   }, [authLoading, user, logout]);
-
-  useEffect(() => {
-    const refetchPartnerships = () => {
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.outreachPartnershipResponsesAdmin(),
-      });
-    };
-    window.addEventListener(
-      "outreach-partnerships-updated",
-      refetchPartnerships,
-    );
-    return () => {
-      window.removeEventListener(
-        "outreach-partnerships-updated",
-        refetchPartnerships,
-      );
-    };
-  }, [queryClient]);
 
   const [sidebarWidth, setSidebarWidth] = useState<number>(220);
 

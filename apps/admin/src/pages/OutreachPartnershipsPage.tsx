@@ -2,20 +2,20 @@ import { ensureHttpProtocol } from "@alliance/common/url";
 import {
   actionPartnershipsCreateNoteAdmin,
   actionPartnershipsDeleteResponseAdmin,
-  actionPartnershipsFindAllResponsesAdmin,
 } from "@alliance/shared/client";
 import type {
   ActionPartnershipNoteDto,
   ActionPartnershipResponseDto,
 } from "@alliance/shared/client/types.gen";
+import {
+  rethrowUnlessNotFound,
+  thrownRefusalMessage,
+} from "@alliance/shared/lib/hey-api";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import React, { useMemo, useRef, useState } from "react";
+import { outreachPartnershipResponsesQuery } from "../lib/outreachPartnershipResponsesQuery";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
 
 const formatDateTime = (value: string): string =>
   new Date(value).toLocaleString(undefined, {
@@ -29,11 +29,23 @@ const getDefaultNoteDate = (): string => {
   return now.toISOString().slice(0, 16);
 };
 
+const withoutId = (ids: Set<number>, id: number) => {
+  const next = new Set(ids);
+  next.delete(id);
+  return next;
+};
+
 const OutreachPartnershipsPage: React.FC = () => {
-  const [responses, setResponses] = useState<ActionPartnershipResponseDto[]>(
-    [],
-  );
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
+  const list = useQuery(outreachPartnershipResponsesQuery);
+  const responses = list.data ?? [];
+  const loadError = list.isError
+    ? thrownRefusalMessage({
+        error: list.error,
+        fallback: "Failed to load outreach partnership responses.",
+        sessionExpired: sessionExpiredMessage,
+      })
+    : null;
   const [error, setError] = useState<string | null>(null);
   const [noteBodies, setNoteBodies] = useState<Record<number, string>>({});
   const [noteDates, setNoteDates] = useState<Record<number, string>>({});
@@ -44,26 +56,6 @@ const OutreachPartnershipsPage: React.FC = () => {
     () => new Set(),
   );
   const deletingResponseIdsRef = useRef<Set<number>>(new Set());
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await actionPartnershipsFindAllResponsesAdmin({
-        throwOnError: true,
-      });
-      setResponses(res.data);
-    } catch (err) {
-      console.error("Failed to load outreach partnership responses", err);
-      setError("Failed to load outreach partnership responses.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   const responseCountText = useMemo(() => {
     switch (responses.length) {
@@ -76,96 +68,129 @@ const OutreachPartnershipsPage: React.FC = () => {
     }
   }, [responses.length]);
 
-  const handleAddNote = useCallback(
-    async (responseId: number) => {
-      const body = (noteBodies[responseId] ?? "").trim();
-      if (!body) {
-        setError("Write a note before saving.");
-        return;
-      }
+  const setResponses = async (
+    update: (
+      prev: ActionPartnershipResponseDto[],
+    ) => ActionPartnershipResponseDto[],
+  ) => {
+    const { queryKey } = outreachPartnershipResponsesQuery;
+    // A fetch started before the write would land the old list over it.
+    await queryClient.cancelQueries({ queryKey });
+    // With no list to patch (the first load was cancelled or failed), a fresh
+    // fetch picks up the write.
+    if (!queryClient.getQueryData(queryKey)) {
+      await queryClient.refetchQueries({ queryKey });
+      return;
+    }
+    queryClient.setQueryData(queryKey, (prev) => prev && update(prev));
+  };
 
+  const reportError = (err: unknown, fallback: string) => {
+    console.error(fallback, err);
+    setError(
+      thrownRefusalMessage({
+        error: err,
+        fallback,
+        sessionExpired: sessionExpiredMessage,
+      }),
+    );
+  };
+
+  const addNote = useMutation({
+    mutationFn: ({
+      responseId,
+      body,
+      noteDate,
+    }: {
+      responseId: number;
+      body: string;
+      noteDate: string | undefined;
+    }) =>
+      actionPartnershipsCreateNoteAdmin({
+        path: { id: responseId },
+        body: {
+          body,
+          ...(noteDate ? { noteDate: new Date(noteDate).toISOString() } : {}),
+        },
+        throwOnError: true,
+      }).then((r) => r.data),
+    onMutate: ({ responseId }) => {
       setSavingNoteIds((prev) => new Set(prev).add(responseId));
-      setError(null);
-      try {
-        const noteDate = noteDates[responseId];
-        const res = await actionPartnershipsCreateNoteAdmin({
-          path: { id: responseId },
-          body: {
-            body,
-            ...(noteDate ? { noteDate: new Date(noteDate).toISOString() } : {}),
-          },
-          throwOnError: true,
-        });
-        const note = res.data;
-        setResponses((prev) =>
-          prev.map((response) =>
-            response.id === responseId
-              ? {
-                  ...response,
-                  notesHistory: [note, ...response.notesHistory],
-                }
-              : response,
-          ),
-        );
-        setNoteBodies((prev) => ({ ...prev, [responseId]: "" }));
-        setNoteDates((prev) => ({
-          ...prev,
-          [responseId]: getDefaultNoteDate(),
-        }));
-        window.dispatchEvent(new Event("outreach-partnerships-updated"));
-      } catch (err) {
-        console.error("Failed to add outreach partnership note", err);
-        setError("Failed to save note.");
-      } finally {
-        setSavingNoteIds((prev) => {
-          const next = new Set(prev);
-          next.delete(responseId);
-          return next;
-        });
-      }
     },
-    [noteBodies, noteDates],
-  );
-
-  const handleDeleteResponse = useCallback(
-    async (response: ActionPartnershipResponseDto) => {
-      if (deletingResponseIdsRef.current.has(response.id)) {
-        return;
-      }
-
-      const confirmed = window.confirm(
-        `Are you sure you want to delete ${response.organizationName}'s outreach partnership response? This cannot be undone.`,
+    onSettled: (_data, _err, { responseId }) => {
+      setSavingNoteIds((prev) => withoutId(prev, responseId));
+    },
+    onSuccess: async (note, { responseId }) => {
+      setNoteBodies((prev) => ({ ...prev, [responseId]: "" }));
+      setNoteDates((prev) => ({
+        ...prev,
+        [responseId]: getDefaultNoteDate(),
+      }));
+      // A refetch that landed before this response may already list it.
+      await setResponses((prev) =>
+        prev.map((response) =>
+          response.id === responseId
+            ? {
+                ...response,
+                notesHistory: [
+                  note,
+                  ...response.notesHistory.filter((n) => n.id !== note.id),
+                ],
+              }
+            : response,
+        ),
       );
-      if (!confirmed) {
-        return;
-      }
-
-      deletingResponseIdsRef.current = new Set(
-        deletingResponseIdsRef.current,
-      ).add(response.id);
-      setDeletingResponseIds(deletingResponseIdsRef.current);
-      setError(null);
-      try {
-        await actionPartnershipsDeleteResponseAdmin({
-          path: { id: response.id },
-          throwOnError: true,
-        });
-        setResponses((prev) =>
-          prev.filter((existing) => existing.id !== response.id),
-        );
-        window.dispatchEvent(new Event("outreach-partnerships-updated"));
-      } catch (err) {
-        console.error("Failed to delete outreach partnership response", err);
-        setError("Failed to delete response.");
-      } finally {
-        const nextDeletingResponseIds = new Set(deletingResponseIdsRef.current);
-        nextDeletingResponseIds.delete(response.id);
-        deletingResponseIdsRef.current = nextDeletingResponseIds;
-        setDeletingResponseIds(nextDeletingResponseIds);
-      }
     },
-    [],
-  );
+    onError: (err) => reportError(err, "Failed to save note."),
+  });
+
+  const deleteResponse = useMutation({
+    mutationFn: (id: number) =>
+      actionPartnershipsDeleteResponseAdmin({
+        path: { id },
+        throwOnError: true,
+      }).then(() => undefined, rethrowUnlessNotFound),
+    onSettled: (_data, _err, id) => {
+      deletingResponseIdsRef.current = withoutId(
+        deletingResponseIdsRef.current,
+        id,
+      );
+      setDeletingResponseIds(deletingResponseIdsRef.current);
+    },
+    onSuccess: (_data, id) =>
+      setResponses((prev) => prev.filter((response) => response.id !== id)),
+    onError: (err) => reportError(err, "Failed to delete response."),
+  });
+
+  const handleAddNote = (responseId: number) => {
+    const body = (noteBodies[responseId] ?? "").trim();
+    if (!body) {
+      setError("Write a note before saving.");
+      return;
+    }
+    setError(null);
+    addNote.mutate({ responseId, body, noteDate: noteDates[responseId] });
+  };
+
+  const handleDeleteResponse = (response: ActionPartnershipResponseDto) => {
+    if (deletingResponseIdsRef.current.has(response.id)) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${response.organizationName}'s outreach partnership response? This cannot be undone.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    deletingResponseIdsRef.current = new Set(
+      deletingResponseIdsRef.current,
+    ).add(response.id);
+    setDeletingResponseIds(deletingResponseIdsRef.current);
+    setError(null);
+    deleteResponse.mutate(response.id);
+  };
 
   return (
     <div className="h-full overflow-y-auto p-5 pt-20">
@@ -173,14 +198,17 @@ const OutreachPartnershipsPage: React.FC = () => {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold">Outreach partnerships</h1>
-          <p className="text-sm text-zinc-500">{responseCountText}</p>
+          {list.data && (
+            <p className="text-sm text-zinc-500">{responseCountText}</p>
+          )}
         </div>
 
         {error ? <p className="text-sm text-red-500">{error}</p> : null}
+        {loadError ? <p className="text-sm text-red-500">{loadError}</p> : null}
 
-        {loading ? (
+        {list.isPending ? (
           <p className="text-sm text-zinc-500">Loading...</p>
-        ) : responses.length === 0 ? (
+        ) : !list.data ? null : responses.length === 0 ? (
           <div className="rounded-md border border-zinc-200 bg-white p-6">
             <p className="text-sm text-zinc-500">
               No outreach partnership responses have been submitted yet.
