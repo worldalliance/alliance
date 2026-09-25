@@ -8,6 +8,9 @@ const formsAdminAll = () => ["formsAdmin"] as const;
 
 const projectsAdminAll = () => ["projectsAdmin"] as const;
 
+const actionCompletionCurvesAdminAll = () =>
+  ["analyticsGetActionCompletionCurvesAdmin"] as const;
+
 /**
  * Central registry of react-query keys
  */
@@ -38,6 +41,9 @@ export const queryKeys = {
   // Admin
   actionAdmin: (actionId: number | null) =>
     ["actionsFindOneAdmin", actionId] as const,
+  actionCompletionCurvesAdminAll,
+  actionCompletionCurvesAdmin: (granularity: string) =>
+    [...actionCompletionCurvesAdminAll(), granularity] as const,
   actionsAllAdmin: () => ["actionsFindAllWithDraftsAdmin"] as const,
   actionRelationsAdmin: () => ["actionsActionRelationsAdmin"] as const,
   ambassadorProgramAdmin: () => ["userGetAmbassadorProgramAdmin"] as const,

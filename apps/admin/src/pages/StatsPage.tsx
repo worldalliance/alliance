@@ -25,7 +25,7 @@ import {
 } from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import chroma from "chroma-js";
 import {
   area,
@@ -299,6 +299,7 @@ const fetchMemberReliabilityWindow = async (
 };
 
 const StatsPage: React.FC = () => {
+  const queryClient = useQueryClient();
   const defaultRange = useMemo(() => getDefaultRange(), []);
   const [startInput, setStartInput] = useState<string>(defaultRange.start);
   const [endInput, setEndInput] = useState<string>(defaultRange.end);
@@ -316,8 +317,6 @@ const StatsPage: React.FC = () => {
   >([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [actionStatsLoading, setActionStatsLoading] = useState<boolean>(false);
-  const [completionCurveRefreshKey, setCompletionCurveRefreshKey] =
-    useState<number>(0);
   const [retentionLoading, setRetentionLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [hoveredActionBar, setHoveredActionBar] =
@@ -591,13 +590,15 @@ const StatsPage: React.FC = () => {
     try {
       const actionStatsResponse = await analyticsRecalculateActionStatsAdmin();
       setActionStats(actionStatsResponse.data ?? []);
-      setCompletionCurveRefreshKey((prev) => prev + 1);
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.actionCompletionCurvesAdminAll(),
+      });
     } catch (err) {
       console.error("Failed to recalculate action stats", err);
     } finally {
       setActionStatsLoading(false);
     }
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     void loadActionStats();
@@ -2687,7 +2688,7 @@ const StatsPage: React.FC = () => {
       </div>
 
       {/* Action Completion Curves */}
-      <ActionCompletionCurveChart refreshKey={completionCurveRefreshKey} />
+      <ActionCompletionCurveChart />
 
       <TimeSeriesChart
         title="Cumulative Completion Rate"
