@@ -3,30 +3,39 @@ import {
   userStaffDirectoryAdmin,
   userUpdateStaffDirectoryAdmin,
 } from "@alliance/shared/client";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { GripVertical } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { DropPosition, useDragReorder } from "../lib/useDragReorder";
 
 type StaffRow = StaffDirectoryEntryDto;
 
 const StaffDirectoryPage: React.FC = () => {
-  const [items, setItems] = useState<StaffRow[]>([]);
-  const [originalOrder, setOriginalOrder] = useState<Map<number, number>>(
-    () => new Map(),
+  const queryClient = useQueryClient();
+  const directory = useQuery({
+    queryKey: queryKeys.staffDirectoryAdmin(),
+    queryFn: () =>
+      userStaffDirectoryAdmin({ throwOnError: true }).then((r) => r.data),
+  });
+  const loadError = directory.isError
+    ? thrownRefusalMessage({
+        error: directory.error,
+        fallback: "Failed to load staff directory",
+        sessionExpired: sessionExpiredMessage,
+      })
+    : null;
+  const [edits, setEdits] = useState<StaffRow[] | null>(null);
+  const items = useMemo(
+    () => edits ?? directory.data ?? [],
+    [edits, directory.data],
   );
-  const [originalTitles, setOriginalTitles] = useState<
-    Map<number, string | null>
-  >(() => new Map());
-  const [originalLinks, setOriginalLinks] = useState<
-    Map<number, string | null>
-  >(() => new Map());
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const { error: showError } = useToast();
   const {
     listRef,
@@ -39,91 +48,68 @@ const StaffDirectoryPage: React.FC = () => {
     handleDrop,
     handleListDragOver,
     handleListDrop,
-  } = useDragReorder(items, setItems);
-
-  const applyLoaded = useCallback((data: StaffDirectoryEntryDto[]) => {
-    setItems(data);
-    setOriginalOrder(new Map(data.map((item, index) => [item.id, index])));
-    setOriginalTitles(
-      new Map(data.map((item) => [item.id, item.staffTitle ?? null])),
-    );
-    setOriginalLinks(
-      new Map(data.map((item) => [item.id, item.staffLink ?? null])),
-    );
-  }, []);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await userStaffDirectoryAdmin();
-      applyLoaded(res.data ?? []);
-    } catch (err) {
-      setError("Failed to load staff directory");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [applyLoaded]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  } = useDragReorder(items, setEdits);
 
   const anyChanged = useMemo(() => {
-    return items.some((item, index) => {
-      const originalIndex = originalOrder.get(item.id);
-      const originalTitle = originalTitles.get(item.id) ?? null;
-      const originalLink = originalLinks.get(item.id) ?? null;
-      const currentTitle = item.staffTitle ?? null;
-      const currentLink = item.staffLink ?? null;
-      return (
-        originalIndex !== index ||
-        originalTitle !== currentTitle ||
-        originalLink !== currentLink
-      );
-    });
-  }, [items, originalOrder, originalTitles, originalLinks]);
+    const saved = directory.data ?? [];
+    return (
+      items.length !== saved.length ||
+      items.some((item, index) => {
+        const original = saved[index];
+        return (
+          original.id !== item.id ||
+          (original.staffTitle ?? null) !== (item.staffTitle ?? null) ||
+          (original.staffLink ?? null) !== (item.staffLink ?? null)
+        );
+      })
+    );
+  }, [items, directory.data]);
 
   const handleTitleChange = (id: number, staffTitle: string) => {
-    setItems((prev) =>
-      prev.map((item) =>
+    setEdits(
+      items.map((item) =>
         item.id === id ? { ...item, staffTitle: staffTitle || null } : item,
       ),
     );
   };
 
   const handleLinkChange = (id: number, staffLink: string) => {
-    setItems((prev) =>
-      prev.map((item) =>
+    setEdits(
+      items.map((item) =>
         item.id === id ? { ...item, staffLink: staffLink || null } : item,
       ),
     );
   };
 
-  const handleSave = useCallback(async () => {
-    setSaving(true);
-    try {
-      const res = await userUpdateStaffDirectoryAdmin({
+  const save = useMutation({
+    mutationFn: (rows: StaffRow[]) =>
+      userUpdateStaffDirectoryAdmin({
         body: {
-          items: items.map((item, index) => ({
+          items: rows.map((item, index) => ({
             id: item.id,
             staffTitle: item.staffTitle ?? null,
             staffLink: item.staffLink ?? null,
             staffDisplayOrder: index,
           })),
         },
+        throwOnError: true,
+      }).then((r) => r.data),
+    onSuccess: async (data) => {
+      // A refetch started before the save would land the pre-save directory
+      // over this one.
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.staffDirectoryAdmin(),
       });
-      applyLoaded(res.data ?? items);
-    } catch (err) {
+      queryClient.setQueryData(queryKeys.staffDirectoryAdmin(), data);
+      setEdits(null);
+    },
+    onError: (err) => {
       showError("Failed to save staff directory");
       console.error(err);
-    } finally {
-      setSaving(false);
-    }
-  }, [items, applyLoaded, showError]);
+    },
+  });
 
-  if (loading) {
+  if (directory.isPending) {
     return (
       <div className="p-5">
         <title>Staff Directory - Admin</title>
@@ -132,11 +118,11 @@ const StaffDirectoryPage: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (loadError && !directory.data) {
     return (
       <div className="p-5">
         <title>Staff Directory - Admin</title>
-        <p className="text-red-500">{error}</p>
+        <p className="text-red-500">{loadError}</p>
       </div>
     );
   }
@@ -149,12 +135,17 @@ const StaffDirectoryPage: React.FC = () => {
         <Button
           color={ButtonColor.Green}
           className="text-white !px-4 !py-2 rounded-md"
-          onClick={() => void handleSave()}
-          disabled={saving || !anyChanged}
+          onClick={() => save.mutate(items)}
+          disabled={save.isPending || !anyChanged}
         >
-          {saving ? "Saving…" : anyChanged ? "Save" : "No changes to save"}
+          {save.isPending
+            ? "Saving…"
+            : anyChanged
+              ? "Save"
+              : "No changes to save"}
         </Button>
       </div>
+      {loadError && <p className="text-red-500">{loadError}</p>}
       <p className="text-sm text-zinc-600">
         People with the staff flag, in the order they appear on the public
         People page. Set a brief title and optional About link for each person,
