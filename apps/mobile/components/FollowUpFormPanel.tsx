@@ -62,7 +62,7 @@ export default function FollowUpFormPanel({
       });
       if (!submitted.ok) {
         setError("Failed to submit. Please try again.");
-        return;
+        return false;
       }
       if (form) {
         await AsyncStorage.removeItem(
@@ -75,6 +75,7 @@ export default function FollowUpFormPanel({
       Alert.alert("Response submitted", "Thank you!");
       setFormInstanceKey((k) => k + 1);
       onSubmitted?.();
+      return true;
     },
     [followUpForm.id, form, actionId, onSubmitted],
   );

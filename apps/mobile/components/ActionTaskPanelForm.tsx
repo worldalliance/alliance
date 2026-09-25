@@ -90,6 +90,7 @@ const ActionTaskPanelForm = ({
           ? await tasksSubmitForm({
               path: { id: taskFormId },
               body: data,
+              throwOnError: false,
             })
           : await tasksSubmitPublicForm({
               path: { id: taskFormId },
@@ -97,6 +98,7 @@ const ActionTaskPanelForm = ({
               headers: storedGuestToken
                 ? { [GUEST_HEADER]: storedGuestToken }
                 : undefined,
+              throwOnError: false,
             });
         if (response.response.ok) {
           if (isAuthenticated) {
@@ -111,6 +113,7 @@ const ActionTaskPanelForm = ({
             }
           }
           onSubmitSuccess();
+          return true;
         } else {
           console.error(response.error);
           captureException(ExceptionEvent.FormSubmitError, response.error, {
@@ -118,6 +121,7 @@ const ActionTaskPanelForm = ({
             $exception_fingerprint: "FormSubmitError",
           });
           setError("Failed to submit action.");
+          return false;
         }
       }
     : null;
