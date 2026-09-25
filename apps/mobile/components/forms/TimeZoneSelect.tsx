@@ -88,7 +88,11 @@ export default function TimeZoneSelect({
         )}
       >
         <View className="flex-1 pr-3">
-          <Text className="text-base text-zinc-900" numberOfLines={1}>
+          <Text
+            className="text-base text-zinc-900"
+            numberOfLines={1}
+            ellipsizeMode="middle"
+          >
             {selected.labelLeft || placeholder}
           </Text>
           <Text className="text-xs text-zinc-500 mt-0.5" numberOfLines={1}>

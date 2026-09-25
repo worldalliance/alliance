@@ -77,7 +77,8 @@ sections below this one carry the reasoning each step implements.
    with an ellipsis, so every row is the height of any one laid out, whatever
    the member's font scale. The name is cut mid-way rather than at its end,
    since the city ends it and is what tells apart the zones sharing a generic
-   name. The list measures every row it lays out, so a font scale changed
+   name. The closed picker cuts its name the same way, so a long one keeps
+   its city. The list measures every row it lays out, so a font scale changed
    while the picker stays mounted updates the height, and passes
    `getItemLayout`, so it scrolls straight to the selected row by index.
    Rendering every row up to the selected one instead, as it did before, means
