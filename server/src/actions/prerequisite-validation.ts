@@ -1,3 +1,7 @@
+import {
+  checkPrerequisiteDeadline,
+  PrerequisiteDeadlineProblem,
+} from "@alliance/common/prerequisite";
 import { R, type Result } from "@alliance/common/result";
 import { BadRequestException } from "@nestjs/common";
 import { ArrayContains, In, Raw, type EntityManager } from "typeorm";
@@ -11,9 +15,7 @@ export type PrerequisiteNode = {
 };
 
 /**
- * Check every prerequisite edge touching the changed actions. A prerequisite
- * needs a deadline that comes before its dependent's, or a member could wait
- * forever or become ready after the dependent closed.
+ * Check every prerequisite edge touching the changed actions.
  *
  * @param actions Every action with prerequisites, and every action an edge
  *   touching a changed action names.
@@ -40,15 +42,25 @@ export function checkPrerequisites(params: {
           `"${dependent.name}" has a prerequisite, #${upstreamId}, that doesn't exist.`,
         );
       }
-      if (!upstream.deadline) {
-        return R.failure(
-          `"${upstream.name}" needs a deadline to be a prerequisite of "${dependent.name}".`,
-        );
-      }
-      if (dependent.deadline && upstream.deadline >= dependent.deadline) {
-        return R.failure(
-          `"${upstream.name}" is a prerequisite of "${dependent.name}", so its deadline must come first.`,
-        );
+      const deadline = checkPrerequisiteDeadline({
+        upstream: upstream.deadline,
+        dependent: dependent.deadline,
+      });
+      if (!deadline.ok) {
+        switch (deadline.error) {
+          case PrerequisiteDeadlineProblem.Missing:
+            return R.failure(
+              `"${upstream.name}" needs a deadline to be a prerequisite of "${dependent.name}".`,
+            );
+          case PrerequisiteDeadlineProblem.NotFirst:
+            return R.failure(
+              `"${upstream.name}" is a prerequisite of "${dependent.name}", so its deadline must come first.`,
+            );
+          default:
+            throw new Error(
+              `unknown prerequisite deadline problem: ${deadline.error satisfies never}`,
+            );
+        }
       }
     }
   }
