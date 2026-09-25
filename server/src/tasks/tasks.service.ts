@@ -41,6 +41,10 @@ import {
   isValidRankingSelection,
 } from "@alliance/common/forms/ranking";
 import {
+  type VariableAggregateSource,
+  variableAggregateSources,
+} from "@alliance/common/forms/variable-aggregates";
+import {
   type ConditionExtras,
   isElementCurrentlyVisible,
   isFieldConditionallyRequired,
@@ -140,6 +144,10 @@ import {
   UpdateFormDto,
 } from "./form.dto";
 import { FormSnapshotService } from "./formsnapshot.service";
+import {
+  countVariableAggregates,
+  type VariableAggregate,
+} from "./variable-aggregates";
 import {
   findFormsReadingForm,
   loadVariableSourceForms,
@@ -1556,6 +1564,33 @@ export class TasksService {
       order: { createdAt: "ASC", id: "ASC" },
     });
     return { form, responses };
+  }
+
+  /**
+   * Counts the aggregate inputs of one version of a form. The version, not the
+   * caller, decides which questions are counted.
+   */
+  async countFormVersionAggregates(params: {
+    formId: number;
+    formSnapshotId: number;
+  }): Promise<VariableAggregate[]> {
+    const snapshot = await this.formSnapshotService.findHistoricalOrThrow(
+      params.formId,
+      params.formSnapshotId,
+    );
+    return countVariableAggregates({
+      em: this.formRepository.manager,
+      sources: variableAggregateSources(formSchemaOf(snapshot).variables),
+    });
+  }
+
+  countVariableAggregates(
+    sources: readonly VariableAggregateSource[],
+  ): Promise<VariableAggregate[]> {
+    return countVariableAggregates({
+      em: this.formRepository.manager,
+      sources,
+    });
   }
 
   async getGuestFormResponse(
