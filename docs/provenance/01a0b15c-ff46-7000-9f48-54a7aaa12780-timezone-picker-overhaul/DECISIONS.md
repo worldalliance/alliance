@@ -238,24 +238,27 @@ sections below this one carry the reasoning each step implements.
 10. **Signup capture.** Done. Web signup, mobile signup, and the web OAuth
     start pass the detected zone through `signupTimeZone` in
     `shared/lib/timeZone.ts`, which keeps it when `isTimeZoneIdentifier`
-    accepts it and sends `UTC` otherwise, since the server refuses an invalid
-    zone and a refused one would fail the whole signup. Mobile signup detects
+    accepts it and gives `null` otherwise, since the server refuses an invalid
+    zone and a refused one would fail the whole signup. Password signup sends
+    the `null`, and the web OAuth start leaves the zone off its URL. Either
+    way the account is created with no zone, and backfill fills it in on a
+    later session. Password signup still requires the key, so a client that
+    forgets it fails rather than silently storing none. Mobile signup detects
     through `getDeviceTimeZone()`, which moves from the picker component to
     `apps/mobile/lib/timeZone.ts` so the screens that detect a zone without a
     picker don't load one. Mobile OAuth sends no zone: it only signs in, since
     its start carries no referral code and OAuth creates an account only with
-    one, so the server's `DEFAULT_TIME_ZONE` in its state never reaches a new
-    account. The server's `DEFAULT_TIME_ZONE` fallback for a web OAuth start
-    with no zone stays: the web has always sent one.
+    one. The server stores no zone in the OAuth state of either platform's
+    start that carries none, rather than `DEFAULT_TIME_ZONE`.
 11. **Backfill.** Done. `useBackfillTimeZone` takes the platform's detection
     as `detect`: the web's `deviceTimeZone()`, and mobile's
     `getDeviceTimeZone()`, as its signup uses. It writes the detected
     identifier as reported when `isTimeZoneIdentifier` accepts it, and
-    otherwise writes nothing, leaving the value missing, unlike signup, which
-    needs a value and sends `UTC`. It tries once per member per mount, so a
-    failed detection retries on a later session. `detect` is required, so
-    each platform names its own detection instead of mobile falling back to
-    `Intl`. It runs only when the hook would write.
+    otherwise writes nothing, leaving the value missing, as signup does. It
+    tries once per member per mount, so a failed detection retries on a later
+    session. `detect` is required, so each platform names its own detection
+    instead of mobile falling back to `Intl`. It runs only when the hook would
+    write.
 12. **Settings device affordance.** Web `SettingsPage` and mobile `settings.tsx`
     show the saved value, plus `Device timezone: <label>` with a `Use` action
     when the two differ.
@@ -401,7 +404,7 @@ sections below this one carry the reasoning each step implements.
 
 - Web detection uses `Intl.DateTimeFormat().resolvedOptions().timeZone`.
 - Mobile detection uses `expo-localization`. Remove `react-native-localize` once no caller remains.
-- Password and OAuth signup capture the device timezone without another signup control. If valid detection is unavailable, signup sends `UTC` because signup requires a value.
+- Password signup and the web OAuth start capture the device timezone without another signup control. If valid detection is unavailable, the account is created with no timezone, and backfill fills it in on a later session. The mobile OAuth start carries no zone, so a mobile OAuth account takes its zone from backfill.
 - Backfill writes only a valid detected timezone. A failed detection leaves the value missing for a later retry. Backfill remains disabled during admin impersonation.
 - Settings always show the saved value. When the device differs, show `Device timezone: <label>` with a `Use` action. Only that action changes the editable value.
 - A timezone form field has one default chain: the signed-in respondent's saved timezone, then a valid device timezone, then `UTC`. Signed-out respondents start at device timezone, then `UTC`.

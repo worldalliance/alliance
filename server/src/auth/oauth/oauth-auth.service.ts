@@ -37,7 +37,7 @@ export type OAuthState = {
   origin: OAuthOrigin;
   redirectUri: string;
   returnTo: string;
-  timeZone: string;
+  timeZone: string | null;
   /**
    * Hash of the secret held by whoever started the flow, a cookie in the
    * browser and a value handed back over the API on native. Without it,
@@ -343,7 +343,7 @@ export class OAuthAuthService {
   async authenticate(params: {
     profile: OAuthProfile;
     referralCode: string | undefined;
-    timeZone: string;
+    timeZone: string | null;
   }): Promise<Result<OAuthAuthentication, OAuthError>> {
     const { profile } = params;
     const signedIn = await this.signIn(profile);

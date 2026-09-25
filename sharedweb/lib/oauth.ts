@@ -28,7 +28,10 @@ export function oauthStartUrl(params: {
   const url = new URL(`${params.apiUrl}/auth/${params.provider}/start`);
   url.searchParams.set("intent", params.intent);
   url.searchParams.set("returnTo", params.returnTo);
-  url.searchParams.set("timeZone", signupTimeZone(deviceTimeZone()));
+  const timeZone = signupTimeZone(deviceTimeZone());
+  if (timeZone) {
+    url.searchParams.set("timeZone", timeZone);
+  }
   if (params.referralCode) {
     url.searchParams.set("referralCode", params.referralCode);
   }

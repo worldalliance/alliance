@@ -34,7 +34,7 @@ import { milliseconds } from "date-fns";
 import type { Request as ExpressRequest, Response } from "express";
 import { OAUTH_THROTTLE } from "src/auth/signup-throttle.config";
 import { PosthogService } from "src/posthog/posthog.service";
-import { DEFAULT_TIME_ZONE, User } from "src/user/entities/user.entity";
+import { User } from "src/user/entities/user.entity";
 import { OnlyThrottle } from "src/utils/throttle";
 import { AuthService } from "../auth.service";
 import { AuthMeResponseDto } from "../dto/authtokens.dto";
@@ -180,7 +180,7 @@ export class OAuthController {
       origin: OAuthOrigin.Web,
       redirectUri,
       returnTo: returnTo.toString(),
-      timeZone: input.timeZone ?? DEFAULT_TIME_ZONE,
+      timeZone: input.timeZone ?? null,
       proofHash: params.proofHash,
       referralCode: input.referralCode,
       userId,

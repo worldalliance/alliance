@@ -14,11 +14,11 @@ describe("signupTimeZone", () => {
     expect(signupTimeZone("Etc/GMT+8")).toBe("Etc/GMT+8");
   });
 
-  it("falls back to UTC when detection fails or names no zone", () => {
-    expect(signupTimeZone(undefined)).toBe("UTC");
-    expect(signupTimeZone("")).toBe("UTC");
-    expect(signupTimeZone("-08:00")).toBe("UTC");
-    expect(signupTimeZone("america/los_angeles")).toBe("UTC");
-    expect(signupTimeZone("Mars/Olympus_Mons")).toBe("UTC");
+  it("sends no zone when detection fails or names no zone", () => {
+    expect(signupTimeZone(undefined)).toBeNull();
+    expect(signupTimeZone("")).toBeNull();
+    expect(signupTimeZone("-08:00")).toBeNull();
+    expect(signupTimeZone("america/los_angeles")).toBeNull();
+    expect(signupTimeZone("Mars/Olympus_Mons")).toBeNull();
   });
 });

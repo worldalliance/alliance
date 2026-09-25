@@ -85,12 +85,15 @@ describe("OAuth sign-in (e2e)", () => {
     Object.fromEntries(user.oauthAccounts.map((a) => [a.provider, a.email]));
 
   /** One agent throughout: the cookie from the start call binds the flow. */
-  const signIn = async (params: { referralCode?: string } = {}) => {
+  const signIn = async (
+    params: { referralCode?: string; timeZone?: string } = {},
+  ) => {
     const agent = client();
     const started = await agent.get(path("start")).query({
       intent: OAuthIntent.Authenticate,
       returnTo: RETURN_TO,
       ...(params.referralCode && { referralCode: params.referralCode }),
+      ...(params.timeZone && { timeZone: params.timeZone }),
     });
     const finished = await agent
       .get(path("callback"))
@@ -530,11 +533,33 @@ describe("OAuth sign-in (e2e)", () => {
       expect(created.referredBy?.id).toBe(inviter.id);
       expect(created.referredByInvite?.id).toBe(invite.id);
       expect(created.emailVerified).toBe(true);
+      expect(created.timeZone).toBeNull();
       expect(created.oauthAccounts).toMatchObject([
         { provider: profile.provider, email: profile.email },
       ]);
       const spent = await invites.findOneByOrFail({ id: invite.id });
       expect(spent.status).toBe(OnetimeInviteStatus.LINK_USED);
+    });
+
+    it("is created with the zone the start carried", async () => {
+      const inviter = await freshMember();
+      const invites = ctx.dataSource.getRepository(OnetimeInvite);
+      const invite = await invites.save(
+        invites.create({
+          invitee: "zoned@example.com",
+          code: `zoned-invite-${inviter.id}`,
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          invitingUser: { id: inviter.id },
+        }),
+      );
+      profile = { ...profile, subject: "zoned", email: invite.invitee };
+
+      await signIn({ referralCode: invite.code, timeZone: "Europe/Berlin" });
+
+      const created = await ctx.dataSource
+        .getRepository(User)
+        .findOneByOrFail({ email: profile.email });
+      expect(created.timeZone).toBe("Europe/Berlin");
     });
 
     // A spent invite throws from inside the signup path, where an exception has
