@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   userCreateAmbassadorInviteGoal,
+  userDeleteAmbassadorInviteGoal,
   userGetAmbassadorInviteDashboard,
   userUpdateAmbassadorInviteGoal,
 } from "../client";
-import { client } from "../client/client.gen";
 import { queryKeys } from "./queryKeys";
 
 const QUERY_KEY = queryKeys.ambassadorInviteDashboard();
@@ -57,13 +57,10 @@ export function useAmbassadorInviteDashboard(params?: { enabled?: boolean }) {
 
   const deleteGoalMutation = useMutation({
     mutationFn: (goalId: number) =>
-      client
-        .delete<void, unknown, true>({
-          url: "/user/ambassadorInvites/goal/{goalId}",
-          path: { goalId },
-          throwOnError: true,
-        })
-        .then((r) => r.data),
+      userDeleteAmbassadorInviteGoal({
+        path: { goalId },
+        throwOnError: true,
+      }).then((r) => r.data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEY });
     },
