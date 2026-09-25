@@ -6,6 +6,11 @@ const TZDB_NAMES: ReadonlySet<string> = new Set([
   ...TIME_ZONE_ALIASES.keys(),
 ]);
 
+/** A zone the catalog lists as a row or an alias. */
+export function isCatalogued(tz: string): boolean {
+  return TZDB_NAMES.has(tz);
+}
+
 /**
  * An identifier the runtime resolves to itself, or one the catalog lists as a
  * row or alias. Raw offsets like `-08:00`, which `Intl` resolves, and tzdb's
@@ -24,6 +29,6 @@ export function isTimeZoneIdentifier(value: unknown): value is string {
   // vouches for the spelling of the aliases it knows. Bun keeps an alias as
   // sent.
   return (
-    R.isSuccess(resolved) && (resolved.value === value || TZDB_NAMES.has(value))
+    R.isSuccess(resolved) && (resolved.value === value || isCatalogued(value))
   );
 }

@@ -36,21 +36,170 @@ sections below this one carry the reasoning each step implements.
    instead of logging and skipping the value. No admin endpoint writes a
    member's timezone. An admin changing it while impersonating goes through
    `/user/update`.
-4. **Rows from the catalog.** `shared/forms/timeZoneSelect.ts` drops the 50-row
+4. **Rows from the catalog.** Done. `shared/forms/timeZoneSelect.ts` drops the 50-row
    `TZ_OPTIONS` and builds its rows from the catalog, with the generic name and
    location as the primary label, country and offset under it, and local time at
    the trailing edge. Sorted by offset, then location. A saved or detected
    identifier the runtime resolves but neither the catalog nor its aliases
    carry gets a row of its own, labeled from `Intl` and the identifier.
-5. **Search.** Match city, country, identifier, generic name, and alias, folding
-   case and accents. Exact city and country matches rank first, then prefix
-   matches, then other word matches.
+   A row reads `Pacific Time · Los Angeles` over `United States · UTC-8`,
+   the offset in whole hours plus `:mm` where it has minutes. A runtime with
+   no generic name leaves the city alone, and one with no offset leaves the
+   country alone. Many rows share a generic name, country, and offset, such
+   as the twelve `Argentina Standard Time` rows, so where the first line runs
+   out of room the web cuts the generic name and keeps the city whole, and
+   mobile cuts the middle. The uncatalogued row reads
+   `<generic> · <identifier>`, its location the raw identifier, since a
+   device's `Etc/GMT+8` names an offset with the opposite sign and has no
+   city. It lasts while the value holds that identifier. A saved alias shows
+   its catalog row as selected and stays the stored value until the member
+   picks a row. The curated labels and
+   extra search terms go with `TZ_OPTIONS`. Aliases bring back most of what
+   they found, such as `arizona` through `US/Arizona`, and step 5 covers
+   the rest. The generic name still comes from
+   `en-US`, as before this step, since search and the second line are English.
+   A closed picker labels only its selected zone and builds the list the first
+   time it opens, since every picker on a screen otherwise labels all ~420
+   zones at mount, about 5 times the work of the 51 curated rows. The list
+   stays once built, since the mobile modal shows it through its fade-out,
+   and refreshes its clocks only while open, since otherwise every picker
+   opened once relabels all ~420 zones each minute.
+   Building every zone's formatters on open took 1.9 to 2.2 s in an Android
+   release build on the emulator and about 135 ms in a debug build on the iOS
+   simulator, so a mounted picker builds them in `requestIdleCallback` a zone
+   at a time. The warm-up is shared by every picker. An open before it ends
+   shows a spinner until it does rather than labelling the rest at once,
+   which froze a Moto G Play (2024) for about 5.8 s. In a browser a step
+   runs within 100 ms even while the runtime never idles, labelling zones for
+   8 ms, so a busy app still fills the list, in a few steps rather than a
+   zone each 100 ms. React Native schedules a step without that timeout, but
+   flags it `didTimeout` once it starts over 100 ms late and still gives it
+   up to 50 ms, which it takes back for urgent work, so only a step starting
+   with no time remaining is forced, and any other stops on `timeRemaining`
+   alone.
+   A runtime without `requestIdleCallback` builds on open, as the tests and
+   Safari do.
+   Measured on that phone in a production bundle, Hermes spends most of the
+   build constructing formatters: about 5 ms each for an explicit `en-US`
+   locale against under 2 ms for its default one, so formatters that need
+   English take the default locale where it resolves to exactly `en-US`.
+   `formatToParts` costs about twenty times what `format` does, so an offset
+   formatter whose resolved locale is `en-US` and whose string once read the
+   same wall clock as its parts reads its string from then on. The clocks
+   come from each row's offset through one UTC formatter rather than a
+   formatter per zone, and the sort compares cities with one `Intl.Collator`,
+   since `localeCompare` cost 110 ms a sort. Together these took the whole
+   build from 5.8 s to 2.6 s and each minute's refresh of an open list from
+   470 ms to 43 ms, against 50 ms for the 51 curated rows. Warming produced
+   no JS stall over 66 ms, and an open after it stalls as long as the curated
+   list's did, about 350 ms, most of it laying out the `FlatList`.
+5. **Search.** Done. Match city, country, identifier, generic name, and alias,
+   folding case and accents. Exact city and country matches rank first, then
+   prefix matches, then other word matches.
+   A row's search text carries every alias the catalog maps to it, so
+   `calcutta` finds Kolkata, and its city and country with `&` spelled `and`,
+   a straight apostrophe, and `St` spelled `Saint`, since CLDR writes
+   `Trinidad & Tobago`, `Côte d’Ivoire`, and `St. Lucia`, and tzdb
+   `St Johns`. A place is also searchable with its periods, apostrophes, and
+   parentheses dropped and each hyphen and the spaces around it as one
+   space, so `us virgin islands`, `guinea bissau`, `cote divoire`,
+   `myanmar burma`, and `congo brazzaville`, which CLDR writes
+   `Congo - Brazzaville`, find their zones.
+   `timeZoneCuratedNames.ts` also carries the English names people type
+   where CLDR writes another, so `uae`, `ivory coast`, `czech republic`,
+   `east timor`, `palestine`, `swaziland`, `holland`, `drc`, and `dr congo`
+   find their zones rather than nothing, and London carries
+   `Great Britain`. The Congos carry their names with and without `the`,
+   since a query matches as one run from a word's start. Brazzaville
+   carries `Republic of the Congo`, since that query otherwise finds only
+   the DRC zones, whose name it sits inside. They match as place names
+   rather than curated names, so partial typing ranks them like any other
+   place: as curated names they opened `ho` on Amsterdam and `sw` on
+   Mbabane. Search also matches the offset on the second
+   line, so `utc+5:30` and `+5:45` find the zones at that offset. Only a
+   query reading as an offset, such as `gmt+01:00`, `-3`, or `utc 5`,
+   reaches the offsets, rewritten to the form the row writes, so `u` keeps
+   no row by its offset, and `utc+5:` and `+5:` open on the same row. A query
+   with no letters matches no place, since `-` would otherwise open on the Congo zones
+   CLDR writes `Congo - Kinshasa`. What the query matches by name lists
+   first, so `gmt+0`, which aliases name UTC, opens on UTC ahead of the other
+   zones at UTC+0 rather than on Abidjan. Among the offsets, a row at exactly
+   the typed one lists first, so `utc-1` opens on UTC-1 rather than on
+   UTC-11, which sorts ahead of it, and UTC lists first among the rows at
+   its offset, so `utc+0` and `+0` open on UTC rather than on Abidjan, which
+   sorts ahead of it by city. Packed digits take two of
+   hour where those are 14 or less, so `+053` is partway to UTC+5:30 rather
+   than UTC+0:53 and the list stays filled while `+0530` goes in, and
+   `+530` still reads as UTC+5:30. Two hour digits or a colon end the hour,
+   so `utc+01` and `utc+1:` keep UTC+1 alone rather than UTC+10 through
+   UTC+14 with it, and two minute digits, or a `0`, which starts no zone's
+   minutes, end the offset. A pasted `−` (U+2212), as Wikipedia writes
+   offsets, reads as `-`.
+   An offset followed by `time` finds what
+   it finds alone. "Prefix" means a city or country the query
+   starts, so `india` puts Kolkata ahead of the Indiana zones, which only an
+   identifier word matches. Each rank keeps the offset order.
+   `shared/forms/timeZoneCuratedNames.ts` gives London and Perth the places
+   that no city, country, or alias spells, such as `uk`, `britain`, and
+   `western australia`, and they rank as place names, so `uk` puts London
+   ahead of Ukraine. The same file names the zone most of a multi-zone
+   country keeps after the country, such as São Paulo for `brazil`, plus
+   `china` and `hawaii`, and a query naming one of its names in full ranks
+   that zone above every other place it names in full, since offset order
+   alone opened `china` on Urumqi, `brazil` on Eirunepe, and `hawaii` in
+   winter on Adak. It names `US`, `USA`, `America`, and `Korea` the same way, and the
+   four US time names (`Eastern Time` → New York, `Central Time` → Chicago,
+   `Mountain Time` → Denver, `Pacific Time` → Los Angeles), and a query
+   starting one of its names ranks that zone after the full-name matches but
+   ahead of the places the query only starts. Without that, `eastern` opened
+   on Atikokan, which keeps no DST, `central` on Bangui through the Central
+   African Republic, `us` on Ushuaia, `united` on Adak, and `america` on
+   Pago Pago through American Samoa.
+   `Central Africa Time` goes to Maputo, since `central africa` also opened
+   on Bangui, which keeps West Africa Time. London carries
+   `Greenwich` and `GMT`, so `greenwich` and `gmt` open on London, ahead of
+   UTC and the zones Intl calls Greenwich Mean Time, which stay on UTC through
+   the British summer.
+   The curated time names the catalog's own names would open elsewhere go the
+   same way: `Central European Time` → Paris, `Eastern European Time` →
+   Athens, `Atlantic Time` → Halifax, `Brasilia Time` → São Paulo, and
+   `Central Australia` → Darwin, since in summer `central european` opened
+   on Algiers, `eastern european` on Kaliningrad, and `atlantic` on
+   Anguilla, each keeping no DST. A query finding nothing retries without a
+   trailing `time`, or as much of it as is typed, so `hawaii time` and
+   `moscow time`, which the curated labels spelled, find their zones at
+   every keystroke.
+   Steps 4 and 5 land as one change: without ranking and those place names,
+   the catalog's rows open `india` on Indiana and `uk` on Ukraine, and Enter
+   picks the first row.
 6. **Device row pinned.** The detected timezone sits above the unfiltered list.
 7. **Web combobox.** `sharedweb/forms/TimeZoneSelect.tsx` moves onto
    `@base-ui/react/combobox` with the search input inside the popup, deleting
    the hand-rolled keyboard handling, backdrop, and open state.
-8. **Mobile list.** `apps/mobile/components/forms/TimeZoneSelect.tsx` swaps its
-   `ScrollView` for a virtualized `FlatList` that opens on the selected row.
+   Until then, the hand-rolled list opens with the selected row active and
+   scrolled into view, and the arrow keys keep the active row in view. It
+   scrolls to the nearest edge rather than the center, since
+   `scrollIntoView` scrolls the page too, and centering would move the page
+   whenever the row sat off its middle. A search scrolls the list back to
+   the top, where the search moves the active row.
+8. **Mobile list.** Done. `apps/mobile/components/forms/TimeZoneSelect.tsx`
+   swaps its `ScrollView` for a virtualized `FlatList` that opens on the
+   selected row. Each row holds one line of name and one under it, cut short
+   with an ellipsis, so every row is the height of any one laid out, whatever
+   the member's font scale. The name is cut mid-way rather than at its end,
+   since the city ends it and is what tells apart the zones sharing a generic
+   name. The closed picker cuts its name the same way, so a long one keeps
+   its city. The list measures every row it lays out, so a font scale changed
+   while the picker stays mounted updates the height, and passes
+   `getItemLayout`, so it scrolls straight to the selected row by index.
+   Rendering every row up to the selected one instead, as it did before, means
+   around 400 rows at once over the catalog's rows for a member east of
+   Europe. The scroll waits for that measurement, since without
+   `getItemLayout` `scrollToIndex` throws on an unmeasured row, runs once per
+   open, and is dropped once the member types. Those rules live in
+   `selectedRowScroller.ts` so they can be tested without a renderer.
+   `FormModal` takes `scrollable={false}` so the list is not nested in its
+   `ScrollView`.
 9. **Mobile detection.** `expo-localization` replaces `react-native-localize`,
    and the dependency goes once `getTimeZone` has no caller.
 10. **Signup capture.** Web signup, mobile signup, and the OAuth redirect send a
@@ -216,7 +365,7 @@ sections below this one carry the reasoning each step implements.
 - Its secondary line shows country and current UTC offset. Show current local time at the trailing edge.
 - Omit abbreviations such as `CST`, which identify several unrelated zones.
 - Pin the detected device timezone above the unfiltered list. Sort the remaining rows by current UTC offset, then location name.
-- Search matches city, country, IANA identifier, generic name, and compatibility aliases. It ignores case and accents. Exact city and country matches rank before prefix matches, followed by other word matches.
+- Search matches city, country, IANA identifier, generic name, compatibility aliases, and the offset shown under the name. It ignores case and accents. Exact city and country matches rank before prefix matches, followed by other word matches.
 - Use the runtime locale for clock, offset, and names available through `Intl`. Generated city and country fallbacks remain English. Translated fallback dictionaries are outside this change.
 - Use the runtime's 12-hour or 24-hour preference rather than a global default.
 

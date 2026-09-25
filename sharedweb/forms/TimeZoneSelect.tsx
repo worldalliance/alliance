@@ -1,11 +1,13 @@
 import {
   NO_TIME_LABEL,
+  type TimeZoneSelectItem,
   useTimeZoneSelect,
 } from "@alliance/shared/forms/timeZoneSelect";
 import { cn } from "@alliance/shared/styles/util";
 import { Check } from "lucide-react";
 import type React from "react";
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
+import Spinner from "../ui/Spinner";
 import { zIndex } from "../ui/zIndex";
 
 type Props = {
@@ -22,6 +24,20 @@ type Props = {
   hour12?: boolean;
 };
 
+// Rows sharing a zone name differ only by city, so the name is what gets cut.
+function ZoneLabel({ zoneName, city }: TimeZoneSelectItem) {
+  return (
+    <div className="flex min-w-0 text-zinc-900">
+      {zoneName && <span className="truncate">{`${zoneName} ·\u00a0`}</span>}
+      <span className="max-w-full shrink-0 truncate">{city}</span>
+    </div>
+  );
+}
+
+function scrollToRow(list: HTMLElement | null, index: number) {
+  list?.children[index]?.scrollIntoView({ block: "nearest" });
+}
+
 export default function TimeZoneSelectPretty({
   labelId,
   value,
@@ -36,6 +52,7 @@ export default function TimeZoneSelectPretty({
   const {
     filtered,
     selected,
+    selectedIndex,
     query,
     setQuery,
     activeIndex,
@@ -43,6 +60,7 @@ export default function TimeZoneSelectPretty({
     commit,
     open,
     setOpen,
+    loading,
   } = useTimeZoneSelect({
     value,
     defaultValue,
@@ -50,6 +68,38 @@ export default function TimeZoneSelectPretty({
     hour12,
     disabled,
   });
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // WebKit sends a mousemove at the same coordinates when the list or page
+  // scrolls under a still pointer, and can report a real move with no
+  // movementX. The baseline is wherever the pointer last was on the page, and
+  // the capture listener runs before React's row handlers read the result.
+  const pointerMoved = useRef(false);
+  useEffect(() => {
+    let last: { x: number; y: number } | null = null;
+    const onMove = (e: MouseEvent) => {
+      pointerMoved.current =
+        last != null && (last.x !== e.clientX || last.y !== e.clientY);
+      last = { x: e.clientX, y: e.clientY };
+    };
+    document.addEventListener("mousemove", onMove, { capture: true });
+    return () =>
+      document.removeEventListener("mousemove", onMove, { capture: true });
+  }, []);
+
+  const moveTo = (index: number) => {
+    setActiveIndex(index);
+    scrollToRow(listRef.current, index);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    if (query || selectedIndex < 0) {
+      listRef.current?.scrollTo({ top: 0 });
+      return;
+    }
+    scrollToRow(listRef.current, selectedIndex);
+  }, [open, query, selectedIndex]);
 
   function onTriggerKeyDown(e: React.KeyboardEvent) {
     if (disabled) return;
@@ -60,7 +110,6 @@ export default function TimeZoneSelectPretty({
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setOpen(true);
-      setActiveIndex(0);
     }
   }
 
@@ -72,12 +121,12 @@ export default function TimeZoneSelectPretty({
     }
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+      moveTo(Math.min(activeIndex + 1, filtered.length - 1));
       return;
     }
     if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActiveIndex((i) => Math.max(i - 1, 0));
+      moveTo(Math.max(activeIndex - 1, 0));
       return;
     }
     if (e.key === "Enter") {
@@ -105,9 +154,11 @@ export default function TimeZoneSelectPretty({
         >
           <div id={valueId} className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="truncate text-zinc-900">
-                {selected.labelLeft || placeholder}
-              </div>
+              {selected.labelLeft ? (
+                <ZoneLabel {...selected} />
+              ) : (
+                <div className="truncate text-zinc-900">{placeholder}</div>
+              )}
               {selected.labelSub && (
                 <div className="truncate text-[13px] text-zinc-500">
                   {selected.labelSub}
@@ -155,8 +206,12 @@ export default function TimeZoneSelectPretty({
               />
             </div>
 
-            <div className="max-h-[320px] overflow-auto">
-              {filtered.length === 0 ? (
+            <div ref={listRef} className="max-h-[320px] overflow-auto">
+              {loading ? (
+                <div className="p-3 flex justify-center">
+                  <Spinner size="small" />
+                </div>
+              ) : filtered.length === 0 ? (
                 <div className="p-3 text-zinc-500">No matches</div>
               ) : (
                 filtered.map((item, idx) => {
@@ -168,7 +223,9 @@ export default function TimeZoneSelectPretty({
                     <button
                       key={item.tz}
                       type="button"
-                      onMouseEnter={() => setActiveIndex(idx)}
+                      onMouseMove={() => {
+                        if (pointerMoved.current) setActiveIndex(idx);
+                      }}
                       onClick={() => commit(item.tz)}
                       className={[
                         "w-full px-3 py-3 text-left",
@@ -180,9 +237,7 @@ export default function TimeZoneSelectPretty({
                       ].join(" ")}
                     >
                       <div className="min-w-0">
-                        <div className="truncate text-zinc-900">
-                          {item.labelLeft}
-                        </div>
+                        <ZoneLabel {...item} />
                         {item.labelSub && (
                           <div className="truncate text-[13px] text-zinc-500">
                             {item.labelSub}

@@ -1,331 +1,35 @@
-import { R } from "@alliance/common/result";
+import { isCatalogued, isTimeZoneIdentifier } from "@alliance/common/timezone";
 import {
-  millisecondsInMinute,
-  millisecondsInSecond,
-  minutesInHour,
-} from "date-fns/constants";
-import { useEffect, useMemo, useState } from "react";
+  TIME_ZONE_ALIASES,
+  TIME_ZONE_CATALOG,
+  type TimeZoneCatalogEntry,
+} from "@alliance/common/timezone-catalog.gen";
+import { minutesInHour } from "date-fns/constants";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { minuteStart, useClockMinute } from "../lib/useClockMinute";
 import { fold } from "./optionSearch";
-
-export type TzOption = {
-  group: string;
-  label: string;
-  tz: string;
-  /** Names a search matches the row on, beyond what its labels write. */
-  searchTerms?: string[];
-};
-
-export const TZ_OPTIONS: TzOption[] = [
-  // US
-  { group: "US", label: "Pacific Time", tz: "America/Los_Angeles" },
-  { group: "US", label: "Mountain Time", tz: "America/Denver" },
-  { group: "US", label: "Central Time", tz: "America/Chicago" },
-  { group: "US", label: "Eastern Time", tz: "America/New_York" },
-  { group: "US", label: "Alaska Time", tz: "America/Anchorage" },
-  { group: "US", label: "Arizona Time", tz: "America/Phoenix" },
-  { group: "US", label: "Hawaii Time", tz: "Pacific/Honolulu" },
-
-  // Canada gets its own zones rather than sharing the US ones beside it.
-  // America/Los_Angeles belongs to the US whatever an option is labelled, so
-  // sharing it leaves a Vancouver member indistinguishable from a Seattle one.
-  { group: "Canada", label: "Pacific Time", tz: "America/Vancouver" },
-  { group: "Canada", label: "Mountain Time", tz: "America/Edmonton" },
-  { group: "Canada", label: "Saskatchewan Time", tz: "America/Regina" },
-  { group: "Canada", label: "Central Time", tz: "America/Winnipeg" },
-  { group: "Canada", label: "Eastern Time", tz: "America/Toronto" },
-  { group: "Canada", label: "Atlantic Time", tz: "America/Halifax" },
-  { group: "Canada", label: "Newfoundland Time", tz: "America/St_Johns" },
-  { group: "Canada", label: "Yukon Time", tz: "America/Whitehorse" },
-
-  // America
-  { group: "America", label: "Mexico City Time", tz: "America/Mexico_City" },
-  {
-    group: "America",
-    label: "Bogota, Jamaica, Lima Time",
-    tz: "America/Bogota",
-  },
-  { group: "America", label: "Caracas Time", tz: "America/Caracas" },
-  { group: "America", label: "Santiago Time", tz: "America/Santiago" },
-  {
-    group: "America",
-    label: "Buenos Aires Time",
-    tz: "America/Argentina/Buenos_Aires",
-  },
-  { group: "America", label: "Brasilia Time", tz: "America/Sao_Paulo" },
-
-  // Europe
-  {
-    group: "Europe",
-    label: "UK, Ireland, Lisbon Time",
-    tz: "Europe/London",
-    searchTerms: ["Greenwich"],
-  },
-  { group: "Europe", label: "Central European Time", tz: "Europe/Paris" },
-  { group: "Europe", label: "Eastern European Time", tz: "Europe/Athens" },
-  { group: "Europe", label: "Turkey Time", tz: "Europe/Istanbul" },
-  { group: "Europe", label: "Moscow Time", tz: "Europe/Moscow" },
-
-  // Africa
-  { group: "Africa", label: "West Africa Time", tz: "Africa/Lagos" },
-  { group: "Africa", label: "Central Africa Time", tz: "Africa/Kinshasa" },
-  { group: "Africa", label: "South Africa Time", tz: "Africa/Johannesburg" },
-  { group: "Africa", label: "East Africa Time", tz: "Africa/Nairobi" },
-  { group: "Africa", label: "Egypt Time", tz: "Africa/Cairo" },
-
-  // Asia
-  { group: "Asia", label: "Dubai Time", tz: "Asia/Dubai" },
-  { group: "Asia", label: "Tehran Time", tz: "Asia/Tehran" },
-  { group: "Asia", label: "Pakistan, Maldives Time", tz: "Asia/Karachi" },
-  { group: "Asia", label: "India, Sri Lanka Time", tz: "Asia/Kolkata" },
-  { group: "Asia", label: "Kathmandu Time", tz: "Asia/Kathmandu" },
-  { group: "Asia", label: "Bangladesh Time", tz: "Asia/Dhaka" },
-  { group: "Asia", label: "Indochina Time", tz: "Asia/Bangkok" },
-  { group: "Asia", label: "China, Singapore, Perth", tz: "Asia/Shanghai" },
-  { group: "Asia", label: "Japan, Korea Time", tz: "Asia/Tokyo" },
-
-  // Australia
-  {
-    group: "Australia",
-    label: "Western Australia Time",
-    tz: "Australia/Perth",
-  },
-  {
-    group: "Australia",
-    label: "Central Australia Time",
-    tz: "Australia/Darwin",
-  },
-  { group: "Australia", label: "Adelaide Time", tz: "Australia/Adelaide" },
-  { group: "Australia", label: "Brisbane Time", tz: "Australia/Brisbane" },
-  {
-    group: "Australia",
-    label: "Sydney, Melbourne Time",
-    tz: "Australia/Sydney",
-  },
-  { group: "Australia", label: "Lord Howe Time", tz: "Australia/Lord_Howe" },
-
-  // Pacific
-  { group: "Pacific", label: "Auckland Time", tz: "Pacific/Auckland" },
-  { group: "Pacific", label: "Chatham Time", tz: "Pacific/Chatham" },
-  { group: "Pacific", label: "Fiji Time", tz: "Pacific/Fiji" },
-  { group: "Pacific", label: "Samoa Time", tz: "Pacific/Apia" },
-  { group: "Pacific", label: "Line Islands Time", tz: "Pacific/Kiritimati" },
-];
-
-const formatterCache = new Map<string, Intl.DateTimeFormat | null>();
-
-type FormatterRequest = {
-  key: string;
-  opts: Intl.DateTimeFormatOptions;
-  locale?: string;
-};
-
-// Intl refuses a zone or a style it has no data for with a RangeError, and no
-// error out of it is worth taking the picker down over. An engine that
-// substitutes a zone rather than refusing is still not covered.
-function askIntl<T>(ask: () => T): T | null {
-  return R.toNullable(R.fromThrowable(ask));
-}
-
-function getFormatter({
-  key,
-  opts,
-  locale,
-}: FormatterRequest): Intl.DateTimeFormat | null {
-  let fmt = formatterCache.get(key);
-  if (fmt === undefined) {
-    fmt = askIntl(() => new Intl.DateTimeFormat(locale, opts));
-    formatterCache.set(key, fmt);
-  }
-  return fmt;
-}
-
-// A runtime can build a formatter that formats and still not write parts, so
-// the parts are asked for at the reads that need them rather than at the
-// construction the clock shares. Anything but a list is a refusal too, and
-// answering with it would only move the throw to the callers walking it. A
-// part whose value is not a string is a refusal too, for the same reason:
-// every reader below takes the value as one, and the throw would come out of
-// the hook the picker renders from. The whole list goes rather than that one
-// part, since a reader that finds a part missing reads the rest as if the
-// engine had meant it: the dayPeriod refusal below would take a 12-hour clock
-// for a 24-hour one and put the row half a day out.
-function partsOf(
-  fmt: Intl.DateTimeFormat | null,
-  when: Date,
-): Intl.DateTimeFormatPart[] | null {
-  const parts = fmt && askIntl(() => fmt.formatToParts(when));
-  return Array.isArray(parts) && parts.every((p) => typeof p.value === "string")
-    ? parts
-    : null;
-}
-
-function formatTimeInTz(
-  tz: string,
-  hour12: boolean,
-  when: Date,
-): string | null {
-  const fmt = getFormatter({
-    key: `time:${tz}:${hour12}`,
-    opts: {
-      timeZone: tz,
-      hour: "numeric",
-      minute: "2-digit",
-      hour12,
-    },
-  });
-  return fmt ? askIntl(() => fmt.format(when)) : null;
-}
-
-export function formatNowTimeInTz(
-  tz: string,
-  hour12: boolean = true,
-): string | null {
-  return formatTimeInTz(tz, hour12, new Date());
-}
-
-const MAX_OFFSET_MINUTES = 16 * minutesInHour;
-
-// The offset comes off the wall clock because JavaScriptCore renders the
-// shortOffset of every zero-offset zone as a bare "GMT", which the parse below
-// cannot read at all.
-//
-// The calendar and the numbering system are named because an engine with no
-// en-US data falls back to its own locale and brings both with it; the range
-// check is what catches one that ignores them.
-function offsetFromWallClock(tz: string, when: Date): number | null {
-  const fmt = getFormatter({
-    key: `offset:${tz}`,
-    opts: {
-      timeZone: tz,
-      hour12: false,
-      hourCycle: "h23",
-      calendar: "gregory",
-      numberingSystem: "latn",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    },
-    locale: "en-US",
-  });
-
-  // A 12-hour reading lands near enough to UTC for the range check below to
-  // take it, and an engine can answer for the cycle it resolved or for the
-  // dayPeriod without answering for both, so each is refused on its own.
-  const resolved = fmt && askIntl(() => fmt.resolvedOptions());
-  if (!resolved || resolved.hour12) return null;
-
-  const parts = partsOf(fmt, when);
-  if (!parts) return null;
-  if (parts.some((p) => p.type === "dayPeriod")) return null;
-
-  const at = (type: Intl.DateTimeFormatPartTypes) =>
-    Number(parts.find((p) => p.type === type)?.value);
-  const wall = Date.UTC(
-    at("year"),
-    at("month") - 1,
-    at("day"),
-    // h24 writes midnight as hour 24 on the date it belongs to.
-    at("hour") % 24,
-    at("minute"),
-    at("second"),
-  );
-  if (Number.isNaN(wall)) return null;
-  // The parts carry whole seconds, so the instant has to as well for the
-  // difference to be the offset rather than the offset less a stray -0.4ms.
-  const truncated =
-    Math.floor(when.getTime() / millisecondsInSecond) * millisecondsInSecond;
-  const offset = Math.round((wall - truncated) / millisecondsInMinute);
-  return Math.abs(offset) > MAX_OFFSET_MINUTES ? null : offset;
-}
-
-// The wall clock asks Intl for six fields and four options that shortOffset
-// does not, so an engine supporting fewer of them keeps the offset it already
-// had. Every zone this parse misses is one the wall clock reads, so the two
-// only ever meet on a runtime that would otherwise have no offset at all.
-function offsetFromShortOffset(tz: string, when: Date): number | null {
-  const parts = partsOf(
-    getFormatter({
-      key: `shortOffset:${tz}`,
-      opts: { timeZone: tz, timeZoneName: "shortOffset", hour: "2-digit" },
-      locale: "en",
-    }),
-    when,
-  );
-
-  const m = parts
-    ?.find((p) => p.type === "timeZoneName")
-    ?.value.match(/([+-])(\d{1,2})(?::?(\d{2}))?/);
-  if (!m) return null;
-  const sign = m[1] === "-" ? -1 : 1;
-  return sign * (Number(m[2]) * minutesInHour + Number(m[3] ?? 0));
-}
-
-export function getOffsetMinutes(
-  tz: string,
-  when: Date = new Date(),
-): number | null {
-  return offsetFromWallClock(tz, when) ?? offsetFromShortOffset(tz, when);
-}
-
-// Hermes on iOS breaks a name into a part per word and types only some of them
-// timeZoneName, by no rule the reader can lean on: "Time" comes back
-// timeZoneName for Asia/Kolkata and literal for Asia/Kathmandu. Where a name
-// starts is the one boundary this engine gets right, and a name it writes
-// empty leaves only the separators between its words.
-//
-// An engine with no en-US data answers in its own language rather than
-// refusing, which would put a Vietnamese name in a row whose second line,
-// search and sort are all English. The slice gives that guard a second job:
-// what a locale writes after the name is its own, and the slice takes it. vi
-// puts the whole date there, eu closes a bracket.
-function getGenericLabelFromIntl(tz: string): string | null {
-  const fmt = getFormatter({
-    key: `generic:${tz}`,
-    opts: {
-      timeZone: tz,
-      timeZoneName: "longGeneric",
-    },
-    locale: "en-US",
-  });
-
-  const locale = fmt && askIntl(() => fmt.resolvedOptions().locale);
-  if (typeof locale !== "string" || !/^en(-|$)/.test(locale)) return null;
-
-  const parts = partsOf(fmt, new Date());
-  if (!parts) return null;
-
-  const start = parts.findIndex(
-    (p) => p.type === "timeZoneName" && p.value.trim() !== "",
-  );
-  if (start < 0) return null;
-
-  return (
-    parts
-      .slice(start)
-      .map((p) => p.value)
-      .join("")
-      .trim() || null
-  );
-}
-
-function prettyCityFromIana(tz: string): string {
-  const seg = tz.split("/").pop() ?? tz;
-  return seg.replace(/_/g, " ");
-}
+import { aliasesOf } from "./timeZoneAliases";
+import { commonCountryNamesOf, curatedNamesOf } from "./timeZoneCuratedNames";
+import {
+  formatTimeAtOffset,
+  formatTimeInTz,
+  getGenericLabelFromIntl,
+  getOffsetMinutes,
+  resetFormatterCache,
+} from "./timeZoneIntl";
 
 export type TimeZoneSelectItem = {
   tz: string;
+  city: string;
+  zoneName: string | null;
   labelLeft: string;
-  /** The line under the name: the curated label where it names a place the
-   * name does not, or the search term the query matched. */
+  /** Country and current UTC offset. */
   labelSub: string | null;
-  searchTerms: string[];
   searchText: string;
+  placeNames: string[];
+  curatedNames: string[];
   offsetMins: number | null;
+  offsetName: string | null;
   timeLabel: string | null;
 };
 
@@ -335,17 +39,23 @@ export const DEFAULT_TIMEZONE = "America/Los_Angeles";
 
 type BaseLabel = {
   tz: string;
+  city: string;
+  country: string | null;
+  zoneName: string | null;
   labelLeft: string;
-  labelSub: string | null;
-  searchTerms: string[];
   searchText: string;
+  placeNames: string[];
+  curatedNames: string[];
 };
-let cachedLabels: BaseLabel[] | null = null;
+const cachedLabels: BaseLabel[] = [];
+let warming: number | null = null;
 
 export function resetTimeZoneCaches(): void {
-  formatterCache.clear();
-  cachedLabels = null;
+  resetFormatterCache();
+  cachedLabels.length = 0;
   cachedBase = null;
+  if (warming !== null) cancelIdleCallback(warming);
+  warming = null;
 }
 
 const WORD_CHAR = /[\p{L}\p{N}]/u;
@@ -369,56 +79,257 @@ function matchesQuery({
   return false;
 }
 
-const wordsOf = (text: string) => fold(text).match(/\p{L}+/gu) ?? [];
-
-// "Australian Western Standard Time" already says "Western Australia Time" and
-// "Türkiye Time" says "Turkey Time", so two words on a shared stem count as one
-// word said.
-const sameWord = (a: string, b: string) =>
-  a === b ||
-  (a.length >= 4 && b.length >= 4 && a.slice(0, 4) === b.slice(0, 4));
-
-// Most of the list would carry a second line otherwise, and most of those
-// would repeat the first: "Gulf Standard Time — Dubai" over "Dubai Time".
-function namesMoreThan({
-  label,
-  shown,
-}: {
-  label: string;
-  shown: string;
-}): boolean {
-  const said = wordsOf(shown);
-  return wordsOf(label).some(
-    (word) => word !== "time" && !said.some((seen) => sameWord(word, seen)),
-  );
+// So "india" puts Kolkata ahead of the Indiana zones before it in offset order.
+function rankFor(item: TimeZoneSelectItem, foldedQuery: string): number {
+  if (item.curatedNames.includes(foldedQuery)) return 0;
+  if (item.placeNames.includes(foldedQuery)) return 1;
+  if (item.curatedNames.some((name) => name.startsWith(foldedQuery))) return 2;
+  if (item.placeNames.some((name) => name.startsWith(foldedQuery))) return 3;
+  return 4;
 }
 
-// A zone this runtime cannot format is still one the server schedules in, so
-// its row stays, under the curated label when Intl has no name for it.
-//
-// It stays searchable where Intl's name displaces it: Intl calls Asia/Kolkata
-// "India Standard Time", which answers nobody searching for Sri Lanka.
+const search = (items: TimeZoneSelectItem[], foldedQuery: string) =>
+  items
+    .filter((i) => matchesQuery({ foldedText: i.searchText, foldedQuery }))
+    .sort((a, b) => rankFor(a, foldedQuery) - rankFor(b, foldedQuery));
+
+type OffsetQuery = { name: string; prefix: string | null };
+
+// So "utc-1" puts UTC-1 ahead of UTC-11, which sorts before it.
+const byOffset = (items: TimeZoneSelectItem[], { name, prefix }: OffsetQuery) =>
+  items
+    .filter(
+      (i) =>
+        i.offsetName === name ||
+        (prefix !== null && i.offsetName?.startsWith(prefix)),
+    )
+    .sort(
+      (a, b) =>
+        Number(b.offsetName === name) - Number(a.offsetName === name) ||
+        Number(b.tz === "UTC") - Number(a.tz === "UTC"),
+    );
+
+// A query with no letters names no place, and "-" would otherwise open on the
+// Congo zones CLDR writes "Congo - Kinshasa".
+const LETTER = /\p{L}/u;
+
+const OFFSET_QUERY =
+  /^(utc|gmt)?\s*([+\-\u2212]?)\s*(?:(\d{1,2})?:(\d{0,2})|(\d{0,4}))$/;
+
+// Packed digits take two of hour where those are 14 or less, so "+053" is
+// partway to UTC+5:30 rather than UTC+0:53, and "+530" is UTC+5:30.
+function splitPacked(digits: string): [string, string] {
+  if (digits.length <= 2) return [digits, ""];
+  const hourDigits = Number(digits.slice(0, 2)) <= 14 ? 2 : 1;
+  return [digits.slice(0, hourDigits), digits.slice(hourDigits)];
+}
+
+// "gmt+01:00", "+1", and "utc 1" name the offset a row writes as "UTC+1". Two
+// hour digits or a colon end the hour, so "utc+01" leaves out UTC+10 to
+// UTC+14, and two minute digits or a 0, which starts no zone's minutes, end
+// the offset. Pasted offsets often carry U+2212 for their minus.
+function asOffsetName(foldedQuery: string): OffsetQuery | null {
+  const match = OFFSET_QUERY.exec(foldedQuery);
+  if (!match) return null;
+  const [, utc, typedSign, typedHours, typedMinutes, packed] = match;
+  const sign = typedSign?.replace("\u2212", "-");
+  const [hours, minutes] =
+    typedMinutes === undefined
+      ? splitPacked(packed ?? "")
+      : [typedHours ?? "", typedMinutes];
+  if (!sign && !(utc && hours)) return null;
+  if (!hours) return { name: `utc${sign}`, prefix: `utc${sign}` };
+  const whole = !Number(minutes);
+  const signed = Number(hours) === 0 && whole ? "+" : sign || "+";
+  const name = `utc${signed}${Number(hours)}${whole ? "" : `:${minutes}`}`;
+  if (minutes.length === 2 || minutes === "0") return { name, prefix: null };
+  const hourDone = hours.length === 2 || typedMinutes !== undefined;
+  return { name, prefix: whole && hourDone ? `${name}:` : name };
+}
+
+// No row spells "hawaii time" or "moscow time", so a query finding nothing
+// retries without the "time" after the place, or as much of it as is typed.
+const TRAILING_TIME = /\s+t(?:i(?:me?)?)?$/;
+
+// Intl names a zone it has no name for, such as UTC, by its offset, which the
+// second line already shows. Where ICU writes a zero offset as plain "GMT",
+// UTC's name is just that.
+const OFFSET_NAME = /^GMT(?:[+-]|$)/;
+
+// CLDR writes "Trinidad & Tobago", "Côte d’Ivoire", "St. Lucia",
+// "Guinea-Bissau", "U.S. Virgin Islands", and "Myanmar (Burma)", and tzdb
+// "St Johns", where many type "and", "'", "Saint", or no punctuation.
+function typedPlaces(name: string): string[] {
+  const spelled = name.replace(/&/g, "and").replace(/’/g, "'");
+  return [
+    spelled,
+    spelled.replace(/\bSt\.? /g, "Saint "),
+    spelled.replace(/[.'()]/g, "").replace(/\s*-\s*/g, " "),
+  ];
+}
+
+function labelFor({ tz, city, country }: TimeZoneCatalogEntry): BaseLabel {
+  const intlName = getGenericLabelFromIntl(tz);
+  const generic = intlName && !OFFSET_NAME.test(intlName) ? intlName : null;
+  const curated = curatedNamesOf(tz);
+  const placeNames = [
+    ...new Set(
+      [
+        city,
+        ...typedPlaces(city),
+        ...(country ? [country, ...typedPlaces(country)] : []),
+        ...curated,
+        ...commonCountryNamesOf(tz),
+      ].map(fold),
+    ),
+  ];
+  return {
+    tz,
+    city,
+    country,
+    zoneName: generic,
+    labelLeft: generic ? `${generic} · ${city}` : city,
+    searchText: fold(
+      [generic, ...placeNames, tz, ...aliasesOf(tz)].filter(Boolean).join(" "),
+    ),
+    placeNames,
+    curatedNames: curated.map(fold),
+  };
+}
+
+const allLabelled = () => cachedLabels.length === TIME_ZONE_CATALOG.length;
+
+function labelNext(): TimeZoneCatalogEntry {
+  const entry = TIME_ZONE_CATALOG[cachedLabels.length];
+  cachedLabels.push(labelFor(entry));
+  return entry;
+}
+
 function getBaseLabels(): BaseLabel[] {
-  if (cachedLabels) return cachedLabels;
-
-  cachedLabels = TZ_OPTIONS.map(({ tz, label, searchTerms = [] }) => {
-    const generic = getGenericLabelFromIntl(tz);
-    const city = prettyCityFromIana(tz);
-    const left = `${generic ?? label} — ${city}`;
-    const searchable = [left, ...(generic ? [label] : []), ...searchTerms, tz];
-    return {
-      tz,
-      labelLeft: left,
-      labelSub: generic && namesMoreThan({ label, shown: left }) ? label : null,
-      searchTerms,
-      searchText: fold(searchable.join(" ")),
-    };
-  });
-
+  while (!allLabelled()) labelNext();
   return cachedLabels;
 }
 
+const canWarm = () => typeof requestIdleCallback === "function";
+
+// A browser that never idles would leave the list spinning, so it runs a step
+// after this long regardless, with no time remaining, and the step labels for
+// FORCED_STEP_MS. React Native flags a step this late as timed out yet still
+// gives it idle time, so only a step starting with none is forced, and a
+// React Native step yields once the scheduler takes that time back.
+const WARM_STEP_TIMEOUT = { timeout: 100 };
+const FORCED_STEP_MS = 8;
+
+const labelledListeners = new Set<() => void>();
+
+function subscribeLabelled(listener: () => void): () => void {
+  labelledListeners.add(listener);
+  return () => labelledListeners.delete(listener);
+}
+
+// Building every zone's formatters takes seconds on Android's Hermes, so a
+// mounted picker builds them a zone at a time while the runtime is idle, and
+// an open before that ends waits for it rather than freezing the app.
+function warmWhileIdle(): void {
+  if (!canWarm()) return;
+  if (warming !== null || allLabelled()) return;
+  const step = (deadline: IdleDeadline) => {
+    const now = new Date();
+    const forced = deadline.didTimeout && deadline.timeRemaining() <= 0;
+    const forcedUntil = performance.now() + FORCED_STEP_MS;
+    while (!allLabelled()) {
+      const { tz } = labelNext();
+      getOffsetMinutes(tz, now);
+      if (
+        deadline.timeRemaining() <= 0 &&
+        (!forced || performance.now() >= forcedUntil)
+      )
+        break;
+    }
+    if (!allLabelled()) {
+      warming = requestIdleCallback(step, WARM_STEP_TIMEOUT);
+      return;
+    }
+    warming = null;
+    for (const listener of labelledListeners) listener();
+  };
+  warming = requestIdleCallback(step, WARM_STEP_TIMEOUT);
+}
+
+// A saved or detected zone the catalog lacks, such as a device's Etc/GMT+8 or
+// a zone newer than the pinned tzdb, is still the member's own, so it gets a
+// row named after its identifier.
+function uncataloguedLabel(tz: string): BaseLabel | null {
+  if (isCatalogued(tz)) return null;
+  if (!isTimeZoneIdentifier(tz)) return null;
+  return labelFor({ tz, city: tz, country: null });
+}
+
+const CATALOG_BY_TZ = new Map(
+  TIME_ZONE_CATALOG.map((entry) => [entry.tz, entry]),
+);
+
+function selectedLabel(tz: string): BaseLabel | null {
+  const entry = CATALOG_BY_TZ.get(TIME_ZONE_ALIASES.get(tz) ?? tz);
+  return entry ? labelFor(entry) : null;
+}
+
+function formatOffset(mins: number): string {
+  const abs = Math.abs(mins);
+  const hours = Math.floor(abs / minutesInHour);
+  const rest = abs % minutesInHour;
+  return `UTC${mins < 0 ? "-" : "+"}${hours}${rest ? `:${String(rest).padStart(2, "0")}` : ""}`;
+}
+
 type BaseItem = Omit<TimeZoneSelectItem, "timeLabel">;
+
+function withOffset(label: BaseLabel, when: Date): BaseItem {
+  const offsetMins = getOffsetMinutes(label.tz, when);
+  const offset = offsetMins === null ? null : formatOffset(offsetMins);
+  const sub = [label.country, offset].filter(Boolean);
+  return {
+    tz: label.tz,
+    city: label.city,
+    zoneName: label.zoneName,
+    labelLeft: label.labelLeft,
+    labelSub: sub.length ? sub.join(" · ") : null,
+    searchText: label.searchText,
+    placeNames: label.placeNames,
+    curatedNames: label.curatedNames,
+    offsetMins,
+    offsetName: offset?.toLowerCase() ?? null,
+  };
+}
+
+function unlabelledItem(tz: string, when: Date): BaseItem {
+  const offsetMins = getOffsetMinutes(tz, when);
+  return {
+    tz,
+    city: tz,
+    zoneName: null,
+    labelLeft: tz,
+    labelSub: null,
+    searchText: fold(tz),
+    placeNames: [],
+    curatedNames: [],
+    offsetMins,
+    offsetName:
+      offsetMins === null ? null : formatOffset(offsetMins).toLowerCase(),
+  };
+}
+
+const clockOf = (item: BaseItem, hour12: boolean, when: Date) =>
+  item.offsetMins === null
+    ? formatTimeInTz(item.tz, hour12, when)
+    : formatTimeAtOffset(item.offsetMins, hour12, when);
+
+// localeCompare costs Hermes on Android twelve times what one collator does.
+const collator = new Intl.Collator();
+
+const byOffsetThenLocation = (a: BaseItem, b: BaseItem) =>
+  Number(a.offsetMins === null) - Number(b.offsetMins === null) ||
+  (a.offsetMins ?? 0) - (b.offsetMins ?? 0) ||
+  collator.compare(a.city, b.city);
 
 let cachedBase: { minute: number; items: BaseItem[] } | null = null;
 
@@ -428,35 +339,12 @@ function baseItems(minute: number): BaseItem[] {
   if (cachedBase?.minute === minute) return cachedBase.items;
 
   const when = minuteStart(minute);
-  const items = getBaseLabels().map((label) => ({
-    ...label,
-    offsetMins: getOffsetMinutes(label.tz, when),
-  }));
-
-  items.sort(
-    (a, b) =>
-      Number(a.offsetMins === null) - Number(b.offsetMins === null) ||
-      (a.offsetMins ?? 0) - (b.offsetMins ?? 0) ||
-      a.labelLeft.localeCompare(b.labelLeft),
-  );
+  const items = getBaseLabels()
+    .map((label) => withOffset(label, when))
+    .sort(byOffsetThenLocation);
 
   cachedBase = { minute, items };
   return items;
-}
-
-// A row holding none of what was typed reads as a wrong answer, so a term that
-// matched off the row takes the second line while the query stands.
-function subForQuery(
-  item: TimeZoneSelectItem,
-  foldedQuery: string,
-): string | null {
-  const shown = fold(`${item.labelLeft} ${item.labelSub ?? ""}`);
-  if (matchesQuery({ foldedText: shown, foldedQuery })) return item.labelSub;
-  return (
-    item.searchTerms.find((term) =>
-      matchesQuery({ foldedText: fold(term), foldedQuery }),
-    ) ?? item.labelSub
-  );
 }
 
 export type UseTimeZoneSelectParams = {
@@ -488,42 +376,81 @@ export function useTimeZoneSelect({
     if (value != null) setInternalValue(value);
   }, [value]);
 
-  const base = useMemo(() => baseItems(minute), [minute]);
+  // The closed trigger shows only the selected zone, so mounting a page of
+  // pickers labels other zones only a zone at a time in the background. The
+  // list stays once built, since the mobile modal keeps showing it as it fades
+  // out, but refreshes only while open.
+  const [listedMinute, setListedMinute] = useState<number | null>(null);
+  if (open && listedMinute !== minute) setListedMinute(minute);
+
+  useEffect(warmWhileIdle, []);
+
+  const labelled = useSyncExternalStore(
+    subscribeLabelled,
+    allLabelled,
+    allLabelled,
+  );
+  const loading = !labelled && canWarm();
+
+  const uncatalogued = useMemo(
+    () => uncataloguedLabel(internalValue),
+    [internalValue],
+  );
 
   const items = useMemo<TimeZoneSelectItem[]>(() => {
-    const when = minuteStart(minute);
-    return base.map((item) => ({
+    if (listedMinute === null || loading) return [];
+    const when = minuteStart(listedMinute);
+    const base = baseItems(listedMinute);
+    const rows = uncatalogued
+      ? [...base, withOffset(uncatalogued, when)].sort(byOffsetThenLocation)
+      : base;
+    return rows.map((item) => ({
       ...item,
-      timeLabel: formatTimeInTz(item.tz, hour12, when),
+      timeLabel: clockOf(item, hour12, when),
     }));
-  }, [base, hour12, minute]);
+  }, [listedMinute, loading, uncatalogued, hour12]);
+
+  const label = useMemo(
+    () => selectedLabel(internalValue) ?? uncatalogued,
+    [internalValue, uncatalogued],
+  );
 
   const selected = useMemo<TimeZoneSelectItem>(() => {
     const when = minuteStart(minute);
-    return (
-      items.find((i) => i.tz === internalValue) ?? {
-        tz: internalValue,
-        labelLeft: internalValue,
-        labelSub: null,
-        searchTerms: [],
-        searchText: fold(internalValue),
-        offsetMins: getOffsetMinutes(internalValue, when),
-        timeLabel: formatTimeInTz(internalValue, hour12, when),
-      }
-    );
-  }, [items, internalValue, hour12, minute]);
+    const item = label
+      ? withOffset(label, when)
+      : unlabelledItem(internalValue, when);
+    return { ...item, timeLabel: clockOf(item, hour12, when) };
+  }, [label, internalValue, hour12, minute]);
 
   const filtered = useMemo(() => {
     const q = fold(query.trim());
     if (!q) return items;
-    return items
-      .filter((i) => matchesQuery({ foldedText: i.searchText, foldedQuery: q }))
-      .map((i) => ({ ...i, labelSub: subForQuery(i, q) }));
+    // A query naming a zone, as "gmt+0" names UTC, lists it ahead of the other
+    // zones at the offset it reads as.
+    const searchFor = (typed: string) => {
+      const byName = LETTER.test(typed) ? search(items, typed) : [];
+      const offset = asOffsetName(typed);
+      return offset === null
+        ? byName
+        : [...new Set([...byName, ...byOffset(items, offset)])];
+    };
+    const found = searchFor(q);
+    const place = q.replace(TRAILING_TIME, "");
+    return found.length || place === q ? found : searchFor(place);
   }, [items, query]);
 
+  const selectedIndex = filtered.findIndex((i) => i.tz === selected.tz);
+
   useEffect(() => {
-    setActiveIndex(0);
-  }, [query, open]);
+    setActiveIndex(query ? 0 : Math.max(selectedIndex, 0));
+  }, [query, open, selectedIndex]);
+
+  // Cleared on close rather than on open: the mobile trigger scrolls the
+  // still-mounted list by index as it reopens, before a clear could render.
+  useEffect(() => {
+    if (!open) setQuery("");
+  }, [open]);
 
   const commit = (tz: string) => {
     if (disabled) return;
@@ -536,6 +463,7 @@ export function useTimeZoneSelect({
     items,
     filtered,
     selected,
+    selectedIndex,
     query,
     setQuery,
     activeIndex,
@@ -544,5 +472,6 @@ export function useTimeZoneSelect({
     open,
     setOpen,
     disabled,
+    loading,
   };
 }
