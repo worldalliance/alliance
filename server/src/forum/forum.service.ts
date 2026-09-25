@@ -164,7 +164,7 @@ export class ForumService {
 
   private async getLikedCommentIds(
     commentIds: number[],
-    userId: number,
+    userId: number | undefined,
   ): Promise<Set<number>> {
     if (!commentIds.length || !userId) {
       return new Set();
@@ -415,16 +415,7 @@ export class ForumService {
   }): Promise<ForumFeedComment[]> {
     const { userId, userClusterId, sourceUserIds, limit, before } = params;
 
-    const qb = this.commentRepository
-      .createQueryBuilder("comment")
-      .innerJoin(Post, "post", "post.id = comment.parentObjectId")
-      .innerJoinAndSelect("comment.author", "author")
-      .innerJoinAndSelect("comment.editableContent", "editableContent")
-      .addSelect(["post.id", "post.title"])
-      .where("comment.parentObjectType = :postType", {
-        postType: CommentParentObject.Post,
-      })
-      .andWhere("comment.deleted = false");
+    const qb = this.forumFeedCommentsQuery();
 
     const authorClauses: string[] = ["author.id = :feedUserId"];
     const authorParams: Record<string, unknown> = { feedUserId: userId };
@@ -439,37 +430,8 @@ export class ForumService {
       authorParams.feedClusterId = userClusterId;
     }
     qb.andWhere(`(${authorClauses.join(" OR ")})`, authorParams);
-    this.addPostVisibilityFilter(qb, "post", userId);
-    if (before) {
-      qb.andWhere("comment.createdAt < :before", { before });
-    }
-    qb.orderBy("comment.createdAt", "DESC").limit(limit);
 
-    const { entities, raw } = await qb.getRawAndEntities();
-    const commentIds = entities.map((c) => c.id);
-    const facepiles = await this.facepileService.loadFacepiles(
-      Comment,
-      commentIds,
-    );
-    const likedCommentIds = await this.getLikedCommentIds(commentIds, userId);
-    const titleByCommentId = new Map<number, string>();
-    for (const row of raw) {
-      titleByCommentId.set(row.comment_id, row.post_title);
-    }
-    const items: ForumFeedComment[] = [];
-    for (const comment of entities) {
-      const postTitle = titleByCommentId.get(comment.id);
-      if (postTitle == null) continue;
-      items.push({
-        comment,
-        postId: comment.parentObjectId,
-        postTitle,
-        likedByMe: likedCommentIds.has(comment.id),
-        likesCount: comment.likesCount,
-        facepile: facepiles(comment.id),
-      });
-    }
-    return items;
+    return this.loadForumFeedComments({ qb, viewerId: userId, limit, before });
   }
 
   async findForumCommentsByUserForFeed(params: {
@@ -480,7 +442,20 @@ export class ForumService {
   }): Promise<ForumFeedComment[]> {
     const { authorId, requestingUserId, limit, before } = params;
 
-    const qb = this.commentRepository
+    const qb = this.forumFeedCommentsQuery().andWhere("author.id = :authorId", {
+      authorId,
+    });
+
+    return this.loadForumFeedComments({
+      qb,
+      viewerId: requestingUserId,
+      limit,
+      before,
+    });
+  }
+
+  private forumFeedCommentsQuery(): SelectQueryBuilder<Comment> {
+    return this.commentRepository
       .createQueryBuilder("comment")
       .innerJoin(Post, "post", "post.id = comment.parentObjectId")
       .innerJoinAndSelect("comment.author", "author")
@@ -489,12 +464,20 @@ export class ForumService {
       .where("comment.parentObjectType = :postType", {
         postType: CommentParentObject.Post,
       })
-      .andWhere("comment.deleted = false")
-      .andWhere("author.id = :authorId", { authorId });
+      .andWhere("comment.deleted = false");
+  }
+
+  private async loadForumFeedComments(params: {
+    qb: SelectQueryBuilder<Comment>;
+    viewerId: number | undefined;
+    limit: number;
+    before?: Date;
+  }): Promise<ForumFeedComment[]> {
+    const { qb, viewerId, limit, before } = params;
+    this.addPostVisibilityFilter(qb, "post", viewerId);
     if (before) {
       qb.andWhere("comment.createdAt < :before", { before });
     }
-    this.addPostVisibilityFilter(qb, "post", requestingUserId);
     qb.orderBy("comment.createdAt", "DESC").limit(limit);
 
     const { entities, raw } = await qb.getRawAndEntities();
@@ -503,9 +486,7 @@ export class ForumService {
       Comment,
       commentIds,
     );
-    const likedCommentIds = requestingUserId
-      ? await this.getLikedCommentIds(commentIds, requestingUserId)
-      : new Set<number>();
+    const likedCommentIds = await this.getLikedCommentIds(commentIds, viewerId);
     const titleByCommentId = new Map<number, string>();
     for (const row of raw) {
       titleByCommentId.set(row.comment_id, row.post_title);
