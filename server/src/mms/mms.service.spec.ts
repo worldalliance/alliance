@@ -157,3 +157,53 @@ describe("MmsService sendMms", () => {
     // leaves one unhandled, and sendMms has stopped listening by this point.
   });
 });
+
+describe("MmsService constructor", () => {
+  const ENV_KEYS = [
+    "NODE_ENV",
+    "SEND_DEV_NOTIFS",
+    "TWILIO_ACCOUNT_SID",
+    "TWILIO_AUTH_TOKEN",
+    "TWILIO_PHONE_NUMBER",
+  ];
+  let previous: Record<string, string | undefined>;
+
+  // The constructor only stores these.
+  const construct = () =>
+    new MmsService({} as Repository<Mms>, {} as EventLogService);
+
+  beforeEach(() => {
+    previous = Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]));
+    for (const key of ENV_KEYS) delete process.env[key];
+    process.env.NODE_ENV = "development";
+    jest.spyOn(Logger.prototype, "log").mockImplementation(() => {});
+    jest.spyOn(Logger.prototype, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    jest.restoreAllMocks();
+  });
+
+  it("boots without twilio config when SEND_DEV_NOTIFS is unset", () => {
+    expect(construct).not.toThrow();
+  });
+
+  it("boots without twilio config when SEND_DEV_NOTIFS=0", () => {
+    process.env.SEND_DEV_NOTIFS = "0";
+    expect(construct).not.toThrow();
+  });
+
+  it("refuses to boot without twilio config when texts go out", () => {
+    process.env.SEND_DEV_NOTIFS = "1";
+    expect(construct).toThrow("Twilio configuration is missing or invalid.");
+  });
+
+  it("refuses to boot without twilio config in production", () => {
+    process.env.NODE_ENV = "production";
+    expect(construct).toThrow("Twilio configuration is missing or invalid.");
+  });
+});
