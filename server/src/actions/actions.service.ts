@@ -3020,7 +3020,7 @@ export class ActionsService {
   async archive(id: number): Promise<ParsedAction> {
     const action = await this.actionRepository.findOneOrFail({
       where: { id },
-      relations: { reviewers: true },
+      relations: { reviewers: true, events: true },
     });
     action.archived = true;
     return parseAction(await this.actionRepository.save(action));
@@ -3029,7 +3029,7 @@ export class ActionsService {
   async unarchive(id: number): Promise<ParsedAction> {
     const action = await this.actionRepository.findOneOrFail({
       where: { id },
-      relations: { reviewers: true },
+      relations: { reviewers: true, events: true },
     });
     action.archived = false;
     return parseAction(await this.actionRepository.save(action));
@@ -3775,7 +3775,7 @@ export class ActionsService {
 
         return actionRepo.findOneOrFail({
           where: { id: actionId },
-          relations: { reviewers: true },
+          relations: { reviewers: true, events: true },
         });
       },
     );

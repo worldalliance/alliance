@@ -2406,6 +2406,185 @@ export type AdminFollowUpFormDto = {
     } | null;
 };
 
+export type AdminActionListItemDto = {
+    /**
+     * Unique identifier for the action
+     */
+    id: number;
+    /**
+     * Name of the action
+     */
+    name: string;
+    /**
+     * Alliance goals the action works towards, or meta
+     */
+    category: Array<ActionCategory>;
+    /**
+     * Image URL for the action
+     */
+    image?: string;
+    /**
+     * Square thumbnail image URL for the action
+     */
+    squareThumbnailImage?: string;
+    /**
+     * Square thumbnail image alt for the action
+     */
+    squareThumbnailImageAlt?: string;
+    /**
+     * markdown page body
+     */
+    body: string;
+    /**
+     * Short description shown in cards
+     */
+    shortDescription: string;
+    /**
+     * Time estimate in minutes
+     */
+    timeEstimate?: number;
+    /**
+     * Form associated with the action
+     */
+    taskFormId?: number;
+    /**
+     * Timestamp when the action was created
+     */
+    createdAt: string;
+    /**
+     * Timestamp when the action was last updated
+     */
+    updatedAt: string;
+    /**
+     * special case for contract signing (prevent doing other onboarding actions)
+     */
+    isContractSigningAction: boolean;
+    visibilityMode: VisibilityMode;
+    usersJoined: number;
+    /**
+     * Whether the action is an onboarding action (hide for existing members)
+     */
+    onboarding: boolean;
+    archived: boolean;
+    /**
+     * Priority of the action
+     */
+    priority: number;
+    optional: boolean;
+    /**
+     * Prevent completion of the action (for old actions)
+     */
+    preventCompletion: boolean;
+    /**
+     * Whether the action is visible to and supposed to only be completed by non-members
+     */
+    publicOnly: boolean;
+    /**
+     * Whether the action shows up in the tasks page after the deadline
+     */
+    shouldCompleteAfterDeadline: boolean;
+    /**
+     * Whether to autocomplete action based on forum participation
+     */
+    isForumParticipationAction: boolean;
+    /**
+     * Manual override: forum post id whose repliers should be autocompleted. When set, takes precedence over any forum validator on the task form.
+     */
+    forumParticipationPostId?: number;
+    /**
+     * When using forumParticipationPostId, also count replies to nested child posts
+     */
+    forumParticipationIncludeChildren?: boolean;
+    /**
+     * Date and time when the action was computed for autocomplete
+     */
+    computedAutocompleteAt?: string;
+    customStatType?: CustomActionStat;
+    customStatLabel?: string;
+    customStatValue?: number;
+    customStatGoal?: number;
+    suite?: ActionSuite;
+    /**
+     * Non-user reviewers credited on the action
+     */
+    reviewers: Array<ActionReviewerResponseDto>;
+    followUpForms: Array<AdminFollowUpFormDto>;
+    usersCompleted: number;
+    events: Array<ActionEventDto>;
+    status: ActionStatus;
+    updates: Array<ActionUpdateDto>;
+    canParticipate?: boolean;
+    shouldParticipate?: boolean;
+    userRelation?: UserActionRelation;
+    awayStatus?: TaskAwayStatus;
+    viewer?: UserActionStatusDto;
+    reqAuthenticated?: boolean;
+    authors?: Array<ProfileDto>;
+    project?: ProjectDto | null;
+    /**
+     * Cohort expression tree defining who participates
+     */
+    cohortExpression?: {
+        [key: string]: unknown;
+    } | null;
+    /**
+     * The image column itself: an upload key or an external url, the form an update takes back. `image` is that value rendered as a url.
+     */
+    storedImage?: string;
+    /**
+     * The squareThumbnailImage column itself, like `storedImage`.
+     */
+    storedSquareThumbnailImage?: string;
+    staffPreview: boolean;
+    prerequisiteActionIds: Array<number>;
+    /**
+     * The latest member_action event, when the action opens to members.
+     */
+    memberActionStart: string | null;
+    /**
+     * The first event after memberActionStart.
+     */
+    memberActionDeadline: string | null;
+    /**
+     * Forms of the action's variants, besides its task form.
+     */
+    variantFormIds: Array<number>;
+};
+
+export type HomeFeedItemType = 'activity' | 'forum_comment';
+
+export type HomeFeedForumCommentDto = {
+    comment: CommentDto;
+    postId: number;
+    postTitle: string;
+    likedByMe: boolean;
+    likesCount: number;
+};
+
+export type HomeFeedItemDto = {
+    type: HomeFeedItemType;
+    date: string;
+    activity?: ActionActivityDto;
+    forumComment?: HomeFeedForumCommentDto;
+};
+
+export type CommunityCompletedActionsCountDto = {
+    /**
+     * Number of member action completions (user_completed activities) recorded for current members of this community
+     */
+    completedCount: number;
+};
+
+export type ActionSharePreviewDto = {
+    firstName?: string;
+    completedByReferrer: boolean;
+    validReferral: boolean;
+};
+
+export type ActionReferralCodeDto = {
+    referralCode: string;
+};
+
 export type AdminActionDto = {
     /**
      * Unique identifier for the action
@@ -2537,40 +2716,14 @@ export type AdminActionDto = {
     storedSquareThumbnailImage?: string;
     staffPreview: boolean;
     prerequisiteActionIds: Array<number>;
-};
-
-export type HomeFeedItemType = 'activity' | 'forum_comment';
-
-export type HomeFeedForumCommentDto = {
-    comment: CommentDto;
-    postId: number;
-    postTitle: string;
-    likedByMe: boolean;
-    likesCount: number;
-};
-
-export type HomeFeedItemDto = {
-    type: HomeFeedItemType;
-    date: string;
-    activity?: ActionActivityDto;
-    forumComment?: HomeFeedForumCommentDto;
-};
-
-export type CommunityCompletedActionsCountDto = {
     /**
-     * Number of member action completions (user_completed activities) recorded for current members of this community
+     * The latest member_action event, when the action opens to members.
      */
-    completedCount: number;
-};
-
-export type ActionSharePreviewDto = {
-    firstName?: string;
-    completedByReferrer: boolean;
-    validReferral: boolean;
-};
-
-export type ActionReferralCodeDto = {
-    referralCode: string;
+    memberActionStart: string | null;
+    /**
+     * The first event after memberActionStart.
+     */
+    memberActionDeadline: string | null;
 };
 
 export type CreateFollowUpFormDto = {
@@ -9173,7 +9326,7 @@ export type ActionsFindAllWithDraftsAdminErrors = {
 export type ActionsFindAllWithDraftsAdminError = ActionsFindAllWithDraftsAdminErrors[keyof ActionsFindAllWithDraftsAdminErrors];
 
 export type ActionsFindAllWithDraftsAdminResponses = {
-    200: Array<AdminActionDto>;
+    200: Array<AdminActionListItemDto>;
 };
 
 export type ActionsFindAllWithDraftsAdminResponse = ActionsFindAllWithDraftsAdminResponses[keyof ActionsFindAllWithDraftsAdminResponses];

@@ -241,3 +241,52 @@ export function collectCohortDependencies(
   if (expr) walk(expr);
   return { actionIds, formIds };
 }
+
+export type ReferencedAction = {
+  id: number;
+  /** The task form and every variant's form. */
+  formIds: number[];
+  deadline: Date | null;
+  onboarding: boolean;
+};
+
+export function actionFormIds(action: {
+  taskFormId?: number | null;
+  variantFormIds: number[];
+}): number[] {
+  return [
+    ...(action.taskFormId == null ? [] : [action.taskFormId]),
+    ...action.variantFormIds,
+  ];
+}
+
+/**
+ * Actions other than `actionId` the expression reads, directly or through
+ * one of their forms, that are still open at `decidedAt` and aren't
+ * prerequisites. A decision freezes their outcome as of `decidedAt`, so a
+ * member who finishes one later stays where they were placed. An onboarding
+ * action counts whatever its deadline or prerequisites: it stays open to
+ * members who join later, and a prerequisite stops waiting at its deadline.
+ */
+export function findUnawaitedOpenReferences(params: {
+  actionId: number | undefined;
+  expression: CohortExpression | null | undefined;
+  prerequisiteActionIds: number[];
+  decidedAt: Date;
+  actions: ReferencedAction[];
+}): number[] {
+  const { actionId, expression, prerequisiteActionIds, decidedAt, actions } =
+    params;
+  const { actionIds, formIds } = collectCohortDependencies(expression);
+  return actions
+    .filter(
+      (action) =>
+        action.id !== actionId &&
+        (actionIds.has(action.id) ||
+          action.formIds.some((formId) => formIds.has(formId))) &&
+        (action.onboarding ||
+          (!prerequisiteActionIds.includes(action.id) &&
+            (!action.deadline || action.deadline > decidedAt))),
+    )
+    .map((action) => action.id);
+}

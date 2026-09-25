@@ -12,7 +12,6 @@ import {
   ActionCategory,
   ActionDto,
   actionsExportActionAdmin,
-  actionsFindAllWithDraftsAdmin,
   actionsGetIncompleteUsersAdmin,
   actionsShareUrlStatsAdmin,
   actionsSuitesAdmin,
@@ -94,6 +93,7 @@ import {
 } from "../lib/actionImages";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { makeTempId } from "../lib/tempId";
+import { useAllActions } from "../lib/useAllActions";
 import { useCoverImage } from "../lib/useCoverImage";
 
 // Status color mapping
@@ -198,8 +198,15 @@ const ActionDashboard: React.FC = () => {
     isRemoving;
   const saving = isCreating || isUpdating;
   const [error, setError] = useState<string | null>(null);
+  const { allActions, allActionsLoading, allActionsLoadFailed } =
+    useAllActions();
   const errorMessage =
-    error ?? (actionLoadFailed ? "Failed to load action" : null);
+    error ??
+    (actionLoadFailed
+      ? "Failed to load action"
+      : allActionsLoadFailed
+        ? "Failed to load the other actions, so prerequisites can't be picked and open-reference warnings are missing"
+        : null);
   const errorRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (errorMessage) {
@@ -226,11 +233,6 @@ const ActionDashboard: React.FC = () => {
     Set<number>
   >(new Set());
   const [usersLoading, setUsersLoading] = useState<boolean>(true);
-
-  const [allActions, setAllActions] = useState<
-    { id: number; name: string; usersCompleted: number }[]
-  >([]);
-  const [allActionsLoading, setAllActionsLoading] = useState(true);
 
   const [shareUrlStats, setShareUrlStats] = useState<ShareUrlStatsDto[]>([]);
   const [shareUrlStatsLoading, setShareUrlStatsLoading] = useState(false);
@@ -309,37 +311,6 @@ const ActionDashboard: React.FC = () => {
     };
 
     loadUsers();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadAllActions = async () => {
-      try {
-        const response = await actionsFindAllWithDraftsAdmin();
-        if (!cancelled && response.data) {
-          setAllActions(
-            response.data.map((a) => ({
-              id: a.id,
-              name: a.name,
-              usersCompleted: a.usersCompleted ?? 0,
-            })),
-          );
-        }
-      } catch (err) {
-        console.error("Failed to load actions for populate:", err);
-      } finally {
-        if (!cancelled) {
-          setAllActionsLoading(false);
-        }
-      }
-    };
-
-    loadAllActions();
 
     return () => {
       cancelled = true;
@@ -676,6 +647,13 @@ const ActionDashboard: React.FC = () => {
     },
     [],
   );
+
+  const memberActionStart = action?.memberActionStart
+    ? new Date(action.memberActionStart)
+    : null;
+  const memberActionDeadline = action?.memberActionDeadline
+    ? new Date(action.memberActionDeadline)
+    : null;
 
   const handlePrerequisitesChange = useCallback((ids: number[]) => {
     setForm((prev) => ({ ...prev, prerequisiteActionIds: ids }));
@@ -1045,6 +1023,8 @@ const ActionDashboard: React.FC = () => {
             onReviewersChange={setReviewerRows}
             allActions={allActions}
             allActionsLoading={allActionsLoading}
+            memberActionStart={memberActionStart}
+            memberActionDeadline={memberActionDeadline}
           />
         </div>
       ) : (
@@ -1619,6 +1599,8 @@ const ActionDashboard: React.FC = () => {
                   onReviewersChange={setReviewerRows}
                   allActions={allActions}
                   allActionsLoading={allActionsLoading}
+                  memberActionStart={memberActionStart}
+                  memberActionDeadline={memberActionDeadline}
                 />
               </div>
             )}
