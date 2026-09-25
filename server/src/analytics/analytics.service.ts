@@ -33,7 +33,10 @@ import {
 } from "src/user/entities/onetime-invite.entity";
 import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
-import { hasMemberActionDeadlinePassed } from "src/utils/action-user";
+import {
+  findStartedMemberActionEvent,
+  hasMemberActionDeadlinePassed,
+} from "src/utils/action-user";
 import { yieldToEventLoop } from "src/utils/event-loop";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { Between, In, IsNull, type Repository } from "typeorm";
@@ -718,10 +721,7 @@ ORDER BY pp.total_session_duration_seconds DESC
       const sortedEvents = (action.events ?? []).sort(
         (a, b) => a.date.getTime() - b.date.getTime(),
       );
-      const memberActionEvent = sortedEvents.find(
-        (event) =>
-          event.newStatus === ActionStatus.MemberAction && event.date <= now,
-      );
+      const memberActionEvent = findStartedMemberActionEvent(sortedEvents, now);
 
       if (!memberActionEvent) {
         continue;
@@ -1257,10 +1257,7 @@ ORDER BY pp.total_session_duration_seconds DESC
       const sortedEvents = (action.events ?? []).sort(
         (a, b) => a.date.getTime() - b.date.getTime(),
       );
-      const memberActionEvent = sortedEvents.find(
-        (event) =>
-          event.newStatus === ActionStatus.MemberAction && event.date <= now,
-      );
+      const memberActionEvent = findStartedMemberActionEvent(sortedEvents, now);
 
       if (!memberActionEvent) {
         continue;
