@@ -18,6 +18,7 @@ import ReminderTimeSelect from "../../components/forms/ReminderTimeSelect";
 import TimeZoneSelect from "../../components/forms/TimeZoneSelect";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 import AccountSection from "../../components/settings/AccountSection";
+import DeviceTimeZoneOffer from "../../components/settings/DeviceTimeZoneOffer";
 import Button, {
   ButtonColor,
   ButtonSize,
@@ -364,6 +365,10 @@ export default function SettingsPage() {
               <TimeZoneSelect
                 value={editableUser.timeZone ?? undefined}
                 onChange={(tz) => updateEditableUser({ timeZone: tz })}
+              />
+              <DeviceTimeZoneOffer
+                saved={editableUser.timeZone ?? undefined}
+                onUse={(tz) => updateEditableUser({ timeZone: tz })}
               />
             </View>
           </Card>

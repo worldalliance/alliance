@@ -23,6 +23,7 @@ import CityAutosuggest from "../../components/CityAutosuggest";
 import AccountSettings, {
   ACCOUNT_SECTION_ID,
 } from "../../components/settings/AccountSettings";
+import DeviceTimeZoneOffer from "../../components/settings/DeviceTimeZoneOffer";
 import { useAuth } from "../../lib/AuthContext";
 
 const SettingsPage: React.FC = () => {
@@ -404,6 +405,12 @@ const SettingsPage: React.FC = () => {
                 value={editableUser.timeZone ?? undefined}
                 onChange={(tz) => updateEditableUser({ timeZone: tz })}
               />
+              {!isImpersonation && (
+                <DeviceTimeZoneOffer
+                  saved={editableUser.timeZone ?? undefined}
+                  onUse={(tz) => updateEditableUser({ timeZone: tz })}
+                />
+              )}
             </div>
           </div>
         </Card>

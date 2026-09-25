@@ -259,9 +259,22 @@ sections below this one carry the reasoning each step implements.
     session. `detect` is required, so each platform names its own detection
     instead of mobile falling back to `Intl`. It runs only when the hook would
     write.
-12. **Settings device affordance.** Web `SettingsPage` and mobile `settings.tsx`
-    show the saved value, plus `Device timezone: <label>` with a `Use` action
-    when the two differ.
+12. **Settings device affordance.** Done. Web `SettingsPage` and mobile
+    `settings.tsx` show the saved value in the picker, plus
+    `Device timezone: <label>` with a `Use` action under it when the two
+    differ. `deviceTimeZoneOffer` in `shared/forms/deviceTimeZoneOffer.ts`
+    decides: the device zone differs when it lists as another row than the
+    saved one, so a saved `US/Pacific` offers nothing on a device reporting
+    `America/Los_Angeles`, and a detection `isTimeZoneIdentifier` refuses
+    offers nothing. A missing or invalid saved value differs from any valid
+    device zone. The label is the row's first line, such as
+    `Pacific Time · Los Angeles`. `Use` writes the identifier as reported,
+    as backfill does, through the same autosave as a pick from the list.
+    Each platform detects as its picker does, so the offer and the pinned
+    row name the same zone: `deviceTimeZone()` once per mount on the web,
+    `getDeviceTimeZone()` on every render on mobile. The web offers nothing
+    while an admin impersonates the member, since the device is the admin's,
+    as backfill stays off then too.
 13. **Form default chain.** `resolveFieldDefaultValue` stops returning
     `FALLBACK_TIMEZONE`; `FormRenderer` seeds a timezone field from the
     respondent's saved timezone, then the device, then `UTC`, into form state at
