@@ -7,6 +7,7 @@ import {
   daysUntil,
   inviteGoalErrorMessage,
   inviteGoalIsUp,
+  oneMonthFromTodayDateInputValue,
   selectCurrentInviteGoal,
   selectInviteGoals,
   selectPastInviteGoals,
@@ -95,6 +96,18 @@ describe("inviteGoalIsUp", () => {
     ).toBe(true);
     expect(inviteGoalIsUp(active, now)).toBe(false);
   });
+});
+
+test("oneMonthFromTodayDateInputValue clamps to the last day of a shorter month", () => {
+  expect(oneMonthFromTodayDateInputValue(new Date(2026, 0, 31))).toBe(
+    "2026-02-28",
+  );
+  expect(oneMonthFromTodayDateInputValue(new Date(2028, 0, 31))).toBe(
+    "2028-02-29",
+  );
+  expect(oneMonthFromTodayDateInputValue(new Date(2026, 2, 31))).toBe(
+    "2026-04-30",
+  );
 });
 
 test("dateToInputValue formats the local calendar date", () => {

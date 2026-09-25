@@ -1,3 +1,4 @@
+import { addMonths } from "date-fns";
 import { millisecondsInDay } from "date-fns/constants";
 import type { AmbassadorInviteGoalWithStatsDto } from "../client";
 
@@ -23,11 +24,8 @@ export const dateToInputValue = (value: string | Date) => {
 
 export const todayDateInputValue = () => dateToInputValue(new Date());
 
-export const oneMonthFromTodayDateInputValue = () => {
-  const nextMonth = new Date();
-  nextMonth.setMonth(nextMonth.getMonth() + 1);
-  return dateToInputValue(nextMonth);
-};
+export const oneMonthFromTodayDateInputValue = (now = new Date()) =>
+  dateToInputValue(addMonths(now, 1));
 
 export const inviteGoalErrorMessage = (err: Error) => {
   if (err.message.toLowerCase().includes("overlap")) {
