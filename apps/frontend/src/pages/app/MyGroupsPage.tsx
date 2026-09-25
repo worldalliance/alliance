@@ -10,6 +10,7 @@ import {
 import {
   getMemberCount,
   groupAssignmentLabels,
+  groupRemovalMessage,
   isLedBy,
 } from "@alliance/shared/lib/communityUtils";
 import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
@@ -120,20 +121,8 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
   );
 
   const getRemovalMessage = useCallback(
-    (targetName?: string) => {
-      if (!nonLeaderCommunities.length) {
-        return null;
-      }
-      const names = nonLeaderCommunities.map((community) => community.name);
-      const base =
-        names.length === 1
-          ? `your current group (${names[0]})`
-          : `the following groups: (${names.join(", ")})`;
-      if (!targetName) {
-        return `You will be removed from ${base}.`;
-      }
-      return `Joining ${targetName} will remove you from ${base}.`;
-    },
+    (targetName?: string) =>
+      groupRemovalMessage(nonLeaderCommunities, targetName),
     [nonLeaderCommunities],
   );
 

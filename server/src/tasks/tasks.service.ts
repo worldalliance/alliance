@@ -64,6 +64,7 @@ import { toE164 } from "@alliance/common/phone";
 import { withCount } from "@alliance/common/plural";
 import { R, type Result } from "@alliance/common/result";
 import { isTimeZoneIdentifier } from "@alliance/common/timezone";
+import { describeSchemaIssues, issuePath } from "@alliance/common/zod-issues";
 import {
   BadRequestException,
   ConflictException,
@@ -163,9 +164,7 @@ function parseSubmittedValidatorResults(
   const parsed = visibilityValidatorResultsSchema.safeParse(value);
   if (!parsed.success) {
     throw new BadRequestException(
-      `Invalid visibility validator results: ${parsed.error.issues
-        .map((issue) => `${issue.path.join(".") || "<root>"}: ${issue.message}`)
-        .join("; ")}`,
+      `Invalid visibility validator results: ${describeSchemaIssues(parsed.error).join("; ")}`,
     );
   }
   return parsed.data;
@@ -326,7 +325,7 @@ export class TasksService {
     if (!parsed.success) {
       return R.failure(
         parsed.error.issues.map((issue) => ({
-          blockId: issue.path.join(".") || "<root>",
+          blockId: issuePath(issue),
           message: issue.message,
         })),
       );

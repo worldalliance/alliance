@@ -1,4 +1,8 @@
-import { groupAssignmentLabels, isLedBy } from "./communityUtils";
+import {
+  groupAssignmentLabels,
+  groupRemovalMessage,
+  isLedBy,
+} from "./communityUtils";
 
 describe("groupAssignmentLabels", () => {
   it("names an assignment for someone in no group", () => {
@@ -36,5 +40,25 @@ describe("isLedBy", () => {
 
   it("is false when no one is signed in", () => {
     expect(isLedBy(community, undefined)).toBe(false);
+  });
+});
+
+describe("groupRemovalMessage", () => {
+  it("is null for someone in no group they don't lead", () => {
+    expect(groupRemovalMessage([], "Garden Club")).toBeNull();
+  });
+
+  it("names the single current group", () => {
+    expect(groupRemovalMessage([{ name: "Book Club" }], "Garden Club")).toBe(
+      "Joining Garden Club will remove you from your current group (Book Club).",
+    );
+  });
+
+  it("lists every current group without a target", () => {
+    expect(
+      groupRemovalMessage([{ name: "Book Club" }, { name: "Chess Club" }]),
+    ).toBe(
+      "You will be removed from the following groups: (Book Club, Chess Club).",
+    );
   });
 });

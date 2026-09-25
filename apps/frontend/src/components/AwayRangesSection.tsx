@@ -1,5 +1,9 @@
 import { errorMessage } from "@alliance/common/errorMessage";
 import { UserAwayRangeDto, UserAwayRangeReason } from "@alliance/shared/client";
+import {
+  AWAY_REASON_LABELS,
+  formatAwayReason,
+} from "@alliance/shared/lib/awayRangesFormatters";
 import { awayRangesDescription } from "@alliance/shared/lib/copy";
 import { formatLongDate } from "@alliance/shared/lib/dateFormatters";
 import { useMyAwayRanges } from "@alliance/shared/lib/useMyAwayRanges";
@@ -10,49 +14,10 @@ import FormInput from "@alliance/sharedweb/ui/FormInput";
 import { Pencil, X } from "lucide-react";
 import React, { useState } from "react";
 
-enum ReasonDropdownOption {
-  UNSELECTED = "Select a reason",
-  VACATION = "Vacation",
-  EMERGENCY = "Emergency",
-  OTHER = "Other",
-}
-
-const REASON_DROPDOWN_OPTION_TO_REASON_DTO = {
-  [ReasonDropdownOption.UNSELECTED]: null,
-  [ReasonDropdownOption.VACATION]: "vacation" as const,
-  [ReasonDropdownOption.EMERGENCY]: "emergency" as const,
-  [ReasonDropdownOption.OTHER]: "other" as const,
-} satisfies Record<ReasonDropdownOption, UserAwayRangeReason | null>;
-
-function reasonDisplayName(reason: UserAwayRangeReason): string {
-  switch (reason) {
-    case "vacation":
-      return ReasonDropdownOption.VACATION;
-    case "emergency":
-      return ReasonDropdownOption.EMERGENCY;
-    case "other":
-      return ReasonDropdownOption.OTHER;
-    default:
-      const x: never = reason;
-      throw new Error(`Unknown reason: ${x}`);
-  }
-}
-
-function reasonToDropdownOption(
-  reason: UserAwayRangeReason,
-): ReasonDropdownOption {
-  switch (reason) {
-    case "vacation":
-      return ReasonDropdownOption.VACATION;
-    case "emergency":
-      return ReasonDropdownOption.EMERGENCY;
-    case "other":
-      return ReasonDropdownOption.OTHER;
-    default:
-      const x: never = reason;
-      throw new Error(`Unknown reason: ${x}`);
-  }
-}
+const REASON_DROPDOWN_OPTIONS = {
+  UNSELECTED: "Select a reason",
+  ...AWAY_REASON_LABELS,
+};
 
 function formatDateForInput(date: Date | string): string {
   const d = new Date(date);
@@ -78,21 +43,20 @@ const AwayRangesSection: React.FC = () => {
   const [noteInput, setNoteInput] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const [selectedReason, setSelectedReason] = useState<ReasonDropdownOption>(
-    ReasonDropdownOption.UNSELECTED,
-  );
-  const selectedReasonIsOther = selectedReason === "Other";
+  const [selectedReason, setSelectedReason] =
+    useState<UserAwayRangeReason | null>(null);
+  const selectedReasonIsOther = selectedReason === "other";
 
   // Edit state
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editStartDate, setEditStartDate] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
   const [editNote, setEditNote] = useState("");
-  const [editReason, setEditReason] = useState<ReasonDropdownOption>(
-    ReasonDropdownOption.UNSELECTED,
+  const [editReason, setEditReason] = useState<UserAwayRangeReason | null>(
+    null,
   );
   const [editError, setEditError] = useState<string | null>(null);
-  const editReasonIsOther = editReason === "Other";
+  const editReasonIsOther = editReason === "other";
 
   const handleCreate = async () => {
     setError(null);
@@ -111,8 +75,7 @@ const AwayRangesSection: React.FC = () => {
     //   return;
     // }
 
-    const reason = REASON_DROPDOWN_OPTION_TO_REASON_DTO[selectedReason];
-    if (!reason) {
+    if (!selectedReason) {
       // Should not be possible, since button is disabled if no reason is selected
       alert("Select a reason for your away period.");
       return;
@@ -122,12 +85,12 @@ const AwayRangesSection: React.FC = () => {
       await createAwayRange.mutateAsync({
         startDay: startDateInput,
         endDay: endDateInput,
-        reason,
+        reason: selectedReason,
         note: noteInput.trim() || null,
       });
       setStartDateInput("");
       setEndDateInput("");
-      setSelectedReason(ReasonDropdownOption.UNSELECTED);
+      setSelectedReason(null);
       setNoteInput("");
     } catch (error) {
       setError(
@@ -153,7 +116,7 @@ const AwayRangesSection: React.FC = () => {
     setEditStartDate(formatDateForInput(range.startDate));
     setEditEndDate(formatDateForInput(range.endDate));
     setEditNote(range.note ?? "");
-    setEditReason(reasonToDropdownOption(range.reason));
+    setEditReason(range.reason);
     setEditError(null);
   };
 
@@ -162,7 +125,7 @@ const AwayRangesSection: React.FC = () => {
     setEditStartDate("");
     setEditEndDate("");
     setEditNote("");
-    setEditReason(ReasonDropdownOption.UNSELECTED);
+    setEditReason(null);
     setEditError(null);
   };
 
@@ -175,8 +138,7 @@ const AwayRangesSection: React.FC = () => {
       return;
     }
 
-    const reason = REASON_DROPDOWN_OPTION_TO_REASON_DTO[editReason];
-    if (!reason) {
+    if (!editReason) {
       alert("Select a reason for your away period.");
       return;
     }
@@ -187,7 +149,7 @@ const AwayRangesSection: React.FC = () => {
         body: {
           startDay: editStartDate,
           endDay: editEndDate,
-          reason,
+          reason: editReason,
           note: editNote.trim() || null,
         },
       });
@@ -270,9 +232,13 @@ const AwayRangesSection: React.FC = () => {
                   <div className="flex flex-col gap-1">
                     <label className="text-sm font-medium">Reason</label>
                     <DropdownSelect
-                      options={ReasonDropdownOption}
-                      value={editReason}
-                      onChange={([, reason]) => setEditReason(reason)}
+                      options={REASON_DROPDOWN_OPTIONS}
+                      value={
+                        REASON_DROPDOWN_OPTIONS[editReason ?? "UNSELECTED"]
+                      }
+                      onChange={([reason]) =>
+                        setEditReason(reason === "UNSELECTED" ? null : reason)
+                      }
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -299,7 +265,7 @@ const AwayRangesSection: React.FC = () => {
                         updating ||
                         !editStartDate ||
                         !editEndDate ||
-                        editReason === "Select a reason" ||
+                        !editReason ||
                         (editReasonIsOther && !editNote.trim())
                       }
                     >
@@ -334,7 +300,7 @@ const AwayRangesSection: React.FC = () => {
                       {formatLongDate(new Date(range.endDate))}
                     </p>
                     <p className="text-sm mt-1">
-                      {reasonDisplayName(range.reason)}
+                      {formatAwayReason(range.reason)}
                       {range.note && ": " + range.note}
                     </p>
                   </div>
@@ -391,9 +357,11 @@ const AwayRangesSection: React.FC = () => {
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium">Reason</label>
             <DropdownSelect
-              options={ReasonDropdownOption}
-              value={selectedReason}
-              onChange={([, reason]) => setSelectedReason(reason)}
+              options={REASON_DROPDOWN_OPTIONS}
+              value={REASON_DROPDOWN_OPTIONS[selectedReason ?? "UNSELECTED"]}
+              onChange={([reason]) =>
+                setSelectedReason(reason === "UNSELECTED" ? null : reason)
+              }
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -426,7 +394,7 @@ const AwayRangesSection: React.FC = () => {
                 creating ||
                 !startDateInput ||
                 !endDateInput ||
-                selectedReason === "Select a reason" ||
+                !selectedReason ||
                 (selectedReasonIsOther && !noteInput.trim())
               }
               className="w-full md:w-auto"

@@ -1,6 +1,7 @@
 import z from "zod";
 import { R, type Result } from "../result";
 import type { Assert, Equal } from "../types";
+import { describeSchemaIssues } from "../zod-issues";
 import {
   accordionBlockSchema,
   bigLinkBlockSchema,
@@ -116,12 +117,6 @@ const displayOnlyFormSchema = z.strictObject({
   aggregateViews: unusableHere("aggregate views").optional(),
   variables: unusableHere("variables").optional(),
 });
-
-function describeSchemaIssues(error: z.ZodError): string[] {
-  return error.issues.map(
-    (issue) => `${issue.path.join(".") || "<root>"}: ${issue.message}`,
-  );
-}
 
 export const DISPLAY_ONLY_SCHEMA_ERROR = "Invalid display-only schema";
 

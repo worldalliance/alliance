@@ -31,6 +31,7 @@ import {
 import { echoesStoredKey } from "@alliance/common/image-src";
 import { run } from "@alliance/common/run";
 import { Assert } from "@alliance/common/types";
+import { describeSchemaIssues } from "@alliance/common/zod-issues";
 import {
   BadRequestException,
   ConflictException,
@@ -476,9 +477,7 @@ export class ActionsService {
   private parseCohortExpressionOrThrow(value: unknown): CohortExpression {
     const parsed = cohortExpressionSchema.safeParse(value);
     if (!parsed.success) {
-      const issues = parsed.error.issues
-        .map((issue) => `${issue.path.join(".") || "<root>"}: ${issue.message}`)
-        .join("; ");
+      const issues = describeSchemaIssues(parsed.error).join("; ");
       throw new BadRequestException(`Invalid cohort expression: ${issues}`);
     }
     return parsed.data;
