@@ -63,7 +63,7 @@ function admissionReason(params: {
     : CohortDecisionReason.Launch;
 }
 
-function isInCatchUp(enrollment: CohortEnrollment, now: Date): boolean {
+export function isInCatchUp(enrollment: CohortEnrollment, now: Date): boolean {
   switch (enrollment.state) {
     case CohortEnrollmentState.Open:
       return true;
@@ -449,7 +449,7 @@ export class CohortDecisionService {
     return rows;
   }
 
-  private async findResolvableActions(
+  async findResolvableActions(
     now: Date,
   ): Promise<{ action: ParsedAction; enrollment: CohortEnrollment }[]> {
     const actions = await this.actionRepository.find({

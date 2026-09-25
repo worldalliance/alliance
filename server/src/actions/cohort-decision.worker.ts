@@ -39,7 +39,23 @@ export class CohortDecisionWorker {
       this.dataSource,
       DIVERGENCE_LOCK_KEY1,
       DIVERGENCE_LOCK_KEY2,
-      () => this.cohortDivergenceService.logDivergences(new Date()),
+      async () => {
+        const now = new Date();
+        const failures = (
+          await Promise.allSettled([
+            this.cohortDivergenceService.logDivergences(now),
+            this.cohortDivergenceService.logUnawaitedOpenReferences(now),
+          ])
+        ).flatMap((result) =>
+          result.status === "rejected" ? [result.reason] : [],
+        );
+        if (failures.length > 0) {
+          throw new AggregateError(
+            failures,
+            "cohort decision divergence checks failed",
+          );
+        }
+      },
     );
     if (ran === null) {
       this.logger.log("cohort decision divergence check skipped bc of lock");
