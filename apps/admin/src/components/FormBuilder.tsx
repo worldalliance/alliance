@@ -64,6 +64,7 @@ import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
 import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
 import { DropPosition } from "../lib/useDragReorder";
 import { useFormulaSourceForms } from "../lib/useFormulaSourceForms";
+import { useInputSources } from "../lib/useInputSources";
 import { AggregateBuilder } from "./AggregateBuilder";
 import ConfirmDialog from "./ConfirmDialog";
 import { createDisplayBlock, PerViewerOptions } from "./display-blocks";
@@ -80,6 +81,7 @@ import { EditableFieldGroup } from "./form-fields/EditableFieldGroup";
 import { renderFieldEditor } from "./form-fields/fieldEditors";
 import { FormConflictModal } from "./FormConflictModal";
 import { formFieldsErrorReason } from "./FormPickerError";
+import { FormulaSourcesProvider } from "./FormulaSourcesContext";
 import { FormVariablesProvider } from "./FormVariablesContext";
 import { OutputBuilder } from "./OutputBuilder";
 import { PreviewAsUserBar } from "./PreviewAsUserBar";
@@ -840,6 +842,7 @@ export function FormBuilder(props: FormBuilderProps) {
     () => ({ formId, sourceForms }),
     [formId, sourceForms],
   );
+  const formulaSources = useInputSources({ formId, schema });
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -2646,466 +2649,470 @@ export function FormBuilder(props: FormBuilderProps) {
         }}
       />
       <FormVariablesProvider variables={schema.variables}>
-        <div className="flex h-[calc(100vh-40px)] bg-zinc-50">
-          {!isPreviewMode && activeEditor === "form" && (
-            <ElementSelect
-              onAddField={addField}
-              onAddDisplayBlock={addDisplayBlock}
-              onAddGroup={() => addGroup()}
-              onCopyExisting={() => {
-                setActiveSearch(null);
-                setSearchQuery("");
-                setSearchResults([]);
-                setCopyPicker({
-                  groupId: null,
-                  index: currentPage.fields.length,
-                });
-              }}
-              displayOnly={displayOnly}
-            />
-          )}
+        <FormulaSourcesProvider value={formulaSources}>
+          <div className="flex h-[calc(100vh-40px)] bg-zinc-50">
+            {!isPreviewMode && activeEditor === "form" && (
+              <ElementSelect
+                onAddField={addField}
+                onAddDisplayBlock={addDisplayBlock}
+                onAddGroup={() => addGroup()}
+                onCopyExisting={() => {
+                  setActiveSearch(null);
+                  setSearchQuery("");
+                  setSearchResults([]);
+                  setCopyPicker({
+                    groupId: null,
+                    index: currentPage.fields.length,
+                  });
+                }}
+                displayOnly={displayOnly}
+              />
+            )}
 
-          <div className="flex-1 flex flex-col">
-            <div className="bg-white border-b border-gray-200 p-4">
-              <div className="flex items-center justify-end gap-4 flex-wrap xl:flex-nowrap">
-                <div className="flex items-center space-x-2">
-                  {activeEditor === "form" && (
+            <div className="flex-1 flex flex-col">
+              <div className="bg-white border-b border-gray-200 p-4">
+                <div className="flex items-center justify-end gap-4 flex-wrap xl:flex-nowrap">
+                  <div className="flex items-center space-x-2">
+                    {activeEditor === "form" && (
+                      <Button
+                        onClick={() => setIsPreviewMode(!isPreviewMode)}
+                        color={ButtonColor.Stone}
+                        size="small"
+                      >
+                        {isPreviewMode ? "Edit" : "Preview"}
+                      </Button>
+                    )}
                     <Button
-                      onClick={() => setIsPreviewMode(!isPreviewMode)}
-                      color={ButtonColor.Stone}
+                      onClick={handleSaveForm}
+                      disabled={isSaving || isLoading || !hasUnsavedChanges}
+                      color={ButtonColor.Blue}
                       size="small"
                     >
-                      {isPreviewMode ? "Edit" : "Preview"}
+                      {isSaving
+                        ? "Saving..."
+                        : hasUnsavedChanges
+                          ? "Save Form"
+                          : "No changes"}
                     </Button>
-                  )}
-                  <Button
-                    onClick={handleSaveForm}
-                    disabled={isSaving || isLoading || !hasUnsavedChanges}
-                    color={ButtonColor.Blue}
-                    size="small"
-                  >
-                    {isSaving
-                      ? "Saving..."
-                      : hasUnsavedChanges
-                        ? "Save Form"
-                        : "No changes"}
-                  </Button>
-                </div>
-                {!displayOnly && (
-                  <div className="inline-flex rounded-md bg-gray-200 p-0.5 text-sm font-medium text-gray-600">
-                    <button
-                      type="button"
-                      className={cn(
-                        "px-3 py-2 rounded-md text-nowrap",
-                        activeEditor === "form"
-                          ? "bg-white shadow text-gray-900"
-                          : "text-gray-600",
-                      )}
-                      onClick={() => setActiveEditor("form")}
-                    >
-                      Form Builder
-                    </button>
-                    <button
-                      type="button"
-                      className={cn(
-                        "px-3 py-2 rounded-md text-nowrap",
-                        activeEditor === "shareable"
-                          ? "bg-white shadow text-gray-900"
-                          : "text-gray-600",
-                      )}
-                      onClick={() => setActiveEditor("shareable")}
-                    >
-                      Shareable Text
-                    </button>
-                    <button
-                      type="button"
-                      className={cn(
-                        "px-3 py-2 rounded-md text-nowrap",
-                        activeEditor === "outputs"
-                          ? "bg-white shadow text-gray-900"
-                          : "text-gray-600",
-                      )}
-                      onClick={() => setActiveEditor("outputs")}
-                    >
-                      Output View
-                    </button>
-                    <button
-                      type="button"
-                      className={cn(
-                        "px-3 py-2 rounded-md text-nowrap",
-                        activeEditor === "aggregates"
-                          ? "bg-white shadow text-gray-900"
-                          : "text-gray-600",
-                      )}
-                      onClick={() => setActiveEditor("aggregates")}
-                    >
-                      Aggregate Views
-                    </button>
-                    <button
-                      type="button"
-                      className={cn(
-                        "px-3 py-2 rounded-md text-nowrap",
-                        activeEditor === "variables"
-                          ? "bg-white shadow text-gray-900"
-                          : "text-gray-600",
-                      )}
-                      onClick={() => setActiveEditor("variables")}
-                    >
-                      Variables
-                      {(schema.variables?.length ?? 0) > 0 && (
-                        <span className="ml-1.5 rounded-full bg-gray-300 px-1.5 py-0.5 text-xs text-gray-700">
-                          {schema.variables?.length}
-                        </span>
-                      )}
-                    </button>
                   </div>
-                )}
-              </div>
+                  {!displayOnly && (
+                    <div className="inline-flex rounded-md bg-gray-200 p-0.5 text-sm font-medium text-gray-600">
+                      <button
+                        type="button"
+                        className={cn(
+                          "px-3 py-2 rounded-md text-nowrap",
+                          activeEditor === "form"
+                            ? "bg-white shadow text-gray-900"
+                            : "text-gray-600",
+                        )}
+                        onClick={() => setActiveEditor("form")}
+                      >
+                        Form Builder
+                      </button>
+                      <button
+                        type="button"
+                        className={cn(
+                          "px-3 py-2 rounded-md text-nowrap",
+                          activeEditor === "shareable"
+                            ? "bg-white shadow text-gray-900"
+                            : "text-gray-600",
+                        )}
+                        onClick={() => setActiveEditor("shareable")}
+                      >
+                        Shareable Text
+                      </button>
+                      <button
+                        type="button"
+                        className={cn(
+                          "px-3 py-2 rounded-md text-nowrap",
+                          activeEditor === "outputs"
+                            ? "bg-white shadow text-gray-900"
+                            : "text-gray-600",
+                        )}
+                        onClick={() => setActiveEditor("outputs")}
+                      >
+                        Output View
+                      </button>
+                      <button
+                        type="button"
+                        className={cn(
+                          "px-3 py-2 rounded-md text-nowrap",
+                          activeEditor === "aggregates"
+                            ? "bg-white shadow text-gray-900"
+                            : "text-gray-600",
+                        )}
+                        onClick={() => setActiveEditor("aggregates")}
+                      >
+                        Aggregate Views
+                      </button>
+                      <button
+                        type="button"
+                        className={cn(
+                          "px-3 py-2 rounded-md text-nowrap",
+                          activeEditor === "variables"
+                            ? "bg-white shadow text-gray-900"
+                            : "text-gray-600",
+                        )}
+                        onClick={() => setActiveEditor("variables")}
+                      >
+                        Variables
+                        {(schema.variables?.length ?? 0) > 0 && (
+                          <span className="ml-1.5 rounded-full bg-gray-300 px-1.5 py-0.5 text-xs text-gray-700">
+                            {schema.variables?.length}
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
 
-              {!isPreviewMode && !displayOnly && activeEditor === "form" && (
-                <div
-                  className="flex space-x-1 mt-4 items-center"
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = "move";
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const moved =
-                      draggedPageIndex !== null &&
-                      pageDropPosition !== null &&
-                      dragOverPageIndex !== null &&
-                      reorderPages({
-                        pages: schema.pages,
-                        draggedIndex: draggedPageIndex,
-                        dropIndex: dragOverPageIndex,
-                        position: pageDropPosition,
-                        selectedIndex: selectedPageIndex,
-                      });
-                    if (moved) {
-                      updateSchema({ ...schema, pages: moved.pages });
-                      setSelectedPageIndex(moved.selectedIndex);
-                    }
-                    handlePageDragEnd();
-                  }}
-                >
-                  {schema.pages.map((page, index) => {
-                    const isDragging = draggedPageIndex === index;
-                    const showInsertionBar =
-                      dragOverPageIndex === index &&
-                      pageDropPosition &&
-                      !isDragging;
+                {!isPreviewMode && !displayOnly && activeEditor === "form" && (
+                  <div
+                    className="flex space-x-1 mt-4 items-center"
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const moved =
+                        draggedPageIndex !== null &&
+                        pageDropPosition !== null &&
+                        dragOverPageIndex !== null &&
+                        reorderPages({
+                          pages: schema.pages,
+                          draggedIndex: draggedPageIndex,
+                          dropIndex: dragOverPageIndex,
+                          position: pageDropPosition,
+                          selectedIndex: selectedPageIndex,
+                        });
+                      if (moved) {
+                        updateSchema({ ...schema, pages: moved.pages });
+                        setSelectedPageIndex(moved.selectedIndex);
+                      }
+                      handlePageDragEnd();
+                    }}
+                  >
+                    {schema.pages.map((page, index) => {
+                      const isDragging = draggedPageIndex === index;
+                      const showInsertionBar =
+                        dragOverPageIndex === index &&
+                        pageDropPosition &&
+                        !isDragging;
 
-                    return (
-                      <div key={page.id} className="relative">
-                        {showInsertionBar &&
-                          pageDropPosition === DropPosition.Before && (
-                            <div className="absolute -left-0.5 top-0 bottom-0 w-0.5 bg-blue-500 rounded-full z-10">
-                              <div className="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                            </div>
-                          )}
+                      return (
+                        <div key={page.id} className="relative">
+                          {showInsertionBar &&
+                            pageDropPosition === DropPosition.Before && (
+                              <div className="absolute -left-0.5 top-0 bottom-0 w-0.5 bg-blue-500 rounded-full z-10">
+                                <div className="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+                              </div>
+                            )}
 
-                        <div
-                          draggable
-                          onDragStart={handlePageDragStart(index)}
-                          onDragEnd={handlePageDragEnd}
-                          onDragOver={handlePageDragOver(index)}
-                          className={cn(
-                            "flex items-center rounded-md text-sm font-medium cursor-move pr-2 transition-all border",
-                            selectedPageIndex === index
-                              ? "bg-blue-100 text-blue-700 border-blue-200"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-transparent",
-                            isDragging && "opacity-50 scale-95",
-                          )}
-                        >
                           <div
-                            className="px-2 py-2 text-gray-400 hover:text-gray-600 cursor-move"
-                            title="Drag to reorder"
+                            draggable
+                            onDragStart={handlePageDragStart(index)}
+                            onDragEnd={handlePageDragEnd}
+                            onDragOver={handlePageDragOver(index)}
+                            className={cn(
+                              "flex items-center rounded-md text-sm font-medium cursor-move pr-2 transition-all border",
+                              selectedPageIndex === index
+                                ? "bg-blue-100 text-blue-700 border-blue-200"
+                                : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-transparent",
+                              isDragging && "opacity-50 scale-95",
+                            )}
                           >
-                            <svg
-                              className="w-3 h-3"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
+                            <div
+                              className="px-2 py-2 text-gray-400 hover:text-gray-600 cursor-move"
+                              title="Drag to reorder"
                             >
-                              <path d="M10 6L6 10l4 4 4-4-4-4zM8 12l2-2 2 2H8z" />
-                              <path d="M7 2a1 1 0 000 2h6a1 1 0 100-2H7zM7 16a1 1 0 100 2h6a1 1 0 100-2H7z" />
-                            </svg>
-                          </div>
+                              <svg
+                                className="w-3 h-3"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path d="M10 6L6 10l4 4 4-4-4-4zM8 12l2-2 2 2H8z" />
+                                <path d="M7 2a1 1 0 000 2h6a1 1 0 100-2H7zM7 16a1 1 0 100 2h6a1 1 0 100-2H7z" />
+                              </svg>
+                            </div>
 
-                          <button
-                            type="button"
-                            onClick={() => setSelectedPageIndex(index)}
-                            className="py-2 flex-1 text-left pr-2"
-                          >
-                            {page.title}
-                          </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedPageIndex(index)}
+                              className="py-2 flex-1 text-left pr-2"
+                            >
+                              {page.title}
+                            </button>
 
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              copyPage(index);
-                            }}
-                            className="py-2 px-1 text-gray-400 hover:text-blue-600"
-                            title="Copy page"
-                            aria-label={`Copy ${page.title || "page"}`}
-                          >
-                            <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-                          </button>
-
-                          {schema.pages.length > 1 && (
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                removePage(index);
+                                copyPage(index);
                               }}
-                              className="py-2 text-gray-400 hover:text-red-500"
+                              className="py-2 px-1 text-gray-400 hover:text-blue-600"
+                              title="Copy page"
+                              aria-label={`Copy ${page.title || "page"}`}
                             >
-                              ×
+                              <Copy
+                                className="h-3.5 w-3.5"
+                                aria-hidden="true"
+                              />
                             </button>
-                          )}
-                        </div>
 
-                        {showInsertionBar &&
-                          pageDropPosition === DropPosition.After && (
-                            <div className="absolute -right-0.5 top-0 bottom-0 w-0.5 bg-blue-500 rounded-full z-10">
-                              <div className="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+                            {schema.pages.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removePage(index);
+                                }}
+                                className="py-2 text-gray-400 hover:text-red-500"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
+
+                          {showInsertionBar &&
+                            pageDropPosition === DropPosition.After && (
+                              <div className="absolute -right-0.5 top-0 bottom-0 w-0.5 bg-blue-500 rounded-full z-10">
+                                <div className="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+                              </div>
+                            )}
+                        </div>
+                      );
+                    })}
+                    <div
+                      onClick={addPage}
+                      color={ButtonColor.White}
+                      className="p-1 !h-6 !w-6 rounded-full hover:bg-gray-200 flex items-center justify-center cursor-pointer"
+                    >
+                      <p className="-mt-px text-zinc-700">+</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-shrink-0 mx-4 min-h-0 relative">
+                {isLoading && (
+                  <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 mb-2">
+                    <span className="block sm:inline">Loading form...</span>
+                  </div>
+                )}
+                {loadError && (
+                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-2">
+                    <span className="block sm:inline">
+                      Error loading form: {loadError}
+                    </span>
+                  </div>
+                )}
+                {saveError && (
+                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-2">
+                    <span className="block sm:inline">
+                      Error saving form: {saveError}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div
+                ref={contentScrollRef}
+                className="flex-1 p-6 overflow-y-auto min-h-0"
+              >
+                {activeEditor === "shareable" ? (
+                  <ShareableTextBuilder
+                    schema={schema}
+                    onSchemaChange={updateSchema}
+                  />
+                ) : activeEditor === "outputs" ? (
+                  <OutputBuilder
+                    schema={schema}
+                    onSchemaChange={updateSchema}
+                    onUpdateBlockById={updateBlockById}
+                  />
+                ) : activeEditor === "aggregates" ? (
+                  <AggregateBuilder
+                    schema={schema}
+                    onSchemaChange={updateSchema}
+                  />
+                ) : activeEditor === "variables" ? (
+                  <VariableBuilder
+                    key={conflictLoads}
+                    schema={schema}
+                    onSchemaChange={updateSchema}
+                  />
+                ) : isPreviewMode && displayOnly ? (
+                  <div className="max-w-3xl mx-auto p-6">
+                    <DisplayOnlyPreview
+                      schema={schema}
+                      title={displayOnlyTitle}
+                    />
+                  </div>
+                ) : isPreviewMode ? (
+                  <div className="max-w-3xl mx-auto bg-white p-6">
+                    <PreviewAsUserBar
+                      previewUserId={previewUserId}
+                      setPreviewUserId={setPreviewUserId}
+                      previewUsers={previewUsers}
+                      isLoadingPreviewUsers={isLoadingPreviewUsers}
+                      previewUserError={previewUserError}
+                    />
+                    <FormRenderer
+                      key={resolvedPreviewUserId}
+                      id={0}
+                      formSnapshotId={null}
+                      actionId={0}
+                      form={schema}
+                      onSubmit={null}
+                      renderFormAsCompleted={false}
+                      userId={resolvedPreviewUserId}
+                      user={resolvedPreviewUser}
+                      adminPreviewUserId={resolvedPreviewUserId}
+                      showVariableError
+                      initialPageIndex={selectedPageIndex}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className="max-w-2xl mx-auto bg-white rounded-lg border border-gray-200 p-6 mb-8"
+                    onClick={handleClickOutside}
+                  >
+                    {!displayOnly && (
+                      <div className="mb-6">
+                        <input
+                          type="text"
+                          value={currentPage.title || ""}
+                          onChange={(e) =>
+                            updateSchema({
+                              ...schema,
+                              pages: schema.pages.map((page, idx) =>
+                                idx === selectedPageIndex
+                                  ? { ...page, title: e.target.value }
+                                  : page,
+                              ),
+                            })
+                          }
+                          className="text-lg font-medium w-full border-none outline-none"
+                          placeholder="Page title"
+                        />
+                        {currentPage.description && (
+                          <p className="text-gray-600 mt-1">
+                            {currentPage.description}
+                          </p>
+                        )}
+                        <div className="mt-3">
+                          <label className="flex cursor-pointer items-center text-xs text-gray-700">
+                            <input
+                              type="checkbox"
+                              className="mr-2"
+                              checked={showPageVisibilityControl}
+                              onChange={(event) =>
+                                handlePageVisibilityToggle(event.target.checked)
+                              }
+                            />
+                            Use conditional visibility for this page
+                          </label>
+                          {showPageVisibilityControl && (
+                            <div className="mt-2">
+                              {selectedPageIndex === 0 && (
+                                <p className="mb-2 text-xs text-amber-600">
+                                  Conditions on the first page can only
+                                  reference other forms or validators, since no
+                                  fields have been answered yet.
+                                </p>
+                              )}
+                              <ConditionalVisibility
+                                key={currentPage.id}
+                                field={currentPage}
+                                previousFields={pagePreviousFields}
+                                onChange={updateCurrentPageVisibility}
+                              />
                             </div>
                           )}
+                        </div>
                       </div>
-                    );
-                  })}
-                  <div
-                    onClick={addPage}
-                    color={ButtonColor.White}
-                    className="p-1 !h-6 !w-6 rounded-full hover:bg-gray-200 flex items-center justify-center cursor-pointer"
-                  >
-                    <p className="-mt-px text-zinc-700">+</p>
-                  </div>
-                </div>
-              )}
-            </div>
+                    )}
+                    <PerViewerOptions allowed={!displayOnly}>
+                      <div className="space-y-4">
+                        {currentPage.fields.length === 0 && (
+                          <InsertPoint loc={{ groupId: null, index: 0 }} />
+                        )}
 
-            <div className="flex-shrink-0 mx-4 min-h-0 relative">
-              {isLoading && (
-                <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 mb-2">
-                  <span className="block sm:inline">Loading form...</span>
-                </div>
-              )}
-              {loadError && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-2">
-                  <span className="block sm:inline">
-                    Error loading form: {loadError}
-                  </span>
-                </div>
-              )}
-              {saveError && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-2">
-                  <span className="block sm:inline">
-                    Error saving form: {saveError}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div
-              ref={contentScrollRef}
-              className="flex-1 p-6 overflow-y-auto min-h-0"
-            >
-              {activeEditor === "shareable" ? (
-                <ShareableTextBuilder
-                  schema={schema}
-                  onSchemaChange={updateSchema}
-                />
-              ) : activeEditor === "outputs" ? (
-                <OutputBuilder
-                  schema={schema}
-                  onSchemaChange={updateSchema}
-                  onUpdateBlockById={updateBlockById}
-                />
-              ) : activeEditor === "aggregates" ? (
-                <AggregateBuilder
-                  schema={schema}
-                  onSchemaChange={updateSchema}
-                />
-              ) : activeEditor === "variables" ? (
-                <VariableBuilder
-                  key={conflictLoads}
-                  formId={formId}
-                  schema={schema}
-                  onSchemaChange={updateSchema}
-                />
-              ) : isPreviewMode && displayOnly ? (
-                <div className="max-w-3xl mx-auto p-6">
-                  <DisplayOnlyPreview
-                    schema={schema}
-                    title={displayOnlyTitle}
-                  />
-                </div>
-              ) : isPreviewMode ? (
-                <div className="max-w-3xl mx-auto bg-white p-6">
-                  <PreviewAsUserBar
-                    previewUserId={previewUserId}
-                    setPreviewUserId={setPreviewUserId}
-                    previewUsers={previewUsers}
-                    isLoadingPreviewUsers={isLoadingPreviewUsers}
-                    previewUserError={previewUserError}
-                  />
-                  <FormRenderer
-                    key={resolvedPreviewUserId}
-                    id={0}
-                    formSnapshotId={null}
-                    actionId={0}
-                    form={schema}
-                    onSubmit={null}
-                    renderFormAsCompleted={false}
-                    userId={resolvedPreviewUserId}
-                    user={resolvedPreviewUser}
-                    adminPreviewUserId={resolvedPreviewUserId}
-                    showVariableError
-                    initialPageIndex={selectedPageIndex}
-                  />
-                </div>
-              ) : (
-                <div
-                  className="max-w-2xl mx-auto bg-white rounded-lg border border-gray-200 p-6 mb-8"
-                  onClick={handleClickOutside}
-                >
-                  {!displayOnly && (
-                    <div className="mb-6">
-                      <input
-                        type="text"
-                        value={currentPage.title || ""}
-                        onChange={(e) =>
-                          updateSchema({
-                            ...schema,
-                            pages: schema.pages.map((page, idx) =>
-                              idx === selectedPageIndex
-                                ? { ...page, title: e.target.value }
-                                : page,
-                            ),
-                          })
-                        }
-                        className="text-lg font-medium w-full border-none outline-none"
-                        placeholder="Page title"
-                      />
-                      {currentPage.description && (
-                        <p className="text-gray-600 mt-1">
-                          {currentPage.description}
-                        </p>
-                      )}
-                      <div className="mt-3">
-                        <label className="flex cursor-pointer items-center text-xs text-gray-700">
-                          <input
-                            type="checkbox"
-                            className="mr-2"
-                            checked={showPageVisibilityControl}
-                            onChange={(event) =>
-                              handlePageVisibilityToggle(event.target.checked)
-                            }
-                          />
-                          Use conditional visibility for this page
-                        </label>
-                        {showPageVisibilityControl && (
-                          <div className="mt-2">
-                            {selectedPageIndex === 0 && (
-                              <p className="mb-2 text-xs text-amber-600">
-                                Conditions on the first page can only reference
-                                other forms or validators, since no fields have
-                                been answered yet.
-                              </p>
+                        {currentPage.fields.map((field, index) => (
+                          <div key={field.id || index}>
+                            {index > 0 && (
+                              <InsertPoint loc={{ groupId: null, index }} />
                             )}
-                            <ConditionalVisibility
-                              key={currentPage.id}
-                              field={currentPage}
-                              previousFields={pagePreviousFields}
-                              onChange={updateCurrentPageVisibility}
-                            />
+                            {index === 0 && (
+                              <InsertPoint loc={{ groupId: null, index: 0 }} />
+                            )}
+
+                            {renderField(field, index)}
+
+                            {index === currentPage.fields.length - 1 && (
+                              <InsertPoint
+                                loc={{ groupId: null, index: index + 1 }}
+                              />
+                            )}
+                          </div>
+                        ))}
+
+                        {draggedItem && currentPage.fields.length > 0 && (
+                          <div
+                            className="relative h-4 -mt-2"
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = "move";
+                              setDragOverIndex(currentPage.fields.length);
+                              setDragOverGroupId(null);
+                              setDropPosition("before");
+                            }}
+                            onDrop={handleDrop(currentPage.fields.length, null)}
+                          />
+                        )}
+
+                        {currentPage.fields.length === 0 && (
+                          <div
+                            className="text-center py-12 text-gray-500 relative"
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = "move";
+                              setDragOverIndex(0);
+                              setDropPosition("before");
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              if (
+                                !draggedItem ||
+                                draggedItem.pageIndex !== selectedPageIndex
+                              )
+                                return;
+
+                              setDraggedItem(null);
+                              setDragOverIndex(null);
+                              setDropPosition(null);
+                            }}
+                          >
+                            {draggedItem && dragOverIndex === 0 && (
+                              <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
+                                <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+                              </div>
+                            )}
+                            <p>
+                              No fields added yet. Use the sidebar to add fields
+                              and display blocks.
+                            </p>
                           </div>
                         )}
                       </div>
-                    </div>
-                  )}
-                  <PerViewerOptions allowed={!displayOnly}>
-                    <div className="space-y-4">
-                      {currentPage.fields.length === 0 && (
-                        <InsertPoint loc={{ groupId: null, index: 0 }} />
-                      )}
-
-                      {currentPage.fields.map((field, index) => (
-                        <div key={field.id || index}>
-                          {index > 0 && (
-                            <InsertPoint loc={{ groupId: null, index }} />
-                          )}
-                          {index === 0 && (
-                            <InsertPoint loc={{ groupId: null, index: 0 }} />
-                          )}
-
-                          {renderField(field, index)}
-
-                          {index === currentPage.fields.length - 1 && (
-                            <InsertPoint
-                              loc={{ groupId: null, index: index + 1 }}
-                            />
-                          )}
-                        </div>
-                      ))}
-
-                      {draggedItem && currentPage.fields.length > 0 && (
-                        <div
-                          className="relative h-4 -mt-2"
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                            e.dataTransfer.dropEffect = "move";
-                            setDragOverIndex(currentPage.fields.length);
-                            setDragOverGroupId(null);
-                            setDropPosition("before");
-                          }}
-                          onDrop={handleDrop(currentPage.fields.length, null)}
-                        />
-                      )}
-
-                      {currentPage.fields.length === 0 && (
-                        <div
-                          className="text-center py-12 text-gray-500 relative"
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                            e.dataTransfer.dropEffect = "move";
-                            setDragOverIndex(0);
-                            setDropPosition("before");
-                          }}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            if (
-                              !draggedItem ||
-                              draggedItem.pageIndex !== selectedPageIndex
-                            )
-                              return;
-
-                            setDraggedItem(null);
-                            setDragOverIndex(null);
-                            setDropPosition(null);
-                          }}
-                        >
-                          {draggedItem && dragOverIndex === 0 && (
-                            <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
-                              <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                            </div>
-                          )}
-                          <p>
-                            No fields added yet. Use the sidebar to add fields
-                            and display blocks.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </PerViewerOptions>
-                </div>
-              )}
+                    </PerViewerOptions>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </FormulaSourcesProvider>
       </FormVariablesProvider>
     </CustomValidatorDraftsContext.Provider>
   );

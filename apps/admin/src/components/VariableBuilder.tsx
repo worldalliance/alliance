@@ -15,9 +15,9 @@ import { milliseconds } from "date-fns";
 import { Check, Copy, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { makeTempId } from "../lib/tempId";
-import { useInputSources } from "../lib/useInputSources";
 import { FormPickerError, FormPickerErrorReason } from "./FormPickerError";
 import { FormulaEditor, inputForField } from "./FormulaEditor";
+import { useFormulaSources } from "./FormulaSourcesContext";
 import { SharedOutputSourceWarning } from "./SharedOutputSourceWarning";
 import { answerHelp } from "./variableInputHelp";
 import { type InputSources } from "./VariableInputPickers";
@@ -164,18 +164,15 @@ function VariableCard({
 }
 
 interface VariableBuilderProps {
-  /** Unset while the form is being created. */
-  formId: number | undefined;
   schema: FormSchema;
   onSchemaChange: (schema: FormSchema) => void;
 }
 
 export function VariableBuilder({
-  formId,
   schema,
   onSchemaChange,
 }: VariableBuilderProps) {
-  const { sources, formListFailed } = useInputSources({ formId, schema });
+  const { sources, formListFailed } = useFormulaSources();
   // Shows the names a save would give sub-fields added since the last edit;
   // any edit here stores them.
   const variables = useMemo(

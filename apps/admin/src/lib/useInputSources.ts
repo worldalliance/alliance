@@ -6,6 +6,7 @@ import {
 import { variableFieldScope } from "@alliance/common/forms/variable-scope";
 import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
 import { useMemo } from "react";
+import type { FormulaSources } from "../components/FormulaSourcesContext";
 import type { InputSources } from "../components/VariableInputPickers";
 import { useFormulaSourceForms } from "./useFormulaSourceForms";
 
@@ -13,7 +14,7 @@ export function useInputSources(params: {
   /** Unset while the form is being created. */
   formId: number | undefined;
   schema: FormSchema;
-}): { sources: InputSources; formListFailed: boolean } {
+}): FormulaSources {
   const { formId, schema } = params;
   const eligibleFields = useMemo(
     () => collectVariableInputFields(schema),

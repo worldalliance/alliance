@@ -80,6 +80,7 @@ describe("FormBuilder hands a display block the addressed write", () => {
   let sent: string[] = [];
   serveApi(
     routes({
+      "GET /tasks/listForms": () => Response.json([]),
       "POST /videos/upload": async ({ request }) => {
         sent = (await request.formData())
           .getAll("files")
