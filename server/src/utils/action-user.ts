@@ -279,6 +279,13 @@ export function hasMemberActionStarted(
   return findStartedMemberActionEvent(events, now) !== undefined;
 }
 
+export function hasMemberActionDeadlinePassed(
+  deadline: Date | null | undefined,
+  now: Date,
+): boolean {
+  return !!deadline && deadline <= now;
+}
+
 export function computeMemberActionAwayStatus(params: {
   action: Pick<Action, "events">;
   user: Pick<User, "awayRanges">;

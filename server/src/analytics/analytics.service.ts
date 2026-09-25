@@ -33,6 +33,7 @@ import {
 } from "src/user/entities/onetime-invite.entity";
 import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
+import { hasMemberActionDeadlinePassed } from "src/utils/action-user";
 import { yieldToEventLoop } from "src/utils/event-loop";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { Between, In, IsNull, type Repository } from "typeorm";
@@ -729,7 +730,7 @@ ORDER BY pp.total_session_duration_seconds DESC
       const memberActionDeadlineDate =
         action.memberActionPhase.deadlineEvent?.date;
 
-      if (!memberActionDeadlineDate || memberActionDeadlineDate > now) {
+      if (!hasMemberActionDeadlinePassed(memberActionDeadlineDate, now)) {
         continue;
       }
 
@@ -1087,7 +1088,7 @@ ORDER BY pp.total_session_duration_seconds DESC
         const deadlineEvent = events.find(
           (event) => event.date > memberActionEvent.date,
         );
-        if (!deadlineEvent || deadlineEvent.date > now) return [];
+        if (!hasMemberActionDeadlinePassed(deadlineEvent?.date, now)) return [];
 
         return [{ action, memberActionEvent }];
       })

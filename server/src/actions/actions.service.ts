@@ -111,6 +111,7 @@ import {
   computeIsRequiredForAction,
   computeIsTaggedOrInManualCohort,
   computeMemberActionAwayStatus,
+  hasMemberActionDeadlinePassed,
 } from "src/utils/action-user";
 import { CachedFilter } from "src/utils/cached-filter";
 import { yieldToEventLoop } from "src/utils/event-loop";
@@ -3885,9 +3886,10 @@ export class ActionsService {
           isJoined: detail.isJoined,
           isAway: detail.isAway,
           optional: action.optional,
-          deadlinePassed:
-            !!action.memberActionPhase?.deadlineEvent?.date &&
-            action.memberActionPhase.deadlineEvent.date <= now,
+          deadlinePassed: hasMemberActionDeadlinePassed(
+            action.memberActionPhase?.deadlineEvent?.date,
+            now,
+          ),
           activityStatus,
         });
       }
@@ -5223,8 +5225,14 @@ export class ActionsService {
         if (action.optional) return false;
         if (computeIsAwayDuringWindow({ action, user })) return false;
 
-        const deadline = action.memberActionPhase.deadlineEvent?.date ?? null;
-        if (!deadline || deadline >= new Date()) return false;
+        if (
+          !hasMemberActionDeadlinePassed(
+            action.memberActionPhase.deadlineEvent?.date,
+            new Date(),
+          )
+        ) {
+          return false;
+        }
 
         // A completion or withdrawal means the deadline wasn't missed.
         // Dismissal deliberately does NOT disqualify: it's a view-only

@@ -7,6 +7,7 @@ import {
   computeContractSignedAfterOnboardingStart,
   computeIsAssignedFromCohortSet,
   computeIsRequiredForAction,
+  hasMemberActionDeadlinePassed,
 } from "./action-user";
 
 type Params = Parameters<typeof computeActionAssignment>[0];
@@ -437,5 +438,24 @@ describe("computeContractSignedAfterOnboardingStart", () => {
         memberActionPhaseStart: null,
       }),
     ).toBe(false);
+  });
+});
+
+describe("hasMemberActionDeadlinePassed", () => {
+  it("is false before the deadline", () => {
+    expect(
+      hasMemberActionDeadlinePassed(
+        DEADLINE,
+        new Date(DEADLINE.getTime() - millisecondsInSecond),
+      ),
+    ).toBe(false);
+  });
+
+  it("is true at the deadline instant", () => {
+    expect(hasMemberActionDeadlinePassed(DEADLINE, DEADLINE)).toBe(true);
+  });
+
+  it("is false for an open-ended phase", () => {
+    expect(hasMemberActionDeadlinePassed(null, NOW)).toBe(false);
   });
 });

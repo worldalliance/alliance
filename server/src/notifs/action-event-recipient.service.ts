@@ -18,7 +18,10 @@ import { Community } from "src/community/entities/community.entity";
 import { resolveUsMembership, UsMembership } from "src/geo/us-membership";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { Tag } from "src/user/entities/tag.entity";
-import { computeIsAssignedAndPresent } from "src/utils/action-user";
+import {
+  computeIsAssignedAndPresent,
+  hasMemberActionDeadlinePassed,
+} from "src/utils/action-user";
 import { yieldToEventLoop } from "src/utils/event-loop";
 import { In, type Repository } from "typeorm";
 import { ActionActivity } from "../actions/entities/action-activity.entity";
@@ -271,8 +274,14 @@ export class ActionEventRecipientService {
     // Optional actions never yield missed_deadline (the pill shows
     // optional_task instead), so nobody can "miss" their deadline.
     if (action.optional) return new Set();
-    const deadline = action.memberActionPhase.deadlineEvent?.date ?? null;
-    if (!deadline || deadline >= new Date()) return new Set();
+    if (
+      !hasMemberActionDeadlinePassed(
+        action.memberActionPhase.deadlineEvent?.date,
+        new Date(),
+      )
+    ) {
+      return new Set();
+    }
     return this.loadUncompletedRosterUserIds(
       action,
       session,
