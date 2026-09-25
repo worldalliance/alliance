@@ -10,7 +10,7 @@ import {
 } from "@alliance/shared/client";
 import { captureEvent, captureException } from "@alliance/shared/lib/analytics";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
-import { deviceTimeZone } from "@alliance/shared/lib/timeZone";
+import { deviceTimeZone, signupTimeZone } from "@alliance/shared/lib/timeZone";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { useInvite } from "@alliance/shared/lib/useInvite";
 import { useSignupFaces } from "@alliance/shared/lib/useSignupFaces";
@@ -256,7 +256,7 @@ const OnboardingScreen = () => {
             email,
             password,
             mode: "header",
-            timeZone: deviceTimeZone(),
+            timeZone: signupTimeZone(deviceTimeZone()),
             referralCode: referralCode || undefined,
           },
         });
