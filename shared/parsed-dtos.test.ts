@@ -1,5 +1,8 @@
 import { R } from "@alliance/common/result";
-import { parseVisibilityValidatorResults } from "./parsed-dtos";
+import {
+  parseFormulaChoices,
+  parseVisibilityValidatorResults,
+} from "./parsed-dtos";
 
 function withSilencedErrors<T>(fn: () => T): { value: T; logged: number } {
   const original = console.error;
@@ -46,5 +49,20 @@ describe("parseVisibilityValidatorResults", () => {
       parseVisibilityValidatorResults("nope"),
     );
     expect(R.isFailure(value)).toBe(true);
+  });
+});
+
+describe("parseFormulaChoices", () => {
+  it("reads saved choices as they are", () => {
+    const choices = { pick: [{ label: "Red", value: "red" }] };
+    expect(parseFormulaChoices(choices)).toEqual(choices);
+  });
+
+  it("reads unreadable choices as none, and logs them", () => {
+    const { value, logged } = withSilencedErrors(() =>
+      parseFormulaChoices({ pick: "red" }),
+    );
+    expect(value).toEqual({});
+    expect(logged).toBe(1);
   });
 });

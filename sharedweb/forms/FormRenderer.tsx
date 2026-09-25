@@ -34,6 +34,7 @@ import {
   restorablePublicAnswers,
 } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
+import { completedFormSchema } from "@alliance/shared/forms/formulaChoices";
 import {
   resolveFormValue,
   type SetFieldValue,
@@ -200,8 +201,12 @@ const FormRenderer = ({
   scrollContainerRef,
 }: FormRendererProps) => {
   // Compute schema and a namespaced storage key for persistence (if enabled)
-  const schema = form as unknown as FormSchema;
   const readOnly = !!renderFormAsCompleted;
+  const schema = useMemo(
+    () =>
+      completedFormSchema(form, readOnly ? completedFormResponse : undefined),
+    [form, readOnly, completedFormResponse],
+  );
   const baseStorageKey = computeFormStorageKey({
     formId: id,
   });
