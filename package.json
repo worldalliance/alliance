@@ -22,7 +22,6 @@
     "server:dev": "./scripts/with-env.sh bun run --cwd server dev",
     "gen-api": "./scripts/with-env.sh bun run --cwd shared gen-api",
     "ports": "./scripts/with-env.sh",
-    "workflows": "bun agentic-workflows/server.ts",
     "worktree:new": "./scripts/new-worktree.sh",
     "worktree:rm": "./scripts/rm-worktree.sh",
     "test": "./scripts/test-all.sh",
