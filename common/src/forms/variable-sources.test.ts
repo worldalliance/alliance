@@ -16,7 +16,7 @@ import {
   type VariableSourceHistory,
 } from "./variable-evaluation";
 import { variableInputSchema } from "./variable-inputs";
-import { syncSchemaVariableListInputs } from "./variable-scope";
+import { syncSchemaListInputs } from "./variable-scope";
 import {
   variableSourceFormIds,
   variableTypeEnv,
@@ -582,7 +582,7 @@ describe("resolveOutputBlocks with a variable reading another form", () => {
   });
 });
 
-describe("syncSchemaVariableListInputs with inputs from another form", () => {
+describe("syncSchemaListInputs with inputs from another form", () => {
   const schema: FormSchema = {
     pages: [{ id: "p1", fields: [] }],
     outputViews: [],
@@ -597,13 +597,13 @@ describe("syncSchemaVariableListInputs with inputs from another form", () => {
 
   it("names the source list's sub-fields the input doesn't have yet", () => {
     expect(
-      syncSchemaVariableListInputs(schema, new Map([[SOURCE, [people]]]))
-        .variables?.[0].inputs.input1,
+      syncSchemaListInputs(schema, new Map([[SOURCE, [people]]])).variables?.[0]
+        .inputs.input1,
     ).toEqual(peopleInput);
   });
 
   it("leaves the input alone while its source form isn't loaded", () => {
-    expect(syncSchemaVariableListInputs(schema, new Map())).toBe(schema);
+    expect(syncSchemaListInputs(schema, new Map())).toBe(schema);
   });
 });
 

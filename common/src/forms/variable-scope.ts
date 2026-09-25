@@ -5,7 +5,8 @@ import {
   type AnyField,
   type FormSchema,
 } from "./form-schema";
-import { syncVariableListInputs, type VariableFieldScope } from "./variables";
+import { mapOptionsFormulas } from "./formula-options";
+import { syncFormulaListInputs, type VariableFieldScope } from "./variables";
 
 /**
  * Page-level question fields of each form a variable or options formula reads,
@@ -29,17 +30,21 @@ export function variableFieldScope(
 }
 
 /** Returns `schema` itself when every list input is already in sync. */
-export function syncSchemaVariableListInputs(
+export function syncSchemaListInputs(
   schema: FormSchema,
   sourceForms: SourceFormFields,
 ): FormSchema {
+  const scope = variableFieldScope(schema, sourceForms);
   const current = schema.variables;
-  if (current === undefined) return schema;
-  const variables = syncVariableListInputs(
-    current,
-    variableFieldScope(schema, sourceForms),
+  const variables = current?.map((variable) =>
+    syncFormulaListInputs(variable, scope),
   );
-  return variables.every((variable, index) => variable === current[index])
-    ? schema
-    : { ...schema, variables };
+  const withVariables =
+    variables === undefined ||
+    variables.every((variable, index) => variable === current?.[index])
+      ? schema
+      : { ...schema, variables };
+  return mapOptionsFormulas(withVariables, (formula) =>
+    syncFormulaListInputs(formula, scope),
+  );
 }

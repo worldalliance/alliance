@@ -25,6 +25,7 @@ import type {
   VariableSourceResponse,
 } from "./variable-evaluation";
 import type { VariableInput } from "./variable-inputs";
+import { syncSchemaListInputs } from "./variable-scope";
 
 const SOURCE = 7;
 const OTHER_SOURCE = 8;
@@ -692,5 +693,90 @@ describe("validateFormSchema with options formulas", () => {
     expect(messages([list])).toEqual([
       expect.stringContaining("cell: Options formula"),
     ]);
+  });
+});
+
+describe("syncSchemaListInputs with options formulas", () => {
+  it("names a list sub-field an options formula's list input doesn't name yet", () => {
+    const list: ListField = {
+      id: "people",
+      type: "input",
+      kind: "list",
+      label: "People",
+      fields: [
+        { id: "name", type: "input", kind: "text", label: "Name" },
+        { id: "city", type: "input", kind: "text", label: "Home city" },
+      ],
+    };
+    const schema = schemaOf([
+      list,
+      formulaSelect(
+        "pick",
+        {
+          input1: {
+            kind: "list",
+            fieldId: "people",
+            properties: { name: "name" },
+          },
+        },
+        "[]",
+      ),
+    ]);
+    const synced = syncSchemaListInputs(schema, new Map());
+    const pick = synced.pages[0].fields[1];
+    expect(
+      pick.type === "input" &&
+        pick.kind === "select" &&
+        pick.optionsFormula?.inputs.input1,
+    ).toEqual({
+      kind: "list",
+      fieldId: "people",
+      properties: { name: "name", city: "homeCity" },
+    });
+    expect(syncSchemaListInputs(synced, new Map())).toBe(synced);
+  });
+
+  it("names a source list's new sub-field for a list sub-field's formula", () => {
+    const sourcePeople: ListField = {
+      id: "people",
+      type: "input",
+      kind: "list",
+      label: "People",
+      fields: [
+        { id: "name", type: "input", kind: "text", label: "Name" },
+        { id: "city", type: "input", kind: "text", label: "Home city" },
+      ],
+    };
+    const schema = schemaOf([
+      {
+        id: "rows",
+        type: "input",
+        kind: "list",
+        label: "Rows",
+        fields: [
+          formulaSelect(
+            "cell",
+            {
+              input1: {
+                kind: "sourceList",
+                sourceFormId: SOURCE,
+                fieldId: "people",
+                properties: { name: "name" },
+              },
+            },
+            "[]",
+          ),
+        ],
+      },
+    ]);
+    const sources = new Map([[SOURCE, [sourcePeople]]]);
+    const synced = syncSchemaListInputs(schema, sources);
+    const rows = synced.pages[0].fields[0];
+    const cell =
+      rows.type === "input" && rows.kind === "list" && rows.fields[0];
+    expect(
+      cell && cell.kind === "select" && cell.optionsFormula?.inputs.input1,
+    ).toMatchObject({ properties: { name: "name", city: "homeCity" } });
+    expect(syncSchemaListInputs(synced, sources)).toBe(synced);
   });
 });

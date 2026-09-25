@@ -292,33 +292,32 @@ export function listInputPropertyErrors(params: {
 
 /**
  * Brings every list input in line with its list's current sub-fields. An input
- * whose source form's fields aren't in `scope` stays as it is.
+ * whose source form's fields aren't in `scope` stays as it is, and a formula
+ * already in sync comes back as the same object.
  */
-export function syncVariableListInputs(
-  variables: readonly FormVariable[],
+export function syncFormulaListInputs<F extends Formula>(
+  formula: F,
   scope: VariableFieldScope,
-): FormVariable[] {
-  return variables.map((variable) => {
-    let changed = false;
-    const inputs = Object.fromEntries(
-      Object.entries(variable.inputs).map(([name, input]) => {
-        const field = inputFields(input, scope)?.get(input.fieldId);
-        if (!isListInput(input) || field?.kind !== "list") {
-          return [name, input];
-        }
-        const properties = syncListInputProperties(
-          input.properties,
-          field.fields ?? [],
-        );
-        if (isEqual(properties, input.properties)) {
-          return [name, input];
-        }
-        changed = true;
-        return [name, { ...input, properties }];
-      }),
-    );
-    return changed ? { ...variable, inputs } : variable;
-  });
+): F {
+  let changed = false;
+  const inputs = Object.fromEntries(
+    Object.entries(formula.inputs).map(([name, input]) => {
+      const field = inputFields(input, scope)?.get(input.fieldId);
+      if (!isListInput(input) || field?.kind !== "list") {
+        return [name, input];
+      }
+      const properties = syncListInputProperties(
+        input.properties,
+        field.fields ?? [],
+      );
+      if (isEqual(properties, input.properties)) {
+        return [name, input];
+      }
+      changed = true;
+      return [name, { ...input, properties }];
+    }),
+  );
+  return changed ? { ...formula, inputs } : formula;
 }
 
 // Keep these as strings so form renderers can import this module without

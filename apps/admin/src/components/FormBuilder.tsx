@@ -32,7 +32,7 @@ import {
   collectUnresolvedVariableReferences,
   type UnresolvedVariableReference,
 } from "@alliance/common/forms/variable-interpolation";
-import { syncSchemaVariableListInputs } from "@alliance/common/forms/variable-scope";
+import { syncSchemaListInputs } from "@alliance/common/forms/variable-scope";
 import {
   type Condition,
   type VisibleIfFormula,
@@ -1737,9 +1737,9 @@ export function FormBuilder(props: FormBuilderProps) {
         return;
       }
 
-      // List inputs name sub-fields added since the variable was last edited
-      // here, from labels that are final by now.
-      const syncedSchema = syncSchemaVariableListInputs(schema, sourceForms);
+      // List inputs name sub-fields added since they were last saved, from
+      // labels that are final by now.
+      const syncedSchema = syncSchemaListInputs(schema, sourceForms);
       if (syncedSchema !== schema) setSchema(syncedSchema);
 
       const validationErrors = validateFormSchema(syncedSchema, validation);

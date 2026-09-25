@@ -244,6 +244,21 @@ function mapSchemaFormulaFields(
   };
 }
 
+/** Returns `schema` itself when `map` changes no options formula. */
+export function mapOptionsFormulas(
+  schema: FormSchema,
+  map: (formula: OptionsFormula) => OptionsFormula,
+): FormSchema {
+  let changed = false;
+  const mapped = mapSchemaFormulaFields(schema, (field) => {
+    const optionsFormula = map(field.optionsFormula);
+    if (optionsFormula === field.optionsFormula) return field;
+    changed = true;
+    return { ...field, optionsFormula };
+  });
+  return changed ? mapped : schema;
+}
+
 const resolvedOptionsField =
   (options: ResolvedOptions) =>
   (field: FormulaChoiceField): ChoiceField => ({

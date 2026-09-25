@@ -25,8 +25,8 @@ import { collectUnresolvedVariableReferences } from "@alliance/common/forms/vari
 import { variableFieldScope } from "@alliance/common/forms/variable-scope";
 import {
   sanitizeVariableName,
+  syncFormulaListInputs,
   syncListInputProperties,
-  syncVariableListInputs,
   VARIABLE_NAME_REGEX,
   variableInputNameForIndex,
   variableTypeEnv,
@@ -623,7 +623,10 @@ export function VariableBuilder({
   // Shows the names a save would give sub-fields added since the last edit;
   // any edit here stores them.
   const variables = useMemo(
-    () => syncVariableListInputs(schema.variables ?? [], scope),
+    () =>
+      (schema.variables ?? []).map((variable) =>
+        syncFormulaListInputs(variable, scope),
+      ),
     [schema.variables, scope],
   );
 
