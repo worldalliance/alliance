@@ -5,6 +5,7 @@ import { millisecondsInDay } from "date-fns/constants";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
+import { CohortDivergenceService } from "../src/actions/cohort-divergence.service";
 import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import {
   ActionCohortDecision,
@@ -35,6 +36,7 @@ const addDays = (date: Date, days: number) =>
 describe("CohortDecisionService (e2e)", () => {
   let ctx: TestContext;
   let service: CohortDecisionService;
+  let divergenceService: CohortDivergenceService;
   let actionRepo: Repository<Action>;
   let eventRepo: Repository<ActionEvent>;
   let decisionRepo: Repository<ActionCohortDecision>;
@@ -47,6 +49,7 @@ describe("CohortDecisionService (e2e)", () => {
   beforeAll(async () => {
     ctx = await createTestApp([TasksModule]);
     service = ctx.app.get(CohortDecisionService);
+    divergenceService = ctx.app.get(CohortDivergenceService);
     actionRepo = ctx.dataSource.getRepository(Action);
     eventRepo = ctx.dataSource.getRepository(ActionEvent);
     decisionRepo = ctx.dataSource.getRepository(ActionCohortDecision);
@@ -729,7 +732,7 @@ describe("CohortDecisionService (e2e)", () => {
       await service.resolveAll(now);
       await userRepo.save({ id: member.id, tags: [] });
 
-      await service.logDivergences(now);
+      await divergenceService.logDivergences(now);
 
       expect(warn).toHaveBeenCalledWith(
         `cohort decisions for action ${action.id} diverge from the live cohort (profile-only expression): now in 0 [], now out 1 [${member.id}]`,
@@ -754,7 +757,7 @@ describe("CohortDecisionService (e2e)", () => {
         type: ActionActivityType.USER_COMPLETED,
       });
 
-      await service.logDivergences(now);
+      await divergenceService.logDivergences(now);
 
       expect(warn).toHaveBeenCalledWith(
         `cohort decisions for action ${action.id} diverge from the live cohort (activity-dependent expression): now in 1 [${member.id}], now out 0 []`,
@@ -790,7 +793,7 @@ describe("CohortDecisionService (e2e)", () => {
         .spyOn(Logger.prototype, "error")
         .mockImplementation(() => {});
 
-      await service.logDivergences(now);
+      await divergenceService.logDivergences(now);
 
       expect(error).toHaveBeenCalled();
       expect(warn).toHaveBeenCalledWith(
@@ -807,7 +810,7 @@ describe("CohortDecisionService (e2e)", () => {
       });
       await service.resolveAll(now);
 
-      await service.logDivergences(now);
+      await divergenceService.logDivergences(now);
 
       expect(warn).not.toHaveBeenCalled();
     });
@@ -826,7 +829,7 @@ describe("CohortDecisionService (e2e)", () => {
         resolvedAt: now,
       });
 
-      await service.logDivergences(now);
+      await divergenceService.logDivergences(now);
 
       expect(warn).not.toHaveBeenCalled();
     });

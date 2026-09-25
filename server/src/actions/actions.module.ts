@@ -35,6 +35,7 @@ import { ActionsService } from "./actions.service";
 import { CohortDecisionListener } from "./cohort-decision.listener";
 import { CohortDecisionService } from "./cohort-decision.service";
 import { CohortDecisionWorker } from "./cohort-decision.worker";
+import { CohortDivergenceService } from "./cohort-divergence.service";
 import { ContractReminderWorker } from "./contract-reminder.worker";
 import { ContractSuspenderWorker } from "./contract-suspender.worker";
 import { ActionActivity } from "./entities/action-activity.entity";
@@ -116,6 +117,7 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
     CohortDecisionListener,
     CohortDecisionService,
     CohortDecisionWorker,
+    CohortDivergenceService,
   ],
   exports: [
     ActionsService,
