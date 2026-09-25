@@ -259,7 +259,7 @@ function warmWhileIdle(): void {
 // A saved or detected zone the catalog lacks, such as a device's Etc/GMT+8 or
 // a zone newer than the pinned tzdb, is still the member's own, so it gets a
 // row named after its identifier.
-function uncataloguedLabel(tz: string): BaseLabel | null {
+export function uncataloguedLabel(tz: string): BaseLabel | null {
   if (isCatalogued(tz)) return null;
   if (!isTimeZoneIdentifier(tz)) return null;
   return labelFor({ tz, city: tz, country: null });
@@ -269,12 +269,12 @@ const CATALOG_BY_TZ = new Map(
   TIME_ZONE_CATALOG.map((entry) => [entry.tz, entry]),
 );
 
-function selectedLabel(tz: string): BaseLabel | null {
+export function selectedLabel(tz: string): BaseLabel | null {
   const entry = CATALOG_BY_TZ.get(TIME_ZONE_ALIASES.get(tz) ?? tz);
   return entry ? labelFor(entry) : null;
 }
 
-function rowTzOf(tz: string): string | null {
+export function rowTzOf(tz: string): string | null {
   const listed = TIME_ZONE_ALIASES.get(tz) ?? tz;
   if (CATALOG_BY_TZ.has(listed)) return listed;
   return isTimeZoneIdentifier(tz) ? tz : null;

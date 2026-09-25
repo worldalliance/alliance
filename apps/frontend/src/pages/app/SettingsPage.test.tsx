@@ -10,6 +10,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AuthContext, type AuthContextType } from "../../lib/AuthContext";
@@ -24,6 +25,8 @@ const me: UserDto = {
 let seedings = 0;
 let meFails = false;
 let city: City | null = null;
+let updates: unknown[] = [];
+let savedZone = me.timeZone;
 
 serveApi(
   routes({
@@ -32,9 +35,13 @@ serveApi(
       if (meFails) {
         return Response.json({ message: "down" }, { status: 500 });
       }
-      return Response.json({ user: me });
+      return Response.json({ user: { ...me, timeZone: savedZone } });
     },
     "GET /user/mylocation": () => Response.json({ city }),
+    "POST /user/update": async ({ request }) => {
+      updates.push(await request.json());
+      return Response.json({ user: me });
+    },
   }),
 );
 
@@ -43,6 +50,8 @@ afterEach(() => {
   seedings = 0;
   meFails = false;
   city = null;
+  updates = [];
+  savedZone = me.timeZone;
 });
 
 const noop = () => Promise.resolve();
@@ -52,11 +61,14 @@ beforeEach(() => {
   queryClient = new QueryClient();
 });
 
-const settings = (user: UserDto | undefined) => {
+const settings = (
+  user: UserDto | undefined,
+  { isImpersonation = false } = {},
+) => {
   const auth: AuthContextType = {
     isAuthenticated: user !== undefined,
     user,
-    isImpersonation: false,
+    isImpersonation,
     refreshUser: noop,
     login: noop,
     onLogin: noop,
@@ -152,4 +164,41 @@ it("doesn't show connections cached from an earlier visit when the profile load 
     await screen.findByText("Couldn't load your connected accounts."),
   ).toBeTruthy();
   expect(screen.queryByText("earlier@example.com")).toBeNull();
+});
+
+describe("the device timezone", () => {
+  const device = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const elsewhere =
+    device === "Pacific/Kiritimati"
+      ? "Pacific/Pago_Pago"
+      : "Pacific/Kiritimati";
+
+  it("is offered when the saved zone differs, and Use saves it", async () => {
+    savedZone = elsewhere;
+    render(settings(me));
+
+    await screen.findByText(/^Device timezone: /);
+    fireEvent.click(screen.getByRole("button", { name: "Use" }));
+
+    await waitFor(() => expect(updates).toEqual([{ timeZone: device }]));
+    expect(screen.queryByText(/^Device timezone: /)).toBeNull();
+  });
+
+  it("is not offered when the saved zone is the device's", async () => {
+    savedZone = device;
+    render(settings(me));
+
+    await screen.findByPlaceholderText("Enter phone number");
+
+    expect(screen.queryByText(/^Device timezone: /)).toBeNull();
+  });
+
+  it("is not offered while an admin impersonates the member", async () => {
+    savedZone = elsewhere;
+    render(settings(me, { isImpersonation: true }));
+
+    await screen.findByPlaceholderText("Enter phone number");
+
+    expect(screen.queryByText(/^Device timezone: /)).toBeNull();
+  });
 });
