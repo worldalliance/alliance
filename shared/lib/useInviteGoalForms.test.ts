@@ -195,4 +195,19 @@ describe("editing the current goal", () => {
       ),
     );
   });
+
+  test.each([
+    ["changeEditGoalStartDate", "editGoalStartDate"],
+    ["changeEditGoalDueDate", "editGoalDueDate"],
+  ] as const)("flags a date cleared via %s without saving", (change, field) => {
+    const { hook, updateGoal } = render({ currentGoal: ongoing });
+
+    act(() => hook.result.current[change](""));
+
+    expect(hook.result.current[field]).toBe("");
+    expect(hook.result.current.goalEditMessage).toBe(
+      "Choose a start and end date.",
+    );
+    expect(updateGoal).not.toHaveBeenCalled();
+  });
 });

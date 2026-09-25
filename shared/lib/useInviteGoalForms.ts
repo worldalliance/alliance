@@ -126,6 +126,16 @@ export function useInviteGoalForms(params: {
       if (!currentGoal) {
         return;
       }
+      if (
+        [update.startDate, update.dueDate].some(
+          (date) => date !== undefined && !isDateInput(date),
+        )
+      ) {
+        setGoalEditMessage(
+          newInviteGoalErrorCopy[NewInviteGoalError.InvalidDate].message,
+        );
+        return;
+      }
 
       void updateGoal({
         goalId: currentGoal.goal.id,
