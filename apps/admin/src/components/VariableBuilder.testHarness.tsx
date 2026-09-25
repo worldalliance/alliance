@@ -13,9 +13,11 @@ export const town: AnyField = {
 export function Harness({
   initial,
   onSave,
+  unsaved = false,
 }: {
   initial: FormSchema;
   onSave: (schema: FormSchema) => void;
+  unsaved?: boolean;
 }) {
   const [current, setCurrent] = useState(initial);
   const [queryClient] = useState(
@@ -24,7 +26,7 @@ export function Harness({
   return (
     <QueryClientProvider client={queryClient}>
       <VariableBuilder
-        formId={1}
+        formId={unsaved ? undefined : 1}
         schema={current}
         onSchemaChange={(next) => {
           setCurrent(next);

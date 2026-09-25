@@ -11,10 +11,15 @@ import {
   type VariableListInput,
 } from "@alliance/common/forms/variable-inputs";
 import { X } from "lucide-react";
+import { CountSamples, type CountSample } from "./CountSamples";
 import {
+  fieldChoices,
   FieldPicker,
+  inputModeOfInput,
+  InputModePicker,
   SourceFormLoadError,
   SourceFormPicker,
+  type InputMode,
   type InputSources,
 } from "./VariableInputPickers";
 import {
@@ -36,11 +41,15 @@ type VariableInputRowProps = {
   readingError: string | undefined;
   sample: FormValue | undefined;
   submissions: SubmissionSample[];
+  counts: CountSample;
+  countsAvailable: boolean;
+  onModeChange: (mode: InputMode) => void;
   onInputChange: (next: VariableInput) => void;
   onFieldPick: (picked: AnyField) => void;
   onSourceChange: (sourceFormId: number | undefined) => void;
   onSampleChange: (next: FormValue) => void;
   onSubmissionsChange: (next: SubmissionSample[]) => void;
+  onCountsChange: (next: CountSample) => void;
   onRemove: () => void;
 };
 
@@ -53,11 +62,15 @@ export function VariableInputRow({
   readingError,
   sample,
   submissions,
+  counts,
+  countsAvailable,
+  onModeChange,
   onInputChange,
   onFieldPick,
   onSourceChange,
   onSampleChange,
   onSubmissionsChange,
+  onCountsChange,
   onRemove,
 }: VariableInputRowProps) {
   const sourceFormId = inputSourceFormId(input);
@@ -68,9 +81,16 @@ export function VariableInputRow({
         <span className="w-14 shrink-0 font-mono text-xs text-gray-600">
           {name}
         </span>
+        <InputModePicker
+          inputName={name}
+          mode={inputModeOfInput(input)}
+          countsAvailable={countsAvailable}
+          onChange={onModeChange}
+        />
         <SourceFormPicker
           inputName={name}
           sourceFormId={sourceFormId}
+          counting={input.kind === "aggregate"}
           sources={sources}
           onChange={onSourceChange}
         />
@@ -78,7 +98,7 @@ export function VariableInputRow({
           inputName={name}
           input={input}
           field={field}
-          choices={sources.fieldsFor(sourceFormId)}
+          choices={fieldChoices(input, sources)}
           sources={sources}
           onPick={onFieldPick}
         />
@@ -127,6 +147,14 @@ export function VariableInputRow({
           field={field}
           submissions={submissions}
           onChange={onSubmissionsChange}
+        />
+      )}
+      {input.kind === "aggregate" && field && (
+        <CountSamples
+          inputName={name}
+          field={field}
+          sample={counts}
+          onChange={onCountsChange}
         />
       )}
       {readingError && (

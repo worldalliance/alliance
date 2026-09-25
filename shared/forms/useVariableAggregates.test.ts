@@ -149,6 +149,18 @@ describe("useVariableAggregates", () => {
     expect(countsOf(result.current, "7:a")).toBeUndefined();
   });
 
+  it("leaves an input with no question picked yet out of the request", async () => {
+    answer = async () => json({ aggregates: [aggregate("a", {})] });
+    const { result } = render(schemaWith([counting("a", "")]), {
+      reader: AggregateReader.Admin,
+    });
+    await settle();
+    expect(requests).toEqual([
+      { sources: [{ sourceFormId: 7, fieldId: "a" }] },
+    ]);
+    expect(result.current.status).toBe(VariableAggregatesStatus.Ready);
+  });
+
   it("fails on a load error, and retry fetches again", async () => {
     answer = async () => json({ message: "down" }, 500);
     const { result } = render(schemaWith([counting("a")]), FORM_VERSION);

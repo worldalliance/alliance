@@ -131,7 +131,10 @@ export function useVariableAggregates(params: {
 }): VariableAggregates {
   const { schema, target } = params;
   const sources = useMemo(
-    () => variableAggregateSources(schema.variables),
+    () =>
+      variableAggregateSources(schema.variables).filter(
+        (source) => source.fieldId !== "",
+      ),
     [schema.variables],
   );
   const sourcesKey = JSON.stringify(sources);
