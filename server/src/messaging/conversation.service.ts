@@ -118,8 +118,8 @@ export class ConversationService {
     return friendship !== null;
   }
 
-  async getAllConversationsForAdmin(): Promise<ConversationAdminSummaryDto[]> {
-    const conversations = await this.conversationRepository
+  private conversationListQuery() {
+    return this.conversationRepository
       .createQueryBuilder("conversation")
       .leftJoinAndSelect("conversation.participants", "participant")
       .leftJoinAndSelect("participant.user", "participantUser")
@@ -129,8 +129,11 @@ export class ConversationService {
         "participantLastReadAuthor",
       )
       .leftJoinAndSelect("conversation.community", "community")
-      .orderBy("conversation.updatedAt", "DESC")
-      .getMany();
+      .orderBy("conversation.updatedAt", "DESC");
+  }
+
+  async getAllConversationsForAdmin(): Promise<ConversationAdminSummaryDto[]> {
+    const conversations = await this.conversationListQuery().getMany();
 
     if (!conversations.length) {
       return [];
@@ -155,23 +158,13 @@ export class ConversationService {
   async getUserConversations(userId: number): Promise<ConversationDto[]> {
     await this.ensureCommunityMembershipForUser(userId);
 
-    const conversations = await this.conversationRepository
-      .createQueryBuilder("conversation")
+    const conversations = await this.conversationListQuery()
       .innerJoin(
         "conversation.participants",
         "membership",
         "membership.userId = :userId",
         { userId },
       )
-      .leftJoinAndSelect("conversation.participants", "participant")
-      .leftJoinAndSelect("participant.user", "participantUser")
-      .leftJoinAndSelect("participant.lastReadMessage", "participantLastRead")
-      .leftJoinAndSelect(
-        "participantLastRead.author",
-        "participantLastReadAuthor",
-      )
-      .leftJoinAndSelect("conversation.community", "community")
-      .orderBy("conversation.updatedAt", "DESC")
       .getMany();
 
     if (!conversations.length) {
