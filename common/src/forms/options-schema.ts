@@ -1,4 +1,5 @@
 import z from "zod";
+import type { OptionsFormula } from "./variables";
 
 const optionSchema = z.strictObject({
   label: z.string(),
@@ -79,4 +80,32 @@ export function checkOptionCategories(
       });
     }
   });
+}
+
+// A formula's options replace the fixed list rather than add to it, and have
+// no categories. A default could name only a fixed option.
+export function checkOptionsFormula(
+  field: {
+    optionsFormula?: OptionsFormula;
+    options: unknown[];
+    categories?: unknown[];
+    defaultValue?: unknown;
+  },
+  ctx: z.RefinementCtx,
+) {
+  if (field.optionsFormula === undefined) return;
+  const conflicts = {
+    options: field.options.length > 0,
+    categories: (field.categories?.length ?? 0) > 0,
+    defaultValue: field.defaultValue != null,
+  };
+  for (const [key, conflicting] of Object.entries(conflicts)) {
+    if (conflicting) {
+      ctx.addIssue({
+        code: "custom",
+        message: `a field with an options formula has no ${key}`,
+        path: [key],
+      });
+    }
+  }
 }

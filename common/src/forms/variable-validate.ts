@@ -1,3 +1,4 @@
+import type { Result } from "../result";
 import {
   isFieldGroup,
   isQuestionField,
@@ -10,14 +11,26 @@ import type {
   FormSchemaValidationContext,
   FormSchemaValidationError,
 } from "./form-schema-validate";
+import {
+  collectOptionsFormulaFields,
+  evaluateOptionsFormula,
+  optionsCycleMessage,
+  optionsFormulaOrder,
+} from "./formula-options";
 import { storedQuestionFields } from "./stored-schema";
 import {
   aggregateSourceKey,
   variableAggregateSources,
 } from "./variable-aggregates";
-import { evaluateVariable } from "./variable-evaluation";
+import {
+  evaluateVariable,
+  type VariableResolutionContext,
+} from "./variable-evaluation";
 import { compileVariableExpression } from "./variable-expression";
-import { checkVariableFormulaType } from "./variable-formula-check";
+import {
+  checkOptionsFormulaType,
+  checkVariableFormulaType,
+} from "./variable-formula-check";
 import { inputSourceFormId, isSourceInput } from "./variable-inputs";
 import { variableFieldScope, type SourceFormFields } from "./variable-scope";
 import {
@@ -26,7 +39,8 @@ import {
   listInputPropertyErrors,
   VARIABLE_NAME_REGEX,
   variableTypeEnv,
-  type FormVariable,
+  type Formula,
+  type VariableFieldScope,
 } from "./variables";
 
 type CollectedField = {
@@ -35,6 +49,7 @@ type CollectedField = {
   // unsupported rather than missing.
   insideList: boolean;
   subFields: readonly ListSubField[];
+  optionsFromFormula: boolean;
 };
 
 function collectFieldKinds(
@@ -84,7 +99,7 @@ export function collectVariableErrors(
   const declared = new Set<string>();
 
   // An input the picker could never have offered reads as `any`, so
-  // `checkVariableInputs` reports one focused error instead of the type checker
+  // `checkFormulaInputs` reports one focused error instead of the type checker
   // adding one per use.
   const readableFields = variableFieldScope(schema, sourceForms);
   const unansweredContext = {
@@ -103,6 +118,11 @@ export function collectVariableErrors(
       ]),
     ),
   };
+  const scope: FormulaCheckScope = {
+    fieldKinds,
+    readableFields,
+    unansweredContext,
+  };
 
   for (const variable of variables) {
     const blockId = `variable:${variable.name}`;
@@ -118,35 +138,105 @@ export function collectVariableErrors(
     }
     declared.add(variable.name);
 
-    const errorCountBeforeInputs = errors.length;
-    checkVariableInputs(variable, fieldKinds, push);
-
-    const compiled = compileVariableExpression(
-      variable.formula,
-      new Set(Object.keys(variable.inputs)),
-    );
-    if (!compiled.ok) {
-      push(`Formula for "${variable.name}": ${compiled.error}`);
-      continue;
-    }
-
-    const typed = checkVariableFormulaType(
-      variable.formula,
-      variableTypeEnv(variable, readableFields),
-    );
-    if (!typed.ok) {
-      push(`Formula for "${variable.name}": ${typed.error}`);
-      continue;
-    }
-
-    if (errors.length > errorCountBeforeInputs) continue;
-
-    // Past the budget unanswered, it blocks the form for anyone yet to answer.
-    const unanswered = evaluateVariable(variable, unansweredContext);
-    if (!unanswered.ok) {
-      push(`Formula for "${variable.name}": ${unanswered.error}`);
-    }
+    checkFormula({
+      formula: variable,
+      scope,
+      pushInputError: push,
+      pushFormulaError: (message) =>
+        push(`Formula for "${variable.name}": ${message}`),
+      typeCheck: checkVariableFormulaType,
+      // Past the budget unanswered, it blocks the form for anyone yet to answer.
+      evaluate: evaluateVariable,
+    });
   }
+
+  const optionsFields = collectOptionsFormulaFields(schema);
+  for (const { field } of optionsFields) {
+    const push = (message: string) =>
+      errors.push({
+        blockId: field.id,
+        message: `Options formula: ${message}`,
+      });
+    checkFormula({
+      formula: field.optionsFormula,
+      scope,
+      pushInputError: push,
+      pushFormulaError: push,
+      rejectInput: (inputName, input) =>
+        input.kind === "aggregate"
+          ? `Input "${inputName}" counts members' answers, which an options formula can't read`
+          : undefined,
+      typeCheck: checkOptionsFormulaType,
+      // Nothing answered yet, and no submissions to read, is how every member
+      // first meets the field.
+      evaluate: evaluateOptionsFormula,
+    });
+  }
+  const order = optionsFormulaOrder(optionsFields);
+  if (!order.ok) {
+    errors.push({
+      blockId: order.error[0],
+      message: optionsCycleMessage(order.error),
+    });
+  }
+}
+
+type FormulaCheckScope = {
+  fieldKinds: FieldKindScope;
+  readableFields: VariableFieldScope;
+  unansweredContext: VariableResolutionContext;
+};
+
+function checkFormula<T extends Formula>(params: {
+  formula: T;
+  scope: FormulaCheckScope;
+  pushInputError: (message: string) => void;
+  pushFormulaError: (message: string) => void;
+  rejectInput?: (
+    inputName: string,
+    input: Formula["inputs"][string],
+  ) => string | undefined;
+  typeCheck: (
+    formula: string,
+    inputTypes: ReadonlyMap<string, string>,
+  ) => Result<unknown, string>;
+  evaluate: (
+    formula: T,
+    context: VariableResolutionContext,
+  ) => Result<unknown, string>;
+}): void {
+  const { formula, scope, pushInputError, pushFormulaError } = params;
+  let inputsFailed = false;
+  const pushInput = (message: string) => {
+    inputsFailed = true;
+    pushInputError(message);
+  };
+  for (const [inputName, input] of Object.entries(formula.inputs)) {
+    const rejected = params.rejectInput?.(inputName, input);
+    if (rejected !== undefined) pushInput(rejected);
+  }
+  checkFormulaInputs(formula, scope.fieldKinds, pushInput);
+
+  const compiled = compileVariableExpression(
+    formula.formula,
+    new Set(Object.keys(formula.inputs)),
+  );
+  if (!compiled.ok) {
+    pushFormulaError(compiled.error);
+    return;
+  }
+  const typed = params.typeCheck(
+    formula.formula,
+    variableTypeEnv(formula, scope.readableFields),
+  );
+  if (!typed.ok) {
+    pushFormulaError(typed.error);
+    return;
+  }
+  if (inputsFailed) return;
+
+  const unanswered = params.evaluate(formula, scope.unansweredContext);
+  if (!unanswered.ok) pushFormulaError(unanswered.error);
 }
 
 type FieldKindScope = {
@@ -155,12 +245,12 @@ type FieldKindScope = {
   formId: number | undefined;
 };
 
-function checkVariableInputs(
-  variable: FormVariable,
+function checkFormulaInputs(
+  formula: Formula,
   scope: FieldKindScope,
   push: (message: string) => void,
 ): void {
-  for (const [inputName, input] of Object.entries(variable.inputs)) {
+  for (const [inputName, input] of Object.entries(formula.inputs)) {
     const sourceFormId = inputSourceFormId(input);
     // An aggregate may count this form's own submissions.
     if (isSourceInput(input) && sourceFormId === scope.formId) {
@@ -243,9 +333,14 @@ function checkVariableInputs(
       }
       case "aggregate": {
         const field = topLevelField();
-        if (field !== undefined && field.kind !== "multiselect") {
+        if (field === undefined) break;
+        if (field.kind !== "multiselect") {
           push(
             `Input "${inputName}" counts answers to "${input.fieldId}", whose kind is ${field.kind}. Pick a multiselect question`,
+          );
+        } else if (field.optionsFromFormula) {
+          push(
+            `Input "${inputName}" counts answers to "${input.fieldId}", whose options come from a formula. Only fixed options can be counted`,
           );
         }
         break;
@@ -270,8 +365,19 @@ function collectFieldKindsFromItem(
   }
   if (!isQuestionField(item)) return;
   const subFields = item.kind === "list" ? (item.fields ?? []) : [];
-  fields.set(item.id, { kind: item.kind, insideList: false, subFields });
+  fields.set(item.id, {
+    kind: item.kind,
+    insideList: false,
+    subFields,
+    optionsFromFormula:
+      item.kind === "multiselect" && item.optionsFormula !== undefined,
+  });
   for (const sub of subFields) {
-    fields.set(sub.id, { kind: sub.kind, insideList: true, subFields: [] });
+    fields.set(sub.id, {
+      kind: sub.kind,
+      insideList: true,
+      subFields: [],
+      optionsFromFormula: false,
+    });
   }
 }

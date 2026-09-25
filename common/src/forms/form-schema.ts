@@ -10,11 +10,13 @@ import { isListRow } from "./list-rows";
 import {
   categorizedOptionsShape,
   checkOptionCategories,
+  checkOptionsFormula,
   optionListSchema,
 } from "./options-schema";
 import {
   formVariableSchema,
   isFieldKindReadableByFieldInput,
+  optionsFormulaSchema,
   type VariableInputField,
 } from "./variables";
 import type { Condition, VisibleIfFormula } from "./visible-if-formula";
@@ -175,9 +177,11 @@ const selectFieldSchema = z
     kind: z.literal("select"),
     searchable: z.boolean().optional(),
     ...categorizedOptionsShape,
+    optionsFormula: optionsFormulaSchema.optional(),
     randomizeOptions: z.boolean().optional(),
   })
-  .superRefine(checkOptionCategories);
+  .superRefine(checkOptionCategories)
+  .superRefine(checkOptionsFormula);
 export type SelectField = z.infer<typeof selectFieldSchema>;
 
 const multiSelectFieldSchema = z
@@ -187,6 +191,7 @@ const multiSelectFieldSchema = z
     dropdown: z.boolean().optional(),
     searchable: z.boolean().optional(),
     ...categorizedOptionsShape,
+    optionsFormula: optionsFormulaSchema.optional(),
     randomizeOptions: z.boolean().optional(),
     maxSelections: z.number().optional(),
   })
@@ -194,7 +199,8 @@ const multiSelectFieldSchema = z
     message: "searchable requires dropdown",
     path: ["searchable"],
   })
-  .superRefine(checkOptionCategories);
+  .superRefine(checkOptionCategories)
+  .superRefine(checkOptionsFormula);
 export type MultiSelectField = z.infer<typeof multiSelectFieldSchema>;
 
 const dateFieldSchema = z.strictObject({

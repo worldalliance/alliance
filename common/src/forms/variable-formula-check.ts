@@ -7,10 +7,14 @@
 import ts from "typescript";
 import { R, type Result } from "../result";
 import { FORMULA_LIB } from "./formula-lib";
+import { optionsShapeMessage } from "./formula-options";
+import { VARIABLE_INPUT_TYPE, VariableInputMode } from "./variables";
 
 const FORMULA_FILE = "/formula.ts";
 const LIB_FILE = "/lib.formula.d.ts";
 const RESULT_NAME = "__result";
+const OPTIONS_TYPE_NAME = "__Options";
+const OPTIONS_TYPE = VARIABLE_INPUT_TYPE[VariableInputMode.Choices];
 
 const COMPILER_OPTIONS: ts.CompilerOptions = {
   lib: [LIB_FILE],
@@ -70,7 +74,7 @@ function virtualSource(
     .join("\n");
   // The formula sits on its own line so a trailing `//` comment cannot swallow
   // the closing bracket.
-  return `${declarations}\nconst ${RESULT_NAME} = (\n${formula}\n);\n`;
+  return `${declarations}\ntype ${OPTIONS_TYPE_NAME} = ${OPTIONS_TYPE};\nconst ${RESULT_NAME} = (\n${formula}\n);\n`;
 }
 
 const COMPILER_ADVICE = /\s*Do you need to change your target library\?.*$/s;
@@ -355,6 +359,44 @@ export function variableFormulaType(
   return R.map(checkFormula(formula, inputTypes), ({ checker, type }) =>
     checker.typeToString(type, undefined, ts.TypeFormatFlags.NoTruncation),
   );
+}
+
+export function checkOptionsFormulaType(
+  formula: string,
+  inputTypes: ReadonlyMap<string, string>,
+): Result<string, string> {
+  const checked = checkFormula(formula, inputTypes);
+  if (!checked.ok) return checked;
+  const { checker, type, expression } = checked.value;
+  const described = checker.typeToString(
+    type,
+    undefined,
+    ts.TypeFormatFlags.NoTruncation,
+  );
+  const options = optionsTypeAt(checker, expression);
+  if (options === undefined || !checker.isTypeAssignableTo(type, options)) {
+    return R.failure(optionsShapeMessage(described));
+  }
+  const addedToText = checkAddedToText(checked.value);
+  return addedToText === undefined
+    ? R.success(described)
+    : R.failure(addedToText);
+}
+
+// The formula lib has no global to name the type by, so it is read off a
+// declaration the virtual source carries for the purpose.
+function optionsTypeAt(
+  checker: ts.TypeChecker,
+  expression: ts.Expression,
+): ts.Type | undefined {
+  const source = expression.getSourceFile();
+  for (const statement of source.statements) {
+    if (!ts.isTypeAliasDeclaration(statement)) continue;
+    if (statement.name.text === OPTIONS_TYPE_NAME) {
+      return checker.getTypeAtLocation(statement.type);
+    }
+  }
+  return undefined;
 }
 
 export function checkVariableFormulaType(
