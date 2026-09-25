@@ -36,7 +36,7 @@ export default function FollowUpFormPanel({
   scrollToEnd,
   onSubmitted,
 }: FollowUpFormPanelProps) {
-  const { user } = useAuth();
+  const { user, isLoading: userLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [formInstanceKey, setFormInstanceKey] = useState(0);
 
@@ -125,6 +125,7 @@ export default function FollowUpFormPanel({
           persistKey={followUpPersistKey(followUpForm.id)}
           userId={user?.id}
           user={user}
+          userLoading={userLoading}
           loadCurrentUserLocation={!!user}
           onFormStarted={() => {}}
           renderFormAsCompleted={false}

@@ -231,6 +231,7 @@ const ActionTaskPanelForm = ({
           persistKey={preview ? null : String(taskFormId)}
           userId={user?.id}
           user={user}
+          userLoading={authLoading}
           loadCurrentUserLocation={!!user && isAuthenticated}
           onFormStarted={onFormStarted}
           onAbandonAction={onAbandonAction}
