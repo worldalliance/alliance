@@ -22,7 +22,14 @@ export const createClientConfig: CreateClientConfig = (config) => {
 
   const wrappedFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const req = new Request(input, init);
-    const retryReq = req.clone();
+    // WebKit sends a clone of a multipart request with its files emptied, and
+    // cannot read the body back to copy it, so a multipart request is not
+    // retried. The refresh still lets the caller's next attempt through.
+    const retryReq = req.headers
+      .get("Content-Type")
+      ?.startsWith("multipart/form-data")
+      ? null
+      : req.clone();
 
     const res = await originalFetch(req);
 
@@ -39,6 +46,7 @@ export const createClientConfig: CreateClientConfig = (config) => {
     const refreshRes = await authRefreshTokens();
 
     if (refreshRes.response.ok) {
+      if (retryReq === null) return res;
       const retryRes = await originalFetch(retryReq);
       if (retryRes.status !== 401) {
         return retryRes;
