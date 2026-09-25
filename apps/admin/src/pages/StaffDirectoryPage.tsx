@@ -7,14 +7,9 @@ import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { GripVertical } from "lucide-react";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
+import { DropPosition, useDragReorder } from "../lib/useDragReorder";
 
 type StaffRow = StaffDirectoryEntryDto;
 
@@ -32,49 +27,19 @@ const StaffDirectoryPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [dropPosition, setDropPosition] = useState<"before" | "after" | null>(
-    null,
-  );
-  const listRef = useRef<HTMLUListElement>(null);
   const { error: showError } = useToast();
-
-  const getDropTargetFromClientY = useCallback(
-    (
-      clientY: number,
-    ): { index: number; position: "before" | "after" } | null => {
-      const ul = listRef.current;
-      if (!ul) return null;
-      const lis = Array.from(ul.querySelectorAll<HTMLElement>(":scope > li"));
-      if (lis.length === 0) return null;
-      const rects = lis.map((el) => el.getBoundingClientRect());
-      const firstTop = rects[0].top;
-      const lastBottom = rects[rects.length - 1].bottom;
-      if (clientY <= firstTop) return { index: 0, position: "before" };
-      if (clientY >= lastBottom)
-        return { index: rects.length - 1, position: "after" };
-      for (let i = 0; i < rects.length; i++) {
-        const r = rects[i];
-        if (clientY >= r.top && clientY <= r.bottom) {
-          const midpoint = r.top + r.height / 2;
-          return {
-            index: i,
-            position: clientY < midpoint ? "before" : "after",
-          };
-        }
-        if (
-          i < rects.length - 1 &&
-          clientY > r.bottom &&
-          clientY < rects[i + 1].top
-        ) {
-          return { index: i, position: "after" };
-        }
-      }
-      return null;
-    },
-    [],
-  );
+  const {
+    listRef,
+    draggedIndex,
+    dragOverIndex,
+    dropPosition,
+    handleDragStart,
+    handleDragEnd,
+    handleDragOver,
+    handleDrop,
+    handleListDragOver,
+    handleListDrop,
+  } = useDragReorder(items, setItems);
 
   const applyLoaded = useCallback((data: StaffDirectoryEntryDto[]) => {
     setItems(data);
@@ -104,80 +69,6 @@ const StaffDirectoryPage: React.FC = () => {
   useEffect(() => {
     void load();
   }, [load]);
-
-  const handleDragStart = (index: number) => (e: React.DragEvent) => {
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-    setDropPosition(null);
-  };
-
-  const handleDragOver = (index: number) => (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    if (draggedIndex === null) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const midpoint = rect.top + rect.height / 2;
-    setDragOverIndex(index);
-    setDropPosition(e.clientY < midpoint ? "before" : "after");
-  };
-
-  const performDrop = useCallback(
-    (index: number, position: "before" | "after") => {
-      if (draggedIndex === null || draggedIndex === index) {
-        handleDragEnd();
-        return;
-      }
-      let insertionIndex = index;
-      if (position === "after") insertionIndex = index + 1;
-      if (draggedIndex < insertionIndex) insertionIndex -= 1;
-      if (draggedIndex === insertionIndex) {
-        handleDragEnd();
-        return;
-      }
-      const next = [...items];
-      const [moving] = next.splice(draggedIndex, 1);
-      next.splice(insertionIndex, 0, moving);
-      setItems(next);
-      handleDragEnd();
-    },
-    [draggedIndex, items],
-  );
-
-  const handleDrop = (index: number) => (e: React.DragEvent) => {
-    e.preventDefault();
-    if (draggedIndex === null || dropPosition === null) {
-      handleDragEnd();
-      return;
-    }
-    performDrop(index, dropPosition);
-  };
-
-  const handleListDragOver = useCallback(
-    (e: React.DragEvent<HTMLUListElement>) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
-    },
-    [],
-  );
-
-  const handleListDrop = useCallback(
-    (e: React.DragEvent<HTMLUListElement>) => {
-      e.preventDefault();
-      if (draggedIndex === null) {
-        handleDragEnd();
-        return;
-      }
-      const target = getDropTargetFromClientY(e.clientY);
-      if (target) performDrop(target.index, target.position);
-      else handleDragEnd();
-    },
-    [draggedIndex, getDropTargetFromClientY, performDrop],
-  );
 
   const anyChanged = useMemo(() => {
     return items.some((item, index) => {
@@ -304,10 +195,10 @@ const StaffDirectoryPage: React.FC = () => {
                   isDragging && "opacity-40",
                 )}
               >
-                {showBar && dropPosition === "before" && (
+                {showBar && dropPosition === DropPosition.Before && (
                   <div className="absolute left-0 right-0 top-0 h-0.5 bg-green-500 z-10" />
                 )}
-                {showBar && dropPosition === "after" && (
+                {showBar && dropPosition === DropPosition.After && (
                   <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-green-500 z-10" />
                 )}
                 <GripVertical
