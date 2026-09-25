@@ -4,7 +4,7 @@ import {
   useTimeZoneSelect,
 } from "@alliance/shared/forms/timeZoneSelect";
 import { cn } from "@alliance/shared/styles/util";
-import { ChevronDown, Clock } from "lucide-react-native";
+import { ChevronDown, Clock, Smartphone } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -38,10 +38,12 @@ export default function TimeZoneSelect({
   placeholder = "Select time zone…",
   hour12 = true,
 }: Props) {
+  const deviceTimeZone = getDeviceTimeZone();
   const {
     filtered,
     selected,
     selectedIndex,
+    deviceTz,
     query,
     setQuery,
     setActiveIndex,
@@ -51,10 +53,11 @@ export default function TimeZoneSelect({
     loading,
   } = useTimeZoneSelect({
     value,
-    defaultValue: getDeviceTimeZone(),
+    defaultValue: deviceTimeZone,
     onChange,
     hour12,
     disabled,
+    deviceTimeZone,
   });
   const listRef = useRef<FlatList<TimeZoneSelectItem>>(null);
   // Every row holds one line of each text, so any one laid out gives the
@@ -203,9 +206,18 @@ export default function TimeZoneSelect({
                       {item.labelSub ?? " "}
                     </Text>
                   </View>
-                  <Text className="text-xs text-zinc-600 mt-1 shrink-0">
-                    {item.timeLabel ?? NO_TIME_LABEL}
-                  </Text>
+                  <View className="flex-row items-center gap-1.5 mt-1 shrink-0">
+                    {item.tz === deviceTz && (
+                      <Smartphone
+                        size={14}
+                        color={colors.text.icon}
+                        accessibilityLabel="Device time zone"
+                      />
+                    )}
+                    <Text className="text-xs text-zinc-600">
+                      {item.timeLabel ?? NO_TIME_LABEL}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               </View>
             );
