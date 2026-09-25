@@ -3627,6 +3627,8 @@ export class ActionsService {
       followUpForms: _followUpForms,
       reviewers,
       project: _project,
+      // Action ids name different actions in another environment.
+      prerequisiteActionIds: _prerequisiteActionIds,
       ...actionCols
     } = importaction;
 

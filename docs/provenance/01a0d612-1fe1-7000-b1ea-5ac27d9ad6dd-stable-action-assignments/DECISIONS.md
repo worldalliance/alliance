@@ -78,7 +78,7 @@ Preserve onboarding's earliest-contract-event rule and unsigned-member behavior.
 
 ## Processing and failures
 
-Resolve assignments through a common service used by launch processing, membership changes, prerequisite activities, and deadline processing. Include catch-up for missed work and reconciliation before returning a supposedly complete task list. Retries and concurrent requests must produce one final decision per member/action. An activity and its form answers commit in one transaction, so a resolver never reads part of a submission. Dependents resolve after that commit, not inside it: readiness is derived and the resolver is idempotent, so a resolver failure leaves work for catch-up instead of rejecting the member's completion.
+Resolve assignments through a common service used by launch processing, membership changes, prerequisite activities, and deadline processing. Include catch-up for missed work and reconciliation before returning a supposedly complete task list. Retries and concurrent requests must produce one final decision per member/action. A task form's answers commit before its completion activity, so a resolver never reads part of a submission. Dependents resolve outside the member's request: readiness is derived and the resolver is idempotent, so a resolver failure leaves work for catch-up instead of rejecting the member's completion.
 
 Evaluate alternative actions against consistent inputs so one location edit cannot cause both country branches to be selected during a single decision batch. Keep this scoped to assignment evaluation rather than storing general profile history.
 
@@ -180,7 +180,9 @@ Add prerequisite configuration to the action, separate from the cohort expressio
 
 The cohort builder stops offering `InProgressAction` and renders existing leaves read-only; the server rejects new ones. The builder warns on references to still-open actions without a prerequisite. The open-action report from "Explicit prerequisite configuration" runs here, before stage 6.
 
-The resolver derives readiness (completion or withdrawal activity, deadline reached, or finalized upstream exclusion) and decides once every prerequisite is ready, using live data at that moment. New triggers: completion and withdrawal activities, the deadline worker, and upstream exclusion decisions. An activity and its form answers commit together; dependents resolve after the commit, with catch-up as the backstop. Delayed existing members keep required status and the original deadline.
+The resolver derives readiness (completion or withdrawal activity, deadline reached, or finalized upstream exclusion) and decides once every prerequisite is ready, using live data at that moment. A member still waiting gets no row. The five-minute pass is the only trigger. Nothing reads decisions before stage 6, and its task-list reconciliation decides a member whose prerequisite just resolved, so triggers on activities, deadlines, and upstream exclusions would only shorten a wait no reader sees. A task form saves its response before the completion activity, so a pass that sees the completion also sees the answers. A member admissible at launch on an action with prerequisites gets the `prerequisites_resolved` reason; a signer keeps `signing`. Delayed existing members keep required status and the original deadline, because obligation stays derived at read time.
+
+Prerequisites are an integer array on the action rather than a join table: the set is small, read whole, and never queried from the upstream side except by validation. Importing an exported action drops them, since action ids name different actions in another environment.
 
 The live recomputation path treats a member whose prerequisites are not ready as outside the cohort. The configuration then takes effect for members immediately, and shadow comparisons stay meaningful.
 

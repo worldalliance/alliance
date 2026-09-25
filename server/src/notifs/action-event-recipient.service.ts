@@ -13,6 +13,7 @@ import {
   ReminderCohortType,
   ReminderGroup,
 } from "src/actions/entities/reminder-group.entity";
+import { PrerequisiteProgressService } from "src/actions/prerequisite-progress.service";
 import { CommunityService } from "src/community/community.service";
 import { Community } from "src/community/entities/community.entity";
 import { resolveUsMembership, UsMembership } from "src/geo/us-membership";
@@ -60,6 +61,7 @@ export class ActionEventRecipientService {
     private readonly userRepository: Repository<User>,
     private readonly communityService: CommunityService,
     private readonly userService: UserService,
+    private readonly prerequisiteProgressService: PrerequisiteProgressService,
   ) {}
 
   /**
@@ -281,7 +283,7 @@ export class ActionEventRecipientService {
         session,
         resolvingActionIds,
       ),
-      this.loadTerminalUserIds(action.id),
+      this.prerequisiteProgressService.loadTerminalUserIds(action.id),
     ]);
     return new Set(
       users
@@ -323,21 +325,11 @@ export class ActionEventRecipientService {
       // predicates, which never consider dismissal).
       includeDismissed: true,
     });
-    const terminalIds = await this.loadTerminalUserIds(action.id);
+    const terminalIds =
+      await this.prerequisiteProgressService.loadTerminalUserIds(action.id);
     return new Set(
       baseUsers.map((u) => u.id).filter((id) => !terminalIds.has(id)),
     );
-  }
-
-  private async loadTerminalUserIds(actionId: number): Promise<Set<number>> {
-    const terminal = await this.actionActivityRepository.find({
-      where: [
-        { actionId, type: ActionActivityType.USER_COMPLETED },
-        { actionId, type: ActionActivityType.USER_WONT_COMPLETE },
-      ],
-      select: { userId: true },
-    });
-    return new Set(terminal.map((a) => a.userId));
   }
 
   /**

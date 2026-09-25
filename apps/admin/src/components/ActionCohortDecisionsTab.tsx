@@ -25,6 +25,7 @@ const REASON_LABELS: Record<CohortDecisionReason, string> = {
   resolved_after_deadline: "Resolved after deadline",
   backfill: "Backfill",
   staff_correction: "Staff correction",
+  prerequisites_resolved: "After prerequisites",
 };
 
 const formatTime = (iso: string) => formatDateTime(new Date(iso));

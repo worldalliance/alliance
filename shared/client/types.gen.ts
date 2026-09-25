@@ -3263,7 +3263,7 @@ export type TimelineFeedItemDto = {
     actionEvent?: ActionEventDto;
 };
 
-export type CohortDecisionReason = 'launch' | 'signing' | 'resolved_after_deadline' | 'backfill' | 'staff_correction';
+export type CohortDecisionReason = 'launch' | 'signing' | 'resolved_after_deadline' | 'backfill' | 'staff_correction' | 'prerequisites_resolved';
 
 export type CohortDecisionCorrectionDto = {
     previousIncluded: boolean;

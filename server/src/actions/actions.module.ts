@@ -56,6 +56,7 @@ import { GeneralUpdate } from "./entities/general-update.entity";
 import { Project } from "./entities/project.entity";
 import { ReminderGroup } from "./entities/reminder-group.entity";
 import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
+import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 import { ProjectsController } from "./projects.controller";
 import { ProjectsService } from "./projects.service";
 import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
@@ -127,6 +128,7 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
     CohortDecisionStaffService,
     CohortDecisionWorker,
     CohortDivergenceService,
+    PrerequisiteProgressService,
   ],
   exports: [
     ActionsService,

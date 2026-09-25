@@ -62,8 +62,14 @@ export function cohortDecisionFixtures(ctx: TestContext) {
     deadline: Date | null;
     cohortExpression?: CohortExpression;
     onboarding?: boolean;
+    prerequisiteActionIds?: number[];
   }) => {
-    const { start, deadline, onboarding = false } = params;
+    const {
+      start,
+      deadline,
+      onboarding = false,
+      prerequisiteActionIds = [],
+    } = params;
     const action = await actionRepo.save(
       actionRepo.create({
         name: "Action",
@@ -76,6 +82,7 @@ export function cohortDecisionFixtures(ctx: TestContext) {
           tagId: ctx.defaultTag.id,
         },
         onboarding,
+        prerequisiteActionIds,
       }),
     );
     await eventRepo.save([

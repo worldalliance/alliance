@@ -26,6 +26,7 @@ import {
   type ParsedAction,
 } from "./entities/action.entity";
 import { CohortDecisionReason } from "./entities/cohort-decision-reason";
+import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 
 /**
  * How long after its deadline a regular action stays in the catch-up pass.
@@ -54,9 +55,12 @@ function admissionReason(params: {
   start: Date;
 }): CohortDecisionReason {
   const { action, user, start } = params;
-  return isCohortAdmissible({ action, user, at: start })
-    ? CohortDecisionReason.Launch
-    : CohortDecisionReason.Signing;
+  if (!isCohortAdmissible({ action, user, at: start })) {
+    return CohortDecisionReason.Signing;
+  }
+  return action.prerequisiteActionIds.length > 0
+    ? CohortDecisionReason.PrerequisitesResolved
+    : CohortDecisionReason.Launch;
 }
 
 function isInCatchUp(enrollment: CohortEnrollment, now: Date): boolean {
@@ -104,6 +108,7 @@ export class CohortDecisionService {
     private readonly actionEventRecipientService: ActionEventRecipientService,
     private readonly userService: UserService,
     private readonly actionsService: ActionsService,
+    private readonly prerequisiteProgressService: PrerequisiteProgressService,
   ) {}
 
   /**
@@ -221,8 +226,14 @@ export class CohortDecisionService {
     const { action, enrollment, users, session, now } = params;
     switch (enrollment.state) {
       case CohortEnrollmentState.Open: {
-        const pending = users.filter((user) =>
-          isCohortAdmissible({ action, user, at: now }),
+        const isReady = await this.prerequisiteProgressService.loadReadiness({
+          action,
+          session,
+          now,
+        });
+        const pending = users.filter(
+          (user) =>
+            isCohortAdmissible({ action, user, at: now }) && isReady(user.id),
         );
         if (pending.length === 0) return [];
         const cohort =
@@ -240,8 +251,15 @@ export class CohortDecisionService {
         });
       }
       case CohortEnrollmentState.Closed: {
-        const pending = users.filter((user) =>
-          isCohortAdmissible({ action, user, at: enrollment.deadline }),
+        const isReady = await this.prerequisiteProgressService.loadReadiness({
+          action,
+          session,
+          now,
+        });
+        const pending = users.filter(
+          (user) =>
+            isCohortAdmissible({ action, user, at: enrollment.deadline }) &&
+            isReady(user.id),
         );
         // Only a member held to the whole window of a non-optional action
         // could miss it. Anyone else was only ever optional, so deciding them
@@ -336,6 +354,7 @@ export class CohortDecisionService {
     const ordinary = In([
       CohortDecisionReason.Launch,
       CohortDecisionReason.Signing,
+      CohortDecisionReason.PrerequisitesResolved,
     ]);
     const [decision, correction] = await Promise.all([
       this.decisionRepository.findOne({
