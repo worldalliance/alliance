@@ -1,5 +1,11 @@
-import { Socket } from "socket.io";
-import { ACCESS_COOKIE, extractBearerToken } from "src/auth/tokens";
+import { Logger } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { Server, Socket } from "socket.io";
+import {
+  ACCESS_COOKIE,
+  extractBearerToken,
+  verifyAccessToken,
+} from "src/auth/tokens";
 
 export function parseCookies(cookieHeader: string): Record<string, string> {
   return cookieHeader.split(";").reduce<Record<string, string>>((acc, part) => {
@@ -35,4 +41,25 @@ export function extractTokenFromSocket(client: Socket): string | undefined {
   }
 
   return undefined;
+}
+
+export function socketAuthMiddleware(
+  jwtService: JwtService,
+  logger: Logger,
+): Parameters<Server["use"]>[0] {
+  return async (socket, next) => {
+    try {
+      const token = extractTokenFromSocket(socket);
+      if (!token) {
+        return next(new Error("Unauthorized"));
+      }
+      const payload = await verifyAccessToken(jwtService, token);
+      socket.data.userId = payload.sub;
+      next();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.warn(`Socket auth failed: ${message}`);
+      next(new Error(message));
+    }
+  };
 }

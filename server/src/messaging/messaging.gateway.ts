@@ -12,11 +12,10 @@ import {
   WebSocketServer,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
-import { verifyAccessToken } from "src/auth/tokens";
 import { DetachedWorkTracker } from "src/utils/detached-work";
 import { ConversationService } from "./conversation.service";
 import { MessageDto } from "./dto/messaging.dto";
-import { extractTokenFromSocket } from "./gateway.utils";
+import { socketAuthMiddleware } from "./gateway.utils";
 import { MessagingEvents } from "./messaging.events";
 
 @WebSocketGateway({
@@ -79,22 +78,7 @@ export class MessagingGateway
   }
 
   afterInit(server: Server) {
-    server.use(async (socket, next) => {
-      try {
-        const token = extractTokenFromSocket(socket);
-        if (!token) {
-          return next(new Error("Unauthorized"));
-        }
-        const payload = await verifyAccessToken(this.jwtService, token);
-        socket.data.userId = payload.sub;
-        next();
-      } catch (error) {
-        this.logger.warn(
-          `Messaging gateway auth failed: ${(error as Error).message}`,
-        );
-        next(new Error((error as Error).message));
-      }
-    });
+    server.use(socketAuthMiddleware(this.jwtService, this.logger));
   }
 
   handleConnection(client: Socket) {
