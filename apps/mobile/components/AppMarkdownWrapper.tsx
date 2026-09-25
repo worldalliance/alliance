@@ -18,6 +18,7 @@ import {
 import { useFontScale } from "../lib/style/useFontScale";
 import { ImageLightboxModal } from "./ImageLightbox";
 import { renderListItem } from "./markdownListItem";
+import { markdownParser } from "./markdownParser";
 import {
   MARKDOWN_FILL_WIDTH_STYLE,
   MARKDOWN_PALETTES,
@@ -488,12 +489,22 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
           className="overflow-hidden"
           style={{ maxHeight: truncatedMaxHeight }}
         >
-          <Markdown style={markdownStyles} rules={rules} mergeStyle>
+          <Markdown
+            style={markdownStyles}
+            rules={rules}
+            markdownit={markdownParser}
+            mergeStyle
+          >
             {markdownSource}
           </Markdown>
         </View>
       ) : (
-        <Markdown style={markdownStyles} rules={rules} mergeStyle>
+        <Markdown
+          style={markdownStyles}
+          rules={rules}
+          markdownit={markdownParser}
+          mergeStyle
+        >
           {markdownSource}
         </Markdown>
       )}
