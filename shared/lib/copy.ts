@@ -1,3 +1,4 @@
+import { FORMULA_SOURCES_CHANGED_REASON } from "@alliance/common/forms/formula-options";
 import { pickForCount } from "@alliance/common/plural";
 import type { AutomaticInviteReason } from "./inviteUtils";
 
@@ -274,6 +275,8 @@ export const draftSaveFailed =
 
 export const sourceAnswersLoadFailed =
   "Couldn't load the earlier answers this form uses.";
+
+export const formulaSourcesChangedRefreshed = `${FORMULA_SOURCES_CHANGED_REASON} We've reloaded its options, so check your answers and submit again.`;
 
 export const variableSourceDeleted =
   "This form uses answers from a form or question that has been deleted, so it can't be shown.";

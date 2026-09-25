@@ -6,6 +6,10 @@ import {
   type SubmitFormDto,
 } from "../client";
 import { computeFormStorageKey } from "../formrenderer";
+import {
+  formulaSourcesChanged,
+  type SubmitResult,
+} from "../forms/formulaChoices";
 import { captureException } from "./analytics";
 
 export const followUpPersistKey = (followUpFormId: number): string =>
@@ -42,25 +46,20 @@ export async function submitFollowUpForm({
   followUpFormId: number;
   actionId: number;
   data: SubmitFormDto;
-}): Promise<Result<void, unknown>> {
+}): Promise<Result<void, SubmitResult>> {
+  const { actionId: _actionId, ...body } = data;
   const response = await tasksSubmitFollowUpForm({
     path: { followUpFormId },
-    body: {
-      answers: data.answers,
-      formSnapshotId: data.formSnapshotId,
-      visibilityValidatorResults: data.visibilityValidatorResults,
-      deviceType: data.deviceType,
-      publicAnswers: data.publicAnswers,
-      phDistinctId: data.phDistinctId,
-      sessionReplayUrl: data.sessionReplayUrl,
-      sid: data.sid,
-    },
+    body,
+    throwOnError: false,
   });
   if (response.response.ok) return R.success(undefined);
-  console.error(response.error);
-  captureException(ExceptionEvent.FollowUpFormSubmitError, response.error, {
-    actionId,
-    followUpFormId,
-  });
-  return R.failure(response.error);
+  if (!formulaSourcesChanged(response)) {
+    console.error(response.error);
+    captureException(ExceptionEvent.FollowUpFormSubmitError, response.error, {
+      actionId,
+      followUpFormId,
+    });
+  }
+  return R.failure(response);
 }

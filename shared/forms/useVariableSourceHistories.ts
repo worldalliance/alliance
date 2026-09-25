@@ -1,10 +1,10 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
+import { formulaHistoryFormIds } from "@alliance/common/forms/formula-options";
 import type { VariableSourceHistory } from "@alliance/common/forms/variable-evaluation";
 import {
   EMPTY_HISTORY,
   readSourceHistory,
 } from "@alliance/common/forms/variable-source-history";
-import { variableHistoryFormIds } from "@alliance/common/forms/variables";
 import { R, type Result } from "@alliance/common/result";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -147,25 +147,29 @@ type Loaded = {
 };
 
 /**
- * The submitted answers every variable input reading another form needs,
- * fetched once per subject so an open form's values stay put. A source form
- * added after the others load fetches only itself, and retry refetches only
- * the forms that failed.
+ * The submitted answers every variable or options formula input reading
+ * another form needs, fetched once per subject and reload so an open form's
+ * values stay put until its caller reloads. A source form added after the
+ * others load fetches only itself, and retry refetches only the forms that
+ * failed.
  */
 export function useVariableSourceHistories(params: {
   schema: FormSchema;
   subject: HistorySubject;
+  /** Changing it refetches every history. */
+  reload?: number;
 }): SourceHistories {
-  const { schema, subject } = params;
-  const idsKey = variableHistoryFormIds(schema.variables).join(",");
+  const { schema, subject, reload = 0 } = params;
+  const idsKey = formulaHistoryFormIds(schema).join(",");
   const formIds = useMemo(
     () => (idsKey === "" ? [] : idsKey.split(",").map(Number)),
     [idsKey],
   );
-  const key =
+  const reader =
     subject.reader === HistoryReader.Member
       ? `${subject.reader}:${subject.userId}`
       : subject.reader;
+  const key = `${reader}#${reload}`;
 
   const [loaded, setLoaded] = useState<Loaded>({ key, byForm: new Map() });
   const byForm = loaded.key === key ? loaded.byForm : undefined;

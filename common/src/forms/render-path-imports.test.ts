@@ -7,6 +7,8 @@ import { fileURLToPath } from "node:url";
 const RENDER_PATH_ENTRIES = [
   "./variables.ts",
   "./variable-evaluation.ts",
+  "./formula-options.ts",
+  "./variable-source-history.ts",
   "./form-schema.ts",
   "./variable-interpolation.ts",
   "./visibility.ts",

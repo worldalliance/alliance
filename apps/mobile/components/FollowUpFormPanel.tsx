@@ -4,6 +4,7 @@ import type {
   FollowUpFormDto,
   SubmitFormDto,
 } from "@alliance/shared/client/types.gen";
+import { useFormulaSourcesRefetch } from "@alliance/shared/forms/useFormulaSourcesRefetch";
 import {
   followUpDraftStorageKey,
   followUpFormIntro,
@@ -39,6 +40,8 @@ export default function FollowUpFormPanel({
   const { user, isLoading: userLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [formInstanceKey, setFormInstanceKey] = useState(0);
+  const { reload: historiesReload, refetchIfSourcesChanged } =
+    useFormulaSourcesRefetch(setError);
 
   const {
     data: form,
@@ -61,6 +64,7 @@ export default function FollowUpFormPanel({
         data,
       });
       if (!submitted.ok) {
+        if (refetchIfSourcesChanged(submitted.error)) return false;
         setError("Failed to submit. Please try again.");
         return false;
       }
@@ -77,7 +81,7 @@ export default function FollowUpFormPanel({
       onSubmitted?.();
       return true;
     },
-    [followUpForm.id, form, actionId, onSubmitted],
+    [followUpForm.id, form, actionId, onSubmitted, refetchIfSourcesChanged],
   );
 
   if (isPending) {
@@ -123,6 +127,7 @@ export default function FollowUpFormPanel({
           actionId={actionId}
           onSubmit={handleSubmit}
           persistKey={followUpPersistKey(followUpForm.id)}
+          reloadSourceHistories={historiesReload}
           userId={user?.id}
           user={user}
           userLoading={userLoading}

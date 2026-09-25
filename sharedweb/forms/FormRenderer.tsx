@@ -34,7 +34,10 @@ import {
   restorablePublicAnswers,
 } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
-import { completedFormSchema } from "@alliance/shared/forms/formulaChoices";
+import {
+  completedFormSchema,
+  formulaSourcesFor,
+} from "@alliance/shared/forms/formulaChoices";
 import {
   resolveFormValue,
   type SetFieldValue,
@@ -793,6 +796,7 @@ const FormRenderer = ({
       answers: sanitizedAnswers,
       formSnapshotId,
       actionId,
+      formulaSources: formulaSourcesFor(schema, sourceHistories),
       visibilityValidatorResults,
       deviceType,
       publicAnswers: resolvedPublicAnswers,
@@ -829,7 +833,9 @@ const FormRenderer = ({
     readOnly,
     reportNativeValidity,
     resolvedPublicAnswers,
+    schema,
     searchParams,
+    sourceHistories,
     sessionReplayUrl,
     trackValidationError,
     uploadingAny,
@@ -861,6 +867,7 @@ const FormRenderer = ({
       answers: stripCardIds(formData),
       formSnapshotId,
       actionId,
+      formulaSources: formulaSourcesFor(schema, sourceHistories),
       visibilityValidatorResults,
       deviceType,
       publicAnswers: resolvedPublicAnswers,

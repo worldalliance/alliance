@@ -256,6 +256,27 @@ describe("useVariableSourceHistories", () => {
     expect(scoresOf(result.current, 7)).toEqual([1]);
     expect(requests).toEqual(["me:7"]);
   });
+
+  it("refetches every history when reloaded", async () => {
+    mine["7"] = async () => json(historyBody([1]));
+    const schema = readingForms(7);
+    const subject = { reader: HistoryReader.Self } as const;
+    const { result, rerender } = renderHook(
+      (props: { reload: number }) =>
+        useVariableSourceHistories({ schema, subject, reload: props.reload }),
+      { initialProps: { reload: 0 } },
+    );
+    await settle();
+
+    mine["7"] = async () => json(historyBody([1, 2]));
+    rerender({ reload: 1 });
+    expect(result.current.status).toBe(SourceHistoriesStatus.Loading);
+    await settle();
+
+    expect(scoresOf(result.current, 7)).toEqual([1, 2]);
+    expect(requests).toEqual(["me:7", "me:7"]);
+  });
+
   it("fetches only a source form added while open, keeping the ones loaded", async () => {
     member["5:7"] = async () => json(historyBody([1]));
     member["5:8"] = async () => json(historyBody([2]));

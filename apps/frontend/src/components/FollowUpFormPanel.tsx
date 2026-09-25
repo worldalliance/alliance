@@ -1,9 +1,11 @@
 import { FormSchema } from "@alliance/common/forms/form-schema";
+import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
 import { FormDto, tasksGetForm } from "@alliance/shared/client";
 import type {
   FollowUpFormDto,
   SubmitFormDto,
 } from "@alliance/shared/client/types.gen";
+import { formulaSourcesChanged } from "@alliance/shared/forms/formulaChoices";
 import {
   followUpDraftStorageKey,
   followUpFormIntro,
@@ -64,7 +66,11 @@ export default function FollowUpFormPanel({
         data,
       });
       if (!submitted.ok) {
-        setError("Failed to submit. Please try again.");
+        setError(
+          formulaSourcesChanged(submitted.error)
+            ? FORMULA_SOURCES_CHANGED
+            : "Failed to submit. Please try again.",
+        );
         return false;
       }
       if (form) {

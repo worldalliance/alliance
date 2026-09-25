@@ -44,7 +44,10 @@ import {
   type UserLocationDisplayValue,
 } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
-import { completedFormSchema } from "@alliance/shared/forms/formulaChoices";
+import {
+  completedFormSchema,
+  formulaSourcesFor,
+} from "@alliance/shared/forms/formulaChoices";
 import {
   resolveFormValue,
   type SetFieldValue,
@@ -133,6 +136,8 @@ type FormRendererProps = {
   publicAction?: boolean;
   actionId: number;
   persistKey?: string | null;
+  /** Changing it refetches the answers from other forms the form reads. */
+  reloadSourceHistories?: number;
   initialPageIndex?: number;
   userId?: string | number;
   phDistinctId?: string;
@@ -649,6 +654,7 @@ const FormRenderer = ({
   formSnapshotId,
   onSubmit,
   persistKey,
+  reloadSourceHistories,
   userId,
   user,
   userLoading = false,
@@ -718,6 +724,7 @@ const FormRenderer = ({
       signedIn: !!user,
       userLoading,
     }),
+    reload: reloadSourceHistories,
   });
 
   const variableAggregates = useVariableAggregates({
@@ -1119,6 +1126,7 @@ const FormRenderer = ({
       answers: sanitizedAnswers,
       formSnapshotId,
       actionId,
+      formulaSources: formulaSourcesFor(schema, sourceHistories),
       visibilityValidatorResults,
       deviceType: DEVICE_TYPE,
       publicAnswers,
@@ -1153,6 +1161,7 @@ const FormRenderer = ({
       answers: stripCardIds(formData),
       formSnapshotId,
       actionId,
+      formulaSources: formulaSourcesFor(schema, sourceHistories),
       visibilityValidatorResults,
       deviceType: DEVICE_TYPE,
       publicAnswers,

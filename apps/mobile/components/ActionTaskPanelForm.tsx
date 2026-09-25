@@ -9,6 +9,7 @@ import {
   tasksSubmitForm,
   tasksSubmitPublicForm,
 } from "@alliance/shared/client";
+import { useFormulaSourcesRefetch } from "@alliance/shared/forms/useFormulaSourcesRefetch";
 import type { ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import { captureException } from "@alliance/shared/lib/analytics";
 import { noop } from "@alliance/shared/lib/constants";
@@ -52,6 +53,8 @@ const ActionTaskPanelForm = ({
 }: ActionTaskPanelFormProps) => {
   const { user, isAuthenticated, isLoading: userLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const { reload: historiesReload, refetchIfSourcesChanged } =
+    useFormulaSourcesRefetch(setError);
   const invalidateVisibilityContext = useInvalidateVisibilityContext();
 
   const {
@@ -115,6 +118,7 @@ const ActionTaskPanelForm = ({
           onSubmitSuccess();
           return true;
         } else {
+          if (refetchIfSourcesChanged(response)) return false;
           console.error(response.error);
           captureException(ExceptionEvent.FormSubmitError, response.error, {
             actionId,
@@ -174,6 +178,7 @@ const ActionTaskPanelForm = ({
         onAbandonAction={onAbandonAction}
         actionId={actionId}
         persistKey={preview ? null : String(taskFormId)}
+        reloadSourceHistories={historiesReload}
         userId={user?.id}
         user={user}
         userLoading={userLoading}

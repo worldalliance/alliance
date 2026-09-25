@@ -27,10 +27,18 @@ import {
   type ExprNode,
   type ExprValue,
 } from "./variable-expression";
-import { variableSourceFormIds, type OptionsFormula } from "./variables";
+import {
+  variableHistoryFormIds,
+  variableSourceFormIds,
+  type Formula,
+  type OptionsFormula,
+} from "./variables";
 
-export const FORMULA_SOURCES_CHANGED =
-  "Your answers to another form changed since you opened this one. Reload it to see its current options.";
+export const FORMULA_SOURCES_CHANGED_REASON =
+  "Your answers to another form changed since you opened this one.";
+
+/** Installed apps recognize the server's refusal by this exact text. */
+export const FORMULA_SOURCES_CHANGED = `${FORMULA_SOURCES_CHANGED_REASON} Reload it to see its current options.`;
 
 export type ChoiceOption = { label: string; value: string };
 
@@ -71,14 +79,21 @@ export function collectOptionsFormulaFields(
   );
 }
 
+const schemaFormulas = (schema: FormSchema): Formula[] => [
+  ...(schema.variables ?? []),
+  ...collectOptionsFormulaFields(schema).map(
+    ({ field }) => field.optionsFormula,
+  ),
+];
+
 /** Every form a variable or options formula reads, ascending. */
 export function formulaSourceFormIds(schema: FormSchema): number[] {
-  return variableSourceFormIds([
-    ...(schema.variables ?? []),
-    ...collectOptionsFormulaFields(schema).map(
-      ({ field }) => field.optionsFormula,
-    ),
-  ]);
+  return variableSourceFormIds(schemaFormulas(schema));
+}
+
+/** The forms whose submitted history a variable or options formula reads. */
+export function formulaHistoryFormIds(schema: FormSchema): number[] {
+  return variableHistoryFormIds(schemaFormulas(schema));
 }
 
 export function optionsFormulaSourceFormIds(schema: FormSchema): number[] {
