@@ -8,8 +8,8 @@ import {
 import { syncVariableListInputs, type VariableFieldScope } from "./variables";
 
 /**
- * Page-level question fields of each form a variable reads, by form id, with
- * groups flattened as `collectVariableResolutionFields` does.
+ * Page-level question fields of each form a variable or options formula reads,
+ * by form id, with groups flattened as `collectVariableResolutionFields` does.
  */
 export type SourceFormFields = ReadonlyMap<number, readonly AnyField[]>;
 

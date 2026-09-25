@@ -211,6 +211,22 @@ describe("validateFormSchema with aggregate inputs", () => {
     ]);
   });
 
+  it("rejects a multiselect whose options come from a formula", () => {
+    expect(
+      messages(destination([countVariable(LOOKUP)]), {
+        sourceFields: [
+          {
+            ...employers,
+            options: [],
+            optionsFormula: { inputs: {}, formula: "[]" },
+          },
+        ],
+      }),
+    ).toEqual([
+      'Input "counts" counts answers to "employers", whose options come from a formula. Only fixed options can be counted',
+    ]);
+  });
+
   it("rejects a question the source form no longer has", () => {
     expect(
       messages(destination([countVariable(LOOKUP)]), { sourceFields: [] }),

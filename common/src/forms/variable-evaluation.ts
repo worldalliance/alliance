@@ -27,6 +27,7 @@ import {
   isKnownFieldKind,
   readableListSubFields,
   variableInputMode,
+  type Formula,
   type FormVariable,
   type VariableInputField,
   type VariableInputFields,
@@ -220,24 +221,32 @@ export function evaluateVariableText(
   );
 }
 
-export function evaluateVariable(
-  variable: FormVariable,
+export function prepareFormula(
+  formula: Formula,
   context: VariableResolutionContext,
-): Result<string, string> {
+): Result<{ node: ExprNode; inputs: Map<string, ExprValue> }, string> {
   const compiled = compileVariableExpression(
-    variable.formula,
-    new Set(Object.keys(variable.inputs)),
+    formula.formula,
+    new Set(Object.keys(formula.inputs)),
   );
   if (!compiled.ok) return compiled;
 
   const inputs = new Map<string, ExprValue>();
-  for (const [name, input] of Object.entries(variable.inputs)) {
+  for (const [name, input] of Object.entries(formula.inputs)) {
     const value = resolveInput(input, context);
     if (!value.ok) return value;
     inputs.set(name, value.value);
   }
+  return R.success({ node: compiled.value, inputs });
+}
 
-  return evaluateVariableText(compiled.value, inputs);
+export function evaluateVariable(
+  variable: FormVariable,
+  context: VariableResolutionContext,
+): Result<string, string> {
+  return R.flatMap(prepareFormula(variable, context), ({ node, inputs }) =>
+    evaluateVariableText(node, inputs),
+  );
 }
 
 export function resolveVariableValues(

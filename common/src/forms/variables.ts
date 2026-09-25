@@ -48,15 +48,26 @@ export function variableReferencePattern(): RegExp {
 
 export const VARIABLE_INPUT_NAME_PREFIX = "input";
 
+const formulaInputsSchema = z.record(
+  z.string().regex(VARIABLE_INPUT_NAME_REGEX),
+  variableInputSchema,
+);
+
 export const formVariableSchema = z.strictObject({
   name: z.string().regex(VARIABLE_NAME_REGEX),
-  inputs: z.record(
-    z.string().regex(VARIABLE_INPUT_NAME_REGEX),
-    variableInputSchema,
-  ),
+  inputs: formulaInputsSchema,
   formula: z.string(),
 });
 export type FormVariable = z.infer<typeof formVariableSchema>;
+
+/** A choice field's options, computed from answers in place of a fixed list. */
+export const optionsFormulaSchema = z.strictObject({
+  inputs: formulaInputsSchema,
+  formula: z.string(),
+});
+export type OptionsFormula = z.infer<typeof optionsFormulaSchema>;
+
+export type Formula = FormVariable | OptionsFormula;
 
 export function variableInputNameForIndex(index: number): string {
   return `${VARIABLE_INPUT_NAME_PREFIX}${index + 1}`;
@@ -132,12 +143,12 @@ export type VariableFieldScope = {
 };
 
 function formIdsRead(
-  variables: readonly FormVariable[] | undefined,
+  formulas: readonly Formula[] | undefined,
   include: (input: VariableInput) => boolean,
 ): number[] {
   const ids = new Set<number>();
-  for (const variable of variables ?? []) {
-    for (const input of Object.values(variable.inputs)) {
+  for (const formula of formulas ?? []) {
+    for (const input of Object.values(formula.inputs)) {
       const sourceFormId = inputSourceFormId(input);
       if (sourceFormId !== undefined && include(input)) ids.add(sourceFormId);
     }
@@ -145,18 +156,18 @@ function formIdsRead(
   return [...ids].sort((a, b) => a - b);
 }
 
-/** Every stored form these variables read, aggregates included. */
+/** Every stored form these formulas read, aggregates included. */
 export function variableSourceFormIds(
-  variables: readonly FormVariable[] | undefined,
+  formulas: readonly Formula[] | undefined,
 ): number[] {
-  return formIdsRead(variables, () => true);
+  return formIdsRead(formulas, () => true);
 }
 
-/** The forms whose submitted history these variables read. */
+/** The forms whose submitted history these formulas read. */
 export function variableHistoryFormIds(
-  variables: readonly FormVariable[] | undefined,
+  formulas: readonly Formula[] | undefined,
 ): number[] {
-  return formIdsRead(variables, isSourceInput);
+  return formIdsRead(formulas, isSourceInput);
 }
 
 export function readsSourceForm(variable: FormVariable): boolean {
@@ -391,11 +402,11 @@ function inputType(
 
 /** An input reading submitted history gets one element per submission. */
 export function variableTypeEnv(
-  variable: FormVariable,
+  formula: Formula,
   scope: VariableFieldScope,
 ): ReadonlyMap<string, string> {
   return new Map(
-    Object.entries(variable.inputs).map(([name, input]) => {
+    Object.entries(formula.inputs).map(([name, input]) => {
       const fields = inputFields(input, scope);
       if (fields === undefined) return [name, variableInputType(undefined)];
       const type = inputType(input, fields.get(input.fieldId));
