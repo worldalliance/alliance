@@ -60,7 +60,7 @@ The source at specification time is `ActionsService.computeIsInCohortExpression`
 
 Use those existing meanings for outcome selection. Preserve the separate latest-terminal-activity rule for displaying completion/withdrawal status; this change does not redefine the activity taxonomy.
 
-The single-member and population paths disagree on `InProgressAction` and `MissedActionDeadline`. The single-member path skips the population path's required-and-present roster check. For `MissedActionDeadline`, it checks optionality and away but not contract gaps. For `InProgressAction`, it checks neither.
+The single-member and population paths disagree on `InProgressAction`: the single-member path skips the population path's required-and-present roster check. For `MissedActionDeadline`, both paths already checked optionality, contract, away, and terminal activity. Both treated the deadline instant as not yet passed while the pill treated it as passed; the shared `hasMemberActionDeadlinePassed` comparison fixes that. Otherwise the two paths agreed: the population path found its window start with `events.find` rather than `memberActionPhase`, but `UQ_action_event_one_member_action` allows one member-action event per action, so both pick the same event. `computeMissedActionDeadline` in `server/src/utils/action-user.ts` now holds the rule for both.
 
 The `InProgressAction` split needs no fix. The leaf is false on both paths once its upstream action leaves member action, every existing use's upstream has, and no new use can be added.
 
@@ -123,7 +123,7 @@ Each stage deploys alone and leaves production correct. The order puts the saved
 
 Extract one `MissedActionDeadline` predicate used by the single-member path (`ActionsService.computeIsInCohortExpression`) and the population path (`ActionEventRecipientService.resolveCohortMemberIds`), with the population meaning as its baseline. Extract one member-action start/deadline comparison and route every reader and worker through it. Tests cover the late-signer and away cases for `MissedActionDeadline` and confirm positive and negated forms keep their structure.
 
-Ships alone: the only behavior change is the named reconciliation, on the single-member path. Everything else is a refactor with the suite green before and after.
+Ships alone: the only behavior change is the deadline instant, which now counts as passed on both `MissedActionDeadline` paths. Everything else is a refactor with the suite green before and after.
 
 ### 2. Decisions table and resolver, shadow mode
 

@@ -7,6 +7,7 @@ import {
   computeContractSignedAfterOnboardingStart,
   computeIsAssignedFromCohortSet,
   computeIsRequiredForAction,
+  computeMissedActionDeadline,
   hasMemberActionDeadlinePassed,
 } from "./action-user";
 
@@ -457,5 +458,84 @@ describe("hasMemberActionDeadlinePassed", () => {
 
   it("is false for an open-ended phase", () => {
     expect(hasMemberActionDeadlinePassed(null, NOW)).toBe(false);
+  });
+});
+
+describe("computeMissedActionDeadline", () => {
+  type MissedParams = Parameters<typeof computeMissedActionDeadline>[0];
+  const AFTER_DEADLINE = new Date(DEADLINE.getTime() + millisecondsInSecond);
+
+  function missedUser(
+    opts: {
+      fullRangeContract?: boolean;
+      atDeadline?: boolean;
+      away?: boolean;
+    } = {},
+  ): MissedParams["user"] {
+    const { fullRangeContract = true, atDeadline = true, away = false } = opts;
+    return {
+      contractEvents: [],
+      hasActiveContractInFullRange: () => fullRangeContract,
+      hasActiveContractAt: () => atDeadline,
+      awayRanges: [],
+      isAwayAtAnyPointInRange: () => away,
+    };
+  }
+
+  function missed(
+    overrides: Partial<MissedParams> & {
+      optional?: boolean;
+      openEnded?: boolean;
+    } = {},
+  ): boolean {
+    const { optional = false, openEnded = false, ...rest } = overrides;
+    return computeMissedActionDeadline({
+      action: { ...makeAction({ openEnded }), optional },
+      user: missedUser(),
+      inCohort: true,
+      hasTerminalActivity: false,
+      now: AFTER_DEADLINE,
+      ...rest,
+    });
+  }
+
+  it("includes a required, present member without a terminal activity", () => {
+    expect(missed()).toBe(true);
+  });
+
+  it("includes the member at the deadline instant", () => {
+    expect(missed({ now: DEADLINE })).toBe(true);
+  });
+
+  it("excludes before the deadline", () => {
+    expect(missed({ now: NOW })).toBe(false);
+  });
+
+  it("excludes an open-ended phase", () => {
+    expect(missed({ openEnded: true })).toBe(false);
+  });
+
+  it("excludes everyone from an optional action", () => {
+    expect(missed({ optional: true })).toBe(false);
+  });
+
+  it("excludes a member who completed or withdrew", () => {
+    expect(missed({ hasTerminalActivity: true })).toBe(false);
+  });
+
+  it("excludes a member outside the cohort", () => {
+    expect(missed({ inCohort: false })).toBe(false);
+  });
+
+  it("excludes a mid-window signer, who is optional", () => {
+    expect(
+      missed({
+        user: missedUser({ fullRangeContract: false, atDeadline: true }),
+      }),
+    ).toBe(false);
+  });
+
+  it("excludes a member away during the window", () => {
+    expect(missed({ user: missedUser({ away: true }) })).toBe(false);
   });
 });
