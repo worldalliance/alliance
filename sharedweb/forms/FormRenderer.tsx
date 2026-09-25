@@ -122,6 +122,11 @@ type FormRendererProps = {
   phDistinctId?: string;
   sessionReplayUrl?: string;
   user?: Omit<UserDto, "email">;
+  /**
+   * Whether `user` is still being fetched. Formulas reading other forms wait
+   * for it.
+   */
+  userLoading?: boolean;
   disableOptionRandomization?: boolean;
   onFormStarted?: () => void;
   onAbandonAction?: (withdrawal: ActionWithdrawal) => void;
@@ -171,6 +176,7 @@ const FormRenderer = ({
   persistKey,
   userId,
   user,
+  userLoading = false,
   disableOptionRandomization,
   onFormStarted,
   phDistinctId,
@@ -455,7 +461,11 @@ const FormRenderer = ({
 
   const sourceHistories = useVariableSourceHistories({
     schema,
-    subject: historySubject({ adminPreviewUserId, signedIn: !!user }),
+    subject: historySubject({
+      adminPreviewUserId,
+      signedIn: !!user,
+      userLoading,
+    }),
   });
 
   const variableAggregates = useVariableAggregates({

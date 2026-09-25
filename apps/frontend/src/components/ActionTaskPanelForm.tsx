@@ -57,7 +57,12 @@ const ActionTaskPanelForm = ({
   preview = false,
 }: ActionTaskPanelFormProps) => {
   const [error, setError] = useState<string | null>(null);
-  const { user, isAuthenticated, refreshUser } = useAuth();
+  const {
+    user,
+    loading: userLoading,
+    isAuthenticated,
+    refreshUser,
+  } = useAuth();
   const invalidateVisibilityContext = useInvalidateVisibilityContext();
   const {
     data: form,
@@ -215,6 +220,7 @@ const ActionTaskPanelForm = ({
           persistKey={preview ? null : String(taskFormId)}
           userId={user?.id}
           user={user}
+          userLoading={userLoading}
           loadCurrentUserLocation={!!user && isAuthenticated}
           onFormStarted={onFormStarted}
           onAbandonAction={onAbandonAction}

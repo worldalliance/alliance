@@ -223,6 +223,54 @@ describe("FormRenderer preview", () => {
     expect(await screen.findByText("Total 9")).toBeTruthy();
   });
 
+  it("waits for sign-in to resolve rather than read another form's answers as a guest", async () => {
+    const requests: string[] = [];
+    api.alsoServing({
+      "GET /tasks/myResponseHistory/:id": ({ params }) => {
+        requests.push(params.id);
+        return Response.json({}, { status: 404 });
+      },
+    });
+
+    renderPreview(
+      {
+        pages: [
+          {
+            id: "p1",
+            fields: [
+              {
+                id: "t",
+                type: "display",
+                kind: "text",
+                text: "Total #{total}",
+              },
+            ],
+          },
+        ],
+        outputViews: [],
+        variables: [
+          {
+            name: "total",
+            inputs: {
+              input1: {
+                kind: "sourceField",
+                fieldId: "score",
+                sourceFormId: 7,
+              },
+            },
+            formula: "String(input1.length)",
+          },
+        ],
+      },
+      { userLoading: true },
+    );
+
+    await act(async () => {});
+    expect(screen.getByRole("status")).toBeTruthy();
+    expect(screen.queryByText("This form can't be displayed")).toBeNull();
+    expect(requests).toEqual([]);
+  });
+
   it("says a form its variables read was deleted, with no retry", async () => {
     api.alsoServing({
       "GET /tasks/responseHistory/:formId/user/:userId": () =>

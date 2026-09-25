@@ -135,6 +135,11 @@ type FormRendererProps = {
   phDistinctId?: string;
   sessionReplayUrl?: string;
   user?: Omit<UserDto, "email">;
+  /**
+   * Whether `user` is still being fetched. Formulas reading other forms wait
+   * for it.
+   */
+  userLoading?: boolean;
   disableOptionRandomization?: boolean;
   loadCurrentUserLocation?: boolean;
   onFormStarted?: () => void;
@@ -641,6 +646,7 @@ const FormRenderer = ({
   persistKey,
   userId,
   user,
+  userLoading = false,
   disableOptionRandomization,
   loadCurrentUserLocation,
   onFormStarted,
@@ -697,6 +703,7 @@ const FormRenderer = ({
     subject: historySubject({
       adminPreviewUserId: undefined,
       signedIn: !!user,
+      userLoading,
     }),
   });
 

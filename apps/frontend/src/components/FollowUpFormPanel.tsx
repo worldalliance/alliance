@@ -40,7 +40,7 @@ export default function FollowUpFormPanel({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [formInstanceKey, setFormInstanceKey] = useState(0);
-  const { user } = useAuth();
+  const { user, loading: userLoading } = useAuth();
   const { success } = useToast();
 
   useEffect(() => {
@@ -153,6 +153,7 @@ export default function FollowUpFormPanel({
           persistKey={`follow-up-${followUpForm.id}`}
           userId={user?.id}
           user={user}
+          userLoading={userLoading}
           loadCurrentUserLocation={!!user}
           onFormStarted={() => {}}
           renderFormAsCompleted={false}

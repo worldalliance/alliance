@@ -50,7 +50,7 @@ const ActionTaskPanelForm = ({
   formResponse,
   preview = false,
 }: ActionTaskPanelFormProps) => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading: userLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const invalidateVisibilityContext = useInvalidateVisibilityContext();
 
@@ -176,6 +176,7 @@ const ActionTaskPanelForm = ({
         persistKey={preview ? null : String(taskFormId)}
         userId={user?.id}
         user={user}
+        userLoading={userLoading}
         loadCurrentUserLocation={!!user && isAuthenticated}
         syncDraftToServer={isAuthenticated}
         scrollPageTo={scrollPageTo}

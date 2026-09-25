@@ -13,6 +13,8 @@ import { thrownStatus } from "../lib/hey-api";
 export enum HistoryReader {
   /** A guest, or an admin preview with no member picked: no submissions. */
   Nobody = "nobody",
+  /** Whether anyone is signed in isn't known yet. */
+  Pending = "pending",
   /** The signed-in member, read from the session. */
   Self = "self",
   /** An admin previewing or reviewing a member's form. */
@@ -21,6 +23,7 @@ export enum HistoryReader {
 
 export type HistorySubject =
   | { reader: HistoryReader.Nobody }
+  | { reader: HistoryReader.Pending }
   | { reader: HistoryReader.Self }
   | { reader: HistoryReader.Member; userId: number };
 
@@ -31,6 +34,7 @@ export type HistorySubject =
 export function historySubject(params: {
   adminPreviewUserId: string | number | undefined;
   signedIn: boolean;
+  userLoading: boolean;
 }): HistorySubject {
   if (params.adminPreviewUserId !== undefined) {
     const userId = Number(params.adminPreviewUserId);
@@ -38,6 +42,7 @@ export function historySubject(params: {
       ? { reader: HistoryReader.Member, userId }
       : { reader: HistoryReader.Nobody };
   }
+  if (params.userLoading) return { reader: HistoryReader.Pending };
   return params.signedIn
     ? { reader: HistoryReader.Self }
     : { reader: HistoryReader.Nobody };
@@ -106,7 +111,10 @@ const historyError = (error: unknown): Error =>
 
 async function fetchHistory(
   formId: number,
-  subject: Exclude<HistorySubject, { reader: HistoryReader.Nobody }>,
+  subject: Exclude<
+    HistorySubject,
+    { reader: HistoryReader.Nobody | HistoryReader.Pending }
+  >,
 ): Promise<Result<VariableSourceHistory, Error>> {
   const { reader } = subject;
   switch (reader) {
@@ -168,7 +176,13 @@ export function useVariableSourceHistories(params: {
   // Read through the key so a response for an earlier member can never land in
   // this one's state.
   useEffect(() => {
-    if (subject.reader === HistoryReader.Nobody || missingKey === "") return;
+    if (
+      subject.reader === HistoryReader.Nobody ||
+      subject.reader === HistoryReader.Pending ||
+      missingKey === ""
+    ) {
+      return;
+    }
     let cancelled = false;
     const missing = missingKey.split(",").map(Number);
     void Promise.all(
@@ -206,7 +220,13 @@ export function useVariableSourceHistories(params: {
   );
 
   return useMemo((): SourceHistories => {
-    if (subject.reader === HistoryReader.Nobody) {
+    if (subject.reader === HistoryReader.Pending && formIds.length > 0) {
+      return { status: SourceHistoriesStatus.Loading };
+    }
+    if (
+      subject.reader === HistoryReader.Nobody ||
+      subject.reader === HistoryReader.Pending
+    ) {
       return {
         status: SourceHistoriesStatus.Ready,
         sources: new Map(formIds.map((formId) => [formId, EMPTY_HISTORY])),
