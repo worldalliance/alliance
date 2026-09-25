@@ -1,3 +1,4 @@
+import { R } from "@alliance/common/result";
 import { TIME_ZONE_CATALOG } from "@alliance/common/timezone-catalog.gen";
 import { act, renderHook } from "@testing-library/react";
 import { millisecondsInMinute } from "date-fns/constants";
@@ -280,6 +281,11 @@ const labelIn = (tz: string) => {
   return result.current.items.find((i) => i.tz === tz)?.labelLeft;
 };
 
+// The catalog can carry a zone newer than the runtime's ICU, as Linux's Bun
+// lacks America/Coyhaique, and the picker keeps that row with no offset.
+const runtimeKnows = (tz: string) =>
+  R.fromThrowable(() => new Intl.DateTimeFormat("en-US", { timeZone: tz })).ok;
+
 const rejectingZone = (tz: string, body: () => void) =>
   patchingIntl((args) => {
     if (args.options?.timeZone === tz) throw new RangeError("no data");
@@ -363,8 +369,10 @@ describe("the rows", () => {
 
     const outOfOrder = items.slice(1).filter((item, i) => {
       const before = items[i];
+      const offset = item.offsetMins ?? Infinity;
+      const offsetBefore = before.offsetMins ?? Infinity;
       return (
-        item.offsetMins! < before.offsetMins! ||
+        offset < offsetBefore ||
         (item.offsetMins === before.offsetMins &&
           item.city.localeCompare(before.city) < 0)
       );
@@ -458,7 +466,11 @@ describe("a saved zone the catalog has no row for", () => {
   it("sorts that row among the zones it shares an offset with", () => {
     const { result } = renderOpen({ value: "Etc/GMT-14" });
 
-    expect(result.current.items.slice(-2).map(({ tz }) => tz)).toEqual([
+    const withOffset = result.current.items.filter(
+      ({ offsetMins }) => offsetMins !== null,
+    );
+
+    expect(withOffset.slice(-2).map(({ tz }) => tz)).toEqual([
       "Etc/GMT-14",
       "Pacific/Kiritimati",
     ]);
@@ -563,8 +575,9 @@ describe("a picker mounted on a runtime with idle time", () => {
     let built = 0;
     standingInFor(
       (locales, options) => {
+        const fmt = new real(locales, options);
         built++;
-        return new real(locales, options);
+        return fmt;
       },
       () => body(() => built),
     );
@@ -1330,9 +1343,11 @@ describe("a runtime missing a timeZoneName style", () => {
       const { result } = renderOpen();
 
       expect(
-        result.current.items.every(
-          ({ timeLabel, offsetMins }) => timeLabel && offsetMins !== null,
-        ),
+        result.current.items
+          .filter(({ tz }) => runtimeKnows(tz))
+          .every(
+            ({ timeLabel, offsetMins }) => timeLabel && offsetMins !== null,
+          ),
       ).toBe(true);
     });
   });
@@ -1340,7 +1355,9 @@ describe("a runtime missing a timeZoneName style", () => {
   it("still sorts by offset when shortOffset is missing", () => {
     rejecting("shortOffset", () => {
       const { result } = renderOpen();
-      const offsets = result.current.items.map(({ offsetMins }) => offsetMins!);
+      const offsets = result.current.items
+        .map(({ offsetMins }) => offsetMins)
+        .filter((mins) => mins !== null);
 
       expect(offsets).toEqual([...offsets].sort((a, b) => a - b));
       expect(new Set(offsets).size).toBeGreaterThan(1);
