@@ -72,6 +72,7 @@ import {
   validateFieldValue as validateFieldValueShared,
 } from "./formrenderer";
 import {
+  completedFormSchema,
   useDropUnofferedChoices,
   useOfferedChoicesFor,
   visibleOfferedAnswers,
@@ -409,7 +410,6 @@ export function usePreviousAnswerSources(args: {
           schemas[entry[0]] = entry[1];
         }
       }
-      setPreviousAnswerSchemas(schemas);
 
       const dataEntries = await Promise.all(
         sourceFormIds.map(async (formId) => {
@@ -424,9 +424,7 @@ export function usePreviousAnswerSources(args: {
             const match = sent.value.data.find(
               (candidate) => String(candidate.user?.id) === previewId,
             );
-            return R.success(
-              match ? ([formId, match.answers ?? {}] as const) : null,
-            );
+            return R.success(match ? ([formId, match] as const) : null);
           }
           if (!signedIn) return R.success(null);
           const sent = await R.fromPromise(
@@ -441,19 +439,23 @@ export function usePreviousAnswerSources(args: {
           if (error && sent.value.response.status !== 404) {
             return R.failure(formId);
           }
-          return R.success(
-            response ? ([formId, response.answers ?? {}] as const) : null,
-          );
+          return R.success(response ? ([formId, response] as const) : null);
         }),
       );
       if (cancelled) return;
 
       const data: Record<number, Record<string, unknown>> = {};
       for (const loaded of dataEntries) {
-        if (loaded.ok && loaded.value) {
-          data[loaded.value[0]] = loaded.value[1];
+        const entry = loaded.ok ? loaded.value : null;
+        if (entry) {
+          data[entry[0]] = entry[1].answers ?? {};
+          const sourceSchema = schemas[entry[0]];
+          if (sourceSchema) {
+            schemas[entry[0]] = completedFormSchema(sourceSchema, entry[1]);
+          }
         }
       }
+      setPreviousAnswerSchemas(schemas);
       setPreviousAnswerData(data);
       if (dataEntries.every((loaded) => loaded.ok)) setLoadedKey(loadKey);
     })();

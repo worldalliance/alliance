@@ -1083,26 +1083,33 @@ let fetchDraft: (formId: string) => Promise<Response>;
 let fetches: number;
 let saves: { formId: string; answers: Record<string, unknown> }[];
 
+const pickSchema: FormSchema = schemaWith([
+  {
+    id: "pick",
+    type: "input",
+    kind: "multiselect",
+    label: "Pick",
+    options: [],
+    optionsFormula: { inputs: {}, formula: "[]" },
+  },
+]);
+const savedPick = [{ label: "Saved A", value: "a" }];
+
 const api = serveApi(
   routes({
     "GET /tasks/slug/:id": () =>
-      json({
-        id: 9,
-        title: "Source",
-        formSnapshotId: 1,
-        schema: schemaWith([textField("note")]),
-      }),
+      json({ id: 9, title: "Source", formSnapshotId: 1, schema: pickSchema }),
     "GET /tasks/myResponse/:id": () =>
       json({
         id: 1,
         formId: 9,
         formSnapshotId: 1,
         createdAt: "2026-01-01T00:00:00.000Z",
-        answers: { note: "x" },
+        answers: { pick: ["a"] },
         publicAnswers: {},
         schemaSnapshot: {},
         visibilityValidatorResults: {},
-        formulaChoices: {},
+        formulaChoices: { pick: savedPick },
       }),
     "GET /tasks/formDraft/:id": ({ params }) => {
       fetches += 1;
@@ -1259,7 +1266,7 @@ describe("usePreviousAnswerSources", () => {
             type: "display",
             kind: "previousAnswer",
             sourceFormId: 9,
-            sourceFieldId: "note",
+            sourceFieldId: "pick",
             showLabel: true,
           },
         ],
@@ -1273,14 +1280,19 @@ describe("usePreviousAnswerSources", () => {
       usePreviousAnswerSources({ signedIn, previewUserId, schema: readsForm9 }),
     );
 
-  it("is loading until the source answers land", async () => {
+  it("reads a source response's formula answers with the choices it saved", async () => {
     const { result } = renderSources();
 
     expect(result.current.previousAnswersPending).toBe(true);
     await waitFor(() =>
-      expect(result.current.previousAnswersPending).toBe(false),
+      expect(result.current.previousAnswerData[9]).toEqual({ pick: ["a"] }),
     );
-    expect(result.current.previousAnswerData[9]).toEqual({ note: "x" });
+    expect(result.current.previousAnswersPending).toBe(false);
+    const [pick] = result.current.previousAnswerSchemas[9].pages[0].fields;
+    expect(pick).toMatchObject({
+      options: savedPick,
+      optionsFormula: undefined,
+    });
   });
 
   it("is pending again while a source form read before reloads", async () => {
@@ -1348,6 +1360,29 @@ describe("usePreviousAnswerSources", () => {
       expect(result.current.previousAnswersPending).toBe(false),
     );
     expect(result.current.previousAnswerData).toEqual({});
+  });
+
+  it("reads, for an admin preview, the member's formula answers with the choices they saved", async () => {
+    api.alsoServing({
+      "GET /tasks/responses/:id": () =>
+        json([
+          {
+            ...previewResponse,
+            user: { id: 3 },
+            formulaChoices: { pick: savedPick },
+          },
+        ]),
+    });
+    const { result } = renderSources(true, 3);
+
+    await waitFor(() =>
+      expect(result.current.previousAnswerData[9]).toEqual({ pick: ["a"] }),
+    );
+    const [pick] = result.current.previousAnswerSchemas[9].pages[0].fields;
+    expect(pick).toMatchObject({
+      options: savedPick,
+      optionsFormula: undefined,
+    });
   });
 
   it("stays loading, for an admin preview, after the source responses fail to load", async () => {
