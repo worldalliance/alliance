@@ -73,7 +73,6 @@
     "react-native": "0.86.3",
     "react-native-gesture-handler": "~2.32.0",
     "react-native-keyboard-controller": "1.21.14",
-    "react-native-localize": "^3.6.1",
     "react-native-markdown-display": "^7.0.2",
     "react-native-qrcode-svg": "6.3.24",
     "react-native-reanimated": "4.5.1",

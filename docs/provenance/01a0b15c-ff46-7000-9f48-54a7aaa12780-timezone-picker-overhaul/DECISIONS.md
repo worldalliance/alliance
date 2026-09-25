@@ -227,8 +227,16 @@ sections below this one carry the reasoning each step implements.
    `selectedRowScroller.ts` so they can be tested without a renderer.
    `FormModal` takes `scrollable={false}` so the list is not nested in its
    `ScrollView`.
-9. **Mobile detection.** `expo-localization` replaces `react-native-localize`,
-   and the dependency goes once `getTimeZone` has no caller.
+9. **Mobile detection.** Done. `getDeviceTimeZone()` reads the first calendar
+   of `expo-localization`'s `getCalendars()`, and `react-native-localize`, whose
+   `getTimeZone` it replaces, leaves `apps/mobile`. `expo-localization` was
+   already a dependency and config plugin, so no native module is added, but
+   the removed one changes the fingerprint runtime version, and the change
+   reaches members through a store build rather than an OTA update. A
+   calendar with no `timeZone` gives `undefined`, so the picker pins no row
+   and defaults to `DEFAULT_TIMEZONE` as it does for any missing value. Mobile
+   signup and backfill still read `Intl` through `deviceTimeZone()`; steps 10
+   and 11 move them onto `getDeviceTimeZone()`.
 10. **Signup capture.** Web signup, mobile signup, and the OAuth redirect send a
     validated device timezone, or `UTC` when detection fails.
 11. **Backfill.** `useBackfillTimeZone` writes only a valid detected identifier

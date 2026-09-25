@@ -4,6 +4,7 @@ import {
   useTimeZoneSelect,
 } from "@alliance/shared/forms/timeZoneSelect";
 import { cn } from "@alliance/shared/styles/util";
+import { getCalendars } from "expo-localization";
 import { ChevronDown, Clock, Smartphone } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -13,7 +14,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { getTimeZone } from "react-native-localize";
 import { colors } from "../../lib/style/colors";
 import Text, { FontWeight } from "../system/Text";
 import FormModal from "./FormModal";
@@ -27,8 +27,8 @@ type Props = {
   hour12?: boolean;
 };
 
-export function getDeviceTimeZone(): string {
-  return getTimeZone();
+export function getDeviceTimeZone(): string | undefined {
+  return getCalendars()[0].timeZone ?? undefined;
 }
 
 export default function TimeZoneSelect({
