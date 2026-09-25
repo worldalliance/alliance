@@ -44,6 +44,7 @@ export const queryKeys = {
   actionCompletionCurvesAdminAll,
   actionCompletionCurvesAdmin: (granularity: string) =>
     [...actionCompletionCurvesAdminAll(), granularity] as const,
+  actionStatsAdmin: () => ["analyticsGetActionStatsAdmin"] as const,
   actionsAllAdmin: () => ["actionsFindAllWithDraftsAdmin"] as const,
   actionRelationsAdmin: () => ["actionsActionRelationsAdmin"] as const,
   ambassadorProgramAdmin: () => ["userGetAmbassadorProgramAdmin"] as const,

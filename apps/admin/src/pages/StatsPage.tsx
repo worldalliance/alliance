@@ -1,6 +1,5 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
-  analyticsGetActionStatsAdmin,
   analyticsGetAggregateStatsAdmin,
   analyticsGetContractStatusHistoryAdmin,
   analyticsGetDailyStatsAdmin,
@@ -9,7 +8,6 @@ import {
   analyticsGetMemberReliabilityWindowAdmin,
   analyticsGetReminderGroupClickRatesAdmin,
   analyticsGetTimeToChurnSamplesAdmin,
-  analyticsRecalculateActionStatsAdmin,
 } from "@alliance/shared/client";
 import { client } from "@alliance/shared/client/client.gen";
 import {
@@ -25,7 +23,7 @@ import {
 } from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import chroma from "chroma-js";
 import {
   area,
@@ -57,6 +55,7 @@ import {
 } from "../components/TimeSeriesChart";
 import { defaultInviteFunnelRange } from "../lib/defaultInviteFunnelRange";
 import { formatDateAsLocal } from "../lib/formatDateAsLocal";
+import { useActionStats } from "../lib/useActionStats";
 
 type ParsedDailyStats = DailyStatsDto & { parsedDate: Date };
 type ActionStatsWithWithdrawals = ActionStatsWithOnboardingDto & {
@@ -299,15 +298,11 @@ const fetchMemberReliabilityWindow = async (
 };
 
 const StatsPage: React.FC = () => {
-  const queryClient = useQueryClient();
   const defaultRange = useMemo(() => getDefaultRange(), []);
   const [startInput, setStartInput] = useState<string>(defaultRange.start);
   const [endInput, setEndInput] = useState<string>(defaultRange.end);
   const [queryRange, setQueryRange] = useState(defaultRange);
   const [stats, setStats] = useState<DailyStatsDto[]>([]);
-  const [actionStats, setActionStats] = useState<ActionStatsWithWithdrawals[]>(
-    [],
-  );
   const [aggregateStats, setAggregateStats] =
     useState<AggregateStatsDto | null>(null);
   const [aggregateStatsLoading, setAggregateStatsLoading] =
@@ -316,7 +311,6 @@ const StatsPage: React.FC = () => {
     MemberCompletionRetentionCohortDto[]
   >([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [actionStatsLoading, setActionStatsLoading] = useState<boolean>(false);
   const [retentionLoading, setRetentionLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [hoveredActionBar, setHoveredActionBar] =
@@ -452,17 +446,16 @@ const StatsPage: React.FC = () => {
     void loadStats(queryRange.start, queryRange.end);
   }, [loadStats, queryRange.end, queryRange.start]);
 
-  const loadActionStats = useCallback(async () => {
-    setActionStatsLoading(true);
-    try {
-      const response = await analyticsGetActionStatsAdmin();
-      setActionStats(response.data ?? []);
-    } catch (err) {
-      console.error("Failed to load action stats", err);
-    } finally {
-      setActionStatsLoading(false);
-    }
-  }, []);
+  const {
+    stats: {
+      data: actionStats = [],
+      isPending: actionStatsPending,
+      isError: actionStatsLoadFailed,
+    },
+    recalculate: recalculateActionStats,
+  } = useActionStats();
+  const actionStatsLoading =
+    actionStatsPending || recalculateActionStats.isPending;
 
   const {
     data: reminderGroupClickRatePoints = [],
@@ -584,25 +577,6 @@ const StatsPage: React.FC = () => {
     setMissedActionsRequested(true);
     void loadMissedActions();
   }, [loadMissedActions]);
-
-  const handleRecalculateActionStats = useCallback(async () => {
-    setActionStatsLoading(true);
-    try {
-      const actionStatsResponse = await analyticsRecalculateActionStatsAdmin();
-      setActionStats(actionStatsResponse.data ?? []);
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.actionCompletionCurvesAdminAll(),
-      });
-    } catch (err) {
-      console.error("Failed to recalculate action stats", err);
-    } finally {
-      setActionStatsLoading(false);
-    }
-  }, [queryClient]);
-
-  useEffect(() => {
-    void loadActionStats();
-  }, [loadActionStats]);
 
   useEffect(() => {
     void loadRetentionCohorts();
@@ -2389,7 +2363,7 @@ const StatsPage: React.FC = () => {
             Action Completion Stats
           </h3>
           <button
-            onClick={handleRecalculateActionStats}
+            onClick={() => recalculateActionStats.mutate()}
             disabled={actionStatsLoading}
             className="px-4 py-2 rounded-md text-sm bg-green text-white shadow hover:bg-green-2 disabled:opacity-50"
           >
@@ -2400,11 +2374,21 @@ const StatsPage: React.FC = () => {
           {actionStatsLoading && actionStats.length === 0 && (
             <p className="text-sm text-gray-600">Loading action stats...</p>
           )}
-          {!actionStatsLoading && actionStats.length === 0 && (
-            <p className="text-sm text-gray-600">
-              No action stats available. Click Recalculate to generate.
+          {actionStatsLoadFailed && (
+            <p className="text-sm text-red-600">Unable to load action stats.</p>
+          )}
+          {recalculateActionStats.isError && (
+            <p className="text-sm text-red-600">
+              Unable to recalculate action stats.
             </p>
           )}
+          {!actionStatsLoading &&
+            !actionStatsLoadFailed &&
+            actionStats.length === 0 && (
+              <p className="text-sm text-gray-600">
+                No action stats available. Click Recalculate to generate.
+              </p>
+            )}
           {actionBarsGeometry && chartActionStats.length > 0 && (
             <svg
               viewBox={`0 0 ${actionBarsGeometry.width} ${actionBarsGeometry.height}`}
