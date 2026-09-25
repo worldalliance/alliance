@@ -70,6 +70,7 @@ import React, {
 } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { ActionCategoryIcons } from "../components/ActionCategoryIcons";
+import ActionCohortDecisionsTab from "../components/ActionCohortDecisionsTab";
 import ActionCompletionCurveChart from "../components/ActionCompletionCurveChart";
 import ActionFollowUpFormsTab from "../components/ActionFollowUpFormsTab";
 import ActionForm, { type ReviewerRow } from "../components/ActionForm";
@@ -135,7 +136,8 @@ type Tab =
   | "form-variants"
   | "updates"
   | "follow-up-forms"
-  | "responses";
+  | "responses"
+  | "cohort-decisions";
 
 const imageUploadingMessage = "Wait for the cover image to finish uploading.";
 
@@ -811,6 +813,9 @@ const ActionDashboard: React.FC = () => {
       : []),
     { key: "follow-up-forms", label: "Follow-up Forms" },
     { key: "responses", label: "Responses" },
+    ...(action
+      ? [{ key: "cohort-decisions" as Tab, label: "Cohort Decisions" }]
+      : []),
   ];
 
   const availableTabs = tabData.map((tab) => tab.key);
@@ -1647,6 +1652,9 @@ const ActionDashboard: React.FC = () => {
                 actionId={action.id}
                 paramNamespace="resp"
               />
+            )}
+            {activeTab === "cohort-decisions" && action && (
+              <ActionCohortDecisionsTab actionId={action.id} />
             )}
           </div>
         </div>

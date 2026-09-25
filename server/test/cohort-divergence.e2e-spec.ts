@@ -4,10 +4,8 @@ import type { Repository } from "typeorm";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
 import { CohortDivergenceService } from "../src/actions/cohort-divergence.service";
 import { ActionActivity } from "../src/actions/entities/action-activity.entity";
-import {
-  ActionCohortDecision,
-  CohortDecisionReason,
-} from "../src/actions/entities/action-cohort-decision.entity";
+import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
+import { CohortDecisionReason } from "../src/actions/entities/cohort-decision-reason";
 import { TasksModule } from "../src/tasks/tasks.module";
 import { User } from "../src/user/entities/user.entity";
 import {
@@ -145,7 +143,10 @@ describe("CohortDivergenceService.logDivergences (e2e)", () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
-  it("ignores resolved-after-deadline exclusions", async () => {
+  it.each([
+    CohortDecisionReason.ResolvedAfterDeadline,
+    CohortDecisionReason.StaffCorrection,
+  ])("ignores %s exclusions", async (reason) => {
     const member = await createUser({ signedAt });
     const action = await createAction({
       start: addDays(now, -3),
@@ -155,7 +156,7 @@ describe("CohortDivergenceService.logDivergences (e2e)", () => {
       actionId: action.id,
       userId: member.id,
       included: false,
-      reason: CohortDecisionReason.ResolvedAfterDeadline,
+      reason,
       resolvedAt: now,
     });
 

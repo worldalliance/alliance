@@ -9,10 +9,8 @@ import { In, Not, type Repository } from "typeorm";
 import { formatIdSample } from "./cohort-decision";
 import { CohortDecisionService } from "./cohort-decision.service";
 import { collectCohortDependencies } from "./cohort-expression.evaluator";
-import {
-  ActionCohortDecision,
-  CohortDecisionReason,
-} from "./entities/action-cohort-decision.entity";
+import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
+import { CohortDecisionReason } from "./entities/cohort-decision-reason";
 
 @Injectable()
 export class CohortDivergenceService {
@@ -38,7 +36,12 @@ export class CohortDivergenceService {
     const rows = await this.decisionRepository.find({
       where: {
         actionId: In(actions.map(({ action }) => action.id)),
-        reason: Not(CohortDecisionReason.ResolvedAfterDeadline),
+        reason: Not(
+          In([
+            CohortDecisionReason.ResolvedAfterDeadline,
+            CohortDecisionReason.StaffCorrection,
+          ]),
+        ),
       },
       select: { actionId: true, userId: true, included: true },
     });

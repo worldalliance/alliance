@@ -3,11 +3,9 @@ import request from "supertest";
 import type { Repository } from "typeorm";
 import { ActionsService } from "../src/actions/actions.service";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
-import {
-  ActionCohortDecision,
-  CohortDecisionReason,
-} from "../src/actions/entities/action-cohort-decision.entity";
+import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
 import { Action } from "../src/actions/entities/action.entity";
+import { CohortDecisionReason } from "../src/actions/entities/cohort-decision-reason";
 import { ActionEventRecipientService } from "../src/notifs/action-event-recipient.service";
 import { TasksModule } from "../src/tasks/tasks.module";
 import {

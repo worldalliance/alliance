@@ -18,15 +18,14 @@ import {
   type CohortEnrollment,
 } from "./cohort-decision";
 import { logCohortPathDisagreements } from "./cohort-path-disagreements";
-import {
-  ActionCohortDecision,
-  CohortDecisionReason,
-} from "./entities/action-cohort-decision.entity";
+import { ActionCohortDecisionCorrection } from "./entities/action-cohort-decision-correction.entity";
+import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import {
   Action,
   parseAction,
   type ParsedAction,
 } from "./entities/action.entity";
+import { CohortDecisionReason } from "./entities/cohort-decision-reason";
 
 /**
  * How long after its deadline a regular action stays in the catch-up pass.
@@ -100,6 +99,8 @@ export class CohortDecisionService {
     private readonly actionRepository: Repository<Action>,
     @InjectRepository(ActionCohortDecision)
     private readonly decisionRepository: Repository<ActionCohortDecision>,
+    @InjectRepository(ActionCohortDecisionCorrection)
+    private readonly correctionRepository: Repository<ActionCohortDecisionCorrection>,
     private readonly actionEventRecipientService: ActionEventRecipientService,
     private readonly userService: UserService,
     private readonly actionsService: ActionsService,
@@ -327,16 +328,33 @@ export class CohortDecisionService {
     return rows;
   }
 
-  /** When the resolver first ran: its earliest ordinary decision. */
+  /**
+   * When the resolver first ran: its earliest ordinary decision, counting one
+   * staff have since corrected.
+   */
   private async findCutover(): Promise<Date | null> {
-    const first = await this.decisionRepository.findOne({
-      where: {
-        reason: In([CohortDecisionReason.Launch, CohortDecisionReason.Signing]),
-      },
-      order: { resolvedAt: "ASC" },
-      select: { resolvedAt: true },
-    });
-    return first?.resolvedAt ?? null;
+    const ordinary = In([
+      CohortDecisionReason.Launch,
+      CohortDecisionReason.Signing,
+    ]);
+    const [decision, correction] = await Promise.all([
+      this.decisionRepository.findOne({
+        where: { reason: ordinary },
+        order: { resolvedAt: "ASC" },
+        select: { resolvedAt: true },
+      }),
+      this.correctionRepository.findOne({
+        where: { previousReason: ordinary },
+        order: { previousResolvedAt: "ASC" },
+        select: { previousResolvedAt: true },
+      }),
+    ]);
+    const times = [decision?.resolvedAt, correction?.previousResolvedAt].filter(
+      (time) => time !== undefined,
+    );
+    return times.length === 0
+      ? null
+      : new Date(Math.min(...times.map((time) => time.getTime())));
   }
 
   /** Decide a member who just became admissible by signing. */

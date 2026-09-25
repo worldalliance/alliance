@@ -3263,6 +3263,34 @@ export type TimelineFeedItemDto = {
     actionEvent?: ActionEventDto;
 };
 
+export type CohortDecisionReason = 'launch' | 'signing' | 'resolved_after_deadline' | 'backfill' | 'staff_correction';
+
+export type CohortDecisionCorrectionDto = {
+    previousIncluded: boolean;
+    previousReason: CohortDecisionReason;
+    previousResolvedAt: string;
+    note: string;
+    correctedAt: string;
+    correctedByName: string | null;
+};
+
+export type CohortDecisionDto = {
+    userId: number;
+    included: boolean;
+    reason: CohortDecisionReason;
+    resolvedAt: string;
+    userName: string;
+    corrections: Array<CohortDecisionCorrectionDto>;
+};
+
+export type CorrectCohortDecisionDto = {
+    included: boolean;
+    /**
+     * Why staff are correcting the decision
+     */
+    note: string;
+};
+
 export type ProjectStepDto = {
     actionId: number;
     actionName: string;
@@ -10767,6 +10795,55 @@ export type ActionsGetTimelineFeedResponses = {
 };
 
 export type ActionsGetTimelineFeedResponse = ActionsGetTimelineFeedResponses[keyof ActionsGetTimelineFeedResponses];
+
+export type CohortDecisionsListForActionAdminData = {
+    body?: never;
+    path: {
+        actionId: number;
+    };
+    query?: never;
+    url: '/cohort-decisions/action/{actionId}';
+};
+
+export type CohortDecisionsListForActionAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type CohortDecisionsListForActionAdminError = CohortDecisionsListForActionAdminErrors[keyof CohortDecisionsListForActionAdminErrors];
+
+export type CohortDecisionsListForActionAdminResponses = {
+    200: Array<CohortDecisionDto>;
+};
+
+export type CohortDecisionsListForActionAdminResponse = CohortDecisionsListForActionAdminResponses[keyof CohortDecisionsListForActionAdminResponses];
+
+export type CohortDecisionsCorrectAdminData = {
+    body: CorrectCohortDecisionDto;
+    path: {
+        actionId: number;
+        userId: number;
+    };
+    query?: never;
+    url: '/cohort-decisions/action/{actionId}/user/{userId}/correction';
+};
+
+export type CohortDecisionsCorrectAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type CohortDecisionsCorrectAdminError = CohortDecisionsCorrectAdminErrors[keyof CohortDecisionsCorrectAdminErrors];
+
+export type CohortDecisionsCorrectAdminResponses = {
+    200: CohortDecisionDto;
+};
+
+export type CohortDecisionsCorrectAdminResponse = CohortDecisionsCorrectAdminResponses[keyof CohortDecisionsCorrectAdminResponses];
 
 export type ProjectsFindAllAdminData = {
     body?: never;
