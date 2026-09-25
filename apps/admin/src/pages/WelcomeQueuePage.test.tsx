@@ -1,60 +1,69 @@
 import type { WelcomeQueueDto } from "@alliance/shared/client";
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as config from "@alliance/sharedweb/lib/config";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import WelcomeQueuePage from "./WelcomeQueuePage";
 
 afterEach(cleanup);
 
+const renderPage = (query = queryWrapper()) =>
+  render(
+    <MemoryRouter>
+      <WelcomeQueuePage />
+    </MemoryRouter>,
+    query,
+  );
+
 beforeEach(() => {
   jest.spyOn(config, "getBaseUrl").mockReturnValue("http://localhost:5573");
 });
 
-describe("onboarding welcome queue", () => {
-  const queue: WelcomeQueueDto = {
-    requiredActionCount: 2,
-    members: [
-      {
-        user: {
-          id: 2,
-          displayName: "Second member",
-          admin: false,
-          staff: false,
-          ambassador: false,
-          profilePicture: null,
-          profileDescription: null,
-          anonymous: false,
-          hasActiveContract: false,
-          isCommunityLeader: false,
-        },
-        actionId: 42,
-        activityId: 102,
-        completedAt: "2026-01-01T00:00:00.000Z",
-        staffLikeCount: 1,
+const queue: WelcomeQueueDto = {
+  requiredActionCount: 2,
+  members: [
+    {
+      user: {
+        id: 2,
+        displayName: "Second member",
+        admin: false,
+        staff: false,
+        ambassador: false,
+        profilePicture: null,
+        profileDescription: null,
+        anonymous: false,
+        hasActiveContract: false,
+        isCommunityLeader: false,
       },
-      {
-        user: {
-          id: 1,
-          displayName: "First member",
-          admin: false,
-          staff: false,
-          ambassador: false,
-          profilePicture: null,
-          profileDescription: null,
-          anonymous: false,
-          hasActiveContract: false,
-          isCommunityLeader: false,
-        },
-        actionId: 43,
-        activityId: 101,
-        completedAt: "2026-01-02T00:00:00.000Z",
-        staffLikeCount: 0,
+      actionId: 42,
+      activityId: 102,
+      completedAt: "2026-01-01T00:00:00.000Z",
+      staffLikeCount: 1,
+    },
+    {
+      user: {
+        id: 1,
+        displayName: "First member",
+        admin: false,
+        staff: false,
+        ambassador: false,
+        profilePicture: null,
+        profileDescription: null,
+        anonymous: false,
+        hasActiveContract: false,
+        isCommunityLeader: false,
       },
-    ],
-  };
+      actionId: 43,
+      activityId: 101,
+      completedAt: "2026-01-02T00:00:00.000Z",
+      staffLikeCount: 0,
+    },
+  ],
+};
 
+describe("onboarding welcome queue", () => {
   serveApi(
     routes({
       "GET /actions/welcome-queue": () => Response.json(queue),
@@ -62,11 +71,7 @@ describe("onboarding welcome queue", () => {
   );
 
   it("links each member's completion and preserves the server's order", async () => {
-    render(
-      <MemoryRouter>
-        <WelcomeQueuePage />
-      </MemoryRouter>,
-    );
+    renderPage();
 
     const links = await screen.findAllByRole("link", {
       name: "Leave welcome comment",
@@ -93,11 +98,7 @@ describe("empty welcome queue", () => {
   );
 
   it("shows an empty queue", async () => {
-    render(
-      <MemoryRouter>
-        <WelcomeQueuePage />
-      </MemoryRouter>,
-    );
+    renderPage();
     expect(await screen.findByText("0 members need a welcome")).toBeTruthy();
     expect(screen.getByText("No completions match this filter.")).toBeTruthy();
   });
@@ -112,11 +113,7 @@ describe("unconfigured welcome queue", () => {
   );
 
   it("explains missing onboarding tasks without claiming nobody needs a welcome", async () => {
-    render(
-      <MemoryRouter>
-        <WelcomeQueuePage />
-      </MemoryRouter>,
-    );
+    renderPage();
     expect(
       await screen.findByText(
         "No active required onboarding tasks are configured.",
@@ -145,11 +142,7 @@ for (const status of [401, 500, 503]) {
     );
 
     it("shows a useful error without rendering the queue", async () => {
-      render(
-        <MemoryRouter>
-          <WelcomeQueuePage />
-        </MemoryRouter>,
-      );
+      renderPage();
       expect(
         await screen.findByText(
           status === 401
@@ -161,3 +154,47 @@ for (const status of [401, 500, 503]) {
     });
   });
 }
+
+describe("welcome queue unreachable", () => {
+  serveApi(
+    routes({
+      "GET /actions/welcome-queue": () => {
+        throw new TypeError("Failed to fetch");
+      },
+    }),
+  );
+
+  it("shows the fallback without rendering the queue", async () => {
+    renderPage();
+    expect(
+      await screen.findByText("Unable to load members who need welcomes."),
+    ).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+  });
+});
+
+describe("welcome queue refetch failure", () => {
+  let status = 200;
+  serveApi(
+    routes({
+      "GET /actions/welcome-queue": () =>
+        status === 200
+          ? Response.json(queue)
+          : Response.json({ statusCode: status }, { status }),
+    }),
+  );
+
+  it("keeps the loaded queue beside the error", async () => {
+    const query = queryWrapper();
+    renderPage(query);
+    await screen.findByRole("link", { name: "Second member" });
+
+    status = 500;
+    await act(() => query.client.refetchQueries());
+
+    expect(
+      await screen.findByText("Unable to load members who need welcomes."),
+    ).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Second member" })).toBeTruthy();
+  });
+});

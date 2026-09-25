@@ -78,6 +78,7 @@ export const queryKeys = {
   timeSpentPerUserTotalAdmin: () =>
     ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
   usersAdmin: () => ["userListAdmin"] as const,
+  welcomeQueueAdmin: () => ["actionsGetWelcomeQueueAdmin"] as const,
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as const satisfies Record<string, (...args: any[]) => readonly unknown[]>;

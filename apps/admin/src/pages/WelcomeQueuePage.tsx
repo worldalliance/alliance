@@ -1,10 +1,11 @@
-import { refusalMessage } from "@alliance/common/errorMessage";
 import { pickForCount, withCount } from "@alliance/common/plural";
 import { actionsGetWelcomeQueueAdmin } from "@alliance/shared/client";
-import type { WelcomeQueueDto } from "@alliance/shared/client/types.gen";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import React, { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 
@@ -28,37 +29,23 @@ const frontendActivityCommentsUrl = (params: {
 const loadFailed = "Unable to load members who need welcomes.";
 
 const WelcomeQueuePage: React.FC = () => {
-  const [queue, setQueue] = useState<WelcomeQueueDto | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<WelcomeQueueFilter>("all");
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    actionsGetWelcomeQueueAdmin()
-      .then((response) => {
-        if (!response.data) {
-          setError(
-            refusalMessage({
-              status: response.response.status,
-              error: response.error,
-              fallback: loadFailed,
-              sessionExpired: sessionExpiredMessage,
-            }),
-          );
-          return;
-        }
-        setQueue(response.data);
+  const {
+    data: queue,
+    isPending: loading,
+    error: loadError,
+  } = useQuery({
+    queryKey: queryKeys.welcomeQueueAdmin(),
+    queryFn: () =>
+      actionsGetWelcomeQueueAdmin({ throwOnError: true }).then((r) => r.data),
+  });
+  const error = loadError
+    ? thrownRefusalMessage({
+        error: loadError,
+        fallback: loadFailed,
+        sessionExpired: sessionExpiredMessage,
       })
-      .catch((err: unknown) => {
-        console.error("Failed to load welcome queue", err);
-        setError(loadFailed);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
+    : null;
 
   const members = useMemo(() => queue?.members ?? [], [queue]);
 
@@ -95,9 +82,8 @@ const WelcomeQueuePage: React.FC = () => {
         </p>
       </div>
 
-      {error ? (
-        <p className="text-sm text-red-500">{error}</p>
-      ) : queue?.requiredActionCount === 0 ? (
+      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && !queue ? null : queue?.requiredActionCount === 0 ? (
         <p className="text-sm text-zinc-600">
           No active required onboarding tasks are configured.
         </p>
