@@ -38,6 +38,10 @@ import {
   UserAwayRangeDto,
   UserAwayRangeReason,
 } from "@alliance/shared/client/types.gen";
+import {
+  AWAY_REASON_OPTIONS,
+  formatAwayReason,
+} from "@alliance/shared/lib/awayRangesFormatters";
 import { getMemberCount } from "@alliance/shared/lib/communityUtils";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -70,18 +74,6 @@ import CreateActivityControls from "../components/CreateActivityControls";
 import DeleteAccountModal from "../components/DeleteAccountModal";
 import { useAuth } from "../lib/AuthContext";
 import { getApiUrl } from "../lib/config";
-
-const AWAY_REASON_OPTIONS = [
-  { value: "vacation", label: "Vacation" },
-  { value: "emergency", label: "Emergency" },
-  { value: "other", label: "Other" },
-] satisfies Array<{ value: UserAwayRangeReason; label: string }>;
-
-const AWAY_REASON_LABELS = {
-  vacation: "Vacation",
-  emergency: "Emergency",
-  other: "Other",
-} satisfies Record<UserAwayRangeReason, string>;
 
 export async function clientLoader({ params }: Route.LoaderArgs) {
   const userIdParam = params.userId;
@@ -1916,10 +1908,6 @@ function formatAwayRange(range: UserAwayRangeDto) {
   return `${formatAwayDate(range.startDate)} to ${formatAwayDate(
     range.endDate,
   )}`;
-}
-
-function formatAwayReason(reason: UserAwayRangeDto["reason"]) {
-  return AWAY_REASON_LABELS[reason];
 }
 
 function awayRangeStatus(range: UserAwayRangeDto): AwayRangeStatus {

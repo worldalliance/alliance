@@ -1,5 +1,9 @@
 import { errorMessage } from "@alliance/common/errorMessage";
 import { UserAwayRangeDto, UserAwayRangeReason } from "@alliance/shared/client";
+import {
+  AWAY_REASON_OPTIONS,
+  formatAwayReason,
+} from "@alliance/shared/lib/awayRangesFormatters";
 import { awayRangesDescription } from "@alliance/shared/lib/copy";
 import { useMyAwayRanges } from "@alliance/shared/lib/useMyAwayRanges";
 import { cn } from "@alliance/shared/styles/util";
@@ -16,25 +20,6 @@ import { colors } from "../lib/style/colors";
 import BottomSheetOptionPicker from "./BottomSheetOptionPicker";
 import Button, { ButtonColor } from "./system/Button";
 import Text, { FontWeight } from "./system/Text";
-
-const REASON_OPTIONS: { value: UserAwayRangeReason; label: string }[] = [
-  { value: "vacation", label: "Vacation" },
-  { value: "emergency", label: "Emergency" },
-  { value: "other", label: "Other" },
-];
-
-function reasonDisplayName(reason: UserAwayRangeReason): string {
-  switch (reason) {
-    case "vacation":
-      return "Vacation";
-    case "emergency":
-      return "Emergency";
-    case "other":
-      return "Other";
-    default:
-      return reason;
-  }
-}
 
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString(undefined, {
@@ -189,7 +174,7 @@ export default function AwayRangesSection() {
                     {formatDate(range.startDate)} → {formatDate(range.endDate)}
                   </Text>
                   <Text className="text-sm text-zinc-600 mt-1">
-                    {reasonDisplayName(range.reason)}
+                    {formatAwayReason(range.reason)}
                     {range.note && `: ${range.note}`}
                   </Text>
                 </View>
@@ -264,7 +249,7 @@ export default function AwayRangesSection() {
                 )}
               >
                 {selectedReason
-                  ? reasonDisplayName(selectedReason)
+                  ? formatAwayReason(selectedReason)
                   : "Select a reason"}
               </Text>
               <ChevronDown size={18} color={colors.text.icon} />
@@ -315,7 +300,7 @@ export default function AwayRangesSection() {
         visible={reasonModalOpen}
         onClose={() => setReasonModalOpen(false)}
         title="Select Reason"
-        options={REASON_OPTIONS}
+        options={AWAY_REASON_OPTIONS}
         value={selectedReason}
         onSelect={setSelectedReason}
       />
