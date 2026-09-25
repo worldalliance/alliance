@@ -1,7 +1,6 @@
 import { appendQueryParam, isValidHttpUrl } from "@alliance/common/url";
 import {
   externalShareTargetsCreateAdmin,
-  externalShareTargetsFindAllAdmin,
   externalShareTargetsRemoveAdmin,
   externalShareTargetsUpdateAdmin,
 } from "@alliance/shared/client";
@@ -13,12 +12,15 @@ import {
   thrownRefusalMessage,
   thrownStatus,
 } from "@alliance/shared/lib/hey-api";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useEffect, useState } from "react";
+import {
+  externalShareTargetsLoadError,
+  externalShareTargetsQuery,
+} from "../lib/externalShareTargetsQuery";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 
 const INITIAL_NEW_TARGET: CreateExternalShareTargetDto = {
@@ -35,20 +37,10 @@ const withoutId = (ids: Set<number>, id: number) => {
 
 const ExternalShareTargetsPage: React.FC = () => {
   const queryClient = useQueryClient();
-  const list = useQuery({
-    queryKey: queryKeys.externalShareTargetsAdmin(),
-    queryFn: () =>
-      externalShareTargetsFindAllAdmin({ throwOnError: true }).then(
-        (r) => r.data,
-      ),
-  });
+  const list = useQuery(externalShareTargetsQuery);
   const targets = list.data ?? [];
   const loadError = list.isError
-    ? thrownRefusalMessage({
-        error: list.error,
-        fallback: "Failed to load share targets.",
-        sessionExpired: sessionExpiredMessage,
-      })
+    ? externalShareTargetsLoadError(list.error)
     : null;
   const [error, setError] = useState<string | null>(null);
   const [newTarget, setNewTarget] =
@@ -59,7 +51,7 @@ const ExternalShareTargetsPage: React.FC = () => {
   const setTargets = async (
     update: (prev: ExternalShareTargetDto[]) => ExternalShareTargetDto[],
   ) => {
-    const queryKey = queryKeys.externalShareTargetsAdmin();
+    const { queryKey } = externalShareTargetsQuery;
     // A fetch started before the write would land the old list over it.
     await queryClient.cancelQueries({ queryKey });
     // With no list to patch (the first load was cancelled or failed), a fresh
@@ -68,10 +60,7 @@ const ExternalShareTargetsPage: React.FC = () => {
       await queryClient.refetchQueries({ queryKey });
       return;
     }
-    queryClient.setQueryData<ExternalShareTargetDto[]>(
-      queryKey,
-      (prev) => prev && update(prev),
-    );
+    queryClient.setQueryData(queryKey, (prev) => prev && update(prev));
   };
 
   const reportError = (err: unknown, fallback: string) => {
