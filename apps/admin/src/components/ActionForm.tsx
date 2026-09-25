@@ -21,6 +21,7 @@ import { ActionCategoryPicker } from "./ActionCategoryIcons";
 import CohortExpressionBuilder from "./CohortExpressionBuilder";
 import FormSection from "./FormSection";
 import FormTextarea from "./FormTextarea";
+import PrerequisitePicker from "./PrerequisitePicker";
 
 interface ActionFormProps {
   form: CreateActionDto;
@@ -51,6 +52,7 @@ interface ActionFormProps {
   onboarding?: boolean;
   cohortExpression: CohortExpression | null | undefined;
   onCohortExpressionChange: (expr: CohortExpression | null) => void;
+  onPrerequisitesChange: (ids: number[]) => void;
   authorIds: number[];
   onAuthorsChange: (ids: number[]) => void;
   onCategoryChange: (categories: ActionCategory[]) => void;
@@ -123,11 +125,13 @@ const ActionForm: React.FC<ActionFormProps> = ({
   onboarding = false,
   cohortExpression,
   onCohortExpressionChange,
+  onPrerequisitesChange,
   authorIds,
   onAuthorsChange,
   onCategoryChange,
   reviewers,
   onReviewersChange,
+  actionId,
   allActions = [],
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -756,6 +760,18 @@ const ActionForm: React.FC<ActionFormProps> = ({
           </div>
           {renderFieldsWithGrid(settingsFields)}
         </div>
+      </FormSection>
+
+      <FormSection
+        title="Prerequisites"
+        description="Each member waits until every prerequisite resolves for them (they complete or withdraw, it excludes them, or its deadline passes) before the conditions below decide whether they participate."
+      >
+        <PrerequisitePicker
+          value={form.prerequisiteActionIds ?? []}
+          onChange={onPrerequisitesChange}
+          availableActions={allActions}
+          actionId={actionId}
+        />
       </FormSection>
 
       {/* TARGETING SECTION */}

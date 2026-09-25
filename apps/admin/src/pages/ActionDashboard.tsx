@@ -677,6 +677,10 @@ const ActionDashboard: React.FC = () => {
     [],
   );
 
+  const handlePrerequisitesChange = useCallback((ids: number[]) => {
+    setForm((prev) => ({ ...prev, prerequisiteActionIds: ids }));
+  }, []);
+
   const handleAuthorsChange = useCallback((ids: number[]) => {
     setForm((prev) => ({
       ...prev,
@@ -1033,6 +1037,7 @@ const ActionDashboard: React.FC = () => {
             onboarding={form.onboarding ?? false}
             cohortExpression={cohortExpression}
             onCohortExpressionChange={handleCohortExpressionChange}
+            onPrerequisitesChange={handlePrerequisitesChange}
             authorIds={form.authorIds ?? []}
             onAuthorsChange={handleAuthorsChange}
             onCategoryChange={handleCategoryChange}
@@ -1606,6 +1611,7 @@ const ActionDashboard: React.FC = () => {
                   onboarding={form.onboarding ?? false}
                   cohortExpression={cohortExpression}
                   onCohortExpressionChange={handleCohortExpressionChange}
+                  onPrerequisitesChange={handlePrerequisitesChange}
                   authorIds={form.authorIds ?? []}
                   onAuthorsChange={handleAuthorsChange}
                   onCategoryChange={handleCategoryChange}
