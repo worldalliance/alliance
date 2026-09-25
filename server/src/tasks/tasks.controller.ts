@@ -369,7 +369,7 @@ export class TasksController {
   @ApiResponse({
     status: 409,
     description:
-      "Another form's current version has a variable reading this form's answers.",
+      "Another form's current version has a variable or options formula reading this form's answers.",
   })
   async deleteFormAdmin(@Param("id", ParseIntPipe) id: number): Promise<void> {
     return this.tasksService.deleteForm(id);

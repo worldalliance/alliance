@@ -19,7 +19,7 @@ import {
   type ExprNode,
   type ExprValue,
 } from "./variable-expression";
-import type { OptionsFormula } from "./variables";
+import { variableSourceFormIds, type OptionsFormula } from "./variables";
 
 export type ChoiceOption = { label: string; value: string };
 
@@ -55,6 +55,16 @@ export function collectOptionsFormulaFields(
       );
     },
   );
+}
+
+/** Every form a variable or options formula reads, ascending. */
+export function formulaSourceFormIds(schema: FormSchema): number[] {
+  return variableSourceFormIds([
+    ...(schema.variables ?? []),
+    ...collectOptionsFormulaFields(schema).map(
+      ({ field }) => field.optionsFormula,
+    ),
+  ]);
 }
 
 function dependencies(

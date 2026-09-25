@@ -153,8 +153,8 @@ import {
 } from "./variable-aggregates";
 import {
   findFormsReadingForm,
-  loadVariableSourceForms,
-} from "./variable-source-forms";
+  loadFormulaSourceForms,
+} from "./formula-source-forms";
 
 /**
  * Validator verdicts arrive from HTTP as arbitrary JSON — class-validator
@@ -335,7 +335,7 @@ export class TasksService {
     }
     const errors = validateFormSchema(parsed.data, {
       formId,
-      sourceForms: await loadVariableSourceForms({
+      sourceForms: await loadFormulaSourceForms({
         formRepository: this.formRepository,
         schema: parsed.data,
       }),
@@ -1407,7 +1407,7 @@ export class TasksService {
         .map((reader) => `"${reader.title || "Untitled"}" (#${reader.id})`)
         .join(", ");
       throw new ConflictException(
-        `Variables in ${names} read this form's answers. Change them to stop reading it, then delete it`,
+        `Variables or options formulas in ${names} read this form's answers. Change them to stop reading it, then delete it`,
       );
     }
     await this.formRepository.remove(form);

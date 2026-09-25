@@ -9,7 +9,7 @@ import {
   type SelectField,
 } from "./form-schema";
 import { validateFormSchema } from "./form-schema-validate";
-import { readOptionsResult } from "./formula-options";
+import { formulaSourceFormIds, readOptionsResult } from "./formula-options";
 import type { VariableInput } from "./variable-inputs";
 
 const SOURCE = 7;
@@ -116,6 +116,20 @@ describe("readOptionsResult", () => {
 });
 
 describe("options formula schema", () => {
+  it("lists the forms options formulas read beside the variables'", () => {
+    const schema: FormSchema = {
+      ...schemaOf([formulaSelect("pick", { input1: sourceColors }, LATEST)]),
+      variables: [
+        {
+          name: "v",
+          inputs: { input1: { ...sourceColors, sourceFormId: OTHER_SOURCE } },
+          formula: "1",
+        },
+      ],
+    };
+    expect(formulaSourceFormIds(schema)).toEqual([SOURCE, OTHER_SOURCE]);
+  });
+
   it.each([
     ["fixed options", { options: [choice("a")] }],
     ["categories", { categories: [{ id: "c", name: "C" }] }],
