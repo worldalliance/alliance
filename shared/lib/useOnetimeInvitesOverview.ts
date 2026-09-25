@@ -1,14 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
-  OnetimeInviteDto,
-  userApproveOnetimeInvite,
-  userDeleteOnetimeInvite,
   userGetOnetimeInvitesOverview,
-  userRejectOnetimeInvite,
   userUpdateOnetimeInvite,
 } from "../client";
 import { queryKeys } from "./queryKeys";
+import { useOnetimeInviteCache } from "./useOnetimeInviteCache";
 
 const QUERY_KEY = queryKeys.onetimeInvitesOverview();
 
@@ -37,44 +34,7 @@ export function useOnetimeInvitesOverview(params?: { enabled?: boolean }) {
     await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
   }, [queryClient]);
 
-  const upsertInvite = useCallback(
-    (invite: OnetimeInviteDto) => {
-      queryClient.setQueryData<OnetimeInviteDto[]>(QUERY_KEY, (old) => {
-        if (old?.some((existing) => existing.id === invite.id)) {
-          return old.map((existing) =>
-            existing.id === invite.id ? invite : existing,
-          );
-        }
-        return [invite, ...(old ?? [])];
-      });
-    },
-    [queryClient],
-  );
-
-  const removeInvite = useCallback(
-    (inviteId: number) => {
-      queryClient.setQueryData<OnetimeInviteDto[]>(QUERY_KEY, (old) =>
-        old ? old.filter((invite) => invite.id !== inviteId) : [],
-      );
-    },
-    [queryClient],
-  );
-
-  const approveMutation = useMutation({
-    mutationFn: (inviteId: number) =>
-      userApproveOnetimeInvite({ path: { inviteId }, throwOnError: true }).then(
-        (r) => r.data,
-      ),
-    onSuccess: (invite) => upsertInvite(invite),
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: async (inviteId: number) => {
-      await userRejectOnetimeInvite({ path: { inviteId }, throwOnError: true });
-      return inviteId;
-    },
-    onSuccess: (inviteId) => removeInvite(inviteId),
-  });
+  const cache = useOnetimeInviteCache(QUERY_KEY);
 
   const updateMutation = useMutation({
     /** Each field is left alone when omitted; `communityId: null` clears the group. */
@@ -90,15 +50,7 @@ export function useOnetimeInvitesOverview(params?: { enabled?: boolean }) {
         throwOnError: true,
       }).then((r) => r.data);
     },
-    onSuccess: (invite) => upsertInvite(invite),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (inviteId: number) => {
-      await userDeleteOnetimeInvite({ path: { inviteId }, throwOnError: true });
-      return inviteId;
-    },
-    onSuccess: (inviteId) => removeInvite(inviteId),
+    onSuccess: (invite) => cache.upsertInvite(invite),
   });
 
   return {
@@ -108,12 +60,8 @@ export function useOnetimeInvitesOverview(params?: { enabled?: boolean }) {
     isError,
     refetch,
     refresh,
-    upsertInvite,
-    removeInvite,
-    approveInvite: approveMutation.mutateAsync,
+    ...cache,
     updateInvite: updateMutation.mutateAsync,
     isUpdatingInvite: updateMutation.isPending,
-    rejectInvite: rejectMutation.mutateAsync,
-    deleteInvite: deleteMutation.mutateAsync,
   };
 }
