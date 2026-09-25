@@ -260,12 +260,11 @@ export class AuthController {
     @Query() query: TokenModeQuery,
     @Res({ passthrough: true }) res: Response,
   ): Promise<RefreshTokensResponseDto> {
-    const mode: TokenMode =
-      query.mode === TokenMode.Header
-        ? TokenMode.Header
-        : extractRefreshTokenFromCookie(req)
-          ? TokenMode.Cookie
-          : TokenMode.Header;
+    const mode =
+      query.mode ??
+      (extractRefreshTokenFromCookie(req)
+        ? TokenMode.Cookie
+        : TokenMode.Header);
     this.clearHeaderModeCookies(res, mode);
     const userId: number = req.user.sub;
     const isImpersonation = req.user.isImpersonation ?? false;
