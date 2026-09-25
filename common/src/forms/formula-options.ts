@@ -5,6 +5,8 @@ import {
   asCards,
   collectVariableResolutionFields,
   isListRow,
+  isQuestionField,
+  mapPageItems,
   variableInputFieldsById,
   type AnyField,
   type FormSchema,
@@ -215,19 +217,73 @@ export function evaluateOptionsFormula(
   );
 }
 
+function mapFormulaFields<T extends AnyField | ListSubField>(
+  field: T,
+  map: (field: FormulaChoiceField) => ChoiceField,
+): T {
+  if (isFormulaChoiceField(field)) return { ...field, ...map(field) };
+  if (field.kind !== "list") return field;
+  const fields = field.fields.map((sub) => mapFormulaFields(sub, map));
+  return fields.every((sub, index) => sub === field.fields[index])
+    ? field
+    : { ...field, fields };
+}
+
+function mapSchemaFormulaFields(
+  schema: FormSchema,
+  map: (field: FormulaChoiceField) => ChoiceField,
+): FormSchema {
+  return {
+    ...schema,
+    pages: schema.pages.map((page) => ({
+      ...page,
+      fields: mapPageItems(page.fields, (item) =>
+        isQuestionField(item) ? mapFormulaFields(item, map) : item,
+      ),
+    })),
+  };
+}
+
+const resolvedOptionsField =
+  (options: ResolvedOptions) =>
+  (field: FormulaChoiceField): ChoiceField => ({
+    ...field,
+    options: [...(options.get(field.id) ?? [])],
+  });
+
 /** A choice field reading a formula gets `options`'s; other fields are kept. */
 export function withResolvedOptions<T extends AnyField | ListSubField>(
   field: T,
   options: ResolvedOptions,
 ): T {
-  if (isFormulaChoiceField(field)) {
-    return { ...field, options: [...(options.get(field.id) ?? [])] };
-  }
-  if (field.kind !== "list") return field;
-  const fields = field.fields.map((sub) => withResolvedOptions(sub, options));
-  return fields.every((sub, index) => sub === field.fields[index])
-    ? field
-    : { ...field, fields };
+  return mapFormulaFields(field, resolvedOptionsField(options));
+}
+
+export function schemaWithResolvedOptions(
+  schema: FormSchema,
+  options: ResolvedOptions,
+): FormSchema {
+  return mapSchemaFormulaFields(schema, resolvedOptionsField(options));
+}
+
+const savedChoicesField =
+  (choices: FormulaChoices) =>
+  (field: FormulaChoiceField): ChoiceField => ({
+    ...field,
+    options: choices[field.id] ?? [],
+    optionsFormula: undefined,
+  });
+
+/**
+ * A saved response's form, each options formula replaced by fixed options
+ * holding the choices the response saved, so it reads without the formula's
+ * inputs.
+ */
+export function schemaWithSavedChoices(
+  schema: FormSchema,
+  choices: FormulaChoices,
+): FormSchema {
+  return mapSchemaFormulaFields(schema, savedChoicesField(choices));
 }
 
 const REMOVE = Symbol("remove");

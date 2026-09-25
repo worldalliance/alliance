@@ -15,6 +15,8 @@ import {
   formulaSourceFormIds,
   readOptionsResult,
   resolveFormulaOptions,
+  schemaWithResolvedOptions,
+  schemaWithSavedChoices,
   selectedFormulaChoices,
   selectsFormulaChoice,
 } from "./formula-options";
@@ -423,6 +425,19 @@ describe("list sub-fields with an options formula", () => {
       cell: [choice("green", "Green"), choice("red", "Red")],
     });
   });
+
+  it("puts resolved options on the sub-field", () => {
+    const resolved = schemaWithResolvedOptions(
+      schemaOf([list]),
+      new Map([["cell", [choice("red")]]]),
+    );
+    const field = resolved.pages[0].fields[0];
+    expect(
+      field.type === "input" && field.kind === "list" && field.fields[0],
+    ).toMatchObject({
+      options: [choice("red")],
+    });
+  });
 });
 
 describe("saved formula choices", () => {
@@ -455,6 +470,47 @@ describe("saved formula choices", () => {
     expect(selectsFormulaChoice(schema, { rows: [{}, { cell: ["b"] }] })).toBe(
       true,
     );
+  });
+});
+
+describe("options on a formula field's schema", () => {
+  it("leaves fixed-option fields as they are when resolving", () => {
+    const schema = schemaOf([multiselect("fixed", [choice("a")])]);
+    expect(schemaWithResolvedOptions(schema, new Map([["fixed", []]]))).toEqual(
+      schema,
+    );
+  });
+
+  it("offers nothing on a formula field with no resolved options, whatever it stores", () => {
+    const schema = schemaOf([
+      { ...formulaSelect("pick", {}, "[]"), options: [choice("stale")] },
+    ]);
+    const [field] = schemaWithResolvedOptions(schema, new Map()).pages[0]
+      .fields;
+    expect(field).toMatchObject({ options: [] });
+  });
+
+  it("replaces each formula, in a list too, with the choices a response saved", () => {
+    const saved = schemaWithSavedChoices(
+      schemaOf([
+        formulaSelect("pick", {}, "[]"),
+        {
+          id: "rows",
+          type: "input",
+          kind: "list",
+          label: "Rows",
+          fields: [formulaMultiselect("cell", {}, "[]")],
+        },
+      ]),
+      { pick: [choice("a")], cell: [choice("b"), choice("c")] },
+    );
+    const [pick, rows] = saved.pages[0].fields;
+
+    expect(pick).toMatchObject({ options: [choice("a")] });
+    expect(
+      rows.type === "input" && rows.kind === "list" && rows.fields[0],
+    ).toMatchObject({ options: [choice("b"), choice("c")] });
+    expect(JSON.stringify(saved)).not.toContain("optionsFormula");
   });
 });
 
