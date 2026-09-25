@@ -1341,7 +1341,9 @@ ORDER BY pp.total_session_duration_seconds DESC
     };
   }
 
-  async getTimeToChurnSamples(): Promise<number[]> {
+  private async contractEventsByUser(): Promise<
+    Map<number, { date: Date; type: ContractEventType }[]>
+  > {
     const allEvents = await this.contractEventRepository.find({
       relations: { user: true },
       order: { date: "ASC" },
@@ -1361,9 +1363,18 @@ ORDER BY pp.total_session_duration_seconds DESC
       userEvents.set(userId, events);
     }
 
+    for (const events of userEvents.values()) {
+      events.sort((a, b) => a.date.getTime() - b.date.getTime());
+    }
+
+    return userEvents;
+  }
+
+  async getTimeToChurnSamples(): Promise<number[]> {
+    const userEvents = await this.contractEventsByUser();
+
     const churnedUsers = new Map<number, Date>();
     for (const [userId, events] of userEvents) {
-      events.sort((a, b) => a.date.getTime() - b.date.getTime());
       const latestEvent = events[events.length - 1];
       if (!latestEvent || latestEvent.type === ContractEventType.SIGNED) {
         continue;
@@ -1447,32 +1458,7 @@ ORDER BY pp.total_session_duration_seconds DESC
     startDate: string,
     endDate: string,
   ): Promise<ContractStatusPoint[]> {
-    // Get all contract events ordered by date
-    const allEvents = await this.contractEventRepository.find({
-      relations: { user: true },
-      order: { date: "ASC" },
-    });
-
-    // Build a timeline of user status changes
-    // For each user, track when they signed and when they churned
-    const userEvents = new Map<
-      number,
-      { date: Date; type: ContractEventType }[]
-    >();
-
-    for (const event of allEvents) {
-      const userId = event.user?.id;
-      if (!userId) continue;
-
-      const events = userEvents.get(userId) ?? [];
-      events.push({ date: event.date, type: event.type });
-      userEvents.set(userId, events);
-    }
-
-    // Sort each user's events by date
-    for (const events of userEvents.values()) {
-      events.sort((a, b) => a.date.getTime() - b.date.getTime());
-    }
+    const userEvents = await this.contractEventsByUser();
 
     // Generate daily data points
     const start = new Date(startDate);
