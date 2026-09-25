@@ -20,6 +20,7 @@ export enum CohortDecisionReason {
    * the decision is an exclusion rather than a fresh missed obligation.
    */
   ResolvedAfterDeadline = "resolved_after_deadline",
+  Backfill = "backfill",
 }
 
 /**

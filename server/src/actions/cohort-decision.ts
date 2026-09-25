@@ -1,3 +1,4 @@
+import { ContractEventType } from "src/user/entities/contract-event.entity";
 import type { User } from "src/user/entities/user.entity";
 import {
   computeContractSignedAfterOnboardingStart,
@@ -66,4 +67,25 @@ export function isCohortAdmissible(params: {
         memberActionPhaseStart: event.date,
       })
     : user.hasActiveContractAt(at);
+}
+
+/**
+ * Whether the member held a contract at some point in the window, and so was
+ * admissible to at least one pass while the action was open.
+ */
+export function heldContractDuringWindow(params: {
+  user: Pick<User, "contractEvents" | "hasActiveContractAt">;
+  start: Date;
+  deadline: Date;
+}): boolean {
+  const { user, start, deadline } = params;
+  return (
+    user.hasActiveContractAt(start) ||
+    !!user.contractEvents?.some(
+      (event) =>
+        event.type === ContractEventType.SIGNED &&
+        event.date > start &&
+        event.date <= deadline,
+    )
+  );
 }

@@ -152,7 +152,11 @@ Ships alone: additive table and writes; members see no change.
 
 A script writes decisions for actions launched before the cutover from the migration-time calculation, preserving activities, exemptions, and voluntary completions untouched. It leaves future and draft actions undecided and leaves contract-ineligible accounts free to enroll in open regular actions later. It reports single-member versus roster disagreements. Every other difference between pre-cutover computation and saved results is investigated before stage 6.
 
-Ships alone: rerunnable because of the unique constraint.
+The backfill owns exactly the closed actions the pass leaves alone: no decisions, and launched before the cutover or with no cutover yet. Open and onboarding actions are already the pass's, and so is a closed action it has decided. Within each, the backfill decides the members some pass would have admitted while the action was open, those holding a contract at any point in the member-action window, against the roster cohort as it evaluates at run time, with a `backfill` reason. A deadline-only test would drop members suspended mid-window, whom a live-decided action keeps and participation analytics count. Nobody is excluded for late resolution; these actions were processed live before the table existed. Once an action has rows it leaves the backfill, and catch-up finds no admissible member missing.
+
+`scripts/backfill-cohort-decisions.ts` is a dry run by default and writes with `--apply`, like `backfill-projects.ts`. It boots the app context for the cohort evaluator and stops its cron jobs, which the running server owns. For each action it prints included and excluded counts. Against staging data it planned 77 actions.
+
+Ships alone: rerunnable because an action's rows are written in one transaction, an action with any decision leaves the backfill, and the unique constraint absorbs a concurrent writer.
 
 ### 4. Staff tooling
 
