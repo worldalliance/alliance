@@ -80,6 +80,7 @@ export const queryKeys = {
   timeSpentPerUserTotalAdmin: () =>
     ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
   usersAdmin: () => ["userListAdmin"] as const,
+  videosAdmin: () => ["videosListVideosAdmin"] as const,
   welcomeQueueAdmin: () => ["actionsGetWelcomeQueueAdmin"] as const,
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
