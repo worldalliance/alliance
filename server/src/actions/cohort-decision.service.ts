@@ -58,6 +58,24 @@ function admissionReason(params: {
     : CohortDecisionReason.Signing;
 }
 
+function isInCatchUp(enrollment: CohortEnrollment, now: Date): boolean {
+  switch (enrollment.state) {
+    case CohortEnrollmentState.Open:
+      return true;
+    case CohortEnrollmentState.Closed:
+      return (
+        now.getTime() - enrollment.deadline.getTime() <=
+        CLOSED_ACTION_CATCH_UP_MS
+      );
+    case CohortEnrollmentState.NotStarted:
+      return false;
+    default:
+      throw new Error(
+        `unknown enrollment state: ${enrollment satisfies never}`,
+      );
+  }
+}
+
 /**
  * A closed action the resolver never decided that launched before its first
  * decision. Catch-up would treat its whole cohort as a processing failure.
@@ -85,18 +103,51 @@ export class CohortDecisionService {
   ) {}
 
   /**
-   * Launch processing and catch-up: decide every admissible, undecided member
-   * of every enrolling action. One session serves the whole pass, so every
-   * action sees the same profile, tag, and answer snapshot. A failing action
-   * is logged and skipped so it cannot hold back the others.
+   * Launch processing, catch-up, and backfill: decide every admissible,
+   * undecided member of every enrolling action, and every member who held a
+   * contract during the window of a closed action launched before the
+   * resolver's first decision. One session serves the whole pass, so
+   * every action sees the same profile, tag, and answer snapshot. A failing
+   * action is logged and skipped so it cannot hold back the others.
    */
   async resolveAll(now: Date): Promise<void> {
-    const actions = await this.findActionsInCatchUp(now);
-    if (actions.length === 0) return;
-    const [decidedByAction, cutover] = await Promise.all([
-      this.findDecidedUserIds(actions.map(({ action }) => action.id)),
+    const [actions, cutover] = await Promise.all([
+      this.findResolvableActions(now),
       this.findCutover(),
     ]);
+    const closed = actions.flatMap(({ action, enrollment }) => {
+      switch (enrollment.state) {
+        case CohortEnrollmentState.Closed:
+          return [{ action, enrollment }];
+        case CohortEnrollmentState.Open:
+        case CohortEnrollmentState.NotStarted:
+          return [];
+        default:
+          throw new Error(
+            `unknown enrollment state: ${enrollment satisfies never}`,
+          );
+      }
+    });
+    const withDecisions = await this.findActionIdsWithDecisions(
+      closed.map(({ action }) => action.id),
+    );
+    const backfill = closed.filter(({ action, enrollment }) =>
+      belongsToBackfill({
+        enrollment,
+        hasDecisions: withDecisions.has(action.id),
+        cutover,
+      }),
+    );
+    const backfillIds = new Set(backfill.map(({ action }) => action.id));
+    const catchUp = actions.filter(
+      ({ action, enrollment }) =>
+        !backfillIds.has(action.id) && isInCatchUp(enrollment, now),
+    );
+    if (backfill.length === 0 && catchUp.length === 0) return;
+
+    const decidedByAction = await this.findDecidedUserIds(
+      catchUp.map(({ action }) => action.id),
+    );
     const session = new CohortResolutionSession();
     const users = await this.actionEventRecipientService.primeActiveUsers(
       session,
@@ -113,20 +164,39 @@ export class CohortDecisionService {
         ),
     );
 
-    for (const { action, enrollment } of actions) {
-      const decided = decidedByAction.get(action.id) ?? new Set<number>();
-      const result = await R.fromPromiseFn(async () =>
-        this.insert(
-          await this.resolveAction({
+    // Ordinary decisions first, so a backfill cannot delay this pass's
+    // launches. It still holds the lock, so later passes skip until it ends.
+    const work = [
+      ...catchUp.map(({ action, enrollment }) => {
+        const decided = decidedByAction.get(action.id) ?? new Set<number>();
+        return {
+          action,
+          resolve: () =>
+            this.resolveAction({
+              action,
+              enrollment,
+              users: settledUsers.filter((user) => !decided.has(user.id)),
+              session,
+              now,
+            }),
+        };
+      }),
+      ...backfill.map(({ action, enrollment }) => ({
+        action,
+        resolve: () =>
+          this.resolveBackfill({
             action,
             enrollment,
-            users: settledUsers.filter((user) => !decided.has(user.id)),
-            hasDecisions: decided.size > 0,
+            users,
+            settled: new Set(settledUsers),
             session,
-            cutover,
             now,
           }),
-        ),
+      })),
+    ];
+    for (const { action, resolve } of work) {
+      const result = await R.fromPromiseFn(async () =>
+        this.insert(await resolve()),
       );
       if (R.isFailure(result)) {
         this.logger.error(
@@ -141,13 +211,10 @@ export class CohortDecisionService {
     action: ParsedAction;
     enrollment: CohortEnrollment;
     users: User[];
-    hasDecisions: boolean;
     session: CohortResolutionSession;
-    cutover: Date | null;
     now: Date;
   }): Promise<DecisionRow[]> {
-    const { action, enrollment, users, hasDecisions, session, cutover, now } =
-      params;
+    const { action, enrollment, users, session, now } = params;
     switch (enrollment.state) {
       case CohortEnrollmentState.Open: {
         const pending = users.filter((user) =>
@@ -169,9 +236,6 @@ export class CohortDecisionService {
         });
       }
       case CohortEnrollmentState.Closed: {
-        if (belongsToBackfill({ enrollment, hasDecisions, cutover })) {
-          return [];
-        }
         const pending = users.filter((user) =>
           isCohortAdmissible({ action, user, at: enrollment.deadline }),
         );
@@ -211,69 +275,44 @@ export class CohortDecisionService {
   }
 
   /**
-   * Decisions for every closed action that belongs to the backfill, from the
-   * live cohort now: members holding a contract at some point in the window,
-   * as the pass would have admitted them while it was open. Nothing is
-   * written.
+   * The members some pass would have admitted while the action was open,
+   * those holding a contract at any point in its window, against the cohort
+   * as it evaluates now.
    */
-  async planBackfill(
-    now: Date,
-  ): Promise<{ action: ParsedAction; rows: DecisionRow[] }[]> {
-    const actions = await this.findResolvableActions(now);
-    const [decidedByAction, cutover] = await Promise.all([
-      this.findDecidedUserIds(actions.map(({ action }) => action.id)),
-      this.findCutover(),
-    ]);
-    const session = new CohortResolutionSession();
-    const users = await this.actionEventRecipientService.primeActiveUsers(
-      session,
-      () => this.userService.findActiveUsersForRoster(),
+  private async resolveBackfill(params: {
+    action: ParsedAction;
+    enrollment: { start: Date; deadline: Date };
+    users: User[];
+    settled: Set<User>;
+    session: CohortResolutionSession;
+    now: Date;
+  }): Promise<DecisionRow[]> {
+    const { action, enrollment, users, settled, session, now } = params;
+    const pending = users.filter((user) =>
+      heldContractDuringWindow({
+        user,
+        start: enrollment.start,
+        deadline: enrollment.deadline,
+      }),
     );
-    const plan: { action: ParsedAction; rows: DecisionRow[] }[] = [];
-    for (const { action, enrollment } of actions) {
-      switch (enrollment.state) {
-        case CohortEnrollmentState.Closed:
-          break;
-        case CohortEnrollmentState.Open:
-        case CohortEnrollmentState.NotStarted:
-          continue;
-        default:
-          throw new Error(
-            `unknown enrollment state: ${enrollment satisfies never}`,
-          );
-      }
-      if (
-        !belongsToBackfill({
-          enrollment,
-          hasDecisions: decidedByAction.has(action.id),
-          cutover,
-        })
-      ) {
-        continue;
-      }
-      const cohort =
-        await this.actionEventRecipientService.resolveCohortMemberIds(
-          action.cohortExpression,
-          session,
-        );
-      const rows = users
-        .filter((user) =>
-          heldContractDuringWindow({
-            user,
-            start: enrollment.start,
-            deadline: enrollment.deadline,
-          }),
-        )
-        .map((user) => ({
-          actionId: action.id,
-          userId: user.id,
-          included: cohort.has(user.id),
-          reason: CohortDecisionReason.Backfill,
-          resolvedAt: now,
-        }));
-      plan.push({ action, rows });
-    }
-    return plan;
+    // Writing no rows keeps the action in the backfill, so skip evaluating its
+    // cohort on every pass.
+    if (pending.length === 0) return [];
+    // No pass revisits a backfilled action, so wait out a recent signer's
+    // request rather than decide the others without them.
+    if (pending.some((user) => !settled.has(user))) return [];
+    const cohort =
+      await this.actionEventRecipientService.resolveCohortMemberIds(
+        action.cohortExpression,
+        session,
+      );
+    return this.decide({
+      action,
+      users: pending,
+      included: (user) => cohort.has(user.id),
+      reason: () => CohortDecisionReason.Backfill,
+      now,
+    });
   }
 
   /** When the resolver first ran: its earliest ordinary decision. */
@@ -325,9 +364,7 @@ export class CohortDecisionService {
           action,
           enrollment,
           users: [user],
-          hasDecisions: false,
           session,
-          cutover: null,
           now,
         })),
       );
@@ -379,23 +416,21 @@ export class CohortDecisionService {
   async findActionsInCatchUp(
     now: Date,
   ): Promise<{ action: ParsedAction; enrollment: CohortEnrollment }[]> {
-    return (await this.findResolvableActions(now)).filter(({ enrollment }) => {
-      switch (enrollment.state) {
-        case CohortEnrollmentState.Open:
-          return true;
-        case CohortEnrollmentState.Closed:
-          return (
-            now.getTime() - enrollment.deadline.getTime() <=
-            CLOSED_ACTION_CATCH_UP_MS
-          );
-        case CohortEnrollmentState.NotStarted:
-          return false;
-        default:
-          throw new Error(
-            `unknown enrollment state: ${enrollment satisfies never}`,
-          );
-      }
-    });
+    return (await this.findResolvableActions(now)).filter(({ enrollment }) =>
+      isInCatchUp(enrollment, now),
+    );
+  }
+
+  private async findActionIdsWithDecisions(
+    actionIds: number[],
+  ): Promise<Set<number>> {
+    if (actionIds.length === 0) return new Set();
+    const rows = await this.decisionRepository
+      .createQueryBuilder("decision")
+      .select('DISTINCT decision."actionId"', "actionId")
+      .where('decision."actionId" IN (:...actionIds)', { actionIds })
+      .getRawMany<{ actionId: number }>();
+    return new Set(rows.map((row) => row.actionId));
   }
 
   private async findDecidedUserIds(
@@ -418,10 +453,10 @@ export class CohortDecisionService {
   }
 
   /**
-   * All or nothing, so a backfill rerun never skips a half-written action. A
+   * All or nothing, so a later pass never skips a half-backfilled action. A
    * concurrent writer's row wins; decisions are final once written.
    */
-  async insert(rows: DecisionRow[]): Promise<void> {
+  private async insert(rows: DecisionRow[]): Promise<void> {
     if (rows.length === 0) return;
     await this.decisionRepository.manager.transaction(async (manager) => {
       for (let i = 0; i < rows.length; i += INSERT_CHUNK_SIZE) {

@@ -16,6 +16,7 @@ import {
   ActionStatus,
 } from "../src/actions/entities/action-event.entity";
 import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
+import { ActionEventRecipientService } from "../src/notifs/action-event-recipient.service";
 import { TasksModule } from "../src/tasks/tasks.module";
 import {
   ContractEvent,
@@ -287,21 +288,6 @@ describe("CohortDecisionService (e2e)", () => {
     });
   };
 
-  it("leaves closed actions launched before the first decision to the backfill", async () => {
-    await createUser({ signedAt });
-    const beforeAnyDecision = await createAction({
-      start: addDays(now, -3),
-      deadline: addDays(now, -1),
-    });
-
-    await service.resolveAll(now);
-    expect((await decisionsFor(beforeAnyDecision.id)).size).toBe(0);
-
-    await recordCutover(addDays(now, -2));
-    await service.resolveAll(now);
-    expect((await decisionsFor(beforeAnyDecision.id)).size).toBe(0);
-  });
-
   it("stops catching up a closed action a week after its deadline", async () => {
     await recordCutover(addDays(now, -20));
     const member = await createUser({ signedAt });
@@ -569,54 +555,49 @@ describe("CohortDecisionService (e2e)", () => {
     expect(decision?.included).toBe(true);
   });
 
-  describe("planBackfill", () => {
-    const plannedRows = async () =>
-      new Map(
-        (await service.planBackfill(now)).map(({ action, rows }) => [
-          action.id,
-          rows,
-        ]),
+  describe("backfill", () => {
+    const suspend = async (userId: number, date: Date) =>
+      contractEventRepo.save({
+        user: { id: userId },
+        type: ContractEventType.SUSPENDED,
+        date,
+        contract: { id: ctx.defaultContractId },
+      });
+
+    const reasonsFor = async (actionId: number) =>
+      new Set(
+        [...(await decisionsFor(actionId)).values()].map((r) => r.reason),
       );
 
     it("decides members holding a contract at a closed action's deadline", async () => {
       const tagged = await createUser({ signedAt });
       const untagged = await createUser({ signedAt, tagged: false });
       const signedMidWindow = await createUser({ signedAt: addDays(now, -2) });
-      const signedAfterDeadline = await createUser({
-        signedAt: addDays(now, -0.5),
-      });
-      const unsigned = await createUser();
+      await createUser({ signedAt: addDays(now, -0.5) });
+      await createUser();
       const action = await createAction({
         start: addDays(now, -3),
         deadline: addDays(now, -1),
       });
 
-      const rows = (await plannedRows()).get(action.id);
+      await service.resolveAll(now);
 
-      expect(new Map(rows?.map((row) => [row.userId, row.included]))).toEqual(
+      const decisions = await decisionsFor(action.id);
+      expect(
+        new Map([...decisions].map(([userId, row]) => [userId, row.included])),
+      ).toEqual(
         new Map([
           [tagged.id, true],
           [untagged.id, false],
           [signedMidWindow.id, true],
         ]),
       );
-      expect(rows?.map((row) => row.userId)).not.toContain(
-        signedAfterDeadline.id,
+      expect(await reasonsFor(action.id)).toEqual(
+        new Set([CohortDecisionReason.Backfill]),
       );
-      expect(rows?.map((row) => row.userId)).not.toContain(unsigned.id);
-      expect(
-        rows?.every((row) => row.reason === CohortDecisionReason.Backfill),
-      ).toBe(true);
     });
 
     it("decides members whose contract lapsed during the window", async () => {
-      const suspend = async (userId: number, date: Date) =>
-        contractEventRepo.save({
-          user: { id: userId },
-          type: ContractEventType.SUSPENDED,
-          date,
-          contract: { id: ctx.defaultContractId },
-        });
       const suspendedMidWindow = await createUser({ signedAt });
       await suspend(suspendedMidWindow.id, addDays(now, -2));
       const signedAndSuspendedMidWindow = await createUser({
@@ -630,9 +611,16 @@ describe("CohortDecisionService (e2e)", () => {
         deadline: addDays(now, -1),
       });
 
-      const rows = (await plannedRows()).get(action.id);
+      await service.resolveAll(now);
 
-      expect(new Map(rows?.map((row) => [row.userId, row.included]))).toEqual(
+      expect(
+        new Map(
+          [...(await decisionsFor(action.id))].map(([userId, row]) => [
+            userId,
+            row.included,
+          ]),
+        ),
+      ).toEqual(
         new Map([
           [suspendedMidWindow.id, true],
           [signedAndSuspendedMidWindow.id, true],
@@ -640,7 +628,40 @@ describe("CohortDecisionService (e2e)", () => {
       );
     });
 
-    it("leaves open, future, and onboarding actions to the pass", async () => {
+    it("decides actions closed long before the first pass", async () => {
+      const member = await createUser({ signedAt });
+      const action = await createAction({
+        start: addDays(now, -20),
+        deadline: addDays(now, -15),
+      });
+
+      await service.resolveAll(now);
+
+      expect((await decisionsFor(action.id)).get(member.id)).toMatchObject({
+        included: true,
+        reason: CohortDecisionReason.Backfill,
+      });
+    });
+
+    it("skips evaluating an action nobody held a contract for", async () => {
+      await createUser();
+      await createAction({
+        start: addDays(now, -20),
+        deadline: addDays(now, -15),
+      });
+      const resolveCohort = jest.spyOn(
+        ctx.app.get(ActionEventRecipientService),
+        "resolveCohortMemberIds",
+      );
+
+      await service.resolveAll(now);
+      await service.resolveAll(addDays(now, 0.01));
+
+      expect(resolveCohort).not.toHaveBeenCalled();
+      resolveCohort.mockRestore();
+    });
+
+    it("leaves open, future, and onboarding actions to ordinary decisions", async () => {
       await createUser({ signedAt });
       const open = await createAction({
         start: addDays(now, -1),
@@ -656,11 +677,13 @@ describe("CohortDecisionService (e2e)", () => {
         onboarding: true,
       });
 
-      const plan = await plannedRows();
+      await service.resolveAll(now);
 
-      expect(plan.has(open.id)).toBe(false);
-      expect(plan.has(future.id)).toBe(false);
-      expect(plan.has(onboarding.id)).toBe(false);
+      for (const action of [open, future, onboarding]) {
+        expect(await reasonsFor(action.id)).not.toContain(
+          CohortDecisionReason.Backfill,
+        );
+      }
     });
 
     it("skips closed actions the resolver decided or launched after the cutover", async () => {
@@ -685,33 +708,46 @@ describe("CohortDecisionService (e2e)", () => {
         deadline: addDays(now, -2),
       });
 
-      const plan = await plannedRows();
+      await service.resolveAll(now);
 
-      expect(plan.has(decided.id)).toBe(false);
-      expect(plan.has(afterCutover.id)).toBe(false);
-      expect(plan.has(beforeCutover.id)).toBe(true);
+      expect(await reasonsFor(decided.id)).not.toContain(
+        CohortDecisionReason.Backfill,
+      );
+      expect(await reasonsFor(afterCutover.id)).not.toContain(
+        CohortDecisionReason.Backfill,
+      );
+      expect(await reasonsFor(beforeCutover.id)).toEqual(
+        new Set([CohortDecisionReason.Backfill]),
+      );
     });
 
-    it("leaves nothing for catch-up or a rerun once saved", async () => {
+    it("waits out a member who just re-signed, then backfills once", async () => {
       const member = await createUser({ signedAt });
+      const reSigned = await createUser({ signedAt });
+      await suspend(reSigned.id, addDays(now, -2));
+      await contractEventRepo.save({
+        user: { id: reSigned.id },
+        type: ContractEventType.SIGNED,
+        date: new Date(now.getTime() - 60_000),
+        contract: { id: ctx.defaultContractId },
+      });
       const action = await createAction({
         start: addDays(now, -3),
         deadline: addDays(now, -1),
       });
-      await service.insert(
-        (await service.planBackfill(now)).flatMap(({ rows }) => rows),
-      );
-      await recordCutover(now);
 
       await service.resolveAll(now);
+      expect((await decisionsFor(action.id)).size).toBe(0);
 
-      expect(await service.planBackfill(now)).toEqual([]);
-      expect((await decisionsFor(action.id)).get(member.id)).toMatchObject({
-        included: true,
-        reason: CohortDecisionReason.Backfill,
-      });
-      expect(await decisionRepo.count({ where: { actionId: action.id } })).toBe(
-        1,
+      await service.resolveAll(addDays(now, 0.01));
+      await service.resolveAll(addDays(now, 0.02));
+
+      const decisions = await decisionsFor(action.id);
+      expect([...decisions.keys()].sort()).toEqual(
+        [member.id, reSigned.id].sort(),
+      );
+      expect(await reasonsFor(action.id)).toEqual(
+        new Set([CohortDecisionReason.Backfill]),
       );
     });
   });
