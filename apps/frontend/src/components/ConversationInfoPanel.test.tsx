@@ -172,7 +172,17 @@ it("closes the editor when the viewer stops being an admin", () => {
 it("offers a group admin the field to add members", () => {
   renderPanel("admin");
 
-  expect(screen.getByPlaceholderText("Add member...")).toBeTruthy();
+  expect(
+    screen.getByPlaceholderText("Add member...").hasAttribute("disabled"),
+  ).toBe(false);
+});
+
+it("holds the field to add members until the people you can add load", () => {
+  render(panel(groupWith("admin"), { friends: null }));
+
+  expect(
+    screen.getByPlaceholderText("Loading members...").hasAttribute("disabled"),
+  ).toBe(true);
 });
 
 it("offers a retry in place of the field to add members when they failed to load", () => {

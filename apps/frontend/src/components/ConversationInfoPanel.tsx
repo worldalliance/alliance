@@ -338,7 +338,10 @@ const ConversationInfoPanel = ({
               >
                 <input
                   type="text"
-                  placeholder="Add member..."
+                  placeholder={
+                    friends === null ? "Loading members..." : "Add member..."
+                  }
+                  disabled={friends === null}
                   className="text-zinc-800 !bg-transparent p-4 active:outline-none focus:outline-none"
                   value={addMemberSearch}
                   onChange={(e) => setAddMemberSearch(e.target.value)}
