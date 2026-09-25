@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { fixtureGit } from "./lib/fixture-git";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const script = path.join(scriptDir, "check-gitignore.sh");
@@ -19,23 +20,7 @@ afterAll(() => {
 });
 
 function git(...args: string[]): void {
-  const identity = [
-    "-c",
-    "user.email=test@example.com",
-    "-c",
-    "user.name=test",
-    "-c",
-    "commit.gpgsign=false",
-    "-c",
-    "core.hooksPath=/dev/null",
-  ];
-  const result = spawnSync("git", [...identity, ...args], {
-    cwd: sandbox,
-    encoding: "utf8",
-  });
-  if (result.status !== 0) {
-    throw new Error(`git ${args.join(" ")}: ${result.stderr}`);
-  }
+  fixtureGit(sandbox, ...args);
 }
 
 function write(relativePath: string, contents: string): void {
