@@ -42,6 +42,7 @@ export async function fetchApproximateGeo(): Promise<CityGeo | null> {
   if (cachedGeoFetched) return cachedGeo;
   cachedGeoFetched = true;
   try {
+    // eslint-disable-next-line no-restricted-globals
     const res = await fetch("https://ipapi.co/json/");
     const data = await res.json();
     if (data?.latitude && data?.longitude) {

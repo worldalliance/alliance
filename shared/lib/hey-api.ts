@@ -18,6 +18,7 @@ export const AuthEvents = {
 };
 
 export const createClientConfig: CreateClientConfig = (config) => {
+  // eslint-disable-next-line no-restricted-globals -- the generated client's transport
   const originalFetch = (config?.fetch ?? fetch).bind(globalThis);
 
   const wrappedFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
