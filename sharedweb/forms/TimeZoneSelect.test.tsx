@@ -80,6 +80,28 @@ it("shows a spinner, not an empty list, while the zones warm", () => {
   }
 });
 
+describe("on a device in Tokyo", () => {
+  const hostZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  beforeEach(() => {
+    process.env.TZ = "Asia/Tokyo";
+  });
+  afterEach(() => {
+    process.env.TZ = hostZone;
+  });
+
+  it("lists Tokyo first, marked as the device's zone", () => {
+    render(<TimeZoneSelect value="Europe/London" />);
+
+    fireEvent.click(screen.getByRole("button"));
+    const device = screen.getByTitle("Device time zone");
+
+    expect(device.closest("button")?.textContent).toContain("Tokyo");
+    expect(device.closest("button")?.parentElement?.firstElementChild).toBe(
+      device.closest("button"),
+    );
+  });
+});
+
 describe("opening the list", () => {
   let scrolledTo: Element[] = [];
   beforeEach(() => {

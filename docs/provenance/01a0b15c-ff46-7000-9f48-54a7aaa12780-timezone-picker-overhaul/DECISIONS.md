@@ -172,7 +172,18 @@ sections below this one carry the reasoning each step implements.
    Steps 4 and 5 land as one change: without ranking and those place names,
    the catalog's rows open `india` on Indiana and `uk` on Ukraine, and Enter
    picks the first row.
-6. **Device row pinned.** The detected timezone sits above the unfiltered list.
+6. **Device row pinned.** Done. `useTimeZoneSelect` takes the detected
+   `deviceTimeZone` and, with no query, lists its row first and the rest in
+   offset order without it, so no zone appears twice and a device zone that
+   is also the saved one opens the list at the top. A search ranks it like
+   any other row. The web reads it through `deviceTimeZone()` in
+   `shared/lib/timeZone.ts` once per mount, and mobile through
+   `getDeviceTimeZone()`, which step 9 moves to `expo-localization`. An
+   alias pins the row it names. A valid zone the catalog lacks gets a row of
+   its own, as a saved one does, and one the runtime can't resolve pins
+   nothing. Wherever the row appears, a device icon named
+   `Device time zone` marks it, since otherwise nothing explains a row
+   sitting out of offset order.
 7. **Web combobox.** `sharedweb/forms/TimeZoneSelect.tsx` moves onto
    `@base-ui/react/combobox` with the search input inside the popup, deleting
    the hand-rolled keyboard handling, backdrop, and open state.

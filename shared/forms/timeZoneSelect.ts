@@ -274,6 +274,12 @@ function selectedLabel(tz: string): BaseLabel | null {
   return entry ? labelFor(entry) : null;
 }
 
+function rowTzOf(tz: string): string | null {
+  const listed = TIME_ZONE_ALIASES.get(tz) ?? tz;
+  if (CATALOG_BY_TZ.has(listed)) return listed;
+  return isTimeZoneIdentifier(tz) ? tz : null;
+}
+
 function formatOffset(mins: number): string {
   const abs = Math.abs(mins);
   const hours = Math.floor(abs / minutesInHour);
@@ -353,6 +359,7 @@ export type UseTimeZoneSelectParams = {
   onChange?: (tz: string) => void;
   hour12?: boolean;
   disabled?: boolean;
+  deviceTimeZone?: string;
 };
 
 export function useTimeZoneSelect({
@@ -361,6 +368,7 @@ export function useTimeZoneSelect({
   onChange,
   hour12 = true,
   disabled,
+  deviceTimeZone,
 }: UseTimeZoneSelectParams) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -396,19 +404,33 @@ export function useTimeZoneSelect({
     () => uncataloguedLabel(internalValue),
     [internalValue],
   );
+  const uncataloguedDevice = useMemo(
+    () =>
+      deviceTimeZone === undefined || deviceTimeZone === internalValue
+        ? null
+        : uncataloguedLabel(deviceTimeZone),
+    [deviceTimeZone, internalValue],
+  );
+  const deviceTz = useMemo(
+    () => (deviceTimeZone === undefined ? null : rowTzOf(deviceTimeZone)),
+    [deviceTimeZone],
+  );
 
   const items = useMemo<TimeZoneSelectItem[]>(() => {
     if (listedMinute === null || loading) return [];
     const when = minuteStart(listedMinute);
     const base = baseItems(listedMinute);
-    const rows = uncatalogued
-      ? [...base, withOffset(uncatalogued, when)].sort(byOffsetThenLocation)
+    const extra = [uncatalogued, uncataloguedDevice].filter((l) => l !== null);
+    const rows = extra.length
+      ? [...base, ...extra.map((l) => withOffset(l, when))].sort(
+          byOffsetThenLocation,
+        )
       : base;
     return rows.map((item) => ({
       ...item,
       timeLabel: clockOf(item, hour12, when),
     }));
-  }, [listedMinute, loading, uncatalogued, hour12]);
+  }, [listedMinute, loading, uncatalogued, uncataloguedDevice, hour12]);
 
   const label = useMemo(
     () => selectedLabel(internalValue) ?? uncatalogued,
@@ -425,7 +447,10 @@ export function useTimeZoneSelect({
 
   const filtered = useMemo(() => {
     const q = fold(query.trim());
-    if (!q) return items;
+    if (!q) {
+      const device = items.find((i) => i.tz === deviceTz);
+      return device ? [device, ...items.filter((i) => i !== device)] : items;
+    }
     // A query naming a zone, as "gmt+0" names UTC, lists it ahead of the other
     // zones at the offset it reads as.
     const searchFor = (typed: string) => {
@@ -438,7 +463,7 @@ export function useTimeZoneSelect({
     const found = searchFor(q);
     const place = q.replace(TRAILING_TIME, "");
     return found.length || place === q ? found : searchFor(place);
-  }, [items, query]);
+  }, [items, query, deviceTz]);
 
   const selectedIndex = filtered.findIndex((i) => i.tz === selected.tz);
 
@@ -464,6 +489,7 @@ export function useTimeZoneSelect({
     filtered,
     selected,
     selectedIndex,
+    deviceTz,
     query,
     setQuery,
     activeIndex,

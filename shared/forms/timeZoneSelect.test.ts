@@ -485,6 +485,91 @@ describe("a saved zone the catalog has no row for", () => {
   });
 });
 
+describe("the device's zone", () => {
+  it("sits above the unfiltered list", () => {
+    const { result } = renderOpen({ deviceTimeZone: "Asia/Tokyo" });
+
+    expect(result.current.filtered[0].tz).toBe("Asia/Tokyo");
+    expect(result.current.deviceTz).toBe("Asia/Tokyo");
+  });
+
+  it("leaves the rest of the list in offset order, without it", () => {
+    const { result } = renderOpen({ deviceTimeZone: "Asia/Tokyo" });
+
+    expect(result.current.filtered.slice(1)).toEqual(
+      result.current.items.filter((i) => i.tz !== "Asia/Tokyo"),
+    );
+  });
+
+  it("takes its place in the ranking once the member searches", () => {
+    const { result } = renderOpen({ deviceTimeZone: "Asia/Tokyo" });
+
+    act(() => result.current.setQuery("japan"));
+
+    expect(result.current.filtered.map((i) => i.tz)).toEqual(["Asia/Tokyo"]);
+    act(() => result.current.setQuery("utc+9"));
+    expect(result.current.filtered[0].tz).not.toBe("Asia/Tokyo");
+  });
+
+  it("pins an alias as the row it names", () => {
+    const { result } = renderOpen({ deviceTimeZone: "Asia/Calcutta" });
+
+    expect(result.current.filtered[0].tz).toBe("Asia/Kolkata");
+    expect(result.current.deviceTz).toBe("Asia/Kolkata");
+  });
+
+  it("gets a row of its own when the catalog lacks it", () => {
+    const { result } = renderOpen({
+      value: "Europe/London",
+      deviceTimeZone: "Etc/GMT+8",
+    });
+
+    expect(result.current.items).toHaveLength(TIME_ZONE_CATALOG.length + 1);
+    expect(result.current.filtered[0]).toMatchObject({
+      tz: "Etc/GMT+8",
+      labelSub: "UTC-8",
+    });
+  });
+
+  it("lists that row once when it is also the saved zone", () => {
+    const { result } = renderOpen({
+      value: "Etc/GMT+8",
+      deviceTimeZone: "Etc/GMT+8",
+    });
+
+    expect(result.current.items).toHaveLength(TIME_ZONE_CATALOG.length + 1);
+  });
+
+  it("pins nothing when the runtime cannot resolve it", () => {
+    const { result } = renderOpen({ deviceTimeZone: "Nowhere/Special" });
+
+    expect(result.current.deviceTz).toBeNull();
+    expect(result.current.filtered).toEqual(result.current.items);
+  });
+
+  it("opens on the pinned row when it is the saved zone", () => {
+    const { result } = renderOpen({
+      value: "Asia/Tokyo",
+      deviceTimeZone: "Asia/Tokyo",
+    });
+
+    expect(result.current.selectedIndex).toBe(0);
+    expect(result.current.activeIndex).toBe(0);
+  });
+
+  it("leaves the saved zone selected when it differs", () => {
+    const { result } = renderOpen({
+      value: "Europe/London",
+      deviceTimeZone: "Asia/Tokyo",
+    });
+
+    expect(result.current.selected.tz).toBe("Europe/London");
+    expect(result.current.filtered[result.current.selectedIndex].tz).toBe(
+      "Europe/London",
+    );
+  });
+});
+
 describe("a picker nobody has opened", () => {
   it("builds no list", () => {
     const { result } = renderHook(() => useTimeZoneSelect({}));

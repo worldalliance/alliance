@@ -3,10 +3,11 @@ import {
   type TimeZoneSelectItem,
   useTimeZoneSelect,
 } from "@alliance/shared/forms/timeZoneSelect";
+import { deviceTimeZone } from "@alliance/shared/lib/timeZone";
 import { cn } from "@alliance/shared/styles/util";
-import { Check } from "lucide-react";
+import { Check, MonitorSmartphone } from "lucide-react";
 import type React from "react";
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Spinner from "../ui/Spinner";
 import { zIndex } from "../ui/zIndex";
 
@@ -49,10 +50,12 @@ export default function TimeZoneSelectPretty({
   hour12 = true,
 }: Props) {
   const valueId = useId();
+  const [detected] = useState(deviceTimeZone);
   const {
     filtered,
     selected,
     selectedIndex,
+    deviceTz,
     query,
     setQuery,
     activeIndex,
@@ -67,6 +70,7 @@ export default function TimeZoneSelectPretty({
     onChange,
     hour12,
     disabled,
+    deviceTimeZone: detected,
   });
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -245,6 +249,14 @@ export default function TimeZoneSelectPretty({
                         )}
                       </div>
                       <div className="shrink-0 flex items-center gap-2">
+                        {item.tz === deviceTz && (
+                          <MonitorSmartphone
+                            className="w-4 h-4 text-zinc-500"
+                            role="img"
+                          >
+                            <title>Device time zone</title>
+                          </MonitorSmartphone>
+                        )}
                         <div className="text-[14px] tabular-nums text-zinc-800">
                           {time}
                         </div>
