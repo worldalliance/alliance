@@ -7,6 +7,7 @@ import path from "path";
 import process from "process";
 import { mobileScreenshotTargets } from "./mobile-screenshot-targets";
 import { run } from "./run-command";
+import { sanitizeFileName } from "./sanitize-file-name";
 import { screenshotDatabase } from "./screenshot-database";
 import { dbHost, dbPass, dbPort, dbUser, seedDatabase } from "./seed-database";
 import { testUserEmail, testUserPassword } from "./test-user";
@@ -70,15 +71,6 @@ const childProcesses: ChildProcessHandle[] = [];
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const logPrefix = "[citesting:mobile-ios]";
 const mobileAppRoot = path.join(repoRoot, "apps", "mobile");
-
-const sanitizeFileName = (value: string) =>
-  value
-    .replace(/^\//, "")
-    .replace(/\//g, "-")
-    .replace(/[^a-zA-Z0-9-_.]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .toLowerCase() || "screen";
 
 const selectedTargets =
   requestedTargetNames.length > 0
@@ -631,9 +623,7 @@ const captureScreenshots = async (udid: string, simulatorName: string) => {
       // Maestro's takeScreenshot auto-appends ".png", so we use a stem
       // without the extension in the YAML flow. The final file on disk
       // will be "<stem>.png".
-      const stem = `${String(index + 1).padStart(2, "0")}-${sanitizeFileName(
-        target.name,
-      )}`;
+      const stem = `${String(index + 1).padStart(2, "0")}-${sanitizeFileName(target.name, { fallback: "screen" })}`;
       const fileName = `${stem}.png`;
       const expectedPath = path.join(outputDir, fileName);
       const flowPath = path.join(flowDir, `${target.name}.yaml`);

@@ -6,6 +6,7 @@ import path from "path";
 import process from "process";
 import { devPorts, PortCaller } from "../../common/src/dev-ports";
 import { run } from "./run-command";
+import { sanitizeFileName } from "./sanitize-file-name";
 import { screenshotDatabase } from "./screenshot-database";
 import { screenshotTargets } from "./screenshot-targets";
 import { dbHost, dbPass, dbPort, dbUser, seedDatabase } from "./seed-database";
@@ -50,15 +51,6 @@ const childProcesses: ChildProcessHandle[] = [];
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const logPrefix = "[citesting:screenshots]";
-
-const sanitizeFileName = (value: string) =>
-  value
-    .replace(/^\//, "")
-    .replace(/\//g, "-")
-    .replace(/[^a-zA-Z0-9-_.]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .toLowerCase() || "page";
 
 const trackChildProcess = (child: ChildProcessHandle) => {
   childProcesses.push(child);
@@ -389,7 +381,7 @@ const takeScreenshots = async () => {
           const fileName = `${String(index + 1).padStart(
             2,
             "0",
-          )}-${sanitizeFileName(label)}.png`;
+          )}-${sanitizeFileName(label, { fallback: "page" })}.png`;
           const filePath = path.join(outputDir, fileName);
 
           console.log(`${logPrefix} Capturing ${url} -> ${fileName}`);
