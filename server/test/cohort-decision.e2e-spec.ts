@@ -1,26 +1,23 @@
-import { ActionActivityType } from "@alliance/common/actionActivity";
-import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { Logger } from "@nestjs/common";
-import { millisecondsInDay } from "date-fns/constants";
 import request from "supertest";
 import type { Repository } from "typeorm";
+import { ActionsService } from "../src/actions/actions.service";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
-import { ActionActivity } from "../src/actions/entities/action-activity.entity";
-import {
-  ActionCohortDecision,
-  CohortDecisionReason,
-} from "../src/actions/entities/action-cohort-decision.entity";
-import {
-  ActionEvent,
-  ActionStatus,
-} from "../src/actions/entities/action-event.entity";
-import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
+import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
+import { Action } from "../src/actions/entities/action.entity";
+import { CohortDecisionReason } from "../src/actions/entities/cohort-decision-reason";
+import { ActionEventRecipientService } from "../src/notifs/action-event-recipient.service";
 import { TasksModule } from "../src/tasks/tasks.module";
 import {
   ContractEvent,
   ContractEventType,
 } from "../src/user/entities/contract-event.entity";
 import { User } from "../src/user/entities/user.entity";
+import {
+  addDays,
+  cohortDecisionFixtures,
+  type CohortDecisionFixtures,
+} from "./cohort-decision-fixtures";
 import {
   createFormWithSnapshot,
   createTestApp,
@@ -29,18 +26,17 @@ import {
   TestContext,
 } from "./e2e-test-utils";
 
-const addDays = (date: Date, days: number) =>
-  new Date(date.getTime() + days * millisecondsInDay);
-
 describe("CohortDecisionService (e2e)", () => {
   let ctx: TestContext;
   let service: CohortDecisionService;
   let actionRepo: Repository<Action>;
-  let eventRepo: Repository<ActionEvent>;
   let decisionRepo: Repository<ActionCohortDecision>;
   let contractEventRepo: Repository<ContractEvent>;
   let userRepo: Repository<User>;
-  let activityRepo: Repository<ActionActivity>;
+  let createUser: CohortDecisionFixtures["createUser"];
+  let createAction: CohortDecisionFixtures["createAction"];
+  let decisionsFor: CohortDecisionFixtures["decisionsFor"];
+  let cleanUp: CohortDecisionFixtures["cleanUp"];
 
   const now = new Date();
 
@@ -48,109 +44,18 @@ describe("CohortDecisionService (e2e)", () => {
     ctx = await createTestApp([TasksModule]);
     service = ctx.app.get(CohortDecisionService);
     actionRepo = ctx.dataSource.getRepository(Action);
-    eventRepo = ctx.dataSource.getRepository(ActionEvent);
     decisionRepo = ctx.dataSource.getRepository(ActionCohortDecision);
     contractEventRepo = ctx.dataSource.getRepository(ContractEvent);
     userRepo = ctx.dataSource.getRepository(User);
-    activityRepo = ctx.dataSource.getRepository(ActionActivity);
+    ({ createUser, createAction, decisionsFor, cleanUp } =
+      cohortDecisionFixtures(ctx));
   }, 50000);
 
-  afterEach(async () => {
-    await decisionRepo.query("DELETE FROM action_cohort_decision");
-    await activityRepo.query("DELETE FROM action_activity");
-    await eventRepo.query("DELETE FROM action_event");
-    await actionRepo.query("DELETE FROM action");
-    await contractEventRepo.query("DELETE FROM contract_event");
-    await userRepo.query(
-      `DELETE FROM "user" WHERE id NOT IN (${ctx.testUserId}, ${ctx.adminUserId})`,
-    );
-  });
+  afterEach(() => cleanUp());
 
   afterAll(async () => {
     await ctx.app.close();
   });
-
-  let userCount = 0;
-  const createUser = async (
-    params: {
-      signedAt?: Date;
-      tagged?: boolean;
-      timeZone?: string;
-    } = {},
-  ) => {
-    const { signedAt, tagged = true, timeZone } = params;
-    userCount++;
-    const user = await userRepo.save(
-      userRepo.create({
-        email: `cohort-decision-${userCount}@example.com`,
-        password: "pass",
-        name: `Member ${userCount}`,
-        tags: tagged ? [ctx.defaultTag] : [],
-        timeZone,
-      }),
-    );
-    if (signedAt) {
-      await contractEventRepo.save({
-        user: { id: user.id },
-        type: ContractEventType.SIGNED,
-        date: signedAt,
-        contract: { id: ctx.defaultContractId },
-      });
-    }
-    return user;
-  };
-
-  const createAction = async (params: {
-    start: Date;
-    deadline: Date | null;
-    cohortExpression?: CohortExpression;
-    onboarding?: boolean;
-  }) => {
-    const { start, deadline, onboarding = false } = params;
-    const action = await actionRepo.save(
-      actionRepo.create({
-        name: "Action",
-        category: [],
-        body: "Body",
-        shortDescription: "Short description",
-        visibilityMode: VisibilityMode.Public,
-        cohortExpression: params.cohortExpression ?? {
-          type: "Tag",
-          tagId: ctx.defaultTag.id,
-        },
-        onboarding,
-      }),
-    );
-    await eventRepo.save([
-      eventRepo.create({
-        title: "Member action",
-        description: "",
-        newStatus: ActionStatus.MemberAction,
-        date: start,
-        action,
-      }),
-      ...(deadline
-        ? [
-            eventRepo.create({
-              title: "Resolution",
-              description: "",
-              newStatus: ActionStatus.Resolution,
-              date: deadline,
-              action,
-            }),
-          ]
-        : []),
-    ]);
-    return action;
-  };
-
-  const decisionsFor = async (actionId: number) =>
-    new Map(
-      (await decisionRepo.find({ where: { actionId } })).map((row) => [
-        row.userId,
-        row,
-      ]),
-    );
 
   const signedAt = addDays(now, -30);
 
@@ -283,21 +188,6 @@ describe("CohortDecisionService (e2e)", () => {
       resolvedAt,
     });
   };
-
-  it("leaves closed actions launched before the first decision to the backfill", async () => {
-    await createUser({ signedAt });
-    const beforeAnyDecision = await createAction({
-      start: addDays(now, -3),
-      deadline: addDays(now, -1),
-    });
-
-    await service.resolveAll(now);
-    expect((await decisionsFor(beforeAnyDecision.id)).size).toBe(0);
-
-    await recordCutover(addDays(now, -2));
-    await service.resolveAll(now);
-    expect((await decisionsFor(beforeAnyDecision.id)).size).toBe(0);
-  });
 
   it("stops catching up a closed action a week after its deadline", async () => {
     await recordCutover(addDays(now, -20));
@@ -566,122 +456,266 @@ describe("CohortDecisionService (e2e)", () => {
     expect(decision?.included).toBe(true);
   });
 
-  describe("logDivergences", () => {
-    let warn: jest.SpyInstance;
-    beforeEach(() => {
-      warn = jest.spyOn(Logger.prototype, "warn").mockImplementation(() => {});
-    });
-    afterEach(() => warn.mockRestore());
-
-    it("logs members who left a profile-only cohort", async () => {
-      const member = await createUser({ signedAt });
-      const action = await createAction({
-        start: addDays(now, -1),
-        deadline: addDays(now, 3),
+  describe("backfill", () => {
+    const suspend = async (userId: number, date: Date) =>
+      contractEventRepo.save({
+        user: { id: userId },
+        type: ContractEventType.SUSPENDED,
+        date,
+        contract: { id: ctx.defaultContractId },
       });
-      await service.resolveAll(now);
-      await userRepo.save({ id: member.id, tags: [] });
 
-      await service.logDivergences(now);
-
-      expect(warn).toHaveBeenCalledWith(
-        `cohort decisions for action ${action.id} diverge from the live cohort (profile-only expression): now in 0 [], now out 1 [${member.id}]`,
+    const reasonsFor = async (actionId: number) =>
+      new Set(
+        [...(await decisionsFor(actionId)).values()].map((r) => r.reason),
       );
-    });
 
-    it("logs members who joined an activity cohort", async () => {
-      const member = await createUser({ signedAt });
-      const upstream = await createAction({
-        start: addDays(now, -2),
-        deadline: addDays(now, 3),
-      });
-      const action = await createAction({
-        start: addDays(now, -1),
-        deadline: addDays(now, 3),
-        cohortExpression: { type: "CompletedAction", actionId: upstream.id },
-      });
-      await service.resolveAll(now);
-      await activityRepo.save({
-        actionId: upstream.id,
-        userId: member.id,
-        type: ActionActivityType.USER_COMPLETED,
-      });
-
-      await service.logDivergences(now);
-
-      expect(warn).toHaveBeenCalledWith(
-        `cohort decisions for action ${action.id} diverge from the live cohort (activity-dependent expression): now in 1 [${member.id}], now out 0 []`,
-      );
-    });
-
-    it("keeps checking other actions when one cohort fails", async () => {
-      const member = await createUser({ signedAt });
-      const broken = await createAction({
-        start: addDays(now, -1),
-        deadline: addDays(now, 3),
-        cohortExpression: { type: "MissedActionDeadline", actionId: 999999 },
-      });
-      await decisionRepo.save({
-        actionId: broken.id,
-        userId: member.id,
-        included: false,
-        reason: CohortDecisionReason.Launch,
-        resolvedAt: now,
-      });
-      const action = await createAction({
-        start: addDays(now, -1),
-        deadline: addDays(now, 3),
-      });
-      await decisionRepo.save({
-        actionId: action.id,
-        userId: member.id,
-        included: false,
-        reason: CohortDecisionReason.Launch,
-        resolvedAt: now,
-      });
-      const error = jest
-        .spyOn(Logger.prototype, "error")
-        .mockImplementation(() => {});
-
-      await service.logDivergences(now);
-
-      expect(error).toHaveBeenCalled();
-      expect(warn).toHaveBeenCalledWith(
-        `cohort decisions for action ${action.id} diverge from the live cohort (profile-only expression): now in 1 [${member.id}], now out 0 []`,
-      );
-      error.mockRestore();
-    });
-
-    it("stays quiet when decisions match the live cohort", async () => {
-      await createUser({ signedAt });
-      await createAction({
-        start: addDays(now, -1),
-        deadline: addDays(now, 3),
-      });
-      await service.resolveAll(now);
-
-      await service.logDivergences(now);
-
-      expect(warn).not.toHaveBeenCalled();
-    });
-
-    it("ignores resolved-after-deadline exclusions", async () => {
-      const member = await createUser({ signedAt });
+    it("decides members holding a contract at a closed action's deadline", async () => {
+      const tagged = await createUser({ signedAt });
+      const untagged = await createUser({ signedAt, tagged: false });
+      const signedMidWindow = await createUser({ signedAt: addDays(now, -2) });
+      await createUser({ signedAt: addDays(now, -0.5) });
+      await createUser();
       const action = await createAction({
         start: addDays(now, -3),
         deadline: addDays(now, -1),
       });
-      await decisionRepo.save({
-        actionId: action.id,
-        userId: member.id,
-        included: false,
-        reason: CohortDecisionReason.ResolvedAfterDeadline,
-        resolvedAt: now,
+
+      await service.resolveAll(now);
+
+      const decisions = await decisionsFor(action.id);
+      expect(
+        new Map([...decisions].map(([userId, row]) => [userId, row.included])),
+      ).toEqual(
+        new Map([
+          [tagged.id, true],
+          [untagged.id, false],
+          [signedMidWindow.id, true],
+        ]),
+      );
+      expect(await reasonsFor(action.id)).toEqual(
+        new Set([CohortDecisionReason.Backfill]),
+      );
+    });
+
+    it("decides members whose contract lapsed during the window", async () => {
+      const suspendedMidWindow = await createUser({ signedAt });
+      await suspend(suspendedMidWindow.id, addDays(now, -2));
+      const signedAndSuspendedMidWindow = await createUser({
+        signedAt: addDays(now, -2.5),
+      });
+      await suspend(signedAndSuspendedMidWindow.id, addDays(now, -2));
+      const suspendedBeforeLaunch = await createUser({ signedAt });
+      await suspend(suspendedBeforeLaunch.id, addDays(now, -4));
+      const action = await createAction({
+        start: addDays(now, -3),
+        deadline: addDays(now, -1),
       });
 
-      await service.logDivergences(now);
+      await service.resolveAll(now);
 
-      expect(warn).not.toHaveBeenCalled();
+      expect(
+        new Map(
+          [...(await decisionsFor(action.id))].map(([userId, row]) => [
+            userId,
+            row.included,
+          ]),
+        ),
+      ).toEqual(
+        new Map([
+          [suspendedMidWindow.id, true],
+          [signedAndSuspendedMidWindow.id, true],
+        ]),
+      );
+    });
+
+    it("decides actions closed long before the first pass", async () => {
+      const member = await createUser({ signedAt });
+      const action = await createAction({
+        start: addDays(now, -20),
+        deadline: addDays(now, -15),
+      });
+
+      await service.resolveAll(now);
+
+      expect((await decisionsFor(action.id)).get(member.id)).toMatchObject({
+        included: true,
+        reason: CohortDecisionReason.Backfill,
+      });
+    });
+
+    it("skips evaluating an action nobody held a contract for", async () => {
+      await createUser();
+      await createAction({
+        start: addDays(now, -20),
+        deadline: addDays(now, -15),
+      });
+      const resolveCohort = jest.spyOn(
+        ctx.app.get(ActionEventRecipientService),
+        "resolveCohortMemberIds",
+      );
+
+      await service.resolveAll(now);
+      await service.resolveAll(addDays(now, 0.01));
+
+      expect(resolveCohort).not.toHaveBeenCalled();
+      resolveCohort.mockRestore();
+    });
+
+    it("leaves open, future, and onboarding actions to ordinary decisions", async () => {
+      await createUser({ signedAt });
+      const open = await createAction({
+        start: addDays(now, -1),
+        deadline: addDays(now, 3),
+      });
+      const future = await createAction({
+        start: addDays(now, 1),
+        deadline: addDays(now, 3),
+      });
+      const onboarding = await createAction({
+        start: addDays(now, -3),
+        deadline: addDays(now, -1),
+        onboarding: true,
+      });
+
+      await service.resolveAll(now);
+
+      for (const action of [open, future, onboarding]) {
+        expect(await reasonsFor(action.id)).not.toContain(
+          CohortDecisionReason.Backfill,
+        );
+      }
+    });
+
+    it("skips closed actions the resolver decided or launched after the cutover", async () => {
+      const member = await createUser({ signedAt });
+      const decided = await createAction({
+        start: addDays(now, -5),
+        deadline: addDays(now, -1),
+      });
+      await decisionRepo.save({
+        actionId: decided.id,
+        userId: member.id,
+        included: true,
+        reason: CohortDecisionReason.Launch,
+        resolvedAt: addDays(now, -4),
+      });
+      const afterCutover = await createAction({
+        start: addDays(now, -3),
+        deadline: addDays(now, -1),
+      });
+      const beforeCutover = await createAction({
+        start: addDays(now, -5),
+        deadline: addDays(now, -2),
+      });
+
+      await service.resolveAll(now);
+
+      expect(await reasonsFor(decided.id)).not.toContain(
+        CohortDecisionReason.Backfill,
+      );
+      expect(await reasonsFor(afterCutover.id)).not.toContain(
+        CohortDecisionReason.Backfill,
+      );
+      expect(await reasonsFor(beforeCutover.id)).toEqual(
+        new Set([CohortDecisionReason.Backfill]),
+      );
+    });
+
+    it("waits out a member who just re-signed, then backfills once", async () => {
+      const member = await createUser({ signedAt });
+      const reSigned = await createUser({ signedAt });
+      await suspend(reSigned.id, addDays(now, -2));
+      await contractEventRepo.save({
+        user: { id: reSigned.id },
+        type: ContractEventType.SIGNED,
+        date: new Date(now.getTime() - 60_000),
+        contract: { id: ctx.defaultContractId },
+      });
+      const action = await createAction({
+        start: addDays(now, -3),
+        deadline: addDays(now, -1),
+      });
+
+      await service.resolveAll(now);
+      expect((await decisionsFor(action.id)).size).toBe(0);
+
+      await service.resolveAll(addDays(now, 0.01));
+      await service.resolveAll(addDays(now, 0.02));
+
+      const decisions = await decisionsFor(action.id);
+      expect([...decisions.keys()].sort()).toEqual(
+        [member.id, reSigned.id].sort(),
+      );
+      expect(await reasonsFor(action.id)).toEqual(
+        new Set([CohortDecisionReason.Backfill]),
+      );
+    });
+  });
+
+  describe("backfill path comparison", () => {
+    let warn: jest.SpyInstance;
+    let error: jest.SpyInstance;
+    let singleMember: jest.SpyInstance;
+    beforeEach(() => {
+      warn = jest.spyOn(Logger.prototype, "warn").mockImplementation(() => {});
+      error = jest
+        .spyOn(Logger.prototype, "error")
+        .mockImplementation(() => {});
+      singleMember = jest.spyOn(
+        ctx.app.get(ActionsService),
+        "computeIsInCohortExpression",
+      );
+    });
+    afterEach(() => {
+      warn.mockRestore();
+      error.mockRestore();
+      singleMember.mockRestore();
+    });
+
+    const createClosedAction = () =>
+      createAction({ start: addDays(now, -3), deadline: addDays(now, -1) });
+
+    it("stays quiet when the single-member path agrees", async () => {
+      await createUser({ signedAt });
+      await createUser({ signedAt, tagged: false });
+      await createClosedAction();
+
+      await service.resolveAll(now);
+
+      expect(singleMember).toHaveBeenCalledTimes(2);
+      expect(warn).not.toHaveBeenCalledWith(
+        expect.stringContaining("single-member cohort path"),
+      );
+    });
+
+    it("logs members the single-member path places differently", async () => {
+      const member = await createUser({ signedAt });
+      const action = await createClosedAction();
+      singleMember.mockResolvedValue(false);
+
+      await service.resolveAll(now);
+
+      expect(warn).toHaveBeenCalledWith(
+        `single-member cohort path disagrees with the backfill of action ${action.id} on member(s) 1 [${member.id}]`,
+      );
+    });
+
+    it("still saves the backfill when the comparison fails", async () => {
+      const member = await createUser({ signedAt });
+      const action = await createClosedAction();
+      singleMember.mockRejectedValue(new Error("boom"));
+
+      await service.resolveAll(now);
+
+      expect(error).toHaveBeenCalledWith(
+        `Failed to compare cohort paths for action ${action.id}`,
+        expect.any(Error),
+      );
+      expect((await decisionsFor(action.id)).get(member.id)).toMatchObject({
+        included: true,
+        reason: CohortDecisionReason.Backfill,
+      });
     });
   });
 });

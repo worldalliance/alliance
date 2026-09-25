@@ -46,6 +46,8 @@ export const queryKeys = {
     [...actionCompletionCurvesAdminAll(), granularity] as const,
   actionStatsAdmin: () => ["analyticsGetActionStatsAdmin"] as const,
   actionsAllAdmin: () => ["actionsFindAllWithDraftsAdmin"] as const,
+  actionCohortDecisionsAdmin: (actionId: number) =>
+    ["cohortDecisionsListForActionAdmin", actionId] as const,
   actionRelationsAdmin: () => ["actionsActionRelationsAdmin"] as const,
   ambassadorProgramAdmin: () => ["userGetAmbassadorProgramAdmin"] as const,
   eventLogAdmin: (page: number, limit: number, eventType: EventType | "") =>

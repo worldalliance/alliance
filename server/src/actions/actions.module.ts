@@ -32,12 +32,16 @@ import { ActionStatsService } from "./action-stats.service";
 import { ActionsController } from "./actions.controller";
 import { ActionsGateway } from "./actions.gateway";
 import { ActionsService } from "./actions.service";
+import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import { CohortDecisionListener } from "./cohort-decision.listener";
 import { CohortDecisionService } from "./cohort-decision.service";
 import { CohortDecisionWorker } from "./cohort-decision.worker";
+import { CohortDecisionsController } from "./cohort-decisions.controller";
+import { CohortDivergenceService } from "./cohort-divergence.service";
 import { ContractReminderWorker } from "./contract-reminder.worker";
 import { ContractSuspenderWorker } from "./contract-suspender.worker";
 import { ActionActivity } from "./entities/action-activity.entity";
+import { ActionCohortDecisionCorrection } from "./entities/action-cohort-decision-correction.entity";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import { ActionEvent } from "./entities/action-event.entity";
 import { ActionFormAssignment } from "./entities/action-form-assignment.entity";
@@ -63,6 +67,7 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
       Action,
       ActionActivity,
       ActionCohortDecision,
+      ActionCohortDecisionCorrection,
       ActionEvent,
       ActionEventNotif,
       ActionFormAssignment,
@@ -99,7 +104,11 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
     FormSnapshotModule,
     forwardRef(() => ShareUrlsModule),
   ],
-  controllers: [ActionsController, ProjectsController],
+  controllers: [
+    ActionsController,
+    CohortDecisionsController,
+    ProjectsController,
+  ],
   providers: [
     ActionsService,
     ProjectsService,
@@ -115,7 +124,9 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
     ActionStatsService,
     CohortDecisionListener,
     CohortDecisionService,
+    CohortDecisionStaffService,
     CohortDecisionWorker,
+    CohortDivergenceService,
   ],
   exports: [
     ActionsService,

@@ -29,3 +29,18 @@ export function memberActionPhase(events: ActionEvent[]): MemberActionPhase {
     ) ?? null;
   return { event, deadlineEvent };
 }
+
+/**
+ * Whether a schedule change brings the member-action deadline earlier,
+ * including giving a deadline to a phase that had none.
+ */
+export function shortensMemberActionDeadline(
+  before: MemberActionPhase,
+  after: MemberActionPhase,
+): boolean {
+  if (!after.deadlineEvent) return false;
+  return (
+    !before.deadlineEvent ||
+    after.deadlineEvent.date < before.deadlineEvent.date
+  );
+}

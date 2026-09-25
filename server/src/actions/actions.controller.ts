@@ -42,6 +42,10 @@ import { UserService } from "src/user/user.service";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { Public } from "../auth/public.decorator";
+import {
+  AcknowledgeDeadlineShortening,
+  ApiAcknowledgeDeadlineShortening,
+} from "./acknowledge-deadline-shortening";
 import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionsService } from "./actions.service";
 import {
@@ -831,13 +835,21 @@ export class ActionsController {
   @Post(":id/events")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ActionEventDto })
+  @ApiAcknowledgeDeadlineShortening()
   async addEventAdmin(
     @Param("id", ParseIntPipe) id: number,
     @Body() actionEventDto: CreateActionEventDto,
     @Request() req: JwtRequest,
+    @AcknowledgeDeadlineShortening()
+    acknowledgeDeadlineShortening: boolean,
   ): Promise<ActionEventDto> {
     return new ActionEventDto(
-      await this.actionsService.addEvent(id, actionEventDto, req.user?.sub),
+      await this.actionsService.addEvent({
+        actionId: id,
+        event: actionEventDto,
+        userId: req.user?.sub,
+        acknowledgeDeadlineShortening,
+      }),
     );
   }
 
@@ -1155,30 +1167,38 @@ export class ActionsController {
   @Patch("suite/:suiteId/batchUpdateSuiteEvents/:eventId")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ActionSuiteDto })
+  @ApiAcknowledgeDeadlineShortening()
   async batchUpdateSuiteEventsAdmin(
     @Param("suiteId", ParseIntPipe) suiteId: number,
     @Param("eventId", ParseIntPipe) eventId: number,
     @Body() body: UpdateActionEventDto,
+    @AcknowledgeDeadlineShortening()
+    acknowledgeDeadlineShortening: boolean,
   ): Promise<ActionSuiteDto> {
-    const suite = await this.actionsService.batchUpdateSuiteEvents(
+    const suite = await this.actionsService.batchUpdateSuiteEvents({
       suiteId,
       eventId,
       body,
-    );
+      acknowledgeDeadlineShortening,
+    });
     return new ActionSuiteDto(suite);
   }
 
   @Post("suite/:suiteId/events")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ActionSuiteDto })
+  @ApiAcknowledgeDeadlineShortening()
   async addSuiteEventAdmin(
     @Param("suiteId", ParseIntPipe) suiteId: number,
     @Body() actionEventDto: CreateActionEventDto,
+    @AcknowledgeDeadlineShortening()
+    acknowledgeDeadlineShortening: boolean,
   ): Promise<ActionSuiteDto> {
-    const suite = await this.actionsService.addSuiteEvent(
+    const suite = await this.actionsService.addSuiteEvent({
       suiteId,
-      actionEventDto,
-    );
+      event: actionEventDto,
+      acknowledgeDeadlineShortening,
+    });
     return new ActionSuiteDto(suite);
   }
 

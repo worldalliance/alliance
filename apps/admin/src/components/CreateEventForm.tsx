@@ -12,8 +12,13 @@ import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker, {
   DateTimePickerChange,
 } from "@alliance/sharedweb/ui/DateTimePicker";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { milliseconds } from "date-fns";
 import { useState } from "react";
+import { sendConfirmingDeadlineShortening } from "../lib/confirmDeadlineShortening";
+
+const DEADLINE_DECLINED_MESSAGE =
+  "Added the launch event without its deadline event. Add the deadline separately.";
 
 export type CreateEventFormProps = {
   creatingEvent: boolean;
@@ -65,6 +70,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
     setEventCreatedSuccess,
     eventCreatedSuccess,
   } = props;
+  const { confirm } = useToast();
   const [useCustomName, setUseCustomName] = useState<boolean>(false);
   const [launchNow, setLaunchNow] = useState<boolean>(true);
   const [useDeadlineEvent, setUseDeadlineEvent] = useState<boolean>(false);
@@ -119,6 +125,20 @@ const CreateEventForm = (props: CreateEventFormProps) => {
     setDeadlineEventDate(change.utcValue);
   };
 
+  const addToSuite = (suiteId: number, body: CreateActionEventDto) =>
+    sendConfirmingDeadlineShortening({
+      send: (query) =>
+        actionsAddSuiteEventAdmin({ path: { suiteId }, body, query }),
+      confirm,
+    });
+
+  const addToAction = (body: CreateActionEventDto) =>
+    sendConfirmingDeadlineShortening({
+      send: (query) =>
+        actionsAddEventAdmin({ path: { id: action.id }, body, query }),
+      confirm,
+    });
+
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -139,21 +159,20 @@ const CreateEventForm = (props: CreateEventFormProps) => {
       let response;
 
       if (suiteMode) {
-        response = await actionsAddSuiteEventAdmin({
-          path: { suiteId: props.suiteId },
-          body: eventData,
-        });
+        const sent = await addToSuite(props.suiteId, eventData);
+        if (!sent) return;
+        response = sent;
         if (response.data) {
           updatedSuite = response.data;
         }
       } else {
-        response = await actionsAddEventAdmin({
-          path: { id: action.id },
-          body: eventData,
-        });
+        const sent = await addToAction(eventData);
+        if (!sent) return;
+        response = sent;
       }
       const addedEvent = response.data;
       let addedOfficeActionEvent = null;
+      let deadlineDeclined = false;
 
       if (
         useDeadlineEvent &&
@@ -167,29 +186,24 @@ const CreateEventForm = (props: CreateEventFormProps) => {
           description: "",
         } satisfies CreateActionEventDto;
 
-        let officeActionEventResponse;
+        let officeActionEventResponse: { error?: unknown } | null;
         if (suiteMode) {
-          officeActionEventResponse = await actionsAddSuiteEventAdmin({
-            path: { suiteId: props.suiteId },
-            body: officeActionEvent,
-          });
-          if (officeActionEventResponse.data) {
-            updatedSuite = officeActionEventResponse.data;
+          const sent = await addToSuite(props.suiteId, officeActionEvent);
+          if (sent?.data) {
+            updatedSuite = sent.data;
           }
-          if (officeActionEventResponse.error) {
-            setError("Failed to add office action event");
-            console.error(officeActionEventResponse.error);
-          }
+          officeActionEventResponse = sent;
         } else {
-          officeActionEventResponse = await actionsAddEventAdmin({
-            path: { id: action.id },
-            body: officeActionEvent,
-          });
-          addedOfficeActionEvent = officeActionEventResponse.data;
-          if (officeActionEventResponse.error) {
-            setError("Failed to add office action event");
-            console.error(officeActionEventResponse.error);
-          }
+          const sent = await addToAction(officeActionEvent);
+          addedOfficeActionEvent = sent?.data;
+          officeActionEventResponse = sent;
+        }
+        if (!officeActionEventResponse) {
+          deadlineDeclined = true;
+          setError(DEADLINE_DECLINED_MESSAGE);
+        } else if (officeActionEventResponse.error) {
+          setError("Failed to add office action event");
+          console.error(officeActionEventResponse.error);
         }
       }
 
@@ -210,12 +224,13 @@ const CreateEventForm = (props: CreateEventFormProps) => {
           props.setSuite(updatedSuite);
         }
 
-        // Show success feedback
-        setEventCreatedSuccess(true);
-        setTimeout(
-          () => setEventCreatedSuccess(false),
-          milliseconds({ seconds: 3 }),
-        );
+        if (!deadlineDeclined) {
+          setEventCreatedSuccess(true);
+          setTimeout(
+            () => setEventCreatedSuccess(false),
+            milliseconds({ seconds: 3 }),
+          );
+        }
 
         // Reset form
         setEventForm({

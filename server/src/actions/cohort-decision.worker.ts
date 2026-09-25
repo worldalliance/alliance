@@ -4,6 +4,7 @@ import { LOCK_KEYS } from "src/notifs/lock-keys";
 import { withPgAdvisoryLock } from "src/notifs/lock-utils";
 import { DataSource } from "typeorm";
 import { CohortDecisionService } from "./cohort-decision.service";
+import { CohortDivergenceService } from "./cohort-divergence.service";
 
 const [LOCK_KEY1, LOCK_KEY2] = LOCK_KEYS.cohortDecision;
 const [DIVERGENCE_LOCK_KEY1, DIVERGENCE_LOCK_KEY2] =
@@ -16,6 +17,7 @@ export class CohortDecisionWorker {
   constructor(
     private readonly dataSource: DataSource,
     private readonly cohortDecisionService: CohortDecisionService,
+    private readonly cohortDivergenceService: CohortDivergenceService,
   ) {}
 
   @Cron("*/5 * * * *")
@@ -37,7 +39,7 @@ export class CohortDecisionWorker {
       this.dataSource,
       DIVERGENCE_LOCK_KEY1,
       DIVERGENCE_LOCK_KEY2,
-      () => this.cohortDecisionService.logDivergences(new Date()),
+      () => this.cohortDivergenceService.logDivergences(new Date()),
     );
     if (ran === null) {
       this.logger.log("cohort decision divergence check skipped bc of lock");

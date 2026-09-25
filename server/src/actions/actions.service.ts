@@ -145,6 +145,7 @@ import {
   isActionUpdatePublished,
   publishedActionUpdateWhere,
 } from "./action-update-visibility";
+import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import {
   answerMatchesFormField,
   evaluateCohortExpression,
@@ -359,6 +360,7 @@ export class ActionsService {
     private readonly facepileService: FacepileService,
     private readonly formSnapshotService: FormSnapshotService,
     private readonly posthogService: PosthogService,
+    private readonly cohortDecisionStaffService: CohortDecisionStaffService,
   ) {}
 
   async applyAssignedFormIds(
@@ -1927,6 +1929,16 @@ export class ActionsService {
     }
 
     if (
+      rest.optional !== undefined &&
+      rest.optional !== action.optional &&
+      (await this.cohortDecisionStaffService.hasDecisions(id))
+    ) {
+      throw new BadRequestException(
+        "Optional can't change once members have cohort decisions for this action.",
+      );
+    }
+
+    if (
       rest.taskFormId !== undefined &&
       rest.taskFormId !== action.taskFormId
     ) {
@@ -1960,15 +1972,18 @@ export class ActionsService {
     return this.findOneOrFail({ id, userId });
   }
 
-  async addEvent(
-    actionId: number,
-    actionEventDto: CreateActionEventDto,
-    userId?: number,
-  ): Promise<ActionEvent> {
+  async addEvent(params: {
+    actionId: number;
+    event: CreateActionEventDto;
+    userId?: number;
+    acknowledgeDeadlineShortening: boolean;
+  }): Promise<ActionEvent> {
+    const { actionId, event, userId, acknowledgeDeadlineShortening } = params;
     const action = await this.findOneOrFail({ id: actionId, userId });
     const [savedEvent] = await this.addEventToActions({
       actions: [action],
-      event: actionEventDto,
+      event,
+      acknowledgeDeadlineShortening,
     });
     return savedEvent;
   }
@@ -1978,12 +1993,15 @@ export class ActionsService {
     event: CreateActionEventDto;
     overrides?: Partial<ActionEvent>;
     suiteIds?: number[];
+    acknowledgeDeadlineShortening: boolean;
   }): Promise<ActionEvent[]> {
     const { actions, event, overrides, suiteIds } = params;
     let saved: ActionEvent[];
     try {
-      saved = await this.actionEventRepository.manager.transaction(
-        async (manager) => {
+      saved = await this.cohortDecisionStaffService.guardDeadlineShortening({
+        actionIds: actions.map((action) => action.id),
+        acknowledged: params.acknowledgeDeadlineShortening,
+        change: async (manager) => {
           const events: ActionEvent[] = [];
           for (const action of actions) {
             const newEvent = manager.create(ActionEvent, {
@@ -1995,7 +2013,7 @@ export class ActionsService {
           }
           return events;
         },
-      );
+      });
     } catch (err) {
       if (
         err?.code === "23505" &&
@@ -3309,11 +3327,13 @@ export class ActionsService {
     return parseActionSuite(saved);
   }
 
-  async batchUpdateSuiteEvents(
-    suiteId: number,
-    eventId: number,
-    body: UpdateActionEventDto,
-  ) {
+  async batchUpdateSuiteEvents(params: {
+    suiteId: number;
+    eventId: number;
+    body: UpdateActionEventDto;
+    acknowledgeDeadlineShortening: boolean;
+  }) {
+    const { suiteId, eventId, body } = params;
     const event = await this.actionEventRepository.findOneOrFail({
       where: { id: eventId },
       relations: { action: { events: true } },
@@ -3344,14 +3364,25 @@ export class ActionsService {
       }
     }
 
-    for (const id of eventsToUpdate) {
-      await this.actionEventRepository.update(id, body);
-    }
+    await this.cohortDecisionStaffService.guardDeadlineShortening({
+      actionIds: [event.action.id, ...suite.actions.map((action) => action.id)],
+      acknowledged: params.acknowledgeDeadlineShortening,
+      change: async (em) => {
+        for (const id of eventsToUpdate) {
+          await em.update(ActionEvent, id, body);
+        }
+      },
+    });
     await this.syncGeneralUpdateDatesForSuites([suiteId]);
     return this.findSuite(suiteId);
   }
 
-  async addSuiteEvent(suiteId: number, actionEventDto: CreateActionEventDto) {
+  async addSuiteEvent(params: {
+    suiteId: number;
+    event: CreateActionEventDto;
+    acknowledgeDeadlineShortening: boolean;
+  }) {
+    const { suiteId, event, acknowledgeDeadlineShortening } = params;
     const suite = await this.actionSuiteRepository.findOneOrFail({
       where: { id: suiteId },
       relations: { actions: true },
@@ -3359,9 +3390,10 @@ export class ActionsService {
 
     await this.addEventToActions({
       actions: suite.actions,
-      event: actionEventDto,
+      event,
       overrides: { suiteManaged: true },
       suiteIds: [suiteId],
+      acknowledgeDeadlineShortening,
     });
     return this.findSuite(suiteId);
   }
