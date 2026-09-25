@@ -566,6 +566,153 @@ describe("CohortDecisionService (e2e)", () => {
     expect(decision?.included).toBe(true);
   });
 
+  describe("planBackfill", () => {
+    const plannedRows = async () =>
+      new Map(
+        (await service.planBackfill(now)).map(({ action, rows }) => [
+          action.id,
+          rows,
+        ]),
+      );
+
+    it("decides members holding a contract at a closed action's deadline", async () => {
+      const tagged = await createUser({ signedAt });
+      const untagged = await createUser({ signedAt, tagged: false });
+      const signedMidWindow = await createUser({ signedAt: addDays(now, -2) });
+      const signedAfterDeadline = await createUser({
+        signedAt: addDays(now, -0.5),
+      });
+      const unsigned = await createUser();
+      const action = await createAction({
+        start: addDays(now, -3),
+        deadline: addDays(now, -1),
+      });
+
+      const rows = (await plannedRows()).get(action.id);
+
+      expect(new Map(rows?.map((row) => [row.userId, row.included]))).toEqual(
+        new Map([
+          [tagged.id, true],
+          [untagged.id, false],
+          [signedMidWindow.id, true],
+        ]),
+      );
+      expect(rows?.map((row) => row.userId)).not.toContain(
+        signedAfterDeadline.id,
+      );
+      expect(rows?.map((row) => row.userId)).not.toContain(unsigned.id);
+      expect(
+        rows?.every((row) => row.reason === CohortDecisionReason.Backfill),
+      ).toBe(true);
+    });
+
+    it("decides members whose contract lapsed during the window", async () => {
+      const suspend = async (userId: number, date: Date) =>
+        contractEventRepo.save({
+          user: { id: userId },
+          type: ContractEventType.SUSPENDED,
+          date,
+          contract: { id: ctx.defaultContractId },
+        });
+      const suspendedMidWindow = await createUser({ signedAt });
+      await suspend(suspendedMidWindow.id, addDays(now, -2));
+      const signedAndSuspendedMidWindow = await createUser({
+        signedAt: addDays(now, -2.5),
+      });
+      await suspend(signedAndSuspendedMidWindow.id, addDays(now, -2));
+      const suspendedBeforeLaunch = await createUser({ signedAt });
+      await suspend(suspendedBeforeLaunch.id, addDays(now, -4));
+      const action = await createAction({
+        start: addDays(now, -3),
+        deadline: addDays(now, -1),
+      });
+
+      const rows = (await plannedRows()).get(action.id);
+
+      expect(new Map(rows?.map((row) => [row.userId, row.included]))).toEqual(
+        new Map([
+          [suspendedMidWindow.id, true],
+          [signedAndSuspendedMidWindow.id, true],
+        ]),
+      );
+    });
+
+    it("leaves open, future, and onboarding actions to the pass", async () => {
+      await createUser({ signedAt });
+      const open = await createAction({
+        start: addDays(now, -1),
+        deadline: addDays(now, 3),
+      });
+      const future = await createAction({
+        start: addDays(now, 1),
+        deadline: addDays(now, 3),
+      });
+      const onboarding = await createAction({
+        start: addDays(now, -3),
+        deadline: addDays(now, -1),
+        onboarding: true,
+      });
+
+      const plan = await plannedRows();
+
+      expect(plan.has(open.id)).toBe(false);
+      expect(plan.has(future.id)).toBe(false);
+      expect(plan.has(onboarding.id)).toBe(false);
+    });
+
+    it("skips closed actions the resolver decided or launched after the cutover", async () => {
+      const member = await createUser({ signedAt });
+      const decided = await createAction({
+        start: addDays(now, -5),
+        deadline: addDays(now, -1),
+      });
+      await decisionRepo.save({
+        actionId: decided.id,
+        userId: member.id,
+        included: true,
+        reason: CohortDecisionReason.Launch,
+        resolvedAt: addDays(now, -4),
+      });
+      const afterCutover = await createAction({
+        start: addDays(now, -3),
+        deadline: addDays(now, -1),
+      });
+      const beforeCutover = await createAction({
+        start: addDays(now, -5),
+        deadline: addDays(now, -2),
+      });
+
+      const plan = await plannedRows();
+
+      expect(plan.has(decided.id)).toBe(false);
+      expect(plan.has(afterCutover.id)).toBe(false);
+      expect(plan.has(beforeCutover.id)).toBe(true);
+    });
+
+    it("leaves nothing for catch-up or a rerun once saved", async () => {
+      const member = await createUser({ signedAt });
+      const action = await createAction({
+        start: addDays(now, -3),
+        deadline: addDays(now, -1),
+      });
+      await service.insert(
+        (await service.planBackfill(now)).flatMap(({ rows }) => rows),
+      );
+      await recordCutover(now);
+
+      await service.resolveAll(now);
+
+      expect(await service.planBackfill(now)).toEqual([]);
+      expect((await decisionsFor(action.id)).get(member.id)).toMatchObject({
+        included: true,
+        reason: CohortDecisionReason.Backfill,
+      });
+      expect(await decisionRepo.count({ where: { actionId: action.id } })).toBe(
+        1,
+      );
+    });
+  });
+
   describe("logDivergences", () => {
     let warn: jest.SpyInstance;
     beforeEach(() => {

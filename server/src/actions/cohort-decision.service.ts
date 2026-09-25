@@ -12,6 +12,7 @@ import { In, Not, type Repository } from "typeorm";
 import {
   CohortEnrollmentState,
   computeCohortEnrollment,
+  heldContractDuringWindow,
   isCohortAdmissible,
   type CohortEnrollment,
 } from "./cohort-decision";
@@ -58,6 +59,19 @@ function admissionReason(params: {
   return isCohortAdmissible({ action, user, at: start })
     ? CohortDecisionReason.Launch
     : CohortDecisionReason.Signing;
+}
+
+/**
+ * A closed action the resolver never decided that launched before its first
+ * decision. Catch-up would treat its whole cohort as a processing failure.
+ */
+function belongsToBackfill(params: {
+  enrollment: { start: Date };
+  hasDecisions: boolean;
+  cutover: Date | null;
+}): boolean {
+  const { enrollment, hasDecisions, cutover } = params;
+  return !hasDecisions && (!cutover || enrollment.start < cutover);
 }
 
 @Injectable()
@@ -158,9 +172,7 @@ export class CohortDecisionService {
         });
       }
       case CohortEnrollmentState.Closed: {
-        // An action the resolver never decided that launched before its
-        // first decision belongs to the backfill.
-        if (!hasDecisions && (!cutover || enrollment.start < cutover)) {
+        if (belongsToBackfill({ enrollment, hasDecisions, cutover })) {
           return [];
         }
         const pending = users.filter((user) =>
@@ -199,6 +211,72 @@ export class CohortDecisionService {
           `unknown enrollment state: ${enrollment satisfies never}`,
         );
     }
+  }
+
+  /**
+   * Decisions for every closed action that belongs to the backfill, from the
+   * live cohort now: members holding a contract at some point in the window,
+   * as the pass would have admitted them while it was open. Nothing is
+   * written.
+   */
+  async planBackfill(
+    now: Date,
+  ): Promise<{ action: ParsedAction; rows: DecisionRow[] }[]> {
+    const actions = await this.findResolvableActions(now);
+    const [decidedByAction, cutover] = await Promise.all([
+      this.findDecidedUserIds(actions.map(({ action }) => action.id)),
+      this.findCutover(),
+    ]);
+    const session = new CohortResolutionSession();
+    const users = await this.actionEventRecipientService.primeActiveUsers(
+      session,
+      () => this.userService.findActiveUsersForRoster(),
+    );
+    const plan: { action: ParsedAction; rows: DecisionRow[] }[] = [];
+    for (const { action, enrollment } of actions) {
+      switch (enrollment.state) {
+        case CohortEnrollmentState.Closed:
+          break;
+        case CohortEnrollmentState.Open:
+        case CohortEnrollmentState.NotStarted:
+          continue;
+        default:
+          throw new Error(
+            `unknown enrollment state: ${enrollment satisfies never}`,
+          );
+      }
+      if (
+        !belongsToBackfill({
+          enrollment,
+          hasDecisions: decidedByAction.has(action.id),
+          cutover,
+        })
+      ) {
+        continue;
+      }
+      const cohort =
+        await this.actionEventRecipientService.resolveCohortMemberIds(
+          action.cohortExpression,
+          session,
+        );
+      const rows = users
+        .filter((user) =>
+          heldContractDuringWindow({
+            user,
+            start: enrollment.start,
+            deadline: enrollment.deadline,
+          }),
+        )
+        .map((user) => ({
+          actionId: action.id,
+          userId: user.id,
+          included: cohort.has(user.id),
+          reason: CohortDecisionReason.Backfill,
+          resolvedAt: now,
+        }));
+      plan.push({ action, rows });
+    }
+    return plan;
   }
 
   /** When the resolver first ran: its earliest ordinary decision. */
@@ -349,36 +427,39 @@ export class CohortDecisionService {
     return rows;
   }
 
-  private async findActionsInCatchUp(
+  private async findResolvableActions(
     now: Date,
   ): Promise<{ action: ParsedAction; enrollment: CohortEnrollment }[]> {
     const actions = await this.actionRepository.find({
       where: { publicOnly: false },
       relations: { events: true },
     });
-    return actions
-      .map(parseAction)
-      .map((action) => ({
-        action,
-        enrollment: computeCohortEnrollment(action, now),
-      }))
-      .filter(({ enrollment }) => {
-        switch (enrollment.state) {
-          case CohortEnrollmentState.Open:
-            return true;
-          case CohortEnrollmentState.Closed:
-            return (
-              now.getTime() - enrollment.deadline.getTime() <=
-              CLOSED_ACTION_CATCH_UP_MS
-            );
-          case CohortEnrollmentState.NotStarted:
-            return false;
-          default:
-            throw new Error(
-              `unknown enrollment state: ${enrollment satisfies never}`,
-            );
-        }
-      });
+    return actions.map(parseAction).map((action) => ({
+      action,
+      enrollment: computeCohortEnrollment(action, now),
+    }));
+  }
+
+  private async findActionsInCatchUp(
+    now: Date,
+  ): Promise<{ action: ParsedAction; enrollment: CohortEnrollment }[]> {
+    return (await this.findResolvableActions(now)).filter(({ enrollment }) => {
+      switch (enrollment.state) {
+        case CohortEnrollmentState.Open:
+          return true;
+        case CohortEnrollmentState.Closed:
+          return (
+            now.getTime() - enrollment.deadline.getTime() <=
+            CLOSED_ACTION_CATCH_UP_MS
+          );
+        case CohortEnrollmentState.NotStarted:
+          return false;
+        default:
+          throw new Error(
+            `unknown enrollment state: ${enrollment satisfies never}`,
+          );
+      }
+    });
   }
 
   private async findDecidedUserIds(
@@ -400,15 +481,22 @@ export class CohortDecisionService {
     return byAction;
   }
 
-  /** A concurrent writer's row wins; decisions are final once written. */
-  private async insert(rows: DecisionRow[]): Promise<void> {
-    for (let i = 0; i < rows.length; i += INSERT_CHUNK_SIZE) {
-      await this.decisionRepository
-        .createQueryBuilder()
-        .insert()
-        .values(rows.slice(i, i + INSERT_CHUNK_SIZE))
-        .orIgnore()
-        .execute();
-    }
+  /**
+   * All or nothing, so a backfill rerun never skips a half-written action. A
+   * concurrent writer's row wins; decisions are final once written.
+   */
+  async insert(rows: DecisionRow[]): Promise<void> {
+    if (rows.length === 0) return;
+    await this.decisionRepository.manager.transaction(async (manager) => {
+      for (let i = 0; i < rows.length; i += INSERT_CHUNK_SIZE) {
+        await manager
+          .createQueryBuilder()
+          .insert()
+          .into(ActionCohortDecision)
+          .values(rows.slice(i, i + INSERT_CHUNK_SIZE))
+          .orIgnore()
+          .execute();
+      }
+    });
   }
 }
