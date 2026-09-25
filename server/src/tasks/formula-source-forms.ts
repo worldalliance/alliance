@@ -1,20 +1,21 @@
 import { type FormSchema } from "@alliance/common/forms/form-schema";
+import { formulaSourceFormIds } from "@alliance/common/forms/formula-options";
 import { storedQuestionFields } from "@alliance/common/forms/stored-schema";
 import { type SourceFormFields } from "@alliance/common/forms/variable-scope";
-import { variableSourceFormIds } from "@alliance/common/forms/variables";
 import { In, type Repository } from "typeorm";
 import type { Form } from "./entities/form.entity";
 import { formSchemaOf } from "./form-snapshot-schema";
 
 /**
- * The current question fields of every form `schema`'s variables read. A form
- * that is gone or unreadable is left out, which validation reports.
+ * The current question fields of every form `schema`'s variables and options
+ * formulas read. A form that is gone or unreadable is left out, which
+ * validation reports.
  */
-export async function loadVariableSourceForms(params: {
+export async function loadFormulaSourceForms(params: {
   formRepository: Repository<Form>;
   schema: FormSchema;
 }): Promise<SourceFormFields> {
-  const ids = variableSourceFormIds(params.schema.variables);
+  const ids = formulaSourceFormIds(params.schema);
   if (ids.length === 0) return new Map();
   const forms = await params.formRepository.find({
     where: { id: In(ids) },
@@ -29,8 +30,9 @@ export async function loadVariableSourceForms(params: {
 }
 
 /**
- * Other forms whose current version has a variable reading `formId`'s
- * answers. A form counting its own answers doesn't keep itself from deletion.
+ * Other forms whose current version has a variable or options formula reading
+ * `formId`'s answers. A form counting its own answers doesn't keep itself from
+ * deletion.
  */
 export function findFormsReadingForm(params: {
   formRepository: Repository<Form>;
@@ -40,7 +42,8 @@ export function findFormsReadingForm(params: {
     .createQueryBuilder("form")
     .innerJoin("form.formSnapshot", "snapshot")
     .where(
-      `jsonb_path_exists(snapshot.schema, '$.variables[*].inputs.*.sourceFormId ? (@ == $id)', jsonb_build_object('id', :formId::int))`,
+      `(jsonb_path_exists(snapshot.schema, '$.variables[*].inputs.*.sourceFormId ? (@ == $id)', jsonb_build_object('id', :formId::int))
+        OR jsonb_path_exists(snapshot.schema, 'lax $.pages[*].**.optionsFormula.inputs.*.sourceFormId ? (@ == $id)', jsonb_build_object('id', :formId::int)))`,
       { formId: params.formId },
     )
     .andWhere("form.id != :formId")

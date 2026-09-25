@@ -12443,7 +12443,7 @@ export type TasksDeleteFormAdminData = {
 
 export type TasksDeleteFormAdminErrors = {
     /**
-     * Another form's current version has a variable reading this form's answers.
+     * Another form's current version has a variable or options formula reading this form's answers.
      */
     409: HeyApiError;
 };

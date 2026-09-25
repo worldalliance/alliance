@@ -14,7 +14,16 @@ const sourceSchema: FormSchema = {
   pages: [
     {
       id: "p1",
-      fields: [{ id: "score", type: "input", kind: "number", label: "Score" }],
+      fields: [
+        { id: "score", type: "input", kind: "number", label: "Score" },
+        {
+          id: "colors",
+          type: "input",
+          kind: "multiselect",
+          label: "Colors",
+          options: [{ label: "Red", value: "red" }],
+        },
+      ],
     },
   ],
   outputViews: [],
@@ -44,6 +53,30 @@ const readsScore = (sourceFormId: number): FormVariable => ({
   formula: 'input1.map(n => n ?? "-").join(",")',
 });
 
+const picksColor = (sourceFormId: number): FormSchema => ({
+  pages: [
+    {
+      id: "p1",
+      fields: [
+        {
+          id: "pick",
+          type: "input",
+          kind: "select",
+          label: "Pick",
+          options: [],
+          optionsFormula: {
+            inputs: {
+              input1: { kind: "sourceField", sourceFormId, fieldId: "colors" },
+            },
+            formula: "input1.at(-1) ?? []",
+          },
+        },
+      ],
+    },
+  ],
+  outputViews: [],
+});
+
 const destinationSchema = (
   variable: FormVariable,
   overrides: Partial<FormSchema> = {},
@@ -59,7 +92,7 @@ const destinationSchema = (
   ...overrides,
 });
 
-describe("Variables reading another form (e2e)", () => {
+describe("Formulas reading another form (e2e)", () => {
   let ctx: TestContext;
   let formRepo: Repository<Form>;
 
@@ -90,7 +123,7 @@ describe("Variables reading another form (e2e)", () => {
       .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .send({ title: "Destination", schema });
 
-  describe("saving a form whose variable reads another form", () => {
+  describe("saving a form whose formula reads another form", () => {
     it("accepts a reference to a question the source form has", async () => {
       const form = await createSource();
       await create(destinationSchema(readsScore(form.id))).expect(201);
@@ -144,6 +177,23 @@ describe("Variables reading another form (e2e)", () => {
       );
     });
 
+    it("accepts an options formula reading another form", async () => {
+      const form = await createSource();
+      await create(picksColor(form.id)).expect(201);
+    });
+
+    it("rejects a form reading itself through an options formula", async () => {
+      const form = await createSource();
+      const response = await request(ctx.app.getHttpServer())
+        .put(`/tasks/updateForm/${form.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ schema: picksColor(form.id) })
+        .expect(400);
+      expect(response.body.errors[0].message).toBe(
+        `Options formula: Input "input1" reads this form as another form. Pick "This form" instead`,
+      );
+    });
+
     it("rejects the variable in an output view", async () => {
       const form = await createSource();
       const response = await create(
@@ -190,7 +240,7 @@ describe("Variables reading another form (e2e)", () => {
 
       const refused = await remove(source.id).expect(409);
       expect(refused.body.message).toBe(
-        `Variables in "Destination" (#${destinationId}) read this form's answers. Change them to stop reading it, then delete it`,
+        `Variables or options formulas in "Destination" (#${destinationId}) read this form's answers. Change them to stop reading it, then delete it`,
       );
       expect(await formRepo.findOneBy({ id: source.id })).not.toBeNull();
 
@@ -202,10 +252,76 @@ describe("Variables reading another form (e2e)", () => {
       await remove(source.id).expect(200);
     });
 
+    it("refuses while a form's options formula reads it", async () => {
+      const source = await createSource();
+      const created = await create(picksColor(source.id)).expect(201);
+
+      const refused = await remove(source.id).expect(409);
+      expect(refused.body.message).toBe(
+        `Variables or options formulas in "Destination" (#${created.body.id}) read this form's answers. Change them to stop reading it, then delete it`,
+      );
+    });
+
+    it("refuses while an options formula on a grouped list's sub-field reads it", async () => {
+      const source = await createSource();
+      await create({
+        pages: [
+          {
+            id: "p1",
+            fields: [
+              {
+                id: "group",
+                type: "group",
+                kind: "group",
+                fields: [
+                  {
+                    id: "rows",
+                    type: "input",
+                    kind: "list",
+                    label: "Rows",
+                    fields: [
+                      {
+                        id: "pick",
+                        type: "input",
+                        kind: "select",
+                        label: "Pick",
+                        options: [],
+                        optionsFormula: {
+                          inputs: {
+                            input1: {
+                              kind: "sourceField",
+                              sourceFormId: source.id,
+                              fieldId: "colors",
+                            },
+                          },
+                          formula: "input1.at(-1) ?? []",
+                        },
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        outputViews: [],
+      }).expect(201);
+
+      await remove(source.id).expect(409);
+    });
+
     it("allows deleting a form while variables read only a different form", async () => {
       const source = await createSource();
       const other = await createSource();
       await create(destinationSchema(readsScore(other.id))).expect(201);
+
+      await remove(source.id).expect(200);
+    });
+
+    it("allows deleting a form while options formulas read only a different form", async () => {
+      const source = await createSource();
+      const other = await createSource();
+      await create(picksColor(other.id)).expect(201);
 
       await remove(source.id).expect(200);
     });
