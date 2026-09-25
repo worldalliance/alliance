@@ -1,5 +1,6 @@
 import { errorMessage } from "@alliance/common/errorMessage";
 import {
+  forumExportPostAdmin,
   forumGetPostsForAdmin,
   forumUpdatePostSettingsAdmin,
   userListAdmin,
@@ -14,7 +15,6 @@ import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { Download, Plus, Trash2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { href, useNavigate, useParams } from "react-router";
-import { getApiUrl } from "../lib/config";
 
 type TagDraft = { id?: number; name: string };
 
@@ -117,15 +117,14 @@ const PostsManagementPage: React.FC = () => {
   const handleDownload = async (post: PostDto) => {
     setDownloadingPostId(post.id);
     try {
-      const response = await fetch(
-        `${getApiUrl()}/forum/admin/posts/${post.id}/export`,
-        { credentials: "include" },
-      );
-      if (!response.ok) {
+      const { data, response } = await forumExportPostAdmin({
+        path: { id: post.id },
+        parseAs: "blob",
+      });
+      if (!(data instanceof Blob)) {
         throw new Error(`Export failed: ${response.status}`);
       }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(data);
       const link = document.createElement("a");
       link.href = url;
       link.download =
