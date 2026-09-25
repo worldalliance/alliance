@@ -15,13 +15,14 @@ import {
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import React, { useEffect, useState } from "react";
 import {
   externalShareTargetsLoadError,
   externalShareTargetsQuery,
 } from "../lib/externalShareTargetsQuery";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
+import { usePatchQueryData } from "../lib/usePatchQueryData";
 
 const INITIAL_NEW_TARGET: CreateExternalShareTargetDto = {
   name: "",
@@ -36,7 +37,6 @@ const withoutId = (ids: Set<number>, id: number) => {
 };
 
 const ExternalShareTargetsPage: React.FC = () => {
-  const queryClient = useQueryClient();
   const list = useQuery(externalShareTargetsQuery);
   const targets = list.data ?? [];
   const loadError = list.isError
@@ -48,20 +48,7 @@ const ExternalShareTargetsPage: React.FC = () => {
   const [updatingIds, setUpdatingIds] = useState<Set<number>>(() => new Set());
   const [deletingIds, setDeletingIds] = useState<Set<number>>(() => new Set());
 
-  const setTargets = async (
-    update: (prev: ExternalShareTargetDto[]) => ExternalShareTargetDto[],
-  ) => {
-    const { queryKey } = externalShareTargetsQuery;
-    // A fetch started before the write would land the old list over it.
-    await queryClient.cancelQueries({ queryKey });
-    // With no list to patch (the first load was cancelled or failed), a fresh
-    // fetch picks up the write.
-    if (!queryClient.getQueryData(queryKey)) {
-      await queryClient.refetchQueries({ queryKey });
-      return;
-    }
-    queryClient.setQueryData(queryKey, (prev) => prev && update(prev));
-  };
+  const setTargets = usePatchQueryData(externalShareTargetsQuery.queryKey);
 
   const reportError = (err: unknown, fallback: string) => {
     console.error(fallback, err);

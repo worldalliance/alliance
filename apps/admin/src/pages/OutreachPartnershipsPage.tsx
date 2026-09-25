@@ -12,10 +12,11 @@ import {
   thrownRefusalMessage,
 } from "@alliance/shared/lib/hey-api";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import React, { useMemo, useRef, useState } from "react";
 import { outreachPartnershipResponsesQuery } from "../lib/outreachPartnershipResponsesQuery";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
+import { usePatchQueryData } from "../lib/usePatchQueryData";
 
 const formatDateTime = (value: string): string =>
   new Date(value).toLocaleString(undefined, {
@@ -36,7 +37,6 @@ const withoutId = (ids: Set<number>, id: number) => {
 };
 
 const OutreachPartnershipsPage: React.FC = () => {
-  const queryClient = useQueryClient();
   const list = useQuery(outreachPartnershipResponsesQuery);
   const responses = list.data ?? [];
   const loadError = list.isError
@@ -68,22 +68,9 @@ const OutreachPartnershipsPage: React.FC = () => {
     }
   }, [responses.length]);
 
-  const setResponses = async (
-    update: (
-      prev: ActionPartnershipResponseDto[],
-    ) => ActionPartnershipResponseDto[],
-  ) => {
-    const { queryKey } = outreachPartnershipResponsesQuery;
-    // A fetch started before the write would land the old list over it.
-    await queryClient.cancelQueries({ queryKey });
-    // With no list to patch (the first load was cancelled or failed), a fresh
-    // fetch picks up the write.
-    if (!queryClient.getQueryData(queryKey)) {
-      await queryClient.refetchQueries({ queryKey });
-      return;
-    }
-    queryClient.setQueryData(queryKey, (prev) => prev && update(prev));
-  };
+  const setResponses = usePatchQueryData(
+    outreachPartnershipResponsesQuery.queryKey,
+  );
 
   const reportError = (err: unknown, fallback: string) => {
     console.error(fallback, err);
