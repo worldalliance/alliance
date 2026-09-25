@@ -1,9 +1,10 @@
-import { errorMessage } from "@alliance/common/errorMessage";
+import { errorMessage, refusalMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
+import { videosReplaceVideoAdmin } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useCallback, useRef, useState } from "react";
-import { getApiUrl } from "../lib/config";
+import { uploadSessionExpiredMessage } from "../lib/sessionExpired";
 
 interface VideoReplaceFormProps {
   videoId: number;
@@ -38,23 +39,18 @@ const VideoReplaceForm: React.FC<VideoReplaceFormProps> = ({
 
     setUploading(true);
     try {
-      const formData = new FormData();
-      for (const file of selectedFiles) {
-        formData.append("files", file);
-      }
-
-      const res = await fetch(`${getApiUrl()}/videos/${videoId}/replace`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
+      const { error, response } = await videosReplaceVideoAdmin({
+        path: { id: videoId },
+        body: { files: selectedFiles },
       });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
+      if (error !== undefined) {
         throw new Error(
-          errorMessage({
-            error: body,
-            fallback: `Upload failed: ${res.status}`,
+          refusalMessage({
+            status: response.status,
+            error,
+            fallback: `Upload failed: ${response.status}`,
+            sessionExpired: uploadSessionExpiredMessage,
           }),
         );
       }

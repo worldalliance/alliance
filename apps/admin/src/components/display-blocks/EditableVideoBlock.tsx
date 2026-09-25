@@ -1,9 +1,10 @@
-import { errorMessage } from "@alliance/common/errorMessage";
+import { refusalMessage } from "@alliance/common/errorMessage";
 import type { VideoBlock } from "@alliance/common/forms/display-blocks";
+import { videosUploadVideoAdmin } from "@alliance/shared/client";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import React, { useState } from "react";
 import { Link, href } from "react-router";
-import { getApiUrl } from "../../lib/config";
+import { uploadSessionExpiredMessage } from "../../lib/sessionExpired";
 import { VariableTextField } from "../VariableTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
@@ -26,6 +27,8 @@ export function EditableVideoBlock({
     update: (updates: Partial<VideoBlock>) => void,
   ) => {
     const files = Array.from(e.target.files ?? []);
+    // Picking the same files again fires no change event unless this is cleared.
+    e.target.value = "";
     if (files.length === 0) return;
 
     const hasPlaylist = files.some((f) => f.name.endsWith(".m3u8"));
@@ -38,30 +41,23 @@ export function EditableVideoBlock({
     setUploadError(null);
 
     try {
-      const formData = new FormData();
-      for (const file of files) {
-        formData.append("files", file);
-      }
-
-      const res = await fetch(`${getApiUrl()}/videos/upload`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
+      const { data, error, response } = await videosUploadVideoAdmin({
+        body: { files },
       });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
+      if (data === undefined) {
         setUploadError(
-          errorMessage({
-            error: body,
-            fallback: `Upload failed with status ${res.status}`,
+          refusalMessage({
+            status: response.status,
+            error,
+            fallback: `Upload failed with status ${response.status}`,
+            sessionExpired: uploadSessionExpiredMessage,
           }),
         );
         setIsUploading(false);
         return;
       }
 
-      const data = await res.json();
       update({ src: data.key, videoId: data.id });
     } catch {
       setUploadError("Upload failed");
