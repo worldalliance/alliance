@@ -10,17 +10,7 @@ import {
   onetimeInviteCreation,
   roleBadges,
 } from "@alliance/shared/lib/copy";
-import {
-  dateInputToEndOfDayIso,
-  dateInputToStartOfDayIso,
-  dateToInputValue,
-  daysUntil,
-  inviteGoalErrorMessage,
-  inviteGoalIsUp,
-  oneMonthFromTodayDateInputValue,
-  selectInviteGoals,
-  todayDateInputValue,
-} from "@alliance/shared/lib/inviteGoals";
+import { daysUntil, selectInviteGoals } from "@alliance/shared/lib/inviteGoals";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import {
   bucketOnetimeInvitesByActionability,
@@ -28,6 +18,10 @@ import {
 } from "@alliance/shared/lib/inviteUtils";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { useAmbassadorInviteDashboard } from "@alliance/shared/lib/useAmbassadorInviteDashboard";
+import {
+  newInviteGoalErrorCopy,
+  useInviteGoalForms,
+} from "@alliance/shared/lib/useInviteGoalForms";
 import { useInviteMessageTemplate } from "@alliance/shared/lib/useInviteMessageTemplate";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useOnetimeInvitesOverview } from "@alliance/shared/lib/useOnetimeInvitesOverview";
@@ -46,7 +40,7 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { milliseconds } from "date-fns";
 import { MoreHorizontal, Trash2, UserCheck } from "lucide-react";
 import type { FormEvent, MouseEvent } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import ExpandableList from "../../components/ExpandableList";
 import InviteForm from "../../components/InviteForm";
 import InviteSettingsModal, {
@@ -105,16 +99,6 @@ const InvitesPage = () => {
   >(null);
   const [inviteListTab, setInviteListTab] = useState(InviteListTab.Individual);
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [goalTarget, setGoalTarget] = useState("");
-  const [goalStartDate, setGoalStartDate] = useState(todayDateInputValue);
-  const [goalDueDate, setGoalDueDate] = useState(
-    oneMonthFromTodayDateInputValue,
-  );
-  const [editGoalStartDate, setEditGoalStartDate] = useState("");
-  const [editGoalDueDate, setEditGoalDueDate] = useState("");
-  const [editGoalTarget, setEditGoalTarget] = useState("");
-  const [goalFormMessage, setGoalFormMessage] = useState<string | null>(null);
-  const [goalEditMessage, setGoalEditMessage] = useState<string | null>(null);
   const {
     data: ambassadorDashboard,
     isLoading: loadingAmbassadorDashboard,
@@ -132,7 +116,25 @@ const InvitesPage = () => {
     () => selectInviteGoals(ambassadorDashboard?.goals ?? []),
     [ambassadorDashboard],
   );
-  const showProminentGoalForm = inviteGoalIsUp(currentGoal);
+  const {
+    goalTarget,
+    setGoalTarget,
+    goalStartDate,
+    setGoalStartDate,
+    goalDueDate,
+    setGoalDueDate,
+    goalFormMessage,
+    submitNewGoal,
+    showProminentGoalForm,
+    editGoalStartDate,
+    changeEditGoalStartDate,
+    editGoalDueDate,
+    changeEditGoalDueDate,
+    editGoalTarget,
+    setEditGoalTarget,
+    saveEditGoalTarget,
+    goalEditMessage,
+  } = useInviteGoalForms({ currentGoal, createGoal, updateGoal });
   const currentGoalSummary = useMemo(() => {
     if (!currentGoal) {
       return "Set a goal to track successful invitations.";
@@ -189,19 +191,6 @@ const InvitesPage = () => {
         .
       </>
     );
-  }, [currentGoal]);
-
-  useEffect(() => {
-    if (!currentGoal) {
-      setEditGoalStartDate("");
-      setEditGoalDueDate("");
-      setEditGoalTarget("");
-      return;
-    }
-    setEditGoalStartDate(dateToInputValue(currentGoal.goal.startAt));
-    setEditGoalDueDate(dateToInputValue(currentGoal.goal.dueAt));
-    setEditGoalTarget(String(currentGoal.goal.targetSuccessfulRecruits));
-    setGoalEditMessage(null);
   }, [currentGoal]);
 
   const leaderCommunityIds = useMemo(
@@ -431,102 +420,20 @@ const InvitesPage = () => {
   const handleSetGoal = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-
-      if (!showProminentGoalForm) {
-        errorToast("You can set a new goal once your current goal is up.");
-        return;
+      const result = submitNewGoal();
+      if (!result.ok) {
+        errorToast(newInviteGoalErrorCopy[result.error].message);
       }
-
-      const target = Number(goalTarget);
-      if (!Number.isInteger(target) || target < 1) {
-        errorToast("Goal must be at least 1 successful invitation.");
-        return;
-      }
-
-      void createGoal({
-        targetSuccessfulRecruits: target,
-        startAt: dateInputToStartOfDayIso(goalStartDate),
-        dueAt: dateInputToEndOfDayIso(goalDueDate),
-      })
-        .then(() => {
-          setGoalTarget("");
-          setGoalFormMessage(null);
-        })
-        .catch((err: Error) => {
-          setGoalFormMessage(inviteGoalErrorMessage(err));
-        });
     },
-    [
-      createGoal,
-      errorToast,
-      goalDueDate,
-      goalStartDate,
-      goalTarget,
-      showProminentGoalForm,
-    ],
-  );
-
-  const updateSelectedGoal = useCallback(
-    (params: {
-      targetSuccessfulRecruits?: number;
-      startDate?: string;
-      dueDate?: string;
-    }) => {
-      if (!currentGoal) {
-        return;
-      }
-
-      void updateGoal({
-        goalId: currentGoal.goal.id,
-        body: {
-          ...(params.targetSuccessfulRecruits !== undefined && {
-            targetSuccessfulRecruits: params.targetSuccessfulRecruits,
-          }),
-          ...(params.startDate !== undefined && {
-            startAt: dateInputToStartOfDayIso(params.startDate),
-          }),
-          ...(params.dueDate !== undefined && {
-            dueAt: dateInputToEndOfDayIso(params.dueDate),
-          }),
-        },
-      })
-        .then(() => {
-          setGoalEditMessage(null);
-        })
-        .catch((err: Error) => {
-          setGoalEditMessage(inviteGoalErrorMessage(err));
-        });
-    },
-    [currentGoal, updateGoal],
-  );
-
-  const handleEditGoalStartDateChange = useCallback(
-    (value: string) => {
-      setEditGoalStartDate(value);
-      updateSelectedGoal({ startDate: value });
-    },
-    [updateSelectedGoal],
-  );
-
-  const handleEditGoalDueDateChange = useCallback(
-    (value: string) => {
-      setEditGoalDueDate(value);
-      updateSelectedGoal({ dueDate: value });
-    },
-    [updateSelectedGoal],
+    [errorToast, submitNewGoal],
   );
 
   const handleEditGoalTargetChange = useCallback(
     (value: string) => {
       setEditGoalTarget(value);
-      const target = Number(value);
-      if (!Number.isInteger(target) || target < 1) {
-        setGoalEditMessage("Goal must be at least 1 successful invitation.");
-        return;
-      }
-      updateSelectedGoal({ targetSuccessfulRecruits: target });
+      saveEditGoalTarget(value);
     },
-    [updateSelectedGoal],
+    [saveEditGoalTarget, setEditGoalTarget],
   );
 
   const currentGoalProgressPercent = useMemo(() => {
@@ -678,9 +585,7 @@ const InvitesPage = () => {
                                   value={editGoalStartDate}
                                   disabled={isUpdatingGoal}
                                   onChange={(event) =>
-                                    handleEditGoalStartDateChange(
-                                      event.target.value,
-                                    )
+                                    changeEditGoalStartDate(event.target.value)
                                   }
                                 />
                               </label>
@@ -694,9 +599,7 @@ const InvitesPage = () => {
                                   value={editGoalDueDate}
                                   disabled={isUpdatingGoal}
                                   onChange={(event) =>
-                                    handleEditGoalDueDateChange(
-                                      event.target.value,
-                                    )
+                                    changeEditGoalDueDate(event.target.value)
                                   }
                                 />
                               </label>

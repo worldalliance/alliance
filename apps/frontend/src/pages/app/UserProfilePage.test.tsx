@@ -286,3 +286,16 @@ it("keeps Try again enabled while only the loaded forum query refetches", async 
   expect(refetches).toHaveLength(1);
   expect(screen.getByText("Try again").closest("button")?.disabled).toBe(false);
 });
+
+it("shows how many actions the member completed", async () => {
+  api.alsoServing({
+    "GET /actions/userCompletedCount/:id": () =>
+      Response.json({
+        completedCount: 3,
+      } satisfies UserCompletedActionsCountDto),
+  });
+  renderProfile();
+
+  const label = await screen.findByText("actions completed");
+  expect(label.closest("div")?.textContent).toMatch(/^3actions/);
+});

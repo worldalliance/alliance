@@ -10,15 +10,9 @@ import {
   roleBadges,
 } from "@alliance/shared/lib/copy";
 import {
-  dateInputToEndOfDayIso,
-  dateInputToStartOfDayIso,
   dateToInputValue,
   daysUntil,
-  inviteGoalErrorMessage,
-  inviteGoalIsUp,
-  oneMonthFromTodayDateInputValue,
   selectInviteGoals,
-  todayDateInputValue,
 } from "@alliance/shared/lib/inviteGoals";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import {
@@ -27,6 +21,10 @@ import {
 } from "@alliance/shared/lib/inviteUtils";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { useAmbassadorInviteDashboard } from "@alliance/shared/lib/useAmbassadorInviteDashboard";
+import {
+  newInviteGoalErrorCopy,
+  useInviteGoalForms,
+} from "@alliance/shared/lib/useInviteGoalForms";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useOnetimeInvitesOverview } from "@alliance/shared/lib/useOnetimeInvitesOverview";
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
@@ -310,16 +308,6 @@ export default function InvitesScreen() {
   const [selectedTab, setSelectedTab] = useState<InvitesTab>(
     InvitesTab.ReferralQr,
   );
-  const [goalTarget, setGoalTarget] = useState("");
-  const [goalStartDate, setGoalStartDate] = useState(todayDateInputValue);
-  const [goalDueDate, setGoalDueDate] = useState(
-    oneMonthFromTodayDateInputValue,
-  );
-  const [editGoalStartDate, setEditGoalStartDate] = useState("");
-  const [editGoalDueDate, setEditGoalDueDate] = useState("");
-  const [editGoalTarget, setEditGoalTarget] = useState("");
-  const [goalFormMessage, setGoalFormMessage] = useState<string | null>(null);
-  const [goalEditMessage, setGoalEditMessage] = useState<string | null>(null);
   const [ambassadorDashboardExpanded, setAmbassadorDashboardExpanded] =
     useState(false);
   const [editGoalOpen, setEditGoalOpen] = useState(false);
@@ -342,19 +330,27 @@ export default function InvitesScreen() {
     () => selectInviteGoals(ambassadorDashboard?.goals ?? []),
     [ambassadorDashboard],
   );
-  const showProminentGoalForm = inviteGoalIsUp(currentGoal);
+  const {
+    goalTarget,
+    setGoalTarget,
+    goalStartDate,
+    setGoalStartDate,
+    goalDueDate,
+    setGoalDueDate,
+    goalFormMessage,
+    submitNewGoal,
+    showProminentGoalForm,
+    editGoalStartDate,
+    changeEditGoalStartDate,
+    editGoalDueDate,
+    changeEditGoalDueDate,
+    editGoalTarget,
+    setEditGoalTarget,
+    saveEditGoalTarget,
+    goalEditMessage,
+  } = useInviteGoalForms({ currentGoal, createGoal, updateGoal });
 
   useEffect(() => {
-    if (!currentGoal) {
-      setEditGoalStartDate("");
-      setEditGoalDueDate("");
-      setEditGoalTarget("");
-      return;
-    }
-    setEditGoalStartDate(dateToInputValue(currentGoal.goal.startAt));
-    setEditGoalDueDate(dateToInputValue(currentGoal.goal.dueAt));
-    setEditGoalTarget(String(currentGoal.goal.targetSuccessfulRecruits));
-    setGoalEditMessage(null);
     setEditGoalOpen(false);
   }, [currentGoal]);
 
@@ -520,108 +516,12 @@ export default function InvitesScreen() {
   }, [currentGoal, deleteGoal]);
 
   const handleSetGoal = useCallback(() => {
-    if (!showProminentGoalForm) {
-      Alert.alert(
-        "Goal already active",
-        "You can set a new goal once your current goal is up.",
-      );
-      return;
+    const result = submitNewGoal();
+    if (!result.ok) {
+      const { title, message } = newInviteGoalErrorCopy[result.error];
+      Alert.alert(title, message);
     }
-
-    const target = Number(goalTarget);
-    if (!Number.isInteger(target) || target < 1) {
-      Alert.alert(
-        "Goal needed",
-        "Goal must be at least 1 successful invitation.",
-      );
-      return;
-    }
-    if (
-      Number.isNaN(new Date(`${goalStartDate}T00:00:00`).getTime()) ||
-      Number.isNaN(new Date(`${goalDueDate}T23:59:59`).getTime())
-    ) {
-      Alert.alert("Date needed", "Enter dates as YYYY-MM-DD.");
-      return;
-    }
-
-    void createGoal({
-      targetSuccessfulRecruits: target,
-      startAt: dateInputToStartOfDayIso(goalStartDate),
-      dueAt: dateInputToEndOfDayIso(goalDueDate),
-    })
-      .then(() => {
-        setGoalTarget("");
-        setGoalFormMessage(null);
-      })
-      .catch((err: Error) => {
-        setGoalFormMessage(inviteGoalErrorMessage(err));
-      });
-  }, [
-    createGoal,
-    goalDueDate,
-    goalStartDate,
-    goalTarget,
-    showProminentGoalForm,
-  ]);
-
-  const updateCurrentGoal = useCallback(
-    (params: {
-      targetSuccessfulRecruits?: number;
-      startDate?: string;
-      dueDate?: string;
-    }) => {
-      if (!currentGoal) {
-        return;
-      }
-
-      void updateGoal({
-        goalId: currentGoal.goal.id,
-        body: {
-          ...(params.targetSuccessfulRecruits !== undefined && {
-            targetSuccessfulRecruits: params.targetSuccessfulRecruits,
-          }),
-          ...(params.startDate !== undefined && {
-            startAt: dateInputToStartOfDayIso(params.startDate),
-          }),
-          ...(params.dueDate !== undefined && {
-            dueAt: dateInputToEndOfDayIso(params.dueDate),
-          }),
-        },
-      })
-        .then(() => {
-          setGoalEditMessage(null);
-        })
-        .catch((err: Error) => {
-          setGoalEditMessage(inviteGoalErrorMessage(err));
-        });
-    },
-    [currentGoal, updateGoal],
-  );
-
-  const handleEditGoalStartDateChanged = useCallback(
-    (value: string) => {
-      setEditGoalStartDate(value);
-      updateCurrentGoal({ startDate: value });
-    },
-    [updateCurrentGoal],
-  );
-
-  const handleEditGoalDueDateChanged = useCallback(
-    (value: string) => {
-      setEditGoalDueDate(value);
-      updateCurrentGoal({ dueDate: value });
-    },
-    [updateCurrentGoal],
-  );
-
-  const handleEditGoalTargetChanged = useCallback(() => {
-    const target = Number(editGoalTarget);
-    if (!Number.isInteger(target) || target < 1) {
-      setGoalEditMessage("Goal must be at least 1 successful invitation.");
-      return;
-    }
-    updateCurrentGoal({ targetSuccessfulRecruits: target });
-  }, [editGoalTarget, updateCurrentGoal]);
+  }, [submitNewGoal]);
 
   const currentGoalProgressPercent = useMemo(() => {
     if (!currentGoal) {
@@ -953,7 +853,9 @@ export default function InvitesScreen() {
                                   label="Target successful invitations"
                                   value={editGoalTarget}
                                   onChangeText={setEditGoalTarget}
-                                  onEndEditing={handleEditGoalTargetChanged}
+                                  onEndEditing={() =>
+                                    saveEditGoalTarget(editGoalTarget)
+                                  }
                                   placeholder="10"
                                   keyboardType="number-pad"
                                   editable={!isUpdatingGoal}
@@ -961,13 +863,13 @@ export default function InvitesScreen() {
                                 <DatePickerField
                                   label="Goal start"
                                   value={editGoalStartDate}
-                                  onChange={handleEditGoalStartDateChanged}
+                                  onChange={changeEditGoalStartDate}
                                   disabled={isUpdatingGoal}
                                 />
                                 <DatePickerField
                                   label="Goal end"
                                   value={editGoalDueDate}
-                                  onChange={handleEditGoalDueDateChanged}
+                                  onChange={changeEditGoalDueDate}
                                   disabled={isUpdatingGoal}
                                 />
                                 {isUpdatingGoal && !goalEditMessage && (

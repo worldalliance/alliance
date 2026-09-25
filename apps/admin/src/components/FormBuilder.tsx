@@ -58,8 +58,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBeforeUnload, useBlocker, useSearchParams } from "react-router";
 import { addressedWrite } from "../lib/displayBlockById";
 import { mergeFormSchemas } from "../lib/formSchemaMerge";
+import { reorderPages } from "../lib/reorderPages";
 import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
 import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
+import { DropPosition } from "../lib/useDragReorder";
 import { useVariableSourceForms } from "../lib/useVariableSourceForms";
 import { AggregateBuilder } from "./AggregateBuilder";
 import ConfirmDialog from "./ConfirmDialog";
@@ -875,9 +877,9 @@ export function FormBuilder(props: FormBuilderProps) {
   const [dragOverPageIndex, setDragOverPageIndex] = useState<number | null>(
     null,
   );
-  const [pageDropPosition, setPageDropPosition] = useState<
-    "before" | "after" | null
-  >(null);
+  const [pageDropPosition, setPageDropPosition] = useState<DropPosition | null>(
+    null,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -2086,62 +2088,11 @@ export function FormBuilder(props: FormBuilderProps) {
 
     const rect = e.currentTarget.getBoundingClientRect();
     const midpoint = rect.left + rect.width / 2;
-    const position = e.clientX < midpoint ? "before" : "after";
+    const position =
+      e.clientX < midpoint ? DropPosition.Before : DropPosition.After;
 
     setDragOverPageIndex(pageIndex);
     setPageDropPosition(position);
-  };
-
-  const handlePageDrop = (dropIndex: number) => (e: React.DragEvent) => {
-    e.preventDefault();
-
-    if (draggedPageIndex === null || pageDropPosition === null) {
-      return;
-    }
-
-    // Calculate the actual insertion index
-    let insertionIndex = dropIndex;
-    if (pageDropPosition === "after") {
-      insertionIndex = dropIndex + 1;
-    }
-
-    // Adjust for the fact that we're removing the dragged page first
-    if (draggedPageIndex < insertionIndex) {
-      insertionIndex -= 1;
-    }
-
-    if (draggedPageIndex === insertionIndex) {
-      handlePageDragEnd();
-      return;
-    }
-
-    const newPages = [...schema.pages];
-    const [draggedPage] = newPages.splice(draggedPageIndex, 1);
-    newPages.splice(insertionIndex, 0, draggedPage);
-
-    // Update selected page index if necessary
-    let newSelectedPageIndex = selectedPageIndex;
-    if (selectedPageIndex === draggedPageIndex) {
-      newSelectedPageIndex = insertionIndex;
-    } else if (
-      selectedPageIndex > draggedPageIndex &&
-      selectedPageIndex <= insertionIndex
-    ) {
-      newSelectedPageIndex = selectedPageIndex - 1;
-    } else if (
-      selectedPageIndex < draggedPageIndex &&
-      selectedPageIndex >= insertionIndex
-    ) {
-      newSelectedPageIndex = selectedPageIndex + 1;
-    }
-
-    updateSchema({
-      ...schema,
-      pages: newPages,
-    });
-
-    setSelectedPageIndex(newSelectedPageIndex);
-    handlePageDragEnd();
   };
 
   const handleDragOver =
@@ -2820,56 +2771,21 @@ export function FormBuilder(props: FormBuilderProps) {
                   }}
                   onDrop={(e) => {
                     e.preventDefault();
-
-                    if (
-                      draggedPageIndex === null ||
-                      pageDropPosition === null ||
-                      dragOverPageIndex === null
-                    ) {
-                      handlePageDragEnd();
-                      return;
+                    const moved =
+                      draggedPageIndex !== null &&
+                      pageDropPosition !== null &&
+                      dragOverPageIndex !== null &&
+                      reorderPages({
+                        pages: schema.pages,
+                        draggedIndex: draggedPageIndex,
+                        dropIndex: dragOverPageIndex,
+                        position: pageDropPosition,
+                        selectedIndex: selectedPageIndex,
+                      });
+                    if (moved) {
+                      updateSchema({ ...schema, pages: moved.pages });
+                      setSelectedPageIndex(moved.selectedIndex);
                     }
-
-                    const dropIndex = dragOverPageIndex;
-                    let insertionIndex = dropIndex;
-                    if (pageDropPosition === "after") {
-                      insertionIndex = dropIndex + 1;
-                    }
-
-                    if (draggedPageIndex < insertionIndex) {
-                      insertionIndex -= 1;
-                    }
-
-                    if (draggedPageIndex === insertionIndex) {
-                      handlePageDragEnd();
-                      return;
-                    }
-
-                    const newPages = [...schema.pages];
-                    const [draggedPage] = newPages.splice(draggedPageIndex, 1);
-                    newPages.splice(insertionIndex, 0, draggedPage);
-
-                    let newSelectedPageIndex = selectedPageIndex;
-                    if (selectedPageIndex === draggedPageIndex) {
-                      newSelectedPageIndex = insertionIndex;
-                    } else if (
-                      selectedPageIndex > draggedPageIndex &&
-                      selectedPageIndex <= insertionIndex
-                    ) {
-                      newSelectedPageIndex = selectedPageIndex - 1;
-                    } else if (
-                      selectedPageIndex < draggedPageIndex &&
-                      selectedPageIndex >= insertionIndex
-                    ) {
-                      newSelectedPageIndex = selectedPageIndex + 1;
-                    }
-
-                    updateSchema({
-                      ...schema,
-                      pages: newPages,
-                    });
-
-                    setSelectedPageIndex(newSelectedPageIndex);
                     handlePageDragEnd();
                   }}
                 >
@@ -2882,18 +2798,18 @@ export function FormBuilder(props: FormBuilderProps) {
 
                     return (
                       <div key={page.id} className="relative">
-                        {showInsertionBar && pageDropPosition === "before" && (
-                          <div className="absolute -left-0.5 top-0 bottom-0 w-0.5 bg-blue-500 rounded-full z-10">
-                            <div className="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                          </div>
-                        )}
+                        {showInsertionBar &&
+                          pageDropPosition === DropPosition.Before && (
+                            <div className="absolute -left-0.5 top-0 bottom-0 w-0.5 bg-blue-500 rounded-full z-10">
+                              <div className="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+                            </div>
+                          )}
 
                         <div
                           draggable
                           onDragStart={handlePageDragStart(index)}
                           onDragEnd={handlePageDragEnd}
                           onDragOver={handlePageDragOver(index)}
-                          onDrop={handlePageDrop(index)}
                           className={cn(
                             "flex items-center rounded-md text-sm font-medium cursor-move pr-2 transition-all border",
                             selectedPageIndex === index
@@ -2951,11 +2867,12 @@ export function FormBuilder(props: FormBuilderProps) {
                           )}
                         </div>
 
-                        {showInsertionBar && pageDropPosition === "after" && (
-                          <div className="absolute -right-0.5 top-0 bottom-0 w-0.5 bg-blue-500 rounded-full z-10">
-                            <div className="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                          </div>
-                        )}
+                        {showInsertionBar &&
+                          pageDropPosition === DropPosition.After && (
+                            <div className="absolute -right-0.5 top-0 bottom-0 w-0.5 bg-blue-500 rounded-full z-10">
+                              <div className="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+                            </div>
+                          )}
                       </div>
                     );
                   })}

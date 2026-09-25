@@ -1,10 +1,7 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { changedPhoto } from "@alliance/common/image-src";
 import { forCount } from "@alliance/common/plural";
-import {
-  UpdateProfileDto,
-  actionsUserCompletedCount,
-} from "@alliance/shared/client";
+import { UpdateProfileDto } from "@alliance/shared/client";
 import { roleBadges } from "@alliance/shared/lib/copy";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { Features } from "@alliance/shared/lib/features";
@@ -17,9 +14,10 @@ import {
   useRemoveFriendMutation,
   useSendFriendRequestMutation,
   useUpdateProfileMutation,
+  useUserCompletedActionCountQuery,
   useUserForumActivity,
-  useUserFriendStatusQuery,
   useUserFriendsQuery,
+  useUserFriendStatusQuery,
   useUserProfileQuery,
 } from "@alliance/shared/lib/user";
 import useUserFeed from "@alliance/shared/lib/useUserFeed";
@@ -37,9 +35,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@alliance/sharedweb/ui/Tooltip";
-import { useQuery } from "@tanstack/react-query";
 import { MessageSquare, RefreshCw } from "lucide-react";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { href, useLocation, useNavigate, useParams } from "react-router";
 import { Route } from "../../../.react-router/types/src/pages/app/+types/UserProfilePage";
 import ForumActivityCommentCard from "../../components/ForumActivityCommentCard";
@@ -51,6 +48,7 @@ import ImageEditor from "../../components/ImageEditor";
 import LoadFailed from "../../components/LoadFailed";
 import PillTab from "../../components/PillTab";
 import UserActivityCard from "../../components/UserActivityCard";
+import { useInfiniteScrollSentinel } from "../../hooks/useInfiniteScrollSentinel";
 import { useAuth } from "../../lib/AuthContext";
 import { isFeatureEnabled } from "../../lib/config";
 
@@ -146,50 +144,14 @@ const UserProfilePage: React.FC = () => {
     comments: true,
   });
 
-  const feedPaginationRef = useRef({
+  const feedSentinelRef = useInfiniteScrollSentinel({
     fetchNextPage: fetchNextFeedPage,
     hasNextPage: feedHasNextPage,
     isFetchingNextPage: feedIsFetchingNextPage,
   });
-  feedPaginationRef.current = {
-    fetchNextPage: fetchNextFeedPage,
-    hasNextPage: feedHasNextPage,
-    isFetchingNextPage: feedIsFetchingNextPage,
-  };
 
-  const feedObserverRef = useRef<IntersectionObserver | null>(null);
-  const feedSentinelRef = useCallback((node: HTMLDivElement | null) => {
-    if (feedObserverRef.current) {
-      feedObserverRef.current.disconnect();
-      feedObserverRef.current = null;
-    }
-    if (!node) return;
-
-    feedObserverRef.current = new IntersectionObserver(
-      (entries) => {
-        const p = feedPaginationRef.current;
-        for (const entry of entries) {
-          if (entry.isIntersecting && p.hasNextPage && !p.isFetchingNextPage) {
-            p.fetchNextPage();
-          }
-        }
-      },
-      { rootMargin: "200px" },
-    );
-    feedObserverRef.current.observe(node);
-  }, []);
-
-  const { data: completedCountData } = useQuery({
-    queryKey: ["userCompletedCount", userId],
-    queryFn: async () => {
-      const resp = await actionsUserCompletedCount({
-        path: { id: userId! },
-      });
-      return resp.data;
-    },
-    enabled: Boolean(userId),
-  });
-  const completedActionCount = completedCountData?.completedCount ?? 0;
+  const { data: completedActionCount = 0 } =
+    useUserCompletedActionCountQuery(userId);
 
   const {
     activities: completedActivities,

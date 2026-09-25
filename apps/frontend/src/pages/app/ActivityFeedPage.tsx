@@ -1,19 +1,14 @@
 import useActivities, {
   ActivityList,
 } from "@alliance/shared/lib/useActivities";
-import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback } from "react";
 import { Link, href } from "react-router";
+import FeedModeColumns, { FeedMode } from "../../components/FeedModeColumns";
 import UserActivityCard from "../../components/UserActivityCard";
-
-type Mode = "friends" | "everyone";
+import { useInfiniteScrollSentinel } from "../../hooks/useInfiniteScrollSentinel";
 
 const ActivityFeedPage = () => {
-  const modes: Mode[] = ["friends", "everyone"];
-  const [mode, setMode] = useState<Mode>("friends");
-
   const {
     activities,
     handleLikeActivity: handleGlobalLikeActivity,
@@ -41,8 +36,8 @@ const ActivityFeedPage = () => {
   });
 
   const handleLikeActivity = useCallback(
-    (activityId: number, mode: Mode) => {
-      if (mode === "friends") {
+    (activityId: number, mode: FeedMode) => {
+      if (mode === FeedMode.Friends) {
         return handleLikeFriendActivity(activityId);
       } else {
         return handleGlobalLikeActivity(activityId);
@@ -51,168 +46,66 @@ const ActivityFeedPage = () => {
     [handleLikeFriendActivity, handleGlobalLikeActivity],
   );
 
-  const friendsRef = useRef<HTMLDivElement>(null);
-  const everyoneRef = useRef<HTMLDivElement>(null);
-  const friendsSentinelRef = useRef<HTMLDivElement>(null);
-  const everyoneSentinelRef = useRef<HTMLDivElement>(null);
-
-  const [activeHeight, setActiveHeight] = useState<number | undefined>(
-    undefined,
-  );
-
-  const updateHeight = useCallback(() => {
-    const el = mode === "friends" ? friendsRef.current : everyoneRef.current;
-    if (el) setActiveHeight(el.offsetHeight);
-  }, [mode]);
-
-  useEffect(() => {
-    const roFriends = new ResizeObserver(updateHeight);
-    const roEveryone = new ResizeObserver(updateHeight);
-    if (friendsRef.current) roFriends.observe(friendsRef.current);
-    if (everyoneRef.current) roEveryone.observe(everyoneRef.current);
-
-    window.addEventListener("resize", updateHeight);
-    requestAnimationFrame(updateHeight);
-
-    return () => {
-      roFriends.disconnect();
-      roEveryone.disconnect();
-      window.removeEventListener("resize", updateHeight);
-    };
-  }, [mode, updateHeight]);
-
-  // Store volatile pagination state in refs so the observer effect stays stable
-  const paginationRef = useRef({
-    fetchNextFriends,
-    fetchNextGlobal,
-    hasNextFriends,
-    hasNextGlobal,
-    isFetchingNextFriends,
-    isFetchingNextGlobal,
+  const friendsSentinelRef = useInfiniteScrollSentinel({
+    fetchNextPage: fetchNextFriends,
+    hasNextPage: hasNextFriends,
+    isFetchingNextPage: isFetchingNextFriends,
   });
-  paginationRef.current = {
-    fetchNextFriends,
-    fetchNextGlobal,
-    hasNextFriends,
-    hasNextGlobal,
-    isFetchingNextFriends,
-    isFetchingNextGlobal,
-  };
+  const everyoneSentinelRef = useInfiniteScrollSentinel({
+    fetchNextPage: fetchNextGlobal,
+    hasNextPage: hasNextGlobal,
+    isFetchingNextPage: isFetchingNextGlobal,
+  });
 
-  // Infinite scroll observer — no volatile deps, created once
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const p = paginationRef.current;
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          if (entry.target === friendsSentinelRef.current) {
-            if (p.hasNextFriends && !p.isFetchingNextFriends) {
-              p.fetchNextFriends();
-            }
-          } else if (entry.target === everyoneSentinelRef.current) {
-            if (p.hasNextGlobal && !p.isFetchingNextGlobal) {
-              p.fetchNextGlobal();
-            }
-          }
-        }
-      },
-      { rootMargin: "200px" },
-    );
-
-    if (friendsSentinelRef.current)
-      observer.observe(friendsSentinelRef.current);
-    if (everyoneSentinelRef.current)
-      observer.observe(everyoneSentinelRef.current);
-
-    return () => observer.disconnect();
-  }, []);
-
-  const renderActivityColumn = (mode: Mode) => {
-    const list = mode === "friends" ? friendActivities : activities;
+  const renderActivityColumn = (mode: FeedMode) => {
+    const list = mode === FeedMode.Friends ? friendActivities : activities;
     const isFetchingNext =
-      mode === "friends" ? isFetchingNextFriends : isFetchingNextGlobal;
+      mode === FeedMode.Friends ? isFetchingNextFriends : isFetchingNextGlobal;
     const sentinelRef =
-      mode === "friends" ? friendsSentinelRef : everyoneSentinelRef;
+      mode === FeedMode.Friends ? friendsSentinelRef : everyoneSentinelRef;
     return (
-      <div className="w-1/2">
-        <div
-          ref={mode === "friends" ? friendsRef : everyoneRef}
-          className="flex flex-col bg-page"
-        >
-          <div className="flex flex-col gap-y-2 *:p-4">
-            {list.map((activity) => (
-              <UserActivityCard
-                activity={activity}
-                key={activity.id}
-                handleLike={() => handleLikeActivity(activity.id, mode)}
-              />
-            ))}
-            {list.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-64 text-zinc-500 p-8">
-                <p>
-                  {(mode === "friends" ? loadingFriend : loading)
-                    ? "Loading..."
-                    : `No ${mode === "friends" ? "friend " : ""}activity yet`}
-                </p>
-              </div>
-            )}
-          </div>
-          {isFetchingNext && (
-            <div className="flex justify-center py-4 text-zinc-400">
-              Loading more...
+      <div className="flex flex-col bg-page">
+        <div className="flex flex-col gap-y-2 *:p-4">
+          {list.map((activity) => (
+            <UserActivityCard
+              activity={activity}
+              key={activity.id}
+              handleLike={() => handleLikeActivity(activity.id, mode)}
+            />
+          ))}
+          {list.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-64 text-zinc-500 p-8">
+              <p>
+                {(mode === FeedMode.Friends ? loadingFriend : loading)
+                  ? "Loading..."
+                  : `No ${mode === FeedMode.Friends ? "friend " : ""}activity yet`}
+              </p>
             </div>
           )}
-          <div ref={sentinelRef} className="h-1" />
         </div>
+        {isFetchingNext && (
+          <div className="flex justify-center py-4 text-zinc-400">
+            Loading more...
+          </div>
+        )}
+        <div ref={sentinelRef} className="h-1" />
       </div>
     );
   };
 
   return (
     <CenterLayout width="3xl">
-      <div className="mx-auto flex flex-row gap-x-2 mb-4 w-full justify-between items-center">
-        <div className=" flex flex-row gap-x-2 justify-start">
-          {modes.map((m) => (
-            <Button
-              color={ButtonColor.Transparent}
-              key={m}
-              onClick={() => setMode(m)}
-              aria-pressed={m === mode}
-              className={cn(
-                "!border-b-[2px] rounded-none",
-                m === mode
-                  ? "border-b-green! text-black"
-                  : "border-b-transparent! hover:border-b-zinc-200! text-zinc-500",
-              )}
-            >
-              <p className="capitalize text-base">{m}</p>
-            </Button>
-          ))}
-        </div>
-        <Link
-          to={href("/members")}
-          className="text-zinc-800 hover:underline rounded font-medium"
-        >
-          Member list
-        </Link>
-      </div>
-
-      <div
-        className="relative overflow-hidden bg-white"
-        style={{ height: activeHeight }}
-      >
-        <div
-          className="flex w-[200%] transition-transform duration-200 ease-out motion-reduce:transition-none"
-          style={{
-            transform:
-              mode === "friends" ? "translateX(0%)" : "translateX(-50%)",
-          }}
-        >
-          {renderActivityColumn("friends")}
-          {renderActivityColumn("everyone")}
-        </div>
-      </div>
+      <FeedModeColumns
+        renderColumn={renderActivityColumn}
+        trailing={
+          <Link
+            to={href("/members")}
+            className="text-zinc-800 hover:underline rounded font-medium"
+          >
+            Member list
+          </Link>
+        }
+      />
     </CenterLayout>
   );
 };

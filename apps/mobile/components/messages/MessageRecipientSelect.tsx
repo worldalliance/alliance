@@ -1,24 +1,13 @@
-import { ProfileDto } from "@alliance/shared/client";
+import {
+  missingRecipient,
+  recipientNameOf,
+  type MessageRecipientSelectProps,
+} from "@alliance/shared/lib/messageRecipients";
+import { useUserSelection } from "@alliance/shared/lib/useUserSelection";
 import { X } from "lucide-react-native";
-import { useMemo, useState } from "react";
 import { TextInput, TouchableOpacity, View } from "react-native";
 import ProfileImage from "../ProfileImage";
 import Text, { FontWeight } from "../system/Text";
-
-export type UserSelectUser = Pick<
-  ProfileDto,
-  "id" | "displayName" | "profilePicture"
->;
-
-interface MessageRecipientSelectProps {
-  users: UserSelectUser[];
-  selectedUserIds: number[];
-  onChange: (userIds: number[]) => void;
-  loading?: boolean;
-  single?: boolean;
-}
-
-const MAX_RESULTS = 8;
 
 export default function MessageRecipientSelect({
   users,
@@ -27,56 +16,25 @@ export default function MessageRecipientSelect({
   loading = false,
   single = false,
 }: MessageRecipientSelectProps) {
-  const [query, setQuery] = useState("");
-
-  const canSelectMore = !single || selectedUserIds.length === 0;
-
-  const selectedUsers = useMemo(() => {
-    const userMap = new Map(users.map((user) => [user.id, user]));
-    return selectedUserIds
-      .map((userId) => userMap.get(userId))
-      .filter((user): user is UserSelectUser => !!user);
-  }, [users, selectedUserIds]);
-
-  const filteredUsers = useMemo(() => {
-    if (!canSelectMore) {
-      return [];
-    }
-    const term = query.trim().toLowerCase();
-    if (!term) {
-      return [];
-    }
-    const selectedIds = new Set(selectedUserIds);
-    return users
-      .filter((user) => !selectedIds.has(user.id))
-      .filter((user) =>
-        `${user.displayName ?? ""}`.toLowerCase().includes(term),
-      )
-      .slice(0, MAX_RESULTS);
-  }, [query, users, selectedUserIds, canSelectMore]);
-
-  const addUser = (userId: number) => {
-    if (selectedUserIds.includes(userId)) {
-      return;
-    }
-    if (single) {
-      onChange([userId]);
-    } else {
-      onChange([...selectedUserIds, userId]);
-    }
-    setQuery("");
-  };
-
-  const removeUser = (userId: number) => {
-    onChange(selectedUserIds.filter((id) => id !== userId));
-  };
-
-  const inputDisabled = loading || !canSelectMore;
-  const placeholder = loading
-    ? "Loading users..."
-    : canSelectMore
-      ? "Search by name"
-      : "Remove current selection to choose another";
+  const {
+    query,
+    setQuery,
+    canSelectMore,
+    selectedUsers,
+    filteredUsers,
+    addUser,
+    removeUser,
+    inputDisabled,
+    placeholder,
+  } = useUserSelection({
+    users,
+    selectedUserIds,
+    onChange,
+    nameOf: recipientNameOf,
+    missingUser: missingRecipient,
+    loading,
+    single,
+  });
 
   return (
     <View className="flex-1">
