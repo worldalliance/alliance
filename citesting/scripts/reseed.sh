@@ -120,6 +120,10 @@ echo "==> Loading existing seed (FKs disabled via session_replication_role)"
   # (matches the stripping the screenshot runner does at load time).
   sed -E '/^SET[[:space:]]+transaction_timeout[[:space:]]*=/d; /^\\restrict([[:space:]]|$)/d; /^\\unrestrict([[:space:]]|$)/d' "$SEED_FILE"
   echo "SET session_replication_role = 'origin';"
+  # The dump excludes migrations rows but still sets their id sequence, which
+  # falls behind the rows left after the revert when a migration merges with
+  # a timestamp older than the seed's.
+  echo "SELECT setval('public.migrations_id_seq', (SELECT max(id) FROM public.migrations));"
 } | "${PSQL_BASE[@]}" -d "$DB_NAME" -v ON_ERROR_STOP=1 >/dev/null
 
 echo "==> Re-running migrations to apply schema changes on top of seed data"
