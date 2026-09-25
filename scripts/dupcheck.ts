@@ -4,9 +4,14 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseArgs } from "node:util";
 import { z } from "zod";
+import { git, mergeBaseFromArgs } from "./lib/git";
 import { findNewRepeatedCopy } from "./lib/repeated-copy";
+import {
+  readSourceConfig,
+  scannedFiles,
+  type SourceConfig,
+} from "./lib/source-files";
 
 const jscpd = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -17,11 +22,6 @@ const fragment = z.object({
   name: z.string(),
   start: z.number(),
   end: z.number(),
-});
-
-const configSchema = z.object({
-  path: z.array(z.string()),
-  ignore: z.array(z.string()).default([]),
 });
 
 const reportSchema = z.object({
@@ -35,45 +35,9 @@ const reportSchema = z.object({
   ),
 });
 
-const SOURCE_FILE = /\.(ts|tsx|js|jsx)$/;
-
-function git({
-  repoRoot,
-  args,
-  input,
-}: {
-  repoRoot: string;
-  args: string[];
-  input?: string;
-}): Buffer {
-  const run = spawnSync("git", args, {
-    cwd: repoRoot,
-    input,
-    maxBuffer: 1 << 30,
-  });
-  if (run.status !== 0) {
-    throw new Error(`git ${args.join(" ")}: ${run.stderr}`);
-  }
-  return run.stdout;
-}
-
-function scannedFiles(
-  config: z.infer<typeof configSchema>,
-  listing: Buffer,
-): string[] {
-  const ignores = config.ignore.map((pattern) => new Bun.Glob(pattern));
-  return listing
-    .toString("utf8")
-    .split("\0")
-    .filter(
-      (file) =>
-        SOURCE_FILE.test(file) && !ignores.some((glob) => glob.match(file)),
-    );
-}
-
 function readWorkingTree(
   repoRoot: string,
-  config: z.infer<typeof configSchema>,
+  config: SourceConfig,
 ): Map<string, string> {
   const listing = git({
     repoRoot,
@@ -88,7 +52,10 @@ function readWorkingTree(
     ],
   });
   const files = new Map<string, string>();
-  for (const file of scannedFiles(config, listing)) {
+  for (const file of scannedFiles(
+    config,
+    listing.toString("utf8").split("\0"),
+  )) {
     const absolute = path.join(repoRoot, file);
     if (fs.existsSync(absolute)) {
       files.set(file, fs.readFileSync(absolute, "utf8"));
@@ -103,14 +70,14 @@ function readAtRef({
   ref,
 }: {
   repoRoot: string;
-  config: z.infer<typeof configSchema>;
+  config: SourceConfig;
   ref: string;
 }): Map<string, string> {
   const listing = git({
     repoRoot,
     args: ["ls-tree", "-r", "-z", "--name-only", ref, "--", ...config.path],
   });
-  const names = scannedFiles(config, listing);
+  const names = scannedFiles(config, listing.toString("utf8").split("\0"));
   const batch = git({
     repoRoot,
     args: ["cat-file", "--batch"],
@@ -136,32 +103,8 @@ function preview(text: string): string {
 }
 
 function main(): void {
-  const { values } = parseArgs({
-    options: { base: { type: "string", default: "origin/main" } },
-  });
-  const base = values.base;
-
-  const root = spawnSync("git", ["rev-parse", "--show-toplevel"], {
-    encoding: "utf8",
-  });
-  if (root.status !== 0) {
-    console.error(`dupcheck: not in a git checkout\n${root.stderr}`);
-    process.exit(2);
-  }
-  const repoRoot = root.stdout.trim();
-
-  const mergeBase = spawnSync("git", ["merge-base", "HEAD", base], {
-    cwd: repoRoot,
-    encoding: "utf8",
-  });
-  if (mergeBase.status !== 0) {
-    console.error(`dupcheck: no merge-base with ${base}\n${mergeBase.stderr}`);
-    process.exit(2);
-  }
-  const baseCommit = mergeBase.stdout.trim();
-  const config = configSchema.parse(
-    JSON.parse(fs.readFileSync(path.join(repoRoot, ".jscpd.json"), "utf8")),
-  );
+  const { base, repoRoot, baseCommit } = mergeBaseFromArgs();
+  const config = readSourceConfig(repoRoot);
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "dupcheck-"));
 
   try {

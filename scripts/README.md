@@ -33,6 +33,9 @@ Two checks, both run by `bun run gitignore:check` and by CI. A tracked file matc
 `dupcheck.ts [--base <ref>]`
 Lists duplicated code, and text of five or more words repeated verbatim, that the working tree has and its merge-base with `<ref>` (default `origin/main`) doesn't. Some matches are code that should stay separate, so it exits 0 either way and 2 only when the scan fails. `.jscpd.json` at the repo root sets the scanned paths for both and the minimum clone size. Prefer `bun run dupcheck`.
 
+`covercheck.ts [--base <ref>]`
+Runs `bun test --coverage` in each package of `test-all.sh`'s `PACKAGES` that owns a changed file, or in all of them when a changed file is in `common`, `shared`, or `sharedweb`, then lists the lines the working tree changed since its merge-base with `<ref>` (default `origin/main`) that no unit test ran, and changed files no test loaded. Scans the paths `.jscpd.json` scans, skipping test files. Exits 0 either way and 2 only when the run fails. Prefer `bun run covercheck`.
+
 `test-all.sh [package...]`
 Runs unit tests from inside each workspace so its `bunfig.toml` applies. No arguments runs every package. Prefer `bun run test`, which calls this; CI calls it per package.
 

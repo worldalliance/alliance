@@ -41,6 +41,10 @@ Read before the matching task:
 
 `bun run dupcheck` from the repo root after a change, alongside typecheck. It lists copied code, and text of five or more words repeated verbatim, that the working tree has and its merge-base with `origin/main` doesn't. Matches are exact, so it errs both ways. Some hits look alike but should stay separate, or are an edit inside existing duplication; judge each. It misses the same rule or message written differently, so a clean run leaves the search for an existing implementation still yours to do.
 
+## Coverage
+
+`bun run covercheck` from the repo root after a change that adds logic. It lists lines the working tree changed since its merge-base with `origin/main` that no unit test ran, and changed files no test loads. It runs the tests of each package it touched, or of every package once it touches `common`, `shared`, or `sharedweb`. A reminder, not a gate: judge each gap and add a test where one would catch a regression.
+
 ## Formatting
 
 `bun run format [FILE...]` from the repo root, all files when none are named; `bun run format:check [FILE...]` to only report.
