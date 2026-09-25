@@ -37,6 +37,10 @@ Read before the matching task:
 
 `bun run typecheck` from inside a package; the repo root has no such script. Each package's script picks the right config (`tsconfig.typecheck.json` where shared sources need pulling in directly). Never bare `tsc`, even with `--noEmit`.
 
+## Duplication
+
+`bun run dupcheck` from the repo root after a change, alongside typecheck. It lists copied code, and text of five or more words repeated verbatim, that the working tree has and its merge-base with `origin/main` doesn't. Matches are exact, so it errs both ways. Some hits look alike but should stay separate, or are an edit inside existing duplication; judge each. It misses the same rule or message written differently, so a clean run leaves the search for an existing implementation still yours to do.
+
 ## Formatting
 
 `bun run format [FILE...]` from the repo root, all files when none are named; `bun run format:check [FILE...]` to only report.

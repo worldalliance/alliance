@@ -30,6 +30,9 @@ Drops and recreates the local db named by `server/.env`, then restores the dump.
 `check-gitignore.sh`
 Two checks, both run by `bun run gitignore:check` and by CI. A tracked file matched by a .gitignore rule is one that anything re-applying those rules then drops. A rule like `android/` or `**/android/` matches at every depth, so it has to be anchored or listed in `gitignore-any-depth.txt`, whose every entry has to match a rule. The header says what each one costs when it slips.
 
+`dupcheck.ts [--base <ref>]`
+Lists duplicated code, and text of five or more words repeated verbatim, that the working tree has and its merge-base with `<ref>` (default `origin/main`) doesn't. Some matches are code that should stay separate, so it exits 0 either way and 2 only when the scan fails. `.jscpd.json` at the repo root sets the scanned paths for both and the minimum clone size. Prefer `bun run dupcheck`.
+
 `test-all.sh [package...]`
 Runs unit tests from inside each workspace so its `bunfig.toml` applies. No arguments runs every package. Prefer `bun run test`, which calls this; CI calls it per package.
 
