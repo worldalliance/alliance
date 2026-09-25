@@ -5,9 +5,7 @@ import {
   type GlobalFeedActivityTypes,
   type ProfileDto,
 } from "@alliance/shared/client";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { USER_LIST_PAGE_SIZE } from "./userList";
+import { usePagedUsers, type UserPageQuery } from "./usePagedUsers";
 
 /** Source for a feed item's paginated member list. */
 export type FeedMemberSource =
@@ -23,7 +21,7 @@ const QUERY_KEY_ROOT = "useFeedMembers";
 
 const fetchMemberPage = (
   source: FeedMemberSource,
-  query: { limit: number; afterId?: number },
+  query: UserPageQuery,
 ): Promise<{ data?: ProfileDto[] }> => {
   switch (source.type) {
     case "activityGroup":
@@ -50,47 +48,14 @@ export type UseFeedMembersProps = {
   enabled?: boolean;
 };
 
-/**
- * Fetches paged feed members; cursor is the previous page's last user id.
- * Pages are `USER_LIST_PAGE_SIZE` so the loading skeleton's clamp matches the
- * first page.
- */
 export const useFeedMembers = ({
   source,
   enabled = true,
-}: UseFeedMembersProps) => {
-  const {
-    data,
-    isLoading: loading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
+}: UseFeedMembersProps) =>
+  usePagedUsers({
     queryKey: [QUERY_KEY_ROOT, source],
-    initialPageParam: undefined as number | undefined,
-    queryFn: async ({ pageParam }) => {
-      const resp = await fetchMemberPage(source, {
-        limit: USER_LIST_PAGE_SIZE,
-        afterId: pageParam,
-      });
-      return resp.data ?? [];
-    },
-    getNextPageParam: (lastPage) =>
-      lastPage.length < USER_LIST_PAGE_SIZE
-        ? undefined
-        : lastPage[lastPage.length - 1]?.id,
+    fetchPage: (query) => fetchMemberPage(source, query),
     enabled,
   });
-
-  const users = useMemo(() => data?.pages.flat() ?? [], [data]);
-
-  return {
-    users,
-    loading,
-    fetchNextPage,
-    hasNextPage: hasNextPage ?? false,
-    isFetchingNextPage,
-  };
-};
 
 export default useFeedMembers;
