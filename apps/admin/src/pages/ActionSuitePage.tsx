@@ -8,6 +8,7 @@ import {
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { milliseconds } from "date-fns";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
@@ -16,6 +17,7 @@ import ActionTimeline from "../components/ActionTimeline";
 import GeneralUpdateCard from "../components/GeneralUpdateCard";
 import ActionRemindersTab from "../components/reminders/ActionRemindersTab";
 import SuiteEventList from "../components/SuiteEventList";
+import { sendConfirmingDeadlineShortening } from "../lib/confirmDeadlineShortening";
 
 const ActionSuitePage = () => {
   const { suiteId: suiteIdString } = useParams();
@@ -24,6 +26,7 @@ const ActionSuitePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [suite, setSuite] = useState<ActionSuiteDto | null>(null);
   const navigate = useNavigate();
+  const { confirm } = useToast();
 
   const [highlightedReminder, setHighlightedReminder] = useState<number | null>(
     null,
@@ -65,10 +68,16 @@ const ActionSuitePage = () => {
   }
 
   const handleEditEvent = (eventId: number, body: UpdateActionEventDto) => {
-    actionsBatchUpdateSuiteEventsAdmin({
-      path: { suiteId, eventId },
-      body,
+    sendConfirmingDeadlineShortening({
+      send: (query) =>
+        actionsBatchUpdateSuiteEventsAdmin({
+          path: { suiteId, eventId },
+          body,
+          query,
+        }),
+      confirm,
     }).then((resp) => {
+      if (!resp) return;
       if (resp.data) {
         setSuite(resp.data as ActionSuiteDto);
       } else {

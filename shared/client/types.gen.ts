@@ -9791,15 +9791,17 @@ export type ActionsAddEventAdminData = {
     path: {
         id: number;
     };
-    query?: never;
+    query?: {
+        acknowledgeDeadlineShortening?: boolean;
+    };
     url: '/actions/{id}/events';
 };
 
 export type ActionsAddEventAdminErrors = {
     /**
-     * Default error response for hey-api
+     * Moves the member-action deadline earlier for assigned members; resend with acknowledgeDeadlineShortening=true.
      */
-    default: HeyApiError;
+    409: HeyApiError;
 };
 
 export type ActionsAddEventAdminError = ActionsAddEventAdminErrors[keyof ActionsAddEventAdminErrors];
@@ -10412,15 +10414,17 @@ export type ActionsBatchUpdateSuiteEventsAdminData = {
         suiteId: number;
         eventId: number;
     };
-    query?: never;
+    query?: {
+        acknowledgeDeadlineShortening?: boolean;
+    };
     url: '/actions/suite/{suiteId}/batchUpdateSuiteEvents/{eventId}';
 };
 
 export type ActionsBatchUpdateSuiteEventsAdminErrors = {
     /**
-     * Default error response for hey-api
+     * Moves the member-action deadline earlier for assigned members; resend with acknowledgeDeadlineShortening=true.
      */
-    default: HeyApiError;
+    409: HeyApiError;
 };
 
 export type ActionsBatchUpdateSuiteEventsAdminError = ActionsBatchUpdateSuiteEventsAdminErrors[keyof ActionsBatchUpdateSuiteEventsAdminErrors];
@@ -10436,15 +10440,17 @@ export type ActionsAddSuiteEventAdminData = {
     path: {
         suiteId: number;
     };
-    query?: never;
+    query?: {
+        acknowledgeDeadlineShortening?: boolean;
+    };
     url: '/actions/suite/{suiteId}/events';
 };
 
 export type ActionsAddSuiteEventAdminErrors = {
     /**
-     * Default error response for hey-api
+     * Moves the member-action deadline earlier for assigned members; resend with acknowledgeDeadlineShortening=true.
      */
-    default: HeyApiError;
+    409: HeyApiError;
 };
 
 export type ActionsAddSuiteEventAdminError = ActionsAddSuiteEventAdminErrors[keyof ActionsAddSuiteEventAdminErrors];

@@ -1,6 +1,11 @@
 import request from "supertest";
 import type { Repository } from "typeorm";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
+import {
+  ActionEvent,
+  ActionStatus,
+} from "../src/actions/entities/action-event.entity";
+import { ActionSuite } from "../src/actions/entities/action-suite.entity";
 import { Action } from "../src/actions/entities/action.entity";
 import { CohortDecisionReason } from "../src/actions/entities/cohort-decision-reason";
 import { TasksModule } from "../src/tasks/tasks.module";
@@ -15,6 +20,8 @@ describe("Cohort decision staff tooling (e2e)", () => {
   let ctx: TestContext;
   let service: CohortDecisionService;
   let actionRepo: Repository<Action>;
+  let eventRepo: Repository<ActionEvent>;
+  let suiteRepo: Repository<ActionSuite>;
   let createUser: CohortDecisionFixtures["createUser"];
   let createAction: CohortDecisionFixtures["createAction"];
   let decisionsFor: CohortDecisionFixtures["decisionsFor"];
@@ -27,11 +34,16 @@ describe("Cohort decision staff tooling (e2e)", () => {
     ctx = await createTestApp([TasksModule]);
     service = ctx.app.get(CohortDecisionService);
     actionRepo = ctx.dataSource.getRepository(Action);
+    eventRepo = ctx.dataSource.getRepository(ActionEvent);
+    suiteRepo = ctx.dataSource.getRepository(ActionSuite);
     ({ createUser, createAction, decisionsFor, cleanUp } =
       cohortDecisionFixtures(ctx));
   }, 50000);
 
-  afterEach(() => cleanUp());
+  afterEach(async () => {
+    await cleanUp();
+    await suiteRepo.query("DELETE FROM action_suite");
+  });
 
   afterAll(async () => {
     await ctx.app.close();
@@ -250,6 +262,192 @@ describe("Cohort decision staff tooling (e2e)", () => {
         included: true,
         reason: CohortDecisionReason.Launch,
       });
+    });
+  });
+
+  describe("schedule changes", () => {
+    const addEvent = (params: {
+      actionId: number;
+      date: Date;
+      acknowledge?: boolean;
+    }) =>
+      request(ctx.app.getHttpServer())
+        .post(`/actions/${params.actionId}/events`)
+        .query(
+          params.acknowledge ? { acknowledgeDeadlineShortening: true } : {},
+        )
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: "Resolution",
+          description: "",
+          newStatus: ActionStatus.Resolution,
+          date: params.date.toISOString(),
+        });
+
+    const moveSuiteEvent = async (params: {
+      actionId: number;
+      status: ActionStatus;
+      date: Date;
+      acknowledge?: boolean;
+    }) => {
+      const suite = await suiteRepo.save({ name: "Suite" });
+      await actionRepo.update(params.actionId, { suite: { id: suite.id } });
+      const event = await eventRepo.findOneByOrFail({
+        action: { id: params.actionId },
+        newStatus: params.status,
+      });
+      return request(ctx.app.getHttpServer())
+        .patch(`/actions/suite/${suite.id}/batchUpdateSuiteEvents/${event.id}`)
+        .query(
+          params.acknowledge ? { acknowledgeDeadlineShortening: true } : {},
+        )
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ date: params.date.toISOString() });
+    };
+
+    const deadlineOf = async (actionId: number) =>
+      (
+        await actionRepo.findOneOrFail({
+          where: { id: actionId },
+          relations: { events: true },
+        })
+      ).memberActionPhase.deadlineEvent?.date;
+
+    it("asks before moving an assigned action's deadline earlier", async () => {
+      const member = await createUser({ signedAt });
+      const action = await createAction({
+        start: addDays(now, -1),
+        deadline: addDays(now, 5),
+      });
+      await service.resolveAll(now);
+      const earlier = addDays(now, 2);
+
+      const refused = await addEvent({ actionId: action.id, date: earlier });
+
+      expect(refused.status).toBe(409);
+      expect(refused.body.message).toContain('"Action" (1 assigned)');
+      expect(await deadlineOf(action.id)).toEqual(addDays(now, 5));
+
+      const acknowledged = await addEvent({
+        actionId: action.id,
+        date: earlier,
+        acknowledge: true,
+      });
+
+      expect(acknowledged.status).toBe(201);
+      expect(await deadlineOf(action.id)).toEqual(earlier);
+      expect((await decisionsFor(action.id)).get(member.id)).toMatchObject({
+        included: true,
+        reason: CohortDecisionReason.Launch,
+      });
+    });
+
+    it("asks before a suite edit moves an assigned action's deadline earlier", async () => {
+      await createUser({ signedAt });
+      const action = await createAction({
+        start: addDays(now, -1),
+        deadline: addDays(now, 5),
+      });
+      await service.resolveAll(now);
+
+      const refused = await moveSuiteEvent({
+        actionId: action.id,
+        status: ActionStatus.Resolution,
+        date: addDays(now, 2),
+      });
+
+      expect(refused.status).toBe(409);
+      expect(await deadlineOf(action.id)).toEqual(addDays(now, 5));
+
+      const acknowledged = await moveSuiteEvent({
+        actionId: action.id,
+        status: ActionStatus.Resolution,
+        date: addDays(now, 2),
+        acknowledge: true,
+      });
+
+      expect(acknowledged.status).toBe(200);
+      expect(await deadlineOf(action.id)).toEqual(addDays(now, 2));
+    });
+
+    it("asks before a new suite event moves an assigned action's deadline earlier", async () => {
+      await createUser({ signedAt });
+      const action = await createAction({
+        start: addDays(now, -1),
+        deadline: addDays(now, 5),
+      });
+      await service.resolveAll(now);
+      const suite = await suiteRepo.save({ name: "Suite" });
+      await actionRepo.update(action.id, { suite: { id: suite.id } });
+      const addSuiteEvent = (acknowledge: boolean) =>
+        request(ctx.app.getHttpServer())
+          .post(`/actions/suite/${suite.id}/events`)
+          .query(acknowledge ? { acknowledgeDeadlineShortening: true } : {})
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({
+            title: "Resolution",
+            description: "",
+            newStatus: ActionStatus.Resolution,
+            date: addDays(now, 2).toISOString(),
+          });
+
+      expect((await addSuiteEvent(false)).status).toBe(409);
+      expect(await deadlineOf(action.id)).toEqual(addDays(now, 5));
+      expect((await addSuiteEvent(true)).status).toBe(201);
+      expect(await deadlineOf(action.id)).toEqual(addDays(now, 2));
+    });
+
+    it("asks when a suite edit targets an assigned action outside the suite", async () => {
+      await createUser({ signedAt });
+      const action = await createAction({
+        start: addDays(now, -1),
+        deadline: addDays(now, 5),
+      });
+      await service.resolveAll(now);
+      const suite = await suiteRepo.save({ name: "Other suite" });
+      const event = await eventRepo.findOneByOrFail({
+        action: { id: action.id },
+        newStatus: ActionStatus.Resolution,
+      });
+
+      const refused = await request(ctx.app.getHttpServer())
+        .patch(`/actions/suite/${suite.id}/batchUpdateSuiteEvents/${event.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ date: addDays(now, 2).toISOString() });
+
+      expect(refused.status).toBe(409);
+      expect(await deadlineOf(action.id)).toEqual(addDays(now, 5));
+    });
+
+    it("moves a deadline earlier without asking when nobody is assigned", async () => {
+      await createUser({ signedAt, tagged: false });
+      const action = await createAction({
+        start: addDays(now, -1),
+        deadline: addDays(now, 5),
+      });
+      await service.resolveAll(now);
+
+      expect(
+        (await addEvent({ actionId: action.id, date: addDays(now, 2) })).status,
+      ).toBe(201);
+    });
+
+    it("extends a deadline without asking", async () => {
+      await createUser({ signedAt });
+      const action = await createAction({
+        start: addDays(now, -1),
+        deadline: addDays(now, 5),
+      });
+      await service.resolveAll(now);
+
+      const extended = await moveSuiteEvent({
+        actionId: action.id,
+        status: ActionStatus.Resolution,
+        date: addDays(now, 8),
+      });
+
+      expect(extended.status).toBe(200);
+      expect(await deadlineOf(action.id)).toEqual(addDays(now, 8));
     });
   });
 });
