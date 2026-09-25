@@ -18,7 +18,11 @@ import { Community } from "src/community/entities/community.entity";
 import { resolveUsMembership, UsMembership } from "src/geo/us-membership";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { Tag } from "src/user/entities/tag.entity";
-import { computeIsAssignedAndPresent } from "src/utils/action-user";
+import {
+  canMissActionDeadline,
+  computeIsAssignedAndPresent,
+  computeMissedActionDeadline,
+} from "src/utils/action-user";
 import { yieldToEventLoop } from "src/utils/event-loop";
 import { In, type Repository } from "typeorm";
 import { ActionActivity } from "../actions/entities/action-activity.entity";
@@ -268,23 +272,35 @@ export class ActionEventRecipientService {
         relations: { events: true },
       }),
     );
-    // Optional actions never yield missed_deadline (the pill shows
-    // optional_task instead), so nobody can "miss" their deadline.
-    if (action.optional) return new Set();
-    const deadline = action.memberActionPhase.deadlineEvent?.date ?? null;
-    if (!deadline || deadline >= new Date()) return new Set();
-    return this.loadUncompletedRosterUserIds(
-      action,
-      session,
-      resolvingActionIds,
+    const now = new Date();
+    if (!canMissActionDeadline(action, now)) return new Set();
+    const [users, cohortMemberIds, terminalUserIds] = await Promise.all([
+      this.getActiveUsers(session),
+      this.resolveCohortMemberIds(
+        action.cohortExpression,
+        session,
+        resolvingActionIds,
+      ),
+      this.loadTerminalUserIds(action.id),
+    ]);
+    return new Set(
+      users
+        .filter((user) =>
+          computeMissedActionDeadline({
+            action,
+            user,
+            inCohort: cohortMemberIds.has(user.id),
+            hasTerminalActivity: terminalUserIds.has(user.id),
+            now,
+          }),
+        )
+        .map((user) => user.id),
     );
   }
 
   /**
    * The action's member-action roster minus users with a terminal activity
-   * (completed or withdrawn). Shared core of InProgressAction (gated on the
-   * action still being in member action) and MissedActionDeadline (gated on
-   * the deadline having passed).
+   * (completed or withdrawn).
    */
   private async loadUncompletedRosterUserIds(
     action: ParsedAction,
@@ -307,17 +323,21 @@ export class ActionEventRecipientService {
       // predicates, which never consider dismissal).
       includeDismissed: true,
     });
-    const terminal = await this.actionActivityRepository.find({
-      where: [
-        { actionId: action.id, type: ActionActivityType.USER_COMPLETED },
-        { actionId: action.id, type: ActionActivityType.USER_WONT_COMPLETE },
-      ],
-      select: { userId: true },
-    });
-    const terminalIds = new Set(terminal.map((a) => a.userId));
+    const terminalIds = await this.loadTerminalUserIds(action.id);
     return new Set(
       baseUsers.map((u) => u.id).filter((id) => !terminalIds.has(id)),
     );
+  }
+
+  private async loadTerminalUserIds(actionId: number): Promise<Set<number>> {
+    const terminal = await this.actionActivityRepository.find({
+      where: [
+        { actionId, type: ActionActivityType.USER_COMPLETED },
+        { actionId, type: ActionActivityType.USER_WONT_COMPLETE },
+      ],
+      select: { userId: true },
+    });
+    return new Set(terminal.map((a) => a.userId));
   }
 
   /**

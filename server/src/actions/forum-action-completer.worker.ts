@@ -23,6 +23,7 @@ import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { formSchemaOf } from "src/tasks/form-snapshot-schema";
 import { User } from "src/user/entities/user.entity";
+import { hasMemberActionDeadlinePassed } from "src/utils/action-user";
 import {
   DataSource,
   In,
@@ -99,7 +100,7 @@ export class ForumActionCompleterWorker {
             !memberActionEvent ||
             memberActionEvent.date > now ||
             !deadlineEvent ||
-            deadlineEvent.date <= now
+            hasMemberActionDeadlinePassed(deadlineEvent.date, now)
           ) {
             continue;
           }

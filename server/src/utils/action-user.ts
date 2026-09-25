@@ -279,6 +279,54 @@ export function hasMemberActionStarted(
   return findStartedMemberActionEvent(events, now) !== undefined;
 }
 
+export function hasMemberActionDeadlinePassed(
+  deadline: Date | null | undefined,
+  now: Date,
+): boolean {
+  return !!deadline && deadline <= now;
+}
+
+/**
+ * Action-level half of {@link computeMissedActionDeadline}; when false, nobody
+ * missed the deadline, so callers can skip loading members. Optional actions
+ * show `optional_task` rather than `missed_deadline`.
+ */
+export function canMissActionDeadline(
+  action: Pick<Action, "optional" | "memberActionPhase">,
+  now: Date,
+): boolean {
+  return (
+    !action.optional &&
+    hasMemberActionDeadlinePassed(
+      action.memberActionPhase.deadlineEvent?.date,
+      now,
+    )
+  );
+}
+
+/**
+ * The `MissedActionDeadline` cohort leaf for one member, shared by the
+ * single-user and population cohort paths: required and present for the
+ * action, deadline passed, no completion or withdrawal. Dismissal does not
+ * count; it is a view-only overlay offered on past-deadline cards.
+ */
+export function computeMissedActionDeadline(params: {
+  action: SelfViewParams["action"] & Pick<Action, "optional">;
+  user: NonNullable<SelfViewParams["user"]> &
+    Pick<User, "awayRanges" | "isAwayAtAnyPointInRange">;
+  inCohort: boolean;
+  hasTerminalActivity: boolean;
+  now: Date;
+}): boolean {
+  const { action, user, inCohort, hasTerminalActivity, now } = params;
+  return (
+    canMissActionDeadline(action, now) &&
+    !hasTerminalActivity &&
+    computeIsRequiredForAction({ action, user, inCohort, dismissed: false }) &&
+    !computeIsAwayDuringWindow({ action, user })
+  );
+}
+
 export function computeMemberActionAwayStatus(params: {
   action: Pick<Action, "events">;
   user: Pick<User, "awayRanges">;

@@ -105,12 +105,14 @@ import {
 } from "src/user/user.utils";
 import {
   ActionAssignment,
+  canMissActionDeadline,
   computeActionAssignment,
   computeIsAssignedAndPresent,
   computeIsAwayDuringWindow,
-  computeIsRequiredForAction,
   computeIsTaggedOrInManualCohort,
   computeMemberActionAwayStatus,
+  computeMissedActionDeadline,
+  hasMemberActionDeadlinePassed,
 } from "src/utils/action-user";
 import { CachedFilter } from "src/utils/cached-filter";
 import { yieldToEventLoop } from "src/utils/event-loop";
@@ -3885,9 +3887,10 @@ export class ActionsService {
           isJoined: detail.isJoined,
           isAway: detail.isAway,
           optional: action.optional,
-          deadlinePassed:
-            !!action.memberActionPhase?.deadlineEvent?.date &&
-            action.memberActionPhase.deadlineEvent.date <= now,
+          deadlinePassed: hasMemberActionDeadlinePassed(
+            action.memberActionPhase?.deadlineEvent?.date,
+            now,
+          ),
           activityStatus,
         });
       }
@@ -5216,58 +5219,39 @@ export class ActionsService {
         if (!fetched) return false;
         const action = parseAction(fetched);
 
-        // Mirror the missed_deadline pill: optional actions show
-        // optional_task and away users show away, so neither can miss a
-        // deadline. The batch path gets both via `loadMissedActionDeadlineUserIds`
-        // and the roster's `computeIsAssignedAndPresent` filter.
-        if (action.optional) return false;
-        if (computeIsAwayDuringWindow({ action, user })) return false;
+        const now = new Date();
+        if (!canMissActionDeadline(action, now)) return false;
 
-        const deadline = action.memberActionPhase.deadlineEvent?.date ?? null;
-        if (!deadline || deadline >= new Date()) return false;
-
-        // A completion or withdrawal means the deadline wasn't missed.
-        // Dismissal deliberately does NOT disqualify: it's a view-only
-        // "mark as seen" overlay (see ActionActivityType.USER_DISMISSED)
-        // offered on past-deadline cards, so dismissed users are still in
-        // this set.
-        const terminal = await this.actionActivityRepository.findOne({
-          where: [
-            {
-              userId: user.id,
-              actionId,
-              type: ActionActivityType.USER_COMPLETED,
-            },
-            {
-              userId: user.id,
-              actionId,
-              type: ActionActivityType.USER_WONT_COMPLETE,
-            },
-          ],
-        });
-        if (terminal) return false;
-
-        const inCohort = await this.computeIsInCohortExpression({
-          user,
-          cohortExpression: action.cohortExpression,
-          visitedActionIds: new Set(visitedActionIds).add(actionId),
-          session,
-        });
-        // Shared assignment rule (cohort membership + contract requirement),
-        // so this agrees with the batch roster. `user` must have
-        // `contractEvents` and `awayRanges` loaded — both degrade silently
-        // to wrong answers when absent (hasActiveContractInFullRange -> false,
-        // isAwayAtAnyPointInRange -> false), so every
-        // computeIsInCohortExpression caller has to load them. `dismissed:
-        // false` because dismissal is an overlay, not an assignment input
-        // (same as resolveUserActionStatus). Required only, again to agree
-        // with the roster: a mid-window joiner is assigned but not held to
-        // the action, so they don't belong in a cohort of its members.
-        return computeIsRequiredForAction({
+        const [terminal, inCohort] = await Promise.all([
+          this.actionActivityRepository.findOne({
+            where: [
+              {
+                userId: user.id,
+                actionId,
+                type: ActionActivityType.USER_COMPLETED,
+              },
+              {
+                userId: user.id,
+                actionId,
+                type: ActionActivityType.USER_WONT_COMPLETE,
+              },
+            ],
+          }),
+          this.computeIsInCohortExpression({
+            user,
+            cohortExpression: action.cohortExpression,
+            visitedActionIds: new Set(visitedActionIds).add(actionId),
+            session,
+          }),
+        ]);
+        // `user` must have `contractEvents` and `awayRanges` loaded; without
+        // them the contract and away checks silently read false.
+        return computeMissedActionDeadline({
           action,
           user,
           inCohort,
-          dismissed: false,
+          hasTerminalActivity: !!terminal,
+          now,
         });
       },
       matchesFormField: async (fieldParams: {

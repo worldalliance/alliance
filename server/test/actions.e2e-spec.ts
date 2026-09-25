@@ -1,4 +1,5 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { milliseconds } from "date-fns";
 import { ActionCategory } from "src/actions/action-category";
 import { ActionsService } from "src/actions/actions.service";
@@ -968,6 +969,140 @@ describe("Actions (e2e)", () => {
       await userRepo.delete(inProgressUser.id);
       await userRepo.delete(doneUser.id);
       await userRepo.delete(neverJoinedUser.id);
+    });
+
+    it("resolves MissedActionDeadline the same on the single-user and population paths", async () => {
+      const recipientService = ctx.app.get(ActionEventRecipientService);
+      const actionsService = ctx.app.get(ActionsService);
+      const stamp = Date.now();
+      const hoursFromNow = (hours: number) =>
+        new Date(stamp + milliseconds({ hours }));
+
+      const upstream = await actionRepo.save(
+        actionRepo.create({
+          name: `Missed Deadline Upstream ${stamp}`,
+          category: [],
+          body: "Body",
+          visibilityMode: VisibilityMode.Public,
+          cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+        }),
+      );
+      await eventRepo.save([
+        eventRepo.create({
+          title: "Launch",
+          description: "Go",
+          newStatus: ActionStatus.MemberAction,
+          date: hoursFromNow(-3),
+          action: upstream,
+        }),
+        eventRepo.create({
+          title: "Deadline",
+          description: "Done",
+          newStatus: ActionStatus.Resolution,
+          date: hoursFromNow(-1),
+          action: upstream,
+        }),
+      ]);
+
+      const makeMember = async (label: string, signedAt: Date) => {
+        const created = await userService.create({
+          email: `missed-${label}-${stamp}@example.com`,
+          password: "Password123!",
+          name: label,
+          contractEvents: [
+            {
+              type: ContractEventType.SIGNED,
+              date: signedAt,
+              automatic: false,
+              contractId: ctx.defaultContractId,
+            },
+          ],
+          tags: [ctx.defaultTag],
+        });
+        return created.id;
+      };
+      const missedId = await makeMember("missed", hoursFromNow(-4));
+      const dismissedId = await makeMember("dismissed", hoursFromNow(-4));
+      const completedId = await makeMember("completed", hoursFromNow(-4));
+      const withdrawnId = await makeMember("withdrawn", hoursFromNow(-4));
+      const awayId = await makeMember("away", hoursFromNow(-4));
+      const lateSignerId = await makeMember("late", hoursFromNow(-2));
+
+      await activityRepo.save([
+        activityRepo.create({
+          userId: dismissedId,
+          actionId: upstream.id,
+          type: ActionActivityType.USER_DISMISSED,
+        }),
+        activityRepo.create({
+          userId: completedId,
+          actionId: upstream.id,
+          type: ActionActivityType.USER_COMPLETED,
+        }),
+        activityRepo.create({
+          userId: withdrawnId,
+          actionId: upstream.id,
+          type: ActionActivityType.USER_WONT_COMPLETE,
+        }),
+      ]);
+      await ctx.dataSource.getRepository(UserAwayRange).save({
+        userId: awayId,
+        startDate: hoursFromNow(-2.5),
+        endDate: hoursFromNow(-2),
+        reason: UserAwayRangeReason.VACATION,
+      });
+
+      const expected = new Map([
+        [missedId, true],
+        [dismissedId, true],
+        [completedId, false],
+        [withdrawnId, false],
+        [awayId, false],
+        [lateSignerId, false],
+      ]);
+      const missed = {
+        type: "MissedActionDeadline",
+        actionId: upstream.id,
+      } satisfies CohortExpression;
+      const notMissed = {
+        type: "NOT",
+        child: missed,
+      } satisfies CohortExpression;
+
+      const [population, notPopulation] = await Promise.all([
+        recipientService.resolveCohortMemberIds(missed),
+        recipientService.resolveCohortMemberIds(notMissed),
+      ]);
+      for (const [userId, isMissed] of expected) {
+        const user = await userRepo.findOneOrFail({
+          where: { id: userId },
+          relations: { tags: true, contractEvents: true, awayRanges: true },
+        });
+        const [single, notSingle] = await Promise.all([
+          actionsService.computeIsInCohortExpression({
+            user,
+            cohortExpression: missed,
+          }),
+          actionsService.computeIsInCohortExpression({
+            user,
+            cohortExpression: notMissed,
+          }),
+        ]);
+        expect({ userId, population: population.has(userId), single }).toEqual({
+          userId,
+          population: isMissed,
+          single: isMissed,
+        });
+        expect({
+          userId,
+          population: notPopulation.has(userId),
+          single: notSingle,
+        }).toEqual({ userId, population: !isMissed, single: !isMissed });
+      }
+
+      await activityRepo.delete({ actionId: upstream.id });
+      await actionRepo.delete(upstream.id);
+      await userRepo.delete([...expected.keys()]);
     });
 
     it("evaluates GroupLead cohort expression against real community data", async () => {

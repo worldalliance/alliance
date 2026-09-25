@@ -10,6 +10,7 @@ import {
   computeContractSignedAfterOnboardingStart,
   computeIsAwayDuringWindow,
   computeMemberActionAwayStatus,
+  hasMemberActionDeadlinePassed,
   hasMemberActionStarted,
   TaskAwayStatus,
 } from "src/utils/action-user";
@@ -256,7 +257,7 @@ export function resolveUserActionStatus(params: {
       relation !== ViewerActionRelation.Withdrawn);
 
   const deadlineAt = action.memberActionPhase.deadlineEvent?.date ?? null;
-  const deadlinePassed = !!deadlineAt && deadlineAt <= now;
+  const deadlinePassed = hasMemberActionDeadlinePassed(deadlineAt, now);
 
   return {
     assigned,
