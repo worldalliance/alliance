@@ -252,7 +252,7 @@ describe("FormRenderer preview", () => {
 
     expect(
       await screen.findByText(
-        "This form uses answers from a form that has been deleted, so it can't be shown.",
+        "This form uses answers from a form or question that has been deleted, so it can't be shown.",
       ),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
@@ -300,7 +300,7 @@ describe("FormRenderer preview", () => {
     expect(await screen.findByText("Total #{total}")).toBeTruthy();
     expect(
       screen.queryByText(
-        "This form uses answers from a form that has been deleted, so it can't be shown.",
+        "This form uses answers from a form or question that has been deleted, so it can't be shown.",
       ),
     ).toBeNull();
   });
@@ -855,4 +855,112 @@ it("orders chips by the randomized option order", async () => {
     .map((node) => node.textContent);
   expect(pickerOrder).not.toEqual(options.map((option) => option.label));
   expect(chipOrder).toEqual(pickerOrder);
+});
+
+describe("aggregate counts", () => {
+  const countForm: FormSchema = {
+    pages: [
+      {
+        id: "p1",
+        fields: [
+          {
+            id: "company",
+            type: "input",
+            kind: "radio",
+            label: "Company",
+            options: [
+              { label: "Company A", value: "a" },
+              { label: "Company B", value: "b" },
+            ],
+          },
+          {
+            id: "t",
+            type: "display",
+            kind: "text",
+            text: "Members there: #{count}",
+          },
+        ],
+      },
+    ],
+    outputViews: [],
+    variables: [
+      {
+        name: "count",
+        inputs: {
+          counts: { kind: "aggregate", sourceFormId: 7, fieldId: "employers" },
+          company: { kind: "field", fieldId: "company" },
+        },
+        formula: "company ? (counts[company.value] ?? 0) : 0",
+      },
+    ],
+  };
+
+  const counts = (value: Record<string, number> | null) => () =>
+    Response.json({
+      aggregates: [{ sourceFormId: 7, fieldId: "employers", counts: value }],
+    });
+
+  it("counts from the form's saved version, without refetching as answers change", async () => {
+    const requests: string[] = [];
+    api.alsoServing({
+      "GET /tasks/variableAggregates/:formId/snapshot/:formSnapshotId": ({
+        params,
+      }) => {
+        requests.push(`${params.formId}@${params.formSnapshotId}`);
+        return counts({ a: 12, b: 3 })();
+      },
+    });
+
+    renderPreview(countForm, { formSnapshotId: 5 });
+
+    expect(await screen.findByText("Members there: 0")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("Company A"));
+    expect(await screen.findByText("Members there: 12")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("Company B"));
+    expect(await screen.findByText("Members there: 3")).toBeTruthy();
+    expect(requests).toEqual(["1@5"]);
+  });
+
+  it("holds the form on a load error until a retry loads the counts", async () => {
+    let answer: () => Response = () =>
+      Response.json({ message: "down" }, { status: 500 });
+    api.alsoServing({
+      "POST /tasks/variableAggregates": () => answer(),
+    });
+
+    renderPreview(countForm, { adminPreviewUserId: "preview" });
+
+    expect(
+      await screen.findByText(
+        "Couldn't load the earlier answers this form uses.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Members there/)).toBeNull();
+
+    answer = counts({ a: 1, b: 0 });
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByText("Members there: 0")).toBeTruthy();
+  });
+
+  it("stops a live form whose counted question is gone, and shows a completed one unresolved", async () => {
+    api.alsoServing({
+      "POST /tasks/variableAggregates": counts(null),
+    });
+
+    const live = renderPreview(countForm, { adminPreviewUserId: 3 });
+    expect(
+      await screen.findByText(
+        "This form uses answers from a form or question that has been deleted, so it can't be shown.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    live.unmount();
+
+    renderPreview(countForm, {
+      adminPreviewUserId: 3,
+      renderFormAsCompleted: true,
+    });
+    expect(await screen.findByText("Members there: #{count}")).toBeTruthy();
+  });
 });

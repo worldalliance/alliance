@@ -40,9 +40,14 @@ import {
 } from "@alliance/shared/forms/formValueUpdater";
 import { stripCardIds } from "@alliance/shared/forms/listCards";
 import {
+  aggregateTarget,
+  useVariableAggregates,
+} from "@alliance/shared/forms/useVariableAggregates";
+import {
   historySubject,
   useVariableSourceHistories,
 } from "@alliance/shared/forms/useVariableSourceHistories";
+import { variableInputsGate } from "@alliance/shared/forms/variableInputsGate";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import {
   cancelAllImageUploads,
@@ -96,7 +101,7 @@ import {
 } from "./formAnalytics";
 import RenderDisplayBlock from "./RenderDisplayBlock";
 import RenderField from "./RenderField";
-import { sourceHistoriesGate } from "./sourceHistoriesGate";
+import { variableInputsGateView } from "./variableInputsGateView";
 
 const WITHDRAWAL_OPTION_ICONS: Record<WithdrawalOption, LucideIcon> = {
   out_of_time: Clock,
@@ -453,6 +458,15 @@ const FormRenderer = ({
     subject: historySubject({ adminPreviewUserId, signedIn: !!user }),
   });
 
+  const variableAggregates = useVariableAggregates({
+    schema,
+    target: aggregateTarget({
+      admin: adminPreviewUserId !== undefined,
+      formId: id,
+      formSnapshotId,
+    }),
+  });
+
   // --- Apply guest draft answers when they arrive after mount ---
   // The draft query is fired in parallel with the form render so we don't
   // block paint on it; apply it here if the user hasn't started editing and
@@ -552,6 +566,7 @@ const FormRenderer = ({
     fieldLookup,
     previousAnswerData,
     sourceHistories,
+    variableAggregates,
     userHasCity,
     userPropertyHasValue,
     firstContractSignedAt,
@@ -1097,7 +1112,10 @@ const FormRenderer = ({
     );
   };
 
-  const gate = sourceHistoriesGate({ histories: sourceHistories, readOnly });
+  const gate = variableInputsGateView({
+    gate: variableInputsGate(sourceHistories, variableAggregates),
+    readOnly,
+  });
   if (gate !== null) return gate;
 
   if (unknownKind || variablesError !== null) {

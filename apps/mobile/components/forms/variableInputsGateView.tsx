@@ -1,10 +1,8 @@
-import {
-  SourceHistoriesStatus,
-  type SourceHistories,
-} from "@alliance/shared/forms/useVariableSourceHistories";
+import { SourceHistoriesStatus } from "@alliance/shared/forms/useVariableSourceHistories";
+import type { VariableInputsGate } from "@alliance/shared/forms/variableInputsGate";
 import {
   sourceAnswersLoadFailed,
-  sourceFormDeleted,
+  variableSourceDeleted,
 } from "@alliance/shared/lib/copy";
 import { RotateCw } from "lucide-react-native";
 import type { ReactElement } from "react";
@@ -13,16 +11,16 @@ import { colors } from "../../lib/style/colors";
 import Text from "../system/Text";
 
 /**
- * What a form renders in place of itself until its source histories are ready.
- * A read-only form reading a deleted form still shows, with the variables
- * reading it unresolved.
+ * What a form renders in place of itself until what its variables load is
+ * ready. A read-only form reading a deleted form or question still shows,
+ * with the variables reading it unresolved.
  */
-export function sourceHistoriesGate(params: {
-  histories: SourceHistories;
+export function variableInputsGateView(params: {
+  gate: VariableInputsGate;
   readOnly: boolean;
 }): ReactElement | null {
-  const { histories, readOnly } = params;
-  switch (histories.status) {
+  const { gate, readOnly } = params;
+  switch (gate.status) {
     case SourceHistoriesStatus.Loading:
       return (
         <View className="items-center py-8">
@@ -36,7 +34,7 @@ export function sourceHistoriesGate(params: {
             {sourceAnswersLoadFailed}
           </Text>
           <TouchableOpacity
-            onPress={histories.retry}
+            onPress={gate.retry}
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel="Try again"
@@ -51,14 +49,16 @@ export function sourceHistoriesGate(params: {
       if (readOnly) return null;
       return (
         <View className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
-          <Text className="text-sm text-amber-800">{sourceFormDeleted}</Text>
+          <Text className="text-sm text-amber-800">
+            {variableSourceDeleted}
+          </Text>
         </View>
       );
     case SourceHistoriesStatus.Ready:
       return null;
     default:
       throw new Error(
-        `unknown source histories status: ${histories satisfies never}`,
+        `unknown variable inputs status: ${gate satisfies never}`,
       );
   }
 }

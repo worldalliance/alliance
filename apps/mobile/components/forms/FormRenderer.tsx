@@ -50,9 +50,14 @@ import {
 } from "@alliance/shared/forms/formValueUpdater";
 import { stripCardIds } from "@alliance/shared/forms/listCards";
 import {
+  aggregateTarget,
+  useVariableAggregates,
+} from "@alliance/shared/forms/useVariableAggregates";
+import {
   historySubject,
   useVariableSourceHistories,
 } from "@alliance/shared/forms/useVariableSourceHistories";
+import { variableInputsGate } from "@alliance/shared/forms/variableInputsGate";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import {
   cancelAllImageUploads,
@@ -115,7 +120,7 @@ import FormModal from "./FormModal";
 import HtmlBlock from "./HtmlBlock";
 import { RenderField } from "./RenderField";
 import RenderPreviousAnswer from "./RenderPreviousAnswer";
-import { sourceHistoriesGate } from "./sourceHistoriesGate";
+import { variableInputsGateView } from "./variableInputsGateView";
 import VideoPlayer from "./VideoPlayer";
 
 type FormRendererProps = {
@@ -695,6 +700,11 @@ const FormRenderer = ({
     }),
   });
 
+  const variableAggregates = useVariableAggregates({
+    schema,
+    target: aggregateTarget({ admin: false, formId: id, formSnapshotId }),
+  });
+
   const clampPageIndex = (idx: number): number => {
     if (!Number.isFinite(idx)) return 0;
     const normalized = Math.floor(idx);
@@ -950,6 +960,7 @@ const FormRenderer = ({
     fieldLookup,
     previousAnswerData,
     sourceHistories,
+    variableAggregates,
     userHasCity,
     userPropertyHasValue,
     firstContractSignedAt,
@@ -1173,7 +1184,10 @@ const FormRenderer = ({
     return false;
   };
 
-  const gate = sourceHistoriesGate({ histories: sourceHistories, readOnly });
+  const gate = variableInputsGateView({
+    gate: variableInputsGate(sourceHistories, variableAggregates),
+    readOnly,
+  });
   if (gate !== null) return gate;
 
   if (unknownKind || variablesError !== null) {
