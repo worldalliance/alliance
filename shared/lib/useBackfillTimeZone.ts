@@ -13,7 +13,7 @@ import { useUpdateProfileMutation } from "./user";
  * retries.
  */
 export function useBackfillTimeZone(
-  user: { id: number; timeZone?: string } | undefined,
+  user: { id: number; timeZone: string | null } | undefined,
   options: { detect: () => string | undefined; enabled?: boolean },
 ): void {
   const { detect, enabled = true } = options;

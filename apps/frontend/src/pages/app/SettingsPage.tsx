@@ -401,7 +401,7 @@ const SettingsPage: React.FC = () => {
             <div className="flex-1">
               <p className="mb-1">Your time zone for reminders:</p>
               <TimeZoneSelect
-                value={editableUser.timeZone}
+                value={editableUser.timeZone ?? undefined}
                 onChange={(tz) => updateEditableUser({ timeZone: tz })}
               />
             </div>

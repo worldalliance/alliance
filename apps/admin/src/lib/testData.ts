@@ -6,6 +6,7 @@ export const FORM_BUILDER_PREVIEW_USER: UserDto = {
   name: "Preview User",
   phoneNumber: null,
   preferredReminderTime: null,
+  timeZone: null,
   customCityString: null,
   emailNotifsForActions: false,
   textNotifsForActions: false,

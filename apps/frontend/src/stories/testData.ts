@@ -121,6 +121,7 @@ export const testAuthUser: UserDto = {
   email: "first.lastname@example.com",
   phoneNumber: null,
   preferredReminderTime: null,
+  timeZone: null,
   customCityString: null,
   admin: false,
   referralCode: "1234567890",

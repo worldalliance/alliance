@@ -1225,7 +1225,7 @@ describe("Actions (e2e)", () => {
           where: { id: created.id },
         });
         user.city = location.city ?? null;
-        user.timeZone = location.timeZone;
+        user.timeZone = location.timeZone ?? null;
         return await userRepo.save(user);
       };
 

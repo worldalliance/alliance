@@ -35,7 +35,7 @@ const backfill = (
 
 describe("useBackfillTimeZone", () => {
   it("sends the device zone for a member who has none", async () => {
-    renderHook(() => backfill({ id: 7 }), {
+    renderHook(() => backfill({ id: 7, timeZone: null }), {
       wrapper: queryWrapper().wrapper,
     });
 
@@ -45,9 +45,12 @@ describe("useBackfillTimeZone", () => {
   });
 
   it("sends a valid alias as detected", async () => {
-    renderHook(() => backfill({ id: 7 }, { detect: () => "US/Pacific" }), {
-      wrapper: queryWrapper().wrapper,
-    });
+    renderHook(
+      () => backfill({ id: 7, timeZone: null }, { detect: () => "US/Pacific" }),
+      {
+        wrapper: queryWrapper().wrapper,
+      },
+    );
 
     await waitFor(() => expect(payloads).toEqual([{ timeZone: "US/Pacific" }]));
   });
@@ -59,9 +62,12 @@ describe("useBackfillTimeZone", () => {
     "america/los_angeles",
     "Mars/Olympus_Mons",
   ])("writes nothing when detection gives %p", async (detected) => {
-    renderHook(() => backfill({ id: 7 }, { detect: () => detected }), {
-      wrapper: queryWrapper().wrapper,
-    });
+    renderHook(
+      () => backfill({ id: 7, timeZone: null }, { detect: () => detected }),
+      {
+        wrapper: queryWrapper().wrapper,
+      },
+    );
 
     await settle();
     expect(payloads).toEqual([]);
@@ -78,23 +84,25 @@ describe("useBackfillTimeZone", () => {
 
   it("does nothing before the user loads", async () => {
     const view = renderHook(({ user }) => backfill(user), {
-      initialProps: { user: undefined as { id: number } | undefined },
+      initialProps: {
+        user: undefined as { id: number; timeZone: null } | undefined,
+      },
       wrapper: queryWrapper().wrapper,
     });
     await settle();
     expect(payloads).toEqual([]);
 
-    view.rerender({ user: { id: 7 } });
+    view.rerender({ user: { id: 7, timeZone: null } });
     await waitFor(() => expect(payloads).toHaveLength(1));
   });
 
   it("sends once, however often the user object is replaced", async () => {
     const view = renderHook(({ user }) => backfill(user), {
-      initialProps: { user: { id: 7 } },
+      initialProps: { user: { id: 7, timeZone: null } },
       wrapper: queryWrapper().wrapper,
     });
-    view.rerender({ user: { id: 7 } });
-    view.rerender({ user: { id: 7 } });
+    view.rerender({ user: { id: 7, timeZone: null } });
+    view.rerender({ user: { id: 7, timeZone: null } });
 
     await settle();
     expect(payloads).toHaveLength(1);
@@ -102,19 +110,22 @@ describe("useBackfillTimeZone", () => {
 
   it("sends again for a different member on the same mount", async () => {
     const view = renderHook(({ user }) => backfill(user), {
-      initialProps: { user: { id: 7 } },
+      initialProps: { user: { id: 7, timeZone: null } },
       wrapper: queryWrapper().wrapper,
     });
-    view.rerender({ user: { id: 8 } });
+    view.rerender({ user: { id: 8, timeZone: null } });
 
     await waitFor(() => expect(payloads).toHaveLength(2));
   });
 
   it("writes nothing while disabled, and sends once enabled", async () => {
-    const view = renderHook(({ enabled }) => backfill({ id: 7 }, { enabled }), {
-      initialProps: { enabled: false },
-      wrapper: queryWrapper().wrapper,
-    });
+    const view = renderHook(
+      ({ enabled }) => backfill({ id: 7, timeZone: null }, { enabled }),
+      {
+        initialProps: { enabled: false },
+        wrapper: queryWrapper().wrapper,
+      },
+    );
     await settle();
     expect(payloads).toEqual([]);
 
@@ -128,7 +139,7 @@ describe("useBackfillTimeZone", () => {
     refused = true;
     const logged = jest.spyOn(console, "error").mockImplementation(() => {});
 
-    renderHook(() => backfill({ id: 7 }), {
+    renderHook(() => backfill({ id: 7, timeZone: null }), {
       wrapper: queryWrapper().wrapper,
     });
 

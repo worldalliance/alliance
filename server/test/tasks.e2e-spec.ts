@@ -147,7 +147,7 @@ describe("Tasks (e2e)", () => {
       phoneNumber: null,
       profilePicture: null,
       profileDescription: null,
-      timeZone: null as unknown as string,
+      timeZone: null,
       customCityString: null,
       shareInfoPublicly: false,
       preferredReminderTime: null,
@@ -3254,7 +3254,7 @@ describe("Tasks (e2e)", () => {
       await userRepo.update(ctx.testUserId, {
         profileDescription: initialDescription,
         phoneNumber: null,
-        timeZone: null as unknown as string,
+        timeZone: null,
         customCityString: null,
         shareInfoPublicly: false,
       });

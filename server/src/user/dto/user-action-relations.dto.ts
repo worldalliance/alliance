@@ -202,7 +202,7 @@ export class CommunityMemberContactInfoDto extends PickType(User, [
     this.phoneNumber = user.sharePhoneNumberWithCommunityLead
       ? user.phoneNumber
       : null;
-    this.timeZone = user.timeZone?.toString();
+    this.timeZone = user.timeZone?.toString() ?? null;
     this.awayRanges = (user.awayRanges ?? [])
       .slice()
       .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())

@@ -559,9 +559,13 @@ export class UpdateProfileDto extends PartialType(
   customCityString?: string | null;
 
   @IsOptional()
-  @ApiPropertyOptional({ type: String })
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: "null leaves the saved zone unchanged",
+  })
   @IsTimeZoneIdentifier()
-  // Older mobile builds send back /auth/me's null, which keeps the saved zone.
+  // Older mobile builds send back /auth/me's null.
   @Transform(({ value }) => value ?? undefined)
   timeZone?: string;
 }

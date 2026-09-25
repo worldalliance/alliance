@@ -362,7 +362,7 @@ export default function SettingsPage() {
                 Your time zone for reminders:
               </Text>
               <TimeZoneSelect
-                value={editableUser.timeZone}
+                value={editableUser.timeZone ?? undefined}
                 onChange={(tz) => updateEditableUser({ timeZone: tz })}
               />
             </View>
