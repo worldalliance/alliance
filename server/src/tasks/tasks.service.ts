@@ -991,6 +991,9 @@ export class TasksService {
     await this.actionsService.completeAction(submitFormDto.actionId, userId, {
       taskFormResponse: savedForm,
     });
+    if (contractIdsSigned.length > 0) {
+      this.contractService.announceSigned(user.id);
+    }
     await this.deleteFormDraft(userId, formId);
 
     return savedForm;

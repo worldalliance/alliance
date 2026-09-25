@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { CommunityService } from "src/community/community.service";
 import {
@@ -27,6 +28,7 @@ import { ReferralSource, User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { referralLabel } from "src/user/user.utils";
 import { IsNull, LessThanOrEqual, MoreThan, Or, Repository } from "typeorm";
+import { ContractEvents, type ContractSignedPayload } from "./contract.events";
 import {
   REFERRAL_COMMUNITY_SELECTORS,
   buildNotifForLeaderWithReferrer,
@@ -53,6 +55,7 @@ export class ContractService {
     private readonly communityService: CommunityService,
     private readonly notifsService: NotifsService,
     private readonly eventLogService: EventLogService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async findAll(): Promise<ParsedContract[]> {
@@ -313,6 +316,16 @@ export class ContractService {
     ]);
 
     return contractEvent.date;
+  }
+
+  /**
+   * Call once everything the signing request writes has committed: listeners
+   * read the member's answers and activities as of the event.
+   */
+  announceSigned(userId: number): void {
+    this.eventEmitter.emit(ContractEvents.Signed, {
+      userId,
+    } satisfies ContractSignedPayload);
   }
 
   async suspendContract(params: {
