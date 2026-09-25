@@ -52,6 +52,7 @@ export const queryKeys = {
   ambassadorProgramAdmin: () => ["userGetAmbassadorProgramAdmin"] as const,
   eventLogAdmin: (page: number, limit: number, eventType: EventType | "") =>
     ["eventLogFindAllAdmin", page, limit, eventType] as const,
+  externalShareTargetsAdmin: () => ["externalShareTargetsAdmin"] as const,
   formsAdminAll,
   formsAdmin: () => [...formsAdminAll(), "index"] as const,
   formQuestionFieldsAdmin: (formId: number | null) =>

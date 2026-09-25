@@ -1,5 +1,4 @@
 import type { CustomComponentField } from "@alliance/common/forms/form-schema";
-import { externalShareTargetsFindAllAdmin } from "@alliance/shared/client";
 import type {
   CustomComponentConfigField,
   CustomComponentDefinition,
@@ -11,6 +10,10 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
+import {
+  externalShareTargetsLoadError,
+  externalShareTargetsQuery,
+} from "../../lib/externalShareTargetsQuery";
 import { RequiredToggle } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
@@ -397,13 +400,11 @@ function ExternalShareTargetSelect({
   onClear,
   error,
 }: ExternalShareTargetSelectProps) {
-  const { data: targets, isPending } = useQuery({
-    queryKey: ["externalShareTargetsFindAllAdmin"],
-    queryFn: async () => {
-      const res = await externalShareTargetsFindAllAdmin();
-      return res.data ?? [];
-    },
-  });
+  const {
+    data: targets,
+    isPending,
+    error: loadError,
+  } = useQuery(externalShareTargetsQuery);
 
   const hasTargets = !!targets && targets.length > 0;
   const isOrphaned =
@@ -420,6 +421,10 @@ function ExternalShareTargetSelect({
       </label>
       {isPending ? (
         <p className="text-xs text-gray-500">Loading targets…</p>
+      ) : !targets ? (
+        <p className="text-xs text-red-600">
+          {externalShareTargetsLoadError(loadError)}
+        </p>
       ) : showSelect ? (
         <select
           value={value ?? ""}
@@ -434,7 +439,7 @@ function ExternalShareTargetSelect({
           className="bg-white w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option value="">Select a target…</option>
-          {targets!.map((target) => (
+          {targets.map((target) => (
             <option key={target.id} value={target.id}>
               {target.name}
             </option>
