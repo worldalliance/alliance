@@ -119,30 +119,17 @@ export class MessageService {
     query: ConversationMessagesQueryDto,
   ): Promise<MessageDto[]> {
     await this.assertParticipant(conversationId, userId);
-
-    const limit = Math.min(query.limit ?? 50, 100);
-    const qb = this.messageRepository
-      .createQueryBuilder("message")
-      .leftJoinAndSelect("message.author", "author")
-      .leftJoinAndSelect("message.replyTo", "replyTo")
-      .leftJoinAndSelect("replyTo.author", "replyToAuthor")
-      .where("message.conversationId = :conversationId", { conversationId })
-      .orderBy("message.createdAt", "DESC")
-      .take(limit);
-
-    if (query.before) {
-      qb.andWhere("message.createdAt < :before", {
-        before: new Date(query.before),
-      });
-    }
-
-    const messages = await qb.getMany();
-    return messages
-      .reverse()
-      .map((message) => new MessageDto({ message, conversationId }));
+    return this.findConversationMessages(conversationId, query);
   }
 
   async getConversationMessagesForAdmin(
+    conversationId: number,
+    query: ConversationMessagesQueryDto,
+  ): Promise<MessageDto[]> {
+    return this.findConversationMessages(conversationId, query);
+  }
+
+  private async findConversationMessages(
     conversationId: number,
     query: ConversationMessagesQueryDto,
   ): Promise<MessageDto[]> {
