@@ -235,10 +235,20 @@ sections below this one carry the reasoning each step implements.
    reaches members through a store build rather than an OTA update. A
    calendar with no `timeZone` gives `undefined`, so the picker pins no row
    and defaults to `DEFAULT_TIMEZONE` as it does for any missing value. Mobile
-   signup and backfill still read `Intl` through `deviceTimeZone()`; steps 10
-   and 11 move them onto `getDeviceTimeZone()`.
-10. **Signup capture.** Web signup, mobile signup, and the OAuth redirect send a
-    validated device timezone, or `UTC` when detection fails.
+   backfill still reads `Intl` through `deviceTimeZone()`; step 11 moves it
+   onto `getDeviceTimeZone()`.
+10. **Signup capture.** Done. Web signup, mobile signup, and the web OAuth
+    start pass the detected zone through `signupTimeZone` in
+    `shared/lib/timeZone.ts`, which keeps it when `isTimeZoneIdentifier`
+    accepts it and sends `UTC` otherwise, since the server refuses an invalid
+    zone and a refused one would fail the whole signup. Mobile signup detects
+    through `getDeviceTimeZone()`, which moves from the picker component to
+    `apps/mobile/lib/timeZone.ts` so the screens that detect a zone without a
+    picker don't load one. Mobile OAuth sends no zone: it only signs in, since
+    its start carries no referral code and OAuth creates an account only with
+    one, so the server's `DEFAULT_TIME_ZONE` in its state never reaches a new
+    account. The server's `DEFAULT_TIME_ZONE` fallback for a web OAuth start
+    with no zone stays: the web has always sent one.
 11. **Backfill.** `useBackfillTimeZone` writes only a valid detected identifier
     and leaves the value missing otherwise.
 12. **Settings device affordance.** Web `SettingsPage` and mobile `settings.tsx`

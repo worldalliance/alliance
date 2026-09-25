@@ -4,7 +4,6 @@ import {
   useTimeZoneSelect,
 } from "@alliance/shared/forms/timeZoneSelect";
 import { cn } from "@alliance/shared/styles/util";
-import { getCalendars } from "expo-localization";
 import { ChevronDown, Clock, Smartphone } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -15,6 +14,7 @@ import {
   View,
 } from "react-native";
 import { colors } from "../../lib/style/colors";
+import { getDeviceTimeZone } from "../../lib/timeZone";
 import Text, { FontWeight } from "../system/Text";
 import FormModal from "./FormModal";
 import { createSelectedRowScroller } from "./selectedRowScroller";
@@ -26,10 +26,6 @@ type Props = {
   placeholder?: string;
   hour12?: boolean;
 };
-
-export function getDeviceTimeZone(): string | undefined {
-  return getCalendars()[0].timeZone ?? undefined;
-}
 
 export default function TimeZoneSelect({
   value,

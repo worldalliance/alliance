@@ -10,7 +10,7 @@ import {
 } from "@alliance/shared/client";
 import { captureEvent, captureException } from "@alliance/shared/lib/analytics";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
-import { deviceTimeZone } from "@alliance/shared/lib/timeZone";
+import { signupTimeZone } from "@alliance/shared/lib/timeZone";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { useInvite } from "@alliance/shared/lib/useInvite";
 import { useSignupFaces } from "@alliance/shared/lib/useSignupFaces";
@@ -66,6 +66,7 @@ import {
   useOnboardingScale,
 } from "../../lib/onboarding/scale";
 import { passwordLoginFailure } from "../../lib/session";
+import { getDeviceTimeZone } from "../../lib/timeZone";
 
 const TONE_BACKGROUND: Record<PanelTone, string> = {
   [PanelTone.Navy]: onboardingColors.navy,
@@ -256,7 +257,7 @@ const OnboardingScreen = () => {
             email,
             password,
             mode: "header",
-            timeZone: deviceTimeZone(),
+            timeZone: signupTimeZone(getDeviceTimeZone()),
             referralCode: referralCode || undefined,
           },
         });
