@@ -5,7 +5,7 @@ export const TZDB_VERSION = "2026d";
 export type TimeZoneCatalogEntry = {
   /** IANA identifier. */
   tz: string;
-  /** English location name, for a runtime that cannot name the zone itself. */
+  /** English location name, shown on every row. */
   city: string;
   /** English country name. Null for `UTC`, which belongs to no country. */
   country: string | null;

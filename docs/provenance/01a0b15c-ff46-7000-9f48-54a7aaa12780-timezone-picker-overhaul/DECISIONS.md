@@ -36,13 +36,24 @@ sections below this one carry the reasoning each step implements.
    instead of logging and skipping the value. No admin endpoint writes a
    member's timezone. An admin changing it while impersonating goes through
    `/user/update`.
-4. **Rows from the catalog.** `shared/forms/timeZoneSelect.ts` drops the 50-row
+4. **Rows from the catalog.** Done, except the uncatalogued row and the saved
+   alias. `shared/forms/timeZoneSelect.ts` drops the 50-row
    `TZ_OPTIONS` and builds its rows from the catalog, with the generic name and
    location as the primary label, country and offset under it, and local time at
    the trailing edge. Sorted by offset, then location. A saved or detected
    identifier the runtime resolves but neither the catalog nor its aliases
    carry gets a row of its own, labeled from `Intl` and the identifier.
-   Landed ahead of the catalog rows, on the curated ones:
+   A row reads `Pacific Time · Los Angeles` over `United States · UTC-8`,
+   the offset in whole hours plus `:mm` where it has minutes. A runtime with
+   no generic name leaves the city alone, and one with no offset leaves the
+   country alone. Many rows share a generic name, country, and offset, such
+   as the twelve `Argentina Standard Time` rows, so where the first line runs
+   out of room the web cuts the generic name and keeps the city whole, and
+   mobile cuts the middle. The curated labels and
+   extra search terms go with `TZ_OPTIONS`. Aliases bring back most of what
+   they found, such as `arizona` through `US/Arizona`, and step 5 covers
+   the rest. The generic name still comes from
+   `en-US`, as before this step, since search and the second line are English.
    A closed picker labels only its selected zone and builds the list the first
    time it opens, since every picker on a screen otherwise labels all ~420
    zones at mount, about 5 times the work of the 51 curated rows. The list
@@ -52,23 +63,72 @@ sections below this one carry the reasoning each step implements.
    Building every zone's formatters on open took 1.9 to 2.2 s in an Android
    release build on the emulator and about 135 ms in a debug build on the iOS
    simulator, so a mounted picker builds them in `requestIdleCallback` a zone
-   at a time, and the open then took 117 to 145 ms and 12 to 21 ms. The
-   warm-up is shared by every picker and takes about as long as the cold
-   build did. An open before it ends shows a spinner until it does rather
-   than labelling the rest at once. In a browser a step runs within 100 ms
-   even while the runtime never idles, labelling zones for 8 ms, so a busy
-   app still fills the list, in a few steps rather than a zone each 100 ms.
-   React Native schedules a step without that timeout, but flags it
-   `didTimeout` once it starts over 100 ms late and still gives it up to
-   50 ms, which it takes back for urgent work, so only a step starting with
-   no time remaining is forced, and any other stops on `timeRemaining`
-   alone. A runtime without
-   `requestIdleCallback` builds on open as before.
-5. **Search.** Match city, country, identifier, generic name, and alias, folding
-   case and accents. Exact city and country matches rank first, then prefix
-   matches, then other word matches.
-   Aliases are done: a row's search text carries every alias the catalog
-   maps to it, so `calcutta` finds Kolkata. Ranking is not.
+   at a time. The warm-up is shared by every picker. An open before it ends
+   shows a spinner until it does rather than labelling the rest at once,
+   which froze a Moto G Play (2024) for about 5.8 s. In a browser a step
+   runs within 100 ms even while the runtime never idles, labelling zones for
+   8 ms, so a busy app still fills the list, in a few steps rather than a
+   zone each 100 ms. React Native schedules a step without that timeout, but
+   flags it `didTimeout` once it starts over 100 ms late and still gives it
+   up to 50 ms, which it takes back for urgent work, so only a step starting
+   with no time remaining is forced, and any other stops on `timeRemaining`
+   alone.
+   A runtime without `requestIdleCallback` builds on open, as the tests and
+   Safari do.
+   Measured on that phone in a production bundle, Hermes spends most of the
+   build constructing formatters: about 5 ms each for an explicit `en-US`
+   locale against under 2 ms for its default one, so formatters that need
+   English take the default locale where it resolves to exactly `en-US`.
+   `formatToParts` costs about twenty times what `format` does, so an offset
+   formatter whose resolved locale is `en-US` and whose string once read the
+   same wall clock as its parts reads its string from then on. The clocks
+   come from each row's offset through one UTC formatter rather than a
+   formatter per zone, and the sort compares cities with one `Intl.Collator`,
+   since `localeCompare` cost 110 ms a sort. Together these took the whole
+   build from 5.8 s to 2.6 s and each minute's refresh of an open list from
+   470 ms to 43 ms, against 50 ms for the 51 curated rows. Warming produced
+   no JS stall over 66 ms, and an open after it stalls as long as the curated
+   list's did, about 350 ms, most of it laying out the `FlatList`.
+5. **Search.** Done. Match city, country, identifier, generic name, and alias,
+   folding case and accents. Exact city and country matches rank first, then
+   prefix matches, then other word matches.
+   A row's search text carries every alias the catalog maps to it, so
+   `calcutta` finds Kolkata. "Prefix" means a city or country the query
+   starts, so `india` puts Kolkata ahead of the Indiana zones, which only an
+   identifier word matches. Each rank keeps the offset order.
+   `shared/forms/timeZoneCuratedNames.ts` gives London and Perth the places
+   that no city, country, or alias spells, such as `uk`, `britain`, and
+   `western australia`, and they rank as place names, so `uk` puts London
+   ahead of Ukraine. The same file names the zone most of a multi-zone
+   country keeps after the country, such as São Paulo for `brazil`, plus
+   `china` and `hawaii`, and a query naming one of its names in full ranks
+   that zone above every other place it names in full, since offset order
+   alone opened `china` on Urumqi, `brazil` on Eirunepe, and `hawaii` in
+   winter on Adak. It names `US`, `USA`, `America`, and `Korea` the same way, and the
+   four US time names (`Eastern Time` → New York, `Central Time` → Chicago,
+   `Mountain Time` → Denver, `Pacific Time` → Los Angeles), and a query
+   starting one of its names ranks that zone after the full-name matches but
+   ahead of the places the query only starts. Without that, `eastern` opened
+   on Atikokan, which keeps no DST, `central` on Bangui through the Central
+   African Republic, `us` on Ushuaia, `united` on Adak, and `america` on
+   Pago Pago through American Samoa.
+   `Central Africa Time` goes to Maputo, since `central africa` also opened
+   on Bangui, which keeps West Africa Time. London carries
+   `Greenwich` and `GMT`, so `greenwich` and `gmt` open on London, ahead of
+   UTC and the zones Intl calls Greenwich Mean Time, which stay on UTC through
+   the British summer.
+   The curated time names the catalog's own names would open elsewhere go the
+   same way: `Central European Time` → Paris, `Eastern European Time` →
+   Athens, `Atlantic Time` → Halifax, `Brasilia Time` → São Paulo, and
+   `Central Australia` → Darwin, since in summer `central european` opened
+   on Algiers, `eastern european` on Kaliningrad, and `atlantic` on
+   Anguilla, each keeping no DST. A query finding nothing retries without a
+   trailing `time`, or as much of it as is typed, so `hawaii time` and
+   `moscow time`, which the curated labels spelled, find their zones at
+   every keystroke.
+   Steps 4 and 5 land as one change: without ranking and those place names,
+   the catalog's rows open `india` on Indiana and `uk` on Ukraine, and Enter
+   picks the first row.
 6. **Device row pinned.** The detected timezone sits above the unfiltered list.
 7. **Web combobox.** `sharedweb/forms/TimeZoneSelect.tsx` moves onto
    `@base-ui/react/combobox` with the search input inside the popup, deleting

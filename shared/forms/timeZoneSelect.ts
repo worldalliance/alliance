@@ -1,7 +1,13 @@
+import {
+  TIME_ZONE_CATALOG,
+  type TimeZoneCatalogEntry,
+} from "@alliance/common/timezone-catalog.gen";
+import { minutesInHour } from "date-fns/constants";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { minuteStart, useClockMinute } from "../lib/useClockMinute";
 import { fold } from "./optionSearch";
 import { aliasesOf } from "./timeZoneAliases";
+import { curatedNamesOf } from "./timeZoneCuratedNames";
 import {
   formatTimeAtOffset,
   formatTimeInTz,
@@ -10,123 +16,16 @@ import {
   resetFormatterCache,
 } from "./timeZoneIntl";
 
-export type TzOption = {
-  group: string;
-  label: string;
-  tz: string;
-  /** Names a search matches the row on, beyond what its labels write. */
-  searchTerms?: string[];
-};
-
-export const TZ_OPTIONS: TzOption[] = [
-  // US
-  { group: "US", label: "Pacific Time", tz: "America/Los_Angeles" },
-  { group: "US", label: "Mountain Time", tz: "America/Denver" },
-  { group: "US", label: "Central Time", tz: "America/Chicago" },
-  { group: "US", label: "Eastern Time", tz: "America/New_York" },
-  { group: "US", label: "Alaska Time", tz: "America/Anchorage" },
-  { group: "US", label: "Arizona Time", tz: "America/Phoenix" },
-  { group: "US", label: "Hawaii Time", tz: "Pacific/Honolulu" },
-
-  // Canada gets its own zones rather than sharing the US ones beside it.
-  // America/Los_Angeles belongs to the US whatever an option is labelled, so
-  // sharing it leaves a Vancouver member indistinguishable from a Seattle one.
-  { group: "Canada", label: "Pacific Time", tz: "America/Vancouver" },
-  { group: "Canada", label: "Mountain Time", tz: "America/Edmonton" },
-  { group: "Canada", label: "Saskatchewan Time", tz: "America/Regina" },
-  { group: "Canada", label: "Central Time", tz: "America/Winnipeg" },
-  { group: "Canada", label: "Eastern Time", tz: "America/Toronto" },
-  { group: "Canada", label: "Atlantic Time", tz: "America/Halifax" },
-  { group: "Canada", label: "Newfoundland Time", tz: "America/St_Johns" },
-  { group: "Canada", label: "Yukon Time", tz: "America/Whitehorse" },
-
-  // America
-  { group: "America", label: "Mexico City Time", tz: "America/Mexico_City" },
-  {
-    group: "America",
-    label: "Bogota, Jamaica, Lima Time",
-    tz: "America/Bogota",
-  },
-  { group: "America", label: "Caracas Time", tz: "America/Caracas" },
-  { group: "America", label: "Santiago Time", tz: "America/Santiago" },
-  {
-    group: "America",
-    label: "Buenos Aires Time",
-    tz: "America/Argentina/Buenos_Aires",
-  },
-  { group: "America", label: "Brasilia Time", tz: "America/Sao_Paulo" },
-
-  // Europe
-  {
-    group: "Europe",
-    label: "UK, Ireland, Lisbon Time",
-    tz: "Europe/London",
-    searchTerms: ["Greenwich"],
-  },
-  { group: "Europe", label: "Central European Time", tz: "Europe/Paris" },
-  { group: "Europe", label: "Eastern European Time", tz: "Europe/Athens" },
-  { group: "Europe", label: "Turkey Time", tz: "Europe/Istanbul" },
-  { group: "Europe", label: "Moscow Time", tz: "Europe/Moscow" },
-
-  // Africa
-  { group: "Africa", label: "West Africa Time", tz: "Africa/Lagos" },
-  { group: "Africa", label: "Central Africa Time", tz: "Africa/Kinshasa" },
-  { group: "Africa", label: "South Africa Time", tz: "Africa/Johannesburg" },
-  { group: "Africa", label: "East Africa Time", tz: "Africa/Nairobi" },
-  { group: "Africa", label: "Egypt Time", tz: "Africa/Cairo" },
-
-  // Asia
-  { group: "Asia", label: "Dubai Time", tz: "Asia/Dubai" },
-  { group: "Asia", label: "Tehran Time", tz: "Asia/Tehran" },
-  { group: "Asia", label: "Pakistan, Maldives Time", tz: "Asia/Karachi" },
-  { group: "Asia", label: "India, Sri Lanka Time", tz: "Asia/Kolkata" },
-  { group: "Asia", label: "Kathmandu Time", tz: "Asia/Kathmandu" },
-  { group: "Asia", label: "Bangladesh Time", tz: "Asia/Dhaka" },
-  { group: "Asia", label: "Indochina Time", tz: "Asia/Bangkok" },
-  { group: "Asia", label: "China, Singapore, Perth", tz: "Asia/Shanghai" },
-  { group: "Asia", label: "Japan, Korea Time", tz: "Asia/Tokyo" },
-
-  // Australia
-  {
-    group: "Australia",
-    label: "Western Australia Time",
-    tz: "Australia/Perth",
-  },
-  {
-    group: "Australia",
-    label: "Central Australia Time",
-    tz: "Australia/Darwin",
-  },
-  { group: "Australia", label: "Adelaide Time", tz: "Australia/Adelaide" },
-  { group: "Australia", label: "Brisbane Time", tz: "Australia/Brisbane" },
-  {
-    group: "Australia",
-    label: "Sydney, Melbourne Time",
-    tz: "Australia/Sydney",
-  },
-  { group: "Australia", label: "Lord Howe Time", tz: "Australia/Lord_Howe" },
-
-  // Pacific
-  { group: "Pacific", label: "Auckland Time", tz: "Pacific/Auckland" },
-  { group: "Pacific", label: "Chatham Time", tz: "Pacific/Chatham" },
-  { group: "Pacific", label: "Fiji Time", tz: "Pacific/Fiji" },
-  { group: "Pacific", label: "Samoa Time", tz: "Pacific/Apia" },
-  { group: "Pacific", label: "Line Islands Time", tz: "Pacific/Kiritimati" },
-];
-
-function prettyCityFromIana(tz: string): string {
-  const seg = tz.split("/").pop() ?? tz;
-  return seg.replace(/_/g, " ");
-}
-
 export type TimeZoneSelectItem = {
   tz: string;
+  city: string;
+  zoneName: string | null;
   labelLeft: string;
-  /** The line under the name: the curated label where it names a place the
-   * name does not, or the search term the query matched. */
+  /** Country and current UTC offset. */
   labelSub: string | null;
-  searchTerms: string[];
   searchText: string;
+  placeNames: string[];
+  curatedNames: string[];
   offsetMins: number | null;
   timeLabel: string | null;
 };
@@ -137,10 +36,13 @@ export const DEFAULT_TIMEZONE = "America/Los_Angeles";
 
 type BaseLabel = {
   tz: string;
+  city: string;
+  country: string | null;
+  zoneName: string | null;
   labelLeft: string;
-  labelSub: string | null;
-  searchTerms: string[];
   searchText: string;
+  placeNames: string[];
+  curatedNames: string[];
 };
 const cachedLabels: BaseLabel[] = [];
 let warming: number | null = null;
@@ -174,60 +76,53 @@ function matchesQuery({
   return false;
 }
 
-const wordsOf = (text: string) => fold(text).match(/\p{L}+/gu) ?? [];
-
-// "Australian Western Standard Time" already says "Western Australia Time" and
-// "Türkiye Time" says "Turkey Time", so two words on a shared stem count as one
-// word said.
-const sameWord = (a: string, b: string) =>
-  a === b ||
-  (a.length >= 4 && b.length >= 4 && a.slice(0, 4) === b.slice(0, 4));
-
-// Most of the list would carry a second line otherwise, and most of those
-// would repeat the first: "Gulf Standard Time — Dubai" over "Dubai Time".
-function namesMoreThan({
-  label,
-  shown,
-}: {
-  label: string;
-  shown: string;
-}): boolean {
-  const said = wordsOf(shown);
-  return wordsOf(label).some(
-    (word) => word !== "time" && !said.some((seen) => sameWord(word, seen)),
-  );
+// So "india" puts Kolkata ahead of the Indiana zones before it in offset order.
+function rankFor(item: TimeZoneSelectItem, foldedQuery: string): number {
+  if (item.curatedNames.includes(foldedQuery)) return 0;
+  if (item.placeNames.includes(foldedQuery)) return 1;
+  if (item.curatedNames.some((name) => name.startsWith(foldedQuery))) return 2;
+  if (item.placeNames.some((name) => name.startsWith(foldedQuery))) return 3;
+  return 4;
 }
 
-// A zone this runtime cannot format is still one the server schedules in, so
-// its row stays, under the curated label when Intl has no name for it.
-//
-// It stays searchable where Intl's name displaces it: Intl calls Asia/Kolkata
-// "India Standard Time", which answers nobody searching for Sri Lanka.
-function labelFor({
-  tz,
-  label,
-  searchTerms: curated = [],
-}: TzOption): BaseLabel {
-  const generic = getGenericLabelFromIntl(tz);
-  const city = prettyCityFromIana(tz);
-  const left = `${generic ?? label} — ${city}`;
-  const searchTerms = [...curated, ...aliasesOf(tz)];
-  const searchable = [left, ...(generic ? [label] : []), ...searchTerms, tz];
+const search = (items: TimeZoneSelectItem[], foldedQuery: string) =>
+  items
+    .filter((i) => matchesQuery({ foldedText: i.searchText, foldedQuery }))
+    .sort((a, b) => rankFor(a, foldedQuery) - rankFor(b, foldedQuery));
+
+// No row spells "hawaii time" or "moscow time", so a query finding nothing
+// retries without the "time" after the place, or as much of it as is typed.
+const TRAILING_TIME = /\s+t(?:i(?:me?)?)?$/;
+
+// Intl names a zone it has no name for, such as UTC, by its offset, which the
+// second line already shows.
+const OFFSET_NAME = /^GMT[+-]/;
+
+function labelFor({ tz, city, country }: TimeZoneCatalogEntry): BaseLabel {
+  const intlName = getGenericLabelFromIntl(tz);
+  const generic = intlName && !OFFSET_NAME.test(intlName) ? intlName : null;
+  const curated = curatedNamesOf(tz);
+  const places = [city, country, ...curated].filter((name) => name != null);
   return {
     tz,
-    labelLeft: left,
-    labelSub: generic && namesMoreThan({ label, shown: left }) ? label : null,
-    searchTerms,
-    searchText: fold(searchable.join(" ")),
+    city,
+    country,
+    zoneName: generic,
+    labelLeft: generic ? `${generic} · ${city}` : city,
+    searchText: fold(
+      [generic, ...places, tz, ...aliasesOf(tz)].filter(Boolean).join(" "),
+    ),
+    placeNames: places.map(fold),
+    curatedNames: curated.map(fold),
   };
 }
 
-const allLabelled = () => cachedLabels.length === TZ_OPTIONS.length;
+const allLabelled = () => cachedLabels.length === TIME_ZONE_CATALOG.length;
 
-function labelNext(): TzOption {
-  const option = TZ_OPTIONS[cachedLabels.length];
-  cachedLabels.push(labelFor(option));
-  return option;
+function labelNext(): TimeZoneCatalogEntry {
+  const entry = TIME_ZONE_CATALOG[cachedLabels.length];
+  cachedLabels.push(labelFor(entry));
+  return entry;
 }
 
 function getBaseLabels(): BaseLabel[] {
@@ -281,14 +176,42 @@ function warmWhileIdle(): void {
   warming = requestIdleCallback(step, WARM_STEP_TIMEOUT);
 }
 
-const OPTION_BY_TZ = new Map(TZ_OPTIONS.map((option) => [option.tz, option]));
+const CATALOG_BY_TZ = new Map(
+  TIME_ZONE_CATALOG.map((entry) => [entry.tz, entry]),
+);
 
 function selectedLabel(tz: string): BaseLabel | null {
-  const option = OPTION_BY_TZ.get(tz);
-  return option ? labelFor(option) : null;
+  const entry = CATALOG_BY_TZ.get(tz);
+  return entry ? labelFor(entry) : null;
+}
+
+function formatOffset(mins: number): string {
+  const abs = Math.abs(mins);
+  const hours = Math.floor(abs / minutesInHour);
+  const rest = abs % minutesInHour;
+  return `UTC${mins < 0 ? "-" : "+"}${hours}${rest ? `:${String(rest).padStart(2, "0")}` : ""}`;
 }
 
 type BaseItem = Omit<TimeZoneSelectItem, "timeLabel">;
+
+function withOffset(label: BaseLabel, when: Date): BaseItem {
+  const offsetMins = getOffsetMinutes(label.tz, when);
+  const sub = [
+    label.country,
+    offsetMins === null ? null : formatOffset(offsetMins),
+  ].filter(Boolean);
+  return {
+    tz: label.tz,
+    city: label.city,
+    zoneName: label.zoneName,
+    labelLeft: label.labelLeft,
+    labelSub: sub.length ? sub.join(" · ") : null,
+    searchText: label.searchText,
+    placeNames: label.placeNames,
+    curatedNames: label.curatedNames,
+    offsetMins,
+  };
+}
 
 const clockOf = (item: BaseItem, hour12: boolean, when: Date) =>
   item.offsetMins === null
@@ -298,6 +221,11 @@ const clockOf = (item: BaseItem, hour12: boolean, when: Date) =>
 // localeCompare costs Hermes on Android twelve times what one collator does.
 const collator = new Intl.Collator();
 
+const byOffsetThenLocation = (a: BaseItem, b: BaseItem) =>
+  Number(a.offsetMins === null) - Number(b.offsetMins === null) ||
+  (a.offsetMins ?? 0) - (b.offsetMins ?? 0) ||
+  collator.compare(a.city, b.city);
+
 let cachedBase: { minute: number; items: BaseItem[] } | null = null;
 
 // Keyed on the minute and shared by every picker on the page, so opening one a
@@ -306,42 +234,12 @@ function baseItems(minute: number): BaseItem[] {
   if (cachedBase?.minute === minute) return cachedBase.items;
 
   const when = minuteStart(minute);
-  const items = getBaseLabels().map((label) => ({
-    ...label,
-    offsetMins: getOffsetMinutes(label.tz, when),
-  }));
-
-  items.sort(
-    (a, b) =>
-      Number(a.offsetMins === null) - Number(b.offsetMins === null) ||
-      (a.offsetMins ?? 0) - (b.offsetMins ?? 0) ||
-      collator.compare(a.labelLeft, b.labelLeft),
-  );
+  const items = getBaseLabels()
+    .map((label) => withOffset(label, when))
+    .sort(byOffsetThenLocation);
 
   cachedBase = { minute, items };
   return items;
-}
-
-// A row holding none of what was typed reads as a wrong answer, so a term that
-// matched off the row takes the second line while the query stands. A row its
-// own identifier matched keeps its label, since an alias there would read as
-// the reason it matched.
-function subForQuery(
-  item: TimeZoneSelectItem,
-  foldedQuery: string,
-): string | null {
-  const shown = fold(`${item.labelLeft} ${item.labelSub ?? ""}`);
-  if (
-    matchesQuery({ foldedText: shown, foldedQuery }) ||
-    matchesQuery({ foldedText: fold(item.tz), foldedQuery })
-  ) {
-    return item.labelSub;
-  }
-  return (
-    item.searchTerms.find((term) =>
-      matchesQuery({ foldedText: fold(term), foldedQuery }),
-    ) ?? item.labelSub
-  );
 }
 
 export type UseTimeZoneSelectParams = {
@@ -402,16 +300,18 @@ export function useTimeZoneSelect({
 
   const selected = useMemo<TimeZoneSelectItem>(() => {
     const when = minuteStart(minute);
-    const offsetMins = getOffsetMinutes(internalValue, when);
     const item: BaseItem = label
-      ? { ...label, offsetMins }
+      ? withOffset(label, when)
       : {
           tz: internalValue,
+          city: internalValue,
+          zoneName: null,
           labelLeft: internalValue,
           labelSub: null,
-          searchTerms: [],
           searchText: fold(internalValue),
-          offsetMins,
+          placeNames: [],
+          curatedNames: [],
+          offsetMins: getOffsetMinutes(internalValue, when),
         };
     return { ...item, timeLabel: clockOf(item, hour12, when) };
   }, [label, internalValue, hour12, minute]);
@@ -419,9 +319,9 @@ export function useTimeZoneSelect({
   const filtered = useMemo(() => {
     const q = fold(query.trim());
     if (!q) return items;
-    return items
-      .filter((i) => matchesQuery({ foldedText: i.searchText, foldedQuery: q }))
-      .map((i) => ({ ...i, labelSub: subForQuery(i, q) }));
+    const found = search(items, q);
+    const place = q.replace(TRAILING_TIME, "");
+    return found.length || place === q ? found : search(items, place);
   }, [items, query]);
 
   const selectedIndex = filtered.findIndex((i) => i.tz === selected.tz);

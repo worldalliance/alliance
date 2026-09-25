@@ -11,6 +11,13 @@ import TimeZoneSelect from "./TimeZoneSelect";
 beforeEach(resetTimeZoneCaches);
 afterEach(cleanup);
 
+const zoneLabel = (text: string) =>
+  screen.getByText(
+    (_, element) =>
+      element?.children.length === 2 &&
+      element.textContent?.replace(/\s+/g, " ") === text,
+  );
+
 function searchFor(query: string): void {
   fireEvent.click(screen.getByRole("button"));
   act(() => {
@@ -20,31 +27,30 @@ function searchFor(query: string): void {
   });
 }
 
-it("shows the words a member's search matched on", () => {
+it("shows a row's country and offset under its name", () => {
   render(<TimeZoneSelect />);
 
-  searchFor("sri lanka");
+  searchFor("colombo");
 
-  expect(screen.getByText("India Standard Time — Kolkata")).toBeDefined();
-  expect(screen.getByText("India, Sri Lanka Time")).toBeDefined();
+  expect(zoneLabel("India Standard Time · Colombo")).toBeDefined();
+  expect(screen.getByText("Sri Lanka · UTC+5:30")).toBeDefined();
+});
+
+it("sets a row's city apart from its zone name, so a cut name keeps it", () => {
+  render(<TimeZoneSelect />);
+
+  searchFor("colombo");
+
+  expect(screen.getByText("Colombo")).toBeDefined();
 });
 
 it("keeps them on the trigger once the member picks the row", () => {
   render(<TimeZoneSelect />);
 
-  searchFor("sri lanka");
-  fireEvent.click(screen.getByText("India Standard Time — Kolkata"));
+  searchFor("colombo");
+  fireEvent.click(zoneLabel("India Standard Time · Colombo"));
 
-  expect(screen.getByText("India, Sri Lanka Time")).toBeDefined();
-});
-
-it("leaves a row alone where the curated label repeats its name", () => {
-  render(<TimeZoneSelect />);
-
-  searchFor("dubai");
-
-  expect(screen.getByText("Gulf Standard Time — Dubai")).toBeDefined();
-  expect(screen.queryByText("Dubai Time")).toBeNull();
+  expect(screen.getByText("Sri Lanka · UTC+5:30")).toBeDefined();
 });
 
 it("shows a spinner, not an empty list, while the zones warm", () => {
@@ -66,7 +72,7 @@ it("shows a spinner, not an empty list, while the zones warm", () => {
     act(() => pending?.({ didTimeout: false, timeRemaining: () => Infinity }));
 
     expect(screen.queryByRole("status")).toBeNull();
-    expect(screen.getByText("Japan Standard Time — Tokyo")).toBeDefined();
+    expect(zoneLabel("Japan Standard Time · Tokyo")).toBeDefined();
   } finally {
     resetTimeZoneCaches();
     Reflect.deleteProperty(globalThis, "requestIdleCallback");

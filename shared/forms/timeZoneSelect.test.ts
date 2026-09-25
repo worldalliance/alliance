@@ -1,3 +1,4 @@
+import { TIME_ZONE_CATALOG } from "@alliance/common/timezone-catalog.gen";
 import { act, renderHook } from "@testing-library/react";
 import { millisecondsInMinute } from "date-fns/constants";
 import { createElement } from "react";
@@ -9,10 +10,8 @@ import {
   standingInFor,
 } from "../lib/testing/intlStandIns";
 import { resetClock } from "../lib/useClockMinute";
-import { fold } from "./optionSearch";
 import { formatNowTimeInTz, getOffsetMinutes } from "./timeZoneIntl";
 import {
-  TZ_OPTIONS,
   resetTimeZoneCaches,
   useTimeZoneSelect,
   type UseTimeZoneSelectParams,
@@ -281,18 +280,52 @@ const labelIn = (tz: string) => {
   return result.current.items.find((i) => i.tz === tz)?.labelLeft;
 };
 
-describe("TZ_OPTIONS", () => {
-  it("offers only zones this runtime can format", () => {
-    const rejected = TZ_OPTIONS.filter(
-      ({ tz }) => formatNowTimeInTz(tz) === null,
-    );
+const rejectingZone = (tz: string, body: () => void) =>
+  patchingIntl((args) => {
+    if (args.options?.timeZone === tz) throw new RangeError("no data");
+    return args;
+  }, body);
 
-    expect(rejected.map(({ tz }) => tz)).toEqual([]);
+const rejectingEveryZone = (body: () => void) =>
+  patchingIntl((args) => {
+    if (args.options?.timeZone) throw new RangeError("no data");
+    return args;
+  }, body);
+
+describe("the rows", () => {
+  const january = new Date(Date.UTC(2026, 0, 15, 12));
+  const rowFor = (tz: string) => {
+    jest.useFakeTimers();
+    jest.setSystemTime(january);
+    const { result } = renderOpen();
+    return result.current.items.find((i) => i.tz === tz);
+  };
+
+  it("lists every zone the catalog carries, once", () => {
+    const { result } = renderOpen();
+
+    expect(result.current.items.map(({ tz }) => tz).sort()).toEqual(
+      TIME_ZONE_CATALOG.map(({ tz }) => tz).sort(),
+    );
   });
 
-  it("offers India, which a TODO once claimed Intl could not place", () => {
-    expect(TZ_OPTIONS.map(({ tz }) => tz)).toContain("Asia/Kolkata");
-    expect(getOffsetMinutes("Asia/Kolkata")).toBe(330);
+  it("names the zone and its location, with country and offset under it", () => {
+    expect(rowFor("America/Los_Angeles")).toMatchObject({
+      labelLeft: "Pacific Time · Los Angeles",
+      labelSub: "United States · UTC-8",
+    });
+  });
+
+  it("writes the minutes of an offset that is not a whole hour", () => {
+    expect(rowFor("Asia/Kathmandu")?.labelSub).toBe("Nepal · UTC+5:45");
+  });
+
+  it("gives UTC, which belongs to no country, only its offset", () => {
+    expect(rowFor("UTC")?.labelSub).toBe("UTC+0");
+  });
+
+  it("names UTC by location rather than by its offset", () => {
+    expect(rowFor("UTC")?.labelLeft).toBe("UTC");
   });
 
   it("writes each zone's clock as a formatter in that zone would", () => {
@@ -306,94 +339,82 @@ describe("TZ_OPTIONS", () => {
 
     expect(wrong).toEqual([]);
   });
+
+  it("sorts by offset, then location", () => {
+    const { result } = renderOpen();
+    const items = result.current.items;
+
+    const outOfOrder = items.slice(1).filter((item, i) => {
+      const before = items[i];
+      return (
+        item.offsetMins! < before.offsetMins! ||
+        (item.offsetMins === before.offsetMins &&
+          item.city.localeCompare(before.city) < 0)
+      );
+    });
+
+    expect(outOfOrder).toEqual([]);
+  });
 });
 
 describe("a zone Intl rejects", () => {
-  it("keeps its row, with no clock rather than no zone", () => {
-    TZ_OPTIONS.push({ group: "Asia", label: "Nowhere", tz: "Not/AZone" });
-    try {
+  it("keeps its row, by location, with no clock rather than no zone", () => {
+    rejectingZone("Asia/Tokyo", () => {
       const { result } = renderOpen();
 
-      expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
+      expect(result.current.items).toHaveLength(TIME_ZONE_CATALOG.length);
       expect(
-        result.current.items.find(({ tz }) => tz === "Not/AZone"),
-      ).toMatchObject({ timeLabel: null, offsetMins: null });
-    } finally {
-      TZ_OPTIONS.pop();
-    }
+        result.current.items.find(({ tz }) => tz === "Asia/Tokyo"),
+      ).toMatchObject({
+        labelLeft: "Tokyo",
+        labelSub: "Japan",
+        timeLabel: null,
+        offsetMins: null,
+      });
+    });
   });
 
   it("sorts after every zone that has an offset", () => {
-    TZ_OPTIONS.push({ group: "Asia", label: "Nowhere", tz: "Not/AZone" });
-    try {
+    rejectingZone("Asia/Tokyo", () => {
       const { result } = renderOpen();
-      const offsets = result.current.items.map(({ offsetMins }) => offsetMins);
-      const firstMissing = offsets.indexOf(null);
 
-      expect(firstMissing).toBeGreaterThan(-1);
-      expect(offsets.filter((o) => o !== null)).toEqual(
-        offsets.slice(0, firstMissing),
-      );
-    } finally {
-      TZ_OPTIONS.pop();
-    }
+      expect(result.current.items.at(-1)?.tz).toBe("Asia/Tokyo");
+    });
   });
 
   it("keeps its place when it is the zone a member already saved", () => {
-    const { result } = renderHook(() =>
-      useTimeZoneSelect({ value: "Not/AZone" }),
-    );
+    const { result } = renderOpen({ value: "Not/AZone" });
 
     expect(result.current.selected.tz).toBe("Not/AZone");
     expect(result.current.selected.timeLabel).toBeNull();
+    expect(result.current.items).toHaveLength(TIME_ZONE_CATALOG.length);
   });
 });
 
 describe("a runtime that rejects every zone", () => {
   it("still offers a list a member can pick their zone from", () => {
-    const listed = TZ_OPTIONS.splice(0, TZ_OPTIONS.length, {
-      group: "Asia",
-      label: "Nowhere",
-      tz: "Not/AZone",
-    });
-    try {
+    rejectingEveryZone(() => {
       const { result } = renderOpen();
 
-      expect(result.current.items).toEqual([
-        {
-          tz: "Not/AZone",
-          labelLeft: "Nowhere — AZone",
-          labelSub: null,
-          searchTerms: [],
-          searchText: "nowhere — azone not/azone",
-          offsetMins: null,
-          timeLabel: null,
-        },
-      ]);
-    } finally {
-      TZ_OPTIONS.splice(0, TZ_OPTIONS.length, ...listed);
-    }
+      expect(result.current.items).toHaveLength(TIME_ZONE_CATALOG.length);
+      expect(
+        result.current.items.find(({ tz }) => tz === "Asia/Tokyo"),
+      ).toMatchObject({
+        labelLeft: "Tokyo",
+        labelSub: "Japan",
+        offsetMins: null,
+        timeLabel: null,
+      });
+    });
   });
 
-  it("sorts the list by name, since no zone has an offset to sort by", () => {
-    const listed = TZ_OPTIONS.splice(
-      0,
-      TZ_OPTIONS.length,
-      { group: "Asia", label: "Zed", tz: "Not/AZone" },
-      { group: "Asia", label: "Mid", tz: "Not/BZone" },
-      { group: "Asia", label: "Alpha", tz: "Not/CZone" },
-    );
-    try {
+  it("sorts the list by location, since no zone has an offset to sort by", () => {
+    rejectingEveryZone(() => {
       const { result } = renderOpen();
+      const cities = result.current.items.map(({ city }) => city);
 
-      expect(result.current.items.map(({ tz }) => tz)).toEqual([
-        "Not/CZone",
-        "Not/BZone",
-        "Not/AZone",
-      ]);
-    } finally {
-      TZ_OPTIONS.splice(0, TZ_OPTIONS.length, ...listed);
-    }
+      expect(cities).toEqual([...cities].sort((a, b) => a.localeCompare(b)));
+    });
   });
 });
 
@@ -408,13 +429,13 @@ describe("a picker nobody has opened", () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date(Date.UTC(2026, 0, 15, 12)));
     const { result } = renderHook(() =>
-      useTimeZoneSelect({ value: "Asia/Kolkata" }),
+      useTimeZoneSelect({ value: "America/Los_Angeles" }),
     );
 
     expect(result.current.selected).toMatchObject({
-      tz: "Asia/Kolkata",
-      labelLeft: "India Standard Time — Kolkata",
-      labelSub: "India, Sri Lanka Time",
+      tz: "America/Los_Angeles",
+      labelLeft: "Pacific Time · Los Angeles",
+      labelSub: "United States · UTC-8",
     });
   });
 
@@ -423,7 +444,7 @@ describe("a picker nobody has opened", () => {
 
     act(() => result.current.setOpen(false));
 
-    expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
+    expect(result.current.items).toHaveLength(TIME_ZONE_CATALOG.length);
   });
 });
 
@@ -488,7 +509,7 @@ describe("a picker mounted on a runtime with idle time", () => {
 
       act(() => result.current.setOpen(true));
 
-      expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
+      expect(result.current.items).toHaveLength(TIME_ZONE_CATALOG.length);
       expect(built()).toBe(beforeOpen);
     });
   });
@@ -566,12 +587,12 @@ describe("a picker mounted on a runtime with idle time", () => {
     const cold = renderOpen().result.current.items;
     globalThis.requestIdleCallback = idle;
     resetTimeZoneCaches();
-    expect(cold).toHaveLength(TZ_OPTIONS.length);
+    expect(cold).toHaveLength(TIME_ZONE_CATALOG.length);
 
     const { result } = renderHook(() => useTimeZoneSelect({}));
-    runIdle({ steps: Math.floor(TZ_OPTIONS.length / 2), msEach: 0 });
+    runIdle({ steps: Math.floor(TIME_ZONE_CATALOG.length / 2), msEach: 0 });
     act(() => result.current.setOpen(true));
-    act(() => runIdle({ steps: TZ_OPTIONS.length, msEach: 0 }));
+    act(() => runIdle({ steps: TIME_ZONE_CATALOG.length, msEach: 0 }));
 
     expect(result.current.loading).toBe(false);
     expect(result.current.items).toEqual(cold);
@@ -589,7 +610,7 @@ describe("a picker mounted on a runtime with idle time", () => {
 
   it("stops warming once every zone is labelled", () => {
     renderHook(() => useTimeZoneSelect({}));
-    runIdle({ steps: TZ_OPTIONS.length, msEach: 0 });
+    runIdle({ steps: TIME_ZONE_CATALOG.length, msEach: 0 });
 
     expect(pending).toBeNull();
   });
@@ -611,7 +632,7 @@ describe("a runtime that formats without writing parts", () => {
       );
       expect(row?.timeLabel).not.toBeNull();
       expect(row?.offsetMins).toBeNull();
-      expect(row?.labelLeft).toBe("Eastern Time — New York");
+      expect(row?.labelLeft).toBe("New York");
     });
   });
 
@@ -621,11 +642,11 @@ describe("a runtime that formats without writing parts", () => {
 
       const { result } = renderOpen();
 
-      expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
+      expect(result.current.items).toHaveLength(TIME_ZONE_CATALOG.length);
       expect(
         result.current.items.find(({ tz }) => tz === "America/New_York"),
       ).toMatchObject({
-        labelLeft: "Eastern Time — New York",
+        labelLeft: "New York",
         offsetMins: null,
       });
     });
@@ -633,15 +654,15 @@ describe("a runtime that formats without writing parts", () => {
 });
 
 describe("a runtime that refuses at the read rather than at the constructor", () => {
-  it("keeps its rows, with a curated name and no clock or offset", () => {
+  it("keeps its rows, by location with no clock or offset", () => {
     refusingAtRead(new RangeError("no data"), () => {
       const { result } = renderOpen();
 
-      expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
+      expect(result.current.items).toHaveLength(TIME_ZONE_CATALOG.length);
       expect(
         result.current.items.find(({ tz }) => tz === "America/New_York"),
       ).toMatchObject({
-        labelLeft: "Eastern Time — New York",
+        labelLeft: "New York",
         timeLabel: null,
         offsetMins: null,
       });
@@ -664,7 +685,7 @@ describe("a runtime refusing with something other than a RangeError", () => {
       () => {
         const { result } = renderOpen();
 
-        expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
+        expect(result.current.items).toHaveLength(TIME_ZONE_CATALOG.length);
         expect(formatNowTimeInTz("America/New_York")).toBeNull();
       },
     );
@@ -685,23 +706,12 @@ describe("a zone sitting on UTC", () => {
   });
 
   it("sorts among the zones it shares an offset with", () => {
-    // The unplaceable row is labelled to sort ahead of "Greenwich Mean Time",
-    // so the offset is the only thing that can put it behind.
-    TZ_OPTIONS.push(
-      { group: "Atlantic", label: "Iceland", tz: UTC_ZONE },
-      { group: "Asia", label: "Anywhere", tz: "Not/AZone" },
-    );
-    try {
-      const { result } = renderOpen();
-      const place = (tz: string) =>
-        result.current.items.findIndex((i) => i.tz === tz);
+    const { result } = renderOpen();
+    const place = (tz: string) =>
+      result.current.items.findIndex((i) => i.tz === tz);
 
-      expect(place(UTC_ZONE)).toBeGreaterThan(place("America/New_York"));
-      expect(place(UTC_ZONE)).toBeLessThan(place("Europe/Paris"));
-      expect(place(UTC_ZONE)).toBeLessThan(place("Not/AZone"));
-    } finally {
-      TZ_OPTIONS.splice(-2);
-    }
+    expect(place(UTC_ZONE)).toBeGreaterThan(place("America/New_York"));
+    expect(place(UTC_ZONE)).toBeLessThan(place("Europe/Paris"));
   });
 });
 
@@ -892,27 +902,37 @@ describe("searching the zone list", () => {
     return result.current.filtered.map(({ tz }) => tz);
   };
 
-  it("finds a zone by a country only its curated label names", () => {
-    expect(zonesMatching("sri lanka")).toEqual(["Asia/Kolkata"]);
-    expect(zonesMatching("maldives")).toEqual(["Asia/Karachi"]);
+  it("finds a zone by its country", () => {
+    expect(zonesMatching("sri lanka")).toEqual(["Asia/Colombo"]);
   });
 
   it("finds that country on a runtime with no name for the zone", () => {
     rejecting("longGeneric", () => {
-      expect(zonesMatching("sri lanka")).toEqual(["Asia/Kolkata"]);
+      expect(zonesMatching("sri lanka")).toEqual(["Asia/Colombo"]);
     });
   });
 
-  it("still finds a zone by the name Intl gives it", () => {
-    expect(zonesMatching("india standard")).toEqual(["Asia/Kolkata"]);
+  it("finds a zone by the name Intl gives it", () => {
+    expect(zonesMatching("india standard")).toEqual([
+      "Asia/Colombo",
+      "Asia/Kolkata",
+    ]);
   });
 
-  it("finds a zone by a name neither of its labels writes", () => {
-    expect(zonesMatching("greenwich")).toContain("Europe/London");
+  it("finds a zone by its identifier", () => {
+    rejecting("longGeneric", () => {
+      expect(zonesMatching("america/argentina/buenos")).toEqual([
+        "America/Argentina/Buenos_Aires",
+      ]);
+    });
   });
 
   it("finds a zone by a tzdb alias of it", () => {
     expect(zonesMatching("calcutta")).toEqual(["Asia/Kolkata"]);
+  });
+
+  it("finds a zone by a region only its aliases name", () => {
+    expect(zonesMatching("arizona")).toEqual(["America/Phoenix"]);
   });
 
   it("finds a zone by a tzdb country alias of it", () => {
@@ -932,112 +952,107 @@ describe("searching the zone list", () => {
     expect(zonesMatching("turkiye")).toEqual(["Europe/Istanbul"]);
   });
 
+  it("puts a zone in the country the query names first", () => {
+    expect(zonesMatching("india")[0]).toBe("Asia/Kolkata");
+  });
+
+  it("puts a place the query names in full before one it only starts", () => {
+    expect(zonesMatching("guinea").slice(0, 2)).toEqual([
+      "Africa/Conakry",
+      "Africa/Bissau",
+    ]);
+  });
+
+  it("puts a place the query starts before a zone it matches elsewhere", () => {
+    expect(zonesMatching("santa")).toEqual([
+      "America/Santarem",
+      "America/Tijuana",
+    ]);
+  });
+
+  it("finds a zone by a place no name or alias spells", () => {
+    expect(zonesMatching("uk")[0]).toBe("Europe/London");
+    expect(zonesMatching("britain")).toEqual(["Europe/London"]);
+    expect(zonesMatching("western australia")).toEqual(["Australia/Perth"]);
+  });
+
+  it.each([
+    ["china", "Asia/Shanghai"],
+    ["china mainland", "Asia/Shanghai"],
+    ["brazil", "America/Sao_Paulo"],
+    ["russia", "Europe/Moscow"],
+    ["hawaii", "Pacific/Honolulu"],
+    ["us", "America/New_York"],
+    ["america", "America/New_York"],
+    ["korea", "Asia/Seoul"],
+    ["canada", "America/Toronto"],
+    ["mexico", "America/Mexico_City"],
+    ["chile", "America/Santiago"],
+    ["ecuador", "America/Guayaquil"],
+    ["greenland", "America/Nuuk"],
+    ["spain", "Europe/Madrid"],
+    ["portugal", "Europe/Lisbon"],
+    ["mongolia", "Asia/Ulaanbaatar"],
+    ["australia", "Australia/Sydney"],
+  ])("puts the zone most of %s keeps first", (query, tz) => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(Date.UTC(2026, 0, 15, 12)));
+
+    expect(zonesMatching(query)[0]).toBe(tz);
+  });
+
+  it.each([
+    ["eastern", "America/New_York"],
+    ["central", "America/Chicago"],
+    ["mountain", "America/Denver"],
+    ["pacific", "America/Los_Angeles"],
+    ["united", "America/New_York"],
+    ["greenwich", "Europe/London"],
+    ["gmt", "Europe/London"],
+    ["central africa", "Africa/Maputo"],
+  ])("opens %s on %s, ahead of places it only starts", (query, tz) => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(Date.UTC(2026, 0, 15, 12)));
+
+    expect(zonesMatching(query)[0]).toBe(tz);
+  });
+
+  it.each([
+    ["central european", "Europe/Paris"],
+    ["eastern european", "Europe/Athens"],
+    ["atlantic", "America/Halifax"],
+    ["brasilia", "America/Sao_Paulo"],
+    ["central australia", "Australia/Darwin"],
+  ])("opens %s on %s in July", (query, tz) => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(Date.UTC(2026, 6, 15, 12)));
+
+    expect(zonesMatching(query)[0]).toBe(tz);
+  });
+
+  it("finds a place followed by the word time", () => {
+    expect(zonesMatching("hawaii time")[0]).toBe("Pacific/Honolulu");
+    expect(zonesMatching("moscow time")[0]).toBe("Europe/Moscow");
+  });
+
+  it("keeps finding a place while the word time is typed after it", () => {
+    for (const query of ["hawaii t", "hawaii ti", "hawaii tim"]) {
+      expect(zonesMatching(query)[0]).toBe("Pacific/Honolulu");
+    }
+  });
+
+  it("keeps the word time where a zone's name carries it", () => {
+    expect(zonesMatching("pacific time")).toEqual([
+      "America/Los_Angeles",
+      "America/Tijuana",
+      "America/Vancouver",
+    ]);
+  });
+
   it("leaves out a zone naming the query inside a longer word", () => {
     const matched = zonesMatching("china");
     expect(matched).not.toContain("Asia/Bangkok");
     expect(matched).toContain("Asia/Shanghai");
-  });
-
-  it("finds a zone by a name only its IANA name writes", () => {
-    rejecting("longGeneric", () => {
-      expect(zonesMatching("argentina")).toEqual([
-        "America/Argentina/Buenos_Aires",
-      ]);
-    });
-  });
-
-  const subMatching = (query: string, tz: string) => {
-    const { result } = renderOpen();
-    act(() => result.current.setQuery(query));
-    return result.current.filtered.find((i) => i.tz === tz)?.labelSub;
-  };
-
-  it("shows the search term a query matched on", () => {
-    expect(subMatching("greenwich", "Europe/London")).toBe("Greenwich");
-  });
-
-  it("keeps the curated label where the query matched the identifier", () => {
-    expect(subMatching("asia", "Asia/Kolkata")).toBe("India, Sri Lanka Time");
-  });
-
-  it("shows the alias a query matched on", () => {
-    expect(subMatching("east", "America/Sao_Paulo")).toBe("Brazil/East");
-  });
-
-  it("keeps the curated label where the query matched a line on show", () => {
-    expect(subMatching("sri lanka", "Asia/Kolkata")).toBe(
-      "India, Sri Lanka Time",
-    );
-  });
-
-  it("leaves the trigger alone, since nothing was typed to reach it", () => {
-    const { result } = renderHook(() =>
-      useTimeZoneSelect({ value: "Europe/London" }),
-    );
-    act(() => result.current.setQuery("greenwich"));
-
-    expect(result.current.selected.labelSub).toBe("UK, Ireland, Lisbon Time");
-  });
-
-  const labelSubOf = (tz: string) => {
-    const { result } = renderOpen();
-    return result.current.items.find((i) => i.tz === tz)?.labelSub;
-  };
-
-  it("carries the label it matched on for the row to show", () => {
-    expect(labelSubOf("Asia/Kolkata")).toBe("India, Sri Lanka Time");
-  });
-
-  it("carries nothing where Intl's name is the curated one", () => {
-    expect(labelSubOf("America/Chicago")).toBeNull();
-  });
-
-  it("carries nothing where the row already names everywhere it names", () => {
-    expect(labelSubOf("Asia/Dubai")).toBeNull();
-    expect(labelSubOf("Europe/Moscow")).toBeNull();
-    expect(labelSubOf("Australia/Perth")).toBeNull();
-    expect(labelSubOf("Europe/Istanbul")).toBeNull();
-  });
-
-  // The sweep folds as the search does, or a row reading "Türkiye" would pass a
-  // sweep looking for "Turkey".
-  it("carries nothing any row already says", () => {
-    const { result } = renderOpen();
-
-    const saidTwice: string[] = [];
-    for (const { tz, labelLeft, labelSub } of result.current.items) {
-      if (!labelSub) continue;
-      const shown = fold(labelLeft);
-      const words = fold(labelSub).match(/\p{L}+/gu) ?? [];
-      if (words.every((w) => w === "time" || shown.includes(w.slice(0, 4)))) {
-        saidTwice.push(tz);
-      }
-    }
-
-    expect(saidTwice).toEqual([]);
-  });
-
-  it("carries every place its row leaves unnamed", () => {
-    const { result } = renderOpen();
-    const curated = new Map(TZ_OPTIONS.map(({ tz, label }) => [tz, label]));
-
-    const leftOut: string[] = [];
-    for (const { tz, labelLeft, labelSub } of result.current.items) {
-      if (labelSub) continue;
-      const shown = fold(labelLeft);
-      const words = fold(curated.get(tz) ?? "").match(/\p{L}+/gu) ?? [];
-      if (words.some((w) => w !== "time" && !shown.includes(w.slice(0, 4)))) {
-        leftOut.push(tz);
-      }
-    }
-
-    expect(leftOut).toEqual([]);
-  });
-
-  it("carries nothing on a runtime with no name for the zone", () => {
-    rejecting("longGeneric", () => {
-      expect(labelSubOf("Asia/Kolkata")).toBeNull();
-    });
   });
 });
 
@@ -1064,15 +1079,15 @@ describe("a runtime missing a timeZoneName style", () => {
     });
   });
 
-  it("falls back to the curated label when longGeneric is missing", () => {
+  it("falls back to the location when longGeneric is missing", () => {
     rejecting("longGeneric", () => {
       const { result } = renderOpen();
 
       const row = result.current.items.find(
         ({ tz }) => tz === "America/New_York",
       );
-      expect(row?.labelLeft).toBe("Eastern Time — New York");
-      expect(row?.searchText).toContain("eastern");
+      expect(row?.labelLeft).toBe("New York");
+      expect(row?.searchText).toContain("united states");
     });
   });
 
@@ -1102,13 +1117,13 @@ describe("a runtime writing a zone name as one part", () => {
 
   it("labels the row with the name and none of what surrounds it", () => {
     layingOutTheZoneName(oneParted(), () => {
-      expect(labelIn("Asia/Kolkata")).toBe("India Standard Time — Kolkata");
+      expect(labelIn("Asia/Kolkata")).toBe("India Standard Time · Kolkata");
     });
   });
 
   it("labels the row with a name that ends in punctuation", () => {
     layingOutTheZoneName(oneParted(PUNCTUATED), () => {
-      expect(labelIn("Europe/London")).toBe(`${PUNCTUATED} — London`);
+      expect(labelIn("Europe/London")).toBe(`${PUNCTUATED} · London`);
     });
   });
 
@@ -1121,17 +1136,17 @@ describe("a runtime writing a zone name as one part", () => {
     ];
 
     layingOutTheZoneName(trailed, () => {
-      expect(labelIn("Asia/Kolkata")).toBe("India Standard Time — Kolkata");
+      expect(labelIn("Asia/Kolkata")).toBe("India Standard Time · Kolkata");
     });
   });
 });
 
 describe("the Hermes that ships in apps/mobile/ios", () => {
   const LABELLED: Record<string, string> = {
-    "Asia/Kathmandu": "Nepal Time — Kathmandu",
-    "Asia/Kolkata": "India Standard Time — Kolkata",
-    "Pacific/Auckland": "New Zealand Time — Auckland",
-    "Australia/Perth": "Australian Western Standard Time — Perth",
+    "Asia/Kathmandu": "Nepal Time · Kathmandu",
+    "Asia/Kolkata": "India Standard Time · Kolkata",
+    "Pacific/Auckland": "New Zealand Time · Auckland",
+    "Australia/Perth": "Australian Western Standard Time · Perth",
   };
 
   it("labels the row with the whole name", () => {
@@ -1158,7 +1173,7 @@ describe.each(["japanese", "chinese"])(
           .calendar,
       ).toBe(calendar);
       resolvingTheCalendar(calendar, () => {
-        expect(labelIn("Asia/Kolkata")).toBe("India Standard Time — Kolkata");
+        expect(labelIn("Asia/Kolkata")).toBe("India Standard Time · Kolkata");
       });
     });
   },
@@ -1169,8 +1184,8 @@ describe("a runtime writing a zone name that is not a string", () => {
     writingTheZoneNameAs(undefined, () => {
       const { result } = renderOpen();
 
-      expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
-      expect(labelIn("Asia/Kolkata")).toBe("India, Sri Lanka Time — Kolkata");
+      expect(result.current.items).toHaveLength(TIME_ZONE_CATALOG.length);
+      expect(labelIn("Asia/Kolkata")).toBe("Kolkata");
     });
   });
 });
@@ -1180,29 +1195,29 @@ describe("a runtime naming its locale as something other than a string", () => {
     namingTheLocale(Symbol("vi"), () => {
       const { result } = renderOpen();
 
-      expect(result.current.items).toHaveLength(TZ_OPTIONS.length);
-      expect(labelIn("Asia/Kolkata")).toBe("India, Sri Lanka Time — Kolkata");
+      expect(result.current.items).toHaveLength(TIME_ZONE_CATALOG.length);
+      expect(labelIn("Asia/Kolkata")).toBe("Kolkata");
     });
   });
 });
 
 describe("a runtime that writes an empty zone name", () => {
-  it("falls back to the curated label rather than a bare dash", () => {
+  it("falls back to the location rather than a bare separator", () => {
     blankingTheZoneName(() => {
       const { result } = renderOpen();
 
       const row = result.current.items.find(
         ({ tz }) => tz === "America/New_York",
       );
-      expect(row?.labelLeft).toBe("Eastern Time — New York");
-      expect(row?.searchText).toContain("eastern");
+      expect(row?.labelLeft).toBe("New York");
+      expect(row?.searchText).toContain("united states");
     });
   });
 
   it("falls back on a runtime that also breaks a name into parts", () => {
     layingOutTheZoneName(asAppleHermesWrote, () => {
       blankingTheZoneName(() => {
-        expect(labelIn("Asia/Kolkata")).toBe("India, Sri Lanka Time — Kolkata");
+        expect(labelIn("Asia/Kolkata")).toBe("Kolkata");
       });
     });
   });
@@ -1210,7 +1225,7 @@ describe("a runtime that writes an empty zone name", () => {
 
 describe("a runtime with no en-US data", () => {
   it.each(["eu", "vi"])(
-    "leaves the row its curated label when the fallback is %s",
+    "labels the row by location when the fallback is %s",
     (locale) => {
       // Against a runtime short of that locale's data this would pass on an
       // en-US name it never meant to read.
@@ -1218,10 +1233,8 @@ describe("a runtime with no en-US data", () => {
         locale,
       );
       fallingBackTo({ locale }, () => {
-        expect(labelIn("Europe/London")).toBe(
-          "UK, Ireland, Lisbon Time — London",
-        );
-        expect(labelIn("Asia/Kolkata")).toBe("India, Sri Lanka Time — Kolkata");
+        expect(labelIn("Europe/London")).toBe("London");
+        expect(labelIn("Asia/Kolkata")).toBe("Kolkata");
       });
     },
   );
@@ -1231,7 +1244,7 @@ describe("a runtime with no en-US data", () => {
     // reaching the English the guard admits beside en-US.
     expect(new Intl.DateTimeFormat("en").resolvedOptions().locale).toBe("en");
     fallingBackTo({ locale: "en" }, () => {
-      expect(labelIn("Asia/Kolkata")).toBe("India Standard Time — Kolkata");
+      expect(labelIn("Asia/Kolkata")).toBe("India Standard Time · Kolkata");
     });
   });
 

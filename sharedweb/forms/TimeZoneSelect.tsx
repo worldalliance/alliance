@@ -1,5 +1,6 @@
 import {
   NO_TIME_LABEL,
+  type TimeZoneSelectItem,
   useTimeZoneSelect,
 } from "@alliance/shared/forms/timeZoneSelect";
 import { cn } from "@alliance/shared/styles/util";
@@ -22,6 +23,16 @@ type Props = {
   // optional: 12h vs 24h
   hour12?: boolean;
 };
+
+// Rows sharing a zone name differ only by city, so the name is what gets cut.
+function ZoneLabel({ zoneName, city }: TimeZoneSelectItem) {
+  return (
+    <div className="flex min-w-0 text-zinc-900">
+      {zoneName && <span className="truncate">{`${zoneName} ·\u00a0`}</span>}
+      <span className="max-w-full shrink-0 truncate">{city}</span>
+    </div>
+  );
+}
 
 function scrollToRow(list: HTMLElement | null, index: number) {
   list?.children[index]?.scrollIntoView({ block: "nearest" });
@@ -143,9 +154,11 @@ export default function TimeZoneSelectPretty({
         >
           <div id={valueId} className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="truncate text-zinc-900">
-                {selected.labelLeft || placeholder}
-              </div>
+              {selected.labelLeft ? (
+                <ZoneLabel {...selected} />
+              ) : (
+                <div className="truncate text-zinc-900">{placeholder}</div>
+              )}
               {selected.labelSub && (
                 <div className="truncate text-[13px] text-zinc-500">
                   {selected.labelSub}
@@ -224,9 +237,7 @@ export default function TimeZoneSelectPretty({
                       ].join(" ")}
                     >
                       <div className="min-w-0">
-                        <div className="truncate text-zinc-900">
-                          {item.labelLeft}
-                        </div>
+                        <ZoneLabel {...item} />
                         {item.labelSub && (
                           <div className="truncate text-[13px] text-zinc-500">
                             {item.labelSub}
