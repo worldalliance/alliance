@@ -290,6 +290,19 @@ describe("Auth (e2e)", () => {
       expect(refreshBody.access_token).toBeDefined();
     });
 
+    it("delivers the pair as cookies when ?mode=cookie is asked for", async () => {
+      const { refresh_token } = await login("explicit-cookie@test.com");
+      const agent = request.agent(ctx.app.getHttpServer());
+
+      const refreshResponse = await agent
+        .post("/auth/refresh?mode=cookie")
+        .set("Authorization", `Bearer ${refresh_token}`)
+        .expect(200);
+
+      expect(refreshResponse.body).toEqual({});
+      await agent.get("/auth/me").expect(200);
+    });
+
     it("refreshes the session the Bearer header names, not the cookie's", async () => {
       const stale = await login("stale-cookie@test.com");
       const current = await login("current-header@test.com");
