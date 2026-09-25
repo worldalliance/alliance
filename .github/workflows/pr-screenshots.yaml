@@ -188,11 +188,13 @@ jobs:
           BASE_SHA="$(git merge-base "$BASE_SHA" "$HEAD_SHA")"
           export BASE_SHA
           mkdir -p "$OUTPUT_DIR"
-          claude -p "$(cat .github/pr-screenshots/prompt.md)" \
+          # On stdin, not argv, so a `ps | grep` for a command the prompt names can't match claude.
+          claude -p \
             --dangerously-skip-permissions \
             --output-format stream-json \
             --verbose \
             --model claude-opus-5-5 \
+            < .github/pr-screenshots/prompt.md \
             | tee "$RUNNER_TEMP/transcript.jsonl"
           test -s "$OUTPUT_DIR/comment.md"
           if grep -rqF -- "$CLAUDE_CODE_OAUTH_TOKEN" "$OUTPUT_DIR"; then
