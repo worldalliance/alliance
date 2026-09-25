@@ -145,6 +145,7 @@ import {
   isActionUpdatePublished,
   publishedActionUpdateWhere,
 } from "./action-update-visibility";
+import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import {
   answerMatchesFormField,
   evaluateCohortExpression,
@@ -359,6 +360,7 @@ export class ActionsService {
     private readonly facepileService: FacepileService,
     private readonly formSnapshotService: FormSnapshotService,
     private readonly posthogService: PosthogService,
+    private readonly cohortDecisionStaffService: CohortDecisionStaffService,
   ) {}
 
   async applyAssignedFormIds(
@@ -1923,6 +1925,16 @@ export class ActionsService {
     if (rest.cohortExpression != null) {
       rest.cohortExpression = this.parseCohortExpressionOrThrow(
         rest.cohortExpression,
+      );
+    }
+
+    if (
+      rest.optional !== undefined &&
+      rest.optional !== action.optional &&
+      (await this.cohortDecisionStaffService.hasDecisions(id))
+    ) {
+      throw new BadRequestException(
+        "Optional can't change once members have cohort decisions for this action.",
       );
     }
 

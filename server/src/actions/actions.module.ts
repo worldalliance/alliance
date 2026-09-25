@@ -32,6 +32,7 @@ import { ActionStatsService } from "./action-stats.service";
 import { ActionsController } from "./actions.controller";
 import { ActionsGateway } from "./actions.gateway";
 import { ActionsService } from "./actions.service";
+import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import { CohortDecisionListener } from "./cohort-decision.listener";
 import { CohortDecisionService } from "./cohort-decision.service";
 import { CohortDecisionWorker } from "./cohort-decision.worker";
@@ -116,6 +117,7 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
     ActionStatsService,
     CohortDecisionListener,
     CohortDecisionService,
+    CohortDecisionStaffService,
     CohortDecisionWorker,
     CohortDivergenceService,
   ],
