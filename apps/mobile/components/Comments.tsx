@@ -16,19 +16,15 @@ import {
   CommentFilter,
   CommentSort,
   commentFilterLabels,
-  getCommentFilterOptions,
-  getSortOptions,
-  matchesCommentFilter,
-  sortComments,
+  isCommentShown,
   sortLabels,
-  useCommentFilterData,
+  useCommentFiltering,
 } from "@alliance/shared/lib/commentsFilter";
+import { TagFilter } from "@alliance/shared/lib/commentTags";
 import {
-  TagFilter,
-  countCommentsByTag,
-  matchesTagFilter,
-} from "@alliance/shared/lib/commentTags";
-import { updateCommentInTree } from "@alliance/shared/lib/commentTree";
+  collectCommentIds,
+  updateCommentInTree,
+} from "@alliance/shared/lib/commentTree";
 import { commentThreadLanding } from "@alliance/shared/lib/copy";
 import { uploadDraftAttachments } from "@alliance/shared/lib/uploadAttachments";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
@@ -100,21 +96,6 @@ export interface CommentsProps {
   showClusterTags?: boolean;
   tags?: readonly PostTagDto[];
 }
-
-const shouldShowComment = (comment: CommentDto) => {
-  return !comment.deleted || (comment.children?.length ?? 0) > 0;
-};
-
-const collectCommentIds = (comments: CommentDto[]): number[] => {
-  const ids: number[] = [];
-  for (const comment of comments) {
-    ids.push(comment.id);
-    if (comment.children?.length) {
-      ids.push(...collectCommentIds(comment.children));
-    }
-  }
-  return ids;
-};
 
 const SortPicker = ({
   value,
@@ -703,7 +684,7 @@ const ReplyItem = memo(function ReplyItemView({
 
       {hasChildren && !isCollapsed && (
         <View className="mt-3 gap-y-3">
-          {reply.children?.filter(shouldShowComment).map((childReply) => (
+          {reply.children?.filter(isCommentShown).map((childReply) => (
             <ReplyItem
               key={childReply.id}
               reply={childReply}
@@ -802,22 +783,6 @@ export default function Comments({
   // The composer takes the keyboard when the user opened it, not when it comes
   // back after a reply posted further down the thread.
   const [focusComposer, setFocusComposer] = useState(!!autofocus);
-
-  // useAuth() is hydrated before this mounts in the common case, so the initializer
-  // picks the right default without needing an effect to react to late-arriving user data.
-  const [commentFilter, setCommentFilter] = useState<CommentFilter>(
-    CommentFilter.All,
-  );
-  const [commentSort, setCommentSort] = useState<CommentSort>(
-    showClusterTags && user?.clusterId != null
-      ? CommentSort.SameCluster
-      : CommentSort.Newest,
-  );
-  const [randomSeed, setRandomSeed] = useState(() => String(Math.random()));
-  const handleSortChange = useCallback((sort: CommentSort) => {
-    setCommentSort(sort);
-    if (sort === CommentSort.Random) setRandomSeed(String(Math.random()));
-  }, []);
 
   useEffect(() => {
     setShowForm(showFormProp);
@@ -973,103 +938,28 @@ export default function Comments({
     fetchComments,
   });
 
-  const { friendIdSet, groupMemberIdSet } = useCommentFilterData({
-    enabled: !!user && isPostComments,
-    userId: user?.id,
-  });
-
-  const topLevelComments = useMemo(
-    () => (comments ?? []).filter(shouldShowComment),
-    [comments],
-  );
-
-  const hasMineComments = useMemo(
-    () =>
-      !!user &&
-      topLevelComments.some((comment) => comment.author.id === user.id),
-    [topLevelComments, user],
-  );
-
-  const hasSameGroup = showClusterTags && user?.clusterId != null;
-
-  const filterOptions = useMemo(
-    () =>
-      getCommentFilterOptions({
-        activeQaMode,
-        hasMineComments,
-        hasSameGroup,
-      }),
-    [activeQaMode, hasMineComments, hasSameGroup],
-  );
-
-  const sortOptions = useMemo(
-    () => getSortOptions({ hasSameGroup }),
-    [hasSameGroup],
-  );
-
-  useEffect(() => {
-    if (!filterOptions.includes(commentFilter)) {
-      setCommentFilter(CommentFilter.All);
-    }
-  }, [filterOptions, commentFilter]);
-
-  useEffect(() => {
-    if (!sortOptions.includes(commentSort)) {
-      setCommentSort(CommentSort.Newest);
-    }
-  }, [sortOptions, commentSort]);
-
-  const filterContext = useMemo(
-    () => ({
-      userId: user?.id,
-      userClusterId: user?.clusterId,
-      expertIds,
-      friendIdSet,
-      groupMemberIdSet,
-    }),
-    [user?.id, user?.clusterId, expertIds, friendIdSet, groupMemberIdSet],
-  );
-
-  const commentCounts = useMemo(() => {
-    const counts = {} as Record<CommentFilter, number>;
-    for (const filter of filterOptions) {
-      counts[filter] = topLevelComments.filter((comment) =>
-        matchesCommentFilter(comment, filter, filterContext),
-      ).length;
-    }
-    return counts;
-  }, [filterOptions, topLevelComments, filterContext]);
-
-  const filterMatchedComments = useMemo(
-    () =>
-      topLevelComments.filter((comment) =>
-        matchesCommentFilter(comment, commentFilter, filterContext),
-      ),
-    [topLevelComments, commentFilter, filterContext],
-  );
-
-  const tagCounts = useMemo(
-    () => countCommentsByTag(filterMatchedComments, tags),
-    [filterMatchedComments, tags],
-  );
-
-  const sortedComments = useMemo(() => {
-    if (!comments) return null;
-    return sortComments(
-      filterMatchedComments.filter((comment) =>
-        matchesTagFilter(comment, tagFilter),
-      ),
-      commentSort,
-      { randomSeed, userClusterId: user?.clusterId },
-    );
-  }, [
-    comments,
-    filterMatchedComments,
+  const {
+    topLevelComments,
+    filteredComments,
+    filterOptions,
+    commentFilter,
+    setCommentFilter,
+    commentCounts,
+    sortOptions,
     commentSort,
-    randomSeed,
+    changeSort,
+    tagCounts,
+  } = useCommentFiltering({
+    comments,
+    user,
+    showClusterTags,
+    isPostComments,
+    activeQaMode,
+    expertIds,
+    tags,
     tagFilter,
-    user?.clusterId,
-  ]);
+  });
+  const sortedComments = comments ? filteredComments : null;
 
   const commentIds = useMemo(
     () => collectCommentIds(comments ?? []),
@@ -1152,7 +1042,7 @@ export default function Comments({
           <SortPicker
             value={commentSort}
             options={sortOptions}
-            onChange={handleSortChange}
+            onChange={changeSort}
           />
         </View>
       )}

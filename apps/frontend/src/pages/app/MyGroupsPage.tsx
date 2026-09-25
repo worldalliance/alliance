@@ -10,6 +10,7 @@ import {
 import {
   getMemberCount,
   groupAssignmentLabels,
+  isLedBy,
 } from "@alliance/shared/lib/communityUtils";
 import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
@@ -94,14 +95,9 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
   const { leaderCommunities, nonLeaderCommunities } = useMemo(() => {
     return {
       leaderCommunities:
-        communities?.filter((community) =>
-          community.leaders.some((leader) => leader.id === user?.id),
-        ) ?? [],
+        communities?.filter((community) => isLedBy(community, user?.id)) ?? [],
       nonLeaderCommunities:
-        communities?.filter(
-          (community) =>
-            !community.leaders.some((leader) => leader.id === user?.id),
-        ) ?? [],
+        communities?.filter((community) => !isLedBy(community, user?.id)) ?? [],
     };
   }, [communities, user?.id]);
   const assignmentLabels = groupAssignmentLabels({
@@ -557,9 +553,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
           <List>
             {publicCommunities.map((community) => {
               const isMember = memberCommunityIds.has(community.id);
-              const isLeader = community.leaders.some(
-                (leader) => leader.id === user?.id,
-              );
+              const isLeader = isLedBy(community, user?.id);
               const memberCount = getMemberCount(community);
               const isFull =
                 community.maxCapacity !== null &&

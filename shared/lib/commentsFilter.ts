@@ -1,11 +1,16 @@
-import { CommentDto } from "@alliance/shared/client";
+import { CommentDto, PostTagDto, UserDto } from "@alliance/shared/client";
 import { hashStringToSeed } from "@alliance/shared/forms/randomutils";
+import {
+  countCommentsByTag,
+  matchesTagFilter,
+  type TagFilter,
+} from "@alliance/shared/lib/commentTags";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import {
   selectFriendIds,
   useUserFriendsQuery,
 } from "@alliance/shared/lib/user";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 export enum CommentFilter {
   All = "all",
@@ -236,4 +241,150 @@ export function useCommentFilterData({
   }, [communities]);
 
   return { friendIdSet, groupMemberIdSet };
+}
+
+export function isCommentShown(comment: CommentDto): boolean {
+  return !comment.deleted || (comment.children?.length ?? 0) > 0;
+}
+
+export function useCommentFiltering({
+  comments,
+  user,
+  showClusterTags,
+  isPostComments,
+  activeQaMode,
+  expertIds,
+  tags,
+  tagFilter,
+}: {
+  comments: CommentDto[] | null;
+  user: UserDto | undefined;
+  showClusterTags: boolean;
+  isPostComments: boolean;
+  activeQaMode: boolean;
+  expertIds: number[];
+  tags: readonly PostTagDto[];
+  tagFilter: TagFilter;
+}) {
+  const hasSameGroup = showClusterTags && user?.clusterId != null;
+  const [commentFilter, setCommentFilter] = useState(CommentFilter.All);
+  // `user` is usually hydrated when the caller mounts, so the initializer picks
+  // the right default without an effect for late-arriving user data.
+  const [commentSort, setCommentSort] = useState(
+    hasSameGroup ? CommentSort.SameCluster : CommentSort.Newest,
+  );
+  const [randomSeed, setRandomSeed] = useState(() => String(Math.random()));
+  const changeSort = useCallback((sort: CommentSort) => {
+    setCommentSort(sort);
+    if (sort === CommentSort.Random) setRandomSeed(String(Math.random()));
+  }, []);
+
+  const { friendIdSet, groupMemberIdSet } = useCommentFilterData({
+    enabled: !!user && isPostComments,
+    userId: user?.id,
+  });
+
+  const topLevelComments = useMemo(
+    () => (comments ?? []).filter(isCommentShown),
+    [comments],
+  );
+
+  const hasMineComments = useMemo(
+    () =>
+      !!user &&
+      topLevelComments.some((comment) => comment.author.id === user.id),
+    [topLevelComments, user],
+  );
+
+  const filterOptions = useMemo(
+    () =>
+      getCommentFilterOptions({
+        activeQaMode,
+        hasMineComments,
+        hasSameGroup,
+      }),
+    [activeQaMode, hasMineComments, hasSameGroup],
+  );
+
+  const sortOptions = useMemo(
+    () => getSortOptions({ hasSameGroup }),
+    [hasSameGroup],
+  );
+
+  useEffect(() => {
+    if (!filterOptions.includes(commentFilter)) {
+      setCommentFilter(CommentFilter.All);
+    }
+  }, [filterOptions, commentFilter]);
+
+  useEffect(() => {
+    if (!sortOptions.includes(commentSort)) {
+      setCommentSort(CommentSort.Newest);
+    }
+  }, [sortOptions, commentSort]);
+
+  const filterContext = useMemo(
+    () => ({
+      userId: user?.id,
+      userClusterId: user?.clusterId,
+      expertIds,
+      friendIdSet,
+      groupMemberIdSet,
+    }),
+    [user?.id, user?.clusterId, expertIds, friendIdSet, groupMemberIdSet],
+  );
+
+  const commentCounts = useMemo(() => {
+    const counts = {} as Record<CommentFilter, number>;
+    for (const filter of filterOptions) {
+      counts[filter] = topLevelComments.filter((comment) =>
+        matchesCommentFilter(comment, filter, filterContext),
+      ).length;
+    }
+    return counts;
+  }, [filterOptions, topLevelComments, filterContext]);
+
+  const filterMatchedComments = useMemo(
+    () =>
+      topLevelComments.filter((comment) =>
+        matchesCommentFilter(comment, commentFilter, filterContext),
+      ),
+    [topLevelComments, commentFilter, filterContext],
+  );
+
+  const tagCounts = useMemo(
+    () => countCommentsByTag(filterMatchedComments, tags),
+    [filterMatchedComments, tags],
+  );
+
+  const filteredComments = useMemo(
+    () =>
+      sortComments(
+        filterMatchedComments.filter((comment) =>
+          matchesTagFilter(comment, tagFilter),
+        ),
+        commentSort,
+        { randomSeed, userClusterId: user?.clusterId },
+      ),
+    [
+      filterMatchedComments,
+      commentSort,
+      randomSeed,
+      tagFilter,
+      user?.clusterId,
+    ],
+  );
+
+  return {
+    topLevelComments,
+    filteredComments,
+    filterOptions,
+    commentFilter,
+    setCommentFilter,
+    commentCounts,
+    sortOptions,
+    commentSort,
+    changeSort,
+    tagCounts,
+  };
 }

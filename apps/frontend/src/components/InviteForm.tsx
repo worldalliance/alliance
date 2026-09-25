@@ -6,7 +6,7 @@ import {
   OnetimeInviteDto,
   userCreateOnetimeInvite,
 } from "@alliance/shared/client";
-import { getMemberCount } from "@alliance/shared/lib/communityUtils";
+import { getMemberCount, isLedBy } from "@alliance/shared/lib/communityUtils";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
@@ -113,9 +113,7 @@ const InviteForm = ({
       return;
     }
     didInitPlacement.current = true;
-    const led = communities.find((community) =>
-      community.leaders.some((leader) => leader.id === user.id),
-    );
+    const led = communities.find((community) => isLedBy(community, user.id));
     setPlacement(led ? { kind: "community", id: led.id } : { kind: "new" });
   }, [communities, user]);
 
@@ -126,7 +124,7 @@ const InviteForm = ({
       return { leaderCommunities, memberCommunities };
     }
     for (const community of communities) {
-      if (community.leaders?.some((leader) => leader.id === user.id)) {
+      if (isLedBy(community, user.id)) {
         leaderCommunities.push(community);
       } else {
         memberCommunities.push(community);

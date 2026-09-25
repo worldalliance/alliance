@@ -7,16 +7,14 @@ import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
 import type { CommunityDto, ShareUrlMineDto } from "@alliance/shared/client";
 import { communityCreateCommunity } from "@alliance/shared/client";
+import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
+import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
 import {
-  inviteDestination,
-  onetimeInviteCreation,
-} from "@alliance/shared/lib/copy";
-import {
-  inviteDestinationLabel,
-  inviteDestinationSelection,
-  reusableInviteNotes,
-} from "@alliance/shared/lib/inviteUtils";
+  reusableInviteSettings,
+  type InviteSettingsTarget,
+} from "@alliance/shared/lib/inviteSettings";
+import { inviteDestinationLabel } from "@alliance/shared/lib/inviteUtils";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useReusableInvites } from "@alliance/shared/lib/useReusableInvites";
 import { cn } from "@alliance/shared/styles/util";
@@ -34,9 +32,7 @@ import {
 import { useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/style/colors";
 import FormModal from "./forms/FormModal";
-import InviteSettingsModal, {
-  type InviteSettingsTarget,
-} from "./InviteSettingsModal";
+import InviteSettingsModal from "./InviteSettingsModal";
 import Button, { ButtonColor, ButtonSize } from "./system/Button";
 import Card, { CardStyle } from "./system/Card";
 import CharacterLimitNotice from "./system/CharacterLimitNotice";
@@ -76,9 +72,7 @@ export default function InviteShareLink() {
 
   const leaderCommunities = useMemo(() => {
     if (!user) return [] as CommunityDto[];
-    return communities.filter((community) =>
-      community.leaders.some((leader) => leader.id === user.id),
-    );
+    return communities.filter((community) => isLedBy(community, user.id));
   }, [communities, user]);
 
   const leaderCommunitiesById = useMemo(
@@ -203,34 +197,7 @@ export default function InviteShareLink() {
 
   const openLink = links.find((link) => link.id === openLinkId) ?? null;
   const settingsTarget: InviteSettingsTarget | null = openLink && {
-    title:
-      openLink.label ||
-      (openLink.duplicate ? "Untitled link" : "Primary invite"),
-    meta: `${withCount(openLink.signupCount, "signup")} so far`,
-    url: openLink.url,
-    name: {
-      label: "Label",
-      value: openLink.label ?? "",
-      placeholder: "e.g. Instagram bio",
-      helper:
-        "Only you can see this — it is a reminder of where you shared the link.",
-    },
-    destination: {
-      current: inviteDestinationSelection(openLink),
-      openLabel: inviteDestination.reusable.openLabel,
-      openDetail: inviteDestination.reusable.openDetail,
-      notes: reusableInviteNotes(openLink),
-    },
-    delete: {
-      enabled: openLink.duplicate,
-      disabledReason: "Your primary link cannot be deleted",
-    },
-    onSave: ({ name, communityId }) =>
-      updateInvite({
-        id: openLink.id,
-        ...(name !== undefined && { label: name }),
-        ...(communityId !== undefined && { communityId }),
-      }),
+    ...reusableInviteSettings({ link: openLink, updateInvite }),
     // Closes settings first so the typed-DELETE modal is not stacked on it.
     onDelete: async () => {
       setOpenLinkId(null);

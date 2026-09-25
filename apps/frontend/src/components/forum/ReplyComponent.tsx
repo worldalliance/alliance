@@ -1,6 +1,9 @@
 import { withCount } from "@alliance/common/plural";
 import { CommentDto } from "@alliance/shared/client";
-import { countAllReplies } from "@alliance/shared/lib/commentsFilter";
+import {
+  countAllReplies,
+  isCommentShown,
+} from "@alliance/shared/lib/commentsFilter";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import ClusterTag from "@alliance/sharedweb/ui/ClusterTag";
@@ -269,9 +272,7 @@ const ReplyComponent = memo(({ reply, depth = 0 }: ReplyComponentProps) => {
 
   const newReplyClass = isNewlyAdded ? "!bg-green/10" : "";
 
-  const filteredChildren = (reply.children ?? []).filter(
-    (child) => !child.deleted || child.children?.length,
-  );
+  const filteredChildren = (reply.children ?? []).filter(isCommentShown);
 
   const renderChildren = () => {
     if (!hasChildren || (isTopLevel && isCollapsed)) return null;

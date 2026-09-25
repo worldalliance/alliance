@@ -1,20 +1,17 @@
-import { ExceptionEvent } from "@alliance/common/analytics";
 import { FormSchema } from "@alliance/common/forms/form-schema";
-import {
-  FormDto,
-  tasksGetForm,
-  tasksSubmitFollowUpForm,
-} from "@alliance/shared/client";
+import { FormDto, tasksGetForm } from "@alliance/shared/client";
 import type {
   FollowUpFormDto,
-  SubmitFollowUpFormDto,
   SubmitFormDto,
 } from "@alliance/shared/client/types.gen";
-import { captureException } from "@alliance/shared/lib/analytics";
+import {
+  followUpDraftStorageKey,
+  followUpFormIntro,
+  followUpPersistKey,
+  submitFollowUpForm,
+} from "@alliance/shared/lib/followUpForm";
 import { CardStyle } from "@alliance/shared/styles/card";
-import FormRenderer, {
-  computeFormStorageKey,
-} from "@alliance/sharedweb/forms/FormRenderer";
+import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import Card from "@alliance/sharedweb/ui/Card";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
@@ -61,40 +58,27 @@ export default function FollowUpFormPanel({
   const handleSubmit = useCallback(
     async (data: SubmitFormDto): Promise<boolean> => {
       setError(null);
-      const body: SubmitFollowUpFormDto = {
-        answers: data.answers,
-        formSnapshotId: data.formSnapshotId,
-        visibilityValidatorResults: data.visibilityValidatorResults,
-        deviceType: data.deviceType,
-        publicAnswers: data.publicAnswers,
-        phDistinctId: data.phDistinctId,
-        sessionReplayUrl: data.sessionReplayUrl,
-        sid: data.sid,
-      };
-      const response = await tasksSubmitFollowUpForm({
-        path: { followUpFormId: followUpForm.id },
-        body,
-      });
-      if (response.response.ok) {
-        if (form) {
-          const storageKey = computeFormStorageKey({
-            formId: form.id,
-            instanceId: `follow-up-${followUpForm.id}`,
-          });
-          window.localStorage.removeItem(storageKey);
-        }
-        success("Response submitted!");
-        setFormInstanceKey((k) => k + 1);
-        onSubmitted?.();
-        return true;
-      }
-      console.error(response.error);
-      captureException(ExceptionEvent.FollowUpFormSubmitError, response.error, {
-        actionId,
+      const submitted = await submitFollowUpForm({
         followUpFormId: followUpForm.id,
+        actionId,
+        data,
       });
-      setError("Failed to submit. Please try again.");
-      return false;
+      if (!submitted.ok) {
+        setError("Failed to submit. Please try again.");
+        return false;
+      }
+      if (form) {
+        window.localStorage.removeItem(
+          followUpDraftStorageKey({
+            formId: form.id,
+            followUpFormId: followUpForm.id,
+          }),
+        );
+      }
+      success("Response submitted!");
+      setFormInstanceKey((k) => k + 1);
+      onSubmitted?.();
+      return true;
     },
     [followUpForm.id, form, actionId, onSubmitted, success],
   );
@@ -119,21 +103,17 @@ export default function FollowUpFormPanel({
     );
   }
 
-  const formTitle = followUpForm.name ?? form.title;
-  const hasInstructions =
-    followUpForm.instructions != null &&
-    followUpForm.instructions.trim() !== "";
-  const showIntroCard = hasInstructions || !!formTitle;
+  const intro = followUpFormIntro(followUpForm, form.title);
 
   return (
     <Card
       style={border ? CardStyle.WhiteBorder : CardStyle.White}
       className="p-4 sm:p-6"
     >
-      {showIntroCard && (
+      {intro.shown && (
         <Card style={CardStyle.Alert} className="mb-3 border-none rounded-md">
-          <p className="font-semibold">{formTitle}</p>
-          {hasInstructions && (
+          <p className="font-semibold">{intro.title}</p>
+          {intro.hasInstructions && (
             <div className="mt-1">
               <AppMarkdownWrapper
                 markdownContent={followUpForm.instructions ?? ""}
@@ -150,7 +130,7 @@ export default function FollowUpFormPanel({
           formSnapshotId={form.formSnapshotId}
           actionId={actionId}
           onSubmit={handleSubmit}
-          persistKey={`follow-up-${followUpForm.id}`}
+          persistKey={followUpPersistKey(followUpForm.id)}
           userId={user?.id}
           user={user}
           loadCurrentUserLocation={!!user}

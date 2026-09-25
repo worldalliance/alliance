@@ -18,7 +18,7 @@ import {
   calculateAllCompletionData,
   CompletionData,
 } from "@alliance/shared/lib/actionUtils";
-import { getMemberCount } from "@alliance/shared/lib/communityUtils";
+import { getMemberCount, isLedBy } from "@alliance/shared/lib/communityUtils";
 import { groupSettings } from "@alliance/shared/lib/copy";
 import { Features } from "@alliance/shared/lib/features";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
@@ -158,7 +158,7 @@ const CommunityPage = () => {
   }, []);
 
   const amLeader = useMemo(() => {
-    return community?.leaders.some((leader) => leader.id === user?.id);
+    return community && isLedBy(community, user?.id);
   }, [community, user]);
 
   const { data: communityMemberInfo } = useQuery({
@@ -470,7 +470,7 @@ const CommunityPage = () => {
 
   const leaders = community.leaders;
   const nonLeaderMembers = community.users.filter(
-    (user) => !leaders.some((leader) => leader.id === user.id),
+    (user) => !isLedBy(community, user.id),
   );
   const canDelete = (amLeader && community.users.length === 1) ?? false;
 

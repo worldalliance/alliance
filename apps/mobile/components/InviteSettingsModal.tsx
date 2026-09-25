@@ -1,11 +1,15 @@
 import type { CommunityDto } from "@alliance/shared/client";
 import { inviteDestination } from "@alliance/shared/lib/copy";
+import {
+  useInviteSettingsDraft,
+  type InviteSettingsTarget,
+} from "@alliance/shared/lib/inviteSettings";
 import type { InviteNote } from "@alliance/shared/lib/inviteUtils";
 import { cn } from "@alliance/shared/styles/util";
 import { milliseconds } from "date-fns";
 import { setStringAsync as setClipboardStringAsync } from "expo-clipboard";
 import { Check, Trash2, Users } from "lucide-react-native";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
 import { colors } from "../lib/style/colors";
 import FormModal from "./forms/FormModal";
@@ -13,53 +17,9 @@ import Button, { ButtonColor, ButtonSize } from "./system/Button";
 import Input from "./system/Input";
 import Text, { FontWeight } from "./system/Text";
 
-/** A group they lead, or `null` for "wherever there is room". */
-type Destination = number | null;
-
 const NOTE_CLASS: Record<InviteNote["tone"], string> = {
   info: "text-zinc-500",
   warning: "text-red-500",
-};
-
-/**
- * Mirrors the web `InviteSettingsTarget`. The two cannot share a component —
- * that one is built on portals and DOM events — so the contract describing what
- * is being edited is what keeps them in step.
- */
-export type InviteSettingsTarget = {
-  /** Header line: whatever names this invite today. */
-  title: string;
-  /** Header sub-line: uses, age, whatever is worth knowing at a glance. */
-  meta: string;
-  /** The link people follow, shown and copyable. */
-  url: string;
-  name: {
-    label: string;
-    value: string;
-    placeholder: string;
-    helper: string;
-    /** Blank is a legitimate clear for a label, but not for an invitee's name. */
-    required?: boolean;
-  };
-  destination: {
-    /** `undefined` when the invite never named one — nothing to preselect. */
-    current: Destination | undefined;
-    /** Wording for the "no particular group" choice, which differs per invite type. */
-    openLabel: string;
-    openDetail: string;
-    notes: InviteNote[];
-  };
-  /**
-   * No `confirmMessage`, unlike web: confirming is the caller's, because the
-   * two mobile callers guard differently — a reusable link makes you type
-   * DELETE, a one-time invite takes a native alert.
-   */
-  delete: { enabled: boolean; disabledReason: string };
-  onSave: (changes: {
-    name?: string;
-    communityId?: Destination;
-  }) => Promise<unknown>;
-  onDelete: () => Promise<unknown>;
 };
 
 type InviteSettingsModalProps = {
@@ -99,19 +59,18 @@ function InviteSettingsForm({
   leaderCommunities: CommunityDto[];
   onClose: () => void;
 }) {
-  const [name, setName] = useState(target.name.value);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [destination, setDestination] = useState<Destination | undefined>(
-    target.destination.current,
-  );
-
-  const trimmedName = name.trim();
-  const nameChanged = trimmedName !== target.name.value;
-  const nameMissing = !!target.name.required && !trimmedName;
-  const destinationChanged =
-    destination !== undefined && destination !== target.destination.current;
-  const dirty = nameChanged || destinationChanged;
+  const {
+    name,
+    setName,
+    destination,
+    setDestination,
+    nameMissing,
+    dirty,
+    changes,
+    options,
+  } = useInviteSettingsDraft({ target, leaderCommunities });
 
   const handleCopy = useCallback(async () => {
     try {
@@ -126,23 +85,13 @@ function InviteSettingsForm({
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      await target.onSave({
-        ...(nameChanged && { name: trimmedName }),
-        ...(destinationChanged && { communityId: destination }),
-      });
+      await target.onSave(changes);
       onClose();
     } catch (err) {
       setSaving(false);
       Alert.alert("Error", `Failed to save changes: ${(err as Error).message}`);
     }
-  }, [
-    target,
-    trimmedName,
-    nameChanged,
-    destination,
-    destinationChanged,
-    onClose,
-  ]);
+  }, [target, changes, onClose]);
 
   // Hands off to the caller, which owns the confirmation and may need this
   // modal out of the way before it puts its own on screen.
@@ -151,22 +100,6 @@ function InviteSettingsForm({
       Alert.alert("Error", `Failed to delete: ${err.message}`);
     });
   }, [target, onClose]);
-
-  const options = useMemo(
-    () => [
-      ...leaderCommunities.map((community) => ({
-        value: community.id as Destination,
-        name: community.name,
-        detail: inviteDestination.ledGroupDetail,
-      })),
-      {
-        value: null as Destination,
-        name: target.destination.openLabel,
-        detail: target.destination.openDetail,
-      },
-    ],
-    [leaderCommunities, target.destination],
-  );
 
   return (
     <View className="gap-5">

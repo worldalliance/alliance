@@ -4,20 +4,12 @@ import {
   PostTagDto,
 } from "@alliance/shared/client";
 import {
-  CommentFilter,
   CommentSort,
   commentFilterLabels,
-  getCommentFilterOptions,
-  getSortOptions,
-  matchesCommentFilter,
-  sortComments,
   sortLabels,
-  useCommentFilterData,
+  useCommentFiltering,
 } from "@alliance/shared/lib/commentsFilter";
-import {
-  countCommentsByTag,
-  matchesTagFilter,
-} from "@alliance/shared/lib/commentTags";
+import { collectCommentIds } from "@alliance/shared/lib/commentTree";
 import { commentThreadLanding } from "@alliance/shared/lib/copy";
 import { useOptionalNotifications } from "@alliance/shared/lib/useNotifications";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
@@ -84,17 +76,6 @@ export interface CommentsProps {
   tags?: readonly PostTagDto[];
 }
 
-const collectCommentIds = (comments: CommentDto[]): number[] => {
-  const ids: number[] = [];
-  for (const comment of comments) {
-    ids.push(comment.id);
-    if (comment.children?.length) {
-      ids.push(...collectCommentIds(comment.children));
-    }
-  }
-  return ids;
-};
-
 const SortDropdown = ({
   commentSort,
   sortOptions,
@@ -147,18 +128,6 @@ const Comments = ({
   tags = NO_TAGS,
 }: CommentsProps) => {
   const { user } = useAuth();
-  // useAuth() is hydrated before this mounts in the common case, so the initializer
-  // picks the right default without needing an effect to react to late-arriving user data.
-  const [commentFilter, setCommentFilter] = useState<CommentFilter>(
-    CommentFilter.All,
-  );
-  const [commentSort, setCommentSort] = useState<CommentSort>(
-    showClusterTags && user?.clusterId != null
-      ? CommentSort.SameCluster
-      : CommentSort.Newest,
-  );
-  const [randomSeed, setRandomSeed] = useState(() => String(Math.random()));
-
   const tree = useCommentTree(objectId, type, initialComments);
   const notifications = useOptionalNotifications();
   const isPostComments = type === "post";
@@ -178,106 +147,27 @@ const Comments = ({
     },
   });
 
-  const { friendIdSet, groupMemberIdSet } = useCommentFilterData({
-    enabled: !!user && isPostComments,
-    userId: user?.id,
+  const {
+    topLevelComments,
+    filteredComments,
+    filterOptions,
+    commentFilter,
+    setCommentFilter,
+    commentCounts,
+    sortOptions,
+    commentSort,
+    changeSort,
+    tagCounts,
+  } = useCommentFiltering({
+    comments: tree.comments,
+    user,
+    showClusterTags,
+    isPostComments,
+    activeQaMode,
+    expertIds,
+    tags,
+    tagFilter: tree.tagFilter,
   });
-
-  const topLevelComments = useMemo(
-    () =>
-      (tree.comments ?? []).filter(
-        (comment) => !comment.deleted || comment.children?.length,
-      ),
-    [tree.comments],
-  );
-
-  const hasMineComments = useMemo(
-    () =>
-      !!user &&
-      topLevelComments.some((comment) => comment.author.id === user.id),
-    [topLevelComments, user],
-  );
-
-  const hasSameGroup = showClusterTags && user?.clusterId != null;
-
-  const filterOptions = useMemo(
-    () =>
-      getCommentFilterOptions({
-        activeQaMode,
-        hasMineComments,
-        hasSameGroup,
-      }),
-    [activeQaMode, hasMineComments, hasSameGroup],
-  );
-
-  const sortOptions = useMemo(
-    () => getSortOptions({ hasSameGroup }),
-    [hasSameGroup],
-  );
-
-  useEffect(() => {
-    if (!filterOptions.includes(commentFilter)) {
-      setCommentFilter(CommentFilter.All);
-    }
-  }, [filterOptions, commentFilter]);
-
-  useEffect(() => {
-    if (!sortOptions.includes(commentSort)) {
-      setCommentSort(CommentSort.Newest);
-    }
-  }, [sortOptions, commentSort]);
-
-  const filterContext = useMemo(
-    () => ({
-      userId: user?.id,
-      userClusterId: user?.clusterId,
-      expertIds,
-      friendIdSet,
-      groupMemberIdSet,
-    }),
-    [user?.id, user?.clusterId, expertIds, friendIdSet, groupMemberIdSet],
-  );
-
-  const commentCounts = useMemo(() => {
-    const counts = {} as Record<CommentFilter, number>;
-    for (const filter of filterOptions) {
-      counts[filter] = topLevelComments.filter((comment) =>
-        matchesCommentFilter(comment, filter, filterContext),
-      ).length;
-    }
-    return counts;
-  }, [filterOptions, topLevelComments, filterContext]);
-
-  const filterMatchedComments = useMemo(
-    () =>
-      topLevelComments.filter((comment) =>
-        matchesCommentFilter(comment, commentFilter, filterContext),
-      ),
-    [topLevelComments, commentFilter, filterContext],
-  );
-
-  const tagCounts = useMemo(
-    () => countCommentsByTag(filterMatchedComments, tags),
-    [filterMatchedComments, tags],
-  );
-
-  const filteredComments = useMemo(
-    () =>
-      sortComments(
-        filterMatchedComments.filter((comment) =>
-          matchesTagFilter(comment, tree.tagFilter),
-        ),
-        commentSort,
-        { randomSeed, userClusterId: user?.clusterId },
-      ),
-    [
-      filterMatchedComments,
-      commentSort,
-      randomSeed,
-      tree.tagFilter,
-      user?.clusterId,
-    ],
-  );
 
   const thread = useRef<HTMLDivElement>(null);
   // Focus falls to the body when the control comes out from under the reader,
@@ -429,12 +319,7 @@ const Comments = ({
             <SortDropdown
               commentSort={commentSort}
               sortOptions={sortOptions}
-              onChange={(sort) => {
-                setCommentSort(sort);
-                if (sort === CommentSort.Random) {
-                  setRandomSeed(String(Math.random()));
-                }
-              }}
+              onChange={changeSort}
             />
           </div>
         )}

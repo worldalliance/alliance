@@ -34,3 +34,10 @@ export function updateCommentInTree({
   });
   return changed ? next : comments;
 }
+
+export function collectCommentIds(comments: CommentDto[]): number[] {
+  return comments.flatMap((comment) => [
+    comment.id,
+    ...collectCommentIds(comment.children ?? []),
+  ]);
+}

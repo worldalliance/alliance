@@ -1,4 +1,4 @@
-import { groupAssignmentLabels } from "./communityUtils";
+import { groupAssignmentLabels, isLedBy } from "./communityUtils";
 
 describe("groupAssignmentLabels", () => {
   it("names an assignment for someone in no group", () => {
@@ -23,5 +23,18 @@ describe("groupAssignmentLabels", () => {
     expect(
       groupAssignmentLabels({ isMember: false, didGroupsFail: true }),
     ).toEqual({ headingSuffix: "", cancelLabel: "Cancel group assignment" });
+  });
+});
+
+describe("isLedBy", () => {
+  const community = { leaders: [{ id: 3 }, { id: 5 }] };
+
+  it("is true only for a user among the leaders", () => {
+    expect(isLedBy(community, 5)).toBe(true);
+    expect(isLedBy(community, 4)).toBe(false);
+  });
+
+  it("is false when no one is signed in", () => {
+    expect(isLedBy(community, undefined)).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import { CommentDto } from "@alliance/shared/client";
-import { updateCommentInTree } from "./commentTree";
+import { collectCommentIds, updateCommentInTree } from "./commentTree";
 
 const comment = (id: number, children: CommentDto[] = []): CommentDto => ({
   id,
@@ -64,5 +64,13 @@ describe("updateCommentInTree", () => {
     expect(updateCommentInTree({ comments: tree, id: 99, update: like })).toBe(
       tree,
     );
+  });
+});
+
+describe("collectCommentIds", () => {
+  it("lists every comment in the tree, parents before their replies", () => {
+    expect(
+      collectCommentIds([comment(1, [comment(2, [comment(3)])]), comment(4)]),
+    ).toEqual([1, 2, 3, 4]);
   });
 });

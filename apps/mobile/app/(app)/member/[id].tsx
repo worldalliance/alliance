@@ -1,11 +1,6 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import { changedPhoto } from "@alliance/common/image-src";
 import { run } from "@alliance/common/run";
-import {
-  ActionActivityDto,
-  HomeFeedItemDto,
-  UpdateProfileDto,
-} from "@alliance/shared/client";
+import { ActionActivityDto, HomeFeedItemDto } from "@alliance/shared/client";
 import { type FeedActionActivityDto } from "@alliance/shared/lib/actionActivity";
 import { roleBadges } from "@alliance/shared/lib/copy";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
@@ -13,6 +8,7 @@ import { ParsedHomeFeedItemDto } from "@alliance/shared/lib/feedHelpers";
 import useActivities, {
   ActivityList,
 } from "@alliance/shared/lib/useActivities";
+import { useProfileDraft } from "@alliance/shared/lib/useProfileDraft";
 import useUserFeed from "@alliance/shared/lib/useUserFeed";
 import {
   friendMutationErrorMessage,
@@ -21,7 +17,6 @@ import {
   useMessageableUsersQuery,
   useRemoveFriendMutation,
   useSendFriendRequestMutation,
-  useUpdateProfileMutation,
   useUserCompletedActionCountQuery,
   useUserForumActivity,
   useUserFriendsQuery,
@@ -182,7 +177,6 @@ export default function UserProfileScreen() {
   const removeFriend = useRemoveFriendMutation();
   const answeringRequest =
     acceptFriendRequest.isPending || declineFriendRequest.isPending;
-  const updateProfileMutation = useUpdateProfileMutation(userId);
 
   const {
     items: feedItems,
@@ -208,13 +202,21 @@ export default function UserProfileScreen() {
   }, [selectedTab, feedHasNextPage, feedFetchingNextPage, fetchNextFeedPage]);
   const [friendsTab, setFriendsTab] = useState<FriendsTab>(FriendsTab.Friends);
   const [friendActionsOpen, setFriendActionsOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [editBio, setEditBio] = useState("");
-  const [editAvatarUrl, setEditAvatarUrl] = useState<string | null>(null);
+  const {
+    isEditing,
+    setIsEditing,
+    name: editName,
+    setName: setEditName,
+    bio: editBio,
+    setBio: setEditBio,
+    avatarUrl: editAvatarUrl,
+    setAvatarUrl: setEditAvatarUrl,
+    isSaving: isSavingProfile,
+    save: saveProfile,
+    cancel: handleCancelEdit,
+  } = useProfileDraft({ userId, profile, isMe });
   const [isPickingAvatar, setIsPickingAvatar] = useState(false);
   const [pfpLightboxOpen, setPfpLightboxOpen] = useState(false);
-  const currentProfilePicture = profile?.profilePicture ?? null;
 
   const { data: completedActionCount = 0 } =
     useUserCompletedActionCountQuery(userId);
@@ -229,17 +231,8 @@ export default function UserProfileScreen() {
   });
 
   useEffect(() => {
-    if (!profile || !isMe || isEditing) return;
-
-    setEditName(profile.displayName || "");
-    setEditBio(profile.profileDescription || "");
-    setEditAvatarUrl(profile.profilePicture || null);
-  }, [profile, isMe, isEditing]);
-
-  useEffect(() => {
     setSelectedTab(ProfileTab.Activity);
     setFriendsTab(FriendsTab.Friends);
-    setIsEditing(false);
   }, [userId]);
 
   const handlePickAvatar = useCallback(async () => {
@@ -258,42 +251,16 @@ export default function UserProfileScreen() {
     } finally {
       setIsPickingAvatar(false);
     }
-  }, [isPickingAvatar]);
+  }, [isPickingAvatar, setEditAvatarUrl]);
 
   const handleSaveProfile = useCallback(async () => {
-    if (!isMe || updateProfileMutation.isPending) return;
+    if (!isMe || isSavingProfile) return;
 
-    const payload: UpdateProfileDto = {
-      name: editName,
-      profileDescription: editBio,
-      profilePicture: changedPhoto({
-        current: currentProfilePicture,
-        next: editAvatarUrl,
-      }),
-    };
-
-    try {
-      await updateProfileMutation.mutateAsync(payload);
-      setIsEditing(false);
-    } catch (error) {
-      console.error("Failed to save profile", error);
+    const saved = await saveProfile();
+    if (!saved.ok) {
+      console.error("Failed to save profile", saved.error);
     }
-  }, [
-    isMe,
-    updateProfileMutation,
-    editName,
-    editBio,
-    editAvatarUrl,
-    currentProfilePicture,
-  ]);
-
-  const handleCancelEdit = useCallback(() => {
-    if (!profile) return;
-    setEditName(profile.displayName || "");
-    setEditBio(profile.profileDescription || "");
-    setEditAvatarUrl(profile.profilePicture || null);
-    setIsEditing(false);
-  }, [profile]);
+  }, [isMe, isSavingProfile, saveProfile]);
 
   const handleSendFriendRequest = useCallback(async () => {
     if (!userId) return;
@@ -1049,13 +1016,11 @@ export default function UserProfileScreen() {
                     onPress={handleCancelEdit}
                   />
                   <Button
-                    title={
-                      updateProfileMutation.isPending ? "Saving..." : "Save"
-                    }
+                    title={isSavingProfile ? "Saving..." : "Save"}
                     color={ButtonColor.Black}
                     size={ButtonSize.Medium}
                     onPress={handleSaveProfile}
-                    disabled={updateProfileMutation.isPending}
+                    disabled={isSavingProfile}
                   />
                 </>
               ) : null
