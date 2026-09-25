@@ -65,6 +65,19 @@ const LEAF_TYPES = Object.entries(LEAF_LABELS).map(([value, label]) => ({
   label,
 }));
 
+/** Leaf types staff can add; an existing leaf of another type still renders. */
+const OFFERED_LEAF_TYPES: Record<LeafCondition["type"], boolean> = {
+  Tag: true,
+  Manual: true,
+  CompletedAction: true,
+  InProgressAction: false,
+  MissedActionDeadline: true,
+  FormFieldValue: true,
+  GroupLead: true,
+  USMember: true,
+  NonUSMember: true,
+};
+
 const OPERATOR_TYPES = [
   { value: "AND", label: "AND" },
   { value: "OR", label: "OR" },
@@ -153,11 +166,13 @@ const ActionSelectEditor: React.FC<{
   value: ActionSelectCondition;
   onChange: (v: ActionSelectCondition) => void;
   availableActions: { id: number; name: string }[];
-}> = ({ value, onChange, availableActions }) => (
+  disabled?: boolean;
+}> = ({ value, onChange, availableActions, disabled }) => (
   <select
     value={value.actionId || ""}
     onChange={(e) => onChange({ ...value, actionId: parseInt(e.target.value) })}
-    className="w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+    disabled={disabled}
+    className="w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-600"
   >
     <option value="">Select action...</option>
     {availableActions.map((a) => (
@@ -371,7 +386,13 @@ const ExpressionNodeEditor: React.FC<{
           className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
         >
           <optgroup label="Conditions">
-            {LEAF_TYPES.map((t) => (
+            {LEAF_TYPES.filter(
+              (t) =>
+                // Safe: LEAF_TYPES comes from LEAF_LABELS' keys, which
+                // Object.entries widens to string.
+                OFFERED_LEAF_TYPES[t.value as LeafCondition["type"]] ||
+                t.value === expr.type,
+            ).map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
               </option>
@@ -456,14 +477,24 @@ const LeafConditionEditor: React.FC<{
       );
     case "CompletedAction":
     case "InProgressAction":
-    case "MissedActionDeadline":
+    case "MissedActionDeadline": {
+      const readOnly = !OFFERED_LEAF_TYPES[expr.type];
       return (
-        <ActionSelectEditor
-          value={expr}
-          onChange={onChange}
-          availableActions={props.availableActions}
-        />
+        <>
+          <ActionSelectEditor
+            value={expr}
+            onChange={onChange}
+            availableActions={props.availableActions}
+            disabled={readOnly}
+          />
+          {readOnly && (
+            <p className="text-sm text-gray-500 italic">
+              Can&apos;t be added or edited anymore.
+            </p>
+          )}
+        </>
       );
+    }
     case "FormFieldValue":
       return <FormFieldEditor value={expr} onChange={onChange} />;
     case "GroupLead":
