@@ -152,8 +152,9 @@ function asOffsetName(foldedQuery: string): OffsetQuery | null {
 const TRAILING_TIME = /\s+t(?:i(?:me?)?)?$/;
 
 // Intl names a zone it has no name for, such as UTC, by its offset, which the
-// second line already shows.
-const OFFSET_NAME = /^GMT[+-]/;
+// second line already shows. Where ICU writes a zero offset as plain "GMT",
+// UTC's name is just that.
+const OFFSET_NAME = /^GMT(?:[+-]|$)/;
 
 // CLDR writes "Trinidad & Tobago", "Côte d’Ivoire", "St. Lucia",
 // "Guinea-Bissau", "U.S. Virgin Islands", and "Myanmar (Burma)", and tzdb

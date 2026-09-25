@@ -328,6 +328,23 @@ describe("the rows", () => {
     expect(rowFor("UTC")?.labelLeft).toBe("UTC");
   });
 
+  it("names UTC by location where Intl calls it plain GMT", () => {
+    const real = Intl.DateTimeFormat;
+    standingInFor(
+      (locales, options) => {
+        const fmt = new real(locales, options);
+        if (options?.timeZone !== "UTC") return fmt;
+        const parts = fmt.formatToParts.bind(fmt);
+        fmt.formatToParts = (date) =>
+          parts(date).map((p) =>
+            p.type === "timeZoneName" ? { ...p, value: "GMT" } : p,
+          );
+        return fmt;
+      },
+      () => expect(rowFor("UTC")?.labelLeft).toBe("UTC"),
+    );
+  });
+
   it("writes each zone's clock as a formatter in that zone would", () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date(Date.UTC(2026, 6, 15, 12, 34)));
