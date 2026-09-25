@@ -35,6 +35,7 @@ export const user = (
   email: `${overrides.name}@example.com`,
   phoneNumber: null,
   preferredReminderTime: null,
+  timeZone: null,
   emailNotifsForActions: false,
   textNotifsForActions: false,
   pushNotifsForActions: false,

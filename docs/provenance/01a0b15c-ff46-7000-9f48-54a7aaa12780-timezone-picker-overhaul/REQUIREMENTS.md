@@ -11,6 +11,7 @@ task: Overhaul timezone selection on web and mobile
 - Keep a saved account timezone when it differs from the device timezone. Changing it requires user interaction.
 - "the users should not be allowed to clear their time zone"
 - If backfill detection fails, leave the account timezone missing and retry on a later session.
+- When signup has no valid device timezone, store none ("put in NULL instead of falling back to UTC"), replacing the `UTC` fallback an agent proposed in DECISIONS.md step 10.
 
 Form timezone field:
 

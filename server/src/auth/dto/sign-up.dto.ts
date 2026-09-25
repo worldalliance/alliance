@@ -7,6 +7,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  ValidateIf,
 } from "class-validator";
 import { IsTimeZoneIdentifier } from "src/utils/timezone";
 import { TokenMode } from "./signin.dto";
@@ -34,10 +35,11 @@ export class SignUpDto {
   @ApiProperty({ enum: TokenMode, enumName: "TokenMode" })
   mode: TokenMode;
 
+  @ValidateIf((_object, value) => value !== null)
   @IsDefined()
   @IsTimeZoneIdentifier()
-  @ApiProperty()
-  readonly timeZone: string;
+  @ApiProperty({ type: String, nullable: true })
+  readonly timeZone: string | null;
 
   @IsOptional()
   @ApiPropertyOptional()

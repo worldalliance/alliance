@@ -37,6 +37,7 @@ describe("getAmbassadorGoalHalfwayNotificationTime", () => {
   it("defaults to 7 PM Pacific", () => {
     const sendTime = getAmbassadorGoalHalfwayNotificationTime(weeklongGoal, {
       preferredReminderTime: null,
+      timeZone: null,
     });
 
     expect(sendTime.toISOString()).toBe("2026-07-21T02:00:00.000Z");

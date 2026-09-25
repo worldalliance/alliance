@@ -1,6 +1,5 @@
 import type { OAuthIntent, OAuthProvider } from "@alliance/common/oauth";
 import type { Request as ExpressRequest } from "express";
-import { DEFAULT_TIME_ZONE } from "src/user/entities/user.entity";
 import { mintProof, OAuthAuthService, OAuthOrigin } from "./oauth-auth.service";
 import type { OAuthClient } from "./oauth-client";
 import { mobileOAuthRedirectUri, mobileReturnUrl } from "./oauth-urls";
@@ -24,7 +23,7 @@ export async function beginMobileBrowserSession(params: {
     origin: OAuthOrigin.Mobile,
     redirectUri,
     returnTo,
-    timeZone: DEFAULT_TIME_ZONE,
+    timeZone: null,
     proofHash,
     userId: params.userId,
   });

@@ -34,7 +34,7 @@ export type SignUpDto = {
     email: string;
     password: string;
     mode: TokenMode;
-    timeZone: string;
+    timeZone: string | null;
     referralCode?: string;
     guestToken?: string;
 };
@@ -703,7 +703,7 @@ export type User = {
     phoneNumber: string | null;
     emailVerified: boolean;
     preferredReminderTime: string | null;
-    timeZone?: string;
+    timeZone: string | null;
     emailNotifsForActions: boolean;
     textNotifsForActions: boolean;
     pushNotifsForActions: boolean;
@@ -787,7 +787,7 @@ export type UserDto = {
     name: string;
     phoneNumber: string | null;
     preferredReminderTime: string | null;
-    timeZone?: string;
+    timeZone: string | null;
     emailNotifsForActions: boolean;
     textNotifsForActions: boolean;
     pushNotifsForActions: boolean;
@@ -985,7 +985,10 @@ export type UpdateProfileDto = {
     preferredReminderTime?: string | null;
     profileDescription?: string | null;
     customCityString?: string | null;
-    timeZone?: string;
+    /**
+     * null leaves the saved zone unchanged
+     */
+    timeZone?: string | null;
 };
 
 export type City = {
@@ -1075,7 +1078,7 @@ export type UserAdminDetailDto = {
     name: string;
     phoneNumber: string | null;
     preferredReminderTime: string | null;
-    timeZone?: string;
+    timeZone: string | null;
     emailNotifsForActions: boolean;
     textNotifsForActions: boolean;
     pushNotifsForActions: boolean;
@@ -1732,7 +1735,7 @@ export type MoveCommunityMemberDto = {
 
 export type CommunityMemberContactInfoDto = {
     id: number;
-    timeZone?: string;
+    timeZone: string | null;
     email?: string;
     phoneNumber: string | null;
     preferredReminderTimeUserTz?: string;

@@ -47,7 +47,7 @@ export type ReferredUser = {
   email: string;
   /** Null for an account created through a provider, which has no password yet. */
   password: string | null;
-  timeZone: string;
+  timeZone: string | null;
   referralCode: string | undefined;
   oauth?: OAuthProfile;
 };

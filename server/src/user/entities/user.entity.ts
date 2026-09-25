@@ -148,9 +148,8 @@ export class User {
   preferredReminderTime: Temporal.PlainTime | null;
 
   @Column({ type: "text", nullable: true })
-  @ApiPropertyOptional({ type: "string" })
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  timeZone?: Temporal.TimeZoneLike;
+  @ApiProperty({ type: String, nullable: true })
+  timeZone: Temporal.TimeZoneLike | null;
 
   // @Column({
   //   type: 'enum',

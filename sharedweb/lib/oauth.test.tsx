@@ -1,10 +1,11 @@
+import { OAuthIntent, OAuthProvider } from "@alliance/common/oauth";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import {
   createMemoryRouter,
   RouterProvider,
   ScrollRestoration,
 } from "react-router";
-import { useOAuthNotice } from "./oauth";
+import { oauthStartUrl, useOAuthNotice } from "./oauth";
 
 let router: ReturnType<typeof createMemoryRouter>;
 const resetsAt: string[] = [];
@@ -68,5 +69,37 @@ describe("useOAuthNotice", () => {
     await act(() => router.navigate("/settings?tab=2"));
 
     expect(locations).toHaveLength(1);
+  });
+});
+
+describe("oauthStartUrl", () => {
+  const startUrl = () =>
+    new URL(
+      oauthStartUrl({
+        apiUrl: "http://api.example.com",
+        provider: OAuthProvider.Google,
+        intent: OAuthIntent.Authenticate,
+        returnTo: "http://app.example.com/join",
+      }),
+    );
+
+  const detectZone = (timeZone: string) =>
+    jest
+      .spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions")
+      .mockReturnValue({
+        ...new Intl.DateTimeFormat().resolvedOptions(),
+        timeZone,
+      });
+
+  afterEach(() => jest.restoreAllMocks());
+
+  test("carries a valid device zone", () => {
+    detectZone("Europe/Berlin");
+    expect(startUrl().searchParams.get("timeZone")).toBe("Europe/Berlin");
+  });
+
+  test("leaves off a zone the server would refuse", () => {
+    detectZone("-08:00");
+    expect(startUrl().searchParams.has("timeZone")).toBe(false);
   });
 });

@@ -95,6 +95,7 @@ export const testUser = new User({
   pushesForActionUpdates: true,
   clusterId: null,
   preferredReminderTime: null,
+  timeZone: null,
 } satisfies Omit<
   User,
   | "friends"

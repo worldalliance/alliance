@@ -574,8 +574,10 @@ describe("Auth (e2e)", () => {
   });
 
   describe("time zone", () => {
-    it("stores the time zone the client signed up with", async () => {
-      const referringUser = await userRepository.save(
+    let referringUser: User;
+
+    beforeAll(async () => {
+      referringUser = await userRepository.save(
         userRepository.create({
           email: "tz-referrer@test.com",
           password: "password",
@@ -586,7 +588,9 @@ describe("Auth (e2e)", () => {
         await referringUser.generateReferralCode();
         await userRepository.save(referringUser);
       }
+    });
 
+    it("stores the time zone the client signed up with", async () => {
       await request(ctx.app.getHttpServer())
         .post("/auth/register")
         .send({
@@ -603,6 +607,25 @@ describe("Auth (e2e)", () => {
         where: { email: "tz-member@test.com" },
       });
       expect(newUser.timeZone).toBe("Europe/Berlin");
+    });
+
+    it("stores no time zone for a signup carrying null", async () => {
+      await request(ctx.app.getHttpServer())
+        .post("/auth/register")
+        .send({
+          email: "no-tz-member@test.com",
+          password: "password",
+          name: "No TZ Member",
+          referralCode: referringUser.referralCode,
+          mode: TokenMode.Header,
+          timeZone: null,
+        } satisfies SignUpDto)
+        .expect(201);
+
+      const newUser = await userRepository.findOneOrFail({
+        where: { email: "no-tz-member@test.com" },
+      });
+      expect(newUser.timeZone).toBeNull();
     });
 
     it.each([["not-a-zone"], ["-08:00"], [""], [undefined]])(

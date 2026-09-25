@@ -347,7 +347,7 @@ describe("Users (e2e)", () => {
 
   describe("time zone on /user/update", () => {
     const timeZoneOf = async (id: number) =>
-      (await userRepo.findOneByOrFail({ id })).timeZone ?? null;
+      (await userRepo.findOneByOrFail({ id })).timeZone;
 
     const update = (body: Record<string, unknown>) =>
       request(ctx.app.getHttpServer())
