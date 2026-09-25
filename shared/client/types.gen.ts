@@ -2536,6 +2536,7 @@ export type AdminActionDto = {
      */
     storedSquareThumbnailImage?: string;
     staffPreview: boolean;
+    prerequisiteActionIds: Array<number>;
 };
 
 export type HomeFeedItemType = 'activity' | 'forum_comment';
@@ -2772,6 +2773,10 @@ export type CreateActionDto = {
     staffPreview?: boolean;
     reviewers?: Array<ActionReviewerDto>;
     authorIds?: Array<number>;
+    /**
+     * Actions each member waits for before this action's cohort decides them
+     */
+    prerequisiteActionIds?: Array<number>;
 };
 
 export type UpdateActionDto = {
@@ -2863,6 +2868,10 @@ export type UpdateActionDto = {
     staffPreview?: boolean;
     reviewers?: Array<ActionReviewerDto>;
     authorIds?: Array<number>;
+    /**
+     * Actions each member waits for before this action's cohort decides them
+     */
+    prerequisiteActionIds?: Array<number>;
 };
 
 export type UserCompletedActionsCountDto = {

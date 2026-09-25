@@ -21,6 +21,7 @@ import { Type } from "class-transformer";
 import {
   Allow,
   ArrayMaxSize,
+  ArrayUnique,
   IsArray,
   IsBoolean,
   IsDefined,
@@ -569,9 +570,14 @@ export class AdminActionDto extends ActionDto {
   @IsDefined()
   staffPreview: boolean;
 
+  @ApiProperty({ type: Number, isArray: true })
+  @IsDefined()
+  prerequisiteActionIds: number[];
+
   constructor(action: ParsedAction, extra?: ActionDtoExtra) {
     super(action, extra);
     this.cohortExpression = action.cohortExpression;
+    this.prerequisiteActionIds = action.prerequisiteActionIds;
     this.staffPreview = action.staffPreview;
     this.followUpForms =
       action.followUpForms?.map((form) => new AdminFollowUpFormDto(form)) ?? [];
@@ -639,6 +645,18 @@ export class CreateActionDto extends IntersectionType(
   })
   @IsOptional()
   authorIds?: number[];
+
+  @ApiPropertyOptional({
+    type: Number,
+    isArray: true,
+    description:
+      "Actions each member waits for before this action's cohort decides them",
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsInt({ each: true })
+  prerequisiteActionIds?: number[];
 }
 
 export class UpdateActionDto extends PartialType(CreateActionDto) {}

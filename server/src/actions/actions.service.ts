@@ -232,6 +232,10 @@ import {
   ReminderGroupTimingMode,
 } from "./entities/reminder-group.entity";
 import { PrerequisiteProgressService } from "./prerequisite-progress.service";
+import {
+  assertNotAPrerequisite,
+  assertPrerequisitesValid,
+} from "./prerequisite-validation";
 import { SCHEMA_WRITE_TARGETS } from "./schema-write-target";
 import {
   assertNotInStaffPreview,
@@ -549,7 +553,13 @@ export class ActionsService {
         : [];
     }
 
-    const saved = await this.actionRepository.save(action);
+    const saved = await this.actionRepository.manager.transaction(
+      async (em) => {
+        const inserted = await em.save(Action, action);
+        await assertPrerequisitesValid({ em, actionIds: [inserted.id] });
+        return inserted;
+      },
+    );
     await this.shiftPrioritiesAfterInsertion();
     await this.syncGeneralUpdateDatesForSuites([saved.suite?.id]);
     return parseAction(saved);
@@ -1959,6 +1969,9 @@ export class ActionsService {
         action.reviewers = this.reviewerRows(reviewers);
       }
       await em.save(Action, action);
+      if (rest.prerequisiteActionIds !== undefined) {
+        await assertPrerequisitesValid({ em, actionIds: [id] });
+      }
     });
     const newSuiteId = action.suite?.id;
     await this.syncGeneralUpdateDatesForSuites([oldSuiteId, newSuiteId]);
@@ -2005,6 +2018,10 @@ export class ActionsService {
             });
             events.push(await manager.save(newEvent));
           }
+          await assertPrerequisitesValid({
+            em: manager,
+            actionIds: actions.map((action) => action.id),
+          });
           return events;
         },
       });
@@ -2040,7 +2057,10 @@ export class ActionsService {
       where: { id },
       relations: { suite: true },
     });
-    await this.actionRepository.delete(id);
+    await this.actionRepository.manager.transaction(async (em) => {
+      await em.delete(Action, id);
+      await assertNotAPrerequisite({ em, actionId: id });
+    });
     await this.syncGeneralUpdateDatesForSuites([action?.suite?.id]);
   }
 
@@ -3355,13 +3375,18 @@ export class ActionsService {
       }
     }
 
+    const actionIds = [
+      event.action.id,
+      ...suite.actions.map((action) => action.id),
+    ];
     await this.cohortDecisionStaffService.guardDeadlineShortening({
-      actionIds: [event.action.id, ...suite.actions.map((action) => action.id)],
+      actionIds,
       acknowledged: params.acknowledgeDeadlineShortening,
       change: async (em) => {
         for (const id of eventsToUpdate) {
           await em.update(ActionEvent, id, body);
         }
+        await assertPrerequisitesValid({ em, actionIds });
       },
     });
     await this.syncGeneralUpdateDatesForSuites([suiteId]);
@@ -3402,23 +3427,29 @@ export class ActionsService {
       .sort((a, b) => a.date.getTime() - b.date.getTime())
       .findIndex((event) => event.id === eventId);
 
-    for (const action of suite.actions) {
-      if (action.events.length <= eventIdx) {
-        throw new BadRequestException(
-          "Events do not have equivalent events to delete",
-        );
+    await this.actionEventRepository.manager.transaction(async (em) => {
+      for (const action of suite.actions) {
+        if (action.events.length <= eventIdx) {
+          throw new BadRequestException(
+            "Events do not have equivalent events to delete",
+          );
+        }
+        const possibleEvent = action.events.sort(
+          (a, b) => a.date.getTime() - b.date.getTime(),
+        )[eventIdx];
+        if (
+          possibleEvent.newStatus === event.newStatus &&
+          possibleEvent.suiteManaged
+        ) {
+          console.log("deleting event", possibleEvent.id);
+          await em.delete(ActionEvent, possibleEvent.id);
+        }
       }
-      const possibleEvent = action.events.sort(
-        (a, b) => a.date.getTime() - b.date.getTime(),
-      )[eventIdx];
-      if (
-        possibleEvent.newStatus === event.newStatus &&
-        possibleEvent.suiteManaged
-      ) {
-        console.log("deleting event", possibleEvent.id);
-        await this.actionEventRepository.delete(possibleEvent.id);
-      }
-    }
+      await assertPrerequisitesValid({
+        em,
+        actionIds: suite.actions.map((action) => action.id),
+      });
+    });
     await this.syncGeneralUpdateDatesForSuites([suiteId]);
     return this.findSuite(suiteId);
   }
