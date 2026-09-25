@@ -56,6 +56,7 @@
     "react-dom": "19.2.3",
     "react-test-renderer": "19.2.3",
     "react-native-renderer": "19.2.3",
-    "@types/react": "19.2.10"
+    "@types/react": "19.2.10",
+    "@types/linkify-it": "2.1.0"
   }
 }
