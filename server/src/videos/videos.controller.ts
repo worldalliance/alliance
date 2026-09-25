@@ -1,5 +1,6 @@
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
+  applyDecorators,
   Controller,
   Delete,
   Get,
@@ -27,6 +28,28 @@ import {
 } from "./dto/video-response.dto";
 import { VideosService } from "./videos.service";
 
+function VideoFilesUpload() {
+  return applyDecorators(
+    UseInterceptors(
+      FilesInterceptor("files", 200, {
+        limits: { fileSize: 5000 * 1024 * 1024 },
+      }),
+    ),
+    ApiConsumes("multipart/form-data"),
+    ApiBody({
+      schema: {
+        type: "object",
+        properties: {
+          files: {
+            type: "array",
+            items: { type: "string", format: "binary" },
+          },
+        },
+      },
+    }),
+  );
+}
+
 @Controller("videos")
 export class VideosController {
   constructor(
@@ -38,23 +61,7 @@ export class VideosController {
 
   @Post("upload")
   @UseGuards(AdminGuard)
-  @UseInterceptors(
-    FilesInterceptor("files", 200, {
-      limits: { fileSize: 5000 * 1024 * 1024 },
-    }),
-  )
-  @ApiConsumes("multipart/form-data")
-  @ApiBody({
-    schema: {
-      type: "object",
-      properties: {
-        files: {
-          type: "array",
-          items: { type: "string", format: "binary" },
-        },
-      },
-    },
-  })
+  @VideoFilesUpload()
   @ApiOkResponse({ type: UploadVideoResponseDto })
   async uploadVideoAdmin(
     @UploadedFiles() files: Express.Multer.File[],
@@ -84,23 +91,7 @@ export class VideosController {
 
   @Post(":id/replace")
   @UseGuards(AdminGuard)
-  @UseInterceptors(
-    FilesInterceptor("files", 200, {
-      limits: { fileSize: 5000 * 1024 * 1024 },
-    }),
-  )
-  @ApiConsumes("multipart/form-data")
-  @ApiBody({
-    schema: {
-      type: "object",
-      properties: {
-        files: {
-          type: "array",
-          items: { type: "string", format: "binary" },
-        },
-      },
-    },
-  })
+  @VideoFilesUpload()
   @ApiOkResponse({ type: ReplaceVideoResponseDto })
   async replaceVideoAdmin(
     @Param("id") id: number,
