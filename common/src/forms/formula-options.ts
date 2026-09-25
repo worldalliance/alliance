@@ -86,9 +86,9 @@ const schemaFormulas = (schema: FormSchema): Formula[] => [
   ),
 ];
 
-/** Every form a variable or options formula reads, ascending. */
-export function formulaSourceFormIds(schema: FormSchema): number[] {
-  return variableSourceFormIds(schemaFormulas(schema));
+/** Every form the schemas' variables or options formulas read, ascending. */
+export function formulaSourceFormIds(...schemas: FormSchema[]): number[] {
+  return variableSourceFormIds(schemas.flatMap(schemaFormulas));
 }
 
 /** The forms whose submitted history a variable or options formula reads. */

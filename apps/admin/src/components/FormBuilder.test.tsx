@@ -113,7 +113,7 @@ describe("FormBuilder save while a source form loads", () => {
   const { baseUrl, fetch } = client.getConfig();
   afterEach(() => client.setConfig({ baseUrl, fetch }));
 
-  it("waits for the source form's questions instead of calling it missing", async () => {
+  const stallSourceForms = (): string[] => {
     const writes: string[] = [];
     client.setConfig({
       baseUrl: "http://localhost",
@@ -127,6 +127,11 @@ describe("FormBuilder save while a source form loads", () => {
         return new Promise<Response>(() => {});
       },
     });
+    return writes;
+  };
+
+  it("waits for the source form's questions instead of calling it missing", async () => {
+    const writes = stallSourceForms();
     renderBuilder({
       ...mine,
       variables: [
@@ -146,10 +151,53 @@ describe("FormBuilder save while a source form loads", () => {
 
     expect(
       await screen.findByText(
-        "Still loading the questions of forms your variables read. Try again in a moment.",
+        "Still loading the questions of forms your formulas read. Try again in a moment.",
       ),
     ).toBeTruthy();
     expect(screen.queryByText(/doesn't exist/)).toBeNull();
+    expect(writes).toEqual([]);
+  });
+
+  it("waits for a form only an options formula reads", async () => {
+    const writes = stallSourceForms();
+    renderBuilder({
+      ...mine,
+      pages: [
+        {
+          id: "p1",
+          fields: [
+            {
+              id: "pick",
+              type: "input",
+              kind: "select",
+              label: "Pick",
+              options: [],
+              optionsFormula: {
+                inputs: {
+                  input1: {
+                    kind: "sourceField",
+                    sourceFormId: 9,
+                    fieldId: "colors",
+                  },
+                },
+                formula: "input1.at(-1) ?? []",
+              },
+            },
+          ],
+        },
+      ],
+      variables: undefined,
+    });
+    fireEvent.change(screen.getByPlaceholderText("Page title"), {
+      target: { value: "Where" },
+    });
+    fireEvent.click(screen.getByText("Save Form"));
+
+    expect(
+      await screen.findByText(
+        "Still loading the questions of forms your formulas read. Try again in a moment.",
+      ),
+    ).toBeTruthy();
     expect(writes).toEqual([]);
   });
 });
@@ -158,43 +206,70 @@ describe("FormBuilder save conflict while a source form loads", () => {
   const { baseUrl, fetch } = client.getConfig();
   afterEach(() => client.setConfig({ baseUrl, fetch }));
 
-  it("waits for the source form instead of calling the edits overlapping", async () => {
-    const theirs: FormSchema = {
-      ...mine,
-      variables: [
-        {
-          name: "scores",
-          inputs: {
-            input1: { kind: "sourceField", sourceFormId: 9, fieldId: "score" },
-          },
-          formula: "input1.length",
-        },
-      ],
-    };
-    client.setConfig({
-      baseUrl: "http://localhost",
-      fetch: async (request: Request) => {
-        const { pathname } = new URL(request.url);
-        if (request.method !== "GET")
-          return new Response(null, { status: 409 });
-        if (pathname === "/tasks/listForms") return Response.json([]);
-        if (pathname === "/tasks/slug/9")
-          return new Promise<Response>(() => {});
-        return Response.json({ id: 1, schema: theirs, formSnapshotId: 2 });
-      },
-    });
-    renderBuilder();
-    fireEvent.change(screen.getByPlaceholderText("Page title"), {
-      target: { value: "Where" },
-    });
-    fireEvent.click(screen.getByText("Save Form"));
+  const readsScores = {
+    input1: { kind: "sourceField" as const, sourceFormId: 9, fieldId: "score" },
+  };
 
-    expect(
-      await screen.findByText("Loading the forms your variables read…"),
-    ).toBeTruthy();
-    expect(screen.queryByText(/can't be merged/)).toBeNull();
-    expect(screen.queryByText("Merge changes")).toBeNull();
-  });
+  it.each<[string, FormSchema]>([
+    [
+      "variable",
+      {
+        ...mine,
+        variables: [
+          { name: "scores", inputs: readsScores, formula: "input1.length" },
+        ],
+      },
+    ],
+    [
+      "options formula",
+      {
+        ...mine,
+        pages: [
+          {
+            id: "p1",
+            fields: [
+              ...mine.pages[0].fields,
+              {
+                id: "score",
+                type: "input",
+                kind: "select",
+                label: "Score",
+                options: [],
+                optionsFormula: { inputs: readsScores, formula: "[]" },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  ])(
+    "waits for the source form their %s reads instead of calling the edits overlapping",
+    async (_, theirs) => {
+      client.setConfig({
+        baseUrl: "http://localhost",
+        fetch: async (request: Request) => {
+          const { pathname } = new URL(request.url);
+          if (request.method !== "GET")
+            return new Response(null, { status: 409 });
+          if (pathname === "/tasks/listForms") return Response.json([]);
+          if (pathname === "/tasks/slug/9")
+            return new Promise<Response>(() => {});
+          return Response.json({ id: 1, schema: theirs, formSnapshotId: 2 });
+        },
+      });
+      renderBuilder();
+      fireEvent.change(screen.getByPlaceholderText("Page title"), {
+        target: { value: "Where" },
+      });
+      fireEvent.click(screen.getByText("Save Form"));
+
+      expect(
+        await screen.findByText("Loading the forms your formulas read…"),
+      ).toBeTruthy();
+      expect(screen.queryByText(/can't be merged/)).toBeNull();
+      expect(screen.queryByText("Merge changes")).toBeNull();
+    },
+  );
 
   it("says a source form failed to load instead of calling the edits overlapping", async () => {
     const theirs: FormSchema = {
@@ -229,7 +304,7 @@ describe("FormBuilder save conflict while a source form loads", () => {
 
     expect(
       await screen.findByText(
-        "A form your variables read couldn't be loaded, so these edits can't be merged automatically. Keep your version or take theirs.",
+        "A form your formulas read couldn't be loaded, so these edits can't be merged automatically. Keep your version or take theirs.",
       ),
     ).toBeTruthy();
     expect(screen.queryByText(/overlap/)).toBeNull();

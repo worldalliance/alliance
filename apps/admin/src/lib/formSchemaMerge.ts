@@ -226,7 +226,7 @@ export function mergeFormSchemas(params: {
   base: FormSchema;
   mine: FormSchema;
   theirs: FormSchema;
-  /** Must hold every form a variable on either side reads. */
+  /** Must hold every form a variable or options formula on either side reads. */
   validation: FormSchemaValidationContext;
 }): Result<FormSchema, string[]> {
   const { base, mine, theirs, validation } = params;

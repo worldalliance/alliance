@@ -12,6 +12,7 @@ import {
   tasksGetMyFormResponseHistory,
 } from "../client";
 import { thrownStatus } from "../lib/hey-api";
+import { useStableIds } from "../lib/useStableIds";
 
 export enum HistoryReader {
   /** A guest, or an admin preview with no member picked: no submissions. */
@@ -160,11 +161,7 @@ export function useVariableSourceHistories(params: {
   reload?: number;
 }): SourceHistories {
   const { schema, subject, reload = 0 } = params;
-  const idsKey = formulaHistoryFormIds(schema).join(",");
-  const formIds = useMemo(
-    () => (idsKey === "" ? [] : idsKey.split(",").map(Number)),
-    [idsKey],
-  );
+  const formIds = useStableIds(formulaHistoryFormIds(schema));
   const reader =
     subject.reader === HistoryReader.Member
       ? `${subject.reader}:${subject.userId}`

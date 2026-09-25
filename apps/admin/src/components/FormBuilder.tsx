@@ -63,7 +63,7 @@ import { reorderPages } from "../lib/reorderPages";
 import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
 import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
 import { DropPosition } from "../lib/useDragReorder";
-import { useVariableSourceForms } from "../lib/useVariableSourceForms";
+import { useFormulaSourceForms } from "../lib/useFormulaSourceForms";
 import { AggregateBuilder } from "./AggregateBuilder";
 import ConfirmDialog from "./ConfirmDialog";
 import { createDisplayBlock, PerViewerOptions } from "./display-blocks";
@@ -827,12 +827,9 @@ export function FormBuilder(props: FormBuilderProps) {
   const [confirmUnresolvedVariables, setConfirmUnresolvedVariables] =
     useState(false);
 
-  const referencedVariables = useMemo(
-    () => [...(schema.variables ?? []), ...(conflict?.theirs.variables ?? [])],
-    [schema.variables, conflict],
+  const { sourceForms, statusByForm: sourceFormStatus } = useFormulaSourceForms(
+    conflict ? [schema, conflict.theirs] : [schema],
   );
-  const { sourceForms, statusByForm: sourceFormStatus } =
-    useVariableSourceForms(referencedVariables);
   const sourceFormsLoading = Object.values(sourceFormStatus).includes(
     FormFieldsStatus.Pending,
   );
@@ -1732,7 +1729,7 @@ export function FormBuilder(props: FormBuilderProps) {
     try {
       if (sourceFormsLoading) {
         showErrorToast(
-          "Still loading the questions of forms your variables read. Try again in a moment.",
+          "Still loading the questions of forms your formulas read. Try again in a moment.",
         );
         return;
       }
