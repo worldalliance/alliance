@@ -1,6 +1,6 @@
 # Aggregate variable inputs
 
-Status: agreed specification; product implementation has not started.
+Status: implemented; see "As implemented" below.
 
 ## Delegated scope choices
 
@@ -53,4 +53,14 @@ The feature is complete when focused tests and package checks establish:
 - Web, mobile, and admin views honor the approved loading, failure, refresh, and access behavior. Authorized guest viewers receive totals; unauthorized or arbitrary source queries cannot expose them or raw responses.
 - Source deletion guards account for aggregate dependencies, existing variable kinds retain their behavior, and an unknown aggregate input fails visibly on an older evaluator.
 
-Use synthetic fixtures only. Run the affected package tests and typechecks, plus targeted browser/mobile verification during implementation. This specification task changes documentation only.
+Use synthetic fixtures only. Run the affected package tests and typechecks, plus targeted browser/mobile verification during implementation.
+
+## As implemented
+
+- **Stored shape:** `{ kind: "aggregate", sourceFormId, fieldId }`. The formula sees `{ [value: string]: number }`, with no per-submission array. `variableSourceFormIds` covers every stored form a variable reads, aggregates included, for validation loading and the builder. The deletion guard's jsonb path over `inputs.*.sourceFormId` matches aggregates because they store the same key. The history loader reads `variableHistoryFormIds` instead.
+- **Self-reference:** the schema being saved validates the question, not the stored version it replaces, so a save can't remove the counted question or change its kind; that would save a broken aggregate reference. The builder's question picker still lists the saved version's multiselects, because counts come from stored questions: a question added in this save can be picked once the form has been saved with it, matching the spec's "save first" rule.
+- **Endpoints:** `GET tasks/variableAggregates/:formId/snapshot/:formSnapshotId` (optional auth) counts the aggregate inputs of a version in the form's snapshot history. "Authorize the destination" is read as the form's existing access: anyone can read any form at `tasks/slug/:id`, so the endpoint doesn't check the viewer. What it counts is limited instead: the server derives the questions from that version, so a caller can't name them, and reopened responses keep counting what their own version reads. A version outside the form's history returns 400. `POST tasks/variableAggregates` is admin-only and counts any questions, for previews and reviews. Both return `{ aggregates }`, one `{ sourceFormId, fieldId, counts }` per question, with `counts: null` when the form is deleted or unreadable, or the question is gone or no longer a multiselect.
+- **Counting:** each form takes one SQL query shared by all its questions: `DISTINCT ON ("userId")` ordered by `createdAt DESC, id DESC`, after excluding guest rows and responses linked to a `user_wont_complete` activity through `taskFormResponseId`. Values that aren't current options are dropped.
+- **Client:** `useVariableAggregates` makes one request per open form, keyed by the target and the de-duplicated questions. An admin preview refetches when its set of counted questions changes. A non-admin renderer without a saved snapshot, such as a static task form, reports counts as unavailable instead of zeros. Web and mobile gate through `variableInputsGate`, which merges this status with source histories. The deleted-source message now names a question as well as a form.
+- **Sample counts:** they are builder-local and never saved, so "invalid samples can't be saved" is read as a visible preview error. An invalid count, or no question picked yet, makes the input read as `undefined`.
+- **Verification gap:** the web renderer and admin builder were exercised in unit tests and in the browser. The mobile renderer shares the hook and gate logic and passes typecheck, but was not driven in a simulator.
