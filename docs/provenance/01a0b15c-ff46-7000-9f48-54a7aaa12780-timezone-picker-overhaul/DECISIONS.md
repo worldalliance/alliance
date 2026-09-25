@@ -234,9 +234,7 @@ sections below this one carry the reasoning each step implements.
    the removed one changes the fingerprint runtime version, and the change
    reaches members through a store build rather than an OTA update. A
    calendar with no `timeZone` gives `undefined`, so the picker pins no row
-   and defaults to `DEFAULT_TIMEZONE` as it does for any missing value. Mobile
-   backfill still reads `Intl` through `deviceTimeZone()`; step 11 moves it
-   onto `getDeviceTimeZone()`.
+   and defaults to `DEFAULT_TIMEZONE` as it does for any missing value.
 10. **Signup capture.** Done. Web signup, mobile signup, and the web OAuth
     start pass the detected zone through `signupTimeZone` in
     `shared/lib/timeZone.ts`, which keeps it when `isTimeZoneIdentifier`
@@ -249,8 +247,15 @@ sections below this one carry the reasoning each step implements.
     one, so the server's `DEFAULT_TIME_ZONE` in its state never reaches a new
     account. The server's `DEFAULT_TIME_ZONE` fallback for a web OAuth start
     with no zone stays: the web has always sent one.
-11. **Backfill.** `useBackfillTimeZone` writes only a valid detected identifier
-    and leaves the value missing otherwise.
+11. **Backfill.** Done. `useBackfillTimeZone` takes the platform's detection
+    as `detect`: the web's `deviceTimeZone()`, and mobile's
+    `getDeviceTimeZone()`, as its signup uses. It writes the detected
+    identifier as reported when `isTimeZoneIdentifier` accepts it, and
+    otherwise writes nothing, leaving the value missing, unlike signup, which
+    needs a value and sends `UTC`. It tries once per member per mount, so a
+    failed detection retries on a later session. `detect` is required, so
+    each platform names its own detection instead of mobile falling back to
+    `Intl`. It runs only when the hook would write.
 12. **Settings device affordance.** Web `SettingsPage` and mobile `settings.tsx`
     show the saved value, plus `Device timezone: <label>` with a `Use` action
     when the two differ.

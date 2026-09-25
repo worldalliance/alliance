@@ -37,6 +37,7 @@ import {
   retryClearTokens,
   SessionOvertakenError,
 } from "./session";
+import { getDeviceTimeZone } from "./timeZone";
 import {
   getVisualTestAutoLoginCredentials,
   isVisualTestMode,
@@ -95,7 +96,7 @@ export const AuthProvider: React.FC<
   const [sessionUnavailable, setSessionUnavailable] = useState(false);
   const router = useRouter();
 
-  useBackfillTimeZone(user);
+  useBackfillTimeZone(user, { detect: getDeviceTimeZone });
 
   const clearTokensAndReport = useCallback(async () => {
     const cleared = await clearSessionTokens();

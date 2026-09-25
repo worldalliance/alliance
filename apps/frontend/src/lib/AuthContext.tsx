@@ -16,6 +16,7 @@ import React, {
   useState,
 } from "react";
 
+import { deviceTimeZone } from "@alliance/shared/lib/timeZone";
 import { useBackfillTimeZone } from "@alliance/shared/lib/useBackfillTimeZone";
 import { ViewerAuthenticationProvider } from "@alliance/sharedweb/ui/ViewerAuthenticationProvider";
 import type { QueryClient } from "@tanstack/react-query";
@@ -62,7 +63,10 @@ export const AuthProvider: React.FC<
       [],
     );
 
-    useBackfillTimeZone(user, { enabled: !isImpersonation });
+    useBackfillTimeZone(user, {
+      detect: deviceTimeZone,
+      enabled: !isImpersonation,
+    });
 
     useEffect(() => {
       if (import.meta.env.PROD) {

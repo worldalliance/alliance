@@ -1,5 +1,5 @@
+import { isTimeZoneIdentifier } from "@alliance/common/timezone";
 import { useEffect, useRef } from "react";
-import { deviceTimeZone } from "./timeZone";
 import { useUpdateProfileMutation } from "./user";
 
 /**
@@ -8,12 +8,15 @@ import { useUpdateProfileMutation } from "./user";
  * Pass `enabled: false` where the session is not the member's own. An admin
  * impersonating a member posts as that member, so the member would end up with
  * the admin's zone.
+ *
+ * A `detect` that names no valid zone writes nothing, so a later session
+ * retries.
  */
 export function useBackfillTimeZone(
   user: { id: number; timeZone?: string } | undefined,
-  options?: { enabled?: boolean },
+  options: { detect: () => string | undefined; enabled?: boolean },
 ): void {
-  const enabled = options?.enabled ?? true;
+  const { detect, enabled = true } = options;
   const { mutate } = useUpdateProfileMutation(user?.id);
   const attemptedForUserId = useRef<number | null>(null);
 
@@ -27,12 +30,14 @@ export function useBackfillTimeZone(
       return;
     }
     attemptedForUserId.current = user.id;
+    const detected = detect();
+    if (!isTimeZoneIdentifier(detected)) return;
     mutate(
-      { timeZone: deviceTimeZone() },
+      { timeZone: detected },
       {
         onError: (error) =>
           console.error("failed to backfill the member's time zone", error),
       },
     );
-  }, [enabled, user, mutate]);
+  }, [detect, enabled, user, mutate]);
 }
