@@ -6,10 +6,11 @@ import {
   analyticsGetInviteFunnelAdmin,
   analyticsGetMemberCompletionRetentionAdmin,
   analyticsGetMemberReliabilityWindowAdmin,
+  analyticsGetMissedActionsAdmin,
+  analyticsGetPlatformTenureCohortAdmin,
   analyticsGetReminderGroupClickRatesAdmin,
   analyticsGetTimeToChurnSamplesAdmin,
 } from "@alliance/shared/client";
-import { client } from "@alliance/shared/client/client.gen";
 import {
   ActionStatsWithOnboardingDto,
   AggregateStatsDto,
@@ -18,6 +19,8 @@ import {
   InviteFunnelDto,
   MemberCompletionRetentionCohortDto,
   MemberReliabilityWindowDto,
+  MissedActionsDto,
+  PlatformTenureCohortStatsDto,
   ReminderGroupClickRatePointDto,
   TimeToChurnSampleDto,
 } from "@alliance/shared/client/types.gen";
@@ -108,26 +111,6 @@ type ReminderActionChannelBar = {
 type HoveredReminderActionBar = {
   bar: ReminderActionChannelBar;
   channel: "email" | "text";
-};
-type PlatformTenureCohortActionStats = {
-  actionId: number;
-  actionName: string;
-  assignedCount: number;
-  completedCount: number;
-  completionRate: number;
-  memberActionStartDate: string;
-  memberActionEndDate?: string;
-};
-type PlatformTenureCohortStats = {
-  weeksOnPlatform: number;
-  cohortSize: number;
-  activeCount: number;
-  churnedCount: number;
-  churnRate: number;
-  assignedCount: number;
-  completedCount: number;
-  completionRate: number;
-  actions: PlatformTenureCohortActionStats[];
 };
 
 const buildRoundedLeftPath = (
@@ -223,14 +206,6 @@ const findContractStatusPointDaysAgo = (
   return closest;
 };
 
-const asRecordArray = (value: unknown): Array<Record<string, unknown>> =>
-  Array.isArray(value)
-    ? value.filter(
-        (entry): entry is Record<string, unknown> =>
-          typeof entry === "object" && entry !== null,
-      )
-    : [];
-
 const parseLocalDateInput = (
   value?: string | null,
   endOfDay = false,
@@ -270,9 +245,8 @@ const getWeekStartDate = (value: Date): Date => {
 
 const fetchPlatformTenureCohort = async (
   weeksOnPlatform: number,
-): Promise<PlatformTenureCohortStats> => {
-  const response = await client.get<PlatformTenureCohortStats>({
-    url: "/analytics/platform-tenure-cohort",
+): Promise<PlatformTenureCohortStatsDto> => {
+  const response = await analyticsGetPlatformTenureCohortAdmin({
     query: { weeksOnPlatform },
   });
 
@@ -324,7 +298,7 @@ const StatsPage: React.FC = () => {
   const [platformTenureWeeksInput, setPlatformTenureWeeksInput] =
     useState<string>("4");
   const [platformTenureCohort, setPlatformTenureCohort] =
-    useState<PlatformTenureCohortStats | null>(null);
+    useState<PlatformTenureCohortStatsDto | null>(null);
   const [platformTenureCohortLoading, setPlatformTenureCohortLoading] =
     useState<boolean>(false);
   const [platformTenureCohortError, setPlatformTenureCohortError] = useState<
@@ -339,7 +313,9 @@ const StatsPage: React.FC = () => {
   const [memberReliabilityError, setMemberReliabilityError] = useState<
     string | null
   >(null);
-  const [missedActions, setMissedActions] = useState<unknown>(null);
+  const [missedActions, setMissedActions] = useState<MissedActionsDto | null>(
+    null,
+  );
   const [missedActionsLoading, setMissedActionsLoading] =
     useState<boolean>(false);
   const [missedActionsRequested, setMissedActionsRequested] =
@@ -563,7 +539,7 @@ const StatsPage: React.FC = () => {
   const loadMissedActions = useCallback(async () => {
     setMissedActionsLoading(true);
     try {
-      const response = await client.get({ url: "/analytics/missed-actions" });
+      const response = await analyticsGetMissedActionsAdmin();
       setMissedActions(response.data ?? null);
     } catch (err) {
       console.error("Failed to load missed actions", err);
@@ -1494,18 +1470,17 @@ const StatsPage: React.FC = () => {
   }, []);
 
   const missedActionGroups = useMemo(() => {
-    if (typeof missedActions !== "object" || missedActions === null) {
+    if (!missedActions) {
       return null;
     }
-    const stats = missedActions as Record<string, unknown>;
     return [
       {
         title: "Missed last action",
-        members: asRecordArray(stats.missedLastAction),
+        members: missedActions.missedLastAction,
       },
       {
         title: "Missed last two actions",
-        members: asRecordArray(stats.missedLastTwoActions),
+        members: missedActions.missedLastTwoActions,
       },
     ];
   }, [missedActions]);
@@ -1659,17 +1634,17 @@ const StatsPage: React.FC = () => {
                   <ul className="mt-3 max-h-64 space-y-1 overflow-y-auto text-sm">
                     {members.map((member) => (
                       <li
-                        key={String(member.userId)}
+                        key={member.userId}
                         className="flex justify-between gap-3"
                       >
                         <a
-                          href={`/member/${String(member.userId)}`}
+                          href={`/member/${member.userId}`}
                           className="min-w-0 truncate text-link hover:underline"
                         >
-                          {String(member.name)}
+                          {member.name}
                         </a>
                         <span className="shrink-0 text-xs text-gray-500">
-                          {String(member.lastActionName)}
+                          {member.lastActionName}
                         </span>
                       </li>
                     ))}
