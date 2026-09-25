@@ -9,14 +9,11 @@ import { getTimeLeftString } from "src/notifs/textnotifcontents";
 import { groupMembersListUrl, tasksUrl, withCid } from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "src/utils/Repository";
+import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
 
 export function mailSendingEnabled(): boolean {
-  return (
-    process.env.NODE_ENV !== "test" &&
-    (process.env.NODE_ENV === "production" ||
-      process.env.SEND_DEV_NOTIFS === "1")
-  );
+  return process.env.NODE_ENV !== "test" && notifDeliveryEnabled();
 }
 
 function interpretEscapes(s: string): string {

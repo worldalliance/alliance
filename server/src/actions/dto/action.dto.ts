@@ -119,10 +119,7 @@ export class CreateReminderGroupDto extends PickType(ReminderGroup, [
   timingAnchorEventId?: number;
 }
 
-export class PreviewEmailHtmlDto extends PickType(CreateReminderGroupDto, [
-  "emailMessage",
-  "emailSubject",
-]) {
+export class ReminderPreviewContextDto {
   @ApiProperty({ type: Number })
   @IsDefined()
   @IsNumber()
@@ -139,24 +136,15 @@ export class PreviewEmailHtmlDto extends PickType(CreateReminderGroupDto, [
   uncompletedMembersInGroupCount?: number;
 }
 
-export class PreviewTextDto extends PickType(CreateReminderGroupDto, [
-  "textMessage",
-]) {
-  @ApiProperty({ type: Number })
-  @IsDefined()
-  @IsNumber()
-  taskCount: number;
+export class PreviewEmailHtmlDto extends IntersectionType(
+  PickType(CreateReminderGroupDto, ["emailMessage", "emailSubject"]),
+  ReminderPreviewContextDto,
+) {}
 
-  @ApiPropertyOptional({ enum: ReminderCohortType })
-  @IsOptional()
-  @IsEnum(ReminderCohortType)
-  cohortType?: ReminderCohortType;
-
-  @ApiPropertyOptional({ type: Number })
-  @IsOptional()
-  @IsNumber()
-  uncompletedMembersInGroupCount?: number;
-}
+export class PreviewTextDto extends IntersectionType(
+  PickType(CreateReminderGroupDto, ["textMessage"]),
+  ReminderPreviewContextDto,
+) {}
 
 export class PreviewTextMessageResponseDto {
   @ApiProperty({ type: String })

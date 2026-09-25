@@ -10,6 +10,7 @@ import {
   UnreadContentType,
 } from "src/notifs/entities/unread-content.entity";
 import { NotifsService } from "src/notifs/notifs.service";
+import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import type { Repository } from "typeorm";
 import { v4 } from "uuid";
 import { CreatePushMessage, PushService } from "./push.service";
@@ -29,12 +30,7 @@ export class NotifPushDispatcherWorker {
 
   @Cron(CronExpression.EVERY_10_SECONDS)
   async dispatchPushes() {
-    if (
-      !(
-        process.env.NODE_ENV === "production" ||
-        process.env.SEND_DEV_NOTIFS === "1"
-      )
-    ) {
+    if (!notifDeliveryEnabled()) {
       return;
     }
     const dispatchID = v4().replace(/-/g, "");

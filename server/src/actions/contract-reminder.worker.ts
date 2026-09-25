@@ -5,6 +5,7 @@ import { milliseconds } from "date-fns";
 import { EmailType } from "src/mail/mail.entity";
 import { MailService } from "src/mail/mail.service";
 import { User } from "src/user/entities/user.entity";
+import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import { DataSource, Repository } from "typeorm";
 import { LOCK_KEYS } from "../notifs/lock-keys";
 import { withPgAdvisoryLock } from "../notifs/lock-utils";
@@ -24,12 +25,7 @@ export class ContractReminderWorker {
 
   @Cron(CronExpression.EVERY_HOUR)
   async sendContractReminders() {
-    if (
-      !(
-        process.env.NODE_ENV === "production" ||
-        process.env.SEND_DEV_NOTIFS === "1"
-      )
-    ) {
+    if (!notifDeliveryEnabled()) {
       return;
     }
 

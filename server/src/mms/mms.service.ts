@@ -10,6 +10,7 @@ import { milliseconds } from "date-fns";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import type { Repository } from "src/utils/Repository";
+import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import Twilio from "twilio";
 import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
@@ -87,10 +88,7 @@ export class MmsService {
     const { to, body, mediaUrls, cid } = params;
     if (
       process.env.NODE_ENV === "test" ||
-      !(
-        process.env.NODE_ENV === "production" ||
-        process.env.SEND_DEV_NOTIFS === "1"
-      ) ||
+      !notifDeliveryEnabled() ||
       isAnonymizedPhoneNumber(to)
     ) {
       const mms = this.mmsRepository.create({

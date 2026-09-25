@@ -10,6 +10,17 @@ import {
   onetimeInviteCreation,
   roleBadges,
 } from "@alliance/shared/lib/copy";
+import {
+  dateInputToEndOfDayIso,
+  dateInputToStartOfDayIso,
+  dateToInputValue,
+  daysUntil,
+  inviteGoalErrorMessage,
+  inviteGoalIsUp,
+  oneMonthFromTodayDateInputValue,
+  selectInviteGoals,
+  todayDateInputValue,
+} from "@alliance/shared/lib/inviteGoals";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import {
   bucketOnetimeInvitesByActionability,
@@ -33,7 +44,6 @@ import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { milliseconds } from "date-fns";
-import { millisecondsInDay } from "date-fns/constants";
 import { MoreHorizontal, Trash2, UserCheck } from "lucide-react";
 import type { FormEvent, MouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -67,41 +77,6 @@ const formatDate = (value: string) =>
     day: "numeric",
     year: "numeric",
   });
-
-const daysUntil = (date: Date, now = new Date()) =>
-  Math.max(0, Math.ceil((date.getTime() - now.getTime()) / millisecondsInDay));
-
-const dateInputToEndOfDayIso = (value: string) =>
-  new Date(`${value}T23:59:59`).toISOString();
-
-const dateInputToStartOfDayIso = (value: string) =>
-  new Date(`${value}T00:00:00`).toISOString();
-
-const padDatePart = (value: number) => String(value).padStart(2, "0");
-
-const dateToInputValue = (value: string | Date) => {
-  const date = new Date(value);
-  return [
-    date.getFullYear(),
-    padDatePart(date.getMonth() + 1),
-    padDatePart(date.getDate()),
-  ].join("-");
-};
-
-const todayDateInputValue = () => dateToInputValue(new Date());
-
-const oneMonthFromTodayDateInputValue = () => {
-  const nextMonth = new Date();
-  nextMonth.setMonth(nextMonth.getMonth() + 1);
-  return dateToInputValue(nextMonth);
-};
-
-const inviteGoalErrorMessage = (err: Error) => {
-  if (err.message.toLowerCase().includes("overlap")) {
-    return "Those dates overlap with an existing invite goal.";
-  }
-  return err.message;
-};
 
 const InvitesPage = () => {
   const { user } = useAuth();
@@ -153,60 +128,11 @@ const InvitesPage = () => {
     refetch: refetchAmbassadorDashboard,
   } = useAmbassadorInviteDashboard({ enabled: Boolean(user?.ambassador) });
 
-  const ambassadorGoals = useMemo(
-    () => ambassadorDashboard?.goals ?? [],
+  const { currentGoal, pastGoals } = useMemo(
+    () => selectInviteGoals(ambassadorDashboard?.goals ?? []),
     [ambassadorDashboard],
   );
-  const currentGoal = useMemo(() => {
-    const now = new Date();
-    const activeGoals = ambassadorGoals.filter((goal) => {
-      const startAt = new Date(goal.goal.startAt);
-      const dueAt = new Date(goal.goal.dueAt);
-      return startAt <= now && dueAt >= now;
-    });
-    if (activeGoals.length > 0) {
-      return [...activeGoals].sort(
-        (a, b) =>
-          new Date(b.goal.startAt).getTime() -
-          new Date(a.goal.startAt).getTime(),
-      )[0];
-    }
-
-    const futureGoals = ambassadorGoals.filter(
-      (goal) => new Date(goal.goal.startAt) > now,
-    );
-    if (futureGoals.length > 0) {
-      return [...futureGoals].sort(
-        (a, b) =>
-          new Date(a.goal.startAt).getTime() -
-          new Date(b.goal.startAt).getTime(),
-      )[0];
-    }
-
-    return [...ambassadorGoals].sort(
-      (a, b) =>
-        new Date(b.goal.dueAt).getTime() - new Date(a.goal.dueAt).getTime(),
-    )[0];
-  }, [ambassadorGoals]);
-  const pastGoals = useMemo(() => {
-    const now = new Date();
-    return ambassadorGoals
-      .filter(
-        (goal) =>
-          goal.goal.id !== currentGoal?.goal.id &&
-          new Date(goal.goal.dueAt) < now,
-      )
-      .sort(
-        (a, b) =>
-          new Date(b.goal.dueAt).getTime() - new Date(a.goal.dueAt).getTime(),
-      );
-  }, [ambassadorGoals, currentGoal]);
-  const currentGoalIsUp =
-    !currentGoal ||
-    new Date(currentGoal.goal.dueAt) < new Date() ||
-    currentGoal.stats.goalSuccessfulRecruits >=
-      currentGoal.goal.targetSuccessfulRecruits;
-  const showProminentGoalForm = !currentGoal || currentGoalIsUp;
+  const showProminentGoalForm = inviteGoalIsUp(currentGoal);
   const currentGoalSummary = useMemo(() => {
     if (!currentGoal) {
       return "Set a goal to track successful invitations.";

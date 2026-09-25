@@ -10,6 +10,7 @@ import {
   PreviewEmailHtmlResponse,
   PreviewTextDto,
   ReminderAnchorCandidate,
+  ReminderPreviewContextDto,
 } from "src/actions/dto/action.dto";
 import { NotificationScheduleEntryDto } from "src/actions/dto/notification-schedule.dto";
 import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
@@ -698,7 +699,7 @@ export class ActionEventReminderService {
 
   async getKeywordContextForPreview(
     eventId: number,
-    dto: PreviewEmailHtmlDto | PreviewTextDto,
+    dto: ReminderPreviewContextDto,
     sendTime?: Date,
   ) {
     const { event, deadlineEvent } = await this.loadEventsForPreview(eventId);
