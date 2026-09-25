@@ -1,3 +1,10 @@
+export function isLedBy(
+  community: { leaders: { id: number }[] },
+  userId: number | undefined,
+): boolean {
+  return community.leaders.some((leader) => leader.id === userId);
+}
+
 export function getMemberCount(community: {
   users: unknown[];
   leaders: unknown[];

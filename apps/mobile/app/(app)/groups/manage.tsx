@@ -19,6 +19,7 @@ import type {
 import {
   getMemberCount,
   groupAssignmentLabels,
+  isLedBy,
 } from "@alliance/shared/lib/communityUtils";
 import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
@@ -122,12 +123,8 @@ export default function GroupManageScreen() {
     newCommunity.allowMemberInvites;
 
   const { leaderCommunities, memberCommunities } = useMemo(() => {
-    const leader = (communities ?? []).filter((c) =>
-      c.leaders.some((l) => l.id === user?.id),
-    );
-    const member = (communities ?? []).filter(
-      (c) => !c.leaders.some((l) => l.id === user?.id),
-    );
+    const leader = (communities ?? []).filter((c) => isLedBy(c, user?.id));
+    const member = (communities ?? []).filter((c) => !isLedBy(c, user?.id));
     return {
       leaderCommunities: [...leader].sort(sortByName),
       memberCommunities: [...member].sort(sortByName),
@@ -647,9 +644,7 @@ export default function GroupManageScreen() {
                   <View className="gap-y-2 mt-4">
                     {sortedPublicCommunities.map((community) => {
                       const isMember = memberCommunityIds.has(community.id);
-                      const isLeader = community.leaders.some(
-                        (l) => l.id === user?.id,
-                      );
+                      const isLeader = isLedBy(community, user?.id);
                       const memberCount = getMemberCount(community);
                       const isFull =
                         community.maxCapacity !== null &&

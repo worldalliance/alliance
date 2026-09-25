@@ -18,7 +18,7 @@ import {
   hasActionsToComplete,
   sortMembersByNextTaskDue,
 } from "@alliance/shared/lib/communityMemberActions";
-import { getMemberCount } from "@alliance/shared/lib/communityUtils";
+import { getMemberCount, isLedBy } from "@alliance/shared/lib/communityUtils";
 import { groupSettings } from "@alliance/shared/lib/copy";
 import useActivities, {
   ActivityList,
@@ -467,10 +467,9 @@ function GroupMembersTab({
 }) {
   const { user } = useAuth();
   const leaders = community.leaders;
-  const leaderIds = useMemo(() => new Set(leaders.map((l) => l.id)), [leaders]);
   const nonLeaderMembers = useMemo(
-    () => community.users.filter((u) => !leaderIds.has(u.id)),
-    [community.users, leaderIds],
+    () => community.users.filter((u) => !isLedBy(community, u.id)),
+    [community],
   );
 
   const queryClient = useQueryClient();

@@ -1,6 +1,7 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { withCount } from "@alliance/common/plural";
 import type { OnetimeInviteDto } from "@alliance/shared/client";
+import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import { MEMBER_GOAL } from "@alliance/shared/lib/constants";
 import {
   deleteInviteConfirmation,
@@ -425,9 +426,7 @@ export default function InvitesScreen() {
   const leaderCommunities = useMemo(
     () =>
       user
-        ? communities.filter((community) =>
-            community.leaders.some((leader) => leader.id === user.id),
-          )
+        ? communities.filter((community) => isLedBy(community, user.id))
         : [],
     [communities, user],
   );

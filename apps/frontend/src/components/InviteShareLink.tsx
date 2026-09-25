@@ -1,6 +1,7 @@
 import { formatInviteMessage } from "@alliance/common/inviteMessage";
 import { withCount } from "@alliance/common/plural";
 import type { CommunityDto, ShareUrlMineDto } from "@alliance/shared/client";
+import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import { reusableInviteSettings } from "@alliance/shared/lib/inviteSettings";
 import { inviteDestinationLabel } from "@alliance/shared/lib/inviteUtils";
 import { useInviteMessageTemplate } from "@alliance/shared/lib/useInviteMessageTemplate";
@@ -49,7 +50,7 @@ const InviteShareLink = () => {
     () =>
       user
         ? communities.filter((community: CommunityDto) =>
-            community.leaders.some((leader) => leader.id === user.id),
+            isLedBy(community, user.id),
           )
         : [],
     [communities, user],

@@ -7,6 +7,7 @@ import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
 import type { CommunityDto, ShareUrlMineDto } from "@alliance/shared/client";
 import { communityCreateCommunity } from "@alliance/shared/client";
+import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
 import {
@@ -71,9 +72,7 @@ export default function InviteShareLink() {
 
   const leaderCommunities = useMemo(() => {
     if (!user) return [] as CommunityDto[];
-    return communities.filter((community) =>
-      community.leaders.some((leader) => leader.id === user.id),
-    );
+    return communities.filter((community) => isLedBy(community, user.id));
   }, [communities, user]);
 
   const leaderCommunitiesById = useMemo(

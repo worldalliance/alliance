@@ -12,6 +12,7 @@ import {
   communityCreateCommunity,
   userCreateOnetimeInvite,
 } from "@alliance/shared/client";
+import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
@@ -67,19 +68,13 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
       return;
     }
     didInitPlacement.current = true;
-    const led = communities.find((community: CommunityDto) =>
-      community.leaders.some((leader: { id: number }) => leader.id === user.id),
-    );
+    const led = communities.find((community) => isLedBy(community, user.id));
     setPlacement(led ? { kind: "community", id: led.id } : { kind: "new" });
   }, [communities, user]);
 
   const leaderCommunities = useMemo(() => {
     if (!user) return [] as CommunityDto[];
-    return communities.filter((community: CommunityDto) =>
-      community.leaders?.some(
-        (leader: { id: number }) => leader.id === user.id,
-      ),
-    );
+    return communities.filter((community) => isLedBy(community, user.id));
   }, [communities, user]);
 
   const isLeader = leaderCommunities.length > 0;

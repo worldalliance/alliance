@@ -2,6 +2,7 @@
 import { formatInviteMessage } from "@alliance/common/inviteMessage";
 import { withCount } from "@alliance/common/plural";
 import { OnetimeInviteDto } from "@alliance/shared/client";
+import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import { MEMBER_GOAL } from "@alliance/shared/lib/constants";
 import {
   deleteInviteConfirmation,
@@ -322,9 +323,7 @@ const InvitesPage = () => {
   const leaderCommunities = useMemo(
     () =>
       user
-        ? communities.filter((community) =>
-            community.leaders.some((leader) => leader.id === user.id),
-          )
+        ? communities.filter((community) => isLedBy(community, user.id))
         : [],
     [communities, user],
   );
