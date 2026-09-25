@@ -2,6 +2,8 @@
 import { hoursInDay } from "@alliance/common/duration";
 import { analyticsGetActionCompletionCurvesAdmin } from "@alliance/shared/client";
 import { ActionCompletionCurveDto } from "@alliance/shared/client/types.gen";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import chroma from "chroma-js";
 import { millisecondsInDay, millisecondsInHour } from "date-fns/constants";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -15,10 +17,11 @@ type ActionCompletionCurveChartProps = {
   title?: string;
   actionId?: number;
   showSelector?: boolean;
-  refreshKey?: number;
 };
 
 type GranularityMode = "daily" | "hourly";
+
+const noCurves: ActionCompletionCurveDto[] = [];
 
 function computeMaxOffset(
   curves: ActionCompletionCurveDto[],
@@ -50,12 +53,7 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
   title = "Completions throughout week",
   actionId,
   showSelector = true,
-  refreshKey,
 }) => {
-  const [actionCompletionCurves, setActionCompletionCurves] = useState<
-    ActionCompletionCurveDto[]
-  >([]);
-  const [loading, setLoading] = useState<boolean>(false);
   const [selectedActionId, setSelectedActionId] = useState<string>(
     actionId !== undefined ? String(actionId) : "all",
   );
@@ -68,24 +66,22 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
     setSelectedActionId(String(actionId));
   }, [actionId]);
 
-  const loadActionCompletionCurves = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Always fetch all curves - needed to compute the average line
-      const response = await analyticsGetActionCompletionCurvesAdmin({
+  const {
+    data: actionCompletionCurves = noCurves,
+    isPending,
+    isPlaceholderData,
+    isError,
+  } = useQuery({
+    queryKey: queryKeys.actionCompletionCurvesAdmin(granularity),
+    // Always fetch all curves - needed to compute the average line
+    queryFn: () =>
+      analyticsGetActionCompletionCurvesAdmin({
         query: { granularity },
-      });
-      setActionCompletionCurves(response.data ?? []);
-    } catch (err) {
-      console.error("Failed to load action completion curves", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [granularity]);
-
-  useEffect(() => {
-    void loadActionCompletionCurves();
-  }, [loadActionCompletionCurves, refreshKey]);
+        throwOnError: true,
+      }).then((r) => r.data),
+    placeholderData: keepPreviousData,
+  });
+  const loading = isPending || isPlaceholderData;
 
   const completionCurveActionOptions = useMemo(() => {
     return actionCompletionCurves
@@ -399,7 +395,11 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
       title={title}
       xType="number"
       loading={loading}
-      emptyMessage="No action completion curves available."
+      emptyMessage={
+        isError
+          ? "Unable to load action completion curves."
+          : "No action completion curves available."
+      }
       multiLineData={actionCompletionCurveChartData.multiLineData}
       getXValue={(d) => (d.x as number) ?? 0}
       getYValue={(d) =>
