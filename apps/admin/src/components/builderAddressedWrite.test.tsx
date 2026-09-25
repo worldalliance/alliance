@@ -1,4 +1,5 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
+import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -75,54 +76,53 @@ describe("FormBuilder hands a display block the addressed write", () => {
     outputViews: [],
   };
 
+  let finish: (body: unknown) => void = () => {};
+  let sent: string[] = [];
+  serveApi(
+    routes({
+      "POST /videos/upload": async ({ request }) => {
+        sent = (await request.formData())
+          .getAll("files")
+          .flatMap((part) => (part instanceof File ? [part.name] : []));
+        return new Promise<Response>((resolve) => {
+          finish = (body) => resolve(Response.json(body));
+        });
+      },
+    }),
+  );
+
   const openPage = (title: string) =>
     fireEvent.click(screen.getByRole("button", { name: title }));
 
   it("lands a video upload the admin paged away from", async () => {
-    let finish: (body: unknown) => void = () => {};
-    // A module mock would outlive this file, so the upload hangs on
-    // `global.fetch` instead.
-    const realFetch = global.fetch;
-    global.fetch = Object.assign(
-      () =>
-        new Promise<Response>((resolve) => {
-          finish = (body) =>
-            resolve({ ok: true, json: async () => body } as Response);
-        }),
-      { preconnect: () => {} },
-    );
+    const router = createMemoryRouter([
+      {
+        path: "/",
+        element: <FormBuilder initialSchema={schema} setFormId={() => {}} />,
+      },
+    ]);
+    renderIn(<RouterProvider router={router} />);
 
-    try {
-      const router = createMemoryRouter([
-        {
-          path: "/",
-          element: <FormBuilder initialSchema={schema} setFormId={() => {}} />,
-        },
-      ]);
-      renderIn(<RouterProvider router={router} />);
-
-      await act(async () => {
-        fireEvent.change(document.querySelector("input[type=file]")!, {
-          target: { files: [new File(["x"], "playlist.m3u8")] },
-        });
+    await act(async () => {
+      fireEvent.change(document.querySelector("input[type=file]")!, {
+        target: { files: [new File(["x"], "playlist.m3u8")] },
       });
+    });
+    expect(sent).toEqual(["playlist.m3u8"]);
 
-      openPage("Two");
-      fireEvent.change(screen.getByPlaceholderText("Page title"), {
-        target: { value: "Renamed" },
-      });
+    openPage("Two");
+    fireEvent.change(screen.getByPlaceholderText("Page title"), {
+      target: { value: "Renamed" },
+    });
 
-      await act(async () => {
-        finish({ key: "videos/one", id: 7 });
-      });
+    await act(async () => {
+      finish({ key: "videos/one", id: 7 });
+    });
 
-      expect(
-        screen.getByPlaceholderText<HTMLInputElement>("Page title").value,
-      ).toBe("Renamed");
-      openPage("One");
-      expect(screen.getByText("Manage video file")).toBeTruthy();
-    } finally {
-      global.fetch = realFetch;
-    }
+    expect(
+      screen.getByPlaceholderText<HTMLInputElement>("Page title").value,
+    ).toBe("Renamed");
+    openPage("One");
+    expect(screen.getByText("Manage video file")).toBeTruthy();
   });
 });

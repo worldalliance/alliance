@@ -97,3 +97,48 @@ it("keeps the caller's fallback when a proxy returns HTML", async () => {
     errorMessage({ error, fallback: "Could not upload. Try again." }),
   ).toBe("Could not upload. Try again.");
 });
+
+describe("a request refused for an expired session", () => {
+  let sent: string[] = [];
+  let refreshes = 0;
+  const expiredOnce = async (request: Request) => {
+    sent.push(await request.text());
+    return new Response(null, { status: sent.length === 1 ? 401 : 200 });
+  };
+
+  beforeEach(() => {
+    sent = [];
+    refreshes = 0;
+    api.alsoServing({
+      "POST /auth/refresh": () => {
+        refreshes++;
+        return Response.json({});
+      },
+    });
+  });
+
+  it("is sent again after the refresh", async () => {
+    const { fetch } = createClientConfig({ fetch: expiredOnce });
+
+    const res = await fetch!(
+      new Request("http://api.test/goal", { method: "POST", body: "{}" }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(sent).toEqual(["{}", "{}"]);
+  });
+
+  it("is not sent again when it carries a multipart body", async () => {
+    const { fetch } = createClientConfig({ fetch: expiredOnce });
+    const body = new FormData();
+    body.append("files", new File(["#EXTM3U"], "playlist.m3u8"));
+
+    const res = await fetch!(
+      new Request("http://api.test/videos/upload", { method: "POST", body }),
+    );
+
+    expect(res.status).toBe(401);
+    expect(sent).toHaveLength(1);
+    expect(refreshes).toBe(1);
+  });
+});

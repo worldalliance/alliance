@@ -71,6 +71,7 @@ export default function RootLayout() {
     client.setConfig({
       baseUrl: getApiUrl(),
       fetch: refreshingFetch({
+        // eslint-disable-next-line no-restricted-globals -- the generated client's transport
         fetch: fetch.bind(globalThis),
         getRefreshToken,
         saveTokens: saveSessionTokens,

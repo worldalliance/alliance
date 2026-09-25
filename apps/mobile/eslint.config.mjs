@@ -2,6 +2,7 @@
 import expoConfig from "eslint-config-expo/flat.js";
 import { defineConfig } from "eslint/config";
 import globals from "globals";
+import apiClientRules from "../../eslint/api-client-rules.mjs";
 import sharedRules from "../../eslint/shared-rules.mjs";
 
 export default defineConfig([
@@ -25,6 +26,7 @@ export default defineConfig([
     ignores: ["dist/*", "index.js", ".expo/"],
   },
   sharedRules,
+  apiClientRules,
   {
     rules: {
       "no-restricted-imports": [
