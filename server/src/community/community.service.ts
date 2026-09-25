@@ -1137,10 +1137,10 @@ export class CommunityService {
     return savedInvite;
   }
 
-  async approveCommunityInviteRequest(
+  private async findPendingInviteRequestForLeader(
     inviteId: number,
     userId: number,
-  ): Promise<CommunityInvite> {
+  ): Promise<{ invite: CommunityInvite; user: User }> {
     const userP = this.userRepository.findOne({ where: { id: userId } });
     const invite = await this.communityInviteRepository.findOneOrFail({
       where: { id: inviteId, deletedAt: IsNull() },
@@ -1164,6 +1164,18 @@ export class CommunityService {
         `User is not a leader of community ${invite.community.id}`,
       );
     }
+
+    return { invite, user };
+  }
+
+  async approveCommunityInviteRequest(
+    inviteId: number,
+    userId: number,
+  ): Promise<CommunityInvite> {
+    const { invite, user } = await this.findPendingInviteRequestForLeader(
+      inviteId,
+      userId,
+    );
 
     invite.status = CommunityInviteStatus.InviteePending;
     const savedInvite = await this.communityInviteRepository.save(invite);
@@ -1203,29 +1215,10 @@ export class CommunityService {
     inviteId: number,
     userId: number,
   ): Promise<void> {
-    const userP = this.userRepository.findOne({ where: { id: userId } });
-    const invite = await this.communityInviteRepository.findOneOrFail({
-      where: { id: inviteId, deletedAt: IsNull() },
-      relations: { invitedUser: true, invitingUser: true, community: true },
-    });
-
-    if (invite.status !== CommunityInviteStatus.RequestPending) {
-      throw new BadRequestException(
-        `Invite is not a pending request. Status: ${JSON.stringify(
-          invite.status,
-        )}`,
-      );
-    }
-
-    const user = await userP;
-    if (!user) {
-      throw new BadRequestException("User not found");
-    }
-    if (!user.leaderOfIds.some((cid) => cid === invite.community.id)) {
-      throw new BadRequestException(
-        `User is not a leader of community ${invite.community.id}`,
-      );
-    }
+    const { invite, user } = await this.findPendingInviteRequestForLeader(
+      inviteId,
+      userId,
+    );
 
     invite.status = CommunityInviteStatus.RequestRejected;
     await this.communityInviteRepository.save(invite);
