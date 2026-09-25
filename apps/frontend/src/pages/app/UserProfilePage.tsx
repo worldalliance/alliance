@@ -1,19 +1,17 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import { changedPhoto } from "@alliance/common/image-src";
 import { forCount } from "@alliance/common/plural";
-import { UpdateProfileDto } from "@alliance/shared/client";
 import { roleBadges } from "@alliance/shared/lib/copy";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { Features } from "@alliance/shared/lib/features";
 import useActivities, {
   ActivityList,
 } from "@alliance/shared/lib/useActivities";
+import { useProfileDraft } from "@alliance/shared/lib/useProfileDraft";
 import {
   friendMutationErrorMessage,
   useAcceptFriendRequestMutation,
   useRemoveFriendMutation,
   useSendFriendRequestMutation,
-  useUpdateProfileMutation,
   useUserCompletedActionCountQuery,
   useUserForumActivity,
   useUserFriendsQuery,
@@ -113,19 +111,25 @@ const UserProfilePage: React.FC = () => {
   const didFriendsFail = failedToLoad(friendsQuery);
 
   const [selectedTab, setSelectedTab] = useState(ProfileTabs.Activity);
-  const [isEditing, setIsEditing] = useState(false);
-
-  const [editName, setEditName] = useState<string>(user?.name ?? "");
-  const [editBio, setEditBio] = useState<string>("");
-  const [editAvatarUrl, setEditAvatarUrl] = useState<string | null>(null);
+  const {
+    isEditing,
+    setIsEditing,
+    name: editName,
+    setName: setEditName,
+    bio: editBio,
+    setBio: setEditBio,
+    avatarUrl: editAvatarUrl,
+    setAvatarUrl: setEditAvatarUrl,
+    isSaving: isSavingProfile,
+    save: saveProfile,
+    cancel: cancelProfileEdit,
+  } = useProfileDraft({ userId, profile, isMe });
   const [avatarEditorKey, setAvatarEditorKey] = useState(0);
 
-  const updateProfileMutation = useUpdateProfileMutation(userId);
   const sendFriendRequest = useSendFriendRequestMutation();
   const acceptFriendRequest = useAcceptFriendRequestMutation();
   const removeFriend = useRemoveFriendMutation();
 
-  const isSavingProfile = updateProfileMutation.isPending;
   const currentProfilePicture = profile?.profilePicture ?? null;
   const isProfileImageUploadPending =
     isSavingProfile && editAvatarUrl !== currentProfilePicture;
@@ -163,16 +167,7 @@ const UserProfilePage: React.FC = () => {
   });
 
   useEffect(() => {
-    if (!profile || !isMe || isEditing) return;
-    setEditName(profile.displayName || "");
-    setEditBio(profile.profileDescription || "");
-    setEditAvatarUrl(profile.profilePicture || null);
-  }, [profile, isMe, isEditing]);
-
-  // reset tab and edit mode on user change
-  useEffect(() => {
     setSelectedTab(ProfileTabs.Activity);
-    setIsEditing(false);
     setAvatarEditorKey((prev) => prev + 1);
   }, [id]);
 
@@ -235,36 +230,19 @@ const UserProfilePage: React.FC = () => {
   const handleSave = async () => {
     if (!user || isSavingProfile) return;
 
-    try {
-      const payload: UpdateProfileDto = {
-        name: editName,
-        profileDescription: editBio,
-        profilePicture: changedPhoto({
-          current: currentProfilePicture,
-          next: editAvatarUrl,
-        }),
-      };
-      const response = await updateProfileMutation.mutateAsync(payload);
-
-      if (response && id) {
-        setIsEditing(false);
-        if (isMe) {
-          await refreshUser();
-        }
-      }
-    } catch (err: unknown) {
-      console.error(err);
+    const saved = await saveProfile();
+    if (!saved.ok) {
+      console.error(saved.error);
+      return;
+    }
+    if (isMe) {
+      await refreshUser();
     }
   };
 
   const handleCancel = () => {
-    if (profile) {
-      setEditName(profile.displayName || "");
-      setEditBio(profile.profileDescription || "");
-      setEditAvatarUrl(profile.profilePicture || null);
-    }
+    cancelProfileEdit();
     setAvatarEditorKey((prev) => prev + 1);
-    setIsEditing(false);
   };
 
   const messagingEnabled = isFeatureEnabled(Features.Messaging);
