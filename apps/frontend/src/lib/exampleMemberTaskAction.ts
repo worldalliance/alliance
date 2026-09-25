@@ -8,7 +8,7 @@ import { milliseconds } from "date-fns";
 export const exampleMemberTaskAction: ActionWithAwayStatus = {
   name: "Ask your local cafe to switch to compostable cups",
   body: "We negotiated a long-term 20% discount with a compostable cup supplier, available to all cafes that members frequently visit.",
-  category: "environment",
+  category: ["environment"],
   id: 1,
   image: "",
   status: "member_action",

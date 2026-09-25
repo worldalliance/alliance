@@ -5,7 +5,8 @@ import {
   projectsFindAllAdmin,
   projectsFindOneAdmin,
   projectsRemoveAdmin,
-  projectsRenameAdmin,
+  projectsUpdateAdmin,
+  type ActionCategory,
   type ProjectDto,
 } from "@alliance/shared/client";
 import { optionSections } from "@alliance/shared/forms/optionSections";
@@ -19,6 +20,7 @@ import { format } from "date-fns";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
 import { Link } from "react-router";
+import { ActionCategoryPicker } from "./ActionCategoryIcons";
 import ConfirmDialog from "./ConfirmDialog";
 
 const NO_PROJECT = "none";
@@ -161,7 +163,7 @@ export function ActionProjectControls({
 
   const rename = useMutation({
     mutationFn: (params: { id: number; name: string }) =>
-      projectsRenameAdmin({
+      projectsUpdateAdmin({
         path: { id: params.id },
         body: { name: params.name },
         throwOnError: true,
@@ -284,6 +286,23 @@ export function ActionProjectSteps({
       ),
   });
 
+  const updateCategory = useMutation({
+    mutationFn: (category: ActionCategory[]) =>
+      projectsUpdateAdmin({
+        path: { id: projectId },
+        body: { category },
+        throwOnError: true,
+      }),
+    onSuccess: () => invalidate(),
+    onError: (error) =>
+      toast.error(
+        errorMessage({
+          error,
+          fallback: "Could not change the project's categories",
+        }),
+      ),
+  });
+
   if (error) {
     return (
       <p className="text-sm text-red-600">
@@ -296,7 +315,14 @@ export function ActionProjectSteps({
   return (
     <div className="rounded border border-gray-2 bg-white p-3 text-sm">
       <div className="flex flex-row items-center justify-between gap-2 mb-2">
-        <p className="font-medium">{project.name}</p>
+        <div className="flex flex-row items-center gap-2">
+          <p className="font-medium">{project.name}</p>
+          <ActionCategoryPicker
+            value={project.category}
+            onChange={(category) => updateCategory.mutate(category)}
+            disabled={updateCategory.isPending}
+          />
+        </div>
         <Button
           color={ButtonColor.Red}
           onClick={() => setConfirmingDelete(true)}

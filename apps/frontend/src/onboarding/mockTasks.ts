@@ -141,7 +141,7 @@ export const MOCK_TASKS: ActionWithAwayStatus[] = [
     shortDescription:
       "Pick when we should nudge you, so a week never goes by without you hearing from us.",
     body: "Tell us the day and time that suits you. We send one reminder per action, and nothing else.",
-    category: "community",
+    category: ["meta"],
     timeEstimate: 2,
     usersCompleted: 412,
     usersJoined: 480,
@@ -152,7 +152,7 @@ export const MOCK_TASKS: ActionWithAwayStatus[] = [
     shortDescription:
       "Say hello to your group. A sentence about who you are and why you joined is plenty.",
     body: "Your group is the handful of members who will notice whether you show up. Post a short introduction so they know who you are.",
-    category: "community",
+    category: ["meta"],
     timeEstimate: 5,
     usersCompleted: 388,
     usersJoined: 480,
@@ -163,7 +163,7 @@ export const MOCK_TASKS: ActionWithAwayStatus[] = [
     shortDescription:
       "The Roadless Rule protects 58 million acres of national forest. The comment period closes this week.",
     body: "We drafted talking points you can adapt. Comments in your own words carry more weight than a form letter, so change what you like before submitting.",
-    category: "environment",
+    category: ["environment"],
     timeEstimate: 8,
     usersCompleted: 1240,
     usersJoined: 1600,

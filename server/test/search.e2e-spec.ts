@@ -45,7 +45,7 @@ describe("Search (e2e)", () => {
     targetAction = await actionRepo.save(
       actionRepo.create({
         name: "Targeted Cleanup Action",
-        category: "Environment",
+        category: [],
         body: "Clean the neighbourhood park",
         shortDescription: "Cleanup day",
       }),

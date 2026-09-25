@@ -55,7 +55,7 @@ describe("findUsersToSuspend (e2e)", () => {
     const action = await actionRepo.save(
       actionRepo.create({
         name: actionName,
-        category: "Suspension Test",
+        category: [],
         body: "Body",
         shortDescription: "Short description",
         suite,
@@ -209,7 +209,7 @@ describe("findUsersToSuspend (e2e)", () => {
     const inProgressAction = await actionRepo.save(
       actionRepo.create({
         name: "Action In-Progress",
-        category: "Suspension Test",
+        category: [],
         body: "Body",
         shortDescription: "Short description",
         suite: inProgressSuite,
@@ -286,7 +286,7 @@ describe("findUsersToSuspend (e2e)", () => {
     const optionalAction = await actionRepo.save(
       actionRepo.create({
         name: "Optional Action",
-        category: "Suspension Test",
+        category: [],
         body: "Body",
         shortDescription: "Short description",
         suite: optionalSuite,

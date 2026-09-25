@@ -3,6 +3,7 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { urlMatchesDomain } from "@alliance/common/url";
 import {
+  ActionCategory,
   ActionReviewerDto,
   ActionReviewerIcon,
   ActionSuiteDto,
@@ -16,6 +17,7 @@ import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import React, { useMemo, useRef } from "react";
 import { makeTempId } from "../lib/tempId";
+import { ActionCategoryPicker } from "./ActionCategoryIcons";
 import CohortExpressionBuilder from "./CohortExpressionBuilder";
 import FormSection from "./FormSection";
 import FormTextarea from "./FormTextarea";
@@ -51,6 +53,7 @@ interface ActionFormProps {
   onCohortExpressionChange: (expr: CohortExpression | null) => void;
   authorIds: number[];
   onAuthorsChange: (ids: number[]) => void;
+  onCategoryChange: (categories: ActionCategory[]) => void;
   reviewers: ReviewerRow[];
   onReviewersChange: (reviewers: ReviewerRow[]) => void;
   actionId?: number;
@@ -122,6 +125,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
   onCohortExpressionChange,
   authorIds,
   onAuthorsChange,
+  onCategoryChange,
   reviewers,
   onReviewersChange,
   allActions = [],
@@ -135,7 +139,8 @@ const ActionForm: React.FC<ActionFormProps> = ({
     | "select"
     | "file"
     | "checkbox"
-    | "markdowntextarea";
+    | "markdowntextarea"
+    | "category";
 
   type FieldSection = "content" | "settings";
 
@@ -236,7 +241,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
       {
         name: "category",
         label: "Category",
-        type: "text",
+        type: "category",
         section: "settings",
         gridCol: true,
       },
@@ -421,6 +426,20 @@ const ActionForm: React.FC<ActionFormProps> = ({
               />
             </div>
           )}
+        </div>
+      );
+    }
+
+    if (f.type === "category") {
+      return (
+        <div key={String(f.name)}>
+          <span className="block text-sm font-medium text-gray-700 mb-1">
+            {f.label}
+          </span>
+          <ActionCategoryPicker
+            value={form.category}
+            onChange={onCategoryChange}
+          />
         </div>
       );
     }

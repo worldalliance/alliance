@@ -1,4 +1,9 @@
-import { ApiProperty, PickType } from "@nestjs/swagger";
+import {
+  ApiProperty,
+  IntersectionType,
+  PartialType,
+  PickType,
+} from "@nestjs/swagger";
 import { Transform } from "class-transformer";
 import {
   IsInt,
@@ -12,11 +17,12 @@ import type { ProjectStep, ProjectWithSteps } from "../projects.service";
 
 export const PROJECT_NAME_MAX_LENGTH = 100;
 
-export class ProjectDto extends PickType(Project, ["id", "name"]) {
+export class ProjectDto extends PickType(Project, ["id", "name", "category"]) {
   constructor(input: Project) {
     super();
     this.id = input.id;
     this.name = input.name;
+    this.category = input.category;
   }
 }
 
@@ -59,6 +65,10 @@ export class ProjectNameDto {
   @MaxLength(PROJECT_NAME_MAX_LENGTH)
   name: string;
 }
+
+export class UpdateProjectDto extends PartialType(
+  IntersectionType(ProjectNameDto, PickType(Project, ["category"])),
+) {}
 
 export class AssignProjectDto {
   @ApiProperty({ type: Number, nullable: true })

@@ -1,5 +1,6 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { milliseconds } from "date-fns";
+import { ActionCategory } from "src/actions/action-category";
 import { ActionsService } from "src/actions/actions.service";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { ContractService } from "src/contract/contract.service";
@@ -92,7 +93,7 @@ describe("Actions (e2e)", () => {
     const action = await actionRepo.save(
       actionRepo.create({
         name,
-        category: "Test",
+        category: [],
         body: "Body copy",
         shortDescription: `${name} short description`,
         visibilityMode: VisibilityMode.Public,
@@ -140,7 +141,7 @@ describe("Actions (e2e)", () => {
     // Create test action with MemberAction status
     testAction = actionRepo.create({
       name: "Test Action",
-      category: "Test",
+      category: [],
       body: "Test action for forum tests",
       visibilityMode: VisibilityMode.Public,
       cohortExpression: {
@@ -151,7 +152,7 @@ describe("Actions (e2e)", () => {
 
     testDraftAction = actionRepo.create({
       name: "Test Draft Action",
-      category: "Test",
+      category: [],
       body: "Test action for forum tests",
       visibilityMode: VisibilityMode.Public,
       cohortExpression: {
@@ -223,7 +224,7 @@ describe("Actions (e2e)", () => {
       const newAction: CreateActionDto = {
         name: "Test Action",
         body: "Do something important",
-        category: "category",
+        category: [],
         image: "",
         timeEstimate: 5,
         shortDescription: "Do something important",
@@ -248,6 +249,44 @@ describe("Actions (e2e)", () => {
       await actionRepo.query("DELETE FROM action WHERE id = $1", [res.body.id]);
     });
 
+    it("admin sets an action's category, rejecting unknown or repeated values", async () => {
+      const action = await actionRepo.save({
+        name: "Categorized Action",
+        category: [ActionCategory.Environment],
+        body: "Test",
+      });
+      const patch = (category: unknown) =>
+        request(ctx.app.getHttpServer())
+          .patch(`/actions/${action.id}`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({ category });
+      const stored = async () =>
+        (await actionRepo.findOneByOrFail({ id: action.id })).category;
+
+      expect(
+        (await patch([ActionCategory.Democracy, ActionCategory.Meta])).status,
+      ).toBe(200);
+      expect(await stored()).toEqual([
+        ActionCategory.Democracy,
+        ActionCategory.Meta,
+      ]);
+
+      expect((await patch(["climate"])).status).toBe(400);
+      expect(
+        (await patch([ActionCategory.Meta, ActionCategory.Meta])).status,
+      ).toBe(400);
+      expect((await patch("meta")).status).toBe(400);
+      expect(await stored()).toEqual([
+        ActionCategory.Democracy,
+        ActionCategory.Meta,
+      ]);
+
+      expect((await patch([])).status).toBe(200);
+      expect(await stored()).toEqual([]);
+
+      await actionRepo.query("DELETE FROM action WHERE id = $1", [action.id]);
+    });
+
     it("action creation with missing data rejected", async () => {
       const res = await request(ctx.app.getHttpServer())
         .post("/actions/create")
@@ -264,7 +303,7 @@ describe("Actions (e2e)", () => {
       const base: CreateActionDto = {
         name: "Bad Cohort Action",
         body: "Body",
-        category: "category",
+        category: [],
         image: "",
         timeEstimate: 5,
         shortDescription: "Short",
@@ -315,7 +354,7 @@ describe("Actions (e2e)", () => {
         .send({
           name: "Clearable Cohort Action",
           body: "Body",
-          category: "category",
+          category: [],
           image: "",
           timeEstimate: 5,
           shortDescription: "Short",
@@ -442,7 +481,7 @@ describe("Actions (e2e)", () => {
         .save({ name: "Test Project" });
       const action = await actionRepo.save({
         name: "Project Step Action",
-        category: "Test",
+        category: [],
         body: "Test",
         project,
       });
@@ -455,6 +494,7 @@ describe("Actions (e2e)", () => {
       expect(res.body.project).toEqual({
         id: project.id,
         name: "Test Project",
+        category: [],
       });
     });
 
@@ -510,7 +550,7 @@ describe("Actions (e2e)", () => {
       const manualAction = await actionRepo.save(
         actionRepo.create({
           name: `Manual Cohort Action ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Manual cohort body",
           shortDescription: "Manual cohort short description",
           visibilityMode: VisibilityMode.Public,
@@ -595,7 +635,7 @@ describe("Actions (e2e)", () => {
       const manualAction = await actionRepo.save(
         actionRepo.create({
           name: `Single Manual Cohort Action ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Manual cohort body",
           shortDescription: "Manual cohort short description",
           visibilityMode: VisibilityMode.Public,
@@ -680,7 +720,7 @@ describe("Actions (e2e)", () => {
       const plannedAction = await actionRepo.save(
         actionRepo.create({
           name: `Phaseless Action ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Phaseless body",
           shortDescription: "Phaseless short description",
           visibilityMode: VisibilityMode.Public,
@@ -727,7 +767,7 @@ describe("Actions (e2e)", () => {
       const prerequisiteAction = await actionRepo.save(
         actionRepo.create({
           name: `Prerequisite Action ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Prerequisite body",
           visibilityMode: VisibilityMode.Public,
         }),
@@ -759,7 +799,7 @@ describe("Actions (e2e)", () => {
       const targetAction = await actionRepo.save(
         actionRepo.create({
           name: `CompletedAction Cohort ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Body",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
@@ -816,7 +856,7 @@ describe("Actions (e2e)", () => {
       const prerequisiteAction = await actionRepo.save(
         actionRepo.create({
           name: `InProgress Prereq ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Body",
           visibilityMode: VisibilityMode.Public,
           cohortExpression: {
@@ -870,7 +910,7 @@ describe("Actions (e2e)", () => {
       const targetAction = await actionRepo.save(
         actionRepo.create({
           name: `InProgressAction Cohort ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Body",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
@@ -954,7 +994,7 @@ describe("Actions (e2e)", () => {
       const targetAction = await actionRepo.save(
         actionRepo.create({
           name: `GroupLead Cohort ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Body",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
@@ -1191,7 +1231,7 @@ describe("Actions (e2e)", () => {
       const targetAction = await actionRepo.save(
         actionRepo.create({
           name: `FormField Cohort ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Body",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
@@ -1303,7 +1343,7 @@ describe("Actions (e2e)", () => {
       const targetAction = await actionRepo.save(
         actionRepo.create({
           name: `FormField Any Cohort ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Body",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
@@ -1372,7 +1412,7 @@ describe("Actions (e2e)", () => {
       const prerequisiteAction = await actionRepo.save(
         actionRepo.create({
           name: `AND Prereq ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Body",
           visibilityMode: VisibilityMode.Public,
         }),
@@ -1399,7 +1439,7 @@ describe("Actions (e2e)", () => {
       const targetAction = await actionRepo.save(
         actionRepo.create({
           name: `AND Cohort ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Body",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
@@ -1659,7 +1699,7 @@ describe("Actions (e2e)", () => {
       it("new action with no events should have Draft status", async () => {
         const newAction = actionRepo.create({
           name: "Status Test Action",
-          category: "Test",
+          category: [],
           body: "Test action for status computation",
         });
         await actionRepo.save(newAction);
@@ -1680,7 +1720,7 @@ describe("Actions (e2e)", () => {
       it("adding first event should change status from Draft to new status", async () => {
         const newAction = actionRepo.create({
           name: "Status Transition Test",
-          category: "Test",
+          category: [],
           body: "Test action for status transitions",
         });
         await actionRepo.save(newAction);
@@ -1720,7 +1760,7 @@ describe("Actions (e2e)", () => {
       it("status should reflect most recent past event when multiple events exist", async () => {
         const newAction = actionRepo.create({
           name: "Multi Event Test",
-          category: "Test",
+          category: [],
           body: "Test action for multiple events",
         });
         await actionRepo.save(newAction);
@@ -1766,7 +1806,7 @@ describe("Actions (e2e)", () => {
       it("future events should not affect current status", async () => {
         const newAction = actionRepo.create({
           name: "Future Event Test",
-          category: "Test",
+          category: [],
           body: "Test action for future events",
         });
         await actionRepo.save(newAction);
@@ -1859,7 +1899,7 @@ describe("Actions (e2e)", () => {
       it("status computation should handle complex timeline scenarios", async () => {
         const newAction = actionRepo.create({
           name: "Complex Timeline Test",
-          category: "Test",
+          category: [],
           body: "Test action for complex status timeline",
         });
         await actionRepo.save(newAction);
@@ -2684,7 +2724,7 @@ describe("Actions (e2e)", () => {
       const action = await actionRepo.save(
         actionRepo.create({
           name,
-          category: "Test",
+          category: [],
           body: "Ordering test action",
           shortDescription: `${name} short description`,
           visibilityMode: VisibilityMode.Public,
@@ -3090,7 +3130,7 @@ describe("Actions (e2e)", () => {
       onboardingAction = await actionRepo.save(
         actionRepo.create({
           name: `Onboarding Eligibility Test ${Date.now()}`,
-          category: "Test",
+          category: [],
           body: "Onboarding action body",
           shortDescription: "Onboarding short desc",
           visibilityMode: VisibilityMode.Public,
@@ -3661,7 +3701,7 @@ describe("Actions (e2e)", () => {
     ): CreateActionDto => ({
       name,
       body: "Body",
-      category: "category",
+      category: [],
       image: "",
       timeEstimate: 5,
       shortDescription: "Short",
@@ -3857,7 +3897,7 @@ describe("Actions (e2e)", () => {
         .send({
           name: "Targeted Action",
           body: "Body",
-          category: "category",
+          category: [],
           image: "",
           timeEstimate: 5,
           shortDescription: "Short",
@@ -4005,7 +4045,7 @@ describe("Actions (e2e)", () => {
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({
           name: "Duplicated images",
-          category: "",
+          category: [],
           body: "",
           isContractSigningAction: false,
           visibilityMode: VisibilityMode.Public,
@@ -4026,7 +4066,7 @@ describe("Actions (e2e)", () => {
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({
           name: "Typed thumbnail",
-          category: "",
+          category: [],
           body: "",
           isContractSigningAction: false,
           visibilityMode: VisibilityMode.Public,
@@ -4046,7 +4086,7 @@ describe("Actions (e2e)", () => {
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({
           name: "Key-shaped thumbnail",
-          category: "",
+          category: [],
           body: "",
           isContractSigningAction: false,
           visibilityMode: VisibilityMode.Public,

@@ -1,6 +1,7 @@
 import { milliseconds } from "date-fns";
 import request from "supertest";
 import type { Repository } from "typeorm";
+import { ActionCategory } from "../src/actions/action-category";
 import {
   ActionEvent,
   ActionStatus,
@@ -25,7 +26,7 @@ describe("Projects (e2e)", () => {
   }) => {
     const action = await actionRepo.save({
       name: params.name,
-      category: "Test",
+      category: [],
       body: "Test",
     });
     if (params.memberActionAt) {
@@ -82,6 +83,7 @@ describe("Projects (e2e)", () => {
     expect(created.body).toEqual({
       id: expect.any(Number),
       name: "Water quality",
+      category: [],
     });
 
     const list = await asAdmin(request(server()).get("/projects")).expect(200);
@@ -107,7 +109,7 @@ describe("Projects (e2e)", () => {
     const renamed = await asAdmin(request(server()).patch(`/projects/${a.id}`))
       .send({ name: "A2" })
       .expect(200);
-    expect(renamed.body).toEqual({ id: a.id, name: "A2" });
+    expect(renamed.body).toEqual({ id: a.id, name: "A2", category: [] });
 
     await asAdmin(request(server()).patch(`/projects/${a.id}`))
       .send({ name: "B" })
@@ -115,6 +117,35 @@ describe("Projects (e2e)", () => {
     await asAdmin(request(server()).patch(`/projects/999999`))
       .send({ name: "C" })
       .expect(404);
+  });
+
+  it("sets and clears a project's category, rejecting unknown or repeated values", async () => {
+    const project = await projectRepo.save({ name: "Categorized" });
+    const patch = () =>
+      asAdmin(request(server()).patch(`/projects/${project.id}`));
+
+    const set = await patch()
+      .send({ category: [ActionCategory.Poverty, ActionCategory.Meta] })
+      .expect(200);
+    expect(set.body).toEqual({
+      id: project.id,
+      name: "Categorized",
+      category: [ActionCategory.Poverty, ActionCategory.Meta],
+    });
+
+    await patch()
+      .send({ category: ["climate"] })
+      .expect(400);
+    await patch()
+      .send({ category: [ActionCategory.Poverty, ActionCategory.Poverty] })
+      .expect(400);
+    await patch().send({ category: "poverty" }).expect(400);
+
+    const cleared = await patch().send({ category: [] }).expect(200);
+    expect(cleared.body.category).toEqual([]);
+    expect((await projectRepo.findOneByOrFail({ id: project.id })).name).toBe(
+      "Categorized",
+    );
   });
 
   it("assigns and clears an action's project", async () => {
@@ -127,6 +158,7 @@ describe("Projects (e2e)", () => {
     expect(await actionProject(action.id)).toEqual({
       id: project.id,
       name: "Assign",
+      category: [],
     });
 
     await asAdmin(request(server()).put(`/projects/actions/${action.id}`))

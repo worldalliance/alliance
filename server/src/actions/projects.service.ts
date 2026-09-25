@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { isUniqueViolation } from "src/utils/db-errors";
 import { Repository } from "typeorm";
+import type { ActionCategory } from "./action-category";
 import { Action } from "./entities/action.entity";
 import { Project } from "./entities/project.entity";
 
@@ -50,10 +51,15 @@ export class ProjectsService {
     return this.saveName(this.projectRepository.create({ name }));
   }
 
-  async rename(params: { id: number; name: string }): Promise<Project> {
+  async update(params: {
+    id: number;
+    name?: string;
+    category?: ActionCategory[];
+  }): Promise<Project> {
     const project = await this.projectRepository.findOneBy({ id: params.id });
     if (!project) throw new NotFoundException(`Project ${params.id} not found`);
-    project.name = params.name;
+    if (params.name !== undefined) project.name = params.name;
+    if (params.category !== undefined) project.category = params.category;
     return this.saveName(project);
   }
 

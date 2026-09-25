@@ -9,6 +9,7 @@ import { R } from "@alliance/common/result";
 import { ensureHttpProtocol } from "@alliance/common/url";
 import type { ActionSuiteDto } from "@alliance/shared/client";
 import {
+  ActionCategory,
   ActionDto,
   actionsExportActionAdmin,
   actionsFindAllWithDraftsAdmin,
@@ -68,6 +69,7 @@ import React, {
   useState,
 } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
+import { ActionCategoryIcons } from "../components/ActionCategoryIcons";
 import ActionCompletionCurveChart from "../components/ActionCompletionCurveChart";
 import ActionFollowUpFormsTab from "../components/ActionFollowUpFormsTab";
 import ActionForm, { type ReviewerRow } from "../components/ActionForm";
@@ -339,7 +341,7 @@ const ActionDashboard: React.FC = () => {
 
   const [form, setForm] = useState<CreateActionDto>({
     name: "",
-    category: "",
+    category: [],
     image: "",
     body: "",
     timeEstimate: 0,
@@ -364,7 +366,7 @@ const ActionDashboard: React.FC = () => {
     if (isNew) {
       setForm({
         name: "",
-        category: "",
+        category: [],
         image: "",
         body: "",
         timeEstimate: 0,
@@ -673,6 +675,10 @@ const ActionDashboard: React.FC = () => {
     }));
   }, []);
 
+  const handleCategoryChange = useCallback((category: ActionCategory[]) => {
+    setForm((prev) => ({ ...prev, category }));
+  }, []);
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     // Clear the input so re-picking the same file after a failure still fires a
@@ -955,6 +961,11 @@ const ActionDashboard: React.FC = () => {
             <h1 className="text-[#111] text-[16pt] font-bold">
               {isNew ? "Create New Action" : `${action?.name}`}
             </h1>
+            {action && !action.project && (
+              <div className="flex items-center">
+                <ActionCategoryIcons categories={action.category} />
+              </div>
+            )}
           </div>
           <button
             onClick={handleCancel}
@@ -1012,6 +1023,7 @@ const ActionDashboard: React.FC = () => {
             onCohortExpressionChange={handleCohortExpressionChange}
             authorIds={form.authorIds ?? []}
             onAuthorsChange={handleAuthorsChange}
+            onCategoryChange={handleCategoryChange}
             reviewers={reviewerRows}
             onReviewersChange={setReviewerRows}
             allActions={allActions}
@@ -1584,6 +1596,7 @@ const ActionDashboard: React.FC = () => {
                   onCohortExpressionChange={handleCohortExpressionChange}
                   authorIds={form.authorIds ?? []}
                   onAuthorsChange={handleAuthorsChange}
+                  onCategoryChange={handleCategoryChange}
                   reviewers={reviewerRows}
                   onReviewersChange={setReviewerRows}
                   allActions={allActions}

@@ -77,7 +77,7 @@ describe("Staff preview (e2e)", () => {
     const action = await actionRepo.save(
       actionRepo.create({
         name: params.name,
-        category: "Test",
+        category: [],
         body: "Body",
         shortDescription: "Short",
         visibilityMode: VisibilityMode.Public,

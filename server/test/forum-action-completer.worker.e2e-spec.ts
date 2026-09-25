@@ -179,7 +179,7 @@ describe("ForumActionCompleterWorker (e2e)", () => {
     const action = await actionRepo.save(
       actionRepo.create({
         name: "Forum Action",
-        category: "Forum",
+        category: [],
         body: "Action body",
         shortDescription: "Short description",
         onboarding: true,
@@ -336,7 +336,7 @@ describe("ForumActionCompleterWorker (e2e)", () => {
     const action = await actionRepo.save(
       actionRepo.create({
         name: "Forum Action Window",
-        category: "Forum",
+        category: [],
         body: "Action body",
         shortDescription: "Short description",
         shouldCompleteAfterDeadline: false,

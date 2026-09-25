@@ -119,7 +119,7 @@ describe("Forum (e2e)", () => {
     // Create test action
     testAction = actionRepo.create({
       name: "Test Action",
-      category: "Test",
+      category: [],
       body: "Test action for forum tests",
       status: ActionStatus.MemberAction,
       cohortExpression: {

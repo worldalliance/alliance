@@ -165,7 +165,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const action = await actionRepo.save(
       actionRepo.create({
         name,
-        category: "Testing",
+        category: [],
         body: "Body copy",
         shortDescription: "Short description",
         suite,
@@ -2746,7 +2746,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const action = await actionRepo.save(
       actionRepo.create({
         name,
-        category: "Testing",
+        category: [],
         body: "Body copy",
         shortDescription: "Short description",
         cohortExpression,
@@ -2778,7 +2778,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const prereqAction = await actionRepo.save(
       actionRepo.create({
         name: uniqueName("prereq"),
-        category: "Testing",
+        category: [],
         body: "Body",
         shortDescription: "Short",
       }),

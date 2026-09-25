@@ -60,6 +60,11 @@ export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_requ
 
 export type NotifPriority = 'low' | 'high';
 
+/**
+ * Alliance goals the action works towards, or meta
+ */
+export type ActionCategory = 'meta' | 'environment' | 'poverty' | 'democracy' | 'technology';
+
 export type VisibilityMode = 'public' | 'all_members' | 'participating_groups';
 
 export type CustomActionStat = 'none' | 'users_invited';
@@ -327,6 +332,10 @@ export type ActionSuite = {
 export type Project = {
     id: number;
     name: string;
+    /**
+     * Alliance goals the project works towards, or meta
+     */
+    category: Array<ActionCategory>;
     createdAt: string;
     updatedAt: string;
     actions?: Array<Action>;
@@ -368,9 +377,9 @@ export type Action = {
      */
     name: string;
     /**
-     * Category of the action
+     * Alliance goals the action works towards, or meta
      */
-    category: string;
+    category: Array<ActionCategory>;
     /**
      * Image URL for the action
      */
@@ -2103,6 +2112,10 @@ export type UserActionStatusDto = {
 export type ProjectDto = {
     id: number;
     name: string;
+    /**
+     * Alliance goals the project works towards, or meta
+     */
+    category: Array<ActionCategory>;
 };
 
 export type ActionDto = {
@@ -2115,9 +2128,9 @@ export type ActionDto = {
      */
     name: string;
     /**
-     * Category of the action
+     * Alliance goals the action works towards, or meta
      */
-    category: string;
+    category: Array<ActionCategory>;
     /**
      * Image URL for the action
      */
@@ -2403,9 +2416,9 @@ export type AdminActionDto = {
      */
     name: string;
     /**
-     * Category of the action
+     * Alliance goals the action works towards, or meta
      */
-    category: string;
+    category: Array<ActionCategory>;
     /**
      * Image URL for the action
      */
@@ -2682,9 +2695,9 @@ export type CreateActionDto = {
      */
     name: string;
     /**
-     * Category of the action
+     * Alliance goals the action works towards, or meta
      */
-    category: string;
+    category: Array<ActionCategory>;
     /**
      * Image URL for the action
      */
@@ -2773,9 +2786,9 @@ export type UpdateActionDto = {
      */
     name?: string;
     /**
-     * Category of the action
+     * Alliance goals the action works towards, or meta
      */
-    category?: string;
+    category?: Array<ActionCategory>;
     /**
      * Image URL for the action
      */
@@ -3043,9 +3056,9 @@ export type ExportActionDto = {
      */
     name: string;
     /**
-     * Category of the action
+     * Alliance goals the action works towards, or meta
      */
-    category: string;
+    category: Array<ActionCategory>;
     /**
      * Image URL for the action
      */
@@ -3260,6 +3273,10 @@ export type ProjectWithStepsDto = {
     id: number;
     name: string;
     /**
+     * Alliance goals the project works towards, or meta
+     */
+    category: Array<ActionCategory>;
+    /**
      * The project's actions, ordered by member-action start
      */
     steps: Array<ProjectStepDto>;
@@ -3267,6 +3284,14 @@ export type ProjectWithStepsDto = {
 
 export type ProjectNameDto = {
     name: string;
+};
+
+export type UpdateProjectDto = {
+    name?: string;
+    /**
+     * Alliance goals the project works towards, or meta
+     */
+    category?: Array<ActionCategory>;
 };
 
 export type AssignProjectDto = {
@@ -10816,8 +10841,8 @@ export type ProjectsFindOneAdminResponses = {
 
 export type ProjectsFindOneAdminResponse = ProjectsFindOneAdminResponses[keyof ProjectsFindOneAdminResponses];
 
-export type ProjectsRenameAdminData = {
-    body: ProjectNameDto;
+export type ProjectsUpdateAdminData = {
+    body: UpdateProjectDto;
     path: {
         id: number;
     };
@@ -10825,20 +10850,20 @@ export type ProjectsRenameAdminData = {
     url: '/projects/{id}';
 };
 
-export type ProjectsRenameAdminErrors = {
+export type ProjectsUpdateAdminErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type ProjectsRenameAdminError = ProjectsRenameAdminErrors[keyof ProjectsRenameAdminErrors];
+export type ProjectsUpdateAdminError = ProjectsUpdateAdminErrors[keyof ProjectsUpdateAdminErrors];
 
-export type ProjectsRenameAdminResponses = {
+export type ProjectsUpdateAdminResponses = {
     200: ProjectDto;
 };
 
-export type ProjectsRenameAdminResponse = ProjectsRenameAdminResponses[keyof ProjectsRenameAdminResponses];
+export type ProjectsUpdateAdminResponse = ProjectsUpdateAdminResponses[keyof ProjectsUpdateAdminResponses];
 
 export type ProjectsAssignActionAdminData = {
     body: AssignProjectDto;

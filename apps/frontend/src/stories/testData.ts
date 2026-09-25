@@ -11,7 +11,7 @@ export const testActions: ActionDto[] = [
   {
     name: "Save 2,500 acres of Ecuador cloud forest",
     body: "The Alliance is a global group of people that abide by a process which governs the use of our collective power. We seek to unite millions to billions of people into one cooperative force that represents humanity's collective interests. \n \n Our mission is to build a civilization that serves all individuals in their pursuit of life, liberty, and happiness – a world in which we can take pride. Most pressingly, we seek to resolve ongoing global crises, which include environmental destruction, extreme poverty, democratic dysfunction, and unsafe technological development. It is our aim to end these crises in their entirety in the coming years, not to make incremental improvements \n\n\n The Alliance is a global group of people that abide by a process which governs the use of our collective power. We seek to unite millions to billions of people into one cooperative force that represents humanity's collective interests. \n \n Our mission is to build a civilization that serves all individuals in their pursuit of life, liberty, and happiness – a world in which we can take pride. Most pressingly, we seek to resolve ongoing global crises, which include environmental destruction, extreme poverty, democratic dysfunction, and unsafe technological development. It is our aim to end these crises in their entirety in the coming years, not to make incremental improvements",
-    category: "Climate Change",
+    category: ["environment"],
     id: 1,
     image: "",
     status: "member_action",
@@ -58,7 +58,7 @@ export const testActions: ActionDto[] = [
   {
     name: "Make Target end stocking of Coca-Cola single-use plastic bottles",
     body: "This is a description of a task that is doing something else. It is a task that is doing something else. It is a task that is doing something else which is a task that is doing something else.",
-    category: "Climate Change",
+    category: ["environment"],
     id: 2,
     image: "",
     status: "member_action",

@@ -530,7 +530,7 @@ describe("Notifications (e2e)", () => {
     const action = await actionRepo.save(
       actionRepo.create({
         name: "Markdown Test Action",
-        category: "Test",
+        category: [],
         body: "test body",
       }),
     );

@@ -7,11 +7,14 @@ import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { parseActionDto } from "@alliance/shared/parsed-dtos";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import ActionCategoryFilter from "../components/ActionCategoryFilter";
 import ActionListCard from "../components/ActionListCard";
+import ActionStatusBucketFilter from "../components/ActionStatusBucketFilter";
 import ActionTimeline from "../components/ActionTimeline";
 import CreateActionMenu from "../components/CreateActionMenu";
-import { ActionCategory, actionCategory } from "../lib/actionCategory";
+import {
+  ActionStatusBucket,
+  actionStatusBucket,
+} from "../lib/actionStatusBucket";
 import { describeCohortExpression } from "../lib/describeCohortExpression";
 
 export const getLastPastEventDate = (
@@ -53,14 +56,14 @@ const ActionsList: React.FC = () => {
   const [actionsLoading, setActionsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const { tags } = useTagsAdmin();
-  const [shownCategories, setShownCategories] = useState<
-    ReadonlySet<ActionCategory>
+  const [shownBuckets, setShownBuckets] = useState<
+    ReadonlySet<ActionStatusBucket>
   >(
     () =>
       new Set([
-        ActionCategory.Active,
-        ActionCategory.Pending,
-        ActionCategory.Draft,
+        ActionStatusBucket.Active,
+        ActionStatusBucket.Pending,
+        ActionStatusBucket.Draft,
       ]),
   );
 
@@ -193,13 +196,13 @@ const ActionsList: React.FC = () => {
       <title>Admin panel</title>
       <ActionTimeline
         actions={actions.filter((action) =>
-          shownCategories.has(actionCategory(action)),
+          shownBuckets.has(actionStatusBucket(action)),
         )}
         header={
           <div className="flex h-full items-center gap-x-2">
-            <ActionCategoryFilter
-              selected={shownCategories}
-              onChange={setShownCategories}
+            <ActionStatusBucketFilter
+              selected={shownBuckets}
+              onChange={setShownBuckets}
             />
             <CreateActionMenu />
           </div>

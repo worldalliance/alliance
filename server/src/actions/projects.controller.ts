@@ -17,6 +17,7 @@ import {
   ProjectDto,
   ProjectNameDto,
   ProjectWithStepsDto,
+  UpdateProjectDto,
 } from "./dto/project.dto";
 import { ProjectsService } from "./projects.service";
 
@@ -50,12 +51,16 @@ export class ProjectsController {
 
   @Patch(":id")
   @ApiOkResponse({ type: ProjectDto })
-  async renameAdmin(
+  async updateAdmin(
     @Param("id", ParseIntPipe) id: number,
-    @Body() body: ProjectNameDto,
+    @Body() body: UpdateProjectDto,
   ): Promise<ProjectDto> {
     return new ProjectDto(
-      await this.projectsService.rename({ id, name: body.name }),
+      await this.projectsService.update({
+        id,
+        name: body.name,
+        category: body.category,
+      }),
     );
   }
 

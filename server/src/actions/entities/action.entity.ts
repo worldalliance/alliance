@@ -6,8 +6,10 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import {
   Allow,
+  ArrayUnique,
   IsArray,
   IsDefined,
+  IsEnum,
   IsNotEmpty,
   IsOptional,
 } from "class-validator";
@@ -29,6 +31,7 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
+import { ActionCategory } from "../action-category";
 import {
   memberActionPhase,
   type MemberActionPhase,
@@ -72,10 +75,22 @@ export class Action {
   @IsNotEmpty()
   name: string;
 
-  @Column()
-  @ApiProperty({ description: "Category of the action", default: "" })
-  @Allow()
-  category: string;
+  @Column({
+    type: "enum",
+    enum: ActionCategory,
+    array: true,
+    default: [],
+  })
+  @ApiProperty({
+    enum: ActionCategory,
+    enumName: "ActionCategory",
+    isArray: true,
+    description: "Alliance goals the action works towards, or meta",
+  })
+  @IsArray()
+  @ArrayUnique()
+  @IsEnum(ActionCategory, { each: true })
+  category: ActionCategory[];
 
   @Column({ nullable: true })
   @ApiPropertyOptional({ description: "Image URL for the action" })

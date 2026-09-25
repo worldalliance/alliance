@@ -55,7 +55,7 @@ export const FORM_BUILDER_PREVIEW_USER: UserDto = {
 export const testActions: CreateActionDto[] = [
   {
     name: "Save 2,500 acres of Ecuador cloud forest",
-    category: "Climate Change",
+    category: ["environment"],
     body: `Protect Ecuador's Biodiversity Hotspot
 
 ## The Crisis

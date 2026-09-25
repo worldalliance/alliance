@@ -163,7 +163,7 @@ describe("Tasks (e2e)", () => {
     const action = await actionRepo.save(
       actionRepo.create({
         name,
-        category: "Community",
+        category: [],
         body: "Body copy",
         shortDescription: "Short copy",
         isForumParticipationAction: false,
@@ -210,7 +210,7 @@ describe("Tasks (e2e)", () => {
     const testAction = await actionRepo.save(
       actionRepo.create({
         name: "Form Linked Action",
-        category: "Community",
+        category: [],
         body: "Body copy",
         shortDescription: "Short copy",
         taskFormId: formId,
@@ -631,7 +631,7 @@ describe("Tasks (e2e)", () => {
     const testAction = await actionRepo.save(
       actionRepo.create({
         name: "Aggregate Number Action",
-        category: "Community",
+        category: [],
         body: "Body copy",
         shortDescription: "Short copy",
         isForumParticipationAction: false,
@@ -711,7 +711,7 @@ describe("Tasks (e2e)", () => {
     const action = await actionRepo.save(
       actionRepo.create({
         name: "Output Visibility Action",
-        category: "Community",
+        category: [],
         body: "Body copy",
         shortDescription: "Short copy",
         isForumParticipationAction: false,
@@ -1303,7 +1303,7 @@ describe("Tasks (e2e)", () => {
       const action = await actionRepo.save(
         actionRepo.create({
           name,
-          category: "Community",
+          category: [],
           body: "Body copy",
           shortDescription: "Short copy",
           shouldCompleteAfterDeadline: false,

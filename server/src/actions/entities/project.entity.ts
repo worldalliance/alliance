@@ -1,12 +1,19 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsOptional } from "class-validator";
+import {
+  Allow,
+  ArrayUnique,
+  IsArray,
+  IsEnum,
+  IsOptional,
+} from "class-validator";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { ActionCategory } from "../action-category";
 import { Action } from "./action.entity";
 
 /**
@@ -26,6 +33,23 @@ export class Project {
   @ApiProperty()
   @Allow()
   name: string;
+
+  @Column({
+    type: "enum",
+    enum: ActionCategory,
+    array: true,
+    default: [],
+  })
+  @ApiProperty({
+    enum: ActionCategory,
+    enumName: "ActionCategory",
+    isArray: true,
+    description: "Alliance goals the project works towards, or meta",
+  })
+  @IsArray()
+  @ArrayUnique()
+  @IsEnum(ActionCategory, { each: true })
+  category: ActionCategory[];
 
   @CreateDateColumnTz()
   @ApiProperty()

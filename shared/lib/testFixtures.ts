@@ -55,7 +55,7 @@ export function makeAction(
   return {
     id: 1,
     name: "Test action",
-    category: "test",
+    category: [],
     body: "",
     shortDescription: "",
     createdAt: new Date(0).toISOString(),

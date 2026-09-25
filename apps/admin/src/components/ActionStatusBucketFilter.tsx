@@ -1,22 +1,25 @@
 import { DropdownMenuContent } from "@alliance/sharedweb/ui/DropdownMenu";
 import { Menu } from "@base-ui/react/menu";
 import { Check, ChevronDown } from "lucide-react";
-import { ACTION_CATEGORY_LABELS, ActionCategory } from "../lib/actionCategory";
+import {
+  ACTION_STATUS_BUCKET_LABELS,
+  ActionStatusBucket,
+} from "../lib/actionStatusBucket";
 
-const ActionCategoryFilter = ({
+const ActionStatusBucketFilter = ({
   selected,
   onChange,
 }: {
-  selected: ReadonlySet<ActionCategory>;
-  onChange: (selected: Set<ActionCategory>) => void;
+  selected: ReadonlySet<ActionStatusBucket>;
+  onChange: (selected: Set<ActionStatusBucket>) => void;
 }) => {
-  const categories = Object.values(ActionCategory);
+  const buckets = Object.values(ActionStatusBucket);
   const summary =
-    selected.size === categories.length
+    selected.size === buckets.length
       ? "All"
-      : categories
-          .filter((category) => selected.has(category))
-          .map((category) => ACTION_CATEGORY_LABELS[category])
+      : buckets
+          .filter((bucket) => selected.has(bucket))
+          .map((bucket) => ACTION_STATUS_BUCKET_LABELS[bucket])
           .join(", ") || "None";
 
   return (
@@ -27,16 +30,16 @@ const ActionCategoryFilter = ({
         <ChevronDown size={14} className="shrink-0" />
       </Menu.Trigger>
       <DropdownMenuContent className="min-w-44">
-        {categories.map((category) => (
+        {buckets.map((bucket) => (
           <Menu.CheckboxItem
-            key={category}
-            checked={selected.has(category)}
+            key={bucket}
+            checked={selected.has(bucket)}
             onCheckedChange={(checked) => {
               const next = new Set(selected);
               if (checked) {
-                next.add(category);
+                next.add(bucket);
               } else {
-                next.delete(category);
+                next.delete(bucket);
               }
               onChange(next);
             }}
@@ -47,7 +50,7 @@ const ActionCategoryFilter = ({
                 <Check size={12} />
               </Menu.CheckboxItemIndicator>
             </span>
-            {ACTION_CATEGORY_LABELS[category]}
+            {ACTION_STATUS_BUCKET_LABELS[bucket]}
           </Menu.CheckboxItem>
         ))}
       </DropdownMenuContent>
@@ -55,4 +58,4 @@ const ActionCategoryFilter = ({
   );
 };
 
-export default ActionCategoryFilter;
+export default ActionStatusBucketFilter;

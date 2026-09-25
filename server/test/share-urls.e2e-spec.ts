@@ -51,7 +51,7 @@ describe("Share URLs (e2e)", () => {
     action = await actionRepo.save(
       actionRepo.create({
         name: "Share URL Test Action",
-        category: "Test",
+        category: [],
         body: "body",
         shortDescription: "short",
         visibilityMode: VisibilityMode.Public,
