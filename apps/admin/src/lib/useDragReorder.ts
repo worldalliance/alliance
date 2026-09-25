@@ -10,6 +10,26 @@ const insertionOffset: Record<DropPosition, number> = {
   [DropPosition.After]: 1,
 };
 
+/**
+ * Moves the item at `draggedIndex` to the `position` side of `dropIndex`. Null
+ * when the move leaves the item where it was.
+ */
+export function moveItem<T>(params: {
+  items: T[];
+  draggedIndex: number;
+  dropIndex: number;
+  position: DropPosition;
+}): { items: T[]; insertionIndex: number } | null {
+  const { items, draggedIndex, dropIndex, position } = params;
+  let insertionIndex = dropIndex + insertionOffset[position];
+  if (draggedIndex < insertionIndex) insertionIndex -= 1;
+  if (draggedIndex === insertionIndex) return null;
+  const next = [...items];
+  const [moving] = next.splice(draggedIndex, 1);
+  next.splice(insertionIndex, 0, moving);
+  return { items: next, insertionIndex };
+}
+
 export function useDragReorder<T>(items: T[], setItems: (items: T[]) => void) {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -78,20 +98,10 @@ export function useDragReorder<T>(items: T[], setItems: (items: T[]) => void) {
 
   const performDrop = useCallback(
     (index: number, position: DropPosition) => {
-      if (draggedIndex === null || draggedIndex === index) {
-        handleDragEnd();
-        return;
-      }
-      let insertionIndex = index + insertionOffset[position];
-      if (draggedIndex < insertionIndex) insertionIndex -= 1;
-      if (draggedIndex === insertionIndex) {
-        handleDragEnd();
-        return;
-      }
-      const next = [...items];
-      const [moving] = next.splice(draggedIndex, 1);
-      next.splice(insertionIndex, 0, moving);
-      setItems(next);
+      const moved =
+        draggedIndex !== null &&
+        moveItem({ items, draggedIndex, dropIndex: index, position });
+      if (moved) setItems(moved.items);
       handleDragEnd();
     },
     [draggedIndex, items, setItems],
