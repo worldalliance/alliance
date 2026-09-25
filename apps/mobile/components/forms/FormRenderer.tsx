@@ -144,7 +144,7 @@ type FormRendererProps = {
   /** Save progress to the member's account as well as this device, so the form can be finished elsewhere. */
   syncDraftToServer?: boolean;
   /** `null` without `renderFormAsCompleted` is a preview: editable, never submitted. */
-  onSubmit: ((data: SubmitFormDto) => Promise<void>) | null;
+  onSubmit: ((data: SubmitFormDto) => Promise<boolean>) | null;
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
 };
@@ -833,17 +833,18 @@ const FormRenderer = ({
   const draftSyncEnabled =
     !!syncDraftToServer && !readOnly && !!persistKey && formSnapshotId !== null;
 
-  const { serverDraft, saveFailed, pauseSyncing } = useFormDraftSync({
-    enabled: draftSyncEnabled,
-    formId: id,
-    actionId,
-    formSnapshotId,
-    answers: formData,
-    publicAnswers,
-    currentPageIndex,
-    edited: hasEmittedStart,
-    onSaved: setSyncedUpdatedAt,
-  });
+  const { serverDraft, saveFailed, pauseSyncing, resumeSyncing } =
+    useFormDraftSync({
+      enabled: draftSyncEnabled,
+      formId: id,
+      actionId,
+      formSnapshotId,
+      answers: formData,
+      publicAnswers,
+      currentPageIndex,
+      edited: hasEmittedStart,
+      onSaved: setSyncedUpdatedAt,
+    });
 
   useEffect(() => {
     if (!draftSyncEnabled || hasEmittedStart || !serverDraft) return;
@@ -1105,15 +1106,18 @@ const FormRenderer = ({
       sessionReplayUrl,
     };
 
-    // `onSubmit` resolves whether or not the submission went through, so a
-    // failed submit stops draft syncing for the rest of the screen.
     pauseSyncing();
     onSubmit(submissionPayload)
-      .then(() => {
+      .then((submitted) => {
+        if (!submitted) {
+          resumeSyncing();
+          return;
+        }
         if (persistKey) {
           AsyncStorage.removeItem(storageKey).catch(() => {});
         }
       })
+      .catch(() => resumeSyncing())
       .finally(() => {
         setSubmitting(false);
       });

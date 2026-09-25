@@ -66,6 +66,7 @@ export default function FollowUpFormPanel({
       const response = await tasksSubmitFollowUpForm({
         path: { followUpFormId: followUpForm.id },
         body,
+        throwOnError: false,
       });
       if (response.response.ok) {
         if (form) {
@@ -78,6 +79,7 @@ export default function FollowUpFormPanel({
         Alert.alert("Response submitted", "Thank you!");
         setFormInstanceKey((k) => k + 1);
         onSubmitted?.();
+        return true;
       } else {
         console.error(response.error);
         captureException(
@@ -89,6 +91,7 @@ export default function FollowUpFormPanel({
           },
         );
         setError("Failed to submit. Please try again.");
+        return false;
       }
     },
     [followUpForm.id, form, actionId, onSubmitted],
