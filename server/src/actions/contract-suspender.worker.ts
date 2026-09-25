@@ -13,6 +13,7 @@ import {
   userActionNotifsEnabled_email,
   userActionNotifsEnabled_text,
 } from "src/user/user.utils";
+import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import { DataSource } from "typeorm";
 import { LOCK_KEYS } from "../notifs/lock-keys";
 import { withPgAdvisoryLock } from "../notifs/lock-utils";
@@ -34,12 +35,7 @@ export class ContractSuspenderWorker {
 
   @Cron("*/10 * * * *")
   async processSuspensions() {
-    if (
-      !(
-        process.env.NODE_ENV === "production" ||
-        process.env.SEND_DEV_NOTIFS === "1"
-      )
-    ) {
+    if (!notifDeliveryEnabled()) {
       return;
     }
 

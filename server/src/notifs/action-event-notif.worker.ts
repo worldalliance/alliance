@@ -19,6 +19,7 @@ import {
   userActionNotifsEnabled_push,
   userActionNotifsEnabled_text,
 } from "src/user/user.utils";
+import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import { DataSource, QueryFailedError, type Repository } from "typeorm";
 import {
   ActionEventReminderService,
@@ -60,12 +61,7 @@ export class ActionEventNotifWorker {
 
   @Cron("*/3 * * * *")
   async dispatchDueNotifs() {
-    if (
-      !(
-        process.env.NODE_ENV === "production" ||
-        process.env.SEND_DEV_NOTIFS === "1"
-      )
-    ) {
+    if (!notifDeliveryEnabled()) {
       return;
     }
 
