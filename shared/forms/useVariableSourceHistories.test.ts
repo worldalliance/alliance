@@ -34,6 +34,7 @@ const historyBody = (scores: number[]) => ({
     id: index + 1,
     answers: { score },
     schemaSnapshot: sourceSchema,
+    formulaChoices: {},
   })),
 });
 

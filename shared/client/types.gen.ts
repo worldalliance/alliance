@@ -3912,6 +3912,9 @@ export type FormResponseHistoryEntryDto = {
     answers: {
         [key: string]: unknown;
     };
+    formulaChoices: {
+        [key: string]: unknown;
+    };
     schemaSnapshot: {
         [key: string]: unknown;
     };

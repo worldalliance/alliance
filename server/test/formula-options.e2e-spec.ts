@@ -232,6 +232,61 @@ describe("Options formulas (e2e)", () => {
     });
   });
 
+  it("reads a source formula field's answers with the labels its response saved", async () => {
+    const { form, snapshot } = await createFormWithSnapshot(ctx.dataSource, {
+      title: "Source",
+      schema: {
+        pages: [
+          {
+            id: "p1",
+            fields: [
+              {
+                id: "colors",
+                type: "input",
+                kind: "multiselect",
+                label: "Colors",
+                options: [],
+                optionsFormula: {
+                  inputs: {},
+                  formula: "[{ label: 'Crimson', value: 'red' }]",
+                },
+              },
+            ],
+          },
+        ],
+        outputViews: [],
+      },
+    });
+    const destination = await createForm(pickSchema(form.id));
+    const action = await createAction(destination.formId);
+    const first = await responseRepo.save(
+      responseRepo.create({
+        formId: form.id,
+        formSnapshotId: snapshot.id,
+        user: { id: ctx.testUserId },
+        answers: { colors: ["red"] },
+        formulaChoices: { colors: [{ label: "Crimson", value: "red" }] },
+        publicAnswers: {},
+      }),
+    );
+
+    const response = await request(ctx.app.getHttpServer())
+      .post(`/tasks/submitForm/${destination.formId}`)
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .send({
+        answers: { pick: "red" },
+        formulaSources: [{ formId: form.id, responseIds: [first.id] }],
+        formSnapshotId: destination.formSnapshotId,
+        actionId: action.id,
+        deviceType: "desktop",
+      })
+      .expect(201);
+
+    expect(response.body.formulaChoices).toEqual({
+      pick: [{ label: "Crimson", value: "red" }],
+    });
+  });
+
   it("accepts a cleared optional select", async () => {
     const { source, submit } = await setUp(pickSchema);
     const first = await respondToSource(source, ["red"]);
@@ -443,6 +498,21 @@ describe("Options formulas (e2e)", () => {
     expect(loadHistory).not.toHaveBeenCalled();
     expect(await savedChoices(destination.formId)).toEqual({});
     loadHistory.mockRestore();
+  });
+
+  it("saves a withdrawal whose history can't be read, without labels", async () => {
+    const { source, destination, submit, withdraw } = await setUp(pickSchema);
+    const first = await respondToSource(source, ["red"]);
+    await responseRepo.update(first, { formulaChoices: { colors: "red" } });
+    const body = {
+      answers: { pick: "red" },
+      formulaSources: [{ formId: source.formId, responseIds: [first] }],
+    };
+
+    const refused = await submit(body).expect(500);
+    expect(refused.body.message).toContain(`Can't read response ${first}`);
+    await withdraw(body).expect(201);
+    expect(await savedChoices(destination.formId)).toEqual({});
   });
 
   it("saves the labels of a withdrawal that reads no other form and names no sources", async () => {
@@ -721,5 +791,23 @@ describe("Options formulas (e2e)", () => {
     const response = await submitAsGuest({ code: "z", pick: "" }).expect(201);
 
     expect(response.body.formulaChoices).toEqual({});
+  });
+
+  it("serves the choices a response saved in its submitted history", async () => {
+    const { source, destination, submit } = await setUp(pickSchema);
+    const first = await respondToSource(source, ["red"]);
+    await submit({
+      answers: { pick: "red" },
+      formulaSources: [{ formId: source.formId, responseIds: [first] }],
+    }).expect(201);
+
+    const history = await request(ctx.app.getHttpServer())
+      .get(`/tasks/myResponseHistory/${destination.formId}`)
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .expect(200);
+
+    expect(history.body.responses[0].formulaChoices).toEqual({
+      pick: [{ label: "Red", value: "red" }],
+    });
   });
 });

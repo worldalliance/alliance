@@ -78,6 +78,7 @@ function verifiedFormulaSource(params: {
         id: response.id,
         answers: response.answers,
         schemaSnapshot: response.formSnapshot.schema,
+        formulaChoices: response.formulaChoices,
       })),
     }),
     (cause) => ({ refusal: FormulaSourceRefusal.Unreadable, cause }),

@@ -217,6 +217,7 @@ describe("FormRenderer preview", () => {
           id,
           answers: { score },
           schemaSnapshot: scoreSchema,
+          formulaChoices: {},
         })),
       });
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
