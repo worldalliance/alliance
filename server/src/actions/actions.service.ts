@@ -231,6 +231,10 @@ import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from "./entities/reminder-group.entity";
+import {
+  assertNoAddedInProgressActions,
+  CohortExpressionOwner,
+} from "./in-progress-action-rejection";
 import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 import {
   assertNotAPrerequisite,
@@ -490,6 +494,21 @@ export class ActionsService {
     return parsed.data;
   }
 
+  /** Also rejects InProgressAction leaves `stored` doesn't already have. */
+  private parseWrittenCohortExpression(params: {
+    value: unknown;
+    stored: CohortExpression | null;
+    owner: CohortExpressionOwner;
+  }): CohortExpression {
+    const next = this.parseCohortExpressionOrThrow(params.value);
+    assertNoAddedInProgressActions({
+      stored: params.stored,
+      next,
+      owner: params.owner,
+    });
+    return next;
+  }
+
   /** Reviewers are ordered by the position the admin sent them in. */
   private reviewerRows(reviewers: ActionReviewerDto[]): ActionReviewer[] {
     return reviewers.map((reviewer, position) =>
@@ -530,9 +549,11 @@ export class ActionsService {
     const { suiteId, authorIds, reviewers, ...rest } = createActionDto;
     this.rewriteRenderedImages(rest);
     if (rest.cohortExpression != null) {
-      rest.cohortExpression = this.parseCohortExpressionOrThrow(
-        rest.cohortExpression,
-      );
+      rest.cohortExpression = this.parseWrittenCohortExpression({
+        value: rest.cohortExpression,
+        stored: null,
+        owner: CohortExpressionOwner.Action,
+      });
     }
     if (rest.taskFormId !== undefined) {
       await this.assertFormIdNotUsedAsVariant(rest.taskFormId);
@@ -1927,9 +1948,13 @@ export class ActionsService {
     const { suiteId, authorIds, reviewers, ...rest } = updateActionDto;
     this.dropEchoedImages(rest, action);
     if (rest.cohortExpression != null) {
-      rest.cohortExpression = this.parseCohortExpressionOrThrow(
-        rest.cohortExpression,
-      );
+      rest.cohortExpression = this.parseWrittenCohortExpression({
+        value: rest.cohortExpression,
+        stored: cohortExpressionSchema
+          .nullable()
+          .parse(action.cohortExpression ?? null),
+        owner: CohortExpressionOwner.Action,
+      });
     }
 
     if (
@@ -2069,9 +2094,11 @@ export class ActionsService {
     dto: CreateFollowUpFormDto,
   ): Promise<ParsedFollowUpForm> {
     if (dto.cohortExpression != null) {
-      dto.cohortExpression = this.parseCohortExpressionOrThrow(
-        dto.cohortExpression,
-      );
+      dto.cohortExpression = this.parseWrittenCohortExpression({
+        value: dto.cohortExpression,
+        stored: null,
+        owner: CohortExpressionOwner.FollowUpForm,
+      });
     }
     const action = await this.findOneOrFail({ id: actionId, serverSide: true });
     const form = await this.formRepository.findOneOrFail({
@@ -2092,15 +2119,17 @@ export class ActionsService {
     followUpFormId: number,
     dto: UpdateFollowUpFormDto,
   ): Promise<ParsedFollowUpForm> {
-    if (dto.cohortExpression != null) {
-      dto.cohortExpression = this.parseCohortExpressionOrThrow(
-        dto.cohortExpression,
-      );
-    }
     const followUpForm = await this.followUpFormRepository.findOneOrFail({
       where: { id: followUpFormId },
       relations: { form: true, action: true },
     });
+    if (dto.cohortExpression != null) {
+      dto.cohortExpression = this.parseWrittenCohortExpression({
+        value: dto.cohortExpression,
+        stored: parseFollowUpForm(followUpForm).cohortExpression,
+        owner: CohortExpressionOwner.FollowUpForm,
+      });
+    }
     Object.assign(followUpForm, dto);
     return parseFollowUpForm(
       await this.followUpFormRepository.save(followUpForm),
@@ -3666,6 +3695,15 @@ export class ActionsService {
       _actionCols_relations extends undefined ? true : false
     >;
 
+    const cohortExpression =
+      actionCols.cohortExpression == null
+        ? undefined
+        : this.parseWrittenCohortExpression({
+            value: actionCols.cohortExpression,
+            stored: null,
+            owner: CohortExpressionOwner.ImportedAction,
+          });
+
     let suiteIdToSync: number | undefined;
     const result = await this.actionRepository.manager.transaction(
       async (em) => {
@@ -3676,10 +3714,7 @@ export class ActionsService {
 
         const inserted = await actionRepo.insert({
           ...actionCols,
-          cohortExpression:
-            actionCols.cohortExpression == null
-              ? undefined
-              : this.parseCohortExpressionOrThrow(actionCols.cohortExpression),
+          cohortExpression,
           id: undefined,
         });
 
