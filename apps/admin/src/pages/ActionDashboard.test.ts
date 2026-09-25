@@ -47,4 +47,10 @@ describe("action save errors", () => {
       expect(actionSaveErrorMessage(error)).toBe("Failed to save action");
     },
   );
+
+  it("uses a caller's fallback for an unstructured error", () => {
+    expect(actionSaveErrorMessage(null, "Failed to duplicate action")).toBe(
+      "Failed to duplicate action",
+    );
+  });
 });

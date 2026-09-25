@@ -141,17 +141,22 @@ type Tab =
 
 const imageUploadingMessage = "Wait for the cover image to finish uploading.";
 
-export const actionSaveErrorMessage = (error: unknown): string =>
+export const actionSaveErrorMessage = (
+  error: unknown,
+  fallback = "Failed to save action",
+): string =>
   thrownRefusalMessage({
     error,
-    fallback: "Failed to save action",
+    fallback,
     sessionExpired: sessionExpiredMessage,
   });
 
-const logActionSaveError = (error: unknown): string => {
-  console.error(error);
-  return actionSaveErrorMessage(error);
-};
+const logActionError =
+  (fallback?: string) =>
+  (error: unknown): string => {
+    console.error(error);
+    return actionSaveErrorMessage(error, fallback);
+  };
 
 type ReadinessCheckItem = {
   id: string;
@@ -587,10 +592,12 @@ const ActionDashboard: React.FC = () => {
       ...duplicatedActionImages({ form, action, imageKey }),
       taskFormId,
     };
-    const result = await R.fromPromise(createAction(duplicateForm));
+    const result = await R.fromPromise(
+      createAction(duplicateForm),
+      logActionError("Failed to duplicate action"),
+    );
     if (!result.ok) {
-      setError("Failed to duplicate action");
-      console.error(result.error);
+      setError(result.error);
       return;
     }
     handleActionCreated(result.value);
@@ -726,7 +733,7 @@ const ActionDashboard: React.FC = () => {
     if (isNew) {
       const result = await R.fromPromise(
         createAction(formData),
-        logActionSaveError,
+        logActionError(),
       );
       if (!result.ok) {
         setError(result.error);
@@ -738,7 +745,7 @@ const ActionDashboard: React.FC = () => {
       // refetched before this resolves.
       const result = await R.fromPromise(
         updateAction(formData),
-        logActionSaveError,
+        logActionError(),
       );
       if (!result.ok) setError(result.error);
     }
