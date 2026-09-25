@@ -1,5 +1,9 @@
 import type { CommunityDto } from "@alliance/shared/client";
 import { inviteDestination } from "@alliance/shared/lib/copy";
+import {
+  useInviteSettingsDraft,
+  type InviteSettingsTarget as SharedInviteSettingsTarget,
+} from "@alliance/shared/lib/inviteSettings";
 import type { InviteNote } from "@alliance/shared/lib/inviteUtils";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
@@ -16,45 +20,15 @@ import NewButton, { ButtonColor } from "@alliance/sharedweb/ui/NewButton";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { milliseconds } from "date-fns";
 import { Check, Copy as CopyIcon, Trash2, Users } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
-
-/** A group they lead, or `null` for "wherever there is room". */
-type Destination = number | null;
+import { useCallback, useState } from "react";
 
 const NOTE_CLASS: Record<InviteNote["tone"], string> = {
   info: "text-zinc-500",
   warning: "text-red-500",
 };
 
-export type InviteSettingsTarget = {
-  /** Header line: whatever names this invite today. */
-  title: string;
-  /** Header sub-line: uses, age, whatever is worth knowing at a glance. */
-  meta: string;
-  /** The link people follow, shown and copyable. */
-  url: string;
-  name: {
-    label: string;
-    value: string;
-    placeholder: string;
-    helper: string;
-    /** Blank is a legitimate clear for a label, but not for an invitee's name. */
-    required?: boolean;
-  };
-  destination: {
-    /** `undefined` when the invite never named one — nothing to preselect. */
-    current: Destination | undefined;
-    /** Wording for the "no particular group" choice, which differs per invite type. */
-    openLabel: string;
-    openDetail: string;
-    notes: InviteNote[];
-  };
-  delete: { enabled: boolean; disabledReason: string; confirmMessage: string };
-  onSave: (changes: {
-    name?: string;
-    communityId?: Destination;
-  }) => Promise<unknown>;
-  onDelete: () => Promise<unknown>;
+export type InviteSettingsTarget = SharedInviteSettingsTarget & {
+  delete: { confirmMessage: string };
 };
 
 type InviteSettingsModalProps = {
@@ -70,19 +44,18 @@ const InviteSettingsModal = ({
   onClose,
 }: InviteSettingsModalProps) => {
   const { error: errorToast, success: successToast, confirm } = useToast();
-  const [name, setName] = useState(target.name.value);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [destination, setDestination] = useState<Destination | undefined>(
-    target.destination.current,
-  );
-
-  const trimmedName = name.trim();
-  const nameChanged = trimmedName !== target.name.value;
-  const nameMissing = !!target.name.required && !trimmedName;
-  const destinationChanged =
-    destination !== undefined && destination !== target.destination.current;
-  const dirty = nameChanged || destinationChanged;
+  const {
+    name,
+    setName,
+    destination,
+    setDestination,
+    nameMissing,
+    dirty,
+    changes,
+    options,
+  } = useInviteSettingsDraft({ target, leaderCommunities });
 
   const handleCopy = useCallback(async () => {
     if (await copyToClipboard(target.url)) {
@@ -95,31 +68,17 @@ const InviteSettingsModal = ({
 
   const handleSave = useCallback(() => {
     setSaving(true);
-    void target
-      .onSave({
-        ...(nameChanged && { name: trimmedName }),
-        ...(destinationChanged && { communityId: destination }),
-      })
-      .then(
-        () => {
-          successToast("Invite updated!");
-          onClose();
-        },
-        (err: Error) => {
-          setSaving(false);
-          errorToast(`Failed to save changes: ${err.message}`);
-        },
-      );
-  }, [
-    target,
-    trimmedName,
-    nameChanged,
-    destination,
-    destinationChanged,
-    successToast,
-    errorToast,
-    onClose,
-  ]);
+    void target.onSave(changes).then(
+      () => {
+        successToast("Invite updated!");
+        onClose();
+      },
+      (err: Error) => {
+        setSaving(false);
+        errorToast(`Failed to save changes: ${err.message}`);
+      },
+    );
+  }, [target, changes, successToast, errorToast, onClose]);
 
   const handleDelete = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
@@ -142,22 +101,6 @@ const InviteSettingsModal = ({
       })();
     },
     [confirm, target, onClose, errorToast],
-  );
-
-  const options = useMemo(
-    () => [
-      ...leaderCommunities.map((community) => ({
-        value: community.id as Destination,
-        name: community.name,
-        detail: inviteDestination.ledGroupDetail,
-      })),
-      {
-        value: null as Destination,
-        name: target.destination.openLabel,
-        detail: target.destination.openDetail,
-      },
-    ],
-    [leaderCommunities, target.destination],
   );
 
   return (

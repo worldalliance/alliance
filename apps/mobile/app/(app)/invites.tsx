@@ -5,8 +5,6 @@ import { MEMBER_GOAL } from "@alliance/shared/lib/constants";
 import {
   deleteInviteConfirmation,
   inviteBuckets,
-  inviteDestination,
-  onetimeInviteCreation,
   roleBadges,
 } from "@alliance/shared/lib/copy";
 import {
@@ -14,11 +12,11 @@ import {
   daysUntil,
   selectInviteGoals,
 } from "@alliance/shared/lib/inviteGoals";
-import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import {
-  bucketOnetimeInvitesByActionability,
-  onetimeInviteNotes,
-} from "@alliance/shared/lib/inviteUtils";
+  onetimeInviteSettings,
+  type InviteSettingsTarget,
+} from "@alliance/shared/lib/inviteSettings";
+import { bucketOnetimeInvitesByActionability } from "@alliance/shared/lib/inviteUtils";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { useAmbassadorInviteDashboard } from "@alliance/shared/lib/useAmbassadorInviteDashboard";
 import {
@@ -28,7 +26,6 @@ import {
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useOnetimeInvitesOverview } from "@alliance/shared/lib/useOnetimeInvitesOverview";
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
-import { formatTime } from "@alliance/shared/lib/utils";
 import { milliseconds } from "date-fns";
 import {
   CalendarDays,
@@ -49,9 +46,7 @@ import React, {
 import { Alert, RefreshControl, TouchableOpacity, View } from "react-native";
 import InviteForm from "../../components/InviteForm";
 import { InviteSection } from "../../components/InviteSection";
-import InviteSettingsModal, {
-  type InviteSettingsTarget,
-} from "../../components/InviteSettingsModal";
+import InviteSettingsModal from "../../components/InviteSettingsModal";
 import InviteShareLink from "../../components/InviteShareLink";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 import ReferralQrSection from "../../components/ReferralQrSection";
@@ -440,31 +435,11 @@ export default function InvitesScreen() {
   const settingsInvite =
     invites.find((invite) => invite.id === settingsInviteId) ?? null;
   const settingsTarget: InviteSettingsTarget | null = settingsInvite && {
-    title: settingsInvite.invitee,
-    meta: `Invited ${formatTime(new Date(settingsInvite.createdAt), {
-      addSuffix: true,
-    })}`,
-    url: getOnetimeInviteSignupUrl(getBaseUrl(), settingsInvite.code),
-    name: {
-      label: "Who this invite is for",
-      value: settingsInvite.invitee,
-      placeholder: "Their name",
-      helper: "Shown to you and to the group lead who takes them on.",
-      required: true,
-    },
-    destination: {
-      current: settingsInvite.community?.id ?? null,
-      openLabel: onetimeInviteCreation.assignToOpenGroup,
-      openDetail: inviteDestination.onetime.openDetail,
-      notes: onetimeInviteNotes,
-    },
-    delete: { enabled: true, disabledReason: "" },
-    onSave: ({ name, communityId }) =>
-      updateInvite({
-        inviteId: settingsInvite.id,
-        ...(name !== undefined && { invitee: name }),
-        ...(communityId !== undefined && { communityId }),
-      }),
+    ...onetimeInviteSettings({
+      invite: settingsInvite,
+      baseUrl: getBaseUrl(),
+      updateInvite,
+    }),
     onDelete: async () => {
       setSettingsInviteId(null);
       Alert.alert(deleteInviteConfirmation.message, undefined, [

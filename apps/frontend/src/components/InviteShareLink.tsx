@@ -1,12 +1,8 @@
 import { formatInviteMessage } from "@alliance/common/inviteMessage";
 import { withCount } from "@alliance/common/plural";
 import type { CommunityDto, ShareUrlMineDto } from "@alliance/shared/client";
-import { inviteDestination } from "@alliance/shared/lib/copy";
-import {
-  inviteDestinationLabel,
-  inviteDestinationSelection,
-  reusableInviteNotes,
-} from "@alliance/shared/lib/inviteUtils";
+import { reusableInviteSettings } from "@alliance/shared/lib/inviteSettings";
+import { inviteDestinationLabel } from "@alliance/shared/lib/inviteUtils";
 import { useInviteMessageTemplate } from "@alliance/shared/lib/useInviteMessageTemplate";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useReusableInvites } from "@alliance/shared/lib/useReusableInvites";
@@ -106,39 +102,18 @@ const InviteShareLink = () => {
   );
 
   const openLink = links.find((link) => link.id === openLinkId) ?? null;
-  const openTarget: InviteSettingsTarget | null = openLink && {
-    title:
-      openLink.label ||
-      (openLink.duplicate ? "Untitled link" : "Primary invite"),
-    meta: `${withCount(openLink.signupCount, "signup")} so far`,
-    url: openLink.url,
-    name: {
-      label: "Label",
-      value: openLink.label ?? "",
-      placeholder: "e.g. Instagram bio",
-      helper:
-        "Only you can see this — it is a reminder of where you shared the link.",
-    },
-    destination: {
-      current: inviteDestinationSelection(openLink),
-      openLabel: inviteDestination.reusable.openLabel,
-      openDetail: inviteDestination.reusable.openDetail,
-      notes: reusableInviteNotes(openLink),
-    },
-    delete: {
-      enabled: openLink.duplicate,
-      disabledReason: "Your primary link cannot be deleted",
-      confirmMessage:
-        "Delete this invite link? Anyone you've already shared it with won't be able to use it.",
-    },
-    onSave: ({ name, communityId }) =>
-      updateInvite({
-        id: openLink.id,
-        ...(name !== undefined && { label: name }),
-        ...(communityId !== undefined && { communityId }),
-      }),
-    onDelete: () => deleteInvite(openLink.id),
-  };
+  const openSettings =
+    openLink && reusableInviteSettings({ link: openLink, updateInvite });
+  const openTarget: InviteSettingsTarget | null = openLink &&
+    openSettings && {
+      ...openSettings,
+      delete: {
+        ...openSettings.delete,
+        confirmMessage:
+          "Delete this invite link? Anyone you've already shared it with won't be able to use it.",
+      },
+      onDelete: () => deleteInvite(openLink.id),
+    };
 
   if (isError) {
     return <p className="text-red-500 text-sm">Failed to load invite links</p>;

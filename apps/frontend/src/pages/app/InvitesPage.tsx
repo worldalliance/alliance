@@ -6,16 +6,12 @@ import { MEMBER_GOAL } from "@alliance/shared/lib/constants";
 import {
   deleteInviteConfirmation,
   inviteBuckets,
-  inviteDestination,
-  onetimeInviteCreation,
   roleBadges,
 } from "@alliance/shared/lib/copy";
 import { daysUntil, selectInviteGoals } from "@alliance/shared/lib/inviteGoals";
+import { onetimeInviteSettings } from "@alliance/shared/lib/inviteSettings";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
-import {
-  bucketOnetimeInvitesByActionability,
-  onetimeInviteNotes,
-} from "@alliance/shared/lib/inviteUtils";
+import { bucketOnetimeInvitesByActionability } from "@alliance/shared/lib/inviteUtils";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { useAmbassadorInviteDashboard } from "@alliance/shared/lib/useAmbassadorInviteDashboard";
 import {
@@ -27,7 +23,6 @@ import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useOnetimeInvitesOverview } from "@alliance/shared/lib/useOnetimeInvitesOverview";
 import { useReusableInvites } from "@alliance/shared/lib/useReusableInvites";
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
-import { formatTime } from "@alliance/shared/lib/utils";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard as writeToClipboard } from "@alliance/sharedweb/lib/clipboard";
@@ -336,36 +331,22 @@ const InvitesPage = () => {
 
   const settingsInvite =
     invites.find((invite) => invite.id === settingsInviteId) ?? null;
-  const settingsTarget: InviteSettingsTarget | null = settingsInvite && {
-    title: settingsInvite.invitee,
-    meta: `Invited ${formatTime(new Date(settingsInvite.createdAt), { addSuffix: true })}`,
-    url: getOnetimeInviteSignupUrl(getInviteBaseUrl(), settingsInvite.code),
-    name: {
-      label: "Who this invite is for",
-      value: settingsInvite.invitee,
-      placeholder: "Their name",
-      helper: "Shown to you and to the group lead who takes them on.",
-      required: true,
-    },
-    destination: {
-      current: settingsInvite.community?.id ?? null,
-      openLabel: onetimeInviteCreation.assignToOpenGroup,
-      openDetail: inviteDestination.onetime.openDetail,
-      notes: onetimeInviteNotes,
-    },
-    delete: {
-      enabled: true,
-      disabledReason: "",
-      confirmMessage: deleteInviteConfirmation.message,
-    },
-    onSave: ({ name, communityId }) =>
-      updateInvite({
-        inviteId: settingsInvite.id,
-        ...(name !== undefined && { invitee: name }),
-        ...(communityId !== undefined && { communityId }),
-      }),
-    onDelete: () => deleteInvite(settingsInvite.id),
-  };
+  const settings =
+    settingsInvite &&
+    onetimeInviteSettings({
+      invite: settingsInvite,
+      baseUrl: getInviteBaseUrl(),
+      updateInvite,
+    });
+  const settingsTarget: InviteSettingsTarget | null = settingsInvite &&
+    settings && {
+      ...settings,
+      delete: {
+        ...settings.delete,
+        confirmMessage: deleteInviteConfirmation.message,
+      },
+      onDelete: () => deleteInvite(settingsInvite.id),
+    };
 
   const handleDeleteRequest = useCallback(
     (inviteId: number) => {
