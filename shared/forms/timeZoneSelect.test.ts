@@ -554,7 +554,6 @@ describe("the device's zone", () => {
     });
 
     expect(result.current.selectedIndex).toBe(0);
-    expect(result.current.activeIndex).toBe(0);
   });
 
   it("leaves the saved zone selected when it differs", () => {

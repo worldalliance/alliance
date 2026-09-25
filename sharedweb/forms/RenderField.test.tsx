@@ -180,7 +180,7 @@ it.each(groupedInputs)("names the $kind group", (field) => {
   expect(screen.getByRole("group", { name: "Question" })).toBeTruthy();
 });
 
-it("names the timezone button from its question and its selected zone", () => {
+it("names the timezone picker from its question and its selected zone", () => {
   render(
     <MemoryRouter>
       <SiteAppProvider>
@@ -194,7 +194,7 @@ it("names the timezone button from its question and its selected zone", () => {
   );
 
   expect(
-    screen.getByRole("button", { name: /^Question India Standard Time/ }),
+    screen.getByRole("combobox", { name: /^Question India Standard Time/ }),
   ).toBeTruthy();
 });
 

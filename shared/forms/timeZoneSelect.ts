@@ -372,7 +372,6 @@ export function useTimeZoneSelect({
 }: UseTimeZoneSelectParams) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [activeIndex, setActiveIndex] = useState(0);
   const [internalValue, setInternalValue] = useState<string>(
     value ?? defaultValue,
   );
@@ -467,10 +466,6 @@ export function useTimeZoneSelect({
 
   const selectedIndex = filtered.findIndex((i) => i.tz === selected.tz);
 
-  useEffect(() => {
-    setActiveIndex(query ? 0 : Math.max(selectedIndex, 0));
-  }, [query, open, selectedIndex]);
-
   // Cleared on close rather than on open: the mobile trigger scrolls the
   // still-mounted list by index as it reopens, before a clear could render.
   useEffect(() => {
@@ -492,8 +487,6 @@ export function useTimeZoneSelect({
     deviceTz,
     query,
     setQuery,
-    activeIndex,
-    setActiveIndex,
     commit,
     open,
     setOpen,

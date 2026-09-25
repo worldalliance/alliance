@@ -184,15 +184,31 @@ sections below this one carry the reasoning each step implements.
    nothing. Wherever the row appears, a device icon named
    `Device time zone` marks it, since otherwise nothing explains a row
    sitting out of offset order.
-7. **Web combobox.** `sharedweb/forms/TimeZoneSelect.tsx` moves onto
+7. **Web combobox.** Done. `sharedweb/forms/TimeZoneSelect.tsx` moves onto
    `@base-ui/react/combobox` with the search input inside the popup, deleting
-   the hand-rolled keyboard handling, backdrop, and open state.
-   Until then, the hand-rolled list opens with the selected row active and
-   scrolled into view, and the arrow keys keep the active row in view. It
-   scrolls to the nearest edge rather than the center, since
-   `scrollIntoView` scrolls the page too, and centering would move the page
-   whenever the row sat off its middle. A search scrolls the list back to
-   the top, where the search moves the active row.
+   the hand-rolled keyboard handling, scrolling, and backdrop, and with it
+   `zIndex.popoverBackdrop`, which only that backdrop used. Open state and
+   the query stay in `useTimeZoneSelect`, which mobile shares, and Base UI
+   takes the hook's rows as `filteredItems`. The hook's `activeIndex` goes,
+   since Base UI owns the highlight and mobile never read it.
+   Opening highlights the selected row and scrolls it into view, and a search
+   highlights the first match. Base UI finds the selected row only while
+   closed, and the hook builds the rows on the first open, so the popup opens
+   one commit after they arrive. An open before the warm-up ends shows the
+   spinner in the trigger's chevron slot and opens the popup once the rows
+   exist, since a popup opened on the spinner would get its rows with none
+   highlighted and the list scrolled to the top. Base UI counts itself closed
+   until then, so the trigger itself cancels the waiting open on Escape, a
+   second press, or losing focus.
+   Base UI highlights the row under any `mousemove`, and WebKit fires one
+   when the list scrolls under a still pointer, so the arrow keys' row would
+   jump to the pointer's and Enter would pick it. A row skips Base UI's
+   handler unless the pointer moved since the page last saw it.
+   The trigger's role is now `combobox`, which takes no name from its
+   content, so it is labelled by its value, after the question where the
+   caller passes one; the Settings page passes none. Typing on the closed trigger does
+   not start a search, as it does in `SearchableSelect`, since nothing asked
+   for it here.
 8. **Mobile list.** Done. `apps/mobile/components/forms/TimeZoneSelect.tsx`
    swaps its `ScrollView` for a virtualized `FlatList` that opens on the
    selected row. Each row holds one line of name and one under it, cut short
