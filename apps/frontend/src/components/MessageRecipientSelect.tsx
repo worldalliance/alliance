@@ -1,23 +1,15 @@
-import { ProfileDto, userMembers } from "@alliance/shared/client";
+import { userMembers } from "@alliance/shared/client";
+import {
+  missingRecipient,
+  recipientNameOf,
+  type MessageRecipient,
+  type MessageRecipientSelectProps,
+} from "@alliance/shared/lib/messageRecipients";
+import { useUserSelection } from "@alliance/shared/lib/useUserSelection";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { X } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
-
-export type UserSelectUser = Pick<
-  ProfileDto,
-  "id" | "displayName" | "profilePicture"
->;
-
-interface MessageRecipientSelectProps {
-  users: UserSelectUser[];
-  selectedUserIds: number[];
-  onChange: (userIds: number[]) => void;
-  loading?: boolean;
-  single?: boolean;
-}
-
-const MAX_RESULTS = 8;
+import React, { useEffect, useState } from "react";
 
 const MessageRecipientSelect: React.FC<MessageRecipientSelectProps> = ({
   users,
@@ -26,57 +18,25 @@ const MessageRecipientSelect: React.FC<MessageRecipientSelectProps> = ({
   loading = false,
   single = false,
 }) => {
-  const [query, setQuery] = useState<string>("");
-
-  const canSelectMore = !single || selectedUserIds.length === 0;
-
-  const selectedUsers = useMemo(() => {
-    const userMap = new Map(users.map((user) => [user.id, user]));
-    return selectedUserIds.map((userId) => userMap.get(userId)!);
-  }, [users, selectedUserIds]);
-
-  const filteredUsers = useMemo(() => {
-    if (!canSelectMore) {
-      return [];
-    }
-
-    const term = query.trim().toLowerCase();
-    if (!term) {
-      return [];
-    }
-
-    const selectedIds = new Set(selectedUserIds);
-    return users
-      .filter((user) => !selectedIds.has(user.id))
-      .filter((user) => {
-        const haystack = `${user.displayName ?? ""}`.toLowerCase();
-        return haystack.includes(term);
-      })
-      .slice(0, MAX_RESULTS);
-  }, [query, users, selectedUserIds, canSelectMore]);
-
-  const addUser = (userId: number) => {
-    if (selectedUserIds.includes(userId)) {
-      return;
-    }
-    if (single) {
-      onChange([userId]);
-    } else {
-      onChange([...selectedUserIds, userId]);
-    }
-    setQuery("");
-  };
-
-  const removeUser = (userId: number) => {
-    onChange(selectedUserIds.filter((id) => id !== userId));
-  };
-
-  const inputDisabled = loading || !canSelectMore;
-  const placeholder = loading
-    ? "Loading users…"
-    : canSelectMore
-      ? "Search by name"
-      : "Remove current selection to choose another";
+  const {
+    query,
+    setQuery,
+    canSelectMore,
+    selectedUsers,
+    filteredUsers,
+    addUser,
+    removeUser,
+    inputDisabled,
+    placeholder,
+  } = useUserSelection({
+    users,
+    selectedUserIds,
+    onChange,
+    nameOf: recipientNameOf,
+    missingUser: missingRecipient,
+    loading,
+    single,
+  });
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (
@@ -157,7 +117,7 @@ const MessageRecipientSelect: React.FC<MessageRecipientSelectProps> = ({
 export default MessageRecipientSelect;
 
 export const useSelectableUserIds = () => {
-  const [users, setUsers] = useState<UserSelectUser[]>([]);
+  const [users, setUsers] = useState<MessageRecipient[]>([]);
   useEffect(() => {
     userMembers().then((response) => {
       setUsers(

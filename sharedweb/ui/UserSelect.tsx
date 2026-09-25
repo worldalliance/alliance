@@ -1,4 +1,8 @@
 import { UserDto, userMembers } from "@alliance/shared/client";
+import {
+  matchesName,
+  useUserSelection,
+} from "@alliance/shared/lib/useUserSelection";
 import React, { useEffect, useMemo, useState } from "react";
 import { AvatarProfile } from "./Avatar";
 
@@ -13,7 +17,12 @@ interface UserSelectProps {
   single?: boolean;
 }
 
-const MAX_RESULTS = 8;
+const nameOf = (user: UserSelectUser) => user.name;
+const missingUser = (id: number): UserSelectUser => ({
+  id,
+  name: `User #${id}`,
+  profilePicture: null,
+});
 
 const UserSelect: React.FC<UserSelectProps> = ({
   users,
@@ -23,67 +32,32 @@ const UserSelect: React.FC<UserSelectProps> = ({
   label = "Recipients",
   single = false,
 }) => {
-  const [query, setQuery] = useState<string>("");
   const [filterQuery, setFilterQuery] = useState<string>("");
   const [filterOpen, setFilterOpen] = useState(false);
-
-  const canSelectMore = !single || selectedUserIds.length === 0;
-
-  const selectedUsers = useMemo(() => {
-    const userMap = new Map(users.map((user) => [user.id, user]));
-    return selectedUserIds.map((userId) => userMap.get(userId)!);
-  }, [users, selectedUserIds]);
+  const {
+    query,
+    setQuery,
+    canSelectMore,
+    selectedUsers,
+    filteredUsers,
+    addUser,
+    removeUser,
+    inputDisabled,
+    placeholder,
+  } = useUserSelection({
+    users,
+    selectedUserIds,
+    onChange,
+    nameOf,
+    missingUser,
+    loading,
+    single,
+  });
 
   const displayedSelectedUsers = useMemo(() => {
-    const term = filterQuery.trim().toLowerCase();
-    if (!term) return selectedUsers;
-    return selectedUsers.filter((user) =>
-      `${user.name ?? ""}`.toLowerCase().includes(term),
-    );
+    if (!filterQuery.trim()) return selectedUsers;
+    return selectedUsers.filter((user) => matchesName(user.name, filterQuery));
   }, [selectedUsers, filterQuery]);
-
-  const filteredUsers = useMemo(() => {
-    if (!canSelectMore) {
-      return [];
-    }
-
-    const term = query.trim().toLowerCase();
-    if (!term) {
-      return [];
-    }
-
-    const selectedIds = new Set(selectedUserIds);
-    return users
-      .filter((user) => !selectedIds.has(user.id))
-      .filter((user) => {
-        const haystack = `${user.name ?? ""}`.toLowerCase();
-        return haystack.includes(term);
-      })
-      .slice(0, MAX_RESULTS);
-  }, [query, users, selectedUserIds, canSelectMore]);
-
-  const addUser = (userId: number) => {
-    if (selectedUserIds.includes(userId)) {
-      return;
-    }
-    if (single) {
-      onChange([userId]);
-    } else {
-      onChange([...selectedUserIds, userId]);
-    }
-    setQuery("");
-  };
-
-  const removeUser = (userId: number) => {
-    onChange(selectedUserIds.filter((id) => id !== userId));
-  };
-
-  const inputDisabled = loading || !canSelectMore;
-  const placeholder = loading
-    ? "Loading users…"
-    : canSelectMore
-      ? "Search by name"
-      : "Remove current selection to choose another";
 
   return (
     <div className="relative min-h-20">
