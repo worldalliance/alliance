@@ -3,9 +3,16 @@ import {
   videosListVideosAdmin,
 } from "@alliance/shared/client";
 import type { VideoListItemDto } from "@alliance/shared/client/types.gen";
+import {
+  thrownRefusalMessage,
+  thrownStatus,
+} from "@alliance/shared/lib/hey-api";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import React, { useCallback, useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import React, { useCallback } from "react";
 import { useNavigate } from "react-router";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -16,30 +23,51 @@ function formatSize(bytes: number): string {
 }
 
 const VideoManagement: React.FC = () => {
-  const [videos, setVideos] = useState<VideoListItemDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { error: pushError } = useToast();
+  const { confirm, error: pushError } = useToast();
+  const list = useQuery({
+    queryKey: queryKeys.videosAdmin(),
+    queryFn: () =>
+      videosListVideosAdmin({ throwOnError: true }).then((r) => r.data.videos),
+  });
+  const videos = list.data ?? [];
+  const error = list.isError
+    ? thrownRefusalMessage({
+        error: list.error,
+        fallback: "Failed to load videos",
+        sessionExpired: sessionExpiredMessage,
+      })
+    : null;
 
-  const loadVideos = useCallback(async () => {
-    try {
-      const response = await videosListVideosAdmin();
-      setVideos(response.data?.videos ?? []);
-    } catch (err) {
-      console.error("Failed to load videos", err);
-      setError("Failed to load videos");
-      pushError("Failed to load videos");
-    } finally {
-      setLoading(false);
-    }
-  }, [pushError]);
-
-  useEffect(() => {
-    void loadVideos();
-  }, [loadVideos]);
-
-  const { confirm } = useToast();
+  const { mutate: deleteVideo } = useMutation({
+    mutationFn: (id: number) =>
+      videosDeleteVideoAdmin({ path: { id }, throwOnError: true }).catch(
+        (err: unknown) => {
+          // Already deleted elsewhere: the row goes, same as a delete that worked.
+          if (thrownStatus(err) !== 404) throw err;
+        },
+      ),
+    onSuccess: async (_data, id) => {
+      // A refetch started before the delete would land the deleted video
+      // back in the list.
+      await queryClient.cancelQueries({ queryKey: queryKeys.videosAdmin() });
+      queryClient.setQueryData<VideoListItemDto[]>(
+        queryKeys.videosAdmin(),
+        (prev) => prev?.filter((v) => v.id !== id),
+      );
+    },
+    onError: (err) => {
+      console.error("Failed to delete video", err);
+      pushError(
+        thrownRefusalMessage({
+          error: err,
+          fallback: "Failed to delete video",
+          sessionExpired: sessionExpiredMessage,
+        }),
+      );
+    },
+  });
 
   const handleDelete = useCallback(
     async (e: React.MouseEvent, id: number) => {
@@ -52,13 +80,12 @@ const VideoManagement: React.FC = () => {
         }))
       )
         return;
-      await videosDeleteVideoAdmin({ path: { id } });
-      setVideos((prev) => prev.filter((v) => v.id !== id));
+      deleteVideo(id);
     },
-    [confirm],
+    [confirm, deleteVideo],
   );
 
-  if (loading) {
+  if (list.isPending) {
     return (
       <div className="p-6 pt-20">
         <p className="text-sm text-zinc-500">Loading videos...</p>
@@ -66,7 +93,7 @@ const VideoManagement: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error && !list.data) {
     return (
       <div className="p-6 pt-20">
         <p className="text-sm text-red-500">{error}</p>
@@ -83,6 +110,8 @@ const VideoManagement: React.FC = () => {
             Manage uploaded videos and inspect processing details
           </p>
         </div>
+
+        {error && <p className="text-sm text-red-500">{error}</p>}
 
         {videos.length === 0 ? (
           <p className="text-sm text-zinc-500">No videos found.</p>
