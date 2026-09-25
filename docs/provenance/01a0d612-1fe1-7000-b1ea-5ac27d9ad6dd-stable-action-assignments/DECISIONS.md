@@ -114,6 +114,8 @@ Implementation is complete when focused tests and cross-consumer integration che
 10. Backfilled decisions match the chosen migration-time calculation. Member, admin/leader, reminder, analytics, and suspension consumers agree on the saved decision while retaining their documented filters.
 11. Retries, concurrent evaluation, and processing failures neither issue conflicting decisions nor silently substitute exclusion for an unfinished calculation.
 12. If stage 9 runs: each converted action's saved decisions and live cohort are identical before and after conversion.
+13. After stage 10, no cohort expression references the All Members or Staff tag, and each rewritten action's live cohort matches its old one.
+14. After stage 11, signing up adds no tag, the All Members, Staff, and EU tags are gone, and `allMembersParticipating` reports what it did before.
 
 ## Delivery stages
 
@@ -225,6 +227,22 @@ Rewrite #81, #83, #87, #128, and #142 as prerequisites and drop the leaf, then d
 
 Ships alone: cleanup after stage 8; decisions for these closed actions are already saved and must not change.
 
+### 10. Computed All Members and Staff options
+
+Add two cohort leaves: `AllMembers`, every user, the same universe `NOT` evaluates against (`findActiveUserIds`), and `Staff`, users with the `staff` flag that staff preview already reads. A migration rewrites every `Tag` leaf naming the All Members tag to `AllMembers` and every one naming the Staff tag to `Staff`, closed and archived actions included, so no expression references either tag afterwards. The builder offers both leaves.
+
+In staging, All Members is the whole cohort of 60 actions and is ANDed with a `NOT Manual` exclusion on #11 and #133. Staff appears only on archived #82, which has no events and no decisions. Signup adds every new account to All Members (`AuthService.createReferredUser`), so the tag differs from every user only for accounts created some other way or removed by hand. In staging that is one admin account. Before this ships, count production users without the tag; a real member among them would join those cohorts. The Staff tag's seven members are a subset of the eight `staff` users, which no live action can notice.
+
+Ships alone: after stage 3, so every closed action's decisions are saved before its expression changes. The hourly divergence check reports any member the rewrite moved.
+
+### 11. Retire the All Members, Staff, and EU tags
+
+Signup stops adding the All Members tag, `UserModule.onModuleInit` stops creating it, and `allMembersParticipating` checks for the `AllMembers` leaf; the field stays on the wire. A migration deletes the All Members, Staff, and EU tags; EU has no references. Their `tag_users_user` rows cascade. The builder renders a `Tag` leaf whose tag no longer exists, rather than failing, for the non-US deletion below.
+
+The non-US tag stays until stage 7 has shipped. #149 (`NOT non-US`) and #152 (`non-US`), both closed, still reference it, so deleting it earlier would make #149 everyone and #152 no one wherever cohorts are recomputed live: suspension plans until stage 6, and staff status tables and analytics until stage 7. After stage 7 staff delete it by hand from the admin; until stage 8 removes the divergence check, it logs both actions as diverged.
+
+Ships alone: after stage 10, since new members must keep getting the All Members tag while any expression references it.
+
 ### Acceptance checks by stage
 
 | Stage | Checks                          |
@@ -237,3 +255,5 @@ Ships alone: cleanup after stage 8; decisions for these closed actions are alrea
 | 6     | 7, 8, 10 (member consumers), 11 |
 | 7     | 10 (staff consumers)            |
 | 9     | 12                              |
+| 10    | 13                              |
+| 11    | 14                              |

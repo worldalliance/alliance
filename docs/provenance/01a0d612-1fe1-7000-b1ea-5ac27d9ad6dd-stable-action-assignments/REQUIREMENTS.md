@@ -53,3 +53,10 @@ These policies were proposed by the agent and accepted by the user, who said the
 - The user explicitly permits assuming that historical cohorts have not changed: “whatever the calculation is now (or at migration time), we can store that.” Backfill uses that calculation; reconstructing earlier profile history is not required.
 - The user delegated the handling and presentation of pending assignments and processing failures to the agent, expressly requesting that the prescribed behavior be recorded in DECISIONS rather than REQUIREMENTS.
 - The user accepted the agent's scope recommendation to leave public guest actions, follow-up-form targeting, and random form-variant selection outside this change, except for adjustments needed to consume saved action decisions correctly.
+
+# Tag cleanup
+
+- The user asked to add one or more delivery stages that move action cohorts off the "All Members" tag.
+- The user asked to delete the existing US tag, possibly by hand rather than by migration, and expected that to come after stage 6 or so. The user named it "US-Member"; the agent found no such tag in staging, only "non-US".
+- The user asked to replace the "Staff" tag with a computed cohort option.
+- The user asked to delete the "EU" tag entirely if nothing uses it.
