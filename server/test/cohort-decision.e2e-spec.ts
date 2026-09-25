@@ -1,6 +1,7 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { Logger } from "@nestjs/common";
 import { millisecondsInDay } from "date-fns/constants";
+import request from "supertest";
 import type { Repository } from "typeorm";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
 import {
@@ -12,12 +13,19 @@ import {
   ActionStatus,
 } from "../src/actions/entities/action-event.entity";
 import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
+import { TasksModule } from "../src/tasks/tasks.module";
 import {
   ContractEvent,
   ContractEventType,
 } from "../src/user/entities/contract-event.entity";
 import { User } from "../src/user/entities/user.entity";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import {
+  createFormWithSnapshot,
+  createTestApp,
+  eventually,
+  signAccessToken,
+  TestContext,
+} from "./e2e-test-utils";
 
 const addDays = (date: Date, days: number) =>
   new Date(date.getTime() + days * millisecondsInDay);
@@ -34,7 +42,7 @@ describe("CohortDecisionService (e2e)", () => {
   const now = new Date();
 
   beforeAll(async () => {
-    ctx = await createTestApp([]);
+    ctx = await createTestApp([TasksModule]);
     service = ctx.app.get(CohortDecisionService);
     actionRepo = ctx.dataSource.getRepository(Action);
     eventRepo = ctx.dataSource.getRepository(ActionEvent);
@@ -468,5 +476,88 @@ describe("CohortDecisionService (e2e)", () => {
     const decisions = await decisionsFor(action.id);
     expect(decisions.get(unsigned.id)?.included).toBe(true);
     expect(decisions.has(existingMember.id)).toBe(false);
+  });
+
+  it("decides a member's open action when they sign", async () => {
+    const member = await createUser();
+    const open = await createAction({
+      start: addDays(now, -1),
+      deadline: addDays(now, 3),
+    });
+
+    await request(ctx.app.getHttpServer())
+      .post(`/contract/sign/${ctx.defaultContractId}`)
+      .set("Authorization", `Bearer ${signAccessToken(ctx.jwtService, member)}`)
+      .send({ signedName: "Member" })
+      .expect(201);
+
+    const decision = await eventually(
+      async () => (await decisionsFor(open.id)).get(member.id),
+      (row) => row !== undefined,
+      "the signing decision",
+    );
+    expect(decision).toMatchObject({
+      included: true,
+      reason: CohortDecisionReason.Signing,
+    });
+  });
+
+  it("decides a task-form signer with the answers and completion it submitted", async () => {
+    const member = await createUser();
+    const { form, snapshot } = await createFormWithSnapshot(ctx.dataSource, {
+      title: "Join",
+      schema: {
+        outputViews: [],
+        pages: [
+          {
+            id: "page-1",
+            fields: [
+              {
+                id: "sign",
+                type: "input",
+                kind: "contract",
+                label: null,
+                contractId: ctx.defaultContractId,
+                signQuestion: "Sign?",
+                yesLabel: "Yes",
+                noLabel: "No",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    const onboarding = await createAction({
+      start: addDays(now, -1),
+      deadline: null,
+      onboarding: true,
+    });
+    await actionRepo.update(onboarding.id, {
+      taskFormId: form.id,
+      isContractSigningAction: true,
+    });
+    const downstream = await createAction({
+      start: addDays(now, -1),
+      deadline: addDays(now, 3),
+      cohortExpression: { type: "CompletedAction", actionId: onboarding.id },
+    });
+
+    await request(ctx.app.getHttpServer())
+      .post(`/tasks/submitForm/${form.id}`)
+      .set("Authorization", `Bearer ${signAccessToken(ctx.jwtService, member)}`)
+      .send({
+        answers: { sign: true },
+        formSnapshotId: snapshot.id,
+        actionId: onboarding.id,
+        deviceType: "desktop",
+      })
+      .expect(201);
+
+    const decision = await eventually(
+      async () => (await decisionsFor(downstream.id)).get(member.id),
+      (row) => row !== undefined,
+      "the signing decision",
+    );
+    expect(decision?.included).toBe(true);
   });
 });

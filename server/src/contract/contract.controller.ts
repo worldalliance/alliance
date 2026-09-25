@@ -81,6 +81,7 @@ export class ContractController {
       contractId,
       viaTaskForm: false,
     });
+    this.contractService.announceSigned(req.user.sub);
     this.posthog.capture({
       event: AnalyticsEvent.ContractSigned,
       distinctId: String(req.user.sub),

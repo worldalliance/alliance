@@ -210,6 +210,53 @@ export class CohortDecisionService {
     return first?.resolvedAt ?? null;
   }
 
+  /** Decide a member who just became admissible by signing. */
+  async resolveForUser(userId: number, now: Date): Promise<void> {
+    const [actions, user] = await Promise.all([
+      this.findActionsInCatchUp(now),
+      this.userService.findOneOrFail(userId, {
+        contractEvents: true,
+        awayRanges: true,
+      }),
+    ]);
+    const open = actions.filter(
+      ({ enrollment }) => enrollment.state === CohortEnrollmentState.Open,
+    );
+    const decided = new Set(
+      (
+        await this.decisionRepository.find({
+          where: {
+            userId,
+            actionId: In(open.map(({ action }) => action.id)),
+          },
+          select: { actionId: true },
+        })
+      ).map((row) => row.actionId),
+    );
+    // The pass's population evaluator, over a population of one, so both
+    // writers apply the same cohort rules.
+    const session = new CohortResolutionSession();
+    await this.actionEventRecipientService.primeActiveUsers(session, () =>
+      Promise.resolve([user]),
+    );
+    const rows: DecisionRow[] = [];
+    for (const { action, enrollment } of open) {
+      if (decided.has(action.id)) continue;
+      rows.push(
+        ...(await this.resolveAction({
+          action,
+          enrollment,
+          users: [user],
+          hasDecisions: false,
+          session,
+          cutover: null,
+          now,
+        })),
+      );
+    }
+    await this.insert(rows);
+  }
+
   private decide(params: {
     action: ParsedAction;
     users: User[];

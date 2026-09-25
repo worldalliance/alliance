@@ -32,6 +32,7 @@ import { ActionStatsService } from "./action-stats.service";
 import { ActionsController } from "./actions.controller";
 import { ActionsGateway } from "./actions.gateway";
 import { ActionsService } from "./actions.service";
+import { CohortDecisionListener } from "./cohort-decision.listener";
 import { CohortDecisionService } from "./cohort-decision.service";
 import { CohortDecisionWorker } from "./cohort-decision.worker";
 import { ContractReminderWorker } from "./contract-reminder.worker";
@@ -112,6 +113,7 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
     ContractSuspenderWorker,
     ForumActionCompleterWorker,
     ActionStatsService,
+    CohortDecisionListener,
     CohortDecisionService,
     CohortDecisionWorker,
   ],
