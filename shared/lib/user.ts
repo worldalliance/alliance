@@ -13,6 +13,7 @@ import {
   ProfileDto,
   UpdateProfileDto,
   UserCommentDto,
+  actionsUserCompletedCount,
   forumFindCommentsByUser,
   forumFindPostsByUser,
   userAcceptFriendRequest,
@@ -36,6 +37,8 @@ export const userQueryKeys = {
   friendStatus: (userId: number) => ["user", userId, "friendStatus"] as const,
   forumPosts: (userId: number) => ["user", userId, "forumPosts"] as const,
   forumComments: (userId: number) => ["user", userId, "forumComments"] as const,
+  completedActionCount: (userId: number) =>
+    ["user", userId, "completedActionCount"] as const,
   allFriends: () => ["user", "friends"] as const,
   friends: (userId: number | undefined) =>
     [...userQueryKeys.allFriends(), userId] as const,
@@ -150,6 +153,19 @@ export const useUserFriendStatusQuery = (
       return response.data;
     },
     enabled: defaultQueryEnabled(userId, options?.enabled),
+  });
+
+export const useUserCompletedActionCountQuery = (userId: number) =>
+  useQuery({
+    queryKey: userQueryKeys.completedActionCount(userId),
+    queryFn: async () => {
+      const response = await actionsUserCompletedCount({
+        path: { id: userId },
+        throwOnError: true,
+      });
+      return response.data.completedCount;
+    },
+    enabled: Boolean(userId),
   });
 
 export const useUserForumPostsQuery = (

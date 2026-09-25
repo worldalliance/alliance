@@ -1,10 +1,7 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { changedPhoto } from "@alliance/common/image-src";
 import { forCount } from "@alliance/common/plural";
-import {
-  UpdateProfileDto,
-  actionsUserCompletedCount,
-} from "@alliance/shared/client";
+import { UpdateProfileDto } from "@alliance/shared/client";
 import { roleBadges } from "@alliance/shared/lib/copy";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { Features } from "@alliance/shared/lib/features";
@@ -17,9 +14,10 @@ import {
   useRemoveFriendMutation,
   useSendFriendRequestMutation,
   useUpdateProfileMutation,
+  useUserCompletedActionCountQuery,
   useUserForumActivity,
-  useUserFriendStatusQuery,
   useUserFriendsQuery,
+  useUserFriendStatusQuery,
   useUserProfileQuery,
 } from "@alliance/shared/lib/user";
 import useUserFeed from "@alliance/shared/lib/useUserFeed";
@@ -37,7 +35,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@alliance/sharedweb/ui/Tooltip";
-import { useQuery } from "@tanstack/react-query";
 import { MessageSquare, RefreshCw } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { href, useLocation, useNavigate, useParams } from "react-router";
@@ -153,17 +150,8 @@ const UserProfilePage: React.FC = () => {
     isFetchingNextPage: feedIsFetchingNextPage,
   });
 
-  const { data: completedCountData } = useQuery({
-    queryKey: ["userCompletedCount", userId],
-    queryFn: async () => {
-      const resp = await actionsUserCompletedCount({
-        path: { id: userId! },
-      });
-      return resp.data;
-    },
-    enabled: Boolean(userId),
-  });
-  const completedActionCount = completedCountData?.completedCount ?? 0;
+  const { data: completedActionCount = 0 } =
+    useUserCompletedActionCountQuery(userId);
 
   const {
     activities: completedActivities,

@@ -5,7 +5,6 @@ import {
   ActionActivityDto,
   HomeFeedItemDto,
   UpdateProfileDto,
-  actionsUserCompletedCount,
 } from "@alliance/shared/client";
 import { type FeedActionActivityDto } from "@alliance/shared/lib/actionActivity";
 import { roleBadges } from "@alliance/shared/lib/copy";
@@ -23,9 +22,10 @@ import {
   useRemoveFriendMutation,
   useSendFriendRequestMutation,
   useUpdateProfileMutation,
+  useUserCompletedActionCountQuery,
   useUserForumActivity,
-  useUserFriendStatusQuery,
   useUserFriendsQuery,
+  useUserFriendStatusQuery,
   useUserProfileQuery,
   useUserReceivedFriendRequestsQuery,
   useUserSentFriendRequestsQuery,
@@ -33,7 +33,6 @@ import {
 } from "@alliance/shared/lib/user";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
-import { useQuery } from "@tanstack/react-query";
 import { RelativePathString, router, useLocalSearchParams } from "expo-router";
 import {
   ChevronDown,
@@ -217,17 +216,8 @@ export default function UserProfileScreen() {
   const [pfpLightboxOpen, setPfpLightboxOpen] = useState(false);
   const currentProfilePicture = profile?.profilePicture ?? null;
 
-  const { data: completedCountData } = useQuery({
-    queryKey: ["userCompletedCount", userId],
-    queryFn: async () => {
-      const resp = await actionsUserCompletedCount({
-        path: { id: userId! },
-      });
-      return resp.data;
-    },
-    enabled: Boolean(userId),
-  });
-  const completedActionCount = completedCountData?.completedCount ?? 0;
+  const { data: completedActionCount = 0 } =
+    useUserCompletedActionCountQuery(userId);
 
   const {
     activities: completedActivities,
