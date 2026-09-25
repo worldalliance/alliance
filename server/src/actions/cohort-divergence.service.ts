@@ -6,14 +6,13 @@ import { ActionEventRecipientService } from "src/notifs/action-event-recipient.s
 import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { UserService } from "src/user/user.service";
 import { In, Not, type Repository } from "typeorm";
+import { formatIdSample } from "./cohort-decision";
 import { CohortDecisionService } from "./cohort-decision.service";
 import { collectCohortDependencies } from "./cohort-expression.evaluator";
 import {
   ActionCohortDecision,
   CohortDecisionReason,
 } from "./entities/action-cohort-decision.entity";
-
-const DIVERGENCE_SAMPLE_SIZE = 50;
 
 @Injectable()
 export class CohortDivergenceService {
@@ -80,10 +79,8 @@ export class CohortDivergenceService {
         actionIds.size + formIds.size > 0
           ? "activity-dependent expression"
           : "profile-only expression";
-      const sample = (ids: number[]) =>
-        `${ids.length} [${ids.slice(0, DIVERGENCE_SAMPLE_SIZE).join(", ")}]`;
       this.logger.warn(
-        `cohort decisions for action ${action.id} diverge from the live cohort (${bucket}): now in ${sample(nowIn)}, now out ${sample(nowOut)}`,
+        `cohort decisions for action ${action.id} diverge from the live cohort (${bucket}): now in ${formatIdSample(nowIn)}, now out ${formatIdSample(nowOut)}`,
       );
     }
   }

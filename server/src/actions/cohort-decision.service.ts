@@ -9,6 +9,7 @@ import { ContractEventType } from "src/user/entities/contract-event.entity";
 import type { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { In, type Repository } from "typeorm";
+import { ActionsService } from "./actions.service";
 import {
   CohortEnrollmentState,
   computeCohortEnrollment,
@@ -16,6 +17,7 @@ import {
   isCohortAdmissible,
   type CohortEnrollment,
 } from "./cohort-decision";
+import { logCohortPathDisagreements } from "./cohort-path-disagreements";
 import {
   ActionCohortDecision,
   CohortDecisionReason,
@@ -100,6 +102,7 @@ export class CohortDecisionService {
     private readonly decisionRepository: Repository<ActionCohortDecision>,
     private readonly actionEventRecipientService: ActionEventRecipientService,
     private readonly userService: UserService,
+    private readonly actionsService: ActionsService,
   ) {}
 
   /**
@@ -306,13 +309,22 @@ export class CohortDecisionService {
         action.cohortExpression,
         session,
       );
-    return this.decide({
+    const rows = this.decide({
       action,
       users: pending,
       included: (user) => cohort.has(user.id),
       reason: () => CohortDecisionReason.Backfill,
       now,
     });
+    await logCohortPathDisagreements({
+      action,
+      rows,
+      session,
+      userService: this.userService,
+      actionsService: this.actionsService,
+      logger: this.logger,
+    });
+    return rows;
   }
 
   /** When the resolver first ran: its earliest ordinary decision. */

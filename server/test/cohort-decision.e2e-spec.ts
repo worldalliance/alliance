@@ -4,6 +4,7 @@ import { Logger } from "@nestjs/common";
 import { millisecondsInDay } from "date-fns/constants";
 import request from "supertest";
 import type { Repository } from "typeorm";
+import { ActionsService } from "../src/actions/actions.service";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
 import { CohortDivergenceService } from "../src/actions/cohort-divergence.service";
 import { ActionActivity } from "../src/actions/entities/action-activity.entity";
@@ -749,6 +750,72 @@ describe("CohortDecisionService (e2e)", () => {
       expect(await reasonsFor(action.id)).toEqual(
         new Set([CohortDecisionReason.Backfill]),
       );
+    });
+  });
+
+  describe("backfill path comparison", () => {
+    let warn: jest.SpyInstance;
+    let error: jest.SpyInstance;
+    let singleMember: jest.SpyInstance;
+    beforeEach(() => {
+      warn = jest.spyOn(Logger.prototype, "warn").mockImplementation(() => {});
+      error = jest
+        .spyOn(Logger.prototype, "error")
+        .mockImplementation(() => {});
+      singleMember = jest.spyOn(
+        ctx.app.get(ActionsService),
+        "computeIsInCohortExpression",
+      );
+    });
+    afterEach(() => {
+      warn.mockRestore();
+      error.mockRestore();
+      singleMember.mockRestore();
+    });
+
+    const createClosedAction = () =>
+      createAction({ start: addDays(now, -3), deadline: addDays(now, -1) });
+
+    it("stays quiet when the single-member path agrees", async () => {
+      await createUser({ signedAt });
+      await createUser({ signedAt, tagged: false });
+      await createClosedAction();
+
+      await service.resolveAll(now);
+
+      expect(singleMember).toHaveBeenCalledTimes(2);
+      expect(warn).not.toHaveBeenCalledWith(
+        expect.stringContaining("single-member cohort path"),
+      );
+    });
+
+    it("logs members the single-member path places differently", async () => {
+      const member = await createUser({ signedAt });
+      const action = await createClosedAction();
+      singleMember.mockResolvedValue(false);
+
+      await service.resolveAll(now);
+
+      expect(warn).toHaveBeenCalledWith(
+        `single-member cohort path disagrees with the backfill of action ${action.id} on member(s) 1 [${member.id}]`,
+      );
+    });
+
+    it("still saves the backfill when the comparison fails", async () => {
+      const member = await createUser({ signedAt });
+      const action = await createClosedAction();
+      singleMember.mockRejectedValue(new Error("boom"));
+
+      await service.resolveAll(now);
+
+      expect(error).toHaveBeenCalledWith(
+        `Failed to compare cohort paths for action ${action.id}`,
+        expect.any(Error),
+      );
+      expect((await decisionsFor(action.id)).get(member.id)).toMatchObject({
+        included: true,
+        reason: CohortDecisionReason.Backfill,
+      });
     });
   });
 

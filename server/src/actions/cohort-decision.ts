@@ -89,3 +89,10 @@ export function heldContractDuringWindow(params: {
     )
   );
 }
+
+const ID_SAMPLE_SIZE = 50;
+
+/** A count and the first ids, for log lines about sets of members. */
+export function formatIdSample(ids: number[]): string {
+  return `${ids.length} [${ids.slice(0, ID_SAMPLE_SIZE).join(", ")}]`;
+}
