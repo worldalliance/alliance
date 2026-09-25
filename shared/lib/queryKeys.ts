@@ -73,6 +73,7 @@ export const queryKeys = {
     ["actionPartnershipsFindAllResponsesAdmin"] as const,
   reminderGroupClickRatesAdmin: () =>
     ["analyticsGetReminderGroupClickRatesAdmin"] as const,
+  scheduledPlansAdmin: () => ["actionsScheduledPlansAdmin"] as const,
   tagsAdmin: () => ["userGetTagsAdmin"] as const,
   timeSpentPerUserAdmin: () => ["analyticsGetTimeSpentPerUserAdmin"] as const,
   timeSpentPerUserTotalAdmin: () =>
