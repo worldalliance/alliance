@@ -98,6 +98,31 @@ export class ActionEventRecipientService {
     return pending;
   }
 
+  /**
+   * An action's live cohort: the members its expression selects whose
+   * prerequisites have all resolved.
+   */
+  async resolveActionCohortMemberIds(params: {
+    action: Pick<ParsedAction, "cohortExpression" | "prerequisiteActionIds">;
+    session: CohortResolutionSession;
+    resolvingActionIds?: ReadonlySet<number>;
+  }): Promise<Set<number>> {
+    const { action, session, resolvingActionIds } = params;
+    const [cohort, isReady] = await Promise.all([
+      this.resolveCohortMemberIds(
+        action.cohortExpression,
+        session,
+        resolvingActionIds,
+      ),
+      this.prerequisiteProgressService.loadReadiness({
+        action,
+        session,
+        now: new Date(),
+      }),
+    ]);
+    return new Set([...cohort].filter(isReady));
+  }
+
   private buildCohortContext(
     session: CohortResolutionSession,
     resolvingActionIds: ReadonlySet<number>,
@@ -278,11 +303,11 @@ export class ActionEventRecipientService {
     if (!canMissActionDeadline(action, now)) return new Set();
     const [users, cohortMemberIds, terminalUserIds] = await Promise.all([
       this.getActiveUsers(session),
-      this.resolveCohortMemberIds(
-        action.cohortExpression,
+      this.resolveActionCohortMemberIds({
+        action,
         session,
         resolvingActionIds,
-      ),
+      }),
       this.prerequisiteProgressService.loadTerminalUserIds(action.id),
     ]);
     return new Set(
@@ -405,11 +430,11 @@ export class ActionEventRecipientService {
     for (const { action } of entries) {
       cohortByAction.set(
         action.id,
-        this.resolveCohortMemberIds(
-          action.cohortExpression,
+        this.resolveActionCohortMemberIds({
+          action,
           session,
           resolvingActionIds,
-        ),
+        }),
       );
     }
     // Await all cohort resolutions in parallel
@@ -520,14 +545,14 @@ export class ActionEventRecipientService {
           },
         })
         .then((acts) => new Set(acts.map((a) => a.userId))),
-      this.resolveCohortMemberIds(eventAction.cohortExpression, session),
+      this.resolveActionCohortMemberIds({ action: eventAction, session }),
       Promise.all(
         actions.map(async (action) => ({
           actionId: action.id,
-          memberIds: await this.resolveCohortMemberIds(
-            action.cohortExpression,
+          memberIds: await this.resolveActionCohortMemberIds({
+            action,
             session,
-          ),
+          }),
         })),
       ),
       this.actionActivityRepository.find({

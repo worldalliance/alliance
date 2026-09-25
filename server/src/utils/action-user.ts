@@ -165,9 +165,9 @@ function computeSelfViewCore(params: SelfViewParams): CoreAssignment {
  *
  * Distinct from {@link computeIsAssignedFromCohortSet} (the event-recipient variant
  * driven by a precomputed cohort-member set, for notifications/roster). This one
- * consumes the full cohort-*expression* result (`computeIsInCohortExpression`)
- * as `inCohort`, and stays pure/sync so the caller controls when the DB-hitting
- * cohort evaluation runs. Both delegate to {@link computeAssignmentCore}.
+ * consumes the live cohort result (`computeIsInActionCohort`) as `inCohort`,
+ * and stays pure/sync so the caller controls when the DB-hitting cohort
+ * evaluation runs. Both delegate to {@link computeAssignmentCore}.
  */
 export function computeActionAssignment(
   params: SelfViewParams & { now: Date },

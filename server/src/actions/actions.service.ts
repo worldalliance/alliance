@@ -231,6 +231,7 @@ import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from "./entities/reminder-group.entity";
+import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 import { SCHEMA_WRITE_TARGETS } from "./schema-write-target";
 import {
   assertNotInStaffPreview,
@@ -361,6 +362,7 @@ export class ActionsService {
     private readonly formSnapshotService: FormSnapshotService,
     private readonly posthogService: PosthogService,
     private readonly cohortDecisionStaffService: CohortDecisionStaffService,
+    private readonly prerequisiteProgressService: PrerequisiteProgressService,
   ) {}
 
   async applyAssignedFormIds(
@@ -889,10 +891,10 @@ export class ActionsService {
     );
     const cohorts = await Promise.all(
       requiredActions.map((action) =>
-        this.actionEventRecipientService.resolveCohortMemberIds(
-          action.cohortExpression,
+        this.actionEventRecipientService.resolveActionCohortMemberIds({
+          action,
           session,
-        ),
+        }),
       ),
     );
 
@@ -934,9 +936,9 @@ export class ActionsService {
   }
 
   /**
-   * Cohort-expression result for the viewer on one action — the single
-   * evaluation feeding `canParticipate`/`viewer.canComplete`,
-   * `shouldParticipate`, and `viewer`. No member-action-phase gate: the
+   * Live cohort result (`computeIsInActionCohort`) for the viewer on one
+   * action — the single evaluation feeding `canParticipate`/
+   * `viewer.canComplete`, `shouldParticipate`, and `viewer`. No member-action-phase gate: the
    * completion rule (unlike assignment) applies to actions whose phase isn't
    * scheduled yet, and gating here made `viewer.canComplete` disagree with
    * `isCompletionAllowed` (which the complete mutation enforces). Dismissal
@@ -950,11 +952,7 @@ export class ActionsService {
   }): Promise<boolean> {
     const { action, user, session } = params;
     return user
-      ? await this.computeIsInCohortExpression({
-          user,
-          cohortExpression: action.cohortExpression,
-          session,
-        })
+      ? await this.computeIsInActionCohort({ user, action, session })
       : false;
   }
 
@@ -1107,11 +1105,7 @@ export class ActionsService {
       return false;
     }
 
-    return this.computeIsInCohortExpression({
-      user,
-      cohortExpression: action.cohortExpression,
-      session,
-    });
+    return this.computeIsInActionCohort({ user, action, session });
   }
 
   private async loadUserForActionVisibility(
@@ -2501,10 +2495,7 @@ export class ActionsService {
       return false;
     }
 
-    const inCohort = await this.computeIsInCohortExpression({
-      user,
-      cohortExpression: action.cohortExpression,
-    });
+    const inCohort = await this.computeIsInActionCohort({ user, action });
 
     return computeCanCompleteAction({ action, user, inCohort });
   }
@@ -3862,10 +3853,10 @@ export class ActionsService {
       // this expression by findParticipantIdsForActions) instead of the
       // per-user expression walk, whose action leaves each hit the DB.
       const cohortMemberIds =
-        await this.actionEventRecipientService.resolveCohortMemberIds(
-          action.cohortExpression,
+        await this.actionEventRecipientService.resolveActionCohortMemberIds({
+          action,
           session,
-        );
+        });
       for (const userId of userIds) {
         const detail = getDetail({ userId, actionId: action.id });
         if (
@@ -4213,10 +4204,10 @@ export class ActionsService {
         if (!memberActionEventByActionId.has(action.id)) continue;
         cohortByAction.set(
           action.id,
-          this.actionEventRecipientService.resolveCohortMemberIds(
-            action.cohortExpression,
+          this.actionEventRecipientService.resolveActionCohortMemberIds({
+            action,
             session,
-          ),
+          }),
         );
       }
     }
@@ -5179,6 +5170,36 @@ export class ActionsService {
   }
 
   /**
+   * Whether the member is in the action's live cohort: its expression selects
+   * them and their prerequisites have all resolved.
+   */
+  async computeIsInActionCohort(params: {
+    user: User;
+    action: Pick<ParsedAction, "cohortExpression" | "prerequisiteActionIds">;
+    visitedActionIds?: Set<number>;
+    session?: CohortResolutionSession;
+  }): Promise<boolean> {
+    const { user, action, visitedActionIds } = params;
+    const session = params.session ?? new CohortResolutionSession();
+    if (
+      !(await this.computeIsInCohortExpression({
+        user,
+        cohortExpression: action.cohortExpression,
+        visitedActionIds,
+        session,
+      }))
+    ) {
+      return false;
+    }
+    const isReady = await this.prerequisiteProgressService.loadReadiness({
+      action,
+      session,
+      now: new Date(),
+    });
+    return isReady(user.id);
+  }
+
+  /**
    * Check if a user is in a cohort expression's target set.
    */
   async computeIsInCohortExpression(params: {
@@ -5222,9 +5243,9 @@ export class ActionsService {
         if (!fetched) return false;
         const action = parseAction(fetched);
 
-        const inCohort = await this.computeIsInCohortExpression({
+        const inCohort = await this.computeIsInActionCohort({
           user,
-          cohortExpression: action.cohortExpression,
+          action,
           visitedActionIds: new Set(visitedActionIds).add(actionId),
           session,
         });
@@ -5271,9 +5292,9 @@ export class ActionsService {
               },
             ],
           }),
-          this.computeIsInCohortExpression({
+          this.computeIsInActionCohort({
             user,
-            cohortExpression: action.cohortExpression,
+            action,
             visitedActionIds: new Set(visitedActionIds).add(actionId),
             session,
           }),

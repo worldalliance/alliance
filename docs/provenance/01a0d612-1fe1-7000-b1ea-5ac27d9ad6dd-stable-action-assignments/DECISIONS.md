@@ -184,7 +184,7 @@ The resolver derives readiness (completion or withdrawal activity, deadline reac
 
 Prerequisites are an integer array on the action rather than a join table: the set is small, read whole, and never queried from the upstream side except by validation. Importing an exported action drops them, since action ids name different actions in another environment.
 
-The live recomputation path treats a member whose prerequisites are not ready as outside the cohort. The configuration then takes effect for members immediately, and shadow comparisons stay meaningful.
+The live recomputation path treats a member whose prerequisites are not ready as outside the cohort. The configuration then takes effect for members immediately, and shadow comparisons stay meaningful. Every read of an action's live cohort goes through that rule, including the rosters `InProgressAction` and `MissedActionDeadline` leaves read. The divergence check keeps comparing decisions with the expression alone, since a decided member's prerequisites had resolved; follow-up forms and the admin's expression preview have no prerequisites.
 
 Ships alone: existing actions have no prerequisites, so nothing waits until staff configure one.
 
