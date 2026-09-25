@@ -1,3 +1,4 @@
+import { collectCohortDependencies } from "@alliance/common/cohort-expression";
 import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -8,7 +9,6 @@ import { UserService } from "src/user/user.service";
 import { In, Not, type Repository } from "typeorm";
 import { formatIdSample } from "./cohort-decision";
 import { CohortDecisionService } from "./cohort-decision.service";
-import { collectCohortDependencies } from "./cohort-expression.evaluator";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import { CohortDecisionReason } from "./entities/cohort-decision-reason";
 

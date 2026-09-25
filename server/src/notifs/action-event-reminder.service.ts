@@ -1,9 +1,9 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
+import { collectCohortDependencies } from "@alliance/common/cohort-expression";
 import { Temporal } from "@js-temporal/polyfill";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
-import { collectCohortDependencies } from "src/actions/cohort-expression.evaluator";
 import {
   CreateReminderGroupDto,
   PreviewEmailHtmlDto,

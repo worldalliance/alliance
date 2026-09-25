@@ -198,3 +198,46 @@ export function expressionReferencesTag(
 
   return expr.children.some((child) => expressionReferencesTag(child, tagId));
 }
+
+/**
+ * The action ids from action leaves, and the form ids from FormFieldValue
+ * leaves, the expression references.
+ */
+export function collectCohortDependencies(
+  expr: CohortExpression | null | undefined,
+): { actionIds: Set<number>; formIds: Set<number> } {
+  const actionIds = new Set<number>();
+  const formIds = new Set<number>();
+
+  const walk = (node: CohortExpression): void => {
+    switch (node.type) {
+      case "CompletedAction":
+      case "InProgressAction":
+      case "MissedActionDeadline":
+        actionIds.add(node.actionId);
+        break;
+      case "FormFieldValue":
+        formIds.add(node.formId);
+        break;
+      case "Tag":
+      case "Manual":
+      case "GroupLead":
+      case "USMember":
+      case "NonUSMember":
+        break;
+      case "AND":
+      case "OR":
+        node.children.forEach(walk);
+        break;
+      case "NOT":
+        walk(node.child);
+        break;
+      default:
+        node satisfies never;
+        break;
+    }
+  };
+
+  if (expr) walk(expr);
+  return { actionIds, formIds };
+}
