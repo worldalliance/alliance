@@ -8,4 +8,5 @@ export const LOCK_KEYS = {
   contractSuspender: [0xa11a, 0xce03] as const,
   contractReminder: [0xa11a, 0xce02] as const,
   forumActionCompleter: [0xf0a1, 0xace1] as const,
+  cohortDecision: [0xa11a, 0xce04] as const,
 };
