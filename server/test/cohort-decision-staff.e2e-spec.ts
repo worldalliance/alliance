@@ -14,7 +14,7 @@ import {
   cohortDecisionFixtures,
   type CohortDecisionFixtures,
 } from "./cohort-decision-fixtures";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
 
 describe("Cohort decision staff tooling (e2e)", () => {
   let ctx: TestContext;
@@ -448,6 +448,80 @@ describe("Cohort decision staff tooling (e2e)", () => {
 
       expect(extended.status).toBe(200);
       expect(await deadlineOf(action.id)).toEqual(addDays(now, 8));
+    });
+
+    it("reopens a closed action, keeping its decisions and admitting later signers as optional", async () => {
+      const assigned = await createUser({ signedAt });
+      const excluded = await createUser({ signedAt, tagged: false });
+      const action = await createAction({
+        start: addDays(now, -5),
+        deadline: addDays(now, -2),
+      });
+      await service.resolveAll(addDays(now, -3));
+      const lateSigner = await createUser({ signedAt: addDays(now, -1) });
+
+      const reopened = await moveSuiteEvent({
+        actionId: action.id,
+        status: ActionStatus.Resolution,
+        date: addDays(now, 3),
+      });
+      await service.resolveAll(now);
+
+      expect(reopened.status).toBe(200);
+      const decisions = await decisionsFor(action.id);
+      expect(decisions.get(assigned.id)).toEqual(
+        expect.objectContaining({
+          included: true,
+          resolvedAt: addDays(now, -3),
+        }),
+      );
+      expect(decisions.get(excluded.id)).toEqual(
+        expect.objectContaining({
+          included: false,
+          resolvedAt: addDays(now, -3),
+        }),
+      );
+      expect(decisions.get(lateSigner.id)).toMatchObject({
+        included: true,
+        reason: CohortDecisionReason.Signing,
+      });
+      const viewed = await request(ctx.app.getHttpServer())
+        .get(`/actions/slug/${action.id}`)
+        .set(
+          "Authorization",
+          `Bearer ${signAccessToken(ctx.jwtService, lateSigner)}`,
+        );
+      expect(viewed.status).toBe(200);
+      expect(viewed.body.viewer).toMatchObject({
+        assigned: true,
+        optional: true,
+        optionalReason: "contract_gap",
+      });
+    });
+
+    it("keeps decisions when the start moves", async () => {
+      const member = await createUser({ signedAt });
+      const action = await createAction({
+        start: addDays(now, -1),
+        deadline: addDays(now, 5),
+      });
+      await service.resolveAll(now);
+
+      const moved = await moveSuiteEvent({
+        actionId: action.id,
+        status: ActionStatus.MemberAction,
+        date: addDays(now, 1),
+      });
+      await service.resolveAll(addDays(now, 2));
+
+      expect(moved.status).toBe(200);
+      expect((await decisionsFor(action.id)).get(member.id)).toEqual(
+        expect.objectContaining({
+          included: true,
+          reason: CohortDecisionReason.Launch,
+          resolvedAt: now,
+        }),
+      );
     });
   });
 });
