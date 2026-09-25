@@ -19,6 +19,7 @@ import type {
 import {
   getMemberCount,
   groupAssignmentLabels,
+  groupRemovalMessage,
   isLedBy,
 } from "@alliance/shared/lib/communityUtils";
 import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
@@ -60,24 +61,6 @@ const INITIAL_COMMUNITY: CreateCommunityDto = {
   allowStaffAssignments: true,
   maxCapacity: GROUP_MAX_CAPACITY_DEFAULT,
 };
-
-function getRemovalMessage(
-  nonLeaderCommunities: CommunityDto[],
-  targetName?: string,
-): string | null {
-  if (!nonLeaderCommunities.length) {
-    return null;
-  }
-  const names = nonLeaderCommunities.map((c) => c.name);
-  const base =
-    names.length === 1
-      ? `your current group (${names[0]})`
-      : `the following groups: (${names.join(", ")})`;
-  if (!targetName) {
-    return `You will be removed from ${base}.`;
-  }
-  return `Joining ${targetName} will remove you from ${base}.`;
-}
 
 export default function GroupManageScreen() {
   const { user, refreshUser } = useAuth();
@@ -276,7 +259,7 @@ export default function GroupManageScreen() {
 
   const handleJoinPublicCommunity = useCallback(
     (community: CommunityDto) => {
-      const message = getRemovalMessage(memberCommunities, community.name);
+      const message = groupRemovalMessage(memberCommunities, community.name);
       const proceed = async () => {
         setJoiningCommunityId(community.id);
         try {
@@ -347,7 +330,7 @@ export default function GroupManageScreen() {
 
   const handleAcceptInvite = useCallback(
     (invite: CommunityInviteDto) => {
-      const message = getRemovalMessage(
+      const message = groupRemovalMessage(
         memberCommunities,
         invite.community.name,
       );
