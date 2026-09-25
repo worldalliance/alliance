@@ -39,7 +39,7 @@ import {
 } from "@alliance/sharedweb/ui/Tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { MessageSquare, RefreshCw } from "lucide-react";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { href, useLocation, useNavigate, useParams } from "react-router";
 import { Route } from "../../../.react-router/types/src/pages/app/+types/UserProfilePage";
 import ForumActivityCommentCard from "../../components/ForumActivityCommentCard";
@@ -51,6 +51,7 @@ import ImageEditor from "../../components/ImageEditor";
 import LoadFailed from "../../components/LoadFailed";
 import PillTab from "../../components/PillTab";
 import UserActivityCard from "../../components/UserActivityCard";
+import { useInfiniteScrollSentinel } from "../../hooks/useInfiniteScrollSentinel";
 import { useAuth } from "../../lib/AuthContext";
 import { isFeatureEnabled } from "../../lib/config";
 
@@ -146,38 +147,11 @@ const UserProfilePage: React.FC = () => {
     comments: true,
   });
 
-  const feedPaginationRef = useRef({
+  const feedSentinelRef = useInfiniteScrollSentinel({
     fetchNextPage: fetchNextFeedPage,
     hasNextPage: feedHasNextPage,
     isFetchingNextPage: feedIsFetchingNextPage,
   });
-  feedPaginationRef.current = {
-    fetchNextPage: fetchNextFeedPage,
-    hasNextPage: feedHasNextPage,
-    isFetchingNextPage: feedIsFetchingNextPage,
-  };
-
-  const feedObserverRef = useRef<IntersectionObserver | null>(null);
-  const feedSentinelRef = useCallback((node: HTMLDivElement | null) => {
-    if (feedObserverRef.current) {
-      feedObserverRef.current.disconnect();
-      feedObserverRef.current = null;
-    }
-    if (!node) return;
-
-    feedObserverRef.current = new IntersectionObserver(
-      (entries) => {
-        const p = feedPaginationRef.current;
-        for (const entry of entries) {
-          if (entry.isIntersecting && p.hasNextPage && !p.isFetchingNextPage) {
-            p.fetchNextPage();
-          }
-        }
-      },
-      { rootMargin: "200px" },
-    );
-    feedObserverRef.current.observe(node);
-  }, []);
 
   const { data: completedCountData } = useQuery({
     queryKey: ["userCompletedCount", userId],

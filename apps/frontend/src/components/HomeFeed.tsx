@@ -1,6 +1,7 @@
 import useHomeFeed from "@alliance/shared/lib/useHomeFeed";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
+import { useInfiniteScrollSentinel } from "../hooks/useInfiniteScrollSentinel";
 import ForumCommentCard from "./ForumCommentCard";
 import UserActivityCard from "./UserActivityCard";
 
@@ -20,39 +21,11 @@ const HomeFeed = () => {
     limit: LIMIT,
   });
 
-  const observerRef = useRef<IntersectionObserver | null>(null);
-
-  const paginationRef = useRef({
+  const sentinelRef = useInfiniteScrollSentinel({
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
   });
-  paginationRef.current = {
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  };
-
-  const sentinelRef = useCallback((node: HTMLDivElement | null) => {
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-      observerRef.current = null;
-    }
-    if (!node) return;
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        const p = paginationRef.current;
-        for (const entry of entries) {
-          if (entry.isIntersecting && p.hasNextPage && !p.isFetchingNextPage) {
-            p.fetchNextPage();
-          }
-        }
-      },
-      { rootMargin: "200px" },
-    );
-    observerRef.current.observe(node);
-  }, []);
 
   const handleLike = useCallback(
     (activityId: number) => {

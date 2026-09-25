@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, href, useParams } from "react-router";
 import chevronLeft from "../../assets/icons8-expand-arrow-96.png";
 import UserActivityCard from "../../components/UserActivityCard";
+import { useInfiniteScrollSentinel } from "../../hooks/useInfiniteScrollSentinel";
 import { useAuth } from "../../lib/AuthContext";
 
 type Mode = "friends" | "everyone";
@@ -78,8 +79,16 @@ const ActionActivityFeedPage = () => {
 
   const friendsRef = useRef<HTMLDivElement>(null);
   const everyoneRef = useRef<HTMLDivElement>(null);
-  const friendsSentinelRef = useRef<HTMLDivElement>(null);
-  const everyoneSentinelRef = useRef<HTMLDivElement>(null);
+  const friendsSentinelRef = useInfiniteScrollSentinel({
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  });
+  const everyoneSentinelRef = useInfiniteScrollSentinel({
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  });
 
   const [activeHeight, setActiveHeight] = useState<number | undefined>(
     undefined,
@@ -105,36 +114,6 @@ const ActionActivityFeedPage = () => {
       window.removeEventListener("resize", updateHeight);
     };
   }, [mode, updateHeight]);
-
-  // Store volatile pagination state in a ref so the observer stays stable
-  const paginationRef = useRef({
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  });
-  paginationRef.current = { fetchNextPage, hasNextPage, isFetchingNextPage };
-
-  // Infinite scroll observer — created once
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const p = paginationRef.current;
-        for (const entry of entries) {
-          if (entry.isIntersecting && p.hasNextPage && !p.isFetchingNextPage) {
-            p.fetchNextPage();
-          }
-        }
-      },
-      { rootMargin: "200px" },
-    );
-
-    if (friendsSentinelRef.current)
-      observer.observe(friendsSentinelRef.current);
-    if (everyoneSentinelRef.current)
-      observer.observe(everyoneSentinelRef.current);
-
-    return () => observer.disconnect();
-  }, []);
 
   const renderActivityColumn = (mode: Mode) => {
     const list = mode === "friends" ? friendsActivities : activities;

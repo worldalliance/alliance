@@ -7,6 +7,7 @@ import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, href } from "react-router";
 import UserActivityCard from "../../components/UserActivityCard";
+import { useInfiniteScrollSentinel } from "../../hooks/useInfiniteScrollSentinel";
 
 type Mode = "friends" | "everyone";
 
@@ -53,8 +54,16 @@ const ActivityFeedPage = () => {
 
   const friendsRef = useRef<HTMLDivElement>(null);
   const everyoneRef = useRef<HTMLDivElement>(null);
-  const friendsSentinelRef = useRef<HTMLDivElement>(null);
-  const everyoneSentinelRef = useRef<HTMLDivElement>(null);
+  const friendsSentinelRef = useInfiniteScrollSentinel({
+    fetchNextPage: fetchNextFriends,
+    hasNextPage: hasNextFriends,
+    isFetchingNextPage: isFetchingNextFriends,
+  });
+  const everyoneSentinelRef = useInfiniteScrollSentinel({
+    fetchNextPage: fetchNextGlobal,
+    hasNextPage: hasNextGlobal,
+    isFetchingNextPage: isFetchingNextGlobal,
+  });
 
   const [activeHeight, setActiveHeight] = useState<number | undefined>(
     undefined,
@@ -80,53 +89,6 @@ const ActivityFeedPage = () => {
       window.removeEventListener("resize", updateHeight);
     };
   }, [mode, updateHeight]);
-
-  // Store volatile pagination state in refs so the observer effect stays stable
-  const paginationRef = useRef({
-    fetchNextFriends,
-    fetchNextGlobal,
-    hasNextFriends,
-    hasNextGlobal,
-    isFetchingNextFriends,
-    isFetchingNextGlobal,
-  });
-  paginationRef.current = {
-    fetchNextFriends,
-    fetchNextGlobal,
-    hasNextFriends,
-    hasNextGlobal,
-    isFetchingNextFriends,
-    isFetchingNextGlobal,
-  };
-
-  // Infinite scroll observer — no volatile deps, created once
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const p = paginationRef.current;
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          if (entry.target === friendsSentinelRef.current) {
-            if (p.hasNextFriends && !p.isFetchingNextFriends) {
-              p.fetchNextFriends();
-            }
-          } else if (entry.target === everyoneSentinelRef.current) {
-            if (p.hasNextGlobal && !p.isFetchingNextGlobal) {
-              p.fetchNextGlobal();
-            }
-          }
-        }
-      },
-      { rootMargin: "200px" },
-    );
-
-    if (friendsSentinelRef.current)
-      observer.observe(friendsSentinelRef.current);
-    if (everyoneSentinelRef.current)
-      observer.observe(everyoneSentinelRef.current);
-
-    return () => observer.disconnect();
-  }, []);
 
   const renderActivityColumn = (mode: Mode) => {
     const list = mode === "friends" ? friendActivities : activities;
