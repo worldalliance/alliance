@@ -1,27 +1,11 @@
-import {
-  deviceVisibilityTargetSchema,
-  type DeviceVisibilityTarget,
-} from "@alliance/common/forms/device";
-import type {
-  AnyField,
-  FormSchema,
-  FormValue,
-} from "@alliance/common/forms/form-schema";
-import { resolveOutputView } from "@alliance/common/forms/output-resolution";
-import type { VisibilityValidatorResults } from "@alliance/common/forms/visibility";
-import { R } from "@alliance/common/result";
-import type {
-  FormResponseDto,
-  FormResponseOutputDto,
-} from "@alliance/shared/client";
-import {
-  resolveOutputItems,
-  type ResolvedOutputFieldItem,
-} from "@alliance/shared/outputrenderer";
-import { parseVisibilityValidatorResults } from "@alliance/shared/parsed-dtos";
+import type { AnyField } from "@alliance/common/forms/form-schema";
+import type { ResolvedOutputFieldItem } from "@alliance/shared/outputrenderer";
 import { cn } from "@alliance/shared/styles/util";
 import { staticFieldContext } from "@alliance/shared/useFormRenderer";
-import { useMemo } from "react";
+import {
+  useOutputItems,
+  type OutputSource,
+} from "@alliance/shared/useOutputItems";
 import { Image, View } from "react-native";
 import { getImageSource } from "../lib/config";
 import { RenderDisplayBlockMobile } from "./forms/FormRenderer";
@@ -29,19 +13,7 @@ import { RenderField } from "./forms/RenderField";
 import Card, { CardStyle } from "./system/Card";
 import Text, { FontWeight } from "./system/Text";
 
-type OutputRendererProps = {
-  schema?: FormSchema;
-  submission?: FormResponseOutputDto | FormResponseDto | null;
-  answers?: Record<string, FormValue>;
-  viewId?: string;
-  validatorResults?: VisibilityValidatorResults;
-  deviceType?: DeviceVisibilityTarget;
-  className?: string;
-};
-
-type SubmissionWithPublicAnswers =
-  | (FormResponseOutputDto & { publicAnswers?: Record<string, boolean> })
-  | (FormResponseDto & { publicAnswers?: Record<string, boolean> });
+type OutputRendererProps = OutputSource & { className?: string };
 
 const canUseMobileFieldRenderer = (field: AnyField): boolean =>
   field.kind !== "contract" && field.kind !== "custom" && field.kind !== "file";
@@ -78,82 +50,16 @@ const renderFormattedOutputFieldValue = (item: ResolvedOutputFieldItem) => {
   return <Text className="text-base text-zinc-900">{item.formattedValue}</Text>;
 };
 
-function OutputRenderer({
-  schema,
-  submission,
-  answers,
-  viewId,
-  validatorResults,
-  deviceType,
-  className = "",
-}: OutputRendererProps) {
-  const effectiveSchema =
-    schema ?? (submission?.schemaSnapshot as unknown as FormSchema | undefined);
-  const resolvedAnswers = useMemo((): Record<string, FormValue> => {
-    if (answers) {
-      return answers;
-    }
-    if (submission?.answers) {
-      return submission.answers as Record<string, FormValue>;
-    }
-    return {};
-  }, [answers, submission]);
-  const resolvedValidatorResults = useMemo(
-    () =>
-      validatorResults ??
-      (submission
-        ? R.unwrapOr(
-            parseVisibilityValidatorResults(
-              submission.visibilityValidatorResults,
-            ),
-            {},
-          )
-        : undefined),
-    [validatorResults, submission],
-  );
-  const resolvedDeviceType =
-    deviceType ??
-    deviceVisibilityTargetSchema.safeParse(submission?.deviceType).data;
-  const resolvedPublicAnswers = (
-    submission as SubmissionWithPublicAnswers | undefined
-  )?.publicAnswers;
-  const selectedView = effectiveSchema
-    ? resolveOutputView(effectiveSchema, viewId)
-    : null;
-  const resolvedOutput = useMemo(
-    () =>
-      effectiveSchema
-        ? resolveOutputItems({
-            schema: effectiveSchema,
-            answers: resolvedAnswers,
-            viewId,
-            validatorResults: resolvedValidatorResults,
-            deviceType: resolvedDeviceType,
-            publicAnswers: resolvedPublicAnswers,
-          })
-        : null,
-    [
-      effectiveSchema,
-      resolvedAnswers,
-      viewId,
-      resolvedValidatorResults,
-      resolvedDeviceType,
-      resolvedPublicAnswers,
-    ],
-  );
-
-  if (!selectedView || !effectiveSchema) {
-    return null;
-  }
-
-  if (!resolvedOutput || resolvedOutput.items.length === 0) {
+function OutputRenderer({ className = "", ...source }: OutputRendererProps) {
+  const items = useOutputItems(source);
+  if (items.length === 0) {
     return null;
   }
 
   return (
     <Card cardStyle={CardStyle.Grey}>
       <View className={cn("gap-2", className)}>
-        {resolvedOutput.items.map((item, index) => {
+        {items.map((item, index) => {
           if (item.type === "display") {
             return (
               <View
