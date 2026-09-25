@@ -1,23 +1,25 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import { execFile, spawn } from "child_process";
+import { execFile } from "child_process";
 import { milliseconds } from "date-fns";
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
 import process from "process";
+import {
+  delay,
+  runCommand,
+  shutdown,
+  spawnProcess,
+  trackChildProcess,
+  waitForHttp,
+  type SpawnOptions,
+} from "./child-processes";
+import { fileExists } from "./file-exists";
 import { mobileScreenshotTargets } from "./mobile-screenshot-targets";
-import { run } from "./run-command";
 import { sanitizeFileName } from "./sanitize-file-name";
 import { screenshotDatabase } from "./screenshot-database";
 import { dbHost, dbPass, dbPort, dbUser, seedDatabase } from "./seed-database";
 import { testUserEmail, testUserPassword } from "./test-user";
-
-type ChildProcessHandle = ReturnType<typeof spawn>;
-
-type SpawnOptions = {
-  cwd: string;
-  env?: NodeJS.ProcessEnv;
-};
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 const backendPort = Number(process.env.SERVER_PORT ?? "3105");
@@ -66,9 +68,6 @@ const requestedTargetNames = (process.env.SCREENSHOT_TARGETS ?? "")
   .map((value) => value.trim())
   .filter(Boolean);
 
-const childProcesses: ChildProcessHandle[] = [];
-
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const logPrefix = "[citesting:mobile-ios]";
 const mobileAppRoot = path.join(repoRoot, "apps", "mobile");
 
@@ -78,32 +77,6 @@ const selectedTargets =
         requestedTargetNames.includes(target.name),
       )
     : mobileScreenshotTargets;
-
-const trackChildProcess = (child: ChildProcessHandle) => {
-  childProcesses.push(child);
-  child.on("close", () => {
-    const index = childProcesses.indexOf(child);
-    if (index >= 0) {
-      childProcesses.splice(index, 1);
-    }
-  });
-  return child;
-};
-
-const spawnProcess = (
-  command: string,
-  args: string[],
-  options: SpawnOptions,
-) => {
-  return trackChildProcess(
-    spawn(command, args, {
-      cwd: options.cwd,
-      env: options.env,
-      detached: process.platform !== "win32",
-      stdio: "inherit",
-    }),
-  );
-};
 
 const execFileCapture = (
   command: string,
@@ -125,9 +98,6 @@ const execFileCapture = (
     );
   });
 
-const runCommand = (command: string, args: string[], options: SpawnOptions) =>
-  run(command, args, { ...options, onSpawn: trackChildProcess });
-
 const tryRunCommand = async (
   command: string,
   args: string[],
@@ -137,15 +107,6 @@ const tryRunCommand = async (
     await runCommand(command, args, options);
   } catch {
     // Ignore best-effort commands.
-  }
-};
-
-const fileExists = async (filePath: string) => {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
   }
 };
 
@@ -225,60 +186,6 @@ const resolveScheme = async (resolvedWorkspacePath: string) => {
   throw new Error(
     `Could not find an Xcode scheme for ${resolvedWorkspacePath}`,
   );
-};
-
-const killProcess = async (child: ChildProcessHandle) => {
-  if (!child.pid || child.killed) {
-    return;
-  }
-
-  if (process.platform !== "win32") {
-    try {
-      process.kill(-child.pid, "SIGTERM");
-      return;
-    } catch {
-      // Fall back to regular kill below.
-    }
-  }
-
-  try {
-    child.kill("SIGTERM");
-  } catch {
-    return;
-  }
-};
-
-const shutdown = async (code: number) => {
-  await Promise.all(childProcesses.map((child) => killProcess(child)));
-  await delay(milliseconds({ seconds: 1 }));
-  await Promise.all(
-    childProcesses.map(async (child) => {
-      if (!child.killed) {
-        try {
-          child.kill("SIGKILL");
-        } catch {
-          // Ignore.
-        }
-      }
-    }),
-  );
-  process.exit(code);
-};
-
-const waitForHttp = async (url: string, timeoutMs: number) => {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    try {
-      const res = await fetch(url, { method: "GET" });
-      if (res.ok) {
-        return;
-      }
-    } catch {
-      // Ignore until timeout.
-    }
-    await delay(milliseconds({ seconds: 1 }));
-  }
-  throw new Error(`Timed out waiting for ${url}`);
 };
 
 /* ------------------------------------------------------------------ */
