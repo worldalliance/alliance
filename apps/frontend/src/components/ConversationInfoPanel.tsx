@@ -105,18 +105,17 @@ const ConversationInfoPanel = ({
       onLeave();
     });
 
+  const addMemberTerm = addMemberSearch.trim().toLowerCase();
   const filteredFriends = useMemo(() => {
-    if (addMemberSearch.length === 0) return [];
+    if (addMemberTerm.length === 0) return [];
     return friends?.filter(
       (friend) =>
-        friend.displayName
-          .toLowerCase()
-          .includes(addMemberSearch.toLowerCase()) &&
+        friend.displayName.toLowerCase().includes(addMemberTerm) &&
         !selectedConvo.participants.some(
           (participant) => participant.user.id === friend.id,
         ),
     );
-  }, [friends, addMemberSearch, selectedConvo.participants]);
+  }, [friends, addMemberTerm, selectedConvo.participants]);
 
   const [justAddedMember, setJustAddedMember] = useState<number | null>(null);
   const { busy: isSaving, run: save } = useOneAtATime();
@@ -346,8 +345,11 @@ const ConversationInfoPanel = ({
                   value={addMemberSearch}
                   onChange={(e) => setAddMemberSearch(e.target.value)}
                 />
-                {filteredFriends && filteredFriends.length > 0 && (
+                {filteredFriends && addMemberTerm.length > 0 && (
                   <div className="absolute top-full bg-white w-full border border-zinc-200 rounded rounded-t-none">
+                    {filteredFriends.length === 0 && (
+                      <p className="p-4 text-zinc-500">No members found.</p>
+                    )}
                     {filteredFriends.map((friend) => (
                       <div
                         key={friend.id}
