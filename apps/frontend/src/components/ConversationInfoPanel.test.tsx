@@ -199,6 +199,41 @@ it("offers a retry in place of the field to add members when they failed to load
   expect(retry).toHaveBeenCalled();
 });
 
+it("says no one matches an add-member search that finds nobody", () => {
+  render(
+    panel(groupWith("admin"), { friends: [makeProfile(testAuthUser.id + 2)] }),
+  );
+
+  fireEvent.change(screen.getByPlaceholderText("Add member..."), {
+    target: { value: "zzzz" },
+  });
+
+  expect(screen.getByText("No members found.")).toBeTruthy();
+});
+
+it("finds a member whose name is typed with a trailing space", () => {
+  const friend = makeProfile(testAuthUser.id + 2);
+  render(panel(groupWith("admin"), { friends: [friend] }));
+
+  fireEvent.change(screen.getByPlaceholderText("Add member..."), {
+    target: { value: `${friend.displayName} ` },
+  });
+
+  expect(screen.getByText(friend.displayName)).toBeTruthy();
+});
+
+it("keeps the add-member dropdown closed for a search of only spaces", () => {
+  render(
+    panel(groupWith("admin"), { friends: [makeProfile(testAuthUser.id + 2)] }),
+  );
+
+  fireEvent.change(screen.getByPlaceholderText("Add member..."), {
+    target: { value: "  " },
+  });
+
+  expect(screen.queryByText("No members found.")).toBeNull();
+});
+
 it("keeps the add-member retry from a group member who is not an admin", () => {
   render(
     panel(groupWith("member"), {
