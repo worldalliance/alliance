@@ -3,7 +3,6 @@ import { isMaxCapacityRequired } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { changedPhoto } from "@alliance/common/image-src";
 import {
-  actionsGetCommunityMemberInfo,
   communityGetCommunityInvites,
   communityGetMemberContactInfo,
   communityUpdate,
@@ -24,6 +23,7 @@ import { groupSettings } from "@alliance/shared/lib/copy";
 import useActivities, {
   ActivityList,
 } from "@alliance/shared/lib/useActivities";
+import { useCommunityMemberInfo } from "@alliance/shared/lib/useCommunityMemberInfo";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useOnNextDeadline } from "@alliance/shared/lib/useOnNextDeadline";
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
@@ -473,25 +473,14 @@ function GroupMembersTab({
     [community],
   );
 
-  const queryClient = useQueryClient();
-
   const {
     data: memberInfo,
     isPending: memberInfoLoading,
     isSuccess: memberInfoLoaded,
     refetch: refetchMemberInfo,
-  } = useQuery({
-    queryKey: ["communityMemberInfo", community.id, user?.id ?? null],
-    queryFn: () =>
-      actionsGetCommunityMemberInfo({
-        path: { communityId: community.id },
-      }).then((r) => r.data ?? null),
-    enabled: true,
-    // "Next task due" depends on server request-time `now` (a passed deadline
-    // becomes "missed") and on member completion state, so a stale snapshot
-    // diverges from web. Keep this query fresh like the web app does (web uses
-    // the default staleTime of 0). The global mobile default is 5min.
-    staleTime: 0,
+  } = useCommunityMemberInfo({
+    communityId: community.id,
+    userId: user?.id,
   });
 
   // Refetch when the screen regains focus (the global mobile QueryClient sets
@@ -504,18 +493,12 @@ function GroupMembersTab({
 
   // Once the soonest upcoming deadline passes, the server recomputes it as
   // "missed". Bump local `now` so the deadline map rolls "next task due"
-  // forward immediately (offline-safe, like the web members table), and also
-  // invalidate to pull fresh server state — without the user leaving and
-  // returning.
+  // forward immediately (offline-safe, like the web members table) while
+  // useCommunityMemberInfo refetches.
   const [now, setNow] = useState(() => Date.now());
   useOnNextDeadline(
     memberInfo?.actions,
-    useCallback(() => {
-      setNow(Date.now());
-      void queryClient.invalidateQueries({
-        queryKey: ["communityMemberInfo", community.id, user?.id ?? null],
-      });
-    }, [queryClient, community.id, user?.id]),
+    useCallback(() => setNow(Date.now()), []),
   );
 
   const { data: memberContactInfoList } = useQuery({
