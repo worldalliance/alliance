@@ -39,6 +39,11 @@ export const queryKeys = {
   myReusableInvites: () => ["shareUrlsMyInvites"] as const,
   inviteMessageTemplate: () => ["shareUrlsInviteMessageTemplate"] as const,
   myVisibilityContext: () => ["userMyVisibilityContext"] as const,
+  /** Prefixes the unread count and load time, so invalidating it invalidates
+   * all three. */
+  notifications: () => ["notifications"] as const,
+  notificationsLoadedAt: () => ["notifications", "loadedAt"] as const,
+  notificationsUnreadCount: () => ["notifications", "unreadCount"] as const,
   onetimeInvite: (code: string | null) => ["userOnetimeInvite", code] as const,
   onetimeInvitesOverview: () => ["userGetOnetimeInvitesOverview"] as const,
   publicCommunities: () => ["communityGetPublicCommunities"] as const,
