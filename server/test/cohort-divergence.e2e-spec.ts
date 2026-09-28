@@ -31,6 +31,7 @@ describe("CohortDivergenceService (e2e)", () => {
   let activityRepo: Repository<ActionActivity>;
   let createUser: CohortDecisionFixtures["createUser"];
   let createAction: CohortDecisionFixtures["createAction"];
+  let failManualCohorts: CohortDecisionFixtures["failManualCohorts"];
   let cleanUp: CohortDecisionFixtures["cleanUp"];
 
   const now = new Date();
@@ -43,7 +44,8 @@ describe("CohortDivergenceService (e2e)", () => {
     decisionRepo = ctx.dataSource.getRepository(ActionCohortDecision);
     userRepo = ctx.dataSource.getRepository(User);
     activityRepo = ctx.dataSource.getRepository(ActionActivity);
-    ({ createUser, createAction, cleanUp } = cohortDecisionFixtures(ctx));
+    ({ createUser, createAction, failManualCohorts, cleanUp } =
+      cohortDecisionFixtures(ctx));
   }, 50000);
 
   afterEach(() => cleanUp());
@@ -104,7 +106,7 @@ describe("CohortDivergenceService (e2e)", () => {
     const broken = await createAction({
       start: addDays(now, -1),
       deadline: addDays(now, 3),
-      cohortExpression: { type: "MissedActionDeadline", actionId: 999999 },
+      cohortExpression: { type: "Manual", userIds: [member.id] },
     });
     await decisionRepo.save({
       actionId: broken.id,
@@ -124,17 +126,22 @@ describe("CohortDivergenceService (e2e)", () => {
       reason: CohortDecisionReason.Launch,
       resolvedAt: now,
     });
+    const failing = failManualCohorts();
     const error = jest
       .spyOn(Logger.prototype, "error")
       .mockImplementation(() => {});
 
-    await divergenceService.logDivergences(now);
+    try {
+      await divergenceService.logDivergences(now);
 
-    expect(error).toHaveBeenCalled();
-    expect(warn).toHaveBeenCalledWith(
-      `cohort decisions for action ${action.id} diverge from the live cohort (profile-only expression): now in 1 [${member.id}], now out 0 []`,
-    );
-    error.mockRestore();
+      expect(error).toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        `cohort decisions for action ${action.id} diverge from the live cohort (profile-only expression): now in 1 [${member.id}], now out 0 []`,
+      );
+    } finally {
+      failing.mockRestore();
+      error.mockRestore();
+    }
   });
 
   it("stays quiet when decisions match the live cohort", async () => {

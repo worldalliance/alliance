@@ -269,18 +269,25 @@ export class ActionEventRecipientService {
     return byMembership;
   }
 
+  // A deleted action matches nobody, as on the single-member path.
+  private async loadRosterLeafAction(
+    actionId: number,
+  ): Promise<ParsedAction | null> {
+    const action = await this.actionRepository.findOne({
+      where: { id: actionId },
+      relations: { events: true },
+    });
+    return action && parseAction(action);
+  }
+
   private async loadInProgressActionUserIds(
     actionId: number,
     session: CohortResolutionSession,
     resolvingActionIds: ReadonlySet<number>,
   ): Promise<Set<number>> {
-    const action = parseAction(
-      await this.actionRepository.findOneOrFail({
-        where: { id: actionId },
-        relations: { events: true },
-      }),
-    );
-    if (action.status !== ActionStatus.MemberAction) return new Set();
+    const action = await this.loadRosterLeafAction(actionId);
+    if (!action || action.status !== ActionStatus.MemberAction)
+      return new Set();
     return this.loadUncompletedRosterUserIds(
       action,
       session,
@@ -293,14 +300,9 @@ export class ActionEventRecipientService {
     session: CohortResolutionSession,
     resolvingActionIds: ReadonlySet<number>,
   ): Promise<Set<number>> {
-    const action = parseAction(
-      await this.actionRepository.findOneOrFail({
-        where: { id: actionId },
-        relations: { events: true },
-      }),
-    );
+    const action = await this.loadRosterLeafAction(actionId);
     const now = new Date();
-    if (!canMissActionDeadline(action, now)) return new Set();
+    if (!action || !canMissActionDeadline(action, now)) return new Set();
     const [users, cohortMemberIds, terminalUserIds] = await Promise.all([
       this.getActiveUsers(session),
       this.resolveActionCohortMemberIds({

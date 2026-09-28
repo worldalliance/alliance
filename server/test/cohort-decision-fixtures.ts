@@ -7,6 +7,7 @@ import {
   ActionStatus,
 } from "../src/actions/entities/action-event.entity";
 import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
+import { ActionEventRecipientService } from "../src/notifs/action-event-recipient.service";
 import {
   ContractEvent,
   ContractEventType,
@@ -116,6 +117,19 @@ export function cohortDecisionFixtures(ctx: TestContext) {
       ]),
     );
 
+  const failManualCohorts = () => {
+    const recipientService = ctx.app.get(ActionEventRecipientService);
+    const resolve =
+      recipientService.resolveCohortMemberIds.bind(recipientService);
+    return jest
+      .spyOn(recipientService, "resolveCohortMemberIds")
+      .mockImplementation((expression, ...rest) =>
+        expression?.type === "Manual"
+          ? Promise.reject(new Error("cohort failed"))
+          : resolve(expression, ...rest),
+      );
+  };
+
   const cleanUp = async () => {
     await decisionRepo.query("DELETE FROM action_cohort_decision");
     await activityRepo.query("DELETE FROM action_activity");
@@ -127,5 +141,11 @@ export function cohortDecisionFixtures(ctx: TestContext) {
     );
   };
 
-  return { createUser, createAction, decisionsFor, cleanUp };
+  return {
+    createUser,
+    createAction,
+    decisionsFor,
+    failManualCohorts,
+    cleanUp,
+  };
 }
