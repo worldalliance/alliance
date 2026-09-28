@@ -60,6 +60,7 @@ export const queryKeys = {
     [...formsAdminAll(), "questionFields", formId] as const,
   formResponseCountsAdmin: (formIds: readonly number[]) =>
     [...formsAdminAll(), "responseCounts", formIds] as const,
+  generalUpdatesAdmin: () => ["actionsAllGeneralUpdatesAdmin"] as const,
   memberContactInfoAdmin: () =>
     ["communityGetAllMemberContactInfoAdmin"] as const,
   onetimeInvitesAdminAll,
