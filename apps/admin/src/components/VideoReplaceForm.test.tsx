@@ -1,3 +1,5 @@
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
@@ -11,8 +13,39 @@ import { uploadSessionExpiredMessage } from "../lib/sessionExpired";
 import VideoReplaceForm from "./VideoReplaceForm";
 
 let answer: () => Response = () => Response.json({});
-serveApi(routes({ "POST /videos/:id/replace": () => answer() }));
+let requests = 0;
+serveApi(
+  routes({
+    "POST /videos/:id/replace": () => {
+      requests += 1;
+      return answer();
+    },
+  }),
+);
+beforeEach(() => {
+  requests = 0;
+});
 afterEach(cleanup);
+
+const renderForm = () => {
+  const query = queryWrapper();
+  query.client.setQueryData(queryKeys.videoAdmin(7), { id: 7 });
+  render(
+    <ToastProvider>
+      <VideoReplaceForm videoId={7} />
+    </ToastProvider>,
+    query,
+  );
+  return {
+    detailInvalidated: () =>
+      query.client.getQueryState(queryKeys.videoAdmin(7))?.isInvalidated,
+  };
+};
+
+const choose = (names: string[]) =>
+  fireEvent.change(document.querySelector("input[type=file]")!, {
+    target: { files: names.map((name) => new File(["x"], name)) },
+  });
 
 const replace = async () => {
   await act(async () => {
@@ -22,16 +55,9 @@ const replace = async () => {
   });
 };
 
-it("completes only once the server accepts the replacement", async () => {
-  const onComplete = jest.fn();
-  render(
-    <ToastProvider>
-      <VideoReplaceForm videoId={7} onComplete={onComplete} />
-    </ToastProvider>,
-  );
-  fireEvent.change(document.querySelector("input[type=file]")!, {
-    target: { files: [new File(["x"], "playlist.m3u8")] },
-  });
+it("refreshes the video only once the server accepts the replacement", async () => {
+  const { detailInvalidated } = renderForm();
+  choose(["playlist.m3u8"]);
 
   answer = () =>
     Response.json(
@@ -45,10 +71,25 @@ it("completes only once the server accepts the replacement", async () => {
     Response.json({ message: "Video is processing" }, { status: 409 });
   await replace();
   expect(screen.getByText("Video is processing")).toBeTruthy();
-  expect(onComplete).not.toHaveBeenCalled();
+
+  answer = () => Response.json({}, { status: 500 });
+  await replace();
+  expect(screen.getByText("Failed to replace video content")).toBeTruthy();
+  expect(detailInvalidated()).toBe(false);
 
   answer = () => Response.json({ id: 7, key: "videos/7" });
   await replace();
   expect(screen.getByText("Video content replaced successfully")).toBeTruthy();
-  expect(onComplete).toHaveBeenCalledTimes(1);
+  expect(detailInvalidated()).toBe(true);
+});
+
+it("sends nothing without a playlist", async () => {
+  renderForm();
+  choose(["segment_000.ts"]);
+  await replace();
+
+  expect(
+    screen.getByText("At least one .m3u8 playlist file is required"),
+  ).toBeTruthy();
+  expect(requests).toBe(0);
 });

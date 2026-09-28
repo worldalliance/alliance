@@ -1,24 +1,49 @@
-import { errorMessage, refusalMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
 import { videosReplaceVideoAdmin } from "@alliance/shared/client";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useRef, useState } from "react";
 import { uploadSessionExpiredMessage } from "../lib/sessionExpired";
 
 interface VideoReplaceFormProps {
   videoId: number;
-  onComplete: () => void;
 }
 
-const VideoReplaceForm: React.FC<VideoReplaceFormProps> = ({
-  videoId,
-  onComplete,
-}) => {
+const VideoReplaceForm: React.FC<VideoReplaceFormProps> = ({ videoId }) => {
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [uploading, setUploading] = useState(false);
   const { success, error: pushError } = useToast();
+
+  const { mutate: replace, isPending: uploading } = useMutation({
+    mutationFn: (files: File[]) =>
+      videosReplaceVideoAdmin({
+        path: { id: videoId },
+        body: { files },
+        throwOnError: true,
+      }),
+    onSuccess: () => {
+      success("Video content replaced successfully");
+      setSelectedFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return queryClient.invalidateQueries({
+        queryKey: queryKeys.videoAdmin(videoId),
+      });
+    },
+    onError: (err) => {
+      console.error("Failed to replace video", err);
+      pushError(
+        thrownRefusalMessage({
+          error: err,
+          fallback: "Failed to replace video content",
+          sessionExpired: uploadSessionExpiredMessage,
+        }),
+      );
+    },
+  });
 
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -28,7 +53,7 @@ const VideoReplaceForm: React.FC<VideoReplaceFormProps> = ({
     [],
   );
 
-  const handleUpload = useCallback(async () => {
+  const handleUpload = useCallback(() => {
     if (selectedFiles.length === 0) return;
 
     const hasPlaylist = selectedFiles.some((f) => f.name.endsWith(".m3u8"));
@@ -37,40 +62,8 @@ const VideoReplaceForm: React.FC<VideoReplaceFormProps> = ({
       return;
     }
 
-    setUploading(true);
-    try {
-      const { error, response } = await videosReplaceVideoAdmin({
-        path: { id: videoId },
-        body: { files: selectedFiles },
-      });
-
-      if (error !== undefined) {
-        throw new Error(
-          refusalMessage({
-            status: response.status,
-            error,
-            fallback: `Upload failed: ${response.status}`,
-            sessionExpired: uploadSessionExpiredMessage,
-          }),
-        );
-      }
-
-      success("Video content replaced successfully");
-      setSelectedFiles([]);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      onComplete();
-    } catch (err) {
-      console.error("Failed to replace video", err);
-      pushError(
-        errorMessage({
-          error: err,
-          fallback: "Failed to replace video content",
-        }),
-      );
-    } finally {
-      setUploading(false);
-    }
-  }, [selectedFiles, videoId, onComplete, success, pushError]);
+    replace(selectedFiles);
+  }, [selectedFiles, replace, pushError]);
 
   return (
     <div className="flex flex-col gap-3">
