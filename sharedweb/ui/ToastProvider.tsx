@@ -15,7 +15,7 @@ import {
 } from "react";
 import { zIndex } from "./zIndex";
 
-type ToastVariant = "info" | "success" | "error" | "warning" | "confirm";
+type ToastVariant = "info" | "success" | "error" | "warning";
 
 type ToastBase = {
   id: number;
@@ -46,11 +46,11 @@ type ConfirmOptions = {
 };
 
 type ToastOptions = Omit<ToastBase, "id" | "variant"> & {
-  variant?: Exclude<ToastVariant, "confirm">;
+  variant?: ToastVariant;
   durationMs?: number;
 };
 
-type ToastConfirm = ToastBase & {
+type ToastConfirm = Omit<ToastBase, "variant"> & {
   anchorEl?: HTMLElement | null;
   placement?:
     | "top"
@@ -205,7 +205,7 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
             return (
               <ConfirmToastItem
                 key={toast.id}
-                toast={toast as ToastConfirm}
+                toast={toast}
                 onConfirm={handleConfirm}
               />
             );
@@ -214,7 +214,7 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
           return (
             <DefaultToastItem
               key={toast.id}
-              toast={toast as ToastBase}
+              toast={toast}
               onDismiss={removeToast}
             />
           );
