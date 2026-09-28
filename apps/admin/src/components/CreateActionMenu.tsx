@@ -1,19 +1,18 @@
 import { actionsPasteJsonAdmin } from "@alliance/shared/client";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { useInvalidateActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@alliance/sharedweb/ui/DropdownMenu";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Menu } from "@base-ui/react/menu";
-import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
 const CreateActionMenu = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const invalidateActions = useInvalidateActionsAdmin();
   const { error, success } = useToast();
   const [pasteJsonLoading, setPasteJsonLoading] = useState(false);
 
@@ -23,9 +22,7 @@ const CreateActionMenu = () => {
 
     const response = await actionsPasteJsonAdmin({ body: { body: json } });
     if (response.data) {
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.actionsAllAdmin(),
-      });
+      void invalidateActions();
       navigate(`/actions/${response.data.id}`);
       success("Action pasted successfully");
     } else {

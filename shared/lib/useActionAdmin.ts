@@ -24,6 +24,7 @@ import {
 } from "../client";
 import { parseActionDto } from "../parsed-dtos";
 import { queryKeys } from "./queryKeys";
+import { useInvalidateActionsAdmin } from "./useActionsAdmin";
 import { useInvalidateFormsIndex } from "./useFormsAdmin";
 
 /**
@@ -81,6 +82,7 @@ export function useActionAdmin(
 ) {
   const { enabled = true } = params ?? {};
   const queryClient = useQueryClient();
+  const invalidateActionsList = useInvalidateActionsAdmin();
   const invalidateFormsIndex = useInvalidateFormsIndex();
 
   const query = useQuery({
@@ -109,12 +111,7 @@ export function useActionAdmin(
   // The forms index carries the same facts as usedInAction, so it goes stale
   // on exactly these mutations too.
   const invalidateList = () =>
-    Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.actionsAllAdmin(),
-      }),
-      invalidateFormsIndex(),
-    ]);
+    Promise.all([invalidateActionsList(), invalidateFormsIndex()]);
 
   const invalidateActionAndList = () =>
     Promise.all([invalidate(), invalidateList()]);

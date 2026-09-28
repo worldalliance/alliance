@@ -1,11 +1,8 @@
-import {
-  ActionDto,
-  actionsFindAllWithDraftsAdmin,
-  AdminActionDto,
-} from "@alliance/shared/client";
+import { ActionDto, AdminActionListItemDto } from "@alliance/shared/client";
+import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { parseActionDto } from "@alliance/shared/parsed-dtos";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
 import ActionListCard from "../components/ActionListCard";
 import ActionStatusBucketFilter from "../components/ActionStatusBucketFilter";
@@ -15,6 +12,7 @@ import {
   ActionStatusBucket,
   actionStatusBucket,
 } from "../lib/actionStatusBucket";
+import { actionsLoadError } from "../lib/actionsLoadError";
 import { describeCohortExpression } from "../lib/describeCohortExpression";
 
 export const getLastPastEventDate = (
@@ -46,15 +44,18 @@ export const getLastPastEventDate = (
 type ActionSuiteGroup = {
   id: number | null;
   name: string;
-  actions: AdminActionDto[];
+  actions: AdminActionListItemDto[];
   sortVal: number;
   isArchivedOnly: boolean;
 };
 
 const ActionsList: React.FC = () => {
-  const [actions, setActions] = useState<AdminActionDto[]>([]);
-  const [actionsLoading, setActionsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const list = useActionsAdmin();
+  const actions = useMemo(
+    () => (list.data ?? []).filter((action) => !action.archived),
+    [list.data],
+  );
+  const error = list.isError ? actionsLoadError(list.error) : null;
   const { tags } = useTagsAdmin();
   const [shownBuckets, setShownBuckets] = useState<
     ReadonlySet<ActionStatusBucket>
@@ -66,24 +67,6 @@ const ActionsList: React.FC = () => {
         ActionStatusBucket.Draft,
       ]),
   );
-
-  const loadActions = useCallback(async () => {
-    try {
-      const response = await actionsFindAllWithDraftsAdmin();
-      if (response.data) {
-        setActions(response.data.filter((action) => !action.archived));
-      }
-      setActionsLoading(false);
-    } catch (err) {
-      setError("Failed to load actions");
-      setActionsLoading(false);
-      console.error(err);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadActions();
-  }, [loadActions]);
 
   const participantsById = useMemo(() => {
     const names = {
@@ -113,7 +96,7 @@ const ActionsList: React.FC = () => {
       {
         id: number | null;
         name: string;
-        actions: AdminActionDto[];
+        actions: AdminActionListItemDto[];
       }
     >();
 
@@ -172,11 +155,11 @@ const ActionsList: React.FC = () => {
       });
   }, [actions]);
 
-  if (actionsLoading) {
+  if (list.isPending) {
     return <p>Loading actions...</p>;
   }
 
-  if (error) {
+  if (error && !list.data) {
     return <p className="text-red-500">{error}</p>;
   }
 
@@ -186,6 +169,7 @@ const ActionsList: React.FC = () => {
         <div className="flex justify-between items-center">
           <p className="font-bold ml-2">Actions</p>
         </div>
+        {error && <p className="text-red-500">{error}</p>}
         <p>No actions found.</p>
       </div>
     );
@@ -194,6 +178,7 @@ const ActionsList: React.FC = () => {
   return (
     <div className="flex flex-col h-screen p-5 gap-y-3">
       <title>Admin panel</title>
+      {error && <p className="text-red-500 flex-shrink-0">{error}</p>}
       <ActionTimeline
         actions={actions.filter((action) =>
           shownBuckets.has(actionStatusBucket(action)),
