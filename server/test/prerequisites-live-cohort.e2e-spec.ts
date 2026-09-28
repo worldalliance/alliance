@@ -1,12 +1,12 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import type { Repository } from "typeorm";
-import { ActionsService } from "../src/actions/actions.service";
 import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import {
   Action,
   parseAction,
   type ParsedAction,
 } from "../src/actions/entities/action.entity";
+import { SingleMemberCohortService } from "../src/actions/single-member-cohort.service";
 import { ActionEventRecipientService } from "../src/notifs/action-event-recipient.service";
 import { CohortResolutionSession } from "../src/notifs/cohort-resolution-session";
 import { TasksModule } from "../src/tasks/tasks.module";
@@ -20,7 +20,7 @@ import { createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Live cohort with prerequisites (e2e)", () => {
   let ctx: TestContext;
-  let actionsService: ActionsService;
+  let singleMemberCohortService: SingleMemberCohortService;
   let recipientService: ActionEventRecipientService;
   let userService: UserService;
   let actionRepo: Repository<Action>;
@@ -34,7 +34,7 @@ describe("Live cohort with prerequisites (e2e)", () => {
 
   beforeAll(async () => {
     ctx = await createTestApp([TasksModule]);
-    actionsService = ctx.app.get(ActionsService);
+    singleMemberCohortService = ctx.app.get(SingleMemberCohortService);
     recipientService = ctx.app.get(ActionEventRecipientService);
     userService = ctx.app.get(UserService);
     actionRepo = ctx.dataSource.getRepository(Action);
@@ -63,7 +63,7 @@ describe("Live cohort with prerequisites (e2e)", () => {
         action,
         session: new CohortResolutionSession(),
       }),
-      actionsService.computeIsInActionCohort({
+      singleMemberCohortService.computeIsInActionCohort({
         user: await userService.findOneOrFail(userId, {
           tags: true,
           contractEvents: true,

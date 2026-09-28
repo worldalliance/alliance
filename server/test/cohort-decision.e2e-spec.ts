@@ -1,11 +1,11 @@
 import { Logger } from "@nestjs/common";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { ActionsService } from "../src/actions/actions.service";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
 import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
 import { Action } from "../src/actions/entities/action.entity";
 import { CohortDecisionReason } from "../src/actions/entities/cohort-decision-reason";
+import { SingleMemberCohortService } from "../src/actions/single-member-cohort.service";
 import { ActionEventRecipientService } from "../src/notifs/action-event-recipient.service";
 import { TasksModule } from "../src/tasks/tasks.module";
 import {
@@ -663,7 +663,7 @@ describe("CohortDecisionService (e2e)", () => {
         .spyOn(Logger.prototype, "error")
         .mockImplementation(() => {});
       singleMember = jest.spyOn(
-        ctx.app.get(ActionsService),
+        ctx.app.get(SingleMemberCohortService),
         "computeIsInCohortExpression",
       );
     });

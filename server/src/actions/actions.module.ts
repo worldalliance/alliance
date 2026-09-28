@@ -60,6 +60,7 @@ import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 import { ProjectsController } from "./projects.controller";
 import { ProjectsService } from "./projects.service";
 import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
+import { SingleMemberCohortService } from "./single-member-cohort.service";
 
 @Module({
   imports: [
@@ -129,11 +130,13 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
     CohortDecisionWorker,
     CohortDivergenceService,
     PrerequisiteProgressService,
+    SingleMemberCohortService,
   ],
   exports: [
     ActionsService,
     ActionFormVariantService,
     ActionEventRecipientService,
+    SingleMemberCohortService,
   ],
 })
 export class ActionsModule {}

@@ -4,6 +4,7 @@ import { milliseconds } from "date-fns";
 import { ActionCategory } from "src/actions/action-category";
 import { ActionsService } from "src/actions/actions.service";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
+import { SingleMemberCohortService } from "src/actions/single-member-cohort.service";
 import { ContractService } from "src/contract/contract.service";
 import {
   Comment,
@@ -973,7 +974,7 @@ describe("Actions (e2e)", () => {
 
     it("resolves MissedActionDeadline the same on the single-user and population paths", async () => {
       const recipientService = ctx.app.get(ActionEventRecipientService);
-      const actionsService = ctx.app.get(ActionsService);
+      const singleMemberCohortService = ctx.app.get(SingleMemberCohortService);
       const stamp = Date.now();
       const hoursFromNow = (hours: number) =>
         new Date(stamp + milliseconds({ hours }));
@@ -1079,11 +1080,11 @@ describe("Actions (e2e)", () => {
           relations: { tags: true, contractEvents: true, awayRanges: true },
         });
         const [single, notSingle] = await Promise.all([
-          actionsService.computeIsInCohortExpression({
+          singleMemberCohortService.computeIsInCohortExpression({
             user,
             cohortExpression: missed,
           }),
-          actionsService.computeIsInCohortExpression({
+          singleMemberCohortService.computeIsInCohortExpression({
             user,
             cohortExpression: notMissed,
           }),
@@ -1182,7 +1183,7 @@ describe("Actions (e2e)", () => {
     it("splits members into US and non-US by city, falling back to time zone", async () => {
       const cityRepo = ctx.dataSource.getRepository(City);
       const recipientService = ctx.app.get(ActionEventRecipientService);
-      const actionsService = ctx.app.get(ActionsService);
+      const singleMemberCohortService = ctx.app.get(SingleMemberCohortService);
       const stamp = Date.now();
 
       const [usCity, frenchCity] = await cityRepo.save([
@@ -1272,11 +1273,11 @@ describe("Actions (e2e)", () => {
 
       // The per-user path has to agree with the batch one.
       const perUser = async (user: User) => ({
-        us: await actionsService.computeIsInCohortExpression({
+        us: await singleMemberCohortService.computeIsInCohortExpression({
           user,
           cohortExpression: { type: "USMember" },
         }),
-        nonUs: await actionsService.computeIsInCohortExpression({
+        nonUs: await singleMemberCohortService.computeIsInCohortExpression({
           user,
           cohortExpression: { type: "NonUSMember" },
         }),

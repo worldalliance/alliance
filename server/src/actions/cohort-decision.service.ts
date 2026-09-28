@@ -9,7 +9,6 @@ import { ContractEventType } from "src/user/entities/contract-event.entity";
 import type { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { In, type Repository } from "typeorm";
-import { ActionsService } from "./actions.service";
 import {
   CohortEnrollmentState,
   computeCohortEnrollment,
@@ -27,6 +26,7 @@ import {
 } from "./entities/action.entity";
 import { CohortDecisionReason } from "./entities/cohort-decision-reason";
 import { PrerequisiteProgressService } from "./prerequisite-progress.service";
+import { SingleMemberCohortService } from "./single-member-cohort.service";
 
 /**
  * How long after its deadline a regular action stays in the catch-up pass.
@@ -107,8 +107,8 @@ export class CohortDecisionService {
     private readonly correctionRepository: Repository<ActionCohortDecisionCorrection>,
     private readonly actionEventRecipientService: ActionEventRecipientService,
     private readonly userService: UserService,
-    private readonly actionsService: ActionsService,
     private readonly prerequisiteProgressService: PrerequisiteProgressService,
+    private readonly singleMemberCohortService: SingleMemberCohortService,
   ) {}
 
   /**
@@ -340,7 +340,7 @@ export class CohortDecisionService {
       rows,
       session,
       userService: this.userService,
-      actionsService: this.actionsService,
+      singleMemberCohortService: this.singleMemberCohortService,
       logger: this.logger,
     });
     return rows;

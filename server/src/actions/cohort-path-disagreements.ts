@@ -3,10 +3,10 @@ import type { Logger } from "@nestjs/common";
 import { chunk } from "es-toolkit";
 import type { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import type { UserService } from "src/user/user.service";
-import type { ActionsService } from "./actions.service";
 import { formatIdSample } from "./cohort-decision";
 import type { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import type { ParsedAction } from "./entities/action.entity";
+import type { SingleMemberCohortService } from "./single-member-cohort.service";
 
 const USER_LOAD_CHUNK_SIZE = 1000;
 
@@ -17,7 +17,7 @@ type Params = {
   rows: Pick<ActionCohortDecision, "userId" | "included">[];
   session: CohortResolutionSession;
   userService: UserService;
-  actionsService: ActionsService;
+  singleMemberCohortService: SingleMemberCohortService;
 };
 
 /**
@@ -48,7 +48,8 @@ export async function logCohortPathDisagreements(
 }
 
 async function findCohortPathDisagreements(params: Params): Promise<number[]> {
-  const { action, rows, session, userService, actionsService } = params;
+  const { action, rows, session, userService, singleMemberCohortService } =
+    params;
   const users = new Map(
     (
       await Promise.all(
@@ -75,7 +76,7 @@ async function findCohortPathDisagreements(params: Params): Promise<number[]> {
         if (!user) {
           throw new Error(`user ${row.userId} was deleted mid-pass`);
         }
-        return actionsService.computeIsInCohortExpression({
+        return singleMemberCohortService.computeIsInCohortExpression({
           user,
           cohortExpression: action.cohortExpression,
           session,
