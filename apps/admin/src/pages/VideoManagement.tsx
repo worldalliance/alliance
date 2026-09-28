@@ -1,18 +1,9 @@
-import {
-  videosDeleteVideoAdmin,
-  videosListVideosAdmin,
-} from "@alliance/shared/client";
-import type { VideoListItemDto } from "@alliance/shared/client/types.gen";
-import {
-  rethrowUnlessNotFound,
-  thrownRefusalMessage,
-} from "@alliance/shared/lib/hey-api";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback } from "react";
 import { useNavigate } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
+import { useDeleteVideoAdmin, useVideosAdmin } from "../lib/useVideosAdmin";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -23,14 +14,9 @@ function formatSize(bytes: number): string {
 }
 
 const VideoManagement: React.FC = () => {
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { confirm, error: pushError } = useToast();
-  const list = useQuery({
-    queryKey: queryKeys.videosAdmin(),
-    queryFn: () =>
-      videosListVideosAdmin({ throwOnError: true }).then((r) => r.data.videos),
-  });
+  const list = useVideosAdmin();
   const videos = list.data ?? [];
   const error = list.isError
     ? thrownRefusalMessage({
@@ -40,20 +26,7 @@ const VideoManagement: React.FC = () => {
       })
     : null;
 
-  const { mutate: deleteVideo } = useMutation({
-    mutationFn: (id: number) =>
-      videosDeleteVideoAdmin({ path: { id }, throwOnError: true }).catch(
-        rethrowUnlessNotFound,
-      ),
-    onSuccess: async (_data, id) => {
-      // A refetch started before the delete would land the deleted video
-      // back in the list.
-      await queryClient.cancelQueries({ queryKey: queryKeys.videosAdmin() });
-      queryClient.setQueryData<VideoListItemDto[]>(
-        queryKeys.videosAdmin(),
-        (prev) => prev?.filter((v) => v.id !== id),
-      );
-    },
+  const { mutate: deleteVideo } = useDeleteVideoAdmin({
     onError: (err) => {
       console.error("Failed to delete video", err);
       pushError(
