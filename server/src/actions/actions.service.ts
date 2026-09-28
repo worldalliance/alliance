@@ -143,7 +143,13 @@ import {
   isActionUpdatePublished,
   publishedActionUpdateWhere,
 } from "./action-update-visibility";
+import {
+  CohortAdmissionService,
+  CohortSource,
+} from "./cohort-admission.service";
+import { readsSavedDecisions } from "./cohort-decision";
 import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
+import { CohortDecisionService } from "./cohort-decision.service";
 import {
   ActionActivityDto,
   ActionDto,
@@ -242,6 +248,7 @@ import { resolveUserActionPillStatus } from "./user-action-pill-status";
 import {
   computeCanCompleteAction,
   resolveUserActionStatus,
+  type ViewerCohort,
 } from "./user-action-status";
 
 type SuspendPlanContext = {
@@ -364,6 +371,8 @@ export class ActionsService {
     private readonly posthogService: PosthogService,
     private readonly cohortDecisionStaffService: CohortDecisionStaffService,
     private readonly singleMemberCohortService: SingleMemberCohortService,
+    private readonly cohortDecisionService: CohortDecisionService,
+    private readonly cohortAdmissionService: CohortAdmissionService,
   ) {}
 
   async applyAssignedFormIds(
@@ -680,7 +689,14 @@ export class ActionsService {
   }
 
   async findParticipantIdsForActionById(actionId: number): Promise<number[]> {
-    const action = parseAction(
+    return this.findParticipantIdsForAction(
+      await this.findParticipantAction(actionId),
+      CohortSource.Live,
+    );
+  }
+
+  private async findParticipantAction(actionId: number): Promise<ParsedAction> {
+    return parseAction(
       await this.actionRepository.findOneOrFail({
         where: { id: actionId },
         relations: {
@@ -689,12 +705,15 @@ export class ActionsService {
         },
       }),
     );
-
-    return this.findParticipantIdsForAction(action);
   }
 
-  async findParticipantIdsForAction(action: ParsedAction): Promise<number[]> {
-    const result = await this.findParticipantIdsForActions([action]);
+  async findParticipantIdsForAction(
+    action: ParsedAction,
+    cohortSource: CohortSource,
+  ): Promise<number[]> {
+    const result = await this.findParticipantIdsForActions([action], {
+      cohortSource,
+    });
     return result.get(action.id) ?? [];
   }
 
@@ -717,8 +736,9 @@ export class ActionsService {
    */
   async findParticipantIdsForActions(
     actions: ParsedAction[],
-    session: CohortResolutionSession = new CohortResolutionSession(),
+    params: { cohortSource: CohortSource; session?: CohortResolutionSession },
   ): Promise<Map<number, number[]>> {
+    const { cohortSource, session = new CohortResolutionSession() } = params;
     // Build entries for actions that have a MemberAction event
     const entries: Array<{ action: ParsedAction; event: ActionEvent }> = [];
     for (const action of actions) {
@@ -743,6 +763,7 @@ export class ActionsService {
           action: e.action,
           eventId: e.event.id,
         })),
+        cohortSource,
         includeDismissed: true,
         session,
       });
@@ -815,7 +836,10 @@ export class ActionsService {
       }),
     );
 
-    const joinedUserIds = await this.findParticipantIdsForAction(action);
+    const joinedUserIds = await this.findParticipantIdsForAction(
+      action,
+      CohortSource.Live,
+    );
 
     const completedActivities = await this.actionActivityRepository.find({
       where: {
@@ -958,28 +982,38 @@ export class ActionsService {
   }
 
   /**
-   * Live cohort result (`computeIsInActionCohort`) for the viewer on one
-   * action — the single evaluation feeding `canParticipate`/
-   * `viewer.canComplete`, `shouldParticipate`, and `viewer`. No member-action-phase gate: the
-   * completion rule (unlike assignment) applies to actions whose phase isn't
-   * scheduled yet, and gating here made `viewer.canComplete` disagree with
-   * `isCompletionAllowed` (which the complete mutation enforces). Dismissal
-   * deliberately does not skip it either: `viewer.assigned` treats dismissal
-   * as an overlay, so it needs the real cohort result.
+   * The viewer's {@link ViewerCohort} on one action — the single evaluation
+   * feeding `canParticipate`/`viewer.canComplete`, `shouldParticipate`, and
+   * `viewer`. No member-action-phase gate: the completion rule (unlike
+   * assignment) applies to actions whose phase isn't scheduled yet, and
+   * gating here made `viewer.canComplete` disagree with `isCompletionAllowed`
+   * (which the complete mutation enforces).
    */
-  private async computeViewerInCohort(params: {
+  private async computeViewerCohort(params: {
     action: ParsedAction;
     user: User | null;
-    session?: CohortResolutionSession;
-  }): Promise<boolean> {
-    const { action, user, session } = params;
-    return user
-      ? await this.singleMemberCohortService.computeIsInActionCohort({
-          user,
-          action,
-          session,
-        })
-      : false;
+    session: CohortResolutionSession;
+    now: Date;
+    /** Actions to read from the live cohort; see `reconcileForUser`. */
+    undecidedActionIds: ReadonlySet<number>;
+  }): Promise<ViewerCohort> {
+    const { action, user, session, now, undecidedActionIds } = params;
+    if (!user) {
+      return { admitted: false, eligible: false };
+    }
+    const [live, admittedActionIds] = await Promise.all([
+      this.singleMemberCohortService.computeIsInActionCohort({
+        user,
+        action,
+        session,
+      }),
+      this.cohortAdmissionService.loadAdmittedActionIds(user.id, session),
+    ]);
+    const admitted =
+      readsSavedDecisions(action, now) && !undecidedActionIds.has(action.id)
+        ? admittedActionIds.has(action.id)
+        : live;
+    return { admitted, eligible: admitted || live };
   }
 
   async findMemberPublic(
@@ -1005,6 +1039,15 @@ export class ActionsService {
           activities: true,
         })
       : null;
+
+    const now = new Date();
+    const undecidedActionIds = user
+      ? await this.cohortDecisionService.reconcileForUser({
+          user,
+          actions,
+          now,
+        })
+      : new Set<number>();
 
     // One session for the whole feed: every action re-asks the same per-user
     // leaf questions, and the answers can't change mid-request.
@@ -1037,20 +1080,20 @@ export class ActionsService {
     // Index viewer's activities once, rather than rescanning per action.
     const userActivities = user ? new CachedFilter(user.activities!) : null;
 
-    const now = new Date();
-
     return await Promise.all(
       filtered.map(async (action) => {
-        const inCohort = await this.computeViewerInCohort({
+        const cohort = await this.computeViewerCohort({
           action,
           user,
           session,
+          now,
+          undecidedActionIds,
         });
         const shouldParticipate =
           computeActionAssignment({
             action,
             user,
-            inCohort,
+            inCohort: cohort.admitted,
             dismissed: actionsDismissed.has(action.id),
             now,
           }) !== ActionAssignment.Unassigned;
@@ -1065,7 +1108,11 @@ export class ActionsService {
 
         return new ActionDto(action, {
           canParticipate: user
-            ? computeCanCompleteAction({ action, user, inCohort })
+            ? computeCanCompleteAction({
+                action,
+                user,
+                inCohort: cohort.eligible,
+              })
             : false,
           shouldParticipate,
           userRelation:
@@ -1084,7 +1131,7 @@ export class ActionsService {
               ? resolveUserActionStatus({
                   action,
                   user,
-                  inCohort,
+                  cohort,
                   activities: userActivities.filtered({
                     userId: user.id,
                     actionId: action.id,
@@ -1131,10 +1178,18 @@ export class ActionsService {
       return false;
     }
 
+    const shared = session ?? new CohortResolutionSession();
+    if (
+      (
+        await this.cohortAdmissionService.loadAdmittedActionIds(user.id, shared)
+      ).has(action.id)
+    ) {
+      return true;
+    }
     return this.singleMemberCohortService.computeIsInActionCohort({
       user,
       action,
-      session,
+      session: shared,
     });
   }
 
@@ -1257,13 +1312,6 @@ export class ActionsService {
     userId?: number,
     serverSide = false,
   ): Promise<ActionDto> {
-    const session = new CohortResolutionSession();
-    const action = await this.findOneOrFail({
-      id,
-      userId,
-      serverSide,
-      session,
-    });
     const user = userId
       ? await this.userService.findOne(userId, {
           tags: true,
@@ -1271,6 +1319,28 @@ export class ActionsService {
           awayRanges: true,
         })
       : null;
+    const now = new Date();
+    const target = user
+      ? await this.actionRepository.findOne({
+          where: { id },
+          relations: { events: true },
+        })
+      : null;
+    const undecidedActionIds =
+      user && target
+        ? await this.cohortDecisionService.reconcileForUser({
+            user,
+            actions: [parseAction(target)],
+            now,
+          })
+        : new Set<number>();
+    const session = new CohortResolutionSession();
+    const action = await this.findOneOrFail({
+      id,
+      userId,
+      serverSide,
+      session,
+    });
     if (action.followUpForms) {
       action.followUpForms = await this.filterFollowUpFormsByCohort({
         followUpForms: action.followUpForms,
@@ -1290,22 +1360,27 @@ export class ActionsService {
     const dismissed = activities.some(
       (activity) => activity.type === ActionActivityType.USER_DISMISSED,
     );
-    const inCohort = await this.computeViewerInCohort({
+    const cohort = await this.computeViewerCohort({
       action,
       user,
       session,
+      now,
+      undecidedActionIds,
     });
-    const now = new Date();
 
     return new ActionDto(action, {
       canParticipate: user
-        ? computeCanCompleteAction({ action, user, inCohort })
+        ? computeCanCompleteAction({
+            action,
+            user,
+            inCohort: cohort.eligible,
+          })
         : false,
       shouldParticipate:
         computeActionAssignment({
           action,
           user,
-          inCohort,
+          inCohort: cohort.admitted,
           dismissed,
           now,
         }) !== ActionAssignment.Unassigned,
@@ -1320,7 +1395,7 @@ export class ActionsService {
         ? computeMemberActionAwayStatus({ action, user, now })
         : undefined,
       viewer: user
-        ? resolveUserActionStatus({ action, user, inCohort, activities, now })
+        ? resolveUserActionStatus({ action, user, cohort, activities, now })
         : undefined,
       reqAuthenticated: !!user,
     });
@@ -2543,13 +2618,19 @@ export class ActionsService {
       return false;
     }
 
-    const inCohort =
-      await this.singleMemberCohortService.computeIsInActionCohort({
-        user,
-        action,
-      });
+    const cohort = await this.computeViewerCohort({
+      action,
+      user,
+      session: new CohortResolutionSession(),
+      now: new Date(),
+      undecidedActionIds: new Set(),
+    });
 
-    return computeCanCompleteAction({ action, user, inCohort });
+    return computeCanCompleteAction({
+      action,
+      user,
+      inCohort: cohort.eligible,
+    });
   }
 
   async ensureCompletionAllowed(action: ParsedAction, userId: number) {
@@ -3322,8 +3403,12 @@ export class ActionsService {
       case ActionUpdateNotifyType.None:
         return [];
       case ActionUpdateNotifyType.ActionCohort: {
-        const userIds = await this.findParticipantIdsForActionById(
-          actionUpdate.actionId,
+        const action = await this.findParticipantAction(actionUpdate.actionId);
+        // One send and no retry, so it cannot wait for the pass.
+        await this.cohortDecisionService.decideOpenAction(action, new Date());
+        const userIds = await this.findParticipantIdsForAction(
+          action,
+          CohortSource.Decisions,
         );
         return this.userService.findByIds(userIds);
       }
@@ -3811,10 +3896,10 @@ export class ActionsService {
 
     const joinedUsersP: Promise<Record<number, number[]>> = run(async () => {
       const actions = await actionsP;
-      const joinedUsersMap = await this.findParticipantIdsForActions(
-        actions,
+      const joinedUsersMap = await this.findParticipantIdsForActions(actions, {
+        cohortSource: CohortSource.Live,
         session,
-      );
+      });
 
       const userIdsSet = await userIdsSetP;
       const joinedUsers: Record<number, number[]> = {};
@@ -4273,8 +4358,9 @@ export class ActionsService {
         if (!memberActionEventByActionId.has(action.id)) continue;
         cohortByAction.set(
           action.id,
-          this.actionEventRecipientService.resolveActionCohortMemberIds({
+          this.actionEventRecipientService.resolveCohort({
             action,
+            source: CohortSource.Decisions,
             session,
           }),
         );

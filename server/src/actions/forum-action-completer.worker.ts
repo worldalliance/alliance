@@ -32,6 +32,7 @@ import {
   type Repository,
 } from "typeorm";
 import { ActionsService } from "./actions.service";
+import { CohortSource } from "./cohort-admission.service";
 import { ForumAutocompletePlan } from "./dto/action.dto";
 import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionEvent } from "./entities/action-event.entity";
@@ -216,6 +217,7 @@ export class ForumActionCompleterWorker {
       await this.actionEventRecipientService.findBaseUsersForEvent({
         action,
         eventId: memberActionEvent.id,
+        cohortSource: CohortSource.Decisions,
       });
     const baseUserIds = new Set(baseUsers.map((user) => user.id));
     const eligibleResponderIds = Array.from(replyAuthorIds).filter((id) =>

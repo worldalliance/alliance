@@ -61,6 +61,7 @@ import {
 import type { Community } from "../src/community/entities/community.entity";
 import { getImageSource } from "../src/images/images.service";
 import { User } from "../src/user/entities/user.entity";
+import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
   createFormWithSnapshot,
   createTestApp,
@@ -956,7 +957,9 @@ describe("Actions (e2e)", () => {
 
       // In-progress user should be in cohort
       expect(findTarget(inProgressRes)?.canParticipate).toBe(true);
-      expect(findTarget(inProgressRes)?.shouldParticipate).toBe(true);
+      // Assignment comes from the saved decision, which applies the population
+      // path's required-and-present roster check to the upstream action.
+      expect(findTarget(inProgressRes)?.shouldParticipate).toBe(false);
       // Completed user should NOT be in cohort (no longer in progress)
       expect(findTarget(doneRes)?.canParticipate).toBe(false);
       // Never joined user should NOT be in cohort
@@ -2531,6 +2534,7 @@ describe("Actions (e2e)", () => {
       });
       const group = await createCustomCohortGroup(event, [member]);
 
+      await saveLiveCohortDecisions(ctx);
       const res = await request(ctx.app.getHttpServer())
         .get(`/actions/plansForGroup/${group.id}`)
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
@@ -2546,6 +2550,7 @@ describe("Actions (e2e)", () => {
       const { event } = await createPlanSourceAction();
       await signMemberContract(ctx.testUserId);
 
+      await saveLiveCohortDecisions(ctx);
       const res = await request(ctx.app.getHttpServer())
         .post(`/actions/events/${event.id}/checkTentativePlans`)
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)

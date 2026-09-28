@@ -32,6 +32,7 @@ import { ActionStatsService } from "./action-stats.service";
 import { ActionsController } from "./actions.controller";
 import { ActionsGateway } from "./actions.gateway";
 import { ActionsService } from "./actions.service";
+import { CohortAdmissionService } from "./cohort-admission.service";
 import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import { CohortDecisionListener } from "./cohort-decision.listener";
 import { CohortDecisionService } from "./cohort-decision.service";
@@ -124,6 +125,7 @@ import { SingleMemberCohortService } from "./single-member-cohort.service";
     ContractSuspenderWorker,
     ForumActionCompleterWorker,
     ActionStatsService,
+    CohortAdmissionService,
     CohortDecisionListener,
     CohortDecisionService,
     CohortDecisionStaffService,

@@ -56,6 +56,49 @@ export function computeCohortEnrollment(
   return { state: CohortEnrollmentState.Open, start: event.date };
 }
 
+export function openEnrollments<
+  T extends Pick<Action, "onboarding" | "memberActionPhase">,
+>(actions: T[], now: Date): Array<{ action: T; enrollment: CohortEnrollment }> {
+  return actions.flatMap((action) => {
+    const enrollment = computeCohortEnrollment(action, now);
+    return enrollment.state === CohortEnrollmentState.Open
+      ? [{ action, enrollment }]
+      : [];
+  });
+}
+
+/**
+ * Whether readers take the action's cohort from its saved decisions. None
+ * exist before launch or ever for a public-only action, whose readers take
+ * the live cohort instead.
+ */
+export function readsSavedDecisions(
+  action: Pick<
+    Action,
+    "events" | "onboarding" | "memberActionPhase" | "publicOnly"
+  >,
+  now: Date,
+): boolean {
+  if (!action.events) {
+    throw new Error("`events` relation is not loaded");
+  }
+  if (action.publicOnly) {
+    return false;
+  }
+  const enrollment = computeCohortEnrollment(action, now);
+  switch (enrollment.state) {
+    case CohortEnrollmentState.NotStarted:
+      return false;
+    case CohortEnrollmentState.Open:
+    case CohortEnrollmentState.Closed:
+      return true;
+    default:
+      throw new Error(
+        `unknown enrollment state: ${enrollment satisfies never}`,
+      );
+  }
+}
+
 /**
  * Whether the resolver can decide this member at `at`. A member it cannot
  * admit gets no row, so a regular action's unsigned account stays free to
