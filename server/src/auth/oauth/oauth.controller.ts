@@ -1,4 +1,5 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
+import { thrownStack } from "@alliance/common/errorMessage";
 import {
   OAuthError,
   oauthErrorMessage,
@@ -364,7 +365,7 @@ export class OAuthController {
     } catch (error) {
       // The member is mid-navigation, where an exception filter's JSON body
       // would strand them. A verified state always carries a way back.
-      console.error("oauth callback failed", error);
+      console.error("oauth callback failed", thrownStack(error));
       if (!res.headersSent) {
         res.redirect(this.failureUrl(state, OAuthError.Failed));
       }
