@@ -23,6 +23,8 @@ export const queryKeys = {
     ["userGetAmbassadorInviteDashboard"] as const,
   communityOnetimeInvites: (communityId: number) =>
     ["userGetOnetimeInvitesByCommunity", communityId] as const,
+  contractById: (contractId: number | null) =>
+    ["contractGetById", contractId] as const,
   currentContract: () => ["contractGetCurrent"] as const,
   generalUpdatesAll: () => ["actionsAllGeneralUpdates"] as const,
   generalUpdatesUnread: () => ["actions", "generalUpdates", "unread"] as const,
