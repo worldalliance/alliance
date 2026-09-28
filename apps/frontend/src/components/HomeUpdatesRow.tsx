@@ -1,5 +1,4 @@
-import type { ActionsRecentUpdatesResponse } from "@alliance/shared/client";
-import { actionsRecentUpdates } from "@alliance/shared/client";
+import { useRecentActionUpdates } from "@alliance/shared/lib/useActionUpdates";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import {
@@ -7,7 +6,6 @@ import {
   BaseButtonVariant,
   baseButtonVariants,
 } from "@alliance/sharedweb/ui/BaseButton";
-import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { useMemo } from "react";
 
@@ -20,18 +18,7 @@ const UPDATES_LIMIT = 3;
 const HomeUpdatesRow = () => {
   const navigate = useNavigate();
 
-  const { data, isLoading, isError } = useQuery<ActionsRecentUpdatesResponse>({
-    queryKey: ["recent-action-updates", UPDATES_LIMIT],
-    queryFn: async () => {
-      const res = await actionsRecentUpdates({
-        query: { limit: UPDATES_LIMIT },
-      });
-      if (res.data) {
-        return res.data;
-      }
-      throw res.error;
-    },
-  });
+  const { data, isLoading, isError } = useRecentActionUpdates(UPDATES_LIMIT);
 
   const { notifications, handleNotifClick } = useNotifications();
 
@@ -68,18 +55,7 @@ const HomeUpdatesRow = () => {
     return map;
   }, [actionUpdateNotifications]);
 
-  const updates = useMemo(() => {
-    if (Array.isArray(data)) {
-      return data;
-    }
-    // Fallback in case the client wraps the array in a `data` property
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const maybeWrapped = (data as any)?.data;
-    if (Array.isArray(maybeWrapped)) {
-      return maybeWrapped;
-    }
-    return [];
-  }, [data]);
+  const updates = data ?? [];
 
   return (
     <div
