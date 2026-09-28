@@ -1,18 +1,16 @@
-import { videosGetVideoDetailsAdmin } from "@alliance/shared/client";
 import {
   thrownRefusalMessage,
   thrownStatus,
 } from "@alliance/shared/lib/hey-api";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { CardStyle } from "@alliance/shared/styles/card";
 import VideoPlayer from "@alliance/sharedweb/forms/VideoPlayer";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import { useQuery } from "@tanstack/react-query";
 import React from "react";
 import { useNavigate, useParams } from "react-router";
 import VideoReplaceForm from "../components/VideoReplaceForm";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
+import { useVideoAdmin } from "../lib/useVideosAdmin";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -26,13 +24,7 @@ const VideoDetail: React.FC = () => {
   const { videoId } = useParams();
   const navigate = useNavigate();
   const id = Number(videoId);
-  const detail = useQuery({
-    queryKey: queryKeys.videoAdmin(id),
-    queryFn: () =>
-      videosGetVideoDetailsAdmin({ path: { id }, throwOnError: true }).then(
-        (r) => r.data,
-      ),
-  });
+  const detail = useVideoAdmin(id);
   const video = detail.data;
   const error = !detail.isError
     ? null

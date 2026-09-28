@@ -1,37 +1,26 @@
 import { withCount } from "@alliance/common/plural";
-import { videosReplaceVideoAdmin } from "@alliance/shared/client";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useRef, useState } from "react";
 import { uploadSessionExpiredMessage } from "../lib/sessionExpired";
+import { useReplaceVideoAdmin } from "../lib/useVideosAdmin";
 
 interface VideoReplaceFormProps {
   videoId: number;
 }
 
 const VideoReplaceForm: React.FC<VideoReplaceFormProps> = ({ videoId }) => {
-  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const { success, error: pushError } = useToast();
 
-  const { mutate: replace, isPending: uploading } = useMutation({
-    mutationFn: (files: File[]) =>
-      videosReplaceVideoAdmin({
-        path: { id: videoId },
-        body: { files },
-        throwOnError: true,
-      }),
+  const { mutate: replace, isPending: uploading } = useReplaceVideoAdmin({
+    videoId,
     onSuccess: () => {
       success("Video content replaced successfully");
       setSelectedFiles([]);
       if (fileInputRef.current) fileInputRef.current.value = "";
-      return queryClient.invalidateQueries({
-        queryKey: queryKeys.videoAdmin(videoId),
-      });
     },
     onError: (err) => {
       console.error("Failed to replace video", err);
