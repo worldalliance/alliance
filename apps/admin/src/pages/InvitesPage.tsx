@@ -27,7 +27,7 @@ const INVITES_PER_PAGE = 50;
 
 const InvitesPage = () => {
   const queryClient = useQueryClient();
-  const { error: pushError } = useToast();
+  const { error: pushError, success: pushSuccess } = useToast();
 
   const {
     data,
@@ -92,9 +92,9 @@ const InvitesPage = () => {
   });
 
   const copyInviteLink = async (code: string) => {
-    if (
-      !(await copyToClipboard(getOnetimeInviteSignupUrl(getBaseUrl(), code)))
-    ) {
+    if (await copyToClipboard(getOnetimeInviteSignupUrl(getBaseUrl(), code))) {
+      pushSuccess("Invite link copied");
+    } else {
       pushError("Could not copy the invite link to the clipboard");
     }
   };
