@@ -1,3 +1,4 @@
+import { R } from "@alliance/common/result";
 import { actionsPasteJsonAdmin } from "@alliance/shared/client";
 import { useInvalidateActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import {
@@ -18,17 +19,20 @@ const CreateActionMenu = () => {
 
   const handlePasteJson = async () => {
     setPasteJsonLoading(true);
-    const json = await navigator.clipboard.readText();
-
-    const response = await actionsPasteJsonAdmin({ body: { body: json } });
-    if (response.data) {
+    const result = await R.fromPromiseFn(async () => {
+      const json = await navigator.clipboard.readText();
+      return actionsPasteJsonAdmin({ body: { body: json } });
+    });
+    setPasteJsonLoading(false);
+    const created = result.ok ? result.value.data : undefined;
+    if (created) {
       void invalidateActions();
-      navigate(`/actions/${response.data.id}`);
+      navigate(`/actions/${created.id}`);
       success("Action pasted successfully");
     } else {
+      if (!result.ok) console.error("Failed to paste action", result.error);
       error("Could not paste action");
     }
-    setPasteJsonLoading(false);
   };
 
   return (
