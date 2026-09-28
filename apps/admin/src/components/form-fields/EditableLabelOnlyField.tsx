@@ -1,10 +1,34 @@
-import type { TimezoneField } from "@alliance/common/forms/form-schema";
+import type {
+  DateField,
+  EmailField,
+  FileField,
+  TimeField,
+  TimezoneField,
+} from "@alliance/common/forms/form-schema";
+import type { ReactNode } from "react";
 import { RequiredToggle } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
 
-export function EditableTimezoneField({
+type LabelOnlyField =
+  | DateField
+  | EmailField
+  | FileField
+  | TimeField
+  | TimezoneField;
+
+type EditableLabelOnlyFieldProps = Omit<
+  BaseFieldProps<LabelOnlyField>,
+  "onUpdate"
+> & {
+  onUpdate: (
+    updates: Partial<Pick<LabelOnlyField, "label" | "required">>,
+  ) => void;
+  children?: ReactNode;
+};
+
+export function EditableLabelOnlyField({
   field,
   onUpdate,
   onRemove,
@@ -12,7 +36,8 @@ export function EditableTimezoneField({
   onDragEnd,
   isDragging,
   previousFields,
-}: BaseFieldProps<TimezoneField>) {
+  children,
+}: EditableLabelOnlyFieldProps) {
   return (
     <FieldWrapper
       field={field}
@@ -32,6 +57,7 @@ export function EditableTimezoneField({
         checked={field.required}
         onChange={(checked) => onUpdate({ required: checked })}
       />
+      {children}
     </FieldWrapper>
   );
 }

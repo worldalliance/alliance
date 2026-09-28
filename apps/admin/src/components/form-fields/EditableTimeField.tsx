@@ -1,40 +1,13 @@
 import type { TimeField } from "@alliance/common/forms/form-schema";
-import { RequiredToggle } from "./CommonControls";
-import { FieldLabelEditor } from "./FieldLabelEditor";
-import { FieldWrapper } from "./FieldWrapper";
+import { EditableLabelOnlyField } from "./EditableLabelOnlyField";
 import type { BaseFieldProps } from "./types";
 
-export function EditableTimeField({
-  field,
-  onUpdate,
-  onRemove,
-  onDragStart,
-  onDragEnd,
-  isDragging,
-  previousFields,
-}: BaseFieldProps<TimeField>) {
+export function EditableTimeField(props: BaseFieldProps<TimeField>) {
   return (
-    <FieldWrapper
-      field={field}
-      onUpdate={onUpdate}
-      previousFields={previousFields}
-      onRemove={onRemove}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      isDragging={isDragging}
-    >
-      <FieldLabelEditor
-        value={field.label}
-        onChange={(v) => onUpdate({ label: v })}
-      />
-
-      <RequiredToggle
-        checked={field.required}
-        onChange={(checked) => onUpdate({ required: checked })}
-      />
+    <EditableLabelOnlyField {...props}>
       <p className="text-xs text-gray-500">
         Collects a time in 12-hour format (e.g. 7:30 PM).
       </p>
-    </FieldWrapper>
+    </EditableLabelOnlyField>
   );
 }
