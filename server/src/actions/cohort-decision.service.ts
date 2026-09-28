@@ -1,19 +1,21 @@
 import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { millisecondsInDay, millisecondsInMinute } from "date-fns/constants";
 import { countBy } from "es-toolkit";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
-import { ContractEventType } from "src/user/entities/contract-event.entity";
 import type { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { In, type Repository } from "typeorm";
 import {
+  admissionReason,
+  belongsToBackfill,
   CohortEnrollmentState,
   computeCohortEnrollment,
   heldContractDuringWindow,
   isCohortAdmissible,
+  isInCatchUp,
+  isSettled,
   type CohortEnrollment,
 } from "./cohort-decision";
 import { logCohortPathDisagreements } from "./cohort-path-disagreements";
@@ -28,71 +30,12 @@ import { CohortDecisionReason } from "./entities/cohort-decision-reason";
 import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 import { SingleMemberCohortService } from "./single-member-cohort.service";
 
-/**
- * How long after its deadline a regular action stays in the catch-up pass.
- * Admissibility there is judged at the deadline, so each closed action needs
- * only one successful pass.
- */
-const CLOSED_ACTION_CATCH_UP_MS = 7 * millisecondsInDay;
-
-/**
- * Longer than any signing request. A member who signs through a task form has
- * a contract before the form's answers and completion are saved, so the pass
- * leaves recent signers alone rather than decide them mid-submission.
- */
-const SIGNING_GRACE_MS = 10 * millisecondsInMinute;
-
 const INSERT_CHUNK_SIZE = 1000;
 
 type DecisionRow = Pick<
   ActionCohortDecision,
   "actionId" | "userId" | "included" | "reason" | "resolvedAt"
 >;
-
-function admissionReason(params: {
-  action: ParsedAction;
-  user: User;
-  start: Date;
-}): CohortDecisionReason {
-  const { action, user, start } = params;
-  if (!isCohortAdmissible({ action, user, at: start })) {
-    return CohortDecisionReason.Signing;
-  }
-  return action.prerequisiteActionIds.length > 0
-    ? CohortDecisionReason.PrerequisitesResolved
-    : CohortDecisionReason.Launch;
-}
-
-export function isInCatchUp(enrollment: CohortEnrollment, now: Date): boolean {
-  switch (enrollment.state) {
-    case CohortEnrollmentState.Open:
-      return true;
-    case CohortEnrollmentState.Closed:
-      return (
-        now.getTime() - enrollment.deadline.getTime() <=
-        CLOSED_ACTION_CATCH_UP_MS
-      );
-    case CohortEnrollmentState.NotStarted:
-      return false;
-    default:
-      throw new Error(
-        `unknown enrollment state: ${enrollment satisfies never}`,
-      );
-  }
-}
-
-/**
- * A closed action the resolver never decided that launched before its first
- * decision. Catch-up would treat its whole cohort as a processing failure.
- */
-function belongsToBackfill(params: {
-  enrollment: { start: Date };
-  hasDecisions: boolean;
-  cutover: Date | null;
-}): boolean {
-  const { enrollment, hasDecisions, cutover } = params;
-  return !hasDecisions && (!cutover || enrollment.start < cutover);
-}
 
 @Injectable()
 export class CohortDecisionService {
@@ -163,15 +106,7 @@ export class CohortDecisionService {
       () => this.userService.findActiveUsersForRoster(),
     );
 
-    const signedBefore = new Date(now.getTime() - SIGNING_GRACE_MS);
-    const settledUsers = users.filter(
-      (user) =>
-        !user.contractEvents?.some(
-          (event) =>
-            event.type === ContractEventType.SIGNED &&
-            event.date > signedBefore,
-        ),
-    );
+    const settledUsers = users.filter((user) => isSettled(user, now));
 
     // Ordinary decisions first, so a backfill cannot delay this pass's
     // launches. It still holds the lock, so later passes skip until it ends.

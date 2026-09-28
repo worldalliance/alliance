@@ -11,8 +11,12 @@ import { ActionEventRecipientService } from "src/notifs/action-event-recipient.s
 import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { UserService } from "src/user/user.service";
 import { In, Not, type Repository } from "typeorm";
-import { CohortEnrollmentState, formatIdSample } from "./cohort-decision";
-import { CohortDecisionService, isInCatchUp } from "./cohort-decision.service";
+import {
+  CohortEnrollmentState,
+  formatIdSample,
+  isInCatchUp,
+} from "./cohort-decision";
+import { CohortDecisionService } from "./cohort-decision.service";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import { Action } from "./entities/action.entity";
 import { CohortDecisionReason } from "./entities/cohort-decision-reason";
