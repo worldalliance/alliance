@@ -1,6 +1,6 @@
 import { R } from "@alliance/common/result";
 import { TIME_ZONE_CATALOG } from "@alliance/common/timezone-catalog.gen";
-import { act, renderHook } from "@testing-library/react";
+import { act, cleanup, renderHook } from "@testing-library/react";
 import { millisecondsInMinute } from "date-fns/constants";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
@@ -23,6 +23,7 @@ beforeEach(() => {
   resetClock();
 });
 afterEach(() => jest.useRealTimers());
+afterEach(cleanup);
 
 const hidingDayPeriod = (body: () => void) => {
   const real = Intl.DateTimeFormat;
