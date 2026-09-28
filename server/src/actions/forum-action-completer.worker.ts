@@ -5,6 +5,7 @@ import {
   isQuestionField,
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
+import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -33,6 +34,7 @@ import {
 } from "typeorm";
 import { ActionsService } from "./actions.service";
 import { CohortSource } from "./cohort-admission.service";
+import { CohortDecisionService } from "./cohort-decision.service";
 import { ForumAutocompletePlan } from "./dto/action.dto";
 import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionEvent } from "./entities/action-event.entity";
@@ -66,6 +68,7 @@ export class ForumActionCompleterWorker {
     private readonly forumService: ForumService,
     private readonly actionsService: ActionsService,
     private readonly actionEventRecipientService: ActionEventRecipientService,
+    private readonly cohortDecisionService: CohortDecisionService,
     private readonly eventLogService: EventLogService,
   ) {}
 
@@ -211,6 +214,21 @@ export class ForumActionCompleterWorker {
         await this.markComputed(action.id, runAt);
       }
       return [];
+    }
+
+    if (shouldWrite) {
+      // The deadline window allows about two runs, too few to wait for the
+      // decision pass, and an undecided member reads as outside the cohort.
+      const decided = await R.fromPromise(
+        this.cohortDecisionService.decideOpenAction(action, runAt),
+      );
+      if (R.isFailure(decided)) {
+        this.logger.error(
+          `Failed to decide cohort for forum autocomplete of action ${action.id}`,
+          decided.error,
+        );
+        return [];
+      }
     }
 
     const baseUsers =

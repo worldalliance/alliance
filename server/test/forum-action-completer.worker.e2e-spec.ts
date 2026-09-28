@@ -1,12 +1,15 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { addMinutes } from "date-fns";
+import { CohortDecisionService } from "src/actions/cohort-decision.service";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
+import { ActionCohortDecision } from "src/actions/entities/action-cohort-decision.entity";
 import {
   ActionEvent,
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
+import { CohortDecisionReason } from "src/actions/entities/cohort-decision-reason";
 import { ForumActionCompleterWorker } from "src/actions/forum-action-completer.worker";
 import {
   Comment,
@@ -20,6 +23,10 @@ import {
 } from "src/tasks/entities/customvalidator.entity";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
+import {
+  ContractEvent,
+  ContractEventType,
+} from "src/user/entities/contract-event.entity";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
@@ -359,6 +366,67 @@ describe("ForumActionCompleterWorker (e2e)", () => {
     ).map((activity) => activity.userId);
     expect(completionIds).toContain(decidedIn.id);
     expect(completionIds).not.toContain(decidedOut.id);
+  });
+
+  const createUndecidedForumAction = async (now: Date) => {
+    const responder = await createUser(
+      `undecided-${now.getTime()}@example.com`,
+      "Undecided",
+    );
+    await ctx.dataSource.getRepository(ContractEvent).save({
+      user: { id: responder.id },
+      type: ContractEventType.SIGNED,
+      date: addMinutes(now, -20),
+      contract: { id: ctx.defaultContractId },
+    });
+    const postAuthor = await userRepo.findOneOrFail({
+      where: { id: ctx.adminUserId },
+    });
+    const post = await createPost(postAuthor, "Undecided Thread");
+    const validator = await createForumValidator(
+      CustomValidatorType.RepliedToForumPost,
+      post.id,
+    );
+    const form = await createFormWithValidator(validator.id);
+    const action = await createActionWithEvents({ formId: form.id, now });
+    await createComment({ author: responder, post, body: "Reply" });
+    return { action, responder };
+  };
+
+  it("decides the members the decision pass has not reached", async () => {
+    const { action, responder } = await createUndecidedForumAction(new Date());
+    const signer = await createUser("signer@example.com", "Signer");
+    await ctx.dataSource.getRepository(ActionCohortDecision).save({
+      actionId: action.id,
+      userId: signer.id,
+      included: true,
+      reason: CohortDecisionReason.Signing,
+      resolvedAt: new Date(),
+    });
+
+    await worker.autocompleteForumActions();
+
+    const completionIds = (
+      await activityRepo.find({
+        where: { actionId: action.id, type: ActionActivityType.USER_COMPLETED },
+      })
+    ).map((activity) => activity.userId);
+    expect(completionIds).toContain(responder.id);
+  });
+
+  it("retries an action whose cohort fails to decide", async () => {
+    const { action } = await createUndecidedForumAction(new Date());
+    const decide = jest
+      .spyOn(ctx.app.get(CohortDecisionService), "decideOpenAction")
+      .mockRejectedValue(new Error("cohort failed"));
+
+    await worker.autocompleteForumActions();
+    decide.mockRestore();
+
+    expect(
+      (await actionRepo.findOneOrFail({ where: { id: action.id } }))
+        .computedAutocompleteAt,
+    ).toBeNull();
   });
 
   it("skips actions outside the 1-hour deadline window", async () => {
