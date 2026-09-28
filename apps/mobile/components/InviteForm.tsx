@@ -17,31 +17,20 @@ import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
-import { ChevronDown, ChevronRight } from "lucide-react-native";
+import { ChevronRight } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Alert,
-  Linking,
-  ScrollView,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, Linking, TouchableOpacity, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
 import { copyToClipboard } from "../lib/clipboard";
 import { getBaseUrl } from "../lib/config";
 import { colors } from "../lib/style/colors";
 import AppMarkdownWrapper from "./AppMarkdownWrapper";
-import FormModal from "./forms/FormModal";
+import InviteGroupSelect, { type InvitePlacement } from "./InviteGroupSelect";
 import Button, { ButtonColor } from "./system/Button";
 import Card, { CardStyle } from "./system/Card";
 import CharacterLimitNotice from "./system/CharacterLimitNotice";
 import Input from "./system/Input";
 import Text, { FontWeight } from "./system/Text";
-
-type PlacementSelection =
-  | { kind: "community"; id: number }
-  | { kind: "assign" }
-  | { kind: "new" };
 
 type InviteFormProps = {
   onInviteCreated: (invite: OnetimeInviteDto) => void;
@@ -49,13 +38,12 @@ type InviteFormProps = {
 
 export default function InviteForm({ onInviteCreated }: InviteFormProps) {
   const { user } = useAuth();
-  const [placement, setPlacement] = useState<PlacementSelection>({
+  const [placement, setPlacement] = useState<InvitePlacement>({
     kind: "new",
   });
   const [inviteeName, setInviteeName] = useState("");
   const [creatingInvite, setCreatingInvite] = useState(false);
   const { communities, refreshCommunities } = useMyCommunities({});
-  const [groupSelectModalOpen, setGroupSelectModalOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupDescription, setNewGroupDescription] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
@@ -101,14 +89,6 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
       );
     }
   }, [placement, leaderCommunities, leaderCommunitiesById]);
-
-  const groupSelectLabel = useMemo(() => {
-    if (placement.kind === "assign")
-      return onetimeInviteCreation.assignToOpenGroup;
-    if (placement.kind === "new")
-      return onetimeInviteCreation.createNewGroupOption;
-    return selectedCommunity?.name ?? "Select a group";
-  }, [placement, selectedCommunity]);
 
   const handleCreateInvite = useCallback(
     async (communityId: number | null) => {
@@ -245,90 +225,11 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
           />
         </View>
 
-        {/* Group placement section */}
-        <View className="gap-3">
-          <Text
-            className="text-base text-zinc-900"
-            weight={FontWeight.Semibold}
-          >
-            {onetimeInviteCreation.responsible.leader.title}
-          </Text>
-          <Text className="text-sm text-zinc-500">
-            {onetimeInviteCreation.groupContext}
-          </Text>
-          <TouchableOpacity
-            onPress={() => setGroupSelectModalOpen(true)}
-            activeOpacity={0.85}
-            className="w-full rounded-lg border border-zinc-200 bg-white flex-row items-center justify-between px-3 py-3"
-          >
-            <Text className="text-base text-zinc-900 flex-1" numberOfLines={1}>
-              {groupSelectLabel}
-            </Text>
-            <ChevronDown size={18} color={colors.text.icon} />
-          </TouchableOpacity>
-
-          <FormModal
-            visible={groupSelectModalOpen}
-            onClose={() => setGroupSelectModalOpen(false)}
-          >
-            <View className="flex-row items-center justify-between mb-3">
-              <Text
-                className="text-lg text-zinc-900"
-                weight={FontWeight.Semibold}
-              >
-                {onetimeInviteCreation.responsible.leader.title}
-              </Text>
-              <TouchableOpacity onPress={() => setGroupSelectModalOpen(false)}>
-                <Text className="text-blue-600" weight={FontWeight.Medium}>
-                  Close
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView className="max-h-72">
-              <View className="gap-0">
-                {leaderCommunities.map((community) => (
-                  <TouchableOpacity
-                    key={community.id}
-                    onPress={() => {
-                      setPlacement({ kind: "community", id: community.id });
-                      setGroupSelectModalOpen(false);
-                    }}
-                    className="py-3 border-b border-zinc-100"
-                    activeOpacity={0.7}
-                  >
-                    <Text className="text-base text-zinc-900">
-                      {community.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-                <TouchableOpacity
-                  onPress={() => {
-                    setPlacement({ kind: "assign" });
-                    setGroupSelectModalOpen(false);
-                  }}
-                  className="py-3 border-b border-zinc-100"
-                  activeOpacity={0.7}
-                >
-                  <Text className="text-base text-zinc-900">
-                    {onetimeInviteCreation.assignToOpenGroup}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    setPlacement({ kind: "new" });
-                    setGroupSelectModalOpen(false);
-                  }}
-                  className="py-3"
-                  activeOpacity={0.7}
-                >
-                  <Text className="text-base text-zinc-900">
-                    {onetimeInviteCreation.createNewGroupOption}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </FormModal>
-        </View>
+        <InviteGroupSelect
+          placement={placement}
+          onChange={setPlacement}
+          leaderCommunities={leaderCommunities}
+        />
 
         {/* Assign to open group */}
         {placement.kind === "assign" && (
