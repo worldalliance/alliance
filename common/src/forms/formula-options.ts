@@ -463,7 +463,13 @@ export function resolveFormulaOptions(params: {
 
 const formulaChoicesSchema = z.record(
   z.string(),
-  z.array(z.strictObject({ label: z.string(), value: z.string() })),
+  z.array(
+    z.strictObject({
+      label: z.string(),
+      value: z.string(),
+      category: z.string().optional(),
+    }),
+  ),
 );
 
 /**

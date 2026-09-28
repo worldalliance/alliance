@@ -14,6 +14,7 @@ import { validateFormSchema } from "./form-schema-validate";
 import {
   formulaSourceFormIds,
   keepAvailableChoices,
+  readFormulaChoices,
   readOptionsResult,
   resolveFormulaOptions,
   schemaWithResolvedOptions,
@@ -538,6 +539,21 @@ describe("options on a formula field's schema", () => {
       rows.type === "input" && rows.kind === "list" && rows.fields[0],
     ).toMatchObject({ options: [choice("b"), choice("c")] });
     expect(JSON.stringify(saved)).not.toContain("optionsFormula");
+  });
+});
+
+describe("readFormulaChoices", () => {
+  it("reads a saved choice's category", () => {
+    const choices = { pick: [{ ...choice("r"), category: "Warm" }] };
+    expect(readFormulaChoices(choices)).toEqual(R.success(choices));
+  });
+
+  it("rejects a category that isn't text", () => {
+    expect(
+      R.isFailure(
+        readFormulaChoices({ pick: [{ ...choice("r"), category: 1 }] }),
+      ),
+    ).toBe(true);
   });
 });
 
