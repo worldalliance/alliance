@@ -161,8 +161,18 @@ export const mapInfiniteActivities = (
   };
 };
 
+export const useRefreshActivities = () => {
+  const queryClient = useQueryClient();
+  return useCallback(
+    (props: UseActivitiesProps) =>
+      queryClient.invalidateQueries({ queryKey: activitiesKey(props) }),
+    [queryClient],
+  );
+};
+
 const useActivities = (props: UseActivitiesProps) => {
   const queryClient = useQueryClient();
+  const refreshActivities = useRefreshActivities();
   const queryKey = activitiesKey(props);
   const infinite = supportsCursor(props.list);
   const limit = props.limit ?? DEFAULT_LIMIT;
@@ -283,7 +293,7 @@ const useActivities = (props: UseActivitiesProps) => {
     [queryClient, queryKey],
   );
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey });
+  const refresh = () => refreshActivities(props);
 
   const noop = useCallback(() => {}, []);
 

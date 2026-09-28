@@ -95,8 +95,6 @@ export default function ActivityDetailScreen() {
     }
   }, [activity?.user.id]);
 
-  const actionId = Number(id);
-
   const likeMutation = useMutation({
     mutationFn: async (isLiked: boolean) => {
       if (!activity) throw new Error("No activity");
@@ -117,32 +115,6 @@ export default function ActivityDetailScreen() {
               likesCount: isLiked ? prev.likesCount - 1 : prev.likesCount + 1,
             }
           : prev,
-      );
-
-      await queryClient.cancelQueries({
-        queryKey: ["actionActivities", actionId],
-      });
-      const previousActionActivities = queryClient.getQueryData([
-        "actionActivities",
-        actionId,
-      ]);
-      queryClient.setQueryData(
-        ["actionActivities", actionId],
-        (oldData: { data?: ActionActivityDto[] } | undefined) => {
-          if (!oldData?.data) return oldData;
-          return {
-            ...oldData,
-            data: oldData.data.map((a) =>
-              a.id === activity?.id
-                ? {
-                    ...a,
-                    likedByMe: !isLiked,
-                    likesCount: isLiked ? a.likesCount - 1 : a.likesCount + 1,
-                  }
-                : a,
-            ),
-          };
-        },
       );
 
       await queryClient.cancelQueries({ queryKey: ["useActivities"] });
@@ -166,19 +138,12 @@ export default function ActivityDetailScreen() {
 
       return {
         previousActivity,
-        previousActionActivities,
         previousFeedQueries,
       };
     },
     onError: (_err, _vars, context) => {
       if (context?.previousActivity) {
         setActivity(context.previousActivity);
-      }
-      if (context?.previousActionActivities) {
-        queryClient.setQueryData(
-          ["actionActivities", actionId],
-          context.previousActionActivities,
-        );
       }
       context?.previousFeedQueries?.forEach(([key, data]) => {
         queryClient.setQueryData(key, data);
@@ -197,9 +162,6 @@ export default function ActivityDetailScreen() {
       );
     },
     onSettled: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["actionActivities", actionId],
-      });
       queryClient.invalidateQueries({ queryKey: ["useActivities"] });
     },
   });
