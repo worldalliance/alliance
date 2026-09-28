@@ -10,6 +10,7 @@ import type { Request } from "express";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
 import { sessionFromRequest } from "../tokens";
+import { attachSession } from "./attach-session";
 
 @Injectable()
 export class AdminGuard implements CanActivate {
@@ -24,7 +25,7 @@ export class AdminGuard implements CanActivate {
 
     try {
       const payload = await sessionFromRequest(this.jwtService, request);
-      request["user"] = payload;
+      attachSession(request, payload);
 
       const user = await this.userRepository.findOne({
         where: { email: payload.email },

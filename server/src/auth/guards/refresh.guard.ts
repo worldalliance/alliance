@@ -7,6 +7,7 @@ import {
 import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
 import { extractRefreshToken, verifyRefreshToken } from "../tokens";
+import { attachSession } from "./attach-session";
 
 @Injectable()
 export class RefreshTokenGuard implements CanActivate {
@@ -22,7 +23,7 @@ export class RefreshTokenGuard implements CanActivate {
     }
 
     try {
-      request["user"] = await verifyRefreshToken(this.jwtService, token);
+      attachSession(request, await verifyRefreshToken(this.jwtService, token));
       return true;
     } catch {
       throw new UnauthorizedException("Invalid or expired refresh token");

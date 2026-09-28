@@ -8,6 +8,7 @@ import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
 import { UserService } from "../../user/user.service";
 import { sessionFromRequest } from "../tokens";
+import { attachSession } from "./attach-session";
 
 @Injectable()
 export class CommunityLeaderGuard implements CanActivate {
@@ -21,7 +22,7 @@ export class CommunityLeaderGuard implements CanActivate {
 
     try {
       const payload = await sessionFromRequest(this.jwtService, request);
-      request["user"] = payload;
+      attachSession(request, payload);
 
       const isLeader = await this.userService.isCommunityLeader(payload.email);
       const isAdmin = await this.userService.isAdmin(payload.sub);
