@@ -567,7 +567,11 @@ export function collectVariableResolutionFields(
 
 function variableInputField(field: AnyField): VariableInputField {
   if (fieldHasOptions(field)) {
-    return { kind: field.kind, options: field.options };
+    return {
+      kind: field.kind,
+      options: field.options,
+      categories: "categories" in field ? field.categories : undefined,
+    };
   }
   if (field.kind === "list") return { kind: field.kind, fields: field.fields };
   return { kind: field.kind };

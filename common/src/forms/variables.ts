@@ -4,6 +4,7 @@ import { camelCase, deburr, isEqual } from "es-toolkit";
 import z from "zod";
 import { formatCityValue, parseCityValue } from "./city";
 import type { FieldKind, ListSubField } from "./form-schema";
+import type { OptionCategory } from "./options-schema";
 import { AGGREGATE_INPUT_TYPE } from "./variable-aggregates";
 import {
   exprValueToText,
@@ -131,7 +132,8 @@ export function isFieldKindReadableByFieldInput(kind: FieldKind): boolean {
 
 export type VariableInputField = {
   kind: FieldKind;
-  options?: readonly { label: string; value: string }[];
+  options?: readonly { label: string; value: string; category?: string }[];
+  categories?: readonly OptionCategory[];
   fields?: readonly ListSubField[];
 };
 
@@ -323,7 +325,7 @@ export function syncFormulaListInputs<F extends Formula>(
 // Keep these as strings so form renderers can import this module without
 // pulling in TypeScript. `variable-formula-check.ts` writes them into its
 // virtual source.
-const CHOICE_TYPE = "{ label: string; value: string }";
+const CHOICE_TYPE = "{ label: string; value: string; category?: string }";
 
 const CITY_TYPE =
   "{ id: number; name: string; admin1: string; countryCode: string; countryName: string; label: string }";
@@ -474,7 +476,14 @@ function choiceRecord(
 ): ExprRecord | undefined {
   if (!value) return undefined;
   const option = field.options?.find((candidate) => candidate.value === value);
-  return { label: option?.label ?? value, value };
+  const category = field.categories?.find(
+    (candidate) => candidate.id === option?.category,
+  )?.name;
+  return {
+    label: option?.label ?? value,
+    value,
+    ...(category !== undefined && { category }),
+  };
 }
 
 function choiceFromAnswer(

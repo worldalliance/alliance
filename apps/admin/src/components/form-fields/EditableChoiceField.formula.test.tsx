@@ -232,6 +232,16 @@ it("previews the options with repeated values merged", () => {
   expect(chips.map((chip) => chip.textContent)).toEqual(["First a", "Other b"]);
 });
 
+it("previews each option's category", () => {
+  render(
+    <Editor
+      start={withFormula("[{ label: 'Red', value: 'r', category: 'Warm' }]")}
+    />,
+  );
+
+  expect(screen.getByRole("listitem").textContent).toBe("Warm: Red r");
+});
+
 it("says when the formula doesn't give a list of choices", () => {
   render(<Editor start={withFormula("input1")} />);
 

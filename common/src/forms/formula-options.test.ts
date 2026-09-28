@@ -14,6 +14,7 @@ import { validateFormSchema } from "./form-schema-validate";
 import {
   formulaSourceFormIds,
   keepAvailableChoices,
+  readFormulaChoices,
   readOptionsResult,
   resolveFormulaOptions,
   schemaWithResolvedOptions,
@@ -541,6 +542,110 @@ describe("options on a formula field's schema", () => {
   });
 });
 
+describe("option categories from an options formula", () => {
+  const warm = (value: string) => ({ ...choice(value), category: "Warm" });
+
+  it("keeps a trimmed category, dropping a blank one and naming alike ones after the first", () => {
+    expect(
+      readOptionsResult([
+        { ...choice("a"), category: " Warm " },
+        { ...choice("b"), category: " " },
+        { ...choice("c"), category: "WARM" },
+      ]),
+    ).toEqual(R.success([warm("a"), choice("b"), warm("c")]));
+  });
+
+  it("rejects a category that isn't text", () => {
+    expect(
+      R.isFailure(readOptionsResult([{ ...choice("a"), category: 1 }])),
+    ).toBe(true);
+  });
+
+  it("reads each choice's category name from the submission's form", () => {
+    const categorized: MultiSelectField = {
+      ...colorsField,
+      categories: [
+        { id: "w", name: "Warm" },
+        { id: "c", name: "Cool" },
+      ],
+      options: [
+        { ...choice("red", "Red"), category: "w" },
+        { ...choice("blue", "Blue"), category: "c" },
+        choice("green", "Green"),
+      ],
+    };
+    const fields = variableInputFieldsById([categorized]);
+    const options = optionsOf(
+      resolveFormulaOptions({
+        schema: schemaOf([
+          formulaSelect("pick", { input1: sourceColors }, LATEST),
+        ]),
+        answers: {},
+        sources: new Map([
+          [
+            SOURCE,
+            {
+              fields,
+              responses: [
+                { id: 1, answers: { colors: ["blue", "green"] }, fields },
+              ],
+            },
+          ],
+        ]),
+      }),
+      "pick",
+    );
+    expect(options).toEqual([
+      { ...choice("blue", "Blue"), category: "Cool" },
+      choice("green", "Green"),
+    ]);
+  });
+
+  it("gives the resolved and saved fields a category for each name, in first-offered order", () => {
+    const schema = schemaOf([formulaSelect("pick", {}, "[]")]);
+    const choices = [
+      { ...choice("b"), category: "Cool" },
+      choice("n"),
+      warm("r"),
+      { ...choice("s"), category: "Cool" },
+    ];
+    const categories = [
+      { id: "Cool", name: "Cool" },
+      { id: "Warm", name: "Warm" },
+    ];
+    const resolved = schemaWithResolvedOptions(
+      schema,
+      new Map([["pick", choices]]),
+    );
+    const saved = schemaWithSavedChoices(schema, { pick: choices });
+
+    expect(resolved.pages[0].fields[0]).toMatchObject({
+      options: choices,
+      categories,
+    });
+    expect(saved.pages[0].fields[0]).toMatchObject({
+      options: choices,
+      categories,
+    });
+    expect(formSchema.safeParse(saved).success).toBe(true);
+  });
+});
+
+describe("readFormulaChoices", () => {
+  it("reads a saved choice's category", () => {
+    const choices = { pick: [{ ...choice("r"), category: "Warm" }] };
+    expect(readFormulaChoices(choices)).toEqual(R.success(choices));
+  });
+
+  it("rejects a category that isn't text", () => {
+    expect(
+      R.isFailure(
+        readFormulaChoices({ pick: [{ ...choice("r"), category: 1 }] }),
+      ),
+    ).toBe(true);
+  });
+});
+
 describe("options formula schema", () => {
   it("lists the forms options formulas read beside the variables'", () => {
     const schema: FormSchema = {
@@ -589,6 +694,18 @@ describe("validateFormSchema with options formulas", () => {
       messages([
         formulaSelect("latest", { input1: sourceColors }, LATEST),
         formulaMultiselect("all", { input1: sourceColors }, ALL),
+      ]),
+    ).toEqual([]);
+  });
+
+  it("accepts a formula that reads and sets a category", () => {
+    expect(
+      messages([
+        formulaSelect(
+          "pick",
+          { input1: sourceColors },
+          "(input1.at(-1) ?? []).map(c => ({ label: c.label, value: c.value, category: c.category ?? 'Other' }))",
+        ),
       ]),
     ).toEqual([]);
   });

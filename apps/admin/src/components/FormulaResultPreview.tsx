@@ -41,6 +41,9 @@ export function ResultPreview({
                   key={option.value}
                   className="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5"
                 >
+                  {option.category && (
+                    <span className="text-gray-400">{option.category}: </span>
+                  )}
                   {option.label}{" "}
                   <span className="font-mono text-gray-400">
                     {option.value}

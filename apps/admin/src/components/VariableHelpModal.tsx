@@ -228,7 +228,7 @@ const RESULT_DESCRIPTION: Record<FormulaResult, string> = {
   [FormulaResult.Text]:
     "A formula is one JavaScript expression. It reads the inputs you pick, and whatever it returns is written wherever the variable is referenced.",
   [FormulaResult.Options]:
-    "A formula is one JavaScript expression. It reads the inputs you pick and returns a list of { label, value } records, the choices the field offers. Choices with the same value are merged, keeping the first. Add ?? [] where an answer can be missing.",
+    "A formula is one JavaScript expression. It reads the inputs you pick and returns a list of { label, value } records, the choices the field offers. A record's optional category groups it under that heading; choices read from a question with categories carry theirs. Choices with the same value are merged, keeping the first. Add ?? [] where an answer can be missing.",
 };
 
 const UNANSWERED_ADVICE: Record<FormulaResult, ReactNode> = {
