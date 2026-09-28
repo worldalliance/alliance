@@ -1,4 +1,5 @@
 import { GUEST_HEADER } from "@alliance/common/guest";
+import { R, type Result } from "@alliance/common/result";
 import { ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import type { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
@@ -38,6 +39,25 @@ const jwtPayloadSchema = z.object({
   tokenType: z.enum(JWTTokenType),
   isImpersonation: z.boolean().optional(),
 });
+
+/** Mails sent before the tokens carried a tokenType. Drop once they expire. */
+const LEGACY_MAILED_TOKEN_TYPE = {
+  [JWTTokenType.passwordReset]: "password-reset",
+  [JWTTokenType.verifyEmail]: "verify-email",
+} as const;
+
+type MailedTokenType = keyof typeof LEGACY_MAILED_TOKEN_TYPE;
+
+const mailedJwtPayloadSchema = z.object({
+  sub: z.number(),
+  tokenType: z.enum(JWTTokenType).optional(),
+  type: z.string().optional(),
+});
+
+export interface MailedJwtPayload {
+  sub: number;
+  tokenType: MailedTokenType;
+}
 
 export function extractBearerToken(
   authorization: string | undefined,
@@ -131,6 +151,28 @@ export async function verifyRefreshToken(
     throw new UnauthorizedException();
   }
   return payload.data;
+}
+
+/** The user id a mailed token of `tokenType` names. */
+export async function verifyMailedToken(
+  jwtService: JwtService,
+  params: { token: string; tokenType: MailedTokenType },
+): Promise<Result<number>> {
+  const verified = await R.fromPromise(
+    jwtService.verifyAsync(params.token, { secret: process.env.JWT_SECRET }),
+  );
+  if (!verified.ok) {
+    return verified;
+  }
+  const payload = mailedJwtPayloadSchema.safeParse(verified.value);
+  if (!payload.success) {
+    return R.failure(payload.error);
+  }
+  const { sub, tokenType, type } = payload.data;
+  return tokenType === params.tokenType ||
+    type === LEGACY_MAILED_TOKEN_TYPE[params.tokenType]
+    ? R.success(sub)
+    : R.failure(new Error(`not a ${params.tokenType} token`));
 }
 
 export function accessTokenPayload({
