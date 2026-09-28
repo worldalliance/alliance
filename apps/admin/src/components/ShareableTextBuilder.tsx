@@ -1,5 +1,5 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
+import type { FormSchema } from "@alliance/common/forms/form-schema";
 import {
   flattenPageItems,
   isQuestionField,
@@ -47,13 +47,6 @@ const SHAREABLE_NAME_TOKENS = [
   },
 ] as const;
 
-type ShareableField = {
-  id: string;
-  label: string;
-  kind: AnyField["kind"];
-  pageTitle: string;
-};
-
 type ShareableInsertable = {
   id: string;
   label: string;
@@ -62,8 +55,8 @@ type ShareableInsertable = {
   pageTitle: string;
 };
 
-const collectShareableFields = (schema: FormSchema): ShareableField[] => {
-  const fields: ShareableField[] = [];
+const collectShareableFields = (schema: FormSchema): ShareableInsertable[] => {
+  const fields: ShareableInsertable[] = [];
   schema.pages.forEach((page, pageIndex) => {
     flattenPageItems(page.fields).forEach((field) => {
       if (!isQuestionField(field) || !field.label) {
@@ -72,6 +65,7 @@ const collectShareableFields = (schema: FormSchema): ShareableField[] => {
       fields.push({
         id: field.id,
         label: field.label,
+        token: `#{${field.id}}`,
         kind: field.kind,
         pageTitle: page.title?.trim() || `Page ${pageIndex + 1}`,
       });
@@ -103,13 +97,7 @@ export function ShareableTextBuilder({
   const [activeIndex, setActiveIndex] = useState(0);
   const fields = useMemo(() => collectShareableFields(schema), [schema]);
   const completedInsertables = useMemo<ShareableInsertable[]>(
-    () => [
-      ...SHAREABLE_NAME_TOKENS,
-      ...fields.map((field) => ({
-        ...field,
-        token: `#{${field.id}}`,
-      })),
-    ],
+    () => [...SHAREABLE_NAME_TOKENS, ...fields],
     [fields],
   );
   const keywords = useMemo(
@@ -246,13 +234,7 @@ export function ShareableTextBuilder({
         event.preventDefault();
         const suggestion = suggestions[activeIndex] ?? suggestions[0];
         if (suggestion) {
-          insertCompletedToken(
-            {
-              ...suggestion,
-              token: `#{${suggestion.id}}`,
-            },
-            true,
-          );
+          insertCompletedToken(suggestion, true);
         }
         return;
       }
@@ -342,13 +324,7 @@ export function ShareableTextBuilder({
                     type="button"
                     onMouseDown={(event) => {
                       event.preventDefault();
-                      insertCompletedToken(
-                        {
-                          ...field,
-                          token: `#{${field.id}}`,
-                        },
-                        true,
-                      );
+                      insertCompletedToken(field, true);
                     }}
                     className={cn(
                       "flex w-full items-start justify-between gap-3 px-4 py-3 text-left hover:bg-blue-50",
@@ -360,7 +336,7 @@ export function ShareableTextBuilder({
                         {field.label}
                       </div>
                       <div className="mt-1 text-xs text-gray-500">
-                        #{`{${field.id}}`} · {field.pageTitle}
+                        {field.token} · {field.pageTitle}
                       </div>
                     </div>
                     <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
@@ -428,30 +404,21 @@ export function ShareableTextBuilder({
                       type="button"
                       draggable
                       onDragStart={(event) => {
-                        const token = `#{${field.id}}`;
                         event.dataTransfer.effectAllowed = "copy";
                         event.dataTransfer.setData(
                           COMPLETED_SHAREABLE_INSERTION_DATA_KEY,
-                          token,
+                          field.token,
                         );
-                        event.dataTransfer.setData("text/plain", token);
+                        event.dataTransfer.setData("text/plain", field.token);
                       }}
-                      onClick={() =>
-                        insertCompletedToken(
-                          {
-                            ...field,
-                            token: `#{${field.id}}`,
-                          },
-                          false,
-                        )
-                      }
+                      onClick={() => insertCompletedToken(field, false)}
                       className="w-full rounded-md border border-gray-200 bg-white px-3 py-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
                     >
                       <div className="font-medium text-gray-900">
                         {field.label}
                       </div>
                       <div className="mt-1 text-xs text-gray-500">
-                        #{`{${field.id}}`} · {field.pageTitle}
+                        {field.token} · {field.pageTitle}
                       </div>
                     </button>
                   ))
