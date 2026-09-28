@@ -3,10 +3,7 @@ import { ActionActivityType } from "@alliance/common/actionActivity";
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import {
-  CohortAdmissionService,
-  CohortSource,
-} from "src/actions/cohort-admission.service";
+import { CohortAdmissionService } from "src/actions/cohort-admission.service";
 import { readsSavedDecisions } from "src/actions/cohort-decision";
 import {
   answerMatchesFormField,
@@ -130,39 +127,27 @@ export class ActionEventRecipientService {
   }
 
   /**
-   * An action's cohort from `source`. Saved decisions stand in for the live
-   * cohort from launch on, so a member the pass has not decided yet reads as
-   * outside it; see `readsSavedDecisions`.
+   * An action's cohort as its readers see it. Saved decisions stand in for the
+   * live cohort from launch on, so a member the pass has not decided yet reads
+   * as outside it; see `readsSavedDecisions`.
    */
   resolveCohort(params: {
     action: ParsedAction;
-    source: CohortSource;
     session: CohortResolutionSession;
     resolvingActionIds?: ReadonlySet<number>;
   }): Promise<Set<number>> {
-    const { action, source, session, resolvingActionIds } = params;
-    switch (source) {
-      case CohortSource.Decisions:
-        if (readsSavedDecisions(action, new Date())) {
-          return this.cohortAdmissionService.loadAdmittedMemberIds(
-            action.id,
-            session,
-          );
-        }
-        return this.resolveActionCohortMemberIds({
-          action,
-          session,
-          resolvingActionIds,
-        });
-      case CohortSource.Live:
-        return this.resolveActionCohortMemberIds({
-          action,
-          session,
-          resolvingActionIds,
-        });
-      default:
-        throw new Error(`unknown cohort source: ${source satisfies never}`);
+    const { action, session, resolvingActionIds } = params;
+    if (readsSavedDecisions(action, new Date())) {
+      return this.cohortAdmissionService.loadAdmittedMemberIds(
+        action.id,
+        session,
+      );
     }
+    return this.resolveActionCohortMemberIds({
+      action,
+      session,
+      resolvingActionIds,
+    });
   }
 
   /**
@@ -473,15 +458,13 @@ export class ActionEventRecipientService {
    */
   public async findBaseUsersForEvents(params: {
     entries: Array<{ action: ParsedAction; eventId: number }>;
-    cohortSource: CohortSource;
     includeSuspended?: boolean;
     includeDismissed?: boolean;
     /** Share loads across calls within one request; see resolveCohortMemberIds. */
     session?: CohortResolutionSession;
     resolvingActionIds?: ReadonlySet<number>;
   }): Promise<Map<number, User[]>> {
-    const { entries, cohortSource, includeSuspended, includeDismissed } =
-      params;
+    const { entries, includeSuspended, includeDismissed } = params;
     if (entries.length === 0) return new Map();
     const session = params.session ?? new CohortResolutionSession();
     const resolvingActionIds = params.resolvingActionIds ?? new Set<number>();
@@ -515,7 +498,6 @@ export class ActionEventRecipientService {
         action.id,
         this.resolveCohort({
           action,
-          source: cohortSource,
           session,
           resolvingActionIds,
         }),
@@ -564,7 +546,6 @@ export class ActionEventRecipientService {
   public async findBaseUsersForEvent(params: {
     action: ParsedAction;
     eventId: number;
-    cohortSource: CohortSource;
     includeSuspended?: boolean;
     includeDismissed?: boolean;
     session?: CohortResolutionSession;
@@ -573,7 +554,6 @@ export class ActionEventRecipientService {
     const {
       action,
       eventId,
-      cohortSource,
       includeSuspended,
       includeDismissed,
       session,
@@ -586,7 +566,6 @@ export class ActionEventRecipientService {
 
     const result = await this.findBaseUsersForEvents({
       entries: [{ action, eventId }],
-      cohortSource,
       includeSuspended,
       includeDismissed,
       session,
@@ -648,7 +627,6 @@ export class ActionEventRecipientService {
         .then((acts) => new Set(acts.map((a) => a.userId))),
       this.resolveCohort({
         action: eventAction,
-        source: CohortSource.Decisions,
         session,
       }),
       Promise.all(
@@ -656,7 +634,6 @@ export class ActionEventRecipientService {
           actionId: action.id,
           memberIds: await this.resolveCohort({
             action,
-            source: CohortSource.Decisions,
             session,
           }),
         })),
@@ -753,7 +730,6 @@ export class ActionEventRecipientService {
           // The event relation carries a raw db entity; parse at first use.
           action: parseAction(event.action),
           eventId: event.id,
-          cohortSource: CohortSource.Decisions,
         });
     return type === ActionEventNotifType.Announcement
       ? users

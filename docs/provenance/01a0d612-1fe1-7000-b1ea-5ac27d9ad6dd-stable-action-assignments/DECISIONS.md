@@ -229,11 +229,13 @@ Dependent cohorts are in the user's scope, so the `InProgressAction` and `Missed
 
 Analytics follows: retention by signing cohort, missed actions, and tenure cohorts read their rosters from saved decisions, so a member who moves after a decision counts toward the action they were assigned.
 
+With no reader left on the live roster, the `CohortSource` switch stage 6 added goes: the participant and base-user rosters always read saved decisions, with the live cohort before launch and on public-only actions.
+
 Ships alone: staff-facing reads only; stage 6 already made the member experience consistent.
 
 ### 8. Remove recomputation
 
-Delete the live cohort recomputation paths that stage 6 and 7 consumers left behind, and the stage 2 divergence logging. The cohort evaluator remains for the resolver and follow-up-form targeting.
+Delete the stage 2 divergence logging. Stage 7 already removed the live roster source. The live cohort remains for readers before launch, public-only actions, voluntary completion of an unassigned action, the resolver, and follow-up-form targeting.
 
 Ships alone: dead-code removal, after stages 6 and 7 have run in production long enough to trust.
 

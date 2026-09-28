@@ -4,14 +4,6 @@ import type { CohortResolutionSession } from "src/notifs/cohort-resolution-sessi
 import type { Repository } from "typeorm";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 
-/** Where a reader takes an action's cohort from. */
-export enum CohortSource {
-  /** Members the saved decisions admit. */
-  Decisions = "decisions",
-  /** The live cohort, recomputed from the expression and prerequisites. */
-  Live = "live",
-}
-
 /** Reads of who the saved cohort decisions admit. */
 @Injectable()
 export class CohortAdmissionService {

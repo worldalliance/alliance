@@ -8,7 +8,6 @@ import {
   millisecondsInHour,
   millisecondsInWeek,
 } from "date-fns/constants";
-import { CohortSource } from "src/actions/cohort-admission.service";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
@@ -798,7 +797,6 @@ ORDER BY pp.total_session_duration_seconds DESC
 
     const baseUsersByAction =
       await this.actionEventRecipientService.findBaseUsersForEvents({
-        cohortSource: CohortSource.Decisions,
         entries: actionGroups.flatMap((group) =>
           group.entries.map((entry) => ({
             action: entry.action,
@@ -1106,7 +1104,6 @@ ORDER BY pp.total_session_duration_seconds DESC
 
     const baseUsersByAction =
       await this.actionEventRecipientService.findBaseUsersForEvents({
-        cohortSource: CohortSource.Decisions,
         entries: completedActions.map(({ action, memberActionEvent }) => ({
           action,
           eventId: memberActionEvent.id,
@@ -1274,7 +1271,6 @@ ORDER BY pp.total_session_duration_seconds DESC
 
     const baseUsersByAction =
       await this.actionEventRecipientService.findBaseUsersForEvents({
-        cohortSource: CohortSource.Decisions,
         entries: eligible.map((e) => ({
           action: e.action,
           eventId: e.memberActionEvent.id,
