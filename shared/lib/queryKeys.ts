@@ -26,6 +26,8 @@ export const queryKeys = {
   contractById: (contractId: number | null) =>
     ["contractGetById", contractId] as const,
   currentContract: () => ["contractGetCurrent"] as const,
+  forumPost: (postId: string | undefined) =>
+    ["forumFindOnePost", postId] as const,
   generalUpdatesAll: () => ["actionsAllGeneralUpdates"] as const,
   generalUpdatesUnread: () => ["actions", "generalUpdates", "unread"] as const,
   linkPreview: (url: string) => ["linkPreviewGetPreview", url] as const,

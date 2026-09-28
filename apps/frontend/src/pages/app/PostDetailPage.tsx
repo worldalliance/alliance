@@ -1,6 +1,6 @@
-import { forumFindOnePost, forumRemovePost } from "@alliance/shared/client";
+import { forumRemovePost } from "@alliance/shared/client";
 import { formatFullDateTime } from "@alliance/shared/lib/dateFormatters";
-import { usePostLikeMutation } from "@alliance/shared/lib/usePostLikeMutation";
+import { useForumPost } from "@alliance/shared/lib/useForumPost";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -8,7 +8,6 @@ import Card from "@alliance/sharedweb/ui/Card";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Pin } from "lucide-react";
 import React, { useState } from "react";
 import { Link, href, useNavigate, useParams } from "react-router";
@@ -23,22 +22,15 @@ const PostDetailPage: React.FC = () => {
 
   const { user } = useAuth();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   useCIDFromParams();
 
   const {
-    data: post = null,
+    post,
     isLoading: loading,
     error: queryError,
-  } = useQuery({
-    queryKey: ["forumFindOnePost", postId],
-    queryFn: () =>
-      forumFindOnePost({ path: { id: postId! } }).then(
-        (res) => res.data ?? null,
-      ),
-    enabled: !!postId,
-  });
+    handleLike,
+  } = useForumPost(postId, user?.id);
 
   const handleDeletePost = async () => {
     if (!post || !amAuthor) {
@@ -57,23 +49,6 @@ const PostDetailPage: React.FC = () => {
       }
     }
   };
-
-  const handleLike = usePostLikeMutation({
-    postId: Number(postId),
-    userId: user?.id,
-    getPost: () => post,
-    setPost: (updater) => {
-      queryClient.setQueryData(
-        ["forumFindOnePost", postId],
-        (old: typeof post) => (old ? updater(old) : old),
-      );
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["forumFindOnePost", postId],
-      });
-    },
-  });
 
   const displayError =
     error || (queryError ? "Failed to load post details" : null);

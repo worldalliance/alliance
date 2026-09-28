@@ -1,11 +1,6 @@
-import {
-  forumFindOnePost,
-  forumRemovePost,
-  PostDto,
-} from "@alliance/shared/client";
-import { usePostLikeMutation } from "@alliance/shared/lib/usePostLikeMutation";
+import { forumRemovePost, PostDto } from "@alliance/shared/client";
+import { useForumPost } from "@alliance/shared/lib/useForumPost";
 import { formatTime } from "@alliance/shared/lib/utils";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { Pin } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -41,37 +36,14 @@ export default function PostDetailScreen() {
 
   const scrollViewRef = useRef<KeyboardAwareScrollViewRef>(null);
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const queryKey = ["forumFindOnePost", postId];
-
   const {
-    data: post = null,
+    post,
     isLoading: loading,
     error: queryError,
-  } = useQuery({
-    queryKey,
-    queryFn: () =>
-      forumFindOnePost({ path: { id: postId! } }).then(
-        (res) => res.data ?? null,
-      ),
-    enabled: !!postId,
-  });
-
-  const handleLike = usePostLikeMutation({
-    postId: Number(postId),
-    userId: user?.id,
-    getPost: () => post,
-    setPost: (updater) => {
-      queryClient.setQueryData(queryKey, (old: typeof post) =>
-        old ? updater(old) : old,
-      );
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey });
-    },
-  });
+    handleLike,
+  } = useForumPost(postId, user?.id);
 
   const confirmDeletePost = useCallback(() => {
     if (!post || post.author.id !== user?.id) return;
