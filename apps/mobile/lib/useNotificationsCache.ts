@@ -6,7 +6,10 @@ import {
   notifsSetReadAll,
   UnreadContentType,
 } from "@alliance/shared/client";
-import { isClearedByContentRead } from "@alliance/shared/lib/notificationIdentity";
+import {
+  getNotificationIdentityKey,
+  isClearedByContentRead,
+} from "@alliance/shared/lib/notificationIdentity";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
   QueryClient,
@@ -44,6 +47,39 @@ export function notificationsCache(queryClient: QueryClient) {
     }),
 
     refresh: () => queryClient.invalidateQueries({ queryKey: LIST_KEY }),
+
+    markCachedRead: (
+      notificationsToMark: Pick<NotificationDto, "id" | "sourceType">[],
+    ) => {
+      if (notificationsToMark.length === 0) return;
+
+      const keys = new Set(notificationsToMark.map(getNotificationIdentityKey));
+      const readAt = new Date().toISOString();
+      let found = 0;
+      let markedUnread = 0;
+      const nextData = queryClient
+        .getQueryData<NotificationDto[]>(LIST_KEY)
+        ?.map((notification) => {
+          if (!keys.has(getNotificationIdentityKey(notification))) {
+            return notification;
+          }
+          found += 1;
+          if (!notification.readAt) markedUnread += 1;
+          return { ...notification, readAt };
+        });
+
+      if (!nextData || found === 0) {
+        void queryClient.invalidateQueries({ queryKey: LIST_KEY });
+        return;
+      }
+
+      queryClient.setQueryData(LIST_KEY, nextData);
+      queryClient.setQueryData<number>(UNREAD_COUNT_KEY, (prev) =>
+        prev === undefined
+          ? nextData.filter((notification) => !notification.readAt).length
+          : Math.max(prev - markedUnread, 0),
+      );
+    },
 
     markCachedReadByContent: (
       contentType: UnreadContentType,

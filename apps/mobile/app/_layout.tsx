@@ -90,9 +90,7 @@ export default function RootLayout() {
                 <AuthProvider queryClient={queryClient}>
                   <KeyboardExtenderPortalProvider>
                     <DeviceRegistration />
-                    <PushNotificationResponseHandler
-                      queryClient={queryClient}
-                    />
+                    <PushNotificationResponseHandler />
                     <UpdateAvailableModal />
                     <StatusBar style="dark" />
                     <Slot />

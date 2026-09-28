@@ -6,12 +6,8 @@ import {
   LikesBucket,
   NotificationRenderItem,
 } from "@alliance/shared/lib/notificationBucketing";
-import {
-  getNotificationIdentityKey,
-  getNotificationReadRequest,
-} from "@alliance/shared/lib/notificationIdentity";
+import { getNotificationReadRequest } from "@alliance/shared/lib/notificationIdentity";
 import { LegendList } from "@legendapp/list";
-import { useQueryClient } from "@tanstack/react-query";
 import { RelativePathString, router } from "expo-router";
 import { Ellipsis } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
@@ -49,8 +45,6 @@ const normalizeLocation = (location: string | null) => {
 };
 
 export default function NotificationsScreen() {
-  const queryClient = useQueryClient();
-
   const { user } = useAuth();
 
   const [overflowOpen, setOverflowOpen] = useState(false);
@@ -61,8 +55,11 @@ export default function NotificationsScreen() {
     isRefetching,
     error,
   } = useNotificationsList();
-  const { markAllRead, refresh: refreshNotifications } =
-    useNotificationsCache();
+  const {
+    markAllRead,
+    markCachedRead: markNotificationsRead,
+    refresh: refreshNotifications,
+  } = useNotificationsCache();
 
   const notifications = useMemo(() => response ?? [], [response]);
 
@@ -126,43 +123,6 @@ export default function NotificationsScreen() {
       </View>
     );
   })();
-
-  const markNotificationsRead = useCallback(
-    (notificationsToMark: Pick<NotificationDto, "id" | "sourceType">[]) => {
-      if (notificationsToMark.length === 0) {
-        return;
-      }
-
-      const keys = new Set(
-        notificationsToMark.map((notification) =>
-          getNotificationIdentityKey(notification),
-        ),
-      );
-      const readAt = new Date().toISOString();
-      queryClient.setQueryData(
-        ["notifications"],
-        (oldData: typeof response) => {
-          if (!oldData) return oldData;
-          return oldData.map((notification) =>
-            keys.has(getNotificationIdentityKey(notification))
-              ? { ...notification, readAt }
-              : notification,
-          );
-        },
-      );
-      queryClient.setQueryData<number>(
-        ["notifications", "unreadCount"],
-        (prev) =>
-          Math.max(
-            (prev ??
-              notifications.filter((notification) => !notification.readAt)
-                .length) - notificationsToMark.length,
-            0,
-          ),
-      );
-    },
-    [notifications, queryClient],
-  );
 
   const handleMarkAsRead = useCallback(
     (notification: NotificationDto) => {

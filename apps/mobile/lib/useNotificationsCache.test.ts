@@ -163,3 +163,79 @@ it("leaves an unloaded list unloaded when marking content read", () => {
   notificationsCache(queryClient).markCachedReadByContent("forum_reply", [10]);
   expect(queryClient.getQueryData(LIST_KEY)).toBeUndefined();
 });
+
+it("marks the given notifications read and counts down only those that were unread", () => {
+  const queryClient = new QueryClient();
+  queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
+    notification({ id: 1 }),
+    notification({ id: 2, readAt: SENT }),
+    notification({ id: 3 }),
+    notification({ id: 1, sourceType: "notification" }),
+  ]);
+  queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 5);
+
+  notificationsCache(queryClient).markCachedRead([
+    { id: 1, sourceType: "unread_content" },
+    { id: 2, sourceType: "unread_content" },
+  ]);
+
+  const cached = queryClient.getQueryData<NotificationDto[]>(LIST_KEY);
+  expect(cached?.map((n) => n.readAt !== null)).toEqual([
+    true,
+    true,
+    false,
+    false,
+  ]);
+  expect(queryClient.getQueryData(UNREAD_COUNT_KEY)).toBe(4);
+});
+
+it("counts the unread left in the list when no count is cached", () => {
+  const queryClient = new QueryClient();
+  queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
+    notification({ id: 1 }),
+    notification({ id: 2 }),
+  ]);
+
+  notificationsCache(queryClient).markCachedRead([
+    { id: 1, sourceType: "unread_content" },
+  ]);
+
+  expect(queryClient.getQueryData(UNREAD_COUNT_KEY)).toBe(1);
+});
+
+it("refetches the list and unread count when the list is not cached", () => {
+  const queryClient = new QueryClient();
+  queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 3);
+
+  notificationsCache(queryClient).markCachedRead([
+    { id: 1, sourceType: "unread_content" },
+  ]);
+
+  expect(queryClient.getQueryData(LIST_KEY)).toBeUndefined();
+  expect(queryClient.getQueryState(UNREAD_COUNT_KEY)?.isInvalidated).toBe(true);
+});
+
+it("refetches the list and unread count when the notification is not in the list", () => {
+  const queryClient = new QueryClient();
+  queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
+    notification({ id: 1 }),
+  ]);
+  queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 1);
+
+  notificationsCache(queryClient).markCachedRead([
+    { id: 9, sourceType: "unread_content" },
+  ]);
+
+  expect(queryClient.getQueryData(UNREAD_COUNT_KEY)).toBe(1);
+  expect(queryClient.getQueryState(LIST_KEY)?.isInvalidated).toBe(true);
+  expect(queryClient.getQueryState(UNREAD_COUNT_KEY)?.isInvalidated).toBe(true);
+});
+
+it("leaves the cache alone when marking nothing", () => {
+  const queryClient = new QueryClient();
+  queryClient.setQueryData<NotificationDto[]>(LIST_KEY, []);
+
+  notificationsCache(queryClient).markCachedRead([]);
+
+  expect(queryClient.getQueryState(LIST_KEY)?.isInvalidated).toBe(false);
+});
