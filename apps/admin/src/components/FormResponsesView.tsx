@@ -31,6 +31,7 @@ import React, {
   useState,
 } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
+import { normalizeBoolean } from "../lib/answerValues";
 import {
   getDirectSnapshotTarget,
   type ReturnToState,
@@ -122,15 +123,6 @@ const isTab = (value: string | null): value is Tab =>
   value === "stats" ||
   value === "questions" ||
   value === "replays";
-
-const normalizeBoolean = (value: unknown): boolean | null => {
-  if (value === true || value === false) return value;
-  if (value === "true") return true;
-  if (value === "false") return false;
-  if (value === 1) return true;
-  if (value === 0) return false;
-  return null;
-};
 
 const isNoResponseValue = (value: unknown): boolean => {
   if (value === null || value === undefined) return true;

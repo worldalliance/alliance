@@ -5,6 +5,7 @@ import {
 import type { AnyField } from "@alliance/common/forms/form-schema";
 import { storedQuestionFields } from "@alliance/common/forms/stored-schema";
 import { R } from "@alliance/common/result";
+import { isEmptyAnswer } from "../../lib/answerValues";
 
 export enum SnapshotMode {
   Focused = "focused",
@@ -46,14 +47,6 @@ export type QuestionColumn = {
   lastSeenSnapshotId: number | null;
   /** Every distinct wording, oldest first. One entry means the label never changed. */
   wordings: Wording[];
-};
-
-const isEmptyAnswer = (value: unknown): boolean => {
-  if (value === null || value === undefined) return true;
-  if (typeof value === "string") return value.trim() === "";
-  if (Array.isArray(value)) return value.length === 0;
-  if (typeof value === "object") return Object.keys(value).length === 0;
-  return false;
 };
 
 export function columnLabel(field: AnyField): {

@@ -14,6 +14,7 @@ import { getRangeValues } from "@alliance/shared/formrenderer";
 import Card from "@alliance/sharedweb/ui/Card";
 import FormMarkdownWrapper from "@alliance/sharedweb/ui/FormMarkdownWrapper";
 import React, { useMemo } from "react";
+import { normalizeBoolean } from "../lib/answerValues";
 import {
   type FormResponseFilter,
   type FormWithSchema,
@@ -78,15 +79,6 @@ const formatNumber = (value: number): string => {
   if (Number.isInteger(rounded)) return String(rounded);
   const fixed = rounded.toFixed(2);
   return fixed.replace(/0+$/, "").replace(/\.$/, "");
-};
-
-const normalizeBoolean = (value: unknown): boolean | null => {
-  if (value === true || value === false) return value;
-  if (value === "true") return true;
-  if (value === "false") return false;
-  if (value === 1) return true;
-  if (value === 0) return false;
-  return null;
 };
 
 const toNumberValue = (value: unknown): number | null => {
