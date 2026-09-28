@@ -3,6 +3,7 @@ import {
   filterActions,
   useActionsQuery,
 } from "@alliance/shared/lib/actionsListPage";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { LegendList } from "@legendapp/list";
 import { router } from "expo-router";
 import { ChevronDown } from "lucide-react-native";
@@ -16,6 +17,7 @@ import {
   View,
 } from "react-native";
 import ActionItemCard from "../../../components/ActionItemCard";
+import LoadFailed from "../../../components/LoadFailed";
 import { SimplePageTitle } from "../../../components/system/SimplePageTitle";
 import Text, { FontFamily } from "../../../components/system/Text";
 import { colors } from "../../../lib/style/colors";
@@ -24,7 +26,14 @@ export default function ActionsScreen() {
   const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.All);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const { data: actions, isPending, isRefetching, refetch } = useActionsQuery();
+  const actionsQuery = useActionsQuery();
+  const {
+    data: actions,
+    isPending,
+    isFetching,
+    isRefetching,
+    refetch,
+  } = actionsQuery;
 
   const counts = useMemo(() => {
     const result: Record<FilterMode, number> = {} as any;
@@ -42,7 +51,16 @@ export default function ActionsScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      {isPending ? (
+      {failedToLoad(actionsQuery) ? (
+        <View className="flex-1">
+          <SimplePageTitle title="Actions" />
+          <LoadFailed
+            message="Couldn't load actions."
+            onRetry={() => void refetch()}
+            retrying={isFetching}
+          />
+        </View>
+      ) : isPending ? (
         <View className="flex-1">
           <SimplePageTitle title="Actions" />
           <View className="flex-1 items-center justify-center bg-white">
