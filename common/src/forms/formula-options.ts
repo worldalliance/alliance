@@ -42,7 +42,7 @@ export const FORMULA_SOURCES_CHANGED = `${FORMULA_SOURCES_CHANGED_REASON} Reload
 
 export type ChoiceOption = { label: string; value: string };
 
-type ChoiceField = SelectField | MultiSelectField;
+export type ChoiceField = SelectField | MultiSelectField;
 export type FormulaChoiceField = ChoiceField & {
   optionsFormula: OptionsFormula;
 };
