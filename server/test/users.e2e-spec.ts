@@ -2886,6 +2886,26 @@ describe("Users (e2e)", () => {
         .send({ token, password: "NotTheirPassword123!" })
         .expect(401);
     });
+
+    it("refuses a mailed token with no sub", async () => {
+      const noSub = ctx.jwtService.sign(
+        { tokenType: JWTTokenType.verifyEmail },
+        { secret: process.env.JWT_SECRET },
+      );
+      await request(ctx.app.getHttpServer())
+        .post("/user/verifyEmail")
+        .send({ token: noSub })
+        .expect(400);
+
+      const noSubReset = ctx.jwtService.sign(
+        { tokenType: JWTTokenType.passwordReset },
+        { secret: process.env.JWT_SECRET },
+      );
+      await request(ctx.app.getHttpServer())
+        .post("/auth/reset-password")
+        .send({ token: noSubReset, password: "NotTheirPassword123!" })
+        .expect(401);
+    });
   });
 
   describe("friend graph edges (admin)", () => {

@@ -7,7 +7,7 @@ import {
 } from "@alliance/common/forms/user-properties";
 import type { AccountDerivedConditionKind } from "@alliance/common/forms/visible-if-formula";
 import { forCount } from "@alliance/common/plural";
-import { R, type Result } from "@alliance/common/result";
+import type { Result } from "@alliance/common/result";
 import { Temporal } from "@js-temporal/polyfill";
 import {
   BadRequestException,
@@ -27,7 +27,11 @@ import { milliseconds } from "date-fns";
 import { millisecondsInDay } from "date-fns/constants";
 import { countBy } from "es-toolkit";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
-import { JWTTokenType } from "src/auth/tokens";
+import {
+  JWTTokenType,
+  type MailedJwtPayload,
+  verifyMailedToken,
+} from "src/auth/tokens";
 import { CampaignService } from "src/campaign/campaign.service";
 import { Campaign } from "src/campaign/entities/campaign.entity";
 import { CommunityService } from "src/community/community.service";
@@ -139,21 +143,6 @@ import {
 } from "./entities/user.entity";
 import { type FriendsAcceptedPayload, UserEvents } from "./user.events";
 import { referralLabel } from "./user.utils";
-
-export interface PWResetJwtPayload {
-  sub: number;
-  tokenType: JWTTokenType.passwordReset;
-}
-
-export interface VerifyEmailJwtPayload {
-  sub: number;
-  tokenType: JWTTokenType.verifyEmail;
-}
-
-/** Mails sent before the tokens carried a tokenType. Drop once they expire. */
-export interface LegacyMailedJwtPayload {
-  type?: string;
-}
 
 export type ReferrerResolution =
   | { kind: "user"; user: User }
@@ -698,19 +687,11 @@ export class UserService {
   }
 
   async verifyEmail(token: string) {
-    const verified = await R.fromPromise(
-      this.jwtService.verifyAsync<
-        VerifyEmailJwtPayload & LegacyMailedJwtPayload
-      >(token, {
-        secret: process.env.JWT_SECRET,
-      }),
-    );
-    const user =
-      verified.ok &&
-      (verified.value.tokenType === JWTTokenType.verifyEmail ||
-        verified.value.type === "verify-email")
-        ? await this.findOne(verified.value.sub)
-        : null;
+    const userId = await verifyMailedToken(this.jwtService, {
+      token,
+      tokenType: JWTTokenType.verifyEmail,
+    });
+    const user = userId.ok ? await this.findOne(userId.value) : null;
     if (!user) {
       throw new BadRequestException("Invalid or expired verification link");
     }
@@ -719,7 +700,7 @@ export class UserService {
   }
 
   async getVerifyEmailToken(userId: number) {
-    const payload: VerifyEmailJwtPayload = {
+    const payload: MailedJwtPayload = {
       sub: userId,
       tokenType: JWTTokenType.verifyEmail,
     };
@@ -1430,7 +1411,7 @@ export class UserService {
   }
 
   async generatePasswordResetToken(userId: number) {
-    const payload: PWResetJwtPayload = {
+    const payload: MailedJwtPayload = {
       sub: userId,
       tokenType: JWTTokenType.passwordReset,
     };

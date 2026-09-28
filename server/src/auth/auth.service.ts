@@ -23,11 +23,7 @@ import {
   ReferralSource,
   User,
 } from "../user/entities/user.entity";
-import {
-  type LegacyMailedJwtPayload,
-  type PWResetJwtPayload,
-  UserService,
-} from "../user/user.service";
+import { UserService } from "../user/user.service";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { Guest } from "./entities/guest.entity";
 import type { OAuthProfile } from "./oauth/oauth-client";
@@ -40,6 +36,7 @@ import {
   JWTTokenType,
   REFRESH_COOKIE,
   sessionFromRequest,
+  verifyMailedToken,
 } from "./tokens";
 
 export type ReferredUser = {
@@ -441,26 +438,16 @@ export class AuthService {
   }
 
   async resetPassword(token: string, password: string) {
-    let payload: PWResetJwtPayload & LegacyMailedJwtPayload;
-    try {
-      payload = this.jwtService.verify<
-        PWResetJwtPayload & LegacyMailedJwtPayload
-      >(token, {
-        secret: process.env.JWT_SECRET,
-      });
-    } catch (error) {
-      console.log("password reset jwt verification error: ", error);
+    const userId = await verifyMailedToken(this.jwtService, {
+      token,
+      tokenType: JWTTokenType.passwordReset,
+    });
+    if (!userId.ok) {
+      console.log("password reset jwt verification error: ", userId.error);
       throw new UnauthorizedException();
     }
 
-    if (
-      payload.tokenType !== JWTTokenType.passwordReset &&
-      payload.type !== "password-reset"
-    ) {
-      throw new UnauthorizedException();
-    }
-
-    const user = await this.usersService.findOne(payload.sub);
+    const user = await this.usersService.findOne(userId.value);
     if (!user) {
       throw new UnauthorizedException();
     }
