@@ -145,10 +145,7 @@ const VideoDetail: React.FC = () => {
             -bufsize 4M -vf scale=-2:720 -c:a aac -b:a 128k -hls_time 6
             -hls_list_size 0 -hls_segment_filename segment_%03d.ts output.m3u8
           </code>
-          <VideoReplaceForm
-            videoId={video.id}
-            onComplete={() => void detail.refetch()}
-          />
+          <VideoReplaceForm videoId={video.id} />
         </Card>
       </div>
     </div>
