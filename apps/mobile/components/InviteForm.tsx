@@ -4,7 +4,6 @@ import {
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import type {
-  CommunityDto,
   CreateOnetimeInviteDto,
   OnetimeInviteDto,
 } from "@alliance/shared/client";
@@ -12,20 +11,20 @@ import {
   communityCreateCommunity,
   userCreateOnetimeInvite,
 } from "@alliance/shared/client";
-import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
+import { useInvitePlacement } from "@alliance/shared/lib/useInvitePlacement";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { ChevronRight } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { Alert, Linking, TouchableOpacity, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
 import { copyToClipboard } from "../lib/clipboard";
 import { getBaseUrl } from "../lib/config";
 import { colors } from "../lib/style/colors";
 import AppMarkdownWrapper from "./AppMarkdownWrapper";
-import InviteGroupSelect, { type InvitePlacement } from "./InviteGroupSelect";
+import InviteGroupSelect from "./InviteGroupSelect";
 import Button, { ButtonColor } from "./system/Button";
 import Card, { CardStyle } from "./system/Card";
 import CharacterLimitNotice from "./system/CharacterLimitNotice";
@@ -38,57 +37,16 @@ type InviteFormProps = {
 
 export default function InviteForm({ onInviteCreated }: InviteFormProps) {
   const { user } = useAuth();
-  const [placement, setPlacement] = useState<InvitePlacement>({
-    kind: "new",
-  });
   const [inviteeName, setInviteeName] = useState("");
   const [creatingInvite, setCreatingInvite] = useState(false);
   const { communities, refreshCommunities } = useMyCommunities({});
+  const { placement, setPlacement, leaderCommunities, selectedCommunity } =
+    useInvitePlacement(communities, user?.id);
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupDescription, setNewGroupDescription] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
 
-  // Default placement to a group the user leads. Runs once so it never clobbers
-  // a manual selection on a later refetch.
-  const didInitPlacement = useRef(false);
-  useEffect(() => {
-    if (didInitPlacement.current || communities.length === 0 || !user) {
-      return;
-    }
-    didInitPlacement.current = true;
-    const led = communities.find((community) => isLedBy(community, user.id));
-    setPlacement(led ? { kind: "community", id: led.id } : { kind: "new" });
-  }, [communities, user]);
-
-  const leaderCommunities = useMemo(() => {
-    if (!user) return [] as CommunityDto[];
-    return communities.filter((community) => isLedBy(community, user.id));
-  }, [communities, user]);
-
   const isLeader = leaderCommunities.length > 0;
-
-  const leaderCommunitiesById = useMemo(
-    () => new Map(leaderCommunities.map((c) => [c.id, c])),
-    [leaderCommunities],
-  );
-
-  const selectedCommunity = useMemo(() => {
-    if (placement.kind !== "community") return null;
-    return leaderCommunitiesById.get(placement.id) ?? null;
-  }, [leaderCommunitiesById, placement]);
-
-  useEffect(() => {
-    if (
-      placement.kind === "community" &&
-      !leaderCommunitiesById.has(placement.id)
-    ) {
-      setPlacement(
-        leaderCommunities[0]
-          ? { kind: "community", id: leaderCommunities[0].id }
-          : { kind: "new" },
-      );
-    }
-  }, [placement, leaderCommunities, leaderCommunitiesById]);
 
   const handleCreateInvite = useCallback(
     async (communityId: number | null) => {
@@ -182,6 +140,7 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
     inviteeName,
     refreshCommunities,
     handleCreateInvite,
+    setPlacement,
   ]);
 
   return (

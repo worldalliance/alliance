@@ -4,9 +4,8 @@ import {
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
-import type { CommunityDto, ShareUrlMineDto } from "@alliance/shared/client";
+import type { ShareUrlMineDto } from "@alliance/shared/client";
 import { communityCreateCommunity } from "@alliance/shared/client";
-import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
 import {
@@ -14,17 +13,18 @@ import {
   type InviteSettingsTarget,
 } from "@alliance/shared/lib/inviteSettings";
 import { inviteDestinationLabel } from "@alliance/shared/lib/inviteUtils";
+import { useInvitePlacement } from "@alliance/shared/lib/useInvitePlacement";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useReusableInvites } from "@alliance/shared/lib/useReusableInvites";
 import { cn } from "@alliance/shared/styles/util";
 import { ChevronRight } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { Alert, Platform, Share, TouchableOpacity, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
 import { copyToClipboard } from "../lib/clipboard";
 import { colors } from "../lib/style/colors";
 import FormModal from "./forms/FormModal";
-import InviteGroupSelect, { type InvitePlacement } from "./InviteGroupSelect";
+import InviteGroupSelect from "./InviteGroupSelect";
 import InviteSettingsModal from "./InviteSettingsModal";
 import Button, { ButtonColor, ButtonSize } from "./system/Button";
 import Card, { CardStyle } from "./system/Card";
@@ -46,54 +46,15 @@ export default function InviteShareLink() {
     deleteInvite,
   } = useReusableInvites();
   const { communities, refreshCommunities } = useMyCommunities({});
+  const { placement, setPlacement, leaderCommunities, selectedCommunity } =
+    useInvitePlacement(communities, user?.id);
   const [labelDraft, setLabelDraft] = useState("");
-  const [placement, setPlacement] = useState<InvitePlacement>({
-    kind: "new",
-  });
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupDescription, setNewGroupDescription] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [openLinkId, setOpenLinkId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
-
-  const leaderCommunities = useMemo(() => {
-    if (!user) return [] as CommunityDto[];
-    return communities.filter((community) => isLedBy(community, user.id));
-  }, [communities, user]);
-
-  const leaderCommunitiesById = useMemo(
-    () =>
-      new Map(leaderCommunities.map((community) => [community.id, community])),
-    [leaderCommunities],
-  );
-
-  const selectedCommunity = useMemo(() => {
-    if (placement.kind !== "community") return null;
-    return leaderCommunitiesById.get(placement.id) ?? null;
-  }, [leaderCommunitiesById, placement]);
-
-  const didInitPlacement = useRef(false);
-  useEffect(() => {
-    if (didInitPlacement.current || communities.length === 0 || !user) return;
-    didInitPlacement.current = true;
-    const led = leaderCommunities[0];
-    setPlacement(led ? { kind: "community", id: led.id } : { kind: "new" });
-  }, [communities.length, leaderCommunities, user]);
-
-  useEffect(() => {
-    if (
-      placement.kind === "community" &&
-      !leaderCommunitiesById.has(placement.id)
-    ) {
-      const firstLedCommunity = leaderCommunities[0];
-      setPlacement(
-        firstLedCommunity
-          ? { kind: "community", id: firstLedCommunity.id }
-          : { kind: "new" },
-      );
-    }
-  }, [leaderCommunities, leaderCommunitiesById, placement]);
 
   const handleCreate = useCallback(
     async (communityId: number | null) => {
@@ -156,7 +117,13 @@ export default function InviteShareLink() {
     } finally {
       setCreatingGroup(false);
     }
-  }, [handleCreate, newGroupDescription, newGroupName, refreshCommunities]);
+  }, [
+    handleCreate,
+    newGroupDescription,
+    newGroupName,
+    refreshCommunities,
+    setPlacement,
+  ]);
 
   const handleShare = useCallback((link: ShareUrlMineDto) => {
     void Share.share(

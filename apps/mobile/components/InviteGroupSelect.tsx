@@ -1,16 +1,12 @@
 import type { CommunityDto } from "@alliance/shared/client";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
+import type { InvitePlacement } from "@alliance/shared/lib/useInvitePlacement";
 import { ChevronDown } from "lucide-react-native";
 import { useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { colors } from "../lib/style/colors";
 import FormModal from "./forms/FormModal";
 import Text, { FontWeight } from "./system/Text";
-
-export type InvitePlacement =
-  | { kind: "community"; id: number }
-  | { kind: "assign" }
-  | { kind: "new" };
 
 type InviteGroupSelectProps = {
   placement: InvitePlacement;
