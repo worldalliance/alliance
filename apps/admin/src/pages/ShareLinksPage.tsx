@@ -1,10 +1,8 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { withCount } from "@alliance/common/plural";
 import {
-  actionsFindAllWithDraftsAdmin,
   campaignCreateAdmin,
   campaignFindAllAdmin,
-  externalShareTargetsFindAllAdmin,
   imagesUploadImage,
   shareUrlsCreateDuplicateAdmin,
   shareUrlsDeleteAdmin,
@@ -13,12 +11,11 @@ import {
   shareUrlsUpdateLabelAdmin,
 } from "@alliance/shared/client";
 import type {
-  ActionDto,
   CampaignDto,
-  ExternalShareTargetDto,
   ShareUrlAdminDto,
 } from "@alliance/shared/client/types.gen";
 import { getReferralSignupUrl } from "@alliance/shared/lib/inviteUrls";
+import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
@@ -28,6 +25,7 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import UserSelect, {
   useSelectableUserIds,
 } from "@alliance/sharedweb/ui/UserSelect";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Copy, Pencil, Trash2 } from "lucide-react";
 import React, {
   useCallback,
@@ -36,6 +34,11 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { actionsLoadError } from "../lib/actionsLoadError";
+import {
+  externalShareTargetsLoadError,
+  externalShareTargetsQuery,
+} from "../lib/externalShareTargetsQuery";
 
 type TargetKind = "action" | "external" | "invite";
 
@@ -163,10 +166,8 @@ const ShareLinksPage: React.FC = () => {
   const [rows, setRows] = useState<ShareUrlAdminDto[]>([]);
   const [loadingRows, setLoadingRows] = useState(false);
 
-  const [actions, setActions] = useState<ActionDto[]>([]);
-  const [externalTargets, setExternalTargets] = useState<
-    ExternalShareTargetDto[]
-  >([]);
+  const actions = useActionsAdmin();
+  const externalTargets = useQuery(externalShareTargetsQuery);
 
   const [selectedKind, setSelectedKind] = useState<TargetKind>("action");
   const [selectedTarget, setSelectedTarget] = useState<Target | null>(null);
@@ -203,21 +204,8 @@ const ShareLinksPage: React.FC = () => {
   }, [error]);
 
   useEffect(() => {
-    void (async () => {
-      try {
-        const [actionsRes, targetsRes] = await Promise.all([
-          actionsFindAllWithDraftsAdmin(),
-          externalShareTargetsFindAllAdmin(),
-        ]);
-        setActions(actionsRes.data ?? []);
-        setExternalTargets(targetsRes.data ?? []);
-      } catch (err) {
-        console.error("Failed to load actions / external targets", err);
-        error("Failed to load actions or external targets.");
-      }
-    })();
     void loadCampaigns();
-  }, [error, loadCampaigns]);
+  }, [loadCampaigns]);
 
   const loadRows = useCallback(
     async (target: Owner) => {
@@ -305,11 +293,11 @@ const ShareLinksPage: React.FC = () => {
   const targetsForKind = useMemo((): Target[] => {
     switch (selectedKind) {
       case "action":
-        return actions
+        return (actions.data ?? [])
           .filter((a) => !a.archived)
           .map((a) => ({ kind: "action", id: a.id, name: a.name }));
       case "external":
-        return externalTargets.map((t) => ({
+        return (externalTargets.data ?? []).map((t) => ({
           kind: "external",
           id: t.id,
           name: t.name,
@@ -319,7 +307,17 @@ const ShareLinksPage: React.FC = () => {
       default:
         throw new Error(`unknown target kind: ${selectedKind satisfies never}`);
     }
-  }, [selectedKind, actions, externalTargets]);
+  }, [selectedKind, actions.data, externalTargets.data]);
+
+  const targetsLoadError: Record<TargetKind, string | null> = {
+    action:
+      actions.isError && !actions.data ? actionsLoadError(actions.error) : null,
+    external:
+      externalTargets.isError && !externalTargets.data
+        ? externalShareTargetsLoadError(externalTargets.error)
+        : null,
+    invite: null,
+  };
 
   const handleKindChange = useCallback((kind: TargetKind) => {
     setSelectedKind(kind);
@@ -627,6 +625,7 @@ const ShareLinksPage: React.FC = () => {
                   <TargetPicker
                     kind={selectedKind}
                     targets={targetsForKind}
+                    loadError={targetsLoadError[selectedKind]}
                     value={selectedTarget}
                     onChange={setSelectedTarget}
                     disabled={creating}
@@ -780,10 +779,11 @@ const CampaignPicker: React.FC<{
 const TargetPicker: React.FC<{
   kind: TargetKind;
   targets: Target[];
+  loadError: string | null;
   value: Target | null;
   onChange: (target: Target | null) => void;
   disabled?: boolean;
-}> = ({ kind, targets, value, onChange, disabled }) => {
+}> = ({ kind, targets, loadError, value, onChange, disabled }) => {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -815,6 +815,7 @@ const TargetPicker: React.FC<{
       <label className="text-xs font-medium text-zinc-700">
         {targetKindLabel(kind)}
       </label>
+      {loadError && <p className="text-xs text-red-500">{loadError}</p>}
       {value ? (
         <div className="flex flex-row items-center gap-2 border border-zinc-300 rounded px-3 py-2 text-sm bg-white">
           <span className="flex-1 truncate">{targetName(value)}</span>
