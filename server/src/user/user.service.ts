@@ -411,7 +411,7 @@ export class UserService {
 
   async findAllMembersPublic(): Promise<User[]> {
     const users = await this.userRepository.find({
-      where: { shareInfoPublicly: true },
+      where: { shareInfoPublicly: true, staff: false },
       relations: {
         contractEvents: true,
       },
