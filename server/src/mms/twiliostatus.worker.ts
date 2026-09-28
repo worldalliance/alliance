@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
+import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import type { Repository } from "src/utils/Repository";
 import { Mms } from "./mms.entity";
 import { MmsService } from "./mms.service";
@@ -15,6 +16,9 @@ export class TwilioStatusWorker {
 
   @Cron(CronExpression.EVERY_MINUTE)
   async processTwilioStatus() {
+    if (!notifDeliveryEnabled()) {
+      return;
+    }
     const queuedMessages = await this.mmsRepository.find({
       where: { status: "queued" },
     });
