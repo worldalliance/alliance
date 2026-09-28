@@ -12,6 +12,8 @@ import {
   computeMissedActionDeadline,
 } from "src/utils/action-user";
 import type { Repository } from "typeorm";
+import { CohortAdmissionService } from "./cohort-admission.service";
+import { readsSavedDecisions } from "./cohort-decision";
 import {
   answerMatchesFormField,
   evaluateCohortExpression,
@@ -27,8 +29,8 @@ import {
 import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 
 /**
- * The single-member cohort path: whether one member is in an expression's or
- * an action's live cohort.
+ * The single-member cohort path: whether one member is in an expression's
+ * cohort or an action's live cohort.
  */
 @Injectable()
 export class SingleMemberCohortService {
@@ -44,6 +46,7 @@ export class SingleMemberCohortService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly prerequisiteProgressService: PrerequisiteProgressService,
+    private readonly cohortAdmissionService: CohortAdmissionService,
   ) {}
 
   private loadActionWithEvents(
@@ -92,6 +95,27 @@ export class SingleMemberCohortService {
   }
 
   /**
+   * Whether the member is in the cohort of an action a roster leaf reads: their
+   * saved decision where one exists, the live cohort otherwise, as
+   * `resolveDecidedCohort` on the population path.
+   */
+  private async computeIsInRosterCohort(params: {
+    user: User;
+    action: ParsedAction;
+    visitedActionIds: Set<number>;
+    session: CohortResolutionSession;
+  }): Promise<boolean> {
+    const { user, action, session } = params;
+    if (readsSavedDecisions(action, new Date())) {
+      const included = (
+        await this.cohortAdmissionService.loadDecisionsForUser(user.id, session)
+      ).get(action.id);
+      if (included !== undefined) return included;
+    }
+    return this.computeIsInActionCohort(params);
+  }
+
+  /**
    * Check if a user is in a cohort expression's target set.
    */
   async computeIsInCohortExpression(params: {
@@ -135,7 +159,7 @@ export class SingleMemberCohortService {
         if (!fetched) return false;
         const action = parseAction(fetched);
 
-        const inCohort = await this.computeIsInActionCohort({
+        const inCohort = await this.computeIsInRosterCohort({
           user,
           action,
           visitedActionIds: new Set(visitedActionIds).add(actionId),
@@ -184,7 +208,7 @@ export class SingleMemberCohortService {
               },
             ],
           }),
-          this.computeIsInActionCohort({
+          this.computeIsInRosterCohort({
             user,
             action,
             visitedActionIds: new Set(visitedActionIds).add(actionId),

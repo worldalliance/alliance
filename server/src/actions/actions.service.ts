@@ -143,10 +143,7 @@ import {
   isActionUpdatePublished,
   publishedActionUpdateWhere,
 } from "./action-update-visibility";
-import {
-  CohortAdmissionService,
-  CohortSource,
-} from "./cohort-admission.service";
+import { CohortAdmissionService } from "./cohort-admission.service";
 import { readsSavedDecisions } from "./cohort-decision";
 import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import { CohortDecisionService } from "./cohort-decision.service";
@@ -692,7 +689,6 @@ export class ActionsService {
   async findParticipantIdsForActionById(actionId: number): Promise<number[]> {
     return this.findParticipantIdsForAction(
       await this.findParticipantAction(actionId),
-      CohortSource.Live,
     );
   }
 
@@ -708,13 +704,8 @@ export class ActionsService {
     );
   }
 
-  async findParticipantIdsForAction(
-    action: ParsedAction,
-    cohortSource: CohortSource,
-  ): Promise<number[]> {
-    const result = await this.findParticipantIdsForActions([action], {
-      cohortSource,
-    });
+  async findParticipantIdsForAction(action: ParsedAction): Promise<number[]> {
+    const result = await this.findParticipantIdsForActions([action]);
     return result.get(action.id) ?? [];
   }
 
@@ -737,9 +728,9 @@ export class ActionsService {
    */
   async findParticipantIdsForActions(
     actions: ParsedAction[],
-    params: { cohortSource: CohortSource; session?: CohortResolutionSession },
+    params: { session?: CohortResolutionSession } = {},
   ): Promise<Map<number, number[]>> {
-    const { cohortSource, session = new CohortResolutionSession() } = params;
+    const { session = new CohortResolutionSession() } = params;
     // Build entries for actions that have a MemberAction event
     const entries: Array<{ action: ParsedAction; event: ActionEvent }> = [];
     for (const action of actions) {
@@ -764,7 +755,6 @@ export class ActionsService {
           action: e.action,
           eventId: e.event.id,
         })),
-        cohortSource,
         includeDismissed: true,
         session,
       });
@@ -837,10 +827,7 @@ export class ActionsService {
       }),
     );
 
-    const joinedUserIds = await this.findParticipantIdsForAction(
-      action,
-      CohortSource.Live,
-    );
+    const joinedUserIds = await this.findParticipantIdsForAction(action);
 
     const completedActivities = await this.actionActivityRepository.find({
       where: {
@@ -938,7 +925,7 @@ export class ActionsService {
     );
     const cohorts = await Promise.all(
       requiredActions.map((action) =>
-        this.actionEventRecipientService.resolveActionCohortMemberIds({
+        this.actionEventRecipientService.resolveDecidedCohort({
           action,
           session,
         }),
@@ -3424,10 +3411,7 @@ export class ActionsService {
         const action = await this.findParticipantAction(actionUpdate.actionId);
         // One send and no retry, so it cannot wait for the pass.
         await this.cohortDecisionService.decideOpenAction(action, new Date());
-        const userIds = await this.findParticipantIdsForAction(
-          action,
-          CohortSource.Decisions,
-        );
+        const userIds = await this.findParticipantIdsForAction(action);
         return this.userService.findByIds(userIds);
       }
       case ActionUpdateNotifyType.Tag: {
@@ -3906,7 +3890,6 @@ export class ActionsService {
     const joinedUsersP: Promise<Record<number, number[]>> = run(async () => {
       const actions = await actionsP;
       const joinedUsersMap = await this.findParticipantIdsForActions(actions, {
-        cohortSource: CohortSource.Live,
         session,
       });
 
@@ -4013,10 +3996,10 @@ export class ActionsService {
         getDetail({ userId, actionId: action.id }).isJoined = true;
       }
       // Set-based membership from the shared session (already resolved for
-      // this expression by findParticipantIdsForActions) instead of the
+      // this action by findParticipantIdsForActions) instead of the
       // per-user expression walk, whose action leaves each hit the DB.
       const cohortMemberIds =
-        await this.actionEventRecipientService.resolveActionCohortMemberIds({
+        await this.actionEventRecipientService.resolveCohort({
           action,
           session,
         });
@@ -4369,7 +4352,6 @@ export class ActionsService {
           action.id,
           this.actionEventRecipientService.resolveCohort({
             action,
-            source: CohortSource.Decisions,
             session,
           }),
         );

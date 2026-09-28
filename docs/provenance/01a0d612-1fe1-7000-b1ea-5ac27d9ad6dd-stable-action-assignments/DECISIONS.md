@@ -188,7 +188,7 @@ The resolver derives readiness (completion or withdrawal activity, deadline reac
 
 Prerequisites are an integer array on the action rather than a join table: the set is small, read whole, and never queried from the upstream side except by validation. Importing an exported action drops them, since action ids name different actions in another environment.
 
-The live recomputation path treats a member whose prerequisites are not ready as outside the cohort. The configuration then takes effect for members immediately, and shadow comparisons stay meaningful. Every read of an action's live cohort goes through that rule, including the rosters `InProgressAction` and `MissedActionDeadline` leaves read. The divergence check keeps comparing decisions with the expression alone, since a decided member's prerequisites had resolved; follow-up forms and the admin's expression preview have no prerequisites.
+The live recomputation path treats a member whose prerequisites are not ready as outside the cohort. The configuration then takes effect for members immediately, and shadow comparisons stay meaningful. Every read of an action's live cohort goes through that rule. The rosters `InProgressAction` and `MissedActionDeadline` leaves read take the upstream action's saved decision for each member it has decided (stage 7) and this rule for the rest. The divergence check keeps comparing decisions with the expression alone, since a decided member's prerequisites had resolved; follow-up forms and the admin's expression preview have no prerequisites.
 
 Ships alone: existing actions have no prerequisites, so nothing waits until staff configure one.
 
@@ -221,11 +221,21 @@ Ships alone: stages 2–5 already populated and verified the data.
 
 Switch admin and leader status tables, participation counts, analytics, and welcome queues. Follow-up-form eligibility, public guest actions, and form-variant selection keep their own policies.
 
+These readers take the cohort from saved decisions by the stage 6 rule: from the member-action start, with the live cohort before it and on a public-only action. None of them reconcile. The participant roster's staff callers (the `usersJoined` counter, the admin and leader status tables, and the incomplete-member list) switch first. Until the pass decides a just-launched action, at most five minutes unless it fails, these readers show its members as unassigned. That window is preferred to having a staff read write decisions. The counter refreshes on activity and on its ten-minute cron, so after a launch it trails the pass by up to one refresh (ALL-1254 tracks refreshing it from the pass).
+
+The welcome queue counts the onboarding actions each member's saved decisions assign, and takes the live cohort for an action that has not decided that member yet. Welcoming is permanent, since a staff comment removes the member from the queue, so an undecided action must still count against them. That covers a dependent onboarding action waiting on its prerequisite and a signer the signing writer has not reached.
+
+Dependent cohorts are in the user's scope, so the `InProgressAction` and `MissedActionDeadline` leaves read the upstream action's roster from its saved decision for each member it has decided, on both the population and single-member paths. A downstream decision therefore sees who was assigned the upstream action, not whom its expression would select now. A member the upstream has not decided yet reads from its live cohort, because the resolver evaluates these leaves and its decisions are final: reading them as outside would permanently exclude a member whose upstream decision had not been written yet, such as one signing while both actions are open, or one the pass reached downstream first. A `MissedActionDeadline` upstream that closed while its pass failed gets resolved-after-deadline exclusions, and a member excluded that way did not miss it, matching that no missed obligation is created.
+
+Analytics follows: retention by signing cohort, missed actions, and tenure cohorts read their rosters from saved decisions, so a member who moves after a decision counts toward the action they were assigned.
+
+With no reader left on the live roster, the `CohortSource` switch stage 6 added goes: the participant and base-user rosters always read saved decisions, with the live cohort before launch and on public-only actions.
+
 Ships alone: staff-facing reads only; stage 6 already made the member experience consistent.
 
 ### 8. Remove recomputation
 
-Delete the live cohort recomputation paths that stage 6 and 7 consumers left behind, and the stage 2 divergence logging. The cohort evaluator remains for the resolver and follow-up-form targeting.
+Delete the stage 2 divergence logging. Stage 7 already removed the live roster source. The live cohort remains for readers before launch, public-only actions, voluntary completion of an unassigned action, the resolver, and follow-up-form targeting.
 
 Ships alone: dead-code removal, after stages 6 and 7 have run in production long enough to trust.
 

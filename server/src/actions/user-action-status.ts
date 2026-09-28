@@ -264,8 +264,7 @@ export function resolveUserActionStatus(params: {
 
   // Single-user equivalent of the participant roster
   // (`findParticipantIdsForActions`) read from saved decisions:
-  // "expected to act ∪ completed anyway". The `usersJoined` counter still
-  // reads the live cohort until stage 7.
+  // "expected to act ∪ completed anyway".
   const isParticipant =
     relation === ViewerActionRelation.Completed ||
     (assigned &&
