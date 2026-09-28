@@ -1,19 +1,24 @@
 import { forCount } from "@alliance/common/plural";
-import {
-  ContractAdminDto,
-  contractAllAdmin,
-  contractGetCurrent,
-} from "@alliance/shared/client";
+import { ContractAdminDto, contractGetCurrent } from "@alliance/shared/client";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useQuery } from "@tanstack/react-query";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { useNavigate } from "react-router";
 import ContractCard from "../components/ContractCard";
+import { contractsAdminQuery } from "../lib/contractsAdminQuery";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
 
 const ContractsPage: React.FC = () => {
-  const [contracts, setContracts] = useState<ContractAdminDto[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const list = useQuery(contractsAdminQuery);
+  const contracts = useMemo(() => list.data ?? [], [list.data]);
+  const error = list.isError
+    ? thrownRefusalMessage({
+        error: list.error,
+        fallback: "Failed to load contracts",
+        sessionExpired: sessionExpiredMessage,
+      })
+    : null;
   const navigate = useNavigate();
 
   const { data: currentContract } = useQuery({
@@ -21,24 +26,6 @@ const ContractsPage: React.FC = () => {
     queryFn: () => contractGetCurrent().then((res) => res.data ?? null),
   });
   const activeContractId = currentContract?.id ?? null;
-
-  const loadContracts = useCallback(async () => {
-    try {
-      const response = await contractAllAdmin();
-      if (response.data) {
-        setContracts(response.data);
-      }
-      setLoading(false);
-    } catch (err) {
-      setError("Failed to load contracts");
-      setLoading(false);
-      console.error(err);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadContracts();
-  }, [loadContracts]);
 
   const { activeContract, scheduledContracts, inactiveContracts } =
     useMemo(() => {
@@ -69,11 +56,11 @@ const ContractsPage: React.FC = () => {
       };
     }, [contracts, activeContractId]);
 
-  if (loading) {
+  if (list.isPending) {
     return <p className="p-5">Loading contracts...</p>;
   }
 
-  if (error) {
+  if (error && !list.data) {
     return <p className="p-5 text-red-500">{error}</p>;
   }
 
@@ -99,6 +86,8 @@ const ContractsPage: React.FC = () => {
       <p className="text-sm text-zinc-500">
         {contracts.length} total {forCount(contracts.length, "contract")}
       </p>
+
+      {error && <p className="text-red-500">{error}</p>}
 
       {contracts.length === 0 ? (
         <p className="text-zinc-500">No contracts found.</p>
