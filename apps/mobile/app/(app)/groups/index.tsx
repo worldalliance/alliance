@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
+import { isMaxCapacityRequired } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { changedPhoto } from "@alliance/common/image-src";
 import {
@@ -796,17 +797,7 @@ function GroupSettingsTab({
 
   const memberCount = useMemo(() => getMemberCount(community), [community]);
 
-  const requiresMaxCapacity = useMemo(
-    () =>
-      editForm.public ||
-      editForm.allowMemberInvites ||
-      editForm.allowStaffAssignments,
-    [
-      editForm.public,
-      editForm.allowMemberInvites,
-      editForm.allowStaffAssignments,
-    ],
-  );
+  const requiresMaxCapacity = isMaxCapacityRequired(editForm);
 
   const resetFormFromCommunity = useCallback((c: CommunityDto) => {
     setEditForm(communityToCreateCommunityDto(c));
@@ -920,10 +911,7 @@ function GroupSettingsTab({
     requiresMaxCapacity,
   ]);
 
-  const requiresCapacityDisplay =
-    community.public ||
-    community.allowMemberInvites ||
-    community.allowStaffAssignments;
+  const requiresCapacityDisplay = isMaxCapacityRequired(community);
 
   if (!amLeader) {
     return (

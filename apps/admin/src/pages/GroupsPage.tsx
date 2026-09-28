@@ -1,6 +1,7 @@
 import {
   COMMUNITY_DESCRIPTION_MAX_LENGTH,
   COMMUNITY_NAME_MAX_LENGTH,
+  isMaxCapacityRequired,
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
@@ -48,10 +49,7 @@ const GroupsPage: React.FC = () => {
     useState<CreateCommunityDto>(INITIAL_COMMUNITY);
   const [creating, setCreating] = useState(false);
 
-  const requiresMaxCapacity =
-    newCommunity.public ||
-    newCommunity.allowStaffAssignments ||
-    newCommunity.allowMemberInvites;
+  const requiresMaxCapacity = isMaxCapacityRequired(newCommunity);
 
   const loadCommunities = useCallback(async () => {
     setLoading(true);

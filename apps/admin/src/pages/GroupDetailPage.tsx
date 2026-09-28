@@ -2,6 +2,7 @@
 import {
   COMMUNITY_DESCRIPTION_MAX_LENGTH,
   COMMUNITY_NAME_MAX_LENGTH,
+  isMaxCapacityRequired,
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
@@ -73,10 +74,7 @@ const CommunityDetailPage: React.FC = () => {
     () => new Set<number>(),
   );
   const { confirm, success, error: pushError } = useToast();
-  const requiresMaxCapacity =
-    formValues.public ||
-    formValues.allowStaffAssignments ||
-    formValues.allowMemberInvites;
+  const requiresMaxCapacity = isMaxCapacityRequired(formValues);
 
   const memberCount = community ? getMemberCount(community) : 0;
 

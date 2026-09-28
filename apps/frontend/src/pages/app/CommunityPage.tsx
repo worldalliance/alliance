@@ -2,6 +2,7 @@
 import {
   COMMUNITY_DESCRIPTION_MAX_LENGTH,
   COMMUNITY_NAME_MAX_LENGTH,
+  isMaxCapacityRequired,
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { changedPhoto } from "@alliance/common/image-src";
@@ -116,8 +117,11 @@ const CommunityPage = () => {
   const [error, setError] = useState<string | null>(null);
   const currentPhoto = community?.photo ?? null;
   const isPhotoUploadPending = isSaving && editPhotoUrl !== currentPhoto;
-  const useMaxCapacity =
-    editPublic || editAllowMemberInvites || editAllowStaffAssignments;
+  const useMaxCapacity = isMaxCapacityRequired({
+    public: editPublic,
+    allowMemberInvites: editAllowMemberInvites,
+    allowStaffAssignments: editAllowStaffAssignments,
+  });
 
   useEffect(() => {
     if (!community?.id) {
