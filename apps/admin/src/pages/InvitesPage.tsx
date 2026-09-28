@@ -245,12 +245,15 @@ const InvitesPage = () => {
                     ) : (
                       <p className="text-gray-500">used</p>
                     )}
-                    <div
+                    <button
+                      type="button"
+                      aria-label={`Copy invite link ${invite.code}`}
+                      title="Copy invite link"
                       className="cursor-pointer active:scale-85 transition-all duration-100"
                       onClick={() => void copyInviteLink(invite.code)}
                     >
                       <Copy className="h-4 w-4 text-gray-500" />
-                    </div>
+                    </button>
                   </div>
                 </div>
                 <div className="flex flex-row gap-2 items-center justify-between mt-1">
