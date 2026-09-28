@@ -5,8 +5,6 @@ import { CardStyle } from "@alliance/shared/styles/card";
 import Card from "@alliance/sharedweb/ui/Card";
 import chroma from "chroma-js";
 import React, { useEffect, useMemo, useState } from "react";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore react-simple-maps types are provided via devDependency
 import {
   ComposableMap,
   Geographies,
