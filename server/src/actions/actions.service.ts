@@ -156,6 +156,7 @@ import {
 import { readsSavedDecisions } from "./cohort-decision";
 import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import { CohortDecisionService } from "./cohort-decision.service";
+import { assertNotInACohort } from "./cohort-reference-validation";
 import {
   ActionActivityDto,
   ActionDto,
@@ -2165,6 +2166,7 @@ export class ActionsService {
     await this.actionRepository.manager.transaction(async (em) => {
       await em.delete(Action, id);
       await assertNotAPrerequisite({ em, actionId: id });
+      await assertNotInACohort({ em, actionId: id });
     });
     await this.syncGeneralUpdateDatesForSuites([action?.suite?.id]);
   }
