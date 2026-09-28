@@ -7,10 +7,10 @@ import {
 import type { InviteNote } from "@alliance/shared/lib/inviteUtils";
 import { cn } from "@alliance/shared/styles/util";
 import { milliseconds } from "date-fns";
-import { setStringAsync as setClipboardStringAsync } from "expo-clipboard";
 import { Check, Trash2, Users } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
+import { copyToClipboard } from "../lib/clipboard";
 import { colors } from "../lib/style/colors";
 import FormModal from "./forms/FormModal";
 import Button, { ButtonColor, ButtonSize } from "./system/Button";
@@ -73,11 +73,10 @@ function InviteSettingsForm({
   } = useInviteSettingsDraft({ target, leaderCommunities });
 
   const handleCopy = useCallback(async () => {
-    try {
-      await setClipboardStringAsync(target.url);
+    if (await copyToClipboard(target.url)) {
       setCopied(true);
       setTimeout(() => setCopied(false), milliseconds({ seconds: 2 }));
-    } catch {
+    } else {
       Alert.alert("Error", "Could not copy the link to the clipboard.");
     }
   }, [target.url]);

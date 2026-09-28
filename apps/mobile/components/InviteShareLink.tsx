@@ -18,7 +18,6 @@ import { inviteDestinationLabel } from "@alliance/shared/lib/inviteUtils";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useReusableInvites } from "@alliance/shared/lib/useReusableInvites";
 import { cn } from "@alliance/shared/styles/util";
-import { setStringAsync as setClipboardStringAsync } from "expo-clipboard";
 import { ChevronDown, ChevronRight } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -30,6 +29,7 @@ import {
   View,
 } from "react-native";
 import { useAuth } from "../lib/AuthContext";
+import { copyToClipboard } from "../lib/clipboard";
 import { colors } from "../lib/style/colors";
 import FormModal from "./forms/FormModal";
 import InviteSettingsModal from "./InviteSettingsModal";
@@ -128,13 +128,12 @@ export default function InviteShareLink() {
       try {
         const link = await createInvite({ label: labelDraft, communityId });
         setLabelDraft("");
-        try {
-          await setClipboardStringAsync(link.url);
+        if (await copyToClipboard(link.url)) {
           Alert.alert(
             "Success",
             "Invite link created and copied to clipboard.",
           );
-        } catch {
+        } else {
           Alert.alert(
             "Invite created",
             "The invite link could not be copied to the clipboard.",
