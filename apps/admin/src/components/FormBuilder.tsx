@@ -71,7 +71,6 @@ import { createDisplayBlock, PerViewerOptions } from "./display-blocks";
 import { renderBlockEditor } from "./display-blocks/blockEditors";
 import { DisplayOnlyPreview } from "./DisplayOnlyPreview";
 import { ElementSelect } from "./ElementSelect";
-import { ConditionalVisibility } from "./form-fields/CommonControls";
 import {
   CustomValidatorDraft,
   CustomValidatorDraftsContext,
@@ -84,6 +83,7 @@ import { formFieldsErrorReason } from "./FormPickerError";
 import { FormulaSourcesProvider } from "./FormulaSourcesContext";
 import { FormVariablesProvider } from "./FormVariablesContext";
 import { OutputBuilder } from "./OutputBuilder";
+import { PageVisibilityControl } from "./PageVisibilityControl";
 import { PreviewAsUserBar } from "./PreviewAsUserBar";
 import { ShareableTextBuilder } from "./ShareableTextBuilder";
 import { VariableBuilder } from "./VariableBuilder";
@@ -1631,27 +1631,6 @@ export function FormBuilder(props: FormBuilderProps) {
     }
   }, [selectedPageIndex]);
 
-  const currentPageVisibilityConditionCount = Object.keys(
-    currentPage.visibleIfFormula?.conditions ?? {},
-  ).length;
-  const [showPageVisibilityControl, setShowPageVisibilityControl] = useState(
-    () => currentPageVisibilityConditionCount > 0,
-  );
-  useEffect(() => {
-    setShowPageVisibilityControl(
-      Object.keys(
-        schema.pages[selectedPageIndex]?.visibleIfFormula?.conditions ?? {},
-      ).length > 0,
-    );
-    // Reset the toggle only when switching pages, not on every schema edit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPageIndex]);
-  useEffect(() => {
-    if (currentPageVisibilityConditionCount > 0) {
-      setShowPageVisibilityControl(true);
-    }
-  }, [currentPageVisibilityConditionCount]);
-
   const updateCurrentPageVisibility = (updates: {
     visibleIfFormula?: VisibleIfFormula;
   }) => {
@@ -1663,13 +1642,6 @@ export function FormBuilder(props: FormBuilderProps) {
           : page,
       ),
     });
-  };
-
-  const handlePageVisibilityToggle = (checked: boolean) => {
-    setShowPageVisibilityControl(checked);
-    if (!checked) {
-      updateCurrentPageVisibility({ visibleIfFormula: undefined });
-    }
   };
 
   // Fields a page-level visibility condition can reference: anything answered
@@ -3002,36 +2974,13 @@ export function FormBuilder(props: FormBuilderProps) {
                             {currentPage.description}
                           </p>
                         )}
-                        <div className="mt-3">
-                          <label className="flex cursor-pointer items-center text-xs text-gray-700">
-                            <input
-                              type="checkbox"
-                              className="mr-2"
-                              checked={showPageVisibilityControl}
-                              onChange={(event) =>
-                                handlePageVisibilityToggle(event.target.checked)
-                              }
-                            />
-                            Use conditional visibility for this page
-                          </label>
-                          {showPageVisibilityControl && (
-                            <div className="mt-2">
-                              {selectedPageIndex === 0 && (
-                                <p className="mb-2 text-xs text-amber-600">
-                                  Conditions on the first page can only
-                                  reference other forms or validators, since no
-                                  fields have been answered yet.
-                                </p>
-                              )}
-                              <ConditionalVisibility
-                                key={currentPage.id}
-                                field={currentPage}
-                                previousFields={pagePreviousFields}
-                                onChange={updateCurrentPageVisibility}
-                              />
-                            </div>
-                          )}
-                        </div>
+                        <PageVisibilityControl
+                          key={currentPage.id}
+                          page={currentPage}
+                          isFirstPage={selectedPageIndex === 0}
+                          previousFields={pagePreviousFields}
+                          onChange={updateCurrentPageVisibility}
+                        />
                       </div>
                     )}
                     <PerViewerOptions allowed={!displayOnly}>
