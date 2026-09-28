@@ -1,24 +1,12 @@
 import { forCount } from "@alliance/common/plural";
-import {
-  actionsAllGeneralUpdatesAdmin,
-  GeneralUpdateAdminDto,
-} from "@alliance/shared/client";
+import { GeneralUpdateAdminDto } from "@alliance/shared/client";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useQuery } from "@tanstack/react-query";
 import React, { useMemo } from "react";
 import { useNavigate } from "react-router";
 import GeneralUpdateCard from "../components/GeneralUpdateCard";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
-
-function useGeneralUpdatesAdmin() {
-  return useQuery({
-    queryKey: queryKeys.generalUpdatesAdmin(),
-    queryFn: () =>
-      actionsAllGeneralUpdatesAdmin({ throwOnError: true }).then((r) => r.data),
-  });
-}
+import { useGeneralUpdatesAdmin } from "../lib/useGeneralUpdatesAdmin";
 
 const GeneralUpdatesPage: React.FC = () => {
   const list = useGeneralUpdatesAdmin();
