@@ -1,8 +1,6 @@
 import type {
   AnyField,
   CheckboxExtractionTarget,
-  CheckboxField,
-  CustomComponentField,
 } from "@alliance/common/forms/form-schema";
 import {
   CustomValidatorType,
@@ -11,7 +9,7 @@ import {
 import { cn } from "@alliance/shared/styles/util";
 import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import RenderField from "@alliance/sharedweb/forms/RenderField";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { FORM_BUILDER_PREVIEW_USER } from "../../lib/testData";
 import {
   ConditionalVisibility,
@@ -28,6 +26,7 @@ import {
   hasExtractionEnabled,
   supportsExtraction,
 } from "./fieldExtraction";
+import { FieldExtraMenu } from "./FieldExtraMenu";
 import type { FieldWrapperProps } from "./types";
 
 function isFormField(field: unknown): field is AnyField {
@@ -49,7 +48,6 @@ export function FieldWrapper<T extends AnyField>({
   const isCurrentFormField = isFormField(field);
   const { createDraftId, drafts, removeDraft, setDraft } =
     useCustomValidatorDrafts();
-  const [isExtraMenuOpen, setIsExtraMenuOpen] = useState(false);
   const [showCustomValidatorControl, setShowCustomValidatorControl] = useState(
     () => (isCurrentFormField ? Boolean(field.customValidatorId) : false),
   );
@@ -61,7 +59,6 @@ export function FieldWrapper<T extends AnyField>({
     showConditionalVisibilityControl,
     setShowConditionalVisibilityControl,
   ] = useState(() => initialVisibilityCount > 0);
-  const extraMenuRef = useRef<HTMLDivElement | null>(null);
 
   const [customValidatorType, setCustomValidatorType] = useState<
     CustomValidatorType | undefined
@@ -136,30 +133,6 @@ export function FieldWrapper<T extends AnyField>({
     showConditionalVisibilityControl,
     showCustomValidatorControl,
   ]);
-
-  useEffect(() => {
-    if (!isExtraMenuOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!extraMenuRef.current) return;
-      if (extraMenuRef.current.contains(event.target as Node)) return;
-      setIsExtraMenuOpen(false);
-    };
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsExtraMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEscape);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [isExtraMenuOpen]);
 
   const handleValidatorChange = async (params: {
     validatorType: CustomValidatorType | undefined;
@@ -313,95 +286,17 @@ export function FieldWrapper<T extends AnyField>({
 
       <div className="mb-1 flex items-center justify-end gap-1 absolute right-0 top-0 bg-white rounded-lg">
         {isCurrentFormField && (
-          <div className="relative" ref={extraMenuRef}>
-            <button
-              type="button"
-              onClick={() => setIsExtraMenuOpen((prev) => !prev)}
-              className="text-gray-500 hover:text-gray-700 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-              aria-haspopup="menu"
-              aria-expanded={isExtraMenuOpen}
-            >
-              <span className="sr-only">Extra form options</span>
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <circle cx="3.5" cy="8" r="1.2" />
-                <circle cx="8" cy="8" r="1.2" />
-                <circle cx="12.5" cy="8" r="1.2" />
-              </svg>
-            </button>
-            {isExtraMenuOpen && (
-              <div className="absolute right-0 mt-1 w-56 rounded-lg border border-gray-200 bg-white py-2 text-sm shadow-lg">
-                <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
-                  <input
-                    type="checkbox"
-                    className="mr-2"
-                    checked={showCustomValidatorControl}
-                    onChange={(event) =>
-                      handleCustomValidatorToggle(event.target.checked)
-                    }
-                  />
-                  Use custom validator
-                </label>
-                <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
-                  <input
-                    type="checkbox"
-                    className="mr-2"
-                    checked={showConditionalVisibilityControl}
-                    onChange={(event) =>
-                      handleConditionalVisibilityToggle(event.target.checked)
-                    }
-                  />
-                  Use conditional visibility
-                </label>
-                {supportsExtraction(field) && (
-                  <>
-                    <div className="border-t border-gray-100 my-1" />
-                    {field.kind === "checkbox" || field.kind === "custom" ? (
-                      <div className="px-3 py-1.5">
-                        <label className="block text-gray-700 mb-1">
-                          Extract response into:
-                        </label>
-                        <select
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          value={
-                            (field as CheckboxField | CustomComponentField)
-                              .autoExtractUserData?.target || ""
-                          }
-                          onChange={(e) =>
-                            handleCheckboxExtractionTargetChange(
-                              e.target.value as CheckboxExtractionTarget | "",
-                            )
-                          }
-                        >
-                          <option value="">None</option>
-                          <option value="shareInfoPublicly">
-                            Share info publicly
-                          </option>
-                        </select>
-                      </div>
-                    ) : (
-                      <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
-                        <input
-                          type="checkbox"
-                          className="mr-2"
-                          checked={hasExtractionEnabled(field)}
-                          onChange={(event) =>
-                            handleExtractionToggle(event.target.checked)
-                          }
-                        />
-                        Extract response into user data
-                      </label>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+          <FieldExtraMenu
+            field={field}
+            showCustomValidatorControl={showCustomValidatorControl}
+            onCustomValidatorToggle={handleCustomValidatorToggle}
+            showConditionalVisibilityControl={showConditionalVisibilityControl}
+            onConditionalVisibilityToggle={handleConditionalVisibilityToggle}
+            onExtractionToggle={handleExtractionToggle}
+            onCheckboxExtractionTargetChange={
+              handleCheckboxExtractionTargetChange
+            }
+          />
         )}
         <button
           onClick={onRemove}
