@@ -4,13 +4,20 @@ import {
   useShareLink,
 } from "@alliance/shared/forms/useShareLink";
 import { CardStyle } from "@alliance/shared/styles/card";
+import { cn } from "@alliance/shared/styles/util";
 import { milliseconds } from "date-fns";
 import { useEffect, useState } from "react";
+import { copyOutcome, CopyOutcome } from "../../lib/clipboard";
 import Button, { ButtonColor } from "../../ui/Button";
 import Card from "../../ui/Card";
 
+const copyLabels: Record<CopyOutcome, string> = {
+  [CopyOutcome.Copied]: "Copied!",
+  [CopyOutcome.Failed]: "Copy failed",
+};
+
 const ShareUrlComponent = ({ field }: CustomComponentProps) => {
-  const [copied, setCopied] = useState(false);
+  const [outcome, setOutcome] = useState<CopyOutcome | null>(null);
 
   const target = shareLinkTargetFromConfig(field.componentConfig);
   const isConfigured = target !== null;
@@ -18,13 +25,13 @@ const ShareUrlComponent = ({ field }: CustomComponentProps) => {
   const { data: shareUrl, isPending, isError } = useShareLink(target);
 
   useEffect(() => {
-    if (!copied) return;
+    if (!outcome) return;
     const timer = setTimeout(
-      () => setCopied(false),
+      () => setOutcome(null),
       milliseconds({ seconds: 1 }),
     );
     return () => clearTimeout(timer);
-  }, [copied]);
+  }, [outcome]);
 
   if (!isConfigured) {
     return (
@@ -48,15 +55,17 @@ const ShareUrlComponent = ({ field }: CustomComponentProps) => {
       </p>
       <Button
         color={ButtonColor.Transparent}
-        onClick={() => {
+        onClick={async () => {
           if (showMuted || !shareUrl) return;
-          navigator.clipboard.writeText(shareUrl);
-          setCopied(true);
+          setOutcome(await copyOutcome(shareUrl));
         }}
         disabled={showMuted}
-        className="text-sm !p-3 !px-3 text-green"
+        className={cn(
+          "text-sm !p-3 !px-3",
+          outcome === CopyOutcome.Failed ? "text-red-600" : "text-green",
+        )}
       >
-        {copied ? "Copied!" : "Copy"}
+        {outcome ? copyLabels[outcome] : "Copy"}
       </Button>
     </Card>
   );

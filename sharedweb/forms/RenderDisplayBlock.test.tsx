@@ -1,6 +1,7 @@
 import type {
   AccordionBlock,
   BigLinkBlock,
+  CopyTextBlock,
 } from "@alliance/common/forms/display-blocks";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
@@ -106,5 +107,28 @@ describe("the biglink display block", () => {
 
   it("refuses to render in an app that has claimed neither", () => {
     expect(() => hrefOf(<RenderDisplayBlock block={biglink} />)).toThrow();
+  });
+});
+
+describe("the copytext display block", () => {
+  const copytext: CopyTextBlock = {
+    type: "display",
+    kind: "copytext",
+    id: "block-1",
+    text: "Dear council",
+  };
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it.each([
+    ["Copied!", () => Promise.resolve()],
+    ["Copy failed", () => Promise.reject(new DOMException("denied"))],
+  ])("says %s", async (label, writeText) => {
+    jest.spyOn(navigator.clipboard, "writeText").mockImplementation(writeText);
+    render(<RenderDisplayBlock block={copytext} />);
+
+    fireEvent.click(screen.getByText("Dear council"));
+
+    expect(await screen.findByText(label)).toBeTruthy();
   });
 });
