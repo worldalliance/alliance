@@ -14,7 +14,6 @@ import {
   UserActionRelationDetailDto,
 } from "@alliance/shared/client/types.gen";
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
-import { calculateCompletionData } from "@alliance/shared/lib/actionUtils";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { cn } from "@alliance/shared/styles/util";
@@ -33,6 +32,7 @@ import {
   ROLE_FILTERS,
   RoleFilter,
 } from "../lib/memberRoleFilter";
+import { useCompletedAllActiveActions } from "../lib/useCompletedAllActiveActions";
 
 type ViewMode = "cards" | "rows";
 
@@ -70,10 +70,6 @@ const UsersList: React.FC = () => {
   const actionSummaries = useMemo(
     () => (relationsResponse?.actions ?? []).slice().reverse(),
     [relationsResponse],
-  );
-  const activeActions = useMemo(
-    () => actionSummaries.filter((action) => action.status === "member_action"),
-    [actionSummaries],
   );
   const userActionRelations = useMemo(() => {
     const relationMap: Record<number, UserActionRelationDetailDto[]> = {};
@@ -284,24 +280,10 @@ const UsersList: React.FC = () => {
     });
   }, [filteredBySearch]);
 
-  const { completedAllCurrentActions } = useMemo<{
-    completedAllCurrentActions: Record<number, boolean>;
-    nCompleted: number;
-    nTotal: number;
-  }>(() => {
-    if (!userActionRelations) {
-      return {
-        completedAllCurrentActions: {} as Record<number, boolean>,
-        nCompleted: 0,
-        nTotal: 0,
-      };
-    }
-
-    return calculateCompletionData({
-      filteredActionIds: activeActions.map((a) => a.id),
-      userActionRelations,
-    });
-  }, [activeActions, userActionRelations]);
+  const completedAllCurrentActions = useCompletedAllActiveActions({
+    actionSummaries,
+    userActionRelations,
+  });
 
   const displayedUsers = useMemo(() => {
     if (
