@@ -15,6 +15,7 @@ import {
   type MultiSelectField,
   type SelectField,
 } from "./form-schema";
+import { categorizedOptions } from "./formula-option-categories";
 import { withStepBudget } from "./formula-step-budget";
 import {
   prepareFormula,
@@ -40,7 +41,8 @@ export const FORMULA_SOURCES_CHANGED_REASON =
 /** Installed apps recognize the server's refusal by this exact text. */
 export const FORMULA_SOURCES_CHANGED = `${FORMULA_SOURCES_CHANGED_REASON} Reload it to see its current options.`;
 
-export type ChoiceOption = { label: string; value: string };
+/** `category` is a category's name, which also serves as its id. */
+export type ChoiceOption = { label: string; value: string; category?: string };
 
 export type ChoiceField = SelectField | MultiSelectField;
 export type FormulaChoiceField = ChoiceField & {
@@ -182,7 +184,8 @@ function describeResult(value: ExprValue): string {
 
 /**
  * The first choice with each value, in order. Case matters, and choices with
- * equal labels but different values stay apart.
+ * equal labels but different values stay apart. A blank category is none, and
+ * categories named alike, trimmed and ignoring case, take the first's name.
  */
 export function readOptionsResult(
   value: ExprValue,
@@ -193,6 +196,7 @@ export function readOptionsResult(
     );
   }
   const seen = new Set<string>();
+  const categoryNames = new Map<string, string>();
   const options: ChoiceOption[] = [];
   for (const [index, item] of value.entries()) {
     if (
@@ -205,9 +209,22 @@ export function readOptionsResult(
         `Item ${index + 1} of the options is ${describeResult(item)}, not a { label, value } record with a non-empty text value`,
       );
     }
+    if (item.category !== undefined && typeof item.category !== "string") {
+      return R.failure(
+        `Item ${index + 1} of the options has ${describeResult(item.category)} as its category, not text`,
+      );
+    }
     if (seen.has(item.value)) continue;
     seen.add(item.value);
-    options.push({ label: item.label, value: item.value });
+    const name = item.category?.trim() ?? "";
+    const key = name.toLowerCase();
+    if (key && !categoryNames.has(key)) categoryNames.set(key, name);
+    const category = categoryNames.get(key);
+    options.push({
+      label: item.label,
+      value: item.value,
+      ...(category !== undefined && { category }),
+    });
   }
   return R.success(options);
 }
@@ -278,7 +295,7 @@ const resolvedOptionsField =
   (options: ResolvedOptions) =>
   (field: FormulaChoiceField): ChoiceField => ({
     ...field,
-    options: [...(options.get(field.id) ?? [])],
+    ...categorizedOptions(options.get(field.id) ?? []),
   });
 
 /** A choice field reading a formula gets `options`'s; other fields are kept. */
@@ -300,7 +317,7 @@ const savedChoicesField =
   (choices: FormulaChoices) =>
   (field: FormulaChoiceField): ChoiceField => ({
     ...field,
-    options: choices[field.id] ?? [],
+    ...categorizedOptions(choices[field.id] ?? []),
     optionsFormula: undefined,
   });
 

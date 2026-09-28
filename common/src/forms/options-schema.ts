@@ -82,8 +82,8 @@ export function checkOptionCategories(
   });
 }
 
-// A formula's options replace the fixed list rather than add to it, and have
-// no categories. A default could name only a fixed option.
+// A formula's options replace the fixed list rather than add to it, and name
+// their own categories. A default could name only a fixed option.
 export function checkOptionsFormula(
   field: {
     optionsFormula?: OptionsFormula;
