@@ -38,7 +38,7 @@ serveApi(
   }),
 );
 
-it("copies an invite's signup link from a labelled button", async () => {
+it("copies an invite's signup link from a labelled button and confirms it", async () => {
   jest.spyOn(config, "getBaseUrl").mockReturnValue("https://test.alliance/");
   const writeText = jest
     .spyOn(navigator.clipboard, "writeText")
@@ -61,4 +61,5 @@ it("copies an invite's signup link from a labelled button", async () => {
       "https://test.alliance/signup?ref=abc123",
     ),
   );
+  expect(await screen.findByText("Invite link copied")).toBeTruthy();
 });
