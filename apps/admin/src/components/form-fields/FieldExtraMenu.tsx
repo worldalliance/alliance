@@ -1,8 +1,6 @@
 import type {
   AnyField,
   CheckboxExtractionTarget,
-  CheckboxField,
-  CustomComponentField,
 } from "@alliance/common/forms/form-schema";
 import { useEffect, useRef, useState } from "react";
 import { hasExtractionEnabled, supportsExtraction } from "./fieldExtraction";
@@ -109,10 +107,7 @@ export function FieldExtraMenu({
                   </label>
                   <select
                     className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    value={
-                      (field as CheckboxField | CustomComponentField)
-                        .autoExtractUserData?.target || ""
-                    }
+                    value={field.autoExtractUserData?.target || ""}
                     onChange={(e) =>
                       onCheckboxExtractionTargetChange(
                         e.target.value as CheckboxExtractionTarget | "",

@@ -26,21 +26,14 @@ export function supportsExtraction(field: AnyField): field is ExtractableField {
 export function hasExtractionEnabled(field: AnyField): boolean {
   if (!supportsExtraction(field)) return false;
   if (field.kind === "checkbox" || field.kind === "custom") {
-    return Boolean(
-      (field as CheckboxField | CustomComponentField).autoExtractUserData
-        ?.target,
-    );
+    return Boolean(field.autoExtractUserData?.target);
   }
-  return Boolean(
-    (field as PhoneField | TimeField | TimezoneField | CityField)
-      .autoExtractUserData,
-  );
+  return Boolean(field.autoExtractUserData);
 }
 
 export function getExtractionLabel(field: AnyField): string {
   if (field.kind === "checkbox" || field.kind === "custom") {
-    const target = (field as CheckboxField | CustomComponentField)
-      .autoExtractUserData?.target;
+    const target = field.autoExtractUserData?.target;
     if (target === "shareInfoPublicly") {
       return "Extracting into: Share info publicly";
     }
