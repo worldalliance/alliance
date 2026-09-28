@@ -25,7 +25,6 @@ const CHIP_COLORS: Record<LeafCondition["type"], string | null> = {
   Tag: null,
   Manual: null,
   CompletedAction: null,
-  InProgressAction: null,
   MissedActionDeadline: null,
   FormFieldValue: null,
   GroupLead: null,

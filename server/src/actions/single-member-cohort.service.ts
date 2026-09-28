@@ -20,7 +20,6 @@ import {
   singleUserCohortContext,
 } from "./cohort-expression.evaluator";
 import { ActionActivity } from "./entities/action-activity.entity";
-import { ActionStatus } from "./entities/action-event.entity";
 import {
   Action,
   parseAction,
@@ -152,37 +151,6 @@ export class SingleMemberCohortService {
           session.completedActionIdsByUser.set(user.id, pending);
         }
         return (await pending).has(actionId);
-      },
-      inProgressAction: async (actionId: number) => {
-        if (visitedActionIds.has(actionId)) return false;
-        const fetched = await this.loadActionWithEvents(actionId, session);
-        if (!fetched) return false;
-        const action = parseAction(fetched);
-
-        const inCohort = await this.computeIsInRosterCohort({
-          user,
-          action,
-          visitedActionIds: new Set(visitedActionIds).add(actionId),
-          session,
-        });
-        if (action.status !== ActionStatus.MemberAction) return false;
-
-        if (!inCohort) return false;
-        const terminal = await this.actionActivityRepository.findOne({
-          where: [
-            {
-              userId: user.id,
-              actionId,
-              type: ActionActivityType.USER_COMPLETED,
-            },
-            {
-              userId: user.id,
-              actionId,
-              type: ActionActivityType.USER_WONT_COMPLETE,
-            },
-          ],
-        });
-        return !terminal;
       },
       missedActionDeadline: async (actionId: number) => {
         if (visitedActionIds.has(actionId)) return false;

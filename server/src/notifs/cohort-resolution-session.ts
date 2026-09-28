@@ -19,8 +19,7 @@ export type FormResponseAnswerRow = {
  * longer-lived session would serve stale membership.
  *
  * The action-roster and expression memos are keyed by the chain of
- * action-referencing leaf ids (InProgressAction, MissedActionDeadline)
- * currently being resolved (see
+ * `MissedActionDeadline` leaf ids currently being resolved (see
  * `ActionEventRecipientService.resolveCohortMemberIds`), so a cyclic
  * expression terminates instead of deadlocking on its own pending promise.
  */
@@ -37,7 +36,6 @@ export class CohortResolutionSession {
   readonly expressionMemberIds = new Map<string, Promise<Set<number>>>();
   readonly tagUserIds = new Map<string, Promise<Set<number>>>();
   readonly completedActionUserIds = new Map<number, Promise<Set<number>>>();
-  readonly inProgressActionUserIds = new Map<string, Promise<Set<number>>>();
   readonly missedActionDeadlineUserIds = new Map<
     string,
     Promise<Set<number>>

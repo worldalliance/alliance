@@ -7,7 +7,6 @@ export const LEAF_LABELS: Record<LeafCondition["type"], string> = {
   Tag: "Tag",
   Manual: "Manual Users",
   CompletedAction: "Completed Action",
-  InProgressAction: "In-Progress Action",
   MissedActionDeadline: "Missed Action Deadline",
   FormFieldValue: "Form Field Value",
   GroupLead: "Group Lead",
@@ -29,7 +28,6 @@ const describeLeaf = (expr: LeafCondition, names: CohortNames): string => {
     case "Manual":
       return `${expr.userIds.length} manual users`;
     case "CompletedAction":
-    case "InProgressAction":
     case "MissedActionDeadline":
       return `${LEAF_LABELS[expr.type]}: ${
         names.actionNames.get(expr.actionId) ?? `#${expr.actionId}`

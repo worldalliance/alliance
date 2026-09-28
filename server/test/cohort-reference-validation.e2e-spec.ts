@@ -106,7 +106,7 @@ describe("Deleting an action a cohort names (e2e)", () => {
   it("deletes an action only its own cohorts name", async () => {
     const action = await createNamed("Self");
     await actionRepo.update(action.id, {
-      cohortExpression: { type: "InProgressAction", actionId: action.id },
+      cohortExpression: { type: "MissedActionDeadline", actionId: action.id },
     });
     await addFollowUpForm(action.id, {
       type: "CompletedAction",

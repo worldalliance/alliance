@@ -404,7 +404,7 @@ export class ActionEventReminderService {
   /**
    * Dependency actions of the event's action — and, when that action belongs
    * to a suite, of every action in the suite — referenced by their cohort
-   * expressions via form-response or completed/in-progress conditions, that
+   * expressions via form-response or completed/missed conditions, that
    * have a member-action deadline. Offered as reminder timing anchors so a
    * group can fire when a dependency's deadline passes and catch users who
    * joined a cohort late. Actions in the suite itself are never candidates

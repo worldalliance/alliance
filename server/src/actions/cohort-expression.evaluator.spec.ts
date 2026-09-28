@@ -22,7 +22,6 @@ function mockBatchContext(
   return {
     getUserIdsForTag: jest.fn().mockResolvedValue(new Set<number>()),
     getUserIdsCompletedAction: jest.fn().mockResolvedValue(new Set<number>()),
-    getUserIdsInProgressAction: jest.fn().mockResolvedValue(new Set<number>()),
     getUserIdsMissedActionDeadline: jest
       .fn()
       .mockResolvedValue(new Set<number>()),
@@ -46,7 +45,6 @@ function scopedContext(
     userId,
     hasTag: () => false,
     completedAction: async () => false,
-    inProgressAction: async () => false,
     missedActionDeadline: async () => false,
     matchesFormField: async () => false,
     isGroupLead: async () => false,
@@ -77,9 +75,6 @@ describe("type guards", () => {
     expect(isLeafCondition({ type: "Tag", tagId: "abc" })).toBe(true);
     expect(isLeafCondition({ type: "Manual", userIds: [1] })).toBe(true);
     expect(isLeafCondition({ type: "CompletedAction", actionId: 1 })).toBe(
-      true,
-    );
-    expect(isLeafCondition({ type: "InProgressAction", actionId: 1 })).toBe(
       true,
     );
     expect(isLeafCondition({ type: "MissedActionDeadline", actionId: 1 })).toBe(
@@ -306,20 +301,6 @@ describe("evaluateCohortExpression", () => {
       );
       expect(result).toEqual(new Set([5, 6]));
       expect(ctx.getUserIdsCompletedAction).toHaveBeenCalledWith(42);
-    });
-
-    it("evaluates InProgressAction condition", async () => {
-      const ctx = mockBatchContext({
-        getUserIdsInProgressAction: jest
-          .fn()
-          .mockResolvedValue(new Set([7, 8, 9])),
-      });
-      const result = await evaluateCohortExpression(
-        { type: "InProgressAction", actionId: 99 },
-        ctx,
-      );
-      expect(result).toEqual(new Set([7, 8, 9]));
-      expect(ctx.getUserIdsInProgressAction).toHaveBeenCalledWith(99);
     });
 
     it("evaluates MissedActionDeadline condition", async () => {
@@ -647,34 +628,19 @@ describe("evaluateCohortExpression", () => {
   });
 
   describe("cycle detection", () => {
-    it("returns empty set for InProgressAction when actionId is in visited set", async () => {
-      const ctx = mockBatchContext({
-        getUserIdsInProgressAction: jest
-          .fn()
-          .mockResolvedValue(new Set([1, 2])),
-      });
-      const result = await evaluateCohortExpression(
-        { type: "InProgressAction", actionId: 42 },
-        ctx,
-        new Set([42]),
-      );
-      expect(result).toEqual(new Set());
-      expect(ctx.getUserIdsInProgressAction).not.toHaveBeenCalled();
-    });
-
     it("proceeds normally when actionId is not in visited set", async () => {
       const ctx = mockBatchContext({
-        getUserIdsInProgressAction: jest
+        getUserIdsMissedActionDeadline: jest
           .fn()
           .mockResolvedValue(new Set([1, 2])),
       });
       const result = await evaluateCohortExpression(
-        { type: "InProgressAction", actionId: 42 },
+        { type: "MissedActionDeadline", actionId: 42 },
         ctx,
         new Set([99]),
       );
       expect(result).toEqual(new Set([1, 2]));
-      expect(ctx.getUserIdsInProgressAction).toHaveBeenCalledWith(42);
+      expect(ctx.getUserIdsMissedActionDeadline).toHaveBeenCalledWith(42);
     });
 
     it("returns empty set for MissedActionDeadline when actionId is in visited set", async () => {
@@ -752,17 +718,6 @@ describe("single-user scoping (singleUserCohortContext)", () => {
       );
       expect(result).toBe(true);
       expect(completedAction).toHaveBeenCalledWith(42);
-    });
-
-    it("evaluates InProgressAction condition", async () => {
-      const inProgressAction = jest.fn().mockResolvedValue(true);
-      const result = await userInCohort(
-        1,
-        { type: "InProgressAction", actionId: 99 },
-        { inProgressAction },
-      );
-      expect(result).toBe(true);
-      expect(inProgressAction).toHaveBeenCalledWith(99);
     });
 
     it("evaluates MissedActionDeadline condition", async () => {
@@ -997,28 +952,28 @@ describe("single-user scoping (singleUserCohortContext)", () => {
   });
 
   describe("cycle detection", () => {
-    it("skips InProgressAction when actionId is in visited set", async () => {
-      const inProgressAction = jest.fn().mockResolvedValue(true);
+    it("skips MissedActionDeadline when actionId is in visited set", async () => {
+      const missedActionDeadline = jest.fn().mockResolvedValue(true);
       const result = await userInCohort(
         1,
-        { type: "InProgressAction", actionId: 42 },
-        { inProgressAction },
+        { type: "MissedActionDeadline", actionId: 42 },
+        { missedActionDeadline },
         new Set([42]),
       );
       expect(result).toBe(false);
-      expect(inProgressAction).not.toHaveBeenCalled();
+      expect(missedActionDeadline).not.toHaveBeenCalled();
     });
 
     it("proceeds when actionId is not in visited set", async () => {
-      const inProgressAction = jest.fn().mockResolvedValue(true);
+      const missedActionDeadline = jest.fn().mockResolvedValue(true);
       const result = await userInCohort(
         1,
-        { type: "InProgressAction", actionId: 42 },
-        { inProgressAction },
+        { type: "MissedActionDeadline", actionId: 42 },
+        { missedActionDeadline },
         new Set([99]),
       );
       expect(result).toBe(true);
-      expect(inProgressAction).toHaveBeenCalledWith(42);
+      expect(missedActionDeadline).toHaveBeenCalledWith(42);
     });
   });
 });

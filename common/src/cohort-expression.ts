@@ -31,14 +31,6 @@ export type CompletedActionCondition = z.infer<
   typeof completedActionConditionSchema
 >;
 
-export const inProgressActionConditionSchema = z.strictObject({
-  type: z.literal("InProgressAction"),
-  actionId: z.number(),
-});
-export type InProgressActionCondition = z.infer<
-  typeof inProgressActionConditionSchema
->;
-
 /**
  * Users who failed to complete the referenced action: assigned to it, its
  * member-action deadline has passed, and they neither completed nor withdrew.
@@ -105,7 +97,6 @@ export const leafConditionSchema = z.discriminatedUnion("type", [
   tagConditionSchema,
   manualConditionSchema,
   completedActionConditionSchema,
-  inProgressActionConditionSchema,
   missedActionDeadlineConditionSchema,
   formFieldValueConditionSchema,
   groupLeadConditionSchema,
@@ -156,7 +147,6 @@ export const cohortExpressionSchema: z.ZodType<CohortExpression> =
     tagConditionSchema,
     manualConditionSchema,
     completedActionConditionSchema,
-    inProgressActionConditionSchema,
     missedActionDeadlineConditionSchema,
     formFieldValueConditionSchema,
     groupLeadConditionSchema,
@@ -212,7 +202,6 @@ export function collectCohortDependencies(
   const walk = (node: CohortExpression): void => {
     switch (node.type) {
       case "CompletedAction":
-      case "InProgressAction":
       case "MissedActionDeadline":
         actionIds.add(node.actionId);
         break;
