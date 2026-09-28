@@ -175,6 +175,7 @@ describe("resolveFormulaOptions from another form's submissions", () => {
     ],
     ["an unanswered latest submission", [["red"], undefined], LATEST, []],
     ["no submissions, all of them", [], ALL, []],
+    ["one submission, all of them", [["red", "blue"]], ALL, ["red", "blue"]],
     [
       "every submission, repeats merged",
       [["red", "blue"], undefined, ["green", "red"]],
