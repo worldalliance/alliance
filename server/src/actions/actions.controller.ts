@@ -111,6 +111,7 @@ import {
 } from "./dto/notification-schedule.dto";
 import { ShareUrlDto, ShareUrlStatsDto } from "./dto/share-url.dto";
 import { UserCompletedActionsCountDto } from "./dto/user-completed-actions-count.dto";
+import { parseFeedPage } from "./feed-page";
 import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
 
 const GLOBAL_FEED_MEMBERS_DEFAULT_LIMIT = 30;
@@ -267,15 +268,11 @@ export class ActionsController {
     @Query("comments", new ParseBoolPipe({ optional: true }))
     comments?: boolean,
   ): Promise<ActionActivityDto[]> {
-    const limitNum = limit ? parseInt(limit) : 20;
-    const beforeDate = before ? new Date(before) : undefined;
-    if (before && isNaN(beforeDate!.getTime())) {
-      throw new BadRequestException('Invalid "before" cursor');
-    }
+    const page = parseFeedPage({ limit, before });
 
     return await this.actionsService.getActivityFeed(
-      limitNum,
-      beforeDate,
+      page.limit,
+      page.before,
       comments,
       req.user?.sub,
     );
@@ -506,16 +503,12 @@ export class ActionsController {
     @Query("comments", new ParseBoolPipe({ optional: true }))
     comments?: boolean,
   ): Promise<HomeFeedItemDto[]> {
-    const limitNum = limit ? parseInt(limit) : 20;
-    const beforeDate = before ? new Date(before) : undefined;
-    if (before && isNaN(beforeDate!.getTime())) {
-      throw new BadRequestException('Invalid "before" cursor');
-    }
+    const page = parseFeedPage({ limit, before });
 
     return this.actionsService.homeFeed(
       req.user.sub,
-      limitNum,
-      beforeDate,
+      page.limit,
+      page.before,
       comments,
     );
   }
@@ -531,15 +524,11 @@ export class ActionsController {
     @Query("comments", new ParseBoolPipe({ optional: true }))
     comments?: boolean,
   ): Promise<ActionActivityDto[]> {
-    const limitNum = limit ? parseInt(limit) : 20;
-    const beforeDate = before ? new Date(before) : undefined;
-    if (before && isNaN(beforeDate!.getTime())) {
-      throw new BadRequestException('Invalid "before" cursor');
-    }
+    const page = parseFeedPage({ limit, before });
 
     return this.actionsService.communityActivity(
-      limitNum,
-      beforeDate,
+      page.limit,
+      page.before,
       communityId,
       comments,
       req.user.sub,
@@ -804,17 +793,13 @@ export class ActionsController {
     @Query("comments", new ParseBoolPipe({ optional: true }))
     comments?: boolean,
   ): Promise<HomeFeedItemDto[]> {
-    const limitNum = limit ? parseInt(limit) : 20;
-    const beforeDate = before ? new Date(before) : undefined;
-    if (before && isNaN(beforeDate!.getTime())) {
-      throw new BadRequestException('Invalid "before" cursor');
-    }
+    const page = parseFeedPage({ limit, before });
 
     return this.actionsService.userFeed(
       +id,
       req.user?.sub,
-      limitNum,
-      beforeDate,
+      page.limit,
+      page.before,
       comments,
     );
   }
