@@ -7,9 +7,9 @@ import {
 import { Reflector } from "@nestjs/core";
 import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
-import { requestContext } from "src/utils/request-context";
 import { IS_PUBLIC_KEY } from "../public.decorator";
 import { sessionFromRequest } from "../tokens";
+import { attachSession } from "./attach-session";
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -31,12 +31,10 @@ export class AuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
 
     try {
-      const payload = await sessionFromRequest(this.jwtService, request);
-      request["user"] = payload;
-      const ctx = requestContext.getStore();
-      if (ctx) {
-        ctx.userId = payload.sub;
-      }
+      attachSession(
+        request,
+        await sessionFromRequest(this.jwtService, request),
+      );
     } catch {
       throw new UnauthorizedException();
     }

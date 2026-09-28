@@ -9,6 +9,7 @@ import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
 import { IS_PUBLIC_KEY } from "../public.decorator";
 import { extractAccessToken, verifyAccessToken } from "../tokens";
+import { attachSession } from "./attach-session";
 
 @Injectable()
 export class AuthOptionalGuard implements CanActivate {
@@ -36,7 +37,7 @@ export class AuthOptionalGuard implements CanActivate {
     }
 
     try {
-      request["user"] = await verifyAccessToken(this.jwtService, token);
+      attachSession(request, await verifyAccessToken(this.jwtService, token));
     } catch {
       throw new UnauthorizedException();
     }
