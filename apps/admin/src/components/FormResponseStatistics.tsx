@@ -10,6 +10,7 @@ import {
   isQuestionField,
 } from "@alliance/common/forms/form-schema";
 import { FormResponseDto } from "@alliance/shared/client";
+import { getRangeValues } from "@alliance/shared/formrenderer";
 import Card from "@alliance/sharedweb/ui/Card";
 import FormMarkdownWrapper from "@alliance/sharedweb/ui/FormMarkdownWrapper";
 import React, { useMemo } from "react";
@@ -65,10 +66,6 @@ const STAT_FIELD_KINDS = new Set<FieldKind>([
   "number",
 ]);
 
-const DEFAULT_RANGE_OPTION_COUNT = 10;
-const MIN_RANGE_OPTION_COUNT = 2;
-const MAX_RANGE_OPTION_COUNT = 50;
-
 const formatPercent = (count: number, total: number): string => {
   if (total <= 0) return "0%";
   const percent = (count / total) * 100;
@@ -90,18 +87,6 @@ const normalizeBoolean = (value: unknown): boolean | null => {
   if (value === 1) return true;
   if (value === 0) return false;
   return null;
-};
-
-const getRangeValues = (field: RangeField): number[] => {
-  const desired = field.optionCount ?? DEFAULT_RANGE_OPTION_COUNT;
-  const normalized = Number.isFinite(desired)
-    ? Math.floor(desired)
-    : DEFAULT_RANGE_OPTION_COUNT;
-  const optionCount = Math.min(
-    MAX_RANGE_OPTION_COUNT,
-    Math.max(MIN_RANGE_OPTION_COUNT, normalized),
-  );
-  return Array.from({ length: optionCount }, (_, index) => index + 1);
 };
 
 const toNumberValue = (value: unknown): number | null => {
