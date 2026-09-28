@@ -1,11 +1,9 @@
 import { errorMessage } from "@alliance/common/errorMessage";
 import {
-  cohortDecisionsListForActionAdmin,
   type CohortDecisionDto,
   type CohortDecisionReason,
 } from "@alliance/shared/client";
 import { formatDateTime } from "@alliance/shared/lib/dateFormatters";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import InlineError from "@alliance/sharedweb/ui/InlineError";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import {
@@ -13,10 +11,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@alliance/sharedweb/ui/Tooltip";
-import { useQuery } from "@tanstack/react-query";
 import { ArrowLeftRight } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
+import { useCohortDecisionsAdmin } from "../lib/useCohortDecisionsAdmin";
 import { CohortDecisionCorrectionModal } from "./CohortDecisionCorrectionModal";
 
 const REASON_LABELS: Record<CohortDecisionReason, string> = {
@@ -41,14 +39,7 @@ export default function ActionCohortDecisionsTab({
   const [search, setSearch] = useState("");
   const [correcting, setCorrecting] = useState<CohortDecisionDto | null>(null);
 
-  const decisions = useQuery({
-    queryKey: queryKeys.actionCohortDecisionsAdmin(actionId),
-    queryFn: () =>
-      cohortDecisionsListForActionAdmin({
-        path: { actionId },
-        throwOnError: true,
-      }).then((res) => res.data),
-  });
+  const decisions = useCohortDecisionsAdmin(actionId);
 
   if (decisions.isPending) return <Spinner />;
   if (decisions.isError) {
