@@ -1259,7 +1259,6 @@ export function FormBuilder(props: FormBuilderProps) {
           label: "Timezone Field",
           required: false,
           autoExtractUserData: false,
-          defaultValue: "America/Los_Angeles",
         };
         break;
       case "city":
@@ -2953,6 +2952,7 @@ export function FormBuilder(props: FormBuilderProps) {
                     previewUserError={previewUserError}
                   />
                   <FormRenderer
+                    key={resolvedPreviewUserId}
                     id={0}
                     formSnapshotId={null}
                     actionId={0}

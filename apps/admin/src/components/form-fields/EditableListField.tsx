@@ -91,11 +91,7 @@ function createDefaultSubField(
     case "time":
       return { ...base, kind: "time" };
     case "timezone":
-      return {
-        ...base,
-        kind: "timezone",
-        defaultValue: "America/Los_Angeles",
-      };
+      return { ...base, kind: "timezone" };
     case "city":
       return { ...base, kind: "city", placeholder: "Search for a city" };
     case "file":

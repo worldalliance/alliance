@@ -867,7 +867,7 @@ export function RenderField({
           />
           <TimeZoneSelect
             labelId={labelId}
-            value={(value as string) ?? "America/Los_Angeles"}
+            value={typeof value === "string" ? value : undefined}
             onChange={onChange ? (tz) => onChange(tz) : undefined}
             disabled={disabled}
             aria-invalid={hasError}
