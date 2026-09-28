@@ -10,7 +10,7 @@ import { milliseconds } from "date-fns";
 import { Check, Trash2, Users } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
-import { copyToClipboard } from "../lib/clipboard";
+import { copyOrAlert } from "../lib/clipboard";
 import { colors } from "../lib/style/colors";
 import FormModal from "./forms/FormModal";
 import Button, { ButtonColor, ButtonSize } from "./system/Button";
@@ -73,11 +73,9 @@ function InviteSettingsForm({
   } = useInviteSettingsDraft({ target, leaderCommunities });
 
   const handleCopy = useCallback(async () => {
-    if (await copyToClipboard(target.url)) {
+    if (await copyOrAlert(target.url)) {
       setCopied(true);
       setTimeout(() => setCopied(false), milliseconds({ seconds: 2 }));
-    } else {
-      Alert.alert("Error", "Could not copy the link to the clipboard.");
     }
   }, [target.url]);
 
