@@ -15,6 +15,7 @@ const actionCompletionCurvesAdminAll = () =>
  * Central registry of react-query keys
  */
 export const queryKeys = {
+  actionUpdatesAll: () => ["actionsAllUpdates"] as const,
   actionUpdatesRecent: (limit: number) =>
     ["actionsRecentUpdates", limit] as const,
   allianceMemberCount: () => ["userNmembers"] as const,
