@@ -788,6 +788,11 @@ const loadingText: Record<PickableKind, string> = {
   external: "Loading external targets…",
 };
 
+const searchPlaceholder: Record<PickableKind, string> = {
+  action: "Search actions…",
+  external: "Search external targets…",
+};
+
 const TargetPicker: React.FC<{
   kind: PickableKind;
   targets: Target[];
@@ -820,9 +825,6 @@ const TargetPicker: React.FC<{
     return targets.filter((t) => targetName(t).toLowerCase().includes(term));
   }, [targets, query]);
 
-  const placeholder =
-    kind === "action" ? "Search actions…" : "Search external targets…";
-
   return (
     <div className="flex flex-col gap-1 relative" ref={containerRef}>
       <label className="text-xs font-medium text-zinc-700">
@@ -846,7 +848,7 @@ const TargetPicker: React.FC<{
           <input
             type="text"
             className="border border-zinc-300 rounded px-3 py-2 text-sm"
-            placeholder={placeholder}
+            placeholder={searchPlaceholder[kind]}
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
