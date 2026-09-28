@@ -217,7 +217,9 @@ export interface JwtRequest extends Request {
 }
 export type JwtPayload = z.infer<typeof jwtPayloadSchema>;
 
-export interface GuestJwtPayload {
-  sub: string;
-  tokenType: JWTTokenType.guest;
-}
+export const guestJwtPayloadSchema = z.object({
+  sub: z.string(),
+  tokenType: z.literal(JWTTokenType.guest),
+});
+
+export type GuestJwtPayload = z.infer<typeof guestJwtPayloadSchema>;
