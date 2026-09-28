@@ -180,10 +180,10 @@ export function useWalkthroughScroll() {
   const context = useContext(WalkthroughContext);
   const offset = useRef(0);
   const scroller = useRef<Scrollable | null>(null);
+  const setScrollBy = context?.setScrollBy;
 
   useEffect(() => {
-    if (!context) return;
-    const { setScrollBy } = context;
+    if (!setScrollBy) return;
     setScrollBy(() => (delta: number) => {
       const node = scroller.current;
       if (!node) return;
@@ -195,9 +195,7 @@ export function useWalkthroughScroll() {
       node.scrollToOffset({ offset: y, animated: true });
     });
     return () => setScrollBy(null);
-    // Only the setter matters; re-running on every box change would thrash it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [context?.setScrollBy]);
+  }, [setScrollBy]);
 
   return {
     // A callback ref, so this fits any scrollable that can scrollTo rather
