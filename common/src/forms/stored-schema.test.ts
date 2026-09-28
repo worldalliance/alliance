@@ -74,6 +74,29 @@ describe("storedQuestionFields", () => {
     expect(fields.ok && fields.value.map((field) => field.id)).toEqual(["a"]);
   });
 
+  it("keeps a range field whose option count the builder no longer accepts", () => {
+    const fields = storedQuestionFields({
+      pages: [
+        {
+          id: "one",
+          fields: [
+            {
+              id: "scale",
+              type: "input",
+              kind: "range",
+              label: "Scale",
+              optionCount: 80,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(fields.ok && fields.value.map((field) => field.id)).toEqual([
+      "scale",
+    ]);
+  });
+
   it("tolerates a page with no fields key", () => {
     const fields = storedQuestionFields({ pages: [{ id: "empty" }] });
 

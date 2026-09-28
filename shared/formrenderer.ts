@@ -12,6 +12,8 @@ import {
   isFieldGroup,
   type ListField,
   type ListSubField,
+  MAX_RANGE_OPTION_COUNT,
+  MIN_RANGE_OPTION_COUNT,
   type NumberField,
   type Page,
   type PageItem,
@@ -95,8 +97,6 @@ export function getFallbackVisiblePageIndex(
 }
 
 const DEFAULT_RANGE_OPTION_COUNT = 10;
-const MIN_RANGE_OPTION_COUNT = 2;
-const MAX_RANGE_OPTION_COUNT = 50;
 
 /**
  * Compute a stable storage key for a form draft.
