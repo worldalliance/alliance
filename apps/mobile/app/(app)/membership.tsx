@@ -1,6 +1,5 @@
 import {
   authMe,
-  contractGetById,
   contractSignContract,
   contractSuspendContract,
 } from "@alliance/shared/client";
@@ -13,8 +12,9 @@ import {
 } from "@alliance/shared/lib/contract";
 import { suspendContractConfirmation } from "@alliance/shared/lib/copy";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { useContractById } from "@alliance/shared/lib/useContractById";
 import { useCurrentContract } from "@alliance/shared/lib/useCurrentContract";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react-native";
 import {
   useCallback,
@@ -151,14 +151,7 @@ export default function MembershipScreen() {
 
   const signedContractId = lastContractEvent?.contractId ?? null;
 
-  const { data: signedContract } = useQuery({
-    queryKey: ["contractGetById", signedContractId],
-    queryFn: () =>
-      contractGetById({
-        path: { id: signedContractId! },
-      }).then((res) => res.data ?? null),
-    enabled: signedContractId !== null,
-  });
+  const { data: signedContract } = useContractById(signedContractId);
 
   useEffect(() => {
     if (user) {

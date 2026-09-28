@@ -1,5 +1,4 @@
 import {
-  contractGetById,
   contractSignContract,
   contractSuspendContract,
 } from "@alliance/shared/client";
@@ -12,6 +11,7 @@ import {
 } from "@alliance/shared/lib/contract";
 import { suspendContractConfirmation } from "@alliance/shared/lib/copy";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { useContractById } from "@alliance/shared/lib/useContractById";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
@@ -19,7 +19,7 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import FormInput from "@alliance/sharedweb/ui/FormInput";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
 import React, { useEffect, useId, useMemo, useState } from "react";
 import { useLocation } from "react-router";
@@ -138,15 +138,9 @@ const MembershipPage: React.FC = () => {
     lastContractEvent.contractId !== latestContract?.id
       ? lastContractEvent.contractId
       : null;
-  const { data: previousSignedContract } = useQuery({
-    queryKey: ["contractGetById", previousSignedContractId],
-    queryFn: () =>
-      contractGetById({
-        path: { id: previousSignedContractId! },
-      }).then((res) => res.data ?? null),
-    initialData: null,
-    enabled: previousSignedContractId != null,
-  }); // if the member has signed the latest contract, this will be null
+  const { data: previousSignedContract } = useContractById(
+    previousSignedContractId,
+  );
 
   useEffect(() => {
     refreshUser();
