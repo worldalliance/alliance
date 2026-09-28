@@ -11,11 +11,13 @@ import {
   type AnyField,
   type FieldGroup,
 } from "@alliance/common/forms/form-schema";
+import { fieldsWithSavedChoices } from "@alliance/common/forms/formula-options";
 import type {
   ActionWithdrawalDto,
   FormResponseDto,
   ProfileDto,
 } from "@alliance/shared/client";
+import { parseFormulaChoices } from "@alliance/shared/parsed-dtos";
 import { z } from "zod";
 import { isEmptyAnswer } from "./answerValues";
 import { respondentName } from "./respondent";
@@ -542,7 +544,12 @@ const renderResponse = (params: {
       ["device", response.deviceType],
     ],
     renderRespondent({ response, withdrawnUserMap, sidsToUserMap }) +
-      fields.map((field) => renderAnswer(field, answers[field.id])).join("") +
+      fieldsWithSavedChoices(
+        fields,
+        parseFormulaChoices(response.formulaChoices),
+      )
+        .map((field) => renderAnswer(field, answers[field.id]))
+        .join("") +
       orphans
         .map(([fieldId, value]) => renderOrphanAnswer(fieldId, value))
         .join(""),

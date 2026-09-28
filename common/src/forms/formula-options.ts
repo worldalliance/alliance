@@ -286,13 +286,18 @@ export function schemaWithSavedChoices(
   return mapSchemaFormulaFields(schema, savedChoicesField(choices));
 }
 
+export function fieldWithSavedChoices<T extends AnyField | ListSubField>(
+  field: T,
+  choices: FormulaChoices,
+): T {
+  return mapFormulaFields(field, savedChoicesField(choices));
+}
+
 export function fieldsWithSavedChoices(
   fields: readonly AnyField[],
   choices: FormulaChoices,
 ): AnyField[] {
-  return fields.map((field) =>
-    mapFormulaFields(field, savedChoicesField(choices)),
-  );
+  return fields.map((field) => fieldWithSavedChoices(field, choices));
 }
 
 const REMOVE = Symbol("remove");

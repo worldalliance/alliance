@@ -84,14 +84,12 @@ import ActionUpdatesTab from "../components/ActionUpdatesTab";
 import EventManagementTab from "../components/EventManagementTab";
 import { FormBuilder } from "../components/FormBuilder";
 import FormResponseStatistics from "../components/FormResponseStatistics";
-import type {
-  FormResponseFilter,
-  FormWithSchema,
-} from "../components/FormResponsesView";
+import type { FormWithSchema } from "../components/FormResponsesView";
 import {
   changedActionImages,
   duplicatedActionImages,
 } from "../lib/actionImages";
+import type { FormResponseFilter } from "../lib/responseFilter";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { makeTempId } from "../lib/tempId";
 import { useAllActions } from "../lib/useAllActions";

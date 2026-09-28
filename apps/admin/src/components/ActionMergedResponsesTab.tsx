@@ -9,8 +9,8 @@ import {
   type ProfileDto,
 } from "@alliance/shared/client";
 import React, { useCallback, useEffect, useState } from "react";
+import { sortResponsesByCreatedAtAsc } from "../lib/sortResponses";
 import FormResponsesView, {
-  sortResponsesByCreatedAtAsc,
   type FormWithSchema,
   type ResponseVariantOption,
 } from "./FormResponsesView";
