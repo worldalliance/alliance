@@ -81,6 +81,8 @@ export const queryKeys = {
   timeSpentPerUserTotalAdmin: () =>
     ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
   usersAdmin: () => ["userListAdmin"] as const,
+  videoAdmin: (videoId: number) =>
+    ["videosGetVideoDetailsAdmin", videoId] as const,
   videosAdmin: () => ["videosListVideosAdmin"] as const,
   welcomeQueueAdmin: () => ["actionsGetWelcomeQueueAdmin"] as const,
 

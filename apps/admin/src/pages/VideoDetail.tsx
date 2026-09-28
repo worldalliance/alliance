@@ -1,13 +1,18 @@
 import { videosGetVideoDetailsAdmin } from "@alliance/shared/client";
-import type { VideoDetailResponseDto } from "@alliance/shared/client/types.gen";
+import {
+  thrownRefusalMessage,
+  thrownStatus,
+} from "@alliance/shared/lib/hey-api";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { CardStyle } from "@alliance/shared/styles/card";
 import VideoPlayer from "@alliance/sharedweb/forms/VideoPlayer";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import React, { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import React from "react";
 import { useNavigate, useParams } from "react-router";
 import VideoReplaceForm from "../components/VideoReplaceForm";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -20,31 +25,26 @@ function formatSize(bytes: number): string {
 const VideoDetail: React.FC = () => {
   const { videoId } = useParams();
   const navigate = useNavigate();
-  const [video, setVideo] = useState<VideoDetailResponseDto | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { error: pushError } = useToast();
+  const id = Number(videoId);
+  const detail = useQuery({
+    queryKey: queryKeys.videoAdmin(id),
+    queryFn: () =>
+      videosGetVideoDetailsAdmin({ path: { id }, throwOnError: true }).then(
+        (r) => r.data,
+      ),
+  });
+  const video = detail.data;
+  const error = !detail.isError
+    ? null
+    : thrownStatus(detail.error) === 404
+      ? "Video not found."
+      : thrownRefusalMessage({
+          error: detail.error,
+          fallback: "Failed to load video details",
+          sessionExpired: sessionExpiredMessage,
+        });
 
-  const loadVideo = useCallback(async () => {
-    if (!videoId) return;
-    setLoading(true);
-    try {
-      const response = await videosGetVideoDetailsAdmin({
-        path: { id: Number(videoId) },
-      });
-      setVideo(response.data ?? null);
-    } catch (err) {
-      console.error("Failed to load video details", err);
-      pushError("Failed to load video details");
-    } finally {
-      setLoading(false);
-    }
-  }, [videoId, pushError]);
-
-  useEffect(() => {
-    void loadVideo();
-  }, [loadVideo]);
-
-  if (loading) {
+  if (detail.isPending) {
     return (
       <div className="p-6 pt-20">
         <p className="text-sm text-zinc-500">Loading video details...</p>
@@ -55,7 +55,7 @@ const VideoDetail: React.FC = () => {
   if (!video) {
     return (
       <div className="p-6 pt-20">
-        <p className="text-sm text-red-500">Video not found.</p>
+        <p className="text-sm text-red-500">{error}</p>
       </div>
     );
   }
@@ -76,6 +76,8 @@ const VideoDetail: React.FC = () => {
             <p className="text-sm text-zinc-500">Video ID: {video.id}</p>
           </div>
         </div>
+
+        {error && <p className="text-sm text-red-500">{error}</p>}
 
         <VideoPlayer src="" videoId={video.id} />
 
@@ -143,7 +145,10 @@ const VideoDetail: React.FC = () => {
             -bufsize 4M -vf scale=-2:720 -c:a aac -b:a 128k -hls_time 6
             -hls_list_size 0 -hls_segment_filename segment_%03d.ts output.m3u8
           </code>
-          <VideoReplaceForm videoId={video.id} onComplete={loadVideo} />
+          <VideoReplaceForm
+            videoId={video.id}
+            onComplete={() => void detail.refetch()}
+          />
         </Card>
       </div>
     </div>
