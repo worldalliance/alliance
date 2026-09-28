@@ -4,27 +4,34 @@ import {
   ActionWithAwayStatus,
   withOptimisticDismissal,
 } from "@alliance/shared/lib/actionUtils";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { type ParsedGeneralUpdate } from "@alliance/shared/lib/generalUpdates";
 import { useUnreadGeneralUpdates } from "@alliance/shared/lib/useGeneralUpdates";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
+import { type LoadFailure } from "../components/LoadFailed";
 
 export function useTaskActionsData(options?: {
   refetchInterval?: number | false;
 }): {
   actions: ActionWithAwayStatus[] | null;
   generalUpdates: ParsedGeneralUpdate[] | null;
-  generalUpdatesFailure: { onRetry: () => void; retrying: boolean } | null;
-  loading: boolean;
+  generalUpdatesFailure: LoadFailure | null;
+  actionsFailure: LoadFailure | null;
   handleDismissAction: (actionId: number) => Promise<void>;
   handleDismissGeneralUpdate: (generalUpdateId: number) => Promise<void>;
 } {
   const queryClient = useQueryClient();
+  const actionsQuery = useActionsQuery({
+    refetchInterval: options?.refetchInterval,
+  });
   const {
     data: actionsData,
     isLoading: actionsLoading,
-    isError: actionsError,
-  } = useActionsQuery({ refetchInterval: options?.refetchInterval });
+    isFetching: actionsFetching,
+    refetch: refetchActions,
+  } = actionsQuery;
+  const didActionsFail = failedToLoad(actionsQuery);
   const {
     generalUpdates: generalUpdatesData,
     isLoading: generalUpdatesLoading,
@@ -35,18 +42,19 @@ export function useTaskActionsData(options?: {
   } = useUnreadGeneralUpdates();
 
   const loading =
-    actionsLoading || (generalUpdatesLoading && !didGeneralUpdatesFail);
+    (actionsLoading && !didActionsFail) ||
+    (generalUpdatesLoading && !didGeneralUpdatesFail);
 
   const actions = useMemo<ActionWithAwayStatus[] | null>(() => {
-    if (loading || actionsError) {
+    if (loading || !actionsData) {
       return null;
     }
 
-    return (actionsData ?? []).map((action) => ({
+    return actionsData.map((action) => ({
       ...action,
       awayStatus: action.awayStatus ?? "not_away",
     }));
-  }, [actionsData, loading, actionsError]);
+  }, [actionsData, loading]);
 
   const generalUpdates = useMemo<ParsedGeneralUpdate[] | null>(() => {
     if (loading) {
@@ -79,7 +87,9 @@ export function useTaskActionsData(options?: {
           retrying: generalUpdatesFetching,
         }
       : null,
-    loading,
+    actionsFailure: didActionsFail
+      ? { onRetry: () => void refetchActions(), retrying: actionsFetching }
+      : null,
     handleDismissAction,
     handleDismissGeneralUpdate: dismissGeneralUpdate,
   };

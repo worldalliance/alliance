@@ -8,12 +8,13 @@ export const useActionsQuery = (options?: {
   useQuery({
     queryKey: ["actions"],
     queryFn: () =>
-      actionsFindAllLoggedIn({ query: { sorted: true } }).then(
-        (response) =>
-          response.data?.filter(
-            (action) =>
-              action.status !== "draft" || action.viewer?.staffPreview,
-          ) ?? [],
+      actionsFindAllLoggedIn({
+        query: { sorted: true },
+        throwOnError: true,
+      }).then((response) =>
+        response.data.filter(
+          (action) => action.status !== "draft" || action.viewer?.staffPreview,
+        ),
       ),
     refetchInterval: options?.refetchInterval,
   });

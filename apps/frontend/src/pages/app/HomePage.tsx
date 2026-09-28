@@ -28,7 +28,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { href, Link } from "react-router";
-import BasicErrorMessage from "../../components/BasicErrorMessage";
 import FollowUpFormPanel from "../../components/FollowUpFormPanel";
 import GlobalFeed from "../../components/GlobalFeed";
 import HomeFeed from "../../components/HomeFeed";
@@ -78,7 +77,7 @@ const HomePage = () => {
     actions: liveActions,
     generalUpdates,
     generalUpdatesFailure,
-    loading,
+    actionsFailure,
     handleDismissAction,
     handleDismissGeneralUpdate,
   } = useTaskActionsData({
@@ -375,12 +374,12 @@ const HomePage = () => {
 
   const mainContent = useMemo(() => {
     if (actions === null) {
-      return loading ? (
+      return actionsFailure ? (
+        <LoadFailed message="Couldn't load your tasks." {...actionsFailure} />
+      ) : (
         <div className="flex justify-center items-center h-screen">
           <Spinner size="large" />
         </div>
-      ) : (
-        <BasicErrorMessage>Error loading actions</BasicErrorMessage>
       );
     }
 
@@ -566,13 +565,13 @@ const HomePage = () => {
     );
   }, [
     actions,
-    loading,
     selectedTaskNavigatorItem,
     user,
     handleDismissAction,
     handleDismissGeneralUpdate,
     sortedGeneralUpdates,
     generalUpdatesFailure,
+    actionsFailure,
     taskNavigatorListContent,
     queryClient,
     activeCompletableFollowUpForms,

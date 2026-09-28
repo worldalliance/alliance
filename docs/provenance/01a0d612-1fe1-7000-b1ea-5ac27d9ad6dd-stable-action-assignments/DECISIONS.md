@@ -207,6 +207,8 @@ Each consumer keeps its existing filters (exemption, dismissal, completion, opti
 
 These consumers move together so a member never gets a reminder for an action their home page no longer shows. Before this ships, confirm the web and mobile clients render a server error on the task list as a retryable state; if mobile needs a change, it ships and reaches users first.
 
+Neither client did: the shared actions query read a failed response as an empty list, so both showed "nothing to do". Both now show the failure with a retry, in commits ahead of the server change. The mobile build carrying it must reach users before the server change deploys.
+
 Ships alone: stages 2–5 already populated and verified the data.
 
 ### 7. Staff, leader, and analytics consumers read decisions
