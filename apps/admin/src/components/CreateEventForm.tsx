@@ -142,6 +142,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    setError(null);
     setCreatingEvent(true);
 
     let updatedSuite: ActionSuiteDto | null = null;
