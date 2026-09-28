@@ -12,14 +12,12 @@ import {
   inviteBuckets,
   onetimeInviteCreation,
 } from "@alliance/shared/lib/copy";
-import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import {
   bucketCommunityInvitesByActionability,
   bucketOnetimeInvitesByActionability,
 } from "@alliance/shared/lib/inviteUtils";
 import { useCommunityOnetimeInvites } from "@alliance/shared/lib/useCommunityOnetimeInvites";
 import { CardStyle } from "@alliance/shared/styles/card";
-import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
@@ -32,6 +30,7 @@ import UserSelect, {
 import { milliseconds } from "date-fns";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
+import { useCopyInviteLink } from "../lib/useCopyInviteLink";
 import CommunityInviteListItem from "./CommunityInviteListItem";
 import OnetimeInviteForm from "./OnetimeInviteForm";
 import OnetimeInviteListItem from "./OnetimeInviteListItem";
@@ -151,11 +150,7 @@ const CommunityInvitesLeaderTab = ({
     setInviteNotifCount(onetimeActionable.length);
   }, [onetimeActionable.length, setInviteNotifCount]);
 
-  const copyToClipboard = useCallback((text: string) => {
-    navigator.clipboard.writeText(
-      getOnetimeInviteSignupUrl(getInviteBaseUrl(), text),
-    );
-  }, []);
+  const copyInviteLink = useCopyInviteLink();
 
   const handleCopied = useCallback((inviteId: number) => {
     if (copiedTimeoutRef.current) {
@@ -391,7 +386,7 @@ const CommunityInvitesLeaderTab = ({
                 selfInvited={!!(user && user.id === invite.invitingUser?.id)}
                 copied={copiedInviteId === invite.id}
                 onDelete={handleDeleteInvite}
-                onCopy={copyToClipboard}
+                onCopy={copyInviteLink}
                 onCopied={handleCopied}
               />
             ))}
@@ -446,7 +441,7 @@ const CommunityInvitesLeaderTab = ({
                 invite={invite}
                 selfInvited={!!(user && user.id === invite.invitingUser?.id)}
                 copied={copiedInviteId === invite.id}
-                onCopy={copyToClipboard}
+                onCopy={copyInviteLink}
                 onCopied={handleCopied}
               />
             ))}

@@ -1,24 +1,31 @@
 import { Features } from "@alliance/shared/lib/features";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
 import Button from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback } from "react";
 import { useAuth } from "../lib/AuthContext";
 import { isFeatureEnabled } from "../lib/config";
 
 const InviteMemberCard = () => {
   const { user } = useAuth();
+  const { error: errorToast } = useToast();
   const referralLink =
     typeof window !== "undefined" && user?.referralCode
       ? getOnetimeInviteSignupUrl(getInviteBaseUrl(), user.referralCode)
       : "";
 
-  const copyReferralLink = useCallback(() => {
-    if (user?.referralCode && referralLink) {
-      navigator.clipboard.writeText(referralLink);
+  const copyReferralLink = useCallback(async () => {
+    if (
+      user?.referralCode &&
+      referralLink &&
+      !(await copyToClipboard(referralLink))
+    ) {
+      errorToast("Could not copy the referral link.");
     }
-  }, [user, referralLink]);
+  }, [user, referralLink, errorToast]);
 
   if (!isFeatureEnabled(Features.PublicSignup)) {
     if (!user?.admin) {
