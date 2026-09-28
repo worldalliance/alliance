@@ -34,6 +34,7 @@ import {
 } from "src/user/entities/user-away-range.entity";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
+import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
   createFormWithSnapshot,
   createTestApp,
@@ -61,6 +62,11 @@ describe("ActionEventNotifWorker (e2e)", () => {
     emailMessage: "Reminder for #{firstname} on #{action}",
     emailSubject: "Reminder: #{action}",
     textMessage: "Hi #{firstname}, remember #{action}",
+  };
+
+  const dispatch = async () => {
+    await saveLiveCohortDecisions(ctx);
+    await worker.dispatchDueNotifs();
   };
 
   const uniqueName = (prefix: string) =>
@@ -269,7 +275,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs.map((notif) => notif.user.id)).toHaveLength(1);
@@ -300,7 +306,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs).toHaveLength(0);
@@ -328,7 +334,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs.map((notif) => notif.user.id)).toHaveLength(1);
@@ -357,8 +363,8 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
-    await worker.dispatchDueNotifs();
+    await dispatch();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs.map((notif) => notif.user.id)).toHaveLength(1);
@@ -397,7 +403,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs).toHaveLength(0);
@@ -425,7 +431,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs.map((notif) => notif.user.id)).toHaveLength(1);
@@ -450,7 +456,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs.map((notif) => notif.user.id)).toHaveLength(0);
@@ -480,7 +486,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs.map((notif) => notif.user.id)).toHaveLength(0);
@@ -526,7 +532,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs).toHaveLength(0);
@@ -593,7 +599,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs).toHaveLength(0);
@@ -666,7 +672,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs).toHaveLength(0);
@@ -737,7 +743,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs).toHaveLength(1);
@@ -793,7 +799,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs).toHaveLength(1);
@@ -850,7 +856,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs).toHaveLength(1);
@@ -892,7 +898,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs).toHaveLength(1);
@@ -934,7 +940,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs).toHaveLength(1);
@@ -990,7 +996,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs).toHaveLength(1);
@@ -1047,7 +1053,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs).toHaveLength(1);
@@ -1116,7 +1122,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs).toHaveLength(1);
@@ -1166,7 +1172,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(catchUpGroup);
     expect(notifs).toHaveLength(0);
@@ -1217,7 +1223,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(catchUpGroup);
     expect(notifs).toHaveLength(0);
@@ -1253,7 +1259,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const siblingNotifs = await fetchNotifsForGroup(siblingGroup);
     expect(siblingNotifs).toHaveLength(1);
@@ -1294,7 +1300,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       { sendAtAbsolute: sendAt },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const siblingNotifs = await fetchNotifsForGroup(siblingGroup);
     expect(siblingNotifs).toHaveLength(1);
@@ -1345,7 +1351,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const catchUpNotifs = await fetchNotifsForGroup(catchUpGroup);
     expect(catchUpNotifs).toHaveLength(1);
@@ -1420,7 +1426,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     // the leader got the nudge, but it carries no event stamp...
     const nudgeNotif = await notifRepo.findOneOrFail({
@@ -1483,7 +1489,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(catchUpGroup);
     expect(notifs).toHaveLength(1);
@@ -1532,7 +1538,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(secondGroup);
     expect(notifs).toHaveLength(1);
@@ -1803,7 +1809,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     // the user is notified (c is news to them), but the message only covers c
     const notifs = await fetchNotifsForGroup(catchUpGroup);
@@ -1876,6 +1882,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       excludePreviouslyNotified: true,
     } as CreateReminderGroupDto;
 
+    await saveLiveCohortDecisions(ctx);
     const plans = await actionsService.tentativePlansForGroup(
       memberEvent.id,
       catchUpDto,
@@ -1954,7 +1961,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const targetedNotifs = await fetchNotifsForGroup(targetedGroup);
     expect(targetedNotifs).toHaveLength(1);
@@ -2154,7 +2161,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     const notifiedUserIds = notifs.map((notif) => notif.user.id);
@@ -2245,7 +2252,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs.map((n) => n.user.id)).toHaveLength(0);
@@ -2395,7 +2402,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     const notifiedIds = notifs.map((notif) => notif.user.id);
@@ -2528,7 +2535,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs.map((notif) => notif.user.id)).toEqual([leader.id]);
@@ -2571,7 +2578,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifsWithoutLeader = await fetchNotifsForGroup(
       reminderGroupNoLeader,
@@ -2818,7 +2825,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       { sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })) },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     const notifiedUserIds = notifs.map((n) => n.user.id);
@@ -2875,7 +2882,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       { sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })) },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     const notifiedUserIds = notifs.map((n) => n.user.id);
@@ -2956,7 +2963,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       { sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })) },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     const notifiedUserIds = notifs.map((n) => n.user.id);
@@ -3029,7 +3036,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs).toHaveLength(0);
@@ -3120,7 +3127,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     const notifiedUserIds = notifs.map((n) => n.user.id);
@@ -3255,7 +3262,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     );
 
-    await worker.dispatchDueNotifs();
+    await dispatch();
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     const notifiedIds = notifs.map((n) => n.user.id);

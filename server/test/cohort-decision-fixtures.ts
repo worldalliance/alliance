@@ -1,21 +1,75 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { millisecondsInDay } from "date-fns/constants";
+import { readsSavedDecisions } from "../src/actions/cohort-decision";
 import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
 import {
   ActionEvent,
   ActionStatus,
 } from "../src/actions/entities/action-event.entity";
-import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
+import {
+  Action,
+  parseAction,
+  VisibilityMode,
+} from "../src/actions/entities/action.entity";
+import { CohortDecisionReason } from "../src/actions/entities/cohort-decision-reason";
+import { ActionEventRecipientService } from "../src/notifs/action-event-recipient.service";
+import { CohortResolutionSession } from "../src/notifs/cohort-resolution-session";
 import {
   ContractEvent,
   ContractEventType,
 } from "../src/user/entities/contract-event.entity";
 import { User } from "../src/user/entities/user.entity";
+import { UserService } from "../src/user/user.service";
 import type { TestContext } from "./e2e-test-utils";
 
 export const addDays = (date: Date, days: number) =>
   new Date(date.getTime() + days * millisecondsInDay);
+
+/**
+ * Saves every launched action's live cohort as its decisions, standing in for
+ * the pass in tests of readers that take the cohort from saved decisions. A
+ * member already decided keeps their row.
+ */
+export async function saveLiveCohortDecisions(ctx: TestContext): Promise<void> {
+  const now = new Date();
+  const [actions, userIds] = await Promise.all([
+    ctx.dataSource
+      .getRepository(Action)
+      .find({ where: { publicOnly: false }, relations: { events: true } }),
+    ctx.app.get(UserService).findActiveUserIds(),
+  ]);
+  const recipientService = ctx.app.get(ActionEventRecipientService);
+  const session = new CohortResolutionSession();
+  const rows: Pick<
+    ActionCohortDecision,
+    "actionId" | "userId" | "included" | "reason" | "resolvedAt"
+  >[] = [];
+  for (const action of actions.map(parseAction)) {
+    if (!readsSavedDecisions(action, now)) continue;
+    const cohort = await recipientService.resolveActionCohortMemberIds({
+      action,
+      session,
+    });
+    rows.push(
+      ...userIds.map((userId) => ({
+        actionId: action.id,
+        userId,
+        included: cohort.has(userId),
+        reason: CohortDecisionReason.Backfill,
+        resolvedAt: now,
+      })),
+    );
+  }
+  if (rows.length === 0) return;
+  await ctx.dataSource
+    .createQueryBuilder()
+    .insert()
+    .into(ActionCohortDecision)
+    .values(rows)
+    .orIgnore()
+    .execute();
+}
 
 export type CohortDecisionFixtures = ReturnType<typeof cohortDecisionFixtures>;
 
@@ -116,6 +170,19 @@ export function cohortDecisionFixtures(ctx: TestContext) {
       ]),
     );
 
+  const failManualCohorts = () => {
+    const recipientService = ctx.app.get(ActionEventRecipientService);
+    const resolve =
+      recipientService.resolveCohortMemberIds.bind(recipientService);
+    return jest
+      .spyOn(recipientService, "resolveCohortMemberIds")
+      .mockImplementation((expression, ...rest) =>
+        expression?.type === "Manual"
+          ? Promise.reject(new Error("cohort failed"))
+          : resolve(expression, ...rest),
+      );
+  };
+
   const cleanUp = async () => {
     await decisionRepo.query("DELETE FROM action_cohort_decision");
     await activityRepo.query("DELETE FROM action_activity");
@@ -127,5 +194,11 @@ export function cohortDecisionFixtures(ctx: TestContext) {
     );
   };
 
-  return { createUser, createAction, decisionsFor, cleanUp };
+  return {
+    createUser,
+    createAction,
+    decisionsFor,
+    failManualCohorts,
+    cleanUp,
+  };
 }

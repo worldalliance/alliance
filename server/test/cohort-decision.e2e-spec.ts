@@ -1,11 +1,11 @@
 import { Logger } from "@nestjs/common";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { ActionsService } from "../src/actions/actions.service";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
 import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
 import { Action } from "../src/actions/entities/action.entity";
 import { CohortDecisionReason } from "../src/actions/entities/cohort-decision-reason";
+import { SingleMemberCohortService } from "../src/actions/single-member-cohort.service";
 import { ActionEventRecipientService } from "../src/notifs/action-event-recipient.service";
 import { TasksModule } from "../src/tasks/tasks.module";
 import {
@@ -36,6 +36,7 @@ describe("CohortDecisionService (e2e)", () => {
   let createUser: CohortDecisionFixtures["createUser"];
   let createAction: CohortDecisionFixtures["createAction"];
   let decisionsFor: CohortDecisionFixtures["decisionsFor"];
+  let failManualCohorts: CohortDecisionFixtures["failManualCohorts"];
   let cleanUp: CohortDecisionFixtures["cleanUp"];
 
   const now = new Date();
@@ -47,7 +48,7 @@ describe("CohortDecisionService (e2e)", () => {
     decisionRepo = ctx.dataSource.getRepository(ActionCohortDecision);
     contractEventRepo = ctx.dataSource.getRepository(ContractEvent);
     userRepo = ctx.dataSource.getRepository(User);
-    ({ createUser, createAction, decisionsFor, cleanUp } =
+    ({ createUser, createAction, decisionsFor, failManualCohorts, cleanUp } =
       cohortDecisionFixtures(ctx));
   }, 50000);
 
@@ -58,6 +59,34 @@ describe("CohortDecisionService (e2e)", () => {
   });
 
   const signedAt = addDays(now, -30);
+
+  it("reads a roster leaf naming a deleted action as matching nobody", async () => {
+    const member = await createUser({ signedAt });
+    const deleted = await createAction({
+      start: addDays(now, -3),
+      deadline: addDays(now, -1),
+    });
+    const inProgress = await createAction({
+      start: addDays(now, -1),
+      deadline: addDays(now, 3),
+      cohortExpression: { type: "InProgressAction", actionId: deleted.id },
+    });
+    const missed = await createAction({
+      start: addDays(now, -1),
+      deadline: addDays(now, 3),
+      cohortExpression: { type: "MissedActionDeadline", actionId: deleted.id },
+    });
+    await actionRepo.delete(deleted.id);
+
+    await service.resolveAll(now);
+
+    expect((await decisionsFor(inProgress.id)).get(member.id)?.included).toBe(
+      false,
+    );
+    expect((await decisionsFor(missed.id)).get(member.id)?.included).toBe(
+      false,
+    );
+  });
 
   it("decides admissible members of an open action and skips unsigned ones", async () => {
     const tagged = await createUser({ signedAt });
@@ -158,23 +187,28 @@ describe("CohortDecisionService (e2e)", () => {
     await createAction({
       start: addDays(now, -1),
       deadline: addDays(now, 3),
-      cohortExpression: { type: "MissedActionDeadline", actionId: 999999 },
+      cohortExpression: { type: "Manual", userIds: [member.id] },
     });
     const healthy = await createAction({
       start: addDays(now, -1),
       deadline: addDays(now, 3),
     });
+    const failing = failManualCohorts();
     const error = jest
       .spyOn(Logger.prototype, "error")
       .mockImplementation(() => {});
 
-    await service.resolveAll(now);
+    try {
+      await service.resolveAll(now);
 
-    expect((await decisionsFor(healthy.id)).get(member.id)?.included).toBe(
-      true,
-    );
-    expect(error).toHaveBeenCalled();
-    error.mockRestore();
+      expect((await decisionsFor(healthy.id)).get(member.id)?.included).toBe(
+        true,
+      );
+      expect(error).toHaveBeenCalled();
+    } finally {
+      failing.mockRestore();
+      error.mockRestore();
+    }
   });
 
   const recordCutover = async (resolvedAt: Date) => {
@@ -663,7 +697,7 @@ describe("CohortDecisionService (e2e)", () => {
         .spyOn(Logger.prototype, "error")
         .mockImplementation(() => {});
       singleMember = jest.spyOn(
-        ctx.app.get(ActionsService),
+        ctx.app.get(SingleMemberCohortService),
         "computeIsInCohortExpression",
       );
     });

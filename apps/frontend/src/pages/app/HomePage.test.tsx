@@ -11,6 +11,7 @@ import { addDays } from "date-fns";
 import { MemoryRouter } from "react-router";
 import * as homeFeedModule from "../../components/HomeFeed";
 import * as homeUpdatesRowModule from "../../components/HomeUpdatesRow";
+import { type LoadFailure } from "../../components/LoadFailed";
 import { AuthContext } from "../../lib/AuthContext";
 import * as taskActionsDataModule from "../../lib/useTaskActionsData";
 import * as utilsModule from "../../lib/utils";
@@ -19,9 +20,9 @@ import { authValue } from "../../testing/authValue";
 import HomePage from "./HomePage";
 import * as largeActionCardModule from "./LargeActionCard";
 
-let actions: ActionWithAwayStatus[] = [];
-let generalUpdatesFailure: { onRetry: () => void; retrying: boolean } | null =
-  null;
+let actions: ActionWithAwayStatus[] | null = [];
+let generalUpdatesFailure: LoadFailure | null = null;
+let actionsFailure: LoadFailure | null = null;
 
 beforeEach(() => {
   jest
@@ -30,7 +31,7 @@ beforeEach(() => {
       actions,
       generalUpdates: [],
       generalUpdatesFailure,
-      loading: false,
+      actionsFailure,
       handleDismissAction: async () => {},
       handleDismissGeneralUpdate: async () => {},
     }));
@@ -46,7 +47,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  actions = [];
   generalUpdatesFailure = null;
+  actionsFailure = null;
   cleanup();
 });
 
@@ -138,6 +141,20 @@ describe("HomePage general updates", () => {
     fireEvent.click(screen.getByText("Try again"));
 
     screen.getByText("Couldn't load general updates.");
+    expect(retry).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("HomePage task list failure", () => {
+  it("offers a retry when the task list fails to load", () => {
+    const retry = jest.fn();
+    actions = null;
+    actionsFailure = { onRetry: retry, retrying: false };
+
+    renderHomePage();
+    fireEvent.click(screen.getByText("Try again"));
+
+    screen.getByText("Couldn't load your tasks.");
     expect(retry).toHaveBeenCalledTimes(1);
   });
 });

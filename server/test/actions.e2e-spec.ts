@@ -4,6 +4,7 @@ import { milliseconds } from "date-fns";
 import { ActionCategory } from "src/actions/action-category";
 import { ActionsService } from "src/actions/actions.service";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
+import { SingleMemberCohortService } from "src/actions/single-member-cohort.service";
 import { ContractService } from "src/contract/contract.service";
 import {
   Comment,
@@ -60,6 +61,7 @@ import {
 import type { Community } from "../src/community/entities/community.entity";
 import { getImageSource } from "../src/images/images.service";
 import { User } from "../src/user/entities/user.entity";
+import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
   createFormWithSnapshot,
   createTestApp,
@@ -955,7 +957,9 @@ describe("Actions (e2e)", () => {
 
       // In-progress user should be in cohort
       expect(findTarget(inProgressRes)?.canParticipate).toBe(true);
-      expect(findTarget(inProgressRes)?.shouldParticipate).toBe(true);
+      // Assignment comes from the saved decision, which applies the population
+      // path's required-and-present roster check to the upstream action.
+      expect(findTarget(inProgressRes)?.shouldParticipate).toBe(false);
       // Completed user should NOT be in cohort (no longer in progress)
       expect(findTarget(doneRes)?.canParticipate).toBe(false);
       // Never joined user should NOT be in cohort
@@ -973,7 +977,7 @@ describe("Actions (e2e)", () => {
 
     it("resolves MissedActionDeadline the same on the single-user and population paths", async () => {
       const recipientService = ctx.app.get(ActionEventRecipientService);
-      const actionsService = ctx.app.get(ActionsService);
+      const singleMemberCohortService = ctx.app.get(SingleMemberCohortService);
       const stamp = Date.now();
       const hoursFromNow = (hours: number) =>
         new Date(stamp + milliseconds({ hours }));
@@ -1079,11 +1083,11 @@ describe("Actions (e2e)", () => {
           relations: { tags: true, contractEvents: true, awayRanges: true },
         });
         const [single, notSingle] = await Promise.all([
-          actionsService.computeIsInCohortExpression({
+          singleMemberCohortService.computeIsInCohortExpression({
             user,
             cohortExpression: missed,
           }),
-          actionsService.computeIsInCohortExpression({
+          singleMemberCohortService.computeIsInCohortExpression({
             user,
             cohortExpression: notMissed,
           }),
@@ -1182,7 +1186,7 @@ describe("Actions (e2e)", () => {
     it("splits members into US and non-US by city, falling back to time zone", async () => {
       const cityRepo = ctx.dataSource.getRepository(City);
       const recipientService = ctx.app.get(ActionEventRecipientService);
-      const actionsService = ctx.app.get(ActionsService);
+      const singleMemberCohortService = ctx.app.get(SingleMemberCohortService);
       const stamp = Date.now();
 
       const [usCity, frenchCity] = await cityRepo.save([
@@ -1272,11 +1276,11 @@ describe("Actions (e2e)", () => {
 
       // The per-user path has to agree with the batch one.
       const perUser = async (user: User) => ({
-        us: await actionsService.computeIsInCohortExpression({
+        us: await singleMemberCohortService.computeIsInCohortExpression({
           user,
           cohortExpression: { type: "USMember" },
         }),
-        nonUs: await actionsService.computeIsInCohortExpression({
+        nonUs: await singleMemberCohortService.computeIsInCohortExpression({
           user,
           cohortExpression: { type: "NonUSMember" },
         }),
@@ -2530,6 +2534,7 @@ describe("Actions (e2e)", () => {
       });
       const group = await createCustomCohortGroup(event, [member]);
 
+      await saveLiveCohortDecisions(ctx);
       const res = await request(ctx.app.getHttpServer())
         .get(`/actions/plansForGroup/${group.id}`)
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
@@ -2545,6 +2550,7 @@ describe("Actions (e2e)", () => {
       const { event } = await createPlanSourceAction();
       await signMemberContract(ctx.testUserId);
 
+      await saveLiveCohortDecisions(ctx);
       const res = await request(ctx.app.getHttpServer())
         .post(`/actions/events/${event.id}/checkTentativePlans`)
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)

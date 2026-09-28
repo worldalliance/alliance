@@ -62,4 +62,6 @@ export class CohortResolutionSession {
     Promise<{ answers: Record<string, unknown> }[]>
   >();
   readonly actionWithEventsById = new Map<number, Promise<Action | null>>();
+  readonly admittedActionIdsByUser = new Map<number, Promise<Set<number>>>();
+  readonly admittedUserIdsByAction = new Map<number, Promise<Set<number>>>();
 }

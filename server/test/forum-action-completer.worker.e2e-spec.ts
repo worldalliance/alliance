@@ -22,6 +22,7 @@ import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
+import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
   createFormWithSnapshot,
   createTestApp,
@@ -286,6 +287,7 @@ describe("ForumActionCompleterWorker (e2e)", () => {
       }),
     );
 
+    await saveLiveCohortDecisions(ctx);
     await worker.autocompleteForumActions();
 
     const completions = await activityRepo.find({
@@ -310,12 +312,53 @@ describe("ForumActionCompleterWorker (e2e)", () => {
       body: "Late reply after computed",
     });
 
+    await saveLiveCohortDecisions(ctx);
     await worker.autocompleteForumActions();
 
     const completionsAfterSecondRun = await activityRepo.find({
       where: { actionId: action.id, type: ActionActivityType.USER_COMPLETED },
     });
     expect(completionsAfterSecondRun).toHaveLength(completions.length);
+  });
+
+  it("completes the responders its saved decisions admit, not the live cohort", async () => {
+    const now = new Date();
+    const decidedIn = await createUser("decided-in@example.com", "Decided In");
+    const decidedOut = await userRepo.save(
+      userRepo.create({
+        email: "decided-out@example.com",
+        password: "pass",
+        name: "Decided Out",
+        tags: [],
+      }),
+    );
+    const postAuthor = await userRepo.findOneOrFail({
+      where: { id: ctx.adminUserId },
+    });
+    const post = await createPost(postAuthor, "Decisions Thread");
+    const validator = await createForumValidator(
+      CustomValidatorType.RepliedToForumPost,
+      post.id,
+    );
+    const form = await createFormWithValidator(validator.id);
+    const action = await createActionWithEvents({ formId: form.id, now });
+    await createComment({ author: decidedIn, post, body: "Reply" });
+    await createComment({ author: decidedOut, post, body: "Reply" });
+
+    await saveLiveCohortDecisions(ctx);
+    await userRepo.save([
+      { ...decidedIn, tags: [] },
+      { ...decidedOut, tags: [ctx.defaultTag] },
+    ]);
+    await worker.autocompleteForumActions();
+
+    const completionIds = (
+      await activityRepo.find({
+        where: { actionId: action.id, type: ActionActivityType.USER_COMPLETED },
+      })
+    ).map((activity) => activity.userId);
+    expect(completionIds).toContain(decidedIn.id);
+    expect(completionIds).not.toContain(decidedOut.id);
   });
 
   it("skips actions outside the 1-hour deadline window", async () => {
@@ -369,6 +412,7 @@ describe("ForumActionCompleterWorker (e2e)", () => {
       body: "Reply outside window",
     });
 
+    await saveLiveCohortDecisions(ctx);
     await worker.autocompleteForumActions();
 
     const completions = await activityRepo.find({
@@ -423,6 +467,7 @@ describe("ForumActionCompleterWorker (e2e)", () => {
       parentId: topLevelComment.id,
     });
 
+    await saveLiveCohortDecisions(ctx);
     await worker.autocompleteForumActions();
 
     const completions = await activityRepo.find({
@@ -473,6 +518,7 @@ describe("ForumActionCompleterWorker (e2e)", () => {
       body: "Reply on the validator post",
     });
 
+    await saveLiveCohortDecisions(ctx);
     await worker.autocompleteForumActions();
 
     const completions = await activityRepo.find({
@@ -534,6 +580,7 @@ describe("ForumActionCompleterWorker (e2e)", () => {
       parentId: topLevelComment.id,
     });
 
+    await saveLiveCohortDecisions(ctx);
     await worker.autocompleteForumActions();
 
     const completions = await activityRepo.find({

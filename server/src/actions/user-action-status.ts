@@ -161,13 +161,27 @@ export function computeCanCompleteAction(params: {
 }
 
 /**
+ * The viewer's standing in an action's cohort, evaluated regardless of
+ * dismissal (an overlay, not an assignment input).
+ */
+export type ViewerCohort = {
+  /**
+   * The saved cohort decision admits them. The live cohort
+   * (`computeIsInActionCohort`) stands in before launch, on a public-only
+   * action, and for the actions `reconcileForUser` leaves undecided.
+   */
+  admitted: boolean;
+  /**
+   * Admitted, or in the live cohort: completion stays open to a member the
+   * decision left out, without assigning it to them.
+   */
+  eligible: boolean;
+};
+
+/**
  * Resolves the viewer's {@link UserActionStatus} for one action. Pure —
- * callers fetch, this computes:
- *
- * - `inCohort` must be the action's live cohort (`computeIsInActionCohort`),
- *   evaluated regardless of dismissal (dismissal is an overlay here, not an
- *   assignment input).
- * - `activities` are the viewer's activities on this action, all types.
+ * callers fetch, this computes. `activities` are the viewer's activities on
+ * this action, all types.
  */
 export function resolveUserActionStatus(params: {
   action: Pick<
@@ -189,14 +203,14 @@ export function resolveUserActionStatus(params: {
     | "isAwayAtAnyPointInRange"
     | "staff"
   >;
-  inCohort: boolean;
+  cohort: ViewerCohort;
   activities: Pick<
     ActionActivity,
     "type" | "createdAt" | "declineReason" | "isMoral" | "outOfTime"
   >[];
   now: Date;
 }): UserActionStatus {
-  const { action, user, inCohort, activities, now } = params;
+  const { action, user, cohort, activities, now } = params;
 
   const dismissed = activities.some(
     (activity) => activity.type === ActionActivityType.USER_DISMISSED,
@@ -233,7 +247,7 @@ export function resolveUserActionStatus(params: {
   const assignment = computeActionAssignment({
     action,
     user,
-    inCohort,
+    inCohort: cohort.admitted,
     // Dismissal is an overlay, not an assignment input (unlike the legacy
     // `shouldParticipate` field, which still folds it in).
     dismissed: false,
@@ -249,8 +263,9 @@ export function resolveUserActionStatus(params: {
   const awayDuringWindow = computeIsAwayDuringWindow({ action, user });
 
   // Single-user equivalent of the participant roster
-  // (`findParticipantIdsForActions`, the `usersJoined` counter):
-  // "expected to act ∪ completed anyway".
+  // (`findParticipantIdsForActions`) read from saved decisions:
+  // "expected to act ∪ completed anyway". The `usersJoined` counter still
+  // reads the live cohort until stage 7.
   const isParticipant =
     relation === ViewerActionRelation.Completed ||
     (assigned &&
@@ -263,7 +278,11 @@ export function resolveUserActionStatus(params: {
   return {
     assigned,
     ...optionality,
-    canComplete: computeCanCompleteAction({ action, user, inCohort }),
+    canComplete: computeCanCompleteAction({
+      action,
+      user,
+      inCohort: cohort.eligible,
+    }),
     relation,
     withdrawal,
     dismissed,
@@ -274,7 +293,7 @@ export function resolveUserActionStatus(params: {
     staffPreview: isStaffPreviewActiveFor({ user, action, now }),
     display: resolveUserActionPillStatus({
       isJoined: isParticipant,
-      isAway: inCohort && awayDuringWindow,
+      isAway: cohort.admitted && awayDuringWindow,
       optional: optionality.optional,
       deadlinePassed,
       activityStatus,

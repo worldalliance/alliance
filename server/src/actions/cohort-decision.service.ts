@@ -1,20 +1,22 @@
 import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { millisecondsInDay, millisecondsInMinute } from "date-fns/constants";
 import { countBy } from "es-toolkit";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
-import { ContractEventType } from "src/user/entities/contract-event.entity";
 import type { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { In, type Repository } from "typeorm";
-import { ActionsService } from "./actions.service";
 import {
+  admissionReason,
+  belongsToBackfill,
   CohortEnrollmentState,
   computeCohortEnrollment,
   heldContractDuringWindow,
   isCohortAdmissible,
+  isInCatchUp,
+  isSettled,
+  openEnrollments,
   type CohortEnrollment,
 } from "./cohort-decision";
 import { logCohortPathDisagreements } from "./cohort-path-disagreements";
@@ -27,20 +29,7 @@ import {
 } from "./entities/action.entity";
 import { CohortDecisionReason } from "./entities/cohort-decision-reason";
 import { PrerequisiteProgressService } from "./prerequisite-progress.service";
-
-/**
- * How long after its deadline a regular action stays in the catch-up pass.
- * Admissibility there is judged at the deadline, so each closed action needs
- * only one successful pass.
- */
-const CLOSED_ACTION_CATCH_UP_MS = 7 * millisecondsInDay;
-
-/**
- * Longer than any signing request. A member who signs through a task form has
- * a contract before the form's answers and completion are saved, so the pass
- * leaves recent signers alone rather than decide them mid-submission.
- */
-const SIGNING_GRACE_MS = 10 * millisecondsInMinute;
+import { SingleMemberCohortService } from "./single-member-cohort.service";
 
 const INSERT_CHUNK_SIZE = 1000;
 
@@ -48,51 +37,6 @@ type DecisionRow = Pick<
   ActionCohortDecision,
   "actionId" | "userId" | "included" | "reason" | "resolvedAt"
 >;
-
-function admissionReason(params: {
-  action: ParsedAction;
-  user: User;
-  start: Date;
-}): CohortDecisionReason {
-  const { action, user, start } = params;
-  if (!isCohortAdmissible({ action, user, at: start })) {
-    return CohortDecisionReason.Signing;
-  }
-  return action.prerequisiteActionIds.length > 0
-    ? CohortDecisionReason.PrerequisitesResolved
-    : CohortDecisionReason.Launch;
-}
-
-export function isInCatchUp(enrollment: CohortEnrollment, now: Date): boolean {
-  switch (enrollment.state) {
-    case CohortEnrollmentState.Open:
-      return true;
-    case CohortEnrollmentState.Closed:
-      return (
-        now.getTime() - enrollment.deadline.getTime() <=
-        CLOSED_ACTION_CATCH_UP_MS
-      );
-    case CohortEnrollmentState.NotStarted:
-      return false;
-    default:
-      throw new Error(
-        `unknown enrollment state: ${enrollment satisfies never}`,
-      );
-  }
-}
-
-/**
- * A closed action the resolver never decided that launched before its first
- * decision. Catch-up would treat its whole cohort as a processing failure.
- */
-function belongsToBackfill(params: {
-  enrollment: { start: Date };
-  hasDecisions: boolean;
-  cutover: Date | null;
-}): boolean {
-  const { enrollment, hasDecisions, cutover } = params;
-  return !hasDecisions && (!cutover || enrollment.start < cutover);
-}
 
 @Injectable()
 export class CohortDecisionService {
@@ -107,8 +51,8 @@ export class CohortDecisionService {
     private readonly correctionRepository: Repository<ActionCohortDecisionCorrection>,
     private readonly actionEventRecipientService: ActionEventRecipientService,
     private readonly userService: UserService,
-    private readonly actionsService: ActionsService,
     private readonly prerequisiteProgressService: PrerequisiteProgressService,
+    private readonly singleMemberCohortService: SingleMemberCohortService,
   ) {}
 
   /**
@@ -163,15 +107,7 @@ export class CohortDecisionService {
       () => this.userService.findActiveUsersForRoster(),
     );
 
-    const signedBefore = new Date(now.getTime() - SIGNING_GRACE_MS);
-    const settledUsers = users.filter(
-      (user) =>
-        !user.contractEvents?.some(
-          (event) =>
-            event.type === ContractEventType.SIGNED &&
-            event.date > signedBefore,
-        ),
-    );
+    const settledUsers = users.filter((user) => isSettled(user, now));
 
     // Ordinary decisions first, so a backfill cannot delay this pass's
     // launches. It still holds the lock, so later passes skip until it ends.
@@ -226,15 +162,16 @@ export class CohortDecisionService {
     const { action, enrollment, users, session, now } = params;
     switch (enrollment.state) {
       case CohortEnrollmentState.Open: {
+        const admissible = users.filter((user) =>
+          isCohortAdmissible({ action, user, at: now }),
+        );
+        if (admissible.length === 0) return [];
         const isReady = await this.prerequisiteProgressService.loadReadiness({
           action,
           session,
           now,
         });
-        const pending = users.filter(
-          (user) =>
-            isCohortAdmissible({ action, user, at: now }) && isReady(user.id),
-        );
+        const pending = admissible.filter((user) => isReady(user.id));
         if (pending.length === 0) return [];
         const cohort =
           await this.actionEventRecipientService.resolveCohortMemberIds(
@@ -251,16 +188,16 @@ export class CohortDecisionService {
         });
       }
       case CohortEnrollmentState.Closed: {
+        const admissible = users.filter((user) =>
+          isCohortAdmissible({ action, user, at: enrollment.deadline }),
+        );
+        if (admissible.length === 0) return [];
         const isReady = await this.prerequisiteProgressService.loadReadiness({
           action,
           session,
           now,
         });
-        const pending = users.filter(
-          (user) =>
-            isCohortAdmissible({ action, user, at: enrollment.deadline }) &&
-            isReady(user.id),
-        );
+        const pending = admissible.filter((user) => isReady(user.id));
         // Only a member held to the whole window of a non-optional action
         // could miss it. Anyone else was only ever optional, so deciding them
         // late creates no missed obligation.
@@ -340,7 +277,7 @@ export class CohortDecisionService {
       rows,
       session,
       userService: this.userService,
-      actionsService: this.actionsService,
+      singleMemberCohortService: this.singleMemberCohortService,
       logger: this.logger,
     });
     return rows;
@@ -376,29 +313,109 @@ export class CohortDecisionService {
       : new Date(Math.min(...times.map((time) => time.getTime())));
   }
 
+  /**
+   * The pass's catch-up for one open action, for a one-shot reader that
+   * cannot wait for the next pass. Unlike the pass it throws on failure, so
+   * the reader fails rather than read an undecided cohort as empty.
+   */
+  async decideOpenAction(action: ParsedAction, now: Date): Promise<void> {
+    const enrollment = computeCohortEnrollment(action, now);
+    if (action.publicOnly || enrollment.state !== CohortEnrollmentState.Open) {
+      return;
+    }
+    const session = new CohortResolutionSession();
+    const [users, decidedByAction] = await Promise.all([
+      this.actionEventRecipientService.primeActiveUsers(session, () =>
+        this.userService.findActiveUsersForRoster(),
+      ),
+      this.findDecidedUserIds([action.id]),
+    ]);
+    const decided = decidedByAction.get(action.id) ?? new Set<number>();
+    await this.insert(
+      await this.resolveAction({
+        action,
+        enrollment,
+        users: users.filter(
+          (user) => isSettled(user, now) && !decided.has(user.id),
+        ),
+        session,
+        now,
+      }),
+    );
+  }
+
   /** Decide a member who just became admissible by signing. */
   async resolveForUser(userId: number, now: Date): Promise<void> {
     const [actions, user] = await Promise.all([
-      this.findActionsInCatchUp(now),
+      this.findResolvableActions(now),
       this.userService.findOneOrFail(userId, {
         contractEvents: true,
         awayRanges: true,
       }),
     ]);
-    const open = actions.filter(
-      ({ enrollment }) => enrollment.state === CohortEnrollmentState.Open,
+    await this.decideForUser({
+      user,
+      actions: actions.map(({ action }) => action),
+      now,
+    });
+  }
+
+  /**
+   * Decide the member's undecided open actions before they read their tasks,
+   * so a pass that has not reached them cannot hide an assignment. A recent
+   * signer may be mid-submission, so the signing writer decides them instead.
+   * Returns the actions to read from the live cohort: those it failed to
+   * decide, and a recent signer's open actions without a decision yet.
+   * `user` needs `contractEvents` and `awayRanges`, and `actions` their
+   * events.
+   */
+  async reconcileForUser(params: {
+    user: User;
+    actions: ParsedAction[];
+    now: Date;
+  }): Promise<Set<number>> {
+    const { user, actions, now } = params;
+    const decidable = actions.filter((action) => !action.publicOnly);
+    if (isSettled(user, now)) {
+      return this.decideForUser({ user, actions: decidable, now });
+    }
+    const open = openEnrollments(decidable, now);
+    const decided = await this.loadDecidedActionIds(user.id, open);
+    return new Set(
+      open
+        .map(({ action }) => action.id)
+        .filter((actionId) => !decided.has(actionId)),
     );
-    const decided = new Set(
-      (
-        await this.decisionRepository.find({
-          where: {
-            userId,
-            actionId: In(open.map(({ action }) => action.id)),
-          },
-          select: { actionId: true },
-        })
-      ).map((row) => row.actionId),
-    );
+  }
+
+  private async loadDecidedActionIds(
+    userId: number,
+    open: Array<{ action: ParsedAction }>,
+  ): Promise<Set<number>> {
+    if (open.length === 0) return new Set();
+    const rows = await this.decisionRepository.find({
+      where: {
+        userId,
+        actionId: In(open.map(({ action }) => action.id)),
+      },
+      select: { actionId: true },
+    });
+    return new Set(rows.map((row) => row.actionId));
+  }
+
+  /**
+   * A failing action is logged and skipped so it cannot hold back the
+   * others; returns the ids of those that failed.
+   */
+  private async decideForUser(params: {
+    user: User;
+    actions: ParsedAction[];
+    now: Date;
+  }): Promise<Set<number>> {
+    const { user, actions, now } = params;
+    const open = openEnrollments(actions, now);
+    if (open.length === 0) return new Set();
+    const decided = await this.loadDecidedActionIds(user.id, open);
     // The pass's population evaluator, over a population of one, so both
     // writers apply the same cohort rules.
     const session = new CohortResolutionSession();
@@ -406,19 +423,30 @@ export class CohortDecisionService {
       Promise.resolve([user]),
     );
     const rows: DecisionRow[] = [];
+    const failed = new Set<number>();
     for (const { action, enrollment } of open) {
       if (decided.has(action.id)) continue;
-      rows.push(
-        ...(await this.resolveAction({
+      const result = await R.fromPromiseFn(() =>
+        this.resolveAction({
           action,
           enrollment,
           users: [user],
           session,
           now,
-        })),
+        }),
       );
+      if (R.isFailure(result)) {
+        this.logger.error(
+          `Failed to decide cohort for action ${action.id}, user ${user.id}`,
+          result.error,
+        );
+        failed.add(action.id);
+        continue;
+      }
+      rows.push(...result.value);
     }
     await this.insert(rows);
+    return failed;
   }
 
   private decide(params: {

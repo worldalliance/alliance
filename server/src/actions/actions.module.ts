@@ -32,6 +32,7 @@ import { ActionStatsService } from "./action-stats.service";
 import { ActionsController } from "./actions.controller";
 import { ActionsGateway } from "./actions.gateway";
 import { ActionsService } from "./actions.service";
+import { CohortAdmissionService } from "./cohort-admission.service";
 import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import { CohortDecisionListener } from "./cohort-decision.listener";
 import { CohortDecisionService } from "./cohort-decision.service";
@@ -60,6 +61,7 @@ import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 import { ProjectsController } from "./projects.controller";
 import { ProjectsService } from "./projects.service";
 import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
+import { SingleMemberCohortService } from "./single-member-cohort.service";
 
 @Module({
   imports: [
@@ -123,17 +125,20 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
     ContractSuspenderWorker,
     ForumActionCompleterWorker,
     ActionStatsService,
+    CohortAdmissionService,
     CohortDecisionListener,
     CohortDecisionService,
     CohortDecisionStaffService,
     CohortDecisionWorker,
     CohortDivergenceService,
     PrerequisiteProgressService,
+    SingleMemberCohortService,
   ],
   exports: [
     ActionsService,
     ActionFormVariantService,
     ActionEventRecipientService,
+    SingleMemberCohortService,
   ],
 })
 export class ActionsModule {}
