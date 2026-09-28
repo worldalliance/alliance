@@ -1,4 +1,7 @@
 import type { EventType } from "../client/types.gen";
+import type { UseActivitiesProps } from "./useActivities";
+
+const activitiesAll = () => ["useActivities"] as const;
 
 const onetimeInvitesAdminAll = () => ["userGetOnetimeInvitesAdmin"] as const;
 
@@ -18,6 +21,20 @@ export const queryKeys = {
   actionUpdatesAll: () => ["actionsAllUpdates"] as const,
   actionUpdatesRecent: (limit: number) =>
     ["actionsRecentUpdates", limit] as const,
+  activitiesAll,
+  activities: ({
+    list,
+    objectId,
+    limit,
+    comments,
+  }: UseActivitiesProps & { limit: number }) =>
+    [
+      ...activitiesAll(),
+      list,
+      objectId ?? "none",
+      limit,
+      comments ?? false,
+    ] as const,
   allianceMemberCount: () => ["userNmembers"] as const,
   ambassadorInviteDashboard: () =>
     ["userGetAmbassadorInviteDashboard"] as const,

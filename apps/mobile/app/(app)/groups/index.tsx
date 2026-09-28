@@ -28,7 +28,7 @@ import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useOnNextDeadline } from "@alliance/shared/lib/useOnNextDeadline";
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
 import { LegendList } from "@legendapp/list";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { keyBy } from "es-toolkit";
 import { router, useFocusEffect } from "expo-router";
 import { ChevronDown, Settings, Trash2, X } from "lucide-react-native";
@@ -323,8 +323,7 @@ function GroupActivityTab({
   onRefresh: () => void;
   refreshing: boolean;
 }) {
-  const queryClient = useQueryClient();
-  const { activities, handleLikeActivity, loading } = useActivities({
+  const { activities, handleLikeActivity, loading, refresh } = useActivities({
     list: ActivityList.Community,
     objectId: communityId,
     comments: true,
@@ -332,16 +331,8 @@ function GroupActivityTab({
 
   const handleRefresh = useCallback(() => {
     onRefresh();
-    void queryClient.invalidateQueries({
-      queryKey: [
-        "useActivities",
-        ActivityList.Community,
-        communityId,
-        50,
-        true,
-      ],
-    });
-  }, [onRefresh, queryClient, communityId]);
+    void refresh();
+  }, [onRefresh, refresh]);
 
   if (loading && activities.length === 0) {
     return (
