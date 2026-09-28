@@ -6,6 +6,7 @@ import { TwilioStatusWorker } from "./twiliostatus.worker";
 
 describe("TwilioStatusWorker", () => {
   const queued = Object.assign(new Mms(), { id: 1, status: "queued" });
+  const alsoQueued = Object.assign(new Mms(), { id: 2, status: "queued" });
   const previousEnv = { ...process.env };
   let refreshMmsData: jest.SpyInstance;
   let worker: TwilioStatusWorker;
@@ -14,7 +15,7 @@ describe("TwilioStatusWorker", () => {
     // Safe: the worker only calls find, and the spied refreshMmsData never
     // reaches the service's own dependencies.
     const mmsRepository = {} as Repository<Mms>;
-    mmsRepository.find = jest.fn(() => Promise.resolve([queued]));
+    mmsRepository.find = jest.fn(() => Promise.resolve([queued, alsoQueued]));
     const mmsService = new MmsService(
       {} as Repository<Mms>,
       {} as EventLogService,
@@ -34,6 +35,13 @@ describe("TwilioStatusWorker", () => {
     process.env.NODE_ENV = "production";
     await worker.processTwilioStatus();
     expect(refreshMmsData).toHaveBeenCalledWith(queued);
+  });
+
+  it("keeps refreshing after one message fails", async () => {
+    process.env.NODE_ENV = "production";
+    refreshMmsData.mockRejectedValueOnce(new Error("not found"));
+    await worker.processTwilioStatus();
+    expect(refreshMmsData).toHaveBeenCalledWith(alsoQueued);
   });
 
   it("skips twilio when delivery is off", async () => {
