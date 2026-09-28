@@ -9,6 +9,7 @@ import {
 import { getMemberCount, isLedBy } from "@alliance/shared/lib/communityUtils";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
+import { useInvitePlacement } from "@alliance/shared/lib/useInvitePlacement";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useReusableInvites } from "@alliance/shared/lib/useReusableInvites";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -72,11 +73,6 @@ const STEP_INDEX: Record<InviteFormStep, number> = {
   [InviteFormStep.Group]: 2,
 };
 
-type PlacementSelection =
-  | { kind: "community"; id: number }
-  | { kind: "assign" }
-  | { kind: "new" };
-
 type InviteFormProps = {
   onInviteCreated: (invite: OnetimeInviteDto) => void;
   onReusableInviteCreated: () => void;
@@ -90,13 +86,12 @@ const InviteForm = ({
   const { error: errorToast, success: successToast } = useToast();
   const [step, setStep] = useState(InviteFormStep.Type);
   const [multipleUseInvite, setMultipleUseInvite] = useState(false);
-  const [placement, setPlacement] = useState<PlacementSelection>({
-    kind: "new",
-  });
   const [inviteeName, setInviteeName] = useState("");
   const [creatingInvite, setCreatingInvite] = useState(false);
   const [creatingCommunity, setCreatingCommunity] = useState(false);
   const { communities, refreshCommunities } = useMyCommunities({});
+  const { placement, setPlacement, leaderCommunities, selectedCommunity } =
+    useInvitePlacement(communities, user?.id);
   const { createInvite: createReusableInvite, isCreating: creatingReusable } =
     useReusableInvites();
   const communityCreateSubmitRef = useRef<(() => Promise<void>) | null>(null);
@@ -105,47 +100,15 @@ const InviteForm = ({
     setInviteeName("");
   }, [multipleUseInvite]);
 
-  // Default placement to a group the user leads. Runs once so it never clobbers
-  // a manual selection on a later refetch.
-  const didInitPlacement = useRef(false);
-  useEffect(() => {
-    if (didInitPlacement.current || communities.length === 0 || !user) {
-      return;
-    }
-    didInitPlacement.current = true;
-    const led = communities.find((community) => isLedBy(community, user.id));
-    setPlacement(led ? { kind: "community", id: led.id } : { kind: "new" });
-  }, [communities, user]);
-
-  const { leaderCommunities, memberCommunities } = useMemo(() => {
-    const leaderCommunities: CommunityDto[] = [];
-    const memberCommunities: CommunityDto[] = [];
-    if (!user) {
-      return { leaderCommunities, memberCommunities };
-    }
-    for (const community of communities) {
-      if (isLedBy(community, user.id)) {
-        leaderCommunities.push(community);
-      } else {
-        memberCommunities.push(community);
-      }
-    }
-    return { leaderCommunities, memberCommunities };
-  }, [communities, user]);
+  const memberCommunities = useMemo(
+    () =>
+      user
+        ? communities.filter((community) => !isLedBy(community, user.id))
+        : [],
+    [communities, user],
+  );
 
   const isLeader = leaderCommunities.length > 0;
-
-  const leaderCommunitiesById = useMemo(() => {
-    return new Map(
-      leaderCommunities.map((community) => [community.id, community]),
-    );
-  }, [leaderCommunities]);
-  const selectedCommunity = useMemo(() => {
-    if (placement.kind !== "community") {
-      return null;
-    }
-    return leaderCommunitiesById.get(placement.id) ?? null;
-  }, [leaderCommunitiesById, placement]);
 
   const communityOptions = useMemo(() => {
     return {
@@ -172,19 +135,6 @@ const InviteForm = ({
       onetimeInviteCreation.createNewGroupOption
     );
   }, [placement, communityOptions]);
-
-  useEffect(() => {
-    if (
-      placement.kind === "community" &&
-      !leaderCommunitiesById.has(placement.id)
-    ) {
-      setPlacement(
-        leaderCommunities[0]
-          ? { kind: "community", id: leaderCommunities[0].id }
-          : { kind: "new" },
-      );
-    }
-  }, [placement, leaderCommunities, leaderCommunitiesById]);
 
   const resetWizard = useCallback(() => {
     setInviteeName("");
@@ -305,7 +255,7 @@ const InviteForm = ({
         errorToast("Failed to refresh groups");
       }
     },
-    [errorToast, refreshCommunities, handleCreateForPlacement],
+    [errorToast, refreshCommunities, handleCreateForPlacement, setPlacement],
   );
 
   const inviteIsCreating = multipleUseInvite
