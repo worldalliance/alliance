@@ -448,3 +448,41 @@ describe("FormBuilder save once a source form loads", () => {
     });
   });
 });
+
+describe("FormBuilder page visibility toggle", () => {
+  const { baseUrl, fetch } = client.getConfig();
+  afterEach(() => client.setConfig({ baseUrl, fetch }));
+
+  it("follows the selected page's conditions when switching pages", () => {
+    const hasCity = {
+      conditions: { c1: { kind: "userHasCity", userHasCity: true } },
+      formula: "c1",
+    } as const;
+    client.setConfig({
+      baseUrl: "http://localhost",
+      fetch: async () => Response.json([]),
+    });
+    renderBuilder({
+      ...mine,
+      pages: [
+        { id: "p1", title: "One", fields: [] },
+        { id: "p2", title: "Two", fields: [], visibleIfFormula: hasCity },
+        { id: "p3", title: "Three", fields: [], visibleIfFormula: hasCity },
+      ],
+    });
+    const toggle = () =>
+      screen.getByLabelText<HTMLInputElement>(
+        "Use conditional visibility for this page",
+      );
+
+    expect(toggle().checked).toBe(false);
+    fireEvent.click(toggle());
+    expect(toggle().checked).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Two" }));
+    expect(toggle().checked).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Three" }));
+    expect(toggle().checked).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "One" }));
+    expect(toggle().checked).toBe(false);
+  });
+});
