@@ -8,6 +8,7 @@
 import arrowPlugin, { type ArrowExpression } from "@jsep-plugin/arrow";
 import objectPlugin, { type ObjectExpression } from "@jsep-plugin/object";
 import jsep from "jsep";
+import { thrownMessage } from "../errorMessage";
 import { R, type Result } from "../result";
 import {
   EvaluationTooLong,
@@ -302,10 +303,7 @@ export function compileVariableExpression(
     return R.failure("Formula is empty.");
   }
 
-  const parsed = R.fromThrowable(
-    () => jsep(trimmed),
-    (error) => (error instanceof Error ? error.message : String(error)),
-  );
+  const parsed = R.fromThrowable(() => jsep(trimmed), thrownMessage);
   if (!parsed.ok) {
     return R.failure(parsed.error);
   }

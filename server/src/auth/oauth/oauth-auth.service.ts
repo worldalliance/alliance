@@ -1,3 +1,4 @@
+import { thrownStack } from "@alliance/common/errorMessage";
 import {
   OAuthError,
   OAuthOutcome,
@@ -368,7 +369,7 @@ export class OAuthAuthService {
     // A spent or unknown invite throws from deep inside the signup path, and
     // the callback has nowhere to put an exception but the member's screen.
     if (!created.ok) {
-      console.error("oauth signup failed", created.error);
+      console.error("oauth signup failed", thrownStack(created.error));
       return R.failure(
         created.error instanceof BadRequestException
           ? OAuthError.InviteRequired

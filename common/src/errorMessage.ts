@@ -29,3 +29,12 @@ export function refusalMessage(params: {
   if (status >= 500) return fallback;
   return errorMessage({ error, fallback });
 }
+
+export function thrownMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/** Leaves out the error's other properties, like a failed query's parameters. */
+export function thrownStack(error: unknown): string {
+  return (error instanceof Error && error.stack) || thrownMessage(error);
+}
