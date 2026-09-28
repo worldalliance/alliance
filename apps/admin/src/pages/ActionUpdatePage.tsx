@@ -21,7 +21,7 @@ import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
 import { Eye, EyeOff } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { FormBuilder } from "../components/FormBuilder";
 import FormSection from "../components/FormSection";
 import {
@@ -32,8 +32,9 @@ import {
   useDisplayOnlySchemaSave,
   type DisplayOnlySchemaSaveBody,
 } from "../lib/useDisplayOnlySchemaSave";
+import { useSearchParamTab } from "../lib/useSearchParamTab";
 
-type Tab = "details" | "content";
+const tabs = ["details", "content"] as const;
 
 type ActionUpdateForm = {
   title: string;
@@ -81,8 +82,7 @@ const ActionUpdatePage: React.FC = () => {
     updateId: string;
   }>();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const selectedTab = (searchParams.get("tab") as Tab) ?? "content";
+  const [selectedTab, onTabChange] = useSearchParamTab(tabs, "content");
 
   const actionId = Number(actionIdParam);
   const updateId = Number(updateIdParam);
@@ -97,17 +97,6 @@ const ActionUpdatePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const { tags: availableTags } = useTagsAdmin();
-
-  const onTabChange = useCallback(
-    (tab: Tab) => {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set("tab", tab);
-        return next;
-      });
-    },
-    [setSearchParams],
-  );
 
   useEffect(() => {
     if (isNaN(updateId)) {

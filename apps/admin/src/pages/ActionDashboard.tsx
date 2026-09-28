@@ -95,6 +95,7 @@ import {
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { makeTempId } from "../lib/tempId";
 import { useCoverImage } from "../lib/useCoverImage";
+import { useSearchParamTab } from "../lib/useSearchParamTab";
 
 // Status color mapping
 export const getStatusColor = (status: ActionDto["status"]) => {
@@ -128,16 +129,18 @@ export const formatStatus = (status: string) => {
     .join(" ");
 };
 
-type Tab =
-  | "overview"
-  | "details"
-  | "events"
-  | "form"
-  | "form-variants"
-  | "updates"
-  | "follow-up-forms"
-  | "responses"
-  | "cohort-decisions";
+const tabs = [
+  "overview",
+  "details",
+  "events",
+  "form",
+  "form-variants",
+  "updates",
+  "follow-up-forms",
+  "responses",
+  "cohort-decisions",
+] as const;
+type Tab = (typeof tabs)[number];
 
 const imageUploadingMessage = "Wait for the cover image to finish uploading.";
 
@@ -236,19 +239,7 @@ const ActionDashboard: React.FC = () => {
   const [incompleteUsers, setIncompleteUsers] = useState<ProfileDto[]>([]);
   const [incompleteUsersExpanded, setIncompleteUsersExpanded] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-
-  const selectedTab = (searchParams.get("tab") as Tab) ?? "overview";
-
-  const onTabChange = useCallback(
-    (t: Tab) => {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set("tab", t);
-        return next;
-      });
-    },
-    [setSearchParams],
-  );
+  const [selectedTab, onTabChange] = useSearchParamTab(tabs, "overview");
 
   useEffect(() => {
     let cancelled = false;
