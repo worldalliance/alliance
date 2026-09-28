@@ -221,6 +221,8 @@ Ships alone: stages 2–5 already populated and verified the data.
 
 Switch admin and leader status tables, participation counts, analytics, and welcome queues. Follow-up-form eligibility, public guest actions, and form-variant selection keep their own policies.
 
+These readers take the cohort from saved decisions by the stage 6 rule: from the member-action start, with the live cohort before it and on a public-only action. None of them reconcile. The participant roster's staff callers (the `usersJoined` counter, the admin and leader status tables, and the incomplete-member list) switch first. Until the pass decides a just-launched action, at most five minutes unless it fails, these readers show its members as unassigned. That window is preferred to having a staff read write decisions. The counter refreshes on activity and on its ten-minute cron, so after a launch it trails the pass by up to one refresh (ALL-1254 tracks refreshing it from the pass).
+
 Ships alone: staff-facing reads only; stage 6 already made the member experience consistent.
 
 ### 8. Remove recomputation

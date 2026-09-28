@@ -692,7 +692,7 @@ export class ActionsService {
   async findParticipantIdsForActionById(actionId: number): Promise<number[]> {
     return this.findParticipantIdsForAction(
       await this.findParticipantAction(actionId),
-      CohortSource.Live,
+      CohortSource.Decisions,
     );
   }
 
@@ -839,7 +839,7 @@ export class ActionsService {
 
     const joinedUserIds = await this.findParticipantIdsForAction(
       action,
-      CohortSource.Live,
+      CohortSource.Decisions,
     );
 
     const completedActivities = await this.actionActivityRepository.find({
@@ -3906,7 +3906,7 @@ export class ActionsService {
     const joinedUsersP: Promise<Record<number, number[]>> = run(async () => {
       const actions = await actionsP;
       const joinedUsersMap = await this.findParticipantIdsForActions(actions, {
-        cohortSource: CohortSource.Live,
+        cohortSource: CohortSource.Decisions,
         session,
       });
 
@@ -4013,11 +4013,12 @@ export class ActionsService {
         getDetail({ userId, actionId: action.id }).isJoined = true;
       }
       // Set-based membership from the shared session (already resolved for
-      // this expression by findParticipantIdsForActions) instead of the
+      // this action by findParticipantIdsForActions) instead of the
       // per-user expression walk, whose action leaves each hit the DB.
       const cohortMemberIds =
-        await this.actionEventRecipientService.resolveActionCohortMemberIds({
+        await this.actionEventRecipientService.resolveCohort({
           action,
+          source: CohortSource.Decisions,
           session,
         });
       for (const userId of userIds) {
