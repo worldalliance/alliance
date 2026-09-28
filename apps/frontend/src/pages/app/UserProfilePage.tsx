@@ -37,8 +37,8 @@ import { MessageSquare, RefreshCw } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { href, useLocation, useNavigate, useParams } from "react-router";
 import { Route } from "../../../.react-router/types/src/pages/app/+types/UserProfilePage";
+import FeedItems from "../../components/FeedItems";
 import ForumActivityCommentCard from "../../components/ForumActivityCommentCard";
-import ForumCommentCard from "../../components/ForumCommentCard";
 import ForumListPost from "../../components/ForumListPost";
 import FriendRequestButton from "../../components/FriendRequestButton";
 import FriendsTab from "../../components/FriendsTab";
@@ -511,41 +511,11 @@ const UserProfilePage: React.FC = () => {
                   No activity yet
                 </p>
               )}
-              {feedItems.map((item) => {
-                switch (item.type) {
-                  case "activity": {
-                    return (
-                      item.activity && (
-                        <UserActivityCard
-                          activity={item.activity}
-                          key={`activity-${item.activity.id}`}
-                          handleLike={handleLikeActivity}
-                        />
-                      )
-                    );
-                  }
-                  case "forum_comment": {
-                    const fc = item.forumComment;
-                    if (!fc) return null;
-                    return (
-                      <ForumCommentCard
-                        key={`comment-${fc.comment.id}`}
-                        comment={fc.comment}
-                        postId={fc.postId}
-                        postTitle={fc.postTitle}
-                        likedByMe={fc.likedByMe}
-                        likesCount={fc.likesCount}
-                        handleLike={() => handleLikeForumComment(fc.comment.id)}
-                      />
-                    );
-                  }
-                  default: {
-                    // Drop unknown variants so older clients don't crash on new server types.
-                    item.type satisfies never;
-                    return null;
-                  }
-                }
-              })}
+              <FeedItems
+                items={feedItems}
+                handleLikeActivity={handleLikeActivity}
+                handleLikeForumComment={handleLikeForumComment}
+              />
               {feedIsFetchingNextPage && (
                 <div className="flex justify-center py-4 text-zinc-400">
                   Loading more...
