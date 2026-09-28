@@ -40,6 +40,32 @@ export class PrerequisiteProgressService {
     return (userId) => arePrerequisitesReady({ prerequisites, userId, now });
   }
 
+  /**
+   * The members whose prerequisites have all resolved. A lone member, as when
+   * reconciling a reader, reads only their own rows: one still waiting gets
+   * no decision and is checked again on every read.
+   */
+  async filterReady<T extends { id: number }>(params: {
+    action: Pick<Action, "prerequisiteActionIds">;
+    users: T[];
+    session: CohortResolutionSession;
+    now: Date;
+  }): Promise<T[]> {
+    const { action, users, session, now } = params;
+    const [user] = users;
+    if (users.length === 1 && user) {
+      const ready = await this.loadMemberReadiness({
+        action,
+        userId: user.id,
+        session,
+        now,
+      });
+      return ready ? users : [];
+    }
+    const isReady = await this.loadReadiness({ action, session, now });
+    return users.filter((candidate) => isReady(candidate.id));
+  }
+
   /** `loadReadiness` for one member, reading only their rows. */
   async loadMemberReadiness(params: {
     action: Pick<Action, "prerequisiteActionIds">;

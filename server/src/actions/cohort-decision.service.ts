@@ -166,12 +166,12 @@ export class CohortDecisionService {
           isCohortAdmissible({ action, user, at: now }),
         );
         if (admissible.length === 0) return [];
-        const isReady = await this.prerequisiteProgressService.loadReadiness({
+        const pending = await this.prerequisiteProgressService.filterReady({
           action,
+          users: admissible,
           session,
           now,
         });
-        const pending = admissible.filter((user) => isReady(user.id));
         if (pending.length === 0) return [];
         const cohort =
           await this.actionEventRecipientService.resolveCohortMemberIds(
@@ -192,12 +192,12 @@ export class CohortDecisionService {
           isCohortAdmissible({ action, user, at: enrollment.deadline }),
         );
         if (admissible.length === 0) return [];
-        const isReady = await this.prerequisiteProgressService.loadReadiness({
+        const pending = await this.prerequisiteProgressService.filterReady({
           action,
+          users: admissible,
           session,
           now,
         });
-        const pending = admissible.filter((user) => isReady(user.id));
         // Only a member held to the whole window of a non-optional action
         // could miss it. Anyone else was only ever optional, so deciding them
         // late creates no missed obligation.
