@@ -1,3 +1,4 @@
+import { thrownMessage } from "@alliance/common/errorMessage";
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -116,9 +117,7 @@ export class ForumDigestService {
         );
       } catch (error) {
         this.logger.error(
-          `Failed to send forum digest to user ${userId}: ${
-            error instanceof Error ? error.message : error
-          }`,
+          `Failed to send forum digest to user ${userId}: ${thrownMessage(error)}`,
         );
       }
     }

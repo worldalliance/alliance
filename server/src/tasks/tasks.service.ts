@@ -3,6 +3,7 @@ import {
   ActionActivityType,
   withdrawalHasRequiredReason,
 } from "@alliance/common/actionActivity";
+import { thrownMessage } from "@alliance/common/errorMessage";
 import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import {
@@ -1787,7 +1788,7 @@ export class TasksService {
       expressionFn = eval(expression) as (user: User) => unknown;
     } catch (error) {
       throw new BadRequestException(
-        `Failed to evaluate expression: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to evaluate expression: ${thrownMessage(error)}`,
       );
     }
 
@@ -1801,7 +1802,7 @@ export class TasksService {
         result = expressionFn(user);
       } catch (error) {
         throw new BadRequestException(
-          `Expression failed for user ${user.id}: ${error instanceof Error ? error.message : String(error)}`,
+          `Expression failed for user ${user.id}: ${thrownMessage(error)}`,
         );
       }
       if (typeof result !== "boolean") {

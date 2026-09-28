@@ -1,3 +1,4 @@
+import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
 import { TIMED_OUT, withTimeout } from "@alliance/common/timeout";
 import {
   BadRequestException,
@@ -67,11 +68,10 @@ export class MmsService {
       this.twilioClient = Twilio(accountSid, authToken); // Initialize Twilio client
       this.logger.log("Twilio client initialized successfully.");
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = thrownMessage(error);
       this.logger.error(
         `Failed to initialize Twilio client: ${errorMessage}`,
-        error instanceof Error ? error.stack : undefined,
+        thrownStack(error),
       );
       throw new InternalServerErrorException(
         `Failed to initialize Twilio client: ${errorMessage}`,
@@ -137,11 +137,10 @@ export class MmsService {
 
       return this.saveSent({ message, to, body, cid });
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = thrownMessage(error);
       this.logger.error(
         `Failed to send MMS to ${to}: ${errorMessage}`,
-        error instanceof Error ? error.stack : undefined,
+        thrownStack(error),
       );
       if (process.env.NODE_ENV === "production") {
         this.eventLogService.sendMessage({
@@ -199,8 +198,8 @@ export class MmsService {
       })
       .catch((error: unknown) => {
         this.logger.error(
-          `MMS to ${to} failed after ${this.sendTimeoutMs}ms: ${error instanceof Error ? error.message : String(error)}`,
-          error instanceof Error ? error.stack : undefined,
+          `MMS to ${to} failed after ${this.sendTimeoutMs}ms: ${thrownMessage(error)}`,
+          thrownStack(error),
         );
       });
   }

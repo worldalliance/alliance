@@ -1,3 +1,4 @@
+import { thrownMessage } from "@alliance/common/errorMessage";
 import { Logger } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { Server, Socket } from "socket.io";
@@ -57,7 +58,7 @@ export function socketAuthMiddleware(
       socket.data.userId = payload.sub;
       next();
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = thrownMessage(error);
       logger.warn(`Socket auth failed: ${message}`);
       next(new Error(message));
     }

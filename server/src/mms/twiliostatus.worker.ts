@@ -1,3 +1,4 @@
+import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -29,8 +30,8 @@ export class TwilioStatusWorker {
         await this.mmsService.refreshMmsData(message);
       } catch (error) {
         this.logger.error(
-          `Failed to refresh MMS ${message.id}: ${error instanceof Error ? error.message : String(error)}`,
-          error instanceof Error ? error.stack : undefined,
+          `Failed to refresh MMS ${message.id}: ${thrownMessage(error)}`,
+          thrownStack(error),
         );
       }
     }

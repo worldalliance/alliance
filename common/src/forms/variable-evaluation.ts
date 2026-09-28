@@ -1,3 +1,4 @@
+import { thrownMessage } from "../errorMessage";
 import { R, type Result } from "../result";
 import type { FormValue } from "./form-schema";
 import { withStepBudget } from "./formula-step-budget";
@@ -215,7 +216,7 @@ export function evaluateVariableText(
       withStepBudget(() =>
         formatVariableValue(evaluateVariableExpression(node, inputs)),
       ),
-    (error) => R.toError(error).message,
+    thrownMessage,
   );
 }
 

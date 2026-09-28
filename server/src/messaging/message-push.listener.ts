@@ -1,4 +1,5 @@
 import { ConversationType } from "@alliance/common/conversationType";
+import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
 import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -103,8 +104,8 @@ export class MessagePushListener implements OnModuleDestroy {
       }
     } catch (error) {
       this.logger.error(
-        `Failed to send message push notifications: ${error.message}`,
-        error.stack,
+        `Failed to send message push notifications: ${thrownMessage(error)}`,
+        thrownStack(error),
       );
     }
   }

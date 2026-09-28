@@ -1,3 +1,4 @@
+import { thrownMessage } from "@alliance/common/errorMessage";
 import { OAuthProvider } from "@alliance/common/oauth";
 import { R, type Result } from "@alliance/common/result";
 import { Injectable, ServiceUnavailableException } from "@nestjs/common";
@@ -90,7 +91,7 @@ export function appleTokenFailure(error: unknown): Error {
   const reason =
     error instanceof errors.JOSEError
       ? `${error.code}: ${error.message}`
-      : R.toError(error).message;
+      : thrownMessage(error);
   return new Error(`Apple id token rejected: ${reason}`);
 }
 
