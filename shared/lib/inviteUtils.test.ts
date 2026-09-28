@@ -1,7 +1,8 @@
-import type { ShareUrlMineDto } from "../client";
+import type { OnetimeInviteDto, ShareUrlMineDto } from "../client";
 import { automaticInviteNote, inviteDestination } from "./copy";
 import {
   automaticInviteReason,
+  bucketOnetimeInvitesByActionability,
   inviteDestinationLabel,
   inviteDestinationSelection,
   reusableInviteNotes,
@@ -196,5 +197,40 @@ describe("automaticInviteReason", () => {
         link({ assignmentKind: "community", communityId: 7 }),
       ),
     ).toBeNull();
+  });
+});
+
+describe("bucketOnetimeInvitesByActionability", () => {
+  const invite: OnetimeInviteDto = {
+    id: 1,
+    invitee: "Invitee",
+    code: "code",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    status: "link_used",
+  };
+
+  it("buckets nothing without a user", () => {
+    expect(
+      bucketOnetimeInvitesByActionability({
+        invites: [invite],
+        leaderCommunityIds: new Set(),
+        userId: undefined,
+      }),
+    ).toEqual({
+      actionable: [],
+      unverifiableActionable: [],
+      waitingForResponse: [],
+      settled: [],
+    });
+  });
+
+  it("buckets invites for a user", () => {
+    expect(
+      bucketOnetimeInvitesByActionability({
+        invites: [invite],
+        leaderCommunityIds: new Set(),
+        userId: 1,
+      }).settled,
+    ).toEqual([invite]);
   });
 });
