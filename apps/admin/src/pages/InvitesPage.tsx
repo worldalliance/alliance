@@ -5,6 +5,7 @@ import {
   userGetOnetimeInvitesAdmin,
   userListAdmin,
 } from "@alliance/shared/client";
+import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { usePaginatedQuery } from "@alliance/shared/lib/usePaginatedQuery";
 import { cn } from "@alliance/shared/styles/util";
@@ -91,7 +92,9 @@ const InvitesPage = () => {
   });
 
   const copyInviteLink = async (code: string) => {
-    if (!(await copyToClipboard(`${getBaseUrl()}/signup?ref=${code}`))) {
+    if (
+      !(await copyToClipboard(getOnetimeInviteSignupUrl(getBaseUrl(), code)))
+    ) {
       pushError("Could not copy the invite link to the clipboard");
     }
   };

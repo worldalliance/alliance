@@ -1,6 +1,7 @@
 import type { OnetimeInviteListDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import * as config from "@alliance/sharedweb/lib/config";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   cleanup,
@@ -38,6 +39,7 @@ serveApi(
 );
 
 it("copies an invite's signup link from a labelled button", async () => {
+  jest.spyOn(config, "getBaseUrl").mockReturnValue("https://test.alliance/");
   const writeText = jest
     .spyOn(navigator.clipboard, "writeText")
     .mockResolvedValue();
@@ -56,7 +58,7 @@ it("copies an invite's signup link from a labelled button", async () => {
 
   await waitFor(() =>
     expect(writeText).toHaveBeenCalledWith(
-      expect.stringMatching(/\/signup\?ref=abc123$/),
+      "https://test.alliance/signup?ref=abc123",
     ),
   );
 });
