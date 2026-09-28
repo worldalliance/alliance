@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
+import { isMaxCapacityRequired } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { forCount, withCount } from "@alliance/common/plural";
 import {
@@ -100,10 +101,7 @@ export default function GroupManageScreen() {
   );
   const [assignmentBusy, setAssignmentBusy] = useState(false);
 
-  const requiresMaxCapacity =
-    newCommunity.public ||
-    newCommunity.allowStaffAssignments ||
-    newCommunity.allowMemberInvites;
+  const requiresMaxCapacity = isMaxCapacityRequired(newCommunity);
 
   const { leaderCommunities, memberCommunities } = useMemo(() => {
     const leader = (communities ?? []).filter((c) => isLedBy(c, user?.id));

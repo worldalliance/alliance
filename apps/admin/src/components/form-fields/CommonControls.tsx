@@ -40,6 +40,7 @@ import {
   userListAdmin,
   type UserDto,
 } from "@alliance/shared/client";
+import { getRangeValues } from "@alliance/shared/formrenderer";
 import {
   conditionNameForIndex,
   defaultFormulaForConditionCount,
@@ -97,22 +98,6 @@ const DEVICE_LABELS: Record<DeviceVisibilityTarget, string> = {
   tablet: "Tablet",
   desktop: "Desktop",
 };
-const DEFAULT_RANGE_OPTIONS = 10;
-const MIN_RANGE_OPTIONS = 2;
-const MAX_RANGE_OPTIONS = 50;
-
-const getRangeValues = (field: RangeField): number[] => {
-  const desired = field.optionCount ?? DEFAULT_RANGE_OPTIONS;
-  const normalized = Number.isFinite(desired)
-    ? Math.floor(desired)
-    : DEFAULT_RANGE_OPTIONS;
-  const count = Math.min(
-    MAX_RANGE_OPTIONS,
-    Math.max(MIN_RANGE_OPTIONS, normalized),
-  );
-  return Array.from({ length: count }, (_, index) => index + 1);
-};
-
 type RequiredToggleProps = {
   checked: boolean | undefined;
   onChange: (checked: boolean) => void;

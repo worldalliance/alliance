@@ -262,6 +262,13 @@ export function getRangeOptionCount(field: RangeField): number {
   );
 }
 
+export function getRangeValues(field: RangeField): number[] {
+  return Array.from(
+    { length: getRangeOptionCount(field) },
+    (_, index) => index + 1,
+  );
+}
+
 export function isValidRangeSelection(
   field: RangeField,
   value: unknown,

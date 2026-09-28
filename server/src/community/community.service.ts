@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
+import { isMaxCapacityRequired } from "@alliance/common/community";
 import { run } from "@alliance/common/run";
 import {
   BadRequestException,
@@ -46,12 +47,7 @@ function assertCommunityAccessRules(
     "public" | "allowMemberInvites" | "allowStaffAssignments" | "maxCapacity"
   >,
 ): void {
-  if (
-    community.maxCapacity === null &&
-    (community.public ||
-      community.allowMemberInvites ||
-      community.allowStaffAssignments)
-  ) {
+  if (community.maxCapacity === null && isMaxCapacityRequired(community)) {
     throw new BadRequestException(
       "Capacity is required when the group is public or allows member invites or staff assignments",
     );

@@ -1,6 +1,7 @@
 import {
   COMMUNITY_DESCRIPTION_MAX_LENGTH,
   COMMUNITY_NAME_MAX_LENGTH,
+  isMaxCapacityRequired,
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import {
@@ -65,10 +66,7 @@ const CommunityCreateForm = ({
     useState<CreateCommunityDto>(initialFormValues);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const useMaxCapacity =
-    formValues.public ||
-    formValues.allowMemberInvites ||
-    formValues.allowStaffAssignments;
+  const useMaxCapacity = isMaxCapacityRequired(formValues);
 
   const [error, setError] = useState<string | null>(null);
 

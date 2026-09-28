@@ -17,6 +17,7 @@ import type {
   ProfileDto,
 } from "@alliance/shared/client";
 import { z } from "zod";
+import { isEmptyAnswer } from "./answerValues";
 import { respondentName } from "./respondent";
 
 type ExportForm = {
@@ -63,14 +64,6 @@ const stringify = (value: unknown): string => {
   if (value === null || value === undefined) return "";
   if (typeof value === "string") return value;
   return JSON.stringify(value) ?? "";
-};
-
-const isEmptyAnswer = (value: unknown): boolean => {
-  if (value === null || value === undefined) return true;
-  if (typeof value === "string") return value.trim() === "";
-  if (Array.isArray(value)) return value.length === 0;
-  if (typeof value === "object") return Object.keys(value).length === 0;
-  return false;
 };
 
 const recordSchema = z.record(z.string(), z.unknown());

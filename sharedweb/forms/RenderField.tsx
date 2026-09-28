@@ -6,11 +6,11 @@ import type {
   FormValue,
   ListField,
   PhoneField,
-  RangeField,
   TimeField,
 } from "@alliance/common/forms/form-schema";
 import { withCount } from "@alliance/common/plural";
 import type { UserDto } from "@alliance/shared/client";
+import { getRangeValues } from "@alliance/shared/formrenderer";
 import {
   resolveUploadSlot,
   type FileUploadSlot,
@@ -91,20 +91,6 @@ export type RenderFieldProps = {
 
 const sharedInputClasses =
   "w-full px-3 py-2 rounded-md focus:outline-none bg-white disabled:!bg-transparent";
-const DEFAULT_RANGE_OPTION_COUNT = 10;
-const MIN_RANGE_OPTION_COUNT = 2;
-const MAX_RANGE_OPTION_COUNT = 50;
-const getRangeValues = (field: RangeField): number[] => {
-  const desired = field.optionCount ?? DEFAULT_RANGE_OPTION_COUNT;
-  const normalized = Number.isFinite(desired)
-    ? Math.floor(desired)
-    : DEFAULT_RANGE_OPTION_COUNT;
-  const optionCount = Math.min(
-    MAX_RANGE_OPTION_COUNT,
-    Math.max(MIN_RANGE_OPTION_COUNT, normalized),
-  );
-  return Array.from({ length: optionCount }, (_, index) => index + 1);
-};
 
 function useQuestionLabelId(field: AnyField): string | undefined {
   const instanceId = useId();
