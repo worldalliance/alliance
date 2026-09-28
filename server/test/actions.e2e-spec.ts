@@ -4894,10 +4894,13 @@ describe("Actions (e2e)", () => {
   });
 
   describe("Welcome queue", () => {
-    const welcomeQueue = () =>
-      request(ctx.app.getHttpServer())
+    const welcomeQueue = async () => {
+      await saveLiveCohortDecisions(ctx);
+      return request(ctx.app.getHttpServer())
         .get("/actions/welcome-queue")
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+    };
 
     beforeEach(async () => {
       await actionRepo.update({ onboarding: true }, { onboarding: false });
@@ -4949,7 +4952,7 @@ describe("Actions (e2e)", () => {
       );
 
     it("returns an empty queue when there are no active required onboarding tasks", async () => {
-      const response = await welcomeQueue().expect(200);
+      const response = await welcomeQueue();
       expect(response.body).toEqual({ requiredActionCount: 0, members: [] });
     });
 
@@ -4969,13 +4972,13 @@ describe("Actions (e2e)", () => {
         actionId: first.id,
         date: "2020-01-02",
       });
-      expect((await welcomeQueue().expect(200)).body.members).toHaveLength(2);
+      expect((await welcomeQueue()).body.members).toHaveLength(2);
 
       const { action: next, event } = await createWelcomeAction("New task", {
         actionOverrides: { onboarding: true },
       });
       await eventRepo.update(event.id, { date: new Date("2020-01-01") });
-      const queue: WelcomeQueueDto = (await welcomeQueue().expect(200)).body;
+      const queue: WelcomeQueueDto = (await welcomeQueue()).body;
       expect(queue.members).toMatchObject([
         { user: { id: older.id }, activityId: olderCompletion.id },
       ]);
@@ -4987,7 +4990,7 @@ describe("Actions (e2e)", () => {
         actionId: next.id,
         date: "2020-01-03",
       });
-      expect((await welcomeQueue().expect(200)).body.members).toMatchObject([
+      expect((await welcomeQueue()).body.members).toMatchObject([
         { user: { id: newer.id }, activityId: latest.id },
         { user: { id: older.id }, activityId: olderCompletion.id },
       ]);
@@ -5015,14 +5018,14 @@ describe("Actions (e2e)", () => {
           },
         },
       );
-      const queue: WelcomeQueueDto = (await welcomeQueue().expect(200)).body;
+      const queue: WelcomeQueueDto = (await welcomeQueue()).body;
       expect(queue.members.map((entry) => entry.user.id)).toEqual([outside.id]);
       const latest = await complete({
         userId: targeted.id,
         actionId: targetedTask.id,
         date: "2020-01-02",
       });
-      expect((await welcomeQueue().expect(200)).body.members).toMatchObject([
+      expect((await welcomeQueue()).body.members).toMatchObject([
         { user: { id: targeted.id }, activityId: latest.id },
         { user: { id: outside.id }, actionId: first.id },
       ]);
@@ -5060,7 +5063,7 @@ describe("Actions (e2e)", () => {
         actionId: other.id,
         date: "2020-01-03",
       });
-      const queue: WelcomeQueueDto = (await welcomeQueue().expect(200)).body;
+      const queue: WelcomeQueueDto = (await welcomeQueue()).body;
       expect(queue.members).toHaveLength(1);
       expect(queue.members[0]).toMatchObject({
         user: { id: user.id },
@@ -5084,7 +5087,7 @@ describe("Actions (e2e)", () => {
         actionId: action.id,
         date: "2020-01-01",
       });
-      expect((await welcomeQueue().expect(200)).body.members).toEqual([]);
+      expect((await welcomeQueue()).body.members).toEqual([]);
       const events = ctx.dataSource.getRepository(ContractEvent);
       await events.save(
         events.create({
@@ -5093,7 +5096,7 @@ describe("Actions (e2e)", () => {
           date: new Date("2020-01-02"),
         }),
       );
-      expect((await welcomeQueue().expect(200)).body.members).toEqual([]);
+      expect((await welcomeQueue()).body.members).toEqual([]);
       for (const date of ["2020-01-03", "2020-01-04"]) {
         await events.save(
           events.create({
@@ -5111,7 +5114,7 @@ describe("Actions (e2e)", () => {
           date: new Date("2020-01-05"),
         }),
       );
-      const queue: WelcomeQueueDto = (await welcomeQueue().expect(200)).body;
+      const queue: WelcomeQueueDto = (await welcomeQueue()).body;
       expect(queue.members).toMatchObject([
         { user: { id: user.id }, activityId: completion.id },
       ]);
@@ -5191,7 +5194,7 @@ describe("Actions (e2e)", () => {
       const staff = await userRepo.save({ ...(await member()), staff: true });
       await activityRepo.save({ ...newerLast, likes: [staff, older] });
 
-      const queue: WelcomeQueueDto = (await welcomeQueue().expect(200)).body;
+      const queue: WelcomeQueueDto = (await welcomeQueue()).body;
       expect(queue.members.map((entry) => entry.user.id)).toEqual([
         newer.id,
         older.id,
@@ -5230,13 +5233,13 @@ describe("Actions (e2e)", () => {
           createdAt: new Date("2020-01-02"),
         }),
       );
-      expect((await welcomeQueue().expect(200)).body.members).toEqual([]);
+      expect((await welcomeQueue()).body.members).toEqual([]);
       const latest = await complete({
         userId: user.id,
         actionId: action.id,
         date: "2020-01-03",
       });
-      expect((await welcomeQueue().expect(200)).body.members).toMatchObject([
+      expect((await welcomeQueue()).body.members).toMatchObject([
         { user: { id: user.id }, activityId: latest.id },
       ]);
     });
@@ -5323,7 +5326,7 @@ describe("Actions (e2e)", () => {
         });
         if (!scenario.excluded) expectedIds.push(user.id);
       }
-      const queue: WelcomeQueueDto = (await welcomeQueue().expect(200)).body;
+      const queue: WelcomeQueueDto = (await welcomeQueue()).body;
       expect(
         queue.members.map((entry) => entry.user.id).sort((a, b) => a - b),
       ).toEqual(expectedIds);

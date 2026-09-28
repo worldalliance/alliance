@@ -938,7 +938,7 @@ export class ActionsService {
     );
     const cohorts = await Promise.all(
       requiredActions.map((action) =>
-        this.actionEventRecipientService.resolveActionCohortMemberIds({
+        this.actionEventRecipientService.resolveDecidedCohort({
           action,
           session,
         }),

@@ -223,6 +223,8 @@ Switch admin and leader status tables, participation counts, analytics, and welc
 
 These readers take the cohort from saved decisions by the stage 6 rule: from the member-action start, with the live cohort before it and on a public-only action. None of them reconcile. The participant roster's staff callers (the `usersJoined` counter, the admin and leader status tables, and the incomplete-member list) switch first. Until the pass decides a just-launched action, at most five minutes unless it fails, these readers show its members as unassigned. That window is preferred to having a staff read write decisions. The counter refreshes on activity and on its ten-minute cron, so after a launch it trails the pass by up to one refresh (ALL-1254 tracks refreshing it from the pass).
 
+The welcome queue counts the onboarding actions each member's saved decisions assign, and takes the live cohort for an action that has not decided that member yet. Welcoming is permanent, since a staff comment removes the member from the queue, so an undecided action must still count against them. That covers a dependent onboarding action waiting on its prerequisite and a signer the signing writer has not reached.
+
 Ships alone: staff-facing reads only; stage 6 already made the member experience consistent.
 
 ### 8. Remove recomputation

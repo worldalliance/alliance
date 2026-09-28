@@ -47,4 +47,19 @@ export class CohortAdmissionService {
     }
     return pending;
   }
+
+  /** Whether each decided member is included, by member id. */
+  loadDecisionsForAction(
+    actionId: number,
+    session: CohortResolutionSession,
+  ): Promise<Map<number, boolean>> {
+    let pending = session.decisionsByAction.get(actionId);
+    if (!pending) {
+      pending = this.decisionRepository
+        .find({ where: { actionId }, select: { userId: true, included: true } })
+        .then((rows) => new Map(rows.map((row) => [row.userId, row.included])));
+      session.decisionsByAction.set(actionId, pending);
+    }
+    return pending;
+  }
 }

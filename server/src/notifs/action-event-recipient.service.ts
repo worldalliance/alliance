@@ -165,6 +165,32 @@ export class ActionEventRecipientService {
     }
   }
 
+  /**
+   * An action's cohort taking each member's saved decision where one exists
+   * and the live cohort otherwise, for readers that must not count an
+   * undecided member as outside.
+   */
+  async resolveDecidedCohort(params: {
+    action: ParsedAction;
+    session: CohortResolutionSession;
+  }): Promise<Set<number>> {
+    const { action, session } = params;
+    const live = this.resolveActionCohortMemberIds({ action, session });
+    if (!readsSavedDecisions(action, new Date())) {
+      return live;
+    }
+    const [decisions, liveIds] = await Promise.all([
+      this.cohortAdmissionService.loadDecisionsForAction(action.id, session),
+      live,
+    ]);
+    return new Set([
+      ...[...decisions].flatMap(([userId, included]) =>
+        included ? [userId] : [],
+      ),
+      ...[...liveIds].filter((userId) => !decisions.has(userId)),
+    ]);
+  }
+
   private buildCohortContext(
     session: CohortResolutionSession,
     resolvingActionIds: ReadonlySet<number>,

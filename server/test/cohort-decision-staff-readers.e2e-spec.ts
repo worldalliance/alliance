@@ -1,7 +1,9 @@
+import { ActionActivityType } from "@alliance/common/actionActivity";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import { ActionsService } from "../src/actions/actions.service";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
+import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import { Action } from "../src/actions/entities/action.entity";
 import { TasksModule } from "../src/tasks/tasks.module";
 import {
@@ -130,5 +132,62 @@ describe("Staff-facing reads of cohort decisions (e2e)", () => {
       ).usersJoined;
     expect(await usersJoined(us.id)).toBe(1);
     expect(await usersJoined(nonUs.id)).toBe(0);
+  });
+
+  it("welcomes a moved member who completed the onboarding branch they were decided into", async () => {
+    const member = await createUser({
+      signedAt: addDays(now, -5),
+      timeZone: "America/New_York",
+    });
+    const onboarding = await createAction({
+      start: addDays(now, -10),
+      deadline: null,
+      onboarding: true,
+      cohortExpression: { type: "USMember" },
+    });
+    await service.resolveAll(now);
+    await userRepo.update(member.id, { timeZone: "Europe/London" });
+    await ctx.dataSource.getRepository(ActionActivity).save({
+      userId: member.id,
+      actionId: onboarding.id,
+      type: ActionActivityType.USER_COMPLETED,
+    });
+
+    const { members } = (await admin("/actions/welcome-queue")).body;
+
+    expect(members).toContainEqual(
+      expect.objectContaining({
+        user: expect.objectContaining({ id: member.id }),
+      }),
+    );
+  });
+
+  it("holds back a member whose dependent onboarding task is not decided yet", async () => {
+    const member = await createUser({ signedAt: addDays(now, -5) });
+    const first = await createAction({
+      start: addDays(now, -10),
+      deadline: null,
+      onboarding: true,
+    });
+    await createAction({
+      start: addDays(now, -10),
+      deadline: null,
+      onboarding: true,
+      prerequisiteActionIds: [first.id],
+    });
+    await service.resolveAll(now);
+    await ctx.dataSource.getRepository(ActionActivity).save({
+      userId: member.id,
+      actionId: first.id,
+      type: ActionActivityType.USER_COMPLETED,
+    });
+
+    const { members } = (await admin("/actions/welcome-queue")).body;
+
+    expect(members).not.toContainEqual(
+      expect.objectContaining({
+        user: expect.objectContaining({ id: member.id }),
+      }),
+    );
   });
 });
