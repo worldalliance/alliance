@@ -1,7 +1,6 @@
 import {
   authMe,
   contractGetById,
-  contractGetCurrent,
   contractSignContract,
   contractSuspendContract,
 } from "@alliance/shared/client";
@@ -14,6 +13,7 @@ import {
 } from "@alliance/shared/lib/contract";
 import { suspendContractConfirmation } from "@alliance/shared/lib/copy";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { useCurrentContract } from "@alliance/shared/lib/useCurrentContract";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react-native";
 import {
@@ -147,10 +147,7 @@ export default function MembershipScreen() {
     WEEKLY_COMMITMENT_CONFIRMATION,
   );
 
-  const { data: latestContract } = useQuery({
-    queryKey: ["contractGetCurrent"],
-    queryFn: () => contractGetCurrent().then((res) => res.data ?? null),
-  });
+  const { data: latestContract } = useCurrentContract();
 
   const signedContractId = lastContractEvent?.contractId ?? null;
 

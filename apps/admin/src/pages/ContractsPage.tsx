@@ -1,6 +1,7 @@
 import { forCount } from "@alliance/common/plural";
-import { ContractAdminDto, contractGetCurrent } from "@alliance/shared/client";
+import { ContractAdminDto } from "@alliance/shared/client";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
+import { useCurrentContract } from "@alliance/shared/lib/useCurrentContract";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useQuery } from "@tanstack/react-query";
 import React, { useMemo } from "react";
@@ -21,10 +22,7 @@ const ContractsPage: React.FC = () => {
     : null;
   const navigate = useNavigate();
 
-  const { data: currentContract } = useQuery({
-    queryKey: ["contractGetCurrent"],
-    queryFn: () => contractGetCurrent().then((res) => res.data ?? null),
-  });
+  const { data: currentContract } = useCurrentContract();
   const activeContractId = currentContract?.id ?? null;
 
   const { activeContract, scheduledContracts, inactiveContracts } =

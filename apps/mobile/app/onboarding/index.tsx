@@ -5,16 +5,15 @@ import { run } from "@alliance/common/run";
 import {
   authForgotPassword,
   authRegister,
-  contractGetCurrent,
   contractSignContract,
 } from "@alliance/shared/client";
 import { captureEvent, captureException } from "@alliance/shared/lib/analytics";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
 import { signupTimeZone } from "@alliance/shared/lib/timeZone";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
+import { useCurrentContract } from "@alliance/shared/lib/useCurrentContract";
 import { useInvite } from "@alliance/shared/lib/useInvite";
 import { useSignupFaces } from "@alliance/shared/lib/useSignupFaces";
-import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
@@ -124,10 +123,8 @@ const OnboardingScreen = () => {
 
   // No placeholder contract: the app-wide five-minute `staleTime` would treat
   // one as fresh and never fetch the real agreement.
-  const { data: latestContract, isPending: contractPending } = useQuery({
-    queryKey: ["contractGetCurrent"],
-    queryFn: () => contractGetCurrent().then((res) => res.data ?? null),
-  });
+  const { data: latestContract, isPending: contractPending } =
+    useCurrentContract();
 
   const { used: inviteUsed, inviter } = useInvite(referralCode ?? null);
 
