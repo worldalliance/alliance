@@ -1,4 +1,3 @@
-/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { errorMessage } from "@alliance/common/errorMessage";
 import { forCount, withCount } from "@alliance/common/plural";
 import type { ActionDto } from "@alliance/shared/client";
@@ -21,7 +20,9 @@ import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
+import { formatPct } from "../lib/formatPct";
 import { makeTempId } from "../lib/tempId";
+import ActionFormVariantCoverage from "./ActionFormVariantCoverage";
 
 export interface ActionFormVariantsTabProps {
   action: ActionDto;
@@ -36,10 +37,6 @@ interface StagedVariant {
   tempId: string;
   name: string;
   splitValue: number;
-}
-
-function formatPct(value: number): string {
-  return `${+value.toFixed(2)}%`;
 }
 
 export default function ActionFormVariantsTab({
@@ -90,14 +87,6 @@ export default function ActionFormVariantsTab({
     void refresh();
   }, [refresh]);
 
-  const totalAssigned = useMemo(
-    () => stats.reduce((sum, s) => sum + s.assigned, 0),
-    [stats],
-  );
-  const totalSubmitted = useMemo(
-    () => stats.reduce((sum, s) => sum + s.submitted, 0),
-    [stats],
-  );
   const percentageSum = useMemo(
     () =>
       [
@@ -341,85 +330,11 @@ export default function ActionFormVariantsTab({
         </Card>
       )}
 
-      <Card style={CardStyle.White} className="p-4">
-        <div className="text-sm text-zinc-600 mb-3">
-          Coverage:{" "}
-          <span className="font-medium text-zinc-900">
-            {totalAssigned} users assigned
-          </span>{" "}
-          across {withCount(stats.length, "group")}.{" "}
-          {percentageSum > 100 ? (
-            <span className="text-red-600">
-              Percentage total {formatPct(percentageSum)} exceeds 100% — fix
-              splits before publishing.
-            </span>
-          ) : variants.length === 0 && !hasUnpublished ? (
-            <span className="text-zinc-500">
-              No variants — all users see the default form.
-            </span>
-          ) : (
-            <span>
-              Users are assigned the first time they load the action. Default
-              form covers the remaining {formatPct(100 - percentageSum)}.
-            </span>
-          )}
-        </div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-zinc-500 border-b">
-              <th className="py-2 pr-3">Group</th>
-              <th className="py-2 pr-3">Form</th>
-              <th className="py-2 pr-3">Split</th>
-              <th className="py-2 pr-3 text-right">Assigned</th>
-              <th className="py-2 pr-3 text-right">Submitted</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stats.map((s) => (
-              <tr key={s.variantId ?? "default"} className="border-b">
-                <td className="py-2 pr-3 font-medium">
-                  {s.variantId === null ? (
-                    <span className="text-zinc-500">Default ·</span>
-                  ) : null}{" "}
-                  {s.name}
-                </td>
-                <td className="py-2 pr-3">
-                  {s.formId != null ? (
-                    <button
-                      className="text-blue-600 hover:underline"
-                      onClick={() => navigate(`/forms/${s.formId}`)}
-                    >
-                      Form #{s.formId}
-                    </button>
-                  ) : (
-                    <span className="text-zinc-400">—</span>
-                  )}
-                </td>
-                <td className="py-2 pr-3 text-zinc-700">
-                  {s.splitValue != null ? formatPct(s.splitValue) : "remainder"}
-                </td>
-                <td className="py-2 pr-3 text-right tabular-nums">
-                  {s.assigned}
-                </td>
-                <td className="py-2 pr-3 text-right tabular-nums">
-                  {s.submitted}
-                </td>
-              </tr>
-            ))}
-            <tr>
-              <td colSpan={3} className="py-2 pr-3 text-right text-zinc-500">
-                Total
-              </td>
-              <td className="py-2 pr-3 text-right tabular-nums font-medium">
-                {totalAssigned}
-              </td>
-              <td className="py-2 pr-3 text-right tabular-nums font-medium">
-                {totalSubmitted}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </Card>
+      <ActionFormVariantCoverage
+        stats={stats}
+        percentageSum={percentageSum}
+        hasVariants={variants.length > 0 || hasUnpublished}
+      />
 
       {(staged.length > 0 || variants.length > 0) && (
         <Card style={CardStyle.White} className="p-4">
