@@ -1,6 +1,8 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { getRepositoryToken } from "@nestjs/typeorm";
 import type { Repository } from "typeorm";
 import { ActionActivity } from "../src/actions/entities/action-activity.entity";
+import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
 import {
   Action,
   parseAction,
@@ -42,7 +44,10 @@ describe("Live cohort with prerequisites (e2e)", () => {
     ({ createUser, createAction, cleanUp } = cohortDecisionFixtures(ctx));
   }, 50000);
 
-  afterEach(() => cleanUp());
+  afterEach(async () => {
+    jest.restoreAllMocks();
+    await cleanUp();
+  });
 
   afterAll(async () => {
     await ctx.app.close();
@@ -102,6 +107,50 @@ describe("Live cohort with prerequisites (e2e)", () => {
       population: true,
       single: true,
     });
+  });
+
+  it("reads only the member's own prerequisite rows for one member", async () => {
+    const member = await createUser({ signedAt });
+    const upstream = await createAction({
+      start: addDays(now, -3),
+      deadline: addDays(now, 1),
+    });
+    const action = await createAction({
+      start: addDays(now, -1),
+      deadline: addDays(now, 3),
+      prerequisiteActionIds: [upstream.id],
+    });
+    const activityFind = jest.spyOn(
+      ctx.app.get<Repository<ActionActivity>>(
+        getRepositoryToken(ActionActivity),
+      ),
+      "find",
+    );
+    const decisionFind = jest.spyOn(
+      ctx.app.get<Repository<ActionCohortDecision>>(
+        getRepositoryToken(ActionCohortDecision),
+      ),
+      "find",
+    );
+
+    await singleMemberCohortService.computeIsInActionCohort({
+      user: await userService.findOneOrFail(member.id, {
+        tags: true,
+        contractEvents: true,
+        awayRanges: true,
+      }),
+      action: await load(action.id),
+    });
+
+    expect(
+      activityFind.mock.calls.flatMap(([options]) => options?.where),
+    ).toEqual([
+      expect.objectContaining({ actionId: upstream.id, userId: member.id }),
+      expect.objectContaining({ actionId: upstream.id, userId: member.id }),
+    ]);
+    expect(decisionFind.mock.calls.map(([options]) => options?.where)).toEqual([
+      expect.objectContaining({ actionId: upstream.id, userId: member.id }),
+    ]);
   });
 
   it("leaves members of actions without prerequisites unchanged", async () => {
