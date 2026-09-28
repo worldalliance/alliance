@@ -1,4 +1,3 @@
-/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import {
   flattenPageItems,
@@ -11,6 +10,7 @@ import {
 import { cn } from "@alliance/shared/styles/util";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ReferralUrlNotice } from "./ReferralUrlNotice";
 import TextareaWithHighlights from "./TextareaWithHighlights";
 
 interface ShareableTextBuilderProps {
@@ -18,8 +18,6 @@ interface ShareableTextBuilderProps {
   onSchemaChange: (schema: FormSchema) => void;
 }
 
-const REFERRAL_URL_PREVIEW =
-  "https://alliance.example/actions/123?sid=member-code";
 const SHAREABLE_TOKEN_PATTERN = /#\{[^}]*\}/g;
 const DEFAULT_TEMPLATE_ALLOWED_TOKENS = new Set<string>([
   FIRST_NAME_TOKEN,
@@ -295,26 +293,7 @@ export function ShareableTextBuilder({
               }}
             />
 
-            <div className="mt-3 rounded-lg border border-dashed border-blue-200 bg-blue-50/60 p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-blue-950">
-                    Member Referral URL
-                  </p>
-                  <p className="mt-1 text-xs text-blue-800">
-                    This is always appended automatically when the action is
-                    shared. It is not editable here and cannot be removed from
-                    the real share text.
-                  </p>
-                </div>
-                <span className="rounded-full bg-white px-2 py-1 text-xs font-medium text-blue-900">
-                  Always Included
-                </span>
-              </div>
-              <div className="mt-3 rounded-md border border-blue-200 bg-white px-3 py-2 font-mono text-xs text-blue-900">
-                {REFERRAL_URL_PREVIEW}
-              </div>
-            </div>
+            <ReferralUrlNotice />
 
             {activeToken && suggestions.length > 0 && (
               <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-lg border border-gray-200 bg-white shadow-xl">
@@ -483,26 +462,7 @@ export function ShareableTextBuilder({
               </p>
             </div>
 
-            <div className="mt-3 rounded-lg border border-dashed border-blue-200 bg-blue-50/60 p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-blue-950">
-                    Member Referral URL
-                  </p>
-                  <p className="mt-1 text-xs text-blue-800">
-                    This is always appended automatically when the action is
-                    shared. It is not editable here and cannot be removed from
-                    the real share text.
-                  </p>
-                </div>
-                <span className="rounded-full bg-white px-2 py-1 text-xs font-medium text-blue-900">
-                  Always Included
-                </span>
-              </div>
-              <div className="mt-3 rounded-md border border-blue-200 bg-white px-3 py-2 font-mono text-xs text-blue-900">
-                {REFERRAL_URL_PREVIEW}
-              </div>
-            </div>
+            <ReferralUrlNotice />
           </div>
 
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
