@@ -20,6 +20,7 @@ import {
   useState,
 } from "react";
 import TextareaAutosize from "react-textarea-autosize";
+import { attachImageFiles } from "../lib/imageAttachments";
 
 interface MessageInputProps {
   message: string;
@@ -64,36 +65,14 @@ const MessageInput = ({
     }
   }, [isSending]);
 
-  const readImagesFromFiles = useCallback(async (files: File[]) => {
-    const readers: Promise<string>[] = [];
-    for (const file of files) {
-      if (!file.type.startsWith("image/")) continue;
-      readers.push(
-        new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        }),
-      );
-    }
-    return Promise.all(readers);
-  }, []);
-
   const handleFilesSelected = useCallback(
     async (files: FileList | File[] | null) => {
       if (!files || files.length === 0) return;
-      try {
-        const base64s = await readImagesFromFiles(Array.from(files));
-        if (base64s.length > 0) {
-          setAttachments((prev) => [...prev, ...base64s]);
-          inputRef.current?.focus();
-        }
-      } catch (err) {
-        console.error("Failed reading image file(s)", err);
+      if (await attachImageFiles(Array.from(files), setAttachments)) {
+        inputRef.current?.focus();
       }
     },
-    [readImagesFromFiles, setAttachments, inputRef],
+    [setAttachments, inputRef],
   );
 
   const handlePaste = useCallback(

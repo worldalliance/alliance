@@ -14,6 +14,7 @@ import { milliseconds } from "date-fns";
 import { ChevronLeft, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
+import { attachImageFiles } from "../lib/imageAttachments";
 import ConversationInfoPanel from "./ConversationInfoPanel";
 import LoadFailed from "./LoadFailed";
 import Message from "./Message";
@@ -113,35 +114,12 @@ const ConversationDetailPanel = ({
     }
   }, [focusedMessageId]);
 
-  const readImagesFromFiles = useCallback(async (files: File[]) => {
-    const readers: Promise<string>[] = [];
-    for (const file of files) {
-      if (!file.type.startsWith("image/")) continue;
-      readers.push(
-        new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        }),
-      );
-    }
-    return Promise.all(readers);
-  }, []);
-
   const handleFilesSelected = useCallback(
     async (files: FileList | File[] | null) => {
       if (!files || files.length === 0) return;
-      try {
-        const base64s = await readImagesFromFiles(Array.from(files));
-        if (base64s.length > 0) {
-          setAttachments((prev) => [...prev, ...base64s]);
-        }
-      } catch (err) {
-        console.error("Failed reading image file(s)", err);
-      }
+      await attachImageFiles(Array.from(files), setAttachments);
     },
-    [readImagesFromFiles],
+    [],
   );
 
   function isDraggingImage(e: React.DragEvent) {
