@@ -134,3 +134,32 @@ it("refetches the unread count it had not cached when marking all read fails", a
   expect(queryClient.getQueryState(LIST_KEY)?.isInvalidated).toBe(false);
   expect(queryClient.getQueryState(UNREAD_COUNT_KEY)?.isInvalidated).toBe(true);
 });
+
+it("marks the cached notifications for the read content, and only those", () => {
+  const queryClient = new QueryClient();
+  queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
+    notification({ id: 1, contentId: 10 }),
+    notification({ id: 2, contentId: 11 }),
+    notification({ id: 3, contentId: 10, contentType: "action_update" }),
+  ]);
+
+  notificationsCache(queryClient).markCachedReadByContent("forum_reply", [10]);
+
+  const cached = queryClient.getQueryData<NotificationDto[]>(LIST_KEY);
+  expect(cached?.map((n) => n.readAt !== null)).toEqual([true, false, false]);
+});
+
+it("refetches the unread count after marking content read", () => {
+  const queryClient = new QueryClient();
+  queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 3);
+
+  notificationsCache(queryClient).markCachedReadByContent("forum_reply", [10]);
+
+  expect(queryClient.getQueryState(UNREAD_COUNT_KEY)?.isInvalidated).toBe(true);
+});
+
+it("leaves an unloaded list unloaded when marking content read", () => {
+  const queryClient = new QueryClient();
+  notificationsCache(queryClient).markCachedReadByContent("forum_reply", [10]);
+  expect(queryClient.getQueryData(LIST_KEY)).toBeUndefined();
+});

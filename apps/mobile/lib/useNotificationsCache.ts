@@ -4,7 +4,9 @@ import {
   notifsFindAll,
   notifsGetUnreadCount,
   notifsSetReadAll,
+  UnreadContentType,
 } from "@alliance/shared/client";
+import { isClearedByContentRead } from "@alliance/shared/lib/notificationIdentity";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
   QueryClient,
@@ -42,6 +44,25 @@ export function notificationsCache(queryClient: QueryClient) {
     }),
 
     refresh: () => queryClient.invalidateQueries({ queryKey: LIST_KEY }),
+
+    markCachedReadByContent: (
+      contentType: UnreadContentType,
+      contentIds: number[],
+    ) => {
+      const ids = new Set(contentIds);
+      const readAt = new Date().toISOString();
+      queryClient.setQueryData<NotificationDto[]>(LIST_KEY, (oldData) =>
+        oldData?.map((notification) =>
+          isClearedByContentRead({ notification, contentType, contentIds: ids })
+            ? { ...notification, readAt }
+            : notification,
+        ),
+      );
+      void queryClient.invalidateQueries({
+        queryKey: UNREAD_COUNT_KEY,
+        exact: true,
+      });
+    },
 
     markAllRead: async () => {
       await queryClient.cancelQueries({ queryKey: LIST_KEY });
