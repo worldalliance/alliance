@@ -2173,6 +2173,40 @@ describe("Users (e2e)", () => {
     expect(members.body.length).toBeGreaterThan(0);
   });
 
+  it("excludes staff from /user/members-public", async () => {
+    const staffUser = await userRepo.save(
+      userRepo.create({
+        name: "Staff Member",
+        email: `staff.member.${Date.now()}@example.com`,
+        password: "Password123!",
+        staff: true,
+        shareInfoPublicly: true,
+        profilePicture: "https://example.com/staff.png",
+      }),
+    );
+    await giveActiveContract(ctx, staffUser.id);
+
+    const nonStaffUser = await userRepo.save(
+      userRepo.create({
+        name: "Public Member",
+        email: `public.member.${Date.now()}@example.com`,
+        password: "Password123!",
+        staff: false,
+        shareInfoPublicly: true,
+        profilePicture: "https://example.com/member.png",
+      }),
+    );
+    await giveActiveContract(ctx, nonStaffUser.id);
+
+    const res = await request(ctx.app.getHttpServer())
+      .get("/user/members-public")
+      .expect(200);
+
+    const ids = res.body.map((u: { id: number }) => u.id);
+    expect(ids).not.toContain(staffUser.id);
+    expect(ids).toContain(nonStaffUser.id);
+  });
+
   it("allows admins to list all users", async () => {
     const list = await request(ctx.app.getHttpServer())
       .get("/user/list")
