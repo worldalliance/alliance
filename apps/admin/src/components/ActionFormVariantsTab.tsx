@@ -21,6 +21,7 @@ import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
+import { formatPct } from "../lib/formatPct";
 import { makeTempId } from "../lib/tempId";
 
 export interface ActionFormVariantsTabProps {
@@ -36,10 +37,6 @@ interface StagedVariant {
   tempId: string;
   name: string;
   splitValue: number;
-}
-
-function formatPct(value: number): string {
-  return `${+value.toFixed(2)}%`;
 }
 
 export default function ActionFormVariantsTab({
