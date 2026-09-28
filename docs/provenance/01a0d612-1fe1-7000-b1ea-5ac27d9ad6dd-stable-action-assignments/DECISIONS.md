@@ -249,7 +249,9 @@ Rewrite #81, #83, #87, #128, and #142 as prerequisites and drop the leaf, then d
 - #128: prerequisite #126; completed #126.
 - #142: prerequisite #141; did not answer "Yes" on form 126, or missed #141.
 
-Ships alone: cleanup after stage 8; decisions for these closed actions are already saved and must not change.
+A migration rewrites each action only while its stored expression and empty prerequisites match exactly, and fails if an `InProgressAction` leaf remains on any action or follow-up form, since the schema no longer parses one. Each upstream action has left member action, so the dropped leaf was false for everyone. Against staging data, each action's live cohort, its readers' cohort, and every member's single-member result are identical before and after. With the leaf gone, so do the builder's read-only rendering and the server's added-leaf rejection; the schema rejects the type.
+
+Ships alone: decisions for these closed actions are already saved and the migration leaves them untouched. It needs nothing from stage 8: these actions closed long before the divergence check's seven-day window.
 
 ### 10. Computed All Members and Staff options
 
