@@ -1,7 +1,8 @@
 import type { ContractField } from "@alliance/common/forms/form-schema";
-import { contractAllAdmin, contractGetCurrent } from "@alliance/shared/client";
+import { contractGetCurrent } from "@alliance/shared/client";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
+import { contractsAdminQuery } from "../../lib/contractsAdminQuery";
 import { RequiredToggle } from "./CommonControls";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
@@ -15,13 +16,7 @@ export function EditableContractField({
   isDragging,
   previousFields,
 }: BaseFieldProps<ContractField>) {
-  const { data: contracts = [] } = useQuery({
-    queryKey: ["contractAllAdmin"],
-    queryFn: async () => {
-      const res = await contractAllAdmin();
-      return res.data ?? [];
-    },
-  });
+  const { data: contracts = [] } = useQuery(contractsAdminQuery);
 
   const { data: currentContract } = useQuery({
     queryKey: ["contractGetCurrent"],
