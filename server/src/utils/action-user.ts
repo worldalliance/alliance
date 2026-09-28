@@ -364,9 +364,8 @@ export function computeMemberActionAwayStatus(params: {
 
 /**
  * Optional repositories/services for evaluating advanced cohort leaf types.
- * When provided, CompletedAction, InProgressAction, FormFieldValue, and
- * GroupLead expressions will be evaluated properly. Without them, those
- * leaf types return false.
+ * When provided, CompletedAction, FormFieldValue, and GroupLead expressions
+ * will be evaluated properly. Without them, those leaf types return false.
  */
 export interface CohortEvaluationDeps {
   actionActivityRepository?: Repository<ActionActivity>;

@@ -10,7 +10,6 @@ import { UsMembership } from "src/geo/us-membership";
 export type CohortEvaluationContext = {
   getUserIdsForTag(tagId: string): Promise<Set<number>>;
   getUserIdsCompletedAction(actionId: number): Promise<Set<number>>;
-  getUserIdsInProgressAction(actionId: number): Promise<Set<number>>;
   getUserIdsMissedActionDeadline(actionId: number): Promise<Set<number>>;
   getUserIdsForFormField(params: {
     formId: number;
@@ -35,13 +34,13 @@ export type CohortEvaluationContext = {
  * When `ctx.targetUserId` is set, the evaluator only cares about that one
  * user's membership, so every leaf set is `{targetUserId}` or `{}`. This lets
  * AND/OR short-circuit (stop once the target drops out / matches) instead of
- * fanning out every branch's DB work and `InProgressAction` recursion. Set by
+ * fanning out every branch's DB work and `MissedActionDeadline` recursion. Set by
  * {@link singleUserCohortContext}; population contexts omit it and need full
  * sets, so they evaluate children in parallel.
  *
  * @param expr The expression to evaluate
  * @param ctx Data-fetching context
- * @param visitedActionIds Cycle detection guard for InProgressAction
+ * @param visitedActionIds Cycle detection guard for MissedActionDeadline
  */
 export async function evaluateCohortExpression(
   expr: CohortExpression,
@@ -55,15 +54,9 @@ export async function evaluateCohortExpression(
       return new Set(expr.userIds);
     case "CompletedAction":
       return ctx.getUserIdsCompletedAction(expr.actionId);
-    case "InProgressAction": {
-      if (visitedActionIds.has(expr.actionId)) {
-        return new Set();
-      }
-      return ctx.getUserIdsInProgressAction(expr.actionId);
-    }
     case "MissedActionDeadline": {
       // Resolving the referenced action's roster recurses into its cohort
-      // expression, so it needs the same cycle guard as InProgressAction.
+      // expression.
       if (visitedActionIds.has(expr.actionId)) {
         return new Set();
       }
@@ -153,7 +146,6 @@ export type SingleUserCohortPredicates = {
   userId: number;
   hasTag(tagId: string): boolean;
   completedAction(actionId: number): Promise<boolean>;
-  inProgressAction(actionId: number): Promise<boolean>;
   missedActionDeadline(actionId: number): Promise<boolean>;
   matchesFormField(params: {
     formId: number;
@@ -186,8 +178,6 @@ export function singleUserCohortContext(
     getUserIdsForTag: async (tagId) => just(p.hasTag(tagId)),
     getUserIdsCompletedAction: (actionId) =>
       justAsync(p.completedAction(actionId)),
-    getUserIdsInProgressAction: (actionId) =>
-      justAsync(p.inProgressAction(actionId)),
     getUserIdsMissedActionDeadline: (actionId) =>
       justAsync(p.missedActionDeadline(actionId)),
     getUserIdsForFormField: (params) => justAsync(p.matchesFormField(params)),

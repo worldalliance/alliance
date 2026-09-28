@@ -29,10 +29,7 @@ import {
 import { yieldToEventLoop } from "src/utils/event-loop";
 import { In, type Repository } from "typeorm";
 import { ActionActivity } from "../actions/entities/action-activity.entity";
-import {
-  ActionEvent,
-  ActionStatus,
-} from "../actions/entities/action-event.entity";
+import { ActionEvent } from "../actions/entities/action-event.entity";
 import {
   Action,
   parseAction,
@@ -75,9 +72,8 @@ export class ActionEventRecipientService {
    * one request/batch) so the active-user load and per-leaf queries are
    * shared instead of re-run per expression. `resolvingActionIds` is the
    * chain of action ids currently being resolved above this call through
-   * action-referencing leaves (InProgressAction, MissedActionDeadline); a
-   * leaf that re-enters an id already on the chain resolves to the empty
-   * set, so cyclic expressions terminate.
+   * `MissedActionDeadline` leaves; a leaf that re-enters an id already on the
+   * chain resolves to the empty set, so cyclic expressions terminate.
    */
   async resolveCohortMemberIds(
     expression: CohortExpression | null | undefined,
@@ -216,29 +212,10 @@ export class ActionEventRecipientService {
         }
         return pending;
       },
-      getUserIdsInProgressAction: (actionId: number) => {
+      getUserIdsMissedActionDeadline: (actionId: number) => {
         if (!actionId) return Promise.resolve(new Set());
         // Cycle cut: this action's roster is already being resolved higher
         // up the chain, so its membership contributes nothing new.
-        if (resolvingActionIds.has(actionId)) {
-          return Promise.resolve(new Set());
-        }
-        const key = `${chainKey}|${actionId}`;
-        let pending = session.inProgressActionUserIds.get(key);
-        if (!pending) {
-          pending = this.loadInProgressActionUserIds(
-            actionId,
-            session,
-            new Set([...resolvingActionIds, actionId]),
-          );
-          session.inProgressActionUserIds.set(key, pending);
-        }
-        return pending;
-      },
-      getUserIdsMissedActionDeadline: (actionId: number) => {
-        if (!actionId) return Promise.resolve(new Set());
-        // Same cycle cut as InProgressAction: resolving this action's roster
-        // recurses into its cohort expression.
         if (resolvingActionIds.has(actionId)) {
           return Promise.resolve(new Set());
         }
@@ -338,21 +315,6 @@ export class ActionEventRecipientService {
     return action && parseAction(action);
   }
 
-  private async loadInProgressActionUserIds(
-    actionId: number,
-    session: CohortResolutionSession,
-    resolvingActionIds: ReadonlySet<number>,
-  ): Promise<Set<number>> {
-    const action = await this.loadRosterLeafAction(actionId);
-    if (!action || action.status !== ActionStatus.MemberAction)
-      return new Set();
-    return this.loadUncompletedRosterUserIds(
-      action,
-      session,
-      resolvingActionIds,
-    );
-  }
-
   private async loadMissedActionDeadlineUserIds(
     actionId: number,
     session: CohortResolutionSession,
@@ -376,48 +338,6 @@ export class ActionEventRecipientService {
             hasTerminalActivity: terminalUserIds.has(user.id),
             now,
           }),
-        )
-        .map((user) => user.id),
-    );
-  }
-
-  /**
-   * The action's member-action roster minus users with a terminal activity
-   * (completed or withdrawn).
-   */
-  private async loadUncompletedRosterUserIds(
-    action: ParsedAction,
-    session: CohortResolutionSession,
-    resolvingActionIds: ReadonlySet<number>,
-  ): Promise<Set<number>> {
-    const event = action.events.find(
-      (e) => e.newStatus === ActionStatus.MemberAction,
-    );
-    if (!event) return new Set();
-    const [users, cohortMemberIds, terminalIds] = await Promise.all([
-      this.getActiveUsers(session),
-      this.resolveDecidedCohort({ action, session, resolvingActionIds }),
-      this.prerequisiteProgressService.loadTerminalUserIds(action.id),
-    ]);
-    const deadlineDate = action.memberActionPhase.deadlineEvent?.date ?? null;
-    return new Set(
-      users
-        .filter(
-          (user) =>
-            !terminalIds.has(user.id) &&
-            computeIsAssignedAndPresent({
-              user,
-              eventDate: event.date,
-              deadlineDate,
-              cohortMemberIds,
-              // Dismissal is a view-only "mark as seen" overlay (see
-              // ActionActivityType.USER_DISMISSED) — it hides the card and
-              // mutes reminders but doesn't end participation, so it must not
-              // drop the user out of a cohort leaf's member set (matching the
-              // single-user predicates, which never consider dismissal).
-              userDismissed: false,
-              onboarding: action.onboarding,
-            }),
         )
         .map((user) => user.id),
     );

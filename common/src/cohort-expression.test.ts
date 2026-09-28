@@ -129,7 +129,7 @@ describe("collectCohortDependencies", () => {
         {
           type: "OR",
           children: [
-            { type: "InProgressAction", actionId: 2 },
+            { type: "MissedActionDeadline", actionId: 2 },
             { type: "CompletedAction", actionId: 1 },
           ],
         },

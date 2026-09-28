@@ -167,7 +167,6 @@ describe("Live cohort with prerequisites (e2e)", () => {
   });
 
   it.each([
-    { type: "InProgressAction" as const, deadline: addDays(now, 3) },
     { type: "MissedActionDeadline" as const, deadline: addDays(now, -1) },
   ])(
     "keeps a member waiting on $type's prerequisite out of its leaf's roster",

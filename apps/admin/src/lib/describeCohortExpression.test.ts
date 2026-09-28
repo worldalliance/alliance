@@ -45,12 +45,12 @@ describe("describeCohortExpression", () => {
           type: "OR",
           children: [
             { type: "Tag", tagId: "missing" },
-            { type: "InProgressAction", actionId: 99 },
+            { type: "MissedActionDeadline", actionId: 99 },
           ],
         },
         names,
       ),
-    ).toBe("Tag: missing or In-Progress Action: #99");
+    ).toBe("Tag: missing or Missed Action Deadline: #99");
   });
 
   it("parenthesizes nested operators", () => {

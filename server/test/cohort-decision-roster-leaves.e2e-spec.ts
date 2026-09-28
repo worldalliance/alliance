@@ -41,10 +41,6 @@ describe("Cohort leaves reading another action's saved decisions (e2e)", () => {
 
   it.each([
     {
-      type: "InProgressAction" as const,
-      window: { start: addDays(now, -1), deadline: addDays(now, 3) },
-    },
-    {
       type: "MissedActionDeadline" as const,
       window: { start: addDays(now, -10), deadline: addDays(now, -3) },
     },
@@ -104,11 +100,14 @@ describe("Cohort leaves reading another action's saved decisions (e2e)", () => {
 
   it("admits a member the upstream action has not decided yet", async () => {
     const member = await createUser({ signedAt });
-    const window = { start: addDays(now, -1), deadline: addDays(now, 3) };
-    const upstream = await createAction(window);
+    const upstream = await createAction({
+      start: addDays(now, -10),
+      deadline: addDays(now, -3),
+    });
     const dependent = await createAction({
-      ...window,
-      cohortExpression: { type: "InProgressAction", actionId: upstream.id },
+      start: addDays(now, -1),
+      deadline: addDays(now, 3),
+      cohortExpression: { type: "MissedActionDeadline", actionId: upstream.id },
     });
 
     await ctx.app.get(CohortDecisionService).decideOpenAction(
@@ -132,7 +131,10 @@ describe("Cohort leaves reading another action's saved decisions (e2e)", () => {
           contractEvents: true,
           awayRanges: true,
         }),
-        cohortExpression: { type: "InProgressAction", actionId: upstream.id },
+        cohortExpression: {
+          type: "MissedActionDeadline",
+          actionId: upstream.id,
+        },
       }),
     ).toBe(true);
   });
