@@ -10,6 +10,11 @@ import {
 import { cn } from "@alliance/shared/styles/util";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  findDroppedInsertable,
+  InsertableTokenButton,
+  type ShareableInsertable,
+} from "./InsertableTokenButton";
 import { ReferralUrlNotice } from "./ReferralUrlNotice";
 import TextareaWithHighlights from "./TextareaWithHighlights";
 
@@ -44,14 +49,6 @@ const SHAREABLE_NAME_TOKENS = [
     pageTitle: "Member details",
   },
 ] as const;
-
-type ShareableInsertable = {
-  id: string;
-  label: string;
-  token: string;
-  kind: string;
-  pageTitle: string;
-};
 
 const collectShareableFields = (schema: FormSchema): ShareableInsertable[] => {
   const fields: ShareableInsertable[] = [];
@@ -277,15 +274,11 @@ export function ShareableTextBuilder({
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
                 event.preventDefault();
-                const droppedToken = event.dataTransfer.getData(
-                  COMPLETED_SHAREABLE_INSERTION_DATA_KEY,
-                );
-                if (!droppedToken) {
-                  return;
-                }
-                const item = completedInsertables.find(
-                  (candidate) => candidate.token === droppedToken,
-                );
+                const item = findDroppedInsertable({
+                  event,
+                  dataKey: COMPLETED_SHAREABLE_INSERTION_DATA_KEY,
+                  insertables: completedInsertables,
+                });
                 if (!item) {
                   return;
                 }
@@ -343,28 +336,12 @@ export function ShareableTextBuilder({
                   Member Details
                 </p>
                 {SHAREABLE_NAME_TOKENS.map((item) => (
-                  <button
+                  <InsertableTokenButton
                     key={item.id}
-                    type="button"
-                    draggable
-                    onDragStart={(event) => {
-                      event.dataTransfer.effectAllowed = "copy";
-                      event.dataTransfer.setData(
-                        COMPLETED_SHAREABLE_INSERTION_DATA_KEY,
-                        item.token,
-                      );
-                      event.dataTransfer.setData("text/plain", item.token);
-                    }}
-                    onClick={() => insertCompletedToken(item, false)}
-                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
-                  >
-                    <div className="font-medium text-gray-900">
-                      {item.label}
-                    </div>
-                    <div className="mt-1 text-xs text-gray-500">
-                      {item.token} · {item.pageTitle}
-                    </div>
-                  </button>
+                    item={item}
+                    dataKey={COMPLETED_SHAREABLE_INSERTION_DATA_KEY}
+                    onInsert={() => insertCompletedToken(item, false)}
+                  />
                 ))}
               </div>
 
@@ -378,28 +355,12 @@ export function ShareableTextBuilder({
                   </p>
                 ) : (
                   fields.map((field) => (
-                    <button
+                    <InsertableTokenButton
                       key={field.id}
-                      type="button"
-                      draggable
-                      onDragStart={(event) => {
-                        event.dataTransfer.effectAllowed = "copy";
-                        event.dataTransfer.setData(
-                          COMPLETED_SHAREABLE_INSERTION_DATA_KEY,
-                          field.token,
-                        );
-                        event.dataTransfer.setData("text/plain", field.token);
-                      }}
-                      onClick={() => insertCompletedToken(field, false)}
-                      className="w-full rounded-md border border-gray-200 bg-white px-3 py-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
-                    >
-                      <div className="font-medium text-gray-900">
-                        {field.label}
-                      </div>
-                      <div className="mt-1 text-xs text-gray-500">
-                        {field.token} · {field.pageTitle}
-                      </div>
-                    </button>
+                      item={field}
+                      dataKey={COMPLETED_SHAREABLE_INSERTION_DATA_KEY}
+                      onInsert={() => insertCompletedToken(field, false)}
+                    />
                   ))
                 )}
               </div>
@@ -431,15 +392,11 @@ export function ShareableTextBuilder({
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
                 event.preventDefault();
-                const droppedToken = event.dataTransfer.getData(
-                  DEFAULT_SHAREABLE_INSERTION_DATA_KEY,
-                );
-                if (!droppedToken) {
-                  return;
-                }
-                const item = defaultInsertables.find(
-                  (candidate) => candidate.token === droppedToken,
-                );
+                const item = findDroppedInsertable({
+                  event,
+                  dataKey: DEFAULT_SHAREABLE_INSERTION_DATA_KEY,
+                  insertables: defaultInsertables,
+                });
                 if (!item) {
                   return;
                 }
@@ -478,26 +435,12 @@ export function ShareableTextBuilder({
 
             <div className="space-y-2">
               {defaultInsertables.map((item) => (
-                <button
+                <InsertableTokenButton
                   key={`default-${item.id}`}
-                  type="button"
-                  draggable
-                  onDragStart={(event) => {
-                    event.dataTransfer.effectAllowed = "copy";
-                    event.dataTransfer.setData(
-                      DEFAULT_SHAREABLE_INSERTION_DATA_KEY,
-                      item.token,
-                    );
-                    event.dataTransfer.setData("text/plain", item.token);
-                  }}
-                  onClick={() => insertDefaultToken(item)}
-                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
-                >
-                  <div className="font-medium text-gray-900">{item.label}</div>
-                  <div className="mt-1 text-xs text-gray-500">
-                    {item.token} · {item.pageTitle}
-                  </div>
-                </button>
+                  item={item}
+                  dataKey={DEFAULT_SHAREABLE_INSERTION_DATA_KEY}
+                  onInsert={() => insertDefaultToken(item)}
+                />
               ))}
             </div>
           </div>
