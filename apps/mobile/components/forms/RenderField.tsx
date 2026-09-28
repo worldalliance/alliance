@@ -18,6 +18,7 @@ import {
   type FileUploadSlot,
   type FileUploadSlots,
 } from "@alliance/shared/forms/fileUploadSlots";
+import { offersNoOptions } from "@alliance/shared/forms/formulaChoices";
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
 import {
   CARD_ID_KEY,
@@ -32,7 +33,10 @@ import {
   formatTimeForDisplay,
   parseTimeInput,
 } from "@alliance/shared/forms/timeUtils";
-import { cancelImageUpload } from "@alliance/shared/lib/copy";
+import {
+  cancelImageUpload,
+  noOptionsAvailable,
+} from "@alliance/shared/lib/copy";
 import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
 import { cn } from "@alliance/shared/styles/util";
 import type { FieldConditionContext } from "@alliance/shared/useFormRenderer";
@@ -188,6 +192,23 @@ export function RenderField({
     uploading,
     uploadError,
   } = resolveUploadSlot({ fileUpload, fileUploadSlot, fieldId: field.id });
+
+  if (onChange !== undefined && !disabled && offersNoOptions(field)) {
+    return (
+      <View>
+        <RenderLabel
+          field={field}
+          isOutputView={isOutputView}
+          hideLabel={hideLabel}
+          required={required}
+        />
+        <View className={cn(inputBase, "opacity-60")}>
+          <Text className="text-base text-zinc-400">{noOptionsAvailable}</Text>
+        </View>
+        {renderValidationMessage(errorMessage)}
+      </View>
+    );
+  }
 
   switch (field.kind) {
     case "text":

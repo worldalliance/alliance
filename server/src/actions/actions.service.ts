@@ -21,6 +21,12 @@ import {
 import { type FormSchema } from "@alliance/common/forms/form-schema";
 import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
 import {
+  schemaWithResolvedOptions,
+  schemaWithSavedChoices,
+  selectedFormulaChoices,
+  type ResolvedOptions,
+} from "@alliance/common/forms/formula-options";
+import {
   collectOutputFieldMap,
   isMalformedListAnswer,
   isOutputAnswerShown,
@@ -2301,7 +2307,6 @@ export class ActionsService {
       return undefined;
     }
 
-    const schema = formSchemaOf(activity.taskFormResponse.formSnapshot);
     const answers = activity.taskFormResponse.answers;
     const publicAnswers = activity.taskFormResponse.publicAnswers ?? {};
     const response = parseFormResponse(
@@ -2309,6 +2314,13 @@ export class ActionsService {
         ...activity.taskFormResponse,
         answers,
       }),
+    );
+    const savedChoices: ResolvedOptions = new Map(
+      Object.entries(response.formulaChoices),
+    );
+    const schema = schemaWithResolvedOptions(
+      formSchemaOf(activity.taskFormResponse.formSnapshot),
+      savedChoices,
     );
     const outputAnswers = this.outputAnswers(schema, response);
     const isAnswerShown = outputAnswers.some(isOutputAnswerShown);
@@ -2339,6 +2351,11 @@ export class ActionsService {
     if (!view?.blocks.length) {
       return undefined;
     }
+    const shownChoices = selectedFormulaChoices({
+      schema: output.schema,
+      answers: output.answers,
+      options: savedChoices,
+    });
     return Object.assign(response, {
       answers: output.answers,
       // The web and mobile cards, released app builds included, draw the
@@ -2351,7 +2368,11 @@ export class ActionsService {
         ),
       },
       visibilityValidatorResults: {},
-      formSnapshot: { ...response.formSnapshot, schema: output.schema },
+      formulaChoices: shownChoices,
+      formSnapshot: {
+        ...response.formSnapshot,
+        schema: schemaWithSavedChoices(output.schema, shownChoices),
+      },
     });
   }
 
@@ -2495,6 +2516,7 @@ export class ActionsService {
         "taskFormResponse.publicAnswers",
         "taskFormResponse.formSnapshotId",
         "taskFormResponse.visibilityValidatorResults",
+        "taskFormResponse.formulaChoices",
         "taskFormResponse.deviceType",
         "taskFormSnapshot.id",
         "taskFormSnapshot.schema",

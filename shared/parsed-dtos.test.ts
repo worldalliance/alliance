@@ -1,6 +1,6 @@
 import { R } from "@alliance/common/result";
 import {
-  parseFormResponseHistory,
+  parseFormulaChoices,
   parseVisibilityValidatorResults,
 } from "./parsed-dtos";
 
@@ -52,82 +52,17 @@ describe("parseVisibilityValidatorResults", () => {
   });
 });
 
-describe("parseFormResponseHistory", () => {
-  const schema = {
-    pages: [
-      {
-        id: "p1",
-        fields: [{ id: "home", type: "input", kind: "city", label: "Home" }],
-      },
-    ],
-    outputViews: [],
-  };
-
-  it("reads an answer to a question its version holds in a form that no longer parses", () => {
-    const radio = (values: string[]) => ({
-      pages: [
-        {
-          id: "p1",
-          fields: [
-            {
-              id: "color",
-              type: "input",
-              kind: "radio",
-              label: "Color",
-              options: values.map((value) => ({ label: value, value })),
-            },
-          ],
-        },
-      ],
-      outputViews: [],
-    });
-    const history = parseFormResponseHistory({
-      schema: radio(["red", "blue"]),
-      responses: [
-        {
-          id: 1,
-          schemaSnapshot: radio(["red", "red"]),
-          answers: { color: "red" },
-        },
-      ],
-    });
-    expect(R.unwrap(history).responses[0].fields.get("color")).toBeDefined();
+describe("parseFormulaChoices", () => {
+  it("reads saved choices as they are", () => {
+    const choices = { pick: [{ label: "Red", value: "red" }] };
+    expect(parseFormulaChoices(choices)).toEqual(choices);
   });
 
-  it("names the response it can't read", () => {
-    const history = parseFormResponseHistory({
-      schema,
-      responses: [
-        { id: 1, schemaSnapshot: schema, answers: {} },
-        { id: 2, schemaSnapshot: schema, answers: { home: null } },
-      ],
-    });
-    expect(R.isFailure(history) && history.error.message).toContain(
-      "response 2",
+  it("reads unreadable choices as none, and logs them", () => {
+    const { value, logged } = withSilencedErrors(() =>
+      parseFormulaChoices({ pick: "red" }),
     );
-  });
-
-  it("reads a city answer saved with keys since dropped", () => {
-    const history = parseFormResponseHistory({
-      schema,
-      responses: [
-        {
-          id: 1,
-          schemaSnapshot: schema,
-          answers: {
-            home: { id: 1, name: "Lima", latitude: -12.05, longitude: -77.04 },
-          },
-        },
-      ],
-    });
-    expect(R.unwrap(history).responses[0].answers).toEqual({
-      home: {
-        id: 1,
-        name: "Lima",
-        admin1: "",
-        countryCode: "",
-        countryName: "",
-      },
-    });
+    expect(value).toEqual({});
+    expect(logged).toBe(1);
   });
 });

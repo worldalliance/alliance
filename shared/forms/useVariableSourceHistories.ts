@@ -1,6 +1,10 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
+import { formulaHistoryFormIds } from "@alliance/common/forms/formula-options";
 import type { VariableSourceHistory } from "@alliance/common/forms/variable-evaluation";
-import { variableHistoryFormIds } from "@alliance/common/forms/variables";
+import {
+  EMPTY_HISTORY,
+  readSourceHistory,
+} from "@alliance/common/forms/variable-source-history";
 import { R, type Result } from "@alliance/common/result";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -8,11 +12,13 @@ import {
   tasksGetMyFormResponseHistory,
 } from "../client";
 import { thrownStatus } from "../lib/hey-api";
-import { parseFormResponseHistory } from "../parsed-dtos";
+import { useStableIds } from "../lib/useStableIds";
 
 export enum HistoryReader {
   /** A guest, or an admin preview with no member picked: no submissions. */
   Nobody = "nobody",
+  /** Whether anyone is signed in isn't known yet. */
+  Pending = "pending",
   /** The signed-in member, read from the session. */
   Self = "self",
   /** An admin previewing or reviewing a member's form. */
@@ -21,6 +27,7 @@ export enum HistoryReader {
 
 export type HistorySubject =
   | { reader: HistoryReader.Nobody }
+  | { reader: HistoryReader.Pending }
   | { reader: HistoryReader.Self }
   | { reader: HistoryReader.Member; userId: number };
 
@@ -31,6 +38,7 @@ export type HistorySubject =
 export function historySubject(params: {
   adminPreviewUserId: string | number | undefined;
   signedIn: boolean;
+  userLoading: boolean;
 }): HistorySubject {
   if (params.adminPreviewUserId !== undefined) {
     const userId = Number(params.adminPreviewUserId);
@@ -38,6 +46,7 @@ export function historySubject(params: {
       ? { reader: HistoryReader.Member, userId }
       : { reader: HistoryReader.Nobody };
   }
+  if (params.userLoading) return { reader: HistoryReader.Pending };
   return params.signedIn
     ? { reader: HistoryReader.Self }
     : { reader: HistoryReader.Nobody };
@@ -91,11 +100,6 @@ export function evaluatedSources(histories: SourceHistories): {
   }
 }
 
-const EMPTY_HISTORY: VariableSourceHistory = {
-  fields: new Map(),
-  responses: [],
-};
-
 class SourceFormDeleted extends Error {}
 
 // Both history endpoints answer 404 only for a form that doesn't exist.
@@ -106,7 +110,10 @@ const historyError = (error: unknown): Error =>
 
 async function fetchHistory(
   formId: number,
-  subject: Exclude<HistorySubject, { reader: HistoryReader.Nobody }>,
+  subject: Exclude<
+    HistorySubject,
+    { reader: HistoryReader.Nobody | HistoryReader.Pending }
+  >,
 ): Promise<Result<VariableSourceHistory, Error>> {
   const { reader } = subject;
   switch (reader) {
@@ -118,7 +125,7 @@ async function fetchHistory(
         }),
         historyError,
       );
-      return R.flatMap(response, ({ data }) => parseFormResponseHistory(data));
+      return R.flatMap(response, ({ data }) => readSourceHistory(data));
     }
     case HistoryReader.Member: {
       const response = await R.fromPromise(
@@ -128,7 +135,7 @@ async function fetchHistory(
         }),
         historyError,
       );
-      return R.flatMap(response, ({ data }) => parseFormResponseHistory(data));
+      return R.flatMap(response, ({ data }) => readSourceHistory(data));
     }
     default:
       throw new Error(`unknown history reader: ${reader satisfies never}`);
@@ -141,25 +148,25 @@ type Loaded = {
 };
 
 /**
- * The submitted answers every variable input reading another form needs,
- * fetched once per subject so an open form's values stay put. A source form
- * added after the others load fetches only itself, and retry refetches only
- * the forms that failed.
+ * The submitted answers every variable or options formula input reading
+ * another form needs, fetched once per subject and reload so an open form's
+ * values stay put until its caller reloads. A source form added after the
+ * others load fetches only itself, and retry refetches only the forms that
+ * failed.
  */
 export function useVariableSourceHistories(params: {
   schema: FormSchema;
   subject: HistorySubject;
+  /** Changing it refetches every history. */
+  reload?: number;
 }): SourceHistories {
-  const { schema, subject } = params;
-  const idsKey = variableHistoryFormIds(schema.variables).join(",");
-  const formIds = useMemo(
-    () => (idsKey === "" ? [] : idsKey.split(",").map(Number)),
-    [idsKey],
-  );
-  const key =
+  const { schema, subject, reload = 0 } = params;
+  const formIds = useStableIds(formulaHistoryFormIds(schema));
+  const reader =
     subject.reader === HistoryReader.Member
       ? `${subject.reader}:${subject.userId}`
       : subject.reader;
+  const key = `${reader}#${reload}`;
 
   const [loaded, setLoaded] = useState<Loaded>({ key, byForm: new Map() });
   const byForm = loaded.key === key ? loaded.byForm : undefined;
@@ -168,7 +175,13 @@ export function useVariableSourceHistories(params: {
   // Read through the key so a response for an earlier member can never land in
   // this one's state.
   useEffect(() => {
-    if (subject.reader === HistoryReader.Nobody || missingKey === "") return;
+    if (
+      subject.reader === HistoryReader.Nobody ||
+      subject.reader === HistoryReader.Pending ||
+      missingKey === ""
+    ) {
+      return;
+    }
     let cancelled = false;
     const missing = missingKey.split(",").map(Number);
     void Promise.all(
@@ -206,7 +219,13 @@ export function useVariableSourceHistories(params: {
   );
 
   return useMemo((): SourceHistories => {
-    if (subject.reader === HistoryReader.Nobody) {
+    if (subject.reader === HistoryReader.Pending && formIds.length > 0) {
+      return { status: SourceHistoriesStatus.Loading };
+    }
+    if (
+      subject.reader === HistoryReader.Nobody ||
+      subject.reader === HistoryReader.Pending
+    ) {
       return {
         status: SourceHistoriesStatus.Ready,
         sources: new Map(formIds.map((formId) => [formId, EMPTY_HISTORY])),

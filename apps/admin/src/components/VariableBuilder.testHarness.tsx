@@ -2,6 +2,8 @@ import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+import { useInputSources } from "../lib/useInputSources";
+import { FormulaSourcesProvider } from "./FormulaSourcesContext";
 import { VariableBuilder } from "./VariableBuilder";
 
 export const town: AnyField = {
@@ -27,15 +29,31 @@ export function Harness({
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
-        <VariableBuilder
-          formId={unsaved ? undefined : 1}
-          schema={current}
-          onSchemaChange={(next) => {
-            setCurrent(next);
-            onSave(next);
-          }}
-        />
+        <WithFormulaSources formId={unsaved ? undefined : 1} schema={current}>
+          <VariableBuilder
+            schema={current}
+            onSchemaChange={(next) => {
+              setCurrent(next);
+              onSave(next);
+            }}
+          />
+        </WithFormulaSources>
       </ToastProvider>
     </QueryClientProvider>
+  );
+}
+
+function WithFormulaSources({
+  formId,
+  schema,
+  children,
+}: {
+  formId: number | undefined;
+  schema: FormSchema;
+  children: React.ReactNode;
+}) {
+  const sources = useInputSources({ formId, schema });
+  return (
+    <FormulaSourcesProvider value={sources}>{children}</FormulaSourcesProvider>
   );
 }

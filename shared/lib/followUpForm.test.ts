@@ -1,5 +1,7 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
+import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
 import type { FollowUpFormDto, SubmitFormDto } from "../client";
+import { formulaSourcesChanged } from "../forms/formulaChoices";
 import {
   followUpDraftStorageKey,
   followUpFormIntro,
@@ -25,6 +27,7 @@ const data: SubmitFormDto = {
   phDistinctId: "ph-id",
   sessionReplayUrl: "https://replay.example.com/1",
   sid: "session-id",
+  formulaSources: [{ formId: 3, responseIds: [5, 9] }],
 };
 
 const reported = recordExceptions();
@@ -52,12 +55,14 @@ describe("submitFollowUpForm", () => {
         body: {
           answers: { q1: "yes" },
           formSnapshotId: 3,
+          schemaSnapshot: {},
           visibilityValidatorResults: { q1: true },
           deviceType: "desktop",
           publicAnswers: { q1: "yes" },
           phDistinctId: "ph-id",
           sessionReplayUrl: "https://replay.example.com/1",
           sid: "session-id",
+          formulaSources: [{ formId: 3, responseIds: [5, 9] }],
         },
       },
     ]);
@@ -84,6 +89,43 @@ describe("submitFollowUpForm", () => {
         properties: { actionId: 9, followUpFormId: 5 },
       },
     ]);
+  });
+
+  it("leaves unreported a refusal because the histories its options read changed", async () => {
+    api.alsoServing({
+      "POST /tasks/submitFollowUpForm/:id": () =>
+        Response.json(
+          { statusCode: 409, message: FORMULA_SOURCES_CHANGED },
+          { status: 409 },
+        ),
+    });
+
+    const submitted = await submitFollowUpForm({
+      followUpFormId: 5,
+      actionId: 9,
+      data,
+    });
+
+    expect(!submitted.ok && formulaSourcesChanged(submitted.error)).toBe(true);
+    expect(reported).toEqual([]);
+  });
+
+  it("returns a refusal on a client that throws on errors, as mobile's does", async () => {
+    api.throwingOnRefusal({
+      "POST /tasks/submitFollowUpForm/:id": () =>
+        Response.json(
+          { statusCode: 409, message: FORMULA_SOURCES_CHANGED },
+          { status: 409 },
+        ),
+    });
+
+    const submitted = await submitFollowUpForm({
+      followUpFormId: 5,
+      actionId: 9,
+      data,
+    });
+
+    expect(!submitted.ok && formulaSourcesChanged(submitted.error)).toBe(true);
   });
 });
 

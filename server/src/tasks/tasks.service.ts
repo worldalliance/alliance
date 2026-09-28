@@ -37,6 +37,7 @@ import {
   type FormSchemaValidationError,
   validateFormSchema,
 } from "@alliance/common/forms/form-schema-validate";
+import { type FormulaChoices } from "@alliance/common/forms/formula-options";
 import {
   getRankingSlotCount,
   isValidRankingSelection,
@@ -45,6 +46,7 @@ import {
   type VariableAggregateSource,
   variableAggregateSources,
 } from "@alliance/common/forms/variable-aggregates";
+import type { VariableSourceHistory } from "@alliance/common/forms/variable-evaluation";
 import {
   type ConditionExtras,
   isElementCurrentlyVisible,
@@ -140,6 +142,7 @@ import {
   FormResponseDto,
   type FormSnapshotMigration,
   type FormSummary,
+  type FormulaSourceDto,
   SaveFormDraftDto,
   type SnapshotResponseGroup,
   SubmitFollowUpFormDto,
@@ -148,13 +151,21 @@ import {
 } from "./form.dto";
 import { FormSnapshotService } from "./formsnapshot.service";
 import {
+  findFormsReadingForm,
+  loadFormulaSourceForms,
+} from "./formula-source-forms";
+import {
+  checkedFormulaChoices,
+  formulaSourcesOrThrow,
+  guestFormulaSources,
+  loadFormulaSources,
+  withdrawalFormulaSources,
+  withdrawnFormulaChoices,
+} from "./formula-sources";
+import {
   countVariableAggregates,
   type VariableAggregate,
 } from "./variable-aggregates";
-import {
-  findFormsReadingForm,
-  loadVariableSourceForms,
-} from "./variable-source-forms";
 
 /**
  * Validator verdicts arrive from HTTP as arbitrary JSON — class-validator
@@ -335,7 +346,7 @@ export class TasksService {
     }
     const errors = validateFormSchema(parsed.data, {
       formId,
-      sourceForms: await loadVariableSourceForms({
+      sourceForms: await loadFormulaSourceForms({
         formRepository: this.formRepository,
         schema: parsed.data,
       }),
@@ -517,6 +528,7 @@ export class TasksService {
      * against, extract from, and persist these, never the raw dto answers.
      */
     effectiveAnswers: Record<string, FormValue>;
+    formulaChoices: FormulaChoices;
   }> {
     const answers = parseSubmittedAnswers(submitFormDto.answers);
 
@@ -745,7 +757,48 @@ export class TasksService {
       }
     }
 
-    return { validatorResults, effectiveAnswers };
+    const formulaChoices = await checkedFormulaChoices({
+      schema,
+      answers: effectiveAnswers,
+      loadSources: () =>
+        this.submittedFormulaSources({
+          schema,
+          userId,
+          sent: submitFormDto.formulaSources,
+        }),
+    });
+
+    return { validatorResults, effectiveAnswers, formulaChoices };
+  }
+
+  /**
+   * The histories the submitting form's options formulas read, as it read
+   * them.
+   */
+  private async submittedFormulaSources(params: {
+    schema: FormSchema;
+    userId: number;
+    sent: FormulaSourceDto[] | undefined;
+  }): Promise<ReadonlyMap<number, VariableSourceHistory>> {
+    return formulaSourcesOrThrow(
+      await loadFormulaSources({
+        schema: params.schema,
+        sent: params.sent,
+        loadHistory: this.formulaSourceHistoryLoader(params.userId),
+      }),
+    );
+  }
+
+  private formulaSourceHistoryLoader(
+    userId: number,
+  ): (formId: number) => Promise<FormResponseHistory | undefined> {
+    return (formId) =>
+      this.getFormResponseHistory({ userId, formId }).catch(
+        (error: unknown) => {
+          if (error instanceof NotFoundException) return undefined;
+          throw error;
+        },
+      );
   }
 
   async updateForm(
@@ -869,7 +922,7 @@ export class TasksService {
     );
     const submittedSchema = formSchemaOf(submittedSnapshot);
 
-    const { validatorResults, effectiveAnswers } =
+    const { validatorResults, effectiveAnswers, formulaChoices } =
       await this.validateFormSubmission({
         schema: submittedSchema,
         submitFormDto,
@@ -995,6 +1048,7 @@ export class TasksService {
       dto: { ...submitFormDto, answers: effectiveAnswers },
       snapshot: submittedSnapshot,
       validatorResults,
+      formulaChoices,
       user,
     });
 
@@ -1061,7 +1115,7 @@ export class TasksService {
       form,
       submitFollowUpFormDto,
     );
-    const { validatorResults, effectiveAnswers } =
+    const { validatorResults, effectiveAnswers, formulaChoices } =
       await this.validateFormSubmission({
         schema: formSchemaOf(submittedSnapshot),
         submitFormDto: submitFollowUpFormDto as SubmitFormDto,
@@ -1074,6 +1128,7 @@ export class TasksService {
       dto: { ...submitFollowUpFormDto, answers: effectiveAnswers },
       snapshot: submittedSnapshot,
       validatorResults,
+      formulaChoices,
       user,
     });
 
@@ -1107,13 +1162,30 @@ export class TasksService {
       }
     }
 
+    const snapshot = await this.resolveSubmissionSnapshot(form, submitFormDto);
+    const schema = formSchemaOf(snapshot);
+    const validatorResults = parseSubmittedValidatorResults(
+      submitFormDto.visibilityValidatorResults ?? {},
+    );
+    const answers = stripHiddenAnswers(
+      schema.pages,
+      parseSubmittedAnswers(submitFormDto.answers),
+      {
+        deviceType: submitFormDto.deviceType,
+        visibilityValidatorResults: validatorResults,
+      },
+    );
     return this.createAndSaveFormResponse({
       form,
       formId,
       dto: submitFormDto,
-      validatorResults: parseSubmittedValidatorResults(
-        submitFormDto.visibilityValidatorResults ?? {},
-      ),
+      snapshot,
+      validatorResults,
+      formulaChoices: await checkedFormulaChoices({
+        schema,
+        answers,
+        loadSources: async () => guestFormulaSources(schema),
+      }),
       guestId,
     });
   }
@@ -1138,13 +1210,29 @@ export class TasksService {
       assertNotInStaffPreview(action);
     }
 
+    const snapshot = await this.resolveSubmissionSnapshot(
+      form,
+      partialFormData,
+    );
+    const schema = formSchemaOf(snapshot);
     const savedForm = await this.createAndSaveFormResponse({
       form,
       formId,
       dto: partialFormData,
+      snapshot,
       validatorResults: parseSubmittedValidatorResults(
         partialFormData.visibilityValidatorResults ?? {},
       ),
+      formulaChoices: await withdrawnFormulaChoices({
+        schema,
+        answers: parseSubmittedAnswers(partialFormData.answers),
+        loadSources: () =>
+          withdrawalFormulaSources({
+            schema,
+            sent: partialFormData.formulaSources,
+            loadHistory: this.formulaSourceHistoryLoader(userId),
+          }),
+      }),
       user,
     });
 
@@ -1165,8 +1253,9 @@ export class TasksService {
     form,
     formId,
     dto,
-    snapshot: preResolvedSnapshot,
+    snapshot,
     validatorResults,
+    formulaChoices,
     user,
     guestId,
   }: {
@@ -1174,30 +1263,23 @@ export class TasksService {
     formId: number;
     dto: {
       answers: Record<string, unknown>;
-      // BACKCOMPAT(form-snapshot): change this from optional to required.
-      formSnapshotId?: number;
-      // BACKCOMPAT(form-snapshot): legacy payload from pre-cutover mobile
-      // clients. Resolved to a snapshot row below. Remove once the floor
-      // mobile version sends formSnapshotId.
-      schemaSnapshot?: Record<string, unknown>;
       deviceType: DeviceVisibilityTarget;
       publicAnswers?: Record<string, boolean>;
       phDistinctId?: string;
       sessionReplayUrl?: string;
       sid?: string;
     };
-    snapshot?: FormSnapshot;
+    snapshot: FormSnapshot;
     /**
      * The verdicts to store. A path that runs the validators itself passes
      * its own; only one that can't — a guest submission, an opt-out draft —
      * falls back to the blob the client sent.
      */
     validatorResults: VisibilityValidatorResults;
+    formulaChoices: FormulaChoices;
     user?: User;
     guestId?: string;
   }): Promise<ParsedFormResponse> {
-    const snapshot =
-      preResolvedSnapshot ?? (await this.resolveSubmissionSnapshot(form, dto));
     const answers = parseSubmittedAnswers(dto.answers);
     assertListAnswersAreLists(formSchemaOf(snapshot), answers);
     const formResponse = this.formResponseRepository.create({
@@ -1205,6 +1287,7 @@ export class TasksService {
       formSnapshotId: snapshot.id,
       formSnapshot: snapshot,
       visibilityValidatorResults: validatorResults,
+      formulaChoices,
       deviceType: dto.deviceType,
       publicAnswers: dto.publicAnswers ?? {},
       phDistinctId: dto.phDistinctId,
@@ -1217,7 +1300,7 @@ export class TasksService {
     });
     const savedForm: ParsedFormResponse = Object.assign(
       await this.formResponseRepository.save(formResponse),
-      { visibilityValidatorResults: validatorResults },
+      { visibilityValidatorResults: validatorResults, formulaChoices },
     );
     await this.aiDetectionQueueService.addDetectJob({
       entityType: DetectableEntity.FormResponse,
@@ -1231,8 +1314,7 @@ export class TasksService {
   // it to a historical snapshot for this form by hash — never accept the
   // bytes as authoritative, since the resolved schema feeds validation,
   // contract-signing extraction, and auto-extract. Once the minimum mobile
-  // version is past the cutover, delete this helper and inline the
-  // formSnapshotId branch back into createAndSaveFormResponse.
+  // version is past the cutover, delete the schemaSnapshot branch.
   private async resolveSubmissionSnapshot(
     form: Form,
     dto: { formSnapshotId?: number; schemaSnapshot?: Record<string, unknown> },
@@ -1407,7 +1489,7 @@ export class TasksService {
         .map((reader) => `"${reader.title || "Untitled"}" (#${reader.id})`)
         .join(", ");
       throw new ConflictException(
-        `Variables in ${names} read this form's answers. Change them to stop reading it, then delete it`,
+        `Variables or options formulas in ${names} read this form's answers. Change them to stop reading it, then delete it`,
       );
     }
     await this.formRepository.remove(form);

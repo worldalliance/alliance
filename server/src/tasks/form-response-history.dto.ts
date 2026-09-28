@@ -7,6 +7,7 @@ import { FormResponse } from "./entities/formresponse.entity";
 export class FormResponseHistoryEntryDto extends PickType(FormResponse, [
   "id",
   "answers",
+  "formulaChoices",
 ]) {
   @ApiProperty()
   @IsDefined()
@@ -17,6 +18,7 @@ export class FormResponseHistoryEntryDto extends PickType(FormResponse, [
     super();
     this.id = input.id;
     this.answers = input.answers;
+    this.formulaChoices = input.formulaChoices;
     this.schemaSnapshot = input.formSnapshot.schema;
   }
 }

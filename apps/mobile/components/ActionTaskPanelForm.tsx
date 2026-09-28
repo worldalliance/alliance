@@ -9,6 +9,7 @@ import {
   tasksSubmitForm,
   tasksSubmitPublicForm,
 } from "@alliance/shared/client";
+import { useFormulaSourcesRefetch } from "@alliance/shared/forms/useFormulaSourcesRefetch";
 import type { ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import { captureException } from "@alliance/shared/lib/analytics";
 import { noop } from "@alliance/shared/lib/constants";
@@ -50,8 +51,10 @@ const ActionTaskPanelForm = ({
   formResponse,
   preview = false,
 }: ActionTaskPanelFormProps) => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading: userLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const { reload: historiesReload, refetchIfSourcesChanged } =
+    useFormulaSourcesRefetch(setError);
   const invalidateVisibilityContext = useInvalidateVisibilityContext();
 
   const {
@@ -90,6 +93,7 @@ const ActionTaskPanelForm = ({
           ? await tasksSubmitForm({
               path: { id: taskFormId },
               body: data,
+              throwOnError: false,
             })
           : await tasksSubmitPublicForm({
               path: { id: taskFormId },
@@ -97,6 +101,7 @@ const ActionTaskPanelForm = ({
               headers: storedGuestToken
                 ? { [GUEST_HEADER]: storedGuestToken }
                 : undefined,
+              throwOnError: false,
             });
         if (response.response.ok) {
           if (isAuthenticated) {
@@ -111,13 +116,16 @@ const ActionTaskPanelForm = ({
             }
           }
           onSubmitSuccess();
+          return true;
         } else {
+          if (refetchIfSourcesChanged(response)) return false;
           console.error(response.error);
           captureException(ExceptionEvent.FormSubmitError, response.error, {
             actionId,
             $exception_fingerprint: "FormSubmitError",
           });
           setError("Failed to submit action.");
+          return false;
         }
       }
     : null;
@@ -170,8 +178,10 @@ const ActionTaskPanelForm = ({
         onAbandonAction={onAbandonAction}
         actionId={actionId}
         persistKey={preview ? null : String(taskFormId)}
+        reloadSourceHistories={historiesReload}
         userId={user?.id}
         user={user}
+        userLoading={userLoading}
         loadCurrentUserLocation={!!user && isAuthenticated}
         syncDraftToServer={isAuthenticated}
         scrollPageTo={scrollPageTo}

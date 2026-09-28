@@ -4,6 +4,7 @@ import {
   flattenPageItems,
   FormSchema,
 } from "@alliance/common/forms/form-schema";
+import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
 import {
   FormResponseDto,
   SubmitFormDto,
@@ -12,6 +13,7 @@ import {
   tasksSubmitForm,
   tasksSubmitPublicForm,
 } from "@alliance/shared/client";
+import { formulaSourcesChanged } from "@alliance/shared/forms/formulaChoices";
 import type { ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import { captureException } from "@alliance/shared/lib/analytics";
 import { useInvalidateVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
@@ -149,6 +151,10 @@ const ActionTaskPanelForm = ({
           window.location.reload();
           return false;
         }
+        if (formulaSourcesChanged(response)) {
+          setError(FORMULA_SOURCES_CHANGED);
+          return false;
+        }
         console.error(response.error);
         captureException(ExceptionEvent.FormSubmitError, response.error, {
           actionId,
@@ -231,6 +237,7 @@ const ActionTaskPanelForm = ({
           persistKey={preview ? null : String(taskFormId)}
           userId={user?.id}
           user={user}
+          userLoading={authLoading}
           loadCurrentUserLocation={!!user && isAuthenticated}
           onFormStarted={onFormStarted}
           onAbandonAction={onAbandonAction}

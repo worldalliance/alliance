@@ -141,6 +141,9 @@ export type FormResponse = {
     publicAnswers: {
         [key: string]: unknown;
     };
+    formulaChoices: {
+        [key: string]: unknown;
+    };
     deviceType?: string;
     user?: User;
     guest?: Guest;
@@ -3731,6 +3734,11 @@ export type SaveSearchSelectionDto = {
     type: SearchItemType;
 };
 
+export type FormulaSourceDto = {
+    formId: number;
+    responseIds: Array<number>;
+};
+
 export type SubmitFormDto = {
     answers: {
         [key: string]: unknown;
@@ -3742,6 +3750,7 @@ export type SubmitFormDto = {
         [key: string]: unknown;
     };
     actionId: number;
+    formulaSources?: Array<FormulaSourceDto>;
     visibilityValidatorResults?: {
         [key: string]: unknown;
     };
@@ -3785,6 +3794,9 @@ export type FormResponseDto = {
     visibilityValidatorResults: {
         [key: string]: unknown;
     };
+    formulaChoices: {
+        [key: string]: unknown;
+    };
     user?: UserDto;
     aiDetectionResults?: Array<AiDetectionResultDto>;
 };
@@ -3799,6 +3811,7 @@ export type SubmitFollowUpFormDto = {
     schemaSnapshot?: {
         [key: string]: unknown;
     };
+    formulaSources?: Array<FormulaSourceDto>;
     visibilityValidatorResults?: {
         [key: string]: unknown;
     };
@@ -3897,6 +3910,9 @@ export type MigrateResponseSnapshotsResultDto = {
 export type FormResponseHistoryEntryDto = {
     id: number;
     answers: {
+        [key: string]: unknown;
+    };
+    formulaChoices: {
         [key: string]: unknown;
     };
     schemaSnapshot: {
@@ -12171,9 +12187,9 @@ export type TasksSubmitFormData = {
 
 export type TasksSubmitFormErrors = {
     /**
-     * Default error response for hey-api
+     * The member's answers to a form an options formula reads changed since the form loaded them.
      */
-    default: HeyApiError;
+    409: HeyApiError;
 };
 
 export type TasksSubmitFormError = TasksSubmitFormErrors[keyof TasksSubmitFormErrors];
@@ -12219,9 +12235,9 @@ export type TasksSubmitFollowUpFormData = {
 
 export type TasksSubmitFollowUpFormErrors = {
     /**
-     * Default error response for hey-api
+     * The member's answers to a form an options formula reads changed since the form loaded them.
      */
-    default: HeyApiError;
+    409: HeyApiError;
 };
 
 export type TasksSubmitFollowUpFormError = TasksSubmitFollowUpFormErrors[keyof TasksSubmitFollowUpFormErrors];
@@ -12691,7 +12707,7 @@ export type TasksDeleteFormAdminData = {
 
 export type TasksDeleteFormAdminErrors = {
     /**
-     * Another form's current version has a variable reading this form's answers.
+     * Another form's current version has a variable or options formula reading this form's answers.
      */
     409: HeyApiError;
 };

@@ -22,24 +22,17 @@ import {
   cohortExpressionSchema,
   type CohortExpression,
 } from "@alliance/common/cohort-expression";
-import { readStoredFormAnswers } from "@alliance/common/forms/form-responses";
-import { variableInputFieldsById } from "@alliance/common/forms/form-schema";
 import {
-  storedQuestionFields,
-  submittedQuestionFields,
-} from "@alliance/common/forms/stored-schema";
-import type { VariableSourceHistory } from "@alliance/common/forms/variable-evaluation";
+  readFormulaChoices,
+  type FormulaChoices,
+} from "@alliance/common/forms/formula-options";
 import {
   readVisibilityValidatorResults,
   type VisibilityValidatorResults,
 } from "@alliance/common/forms/visibility";
 import { R, type Result } from "@alliance/common/result";
 import type { ZodError } from "zod";
-import type {
-  AdminActionDto,
-  AdminFollowUpFormDto,
-  FormResponseHistoryDto,
-} from "./client/types.gen";
+import type { AdminActionDto, AdminFollowUpFormDto } from "./client/types.gen";
 
 export type ParsedActionDto = Omit<AdminActionDto, "cohortExpression"> & {
   cohortExpression?: CohortExpression;
@@ -125,32 +118,15 @@ export function parseVisibilityValidatorResults(
   return R.success(verdicts);
 }
 
-/** Fails whole when any answer or form version can't be read. */
-export function parseFormResponseHistory(
-  dto: FormResponseHistoryDto,
-): Result<VariableSourceHistory, Error> {
-  return R.fromThrowable(() => {
-    const current = R.unwrap(storedQuestionFields(dto.schema));
-    return {
-      fields: variableInputFieldsById(current),
-      responses: dto.responses.map((response) => {
-        const unreadable = `Can't read response ${response.id}`;
-        return {
-          answers: R.expect(
-            readStoredFormAnswers(response.answers),
-            unreadable,
-          ),
-          fields: variableInputFieldsById(
-            R.expect(
-              submittedQuestionFields({
-                snapshot: response.schemaSnapshot,
-                current,
-              }),
-              unreadable,
-            ),
-          ),
-        };
-      }),
-    };
-  });
+/**
+ * A form response's saved `formulaChoices`. One that won't read counts as
+ * saving none.
+ */
+export function parseFormulaChoices(value: unknown): FormulaChoices {
+  const read = readFormulaChoices(value);
+  if (R.isFailure(read)) {
+    console.error("Saved formula choices are unreadable", read.error, value);
+    return {};
+  }
+  return read.value;
 }

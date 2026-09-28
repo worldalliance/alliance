@@ -64,6 +64,7 @@ const response = (params: {
   createdAt: "2026-03-04T10:00:00.000Z",
   schemaSnapshot: SCHEMA,
   visibilityValidatorResults: {},
+  formulaChoices: {},
   sid: params.sid,
 });
 

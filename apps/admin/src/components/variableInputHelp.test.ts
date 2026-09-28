@@ -4,11 +4,14 @@ import {
   evaluateVariableExpression,
   type ExprValue,
 } from "@alliance/common/forms/variable-expression";
-import { checkVariableFormulaType } from "@alliance/common/forms/variable-formula-check";
+import {
+  checkOptionsFormulaType,
+  checkVariableFormulaType,
+} from "@alliance/common/forms/variable-formula-check";
 import type { VariableInput } from "@alliance/common/forms/variable-inputs";
 import { variableFieldScope } from "@alliance/common/forms/variable-scope";
 import { variableTypeEnv } from "@alliance/common/forms/variables";
-import { inputHelp } from "./variableInputHelp";
+import { inputHelp, optionsRecipes } from "./variableInputHelp";
 
 const OPTIONS = [{ label: "Weekly", value: "weekly" }];
 
@@ -77,6 +80,45 @@ for (const field of fields) {
       ).toMatchObject({ ok: true });
     });
   }
+}
+
+const recipeCases = fields.flatMap((field) =>
+  inputsFor(field).map((input) => ({
+    label: `a ${input.kind} input on a ${field.kind} field`,
+    inputs: [{ name: "input1", input, field }],
+  })),
+);
+const multiselect = fields.find(({ kind }) => kind === "multiselect");
+const fromHistory: VariableInput = {
+  kind: "sourceField",
+  sourceFormId: SOURCE_FORM_ID,
+  fieldId: "multiselect",
+};
+
+for (const { label, inputs } of [
+  ...recipeCases,
+  {
+    label: "two multiselect inputs from history",
+    inputs: ["input1", "input2"].map((name) => ({
+      name,
+      input: fromHistory,
+      field: multiselect,
+    })),
+  },
+]) {
+  test(`every choice recipe for ${label} is a valid options formula`, () => {
+    const formulaInputs = Object.fromEntries(
+      inputs.map(({ name, input }) => [name, input]),
+    );
+    for (const { snippet } of optionsRecipes(inputs)) {
+      expect(
+        checkOptionsFormulaType(
+          snippet,
+          variableTypeEnv({ inputs: formulaInputs, formula: snippet }, scope),
+        ),
+      ).toMatchObject({ ok: true });
+    }
+  });
 }
 
 const runExample = (input: VariableInput, answers: ExprValue[]) => {

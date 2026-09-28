@@ -34,6 +34,7 @@ const historyBody = (scores: number[]) => ({
     id: index + 1,
     answers: { score },
     schemaSnapshot: sourceSchema,
+    formulaChoices: {},
   })),
 });
 
@@ -111,6 +112,47 @@ describe("useVariableSourceHistories", () => {
       reader: HistoryReader.Nobody,
     });
     expect(scoresOf(result.current, 7)).toEqual([]);
+    await settle();
+    expect(scoresOf(result.current, 7)).toEqual([]);
+    expect(requests).toEqual([]);
+  });
+
+  it("holds the form without asking the server until it's known who is signed in", async () => {
+    const { result } = render(readingForms(7), {
+      reader: HistoryReader.Pending,
+    });
+    await settle();
+    expect(result.current.status).toBe(SourceHistoriesStatus.Loading);
+    expect(requests).toEqual([]);
+  });
+
+  it("doesn't hold a form reading no other form while sign-in resolves", () => {
+    const { result } = render(readingForms(), {
+      reader: HistoryReader.Pending,
+    });
+    expect(result.current.status).toBe(SourceHistoriesStatus.Ready);
+  });
+
+  it("loads the member's own history once sign-in resolves to them", async () => {
+    mine["7"] = async () => json(historyBody([3]));
+    const { result, rerender } = render(readingForms(7), {
+      reader: HistoryReader.Pending,
+    });
+    await settle();
+
+    rerender({ subject: { reader: HistoryReader.Self } });
+    await settle();
+    expect(scoresOf(result.current, 7)).toEqual([3]);
+    expect(requests).toEqual(["me:7"]);
+  });
+
+  it("gives an empty history without asking the server once sign-in resolves to no one", async () => {
+    const { result, rerender } = render(readingForms(7), {
+      reader: HistoryReader.Pending,
+    });
+    await settle();
+
+    rerender({ subject: { reader: HistoryReader.Nobody } });
     await settle();
     expect(scoresOf(result.current, 7)).toEqual([]);
     expect(requests).toEqual([]);
@@ -214,6 +256,27 @@ describe("useVariableSourceHistories", () => {
     expect(scoresOf(result.current, 7)).toEqual([1]);
     expect(requests).toEqual(["me:7"]);
   });
+
+  it("refetches every history when reloaded", async () => {
+    mine["7"] = async () => json(historyBody([1]));
+    const schema = readingForms(7);
+    const subject = { reader: HistoryReader.Self } as const;
+    const { result, rerender } = renderHook(
+      (props: { reload: number }) =>
+        useVariableSourceHistories({ schema, subject, reload: props.reload }),
+      { initialProps: { reload: 0 } },
+    );
+    await settle();
+
+    mine["7"] = async () => json(historyBody([1, 2]));
+    rerender({ reload: 1 });
+    expect(result.current.status).toBe(SourceHistoriesStatus.Loading);
+    await settle();
+
+    expect(scoresOf(result.current, 7)).toEqual([1, 2]);
+    expect(requests).toEqual(["me:7", "me:7"]);
+  });
+
   it("fetches only a source form added while open, keeping the ones loaded", async () => {
     member["5:7"] = async () => json(historyBody([1]));
     member["5:8"] = async () => json(historyBody([2]));
@@ -237,21 +300,49 @@ describe("useVariableSourceHistories", () => {
 
 describe("historySubject", () => {
   it("reads the previewed member, never the admin, in an admin renderer", () => {
-    expect(historySubject({ adminPreviewUserId: 3, signedIn: true })).toEqual({
+    expect(
+      historySubject({
+        adminPreviewUserId: 3,
+        signedIn: true,
+        userLoading: false,
+      }),
+    ).toEqual({
       reader: HistoryReader.Member,
       userId: 3,
     });
     expect(
-      historySubject({ adminPreviewUserId: "preview", signedIn: true }),
+      historySubject({
+        adminPreviewUserId: "preview",
+        signedIn: true,
+        userLoading: false,
+      }),
     ).toEqual({ reader: HistoryReader.Nobody });
   });
 
   it("reads the signed-in member's own answers, and nobody's for a guest", () => {
     expect(
-      historySubject({ adminPreviewUserId: undefined, signedIn: true }),
+      historySubject({
+        adminPreviewUserId: undefined,
+        signedIn: true,
+        userLoading: false,
+      }),
     ).toEqual({ reader: HistoryReader.Self });
     expect(
-      historySubject({ adminPreviewUserId: undefined, signedIn: false }),
+      historySubject({
+        adminPreviewUserId: undefined,
+        signedIn: false,
+        userLoading: false,
+      }),
     ).toEqual({ reader: HistoryReader.Nobody });
+  });
+
+  it("waits while it isn't known who is signed in", () => {
+    expect(
+      historySubject({
+        adminPreviewUserId: undefined,
+        signedIn: false,
+        userLoading: true,
+      }),
+    ).toEqual({ reader: HistoryReader.Pending });
   });
 });

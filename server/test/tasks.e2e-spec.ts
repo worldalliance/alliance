@@ -11,6 +11,7 @@ import type {
 } from "@alliance/common/forms/form-schema";
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
 import { milliseconds } from "date-fns";
+import { ActionsService } from "src/actions/actions.service";
 import { CreateActionDto } from "src/actions/dto/action.dto";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
@@ -872,6 +873,229 @@ describe("Tasks (e2e)", () => {
     const payload = JSON.stringify(output);
     expect(payload).not.toContain("should-be-hidden-by-default");
     expect(payload).not.toContain("not-an-output-field");
+  });
+
+  it("sends an activity the labels of only the formula choices its output shows", async () => {
+    const shownLabels = {
+      inputs: { input1: { kind: "field" as const, fieldId: "tags" } },
+      formula:
+        '(input1 ?? []).map(t => ({ label: "Shown " + t.label, value: t.value }))',
+    };
+    const output = await completedActivityOutput({
+      schema: {
+        pages: [
+          {
+            id: "page-1",
+            fields: [
+              {
+                id: "tags",
+                type: "input",
+                kind: "multiselect",
+                label: "Tags",
+                options: [
+                  { label: "Alpha", value: "a" },
+                  { label: "Beta", value: "b" },
+                  { label: "Gamma", value: "c" },
+                ],
+              },
+              {
+                id: "public-pick",
+                type: "input",
+                kind: "multiselect",
+                label: "Public pick",
+                options: [],
+                optionsFormula: shownLabels,
+                output: { output: true },
+              },
+              {
+                id: "private-pick",
+                type: "input",
+                kind: "select",
+                label: "Private pick",
+                options: [],
+                optionsFormula: shownLabels,
+                output: { output: true, privateByDefault: true },
+              },
+            ],
+          },
+        ],
+        outputViews: [
+          {
+            id: "view-1",
+            type: "default",
+            blocks: [
+              { id: "block-public", fieldId: "public-pick" },
+              { id: "block-private", fieldId: "private-pick" },
+            ],
+          },
+        ],
+      },
+      submission: {
+        answers: {
+          tags: ["a", "b", "c"],
+          "public-pick": ["a"],
+          "private-pick": "b",
+        },
+        publicAnswers: { "public-pick": true, "private-pick": false },
+      },
+      afterSubmit: async () => {
+        await ctx.dataSource.query(
+          `UPDATE form_response SET "formulaChoices" = jsonb_set("formulaChoices", '{public-pick}', "formulaChoices"->'public-pick' || $1::jsonb) WHERE id = (SELECT max(id) FROM form_response)`,
+          [JSON.stringify([{ label: "Shown Gamma", value: "c" }])],
+        );
+      },
+    });
+    const payload = JSON.stringify(output);
+    expect(payload).toContain("Shown Alpha");
+    expect(payload).not.toContain("Shown Beta");
+    expect(payload).not.toContain("Shown Gamma");
+    expect(payload).not.toContain("optionsFormula");
+
+    const activity = await ctx.dataSource
+      .getRepository(ActionActivity)
+      .findOneOrFail({
+        where: { type: ActionActivityType.USER_COMPLETED },
+        order: { id: "DESC" },
+        relations: { taskFormResponse: { formSnapshot: true } },
+      });
+    expect(
+      ctx.app.get(ActionsService).buildOutputFormResponse(activity)
+        ?.formulaChoices,
+    ).toEqual({ "public-pick": [{ label: "Shown Alpha", value: "a" }] });
+  });
+
+  it("sends an activity the labels of only the list formula choices its output shows", async () => {
+    const output = await completedActivityOutput({
+      schema: {
+        pages: [
+          {
+            id: "page-1",
+            fields: [
+              {
+                id: "rows",
+                type: "input",
+                kind: "list",
+                label: "Rows",
+                output: { output: true },
+                outputViewHiddenFieldIds: ["secret"],
+                fields: [
+                  {
+                    id: "cell",
+                    type: "input",
+                    kind: "multiselect",
+                    label: "Cell",
+                    options: [],
+                    optionsFormula: {
+                      inputs: {},
+                      formula:
+                        "[{ label: 'Shown Alpha', value: 'a' }, { label: 'Shown Beta', value: 'b' }, { label: 'Shown Gamma', value: 'c' }]",
+                    },
+                  },
+                  {
+                    id: "secret",
+                    type: "input",
+                    kind: "select",
+                    label: "Secret",
+                    options: [],
+                    optionsFormula: {
+                      inputs: {},
+                      formula: "[{ label: 'Secret Delta', value: 'd' }]",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        outputViews: [
+          {
+            id: "view-1",
+            type: "default",
+            blocks: [{ id: "block-rows", fieldId: "rows" }],
+          },
+        ],
+      },
+      submission: {
+        answers: {
+          rows: [
+            { cell: ["a"], secret: "d" },
+            { cell: ["b"], secret: "d" },
+          ],
+        },
+        publicAnswers: { rows: true },
+      },
+      afterSubmit: async () => {
+        await ctx.dataSource.query(
+          `UPDATE form_response SET "formulaChoices" = jsonb_set("formulaChoices", '{cell}', "formulaChoices"->'cell' || $1::jsonb) WHERE id = (SELECT max(id) FROM form_response)`,
+          [JSON.stringify([{ label: "Shown Gamma", value: "c" }])],
+        );
+      },
+    });
+
+    const payload = JSON.stringify(output);
+    expect(payload).toContain("Shown Alpha");
+    expect(payload).toContain("Shown Beta");
+    expect(payload).not.toContain("Shown Gamma");
+    expect(payload).not.toContain("Secret Delta");
+  });
+
+  it("reads a formula choice's saved label in an output's variables", async () => {
+    const output = await completedActivityOutput({
+      schema: {
+        pages: [
+          {
+            id: "page-1",
+            fields: [
+              {
+                id: "published",
+                type: "input",
+                kind: "text",
+                label: "Published",
+                output: { output: true },
+              },
+              {
+                id: "pick",
+                type: "input",
+                kind: "select",
+                label: "Pick",
+                options: [],
+                optionsFormula: {
+                  inputs: {},
+                  formula: "[{ label: 'Alpha', value: 'a' }]",
+                },
+              },
+            ],
+          },
+        ],
+        variables: [
+          {
+            name: "picked",
+            inputs: { input1: { kind: "field", fieldId: "pick" } },
+            formula: "input1.label",
+          },
+        ],
+        outputViews: [
+          {
+            id: "view-1",
+            type: "default",
+            blocks: [
+              {
+                id: "block-text",
+                type: "display",
+                kind: "text",
+                text: "You picked #{picked}",
+              },
+            ],
+          },
+        ],
+      },
+      submission: {
+        answers: { published: "Ada", pick: "a" },
+        publicAnswers: { published: true },
+      },
+    });
+
+    expect(JSON.stringify(output)).toContain("You picked Alpha");
   });
 
   const displayOnlySchema = (textVisibleIf?: string): FormSchema => ({

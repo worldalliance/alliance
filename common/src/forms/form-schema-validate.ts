@@ -30,7 +30,7 @@ type ContextKind = "input" | "output";
 export type FormSchemaValidationContext = {
   /** Unset while the form is being created. */
   formId?: number;
-  /** Must hold every form a variable input reads. */
+  /** Must hold every form a variable or options formula input reads. */
   sourceForms: SourceFormFields;
 };
 

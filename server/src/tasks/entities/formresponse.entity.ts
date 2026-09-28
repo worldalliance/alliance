@@ -1,6 +1,10 @@
 // src/forms/form-response.entity.ts
 import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import {
+  readFormulaChoices,
+  type FormulaChoices,
+} from "@alliance/common/forms/formula-options";
+import {
   readVisibilityValidatorResults,
   type VisibilityValidatorResults,
 } from "@alliance/common/forms/visibility";
@@ -64,6 +68,12 @@ export class FormResponse {
   @Allow()
   @Type(() => Object)
   publicAnswers: Record<string, boolean>;
+
+  /** Read with `readFormulaChoices`. */
+  @Column({ type: "jsonb", default: () => "'{}'" })
+  @ApiProperty({ type: Object })
+  @IsOptional()
+  formulaChoices: unknown;
 
   @Column({ type: "text", nullable: true })
   @ApiPropertyOptional({ type: "string" })
@@ -130,6 +140,7 @@ export class FormResponse {
  */
 export interface ParsedFormResponse extends FormResponse {
   visibilityValidatorResults: VisibilityValidatorResults;
+  formulaChoices: FormulaChoices;
 }
 
 export function parseFormResponse(response: FormResponse): ParsedFormResponse {
@@ -155,7 +166,16 @@ export function parseFormResponse(response: FormResponse): ParsedFormResponse {
     },
   );
   response.visibilityValidatorResults = verdicts;
+  response.formulaChoices = R.unwrapOrElse(
+    readFormulaChoices(response.formulaChoices),
+    () => {
+      logger.error(
+        `Form response ${response.id}: formula choices are unreadable`,
+      );
+      return {};
+    },
+  );
   // Mutate-and-cast (rather than spread) to keep the entity's prototype; the
-  // assignment above set the only field the cast narrows.
+  // assignments above set the only fields the cast narrows.
   return response as ParsedFormResponse;
 }

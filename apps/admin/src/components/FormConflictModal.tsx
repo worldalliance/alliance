@@ -95,11 +95,11 @@ export const FormConflictModal: React.FC<FormConflictModalProps> = ({
       <ModalFooter className="p-4">
         {sourceFormsLoading ? (
           <p className="mb-3 text-sm text-zinc-600">
-            Loading the forms your variables read…
+            Loading the forms your formulas read…
           </p>
         ) : merge === undefined ? (
           <p className="mb-3 text-sm text-amber-700">
-            A form your variables read couldn&apos;t be loaded, so these edits
+            A form your formulas read couldn&apos;t be loaded, so these edits
             can&apos;t be merged automatically. Keep your version or take
             theirs.
           </p>

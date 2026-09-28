@@ -23,6 +23,7 @@ import {
   type FormSchema,
   type FormValue,
 } from "@alliance/common/forms/form-schema";
+import { withResolvedOptions } from "@alliance/common/forms/formula-options";
 import {
   interpolateDisplayBlock,
   interpolateFieldText,
@@ -44,6 +45,10 @@ import {
   type UserLocationDisplayValue,
 } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
+import {
+  completedFormSchema,
+  formulaSourcesFor,
+} from "@alliance/shared/forms/formulaChoices";
 import {
   resolveFormValue,
   type SetFieldValue,
@@ -132,11 +137,18 @@ type FormRendererProps = {
   publicAction?: boolean;
   actionId: number;
   persistKey?: string | null;
+  /** Changing it refetches the answers from other forms the form reads. */
+  reloadSourceHistories?: number;
   initialPageIndex?: number;
   userId?: string | number;
   phDistinctId?: string;
   sessionReplayUrl?: string;
   user?: Omit<UserDto, "email">;
+  /**
+   * Whether `user` is still being fetched. Formulas reading other forms wait
+   * for it.
+   */
+  userLoading?: boolean;
   disableOptionRandomization?: boolean;
   loadCurrentUserLocation?: boolean;
   onFormStarted?: () => void;
@@ -146,7 +158,7 @@ type FormRendererProps = {
   /** Save progress to the member's account as well as this device, so the form can be finished elsewhere. */
   syncDraftToServer?: boolean;
   /** `null` without `renderFormAsCompleted` is a preview: editable, never submitted. */
-  onSubmit: ((data: SubmitFormDto) => Promise<void>) | null;
+  onSubmit: ((data: SubmitFormDto) => Promise<boolean>) | null;
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
 };
@@ -643,8 +655,10 @@ const FormRenderer = ({
   formSnapshotId,
   onSubmit,
   persistKey,
+  reloadSourceHistories,
   userId,
   user,
+  userLoading = false,
   disableOptionRandomization,
   loadCurrentUserLocation,
   onFormStarted,
@@ -659,8 +673,12 @@ const FormRenderer = ({
   scrollPageTo,
   scrollToEnd,
 }: FormRendererProps) => {
-  const schema = form as unknown as FormSchema;
   const readOnly = !!renderFormAsCompleted;
+  const schema = useMemo(
+    () =>
+      completedFormSchema(form, readOnly ? completedFormResponse : undefined),
+    [form, readOnly, completedFormResponse],
+  );
 
   const storageKey = useMemo(
     () =>
@@ -697,15 +715,17 @@ const FormRenderer = ({
     maxPageIndex,
   } = useFormSchemaMaps({ schema, userDefaultPublic, timeZone });
 
-  const { previousAnswerSchemas, previousAnswerData } =
-    usePreviousAnswerSources({ schema });
+  const { previousAnswerSchemas, previousAnswerData, previousAnswersPending } =
+    usePreviousAnswerSources({ schema, signedIn: !!user });
 
   const sourceHistories = useVariableSourceHistories({
     schema,
     subject: historySubject({
       adminPreviewUserId: undefined,
       signedIn: !!user,
+      userLoading,
     }),
+    reload: reloadSourceHistories,
   });
 
   const variableAggregates = useVariableAggregates({
@@ -748,10 +768,14 @@ const FormRenderer = ({
       return defaults;
     },
   );
-  const visibilityValidatorResults = useVisibilityValidatorResults({
+  const {
+    results: visibilityValidatorResults,
+    failed: visibilityValidatorsFailed,
+  } = useVisibilityValidatorResults({
     schema,
     readOnly,
     savedResults: completedFormResponse?.visibilityValidatorResults,
+    signedIn: !!user,
   });
   const { fieldErrors, applyFieldErrorUpdates } = useFieldErrors();
   const [submitting, setSubmitting] = useState(false);
@@ -772,6 +796,7 @@ const FormRenderer = ({
     firstContractSignedAt,
     completedActionCount,
     isLoading: visibilityContextLoading,
+    failed: visibilityContextFailed,
   } = useVisibilityContext(schema, {
     enabled: !!user,
   });
@@ -841,17 +866,18 @@ const FormRenderer = ({
   const draftSyncEnabled =
     !!syncDraftToServer && !readOnly && !!persistKey && formSnapshotId !== null;
 
-  const { serverDraft, saveFailed, pauseSyncing } = useFormDraftSync({
-    enabled: draftSyncEnabled,
-    formId: id,
-    actionId,
-    formSnapshotId,
-    answers: formData,
-    publicAnswers,
-    currentPageIndex,
-    edited: hasEmittedStart,
-    onSaved: setSyncedUpdatedAt,
-  });
+  const { serverDraft, saveFailed, pauseSyncing, resumeSyncing } =
+    useFormDraftSync({
+      enabled: draftSyncEnabled,
+      formId: id,
+      actionId,
+      formSnapshotId,
+      answers: formData,
+      publicAnswers,
+      currentPageIndex,
+      edited: hasEmittedStart,
+      onSaved: setSyncedUpdatedAt,
+    });
 
   useEffect(() => {
     if (!draftSyncEnabled || hasEmittedStart || !serverDraft) return;
@@ -951,6 +977,7 @@ const FormRenderer = ({
     effectiveFormData,
     variableValues,
     variablesError,
+    resolvedOptions,
     isElementCurrentlyVisible,
     fieldContext,
     visiblePageIndices,
@@ -960,6 +987,7 @@ const FormRenderer = ({
   } = useFormVisibility({
     schema,
     formData,
+    setFormData,
     readOnly,
     currentPageIndex,
     setCurrentPageIndex,
@@ -973,6 +1001,13 @@ const FormRenderer = ({
     userPropertyHasValue,
     firstContractSignedAt,
     completedActionCount,
+    visibilityInputs: {
+      visibilityContextLoading,
+      visibilityContextFailed,
+      visibilityValidatorsFailed,
+      userLoading,
+      previousAnswersPending,
+    },
   });
 
   const { validatePage, validateAllPages } = useFormValidation({
@@ -1106,6 +1141,7 @@ const FormRenderer = ({
       answers: sanitizedAnswers,
       formSnapshotId,
       actionId,
+      formulaSources: formulaSourcesFor(schema, sourceHistories),
       visibilityValidatorResults,
       deviceType: DEVICE_TYPE,
       publicAnswers,
@@ -1113,15 +1149,18 @@ const FormRenderer = ({
       sessionReplayUrl,
     };
 
-    // `onSubmit` resolves whether or not the submission went through, so a
-    // failed submit stops draft syncing for the rest of the screen.
     pauseSyncing();
     onSubmit(submissionPayload)
-      .then(() => {
+      .then((submitted) => {
+        if (!submitted) {
+          resumeSyncing();
+          return;
+        }
         if (persistKey) {
           AsyncStorage.removeItem(storageKey).catch(() => {});
         }
       })
+      .catch(() => resumeSyncing())
       .finally(() => {
         setSubmitting(false);
       });
@@ -1137,6 +1176,7 @@ const FormRenderer = ({
       answers: stripCardIds(formData),
       formSnapshotId,
       actionId,
+      formulaSources: formulaSourcesFor(schema, sourceHistories),
       visibilityValidatorResults,
       deviceType: DEVICE_TYPE,
       publicAnswers,
@@ -1248,7 +1288,10 @@ const FormRenderer = ({
           return (
             <View key={field.id}>
               <RenderField
-                field={interpolateFieldText(field, variableValues)}
+                field={withResolvedOptions(
+                  interpolateFieldText(field, variableValues),
+                  resolvedOptions,
+                )}
                 value={effectiveFormData[field.id]}
                 onChange={(value) => handleFieldChange(field.id, value)}
                 fileUpload={readOnly ? undefined : imageUpload}

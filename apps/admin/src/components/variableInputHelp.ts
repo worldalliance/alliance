@@ -69,3 +69,62 @@ export const answerHelp = (
       throw new Error(`unknown input kind: ${input satisfies never}`);
   }
 };
+
+export type OptionsRecipe = { purpose: string; snippet: string };
+
+/** Formulas giving choices from the inputs that read other choices. */
+export const optionsRecipes = (
+  inputs: readonly {
+    name: string;
+    input: VariableInput;
+    field: AnyField | undefined;
+  }[],
+): OptionsRecipe[] => {
+  const recipes: OptionsRecipe[] = [];
+  const latestLists: string[] = [];
+  for (const { name, input, field } of inputs) {
+    if (input.kind !== "field" && input.kind !== "sourceField") continue;
+    const mode = inputModeOf(field);
+    const fromHistory = isSourceInput(input);
+    if (mode === VariableInputMode.Choices && fromHistory) {
+      latestLists.push(`${name}.at(-1) ?? []`);
+      recipes.push(
+        {
+          purpose: `${name}: the latest submission's selections`,
+          snippet: `${name}.at(-1) ?? []`,
+        },
+        {
+          purpose: `${name}: selections across all submissions`,
+          snippet: `${name}.flatMap(answer => answer ?? [])`,
+        },
+      );
+    } else if (mode === VariableInputMode.Choices) {
+      recipes.push({
+        purpose: `${name}: the selections made`,
+        snippet: `${name} ?? []`,
+      });
+    } else if (mode === VariableInputMode.Choice && fromHistory) {
+      recipes.push({
+        purpose: `${name}: the choice made in each submission`,
+        snippet: `${name}.filter(answer => answer)`,
+      });
+    } else if (mode === VariableInputMode.Choice) {
+      recipes.push({
+        purpose: `${name}: the choice made`,
+        snippet: `${name} ? [${name}] : []`,
+      });
+    }
+  }
+  if (latestLists.length > 1) {
+    const [first, ...rest] = latestLists;
+    recipes.push({
+      purpose: "The latest selections of each input, together",
+      snippet: `(${first}).concat(${rest.join(", ")})`,
+    });
+  }
+  recipes.push({
+    purpose: "A choice of your own",
+    snippet: "[{ label: 'Other', value: 'other' }]",
+  });
+  return recipes;
+};

@@ -47,12 +47,12 @@ import {
   parseVisibilityFormula,
   serializeVisibilityFormula,
 } from "@alliance/shared/forms/visibilityFormula";
+import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
 import {
   FormFieldsStatus,
   useFormQuestionFieldsMap,
   useFormQuestionFieldsPeek,
 } from "@alliance/shared/lib/useFormSchema";
-import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -74,6 +74,10 @@ import {
   isDraftValidatorId,
   useCustomValidatorDrafts,
 } from "./customValidatorDrafts";
+import {
+  ANY_SELECTED_VALUE,
+  FormulaChoiceConditionValue,
+} from "./FormulaChoiceConditionValue";
 
 function getFormulaConditionRefs(node: VisibleIfFormula["formula"]): string[] {
   if (typeof node === "string") return [node];
@@ -393,7 +397,6 @@ export function ConditionalVisibility({
   onChange,
   outputBlocks,
 }: ConditionalVisibilityProps) {
-  const ANY_SELECTED_VALUE = "__ANY_SELECTED__";
   const controllers = (previousFields || []).filter((f): f is ControllerField =>
     isConditionalController(f),
   );
@@ -490,6 +493,9 @@ export function ConditionalVisibility({
         return { kind: "equals", ...base, equals: true };
       }
       if (controller.kind === "multiselect") {
+        if (controller.optionsFormula) {
+          return { kind: "anySelected", ...base, anySelected: true };
+        }
         return {
           kind: "includesOption",
           ...base,
@@ -1304,6 +1310,21 @@ export function ConditionalVisibility({
                   {controller.noLabel?.trim() || "No"}
                 </option>
               </select>
+            ) : (controller.kind === "select" ||
+                controller.kind === "multiselect") &&
+              controller.optionsFormula ? (
+              <FormulaChoiceConditionValue
+                multiselect={controller.kind === "multiselect"}
+                value={
+                  controller.kind === "multiselect"
+                    ? multiSelectValue
+                    : isEqualsCondition(condition) &&
+                        typeof condition.equals === "string"
+                      ? condition.equals
+                      : ""
+                }
+                onChange={(value) => handleConditionValueChange(index, value)}
+              />
             ) : controller.kind === "multiselect" ? (
               <select
                 className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"

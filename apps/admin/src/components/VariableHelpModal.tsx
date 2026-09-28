@@ -17,6 +17,8 @@ import Modal, {
   ModalTitle,
 } from "@alliance/sharedweb/ui/Modal";
 import { Fragment, type ReactNode } from "react";
+import { FormulaResult } from "./formulaResult";
+import type { OptionsRecipe } from "./variableInputHelp";
 
 const MDN = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference";
 
@@ -189,6 +191,25 @@ function ReferenceRow({
   );
 }
 
+function SnippetButton({
+  snippet,
+  onInsert,
+}: {
+  snippet: string;
+  onInsert: (snippet: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onInsert(snippet)}
+      title="Insert into the formula"
+      className="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-left font-mono text-gray-600 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-900"
+    >
+      {snippet}
+    </button>
+  );
+}
+
 export type FormulaHelpInput = {
   name: string;
   type: string;
@@ -197,12 +218,39 @@ export type FormulaHelpInput = {
 
 type VariableHelpModalProps = {
   inputs: FormulaHelpInput[];
+  result: FormulaResult;
+  recipes: OptionsRecipe[];
   onInsert: (snippet: string) => void;
   onClose: () => void;
 };
 
+const RESULT_DESCRIPTION: Record<FormulaResult, string> = {
+  [FormulaResult.Text]:
+    "A formula is one JavaScript expression. It reads the inputs you pick, and whatever it returns is written wherever the variable is referenced.",
+  [FormulaResult.Options]:
+    "A formula is one JavaScript expression. It reads the inputs you pick and returns a list of { label, value } records, the choices the field offers. Choices with the same value are merged, keeping the first. Add ?? [] where an answer can be missing.",
+};
+
+const UNANSWERED_ADVICE: Record<FormulaResult, ReactNode> = {
+  [FormulaResult.Text]: (
+    <>
+      , and a formula with no value to show renders as nothing. To show
+      something else, say so in the formula:{" "}
+      <Code>input1 ?? &apos;n/a&apos;</Code>.
+    </>
+  ),
+  [FormulaResult.Options]: (
+    <>
+      , and a formula that gives no list fails. To offer no choices instead, say
+      so in the formula: <Code>input1 ?? []</Code>.
+    </>
+  ),
+};
+
 export function VariableHelpModal({
   inputs,
+  result,
+  recipes,
   onInsert,
   onClose,
 }: VariableHelpModalProps) {
@@ -213,16 +261,14 @@ export function VariableHelpModal({
           Writing formulas
         </ModalTitle>
         <ModalDescription className="text-sm text-zinc-600">
-          A formula is one JavaScript expression. It reads the inputs you pick,
-          and whatever it returns is written wherever the variable is
-          referenced.
+          {RESULT_DESCRIPTION[result]}
         </ModalDescription>
       </ModalHeader>
       <ModalBody className="max-h-[70vh] space-y-5 overflow-y-auto text-sm text-gray-700">
         <Section title="Your inputs">
           {inputs.length === 0 ? (
             <p className="text-xs text-gray-500">
-              This variable reads no inputs yet.
+              This formula reads no inputs yet.
             </p>
           ) : (
             <table className="w-full border-collapse text-left align-top text-xs">
@@ -237,14 +283,7 @@ export function VariableHelpModal({
                     </td>
                     <td className="w-64 py-1.5 align-top">
                       {example && (
-                        <button
-                          type="button"
-                          onClick={() => onInsert(example)}
-                          title="Insert into the formula"
-                          className="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-left font-mono text-gray-600 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-900"
-                        >
-                          {example}
-                        </button>
+                        <SnippetButton snippet={example} onInsert={onInsert} />
                       )}
                     </td>
                   </tr>
@@ -253,6 +292,23 @@ export function VariableHelpModal({
             </table>
           )}
         </Section>
+
+        {recipes.length > 0 && (
+          <Section title="Choices">
+            <table className="w-full border-collapse text-left align-top text-xs">
+              <tbody>
+                {recipes.map(({ purpose, snippet }) => (
+                  <tr key={snippet} className="border-t border-gray-100">
+                    <td className="py-1.5 pr-3 align-top">{purpose}</td>
+                    <td className="w-64 py-1.5 align-top">
+                      <SnippetButton snippet={snippet} onInsert={onInsert} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Section>
+        )}
 
         <Section title="Reference">
           <div className="space-y-1.5 text-xs leading-5">
@@ -363,9 +419,7 @@ export function VariableHelpModal({
                 undefined
               </DocLink>
             </Code>
-            , and a formula with no value to show renders as nothing. To show
-            something else, say so in the formula:{" "}
-            <Code>input1 ?? &apos;n/a&apos;</Code>.
+            {UNANSWERED_ADVICE[result]}
           </p>
         </Section>
       </ModalBody>

@@ -11,9 +11,9 @@ import { useQuery } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router";
 import FormResponsesView, {
-  sortResponsesByCreatedAtAsc,
   type FormWithSchema,
 } from "../components/FormResponsesView";
+import { sortResponsesByCreatedAtAsc } from "../lib/sortResponses";
 
 const FormResponses: React.FC = () => {
   const { formId } = useParams<{ formId: string }>();

@@ -16,6 +16,8 @@ export type VisibilityContext = {
   firstContractSignedAt: string | null;
   completedActionCount: number;
   isLoading: boolean;
+  /** This mount's fetch failed, so the values above are stale or defaults. */
+  failed: boolean;
 };
 
 /**
@@ -91,6 +93,8 @@ export function useVisibilityContext(
     enabled &&
     needsContext &&
     !hasSettledSinceMount({ dataUpdatedAt, errorUpdatedAt }, mountedAt);
+  const failed =
+    enabled && needsContext && !isLoading && dataUpdatedAt < mountedAt;
 
   return useMemo(
     () => ({
@@ -100,8 +104,9 @@ export function useVisibilityContext(
       firstContractSignedAt: data?.firstContractSignedAt ?? null,
       completedActionCount: data?.completedActionCount ?? 0,
       isLoading,
+      failed,
     }),
-    [data, isLoading],
+    [data, isLoading, failed],
   );
 }
 

@@ -9,16 +9,16 @@ import {
   flattenPageItems,
   isQuestionField,
 } from "@alliance/common/forms/form-schema";
+import { fieldWithSavedChoices } from "@alliance/common/forms/formula-options";
 import { FormResponseDto } from "@alliance/shared/client";
 import { getRangeValues } from "@alliance/shared/formrenderer";
 import Card from "@alliance/sharedweb/ui/Card";
 import FormMarkdownWrapper from "@alliance/sharedweb/ui/FormMarkdownWrapper";
 import React, { useMemo } from "react";
 import { normalizeBoolean } from "../lib/answerValues";
-import {
-  type FormResponseFilter,
-  type FormWithSchema,
-} from "./FormResponsesView";
+import { type FormResponseFilter } from "../lib/responseFilter";
+import { savedChoicesAcrossResponses } from "../lib/savedChoices";
+import { type FormWithSchema } from "./FormResponsesView";
 
 export interface FormResponseStatisticsProps {
   form: FormWithSchema | null;
@@ -544,13 +544,16 @@ const FormResponseStatistics: React.FC<FormResponseStatisticsProps> = ({
     return fields;
   }, [form]);
 
-  const statsData = useMemo(
-    () =>
-      statsFields.map((field) =>
-        buildFieldStats(field, responses, totalResponses),
+  const statsData = useMemo(() => {
+    const saved = savedChoicesAcrossResponses(responses);
+    return statsFields.map((field) =>
+      buildFieldStats(
+        fieldWithSavedChoices(field, saved),
+        responses,
+        totalResponses,
       ),
-    [responses, statsFields, totalResponses],
-  );
+    );
+  }, [responses, statsFields, totalResponses]);
 
   if (!form) {
     return (

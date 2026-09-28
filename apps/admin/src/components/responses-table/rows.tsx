@@ -1,9 +1,14 @@
 import type { AnyField } from "@alliance/common/forms/form-schema";
+import {
+  fieldWithSavedChoices,
+  type FormulaChoices,
+} from "@alliance/common/forms/formula-options";
 import type {
   ActionWithdrawalDto,
   FormResponseDto,
   ProfileDto,
 } from "@alliance/shared/client";
+import { parseFormulaChoices } from "@alliance/shared/parsed-dtos";
 import { respondentName } from "../../lib/respondent";
 import type { ResponseVariantOption } from "../FormResponsesView";
 import { IdentityChip } from "../IdentitySwatch";
@@ -66,19 +71,22 @@ export function buildTableColumns(params: {
 }
 
 /**
- * The field as the response's own snapshot worded it, so option labels read the
- * way they did when the answer was given. Falls back to the column's own
- * definition when that snapshot is not loaded.
+ * The field as the response's own snapshot worded it, with the choices it
+ * saved from an options formula, so option labels read the way they did when
+ * the answer was given. Falls back to the column's own definition when that
+ * snapshot is not loaded.
  */
 const fieldForResponse = (params: {
   response: FormResponseDto;
+  choices: FormulaChoices;
   question: QuestionColumn;
   fieldsBySnapshot: Map<number, Map<string, AnyField>>;
 }): AnyField => {
-  const { response, question, fieldsBySnapshot } = params;
-  return (
+  const { response, choices, question, fieldsBySnapshot } = params;
+  return fieldWithSavedChoices(
     fieldsBySnapshot.get(response.formSnapshotId)?.get(question.fieldId) ??
-    question.field
+      question.field,
+    choices,
   );
 };
 
@@ -145,6 +153,7 @@ export function buildRows(params: {
   } = params;
 
   return responses.map((response) => {
+    const choices = parseFormulaChoices(response.formulaChoices);
     const cells: Record<string, CellContent> = {};
     for (const column of columns) {
       if (column.kind === ColumnKind.Meta) {
@@ -160,6 +169,7 @@ export function buildRows(params: {
       cells[column.id] = renderCell({
         field: fieldForResponse({
           response,
+          choices,
           question: column.question,
           fieldsBySnapshot,
         }),

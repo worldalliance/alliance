@@ -404,3 +404,27 @@ describe("option categories", () => {
     );
   });
 });
+
+it("claims no options only where the member can answer", () => {
+  render(
+    <MemoryRouter>
+      <SiteAppProvider>
+        <RenderField
+          fieldContext={staticFieldContext}
+          field={{
+            id: "pick",
+            type: "input",
+            kind: "select",
+            label: "Pick",
+            options: [],
+            optionsFormula: { inputs: {}, formula: "[]" },
+          }}
+          value="red"
+          isOutputView
+        />
+      </SiteAppProvider>
+    </MemoryRouter>,
+  );
+
+  expect(screen.queryByText("No options available")).toBeNull();
+});

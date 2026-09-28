@@ -41,8 +41,8 @@ import {
   formVariableSchema,
   interpolateVariables,
   sanitizeVariableName,
+  syncFormulaListInputs,
   syncListInputProperties,
-  syncVariableListInputs,
   textHasVariableReference,
   VARIABLE_NAME_REGEX,
   type FormVariable,
@@ -629,13 +629,13 @@ describe("list inputs", () => {
         fields: variableInputFieldsById([people]),
         sourceFields: new Map(),
       };
-      expect(syncVariableListInputs([synced], fields)[0]).toBe(synced);
+      expect(syncFormulaListInputs(synced, fields)).toBe(synced);
       const stale = variable({
         inputs: {
           input1: { kind: "list", fieldId: "people", properties: { n: "x" } },
         },
       });
-      expect(syncVariableListInputs([stale], fields)[0].inputs).toEqual({
+      expect(syncFormulaListInputs(stale, fields).inputs).toEqual({
         input1: {
           kind: "list",
           fieldId: "people",

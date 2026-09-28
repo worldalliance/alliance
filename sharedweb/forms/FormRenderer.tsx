@@ -15,6 +15,7 @@ import {
   type FormSchema,
   type FormValue,
 } from "@alliance/common/forms/form-schema";
+import { withResolvedOptions } from "@alliance/common/forms/formula-options";
 import {
   interpolateDisplayBlock,
   interpolateFieldText,
@@ -34,6 +35,10 @@ import {
   restorablePublicAnswers,
 } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
+import {
+  completedFormSchema,
+  formulaSourcesFor,
+} from "@alliance/shared/forms/formulaChoices";
 import {
   resolveFormValue,
   type SetFieldValue,
@@ -126,6 +131,11 @@ type FormRendererProps = {
   phDistinctId?: string;
   sessionReplayUrl?: string;
   user?: Omit<UserDto, "email">;
+  /**
+   * Whether `user` is still being fetched. Formulas reading other forms wait
+   * for it.
+   */
+  userLoading?: boolean;
   disableOptionRandomization?: boolean;
   onFormStarted?: () => void;
   onAbandonAction?: (withdrawal: ActionWithdrawal) => void;
@@ -175,6 +185,7 @@ const FormRenderer = ({
   persistKey,
   userId,
   user,
+  userLoading = false,
   disableOptionRandomization,
   onFormStarted,
   phDistinctId,
@@ -194,8 +205,12 @@ const FormRenderer = ({
   scrollContainerRef,
 }: FormRendererProps) => {
   // Compute schema and a namespaced storage key for persistence (if enabled)
-  const schema = form as unknown as FormSchema;
   const readOnly = !!renderFormAsCompleted;
+  const schema = useMemo(
+    () =>
+      completedFormSchema(form, readOnly ? completedFormResponse : undefined),
+    [form, readOnly, completedFormResponse],
+  );
   const baseStorageKey = computeFormStorageKey({
     formId: id,
   });
@@ -427,6 +442,7 @@ const FormRenderer = ({
     firstContractSignedAt,
     completedActionCount,
     isLoading: visibilityContextLoading,
+    failed: visibilityContextFailed,
   } = useVisibilityContext(schema, {
     enabled: !!user,
   });
@@ -453,18 +469,30 @@ const FormRenderer = ({
     ? (savedDeviceType ?? deviceType)
     : deviceType;
 
-  const visibilityValidatorResults = useVisibilityValidatorResults({
+  const {
+    results: visibilityValidatorResults,
+    failed: visibilityValidatorsFailed,
+  } = useVisibilityValidatorResults({
     schema,
     readOnly,
     savedResults: completedFormResponse?.visibilityValidatorResults,
+    signedIn: !!user || adminPreviewUserId !== undefined,
   });
 
-  const { previousAnswerSchemas, previousAnswerData } =
-    usePreviousAnswerSources({ schema, previewUserId: adminPreviewUserId });
+  const { previousAnswerSchemas, previousAnswerData, previousAnswersPending } =
+    usePreviousAnswerSources({
+      schema,
+      previewUserId: adminPreviewUserId,
+      signedIn: !!user,
+    });
 
   const sourceHistories = useVariableSourceHistories({
     schema,
-    subject: historySubject({ adminPreviewUserId, signedIn: !!user }),
+    subject: historySubject({
+      adminPreviewUserId,
+      signedIn: !!user,
+      userLoading,
+    }),
   });
 
   const variableAggregates = useVariableAggregates({
@@ -558,6 +586,7 @@ const FormRenderer = ({
     effectiveFormData,
     variableValues,
     variablesError,
+    resolvedOptions,
     isElementCurrentlyVisible,
     fieldContext,
     visiblePageIndices,
@@ -567,6 +596,7 @@ const FormRenderer = ({
   } = useFormVisibility({
     schema,
     formData,
+    setFormData,
     readOnly,
     currentPageIndex,
     setCurrentPageIndex,
@@ -580,6 +610,13 @@ const FormRenderer = ({
     userPropertyHasValue,
     firstContractSignedAt,
     completedActionCount,
+    visibilityInputs: {
+      visibilityContextLoading,
+      visibilityContextFailed,
+      visibilityValidatorsFailed,
+      userLoading,
+      previousAnswersPending,
+    },
   });
 
   const { validatePage, validateAllPages } = useFormValidation({
@@ -778,6 +815,7 @@ const FormRenderer = ({
       answers: sanitizedAnswers,
       formSnapshotId,
       actionId,
+      formulaSources: formulaSourcesFor(schema, sourceHistories),
       visibilityValidatorResults,
       deviceType,
       publicAnswers: resolvedPublicAnswers,
@@ -814,7 +852,9 @@ const FormRenderer = ({
     readOnly,
     reportNativeValidity,
     resolvedPublicAnswers,
+    schema,
     searchParams,
+    sourceHistories,
     sessionReplayUrl,
     trackValidationError,
     uploadingAny,
@@ -846,6 +886,7 @@ const FormRenderer = ({
       answers: stripCardIds(formData),
       formSnapshotId,
       actionId,
+      formulaSources: formulaSourcesFor(schema, sourceHistories),
       visibilityValidatorResults,
       deviceType,
       publicAnswers: resolvedPublicAnswers,
@@ -1057,7 +1098,10 @@ const FormRenderer = ({
         className="scroll-mt-24"
       >
         <RenderField
-          field={interpolateFieldText(field, variableValues)}
+          field={withResolvedOptions(
+            interpolateFieldText(field, variableValues),
+            resolvedOptions,
+          )}
           value={effectiveFormData[field.id]}
           onChange={readOnly ? undefined : (val) => updateField(field.id, val)}
           fileUpload={readOnly ? undefined : imageUpload}

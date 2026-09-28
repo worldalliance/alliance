@@ -38,6 +38,14 @@ const schema: FormSchema = {
           label: "Where do you live?",
         },
         { type: "input", kind: "textarea", id: "q_notes", label: "Anything?" },
+        {
+          type: "input",
+          kind: "multiselect",
+          id: "q_picked",
+          label: "Which of yours?",
+          options: [],
+          optionsFormula: { inputs: {}, formula: "[]" },
+        },
       ],
     },
   ],
@@ -53,6 +61,7 @@ const response = (
   publicAnswers: {},
   schemaSnapshot: { ...schema },
   visibilityValidatorResults: {},
+  formulaChoices: {},
   ...overrides,
 });
 
@@ -91,6 +100,25 @@ describe("buildResponsesHtml", () => {
       "<pretty><item>AI data use</item><item>E-waste</item></pretty>",
     );
     expect(html).toContain("<pretty>San Francisco, CA, United States</pretty>");
+  });
+
+  test("labels a formula field's answer with the choices its response saved", () => {
+    const html = build([
+      response({
+        id: 5,
+        answers: { q_picked: ["b", "a"] },
+        formulaChoices: {
+          q_picked: [
+            { label: "Alpha", value: "a" },
+            { label: "Beta", value: "b" },
+          ],
+        },
+      }),
+    ]);
+
+    expect(html).toContain(
+      "<pretty><item>Beta</item><item>Alpha</item></pretty>",
+    );
   });
 
   test("marks unanswered questions and keeps answers the schema dropped", () => {

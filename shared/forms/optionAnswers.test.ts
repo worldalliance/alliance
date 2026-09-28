@@ -75,4 +75,21 @@ describe("dropUnknownOptionAnswers", () => {
       other: "x",
     });
   });
+
+  it("leaves a formula's selections for the renderer to check once it resolves", () => {
+    const formula: AnyField = {
+      id: "picked",
+      type: "input",
+      kind: "multiselect",
+      label: "Picked",
+      options: [],
+      optionsFormula: { inputs: {}, formula: "[]" },
+    };
+    expect(
+      dropUnknownOptionAnswers(
+        { picked: ["later"] },
+        new Map([["picked", formula]]),
+      ),
+    ).toEqual({ picked: ["later"] });
+  });
 });

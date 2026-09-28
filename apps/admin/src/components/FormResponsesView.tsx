@@ -37,7 +37,13 @@ import {
   type ReturnToState,
   type SnapshotMigrationTarget,
 } from "../lib/navigation";
+import { choiceAnswerText, getSelections } from "../lib/questionAnswer";
 import { respondentName as buildRespondentName } from "../lib/respondent";
+import {
+  filterDescription,
+  type FormResponseFilter,
+  type ResponseFilterOp,
+} from "../lib/responseFilter";
 import { buildResponsesHtml } from "../lib/responsesHtmlExport";
 import FormResponseStatistics from "./FormResponseStatistics";
 import { IdentityChip } from "./IdentitySwatch";
@@ -51,14 +57,6 @@ export type FormWithSchema = Pick<
 > & {
   schema: FormSchema;
   pages?: Page[];
-};
-
-export const sortResponsesByCreatedAtAsc = (
-  list: FormResponseDto[],
-): FormResponseDto[] => {
-  return [...list].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-  );
 };
 
 /**
@@ -104,14 +102,6 @@ const AI_SCORE_FIELD_KINDS = new Set<FieldKind>(["text", "textarea"]);
 
 type Tab = "responses" | "stats" | "questions" | "replays";
 
-type ResponseFilterOp = "equals" | "includes" | "no-response";
-
-export type FormResponseFilter = {
-  fieldId: string;
-  op: ResponseFilterOp;
-  value?: string;
-};
-
 const isAnswerField = (node: AnyField | DisplayBlock): node is AnyField =>
   isQuestionField(node) && ANSWER_FIELD_KINDS.has(node.kind);
 
@@ -129,23 +119,6 @@ const isNoResponseValue = (value: unknown): boolean => {
   if (Array.isArray(value)) return value.length === 0;
   if (typeof value === "string") return value.trim() === "";
   return false;
-};
-
-const getSelections = (value: unknown): string[] => {
-  if (Array.isArray(value)) return value.map(String);
-  if (value === null || value === undefined || value === "") return [];
-  return [String(value)];
-};
-
-const getOptionLabel = (
-  field: AnyField,
-  value: string | undefined,
-): string | undefined => {
-  if (!value) return undefined;
-  const options =
-    (field as { options?: Array<{ value: string; label: string }> }).options ??
-    [];
-  return options.find((option) => String(option.value) === value)?.label;
 };
 
 const formatAiScore = (value: number | null): string => {
@@ -449,46 +422,12 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
 
   const filterSummary = useMemo(() => {
     if (!activeFilter || !activeFilterField) return null;
-    const fieldLabel = elementInternalDescriptor(activeFilterField);
-    if (activeFilter.op === "no-response") {
-      return { fieldLabel, description: "No response" };
-    }
-    const valueLabel = activeFilter.value ?? "";
-    switch (activeFilterField.kind) {
-      case "checkbox": {
-        const normalized = normalizeBoolean(activeFilter.value);
-        if (normalized === true) {
-          return { fieldLabel, description: "Checked" };
-        }
-        if (normalized === false) {
-          return { fieldLabel, description: "Not checked" };
-        }
-        return null;
-      }
-      case "multiselect": {
-        const optionLabel = getOptionLabel(
-          activeFilterField,
-          activeFilter.value,
-        );
-        return {
-          fieldLabel,
-          description: `Includes ${optionLabel ?? valueLabel}`,
-        };
-      }
-      case "radio":
-      case "select": {
-        const optionLabel = getOptionLabel(
-          activeFilterField,
-          activeFilter.value,
-        );
-        return { fieldLabel, description: optionLabel ?? valueLabel };
-      }
-      case "range":
-        return { fieldLabel, description: `Value ${valueLabel}` };
-      default:
-        return null;
-    }
-  }, [activeFilter, activeFilterField]);
+    return filterDescription({
+      filter: activeFilter,
+      field: activeFilterField,
+      responses: scopedResponses,
+    });
+  }, [activeFilter, activeFilterField, scopedResponses]);
 
   const emptyStateMessage = filterSummary
     ? "No responses match this filter."
@@ -541,45 +480,10 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
   }, [scopedResponses, selectedQuestionFieldId]);
 
   const formatSelectedQuestionAnswer = useCallback(
-    (value: unknown): string => {
-      if (!selectedQuestionField) return formatValue(value);
-
-      switch (selectedQuestionField.kind) {
-        case "radio":
-        case "select": {
-          const normalized =
-            value === null || value === undefined ? "" : String(value);
-          if (!normalized) return "No response";
-          return (
-            getOptionLabel(selectedQuestionField, normalized) ?? normalized
-          );
-        }
-        case "multiselect": {
-          const selections = getSelections(value);
-          if (selections.length === 0) return "No response";
-          return selections
-            .map(
-              (selection) =>
-                getOptionLabel(selectedQuestionField, selection) ?? selection,
-            )
-            .join(", ");
-        }
-        case "ranking": {
-          const ranked = getSelections(value);
-          if (ranked.length === 0) return "No response";
-          return ranked
-            .map(
-              (option, index) =>
-                `${index + 1}. ${
-                  getOptionLabel(selectedQuestionField, option) ?? option
-                }`,
-            )
-            .join(", ");
-        }
-        default:
-          return formatValue(value);
-      }
-    },
+    (value: unknown, response: FormResponseDto): string =>
+      (selectedQuestionField &&
+        choiceAnswerText({ field: selectedQuestionField, value, response })) ??
+      formatValue(value),
     [selectedQuestionField, formatValue],
   );
 
@@ -1215,7 +1119,10 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm text-gray-800 whitespace-pre-wrap break-words leading-5">
-                            {formatSelectedQuestionAnswer(answerValue)}
+                            {formatSelectedQuestionAnswer(
+                              answerValue,
+                              response,
+                            )}
                           </p>
                         </div>
                         {selectedQuestionField &&
