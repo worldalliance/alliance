@@ -41,6 +41,7 @@ import {
 } from "../lib/externalShareTargetsQuery";
 
 type TargetKind = "action" | "external" | "invite";
+type PickableKind = Exclude<TargetKind, "invite">;
 
 type Target =
   | { kind: "action"; id: number; name: string }
@@ -317,6 +318,11 @@ const ShareLinksPage: React.FC = () => {
         ? externalShareTargetsLoadError(externalTargets.error)
         : null,
     invite: null,
+  };
+  const targetsLoading: Record<TargetKind, boolean> = {
+    action: actions.isPending,
+    external: externalTargets.isPending,
+    invite: false,
   };
 
   const handleKindChange = useCallback((kind: TargetKind) => {
@@ -626,6 +632,7 @@ const ShareLinksPage: React.FC = () => {
                     kind={selectedKind}
                     targets={targetsForKind}
                     loadError={targetsLoadError[selectedKind]}
+                    loading={targetsLoading[selectedKind]}
                     value={selectedTarget}
                     onChange={setSelectedTarget}
                     disabled={creating}
@@ -776,14 +783,20 @@ const CampaignPicker: React.FC<{
   );
 };
 
+const loadingText: Record<PickableKind, string> = {
+  action: "Loading actions…",
+  external: "Loading external targets…",
+};
+
 const TargetPicker: React.FC<{
-  kind: TargetKind;
+  kind: PickableKind;
   targets: Target[];
   loadError: string | null;
+  loading: boolean;
   value: Target | null;
   onChange: (target: Target | null) => void;
   disabled?: boolean;
-}> = ({ kind, targets, loadError, value, onChange, disabled }) => {
+}> = ({ kind, targets, loadError, loading, value, onChange, disabled }) => {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -844,7 +857,11 @@ const TargetPicker: React.FC<{
           />
           {open && (
             <div className="absolute top-full left-0 right-0 mt-1 border border-zinc-200 rounded bg-white shadow-md max-h-72 overflow-y-auto z-10">
-              {filtered.length === 0 ? (
+              {loading ? (
+                <p className="px-3 py-2 text-sm text-zinc-500">
+                  {loadingText[kind]}
+                </p>
+              ) : filtered.length === 0 ? (
                 <p className="px-3 py-2 text-sm text-zinc-500">No matches.</p>
               ) : (
                 filtered.map((t) => (

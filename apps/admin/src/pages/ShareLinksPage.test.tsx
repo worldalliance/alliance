@@ -22,18 +22,23 @@ afterEach(cleanup);
 
 let actionsStatus = 200;
 let targetsStatus = 200;
+let actionsGate = Promise.resolve();
+let targetsGate = Promise.resolve();
 
 serveApi(
   routes({
-    "GET /actions/all": () =>
-      actionsStatus === 200
+    "GET /actions/all": async () => {
+      await actionsGate;
+      return actionsStatus === 200
         ? Response.json([
             adminActionListItem(1, "Call your rep"),
             adminActionListItem(2, "Old petition", { archived: true }),
           ])
-        : Response.json({}, { status: actionsStatus }),
-    "GET /external-share-targets": () =>
-      targetsStatus === 200
+        : Response.json({}, { status: actionsStatus });
+    },
+    "GET /external-share-targets": async () => {
+      await targetsGate;
+      return targetsStatus === 200
         ? Response.json([
             {
               id: 3,
@@ -44,7 +49,8 @@ serveApi(
               updatedAt: "2026-01-02T00:00:00.000Z",
             } satisfies ExternalShareTargetDto,
           ])
-        : Response.json({}, { status: targetsStatus }),
+        : Response.json({}, { status: targetsStatus });
+    },
     "GET /campaigns": () => Response.json([]),
     "GET /share-urls/for-user/:userId": () => Response.json([]),
     "GET /user/members": () =>
@@ -68,6 +74,8 @@ serveApi(
 beforeEach(() => {
   actionsStatus = 200;
   targetsStatus = 200;
+  actionsGate = Promise.resolve();
+  targetsGate = Promise.resolve();
 });
 
 const pickOwner = async (query = queryWrapper()) => {
@@ -89,6 +97,19 @@ it("offers the loaded actions that are not archived as targets", async () => {
     await screen.findByRole("button", { name: "Call your rep" }),
   ).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Old petition" })).toBeNull();
+});
+
+it("says the actions are loading instead of offering none", async () => {
+  let release = () => {};
+  actionsGate = new Promise((resolve) => (release = resolve));
+  fireEvent.focus(await pickOwner());
+  expect(screen.getByText("Loading actions…")).toBeTruthy();
+  expect(screen.queryByText("No matches.")).toBeNull();
+
+  release();
+  expect(
+    await screen.findByRole("button", { name: "Call your rep" }),
+  ).toBeTruthy();
 });
 
 it("says the actions failed to load instead of offering none", async () => {
@@ -135,6 +156,19 @@ it("offers the loaded external share targets", async () => {
     await screen.findByRole("button", { name: "Partner petition" }),
   ).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Call your rep" })).toBeNull();
+});
+
+it("says the external share targets are loading instead of offering none", async () => {
+  let release = () => {};
+  targetsGate = new Promise((resolve) => (release = resolve));
+  fireEvent.focus(await pickExternalKind());
+  expect(screen.getByText("Loading external targets…")).toBeTruthy();
+  expect(screen.queryByText("No matches.")).toBeNull();
+
+  release();
+  expect(
+    await screen.findByRole("button", { name: "Partner petition" }),
+  ).toBeTruthy();
 });
 
 it("says the external share targets failed to load", async () => {
