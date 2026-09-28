@@ -108,3 +108,10 @@ it("shows a refetch error above an empty list", async () => {
   expect(await screen.findByText("Failed to load actions")).toBeTruthy();
   expect(screen.getByText("No actions found.")).toBeTruthy();
 });
+
+it("offers the create menu when no actions are unarchived", async () => {
+  served = [adminActionListItem(2, "Old petition", { archived: true })];
+  renderPage();
+  await screen.findByText("No actions found.");
+  expect(screen.getByRole("button", { name: "Create" })).toBeTruthy();
+});

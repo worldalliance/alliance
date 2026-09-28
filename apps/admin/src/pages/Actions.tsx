@@ -168,6 +168,7 @@ const ActionsList: React.FC = () => {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <p className="font-bold ml-2">Actions</p>
+          <CreateActionMenu />
         </div>
         {error && <p className="text-red-500">{error}</p>}
         <p>No actions found.</p>
