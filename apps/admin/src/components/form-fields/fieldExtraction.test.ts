@@ -69,10 +69,6 @@ describe("hasExtractionEnabled", () => {
       hasExtractionEnabled({ ...custom, autoExtractUserData: undefined }),
     ).toBe(false);
   });
-
-  it("is false for kinds that cannot extract", () => {
-    expect(hasExtractionEnabled(text)).toBe(false);
-  });
 });
 
 describe("getExtractionLabel", () => {

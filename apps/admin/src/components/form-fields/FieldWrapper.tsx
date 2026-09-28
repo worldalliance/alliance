@@ -335,7 +335,7 @@ export function FieldWrapper<T extends AnyField>({
               user={FORM_BUILDER_PREVIEW_USER}
               fieldContext={staticFieldContext}
             />
-            {hasExtractionEnabled(field) && (
+            {supportsExtraction(field) && hasExtractionEnabled(field) && (
               <div className="mt-4 text-xs text-blue-600 flex items-center gap-1">
                 <svg
                   className="w-3 h-3"

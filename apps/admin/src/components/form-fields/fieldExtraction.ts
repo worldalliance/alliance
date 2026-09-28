@@ -1,5 +1,6 @@
 import type {
   AnyField,
+  AutoExtractFieldKind,
   CheckboxField,
   CityField,
   CustomComponentField,
@@ -23,15 +24,24 @@ export function supportsExtraction(field: AnyField): field is ExtractableField {
   );
 }
 
-export function hasExtractionEnabled(field: AnyField): boolean {
-  if (!supportsExtraction(field)) return false;
+export function hasExtractionEnabled(field: ExtractableField): boolean {
   if (field.kind === "checkbox" || field.kind === "custom") {
     return Boolean(field.autoExtractUserData?.target);
   }
   return Boolean(field.autoExtractUserData);
 }
 
-export function getExtractionLabel(field: AnyField): string {
+const SCALAR_EXTRACTION_LABELS: Record<
+  Exclude<AutoExtractFieldKind, "checkbox" | "custom">,
+  string
+> = {
+  phone: "Extracting into: Phone number",
+  time: "Extracting into: Preferred reminder time",
+  timezone: "Extracting into: Time zone",
+  city: "Extracting into: City",
+};
+
+export function getExtractionLabel(field: ExtractableField): string {
   if (field.kind === "checkbox" || field.kind === "custom") {
     const target = field.autoExtractUserData?.target;
     if (target === "shareInfoPublicly") {
@@ -39,11 +49,5 @@ export function getExtractionLabel(field: AnyField): string {
     }
     return "Extracting into user data";
   }
-  const labels: Record<string, string> = {
-    phone: "Extracting into: Phone number",
-    time: "Extracting into: Preferred reminder time",
-    timezone: "Extracting into: Time zone",
-    city: "Extracting into: City",
-  };
-  return labels[field.kind] || "Extracting into user data";
+  return SCALAR_EXTRACTION_LABELS[field.kind];
 }
