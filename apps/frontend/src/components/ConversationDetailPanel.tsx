@@ -1,4 +1,3 @@
-/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import type { MessageDto } from "@alliance/shared/client";
 import {
   ConversationDto,
@@ -13,6 +12,7 @@ import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { milliseconds } from "date-fns";
 import { ChevronLeft, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useImageDropZone } from "../hooks/useImageDropZone";
 import { useAuth } from "../lib/AuthContext";
 import { attachImageFiles } from "../lib/imageAttachments";
 import ConversationInfoPanel from "./ConversationInfoPanel";
@@ -88,14 +88,16 @@ const ConversationDetailPanel = ({
   const [attachments, setAttachments] = useState<string[]>([]);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [groupInfoOpen, setGroupInfoOpen] = useState(false);
-  const [isDraggingPanel, setIsDraggingPanel] = useState(false);
   const [focusedMessageId, setFocusedMessageId] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
-  const panelDragCounterRef = useRef(0);
 
   const focusedMessageRef = useRef<HTMLDivElement | null>(null);
 
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const { isDragging: isDraggingPanel, dropZoneProps } = useImageDropZone(
+    (files) => attachImageFiles(files, setAttachments),
+  );
 
   useEffect(() => {
     if (focusedMessageId) {
@@ -113,65 +115,6 @@ const ConversationDetailPanel = ({
       focusedMessageRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [focusedMessageId]);
-
-  const handleFilesSelected = useCallback(
-    async (files: FileList | File[] | null) => {
-      if (!files || files.length === 0) return;
-      await attachImageFiles(Array.from(files), setAttachments);
-    },
-    [],
-  );
-
-  function isDraggingImage(e: React.DragEvent) {
-    const items = e.dataTransfer?.items;
-    if (!items) return false;
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-
-      if (item.kind === "file" && item.type.startsWith("image/")) {
-        return true;
-      }
-
-      if (item.type.startsWith("image/")) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  const onDragEnterCapture = (e: React.DragEvent) => {
-    if (!isDraggingImage(e)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    panelDragCounterRef.current += 1;
-    setIsDraggingPanel(true);
-  };
-
-  const onDragOverCapture = (e: React.DragEvent) => {
-    if (!isDraggingImage(e)) return;
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const onDragLeaveCapture = (e: React.DragEvent) => {
-    if (!isDraggingImage(e)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    panelDragCounterRef.current -= 1;
-    if (panelDragCounterRef.current <= 0) {
-      setIsDraggingPanel(false);
-    }
-  };
-
-  const onDropCapture = async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    panelDragCounterRef.current = 0;
-    setIsDraggingPanel(false);
-    await handleFilesSelected(e.dataTransfer?.files ?? null);
-  };
 
   const handleSetReplyingTo = useCallback((messageId: string) => {
     setReplyingTo(messageId);
@@ -337,10 +280,7 @@ const ConversationDetailPanel = ({
   return (
     <div
       className="flex flex-col h-full overflow-hidden relative bg-white"
-      onDragEnterCapture={onDragEnterCapture}
-      onDragOverCapture={onDragOverCapture}
-      onDragLeaveCapture={onDragLeaveCapture}
-      onDropCapture={onDropCapture}
+      {...dropZoneProps}
     >
       {isDraggingPanel && (
         <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/40 text-white font-medium pointer-events-none">
