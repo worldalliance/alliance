@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
-import { extractRefreshToken, type JwtPayload, JWTTokenType } from "../tokens";
+import { extractRefreshToken, verifyRefreshToken } from "../tokens";
 
 @Injectable()
 export class RefreshTokenGuard implements CanActivate {
@@ -22,21 +22,9 @@ export class RefreshTokenGuard implements CanActivate {
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-        secret: process.env.JWT_REFRESH_SECRET,
-      });
-
-      if (payload.tokenType !== JWTTokenType.refresh) {
-        console.log("invalid token type");
-        throw new UnauthorizedException("Invalid token type");
-      }
-
-      // Attach user info to request for later use
-      request["user"] = payload;
-
+      request["user"] = await verifyRefreshToken(this.jwtService, token);
       return true;
-    } catch (err) {
-      console.log("refresh token guard error: ", err);
+    } catch {
       throw new UnauthorizedException("Invalid or expired refresh token");
     }
   }
