@@ -1,6 +1,7 @@
 import {
   ActionCompletedBarWithInfoPropsShared,
   getCompletedPercentage,
+  selectCompletedFriends,
 } from "@alliance/shared/lib/actionCompletedBarWithInfo";
 import { cn } from "@alliance/shared/styles/util";
 import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
@@ -36,13 +37,10 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
 }: ActionCompletedBarWithInfoProps) => {
   const { labelString, percentage } = getCompletedPercentage(action);
 
-  const completedFriends = useMemo(() => {
-    return (
-      friendActivities?.filter(
-        (activity) => activity.type === "user_completed",
-      ) ?? []
-    ).map((activity) => activity.user);
-  }, [friendActivities]);
+  const completedFriends = useMemo(
+    () => selectCompletedFriends(friendActivities),
+    [friendActivities],
+  );
 
   if (percentage === null) {
     return null;
