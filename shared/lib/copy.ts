@@ -281,6 +281,8 @@ export const formulaSourcesChangedRefreshed = `${FORMULA_SOURCES_CHANGED_REASON}
 export const variableSourceDeleted =
   "This form uses answers from a form or question that has been deleted, so it can't be shown.";
 
+export const noOptionsAvailable = "No options available";
+
 export const photoPickFailed = "Couldn't open your photo library.";
 
 export const unreadablePhotos = (count: number, of: number) =>

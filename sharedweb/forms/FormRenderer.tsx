@@ -15,6 +15,7 @@ import {
   type FormSchema,
   type FormValue,
 } from "@alliance/common/forms/form-schema";
+import { withResolvedOptions } from "@alliance/common/forms/formula-options";
 import {
   interpolateDisplayBlock,
   interpolateFieldText,
@@ -576,6 +577,7 @@ const FormRenderer = ({
     effectiveFormData,
     variableValues,
     variablesError,
+    resolvedOptions,
     isElementCurrentlyVisible,
     fieldContext,
     visiblePageIndices,
@@ -1079,7 +1081,10 @@ const FormRenderer = ({
         className="scroll-mt-24"
       >
         <RenderField
-          field={interpolateFieldText(field, variableValues)}
+          field={withResolvedOptions(
+            interpolateFieldText(field, variableValues),
+            resolvedOptions,
+          )}
           value={effectiveFormData[field.id]}
           onChange={readOnly ? undefined : (val) => updateField(field.id, val)}
           fileUpload={readOnly ? undefined : imageUpload}

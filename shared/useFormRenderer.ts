@@ -24,6 +24,11 @@ import {
   type ListSubField,
 } from "@alliance/common/forms/form-schema";
 import {
+  NO_OPTIONS,
+  schemaWithResolvedOptions,
+  type ResolvedOptions,
+} from "@alliance/common/forms/formula-options";
+import {
   emptyUserPropertyPresence,
   type UserPropertyPresence,
 } from "@alliance/common/forms/user-properties";
@@ -32,12 +37,12 @@ import {
   variableAggregateSources,
 } from "@alliance/common/forms/variable-aggregates";
 import { resolveVariableValues } from "@alliance/common/forms/variable-evaluation";
+import { EMPTY_HISTORY } from "@alliance/common/forms/variable-source-history";
 import { variableHistoryFormIds } from "@alliance/common/forms/variables";
 import {
   isElementCurrentlyVisible as isElementCurrentlyVisibleShared,
   isFieldConditionallyRequired,
   listRowData,
-  stripHiddenAnswers,
   visibleListSubFields,
   type ConditionExtras,
 } from "@alliance/common/forms/visibility";
@@ -66,6 +71,7 @@ import {
   resolveFieldDefaultValue,
   validateFieldValue as validateFieldValueShared,
 } from "./formrenderer";
+import { visibleOfferedAnswers } from "./forms/formulaChoices";
 import {
   evaluatedAggregates,
   type VariableAggregates,
@@ -590,8 +596,10 @@ export type FormVisibility = {
   visibilityExtras: ConditionExtras;
   effectiveFormData: Record<string, FormValue>;
   variableValues: ReadonlyMap<string, string>;
-  /** Set when any variable fails, which blocks the whole form. */
+  /** Set when any variable or options formula fails, which blocks the whole form. */
   variablesError: string | null;
+  /** Apply to a field with `withResolvedOptions` before rendering it. */
+  resolvedOptions: ResolvedOptions;
   isElementCurrentlyVisible: (element: AnyField | DisplayBlock) => boolean;
   fieldContext: FieldConditionContext;
   visiblePageIndices: number[];
@@ -606,10 +614,10 @@ export type FormVisibility = {
 
 /**
  * Everything downstream of "which answers count right now". Answers to fields
- * the user cannot currently see are stripped before visibility, validation,
- * rendering and submission read them, so what the user sees is exactly what
- * submits. Raw `formData` keeps the hidden values, so re-showing a field
- * restores what was typed.
+ * the user cannot currently see, and selections an options formula doesn't
+ * offer, are stripped before visibility, validation, rendering and submission
+ * read them, so what the user sees is exactly what submits. Raw `formData`
+ * keeps both, so re-showing a field restores what was typed.
  *
  * Also nudges `currentPageIndex` to the nearest visible page when an answer
  * hides the page the user is on, so `setCurrentPageIndex` must be referentially
@@ -691,19 +699,42 @@ export function useFormVisibility(args: {
     [visibilityExtras, readOnly],
   );
 
-  const effectiveFormData = useMemo(
+  // Only a read-only form draws past a deleted source form. A formula reading
+  // one resolves as if it had no submissions, which the builder's save already
+  // requires every options formula to handle.
+  const optionsSources = useMemo(() => {
+    const { sources, deletedFormIds } = evaluatedSources(sourceHistories);
+    return deletedFormIds.size === 0
+      ? sources
+      : new Map([
+          ...sources,
+          ...[...deletedFormIds].map((id) => [id, EMPTY_HISTORY] as const),
+        ]);
+  }, [sourceHistories]);
+  const visibleOffered = useMemo(
     () =>
-      stripHiddenAnswers(
-        schema.pages ?? [],
-        formData,
-        visibilityExtrasReadOnly,
-      ),
-    [schema.pages, formData, visibilityExtrasReadOnly],
+      visibleOfferedAnswers({
+        schema,
+        answers: formData,
+        extras: visibilityExtrasReadOnly,
+        sources: optionsSources,
+      }),
+    [schema, formData, visibilityExtrasReadOnly, optionsSources],
   );
+  const formulaOptions = visibleOffered.resolved;
+  const resolvedOptions = formulaOptions.ok
+    ? formulaOptions.value.options
+    : NO_OPTIONS;
+  const effectiveFormData = visibleOffered.answers;
 
   const variableInputFields = useMemo(
-    () => variableInputFieldsById(collectVariableResolutionFields(schema)),
-    [schema],
+    () =>
+      variableInputFieldsById(
+        collectVariableResolutionFields(
+          schemaWithResolvedOptions(schema, resolvedOptions),
+        ),
+      ),
+    [schema, resolvedOptions],
   );
 
   const variables = useMemo(() => {
@@ -803,7 +834,12 @@ export function useFormVisibility(args: {
     visibilityExtras,
     effectiveFormData,
     variableValues: variables.ok ? variables.value : new Map(),
-    variablesError: variables.ok ? null : variables.error,
+    variablesError: formulaOptions.ok
+      ? variables.ok
+        ? null
+        : variables.error
+      : formulaOptions.error,
+    resolvedOptions,
     isElementCurrentlyVisible,
     fieldContext,
     visiblePageIndices,

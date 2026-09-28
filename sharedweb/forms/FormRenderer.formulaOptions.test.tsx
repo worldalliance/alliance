@@ -1,6 +1,7 @@
 import type {
   AnyField,
   FormSchema,
+  MultiSelectField,
   SelectField,
 } from "@alliance/common/forms/form-schema";
 import type { FormResponseDto, SubmitFormDto } from "@alliance/shared/client";
@@ -77,6 +78,29 @@ const latestColors: SelectField = {
   },
 };
 
+const fromLocal: MultiSelectField = {
+  id: "picked",
+  type: "input",
+  kind: "multiselect",
+  label: "Picked",
+  options: [],
+  optionsFormula: {
+    inputs: { input1: { kind: "field", fieldId: "source" } },
+    formula: "input1 ?? []",
+  },
+};
+
+const localSource: MultiSelectField = {
+  id: "source",
+  type: "input",
+  kind: "multiselect",
+  label: "Source",
+  options: [
+    { label: "A", value: "a" },
+    { label: "B", value: "b" },
+  ],
+};
+
 const schemaOf = (fields: AnyField[]): FormSchema => ({
   pages: [{ id: "p1", fields }],
   outputViews: [],
@@ -119,17 +143,144 @@ const renderForm = (
     </QueryClientProvider>,
   );
 
+it("offers the latest submission's choices once the member's history loads", async () => {
+  serveHistory([["red"], ["blue", "red"]]);
+  renderForm(schemaOf([latestColors]));
+
+  await screen.findByRole("option", { name: "Blue" });
+  expect(
+    screen.getAllByRole("option").map((option) => option.textContent),
+  ).toEqual(["Select an option", "Blue", "Red"]);
+});
+
+it("waits for sign-in to resolve instead of offering a guest's choices", () => {
+  renderForm(schemaOf([latestColors]), {
+    adminPreviewUserId: undefined,
+    userLoading: true,
+  });
+
+  expect(screen.queryByRole("combobox", { name: "Pick" })).toBeNull();
+  expect(screen.queryByText("No options available")).toBeNull();
+});
+
+it("disables a field whose formula offers nothing", async () => {
+  serveHistory([]);
+  renderForm(schemaOf([latestColors]));
+
+  const empty = await screen.findByRole<HTMLSelectElement>("combobox", {
+    name: "Pick",
+  });
+  expect(empty.disabled).toBe(true);
+  expect(screen.getByText("No options available")).toBeTruthy();
+});
+
+it("won't draw a form whose options formula fails", () => {
+  renderForm(
+    schemaOf([
+      {
+        ...fromLocal,
+        optionsFormula: { inputs: {}, formula: "'not a list'" },
+      },
+    ]),
+  );
+
+  expect(screen.getByText("This form can't be displayed")).toBeTruthy();
+  expect(screen.queryByText("Picked")).toBeNull();
+});
+
+it("draws a read-only form whose options read a deleted form", async () => {
+  api.alsoServing({
+    "GET /tasks/responseHistory/:formId/user/:userId": () =>
+      Response.json({ message: "Form not found" }, { status: 404 }),
+  });
+  renderForm(schemaOf([latestColors]), { renderFormAsCompleted: true });
+
+  expect(await screen.findByRole("combobox", { name: "Pick" })).toBeTruthy();
+  expect(screen.queryByText("This form can't be displayed")).toBeNull();
+});
+
+it("keeps a required field offered nothing required", async () => {
+  const onSubmit = jest.fn(async (_data: SubmitFormDto) => true);
+  renderForm(schemaOf([{ ...fromLocal, required: true }]), { onSubmit });
+
+  expect(screen.getByText("No options available")).toBeTruthy();
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: "Complete" }));
+  });
+
+  expect(onSubmit).not.toHaveBeenCalled();
+  expect(screen.getByText("Select at least one option.")).toBeTruthy();
+  const field = screen.getByRole<HTMLSelectElement>("combobox", {
+    name: "Picked",
+  });
+  expect(field.required).toBe(true);
+  expect(field.getAttribute("aria-invalid")).toBe("true");
+});
+
+it("leaves out the selection limit when a multiselect is offered nothing", () => {
+  renderForm(schemaOf([{ ...fromLocal, maxSelections: 2 }]));
+
+  expect(screen.getByText("No options available")).toBeTruthy();
+  expect(screen.queryByText(/Select up to/)).toBeNull();
+});
+
+it("offers a list sub-field's choices in every row", async () => {
+  renderForm(
+    schemaOf([
+      localSource,
+      {
+        id: "rows",
+        type: "input",
+        kind: "list",
+        label: "Rows",
+        defaultNumber: 2,
+        fields: [{ ...fromLocal, kind: "select", options: [] }],
+      },
+    ]),
+  );
+  const rowSelects = () =>
+    screen.getAllByRole<HTMLSelectElement>("combobox", { name: "Picked" });
+  const boxes = () => screen.getAllByRole<HTMLInputElement>("checkbox");
+
+  fireEvent.click(boxes()[0]);
+  fireEvent.click(boxes()[1]);
+  fireEvent.change(rowSelects()[0], { target: { value: "a" } });
+  fireEvent.change(rowSelects()[1], { target: { value: "b" } });
+  expect(
+    Array.from(rowSelects()[1].options).map((option) => option.textContent),
+  ).toEqual(["Select an option", "A", "B"]);
+});
+
+it("submits without a selection its formula stopped offering", async () => {
+  const onSubmit = jest.fn(async (_data: SubmitFormDto) => false);
+  renderForm(schemaOf([localSource, fromLocal]), { onSubmit });
+  const boxes = () => screen.getAllByRole<HTMLInputElement>("checkbox");
+
+  fireEvent.click(boxes()[0]);
+  fireEvent.click(boxes()[1]);
+  fireEvent.click(boxes()[3]);
+  fireEvent.click(boxes()[1]);
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: "Complete" }));
+  });
+
+  expect(onSubmit.mock.calls[0][0].answers).toEqual({ source: ["a"] });
+});
+
 it("submits the responses its options read", async () => {
   serveHistory([["red"], ["blue"]]);
   const onSubmit = jest.fn(async (_data: SubmitFormDto) => false);
   renderForm(schemaOf([latestColors]), { onSubmit });
 
-  await screen.findByRole("combobox", { name: "Pick" });
+  const select = await screen.findByRole("combobox", { name: "Pick" });
+  await screen.findByRole("option", { name: "Blue" });
+  fireEvent.change(select, { target: { value: "blue" } });
   await act(async () => {
     fireEvent.click(screen.getByRole("button", { name: "Complete" }));
   });
 
   expect(onSubmit.mock.calls[0][0]).toMatchObject({
+    answers: { pick: "blue" },
     formulaSources: [{ formId: SOURCE, responseIds: [100, 101] }],
   });
 });
@@ -141,7 +292,7 @@ it("names the responses its options read when withdrawing", async () => {
     onAbandonAction,
   });
 
-  await screen.findByRole("combobox", { name: "Pick" });
+  await screen.findByRole("option", { name: "Red" });
   const menu = container.querySelector(".lucide-ellipsis")?.closest("button");
   if (!menu) throw new Error("no withdrawal menu");
   fireEvent.click(menu);

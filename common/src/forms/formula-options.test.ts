@@ -13,6 +13,7 @@ import {
 import { validateFormSchema } from "./form-schema-validate";
 import {
   formulaSourceFormIds,
+  keepAvailableChoices,
   readOptionsResult,
   resolveFormulaOptions,
   schemaWithResolvedOptions,
@@ -442,6 +443,30 @@ describe("list sub-fields with an options formula", () => {
 });
 
 describe("saved formula choices", () => {
+  it("leave a select's answer alone when it is still offered", () => {
+    const schema = schemaOf([formulaSelect("pick", {}, "[]")]);
+    const answers = { pick: "a" };
+    expect(
+      keepAvailableChoices({
+        schema,
+        answers,
+        options: new Map([["pick", [choice("a")]]]),
+      }),
+    ).toBe(answers);
+  });
+
+  it("leave a cleared select alone", () => {
+    const schema = schemaOf([formulaSelect("pick", {}, "[]")]);
+    const answers = { pick: "" };
+    expect(
+      keepAvailableChoices({
+        schema,
+        answers,
+        options: new Map([["pick", [choice("a")]]]),
+      }),
+    ).toBe(answers);
+  });
+
   it("name only the choices selected", () => {
     const schema = schemaOf([formulaMultiselect("pick", {}, "[]")]);
     expect(

@@ -16,6 +16,7 @@ import {
   type FileUploadSlot,
   type FileUploadSlots,
 } from "@alliance/shared/forms/fileUploadSlots";
+import { offersNoOptions } from "@alliance/shared/forms/formulaChoices";
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
 import {
   CARD_ID_KEY,
@@ -29,7 +30,10 @@ import {
   formatTimeForDisplay,
   parseTimeInput,
 } from "@alliance/shared/forms/timeUtils";
-import { cancelImageUpload } from "@alliance/shared/lib/copy";
+import {
+  cancelImageUpload,
+  noOptionsAvailable,
+} from "@alliance/shared/lib/copy";
 import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -222,6 +226,33 @@ export function RenderField({
         radioGroupRef.current?.querySelector("input")?.focus();
       }
     : undefined;
+
+  if (onChange !== undefined && offersNoOptions(field)) {
+    return (
+      <div className="space-y-1">
+        <RenderLabel
+          field={field}
+          labelId={labelId}
+          error={errorMessage}
+          labelRightAddon={labelRightAddon}
+          isOutputView={isOutputView}
+          hideLabel={hideLabel}
+          required={required}
+        />
+        <select
+          aria-labelledby={labelId}
+          disabled
+          required={required}
+          aria-invalid={hasError}
+          value=""
+          className={composeClassName(sharedInputClasses)}
+        >
+          <option value="">{noOptionsAvailable}</option>
+        </select>
+        {renderValidationMessage()}
+      </div>
+    );
+  }
 
   switch (field.kind) {
     case "text":

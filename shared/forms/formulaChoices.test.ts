@@ -1,6 +1,10 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
-import { formulaSourcesChanged, formulaSourcesFor } from "./formulaChoices";
+import {
+  formulaSourcesChanged,
+  formulaSourcesFor,
+  visibleOfferedAnswers,
+} from "./formulaChoices";
 import {
   SourceHistoriesStatus,
   type SourceHistories,
@@ -62,6 +66,177 @@ describe("formulaSourcesFor", () => {
       { formId: 7, responseIds: [100, 101] },
       { formId: 8, responseIds: [] },
     ]);
+  });
+});
+
+const pickedB = { kind: "equals" as const, when: "pick", equals: "b" };
+
+const schema: FormSchema = {
+  pages: [
+    {
+      id: "p1",
+      fields: [
+        {
+          id: "pick",
+          type: "input",
+          kind: "select",
+          label: "Pick",
+          options: [],
+          optionsFormula: {
+            inputs: {},
+            formula: "[{ label: 'A', value: 'a' }]",
+          },
+        },
+        {
+          id: "unlessB",
+          type: "input",
+          kind: "text",
+          label: "Unless B",
+          visibleIfFormula: {
+            conditions: { c1: pickedB },
+            formula: { op: "NOT", operand: "c1" },
+          },
+        },
+        {
+          id: "ifB",
+          type: "input",
+          kind: "text",
+          label: "If B",
+          visibleIfFormula: { conditions: { c1: pickedB }, formula: "c1" },
+        },
+      ],
+    },
+  ],
+  outputViews: [],
+};
+
+describe("visibleOfferedAnswers", () => {
+  it("keeps a hidden field's selection until a pass shows it", () => {
+    const unlessB = {
+      conditions: { c1: pickedB },
+      formula: { op: "NOT" as const, operand: "c1" },
+    };
+    const { answers } = visibleOfferedAnswers({
+      schema: {
+        ...schema,
+        pages: [
+          {
+            id: "p1",
+            fields: [
+              schema.pages[0].fields[0],
+              {
+                id: "src",
+                type: "input",
+                kind: "text",
+                label: "Src",
+                visibleIfFormula: unlessB,
+              },
+              {
+                id: "fromSrc",
+                type: "input",
+                kind: "select",
+                label: "From src",
+                options: [],
+                optionsFormula: {
+                  inputs: { input1: { kind: "field", fieldId: "src" } },
+                  formula: "[{ label: 'X', value: input1 ?? 'none' }]",
+                },
+                visibleIfFormula: unlessB,
+              },
+            ],
+          },
+        ],
+      },
+      answers: { pick: "b", src: "x", fromSrc: "x" },
+      extras: { deviceType: "desktop" },
+      sources: new Map(),
+    });
+
+    expect(answers).toEqual({ src: "x", fromSrc: "x" });
+  });
+
+  it("decides visibility without the selections the formula doesn't offer", () => {
+    const { answers } = visibleOfferedAnswers({
+      schema,
+      answers: { pick: "b", unlessB: "kept", ifB: "dropped" },
+      extras: { deviceType: "desktop" },
+      sources: new Map(),
+    });
+
+    expect(answers).toEqual({ unlessB: "kept" });
+  });
+
+  it("decides a list row's visibility without the choice its other row hides", () => {
+    const { answers } = visibleOfferedAnswers({
+      schema: {
+        pages: [
+          {
+            id: "p1",
+            fields: [
+              {
+                id: "items",
+                type: "input",
+                kind: "list",
+                label: "Items",
+                fields: [
+                  { id: "mode", type: "input", kind: "text", label: "Mode" },
+                  {
+                    id: "pick",
+                    type: "input",
+                    kind: "select",
+                    label: "Pick",
+                    options: [],
+                    optionsFormula: {
+                      inputs: {},
+                      formula: "[{ label: 'A', value: 'a' }]",
+                    },
+                    visibleIfFormula: {
+                      conditions: {
+                        c1: { kind: "equals", when: "mode", equals: "show" },
+                      },
+                      formula: "c1",
+                    },
+                  },
+                  {
+                    id: "unlessB",
+                    type: "input",
+                    kind: "text",
+                    label: "Unless B",
+                    visibleIfFormula: {
+                      conditions: { c1: pickedB },
+                      formula: { op: "NOT", operand: "c1" },
+                    },
+                  },
+                  {
+                    id: "ifB",
+                    type: "input",
+                    kind: "text",
+                    label: "If B",
+                    visibleIfFormula: {
+                      conditions: { c1: pickedB },
+                      formula: "c1",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        outputViews: [],
+      },
+      answers: {
+        items: [
+          { mode: "hide", pick: "a" },
+          { mode: "show", pick: "b", unlessB: "kept", ifB: "dropped" },
+        ],
+      },
+      extras: { deviceType: "desktop" },
+      sources: new Map(),
+    });
+
+    expect(answers).toEqual({
+      items: [{ mode: "hide" }, { mode: "show", unlessB: "kept" }],
+    });
   });
 });
 

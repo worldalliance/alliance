@@ -56,7 +56,7 @@ export type FormulaFieldEntry = {
   listId?: string;
 };
 
-function isFormulaChoiceField(
+export function isFormulaChoiceField(
   field: AnyField | ListSubField,
 ): field is FormulaChoiceField {
   return (
@@ -360,11 +360,13 @@ function keepAvailable(params: {
   answers: Record<string, FormValue>;
   entry: FormulaFieldEntry;
   options: readonly ChoiceOption[];
+  visible?: Record<string, FormValue>;
 }): Record<string, FormValue> {
-  const { answers, entry, options } = params;
+  const { answers, entry, options, visible } = params;
   const available = new Set(options.map((option) => option.value));
   const { field, listId } = entry;
   if (listId === undefined) {
+    if (visible !== undefined && !(field.id in visible)) return answers;
     const kept = availableChoice(answers[field.id], field, available);
     if (kept === answers[field.id]) return answers;
     return kept === REMOVE || kept === undefined
@@ -373,8 +375,12 @@ function keepAvailable(params: {
   }
   const rows = asCards(answers[listId]);
   if (rows === null) return answers;
+  const visibleRows = visible === undefined ? null : asCards(visible[listId]);
   let changed = false;
-  const nextRows = rows.map((row) => {
+  const nextRows = rows.map((row, index) => {
+    if (visible !== undefined && !(field.id in (visibleRows?.[index] ?? {}))) {
+      return row;
+    }
     const kept = availableChoice(row[field.id], field, available);
     if (kept === row[field.id]) return row;
     changed = true;
@@ -385,11 +391,35 @@ function keepAvailable(params: {
   return changed ? { ...answers, [listId]: nextRows } : answers;
 }
 
+/**
+ * Removes selections the resolved options no longer offer: a select loses its
+ * answer, a multiselect only the values that went. Returns `answers` itself
+ * when every selection is still offered. Given `visible`, the same answers
+ * stripped for hiding, it leaves alone the selections stripped from it.
+ */
+export function keepAvailableChoices(params: {
+  schema: FormSchema;
+  answers: Record<string, FormValue>;
+  options: ResolvedOptions;
+  visible?: Record<string, FormValue>;
+}): Record<string, FormValue> {
+  const { visible } = params;
+  let answers = params.answers;
+  for (const entry of collectOptionsFormulaFields(params.schema)) {
+    const options = params.options.get(entry.field.id);
+    if (options === undefined) continue;
+    answers = keepAvailable({ answers, entry, options, visible });
+  }
+  return answers;
+}
+
 export type ResolvedFormulaOptions = {
   options: ResolvedOptions;
   /** The answers without selections the options no longer offer. */
   answers: Record<string, FormValue>;
 };
+
+export const NO_OPTIONS: ResolvedOptions = new Map();
 
 /**
  * Resolves every options formula against `answers`, each after the formulas
@@ -404,7 +434,7 @@ export function resolveFormulaOptions(params: {
   const { schema, sources } = params;
   const entries = collectOptionsFormulaFields(schema);
   if (entries.length === 0) {
-    return R.success({ options: new Map(), answers: params.answers });
+    return R.success({ options: NO_OPTIONS, answers: params.answers });
   }
   const order = optionsFormulaOrder(entries);
   if (!order.ok) return R.failure(optionsCycleMessage(order.error));
