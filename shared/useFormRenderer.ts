@@ -71,7 +71,11 @@ import {
   resolveFieldDefaultValue,
   validateFieldValue as validateFieldValueShared,
 } from "./formrenderer";
-import { visibleOfferedAnswers } from "./forms/formulaChoices";
+import {
+  useDropUnofferedChoices,
+  useOfferedChoicesFor,
+  visibleOfferedAnswers,
+} from "./forms/formulaChoices";
 import {
   evaluatedAggregates,
   type VariableAggregates,
@@ -322,11 +326,15 @@ export function usePreviousAnswerSources(args: {
   schema: FormSchema;
   /** Admin preview: read this user's responses rather than the caller's. */
   previewUserId?: string | number | null;
+  /** A guest has no responses to read. */
+  signedIn: boolean;
 }): {
   previousAnswerSchemas: Record<number, FormSchema>;
   previousAnswerData: Record<number, Record<string, unknown>>;
+  /** Stays set after a fetch fails, so nothing is judged by answers it lacks. */
+  previousAnswersPending: boolean;
 } {
-  const { schema, previewUserId } = args;
+  const { schema, previewUserId, signedIn } = args;
 
   const sourceFormIds = useMemo(() => {
     const ids = new Set<number>();
@@ -361,11 +369,14 @@ export function usePreviousAnswerSources(args: {
   const [previousAnswerData, setPreviousAnswerData] = useState<
     Record<number, Record<string, unknown>>
   >({});
+  const loadKey = `${sourceFormIds.join(",")}|${previewUserId ?? ""}|${signedIn}`;
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (sourceFormIds.length === 0) {
       setPreviousAnswerSchemas({});
       setPreviousAnswerData({});
+      setLoadedKey(null);
       return;
     }
 
@@ -402,45 +413,71 @@ export function usePreviousAnswerSources(args: {
 
       const dataEntries = await Promise.all(
         sourceFormIds.map(async (formId) => {
-          try {
-            if (previewId !== null) {
-              const response = await tasksGetFormResponsesAdmin({
+          if (previewId !== null) {
+            const sent = await R.fromPromise(
+              tasksGetFormResponsesAdmin({
                 path: { id: formId },
-              });
-              const match = (response.data ?? []).find(
-                (candidate) => String(candidate.user?.id) === previewId,
-              );
-              return match ? ([formId, match.answers ?? {}] as const) : null;
-            }
-            const response = await tasksGetMyFormResponse({
-              path: { id: formId },
-            });
-            return response.data
-              ? ([formId, response.data.answers ?? {}] as const)
-              : null;
-          } catch {
-            // The user has not submitted the source form.
-            return null;
+                throwOnError: false,
+              }),
+            );
+            if (!sent.ok || sent.value.error) return R.failure(formId);
+            const match = sent.value.data.find(
+              (candidate) => String(candidate.user?.id) === previewId,
+            );
+            return R.success(
+              match ? ([formId, match.answers ?? {}] as const) : null,
+            );
           }
+          if (!signedIn) return R.success(null);
+          const sent = await R.fromPromise(
+            tasksGetMyFormResponse({
+              path: { id: formId },
+              throwOnError: false,
+            }),
+          );
+          if (!sent.ok) return R.failure(formId);
+          const { data: response, error } = sent.value;
+          // A 404 is a member who hasn't submitted the source form.
+          if (error && sent.value.response.status !== 404) {
+            return R.failure(formId);
+          }
+          return R.success(
+            response ? ([formId, response.answers ?? {}] as const) : null,
+          );
         }),
       );
       if (cancelled) return;
 
       const data: Record<number, Record<string, unknown>> = {};
-      for (const entry of dataEntries) {
-        if (entry) {
-          data[entry[0]] = entry[1];
+      for (const loaded of dataEntries) {
+        if (loaded.ok && loaded.value) {
+          data[loaded.value[0]] = loaded.value[1];
         }
       }
       setPreviousAnswerData(data);
+      if (dataEntries.every((loaded) => loaded.ok)) setLoadedKey(loadKey);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [sourceFormIds, previewUserId]);
+  }, [sourceFormIds, previewUserId, signedIn, loadKey]);
 
-  return { previousAnswerSchemas, previousAnswerData };
+  return {
+    previousAnswerSchemas,
+    previousAnswerData,
+    previousAnswersPending: sourceFormIds.length > 0 && loadedKey !== loadKey,
+  };
+}
+
+function referencedValidatorIds(schema: FormSchema): number[] {
+  const ids = new Set<number>();
+  forEachCondition(schema, (condition) => {
+    if (condition.kind === "validator") {
+      ids.add(condition.validatorId);
+    }
+  });
+  return Array.from(ids);
 }
 
 /**
@@ -453,20 +490,22 @@ export function useVisibilityValidatorResults(args: {
   readOnly: boolean;
   /** The response's raw jsonb blob, validated here rather than by the caller. */
   savedResults?: Record<string, unknown> | null;
-}): Record<number, boolean> {
-  const { schema, readOnly, savedResults } = args;
+  /** Whether anyone, a member or a previewing admin, can run a validator. A guest fails them all. */
+  signedIn: boolean;
+}): {
+  results: Record<number, boolean>;
+  /** A run failed, so its verdict reads as hidden without being known. */
+  failed: boolean;
+} {
+  const { schema, readOnly, savedResults, signedIn } = args;
 
-  const visibilityValidatorIds = useMemo(() => {
-    const ids = new Set<number>();
-    forEachCondition(schema, (condition) => {
-      if (condition.kind === "validator") {
-        ids.add(condition.validatorId);
-      }
-    });
-    return Array.from(ids);
-  }, [schema]);
+  const visibilityValidatorIds = useMemo(
+    () => referencedValidatorIds(schema),
+    [schema],
+  );
 
   const [results, setResults] = useState<Record<number, boolean>>({});
+  const [failedIds, setFailedIds] = useState<ReadonlySet<number>>(new Set());
 
   // A response saved before a validator was added has no verdict for it, and a
   // missing verdict reads as hidden, so default to passing.
@@ -500,8 +539,13 @@ export function useVisibilityValidatorResults(args: {
     });
   }, [visibilityValidatorIds, readOnly]);
 
+  const guestResults = useMemo(
+    () => Object.fromEntries(visibilityValidatorIds.map((id) => [id, false])),
+    [visibilityValidatorIds],
+  );
+
   useEffect(() => {
-    if (readOnly) {
+    if (readOnly || !signedIn) {
       return;
     }
     const missingIds = visibilityValidatorIds.filter((id) => !(id in results));
@@ -521,21 +565,29 @@ export function useVisibilityValidatorResults(args: {
             if (!response.data || response.error) {
               throw response.error ?? new Error("Missing validator response");
             }
-            return [validatorId, response.data.isValid] as const;
+            return { validatorId, isValid: response.data.isValid, ok: true };
           } catch (error) {
             console.error(
               `Failed to evaluate visibility validator ${validatorId}`,
               error,
             );
-            return [validatorId, false] as const;
+            return { validatorId, isValid: false, ok: false };
           }
         }),
       );
       if (cancelled) return;
       setResults((prev) => {
         const next = { ...prev };
-        for (const [id, value] of entries) {
-          next[id] = value;
+        for (const { validatorId, isValid } of entries) {
+          next[validatorId] = isValid;
+        }
+        return next;
+      });
+      setFailedIds((prev) => {
+        const next = new Set(prev);
+        for (const { validatorId, ok } of entries) {
+          if (ok) next.delete(validatorId);
+          else next.add(validatorId);
         }
         return next;
       });
@@ -544,9 +596,19 @@ export function useVisibilityValidatorResults(args: {
     return () => {
       cancelled = true;
     };
-  }, [visibilityValidatorIds, results, readOnly]);
+  }, [visibilityValidatorIds, results, readOnly, signedIn]);
 
-  return readOnly ? readOnlyResults : results;
+  const failed =
+    !readOnly &&
+    signedIn &&
+    visibilityValidatorIds.some((id) => failedIds.has(id));
+  return useMemo(
+    () => ({
+      results: readOnly ? readOnlyResults : signedIn ? results : guestResults,
+      failed,
+    }),
+    [readOnly, readOnlyResults, signedIn, results, guestResults, failed],
+  );
 }
 
 export type FieldConditionContext = {
@@ -592,6 +654,15 @@ function fieldContextFor(params: {
   };
 }
 
+/** Each input visibility reads, set while it loads or after it fails. */
+export type VisibilityInputsPending = {
+  visibilityContextLoading: boolean;
+  visibilityContextFailed: boolean;
+  visibilityValidatorsFailed: boolean;
+  userLoading: boolean;
+  previousAnswersPending: boolean;
+};
+
 export type FormVisibility = {
   visibilityExtras: ConditionExtras;
   effectiveFormData: Record<string, FormValue>;
@@ -617,15 +688,20 @@ export type FormVisibility = {
  * the user cannot currently see, and selections an options formula doesn't
  * offer, are stripped before visibility, validation, rendering and submission
  * read them, so what the user sees is exactly what submits. Raw `formData`
- * keeps both, so re-showing a field restores what was typed.
+ * keeps hidden answers, so re-showing a field restores what was typed, and
+ * loses a selection only once its options formula stops offering it.
  *
  * Also nudges `currentPageIndex` to the nearest visible page when an answer
- * hides the page the user is on, so `setCurrentPageIndex` must be referentially
- * stable. Pass a `useState` setter, or a `useCallback`.
+ * hides the page the user is on, and drops unoffered selections from
+ * `formData`, so `setCurrentPageIndex` and `setFormData` must be referentially
+ * stable. Pass `useState` setters, or `useCallback`s.
  */
 export function useFormVisibility(args: {
   schema: FormSchema;
   formData: Record<string, FormValue>;
+  setFormData: (
+    update: (prev: Record<string, FormValue>) => Record<string, FormValue>,
+  ) => void;
   readOnly: boolean;
   currentPageIndex: number;
   setCurrentPageIndex: (index: number) => void;
@@ -639,10 +715,16 @@ export function useFormVisibility(args: {
   userPropertyHasValue?: UserPropertyPresence;
   firstContractSignedAt: string | null;
   completedActionCount: number;
+  /**
+   * Selections drop only once none of these is set. Verdicts not yet requested
+   * are read from `visibilityValidatorResults`.
+   */
+  visibilityInputs: VisibilityInputsPending;
 }): FormVisibility {
   const {
     schema,
     formData,
+    setFormData,
     readOnly,
     currentPageIndex,
     setCurrentPageIndex,
@@ -656,6 +738,7 @@ export function useFormVisibility(args: {
     userPropertyHasValue,
     firstContractSignedAt,
     completedActionCount,
+    visibilityInputs,
   } = args;
 
   const groupByFieldId = useMemo(
@@ -725,6 +808,28 @@ export function useFormVisibility(args: {
   const resolvedOptions = formulaOptions.ok
     ? formulaOptions.value.options
     : NO_OPTIONS;
+  const verdictsPending = useMemo(
+    () =>
+      referencedValidatorIds(schema).some(
+        (id) => !(id in visibilityValidatorResults),
+      ),
+    [schema, visibilityValidatorResults],
+  );
+  const offeredChoicesFor = useOfferedChoicesFor({
+    schema,
+    extras: visibilityExtrasReadOnly,
+    historiesStatus: sourceHistories.status,
+    sources: optionsSources,
+    inputsSettled:
+      !Object.values(visibilityInputs).some(Boolean) && !verdictsPending,
+  });
+  useDropUnofferedChoices({
+    schema,
+    readOnly,
+    formData,
+    offeredChoicesFor,
+    setFormData,
+  });
   const effectiveFormData = visibleOffered.answers;
 
   const variableInputFields = useMemo(

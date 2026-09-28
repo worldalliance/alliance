@@ -8,7 +8,7 @@ import {
   type TextField,
 } from "@alliance/common/forms/form-schema";
 import type { VariableSourceHistory } from "@alliance/common/forms/variable-evaluation";
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import {
   VariableAggregatesStatus,
   type VariableAggregates,
@@ -25,9 +25,11 @@ import {
   useFormSchemaMaps,
   useFormValidation,
   useFormVisibility,
+  usePreviousAnswerSources,
   useRandomizationKey,
   useVisibilityValidatorResults,
   type FormVisibility,
+  type VisibilityInputsPending,
 } from "./useFormRenderer";
 
 afterEach(cleanup);
@@ -187,10 +189,11 @@ describe("useVisibilityValidatorResults", () => {
       useVisibilityValidatorResults({
         schema: gatedSchema,
         readOnly: true,
+        signedIn: true,
         savedResults: { 42: false },
       }),
     );
-    expect(result.current[42]).toBe(false);
+    expect(result.current.results[42]).toBe(false);
   });
 
   // A response saved before the validator existed has no verdict for it, and a
@@ -201,10 +204,88 @@ describe("useVisibilityValidatorResults", () => {
       useVisibilityValidatorResults({
         schema: gatedSchema,
         readOnly: true,
+        signedIn: true,
         savedResults: {},
       }),
     );
-    expect(result.current[42]).toBe(true);
+    expect(result.current.results[42]).toBe(true);
+  });
+
+  it("says a run failed rather than leave its hidden verdict unexplained", async () => {
+    const original = console.error;
+    console.error = () => {};
+    try {
+      api.alsoServing({
+        "POST /tasks/runValidator/:id": () => json({ message: "down" }, 500),
+      });
+      const { result } = renderHook(() =>
+        useVisibilityValidatorResults({
+          schema: gatedSchema,
+          readOnly: false,
+          signedIn: true,
+        }),
+      );
+
+      expect(result.current.failed).toBe(false);
+      await waitFor(() => expect(result.current.failed).toBe(true));
+      expect(result.current.results[42]).toBe(false);
+    } finally {
+      console.error = original;
+    }
+  });
+
+  it("forgets a failed run once the validator, removed and added back, passes", async () => {
+    const original = console.error;
+    console.error = () => {};
+    try {
+      let runs = 0;
+      api.alsoServing({
+        "POST /tasks/runValidator/:id": () => {
+          runs += 1;
+          return runs === 1
+            ? json({ message: "down" }, 500)
+            : json({ isValid: true });
+        },
+      });
+      const { result, rerender } = renderHook(
+        ({ schema }) =>
+          useVisibilityValidatorResults({
+            schema,
+            readOnly: false,
+            signedIn: true,
+          }),
+        { initialProps: { schema: gatedSchema } },
+      );
+      await waitFor(() => expect(result.current.failed).toBe(true));
+
+      rerender({ schema: { pages: [], outputViews: [] } });
+      rerender({ schema: gatedSchema });
+
+      await waitFor(() => expect(result.current.results[42]).toBe(true));
+      expect(result.current.failed).toBe(false);
+    } finally {
+      console.error = original;
+    }
+  });
+
+  it("fails a guest's validators without running them", () => {
+    let ran = false;
+    api.alsoServing({
+      "POST /tasks/runValidator/:id": () => {
+        ran = true;
+        return json({ isValid: true });
+      },
+    });
+    const { result } = renderHook(() =>
+      useVisibilityValidatorResults({
+        schema: gatedSchema,
+        readOnly: false,
+        signedIn: false,
+      }),
+    );
+
+    expect(result.current).toEqual({ results: { 42: false }, failed: false });
+    expect(ran).toBe(false);
   });
 
   it("falls back to passing when the saved verdict is unreadable", () => {
@@ -216,10 +297,11 @@ describe("useVisibilityValidatorResults", () => {
         useVisibilityValidatorResults({
           schema: gatedSchema,
           readOnly: true,
+          signedIn: true,
           savedResults: { 42: "not a boolean" },
         }),
       );
-      expect(result.current[42]).toBe(true);
+      expect(result.current.results[42]).toBe(true);
       expect(logged).toHaveLength(1);
     } finally {
       console.error = original;
@@ -295,6 +377,14 @@ function lookupFor(schema: FormSchema): Map<string, AnyField> {
   );
 }
 
+const SETTLED_INPUTS: VisibilityInputsPending = {
+  visibilityContextLoading: false,
+  visibilityContextFailed: false,
+  visibilityValidatorsFailed: false,
+  userLoading: false,
+  previousAnswersPending: false,
+};
+
 const NO_SOURCES_READY: SourceHistories = {
   status: SourceHistoriesStatus.Ready,
   sources: NO_SOURCE_HISTORIES,
@@ -310,8 +400,11 @@ function renderVisibility(args: {
   formData: Record<string, FormValue>;
   currentPageIndex?: number;
   setCurrentPageIndex?: (index: number) => void;
+  setFormData?: Parameters<typeof useFormVisibility>[0]["setFormData"];
   sourceHistories?: SourceHistories;
   variableAggregates?: VariableAggregates;
+  visibilityValidatorResults?: Record<number, boolean>;
+  visibilityInputsLoading?: boolean;
 }) {
   const schema = args.schema ?? twoPageSchema;
   return renderHook(() =>
@@ -321,8 +414,9 @@ function renderVisibility(args: {
       readOnly: false,
       currentPageIndex: args.currentPageIndex ?? 0,
       setCurrentPageIndex: args.setCurrentPageIndex ?? (() => {}),
+      setFormData: args.setFormData ?? (() => {}),
       effectiveDeviceType: "desktop",
-      visibilityValidatorResults: {},
+      visibilityValidatorResults: args.visibilityValidatorResults ?? {},
       fieldLookup: lookupFor(schema),
       previousAnswerData: undefined,
       sourceHistories: args.sourceHistories ?? NO_SOURCES_READY,
@@ -330,6 +424,10 @@ function renderVisibility(args: {
       userHasCity: false,
       firstContractSignedAt: null,
       completedActionCount: 0,
+      visibilityInputs: {
+        ...SETTLED_INPUTS,
+        userLoading: args.visibilityInputsLoading ?? false,
+      },
     }),
   );
 }
@@ -403,6 +501,7 @@ describe("useFormVisibility", () => {
           readOnly: false,
           currentPageIndex: 0,
           setCurrentPageIndex: () => {},
+          setFormData: () => {},
           effectiveDeviceType: "desktop",
           visibilityValidatorResults: {},
           fieldLookup: lookupFor(schema),
@@ -412,6 +511,7 @@ describe("useFormVisibility", () => {
           userHasCity: false,
           firstContractSignedAt: null,
           completedActionCount: 0,
+          visibilityInputs: SETTLED_INPUTS,
         }),
       { initialProps: { bonus: "1" } },
     );
@@ -419,6 +519,100 @@ describe("useFormVisibility", () => {
     expect(result.current.variableValues.get("total")).toBe("6");
     rerender({ bonus: "10" });
     expect(result.current.variableValues.get("total")).toBe("15");
+  });
+
+  const pickReadingNote: AnyField = {
+    id: "pick",
+    type: "input",
+    kind: "select",
+    label: "pick",
+    options: [],
+    optionsFormula: {
+      inputs: { input1: { kind: "field", fieldId: "note" } },
+      formula: "[{ label: input1 ?? 'none', value: 'v' }]",
+    },
+  };
+  const pickFromNote: FormSchema = schemaWith([
+    textField("note"),
+    pickReadingNote,
+  ]);
+
+  const dropsSelection = (
+    args: Omit<Parameters<typeof renderVisibility>[0], "formData">,
+  ) => {
+    let dropped = false;
+    renderVisibility({
+      ...args,
+      formData: { note: "hi", pick: "gone" },
+      setFormData: () => {
+        dropped = true;
+      },
+    });
+    return dropped;
+  };
+
+  it("drops no selection until the visibility inputs load", () => {
+    expect(
+      dropsSelection({ schema: pickFromNote, visibilityInputsLoading: true }),
+    ).toBe(false);
+    expect(dropsSelection({ schema: pickFromNote })).toBe(true);
+  });
+
+  it("drops from formData a selection the formula doesn't offer", () => {
+    const formData = { note: "hi", pick: "gone" };
+    const updates: Record<string, FormValue>[] = [];
+    renderVisibility({
+      schema: pickFromNote,
+      formData,
+      setFormData: (update) => updates.push(update(formData)),
+    });
+
+    expect(updates).toEqual([{ note: "hi" }]);
+  });
+
+  it.each<[string, SourceHistories, boolean]>([
+    ["loading", { status: SourceHistoriesStatus.Loading }, false],
+    [
+      "failed",
+      { status: SourceHistoriesStatus.Failed, retry: () => {} },
+      false,
+    ],
+    [
+      "missing a deleted form",
+      {
+        status: SourceHistoriesStatus.SourceDeleted,
+        sources: new Map(),
+        deletedFormIds: new Set([7]),
+      },
+      false,
+    ],
+  ])(
+    "drops selections against %s histories: %p",
+    (_, sourceHistories, drops) => {
+      expect(dropsSelection({ schema: pickFromNote, sourceHistories })).toBe(
+        drops,
+      );
+    },
+  );
+
+  it("drops no selection until every validator verdict lands", () => {
+    const gated = schemaWith([
+      {
+        ...textField("note"),
+        visibleIfFormula: {
+          conditions: { c1: { kind: "validator", validatorId: 42 } },
+          formula: "c1",
+        },
+      },
+      pickReadingNote,
+    ]);
+    expect(dropsSelection({ schema: gated })).toBe(false);
+    expect(
+      dropsSelection({
+        schema: gated,
+        visibilityValidatorResults: { 42: false },
+      }),
+    ).toBe(true);
   });
 
   it("blocks the form while another form's answers are missing", () => {
@@ -521,6 +715,7 @@ describe("useFormVisibility", () => {
           readOnly: false,
           currentPageIndex: 0,
           setCurrentPageIndex: () => {},
+          setFormData: () => {},
           effectiveDeviceType: "desktop",
           visibilityValidatorResults: {},
           fieldLookup: lookupFor(schema),
@@ -530,6 +725,7 @@ describe("useFormVisibility", () => {
           userHasCity: false,
           firstContractSignedAt: null,
           completedActionCount: 0,
+          visibilityInputs: SETTLED_INPUTS,
         }),
       { initialProps: { company: "a" } },
     );
@@ -598,6 +794,7 @@ describe("useFormVisibility", () => {
           readOnly: params.readOnly,
           currentPageIndex: 0,
           setCurrentPageIndex: () => {},
+          setFormData: () => {},
           effectiveDeviceType: "desktop",
           visibilityValidatorResults: {},
           fieldLookup: lookupFor(notesSchema),
@@ -607,6 +804,7 @@ describe("useFormVisibility", () => {
           userHasCity: false,
           firstContractSignedAt: null,
           completedActionCount: 0,
+          visibilityInputs: SETTLED_INPUTS,
         }),
       { initialProps: params.formData },
     );
@@ -734,6 +932,7 @@ function renderValidation(args: {
         readOnly: false,
         currentPageIndex: 0,
         setCurrentPageIndex: () => {},
+        setFormData: () => {},
         effectiveDeviceType: "desktop",
         visibilityValidatorResults: {},
         fieldLookup: lookupFor(args.schema),
@@ -743,6 +942,7 @@ function renderValidation(args: {
         userHasCity: false,
         firstContractSignedAt: null,
         completedActionCount: 0,
+        visibilityInputs: SETTLED_INPUTS,
       });
       const validation = useFormValidation({
         schema: args.schema,
@@ -883,8 +1083,27 @@ let fetchDraft: (formId: string) => Promise<Response>;
 let fetches: number;
 let saves: { formId: string; answers: Record<string, unknown> }[];
 
-serveApi(
+const api = serveApi(
   routes({
+    "GET /tasks/slug/:id": () =>
+      json({
+        id: 9,
+        title: "Source",
+        formSnapshotId: 1,
+        schema: schemaWith([textField("note")]),
+      }),
+    "GET /tasks/myResponse/:id": () =>
+      json({
+        id: 1,
+        formId: 9,
+        formSnapshotId: 1,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        answers: { note: "x" },
+        publicAnswers: {},
+        schemaSnapshot: {},
+        visibilityValidatorResults: {},
+        formulaChoices: {},
+      }),
     "GET /tasks/formDraft/:id": ({ params }) => {
       fetches += 1;
       return fetchDraft(params.id);
@@ -1014,5 +1233,150 @@ describe("useFormDraftSync", () => {
     await settle();
 
     expect(saves[1]?.formId).toBe("7");
+  });
+});
+
+describe("usePreviousAnswerSources", () => {
+  const previewResponse = {
+    id: 1,
+    formId: 9,
+    formSnapshotId: 1,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    answers: { pick: ["a"] },
+    publicAnswers: {},
+    schemaSnapshot: {},
+    visibilityValidatorResults: {},
+    formulaChoices: {},
+  };
+
+  const readsForm9: FormSchema = {
+    pages: [
+      {
+        id: "p1",
+        fields: [
+          {
+            id: "previous",
+            type: "display",
+            kind: "previousAnswer",
+            sourceFormId: 9,
+            sourceFieldId: "note",
+            showLabel: true,
+          },
+        ],
+      },
+    ],
+    outputViews: [],
+  };
+
+  const renderSources = (signedIn = true, previewUserId?: number) =>
+    renderHook(() =>
+      usePreviousAnswerSources({ signedIn, previewUserId, schema: readsForm9 }),
+    );
+
+  it("is loading until the source answers land", async () => {
+    const { result } = renderSources();
+
+    expect(result.current.previousAnswersPending).toBe(true);
+    await waitFor(() =>
+      expect(result.current.previousAnswersPending).toBe(false),
+    );
+    expect(result.current.previousAnswerData[9]).toEqual({ note: "x" });
+  });
+
+  it("is pending again while a source form read before reloads", async () => {
+    const { result, rerender } = renderHook(
+      ({ schema }) => usePreviousAnswerSources({ signedIn: true, schema }),
+      { initialProps: { schema: readsForm9 } },
+    );
+    await waitFor(() =>
+      expect(result.current.previousAnswersPending).toBe(false),
+    );
+
+    rerender({ schema: { pages: [], outputViews: [] } });
+    rerender({ schema: readsForm9 });
+
+    expect(result.current.previousAnswersPending).toBe(true);
+  });
+
+  const notSubmitted = {
+    "GET /tasks/slug/:id": () =>
+      json({ id: 9, title: "Source", formSnapshotId: 1, schema: {} }),
+    "GET /tasks/myResponse/:id": () =>
+      json({ message: "Form response not found" }, 404),
+  };
+
+  it.each([
+    ["web", () => api.alsoServing(notSubmitted)],
+    ["mobile", () => api.throwingOnRefusal(notSubmitted)],
+  ])(
+    "has loaded a source form the member never submitted, on %s",
+    async (_, serve) => {
+      serve();
+      const { result } = renderSources();
+
+      await waitFor(() =>
+        expect(result.current.previousAnswersPending).toBe(false),
+      );
+      expect(result.current.previousAnswerData).toEqual({});
+    },
+  );
+
+  it("has loaded a guest's source forms without asking for their responses", async () => {
+    let asked = false;
+    api.alsoServing({
+      "GET /tasks/myResponse/:id": () => {
+        asked = true;
+        return json({ message: "Unauthorized" }, 401);
+      },
+    });
+    const { result } = renderSources(false);
+
+    await waitFor(() =>
+      expect(result.current.previousAnswersPending).toBe(false),
+    );
+    expect(asked).toBe(false);
+  });
+
+  it("has loaded, for an admin preview, a member who never submitted the source form", async () => {
+    api.alsoServing({
+      "GET /tasks/responses/:id": () =>
+        json([{ ...previewResponse, user: { id: 99 } }]),
+    });
+    const { result } = renderSources(true, 3);
+
+    await waitFor(() =>
+      expect(result.current.previousAnswersPending).toBe(false),
+    );
+    expect(result.current.previousAnswerData).toEqual({});
+  });
+
+  it("stays loading, for an admin preview, after the source responses fail to load", async () => {
+    let failed = false;
+    api.alsoServing({
+      "GET /tasks/responses/:id": () => {
+        failed = true;
+        return json({ message: "down" }, 500);
+      },
+    });
+    const { result } = renderSources(true, 3);
+
+    await waitFor(() => expect(failed).toBe(true));
+    await new Promise((resolve) => realSetTimeout(resolve, 0));
+    expect(result.current.previousAnswersPending).toBe(true);
+  });
+
+  it("stays loading after a source response fails to load", async () => {
+    let failed = false;
+    api.alsoServing({
+      "GET /tasks/myResponse/:id": () => {
+        failed = true;
+        return json({ message: "down" }, 500);
+      },
+    });
+    const { result } = renderSources();
+
+    await waitFor(() => expect(failed).toBe(true));
+    await new Promise((resolve) => realSetTimeout(resolve, 0));
+    expect(result.current.previousAnswersPending).toBe(true);
   });
 });

@@ -715,8 +715,8 @@ const FormRenderer = ({
     maxPageIndex,
   } = useFormSchemaMaps({ schema, userDefaultPublic, timeZone });
 
-  const { previousAnswerSchemas, previousAnswerData } =
-    usePreviousAnswerSources({ schema });
+  const { previousAnswerSchemas, previousAnswerData, previousAnswersPending } =
+    usePreviousAnswerSources({ schema, signedIn: !!user });
 
   const sourceHistories = useVariableSourceHistories({
     schema,
@@ -768,10 +768,14 @@ const FormRenderer = ({
       return defaults;
     },
   );
-  const visibilityValidatorResults = useVisibilityValidatorResults({
+  const {
+    results: visibilityValidatorResults,
+    failed: visibilityValidatorsFailed,
+  } = useVisibilityValidatorResults({
     schema,
     readOnly,
     savedResults: completedFormResponse?.visibilityValidatorResults,
+    signedIn: !!user,
   });
   const { fieldErrors, applyFieldErrorUpdates } = useFieldErrors();
   const [submitting, setSubmitting] = useState(false);
@@ -792,6 +796,7 @@ const FormRenderer = ({
     firstContractSignedAt,
     completedActionCount,
     isLoading: visibilityContextLoading,
+    failed: visibilityContextFailed,
   } = useVisibilityContext(schema, {
     enabled: !!user,
   });
@@ -982,6 +987,7 @@ const FormRenderer = ({
   } = useFormVisibility({
     schema,
     formData,
+    setFormData,
     readOnly,
     currentPageIndex,
     setCurrentPageIndex,
@@ -995,6 +1001,13 @@ const FormRenderer = ({
     userPropertyHasValue,
     firstContractSignedAt,
     completedActionCount,
+    visibilityInputs: {
+      visibilityContextLoading,
+      visibilityContextFailed,
+      visibilityValidatorsFailed,
+      userLoading,
+      previousAnswersPending,
+    },
   });
 
   const { validatePage, validateAllPages } = useFormValidation({

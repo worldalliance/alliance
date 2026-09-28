@@ -1,8 +1,12 @@
-import type { FormSchema } from "@alliance/common/forms/form-schema";
+import type { FormSchema, FormValue } from "@alliance/common/forms/form-schema";
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
+import { renderHook } from "@testing-library/react";
+import { useEffect, useState } from "react";
 import {
   formulaSourcesChanged,
   formulaSourcesFor,
+  offeredChoices,
+  useDropUnofferedChoices,
   visibleOfferedAnswers,
 } from "./formulaChoices";
 import {
@@ -237,6 +241,178 @@ describe("visibleOfferedAnswers", () => {
     expect(answers).toEqual({
       items: [{ mode: "hide" }, { mode: "show", unlessB: "kept" }],
     });
+  });
+});
+
+const fromLocalSchema: FormSchema = {
+  pages: [
+    {
+      id: "p1",
+      fields: [
+        {
+          id: "source",
+          type: "input",
+          kind: "multiselect",
+          label: "Source",
+          options: [{ label: "A", value: "a" }],
+        },
+        {
+          id: "picked",
+          type: "input",
+          kind: "multiselect",
+          label: "Picked",
+          options: [],
+          optionsFormula: {
+            inputs: { input1: { kind: "field", fieldId: "source" } },
+            formula: "input1 ?? [{ label: 'X', value: 'x' }]",
+          },
+        },
+      ],
+    },
+  ],
+  outputViews: [],
+};
+
+describe("useDropUnofferedChoices", () => {
+  it("checks answers restored in the same commit against those answers", () => {
+    const restored = { source: ["a"], picked: ["a"] };
+    const { result } = renderHook(() => {
+      const [formData, setFormData] = useState<Record<string, FormValue>>({});
+      useEffect(() => setFormData(restored), []);
+      useDropUnofferedChoices({
+        schema: fromLocalSchema,
+        readOnly: false,
+        formData,
+        offeredChoicesFor: (answers) =>
+          offeredChoices({
+            schema: fromLocalSchema,
+            answers,
+            extras: { deviceType: "desktop" },
+            sources: new Map(),
+          }),
+        setFormData,
+      });
+      return formData;
+    });
+
+    expect(result.current).toEqual(restored);
+  });
+
+  it("leaves the answers alone while a formula fails", () => {
+    const failing: FormSchema = {
+      pages: [
+        {
+          id: "p1",
+          fields: [
+            {
+              id: "picked",
+              type: "input",
+              kind: "multiselect",
+              label: "Picked",
+              options: [],
+              optionsFormula: { inputs: {}, formula: "'not a list'" },
+            },
+          ],
+        },
+      ],
+      outputViews: [],
+    };
+    const stored = { picked: ["a"] };
+    const offered = (answers: Record<string, FormValue>) =>
+      offeredChoices({
+        schema: failing,
+        answers,
+        extras: { deviceType: "desktop" },
+        sources: new Map(),
+      });
+    expect(offered(stored)).toBeUndefined();
+
+    const { result } = renderHook(() => {
+      const [formData, setFormData] =
+        useState<Record<string, FormValue>>(stored);
+      useDropUnofferedChoices({
+        schema: failing,
+        readOnly: false,
+        formData,
+        offeredChoicesFor: offered,
+        setFormData,
+      });
+      return formData;
+    });
+
+    expect(result.current).toEqual(stored);
+  });
+});
+
+describe("offeredChoices", () => {
+  it("keeps a choice offered only while the answer it reads is hidden", () => {
+    const hidden: FormSchema = {
+      ...fromLocalSchema,
+      pages: [
+        {
+          id: "p1",
+          fields: fromLocalSchema.pages[0].fields.map((field) =>
+            field.type === "input" && field.id === "source"
+              ? {
+                  ...field,
+                  visibleIfFormula: {
+                    conditions: {
+                      c1: { kind: "equals", when: "picked", equals: "never" },
+                    },
+                    formula: "c1",
+                  },
+                }
+              : field,
+          ),
+        },
+      ],
+    };
+
+    const options = offeredChoices({
+      schema: hidden,
+      answers: { source: ["a"], picked: ["x"] },
+      extras: { deviceType: "desktop" },
+      sources: new Map(),
+    });
+
+    expect(options?.get("picked")?.map(({ value }) => value)).toEqual([
+      "a",
+      "x",
+    ]);
+  });
+  it("drops nothing while a hidden answer fails the formula", () => {
+    const hiddenText: FormSchema = {
+      ...fromLocalSchema,
+      pages: [
+        {
+          id: "p1",
+          fields: [
+            {
+              id: "source",
+              type: "input",
+              kind: "text",
+              label: "Source",
+              visibleIfFormula: {
+                conditions: {
+                  c1: { kind: "equals", when: "picked", equals: "never" },
+                },
+                formula: "c1",
+              },
+            },
+            fromLocalSchema.pages[0].fields[1],
+          ],
+        },
+      ],
+    };
+
+    const options = offeredChoices({
+      schema: hiddenText,
+      answers: { source: "not a list", picked: ["x"] },
+      extras: { deviceType: "desktop" },
+      sources: new Map(),
+    });
+
+    expect(options).toBeUndefined();
   });
 });
 

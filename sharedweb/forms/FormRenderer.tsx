@@ -442,6 +442,7 @@ const FormRenderer = ({
     firstContractSignedAt,
     completedActionCount,
     isLoading: visibilityContextLoading,
+    failed: visibilityContextFailed,
   } = useVisibilityContext(schema, {
     enabled: !!user,
   });
@@ -468,14 +469,22 @@ const FormRenderer = ({
     ? (savedDeviceType ?? deviceType)
     : deviceType;
 
-  const visibilityValidatorResults = useVisibilityValidatorResults({
+  const {
+    results: visibilityValidatorResults,
+    failed: visibilityValidatorsFailed,
+  } = useVisibilityValidatorResults({
     schema,
     readOnly,
     savedResults: completedFormResponse?.visibilityValidatorResults,
+    signedIn: !!user || adminPreviewUserId !== undefined,
   });
 
-  const { previousAnswerSchemas, previousAnswerData } =
-    usePreviousAnswerSources({ schema, previewUserId: adminPreviewUserId });
+  const { previousAnswerSchemas, previousAnswerData, previousAnswersPending } =
+    usePreviousAnswerSources({
+      schema,
+      previewUserId: adminPreviewUserId,
+      signedIn: !!user,
+    });
 
   const sourceHistories = useVariableSourceHistories({
     schema,
@@ -587,6 +596,7 @@ const FormRenderer = ({
   } = useFormVisibility({
     schema,
     formData,
+    setFormData,
     readOnly,
     currentPageIndex,
     setCurrentPageIndex,
@@ -600,6 +610,13 @@ const FormRenderer = ({
     userPropertyHasValue,
     firstContractSignedAt,
     completedActionCount,
+    visibilityInputs: {
+      visibilityContextLoading,
+      visibilityContextFailed,
+      visibilityValidatorsFailed,
+      userLoading,
+      previousAnswersPending,
+    },
   });
 
   const { validatePage, validateAllPages } = useFormValidation({
