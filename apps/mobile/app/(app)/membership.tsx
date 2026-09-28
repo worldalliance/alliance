@@ -11,10 +11,9 @@ import {
   isConfirmationCloseEnough,
 } from "@alliance/shared/lib/contract";
 import { suspendContractConfirmation } from "@alliance/shared/lib/copy";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useContractById } from "@alliance/shared/lib/useContractById";
 import { useCurrentContract } from "@alliance/shared/lib/useCurrentContract";
-import { useQueryClient } from "@tanstack/react-query";
+import { useInvalidateVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { ChevronDown } from "lucide-react-native";
 import {
   useCallback,
@@ -133,7 +132,7 @@ function SignedContractActions({
 
 export default function MembershipScreen() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
+  const invalidateVisibilityContext = useInvalidateVisibilityContext();
   const walkthroughScroll = useWalkthroughScroll();
 
   const [editName, setEditName] = useState("");
@@ -189,9 +188,7 @@ export default function MembershipScreen() {
           contractId: latestContract.id,
         });
         setWeeklyCommitmentConfirmation("");
-        void queryClient.invalidateQueries({
-          queryKey: queryKeys.myVisibilityContext(),
-        });
+        invalidateVisibilityContext();
         await refreshContractState();
       }
     } catch (error) {
@@ -208,7 +205,7 @@ export default function MembershipScreen() {
     latestContract,
     weeklyCommitmentConfirmed,
     editName,
-    queryClient,
+    invalidateVisibilityContext,
     refreshContractState,
   ]);
 
