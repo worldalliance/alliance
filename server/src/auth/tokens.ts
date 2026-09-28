@@ -118,6 +118,21 @@ export async function verifyAccessToken(
   return payload.data;
 }
 
+export async function verifyRefreshToken(
+  jwtService: JwtService,
+  token: string,
+): Promise<JwtPayload> {
+  const payload = jwtPayloadSchema.safeParse(
+    await jwtService.verifyAsync(token, {
+      secret: process.env.JWT_REFRESH_SECRET,
+    }),
+  );
+  if (!payload.success || payload.data.tokenType !== JWTTokenType.refresh) {
+    throw new UnauthorizedException();
+  }
+  return payload.data;
+}
+
 export function accessTokenPayload({
   user,
   isImpersonation,

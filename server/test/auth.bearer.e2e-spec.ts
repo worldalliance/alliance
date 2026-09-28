@@ -277,6 +277,19 @@ describe("Auth (e2e)", () => {
         .expect(401);
     });
 
+    it("refuses a refresh token with no sub", async () => {
+      await login();
+      const noSub = ctx.jwtService.sign(
+        { tokenType: JWTTokenType.refresh, email: "nobody@test.com" },
+        { secret: process.env.JWT_REFRESH_SECRET, expiresIn: "14d" },
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post("/auth/refresh?mode=header")
+        .set("Authorization", `Bearer ${noSub}`)
+        .expect(401);
+    });
+
     it("returns a new access token for a valid refresh token", async () => {
       const { refresh_token } = await login();
 
