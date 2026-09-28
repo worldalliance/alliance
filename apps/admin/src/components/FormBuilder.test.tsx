@@ -109,6 +109,59 @@ describe("FormBuilder save conflict", () => {
   );
 });
 
+describe("FormBuilder save conflict with an options formula", () => {
+  const { baseUrl, fetch } = client.getConfig();
+  afterEach(() => client.setConfig({ baseUrl, fetch }));
+
+  it("Take theirs drops the formula editor's undo", async () => {
+    const withFormula: FormSchema = {
+      ...mine,
+      variables: undefined,
+      pages: [
+        {
+          id: "p1",
+          fields: [
+            {
+              id: "pick",
+              type: "input",
+              kind: "select",
+              label: "Pick",
+              options: [],
+              optionsFormula: { inputs: {}, formula: "[]" },
+            },
+          ],
+        },
+      ],
+    };
+    client.setConfig({
+      baseUrl: "http://localhost",
+      fetch: async (request: Request) => {
+        if (request.method !== "GET")
+          return new Response(null, { status: 409 });
+        return new URL(request.url).pathname === "/tasks/listForms"
+          ? Response.json([])
+          : Response.json({ id: 1, schema: withFormula, formSnapshotId: 2 });
+      },
+    });
+    jest.spyOn(window, "confirm").mockReturnValue(true);
+    renderBuilder(withFormula);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "What you can write here" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "[{ label: 'Other', value: 'other' }]",
+      }),
+    );
+    expect(screen.getByText(/Undo, back to/)).toBeTruthy();
+    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(await screen.findByText("Take theirs"));
+
+    await waitFor(() => expect(screen.queryByText(/Undo, back to/)).toBeNull());
+  });
+});
+
 describe("FormBuilder save while a source form loads", () => {
   const { baseUrl, fetch } = client.getConfig();
   afterEach(() => client.setConfig({ baseUrl, fetch }));

@@ -1,10 +1,15 @@
 import type { AnyField, FormValue } from "@alliance/common/forms/form-schema";
+import { evaluateOptionsExpression } from "@alliance/common/forms/formula-options";
 import { evaluateVariableText } from "@alliance/common/forms/variable-evaluation";
 import {
   compileVariableExpression,
+  type ExprNode,
   type ExprValue,
 } from "@alliance/common/forms/variable-expression";
-import { checkVariableFormulaType } from "@alliance/common/forms/variable-formula-check";
+import {
+  checkOptionsFormulaType,
+  checkVariableFormulaType,
+} from "@alliance/common/forms/variable-formula-check";
 import {
   inputSourceFormId,
   isListInput,
@@ -24,8 +29,10 @@ import { Info, Plus } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { renameKeys } from "../lib/renameKeys";
 import { readCountSample, type CountSample } from "./CountSamples";
+import { FormulaResult } from "./formulaResult";
+import { ResultPreview, type Preview } from "./FormulaResultPreview";
 import { VariableHelpModal, type FormulaHelpInput } from "./VariableHelpModal";
-import { inputHelp } from "./variableInputHelp";
+import { inputHelp, optionsRecipes } from "./variableInputHelp";
 import {
   fieldChoices,
   InputMode,
@@ -59,6 +66,40 @@ export const inputForField = (
     : { kind: "sourceList", sourceFormId, fieldId: field.id, properties };
 };
 
+const RESULT_FORMULA: Record<
+  FormulaResult,
+  {
+    typeCheck: typeof checkVariableFormulaType;
+    preview: (
+      node: ExprNode,
+      values: ReadonlyMap<string, ExprValue>,
+    ) => Preview;
+    /** The input examples all give text, so they show only without recipes. */
+    offersRecipes: boolean;
+    /** Nothing loads member counts for an options formula. */
+    readsCounts: boolean;
+  }
+> = {
+  [FormulaResult.Text]: {
+    typeCheck: checkVariableFormulaType,
+    preview: (node, values) => ({
+      result: FormulaResult.Text,
+      value: evaluateVariableText(node, values),
+    }),
+    offersRecipes: false,
+    readsCounts: true,
+  },
+  [FormulaResult.Options]: {
+    typeCheck: checkOptionsFormulaType,
+    preview: (node, values) => ({
+      result: FormulaResult.Options,
+      value: evaluateOptionsExpression(node, values),
+    }),
+    offersRecipes: true,
+    readsCounts: false,
+  },
+};
+
 const fieldReadBy = (input: VariableInput, sources: InputSources) =>
   fieldChoices(input, sources).find(
     (candidate) =>
@@ -68,12 +109,14 @@ const fieldReadBy = (input: VariableInput, sources: InputSources) =>
 
 type FormulaEditorProps = {
   formula: FormulaParts;
+  result: FormulaResult;
   sources: InputSources;
   onChange: (next: FormulaParts) => void;
 };
 
 export function FormulaEditor({
   formula,
+  result,
   sources,
   onChange,
 }: FormulaEditorProps) {
@@ -113,8 +156,8 @@ export function FormulaEditor({
 
   const typed = useMemo(() => {
     if (!compiled.ok) return compiled;
-    return checkVariableFormulaType(formula.formula, inputTypes);
-  }, [compiled, formula.formula, inputTypes]);
+    return RESULT_FORMULA[result].typeCheck(formula.formula, inputTypes);
+  }, [compiled, formula.formula, inputTypes, result]);
 
   const readings = useMemo(
     () =>
@@ -145,18 +188,18 @@ export function FormulaEditor({
     ],
   );
 
-  const preview = useMemo(() => {
+  const preview = useMemo((): Preview | null => {
     if (!compiled.ok || !typed.ok) return null;
     const values = new Map<string, ExprValue>(
       [...readings].map(([name, reading]) => [name, reading.value]),
     );
-    return evaluateVariableText(compiled.value, values);
-  }, [compiled, typed, readings]);
+    return RESULT_FORMULA[result].preview(compiled.value, values);
+  }, [compiled, typed, readings, result]);
 
   const formulaError = compiled.ok
     ? typed.ok
-      ? preview?.ok === false
-        ? preview.error
+      ? preview?.value.ok === false
+        ? preview.value.error
         : null
       : typed.error
     : compiled.error;
@@ -170,10 +213,26 @@ export function FormulaEditor({
         return {
           name,
           type: inputTypes.get(name) ?? "any",
-          example: field && example !== "" ? example : null,
+          example:
+            !RESULT_FORMULA[result].offersRecipes && field && example !== ""
+              ? example
+              : null,
         };
       }),
-    [inputNames, formula.inputs, fieldOf, inputTypes],
+    [inputNames, formula.inputs, fieldOf, inputTypes, result],
+  );
+
+  const recipes = useMemo(
+    () =>
+      RESULT_FORMULA[result].offersRecipes
+        ? optionsRecipes(
+            inputNames.map((name) => {
+              const input = formula.inputs[name];
+              return { name, input, field: fieldOf(input) };
+            }),
+          )
+        : [],
+    [result, inputNames, formula.inputs, fieldOf],
   );
 
   // A formula is a single expression, so a snippet appended to one already
@@ -326,7 +385,10 @@ export function FormulaEditor({
                 sample={samples[name]}
                 submissions={submissionSamples[name] ?? []}
                 counts={countSamples[name] ?? {}}
-                countsAvailable={countedForm !== undefined}
+                countsAvailable={
+                  RESULT_FORMULA[result].readsCounts &&
+                  countedForm !== undefined
+                }
                 onModeChange={(mode) => setInputMode(name, mode)}
                 onInputChange={(next) => setInput(name, next)}
                 onFieldPick={(picked) =>
@@ -402,14 +464,8 @@ export function FormulaEditor({
             Undo, back to <span className="font-mono">{replacedFormula}</span>
           </button>
         )}
-        {formulaError === null && typed.ok ? (
-          <p className="text-xs text-gray-500">
-            Result:{" "}
-            <span className="font-mono">
-              {(preview?.ok && preview.value) || "—"}
-            </span>{" "}
-            <span className="text-gray-400">&middot; {typed.value}</span>
-          </p>
+        {formulaError === null && typed.ok && preview !== null ? (
+          <ResultPreview preview={preview} type={typed.value} />
         ) : (
           <p className="text-xs text-red-600">{formulaError}</p>
         )}
@@ -418,6 +474,8 @@ export function FormulaEditor({
       {helpOpen && (
         <VariableHelpModal
           inputs={helpInputs}
+          result={result}
+          recipes={recipes}
           onInsert={(snippet) => {
             insertSnippet(snippet);
             setHelpOpen(false);

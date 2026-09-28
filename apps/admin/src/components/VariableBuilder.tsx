@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { makeTempId } from "../lib/tempId";
 import { FormPickerError, FormPickerErrorReason } from "./FormPickerError";
 import { FormulaEditor, inputForField } from "./FormulaEditor";
+import { FormulaResult } from "./formulaResult";
 import { useFormulaSources } from "./FormulaSourcesContext";
 import { SharedOutputSourceWarning } from "./SharedOutputSourceWarning";
 import { answerHelp } from "./variableInputHelp";
@@ -156,6 +157,7 @@ function VariableCard({
 
       <FormulaEditor
         formula={variable}
+        result={FormulaResult.Text}
         sources={sources}
         onChange={(next) => onChange({ ...variable, ...next })}
       />

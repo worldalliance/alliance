@@ -823,8 +823,9 @@ export function FormBuilder(props: FormBuilderProps) {
     theirs: FormSchema;
     theirsSnapshotId: number;
   } | null>(null);
-  // VariableBuilder's cards only follow their variables through its own edits,
-  // so a schema loaded from a conflict remounts it with no sample answers.
+  // Formula editors, in VariableBuilder's cards and in the page's choice
+  // fields, only follow their formulas through their own edits, so a schema
+  // loaded from a conflict remounts them with no sample answers.
   const [conflictLoads, setConflictLoads] = useState(0);
   const [confirmUnresolvedVariables, setConfirmUnresolvedVariables] =
     useState(false);
@@ -3034,7 +3035,7 @@ export function FormBuilder(props: FormBuilderProps) {
                       </div>
                     )}
                     <PerViewerOptions allowed={!displayOnly}>
-                      <div className="space-y-4">
+                      <div key={conflictLoads} className="space-y-4">
                         {currentPage.fields.length === 0 && (
                           <InsertPoint loc={{ groupId: null, index: 0 }} />
                         )}

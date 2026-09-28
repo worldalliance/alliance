@@ -4,6 +4,8 @@ import { RequiredToggle } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
 import { FixedOptionsEditor } from "./FixedOptionsEditor";
+import { OptionsFormulaEditor } from "./OptionsFormulaEditor";
+import { OptionsSourcePicker } from "./OptionsSourcePicker";
 import type { BaseFieldProps } from "./types";
 
 enum MultiSelectDisplay {
@@ -141,7 +143,17 @@ export function EditableChoiceField({
         </div>
       )}
 
-      <FixedOptionsEditor field={field} onUpdate={onUpdate} />
+      <OptionsSourcePicker field={field} onUpdate={onUpdate} />
+
+      {field.optionsFormula !== undefined ? (
+        <OptionsFormulaEditor
+          fieldId={field.id}
+          formula={field.optionsFormula}
+          onChange={(optionsFormula) => onUpdate({ optionsFormula })}
+        />
+      ) : (
+        <FixedOptionsEditor field={field} onUpdate={onUpdate} />
+      )}
     </FieldWrapper>
   );
 }
