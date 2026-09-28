@@ -171,6 +171,8 @@ export function useRandomizationKey(args: {
 export function useFormSchemaMaps(args: {
   schema: FormSchema;
   userDefaultPublic: boolean;
+  /** Seeds every timezone field, whatever default the field names. */
+  timeZone: string | undefined;
 }): {
   fieldLookup: Map<string, AnyField>;
   defaultValueMap: Map<string, FormValue>;
@@ -181,7 +183,7 @@ export function useFormSchemaMaps(args: {
   pageCount: number;
   maxPageIndex: number;
 } {
-  const { schema, userDefaultPublic } = args;
+  const { schema, userDefaultPublic, timeZone } = args;
 
   const { fieldLookup, defaultValueMap } = useMemo(() => {
     const defaults = new Map<string, FormValue>();
@@ -189,7 +191,7 @@ export function useFormSchemaMaps(args: {
     for (const page of schema.pages) {
       for (const element of flattenPageItems(page.fields)) {
         if (isQuestionField(element)) {
-          const defaultValue = resolveFieldDefaultValue(element);
+          const defaultValue = resolveFieldDefaultValue(element, timeZone);
           if (defaultValue !== undefined) {
             defaults.set(element.id, defaultValue);
           }
@@ -201,7 +203,7 @@ export function useFormSchemaMaps(args: {
       fieldLookup: collectFieldLookup(schema.pages),
       defaultValueMap: defaults,
     };
-  }, [schema]);
+  }, [schema, timeZone]);
 
   const unknownKind = useMemo(
     () =>

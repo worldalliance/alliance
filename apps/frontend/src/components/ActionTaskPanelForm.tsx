@@ -1,6 +1,9 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { errorMessage } from "@alliance/common/errorMessage";
-import { FormSchema } from "@alliance/common/forms/form-schema";
+import {
+  flattenPageItems,
+  FormSchema,
+} from "@alliance/common/forms/form-schema";
 import {
   FormResponseDto,
   SubmitFormDto,
@@ -57,7 +60,12 @@ const ActionTaskPanelForm = ({
   preview = false,
 }: ActionTaskPanelFormProps) => {
   const [error, setError] = useState<string | null>(null);
-  const { user, isAuthenticated, refreshUser } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    refreshUser,
+    loading: authLoading,
+  } = useAuth();
   const invalidateVisibilityContext = useInvalidateVisibilityContext();
   const {
     data: form,
@@ -174,8 +182,16 @@ const ActionTaskPanelForm = ({
     );
   }
 
-  if (!form) {
-    if (isPending) {
+  const schema = form?.schema as unknown as FormSchema | undefined;
+  // The form seeds its timezone fields from `user` at mount.
+  const waitsForUser =
+    authLoading &&
+    !!schema?.pages.some((page) =>
+      flattenPageItems(page.fields).some((item) => item.kind === "timezone"),
+    );
+
+  if (!form || !schema || waitsForUser) {
+    if (isPending || waitsForUser) {
       return (
         <div
           className={cn(
@@ -207,7 +223,7 @@ const ActionTaskPanelForm = ({
     <Wrapper className={card ? "p-4 sm:p-6" : "flex flex-col gap-y-2"}>
       <div>
         <FormRenderer
-          form={form.schema as unknown as FormSchema}
+          form={schema}
           id={form.id}
           formSnapshotId={form.formSnapshotId}
           actionId={actionId}

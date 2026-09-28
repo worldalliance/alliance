@@ -65,6 +65,7 @@ import {
   outputFieldPublicToggle,
   waitingForImageUpload,
 } from "@alliance/shared/lib/copy";
+import { formTimeZoneDefault } from "@alliance/shared/lib/timeZone";
 import { useImageUpload } from "@alliance/shared/lib/useImageUpload";
 import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { cn } from "@alliance/shared/styles/util";
@@ -109,6 +110,7 @@ import {
 import { resolveImageSource } from "../../lib/config";
 import { getImageLoadSize } from "../../lib/imageLoadSize";
 import { colors } from "../../lib/style/colors";
+import { getDeviceTimeZone } from "../../lib/timeZone";
 import AppMarkdownWrapper, { useHandleLinkPress } from "../AppMarkdownWrapper";
 import { ImageGalleryModal } from "../ImageLightbox";
 import { MARKDOWN_HUG_WIDTH_STYLE, MarkdownTone } from "../markdownStyles";
@@ -679,6 +681,10 @@ const FormRenderer = ({
   });
 
   const userDefaultPublic = user?.formDataPreference === "public";
+  const timeZone = formTimeZoneDefault({
+    saved: user?.timeZone,
+    device: getDeviceTimeZone(),
+  });
   const {
     fieldLookup,
     defaultValueMap,
@@ -687,7 +693,7 @@ const FormRenderer = ({
     outputFieldDefaultPublic,
     outputFieldIds,
     maxPageIndex,
-  } = useFormSchemaMaps({ schema, userDefaultPublic });
+  } = useFormSchemaMaps({ schema, userDefaultPublic, timeZone });
 
   const { previousAnswerSchemas, previousAnswerData } =
     usePreviousAnswerSources({ schema });

@@ -94,7 +94,6 @@ export function getFallbackVisiblePageIndex(
   );
 }
 
-export const FALLBACK_TIMEZONE = "America/Los_Angeles";
 const DEFAULT_RANGE_OPTION_COUNT = 10;
 const MIN_RANGE_OPTION_COUNT = 2;
 const MAX_RANGE_OPTION_COUNT = 50;
@@ -279,7 +278,12 @@ export function isValidRangeSelection(
 
 export function resolveFieldDefaultValue(
   field: AnyField,
+  timeZone: string | undefined,
 ): FormValue | undefined {
+  if (field.kind === "timezone") {
+    return timeZone;
+  }
+
   const rawDefault = field.defaultValue;
 
   if (rawDefault === null) {
@@ -322,7 +326,6 @@ export function resolveFieldDefaultValue(
           : undefined;
       case "time":
       case "date":
-      case "timezone":
       case "text":
       case "textarea":
       case "email":
@@ -338,10 +341,6 @@ export function resolveFieldDefaultValue(
       default:
         return isNonEmptyString(rawDefault) ? rawDefault : undefined;
     }
-  }
-
-  if (field.kind === "timezone") {
-    return FALLBACK_TIMEZONE;
   }
 
   if (field.kind === "list") {

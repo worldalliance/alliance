@@ -17,6 +17,7 @@ Form timezone field:
 
 - A form timezone field has one default behavior. Use the respondent's saved account timezone, then their device timezone. Remove the other default options.
 - Put an automatically chosen form timezone into form state so accepting it without opening the picker submits that value.
+- When neither the saved nor the device timezone is valid, the field gets no default ("can we not use utc? use null instead"), replacing the `UTC` fallback an agent proposed in DECISIONS.md step 13.
 
 What to keep:
 

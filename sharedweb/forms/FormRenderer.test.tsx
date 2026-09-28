@@ -4,6 +4,7 @@ import type {
   TextField,
 } from "@alliance/common/forms/form-schema";
 import type { SubmitFormDto } from "@alliance/shared/client";
+import { makeUser } from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as uploadModule from "@alliance/shared/lib/uploadImageDataUri";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -963,4 +964,48 @@ describe("aggregate counts", () => {
     });
     expect(await screen.findByText("Members there: #{count}")).toBeTruthy();
   });
+});
+
+it("submits the member's saved zone when the picker is never opened", async () => {
+  const form: FormSchema = {
+    pages: [
+      {
+        id: "p1",
+        fields: [
+          {
+            id: "tz",
+            type: "input",
+            kind: "timezone",
+            label: "Zone",
+            required: true,
+          },
+        ],
+      },
+    ],
+    outputViews: [],
+  };
+  const onSubmit = jest.fn(async (_: SubmitFormDto) => false);
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter>
+        <SiteAppProvider>
+          <FormRenderer
+            form={form}
+            id={1}
+            formSnapshotId={1}
+            actionId={1}
+            onSubmit={onSubmit}
+            user={makeUser({ timeZone: "Pacific/Chatham" })}
+          />
+        </SiteAppProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+
+  await act(async () => {
+    screen.getByRole("button", { name: "Complete" }).click();
+  });
+  expect(onSubmit).toHaveBeenCalledWith(
+    expect.objectContaining({ answers: { tz: "Pacific/Chatham" } }),
+  );
 });

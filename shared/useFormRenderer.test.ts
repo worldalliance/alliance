@@ -89,7 +89,7 @@ describe("useFormSchemaMaps", () => {
       listField("addresses", [textField("street"), textField("city")]),
     ]);
     const { result } = renderHook(() =>
-      useFormSchemaMaps({ schema, userDefaultPublic: false }),
+      useFormSchemaMaps({ schema, userDefaultPublic: false, timeZone: "UTC" }),
     );
 
     expect(result.current.fieldLookup.has("addresses")).toBe(true);
@@ -108,7 +108,7 @@ describe("useFormSchemaMaps", () => {
     ]);
 
     const { result } = renderHook(() =>
-      useFormSchemaMaps({ schema, userDefaultPublic: true }),
+      useFormSchemaMaps({ schema, userDefaultPublic: true, timeZone: "UTC" }),
     );
 
     expect(result.current.outputFieldDefaultPublic.get("shared")).toBe(true);
@@ -116,11 +116,50 @@ describe("useFormSchemaMaps", () => {
     expect(result.current.outputFieldIds.has("notOutput")).toBe(false);
   });
 
+  it("seeds a timezone field with the given zone over the field's own default", () => {
+    const schema = schemaWith([
+      {
+        id: "fixed",
+        type: "input",
+        kind: "timezone",
+        label: "fixed",
+        defaultValue: "America/Los_Angeles",
+      },
+      {
+        id: "empty",
+        type: "input",
+        kind: "timezone",
+        label: "empty",
+        defaultValue: null,
+      },
+    ]);
+    const initialProps: { timeZone: string | undefined } = {
+      timeZone: "Asia/Kolkata",
+    };
+    const { result, rerender } = renderHook(
+      ({ timeZone }) =>
+        useFormSchemaMaps({ schema, userDefaultPublic: false, timeZone }),
+      { initialProps },
+    );
+
+    expect(Object.fromEntries(result.current.defaultValueMap)).toEqual({
+      fixed: "Asia/Kolkata",
+      empty: "Asia/Kolkata",
+    });
+
+    rerender({ timeZone: "Europe/Paris" });
+    expect(result.current.defaultValueMap.get("fixed")).toBe("Europe/Paris");
+
+    rerender({ timeZone: undefined });
+    expect(result.current.defaultValueMap.size).toBe(0);
+  });
+
   it("reports the page bounds", () => {
     const { result } = renderHook(() =>
       useFormSchemaMaps({
         schema: { pages: [{ id: "a", fields: [] }], outputViews: [] },
         userDefaultPublic: false,
+        timeZone: "UTC",
       }),
     );
     expect(result.current.pageCount).toBe(1);

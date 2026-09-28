@@ -275,12 +275,35 @@ sections below this one carry the reasoning each step implements.
     `getDeviceTimeZone()` on every render on mobile. The web offers nothing
     while an admin impersonates the member, since the device is the admin's,
     as backfill stays off then too.
-13. **Form default chain.** `resolveFieldDefaultValue` stops returning
-    `FALLBACK_TIMEZONE`; `FormRenderer` seeds a timezone field from the
-    respondent's saved timezone, then the device, then `UTC`, into form state at
-    initialization. `RenderField` drops its `America/Los_Angeles` fallback.
-14. **Admin defaults.** New timezone fields omit `defaultValue`, and the builder
-    offers no fixed or empty default for the kind.
+13. **Form default chain.** Done. `formTimeZoneDefault` in
+    `shared/lib/timeZone.ts` picks the respondent's saved zone, then the
+    device's, each only when `isTimeZoneIdentifier` accepts it, and
+    otherwise no zone, which leaves the field empty for the respondent to
+    pick.
+    An invalid saved zone is skipped rather than seeded, since form extraction
+    refuses it and would fail the submission. A saved alias seeds as saved.
+    Both `FormRenderer`s pass the result to `useFormSchemaMaps`, and
+    `resolveFieldDefaultValue` returns it for every timezone field, whatever
+    `defaultValue` the field carries, `null` included, so forms saved with a
+    fixed or empty default follow the one chain before step 14 removes those
+    options from the builder. The value enters form state through
+    `applyDefaultValues`, as other defaults do, so an untouched required field
+    submits it. Each platform detects as its picker does: `deviceTimeZone()`
+    once per mount on the web, `getDeviceTimeZone()` on every render on
+    mobile. The seed is fixed at mount, so the respondent must be known by
+    then. Mobile renders forms only under a layout that waits for auth. On
+    the web, a public action page renders before auth loads, so
+    `ActionTaskPanelForm` shows its spinner until it does when the form has
+    a timezone field, and only then, since for a guest that wait is two
+    failing requests; the admin preview
+    remounts its form when the previewed member changes. Re-seeding a mounted
+    form instead can't tell a seed from a restored draft answer that equals
+    it, and would overwrite that answer. `RenderField` drops its
+    `America/Los_Angeles` fallback.
+14. **Admin defaults.** Done, with step 13, since that step leaves the
+    builder's `America/Los_Angeles` default unread. New timezone fields and
+    list sub-fields omit `defaultValue`. The builder already offered no
+    default control for the kind.
 15. **Unavailable saved value.** A saved identifier neither the catalog nor the
     runtime knows renders raw, with a warning, and stays replaceable.
 16. **Test form cleanup.** Remove the explicit `America/Los_Angeles` default
@@ -420,7 +443,7 @@ sections below this one carry the reasoning each step implements.
 - Password signup and the web OAuth start capture the device timezone without another signup control. If valid detection is unavailable, the account is created with no timezone, and backfill fills it in on a later session. The mobile OAuth start carries no zone, so a mobile OAuth account takes its zone from backfill.
 - Backfill writes only a valid detected timezone. A failed detection leaves the value missing for a later retry. Backfill remains disabled during admin impersonation.
 - Settings always show the saved value. When the device differs, show `Device timezone: <label>` with a `Use` action. Only that action changes the editable value.
-- A timezone form field has one default chain: the signed-in respondent's saved timezone, then a valid device timezone, then `UTC`. Signed-out respondents start at device timezone, then `UTC`.
+- A timezone form field has one default chain: the signed-in respondent's saved timezone, then a valid device timezone, then no value. Signed-out respondents start at device timezone, then no value.
 - The chosen form default enters form state during initialization. Required fields therefore submit when the respondent accepts the default without opening the picker.
 - Admins do not configure fixed or empty defaults for timezone fields. New timezone fields omit `defaultValue`. Remove the explicit `America/Los_Angeles` default from the retained `test action form`.
 - Existing account values receive no migration. Device changes never overwrite a saved preference.

@@ -56,6 +56,10 @@ import {
   outputFieldPublicToggle,
   waitingForImageUpload,
 } from "@alliance/shared/lib/copy";
+import {
+  deviceTimeZone,
+  formTimeZoneDefault,
+} from "@alliance/shared/lib/timeZone";
 import { useImageUpload } from "@alliance/shared/lib/useImageUpload";
 import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { cn } from "@alliance/shared/styles/util";
@@ -212,6 +216,11 @@ const FormRenderer = ({
   const [searchParams] = useSearchParams();
 
   const userDefaultPublic = user?.formDataPreference === "public";
+  const [detectedTimeZone] = useState(deviceTimeZone);
+  const timeZone = formTimeZoneDefault({
+    saved: user?.timeZone,
+    device: detectedTimeZone,
+  });
   const {
     fieldLookup,
     defaultValueMap,
@@ -221,7 +230,7 @@ const FormRenderer = ({
     outputFieldIds,
     pageCount,
     maxPageIndex,
-  } = useFormSchemaMaps({ schema, userDefaultPublic });
+  } = useFormSchemaMaps({ schema, userDefaultPublic, timeZone });
 
   const clampPageIndex = (idx: number): number => {
     if (!Number.isFinite(idx)) return 0;

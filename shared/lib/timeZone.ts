@@ -11,3 +11,10 @@ export function deviceTimeZone(): string {
 export function signupTimeZone(detected: string | undefined): string | null {
   return isTimeZoneIdentifier(detected) ? detected : null;
 }
+
+export function formTimeZoneDefault(zones: {
+  saved: string | null | undefined;
+  device: string | undefined;
+}): string | undefined {
+  return [zones.saved, zones.device].find(isTimeZoneIdentifier);
+}
