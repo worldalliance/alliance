@@ -173,9 +173,14 @@ export class ActionEventRecipientService {
   async resolveDecidedCohort(params: {
     action: ParsedAction;
     session: CohortResolutionSession;
+    resolvingActionIds?: ReadonlySet<number>;
   }): Promise<Set<number>> {
-    const { action, session } = params;
-    const live = this.resolveActionCohortMemberIds({ action, session });
+    const { action, session, resolvingActionIds } = params;
+    const live = this.resolveActionCohortMemberIds({
+      action,
+      session,
+      resolvingActionIds,
+    });
     if (!readsSavedDecisions(action, new Date())) {
       return live;
     }
@@ -373,11 +378,7 @@ export class ActionEventRecipientService {
     if (!action || !canMissActionDeadline(action, now)) return new Set();
     const [users, cohortMemberIds, terminalUserIds] = await Promise.all([
       this.getActiveUsers(session),
-      this.resolveActionCohortMemberIds({
-        action,
-        session,
-        resolvingActionIds,
-      }),
+      this.resolveDecidedCohort({ action, session, resolvingActionIds }),
       this.prerequisiteProgressService.loadTerminalUserIds(action.id),
     ]);
     return new Set(
@@ -408,23 +409,32 @@ export class ActionEventRecipientService {
       (e) => e.newStatus === ActionStatus.MemberAction,
     );
     if (!event) return new Set();
-    const baseUsers = await this.findBaseUsersForEvent({
-      action,
-      eventId: event.id,
-      cohortSource: CohortSource.Live,
-      session,
-      resolvingActionIds,
-      // Dismissal is a view-only "mark as seen" overlay (see
-      // ActionActivityType.USER_DISMISSED) — it hides the card and mutes
-      // reminders but doesn't end participation, so it must not drop the
-      // user out of a cohort leaf's member set (matching the single-user
-      // predicates, which never consider dismissal).
-      includeDismissed: true,
-    });
-    const terminalIds =
-      await this.prerequisiteProgressService.loadTerminalUserIds(action.id);
+    const [users, cohortMemberIds, terminalIds] = await Promise.all([
+      this.getActiveUsers(session),
+      this.resolveDecidedCohort({ action, session, resolvingActionIds }),
+      this.prerequisiteProgressService.loadTerminalUserIds(action.id),
+    ]);
+    const deadlineDate = action.memberActionPhase.deadlineEvent?.date ?? null;
     return new Set(
-      baseUsers.map((u) => u.id).filter((id) => !terminalIds.has(id)),
+      users
+        .filter(
+          (user) =>
+            !terminalIds.has(user.id) &&
+            computeIsAssignedAndPresent({
+              user,
+              eventDate: event.date,
+              deadlineDate,
+              cohortMemberIds,
+              // Dismissal is a view-only "mark as seen" overlay (see
+              // ActionActivityType.USER_DISMISSED) — it hides the card and
+              // mutes reminders but doesn't end participation, so it must not
+              // drop the user out of a cohort leaf's member set (matching the
+              // single-user predicates, which never consider dismissal).
+              userDismissed: false,
+              onboarding: action.onboarding,
+            }),
+        )
+        .map((user) => user.id),
     );
   }
 
