@@ -144,10 +144,10 @@ const fetchActivityPage = async (
   };
 };
 
-export type InfiniteActivityData = InfiniteData<ActivityPage>;
+type InfiniteActivityData = InfiniteData<ActivityPage>;
 
 /** Map over all activities across pages in an infinite query cache entry */
-export const mapInfiniteActivities = (
+const mapInfiniteActivities = (
   old: InfiniteActivityData | undefined,
   mapper: (activity: FeedActionActivityDto) => FeedActionActivityDto,
 ): InfiniteActivityData | undefined => {
@@ -170,46 +170,17 @@ export const useRefreshActivities = () => {
   );
 };
 
-const useActivities = (props: UseActivitiesProps) => {
+/** Likes or unlikes an activity, optimistically in every cached activity
+ * list. */
+export const useLikeActivity = () => {
   const queryClient = useQueryClient();
-  const refreshActivities = useRefreshActivities();
-  const queryKey = activitiesKey(props);
-  const infinite = supportsCursor(props.list);
-  const limit = props.limit ?? DEFAULT_LIMIT;
-
-  const {
-    data,
-    isLoading: loading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey,
-    queryFn: ({ pageParam }) => fetchActivityPage(props, pageParam),
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) => {
-      // Non-cursor lists (User, Action, FriendsForAction) never paginate
-      if (!infinite) return undefined;
-      // Use raw server count to avoid premature stop from client-side filtering
-      if (lastPage.serverCount < limit) return undefined;
-      const last = lastPage.activities[lastPage.activities.length - 1];
-      return last?.createdAt;
-    },
-  });
-
-  const activities = useMemo(
-    () => data?.pages.flatMap((p) => p.activities) ?? [],
-    [data],
-  );
-
-  const likeMutation = useMutation({
+  return useMutation({
     mutationFn: async ({
       activityId,
       isLiked,
     }: {
       activityId: number;
       isLiked: boolean;
-      activityType: string;
     }) => {
       const response = isLiked
         ? await actionsUnlikeActivity({ path: { id: activityId } })
@@ -262,6 +233,41 @@ const useActivities = (props: UseActivitiesProps) => {
       );
     },
   });
+};
+
+const useActivities = (props: UseActivitiesProps) => {
+  const queryClient = useQueryClient();
+  const refreshActivities = useRefreshActivities();
+  const queryKey = activitiesKey(props);
+  const infinite = supportsCursor(props.list);
+  const limit = props.limit ?? DEFAULT_LIMIT;
+
+  const {
+    data,
+    isLoading: loading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey,
+    queryFn: ({ pageParam }) => fetchActivityPage(props, pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => {
+      // Non-cursor lists (User, Action, FriendsForAction) never paginate
+      if (!infinite) return undefined;
+      // Use raw server count to avoid premature stop from client-side filtering
+      if (lastPage.serverCount < limit) return undefined;
+      const last = lastPage.activities[lastPage.activities.length - 1];
+      return last?.createdAt;
+    },
+  });
+
+  const activities = useMemo(
+    () => data?.pages.flatMap((p) => p.activities) ?? [],
+    [data],
+  );
+
+  const likeMutation = useLikeActivity();
 
   const handleLikeActivity = useCallback(
     async (
@@ -272,11 +278,7 @@ const useActivities = (props: UseActivitiesProps) => {
       const isLiked = overrides?.isLiked ?? activity?.likedByMe ?? false;
       const activityType = overrides?.activityType ?? activity?.type;
       if (!activityType) return;
-      await likeMutation.mutateAsync({
-        activityId,
-        isLiked,
-        activityType,
-      });
+      await likeMutation.mutateAsync({ activityId, isLiked });
     },
     [activities, likeMutation],
   );

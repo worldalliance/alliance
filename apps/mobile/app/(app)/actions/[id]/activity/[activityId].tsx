@@ -1,16 +1,7 @@
 import { actionActivityTransitiveVerb } from "@alliance/common/actionActivity";
-import {
-  ActionActivityDto,
-  actionsGetActivity,
-  actionsLikeActivity,
-  actionsUnlikeActivity,
-} from "@alliance/shared/client";
-import {
-  InfiniteActivityData,
-  mapInfiniteActivities,
-} from "@alliance/shared/lib/useActivities";
+import { ActionActivityDto, actionsGetActivity } from "@alliance/shared/client";
+import { useLikeActivity } from "@alliance/shared/lib/useActivities";
 import { formatTime } from "@alliance/shared/lib/utils";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -43,7 +34,6 @@ export default function ActivityDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchActivity = useCallback(
@@ -95,61 +85,21 @@ export default function ActivityDetailScreen() {
     }
   }, [activity?.user.id]);
 
-  const likeMutation = useMutation({
-    mutationFn: async (isLiked: boolean) => {
-      if (!activity) throw new Error("No activity");
-      const response = isLiked
-        ? await actionsUnlikeActivity({ path: { id: activity.id } })
-        : await actionsLikeActivity({ path: { id: activity.id } });
-      if (response.response.ok && response.data) return response.data;
-      throw new Error("Like request failed");
-    },
-    onMutate: async (isLiked: boolean) => {
-      const previousActivity = activity;
+  const likeActivity = useLikeActivity();
 
-      setActivity((prev: ActionActivityDto | null) =>
-        prev
-          ? {
-              ...prev,
-              likedByMe: !isLiked,
-              likesCount: isLiked ? prev.likesCount - 1 : prev.likesCount + 1,
-            }
-          : prev,
-      );
-
-      await queryClient.cancelQueries({ queryKey: ["useActivities"] });
-      const previousFeedQueries =
-        queryClient.getQueriesData<InfiniteActivityData>({
-          queryKey: ["useActivities"],
-        });
-      queryClient.setQueriesData<InfiniteActivityData>(
-        { queryKey: ["useActivities"] },
-        (old) =>
-          mapInfiniteActivities(old, (a) =>
-            a.id === activity?.id
-              ? {
-                  ...a,
-                  likedByMe: !isLiked,
-                  likesCount: isLiked ? a.likesCount - 1 : a.likesCount + 1,
-                }
-              : a,
-          ),
-      );
-
-      return {
-        previousActivity,
-        previousFeedQueries,
-      };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previousActivity) {
-        setActivity(context.previousActivity);
-      }
-      context?.previousFeedQueries?.forEach(([key, data]) => {
-        queryClient.setQueryData(key, data);
+  const handleLike = useCallback(async () => {
+    if (!activity) return;
+    const isLiked = activity.likedByMe ?? false;
+    setActivity({
+      ...activity,
+      likedByMe: !isLiked,
+      likesCount: isLiked ? activity.likesCount - 1 : activity.likesCount + 1,
+    });
+    try {
+      const data = await likeActivity.mutateAsync({
+        activityId: activity.id,
+        isLiked,
       });
-    },
-    onSuccess: (data) => {
       setActivity((prev: ActionActivityDto | null) =>
         prev
           ? {
@@ -160,16 +110,11 @@ export default function ActivityDetailScreen() {
             }
           : prev,
       );
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["useActivities"] });
-    },
-  });
-
-  const handleLike = useCallback(async () => {
-    if (!activity) return;
-    await likeMutation.mutateAsync(activity.likedByMe ?? false);
-  }, [activity, likeMutation]);
+    } catch (error) {
+      setActivity(activity);
+      throw error;
+    }
+  }, [activity, likeActivity]);
 
   const verb = activity && actionActivityTransitiveVerb[activity.type];
 
