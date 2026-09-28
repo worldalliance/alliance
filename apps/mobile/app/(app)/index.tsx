@@ -5,7 +5,7 @@ import {
   ActionWithAwayStatus,
   homePagePriorityComparator,
 } from "@alliance/shared/lib/actionUtils";
-import { noTasksToDoRightNow } from "@alliance/shared/lib/copy";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { ParsedHomeFeedItemDto } from "@alliance/shared/lib/feedHelpers";
 import { type ParsedGeneralUpdate } from "@alliance/shared/lib/generalUpdates";
 import { useHomePageActions } from "@alliance/shared/lib/homePage";
@@ -17,7 +17,6 @@ import { LegendList, type LegendListRef } from "@legendapp/list";
 import { useQueryClient } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
 import { router } from "expo-router";
-import { Check } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -34,6 +33,7 @@ import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 import LargeActionCard from "../../components/LargeActionCard";
 import LargeGeneralUpdateCard from "../../components/LargeGeneralUpdateCard";
 import LoadFailed from "../../components/LoadFailed";
+import NoTasksNotice from "../../components/NoTasksNotice";
 import ProfileImage from "../../components/ProfileImage";
 import SuccessOverlay from "../../components/SuccessOverlay";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
@@ -71,13 +71,16 @@ export default function HomeScreen() {
   const handleSuccessComplete = useCallback(() => {
     setShowSuccess(false);
   }, []);
+  const actionsQuery = useActionsQuery({
+    refetchInterval: hasNoTasks.current ? milliseconds({ minutes: 1 }) : false,
+  });
   const {
     data: actions,
     isPending,
+    isFetching: isFetchingActions,
     refetch,
-  } = useActionsQuery({
-    refetchInterval: hasNoTasks.current ? milliseconds({ minutes: 1 }) : false,
-  });
+  } = actionsQuery;
+  const didActionsFail = failedToLoad(actionsQuery);
 
   const { user } = useAuth();
   const {
@@ -119,7 +122,8 @@ export default function HomeScreen() {
   );
 
   const loading =
-    isPending || (generalUpdatesPending && !didGeneralUpdatesFail);
+    (isPending && !didActionsFail) ||
+    (generalUpdatesPending && !didGeneralUpdatesFail);
 
   const actionsWithAwayStatus = useMemo((): ActionWithAwayStatus[] => {
     if (!actions) return [];
@@ -311,21 +315,7 @@ export default function HomeScreen() {
     if (!currentItem) {
       return {
         title: "Alliance",
-        body: (
-          <View>
-            <View
-              className="items-center justify-center py-10 px-5"
-              style={{ backgroundColor: colors.grey[0] }}
-            >
-              <View className="w-8 h-8 rounded-full bg-green items-center justify-center mb-4">
-                <Check size={20} color="#fff" strokeWidth={3} />
-              </View>
-              <Text className="text-zinc-500 text-base text-center">
-                {noTasksToDoRightNow}
-              </Text>
-            </View>
-          </View>
-        ),
+        body: <NoTasksNotice />,
         fullScreen: false,
       };
     }
@@ -417,13 +407,26 @@ export default function HomeScreen() {
       retrying={isFetchingGeneralUpdates}
     />
   );
-  const homeBody = currentItem ? (
+  const actionsNotice = didActionsFail && (
+    <LoadFailed
+      message="Couldn't load your tasks."
+      onRetry={() => void refetch()}
+      retrying={isFetchingActions}
+    />
+  );
+  const notices = (generalUpdatesNotice || actionsNotice) && (
     <>
       {generalUpdatesNotice}
+      {actionsNotice}
+    </>
+  );
+  const homeBody = currentItem ? (
+    <>
+      {notices}
       {body}
     </>
   ) : (
-    generalUpdatesNotice || body
+    notices || body
   );
 
   const header = (
