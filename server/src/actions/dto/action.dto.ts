@@ -21,6 +21,7 @@ import { Type } from "class-transformer";
 import {
   Allow,
   ArrayMaxSize,
+  ArrayUnique,
   IsArray,
   IsBoolean,
   IsDefined,
@@ -569,14 +570,54 @@ export class AdminActionDto extends ActionDto {
   @IsDefined()
   staffPreview: boolean;
 
+  @ApiProperty({ type: Number, isArray: true })
+  @IsDefined()
+  prerequisiteActionIds: number[];
+
+  @ApiProperty({
+    type: Date,
+    nullable: true,
+    description:
+      "The latest member_action event, when the action opens to members.",
+  })
+  @IsOptional()
+  memberActionStart: Date | null;
+
+  @ApiProperty({
+    type: Date,
+    nullable: true,
+    description: "The first event after memberActionStart.",
+  })
+  @IsOptional()
+  memberActionDeadline: Date | null;
+
   constructor(action: ParsedAction, extra?: ActionDtoExtra) {
     super(action, extra);
     this.cohortExpression = action.cohortExpression;
+    this.prerequisiteActionIds = action.prerequisiteActionIds;
+    this.memberActionStart = action.memberActionPhase.event?.date ?? null;
+    this.memberActionDeadline =
+      action.memberActionPhase.deadlineEvent?.date ?? null;
     this.staffPreview = action.staffPreview;
     this.followUpForms =
       action.followUpForms?.map((form) => new AdminFollowUpFormDto(form)) ?? [];
     this.storedImage = action.image ?? undefined;
     this.storedSquareThumbnailImage = action.squareThumbnailImage ?? undefined;
+  }
+}
+
+export class AdminActionListItemDto extends AdminActionDto {
+  @ApiProperty({
+    type: Number,
+    isArray: true,
+    description: "Forms of the action's variants, besides its task form.",
+  })
+  @IsDefined()
+  variantFormIds: number[];
+
+  constructor(action: ParsedAction, extra?: ActionDtoExtra) {
+    super(action, extra);
+    this.variantFormIds = action.formVariants.map((variant) => variant.formId);
   }
 }
 
@@ -639,6 +680,18 @@ export class CreateActionDto extends IntersectionType(
   })
   @IsOptional()
   authorIds?: number[];
+
+  @ApiPropertyOptional({
+    type: Number,
+    isArray: true,
+    description:
+      "Actions each member waits for before this action's cohort decides them",
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsInt({ each: true })
+  prerequisiteActionIds?: number[];
 }
 
 export class UpdateActionDto extends PartialType(CreateActionDto) {}

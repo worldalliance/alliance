@@ -1,15 +1,20 @@
+import {
+  actionFormIds,
+  collectCohortDependencies,
+  findUnawaitedOpenReferences,
+} from "@alliance/common/cohort-expression";
 import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { groupBy } from "es-toolkit";
+import { groupBy, partition } from "es-toolkit";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { UserService } from "src/user/user.service";
 import { In, Not, type Repository } from "typeorm";
-import { formatIdSample } from "./cohort-decision";
-import { CohortDecisionService } from "./cohort-decision.service";
-import { collectCohortDependencies } from "./cohort-expression.evaluator";
+import { CohortEnrollmentState, formatIdSample } from "./cohort-decision";
+import { CohortDecisionService, isInCatchUp } from "./cohort-decision.service";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
+import { Action } from "./entities/action.entity";
 import { CohortDecisionReason } from "./entities/cohort-decision-reason";
 
 @Injectable()
@@ -17,6 +22,8 @@ export class CohortDivergenceService {
   private readonly logger = new Logger(CohortDivergenceService.name);
 
   constructor(
+    @InjectRepository(Action)
+    private readonly actionRepository: Repository<Action>,
     @InjectRepository(ActionCohortDecision)
     private readonly decisionRepository: Repository<ActionCohortDecision>,
     private readonly actionEventRecipientService: ActionEventRecipientService,
@@ -86,5 +93,69 @@ export class CohortDivergenceService {
         `cohort decisions for action ${action.id} diverge from the live cohort (${bucket}): now in ${formatIdSample(nowIn)}, now out ${formatIdSample(nowOut)}`,
       );
     }
+  }
+
+  /**
+   * Runs findUnawaitedOpenReferences from each launch for the scheduled
+   * actions that still decide members: not yet launched, open, or in their
+   * catch-up after closing.
+   */
+  async logUnawaitedOpenReferences(now: Date): Promise<void> {
+    const [resolvable, actions] = await Promise.all([
+      this.cohortDecisionService.findResolvableActions(now),
+      this.actionRepository.find({
+        relations: { events: true, formVariants: true },
+      }),
+    ]);
+    const referenced = actions.map((action) => ({
+      id: action.id,
+      formIds: actionFormIds({
+        taskFormId: action.taskFormId,
+        variantFormIds: action.formVariants.map((variant) => variant.formId),
+      }),
+      deadline: action.memberActionPhase.deadlineEvent?.date ?? null,
+      onboarding: action.onboarding,
+    }));
+    const onboardingIds = new Set(
+      actions.filter((action) => action.onboarding).map((action) => action.id),
+    );
+    let checked = 0;
+    let flagged = 0;
+    for (const { action, enrollment } of resolvable) {
+      if (
+        enrollment.state !== CohortEnrollmentState.NotStarted &&
+        !isInCatchUp(enrollment, now)
+      ) {
+        continue;
+      }
+      const launch = action.memberActionPhase.event?.date;
+      if (!launch) continue;
+      checked += 1;
+      const open = findUnawaitedOpenReferences({
+        actionId: action.id,
+        expression: action.cohortExpression,
+        prerequisiteActionIds: action.prerequisiteActionIds,
+        decidedAt: launch,
+        actions: referenced,
+      });
+      if (open.length === 0) continue;
+      flagged += 1;
+      const [onboarding, regular] = partition(open, (id) =>
+        onboardingIds.has(id),
+      );
+      if (regular.length > 0) {
+        this.logger.warn(
+          `action ${action.id} reads actions still open at its launch without a prerequisite on them: ${regular.join(", ")}`,
+        );
+      }
+      if (onboarding.length > 0) {
+        this.logger.warn(
+          `action ${action.id} reads onboarding actions, which stay open to members who join later: ${onboarding.join(", ")}`,
+        );
+      }
+    }
+    this.logger.log(
+      `checked ${checked} scheduled action(s) for unawaited open references, ${flagged} flagged`,
+    );
   }
 }

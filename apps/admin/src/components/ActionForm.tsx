@@ -1,6 +1,9 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { CohortExpression } from "@alliance/common/cohort-expression";
+import type {
+  CohortExpression,
+  ReferencedAction,
+} from "@alliance/common/cohort-expression";
 import { urlMatchesDomain } from "@alliance/common/url";
 import {
   ActionCategory,
@@ -21,6 +24,8 @@ import { ActionCategoryPicker } from "./ActionCategoryIcons";
 import CohortExpressionBuilder from "./CohortExpressionBuilder";
 import FormSection from "./FormSection";
 import FormTextarea from "./FormTextarea";
+import OpenReferenceWarning from "./OpenReferenceWarning";
+import PrerequisitePicker from "./PrerequisitePicker";
 
 interface ActionFormProps {
   form: CreateActionDto;
@@ -51,14 +56,17 @@ interface ActionFormProps {
   onboarding?: boolean;
   cohortExpression: CohortExpression | null | undefined;
   onCohortExpressionChange: (expr: CohortExpression | null) => void;
+  onPrerequisitesChange: (ids: number[]) => void;
   authorIds: number[];
   onAuthorsChange: (ids: number[]) => void;
   onCategoryChange: (categories: ActionCategory[]) => void;
   reviewers: ReviewerRow[];
   onReviewersChange: (reviewers: ReviewerRow[]) => void;
   actionId?: number;
-  allActions?: { id: number; name: string; usersCompleted: number }[];
+  allActions?: (ReferencedAction & { name: string; usersCompleted: number })[];
   allActionsLoading?: boolean;
+  memberActionStart: Date | null;
+  memberActionDeadline: Date | null;
 }
 
 /** Reviewer row being edited; `key` is a client-only React key, never sent to the server. */
@@ -123,12 +131,16 @@ const ActionForm: React.FC<ActionFormProps> = ({
   onboarding = false,
   cohortExpression,
   onCohortExpressionChange,
+  onPrerequisitesChange,
   authorIds,
   onAuthorsChange,
   onCategoryChange,
   reviewers,
   onReviewersChange,
+  actionId,
   allActions = [],
+  memberActionStart,
+  memberActionDeadline,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -758,6 +770,18 @@ const ActionForm: React.FC<ActionFormProps> = ({
         </div>
       </FormSection>
 
+      <FormSection
+        title="Prerequisites"
+        description="Each member waits until every prerequisite resolves for them (they complete or withdraw, it excludes them, or its deadline passes) before the conditions below decide whether they participate."
+      >
+        <PrerequisitePicker
+          value={form.prerequisiteActionIds ?? []}
+          onChange={onPrerequisitesChange}
+          availableActions={allActions}
+          actionId={actionId}
+        />
+      </FormSection>
+
       {/* TARGETING SECTION */}
       <FormSection
         title="Participating users"
@@ -772,6 +796,14 @@ const ActionForm: React.FC<ActionFormProps> = ({
           usersLoading={usersLoading}
           activeContractUserIds={activeContractUserIds}
           onboarding={onboarding}
+        />
+        <OpenReferenceWarning
+          actionId={actionId}
+          expression={cohortExpression}
+          prerequisiteActionIds={form.prerequisiteActionIds ?? []}
+          memberActionStart={memberActionStart}
+          memberActionDeadline={memberActionDeadline}
+          actions={allActions}
         />
       </FormSection>
 

@@ -1,4 +1,5 @@
 import type { Action } from "src/actions/entities/action.entity";
+import type { PrerequisiteProgress } from "src/actions/prerequisites";
 import type { UsMembership } from "src/geo/us-membership";
 import type { User } from "src/user/entities/user.entity";
 
@@ -40,6 +41,10 @@ export class CohortResolutionSession {
   readonly missedActionDeadlineUserIds = new Map<
     string,
     Promise<Set<number>>
+  >();
+  readonly prerequisiteProgress = new Map<
+    number,
+    Promise<PrerequisiteProgress>
   >();
   readonly formResponsesByFormId = new Map<
     number,

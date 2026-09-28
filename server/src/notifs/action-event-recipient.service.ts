@@ -13,6 +13,7 @@ import {
   ReminderCohortType,
   ReminderGroup,
 } from "src/actions/entities/reminder-group.entity";
+import { PrerequisiteProgressService } from "src/actions/prerequisite-progress.service";
 import { CommunityService } from "src/community/community.service";
 import { Community } from "src/community/entities/community.entity";
 import { resolveUsMembership, UsMembership } from "src/geo/us-membership";
@@ -60,6 +61,7 @@ export class ActionEventRecipientService {
     private readonly userRepository: Repository<User>,
     private readonly communityService: CommunityService,
     private readonly userService: UserService,
+    private readonly prerequisiteProgressService: PrerequisiteProgressService,
   ) {}
 
   /**
@@ -94,6 +96,31 @@ export class ActionEventRecipientService {
       session.expressionMemberIds.set(key, pending);
     }
     return pending;
+  }
+
+  /**
+   * An action's live cohort: the members its expression selects whose
+   * prerequisites have all resolved.
+   */
+  async resolveActionCohortMemberIds(params: {
+    action: Pick<ParsedAction, "cohortExpression" | "prerequisiteActionIds">;
+    session: CohortResolutionSession;
+    resolvingActionIds?: ReadonlySet<number>;
+  }): Promise<Set<number>> {
+    const { action, session, resolvingActionIds } = params;
+    const [cohort, isReady] = await Promise.all([
+      this.resolveCohortMemberIds(
+        action.cohortExpression,
+        session,
+        resolvingActionIds,
+      ),
+      this.prerequisiteProgressService.loadReadiness({
+        action,
+        session,
+        now: new Date(),
+      }),
+    ]);
+    return new Set([...cohort].filter(isReady));
   }
 
   private buildCohortContext(
@@ -276,12 +303,12 @@ export class ActionEventRecipientService {
     if (!canMissActionDeadline(action, now)) return new Set();
     const [users, cohortMemberIds, terminalUserIds] = await Promise.all([
       this.getActiveUsers(session),
-      this.resolveCohortMemberIds(
-        action.cohortExpression,
+      this.resolveActionCohortMemberIds({
+        action,
         session,
         resolvingActionIds,
-      ),
-      this.loadTerminalUserIds(action.id),
+      }),
+      this.prerequisiteProgressService.loadTerminalUserIds(action.id),
     ]);
     return new Set(
       users
@@ -323,21 +350,11 @@ export class ActionEventRecipientService {
       // predicates, which never consider dismissal).
       includeDismissed: true,
     });
-    const terminalIds = await this.loadTerminalUserIds(action.id);
+    const terminalIds =
+      await this.prerequisiteProgressService.loadTerminalUserIds(action.id);
     return new Set(
       baseUsers.map((u) => u.id).filter((id) => !terminalIds.has(id)),
     );
-  }
-
-  private async loadTerminalUserIds(actionId: number): Promise<Set<number>> {
-    const terminal = await this.actionActivityRepository.find({
-      where: [
-        { actionId, type: ActionActivityType.USER_COMPLETED },
-        { actionId, type: ActionActivityType.USER_WONT_COMPLETE },
-      ],
-      select: { userId: true },
-    });
-    return new Set(terminal.map((a) => a.userId));
   }
 
   /**
@@ -413,11 +430,11 @@ export class ActionEventRecipientService {
     for (const { action } of entries) {
       cohortByAction.set(
         action.id,
-        this.resolveCohortMemberIds(
-          action.cohortExpression,
+        this.resolveActionCohortMemberIds({
+          action,
           session,
           resolvingActionIds,
-        ),
+        }),
       );
     }
     // Await all cohort resolutions in parallel
@@ -528,14 +545,14 @@ export class ActionEventRecipientService {
           },
         })
         .then((acts) => new Set(acts.map((a) => a.userId))),
-      this.resolveCohortMemberIds(eventAction.cohortExpression, session),
+      this.resolveActionCohortMemberIds({ action: eventAction, session }),
       Promise.all(
         actions.map(async (action) => ({
           actionId: action.id,
-          memberIds: await this.resolveCohortMemberIds(
-            action.cohortExpression,
+          memberIds: await this.resolveActionCohortMemberIds({
+            action,
             session,
-          ),
+          }),
         })),
       ),
       this.actionActivityRepository.find({

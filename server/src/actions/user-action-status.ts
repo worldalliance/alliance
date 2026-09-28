@@ -164,8 +164,9 @@ export function computeCanCompleteAction(params: {
  * Resolves the viewer's {@link UserActionStatus} for one action. Pure —
  * callers fetch, this computes:
  *
- * - `inCohort` must be the cohort-expression result evaluated regardless of
- *   dismissal (dismissal is an overlay here, not an assignment input).
+ * - `inCohort` must be the action's live cohort (`computeIsInActionCohort`),
+ *   evaluated regardless of dismissal (dismissal is an overlay here, not an
+ *   assignment input).
  * - `activities` are the viewer's activities on this action, all types.
  */
 export function resolveUserActionStatus(params: {

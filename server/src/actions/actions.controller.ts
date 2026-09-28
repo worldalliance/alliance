@@ -64,6 +64,7 @@ import {
   ActionUpdateDto,
   ActionWithdrawalDto,
   AdminActionDto,
+  AdminActionListItemDto,
   CreateActionActivityDto,
   CreateActionDto,
   CreateActionEventDto,
@@ -439,14 +440,15 @@ export class ActionsController {
 
   @Get("all")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: [AdminActionDto] })
-  async findAllWithDraftsAdmin(): Promise<AdminActionDto[]> {
+  @ApiOkResponse({ type: [AdminActionListItemDto] })
+  async findAllWithDraftsAdmin(): Promise<AdminActionListItemDto[]> {
     const actions = await this.actionsService.findAllSorted({
       events: true,
       suite: true,
       reviewers: true,
+      formVariants: true,
     });
-    return actions.map((action) => new AdminActionDto(action));
+    return actions.map((action) => new AdminActionListItemDto(action));
   }
 
   @Get("friendActivity/:actionId")

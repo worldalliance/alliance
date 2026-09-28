@@ -122,7 +122,9 @@ export function useActionAdmin(
   /**
    * For child flows that hand back a raw AdminActionDto: validate the
    * cohortExpression at the boundary and write the result into the query
-   * cache, so `action` is always parsed.
+   * cache, so `action` is always parsed. The cache is then refetched, because
+   * a child that patches `events` leaves the server-derived phase fields
+   * (`memberActionStart`, `memberActionDeadline`) stale.
    */
   const setActionFromDto = useCallback(
     (dto: AdminActionDto) => {
@@ -130,6 +132,9 @@ export function useActionAdmin(
         queryKeys.actionAdmin(dto.id),
         parseActionDto(dto),
       );
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.actionAdmin(dto.id),
+      });
     },
     [queryClient],
   );

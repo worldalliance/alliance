@@ -232,6 +232,15 @@ import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from "./entities/reminder-group.entity";
+import {
+  assertNoAddedInProgressActions,
+  CohortExpressionOwner,
+} from "./in-progress-action-rejection";
+import { PrerequisiteProgressService } from "./prerequisite-progress.service";
+import {
+  assertNotAPrerequisite,
+  assertPrerequisitesValid,
+} from "./prerequisite-validation";
 import { SCHEMA_WRITE_TARGETS } from "./schema-write-target";
 import {
   assertNotInStaffPreview,
@@ -362,6 +371,7 @@ export class ActionsService {
     private readonly formSnapshotService: FormSnapshotService,
     private readonly posthogService: PosthogService,
     private readonly cohortDecisionStaffService: CohortDecisionStaffService,
+    private readonly prerequisiteProgressService: PrerequisiteProgressService,
   ) {}
 
   async applyAssignedFormIds(
@@ -483,6 +493,21 @@ export class ActionsService {
     return parsed.data;
   }
 
+  /** Also rejects InProgressAction leaves `stored` doesn't already have. */
+  private parseWrittenCohortExpression(params: {
+    value: unknown;
+    stored: CohortExpression | null;
+    owner: CohortExpressionOwner;
+  }): CohortExpression {
+    const next = this.parseCohortExpressionOrThrow(params.value);
+    assertNoAddedInProgressActions({
+      stored: params.stored,
+      next,
+      owner: params.owner,
+    });
+    return next;
+  }
+
   /** Reviewers are ordered by the position the admin sent them in. */
   private reviewerRows(reviewers: ActionReviewerDto[]): ActionReviewer[] {
     return reviewers.map((reviewer, position) =>
@@ -523,9 +548,11 @@ export class ActionsService {
     const { suiteId, authorIds, reviewers, ...rest } = createActionDto;
     this.rewriteRenderedImages(rest);
     if (rest.cohortExpression != null) {
-      rest.cohortExpression = this.parseCohortExpressionOrThrow(
-        rest.cohortExpression,
-      );
+      rest.cohortExpression = this.parseWrittenCohortExpression({
+        value: rest.cohortExpression,
+        stored: null,
+        owner: CohortExpressionOwner.Action,
+      });
     }
     if (rest.taskFormId !== undefined) {
       await this.assertFormIdNotUsedAsVariant(rest.taskFormId);
@@ -546,7 +573,13 @@ export class ActionsService {
         : [];
     }
 
-    const saved = await this.actionRepository.save(action);
+    const saved = await this.actionRepository.manager.transaction(
+      async (em) => {
+        const inserted = await em.save(Action, action);
+        await assertPrerequisitesValid({ em, actionIds: [inserted.id] });
+        return inserted;
+      },
+    );
     await this.shiftPrioritiesAfterInsertion();
     await this.syncGeneralUpdateDatesForSuites([saved.suite?.id]);
     return parseAction(saved);
@@ -888,10 +921,10 @@ export class ActionsService {
     );
     const cohorts = await Promise.all(
       requiredActions.map((action) =>
-        this.actionEventRecipientService.resolveCohortMemberIds(
-          action.cohortExpression,
+        this.actionEventRecipientService.resolveActionCohortMemberIds({
+          action,
           session,
-        ),
+        }),
       ),
     );
 
@@ -933,9 +966,9 @@ export class ActionsService {
   }
 
   /**
-   * Cohort-expression result for the viewer on one action — the single
-   * evaluation feeding `canParticipate`/`viewer.canComplete`,
-   * `shouldParticipate`, and `viewer`. No member-action-phase gate: the
+   * Live cohort result (`computeIsInActionCohort`) for the viewer on one
+   * action — the single evaluation feeding `canParticipate`/
+   * `viewer.canComplete`, `shouldParticipate`, and `viewer`. No member-action-phase gate: the
    * completion rule (unlike assignment) applies to actions whose phase isn't
    * scheduled yet, and gating here made `viewer.canComplete` disagree with
    * `isCompletionAllowed` (which the complete mutation enforces). Dismissal
@@ -949,11 +982,7 @@ export class ActionsService {
   }): Promise<boolean> {
     const { action, user, session } = params;
     return user
-      ? await this.computeIsInCohortExpression({
-          user,
-          cohortExpression: action.cohortExpression,
-          session,
-        })
+      ? await this.computeIsInActionCohort({ user, action, session })
       : false;
   }
 
@@ -1106,11 +1135,7 @@ export class ActionsService {
       return false;
     }
 
-    return this.computeIsInCohortExpression({
-      user,
-      cohortExpression: action.cohortExpression,
-      session,
-    });
+    return this.computeIsInActionCohort({ user, action, session });
   }
 
   private async loadUserForActionVisibility(
@@ -1922,9 +1947,13 @@ export class ActionsService {
     const { suiteId, authorIds, reviewers, ...rest } = updateActionDto;
     this.dropEchoedImages(rest, action);
     if (rest.cohortExpression != null) {
-      rest.cohortExpression = this.parseCohortExpressionOrThrow(
-        rest.cohortExpression,
-      );
+      rest.cohortExpression = this.parseWrittenCohortExpression({
+        value: rest.cohortExpression,
+        stored: cohortExpressionSchema
+          .nullable()
+          .parse(action.cohortExpression ?? null),
+        owner: CohortExpressionOwner.Action,
+      });
     }
 
     if (
@@ -1964,6 +1993,9 @@ export class ActionsService {
         action.reviewers = this.reviewerRows(reviewers);
       }
       await em.save(Action, action);
+      if (rest.prerequisiteActionIds !== undefined) {
+        await assertPrerequisitesValid({ em, actionIds: [id] });
+      }
     });
     const newSuiteId = action.suite?.id;
     await this.syncGeneralUpdateDatesForSuites([oldSuiteId, newSuiteId]);
@@ -2010,6 +2042,10 @@ export class ActionsService {
             });
             events.push(await manager.save(newEvent));
           }
+          await assertPrerequisitesValid({
+            em: manager,
+            actionIds: actions.map((action) => action.id),
+          });
           return events;
         },
       });
@@ -2045,7 +2081,10 @@ export class ActionsService {
       where: { id },
       relations: { suite: true },
     });
-    await this.actionRepository.delete(id);
+    await this.actionRepository.manager.transaction(async (em) => {
+      await em.delete(Action, id);
+      await assertNotAPrerequisite({ em, actionId: id });
+    });
     await this.syncGeneralUpdateDatesForSuites([action?.suite?.id]);
   }
 
@@ -2054,9 +2093,11 @@ export class ActionsService {
     dto: CreateFollowUpFormDto,
   ): Promise<ParsedFollowUpForm> {
     if (dto.cohortExpression != null) {
-      dto.cohortExpression = this.parseCohortExpressionOrThrow(
-        dto.cohortExpression,
-      );
+      dto.cohortExpression = this.parseWrittenCohortExpression({
+        value: dto.cohortExpression,
+        stored: null,
+        owner: CohortExpressionOwner.FollowUpForm,
+      });
     }
     const action = await this.findOneOrFail({ id: actionId, serverSide: true });
     const form = await this.formRepository.findOneOrFail({
@@ -2077,15 +2118,17 @@ export class ActionsService {
     followUpFormId: number,
     dto: UpdateFollowUpFormDto,
   ): Promise<ParsedFollowUpForm> {
-    if (dto.cohortExpression != null) {
-      dto.cohortExpression = this.parseCohortExpressionOrThrow(
-        dto.cohortExpression,
-      );
-    }
     const followUpForm = await this.followUpFormRepository.findOneOrFail({
       where: { id: followUpFormId },
       relations: { form: true, action: true },
     });
+    if (dto.cohortExpression != null) {
+      dto.cohortExpression = this.parseWrittenCohortExpression({
+        value: dto.cohortExpression,
+        stored: parseFollowUpForm(followUpForm).cohortExpression,
+        owner: CohortExpressionOwner.FollowUpForm,
+      });
+    }
     Object.assign(followUpForm, dto);
     return parseFollowUpForm(
       await this.followUpFormRepository.save(followUpForm),
@@ -2500,10 +2543,7 @@ export class ActionsService {
       return false;
     }
 
-    const inCohort = await this.computeIsInCohortExpression({
-      user,
-      cohortExpression: action.cohortExpression,
-    });
+    const inCohort = await this.computeIsInActionCohort({ user, action });
 
     return computeCanCompleteAction({ action, user, inCohort });
   }
@@ -2979,7 +3019,7 @@ export class ActionsService {
   async archive(id: number): Promise<ParsedAction> {
     const action = await this.actionRepository.findOneOrFail({
       where: { id },
-      relations: { reviewers: true },
+      relations: { reviewers: true, events: true },
     });
     action.archived = true;
     return parseAction(await this.actionRepository.save(action));
@@ -2988,7 +3028,7 @@ export class ActionsService {
   async unarchive(id: number): Promise<ParsedAction> {
     const action = await this.actionRepository.findOneOrFail({
       where: { id },
-      relations: { reviewers: true },
+      relations: { reviewers: true, events: true },
     });
     action.archived = false;
     return parseAction(await this.actionRepository.save(action));
@@ -3363,13 +3403,18 @@ export class ActionsService {
       }
     }
 
+    const actionIds = [
+      event.action.id,
+      ...suite.actions.map((action) => action.id),
+    ];
     await this.cohortDecisionStaffService.guardDeadlineShortening({
-      actionIds: [event.action.id, ...suite.actions.map((action) => action.id)],
+      actionIds,
       acknowledged: params.acknowledgeDeadlineShortening,
       change: async (em) => {
         for (const id of eventsToUpdate) {
           await em.update(ActionEvent, id, body);
         }
+        await assertPrerequisitesValid({ em, actionIds });
       },
     });
     await this.syncGeneralUpdateDatesForSuites([suiteId]);
@@ -3410,23 +3455,29 @@ export class ActionsService {
       .sort((a, b) => a.date.getTime() - b.date.getTime())
       .findIndex((event) => event.id === eventId);
 
-    for (const action of suite.actions) {
-      if (action.events.length <= eventIdx) {
-        throw new BadRequestException(
-          "Events do not have equivalent events to delete",
-        );
+    await this.actionEventRepository.manager.transaction(async (em) => {
+      for (const action of suite.actions) {
+        if (action.events.length <= eventIdx) {
+          throw new BadRequestException(
+            "Events do not have equivalent events to delete",
+          );
+        }
+        const possibleEvent = action.events.sort(
+          (a, b) => a.date.getTime() - b.date.getTime(),
+        )[eventIdx];
+        if (
+          possibleEvent.newStatus === event.newStatus &&
+          possibleEvent.suiteManaged
+        ) {
+          console.log("deleting event", possibleEvent.id);
+          await em.delete(ActionEvent, possibleEvent.id);
+        }
       }
-      const possibleEvent = action.events.sort(
-        (a, b) => a.date.getTime() - b.date.getTime(),
-      )[eventIdx];
-      if (
-        possibleEvent.newStatus === event.newStatus &&
-        possibleEvent.suiteManaged
-      ) {
-        console.log("deleting event", possibleEvent.id);
-        await this.actionEventRepository.delete(possibleEvent.id);
-      }
-    }
+      await assertPrerequisitesValid({
+        em,
+        actionIds: suite.actions.map((action) => action.id),
+      });
+    });
     await this.syncGeneralUpdateDatesForSuites([suiteId]);
     return this.findSuite(suiteId);
   }
@@ -3626,6 +3677,8 @@ export class ActionsService {
       followUpForms: _followUpForms,
       reviewers,
       project: _project,
+      // Action ids name different actions in another environment.
+      prerequisiteActionIds: _prerequisiteActionIds,
       ...actionCols
     } = importaction;
 
@@ -3641,6 +3694,15 @@ export class ActionsService {
       _actionCols_relations extends undefined ? true : false
     >;
 
+    const cohortExpression =
+      actionCols.cohortExpression == null
+        ? undefined
+        : this.parseWrittenCohortExpression({
+            value: actionCols.cohortExpression,
+            stored: null,
+            owner: CohortExpressionOwner.ImportedAction,
+          });
+
     let suiteIdToSync: number | undefined;
     const result = await this.actionRepository.manager.transaction(
       async (em) => {
@@ -3651,10 +3713,7 @@ export class ActionsService {
 
         const inserted = await actionRepo.insert({
           ...actionCols,
-          cohortExpression:
-            actionCols.cohortExpression == null
-              ? undefined
-              : this.parseCohortExpressionOrThrow(actionCols.cohortExpression),
+          cohortExpression,
           id: undefined,
         });
 
@@ -3715,7 +3774,7 @@ export class ActionsService {
 
         return actionRepo.findOneOrFail({
           where: { id: actionId },
-          relations: { reviewers: true },
+          relations: { reviewers: true, events: true },
         });
       },
     );
@@ -3859,10 +3918,10 @@ export class ActionsService {
       // this expression by findParticipantIdsForActions) instead of the
       // per-user expression walk, whose action leaves each hit the DB.
       const cohortMemberIds =
-        await this.actionEventRecipientService.resolveCohortMemberIds(
-          action.cohortExpression,
+        await this.actionEventRecipientService.resolveActionCohortMemberIds({
+          action,
           session,
-        );
+        });
       for (const userId of userIds) {
         const detail = getDetail({ userId, actionId: action.id });
         if (
@@ -4210,10 +4269,10 @@ export class ActionsService {
         if (!memberActionEventByActionId.has(action.id)) continue;
         cohortByAction.set(
           action.id,
-          this.actionEventRecipientService.resolveCohortMemberIds(
-            action.cohortExpression,
+          this.actionEventRecipientService.resolveActionCohortMemberIds({
+            action,
             session,
-          ),
+          }),
         );
       }
     }
@@ -5176,6 +5235,36 @@ export class ActionsService {
   }
 
   /**
+   * Whether the member is in the action's live cohort: its expression selects
+   * them and their prerequisites have all resolved.
+   */
+  async computeIsInActionCohort(params: {
+    user: User;
+    action: Pick<ParsedAction, "cohortExpression" | "prerequisiteActionIds">;
+    visitedActionIds?: Set<number>;
+    session?: CohortResolutionSession;
+  }): Promise<boolean> {
+    const { user, action, visitedActionIds } = params;
+    const session = params.session ?? new CohortResolutionSession();
+    if (
+      !(await this.computeIsInCohortExpression({
+        user,
+        cohortExpression: action.cohortExpression,
+        visitedActionIds,
+        session,
+      }))
+    ) {
+      return false;
+    }
+    const isReady = await this.prerequisiteProgressService.loadReadiness({
+      action,
+      session,
+      now: new Date(),
+    });
+    return isReady(user.id);
+  }
+
+  /**
    * Check if a user is in a cohort expression's target set.
    */
   async computeIsInCohortExpression(params: {
@@ -5219,9 +5308,9 @@ export class ActionsService {
         if (!fetched) return false;
         const action = parseAction(fetched);
 
-        const inCohort = await this.computeIsInCohortExpression({
+        const inCohort = await this.computeIsInActionCohort({
           user,
-          cohortExpression: action.cohortExpression,
+          action,
           visitedActionIds: new Set(visitedActionIds).add(actionId),
           session,
         });
@@ -5268,9 +5357,9 @@ export class ActionsService {
               },
             ],
           }),
-          this.computeIsInCohortExpression({
+          this.computeIsInActionCohort({
             user,
-            cohortExpression: action.cohortExpression,
+            action,
             visitedActionIds: new Set(visitedActionIds).add(actionId),
             session,
           }),

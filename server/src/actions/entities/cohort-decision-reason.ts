@@ -8,4 +8,6 @@ export enum CohortDecisionReason {
   ResolvedAfterDeadline = "resolved_after_deadline",
   Backfill = "backfill",
   StaffCorrection = "staff_correction",
+  /** The member was admissible at launch on an action with prerequisites. */
+  PrerequisitesResolved = "prerequisites_resolved",
 }

@@ -10,6 +10,7 @@ import {
   IsArray,
   IsDefined,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsOptional,
 } from "class-validator";
@@ -158,6 +159,16 @@ export class Action {
   @Type(() => Object)
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   cohortExpression?: unknown;
+
+  /**
+   * Actions whose outcome a member waits for before this action's cohort
+   * decides them. The cohort expression still does the selecting.
+   */
+  @Column({ type: "integer", array: true, default: [] })
+  @IsArray()
+  @ArrayUnique()
+  @IsInt({ each: true })
+  prerequisiteActionIds: number[];
 
   @Column({ default: false })
   @ApiProperty({
