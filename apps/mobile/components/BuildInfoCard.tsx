@@ -1,9 +1,9 @@
 import * as Application from "expo-application";
-import * as Clipboard from "expo-clipboard";
 import * as Updates from "expo-updates";
 import { Check, Copy } from "lucide-react-native";
 import { useState } from "react";
 import { Platform, TouchableOpacity, View } from "react-native";
+import { copyOrAlert } from "../lib/clipboard";
 import { colors } from "../lib/style/colors";
 import Card, { CardStyle } from "./system/Card";
 import Text, { FontFamily, FontWeight } from "./system/Text";
@@ -44,7 +44,7 @@ export default function BuildInfoCard() {
   const [copied, setCopied] = useState(false);
 
   const copyDiagnostics = async () => {
-    await Clipboard.setStringAsync(
+    const landed = await copyOrAlert(
       [
         `platform: ${Platform.OS} ${Platform.Version}`,
         `version: ${versionLine()}`,
@@ -55,7 +55,7 @@ export default function BuildInfoCard() {
         `commit: ${COMMIT || UNKNOWN}`,
       ].join("\n"),
     );
-    setCopied(true);
+    if (landed) setCopied(true);
   };
 
   return (

@@ -1,6 +1,12 @@
 import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { Harness, town } from "./VariableBuilder.testHarness";
 
 afterEach(cleanup);
@@ -314,5 +320,35 @@ describe("VariableBuilder variables", () => {
     expect(
       screen.getByLabelText<HTMLInputElement>("Sample answer for input1").value,
     ).toBe("Lima");
+  });
+});
+
+describe("VariableBuilder copy reference", () => {
+  const refusal = "Could not copy the reference to the clipboard";
+
+  afterEach(() => jest.restoreAllMocks());
+
+  const clickCopy = (writeText: () => Promise<void>) => {
+    jest.spyOn(navigator.clipboard, "writeText").mockImplementation(writeText);
+    render(<Harness initial={schema} onSave={() => {}} />);
+    const button = screen.getByRole("button", { name: "Copy #{names}" });
+    fireEvent.click(button);
+    return button;
+  };
+
+  it("checks a copy that lands", async () => {
+    const button = clickCopy(() => Promise.resolve());
+
+    await waitFor(() =>
+      expect(button.querySelector(".lucide-check")).not.toBeNull(),
+    );
+    expect(screen.queryByText(refusal)).toBeNull();
+  });
+
+  it("toasts a refused copy without checking it", async () => {
+    const button = clickCopy(() => Promise.reject(new DOMException("denied")));
+
+    await screen.findByText(refusal);
+    expect(button.querySelector(".lucide-check")).toBeNull();
   });
 });

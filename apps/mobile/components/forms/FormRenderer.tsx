@@ -82,7 +82,6 @@ import {
 } from "@alliance/shared/useFormRenderer";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { milliseconds } from "date-fns";
-import { setStringAsync as setClipboardStringAsync } from "expo-clipboard";
 import { DeviceType, deviceType as expoDeviceType } from "expo-device";
 import { router } from "expo-router";
 import {
@@ -107,6 +106,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { copyOrAlert } from "../../lib/clipboard";
 import { resolveImageSource } from "../../lib/config";
 import { getImageLoadSize } from "../../lib/imageLoadSize";
 import { colors } from "../../lib/style/colors";
@@ -180,7 +180,9 @@ function CopyTextDisplayMobile({
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    await setClipboardStringAsync(text);
+    if (!(await copyOrAlert(text))) {
+      return;
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), milliseconds({ seconds: 2 }));
   };

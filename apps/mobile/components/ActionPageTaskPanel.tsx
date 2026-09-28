@@ -20,12 +20,12 @@ import {
   getCompletedShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
 import { milliseconds } from "date-fns";
-import * as Clipboard from "expo-clipboard";
 import { Link } from "expo-router";
 import { ArrowRight, Link2 } from "lucide-react-native";
 import { ReactNode, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
+import { copyOrAlert } from "../lib/clipboard";
 import { getBaseUrl } from "../lib/config";
 import { colors } from "../lib/style/colors";
 import ActionTaskPanel from "./ActionTaskPanel";
@@ -159,9 +159,7 @@ const ActionPageTaskPanel = ({
       userName: user?.name,
       url,
     });
-    try {
-      await Clipboard.setStringAsync(text);
-    } catch {
+    if (!(await copyOrAlert(text))) {
       return;
     }
     setCopied(true);

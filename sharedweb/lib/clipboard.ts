@@ -1,5 +1,10 @@
 const TEXT_PLAIN = "text/plain";
 
+export enum CopyOutcome {
+  Copied = "copied",
+  Failed = "failed",
+}
+
 /**
  * Copy text to the clipboard, reporting whether it landed.
  *
@@ -35,4 +40,10 @@ export async function copyToClipboard(
   } catch {
     return false;
   }
+}
+
+export async function copyOutcome(text: string): Promise<CopyOutcome> {
+  return (await copyToClipboard(text))
+    ? CopyOutcome.Copied
+    : CopyOutcome.Failed;
 }

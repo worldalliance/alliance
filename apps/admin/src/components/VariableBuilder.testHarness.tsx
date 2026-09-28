@@ -1,4 +1,5 @@
 import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
+import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { VariableBuilder } from "./VariableBuilder";
@@ -25,14 +26,16 @@ export function Harness({
   );
   return (
     <QueryClientProvider client={queryClient}>
-      <VariableBuilder
-        formId={unsaved ? undefined : 1}
-        schema={current}
-        onSchemaChange={(next) => {
-          setCurrent(next);
-          onSave(next);
-        }}
-      />
+      <ToastProvider>
+        <VariableBuilder
+          formId={unsaved ? undefined : 1}
+          schema={current}
+          onSchemaChange={(next) => {
+            setCurrent(next);
+            onSave(next);
+          }}
+        />
+      </ToastProvider>
     </QueryClientProvider>
   );
 }

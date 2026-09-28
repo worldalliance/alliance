@@ -36,6 +36,7 @@ import { useInvalidateFormsIndex } from "@alliance/shared/lib/useFormsAdmin";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getApiUrl, getBaseUrl } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -611,7 +612,7 @@ const ActionDashboard: React.FC = () => {
     }));
   };
 
-  const { confirm } = useToast();
+  const { confirm, error: pushError } = useToast();
 
   const handleArchive = useCallback(async () => {
     const confirmed =
@@ -737,26 +738,34 @@ const ActionDashboard: React.FC = () => {
 
   const handleExportAction = async () => {
     if (actionId) {
-      const response = await actionsExportActionAdmin({
-        path: { id: actionId },
-        query: {
-          events: exportActionEvents,
-          reminders: false,
-          taskForm: exportActionTaskForm,
-          suite: exportActionSuite,
-        },
-      });
-      if (response.data) {
-        navigator.clipboard.writeText(JSON.stringify(response.data));
-        setJsonCopied(true);
-        setTimeout(
-          () => {
-            setJsonCopied(false);
-            setExportActionOpen(false);
+      // Handed over unresolved: Safari only allows the write inside the click.
+      const copied = await copyToClipboard(
+        actionsExportActionAdmin({
+          path: { id: actionId },
+          query: {
+            events: exportActionEvents,
+            reminders: false,
+            taskForm: exportActionTaskForm,
+            suite: exportActionSuite,
           },
-          milliseconds({ seconds: 2 }),
-        );
+        }).then((response) =>
+          response.data
+            ? JSON.stringify(response.data)
+            : Promise.reject(new Error("action export failed")),
+        ),
+      );
+      if (!copied) {
+        pushError("Could not export the action JSON to the clipboard");
+        return;
       }
+      setJsonCopied(true);
+      setTimeout(
+        () => {
+          setJsonCopied(false);
+          setExportActionOpen(false);
+        },
+        milliseconds({ seconds: 2 }),
+      );
     }
   };
 

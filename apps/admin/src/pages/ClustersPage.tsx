@@ -4,6 +4,7 @@ import type { ClusterAdminDto } from "@alliance/shared/client/types.gen";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { CardStyle } from "@alliance/shared/styles/card";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { memberProfileUrl } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -71,14 +72,12 @@ const ClustersPage: React.FC = () => {
           `The other members of your introduction group (${cluster.displayName}) are:\n\n${list}`;
       }
     }
-    try {
-      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+    if (await copyToClipboard(JSON.stringify(payload, null, 2))) {
       const userCount = Object.keys(payload).length;
       success(
         `Copied clustermates for ${withCount(userCount, "user")} to clipboard.`,
       );
-    } catch (err) {
-      console.error("Failed to copy clustermates", err);
+    } else {
       toastError("Could not copy to clipboard.");
     }
   }, [clusters, success, toastError]);

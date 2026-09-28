@@ -30,7 +30,7 @@ import { useReusableInvites } from "@alliance/shared/lib/useReusableInvites";
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
-import { copyToClipboard as writeToClipboard } from "@alliance/sharedweb/lib/clipboard";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -49,6 +49,7 @@ import InviteSettingsModal, {
 import InviteShareLink from "../../components/InviteShareLink";
 import OnetimeInviteListItem from "../../components/OnetimeInviteListItem";
 import { useAuth } from "../../lib/AuthContext";
+import { useCopyInviteLink } from "../../lib/useCopyInviteLink";
 
 enum InviteListTab {
   Individual = "individual",
@@ -222,11 +223,7 @@ const InvitesPage = () => {
     ? inviteListTab === InviteListTab.Group
     : hasGroupInvites;
 
-  const copyToClipboard = useCallback((text: string) => {
-    navigator.clipboard.writeText(
-      getOnetimeInviteSignupUrl(getInviteBaseUrl(), text),
-    );
-  }, []);
+  const copyInviteLink = useCopyInviteLink();
 
   const copyMessageToClipboard = useCallback(
     async (code: string) => {
@@ -235,7 +232,7 @@ const InvitesPage = () => {
         return false;
       }
       const inviteLink = getOnetimeInviteSignupUrl(getInviteBaseUrl(), code);
-      const copied = await writeToClipboard(
+      const copied = await copyToClipboard(
         formatInviteMessage(inviteMessageTemplate, inviteLink),
       );
       if (!copied) {
@@ -840,7 +837,7 @@ const InvitesPage = () => {
                               ? setSettingsInviteId
                               : undefined
                           }
-                          onCopy={copyToClipboard}
+                          onCopy={copyInviteLink}
                           onCopyMessage={copyMessageToClipboard}
                           onCopied={handleCopied}
                           onMessageCopied={handleMessageCopied}
@@ -896,7 +893,7 @@ const InvitesPage = () => {
                           copied={copiedInviteId === invite.id}
                           messageCopied={messageCopiedInviteId === invite.id}
                           onDelete={handleDeleteInvite}
-                          onCopy={copyToClipboard}
+                          onCopy={copyInviteLink}
                           onCopyMessage={copyMessageToClipboard}
                           onCopied={handleCopied}
                           onMessageCopied={handleMessageCopied}

@@ -16,7 +16,7 @@ type OnetimeInviteListItemProps = {
   selfInvited: boolean;
   copied?: boolean;
   messageCopied?: boolean;
-  onCopy?: (code: string) => void;
+  onCopy?: (code: string) => Promise<boolean>;
   onCopyMessage?: (code: string) => Promise<boolean>;
   onCopied?: (inviteId: number) => void;
   onMessageCopied?: (inviteId: number) => void;
@@ -60,8 +60,11 @@ const OnetimeInviteListItem = ({
 
   const handleCopy = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation();
-    onCopy?.(invite.code);
-    onCopied?.(invite.id);
+    void onCopy?.(invite.code).then((copied) => {
+      if (copied) {
+        onCopied?.(invite.id);
+      }
+    });
   };
 
   const handleCopyMessage = (event: React.MouseEvent<HTMLElement>) => {

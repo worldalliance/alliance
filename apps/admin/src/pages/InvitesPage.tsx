@@ -8,12 +8,14 @@ import {
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { usePaginatedQuery } from "@alliance/shared/lib/usePaginatedQuery";
 import { cn } from "@alliance/shared/styles/util";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import List from "@alliance/sharedweb/ui/List";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy } from "lucide-react";
@@ -24,6 +26,7 @@ const INVITES_PER_PAGE = 50;
 
 const InvitesPage = () => {
   const queryClient = useQueryClient();
+  const { error: pushError } = useToast();
 
   const {
     data,
@@ -87,10 +90,10 @@ const InvitesPage = () => {
       ),
   });
 
-  const copyToClipboard = (text: string) => {
-    const baseUrl = getBaseUrl();
-    const url = `${baseUrl}/signup?ref=${text}`;
-    navigator.clipboard.writeText(url);
+  const copyInviteLink = async (code: string) => {
+    if (!(await copyToClipboard(`${getBaseUrl()}/signup?ref=${code}`))) {
+      pushError("Could not copy the invite link to the clipboard");
+    }
   };
 
   return (
@@ -244,7 +247,7 @@ const InvitesPage = () => {
                     )}
                     <div
                       className="cursor-pointer active:scale-85 transition-all duration-100"
-                      onClick={() => copyToClipboard(invite.code)}
+                      onClick={() => void copyInviteLink(invite.code)}
                     >
                       <Copy className="h-4 w-4 text-gray-500" />
                     </div>

@@ -1,6 +1,16 @@
+import { copyOutcome, CopyOutcome } from "@alliance/sharedweb/lib/clipboard";
 import { milliseconds } from "date-fns";
 import { EllipsisVertical } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+
+const copyBadges: Record<CopyOutcome, React.ReactNode> = {
+  [CopyOutcome.Copied]: (
+    <span className="text-green text-sm -my-1 font-medium">Copied!</span>
+  ),
+  [CopyOutcome.Failed]: (
+    <span className="text-red-600 text-sm -my-1 font-medium">Copy failed</span>
+  ),
+};
 
 interface CommentActionsMenuProps {
   replyId: number;
@@ -22,7 +32,7 @@ const CommentActionsMenu: React.FC<CommentActionsMenuProps> = ({
   onPin,
 }) => {
   const [showDropdown, setShowDropdown] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [outcome, setOutcome] = useState<CopyOutcome | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,15 +52,14 @@ const CommentActionsMenu: React.FC<CommentActionsMenuProps> = ({
     }
   }, [showDropdown]);
 
-  const handleCopyLink = useCallback(() => {
+  const handleCopyLink = useCallback(async () => {
     const url = new URL(window.location.href);
     url.searchParams.set("replyId", replyId.toString());
-    navigator.clipboard.writeText(url.toString());
     setShowDropdown(false);
-    setCopied(true);
+    setOutcome(await copyOutcome(url.toString()));
     setTimeout(
       () => {
-        setCopied(false);
+        setOutcome(null);
       },
       milliseconds({ seconds: 1 }),
     );
@@ -63,9 +72,7 @@ const CommentActionsMenu: React.FC<CommentActionsMenuProps> = ({
         className="text-gray-500 hover:text-gray-700 p-1 flex items-center gap-1"
         aria-label="More options"
       >
-        {copied && (
-          <span className="text-green text-sm -my-1 font-medium">Copied!</span>
-        )}
+        {outcome && copyBadges[outcome]}
         <EllipsisVertical size={16} />
       </button>
       {showDropdown && (

@@ -51,6 +51,7 @@ import { FormFieldsStatus } from "@alliance/shared/lib/useFormSchema";
 import { cn } from "@alliance/shared/styles/util";
 import { customComponentRegistry } from "@alliance/sharedweb/forms/components";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Copy } from "lucide-react";
@@ -2022,11 +2023,14 @@ export function FormBuilder(props: FormBuilderProps) {
     showSuccessToast("Merged their changes with yours — review and save");
   }, [conflict, showErrorToast, showSuccessToast, validation]);
 
-  const handleCopyMine = useCallback(() => {
+  const handleCopyMine = useCallback(async () => {
     if (!conflict) return;
-    void navigator.clipboard.writeText(JSON.stringify(conflict.mine, null, 2));
-    showSuccessToast("Copied your version to the clipboard");
-  }, [conflict, showSuccessToast]);
+    if (await copyToClipboard(JSON.stringify(conflict.mine, null, 2))) {
+      showSuccessToast("Copied your version to the clipboard");
+    } else {
+      showErrorToast("Could not copy your version to the clipboard");
+    }
+  }, [conflict, showErrorToast, showSuccessToast]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
