@@ -10,7 +10,8 @@ import {
 } from "@alliance/shared/lib/copy";
 import {
   dateToInputValue,
-  daysUntil,
+  InviteGoalPhase,
+  inviteGoalStatus,
   selectInviteGoals,
 } from "@alliance/shared/lib/inviteGoals";
 import {
@@ -519,46 +520,37 @@ export default function InvitesScreen() {
       );
     }
 
-    const now = new Date();
-    const startAt = new Date(currentGoal.goal.startAt);
-    const dueAt = new Date(currentGoal.goal.dueAt);
-    const remainingRecruits = Math.max(
-      0,
-      currentGoal.goal.targetSuccessfulRecruits -
-        currentGoal.stats.goalSuccessfulRecruits,
-    );
-
-    if (startAt > now) {
-      return (
-        <Text className="text-lg text-white" weight={FontWeight.Semibold}>
-          This goal starts in {withCount(daysUntil(startAt, now), "day")}.
-        </Text>
-      );
+    const status = inviteGoalStatus(currentGoal);
+    switch (status.phase) {
+      case InviteGoalPhase.Upcoming:
+        return (
+          <Text className="text-lg text-white" weight={FontWeight.Semibold}>
+            This goal starts in {withCount(status.daysToStart, "day")}.
+          </Text>
+        );
+      case InviteGoalPhase.Completed:
+        return (
+          <Text className="text-lg text-white" weight={FontWeight.Semibold}>
+            You have completed this invitation goal.
+          </Text>
+        );
+      case InviteGoalPhase.Ended:
+        return (
+          <Text className="text-lg text-white" weight={FontWeight.Semibold}>
+            This goal ended with {withCount(status.remainingRecruits, "member")}{" "}
+            left to successfully invite.
+          </Text>
+        );
+      case InviteGoalPhase.Active:
+        return (
+          <Text className="text-lg text-white" weight={FontWeight.Semibold}>
+            You have {withCount(status.daysLeft, "day")} to successfully invite{" "}
+            {withCount(status.remainingRecruits, "more member")}.
+          </Text>
+        );
+      default:
+        throw new Error(`unknown phase: ${status satisfies never}`);
     }
-
-    if (remainingRecruits === 0) {
-      return (
-        <Text className="text-lg text-white" weight={FontWeight.Semibold}>
-          You have completed this invitation goal.
-        </Text>
-      );
-    }
-
-    if (dueAt < now) {
-      return (
-        <Text className="text-lg text-white" weight={FontWeight.Semibold}>
-          This goal ended with {withCount(remainingRecruits, "member")} left to
-          successfully invite.
-        </Text>
-      );
-    }
-
-    return (
-      <Text className="text-lg text-white" weight={FontWeight.Semibold}>
-        You have {withCount(daysUntil(dueAt, now), "day")} to successfully
-        invite {withCount(remainingRecruits, "more member")}.
-      </Text>
-    );
   }, [currentGoal]);
 
   const isEmptyPast =

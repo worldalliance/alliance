@@ -7,6 +7,8 @@ import {
   daysUntil,
   inviteGoalErrorMessage,
   inviteGoalIsUp,
+  InviteGoalPhase,
+  inviteGoalStatus,
   oneMonthFromTodayDateInputValue,
   selectCurrentInviteGoal,
   selectInviteGoals,
@@ -95,6 +97,44 @@ describe("inviteGoalIsUp", () => {
       ),
     ).toBe(true);
     expect(inviteGoalIsUp(active, now)).toBe(false);
+  });
+});
+
+describe("inviteGoalStatus", () => {
+  test("counts down to an upcoming goal's start", () => {
+    expect(inviteGoalStatus(upcoming, now)).toEqual({
+      phase: InviteGoalPhase.Upcoming,
+      daysToStart: 47,
+    });
+  });
+
+  test("is completed once the target is met, even after the due date", () => {
+    expect(
+      inviteGoalStatus(
+        goal(7, "2026-01-01T00:00:00Z", "2026-02-01T00:00:00Z", 5),
+        now,
+      ),
+    ).toEqual({ phase: InviteGoalPhase.Completed });
+  });
+
+  test("reports the recruits a past-due goal fell short by", () => {
+    expect(inviteGoalStatus(past, now)).toEqual({
+      phase: InviteGoalPhase.Ended,
+      remainingRecruits: 5,
+    });
+  });
+
+  test("counts the days and recruits left on an active goal", () => {
+    expect(
+      inviteGoalStatus(
+        goal(8, "2026-06-01T00:00:00Z", "2026-07-01T00:00:00Z", 2),
+        now,
+      ),
+    ).toEqual({
+      phase: InviteGoalPhase.Active,
+      daysLeft: 16,
+      remainingRecruits: 3,
+    });
   });
 });
 
