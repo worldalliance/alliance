@@ -4,7 +4,12 @@ import {
   useTimeZoneSelect,
 } from "@alliance/shared/forms/timeZoneSelect";
 import { cn } from "@alliance/shared/styles/util";
-import { ChevronDown, Clock, Smartphone } from "lucide-react-native";
+import {
+  ChevronDown,
+  Clock,
+  Smartphone,
+  TriangleAlert,
+} from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -46,6 +51,7 @@ export default function TimeZoneSelect({
     open,
     setOpen,
     loading,
+    unavailable,
   } = useTimeZoneSelect({
     value,
     defaultValue: deviceTimeZone,
@@ -103,6 +109,14 @@ export default function TimeZoneSelect({
           <Text className="text-xs text-zinc-500 mt-0.5" numberOfLines={1}>
             {underName}
           </Text>
+          {unavailable && (
+            <View className="flex-row items-center gap-1 mt-0.5">
+              <TriangleAlert size={12} color={colors.warning} />
+              <Text className="text-xs text-amber-700">
+                Unavailable time zone
+              </Text>
+            </View>
+          )}
         </View>
         <ChevronDown size={18} color={colors.text.icon} />
       </TouchableOpacity>

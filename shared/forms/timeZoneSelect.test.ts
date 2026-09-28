@@ -485,6 +485,37 @@ describe("a saved zone the catalog has no row for", () => {
   });
 });
 
+describe("a saved value no runtime or catalog knows", () => {
+  it.each(["Mars/Olympus", "-08:00", "america/los_angeles"])(
+    "shows %s as saved, flagged unavailable, with no row of its own",
+    (tz) => {
+      const { result } = renderOpen({ value: tz });
+
+      expect(result.current.unavailable).toBe(true);
+      expect(result.current.selected.labelLeft).toBe(tz);
+      expect(result.current.items).toHaveLength(TIME_ZONE_CATALOG.length);
+    },
+  );
+
+  it("drops the flag once the member picks a listed zone", () => {
+    const { result } = renderOpen({ defaultValue: "Mars/Olympus" });
+
+    act(() => result.current.commit("Europe/London"));
+
+    expect(result.current.unavailable).toBe(false);
+    expect(result.current.selected.tz).toBe("Europe/London");
+  });
+
+  it.each(["Europe/London", "US/Pacific", "Etc/GMT+8"])(
+    "leaves %s unflagged",
+    (tz) => {
+      const { result } = renderOpen({ value: tz });
+
+      expect(result.current.unavailable).toBe(false);
+    },
+  );
+});
+
 describe("the device's zone", () => {
   it("sits above the unfiltered list", () => {
     const { result } = renderOpen({ deviceTimeZone: "Asia/Tokyo" });

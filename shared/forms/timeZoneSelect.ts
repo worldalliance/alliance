@@ -492,5 +492,6 @@ export function useTimeZoneSelect({
     setOpen,
     disabled,
     loading,
+    unavailable: label === null,
   };
 }

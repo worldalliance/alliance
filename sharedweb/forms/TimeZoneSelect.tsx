@@ -6,7 +6,7 @@ import {
 import { deviceTimeZone } from "@alliance/shared/lib/timeZone";
 import { cn } from "@alliance/shared/styles/util";
 import { Combobox } from "@base-ui/react/combobox";
-import { Check, MonitorSmartphone } from "lucide-react";
+import { Check, MonitorSmartphone, TriangleAlert } from "lucide-react";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import Spinner from "../ui/Spinner";
 import { zIndex } from "../ui/zIndex";
@@ -57,6 +57,7 @@ export default function TimeZoneSelectPretty({
     commit,
     open,
     setOpen,
+    unavailable,
   } = useTimeZoneSelect({
     value,
     defaultValue,
@@ -152,6 +153,12 @@ export default function TimeZoneSelectPretty({
                 {selected.labelSub && (
                   <div className="truncate text-[13px] text-zinc-500">
                     {selected.labelSub}
+                  </div>
+                )}
+                {unavailable && (
+                  <div className="flex items-center gap-1 text-[13px] text-amber-700">
+                    <TriangleAlert className="w-3.5 h-3.5 shrink-0" />
+                    Unavailable time zone
                   </div>
                 )}
               </div>
