@@ -315,8 +315,18 @@ sections below this one carry the reasoning each step implements.
     stays selected only until the member picks a row. The warning sits in
     the web trigger's accessible name. A raw offset keeps its clock, since
     `Intl` resolves it.
-16. **Test form cleanup.** Remove the explicit `America/Los_Angeles` default
-    from the local `test action form`.
+16. **Test form cleanup.** Done in the `timezone` worktree's
+    `alliance_timezone` only; the main checkout's `alliance` still has the
+    default, and removing the worktree drops `alliance_timezone`. There the
+    `test action form` saved through `PUT /tasks/updateForm/:formId`, as the
+    builder saves, without its timezone field's `defaultValue`, so it took a
+    new snapshot and a history row, and older snapshots stay as they were.
+    It had no responses. The builder offers no default control for the kind,
+    so `alliance` needs the same call: the schema `GET /tasks/slug/:id`
+    returns, minus that `defaultValue` and each contract field's inlined
+    `contract`, which the save refuses. No migration carries it: the form
+    lives only in local databases, and reloading staging data brings back
+    whatever staging holds.
 17. **Release watch.** Done. `tzdb-release-watch.yaml` runs weekly.
     `common/scripts/bump-tzdb.ts` checks `tzdata-latest.tar.gz` against its
     PGP signature, reads its version, and, when it is newer, rewrites the
