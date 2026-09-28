@@ -83,12 +83,12 @@ export class SingleMemberCohortService {
     ) {
       return false;
     }
-    const isReady = await this.prerequisiteProgressService.loadReadiness({
+    return this.prerequisiteProgressService.loadMemberReadiness({
       action,
+      userId: user.id,
       session,
       now: new Date(),
     });
-    return isReady(user.id);
   }
 
   /**

@@ -1,4 +1,5 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { getRepositoryToken } from "@nestjs/typeorm";
 import type { Repository } from "typeorm";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
 import { ActionActivity } from "../src/actions/entities/action-activity.entity";
@@ -40,7 +41,10 @@ describe("CohortDecisionService prerequisites (e2e)", () => {
       cohortDecisionFixtures(ctx));
   }, 50000);
 
-  afterEach(() => cleanUp());
+  afterEach(async () => {
+    jest.restoreAllMocks();
+    await cleanUp();
+  });
 
   afterAll(async () => {
     await ctx.app.close();
@@ -202,6 +206,42 @@ describe("CohortDecisionService prerequisites (e2e)", () => {
     });
     await service.resolveAll(now);
     expect((await decisionsFor(action.id)).has(member.id)).toBe(true);
+  });
+
+  it("reads only a lone member's prerequisite rows while deciding them", async () => {
+    const member = await createUser({ signedAt });
+    const upstream = await createUpstream();
+    const action = await createAction({
+      start: addDays(now, -1),
+      deadline: addDays(now, 3),
+      prerequisiteActionIds: [upstream.id],
+    });
+    const activityFind = jest.spyOn(
+      ctx.app.get<Repository<ActionActivity>>(
+        getRepositoryToken(ActionActivity),
+      ),
+      "find",
+    );
+
+    await service.resolveForUser(member.id, now);
+    expect((await decisionsFor(action.id)).has(member.id)).toBe(false);
+    expect(
+      activityFind.mock.calls.flatMap(([options]) => options?.where),
+    ).toEqual([
+      expect.objectContaining({ actionId: upstream.id, userId: member.id }),
+      expect.objectContaining({ actionId: upstream.id, userId: member.id }),
+    ]);
+
+    await record({
+      actionId: upstream.id,
+      userId: member.id,
+      type: ActionActivityType.USER_COMPLETED,
+    });
+    await service.resolveForUser(member.id, now);
+    expect((await decisionsFor(action.id)).get(member.id)).toMatchObject({
+      included: true,
+      reason: CohortDecisionReason.PrerequisitesResolved,
+    });
   });
 
   it("selects the country branch from the profile when the prerequisite resolves", async () => {

@@ -40,6 +40,54 @@ export class PrerequisiteProgressService {
     return (userId) => arePrerequisitesReady({ prerequisites, userId, now });
   }
 
+  /**
+   * The members whose prerequisites have all resolved. A lone member, as when
+   * reconciling a reader, reads only their own rows: one still waiting gets
+   * no decision and is checked again on every read.
+   */
+  async filterReady<T extends { id: number }>(params: {
+    action: Pick<Action, "prerequisiteActionIds">;
+    users: T[];
+    session: CohortResolutionSession;
+    now: Date;
+  }): Promise<T[]> {
+    const { action, users, session, now } = params;
+    const [user] = users;
+    if (users.length === 1 && user) {
+      const ready = await this.loadMemberReadiness({
+        action,
+        userId: user.id,
+        session,
+        now,
+      });
+      return ready ? users : [];
+    }
+    const isReady = await this.loadReadiness({ action, session, now });
+    return users.filter((candidate) => isReady(candidate.id));
+  }
+
+  /** `loadReadiness` for one member, reading only their rows. */
+  async loadMemberReadiness(params: {
+    action: Pick<Action, "prerequisiteActionIds">;
+    userId: number;
+    session: CohortResolutionSession;
+    now: Date;
+  }): Promise<boolean> {
+    const { action, userId, session, now } = params;
+    const prerequisites = await Promise.all(
+      action.prerequisiteActionIds.map((actionId) => {
+        const key = `${userId}|${actionId}`;
+        let pending = session.memberPrerequisiteProgress.get(key);
+        if (!pending) {
+          pending = this.loadOne(actionId, userId);
+          session.memberPrerequisiteProgress.set(key, pending);
+        }
+        return pending;
+      }),
+    );
+    return arePrerequisitesReady({ prerequisites, userId, now });
+  }
+
   private load(
     actionIds: number[],
     session: CohortResolutionSession,
@@ -56,15 +104,22 @@ export class PrerequisiteProgressService {
     );
   }
 
-  private async loadOne(actionId: number): Promise<PrerequisiteProgress> {
+  private async loadOne(
+    actionId: number,
+    userId?: number,
+  ): Promise<PrerequisiteProgress> {
     const [action, terminalUserIds, excluded] = await Promise.all([
       this.actionRepository.findOneOrFail({
         where: { id: actionId },
         relations: { events: true },
       }),
-      this.loadTerminalUserIds(actionId),
+      this.loadTerminalUserIds(actionId, userId),
       this.decisionRepository.find({
-        where: { actionId, included: false },
+        where: {
+          actionId,
+          included: false,
+          ...(userId === undefined ? {} : { userId }),
+        },
         select: { userId: true },
       }),
     ]);
@@ -75,11 +130,15 @@ export class PrerequisiteProgressService {
     };
   }
 
-  async loadTerminalUserIds(actionId: number): Promise<Set<number>> {
+  async loadTerminalUserIds(
+    actionId: number,
+    userId?: number,
+  ): Promise<Set<number>> {
+    const member = userId === undefined ? {} : { userId };
     const terminal = await this.actionActivityRepository.find({
       where: [
-        { actionId, type: ActionActivityType.USER_COMPLETED },
-        { actionId, type: ActionActivityType.USER_WONT_COMPLETE },
+        { actionId, type: ActionActivityType.USER_COMPLETED, ...member },
+        { actionId, type: ActionActivityType.USER_WONT_COMPLETE, ...member },
       ],
       select: { userId: true },
     });
