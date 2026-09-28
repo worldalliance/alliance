@@ -214,6 +214,19 @@ describe("Auth (e2e)", () => {
     await agent.get("/auth/me").expect(401);
   });
 
+  it("refuses a guest token with no sub", async () => {
+    const authService = ctx.app.get(AuthService);
+    await authService.createGuestSession();
+    const noSub = ctx.jwtService.sign(
+      { tokenType: JWTTokenType.guest },
+      { secret: process.env.JWT_SECRET },
+    );
+
+    expect(await authService.verifyGuestToken(noSub)).toBeNull();
+    const { guestToken } = await authService.createGuestSession(noSub);
+    expect(guestToken).not.toBe(noSub);
+  });
+
   it("clears the cookie session on a header-mode refresh", async () => {
     const email = "nocookie-refresh@test.com";
     const agent = await cookieSession(email);

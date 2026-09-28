@@ -31,12 +31,13 @@ import {
   ACCESS_COOKIE,
   accessTokenPayload,
   GUEST_COOKIE,
-  type GuestJwtPayload,
-  type JwtPayload,
+  guestJwtPayloadSchema,
   JWTTokenType,
   REFRESH_COOKIE,
   sessionFromRequest,
   verifyMailedToken,
+  type GuestJwtPayload,
+  type JwtPayload,
 } from "./tokens";
 
 export type ReferredUser = {
@@ -146,16 +147,12 @@ export class AuthService {
 
   async verifyGuestToken(token: string): Promise<GuestJwtPayload | null> {
     try {
-      const payload = await this.jwtService.verifyAsync<GuestJwtPayload>(
-        token,
-        {
+      const payload = guestJwtPayloadSchema.safeParse(
+        await this.jwtService.verifyAsync(token, {
           secret: process.env.JWT_SECRET,
-        },
+        }),
       );
-      if (payload.tokenType !== JWTTokenType.guest) {
-        return null;
-      }
-      return payload;
+      return payload.success ? payload.data : null;
     } catch {
       return null;
     }
