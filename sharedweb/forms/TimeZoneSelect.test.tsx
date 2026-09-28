@@ -164,6 +164,21 @@ it("names an unlabelled trigger after its zone", () => {
   ).toBeDefined();
 });
 
+it("warns on a saved zone nothing knows, and lets the member replace it", async () => {
+  const onChange = jest.fn();
+  render(<TimeZoneSelect value="Mars/Olympus" onChange={onChange} />);
+  const warned = () =>
+    screen.getByRole("combobox", {
+      name: /^Mars\/Olympus.*Unavailable time zone/,
+    });
+
+  fireEvent.click(warned());
+  await waitFor(() => expect(options().length).toBeGreaterThan(0));
+  fireEvent.click(londonRow()!);
+
+  expect(onChange).toHaveBeenCalledWith("Europe/London");
+});
+
 it("says so when a search matches nothing", async () => {
   render(<TimeZoneSelect />);
 

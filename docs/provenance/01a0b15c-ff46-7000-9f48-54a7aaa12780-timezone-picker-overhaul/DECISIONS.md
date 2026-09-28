@@ -304,8 +304,17 @@ sections below this one carry the reasoning each step implements.
     builder's `America/Los_Angeles` default unread. New timezone fields and
     list sub-fields omit `defaultValue`. The builder already offered no
     default control for the kind.
-15. **Unavailable saved value.** A saved identifier neither the catalog nor the
-    runtime knows renders raw, with a warning, and stays replaceable.
+15. **Unavailable saved value.** Done. A value `isTimeZoneIdentifier`
+    refuses, such as `Mars/Olympus`, a raw offset like `-08:00`, or
+    `america/los_angeles`, renders raw on the closed picker, with
+    `Unavailable time zone` and a warning icon under it, since form
+    extraction and `/user/update` would refuse it. `useTimeZoneSelect` flags
+    it as `unavailable` when it has no row, which is the same test, since a
+    value gets a row exactly when the catalog carries it or
+    `isTimeZoneIdentifier` accepts it. It gets no row in the list, so it
+    stays selected only until the member picks a row. The warning sits in
+    the web trigger's accessible name. A raw offset keeps its clock, since
+    `Intl` resolves it.
 16. **Test form cleanup.** Remove the explicit `America/Los_Angeles` default
     from the local `test action form`.
 17. **Release watch.** Done. `tzdb-release-watch.yaml` runs weekly.
