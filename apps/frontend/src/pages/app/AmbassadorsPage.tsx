@@ -1,4 +1,3 @@
-/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import React from "react";
 import { Link } from "react-router";
 import ambassadorInvitationGoal from "../../assets/ambassador-invitation-goal.png";
@@ -6,18 +5,18 @@ import ambassadorInviteQrCode from "../../assets/ambassador-invite-qr-code.png";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
 import InfoSubpage from "../../components/InfoSubpage";
 import { TocSection } from "../../components/TableOfContents";
-
-const sectionClassName = "gap-y-4 flex flex-col";
-const headingClassName = "mt-2 text-title-medium text-black";
-const subheadingClassName = "text-title-small text-black mt-2";
-const listClassName = "list-disc list-inside space-y-2 pl-4";
-const orderedListClassName = "list-decimal list-inside space-y-3 pl-4";
-const quoteClassName =
-  "border-l-4 border-zinc-200 pl-4 text-zinc-700 space-y-3";
-const imageFrameClassName =
-  "flex flex-col items-center justify-center p-4 md:p-6 bg-zinc-50 rounded";
-const imageClassName = "w-full h-auto border border-zinc-200 rounded";
-const imageCaptionClassName = "text-zinc-500 text-sm text-center";
+import AmbassadorTalkingPoints from "./AmbassadorTalkingPoints";
+import {
+  headingClassName,
+  imageCaptionClassName,
+  imageClassName,
+  imageFrameClassName,
+  listClassName,
+  orderedListClassName,
+  quoteClassName,
+  sectionClassName,
+  subheadingClassName,
+} from "./ambassadorsPageStyles";
 
 const AmbassadorsPage: React.FC = () => {
   useWhiteBackground();
@@ -300,102 +299,7 @@ const AmbassadorsPage: React.FC = () => {
           family.
         </p>
 
-        <h2 id="talking-points" className={headingClassName}>
-          Talking points
-        </h2>
-        <h3 className={subheadingClassName}>Actions</h3>
-        <p>
-          It can be helpful to give some examples of actions. In the past, we
-          have:
-        </p>
-        <ul className={listClassName}>
-          <li>
-            Run the first ever large-scale behavioral study on eating less
-            animal products, alongside Stanford researcher Seth Ariel Green:{" "}
-            <a href="https://plantbasedstudy.org/" className="text-link">
-              https://plantbasedstudy.org/
-            </a>
-          </li>
-          <li>
-            Created a comprehensive public map on police surveillance spending
-            in California, the first of its kind:{" "}
-            <a href="https://ca-police-ai.netlify.app/" className="text-link">
-              https://ca-police-ai.netlify.app/
-            </a>
-          </li>
-          <li>
-            Temporarily avoided unnecessary purchases in order to donate more
-            than $2,500 collectively to Helen Keller International.
-          </li>
-          <li>
-            Posted 3 expert- and member-informed comments on US federal dockets
-            about AI policy.
-          </li>
-          <li>
-            Held a discussion with current and former EPA employees about the
-            repeal of the Endangerment Finding.
-          </li>
-        </ul>
-
-        <h3 className={subheadingClassName}>Reliability and contract</h3>
-        <p>
-          People may ask why there is a consistent commitment and why there is a
-          contract. Some points to emphasize include:
-        </p>
-        <ul className={listClassName}>
-          <li>Reliability is what lets the Alliance plan actions precisely.</li>
-          <li>It also lets members know they can count on each other.</li>
-          <li>The commitment is capped at 15 minutes per week.</li>
-          <li>Members can suspend their contract at any time.</li>
-          <li>
-            Members can mark themselves away for emergencies, travel, vacation,
-            or other conflicts.
-          </li>
-          <li>
-            Members can opt out of actions they believe are immoral or that take
-            longer than 15 minutes.
-          </li>
-        </ul>
-
-        <h3 className={subheadingClassName}>Experts</h3>
-        <p>
-          Some people find it helpful to hear that the Alliance is supported by
-          experts who provide general guidance as well as help us design
-          specific actions.
-        </p>
-        <p>
-          Here is our list of experts who have chosen to make their information
-          public:{" "}
-          <Link to="/people#expert-group" className="text-link">
-            worldalliance.org/people#expert-group
-          </Link>
-          .
-        </p>
-        <p>
-          In general, it can be helpful to emphasize that the Alliance takes
-          rigor and effectiveness seriously. Experts are part of how we do this.
-        </p>
-
-        <h3 className={subheadingClassName}>Roadmap</h3>
-        <p>
-          The Alliance is currently focused on learning from early actions. The
-          goal is to understand how to grow and sustain the platform, which
-          types of actions work, how members respond, and what systems need to
-          improve before scaling.
-        </p>
-        <p>
-          This learning phase is meant to build toward an eventual public
-          launch, which we currently expect in around a year, with around 10,000
-          members.
-        </p>
-        <p>
-          After public launch, the priority will shift from learning toward
-          direct impact. At that scale, the Alliance could attempt much more
-          ambitious actions: coordinated consumer shifts, pooled funding for
-          large projects, mass public comments, pressure campaigns, citizen
-          science projects, ecosystem restoration, or synchronized changes in
-          how members spend money and time.
-        </p>
+        <AmbassadorTalkingPoints />
 
         <h2 id="following-up" className={headingClassName}>
           Following up
