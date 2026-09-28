@@ -1,5 +1,5 @@
 import type { ContractField } from "@alliance/common/forms/form-schema";
-import { contractGetCurrent } from "@alliance/shared/client";
+import { useCurrentContract } from "@alliance/shared/lib/useCurrentContract";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
 import { contractsAdminQuery } from "../../lib/contractsAdminQuery";
@@ -18,10 +18,7 @@ export function EditableContractField({
 }: BaseFieldProps<ContractField>) {
   const { data: contracts = [] } = useQuery(contractsAdminQuery);
 
-  const { data: currentContract } = useQuery({
-    queryKey: ["contractGetCurrent"],
-    queryFn: () => contractGetCurrent().then((res) => res.data ?? null),
-  });
+  const { data: currentContract } = useCurrentContract();
 
   // Default to current contract when none selected (once per field)
   const hasDefaulted = useRef(false);
