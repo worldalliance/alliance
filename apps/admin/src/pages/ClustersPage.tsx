@@ -9,7 +9,7 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
 import React, { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
@@ -143,14 +143,36 @@ const ClustersPage: React.FC = () => {
 
 type ClusterCardProps = {
   cluster: ClusterAdminDto;
-  onRenamed: (cluster: ClusterAdminDto) => void;
+  onRenamed: (cluster: ClusterAdminDto) => Promise<void>;
 };
 
 const ClusterCard: React.FC<ClusterCardProps> = ({ cluster, onRenamed }) => {
   const [editing, setEditing] = useState<boolean>(false);
   const [draftName, setDraftName] = useState<string>(cluster.displayName);
-  const [saving, setSaving] = useState<boolean>(false);
   const { error: toastError } = useToast();
+
+  const { mutate: rename, isPending: saving } = useMutation({
+    mutationFn: (displayName: string) =>
+      clusterUpdateAdmin({
+        path: { id: cluster.id },
+        body: { displayName },
+        throwOnError: true,
+      }).then((r) => r.data),
+    onSuccess: async (updated) => {
+      await onRenamed(updated);
+      setEditing(false);
+    },
+    onError: (err) => {
+      console.error("Failed to rename cluster", err);
+      toastError(
+        thrownRefusalMessage({
+          error: err,
+          fallback: "Could not rename cluster.",
+          sessionExpired: sessionExpiredMessage,
+        }),
+      );
+    },
+  });
 
   const startEdit = () => {
     setDraftName(cluster.displayName);
@@ -162,28 +184,13 @@ const ClusterCard: React.FC<ClusterCardProps> = ({ cluster, onRenamed }) => {
     setDraftName(cluster.displayName);
   };
 
-  const save = async () => {
+  const save = () => {
     const trimmed = draftName.trim();
     if (!trimmed || trimmed === cluster.displayName) {
       cancelEdit();
       return;
     }
-    setSaving(true);
-    try {
-      const response = await clusterUpdateAdmin({
-        path: { id: cluster.id },
-        body: { displayName: trimmed },
-      });
-      if (response.data) {
-        onRenamed(response.data);
-      }
-      setEditing(false);
-    } catch (err) {
-      console.error("Failed to rename cluster", err);
-      toastError("Could not rename cluster.");
-    } finally {
-      setSaving(false);
-    }
+    rename(trimmed);
   };
 
   return (
@@ -199,7 +206,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({ cluster, onRenamed }) => {
                 value={draftName}
                 onChange={(e) => setDraftName(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") void save();
+                  if (e.key === "Enter") save();
                   else if (e.key === "Escape") cancelEdit();
                 }}
                 disabled={saving}

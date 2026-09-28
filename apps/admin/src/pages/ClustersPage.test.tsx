@@ -120,6 +120,7 @@ it("shows the renamed cluster once the server accepts the name", async () => {
 
   expect(await screen.findByText("Northeast")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+  expect(screen.queryByText("North")).toBeNull();
 });
 
 it("keeps a rename that lands while a refetch is in flight", async () => {
@@ -143,4 +144,26 @@ it("keeps a rename that lands while a refetch is in flight", async () => {
       .getQueryData<ClusterAdminDto[]>(queryKeys.clustersAdmin())
       ?.map((c) => c.displayName),
   ).toEqual(["Northeast", "South"]);
+});
+
+it("keeps the rename open and says why when the server refuses it", async () => {
+  renameAnswer = () =>
+    Response.json({ message: "Cluster 1 not found" }, { status: 404 });
+  renderPage();
+  await screen.findByText("North");
+
+  await renameNorthTo("South");
+
+  expect(await screen.findByText("Cluster 1 not found")).toBeTruthy();
+  expect(screen.getByDisplayValue("South")).toBeTruthy();
+});
+
+it("says the session expired when the rename is refused with a 401", async () => {
+  renameAnswer = () => Response.json({}, { status: 401 });
+  renderPage();
+  await screen.findByText("North");
+
+  await renameNorthTo("Northeast");
+
+  expect(await screen.findByText(sessionExpiredMessage)).toBeTruthy();
 });
