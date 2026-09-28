@@ -2,6 +2,8 @@ import type { DisplayBlock } from "./display-blocks";
 import {
   isFieldGroup,
   isQuestionField,
+  MAX_RANGE_OPTION_COUNT,
+  MIN_RANGE_OPTION_COUNT,
   type AnyField,
   type FieldGroup,
   type FormSchema,
@@ -297,6 +299,20 @@ function collectInputErrors(
     { context: "input", blockId },
     errors,
   );
+  if (
+    item.kind === "range" &&
+    item.optionCount !== undefined &&
+    !(
+      Number.isInteger(item.optionCount) &&
+      item.optionCount >= MIN_RANGE_OPTION_COUNT &&
+      item.optionCount <= MAX_RANGE_OPTION_COUNT
+    )
+  ) {
+    errors.push({
+      blockId,
+      message: `Number of options must be a whole number from ${MIN_RANGE_OPTION_COUNT} to ${MAX_RANGE_OPTION_COUNT}`,
+    });
+  }
   if (item.kind === "list") {
     for (const subField of item.fields ?? []) {
       collectInputErrors(subField, errors);
