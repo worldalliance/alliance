@@ -1,15 +1,19 @@
 import {
   ActionDto,
-  actionsAllGeneralUpdatesAdmin,
-  actionsFindAllWithDraftsAdmin,
   actionsSetPriorityAdmin,
   SetPriorityDto,
   type GeneralUpdateAdminDto,
 } from "@alliance/shared/client";
 import { homePagePriorityComparator } from "@alliance/shared/lib/actionUtils";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
+import {
+  useActionsAdmin,
+  useInvalidateActionsAdmin,
+} from "@alliance/shared/lib/useActionsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { useMutation } from "@tanstack/react-query";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -17,9 +21,14 @@ import {
   Minus,
   MoveUpIcon,
 } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { DropPosition, useDragReorder } from "../lib/useDragReorder";
+import {
+  useGeneralUpdatesAdmin,
+  useInvalidateGeneralUpdatesAdmin,
+} from "../lib/useGeneralUpdatesAdmin";
 
 type PriorityItem =
   | {
@@ -102,21 +111,74 @@ function buildInitialList(
   return [...above, { type: "divider" as const }, ...below];
 }
 
+const NO_ITEMS: PriorityItem[] = [];
+
 const PriorityPage: React.FC = () => {
-  const [items, setItems] = useState<PriorityItem[]>([]);
-  const [originalActionIndices, setOriginalActionIndices] = useState<
-    Map<number, number>
-  >(new Map());
-  const [originalGeneralUpdateIndices, setOriginalGeneralUpdateIndices] =
-    useState<Map<number, number>>(new Map());
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const actions = useActionsAdmin();
+  const generalUpdates = useGeneralUpdatesAdmin();
+  const invalidateActions = useInvalidateActionsAdmin();
+  const invalidateGeneralUpdates = useInvalidateGeneralUpdatesAdmin();
   const [filterForIncomplete, setFilterForIncomplete] = useState(true);
-  const [rawActions, setRawActions] = useState<ActionDto[] | null>(null);
-  const [rawGeneralUpdates, setRawGeneralUpdates] = useState<
-    GeneralUpdateAdminDto[] | null
-  >(null);
+  const startingItems = useMemo(
+    () =>
+      actions.data && generalUpdates.data
+        ? buildInitialList(
+            actions.data,
+            generalUpdates.data,
+            filterForIncomplete,
+          )
+        : null,
+    [actions.data, generalUpdates.data, filterForIncomplete],
+  );
+  // Held apart from startingItems, with the order it started from, so a
+  // background refetch neither drops an unsaved reorder nor shifts what it is
+  // compared against. A saved reorder stays until both lists reload after the
+  // save, so a failed reload doesn't show the order from before it.
+  const [reorder, setReorder] = useState<{
+    from: PriorityItem[];
+    items: PriorityItem[];
+    savedAt?: number;
+  } | null>(null);
+  const held =
+    reorder?.savedAt !== undefined &&
+    actions.dataUpdatedAt >= reorder.savedAt &&
+    generalUpdates.dataUpdatedAt >= reorder.savedAt
+      ? null
+      : reorder;
+  const baseline = held?.from ?? startingItems;
+  const items = held?.items ?? startingItems ?? NO_ITEMS;
+  const setItems = useCallback(
+    (next: PriorityItem[]) =>
+      setReorder({
+        from: held?.from ?? startingItems ?? NO_ITEMS,
+        items: next,
+      }),
+    [held, startingItems],
+  );
+  const { originalActionIndices, originalGeneralUpdateIndices } =
+    useMemo(() => {
+      const actionIndices = new Map<number, number>();
+      const generalUpdateIndices = new Map<number, number>();
+      baseline?.forEach((item, index) => {
+        if (item.type === "action") {
+          actionIndices.set(item.id, index);
+        } else if (item.type === "generalUpdate") {
+          generalUpdateIndices.set(item.id, index);
+        }
+      });
+      return {
+        originalActionIndices: actionIndices,
+        originalGeneralUpdateIndices: generalUpdateIndices,
+      };
+    }, [baseline]);
+  const loadError = actions.error ?? generalUpdates.error;
+  const error = loadError
+    ? thrownRefusalMessage({
+        error: loadError,
+        fallback: "Failed to load actions and general updates",
+        sessionExpired: sessionExpiredMessage,
+      })
+    : null;
   const { error: showError } = useToast();
   const {
     listRef,
@@ -130,49 +192,6 @@ const PriorityPage: React.FC = () => {
     handleListDragOver,
     handleListDrop,
   } = useDragReorder(items, setItems);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [actionsRes, updatesRes] = await Promise.all([
-        actionsFindAllWithDraftsAdmin(),
-        actionsAllGeneralUpdatesAdmin(),
-      ]);
-      setRawActions(actionsRes.data ?? []);
-      setRawGeneralUpdates(updatesRes.data ?? []);
-    } catch (err) {
-      setError("Failed to load actions and general updates");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  useEffect(() => {
-    if (rawActions === null || rawGeneralUpdates === null) return;
-    const startingItems = buildInitialList(
-      rawActions,
-      rawGeneralUpdates,
-      filterForIncomplete,
-    );
-    setItems(startingItems);
-    const actionIndices: [number, number][] = [];
-    const generalUpdateIndices: [number, number][] = [];
-    startingItems.forEach((item, index) => {
-      if (item.type === "action") {
-        actionIndices.push([item.id, index]);
-      } else if (item.type === "generalUpdate") {
-        generalUpdateIndices.push([item.id, index]);
-      }
-    });
-    setOriginalActionIndices(new Map(actionIndices));
-    setOriginalGeneralUpdateIndices(new Map(generalUpdateIndices));
-  }, [rawActions, rawGeneralUpdates, filterForIncomplete]);
 
   const { newPriorities, anyChanged } = useMemo(() => {
     const newPriorities: SetPriorityDto = {
@@ -214,35 +233,34 @@ const PriorityPage: React.FC = () => {
     };
   }, [items, originalActionIndices, originalGeneralUpdateIndices]);
 
-  const handleSave = useCallback(async () => {
-    setSaving(true);
-    try {
-      await actionsSetPriorityAdmin({
-        body: newPriorities,
-      });
-      await load();
-    } catch (err) {
-      showError("Failed to save priorities");
+  const { mutate: savePriorities, isPending: saving } = useMutation({
+    mutationFn: (body: SetPriorityDto) =>
+      actionsSetPriorityAdmin({ body, throwOnError: true }),
+    onSuccess: () => {
+      const savedAt = Date.now();
+      setReorder(
+        (prev) => prev && { from: prev.items, items: prev.items, savedAt },
+      );
+      void invalidateActions();
+      void invalidateGeneralUpdates();
+    },
+    onError: (err) => {
       console.error(err);
-    } finally {
-      setSaving(false);
-    }
-  }, [newPriorities, load, showError]);
+      showError(
+        thrownRefusalMessage({
+          error: err,
+          fallback: "Failed to save priorities",
+          sessionExpired: sessionExpiredMessage,
+        }),
+      );
+    },
+  });
 
-  if (loading) {
+  if (!startingItems) {
     return (
       <div className="p-5">
         <title>Priority - Admin</title>
-        <p>Loading...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-5">
-        <title>Priority - Admin</title>
-        <p className="text-red-500">{error}</p>
+        {error ? <p className="text-red-500">{error}</p> : <p>Loading...</p>}
       </div>
     );
   }
@@ -255,7 +273,7 @@ const PriorityPage: React.FC = () => {
         <Button
           color={ButtonColor.Green}
           className="text-white !px-4 !py-2 rounded-md"
-          onClick={handleSave}
+          onClick={() => savePriorities(newPriorities)}
           disabled={saving || !anyChanged}
         >
           {saving ? "Saving…" : anyChanged ? "Save" : "No changes to save"}
@@ -265,11 +283,15 @@ const PriorityPage: React.FC = () => {
         <input
           type="checkbox"
           checked={!filterForIncomplete}
-          onChange={(e) => setFilterForIncomplete(!e.target.checked)}
+          onChange={(e) => {
+            setFilterForIncomplete(!e.target.checked);
+            setReorder(null);
+          }}
           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
         />
         <span className="text-sm font-medium text-gray-900">Show all</span>
       </label>
+      {error && <p className="text-red-500">{error}</p>}
       <p className="text-sm text-zinc-600">
         Actions/general updates at the top are shown first on the home page.
       </p>

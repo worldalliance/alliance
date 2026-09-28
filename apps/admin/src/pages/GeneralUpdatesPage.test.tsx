@@ -1,26 +1,12 @@
-import type { GeneralUpdateAdminDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
+import { generalUpdateAdmin } from "../lib/testing/generalUpdateAdmin";
 import GeneralUpdatesPage from "./GeneralUpdatesPage";
 
 afterEach(cleanup);
-
-const update = (id: number, name: string, startDate?: string) =>
-  ({
-    id,
-    name,
-    schemaSnapshotId: id,
-    createdAt: "2026-01-02T00:00:00.000Z",
-    updatedAt: "2026-01-02T00:00:00.000Z",
-    startDate,
-    useManualCohort: false,
-    priority: 0,
-    schema: {},
-    tags: [],
-  }) satisfies GeneralUpdateAdminDto;
 
 let loadStatus = 200;
 
@@ -29,8 +15,10 @@ serveApi(
     "GET /actions/generalUpdates/admin": () =>
       loadStatus === 200
         ? Response.json([
-            update(1, "Weekly note", "2026-01-03T00:00:00.000Z"),
-            update(2, "Unscheduled note"),
+            generalUpdateAdmin(1, "Weekly note", {
+              startDate: "2026-01-03T00:00:00.000Z",
+            }),
+            generalUpdateAdmin(2, "Unscheduled note"),
           ])
         : Response.json({}, { status: loadStatus }),
   }),
