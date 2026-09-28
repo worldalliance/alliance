@@ -1,9 +1,5 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-import {
-  cohortDecisionsCorrectAdmin,
-  type CohortDecisionDto,
-} from "@alliance/shared/client";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import type { CohortDecisionDto } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import InlineError from "@alliance/sharedweb/ui/InlineError";
 import Modal, {
@@ -14,8 +10,8 @@ import Modal, {
   ModalHeader,
   ModalTitle,
 } from "@alliance/sharedweb/ui/Modal";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
+import { useCorrectCohortDecisionAdmin } from "../lib/useCohortDecisionsAdmin";
 
 export function CohortDecisionCorrectionModal({
   actionId,
@@ -26,24 +22,13 @@ export function CohortDecisionCorrectionModal({
   decision: CohortDecisionDto;
   onClose: () => void;
 }) {
-  const queryClient = useQueryClient();
   const noteId = useId();
   const [note, setNote] = useState("");
   const included = !decision.included;
 
-  const correct = useMutation({
-    mutationFn: () =>
-      cohortDecisionsCorrectAdmin({
-        path: { actionId, userId: decision.userId },
-        body: { included, note },
-        throwOnError: true,
-      }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.actionCohortDecisionsAdmin(actionId),
-      });
-      onClose();
-    },
+  const correct = useCorrectCohortDecisionAdmin({
+    actionId,
+    onSuccess: onClose,
   });
 
   const verb = included ? "Assign" : "Exclude";
@@ -101,7 +86,9 @@ export function CohortDecisionCorrectionModal({
           <Button
             color={ButtonColor.Black}
             size="small"
-            onClick={() => correct.mutate()}
+            onClick={() =>
+              correct.mutate({ userId: decision.userId, included, note })
+            }
             disabled={correct.isPending || note.trim() === ""}
           >
             {verb} member
