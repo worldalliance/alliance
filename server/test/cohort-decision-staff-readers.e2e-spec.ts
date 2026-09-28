@@ -5,6 +5,8 @@ import { ActionsService } from "../src/actions/actions.service";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
 import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import { Action } from "../src/actions/entities/action.entity";
+import { AnalyticsModule } from "../src/analytics/analytics.module";
+import { AnalyticsService } from "../src/analytics/analytics.service";
 import { TasksModule } from "../src/tasks/tasks.module";
 import {
   UserActionRelationPillStatus,
@@ -31,10 +33,11 @@ describe("Staff-facing reads of cohort decisions (e2e)", () => {
   let cleanUp: CohortDecisionFixtures["cleanUp"];
 
   const now = new Date();
-  const signedAt = addDays(now, -30);
+  const signedDaysAgo = 30;
+  const signedAt = addDays(now, -signedDaysAgo);
 
   beforeAll(async () => {
-    ctx = await createTestApp([TasksModule]);
+    ctx = await createTestApp([TasksModule, AnalyticsModule]);
     service = ctx.app.get(CohortDecisionService);
     userRepo = ctx.dataSource.getRepository(User);
     ({ createUser, createAction, cleanUp } = cohortDecisionFixtures(ctx));
@@ -53,12 +56,13 @@ describe("Staff-facing reads of cohort decisions (e2e)", () => {
       .expect(200);
 
   /** A member decided onto the US branch who has since moved abroad. */
-  const decideThenMove = async () => {
+  const decideThenMove = async (
+    window = { start: addDays(now, -1), deadline: addDays(now, 3) },
+  ) => {
     const member = await createUser({
       signedAt,
       timeZone: "America/New_York",
     });
-    const window = { start: addDays(now, -1), deadline: addDays(now, 3) };
     const us = await createAction({
       ...window,
       cohortExpression: { type: "USMember" },
@@ -189,5 +193,62 @@ describe("Staff-facing reads of cohort decisions (e2e)", () => {
         user: expect.objectContaining({ id: member.id }),
       }),
     );
+  });
+
+  describe("analytics", () => {
+    const decideClosedThenMove = async () => {
+      const decided = await decideThenMove({
+        start: addDays(now, -10),
+        deadline: addDays(now, -3),
+      });
+      const actionRepo = ctx.dataSource.getRepository(Action);
+      await actionRepo.update(decided.us.id, { name: "US branch" });
+      await actionRepo.update(decided.nonUs.id, { name: "Non-US branch" });
+      return decided;
+    };
+
+    it("reports a moved member missing the closed branch they were decided into", async () => {
+      const { member } = await decideClosedThenMove();
+
+      const { missedLastAction } = await ctx.app
+        .get(AnalyticsService)
+        .getMissedActions();
+
+      expect(missedLastAction).toContainEqual(
+        expect.objectContaining({
+          userId: member.id,
+          lastActionName: "US branch",
+        }),
+      );
+    });
+
+    it("counts a moved member's retention on the branch they were decided into", async () => {
+      const { us, nonUs } = await decideClosedThenMove();
+
+      const cohorts = await ctx.app
+        .get(AnalyticsService)
+        .getMemberCompletionRetentionByCohort(true, false);
+
+      const counted = cohorts.flatMap((cohort) =>
+        cohort.points.flatMap((point) =>
+          point.actions.map((action) => action.actionId),
+        ),
+      );
+      expect(counted).toContain(us.id);
+      expect(counted).not.toContain(nonUs.id);
+    });
+
+    it("assigns a moved member's tenure cohort the branch they were decided into", async () => {
+      const { us, nonUs } = await decideClosedThenMove();
+
+      const { actions } = await ctx.app
+        .get(AnalyticsService)
+        .getPlatformTenureCohortStats(Math.floor(signedDaysAgo / 7));
+
+      expect(actions).toContainEqual(
+        expect.objectContaining({ actionId: us.id, assignedCount: 1 }),
+      );
+      expect(actions.map((action) => action.actionId)).not.toContain(nonUs.id);
+    });
   });
 });

@@ -227,6 +227,8 @@ The welcome queue counts the onboarding actions each member's saved decisions as
 
 Dependent cohorts are in the user's scope, so the `InProgressAction` and `MissedActionDeadline` leaves read the upstream action's roster from its saved decision for each member it has decided, on both the population and single-member paths. A downstream decision therefore sees who was assigned the upstream action, not whom its expression would select now. A member the upstream has not decided yet reads from its live cohort, because the resolver evaluates these leaves and its decisions are final: reading them as outside would permanently exclude a member whose upstream decision had not been written yet, such as one signing while both actions are open, or one the pass reached downstream first. A `MissedActionDeadline` upstream that closed while its pass failed gets resolved-after-deadline exclusions, and a member excluded that way did not miss it, matching that no missed obligation is created.
 
+Analytics follows: retention by signing cohort, missed actions, and tenure cohorts read their rosters from saved decisions, so a member who moves after a decision counts toward the action they were assigned.
+
 Ships alone: staff-facing reads only; stage 6 already made the member experience consistent.
 
 ### 8. Remove recomputation
