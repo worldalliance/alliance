@@ -1,27 +1,13 @@
 import type {
   AnyField,
   AutoExtractFieldKind,
-  CheckboxField,
-  CityField,
-  CustomComponentField,
-  PhoneField,
-  TimeField,
-  TimezoneField,
 } from "@alliance/common/forms/form-schema";
 import { AUTO_EXTRACT_FIELD_KINDS } from "@alliance/common/forms/form-schema";
 
-type ExtractableField =
-  | PhoneField
-  | TimeField
-  | TimezoneField
-  | CityField
-  | CheckboxField
-  | CustomComponentField;
+type ExtractableField = Extract<AnyField, { kind: AutoExtractFieldKind }>;
 
 export function supportsExtraction(field: AnyField): field is ExtractableField {
-  return AUTO_EXTRACT_FIELD_KINDS.includes(
-    field.kind as (typeof AUTO_EXTRACT_FIELD_KINDS)[number],
-  );
+  return AUTO_EXTRACT_FIELD_KINDS.some((kind) => kind === field.kind);
 }
 
 export function hasExtractionEnabled(field: ExtractableField): boolean {
