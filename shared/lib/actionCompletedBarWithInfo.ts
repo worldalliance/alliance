@@ -1,5 +1,6 @@
+import { ActionActivityType } from "@alliance/common/actionActivity";
 import { withCount } from "@alliance/common/plural";
-import { ActionActivityDto, ActionDto } from "../client/types.gen";
+import { ActionActivityDto, ActionDto, ProfileDto } from "../client/types.gen";
 
 export interface ActionCompletedBarWithInfoPropsShared {
   action: Pick<
@@ -17,6 +18,13 @@ export interface ActionCompletedBarWithInfoPropsShared {
   >;
   friendActivities: ActionActivityDto[] | null;
 }
+
+export const selectCompletedFriends = (
+  friendActivities: ActionActivityDto[] | null,
+): ProfileDto[] =>
+  (friendActivities ?? [])
+    .filter((activity) => activity.type === ActionActivityType.USER_COMPLETED)
+    .map((activity) => activity.user);
 
 export function getCompletedPercentage(
   action: ActionCompletedBarWithInfoPropsShared["action"],

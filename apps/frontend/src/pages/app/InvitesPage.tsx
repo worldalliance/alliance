@@ -9,7 +9,11 @@ import {
   inviteBuckets,
   roleBadges,
 } from "@alliance/shared/lib/copy";
-import { daysUntil, selectInviteGoals } from "@alliance/shared/lib/inviteGoals";
+import {
+  InviteGoalPhase,
+  inviteGoalStatus,
+  selectInviteGoals,
+} from "@alliance/shared/lib/inviteGoals";
 import { onetimeInviteSettings } from "@alliance/shared/lib/inviteSettings";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { bucketOnetimeInvitesByActionability } from "@alliance/shared/lib/inviteUtils";
@@ -136,57 +140,47 @@ const InvitesPage = () => {
       return "Set a goal to track successful invitations.";
     }
 
-    const now = new Date();
-    const startAt = new Date(currentGoal.goal.startAt);
-    const dueAt = new Date(currentGoal.goal.dueAt);
-    const remainingRecruits = Math.max(
-      0,
-      currentGoal.goal.targetSuccessfulRecruits -
-        currentGoal.stats.goalSuccessfulRecruits,
-    );
-
-    if (startAt > now) {
-      const daysToStart = daysUntil(startAt, now);
-      return (
-        <>
-          This goal starts in{" "}
-          <span className="font-semibold text-white">
-            {withCount(daysToStart, "day")}
-          </span>
-          .
-        </>
-      );
+    const status = inviteGoalStatus(currentGoal);
+    switch (status.phase) {
+      case InviteGoalPhase.Upcoming:
+        return (
+          <>
+            This goal starts in{" "}
+            <span className="font-semibold text-white">
+              {withCount(status.daysToStart, "day")}
+            </span>
+            .
+          </>
+        );
+      case InviteGoalPhase.Completed:
+        return "You have completed this invitation goal.";
+      case InviteGoalPhase.Ended:
+        return (
+          <>
+            This goal ended with{" "}
+            <span className="font-semibold text-white">
+              {withCount(status.remainingRecruits, "member")}
+            </span>{" "}
+            left to successfully invite.
+          </>
+        );
+      case InviteGoalPhase.Active:
+        return (
+          <>
+            You have{" "}
+            <span className="font-semibold text-white">
+              {withCount(status.daysLeft, "day")}
+            </span>{" "}
+            to successfully invite{" "}
+            <span className="font-semibold text-white">
+              {withCount(status.remainingRecruits, "more member")}
+            </span>
+            .
+          </>
+        );
+      default:
+        throw new Error(`unknown phase: ${status satisfies never}`);
     }
-
-    if (remainingRecruits === 0) {
-      return "You have completed this invitation goal.";
-    }
-
-    if (dueAt < now) {
-      return (
-        <>
-          This goal ended with{" "}
-          <span className="font-semibold text-white">
-            {withCount(remainingRecruits, "member")}
-          </span>{" "}
-          left to successfully invite.
-        </>
-      );
-    }
-
-    return (
-      <>
-        You have{" "}
-        <span className="font-semibold text-white">
-          {withCount(daysUntil(dueAt, now), "day")}
-        </span>{" "}
-        to successfully invite{" "}
-        <span className="font-semibold text-white">
-          {withCount(remainingRecruits, "more member")}
-        </span>
-        .
-      </>
-    );
   }, [currentGoal]);
 
   const leaderCommunityIds = useMemo(

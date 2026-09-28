@@ -94,6 +94,53 @@ export const inviteGoalIsUp = (
   new Date(goal.goal.dueAt) < now ||
   goal.stats.goalSuccessfulRecruits >= goal.goal.targetSuccessfulRecruits;
 
+export enum InviteGoalPhase {
+  Upcoming = "upcoming",
+  Completed = "completed",
+  Ended = "ended",
+  Active = "active",
+}
+
+export type InviteGoalStatus =
+  | { phase: InviteGoalPhase.Upcoming; daysToStart: number }
+  | { phase: InviteGoalPhase.Completed }
+  | { phase: InviteGoalPhase.Ended; remainingRecruits: number }
+  | {
+      phase: InviteGoalPhase.Active;
+      daysLeft: number;
+      remainingRecruits: number;
+    };
+
+export function inviteGoalStatus(
+  { goal, stats }: AmbassadorInviteGoalWithStatsDto,
+  now = new Date(),
+): InviteGoalStatus {
+  const startAt = new Date(goal.startAt);
+  const dueAt = new Date(goal.dueAt);
+  const remainingRecruits = Math.max(
+    0,
+    goal.targetSuccessfulRecruits - stats.goalSuccessfulRecruits,
+  );
+
+  if (startAt > now) {
+    return {
+      phase: InviteGoalPhase.Upcoming,
+      daysToStart: daysUntil(startAt, now),
+    };
+  }
+  if (remainingRecruits === 0) {
+    return { phase: InviteGoalPhase.Completed };
+  }
+  if (dueAt < now) {
+    return { phase: InviteGoalPhase.Ended, remainingRecruits };
+  }
+  return {
+    phase: InviteGoalPhase.Active,
+    daysLeft: daysUntil(dueAt, now),
+    remainingRecruits,
+  };
+}
+
 export function selectInviteGoals(
   goals: AmbassadorInviteGoalWithStatsDto[],
   now = new Date(),

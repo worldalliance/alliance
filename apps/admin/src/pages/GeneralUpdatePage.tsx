@@ -26,8 +26,9 @@ import {
   useDisplayOnlySchemaSave,
   type DisplayOnlySchemaSaveBody,
 } from "../lib/useDisplayOnlySchemaSave";
+import { useSearchParamTab } from "../lib/useSearchParamTab";
 
-type Tab = "details" | "content";
+const tabs = ["details", "content"] as const;
 
 type GeneralUpdateForm = {
   name: string;
@@ -52,8 +53,8 @@ const emptyForm: GeneralUpdateForm = {
 const GeneralUpdatePage: React.FC = () => {
   const { id: idParam } = useParams<{ id?: string }>();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const selectedTab = (searchParams.get("tab") as Tab) ?? "details";
+  const [searchParams] = useSearchParams();
+  const [selectedTab, onTabChange] = useSearchParamTab(tabs, "details");
 
   const isNew = !idParam || idParam === "new";
   const id = !isNew && idParam ? parseInt(idParam, 10) : null;
@@ -83,17 +84,6 @@ const GeneralUpdatePage: React.FC = () => {
         : { ...prev, suiteIds: [...prev.suiteIds, suiteId] },
     );
   }, [isNew, searchParams]);
-
-  const onTabChange = useCallback(
-    (t: Tab) => {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set("tab", t);
-        return next;
-      });
-    },
-    [setSearchParams],
-  );
 
   // Load suites, users
   useEffect(() => {
