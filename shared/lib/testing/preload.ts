@@ -5,6 +5,15 @@ import { GlobalRegistrator } from "@happy-dom/global-registrator";
 
 GlobalRegistrator.register();
 
+// A failed matcher prints what it received, and bun's default inspection of a
+// node walks its document, window and React fibers: megabytes of text and
+// seconds of CPU, enough to carry a waitFor retry past the test timeout.
+Object.defineProperty(Node.prototype, Bun.inspect.custom, {
+  value(this: Node) {
+    return this instanceof Element ? this.outerHTML : this.nodeName;
+  },
+});
+
 // Vite resolves image imports: a plain one to a URL, `?as=picture` to the
 // descriptor vite-imagetools builds. Bun hands back the file path for both.
 Bun.plugin({
