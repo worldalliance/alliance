@@ -256,6 +256,7 @@ const DefaultToastItem: FC<DefaultToastItemProps> = ({ toast, onDismiss }) => {
 
         <button
           type="button"
+          aria-label="Dismiss"
           className="ml-2 text-slate-100/70 hover:text-white"
           onClick={() => onDismiss(toast.id)}
         >
