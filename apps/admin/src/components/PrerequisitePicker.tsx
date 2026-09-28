@@ -6,7 +6,8 @@ const PrerequisitePicker: React.FC<{
   onChange: (ids: number[]) => void;
   availableActions: { id: number; name: string }[];
   actionId?: number;
-}> = ({ value, onChange, availableActions, actionId }) => {
+  loading?: boolean;
+}> = ({ value, onChange, availableActions, actionId, loading = false }) => {
   const nameOf = (id: number) =>
     availableActions.find((action) => action.id === id)?.name ?? `#${id}`;
   const addable = availableActions.filter(
@@ -44,13 +45,16 @@ const PrerequisitePicker: React.FC<{
       <select
         aria-label="Add prerequisite"
         value=""
+        disabled={loading}
         onChange={(e) => {
           const id = parseInt(e.target.value);
           if (id) onChange([...value, id]);
         }}
         className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
       >
-        <option value="">Add prerequisite...</option>
+        <option value="">
+          {loading ? "Loading actions…" : "Add prerequisite..."}
+        </option>
         {addable.map((action) => (
           <option key={action.id} value={action.id}>
             {action.name}

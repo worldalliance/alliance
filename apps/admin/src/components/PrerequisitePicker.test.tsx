@@ -53,4 +53,19 @@ describe("PrerequisitePicker", () => {
 
     expect(onChange).toHaveBeenCalledWith([]);
   });
+
+  it("disables adding while the actions load", () => {
+    render(
+      <PrerequisitePicker
+        value={[]}
+        onChange={jest.fn()}
+        availableActions={[]}
+        loading
+      />,
+    );
+
+    const select = screen.getByRole("combobox", { name: "Add prerequisite" });
+    expect(select).toHaveProperty("disabled", true);
+    expect(select.textContent).toBe("Loading actions…");
+  });
 });

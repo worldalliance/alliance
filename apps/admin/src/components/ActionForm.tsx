@@ -139,6 +139,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
   onReviewersChange,
   actionId,
   allActions = [],
+  allActionsLoading = false,
   memberActionStart,
   memberActionDeadline,
 }) => {
@@ -779,6 +780,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
           onChange={onPrerequisitesChange}
           availableActions={allActions}
           actionId={actionId}
+          loading={allActionsLoading}
         />
       </FormSection>
 
