@@ -74,7 +74,6 @@ import {
 import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { PreviewNotificationPlanDto } from "src/notifs/dto/notification-plan.dto";
 import { LikeNotificationService } from "src/notifs/like-notification.service";
-import { NotificationChannel } from "src/notifs/notif-utils";
 import { NotifsService } from "src/notifs/notifs.service";
 import { PosthogService } from "src/posthog/posthog.service";
 import { actionActivityUrl } from "src/search/approutes";
@@ -104,11 +103,6 @@ import {
   sqlUserHasActiveContractAt,
   User,
 } from "src/user/entities/user.entity";
-import {
-  userActionNotifsEnabled_email,
-  userActionNotifsEnabled_push,
-  userActionNotifsEnabled_text,
-} from "src/user/user.utils";
 import {
   ActionAssignment,
   computeActionAssignment,
@@ -3689,16 +3683,7 @@ export class ActionsService {
       new Date(Date.now() + milliseconds({ days: 30 })),
     );
 
-    return plans.map((plan) => {
-      const channels: NotificationChannel[] = [];
-      if (userActionNotifsEnabled_push(plan.user))
-        channels.push(NotificationChannel.Push);
-      if (userActionNotifsEnabled_text(plan.user))
-        channels.push(NotificationChannel.Text);
-      if (userActionNotifsEnabled_email(plan.user))
-        channels.push(NotificationChannel.Email);
-      return new PreviewNotificationPlanDto(plan, channels);
-    });
+    return plans.map((plan) => new PreviewNotificationPlanDto(plan));
   }
 
   async findReminderAnchorCandidates(
