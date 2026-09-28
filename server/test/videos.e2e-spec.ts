@@ -27,7 +27,7 @@ describe("Videos (e2e)", () => {
       if (command instanceof GetObjectCommand) {
         return {
           Body: Readable.from(Buffer.from("mock-video-bytes")),
-          ContentType: "video/MP2T",
+          ContentType: "application/octet-stream",
         };
       }
       // For PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand
@@ -74,7 +74,16 @@ describe("Videos (e2e)", () => {
 
     await request(ctx.app.getHttpServer())
       .get(`/videos/${video.id}/playlist.m3u8`)
-      .expect(200);
+      .expect(200)
+      .expect("Content-Type", "application/vnd.apple.mpegurl");
+    await request(ctx.app.getHttpServer())
+      .get(`/videos/${video.id}/segment0.ts`)
+      .expect(200)
+      .expect("Content-Type", "video/MP2T");
+    await request(ctx.app.getHttpServer())
+      .get(`/videos/${video.id}/thumb.bin`)
+      .expect(200)
+      .expect("Content-Type", "application/octet-stream");
 
     expect(mockSend).toHaveBeenCalledWith(
       expect.any(GetObjectCommand),
@@ -175,7 +184,7 @@ describe("Videos (e2e)", () => {
       if (command instanceof GetObjectCommand) {
         return {
           Body: Readable.from(Buffer.from("mock-video-bytes")),
-          ContentType: "video/MP2T",
+          ContentType: "application/octet-stream",
         };
       }
       if (command instanceof ListObjectsV2Command) {

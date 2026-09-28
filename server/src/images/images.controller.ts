@@ -1,4 +1,4 @@
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { S3Client } from "@aws-sdk/client-s3";
 import {
   Body,
   Controller,
@@ -12,8 +12,7 @@ import {
 } from "@nestjs/common";
 import { ApiOkResponse } from "@nestjs/swagger";
 import type { Response } from "express";
-import { basename } from "path";
-import { Readable } from "stream";
+import { pipeS3Object } from "src/s3/pipe-s3-object";
 import { UploadImageDto, UploadImageResponseDto } from "./dto/image.dto";
 import { getImageSource, ImagesService } from "./images.service";
 
@@ -34,47 +33,7 @@ export class ImagesController {
   ): Promise<void> {
     if (!key) throw new NotFoundException();
 
-    const ac = new AbortController();
-
-    res.on("close", () => ac.abort());
-    res.on("error", () => ac.abort());
-
-    try {
-      const out = await this.s3.send(
-        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
-        { abortSignal: ac.signal },
-      );
-
-      const body = out.Body as Readable | undefined;
-      if (!body) throw new NotFoundException();
-
-      res.setHeader(
-        "Content-Type",
-        out.ContentType ?? "application/octet-stream",
-      );
-      res.setHeader(
-        "Content-Disposition",
-        `inline; filename="${basename(key)}"`,
-      );
-      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-
-      body.on("error", () => {
-        try {
-          body.destroy();
-        } catch {}
-        if (!res.headersSent) res.status(500);
-        res.end();
-      });
-
-      body.pipe(res);
-    } catch (err) {
-      if (err?.name === "AbortError") return;
-
-      if (process.env.NODE_ENV !== "development") {
-        console.error("Error getting image:", err);
-      }
-      throw new NotFoundException();
-    }
+    await pipeS3Object({ s3: this.s3, bucket: this.bucket, key, res });
   }
 
   @Post("/uploadImage")

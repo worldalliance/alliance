@@ -28,11 +28,6 @@ import { EmailType } from "src/mail/mail.entity";
 import { MailService, processKeywordReplacements } from "src/mail/mail.service";
 import { Tag } from "src/user/entities/tag.entity";
 import { UserService } from "src/user/user.service";
-import {
-  userActionNotifsEnabled_email,
-  userActionNotifsEnabled_push,
-  userActionNotifsEnabled_text,
-} from "src/user/user.utils";
 import { Brackets, In, type Repository } from "typeorm";
 import {
   ActionEvent,
@@ -50,7 +45,7 @@ import {
   ActionEventNotif,
   ActionEventNotifType,
 } from "./entities/action-event-notif.entity";
-import { generateCIDForNotif, NotificationChannel } from "./notif-utils";
+import { generateCIDForNotif } from "./notif-utils";
 import { testUser } from "./test-users";
 
 export interface MissedDeadlineCandidate {
@@ -395,16 +390,7 @@ export class ActionEventReminderService {
       new Date(Date.now() - NOTIFICATION_LOOKBACK_WINDOW_MS),
       new Date(Date.now() + milliseconds({ days: 28 })),
     );
-    return plans.map((plan) => {
-      const channels: NotificationChannel[] = [];
-      if (userActionNotifsEnabled_push(plan.user))
-        channels.push(NotificationChannel.Push);
-      if (userActionNotifsEnabled_text(plan.user))
-        channels.push(NotificationChannel.Text);
-      if (userActionNotifsEnabled_email(plan.user))
-        channels.push(NotificationChannel.Email);
-      return new PreviewNotificationPlanDto(plan, channels);
-    });
+    return plans.map((plan) => new PreviewNotificationPlanDto(plan));
   }
 
   async getSentNotifsForGroup(groupId: number): Promise<ActionEventNotifDto[]> {

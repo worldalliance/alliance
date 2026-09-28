@@ -1,4 +1,4 @@
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { S3Client } from "@aws-sdk/client-s3";
 import {
   applyDecorators,
   Controller,
@@ -16,9 +16,8 @@ import {
 import { FilesInterceptor } from "@nestjs/platform-express";
 import { ApiBody, ApiConsumes, ApiOkResponse } from "@nestjs/swagger";
 import type { Response } from "express";
-import { basename } from "path";
 import { AdminGuard } from "src/auth/guards/admin.guard";
-import { Readable } from "stream";
+import { pipeS3Object } from "src/s3/pipe-s3-object";
 import {
   DeleteVideoResponseDto,
   ReplaceVideoResponseDto,
@@ -112,47 +111,17 @@ export class VideosController {
     const video = await this.videosService.getVideo(id);
     if (!video) throw new NotFoundException();
 
-    const s3Key = `${video.key}/${filename}`;
-    const ac = new AbortController();
-
-    res.on("close", () => ac.abort());
-    res.on("error", () => ac.abort());
-
-    try {
-      const out = await this.s3.send(
-        new GetObjectCommand({ Bucket: this.bucket, Key: s3Key }),
-        { abortSignal: ac.signal },
-      );
-
-      const body = out.Body as Readable | undefined;
-      if (!body) throw new NotFoundException();
-
-      const contentType = filename.endsWith(".m3u8")
+    await pipeS3Object({
+      s3: this.s3,
+      bucket: this.bucket,
+      key: `${video.key}/${filename}`,
+      res,
+      contentType: filename.endsWith(".m3u8")
         ? "application/vnd.apple.mpegurl"
         : filename.endsWith(".ts")
           ? "video/MP2T"
-          : (out.ContentType ?? "application/octet-stream");
-
-      res.setHeader("Content-Type", contentType);
-      res.setHeader(
-        "Content-Disposition",
-        `inline; filename="${basename(filename)}"`,
-      );
-      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-
-      body.on("error", () => {
-        try {
-          body.destroy();
-        } catch {}
-        if (!res.headersSent) res.status(500);
-        res.end();
-      });
-
-      body.pipe(res);
-    } catch (err) {
-      if (err?.name === "AbortError") return;
-      throw new NotFoundException();
-    }
+          : undefined,
+    });
   }
 
   @Delete(":id")
