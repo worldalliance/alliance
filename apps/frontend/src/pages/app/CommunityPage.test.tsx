@@ -55,7 +55,7 @@ it("offers no group assignment until your groups load", async () => {
   const { promise, resolve } = Promise.withResolvers<Response>();
   myGroups = () => promise;
   renderPage();
-  await screen.findByRole("status");
+  await screen.findByRole("status", { name: "Loading..." });
   expect(screen.queryByText("Request assignment")).toBeNull();
 
   resolve(Response.json([]));
