@@ -21,6 +21,7 @@ import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
 import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
 import { cn } from "@alliance/shared/styles/util";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import UserSelect from "@alliance/sharedweb/ui/UserSelect";
@@ -649,20 +650,24 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
 
+  const copyJson = useCallback(
+    async (json: unknown) => {
+      if (!(await copyToClipboard(JSON.stringify(json, null, 2)))) {
+        pushError("Could not copy to the clipboard");
+      }
+    },
+    [pushError],
+  );
+
   const handleCopyExpression = useCallback(() => {
-    if (value) {
-      navigator.clipboard.writeText(JSON.stringify(value, null, 2));
-    }
+    if (value) void copyJson(value);
     setMenuOpen(false);
-  }, [value]);
+  }, [value, copyJson]);
 
   const handleCopyComplement = useCallback(() => {
-    if (value) {
-      const complement = { type: "NOT", child: value };
-      navigator.clipboard.writeText(JSON.stringify(complement, null, 2));
-    }
+    if (value) void copyJson({ type: "NOT", child: value });
     setMenuOpen(false);
-  }, [value]);
+  }, [value, copyJson]);
 
   const handlePasteExpression = useCallback(async () => {
     try {

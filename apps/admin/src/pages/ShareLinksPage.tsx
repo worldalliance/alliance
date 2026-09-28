@@ -18,6 +18,7 @@ import { getReferralSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -400,11 +401,9 @@ const ShareLinksPage: React.FC = () => {
 
   const handleCopy = useCallback(
     async (url: string) => {
-      try {
-        await navigator.clipboard.writeText(url);
+      if (await copyToClipboard(url)) {
         success("Copied to clipboard");
-      } catch (err) {
-        console.error(err);
+      } else {
         error("Failed to copy");
       }
     },

@@ -34,7 +34,9 @@ import {
 } from "@alliance/common/forms/variables";
 import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
 import { cn } from "@alliance/shared/styles/util";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { milliseconds } from "date-fns";
 import { omit } from "es-toolkit";
 import { Check, Copy, Info, Plus, X } from "lucide-react";
@@ -63,6 +65,7 @@ import { answerHelp, inputHelp } from "./variableInputHelp";
 
 function CopyableReference({ name }: { name: string }) {
   const [copied, setCopied] = useState(false);
+  const { error: pushError } = useToast();
   const resetTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
   const reference = `#{${name}}`;
 
@@ -74,16 +77,17 @@ function CopyableReference({ name }: { name: string }) {
       title="Copy reference"
       aria-label={`Copy ${reference}`}
       onClick={() => {
-        navigator.clipboard.writeText(reference).then(
-          () => {
-            setCopied(true);
+        void copyToClipboard(reference).then((ok) => {
+          setCopied(ok);
+          if (ok) {
             resetTimeout.current = setTimeout(
               () => setCopied(false),
               milliseconds({ seconds: 2 }),
             );
-          },
-          () => setCopied(false),
-        );
+          } else {
+            pushError("Could not copy the reference to the clipboard");
+          }
+        });
       }}
       className="inline-flex items-center gap-1.5 rounded border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-xs text-gray-700 hover:bg-gray-100"
     >

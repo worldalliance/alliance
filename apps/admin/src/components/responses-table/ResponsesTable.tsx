@@ -8,8 +8,10 @@ import type {
 } from "@alliance/shared/client";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   getCoreRowModel,
   getSortedRowModel,
@@ -159,6 +161,7 @@ const ResponsesTable: React.FC<ResponsesTableProps> = ({
   paramKey,
 }) => {
   const [params, setParams] = useSearchParams();
+  const { error: pushError } = useToast();
   const formId = form?.id ?? null;
 
   // `setParams` hands its updater the params of the render that created it and
@@ -420,13 +423,16 @@ const ResponsesTable: React.FC<ResponsesTableProps> = ({
   const openResponse =
     openIndex >= 0 ? sortedRows[openIndex].original.response : null;
 
-  const copyViewLink = useCallback(() => {
+  const copyViewLink = useCallback(async () => {
     const url = new URL(window.location.href);
     url.searchParams.set(paramKey("hidden"), view.hiddenColumns.join(","));
-    void navigator.clipboard.writeText(url.toString());
+    if (!(await copyToClipboard(url.toString()))) {
+      pushError("Could not copy the view link to the clipboard");
+      return;
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
-  }, [paramKey, view.hiddenColumns]);
+  }, [paramKey, pushError, view.hiddenColumns]);
 
   if (loading) {
     return (
