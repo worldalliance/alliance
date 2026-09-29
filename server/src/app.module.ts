@@ -40,6 +40,7 @@ import { UserModule } from "./user/user.module";
 import { UserService } from "./user/user.service";
 import { ALL_THROTTLERS } from "./utils/throttle";
 import { VideosModule } from "./videos/videos.module";
+import { WaitlistModule } from "./waitlist/waitlist.module";
 
 if (!("polyfilled" in Intl.DateTimeFormat)) {
   throw new Error(
@@ -104,6 +105,7 @@ if (!("polyfilled" in Intl.DateTimeFormat)) {
     PushModule,
     EventLogModule,
     JoinRequestsModule,
+    WaitlistModule,
   ],
   controllers: [AppController],
 })
