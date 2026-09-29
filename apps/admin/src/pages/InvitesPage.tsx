@@ -10,7 +10,7 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { usePaginatedQuery } from "@alliance/shared/lib/usePaginatedQuery";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -93,7 +93,9 @@ const InvitesPage = () => {
   });
 
   const copyInviteLink = async (code: string) => {
-    if (await copyToClipboard(getOnetimeInviteSignupUrl(getBaseUrl(), code))) {
+    if (
+      await copyToClipboard(getOnetimeInviteSignupUrl(getInviteBaseUrl(), code))
+    ) {
       pushSuccess("Invite link copied");
     } else {
       pushError("Could not copy the invite link to the clipboard");
