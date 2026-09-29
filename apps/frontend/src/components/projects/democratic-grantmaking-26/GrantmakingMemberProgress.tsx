@@ -2,7 +2,7 @@ import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCo
 import { cn } from "@alliance/shared/styles/util";
 import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
 
-const MEMBER_GOAL = 1_000;
+export const MEMBER_GOAL = 1_000;
 
 export const MEMBER_GOAL_LABEL = MEMBER_GOAL.toLocaleString("en-US");
 
