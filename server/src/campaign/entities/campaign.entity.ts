@@ -1,18 +1,38 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { Community } from "src/community/entities/community.entity";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
-import { Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
+import type { Relation } from "src/utils/Repository";
+import {
+  Check,
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  OneToOne,
+  PrimaryGeneratedColumn,
+} from "typeorm";
+
+export enum CampaignKind {
+  Campaign = "campaign",
+  Organization = "organization",
+}
 
 /**
  * A referral owner that is not a user account — e.g. a marketing campaign, a
- * partner org, a QR code at an event. Mirrors a user as a referral source: it
- * has its own bare signup `code` and can own share links (see ShareUrl). New
- * users who sign up via a campaign are attributed to it as a source
+ * QR code at an event, or, with `kind` organization, a partner organization
+ * that may own one accountability group. Mirrors a user as a referral source:
+ * it has its own bare signup `code` and can own share links (see ShareUrl).
+ * New users who sign up via a campaign are attributed to it as a source
  * (`User.referredByCampaign`) rather than to a referring user.
  */
 @Entity()
+@Check(
+  "CHK_campaign_community_organization",
+  `"communityId" IS NULL OR "kind" = 'organization'`,
+)
 export class Campaign {
   @PrimaryGeneratedColumn()
   @ApiProperty()
@@ -39,6 +59,16 @@ export class Campaign {
     description: "Image key for the campaign avatar, shown on the signup page",
   })
   picture: string | null;
+
+  @Column({ type: "enum", enum: CampaignKind, default: CampaignKind.Campaign })
+  kind: CampaignKind;
+
+  @Column({ nullable: true })
+  communityId: number | null;
+
+  @OneToOne(() => Community, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "communityId" })
+  community?: Relation<Community> | null;
 
   @CreateDateColumnTz()
   @ApiProperty({ type: Date })
