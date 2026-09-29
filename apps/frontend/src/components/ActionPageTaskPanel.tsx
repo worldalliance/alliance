@@ -18,13 +18,8 @@ import {
   taskHeaders,
   type TitledCopy,
 } from "@alliance/shared/lib/copy";
-import {
-  buildActionShareUrl,
-  buildShareText,
-  getCompletedShareableTextTemplate,
-} from "@alliance/shared/lib/shareText";
+import { getCompletedShareableTextTemplate } from "@alliance/shared/lib/shareText";
 import { cn } from "@alliance/shared/styles/util";
-import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import Card from "@alliance/sharedweb/ui/Card";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import { ArrowRight, Link2 } from "lucide-react";
@@ -32,7 +27,7 @@ import { useEffect, useState } from "react";
 import { isRouteErrorResponse, Link, useOutletContext } from "react-router";
 import { Route } from "../../.react-router/types/src/components/+types/ActionPageTaskPanel";
 import { useAuth } from "../lib/AuthContext";
-import { getSiteUrl } from "../lib/config";
+import { copyActionShareText } from "../lib/actionShare";
 import { isNonmemberOnPublicActionReferral } from "../lib/publicActionReferral";
 import ActionTaskPanel from "./ActionTaskPanel";
 import AllianceSignupPitch from "./AllianceSignupPitch";
@@ -199,20 +194,14 @@ const ActionPageTaskPanel = () => {
     currentSchema: taskForm?.schema as Record<string, unknown> | undefined,
   });
 
-  const handleShareCopy = async () => {
-    const url = await buildActionShareUrl({
+  const handleShareCopy = () =>
+    copyActionShareText({
       actionId: action.id,
-      baseUrl: getSiteUrl(),
       isAuthenticated,
-    });
-    const text = buildShareText({
       template: shareTemplate,
       formResponse: effectiveFormResponse,
       userName: user?.name,
-      url,
     });
-    return copyToClipboard(text);
-  };
   const completedHeader = (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-x-3">

@@ -8,13 +8,8 @@ import {
   type ActionWithAwayStatus,
 } from "@alliance/shared/lib/actionUtils";
 import { clipboardCopy, taskHeaders } from "@alliance/shared/lib/copy";
-import {
-  buildActionShareUrl,
-  buildShareText,
-  getCompletedShareableTextTemplate,
-} from "@alliance/shared/lib/shareText";
+import { getCompletedShareableTextTemplate } from "@alliance/shared/lib/shareText";
 import { cn } from "@alliance/shared/styles/util";
-import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import {
   Tooltip,
@@ -31,8 +26,8 @@ import {
 import { type ReactNode } from "react";
 import { Link, href } from "react-router";
 import ShareButton from "../../components/ShareButton";
+import { copyActionShareText } from "../../lib/actionShare";
 import { useAuth } from "../../lib/AuthContext";
-import { getSiteUrl } from "../../lib/config";
 
 const ICON_SIZE = 16;
 
@@ -204,20 +199,14 @@ export function TaskNavigatorCompletedRow({
     currentSchema: taskForm?.schema as Record<string, unknown> | undefined,
   });
 
-  const handleShare = async () => {
-    const url = await buildActionShareUrl({
+  const handleShare = () =>
+    copyActionShareText({
       actionId: action.id,
-      baseUrl: getSiteUrl(),
       isAuthenticated,
-    });
-    const text = buildShareText({
       template: shareTemplate,
       formResponse,
       userName: user?.name,
-      url,
     });
-    return copyToClipboard(text);
-  };
   return (
     <div className="flex flex-col gap-y-1">
       <div className="flex items-center gap-x-2 rounded-lg py-1 px-2 w-full hover:bg-grey-2">
