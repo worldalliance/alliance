@@ -2,7 +2,7 @@ import { client } from "@alliance/shared/client/client.gen";
 import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
 import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
-import { AuthoredLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
+import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -17,7 +17,7 @@ import {
 } from "react-router";
 import { Route } from "../.react-router/types/src/+types/root";
 import { AuthProvider } from "./lib/AuthContext";
-import { getApiUrl } from "./lib/config";
+import { getApiUrl, getSiteUrl } from "./lib/config";
 import { GroupAssignmentProvider } from "./lib/GroupAssignmentContext";
 
 const queryClient = new QueryClient({
@@ -94,7 +94,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <AuthoredLinkProvider>
+        <SiteOriginLinkProvider origin={getSiteUrl()}>
           <QueryClientProvider client={queryClient}>
             <AuthProvider>
               <GroupAssignmentProvider>
@@ -102,7 +102,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </GroupAssignmentProvider>
             </AuthProvider>
           </QueryClientProvider>
-        </AuthoredLinkProvider>
+        </SiteOriginLinkProvider>
         <ScrollRestoration />
         <Scripts />
       </body>

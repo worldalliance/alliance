@@ -19,7 +19,7 @@ import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
@@ -575,14 +575,20 @@ const ShareLinksPage: React.FC = () => {
               </p>
               <div className="flex flex-row items-center gap-2 mt-1">
                 <p className="text-xs text-zinc-600 font-mono break-all flex-1">
-                  {getReferralSignupUrl(getBaseUrl(), selectedCampaign.code)}
+                  {getReferralSignupUrl(
+                    getInviteBaseUrl(),
+                    selectedCampaign.code,
+                  )}
                 </p>
                 <Button
                   type="button"
                   color={ButtonColor.Light}
                   onClick={() =>
                     handleCopy(
-                      getReferralSignupUrl(getBaseUrl(), selectedCampaign.code),
+                      getReferralSignupUrl(
+                        getInviteBaseUrl(),
+                        selectedCampaign.code,
+                      ),
                     )
                   }
                   className="shrink-0"

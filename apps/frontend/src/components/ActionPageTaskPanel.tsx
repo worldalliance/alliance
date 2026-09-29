@@ -25,7 +25,6 @@ import {
 } from "@alliance/shared/lib/shareText";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import Card from "@alliance/sharedweb/ui/Card";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import { ArrowRight, Link2 } from "lucide-react";
@@ -33,6 +32,7 @@ import { useEffect, useState } from "react";
 import { isRouteErrorResponse, Link, useOutletContext } from "react-router";
 import { Route } from "../../.react-router/types/src/components/+types/ActionPageTaskPanel";
 import { useAuth } from "../lib/AuthContext";
+import { getSiteUrl } from "../lib/config";
 import { isNonmemberOnPublicActionReferral } from "../lib/publicActionReferral";
 import ActionTaskPanel from "./ActionTaskPanel";
 import AllianceSignupPitch from "./AllianceSignupPitch";
@@ -202,7 +202,7 @@ const ActionPageTaskPanel = () => {
   const handleShareCopy = async () => {
     const url = await buildActionShareUrl({
       actionId: action.id,
-      baseUrl: getBaseUrl(),
+      baseUrl: getSiteUrl(),
       isAuthenticated,
     });
     const text = buildShareText({

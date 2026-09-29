@@ -18,7 +18,6 @@ import {
   getDefaultShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import AggregateProgressBarBlock from "@alliance/sharedweb/ui/AggregateProgressBarBlock";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -36,6 +35,7 @@ import {
 } from "react-router";
 import chevronLeft from "../assets/icons8-expand-arrow-96.png";
 import { useAuth } from "../lib/AuthContext";
+import { getSiteUrl } from "../lib/config";
 import { useLiveTaskFormAggregateViews } from "../lib/useLiveTaskFormAggregateViews";
 import ActionCompletedBarWithInfo from "../pages/app/ActionCompletedBarWithInfo";
 import TaskTimeInfo from "../pages/app/TaskTimeInfo";
@@ -159,7 +159,7 @@ const ActionContents = () => {
   const handleShareAction = async () => {
     const url = await buildActionShareUrl({
       actionId: action.id,
-      baseUrl: getBaseUrl(),
+      baseUrl: getSiteUrl(),
       isAuthenticated,
     });
     const text = buildShareText({

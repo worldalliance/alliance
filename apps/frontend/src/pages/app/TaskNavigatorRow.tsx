@@ -15,7 +15,6 @@ import {
 } from "@alliance/shared/lib/shareText";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import {
   Tooltip,
@@ -33,6 +32,7 @@ import { type ReactNode } from "react";
 import { Link, href } from "react-router";
 import ShareButton from "../../components/ShareButton";
 import { useAuth } from "../../lib/AuthContext";
+import { getSiteUrl } from "../../lib/config";
 
 const ICON_SIZE = 16;
 
@@ -207,7 +207,7 @@ export function TaskNavigatorCompletedRow({
   const handleShare = async () => {
     const url = await buildActionShareUrl({
       actionId: action.id,
-      baseUrl: getBaseUrl(),
+      baseUrl: getSiteUrl(),
       isAuthenticated,
     });
     const text = buildShareText({

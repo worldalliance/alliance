@@ -6,7 +6,7 @@ import {
   subheadingClassName,
 } from "./ambassadorsPageStyles";
 
-const AmbassadorTalkingPoints: React.FC = () => (
+const AmbassadorTalkingPoints: React.FC<{ origin: string }> = ({ origin }) => (
   <>
     <h2 id="talking-points" className={headingClassName}>
       Talking points
@@ -74,7 +74,7 @@ const AmbassadorTalkingPoints: React.FC = () => (
       Here is our list of experts who have chosen to make their information
       public:{" "}
       <Link to="/people#expert-group" className="text-link">
-        worldalliance.org/people#expert-group
+        {new URL(origin).host}/people#expert-group
       </Link>
       .
     </p>

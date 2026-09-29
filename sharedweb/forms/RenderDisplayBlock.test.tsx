@@ -5,7 +5,7 @@ import type {
 } from "@alliance/common/forms/display-blocks";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { AuthoredLinkProvider, SiteAppProvider } from "../ui/SiteAppProvider";
+import { SiteAppProvider, SiteOriginLinkProvider } from "../ui/SiteAppProvider";
 import RenderDisplayBlock from "./RenderDisplayBlock";
 
 afterEach(cleanup);
@@ -95,14 +95,14 @@ describe("the biglink display block", () => {
     expect(screen.getByText("/forum/post/22")).toBeTruthy();
   });
 
-  it("keeps the authored URL in an app that serves another domain", () => {
+  it("aims the link at the given origin in an app that serves another domain", () => {
     expect(
       hrefOf(
-        <AuthoredLinkProvider>
+        <SiteOriginLinkProvider origin="https://staging.thealliance.org">
           <RenderDisplayBlock block={biglink} />
-        </AuthoredLinkProvider>,
+        </SiteOriginLinkProvider>,
       ),
-    ).toBe("https://worldalliance.org/forum/post/22");
+    ).toBe("https://staging.thealliance.org/forum/post/22");
   });
 
   it("refuses to render in an app that has claimed neither", () => {

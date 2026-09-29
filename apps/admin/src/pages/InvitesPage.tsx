@@ -10,7 +10,7 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { usePaginatedQuery } from "@alliance/shared/lib/usePaginatedQuery";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -22,6 +22,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { memberProfileUrl } from "../lib/config";
 
 const INVITES_PER_PAGE = 50;
 
@@ -92,7 +93,9 @@ const InvitesPage = () => {
   });
 
   const copyInviteLink = async (code: string) => {
-    if (await copyToClipboard(getOnetimeInviteSignupUrl(getBaseUrl(), code))) {
+    if (
+      await copyToClipboard(getOnetimeInviteSignupUrl(getInviteBaseUrl(), code))
+    ) {
       pushSuccess("Invite link copied");
     } else {
       pushError("Could not copy the invite link to the clipboard");
@@ -228,9 +231,7 @@ const InvitesPage = () => {
                       <span className="text-gray-500"> inviting </span>{" "}
                       {invite.invitedUserId ? (
                         <a
-                          href={
-                            getBaseUrl() + `/member/${invite.invitedUserId}`
-                          }
+                          href={memberProfileUrl(invite.invitedUserId)}
                           className="underline"
                         >
                           {" "}
