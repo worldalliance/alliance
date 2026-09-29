@@ -330,8 +330,7 @@ export const forgotPassword = {
   sendError: "Error sending password reset email.",
   sendSuccess: {
     title: "Check your email",
-    message:
-      "A link to reset your password has been sent to your email address.",
+    message: "If an account exists for this email, we've sent a reset link.",
   },
 } as const;
 
