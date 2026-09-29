@@ -2,13 +2,13 @@ import { cn } from "@alliance/shared/styles/util";
 import { Link } from "react-router";
 import membersPhoto from "../assets/redesign/members-photo.webp?w=480;960&format=avif;webp&as=picture";
 import { CTA_BODY } from "./content";
-import { JOIN_HREF } from "./links";
+import { WAITLIST_HREF } from "./links";
 import { SITE_COL, SiteArrow, SitePicture, TexturedFill } from "./ui";
 
 /** How far the artwork hangs over the footer, measured off the Figma. */
 const FOOTER_OVERLAP = 54;
 
-const JOIN_CTA_HEADING = "Request to join";
+const JOIN_CTA_HEADING = "Join the waitlist";
 
 const cardClass = "group relative isolate block w-full overflow-hidden";
 const cardStyle = { borderRadius: "var(--site-radius-card)" };
@@ -42,7 +42,7 @@ function JoinCtaCard({ heading }: { heading: string }) {
 }
 
 export function JoinCta({
-  to = JOIN_HREF,
+  to = WAITLIST_HREF,
   heading = JOIN_CTA_HEADING,
 }: {
   to?: string;
