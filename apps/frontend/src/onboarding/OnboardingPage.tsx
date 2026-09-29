@@ -101,7 +101,7 @@ const OnboardingPage = () => {
   const isAccount = step === OnboardingStep.Account;
   // const mobileWeb = useMediaQuery(MOBILE_WEB_QUERY);
   useLockedViewport(!isAccount);
-  const { inviter, used: inviteUsed } = useInvite(referralCode);
+  const { inviter, refusal: inviteRefusal } = useInvite(referralCode);
   const faces = useSignupFaces(referralCode, {
     enabled: step === OnboardingStep.Agreement,
   });
@@ -474,8 +474,8 @@ const OnboardingPage = () => {
           </section>
           <LandingBody />
           <JoinCta
-            to={inviteUsed ? undefined : ACCOUNT_ANCHOR}
-            heading={inviteUsed ? undefined : "Create an account"}
+            to={inviteRefusal ? undefined : ACCOUNT_ANCHOR}
+            heading={inviteRefusal ? undefined : "Create an account"}
           />
           <SiteFooter />
         </>
