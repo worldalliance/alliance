@@ -4323,16 +4323,6 @@ export type ContractStatusPointDto = {
     totalEverSigned: number;
 };
 
-export type CreateJoinRequestDto = {
-    name: string;
-    email: string;
-    reason: string;
-};
-
-export type JoinRequestResultDto = {
-    submitted: boolean;
-};
-
 export type CreateWaitlistEntryDto = {
     /**
      * An organization's waitlist link code
@@ -13305,28 +13295,6 @@ export type AnalyticsGetContractStatusHistoryAdminResponses = {
 };
 
 export type AnalyticsGetContractStatusHistoryAdminResponse = AnalyticsGetContractStatusHistoryAdminResponses[keyof AnalyticsGetContractStatusHistoryAdminResponses];
-
-export type JoinRequestsCreateData = {
-    body: CreateJoinRequestDto;
-    path?: never;
-    query?: never;
-    url: '/join-requests';
-};
-
-export type JoinRequestsCreateErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type JoinRequestsCreateError = JoinRequestsCreateErrors[keyof JoinRequestsCreateErrors];
-
-export type JoinRequestsCreateResponses = {
-    200: JoinRequestResultDto;
-};
-
-export type JoinRequestsCreateResponse = JoinRequestsCreateResponses[keyof JoinRequestsCreateResponses];
 
 export type WaitlistCreateData = {
     body: CreateWaitlistEntryDto;

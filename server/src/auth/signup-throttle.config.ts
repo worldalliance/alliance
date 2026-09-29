@@ -31,11 +31,6 @@ export const ACTION_PARTNERSHIP_RESPONSE_THROTTLE: Record<
   },
 };
 
-export const JOIN_REQUEST_THROTTLE: Record<string, ThrottlerOptions> = {
-  joinRequestBurst: { limit: 3, ttl: milliseconds({ minutes: 1 }) },
-  joinRequestSustained: { limit: 10, ttl: milliseconds({ hours: 1 }) },
-};
-
 /**
  * As loose as {@link OAUTH_THROTTLE}: an organization's audience often joins
  * from one office or event network.
