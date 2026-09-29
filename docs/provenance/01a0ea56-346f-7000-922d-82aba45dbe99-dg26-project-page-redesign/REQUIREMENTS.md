@@ -19,4 +19,4 @@ Widen the content, disregarding the design images, so it has the same margins as
 
 On mobile, give the signup form its own white container with rounded corners, visually separating it from the header above and the timeline below.
 
-Add a "Sign up with Apple" button to the signup form.
+Charles Lien, later: the waitlist doesn't need OAuth, so the signup form has no Google or Apple sign-up buttons, although the designs show a Google button.
