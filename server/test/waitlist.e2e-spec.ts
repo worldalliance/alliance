@@ -1,8 +1,16 @@
+import request from "supertest";
 import type { Repository } from "typeorm";
+import { SignUpDto } from "../src/auth/dto/sign-up.dto";
+import { TokenMode } from "../src/auth/dto/signin.dto";
 import {
   Campaign,
   CampaignKind,
 } from "../src/campaign/entities/campaign.entity";
+import {
+  OnetimeInvite,
+  OnetimeInviteStatus,
+} from "../src/user/entities/onetime-invite.entity";
+import { User } from "../src/user/entities/user.entity";
 import { WaitlistEntry } from "../src/waitlist/entities/waitlist-entry.entity";
 import { WaitlistLink } from "../src/waitlist/entities/waitlist-link.entity";
 import { createTestApp, TestContext } from "./e2e-test-utils";
@@ -83,5 +91,63 @@ describe("Waitlist records (e2e)", () => {
     expect(row.referrer?.id).toBe(referrer.id);
     expect(row.sourceLink?.channel).toBe("Newsletter");
     expect(row.organization?.id).toBe(organization.id);
+  });
+
+  it("lets an account claim an organization's invite to a waitlist entry", async () => {
+    const inviteRepo = ctx.dataSource.getRepository(OnetimeInvite);
+    const entry = await saveEntry({ organizationId: organization.id });
+    const invite = await inviteRepo.save(
+      inviteRepo.create({
+        invitee: entry.name,
+        code: "ORGANIZATION-INVITE",
+        status: OnetimeInviteStatus.LINK_UNUSED,
+        organizationId: organization.id,
+        waitlistEntryId: entry.id,
+      }),
+    );
+
+    await request(ctx.app.getHttpServer())
+      .post("/auth/register")
+      .send({
+        email: "forwarded@example.com",
+        password: "password",
+        name: "Claimant",
+        referralCode: invite.code,
+        mode: TokenMode.Header,
+        timeZone: "America/Los_Angeles",
+      } satisfies SignUpDto)
+      .expect(201);
+
+    const user = await ctx.dataSource.getRepository(User).findOneOrFail({
+      where: { email: "forwarded@example.com" },
+      relations: {
+        referredByInvite: { organization: true, waitlistEntry: true },
+      },
+    });
+    expect(user.referredByInvite?.organization?.id).toBe(organization.id);
+    expect(user.referredByInvite?.waitlistEntry?.id).toBe(entry.id);
+  });
+
+  it("refuses an invite issued by both a user and an organization", async () => {
+    const inviteRepo = ctx.dataSource.getRepository(OnetimeInvite);
+    const userRepo = ctx.dataSource.getRepository(User);
+    const invitingUser = await userRepo.save(
+      userRepo.create({
+        email: "issuer@example.com",
+        password: "password",
+        name: "Issuer",
+      }),
+    );
+    await expect(
+      inviteRepo.save(
+        inviteRepo.create({
+          invitee: "Both",
+          code: "BOTH-ISSUERS",
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          invitingUser,
+          organizationId: organization.id,
+        }),
+      ),
+    ).rejects.toThrow(/CHK_onetime_invite_issuer/);
   });
 });

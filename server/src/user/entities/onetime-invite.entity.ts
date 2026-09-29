@@ -1,11 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { Allow, IsOptional } from "class-validator";
+import { Campaign } from "src/campaign/entities/campaign.entity";
 import { Community } from "src/community/entities/community.entity";
 import { CreateDateColumnTz } from "src/datasources/basecolumns";
 import { Notification } from "src/notifs/entities/notification.entity";
 import type { Relation } from "src/utils/Repository";
+import { WaitlistEntry } from "src/waitlist/entities/waitlist-entry.entity";
 import {
+  Check,
   Column,
   Entity,
   Index,
@@ -26,6 +29,10 @@ export enum OnetimeInviteStatus {
 }
 
 @Index(["createdAt", "id"])
+@Check(
+  "CHK_onetime_invite_issuer",
+  `"invitingUserId" IS NULL OR "organizationId" IS NULL`,
+)
 @Entity()
 export class OnetimeInvite {
   // Fields
@@ -128,6 +135,25 @@ export class OnetimeInvite {
   @IsOptional()
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   communityId?: number;
+
+  @Column({ nullable: true })
+  @IsOptional()
+  organizationId: number | null;
+
+  @ManyToOne(() => Campaign, { nullable: true })
+  @JoinColumn({ name: "organizationId" })
+  @IsOptional()
+  organization?: Relation<Campaign> | null;
+
+  @Index()
+  @Column({ nullable: true })
+  @IsOptional()
+  waitlistEntryId: number | null;
+
+  @ManyToOne(() => WaitlistEntry, { nullable: true })
+  @JoinColumn({ name: "waitlistEntryId" })
+  @IsOptional()
+  waitlistEntry?: Relation<WaitlistEntry> | null;
 
   @OneToMany(() => Notification, (notif) => notif.onetimeInvite)
   @Type(() => Notification)
