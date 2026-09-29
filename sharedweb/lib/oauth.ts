@@ -38,18 +38,6 @@ export function oauthStartUrl(params: {
   return url.toString();
 }
 
-/**
- * The origin the member is on, once mounted. SSR has no location and the
- * server only accepts an absolute returnTo, so until then the caller's
- * canonical origin stands in: a click before hydration finishes the flow on
- * that domain rather than on a dead button.
- */
-export function useAppOrigin(canonical: string): string {
-  const [origin, setOrigin] = useState(canonical);
-  useEffect(() => setOrigin(window.location.origin), []);
-  return origin;
-}
-
 export type OAuthNotice =
   | { kind: "outcome"; provider: OAuthProvider; outcome: OAuthOutcome }
   | { kind: "error"; provider: OAuthProvider; error: OAuthError };
