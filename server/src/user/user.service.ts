@@ -222,6 +222,19 @@ const SIGNUP_SOCIAL_PROOF_COUNT = 5;
 /** A ceiling on the caller's count: the endpoint is public and unpaginated. */
 const SIGNUP_SOCIAL_PROOF_MAX = 24;
 
+// A `link_used` invite with no claimant stays claimable: signups before claims
+// became transactional could mark one used and then fail, and deleting an
+// account leaves its invite used.
+const INVITE_STATUS_CLAIMABLE: Record<OnetimeInviteStatus, boolean> = {
+  [OnetimeInviteStatus.REQUEST_PENDING]: false,
+  [OnetimeInviteStatus.REQUEST_REJECTED]: false,
+  [OnetimeInviteStatus.LINK_UNUSED]: true,
+  [OnetimeInviteStatus.LINK_USED]: true,
+};
+const CLAIMABLE_INVITE_STATUSES = Object.values(OnetimeInviteStatus).filter(
+  (status) => INVITE_STATUS_CLAIMABLE[status],
+);
+
 @Injectable()
 export class UserService {
   private readonly logger = new Logger(UserService.name);
@@ -295,11 +308,15 @@ export class UserService {
     // then sees the committed claimant.
     const { affected } = await manager.update(
       OnetimeInvite,
-      { id: inviteId, deletedAt: IsNull() },
+      {
+        id: inviteId,
+        deletedAt: IsNull(),
+        status: In(CLAIMABLE_INVITE_STATUSES),
+      },
       { status: OnetimeInviteStatus.LINK_USED, usedAt: new Date() },
     );
     if (!affected) {
-      throw new BadRequestException("This invite code is no longer valid");
+      throw new BadRequestException("This invite code isn't valid");
     }
     if (await manager.existsBy(User, { referredByInvite: { id: inviteId } })) {
       throw new BadRequestException("This invite code has already been used");

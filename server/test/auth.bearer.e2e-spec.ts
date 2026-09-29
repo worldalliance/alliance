@@ -689,6 +689,49 @@ describe("Auth (e2e)", () => {
         await userRepository.existsBy({ email: "claimed-second@test.com" }),
       ).toBe(false);
     });
+
+    it("lets someone claim a used invite that no account references", async () => {
+      const invite = await inviteRepo.save(
+        inviteRepo.create({
+          invitee: "orphaned@test.com",
+          code: "ORPHANED-CODE",
+          status: OnetimeInviteStatus.LINK_USED,
+          usedAt: new Date(),
+          invitingUser,
+        }),
+      );
+
+      await registerWithInvite("orphaned@test.com", invite.code).expect(201);
+
+      const claimed = await inviteRepo.findOneOrFail({
+        where: { id: invite.id },
+        relations: { invitedUser: true },
+      });
+      expect(claimed.invitedUser?.email).toBe("orphaned@test.com");
+    });
+
+    it.each([
+      OnetimeInviteStatus.REQUEST_PENDING,
+      OnetimeInviteStatus.REQUEST_REJECTED,
+    ])("refuses the code of a %s invite request", async (status) => {
+      const invite = await inviteRepo.save(
+        inviteRepo.create({
+          invitee: `${status}@test.com`,
+          code: `${status}-CODE`,
+          status,
+          invitingUser,
+        }),
+      );
+
+      await registerWithInvite(`${status}@test.com`, invite.code).expect(400);
+
+      expect(
+        await userRepository.existsBy({ email: `${status}@test.com` }),
+      ).toBe(false);
+      const unchanged = await inviteRepo.findOneByOrFail({ id: invite.id });
+      expect(unchanged.status).toBe(status);
+      expect(unchanged.usedAt).toBeNull();
+    });
   });
 
   describe("time zone", () => {
