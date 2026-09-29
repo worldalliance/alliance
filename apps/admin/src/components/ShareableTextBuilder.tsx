@@ -1,5 +1,4 @@
-/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
+import type { FormSchema } from "@alliance/common/forms/form-schema";
 import {
   flattenPageItems,
   isQuestionField,
@@ -11,6 +10,12 @@ import {
 import { cn } from "@alliance/shared/styles/util";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  findDroppedInsertable,
+  InsertableTokenButton,
+  type ShareableInsertable,
+} from "./InsertableTokenButton";
+import { ReferralUrlNotice } from "./ReferralUrlNotice";
 import TextareaWithHighlights from "./TextareaWithHighlights";
 
 interface ShareableTextBuilderProps {
@@ -18,8 +23,6 @@ interface ShareableTextBuilderProps {
   onSchemaChange: (schema: FormSchema) => void;
 }
 
-const REFERRAL_URL_PREVIEW =
-  "https://alliance.example/actions/123?sid=member-code";
 const SHAREABLE_TOKEN_PATTERN = /#\{[^}]*\}/g;
 const DEFAULT_TEMPLATE_ALLOWED_TOKENS = new Set<string>([
   FIRST_NAME_TOKEN,
@@ -47,23 +50,8 @@ const SHAREABLE_NAME_TOKENS = [
   },
 ] as const;
 
-type ShareableField = {
-  id: string;
-  label: string;
-  kind: AnyField["kind"];
-  pageTitle: string;
-};
-
-type ShareableInsertable = {
-  id: string;
-  label: string;
-  token: string;
-  kind: string;
-  pageTitle: string;
-};
-
-const collectShareableFields = (schema: FormSchema): ShareableField[] => {
-  const fields: ShareableField[] = [];
+const collectShareableFields = (schema: FormSchema): ShareableInsertable[] => {
+  const fields: ShareableInsertable[] = [];
   schema.pages.forEach((page, pageIndex) => {
     flattenPageItems(page.fields).forEach((field) => {
       if (!isQuestionField(field) || !field.label) {
@@ -72,6 +60,7 @@ const collectShareableFields = (schema: FormSchema): ShareableField[] => {
       fields.push({
         id: field.id,
         label: field.label,
+        token: `#{${field.id}}`,
         kind: field.kind,
         pageTitle: page.title?.trim() || `Page ${pageIndex + 1}`,
       });
@@ -103,13 +92,7 @@ export function ShareableTextBuilder({
   const [activeIndex, setActiveIndex] = useState(0);
   const fields = useMemo(() => collectShareableFields(schema), [schema]);
   const completedInsertables = useMemo<ShareableInsertable[]>(
-    () => [
-      ...SHAREABLE_NAME_TOKENS,
-      ...fields.map((field) => ({
-        ...field,
-        token: `#{${field.id}}`,
-      })),
-    ],
+    () => [...SHAREABLE_NAME_TOKENS, ...fields],
     [fields],
   );
   const keywords = useMemo(
@@ -246,13 +229,7 @@ export function ShareableTextBuilder({
         event.preventDefault();
         const suggestion = suggestions[activeIndex] ?? suggestions[0];
         if (suggestion) {
-          insertCompletedToken(
-            {
-              ...suggestion,
-              token: `#{${suggestion.id}}`,
-            },
-            true,
-          );
+          insertCompletedToken(suggestion, true);
         }
         return;
       }
@@ -297,15 +274,11 @@ export function ShareableTextBuilder({
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
                 event.preventDefault();
-                const droppedToken = event.dataTransfer.getData(
-                  COMPLETED_SHAREABLE_INSERTION_DATA_KEY,
-                );
-                if (!droppedToken) {
-                  return;
-                }
-                const item = completedInsertables.find(
-                  (candidate) => candidate.token === droppedToken,
-                );
+                const item = findDroppedInsertable({
+                  event,
+                  dataKey: COMPLETED_SHAREABLE_INSERTION_DATA_KEY,
+                  insertables: completedInsertables,
+                });
                 if (!item) {
                   return;
                 }
@@ -313,26 +286,7 @@ export function ShareableTextBuilder({
               }}
             />
 
-            <div className="mt-3 rounded-lg border border-dashed border-blue-200 bg-blue-50/60 p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-blue-950">
-                    Member Referral URL
-                  </p>
-                  <p className="mt-1 text-xs text-blue-800">
-                    This is always appended automatically when the action is
-                    shared. It is not editable here and cannot be removed from
-                    the real share text.
-                  </p>
-                </div>
-                <span className="rounded-full bg-white px-2 py-1 text-xs font-medium text-blue-900">
-                  Always Included
-                </span>
-              </div>
-              <div className="mt-3 rounded-md border border-blue-200 bg-white px-3 py-2 font-mono text-xs text-blue-900">
-                {REFERRAL_URL_PREVIEW}
-              </div>
-            </div>
+            <ReferralUrlNotice />
 
             {activeToken && suggestions.length > 0 && (
               <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-lg border border-gray-200 bg-white shadow-xl">
@@ -342,13 +296,7 @@ export function ShareableTextBuilder({
                     type="button"
                     onMouseDown={(event) => {
                       event.preventDefault();
-                      insertCompletedToken(
-                        {
-                          ...field,
-                          token: `#{${field.id}}`,
-                        },
-                        true,
-                      );
+                      insertCompletedToken(field, true);
                     }}
                     className={cn(
                       "flex w-full items-start justify-between gap-3 px-4 py-3 text-left hover:bg-blue-50",
@@ -360,7 +308,7 @@ export function ShareableTextBuilder({
                         {field.label}
                       </div>
                       <div className="mt-1 text-xs text-gray-500">
-                        #{`{${field.id}}`} · {field.pageTitle}
+                        {field.token} · {field.pageTitle}
                       </div>
                     </div>
                     <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
@@ -388,28 +336,12 @@ export function ShareableTextBuilder({
                   Member Details
                 </p>
                 {SHAREABLE_NAME_TOKENS.map((item) => (
-                  <button
+                  <InsertableTokenButton
                     key={item.id}
-                    type="button"
-                    draggable
-                    onDragStart={(event) => {
-                      event.dataTransfer.effectAllowed = "copy";
-                      event.dataTransfer.setData(
-                        COMPLETED_SHAREABLE_INSERTION_DATA_KEY,
-                        item.token,
-                      );
-                      event.dataTransfer.setData("text/plain", item.token);
-                    }}
-                    onClick={() => insertCompletedToken(item, false)}
-                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
-                  >
-                    <div className="font-medium text-gray-900">
-                      {item.label}
-                    </div>
-                    <div className="mt-1 text-xs text-gray-500">
-                      {item.token} · {item.pageTitle}
-                    </div>
-                  </button>
+                    item={item}
+                    dataKey={COMPLETED_SHAREABLE_INSERTION_DATA_KEY}
+                    onInsert={() => insertCompletedToken(item, false)}
+                  />
                 ))}
               </div>
 
@@ -423,37 +355,12 @@ export function ShareableTextBuilder({
                   </p>
                 ) : (
                   fields.map((field) => (
-                    <button
+                    <InsertableTokenButton
                       key={field.id}
-                      type="button"
-                      draggable
-                      onDragStart={(event) => {
-                        const token = `#{${field.id}}`;
-                        event.dataTransfer.effectAllowed = "copy";
-                        event.dataTransfer.setData(
-                          COMPLETED_SHAREABLE_INSERTION_DATA_KEY,
-                          token,
-                        );
-                        event.dataTransfer.setData("text/plain", token);
-                      }}
-                      onClick={() =>
-                        insertCompletedToken(
-                          {
-                            ...field,
-                            token: `#{${field.id}}`,
-                          },
-                          false,
-                        )
-                      }
-                      className="w-full rounded-md border border-gray-200 bg-white px-3 py-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
-                    >
-                      <div className="font-medium text-gray-900">
-                        {field.label}
-                      </div>
-                      <div className="mt-1 text-xs text-gray-500">
-                        #{`{${field.id}}`} · {field.pageTitle}
-                      </div>
-                    </button>
+                      item={field}
+                      dataKey={COMPLETED_SHAREABLE_INSERTION_DATA_KEY}
+                      onInsert={() => insertCompletedToken(field, false)}
+                    />
                   ))
                 )}
               </div>
@@ -485,15 +392,11 @@ export function ShareableTextBuilder({
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
                 event.preventDefault();
-                const droppedToken = event.dataTransfer.getData(
-                  DEFAULT_SHAREABLE_INSERTION_DATA_KEY,
-                );
-                if (!droppedToken) {
-                  return;
-                }
-                const item = defaultInsertables.find(
-                  (candidate) => candidate.token === droppedToken,
-                );
+                const item = findDroppedInsertable({
+                  event,
+                  dataKey: DEFAULT_SHAREABLE_INSERTION_DATA_KEY,
+                  insertables: defaultInsertables,
+                });
                 if (!item) {
                   return;
                 }
@@ -516,26 +419,7 @@ export function ShareableTextBuilder({
               </p>
             </div>
 
-            <div className="mt-3 rounded-lg border border-dashed border-blue-200 bg-blue-50/60 p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-blue-950">
-                    Member Referral URL
-                  </p>
-                  <p className="mt-1 text-xs text-blue-800">
-                    This is always appended automatically when the action is
-                    shared. It is not editable here and cannot be removed from
-                    the real share text.
-                  </p>
-                </div>
-                <span className="rounded-full bg-white px-2 py-1 text-xs font-medium text-blue-900">
-                  Always Included
-                </span>
-              </div>
-              <div className="mt-3 rounded-md border border-blue-200 bg-white px-3 py-2 font-mono text-xs text-blue-900">
-                {REFERRAL_URL_PREVIEW}
-              </div>
-            </div>
+            <ReferralUrlNotice />
           </div>
 
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -551,26 +435,12 @@ export function ShareableTextBuilder({
 
             <div className="space-y-2">
               {defaultInsertables.map((item) => (
-                <button
+                <InsertableTokenButton
                   key={`default-${item.id}`}
-                  type="button"
-                  draggable
-                  onDragStart={(event) => {
-                    event.dataTransfer.effectAllowed = "copy";
-                    event.dataTransfer.setData(
-                      DEFAULT_SHAREABLE_INSERTION_DATA_KEY,
-                      item.token,
-                    );
-                    event.dataTransfer.setData("text/plain", item.token);
-                  }}
-                  onClick={() => insertDefaultToken(item)}
-                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
-                >
-                  <div className="font-medium text-gray-900">{item.label}</div>
-                  <div className="mt-1 text-xs text-gray-500">
-                    {item.token} · {item.pageTitle}
-                  </div>
-                </button>
+                  item={item}
+                  dataKey={DEFAULT_SHAREABLE_INSERTION_DATA_KEY}
+                  onInsert={() => insertDefaultToken(item)}
+                />
               ))}
             </div>
           </div>
