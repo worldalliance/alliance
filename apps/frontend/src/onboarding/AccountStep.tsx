@@ -21,12 +21,12 @@ import { useAuth } from "../lib/AuthContext";
 import { getApiUrl, isFeatureEnabled } from "../lib/config";
 import { JOIN_MAILTO } from "../site/content";
 import { SiteArrow } from "../site/ui";
-import { EmailDivider, riseStyle } from "./chrome";
-
-const FIELD =
-  "h-11 w-full rounded-md border border-zinc-300 bg-white px-3.5 text-sm text-black outline-none transition-colors placeholder:text-zinc-500 focus:border-[var(--ob-navy)]";
-
-const CARD_BUTTON = "w-full gap-2 py-2.5";
+import {
+  ACCOUNT_BUTTON,
+  ACCOUNT_FIELD,
+  EmailDivider,
+  riseStyle,
+} from "./chrome";
 
 const handedNotice = z.object({ message: z.string() });
 
@@ -247,7 +247,7 @@ export function AccountStep({
                   autoComplete="email"
                   placeholder="Email"
                   defaultValue={email}
-                  className={FIELD}
+                  className={ACCOUNT_FIELD}
                   aria-label="Email"
                 />
                 <input
@@ -257,7 +257,7 @@ export function AccountStep({
                   autoComplete={loggingIn ? "current-password" : "new-password"}
                   placeholder="Password"
                   defaultValue={password}
-                  className={FIELD}
+                  className={ACCOUNT_FIELD}
                   aria-label="Password"
                 />
                 {error && (
@@ -269,7 +269,7 @@ export function AccountStep({
                 <Button
                   type="submit"
                   color={ButtonColor.Black}
-                  className={CARD_BUTTON}
+                  className={ACCOUNT_BUTTON}
                   disabled={pending}
                 >
                   {loggingIn ? "Log in" : "Get started"}

@@ -234,10 +234,23 @@ export function StepLayout({
   );
 }
 
-export function EmailDivider() {
-  const rule = "h-px flex-1 bg-zinc-200";
+export const ACCOUNT_FIELD =
+  "h-11 w-full rounded-md border border-zinc-300 bg-white px-3.5 text-sm text-black outline-none transition-colors placeholder:text-zinc-500 focus:border-[var(--ob-navy)]";
+
+export const ACCOUNT_BUTTON = "w-full gap-2 py-2.5";
+
+export function EmailDivider({
+  className,
+  ruleClassName,
+}: {
+  className?: string;
+  ruleClassName?: string;
+} = {}) {
+  const rule = cn("h-px flex-1 bg-zinc-200", ruleClassName);
   return (
-    <p className="flex items-center gap-3 text-xs text-zinc-500">
+    <p
+      className={cn("flex items-center gap-3 text-xs text-zinc-500", className)}
+    >
       <span className={rule} aria-hidden />
       Or continue with email
       <span className={rule} aria-hidden />

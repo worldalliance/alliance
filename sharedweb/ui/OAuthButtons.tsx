@@ -10,6 +10,9 @@ export interface OAuthButtonsProps {
   disabled?: boolean;
 }
 
+export const OAUTH_BUTTON =
+  "inline-flex w-full items-center justify-center gap-3 rounded border border-zinc-300 bg-white px-4 py-3 text-[15px] font-medium text-zinc-700 transition-colors hover:bg-zinc-50";
+
 /** Anchors, because each flow is a top-level navigation to the server. */
 const OAuthButtons = ({
   hrefFor,
@@ -24,7 +27,7 @@ const OAuthButtons = ({
         href={disabled ? undefined : hrefFor(provider)}
         aria-disabled={disabled || undefined}
         className={cn(
-          "inline-flex w-full items-center justify-center gap-3 rounded border border-zinc-300 bg-white px-4 py-3 text-[15px] font-medium text-zinc-700 transition-colors hover:bg-zinc-50",
+          OAUTH_BUTTON,
           disabled && "pointer-events-none opacity-50",
         )}
       >
