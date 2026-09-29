@@ -15,19 +15,19 @@ const ExampleActionCardList: React.FC<ExampleActionCardListProps> = ({
       name: "Plan your contribution to a collective donation to Helen Keller International",
       description:
         "Members found ways to earn or save money to donate more than $3,000 collectively to Helen Keller International, an effective nonprofit addressing global malnutrition.",
-      link: "https://worldalliance.org/actions/84",
+      link: "/actions/84",
     },
     {
       name: "Discuss the repeal of the endangerment finding with current and former U.S. EPA employees",
       description:
         "Members discussed the repeal of the EPA's endangerment finding, as well as the current state of the EPA, with current and former EPA employees.",
-      link: "https://worldalliance.org/actions/76",
+      link: "/actions/76",
     },
     {
       name: "Help inform public comments on U.S. federal AI policy",
       description:
         "Members were asked questions about personal experiences and beliefs related to three federal dockets on AI policy. Then, the office posted three official comments summarizing members' answers.",
-      link: "https://worldalliance.org/actions/75",
+      link: "/actions/75",
     },
 
     {
@@ -49,7 +49,7 @@ const ExampleActionCardList: React.FC<ExampleActionCardListProps> = ({
           .
         </span>
       ),
-      link: "https://worldalliance.org/actions/14",
+      link: "/actions/14",
     },
   ];
 

@@ -118,10 +118,7 @@ const TerminologyPage: React.FC = () => {
           the members (usually, but not always, staff members) that developed
           the action. The authors of an action are displayed in a fixed random
           order on the action’s detail page (
-          <Link
-            to={"https://worldalliance.org/actions/75"}
-            className="text-link hover:underline"
-          >
+          <Link to={"/actions/75"} className="text-link hover:underline">
             example
           </Link>
           ).

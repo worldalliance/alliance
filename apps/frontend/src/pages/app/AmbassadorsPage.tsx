@@ -1,3 +1,5 @@
+import { useAppOrigin } from "@alliance/sharedweb/lib/appOrigin";
+import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import React from "react";
 import { Link } from "react-router";
 import ambassadorInvitationGoal from "../../assets/ambassador-invitation-goal.png";
@@ -20,6 +22,7 @@ import {
 
 const AmbassadorsPage: React.FC = () => {
   useWhiteBackground();
+  const origin = useAppOrigin(getBaseUrl());
 
   const tocSections: TocSection[] = [
     { id: "about", label: "About", level: 1 },
@@ -250,8 +253,8 @@ const AmbassadorsPage: React.FC = () => {
           </p>
           <p>
             I am part of an online group called the Alliance (
-            <a href="https://worldalliance.org/" className="text-link">
-              https://worldalliance.org/
+            <a href={`${origin}/`} className="text-link">
+              {origin}/
             </a>
             ). Members spend 15 minutes a week taking coordinated actions that
             improve the world.
@@ -299,7 +302,7 @@ const AmbassadorsPage: React.FC = () => {
           family.
         </p>
 
-        <AmbassadorTalkingPoints />
+        <AmbassadorTalkingPoints origin={origin} />
 
         <h2 id="following-up" className={headingClassName}>
           Following up

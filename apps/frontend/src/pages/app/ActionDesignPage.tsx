@@ -73,10 +73,7 @@ const TerminologyPage: React.FC = () => {
         <p>These are examples of actions that tested specific hypotheses:</p>
         <ul className="list-disc list-inside pl-4 space-y-2">
           <li>
-            <Link
-              to="https://worldalliance.org/actions/14"
-              className="text-link"
-            >
+            <Link to="/actions/14" className="text-link">
               “Sign a letter requesting news coverage of a bring-your-own-cup
               cafe coalition”
             </Link>{" "}
@@ -84,20 +81,14 @@ const TerminologyPage: React.FC = () => {
             assistance in acquiring media coverage.
           </li>
           <li>
-            <Link
-              to="https://worldalliance.org/actions/32"
-              className="text-link"
-            >
+            <Link to="/actions/32" className="text-link">
               “Answer questions about nonprofit website copy and design”
             </Link>{" "}
             tested if we could build relationships with potential future
             partners by providing small-scale help.
           </li>
           <li>
-            <Link
-              to="https://worldalliance.org/actions/52"
-              className="text-link"
-            >
+            <Link to="/actions/52" className="text-link">
               “Participate in an experiment to measure AI + follow-up friends
               and family campaign”
             </Link>{" "}
@@ -112,28 +103,19 @@ const TerminologyPage: React.FC = () => {
         </p>
         <ul className="list-disc list-inside pl-4 space-y-2">
           <li>
-            <Link
-              to="https://worldalliance.org/actions/74"
-              className="text-link"
-            >
+            <Link to="/actions/74" className="text-link">
               “Consider inviting new members to the Alliance”
             </Link>{" "}
             helped us test a new invite process.
           </li>
           <li>
-            <Link
-              to="https://worldalliance.org/actions/71"
-              className="text-link"
-            >
+            <Link to="/actions/71" className="text-link">
               “Contribute to a discussion about Alliance culture”
             </Link>{" "}
             helped us develop community norms.
           </li>
           <li>
-            <Link
-              to="https://worldalliance.org/actions/52"
-              className="text-link"
-            >
+            <Link to="/actions/52" className="text-link">
               “Provide a quote about Alliance participation”
             </Link>{" "}
             helped us make a more compelling case to prospective external
@@ -181,20 +163,14 @@ const TerminologyPage: React.FC = () => {
         <ul className="list-disc list-inside pl-4 space-y-2">
           <li>
             The initial idea behind{" "}
-            <Link
-              to="https://worldalliance.org/actions/75"
-              className="text-link"
-            >
+            <Link to="/actions/75" className="text-link">
               “Help inform public comments on U.S. federal AI policy”
             </Link>{" "}
             was that federal dockets are typically unused by regular citizens.
           </li>
           <li>
             The initial idea behind{" "}
-            <Link
-              to="https://worldalliance.org/actions/71"
-              className="text-link"
-            >
+            <Link to="/actions/71" className="text-link">
               “Participate in an experiment to measure awareness of AI data use
               practices”
             </Link>{" "}
@@ -203,10 +179,7 @@ const TerminologyPage: React.FC = () => {
           </li>
           <li>
             The initial idea behind{" "}
-            <Link
-              to="https://worldalliance.org/actions/47"
-              className="text-link"
-            >
+            <Link to="/actions/47" className="text-link">
               “Decide how to allocate $1,000 next week”
             </Link>{" "}
             was that some donors we knew were experimenting with democratic
@@ -237,7 +210,7 @@ const TerminologyPage: React.FC = () => {
 
         <p>
           As an example, this was our basic plan for{" "}
-          <Link to="https://worldalliance.org/actions/75" className="text-link">
+          <Link to="/actions/75" className="text-link">
             “Help inform public comments on U.S. federal AI policy”
           </Link>
           :
@@ -267,7 +240,7 @@ const TerminologyPage: React.FC = () => {
           about. As a result, we find it useful at this stage to explore ways we
           can modify or add to the basic plan. For instance, we turned an
           initial plan to{" "}
-          <Link to="https://worldalliance.org/actions/52" className="text-link">
+          <Link to="/actions/52" className="text-link">
             help members adjust their privacy settings
           </Link>{" "}
           into an opportunity to recruit new members (by running a follow-up
@@ -305,17 +278,11 @@ const TerminologyPage: React.FC = () => {
           <li>
             Developing software for task-specific features. For instance, we
             developed a{" "}
-            <Link
-              to="https://worldalliance.org/flyerexport"
-              className="text-link"
-            >
+            <Link to="/flyerexport" className="text-link">
               flyer generator
             </Link>{" "}
             for{" "}
-            <Link
-              to="https://worldalliance.org/actions/56"
-              className="text-link"
-            >
+            <Link to="/actions/56" className="text-link">
               “Invite friends and family to fill out our AI privacy survey”
             </Link>{" "}
             so that members could easily share our survey and track which
@@ -325,17 +292,11 @@ const TerminologyPage: React.FC = () => {
             Accounting for members&apos; habits. For instance, when designing a
             pothole-reporting action, we kept in mind that many members complete
             tasks at the last minute. We separated the action into a{" "}
-            <Link
-              to="https://worldalliance.org/actions/48"
-              className="text-link"
-            >
+            <Link to="/actions/48" className="text-link">
               planning task
             </Link>{" "}
             and a{" "}
-            <Link
-              to="https://worldalliance.org/actions/50"
-              className="text-link"
-            >
+            <Link to="/actions/50" className="text-link">
               reporting task
             </Link>{" "}
             so that members would not realize they needed to go outside the
@@ -343,18 +304,12 @@ const TerminologyPage: React.FC = () => {
           </li>
           <li>
             Accommodating different categories of members. For instance, in{" "}
-            <Link
-              to="https://worldalliance.org/actions/70"
-              className="text-link"
-            >
+            <Link to="/actions/70" className="text-link">
               “Collect unclaimed property for a potential future donation,”
             </Link>{" "}
             we provided additional information to members who are not U.S.
             citizens. As another example, we made drop-off optional in{" "}
-            <Link
-              to="https://worldalliance.org/actions/60"
-              className="text-link"
-            >
+            <Link to="/actions/60" className="text-link">
               “Collect e-waste for proper disposal”
             </Link>{" "}
             for members who lived far away from an e-waste disposal site.
@@ -374,7 +329,7 @@ const TerminologyPage: React.FC = () => {
           After we launch a task to members, we monitor the first few hours of
           member completions and fix any problems members encounter. For
           instance, our initial wording in the task for{" "}
-          <Link to="https://worldalliance.org/actions/49" className="text-link">
+          <Link to="/actions/49" className="text-link">
             “Approve proposals for how to spend $1,000”
           </Link>{" "}
           confused the first few members who completed it, so we revised it and
@@ -396,7 +351,7 @@ const TerminologyPage: React.FC = () => {
           Once members have completed their part of an action, we ensure that
           all remaining steps are executed by ourselves or by other parties. For
           instance, after members completed the task for{" "}
-          <Link to="https://worldalliance.org/actions/14" className="text-link">
+          <Link to="/actions/14" className="text-link">
             “Sign a letter requesting news coverage of a bring-your-own-cup cafe
             coalition,”
           </Link>{" "}
