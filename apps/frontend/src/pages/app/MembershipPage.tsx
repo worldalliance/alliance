@@ -10,8 +10,8 @@ import {
   isConfirmationCloseEnough,
 } from "@alliance/shared/lib/contract";
 import { suspendContractConfirmation } from "@alliance/shared/lib/copy";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useContractById } from "@alliance/shared/lib/useContractById";
+import { useInvalidateVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
@@ -19,7 +19,6 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import FormInput from "@alliance/sharedweb/ui/FormInput";
-import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
 import React, { useEffect, useId, useMemo, useState } from "react";
 import { useLocation } from "react-router";
@@ -121,7 +120,7 @@ function SignedContractActions({
 const MembershipPage: React.FC = () => {
   const { user, refreshUser } = useAuth();
   const { latestContract } = useContract();
-  const queryClient = useQueryClient();
+  const invalidateVisibilityContext = useInvalidateVisibilityContext();
   const { hash } = useLocation();
   const [editName, setEditName] = useState("");
   const [weeklyCommitmentConfirmation, setWeeklyCommitmentConfirmation] =
@@ -181,9 +180,7 @@ const MembershipPage: React.FC = () => {
           contractId: latestContract.id,
         });
         setWeeklyCommitmentConfirmation("");
-        void queryClient.invalidateQueries({
-          queryKey: queryKeys.myVisibilityContext(),
-        });
+        invalidateVisibilityContext();
         await refreshUser();
       }
     } catch (error) {

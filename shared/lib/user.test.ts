@@ -1,5 +1,6 @@
 import type { QueryKey } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
+import { queryKeys } from "./queryKeys";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi, type RouteTable } from "./testing/serveApi";
 import {
@@ -9,6 +10,7 @@ import {
   useMessageableUsersQuery,
   useRemoveFriendMutation,
   useSendFriendRequestMutation,
+  useUpdateProfileMutation,
   useUserForumCommentsQuery,
   useUserForumPostsQuery,
   useUserFriendStatusQuery,
@@ -399,4 +401,20 @@ it("asks again after a friend action that never reached the server", async () =>
       throw new TypeError("Failed to fetch");
     }),
   ).toBe("Please try again.");
+});
+
+it("a profile update invalidates the visibility context", async () => {
+  api.alsoServing({
+    "POST /user/update": () => Response.json({ id: ALLOWED_USER }),
+  });
+  const { client, wrapper } = queryWrapper();
+  client.setQueryData(queryKeys.myVisibilityContext(), {});
+  const mutation = renderHook(() => useUpdateProfileMutation(ALLOWED_USER), {
+    wrapper,
+  });
+
+  await mutation.result.current.mutateAsync({});
+  expect(
+    client.getQueryState(queryKeys.myVisibilityContext())?.isInvalidated,
+  ).toBe(true);
 });
