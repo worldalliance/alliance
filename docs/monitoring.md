@@ -177,13 +177,13 @@ For node-exporter, we need to update `prometheus.yml` on the monitoring instance
 
 `scripts/sync_prod_to_staging.sh` runs nightly from cron on the staging host, and the backend deploy reinstalls it as `~/sync_prod_to_staging.sh` on every non-production branch. It reports each run twice, to Slack and to a dead man's switch.
 
-Before swapping the copy in, it runs the migrations of the backend deployed at `~/nest-backend/server` against it, since prod's schema lags staging's code. That connects with the CA in `~/db-ca.pem`, which the deploy writes from `DB_CA_CERT`.
+Before swapping the copy in, it runs the migrations of the backend deployed at `~/nest-backend/server` against it, since prod's schema lags staging's code. That connects with the CA in `~/db-ca.pem`, which the deploy writes from `DB_CA_CERT`. From that migration through the swap it holds `~/migrate.lock`, which the backend deploy holds from replacing `~/nest-backend` until the new code passes its health check or rolls back, so a deploy can't migrate the database the swap drops.
 
 Slack covers the runs that live long enough to post. The switch covers the ones that don't: a SIGKILL, a dead host, a cron that never fires, a `db-sync.env` that won't source. All of those send nothing, and the check alerts on the ping that never arrives.
 
 The start and the outcome carry the run's timestamp, as in `prod → staging (20260901_020000)`, which is how you tell which start an outcome belongs to hours later. That same string names the dump file in the host log, so a message in Slack leads to its own lines in the log. A failure before the sync starts has no start to pair with and posts untagged.
 
-Use a healthchecks.io check and set `HEALTHCHECK_URL` in `/home/ec2-user/db-sync.env` to its bare ping URL. The script appends `/start` and `/fail` itself, so don't include either, and a trailing slash is fine. Give the check a period of a day and a grace window longer than a full sync takes. A Better Stack heartbeat is not a drop-in replacement. It takes the bare URL and `/fail`, with no `/start`.
+Use a healthchecks.io check and set `HEALTHCHECK_URL` in `/home/ec2-user/db-sync.env` to its bare ping URL. The script appends `/start` and `/fail` itself, so don't include either, and a trailing slash is fine. Give the check a period of a day and a grace window longer than a full sync takes, plus the 15 minutes it may wait on `~/migrate.lock` for a deploy. A Better Stack heartbeat is not a drop-in replacement. It takes the bare URL and `/fail`, with no `/start`.
 
 The sync refuses to start without `HEALTHCHECK_URL` and posts an `:x:` to Slack saying so. That is on purpose. A monitor that turns itself off when someone forgets a variable is worse than no monitor. It does mean a freshly provisioned staging host needs the variable in `db-sync.env` before the first run, not after.
 
