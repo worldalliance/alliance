@@ -55,3 +55,14 @@ test("the waitlist form stays on the page when submitted", () => {
   fireEvent(form, submit);
   expect(submit.defaultPrevented).toBe(true);
 });
+
+test("the waitlist form offers sign-up with Google and Apple", () => {
+  renderPage();
+
+  expect(
+    screen.getByRole("button", { name: "Sign up with Google" }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: "Sign up with Apple" }),
+  ).toBeTruthy();
+});

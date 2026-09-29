@@ -1,4 +1,4 @@
-import { OAuthProvider } from "@alliance/common/oauth";
+import { OAUTH_PROVIDER_LABEL, OAuthProvider } from "@alliance/common/oauth";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import OAuthProviderIcon from "@alliance/sharedweb/ui/icons/OAuthProviderIcon";
@@ -44,16 +44,19 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
           invited you to the Alliance
         </span>
       </p>
-      <button
-        type="button"
-        className={cn(
-          OAUTH_BUTTON,
-          "lg:border-white/70 lg:bg-transparent lg:text-white lg:hover:bg-white/10",
-        )}
-      >
-        <OAuthProviderIcon provider={OAuthProvider.Google} />
-        Sign up with Google
-      </button>
+      {Object.values(OAuthProvider).map((provider) => (
+        <button
+          key={provider}
+          type="button"
+          className={cn(
+            OAUTH_BUTTON,
+            "lg:border-white/70 lg:bg-transparent lg:text-white lg:hover:bg-white/10",
+          )}
+        >
+          <OAuthProviderIcon provider={provider} />
+          Sign up with {OAUTH_PROVIDER_LABEL[provider]}
+        </button>
+      ))}
       <EmailDivider
         className="lg:text-white/85"
         ruleClassName="lg:bg-white/50"

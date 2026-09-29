@@ -18,3 +18,5 @@ Follow the text sizing conventions used elsewhere on the site. The signup form i
 Widen the content, disregarding the design images, so it has the same margins as the navbar. That lets "[name] invited you to the Alliance" fit on one line.
 
 On mobile, give the signup form its own white container with rounded corners, visually separating it from the header above and the timeline below.
+
+Add a "Sign up with Apple" button to the signup form.
