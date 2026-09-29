@@ -63,6 +63,16 @@ Existing Alliance accounts may enter this separate waitlist. Do not infer identi
 
 Keep waitlist, organization, and invite history persistent. Default operations archive/disable acquisition links rather than deleting attribution. Invalid or disabled incoming links show an error with an explicit option to continue without an organization; do not silently assign a different source.
 
+PR 3 schema choices:
+
+- Organization waitlist links get their own `waitlist_link` table rather than reusing `share_url`, whose invite links lead to account signup.
+- The database enforces the entry rules it can: email is `citext`, like `user.email`, and must be stored trimmed; an entry without an organization needs a nonblank reason; an invite names at most one of an inviting user and an organization.
+- An entry's `sourceLinkId` names the organization link its referral chain started from. PR 4's entry service copies it, and the organization, from the referrer when an entry joins through a personal link; the database does not check this (ALL-1284).
+- The foreign keys this PR adds into campaigns, links, and entries do not cascade, so deleting a record that waitlist attribution depends on fails. The older `share_url` and `user.referredByCampaignId` keys still cascade and set null. An organization's `communityId` sets null when its group is deleted, leaving the organization and its attribution in place.
+- Nothing in the schema requires a waitlist entry's, link's, or invite's campaign to be an organization; the writers in PRs 4, 7, and 8 check `kind` (ALL-1283).
+- An organization-issued invite records `organizationId` and `waitlistEntryId`. Its claimant keeps the `onetime_invite` referral source and reaches the organization through the invite, since `user.referredByCampaignId` requires the `campaign` source.
+- Tags and staff action records arrive with PR 7, their first reader. New columns carry no Swagger annotations; later PRs expose them through DTOs.
+
 ## Public entry, confirmation, and returning visits
 
 Show validation errors before submission, prevent duplicate clicks while submitting, and preserve input on failures. A successful database insert defines entry success even when confirmation email fails; display the personal link immediately and offer the protected recovery path. Do not recreate an entry or automatically resend email on a repeated submission.
