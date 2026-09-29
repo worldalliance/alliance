@@ -6,12 +6,12 @@ import { clipboardCopy } from "@alliance/shared/lib/copy";
 import { buildActionShareUrl } from "@alliance/shared/lib/shareText";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { Link2Icon } from "lucide-react";
 import React, { useCallback } from "react";
 import { Link, href } from "react-router";
+import { getSiteUrl } from "../lib/config";
 import ActionCompletedBarWithInfo from "../pages/app/ActionCompletedBarWithInfo";
 import ShareButton from "./ShareButton";
 
@@ -29,7 +29,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
   const handleShareAction = useCallback(async () => {
     const url = await buildActionShareUrl({
       actionId: action.id,
-      baseUrl: getBaseUrl(),
+      baseUrl: getSiteUrl(),
       isAuthenticated: true,
     });
     return copyToClipboard(url);
