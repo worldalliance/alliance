@@ -871,6 +871,8 @@ jobs:
                 && mv -f ~/sync_prod_to_staging.sh.new ~/sync_prod_to_staging.sh \
                 && echo "installed ~/sync_prod_to_staging.sh" \
                 || echo "WARNING: could not install sync_prod_to_staging.sh"
+              printf '%s\n' "$DB_CA_CERT" > ~/db-ca.pem \
+                || echo "WARNING: could not write ~/db-ca.pem"
             fi
 
   verify-deployment:

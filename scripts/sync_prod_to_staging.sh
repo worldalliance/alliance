@@ -20,8 +20,8 @@ fi
 # The lock taken below lives on the open file description rather than the
 # process, so every child inherits it and an orphaned pg_dump would hold it
 # after a kill and skip every run that follows. Anything that can outlive the
-# shell runs through here. The two startup aborts below run before the lock
-# exists, where closing an fd nothing opened is a no-op.
+# shell runs through here. Startup aborts that run before the lock exists
+# close an fd nothing opened, which is a no-op.
 unlocked() {
   "$@" 200>&-
 }
@@ -78,6 +78,12 @@ if ! flock -n 200; then
   notify_slack ":no_entry: prod → staging: another sync is already running; \
 skipping this one."
   exit 0
+fi
+
+DB_CA_FILE=/home/ec2-user/db-ca.pem
+if [ ! -s "$DB_CA_FILE" ]; then
+  abort_before_start "${DB_CA_FILE} is missing or empty; the backend deploy \
+writes it from DB_CA_CERT."
 fi
 
 # cleanup reads paths built further down, so it can't be the trap yet. This one
@@ -346,6 +352,24 @@ UPDATE "user_device" SET "expoPushToken" = NULL;
 UPDATE "push" SET "expoPushToken" = 'pruned';
 
 SQL
+
+# Prod's schema lags the code deployed to staging by every migration that
+# hasn't shipped to production yet. Migrating after anonymizing means a migration
+# that copies member data only ever copies anonymized values.
+STAGE="migrations"
+echo "[$(date)] ==> Running staging's migrations on ${SCRATCH_DB}..."
+
+(
+  cd /home/ec2-user/nest-backend/server
+  NODE_ENV=staging \
+    DB_HOST="$STAGING_DB_HOST" \
+    DB_NAME="$SCRATCH_DB" \
+    DB_USERNAME="$STAGING_DB_USER" \
+    DB_PASSWORD="$STAGING_DB_PASSWORD" \
+    DB_CA_CERT="$(cat "$DB_CA_FILE")" \
+    unlocked /home/ec2-user/.bun/bin/bunx typeorm-ts-node-commonjs \
+    --dataSource src/datasources/dataSource.ts migration:run
+)
 
 STAGE="swap"
 echo "[$(date)] ==> Swapping ${SCRATCH_DB} into place as ${STAGING_DB_NAME}..."
