@@ -190,21 +190,15 @@ const InvitesPage = () => {
   );
 
   const { actionable, unverifiableActionable, waitingForResponse, settled } =
-    useMemo(() => {
-      if (!user) {
-        return {
-          actionable: [],
-          unverifiableActionable: [],
-          waitingForResponse: [],
-          settled: [],
-        };
-      }
-      return bucketOnetimeInvitesByActionability({
-        invites,
-        leaderCommunityIds,
-        userId: user.id,
-      });
-    }, [invites, leaderCommunityIds, user]);
+    useMemo(
+      () =>
+        bucketOnetimeInvitesByActionability({
+          invites,
+          leaderCommunityIds,
+          userId: user?.id,
+        }),
+      [invites, leaderCommunityIds, user?.id],
+    );
 
   const acceptedInvites = useMemo(() => {
     return invites.filter((invite) => invite.status === "link_used");

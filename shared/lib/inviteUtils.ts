@@ -124,7 +124,7 @@ const createdAtComparator = (
 export function bucketOnetimeInvitesByActionability(params: {
   invites: OnetimeInviteDto[];
   leaderCommunityIds: Set<number>;
-  userId: number;
+  userId: number | undefined;
 }): {
   actionable: OnetimeInviteDto[];
   unverifiableActionable: OnetimeInviteDto[];
@@ -137,6 +137,10 @@ export function bucketOnetimeInvitesByActionability(params: {
   const unverifiableActionable: OnetimeInviteDto[] = [];
   const waitingForResponse: OnetimeInviteDto[] = [];
   const settled: OnetimeInviteDto[] = [];
+
+  if (userId === undefined) {
+    return { actionable, unverifiableActionable, waitingForResponse, settled };
+  }
 
   for (const invite of invites) {
     switch (invite.status) {
