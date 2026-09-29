@@ -1,14 +1,31 @@
 import { cn } from "@alliance/shared/styles/util";
 import { socialPreviewMeta } from "../../../lib/socialPreviewMeta";
-import { CONTACT_EMAIL } from "../../../site/content";
+import { DocProse } from "../../../site/DocProse";
 import { SiteFooter } from "../../../site/Footer";
 import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
-import { SiteRoot } from "../../../site/PageShell";
-import { DisplayHeading, SITE_COL, SiteArrow } from "../../../site/ui";
 import {
-  GrantmakingMemberProgress,
-  MEMBER_GOAL_LABEL,
-} from "./GrantmakingMemberProgress";
+  BandHeading,
+  BandHeadingSize,
+  SiteRoot,
+} from "../../../site/PageShell";
+import {
+  DisplayHeading,
+  SITE_COL,
+  SiteSubtitle,
+  SubtitleSize,
+} from "../../../site/ui";
+import { MEMBER_GOAL_LABEL } from "./GrantmakingMemberProgress";
+import { MemberWaitlistBar } from "./MemberWaitlistBar";
+import { PersonRow } from "./PersonRow";
+import {
+  ABOUT_SECTIONS,
+  FEATURED_PEOPLE,
+  MEMBER_COUNT,
+  MEMBERS,
+  WAITLIST_COUNT,
+} from "./placeholders";
+import { ProjectTimeline } from "./ProjectTimeline";
+import { WaitlistSignupForm } from "./WaitlistSignupForm";
 
 export function meta() {
   return socialPreviewMeta({
@@ -18,60 +35,92 @@ export function meta() {
   });
 }
 
-const MEMBER_MAILTO = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("I'd like to become a member")}`;
+const GRID =
+  "grid grid-cols-1 gap-y-10 lg:grid-cols-[minmax(0,1fr)_max(24rem,28.65%)] lg:gap-x-[5.65%]";
 
 export default function DemocraticGrantmaking26() {
   return (
-    <SiteRoot className="bg-[var(--site-primary)] text-white">
+    <SiteRoot className="bg-white">
       <Navbar overPrimary />
-      <main
-        className="flex min-h-dvh flex-col"
-        style={{ paddingTop: NAV_HEIGHT }}
-      >
+      <main>
         <div
-          className={cn(
-            SITE_COL,
-            "flex flex-1 flex-col justify-end pb-24 lg:pb-24",
-          )}
+          className="bg-[var(--site-primary)] pb-10 text-white lg:pb-16"
+          style={{ paddingTop: NAV_HEIGHT + 64 }}
         >
-          <div className="flex flex-col gap-6 md:gap-12 lg:flex-row lg:items-end xl:gap-64">
-            <div className="flex w-full min-w-0 flex-1 flex-col items-start gap-6 text-left">
-              <p className="text-base text-white/40 md:text-lg">
-                Coming in fall 2026
-              </p>
+          <div className={cn(SITE_COL, GRID)}>
+            <div className="flex flex-col gap-4">
               <DisplayHeading
                 as="h1"
-                className="w-full text-balance text-5xl text-white sm:text-7xl lg:text-8xl xl:text-[8rem]"
+                onDark
+                className="text-5xl sm:text-6xl lg:text-7xl"
               >
-                Decide how to donate{" "}
-                <span className="text-green">$100,000</span>
+                Help decide where to donate{" "}
+                <span className="site-display text-green">$100,000</span>
               </DisplayHeading>
-              <div className="flex w-full flex-col items-start gap-4">
-                <p className="text-lg leading-snug text-white sm:text-4xl lg:text-5xl">
-                  We&apos;re planning a project in which an expert panel and{" "}
-                  {MEMBER_GOAL_LABEL} members will work together to make a
-                  significant grant.
-                </p>
-                <p className="text-xl text-white/80 md:text-2xl">
-                  <span className="font-semibold text-green">$36,300</span>{" "}
-                  committed by funders so far
-                </p>
-                <GrantmakingMemberProgress className="mt-2 text-base md:text-lg" />
-              </div>
+              <SiteSubtitle
+                size={SubtitleSize.Page}
+                onDark
+                className="lg:hidden"
+              >
+                Join the Alliance to propose nonprofits and participate in a
+                first-of-its-kind democratic philanthropy experiment.
+              </SiteSubtitle>
+              <SiteSubtitle
+                size={SubtitleSize.Page}
+                onDark
+                className="hidden lg:block"
+              >
+                Join the Alliance to participate in a groundbreaking
+                philanthropic experiment
+              </SiteSubtitle>
+              <ul className="mt-4 hidden flex-wrap gap-x-8 gap-y-3 lg:flex">
+                {FEATURED_PEOPLE.map((person) => (
+                  <li key={person.name}>
+                    <PersonRow person={person} onDark />
+                  </li>
+                ))}
+              </ul>
             </div>
-            <a
-              href={MEMBER_MAILTO}
-              className="flex min-h-52 w-full shrink-0 flex-col justify-end bg-white p-6 text-left text-[var(--site-ink)] hover:bg-zinc-200 sm:min-h-64 sm:max-w-sm sm:p-8 lg:min-h-72 lg:w-[22rem] lg:max-w-none"
-              style={{ borderRadius: "var(--site-radius-card)" }}
-            >
-              <span className="flex w-full items-end justify-between gap-4">
-                <span className="max-w-[10ch] text-[1.7rem] leading-tight font-medium sm:text-[2.1rem] lg:text-[2.4rem]">
-                  Become a member to participate
-                </span>
-                <SiteArrow className="mb-1 size-5 shrink-0" />
-              </span>
-            </a>
+            <WaitlistSignupForm className="w-full max-w-lg lg:max-w-none" />
           </div>
+          <ProjectTimeline
+            currentIdx={0}
+            className={cn(SITE_COL, "mt-14 lg:mt-28")}
+          />
+        </div>
+        <div className={cn(SITE_COL, GRID, "pt-10 pb-16 lg:pt-14 lg:pb-24")}>
+          <div className="flex flex-col gap-10">
+            <MemberWaitlistBar
+              members={MEMBER_COUNT}
+              waitlist={WAITLIST_COUNT}
+            />
+            {ABOUT_SECTIONS.map((section) => (
+              <section key={section.heading} className="flex flex-col gap-4">
+                <BandHeading
+                  size={BandHeadingSize.Section}
+                  className="text-[var(--site-primary)]"
+                >
+                  {section.heading}
+                </BandHeading>
+                <DocProse markdown={section.body} />
+              </section>
+            ))}
+          </div>
+          <aside className="hidden flex-col gap-4 lg:flex">
+            <BandHeading
+              size={BandHeadingSize.Section}
+              className="text-[var(--site-primary)]"
+            >
+              Members
+            </BandHeading>
+            <ul className="flex flex-col gap-3">
+              {MEMBERS.map((person) => (
+                <li key={person.name}>
+                  <PersonRow person={person} />
+                </li>
+              ))}
+            </ul>
+          </aside>
         </div>
       </main>
       <SiteFooter />
