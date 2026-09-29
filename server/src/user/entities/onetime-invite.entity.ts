@@ -91,12 +91,12 @@ export class OnetimeInvite {
   @ManyToOne(() => User, {
     onDelete: "SET NULL",
   })
-  @ApiProperty({ type: () => User })
+  @ApiProperty({ type: () => User, nullable: true })
   @Type(() => User)
   @JoinColumn({ name: "invitingUserId" })
-  @Allow()
+  @IsOptional()
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  invitingUser: Relation<User>;
+  invitingUser: Relation<User> | null;
 
   @OneToOne(() => User, (user) => user.referredByInvite)
   @ApiProperty({ type: () => User, nullable: true })
