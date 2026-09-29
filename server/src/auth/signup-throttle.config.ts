@@ -37,6 +37,15 @@ export const JOIN_REQUEST_THROTTLE: Record<string, ThrottlerOptions> = {
 };
 
 /**
+ * As loose as {@link OAUTH_THROTTLE}: an organization's audience often joins
+ * from one office or event network.
+ */
+export const WAITLIST_ENTRY_THROTTLE: Record<string, ThrottlerOptions> = {
+  waitlistEntryBurst: { limit: 30, ttl: milliseconds({ minutes: 1 }) },
+  waitlistEntrySustained: { limit: 200, ttl: milliseconds({ hours: 1 }) },
+};
+
+/**
  * Sign-in through a provider. Looser than {@link SIGNUP_THROTTLE} because
  * /start is one click of a login button, not a registration, and a roomful of
  * members behind one NAT shares the bucket.

@@ -10,6 +10,7 @@ import {
   JOIN_REQUEST_THROTTLE,
   OAUTH_THROTTLE,
   SIGNUP_THROTTLE,
+  WAITLIST_ENTRY_THROTTLE,
 } from "src/auth/signup-throttle.config";
 import { LINK_PREVIEW_THROTTLE } from "src/link-preview/link-preview-throttle.config";
 
@@ -23,6 +24,7 @@ export const ALL_THROTTLES: Record<string, ThrottlerOptions> = {
   ...OAUTH_THROTTLE,
   ...ACTION_PARTNERSHIP_RESPONSE_THROTTLE,
   ...JOIN_REQUEST_THROTTLE,
+  ...WAITLIST_ENTRY_THROTTLE,
   ...LINK_PREVIEW_THROTTLE,
 };
 

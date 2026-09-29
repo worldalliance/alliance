@@ -4333,6 +4333,58 @@ export type JoinRequestResultDto = {
     submitted: boolean;
 };
 
+export type CreateWaitlistEntryDto = {
+    /**
+     * An organization's waitlist link code
+     */
+    linkCode?: string;
+    /**
+     * A waitlist entry's personal code
+     */
+    referrerCode?: string;
+    name: string;
+    email: string;
+    /**
+     * Required when the referral resolves to no organization
+     */
+    reason?: string | null;
+    committed: true;
+};
+
+export type WaitlistEntryResultDto = {
+    /**
+     * The new entry's personal code; null when the email was already on the waitlist
+     */
+    shareCode: string | null;
+};
+
+export type WaitlistOrganizationDto = {
+    name: string;
+    /**
+     * URL of the organization's logo, else its group's photo
+     */
+    picture: string | null;
+    /**
+     * Entries ever attributed to the organization
+     */
+    entryCount: number;
+};
+
+export type WaitlistReferralDto = {
+    organization: WaitlistOrganizationDto | null;
+    /**
+     * Set for a personal link
+     */
+    inviterName: string | null;
+};
+
+export type WaitlistCountDto = {
+    /**
+     * Entries not yet mobilized
+     */
+    waiting: number;
+};
+
 export type HeyApiError = {
     statusCode: number;
     message: string | Array<string>;
@@ -13275,6 +13327,81 @@ export type JoinRequestsCreateResponses = {
 };
 
 export type JoinRequestsCreateResponse = JoinRequestsCreateResponses[keyof JoinRequestsCreateResponses];
+
+export type WaitlistCreateData = {
+    body: CreateWaitlistEntryDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/entries';
+};
+
+export type WaitlistCreateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistCreateError = WaitlistCreateErrors[keyof WaitlistCreateErrors];
+
+export type WaitlistCreateResponses = {
+    200: WaitlistEntryResultDto;
+};
+
+export type WaitlistCreateResponse = WaitlistCreateResponses[keyof WaitlistCreateResponses];
+
+export type WaitlistFindReferralData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * An organization's waitlist link code
+         */
+        linkCode?: string;
+        /**
+         * A waitlist entry's personal code
+         */
+        referrerCode?: string;
+    };
+    url: '/waitlist/referral';
+};
+
+export type WaitlistFindReferralErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistFindReferralError = WaitlistFindReferralErrors[keyof WaitlistFindReferralErrors];
+
+export type WaitlistFindReferralResponses = {
+    200: WaitlistReferralDto;
+};
+
+export type WaitlistFindReferralResponse = WaitlistFindReferralResponses[keyof WaitlistFindReferralResponses];
+
+export type WaitlistCountData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/waitlist/count';
+};
+
+export type WaitlistCountErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistCountError = WaitlistCountErrors[keyof WaitlistCountErrors];
+
+export type WaitlistCountResponses = {
+    200: WaitlistCountDto;
+};
+
+export type WaitlistCountResponse = WaitlistCountResponses[keyof WaitlistCountResponses];
 
 export type ClientOptions = {
     baseUrl: string;
