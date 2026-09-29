@@ -20,7 +20,7 @@ Deliver as stacked pull requests. PR 0 is #323 on `charlie/project-page`; later 
 3. Data model: campaign kind, the organization's unique group, waitlist entries, organization links, organization-owned invites. Backend and migrations only.
 4. Public entry: email submission API, personal sharing links, the reason rule, page wiring, member/waitlist counts and social proof, `/join` removal and redirect. Sends no email.
 5. Public email: confirmation and recovery mail, bot validation, recipient and IP limits, the global volume cap. Public sending stays disabled until the Mailgun threshold is chosen.
-6. Google and Apple entry without an account, remembered browser state, and “Forget this browser.”
+6. Remembered browser state and “Forget this browser.”
 7. Admin: organizations and their links, the waitlist list, filters, tags, cohorts, manual mobilize/undo.
 8. Admin email: composer, templates, durable batches, idempotent sends, unsubscribe, send-and-mobilize.
 9. Metrics.
@@ -38,7 +38,7 @@ At the user's request, no PR merges until the whole stack is approved, and the s
 
 These are observations of this branch, not evidence of user intent:
 
-- The project form currently prevents submission; Google and Apple buttons are inert. The inviter, counts, featured people, and member list are fixtures. Body sections contain lorem ipsum. There is no waitlist persistence.
+- The project form currently prevents submission. The inviter, counts, featured people, and member list are fixtures. Body sections contain lorem ipsum. There is no waitlist persistence.
 - The timeline and required commitment checkbox exist. The visible heading differs from the supplied project title; the progress bar follows the opening section, and the opening section is not explicitly constrained to a viewport. Advisor identities, pilot text, and assessment criteria remain designer deliverables.
 - `Campaign` stores a name, picture, and referral code, owns share links, and supplies account attribution and invite-graph nodes. It has no notification scheduling semantics.
 - Existing one-time invites store a destination community, claimant, and use timestamp. Their creation expects a user inviter. Organization ownership and links back to waitlist recipients require extensions.
@@ -64,8 +64,6 @@ Existing Alliance accounts may enter this separate waitlist. Do not infer identi
 Keep waitlist, organization, and invite history persistent. Default operations archive/disable acquisition links rather than deleting attribution. Invalid or disabled incoming links show an error with an explicit option to continue without an organization; do not silently assign a different source.
 
 ## Public entry, confirmation, and returning visits
-
-Use a shared submission contract for name/email and Google/Apple. OAuth obtains verified provider identity without creating, logging into, or linking an Alliance account. Preserve the incoming referral through OAuth, collect a missing name, and require the commitment and conditional reason before creating the entry. A cancelled/failed provider flow returns to the form with a retry path and its referral intact.
 
 Show validation errors before submission, prevent duplicate clicks while submitting, and preserve input on failures. A successful database insert defines entry success even when confirmation email fails; display the personal link immediately and offer the protected recovery path. Do not recreate an entry or automatically resend email on a repeated submission.
 
@@ -160,7 +158,7 @@ Use distinct recipient entries for recipient conversion rates, and show individu
 
 Implementation is complete when these behaviors pass focused automated checks and the public/admin flows are verified using synthetic data:
 
-1. Organization, personal, and direct entry resolve the expected attribution. Referral chains retain organization/channel and immediate referrer; direct/unaffiliated entries require a reason. Both OAuth providers follow the same rules without creating accounts.
+1. Organization, personal, and direct entry resolve the expected attribution. Referral chains retain organization/channel and immediate referrer; direct/unaffiliated entries require a reason.
 2. Duplicate and concurrent entry submissions produce one record and one personal code, retain initial attribution/status, and cannot grant access by merely submitting a known email. Commitment and invalid fields are rejected server-side.
 3. A public sharing link permits referrals but reveals no email, private browser access, or mobilization invite. Public email requests obey recipient and IP limits, bot validation, suppression, and atomic send allowances even under concurrent submissions.
 4. Confirmation and recovery emails preserve access to the public share link. Mail failure does not lose a recorded entry. Returning browsers restore only authorized state; forgetting/expiry clears it. Explicit invites override remembered codes; used/revoked codes cannot start signup.

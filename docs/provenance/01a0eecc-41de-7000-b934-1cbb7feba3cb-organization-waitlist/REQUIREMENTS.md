@@ -13,13 +13,14 @@ The statements under “User requirements” originate in the user's document or
 
 ### Waitlist and ordinary signup
 
-- Store waitlisted people separately from accounts. Joining the waitlist does not create an Alliance account. Google and Apple entry should do essentially the same thing as submitting name and email.
+- Store waitlisted people separately from accounts. Joining the waitlist does not create an Alliance account.
+- The waitlist has no Google or Apple entry; people join with name and email.
 - The waitlist is a special entry path and must not gate existing normal invite flows. Mobilization sends a normal signup invite usable by someone who is not on the waitlist. Avoid introducing a new account signup flow.
 - Mobilized means accepted off the waitlist and free to join the Alliance, regardless of whether the person creates an account.
 - Waitlisted people need personalized links for inviting others and a way to retrieve those links after leaving the site. Remember their state locally when they return, and remember an earlier signup invite/code as well.
 - Personal waitlist referrals inherit the inviter's organization and track who invited whom. Waitlist entries do not have accountability groups.
 - Remove the existing Request to Join page. Update all on-site links formerly targeting `/join` to the Democratic Grantmaking waitlist page. A redirect for old `/join` URLs is acceptable but not required by the user.
-- Require a reason for wanting to join when the entrant has no organization, including personal referrals from someone without an organization. This applies to email and OAuth entry; organization-attributed entrants skip it.
+- Require a reason for wanting to join when the entrant has no organization, including personal referrals from someone without an organization. Organization-attributed entrants skip it.
 
 ### Organizations, groups, and links
 
@@ -60,7 +61,7 @@ The user approved the following agent-authored recommendations; implementation i
 - Track conversion through the emailed invite and its claiming account instead of matching waitlist and account emails. A forwarded invite attributes its actual claimant; an unrelated signup is not detected.
 - Reuse a recipient's unused invite in followups. Make replacement explicit. Keep undoing mobilized status separate from revoking an unused invite.
 - Warn about a missing/full/unavailable destination group and allow staff to proceed; affected accounts await staff placement rather than being blocked from signup.
-- Keep one waitlist entry per normalized email. Duplicate submissions retain the first organization/referrer and mobilized status. OAuth fills identity fields, obtains a missing name, and still requires commitment. Entry itself does not require email verification.
+- Keep one waitlist entry per normalized email. Duplicate submissions retain the first organization/referrer and mobilized status. Entry itself does not require email verification.
 - Retain every sent message with a reuse action; save named templates explicitly. Templates contain a subject and formatted body, with name, organization, signup-link, and personal-share-link substitutions. Editing a template affects future drafts.
 - Filter/search by name/email, organization, source link/channel, referrer, signup date, tags, mobilized status, and invite-derived account status. Allow individual selection and all filtered results. Staff can read the reason and filter for its presence.
 - The public waitlist count includes non-mobilized entries. Organization social proof counts cumulative attributed waitlist entries, including personal referrals and mobilized people.
