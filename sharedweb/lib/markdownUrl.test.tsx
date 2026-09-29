@@ -114,6 +114,12 @@ describe("resolveMarkdownImageSrc", () => {
 });
 
 describe("useMarkdownUrlTransform", () => {
+  const OnAltStaging = ({ children }: React.PropsWithChildren) => (
+    <SiteOriginLinkProvider origin="https://staging.thealliance.org">
+      {children}
+    </SiteOriginLinkProvider>
+  );
+
   const hrefIn = (wrapper: React.FC<React.PropsWithChildren>, url: string) =>
     renderHook(() => useMarkdownUrlTransform(), { wrapper }).result.current(
       url,
@@ -134,12 +140,6 @@ describe("useMarkdownUrlTransform", () => {
   });
 
   test("aims a link to either domain at the origin an admin app names", () => {
-    const OnAltStaging = ({ children }: React.PropsWithChildren) => (
-      <SiteOriginLinkProvider origin="https://staging.thealliance.org">
-        {children}
-      </SiteOriginLinkProvider>
-    );
-
     expect(hrefIn(OnAltStaging, "https://worldalliance.org/actions/135")).toBe(
       "https://staging.thealliance.org/actions/135",
     );
@@ -149,6 +149,16 @@ describe("useMarkdownUrlTransform", () => {
     expect(
       hrefIn(OnAltStaging, "https://www.regulations.gov/document/FS-1"),
     ).toBe("https://www.regulations.gov/document/FS-1");
+  });
+
+  test("aims a site path at the origin an admin app names", () => {
+    expect(hrefIn(OnAltStaging, "/actions/135")).toBe(
+      "https://staging.thealliance.org/actions/135",
+    );
+    expect(hrefIn(OnAltStaging, "//evil.example/actions/135")).toBe(
+      "//evil.example/actions/135",
+    );
+    expect(hrefIn(OnAltStaging, "#comments")).toBe("#comments");
   });
 
   test("fetches an image on our domain from the one being read", () => {

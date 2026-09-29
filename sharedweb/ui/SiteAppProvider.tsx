@@ -20,7 +20,7 @@ export function SiteAppProvider({ children }: React.PropsWithChildren) {
 /**
  * Marks an app served on some other host — the admin, on admin.<domain>, whose
  * router has no route for a path on the site. An authored link to either
- * domain is aimed at `origin` instead.
+ * domain, or to a path on the site, is aimed at `origin` instead.
  */
 export function SiteOriginLinkProvider({
   origin,
@@ -29,7 +29,9 @@ export function SiteOriginLinkProvider({
   const toOrigin = useCallback(
     (url: string): string => {
       const href = siteHref(url);
-      return href === url ? url : `${origin}${href}`;
+      return href.startsWith("/") && !href.startsWith("//")
+        ? `${origin}${href}`
+        : href;
     },
     [origin],
   );
