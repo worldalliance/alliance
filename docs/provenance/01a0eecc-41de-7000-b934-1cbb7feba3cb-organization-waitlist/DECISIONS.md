@@ -14,9 +14,9 @@ The page works responsively in mobile browsers. Normal registration and invite c
 
 Deliver as stacked pull requests. PR 0 is #323 on `charlie/project-page`; later PRs use branches `charles/waitlist-<n>-<slug>`. PR 0 targets `main`; each later PR targets the previous PR's branch. Order follows dependencies:
 
-0. The page redesign with placeholder data, already on this branch before this specification. PR 4 connects it.
-1. This specification.
-2. Atomic invite claiming. Account creation currently marks an invite used before creating the user, a bug independent of the waitlist.
+0. Done, #323. The page redesign with placeholder data. PR 4 connects it.
+1. Done, #328. This specification.
+2. Done, #329. Atomic invite claiming, a fix independent of the waitlist: account creation claims its invite in the same transaction, and pending or rejected invite requests cannot be claimed (ALL-1281).
 3. Data model: campaign kind, the organization's unique group, waitlist entries, organization links, organization-owned invites. Backend and migrations only.
 4. Public entry: email submission API, personal sharing links, the reason rule, page wiring, member/waitlist counts and social proof, `/join` removal and redirect. Sends no email.
 5. Public email: confirmation and recovery mail, bot validation, recipient and IP limits, the global volume cap. Public sending stays disabled until the Mailgun threshold is chosen.
