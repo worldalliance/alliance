@@ -76,6 +76,7 @@ import {
   Brackets,
   DataSource,
   DeepPartial,
+  type EntityManager,
   ILike,
   In,
   IsNull,
@@ -265,10 +266,16 @@ export class UserService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
+  /**
+   * A user referred by a one-time invite claims it in the same transaction,
+   * so a failed insert leaves the invite usable and only one signup can claim it.
+   */
   async create(data: DeepPartial<User>): Promise<User> {
-    const user = await this.userRepository.save(
-      this.userRepository.create(data),
-    );
+    const inviteId = data.referredByInvite?.id;
+    const user = await this.dataSource.transaction(async (manager) => {
+      if (inviteId !== undefined) await this.claimInvite(manager, inviteId);
+      return manager.save(manager.create(User, data));
+    });
     await this.eventLogService.sendMessage({
       type: EventType.AccountCreated,
       message: [user.name, referralLabel(user), "created an account."]
@@ -278,6 +285,25 @@ export class UserService {
       blob: null,
     });
     return user;
+  }
+
+  private async claimInvite(
+    manager: EntityManager,
+    inviteId: number,
+  ): Promise<void> {
+    // The update locks the invite row, so a concurrent claim waits here and
+    // then sees the committed claimant.
+    const { affected } = await manager.update(
+      OnetimeInvite,
+      { id: inviteId, deletedAt: IsNull() },
+      { status: OnetimeInviteStatus.LINK_USED, usedAt: new Date() },
+    );
+    if (!affected) {
+      throw new BadRequestException("This invite code is no longer valid");
+    }
+    if (await manager.existsBy(User, { referredByInvite: { id: inviteId } })) {
+      throw new BadRequestException("This invite code has already been used");
+    }
   }
 
   async update(id: number, data: UpdateProfileDto): Promise<User> {
@@ -476,7 +502,7 @@ export class UserService {
    * signup-page inviter display ({@link resolveReferrer}) build on it, so the
    * two can't drift. `opts.inviteRelations` lets a caller load the matched
    * invite with extra relations (AuthService needs the inviting user's
-   * communities and the invited user to detect a spent invite).
+   * communities).
    */
   async resolveReferral(
     code: string,
@@ -2949,13 +2975,6 @@ export class UserService {
         community: true,
         invitingUser: true,
       },
-    });
-  }
-
-  async invalidateInvite(inviteId: number): Promise<void> {
-    await this.onetimeInviteRepository.update(inviteId, {
-      status: OnetimeInviteStatus.LINK_USED,
-      usedAt: new Date(),
     });
   }
 
