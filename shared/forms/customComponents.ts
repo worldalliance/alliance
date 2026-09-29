@@ -22,11 +22,68 @@ export interface CustomComponentProps {
   required?: boolean;
 }
 
+export enum CustomComponentId {
+  ExampleContract = "example-contract",
+  ActionShareUrl = "action-share-url",
+  ShareUrl = "share-url",
+  ShareInfoPubliclyToggle = "share-info-publicly-toggle",
+}
+
 export interface CustomComponentDefinition {
-  id: string;
+  id: CustomComponentId;
   label: string;
   description?: string;
   component: ComponentType<CustomComponentProps>;
   defaultValue?: string;
   configFields?: CustomComponentConfigField[];
 }
+
+const customComponentMetadata: Record<
+  CustomComponentId,
+  Omit<CustomComponentDefinition, "id" | "component">
+> = {
+  [CustomComponentId.ExampleContract]: {
+    label: "Example Contract Component",
+    description: "Example component showing use of user data",
+  },
+  [CustomComponentId.ActionShareUrl]: {
+    label: "Action Share URL Component",
+    description: "Component to share the URL of an action",
+    configFields: [
+      {
+        name: "actionId",
+        label: "Action ID",
+        description:
+          "Specify which action to reference. Defaults to the current action when left blank.",
+        type: "number",
+      },
+    ],
+  },
+  [CustomComponentId.ShareUrl]: {
+    label: "Share External URL",
+    description:
+      "Component to share an admin-configured external URL with the user's share code appended.",
+    configFields: [
+      {
+        name: "externalTargetId",
+        label: "External Share Target ID",
+        description:
+          "ID of the admin-configured external share target. Manage targets in the admin panel.",
+        type: "number",
+      },
+    ],
+  },
+  [CustomComponentId.ShareInfoPubliclyToggle]: {
+    label: "Share Info Publicly Toggle",
+    description: "Toggle a member's public profile visibility setting.",
+  },
+};
+
+export const buildCustomComponentRegistry = (
+  components: Record<CustomComponentId, ComponentType<CustomComponentProps>>,
+): CustomComponentDefinition[] =>
+  Object.values(CustomComponentId).map((id) => ({
+    id,
+    ...customComponentMetadata[id],
+    component: components[id],
+  }));
