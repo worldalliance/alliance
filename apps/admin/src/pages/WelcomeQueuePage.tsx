@@ -2,11 +2,11 @@ import { pickForCount, withCount } from "@alliance/common/plural";
 import { actionsGetWelcomeQueueAdmin } from "@alliance/shared/client";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { useQuery } from "@tanstack/react-query";
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
+import { getSiteUrl } from "../lib/config";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 
 type WelcomeQueueFilter = "all" | "staff-liked";
@@ -24,7 +24,7 @@ const frontendActivityCommentsUrl = (params: {
   actionId: number;
   activityId: number;
 }): string =>
-  `${getBaseUrl()}/actions/${params.actionId}/activity/${params.activityId}#comments`;
+  `${getSiteUrl()}/actions/${params.actionId}/activity/${params.activityId}#comments`;
 
 const loadFailed = "Unable to load members who need welcomes.";
 

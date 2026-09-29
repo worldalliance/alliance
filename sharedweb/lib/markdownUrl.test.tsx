@@ -2,7 +2,7 @@ import { renderHook } from "@testing-library/react";
 import type { Element } from "hast";
 import React from "react";
 import { defaultUrlTransform } from "react-markdown";
-import { AuthoredLinkProvider, SiteAppProvider } from "../ui/SiteAppProvider";
+import { SiteAppProvider, SiteOriginLinkProvider } from "../ui/SiteAppProvider";
 import { imageSrcFromKey } from "./imageSrc";
 import {
   resolveMarkdownImageSrc,
@@ -133,10 +133,22 @@ describe("useMarkdownUrlTransform", () => {
     expect(hrefIn(SiteAppProvider, url)).toBe(url);
   });
 
-  test("keeps the authored URL in an app that serves another domain", () => {
-    const url = "https://worldalliance.org/actions/135";
+  test("aims a link to either domain at the origin an admin app names", () => {
+    const OnAltStaging = ({ children }: React.PropsWithChildren) => (
+      <SiteOriginLinkProvider origin="https://staging.thealliance.org">
+        {children}
+      </SiteOriginLinkProvider>
+    );
 
-    expect(hrefIn(AuthoredLinkProvider, url)).toBe(url);
+    expect(hrefIn(OnAltStaging, "https://worldalliance.org/actions/135")).toBe(
+      "https://staging.thealliance.org/actions/135",
+    );
+    expect(
+      hrefIn(OnAltStaging, "https://www.thealliance.org/actions/135?x=1#c"),
+    ).toBe("https://staging.thealliance.org/actions/135?x=1#c");
+    expect(
+      hrefIn(OnAltStaging, "https://www.regulations.gov/document/FS-1"),
+    ).toBe("https://www.regulations.gov/document/FS-1");
   });
 
   test("fetches an image on our domain from the one being read", () => {

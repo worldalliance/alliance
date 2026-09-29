@@ -1,6 +1,6 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { FormResponseDto } from "@alliance/shared/client";
-import { AuthoredLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
+import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { cleanup, render, screen } from "@testing-library/react";
 import FormResponseStatistics from "./FormResponseStatistics";
 
@@ -40,7 +40,7 @@ const response = (
 
 it("counts every choice any response saved, under the label saved first", () => {
   render(
-    <AuthoredLinkProvider>
+    <SiteOriginLinkProvider origin="https://worldalliance.org">
       <FormResponseStatistics
         form={{ id: 1, title: "Form", formSnapshotId: 7, schema }}
         responses={[
@@ -63,7 +63,7 @@ it("counts every choice any response saved, under the label saved first", () => 
           }),
         ]}
       />
-    </AuthoredLinkProvider>,
+    </SiteOriginLinkProvider>,
   );
 
   expect(screen.getByText("Alpha")).toBeTruthy();

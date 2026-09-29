@@ -1,6 +1,6 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { client } from "@alliance/shared/client/client.gen";
-import { AuthoredLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
+import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -49,13 +49,13 @@ function renderBuilder(initialSchema: FormSchema = mine) {
     },
   ]);
   render(
-    <AuthoredLinkProvider>
+    <SiteOriginLinkProvider origin="https://worldalliance.org">
       <QueryClientProvider client={new QueryClient()}>
         <ToastProvider>
           <RouterProvider router={router} />
         </ToastProvider>
       </QueryClientProvider>
-    </AuthoredLinkProvider>,
+    </SiteOriginLinkProvider>,
   );
 }
 

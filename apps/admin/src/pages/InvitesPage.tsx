@@ -22,6 +22,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { memberProfileUrl } from "../lib/config";
 
 const INVITES_PER_PAGE = 50;
 
@@ -228,9 +229,7 @@ const InvitesPage = () => {
                       <span className="text-gray-500"> inviting </span>{" "}
                       {invite.invitedUserId ? (
                         <a
-                          href={
-                            getBaseUrl() + `/member/${invite.invitedUserId}`
-                          }
+                          href={memberProfileUrl(invite.invitedUserId)}
                           className="underline"
                         >
                           {" "}
