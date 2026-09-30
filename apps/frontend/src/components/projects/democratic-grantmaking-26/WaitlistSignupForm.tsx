@@ -17,7 +17,7 @@ import { RotateCw } from "lucide-react";
 import type { FormEvent } from "react";
 import { ACCOUNT_BUTTON } from "../../../onboarding/chrome";
 import { SiteArrow } from "../../../site/ui";
-import { useWaitlistReferral } from "./useWaitlist";
+import { useWaitlistMailEnabled, useWaitlistReferral } from "./useWaitlist";
 import { WaitlistConfirmation } from "./WaitlistConfirmation";
 import { WAITLIST_FIELD } from "./waitlistStyles";
 
@@ -72,6 +72,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
     query: referral,
     dropReferral,
   } = useWaitlistReferral();
+  const mailEnabled = useWaitlistMailEnabled();
   const submit = useMutation({
     mutationFn: (body: CreateWaitlistEntryDto) =>
       waitlistCreate({ body, throwOnError: true }).then((res) => res.data),
@@ -108,7 +109,11 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
   if (submit.isSuccess) {
     return (
       <div className={card} style={cardStyle}>
-        <WaitlistConfirmation shareCode={submit.data.shareCode} />
+        <WaitlistConfirmation
+          shareCode={submit.data.shareCode}
+          email={submit.variables.email}
+          mailEnabled={mailEnabled}
+        />
       </div>
     );
   }

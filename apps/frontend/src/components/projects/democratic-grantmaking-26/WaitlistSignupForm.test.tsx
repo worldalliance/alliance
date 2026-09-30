@@ -17,10 +17,12 @@ import { WaitlistSignupForm } from "./WaitlistSignupForm";
 let referral: (url: URL) => Response;
 let entry: (body: CreateWaitlistEntryDto) => Response | Promise<Response>;
 let sent: CreateWaitlistEntryDto[];
+let mailEnabled: boolean;
 
 serveApi(
   routes({
     "GET /waitlist/referral": ({ request }) => referral(new URL(request.url)),
+    "GET /waitlist/mail-config": () => Response.json({ enabled: mailEnabled }),
     "POST /waitlist/entries": async ({ request }) => {
       const body: CreateWaitlistEntryDto = await request.json();
       sent.push(body);
@@ -31,6 +33,7 @@ serveApi(
 
 beforeEach(() => {
   sent = [];
+  mailEnabled = false;
   referral = () => new Response(null, { status: 500 });
   entry = () => Response.json({ shareCode: "abc123" });
 });
@@ -303,6 +306,26 @@ test("confirms a known email without revealing a link", async () => {
 
   await screen.findByText("You’re on the waitlist");
   expect(screen.queryByLabelText("Your personal link")).toBeNull();
+});
+
+test("offers a known email its link by email while public email is on", async () => {
+  mailEnabled = true;
+  entry = () => Response.json({ shareCode: null });
+  renderForm();
+
+  fill({ reason: "Again" });
+
+  await screen.findByRole("button", { name: /Email me my link/ });
+});
+
+test("offers no emailed link while public email is off", async () => {
+  entry = () => Response.json({ shareCode: null });
+  renderForm();
+
+  fill({ reason: "Again" });
+
+  await screen.findByText("You’re on the waitlist");
+  expect(screen.queryByRole("button", { name: /Email me my link/ })).toBeNull();
 });
 
 test("keeps the answers and shows the refusal when the server rejects them", async () => {

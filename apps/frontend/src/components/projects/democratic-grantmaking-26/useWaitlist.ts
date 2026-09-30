@@ -3,7 +3,11 @@ import {
   WAITLIST_REFERRER_PARAM,
   waitlistShareUrl,
 } from "@alliance/common/waitlist";
-import { waitlistCount, waitlistFindReferral } from "@alliance/shared/client";
+import {
+  waitlistCount,
+  waitlistFindReferral,
+  waitlistMailConfig,
+} from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
 import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
@@ -20,6 +24,20 @@ export function useWaitlistCount() {
       waitlistCount({ throwOnError: true }).then((res) => res.data.waiting),
     retry: retryUnlessRefused(1),
   });
+}
+
+/** True only once the server says public email is on. */
+export function useWaitlistMailEnabled(): boolean {
+  const query = useQuery({
+    queryKey: queryKeys.waitlistMailConfig(),
+    queryFn: () =>
+      waitlistMailConfig({ throwOnError: true }).then(
+        (res) => res.data.enabled,
+      ),
+    retry: retryUnlessRefused(1),
+    staleTime: Infinity,
+  });
+  return query.data ?? false;
 }
 
 export function useWaitlistReferral() {

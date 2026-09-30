@@ -3,6 +3,7 @@ import { copyOutcome, CopyOutcome } from "@alliance/sharedweb/lib/clipboard";
 import { Check, Copy } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { personalShareUrl } from "./useWaitlist";
+import { WaitlistLinkRequest } from "./WaitlistLinkRequest";
 import { WAITLIST_FIELD } from "./waitlistStyles";
 
 const COPY_ICON = <Copy className="size-5" aria-hidden />;
@@ -17,8 +18,12 @@ const copyFeedback: Record<CopyOutcome, { icon: ReactNode; error: boolean }> = {
 
 export function WaitlistConfirmation({
   shareCode,
+  email,
+  mailEnabled,
 }: {
   shareCode: string | null;
+  email: string;
+  mailEnabled: boolean;
 }) {
   const [copied, setCopied] = useState<CopyOutcome | null>(null);
   const url = shareCode && personalShareUrl(shareCode);
@@ -62,6 +67,7 @@ export function WaitlistConfirmation({
           )}
         </>
       )}
+      {!url && mailEnabled && <WaitlistLinkRequest email={email} />}
     </div>
   );
 }
