@@ -276,7 +276,7 @@ export type MissedActionReminderContext = {
 };
 
 /** Facepile preview size; member-list endpoints paginate full lists. */
-const GLOBAL_FEED_FACEPILE_LIMIT = 8;
+export const GLOBAL_FEED_FACEPILE_LIMIT = 8;
 
 /** Feed/member-list rolling window. */
 const GLOBAL_FEED_WINDOW_DAYS = 8;
@@ -307,6 +307,7 @@ type FeedMemberRankedQuery = {
 
 type FeedMemberSummaryRow = FeedMemberPageRow & {
   totalCount: number | string;
+  windowLatestAt: Date | string;
 };
 
 @Injectable()
@@ -5069,6 +5070,12 @@ export class ActionsService {
       .map((user) => new ProfileDto(user));
   }
 
+  /**
+   * Orders the facepile preview by profile picture first, then recency, so
+   * recent photo-less joins don't crowd out photos from earlier in the
+   * window. `windowLatestAt` is a window-wide MAX because the first row is
+   * photo-first, not the most recent.
+   */
   private async queryFeedMemberSummary({
     rankedSql,
     params,
@@ -5080,9 +5087,12 @@ export class ActionsService {
   }): Promise<{ users: ProfileDto[]; count: number; latestDate: Date | null }> {
     const limitParam = params.length + 1;
     const rows = await this.userRepository.query<FeedMemberSummaryRow[]>(
-      `SELECT "userId", "latestAt", "latestId", COUNT(*) OVER() AS "totalCount"
+      `SELECT feed_members."userId", feed_members."latestAt", feed_members."latestId",
+        COUNT(*) OVER() AS "totalCount",
+        MAX(feed_members."latestAt") OVER() AS "windowLatestAt"
       FROM (${rankedSql}) feed_members
-      ORDER BY "latestAt" DESC, "latestId" DESC
+      LEFT JOIN "user" ON "user".id = feed_members."userId"
+      ORDER BY ("user"."profilePicture" IS NOT NULL) DESC, feed_members."latestAt" DESC, feed_members."latestId" DESC
       LIMIT $${limitParam}`,
       [...params, limit],
     );
@@ -5094,7 +5104,9 @@ export class ActionsService {
     return {
       users,
       count: rows.length === 0 ? 0 : Number(rows[0].totalCount),
-      latestDate: rows[0]?.latestAt ? new Date(rows[0].latestAt) : null,
+      latestDate: rows[0]?.windowLatestAt
+        ? new Date(rows[0].windowLatestAt)
+        : null,
     };
   }
 

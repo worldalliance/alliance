@@ -2,7 +2,10 @@ import { ActionActivityType } from "@alliance/common/actionActivity";
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { milliseconds } from "date-fns";
 import { ActionCategory } from "src/actions/action-category";
-import { ActionsService } from "src/actions/actions.service";
+import {
+  ActionsService,
+  GLOBAL_FEED_FACEPILE_LIMIT,
+} from "src/actions/actions.service";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { SingleMemberCohortService } from "src/actions/single-member-cohort.service";
 import { ContractService } from "src/contract/contract.service";
@@ -2706,6 +2709,7 @@ describe("Actions (e2e)", () => {
   describe("Global feed", () => {
     let activeUser: User | null = null;
     let suspendedUser: User | null = null;
+    let facepileUsers: User[] = [];
 
     afterEach(async () => {
       if (activeUser) {
@@ -2716,6 +2720,10 @@ describe("Actions (e2e)", () => {
         await userRepo.delete(suspendedUser.id);
         suspendedUser = null;
       }
+      for (const user of facepileUsers) {
+        await userRepo.delete(user.id);
+      }
+      facepileUsers = [];
     });
 
     it("excludes suspended members from new member feed items", async () => {
@@ -2772,6 +2780,56 @@ describe("Actions (e2e)", () => {
 
       expect(newMemberIds).toContain(activeUser.id);
       expect(newMemberIds).not.toContain(suspendedUser.id);
+    });
+
+    it("keeps a member with a profile picture in the facepile past a full run of more recent ones without", async () => {
+      const now = Date.now();
+      const createMember = (label: string, joinedMinutesAgo: number) =>
+        userService.create({
+          email: `${label}-${now}@example.com`,
+          password: "Password123!",
+          name: label,
+          tags: [ctx.defaultTag],
+          contractEvents: [
+            {
+              type: ContractEventType.SIGNED,
+              date: new Date(now - milliseconds({ minutes: joinedMinutesAgo })),
+              automatic: false,
+              contractId: ctx.defaultContractId,
+            },
+          ],
+        });
+
+      const photoUser = await createMember("with-photo", 30);
+      facepileUsers.push(photoUser);
+      await userRepo.update(photoUser.id, {
+        profilePicture: "https://example.com/photo.jpg",
+      });
+      for (let i = 1; i <= GLOBAL_FEED_FACEPILE_LIMIT; i++) {
+        facepileUsers.push(await createMember(`no-photo-${i}`, i));
+      }
+
+      const res = await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed")
+        .query({ limit: 20 })
+        .expect(200);
+
+      const newMembersItem = res.body.find(
+        (item) => item.type === GlobalFeedItemType.NewMembers,
+      );
+
+      expect(newMembersItem).toBeDefined();
+      const newMemberIds: number[] = newMembersItem.newMembers.users.map(
+        (user) => user.id,
+      );
+
+      expect(newMemberIds).toContain(photoUser.id);
+      expect(newMembersItem.newMembers.count).toBeGreaterThan(
+        GLOBAL_FEED_FACEPILE_LIMIT,
+      );
+      expect(new Date(newMembersItem.date).getTime()).toBeGreaterThanOrEqual(
+        now - milliseconds({ minutes: 1 }),
+      );
     });
   });
 
