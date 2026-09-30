@@ -19,7 +19,7 @@ Deliver as stacked pull requests. PR 0 is #323 on `charlie/project-page`; later 
 2. Done, #329. Atomic invite claiming, a fix independent of the waitlist: account creation claims its invite in the same transaction, and pending or rejected invite requests cannot be claimed (ALL-1281).
 3. Done, #330. Data model: campaign kind, the organization's unique group, waitlist entries, organization links, organization-owned invites. Backend and migrations only, plus an independent fix: a one-time invite with no inviting user can be deleted, approved, or rejected without a 500.
 4. Done, #331. Public entry: email submission API, personal sharing links, the reason rule, page wiring, member/waitlist counts and social proof, `/join` removal and redirect. Sends no email.
-5. Public email: confirmation and recovery mail, recipient and IP limits, the global volume cap. Public sending stays disabled until the Mailgun threshold is chosen.
+5. Done, #333. Public email: confirmation and recovery mail, recipient and IP limits, the global volume cap. Public sending stays disabled until the Mailgun threshold is chosen.
 6. Remembered browser state and “Forget this browser.”
 7. Admin: organizations and their links, the waitlist list, filters, tags, cohorts, manual mobilize/undo.
 8. Admin email: composer, templates, durable batches, idempotent sends, unsubscribe, send-and-mobilize.
