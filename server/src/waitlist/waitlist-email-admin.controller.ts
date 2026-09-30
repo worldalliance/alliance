@@ -18,6 +18,7 @@ import { ReqUser } from "src/auth/user.decorator";
 import {
   RetryWaitlistEmailDto,
   SendWaitlistEmailDto,
+  TestWaitlistEmailDto,
   WaitlistEmailBatchDetailDto,
   WaitlistEmailBatchDto,
 } from "./dto/waitlist-email-batch.dto";
@@ -48,6 +49,16 @@ export class WaitlistEmailAdminController {
     @Body() dto: PreviewWaitlistEmailDto,
   ): Promise<WaitlistEmailPreviewDto> {
     return new WaitlistEmailPreviewDto(await this.emailService.preview(dto));
+  }
+
+  @Post("emails/test")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse()
+  async sendTestEmailAdmin(
+    @ReqUser() user: JwtPayload,
+    @Body() dto: TestWaitlistEmailDto,
+  ): Promise<void> {
+    await this.emailService.sendTest({ dto, staffUserId: user.sub });
   }
 
   @Post("emails")

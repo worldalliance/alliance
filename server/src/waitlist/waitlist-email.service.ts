@@ -1,25 +1,28 @@
-import { R } from "@alliance/common/result";
+import { R, type Result } from "@alliance/common/result";
 import {
   findWaitlistEmailPlaceholders,
   WaitlistEmailPlaceholder,
   withoutOrganizationMessage,
 } from "@alliance/common/waitlistEmail";
 import {
+  BadGatewayException,
   BadRequestException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { MailService } from "src/mail/mail.service";
+import { MailService, type WaitlistStaffEmail } from "src/mail/mail.service";
 import {
   signupUrl,
   waitlistUnsubscribeLink,
   withRef,
 } from "src/search/approutes";
+import { UserService } from "src/user/user.service";
 import type { Repository } from "src/utils/Repository";
 import { DataSource, In } from "typeorm";
 import type {
   SendWaitlistEmailDto,
+  TestWaitlistEmailDto,
   WaitlistEmailBatchDetail,
   WaitlistEmailBatchSummary,
   WaitlistEmailCounts,
@@ -43,11 +46,18 @@ import {
   WaitlistEmailSkipReason,
   waitlistEmailValues,
 } from "./waitlist-email-audience";
-import { renderWaitlistEmail } from "./waitlist-email-render";
-import { WaitlistEmailSender } from "./waitlist-email-sender.service";
+import {
+  missingValuesMessage,
+  renderWaitlistEmail,
+} from "./waitlist-email-render";
+import {
+  sendOutcome,
+  WaitlistEmailSender,
+} from "./waitlist-email-sender.service";
 import { ENTRY_INVITE_CLAIMED_SQL } from "./waitlist-entry-admin.service";
 
-// A preview never issues an invite or carries a real entry's unsubscribe link.
+// Previews and test sends never issue an invite or carry a real entry's
+// unsubscribe link.
 const SAMPLE_SIGNUP_CODE = "SIGNUP-CODE";
 const SAMPLE_UNSUBSCRIBE_TOKEN = "00000000-0000-0000-0000-000000000000";
 
@@ -89,6 +99,7 @@ export class WaitlistEmailService {
     private readonly batchRepository: Repository<WaitlistEmailBatch>,
     @InjectRepository(WaitlistEmailRecipient)
     private readonly recipientRepository: Repository<WaitlistEmailRecipient>,
+    private readonly userService: UserService,
     private readonly mailService: MailService,
     private readonly sender: WaitlistEmailSender,
   ) {}
@@ -142,30 +153,40 @@ export class WaitlistEmailService {
     return row?.count ?? 0;
   }
 
+  private sampleEmail(params: {
+    content: WaitlistEmailContentDto;
+    entry: WaitlistEntry;
+  }): Result<WaitlistStaffEmail, WaitlistEmailPlaceholder[]> {
+    const { content, entry } = params;
+    return R.map(
+      renderWaitlistEmail({
+        subject: content.subject,
+        body: content.body,
+        values: waitlistEmailValues({
+          entry,
+          signupLink: withRef(signupUrl(true), SAMPLE_SIGNUP_CODE),
+        }),
+      }),
+      (rendered) => ({
+        ...rendered,
+        unsubscribeUrl: waitlistUnsubscribeLink(SAMPLE_UNSUBSCRIBE_TOKEN),
+      }),
+    );
+  }
+
   private async renderSample(params: {
-    subject: string;
-    body: string;
+    content: WaitlistEmailContentDto;
     entry: WaitlistEntry;
   }): Promise<WaitlistEmailSample> {
-    const { subject, body, entry } = params;
-    const rendered = renderWaitlistEmail({
-      subject,
-      body,
-      values: waitlistEmailValues({
-        entry,
-        signupLink: withRef(signupUrl(true), SAMPLE_SIGNUP_CODE),
-      }),
-    });
-    if (R.isFailure(rendered)) {
-      return { entry, subject: null, html: null, missing: rendered.error };
+    const { entry } = params;
+    const sample = this.sampleEmail(params);
+    if (R.isFailure(sample)) {
+      return { entry, subject: null, html: null, missing: sample.error };
     }
     return {
       entry,
-      subject: rendered.value.subject,
-      html: await this.mailService.renderWaitlistStaffEmail({
-        ...rendered.value,
-        unsubscribeUrl: waitlistUnsubscribeLink(SAMPLE_UNSUBSCRIBE_TOKEN),
-      }),
+      subject: sample.value.subject,
+      html: await this.mailService.renderWaitlistStaffEmail(sample.value),
       missing: [],
     };
   }
@@ -206,11 +227,7 @@ export class WaitlistEmailService {
       ).length,
       alreadySent,
       sample: sampleEntry
-        ? await this.renderSample({
-            subject: dto.subject,
-            body: dto.body,
-            entry: sampleEntry,
-          })
+        ? await this.renderSample({ content: dto, entry: sampleEntry })
         : null,
     };
   }
@@ -368,5 +385,51 @@ export class WaitlistEmailService {
     );
     void this.sender.run();
     return this.findSummary(params.id);
+  }
+
+  /** Emails the staff member a [Test] copy with the entry's values and sample links. */
+  async sendTest(params: {
+    dto: TestWaitlistEmailDto;
+    staffUserId: number;
+  }): Promise<void> {
+    const { dto, staffUserId } = params;
+    const [staff, entry] = await Promise.all([
+      this.userService.findOneOrFail(staffUserId),
+      this.entryRepository.findOne({
+        where: { id: dto.entryId },
+        relations: { organization: true },
+      }),
+    ]);
+    if (!entry) {
+      throw new NotFoundException("Waitlist entry not found");
+    }
+    const sample = this.sampleEmail({ content: dto, entry });
+    if (R.isFailure(sample)) {
+      throw new BadRequestException(missingValuesMessage(sample.error));
+    }
+    const sent = await R.fromPromise(
+      this.mailService.sendWaitlistStaffEmail({
+        recipient: staff.email,
+        content: { ...sample.value, subject: `[Test] ${sample.value.subject}` },
+      }),
+    );
+    const outcome = sendOutcome(sent);
+    switch (outcome.status) {
+      case WaitlistEmailRecipientStatus.Sent:
+        return;
+      case WaitlistEmailRecipientStatus.Pending:
+      case WaitlistEmailRecipientStatus.Failed:
+        throw new BadGatewayException(
+          `The test email failed: ${outcome.error}`,
+        );
+      case WaitlistEmailRecipientStatus.Uncertain:
+        throw new BadGatewayException(
+          `The test email may have gone out anyway; check your inbox before sending another: ${outcome.error}`,
+        );
+      default:
+        throw new Error(
+          `unknown send outcome: ${outcome.status satisfies never}`,
+        );
+    }
   }
 }

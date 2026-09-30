@@ -885,4 +885,88 @@ describe("Waitlist email admin (e2e)", () => {
       ).expect(404);
     });
   });
+
+  describe("test send", () => {
+    const sendTest = (body: Record<string, unknown>) =>
+      asAdmin(request(server()).post("/waitlist/admin/emails/test")).send({
+        subject: "Hi #{name}",
+        body: "#{signupLink}",
+        ...body,
+      });
+
+    it("emails the staff member a sample without issuing an invite", async () => {
+      const organization = await saveOrganization("Sample Org", true);
+      const entry = await saveEntry({
+        name: "Sample Person",
+        organizationId: organization.id,
+      });
+      await sendTest({
+        entryId: entry.id,
+        subject: "Hi #{name} from #{organizationName}",
+      }).expect(204);
+
+      const admin = await ctx.dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: ctx.adminUserId });
+      expect(sendStaff.mock.calls).toEqual([
+        [
+          {
+            recipient: admin.email,
+            content: expect.objectContaining({
+              subject: "[Test] Hi Sample Person from Sample Org",
+              bodyHtml: expect.stringContaining("/signup?ref=SIGNUP-CODE"),
+              unsubscribeUrl: expect.stringContaining(
+                "00000000-0000-0000-0000-000000000000",
+              ),
+            }),
+          },
+        ],
+      ]);
+      expect(await inviteRepo.countBy({ waitlistEntryId: entry.id })).toBe(0);
+    });
+
+    it("refuses a test email with a value the entry lacks", async () => {
+      const entry = await saveEntry();
+      const res = await sendTest({
+        entryId: entry.id,
+        subject: "From #{organizationName}",
+      }).expect(400);
+      expect(res.body.message).toBe("No value for #{organizationName}");
+      expect(sendStaff).not.toHaveBeenCalled();
+    });
+
+    it("refuses a test email for an unknown entry", async () => {
+      await sendTest({ entryId: 999999999 }).expect(404);
+      expect(sendStaff).not.toHaveBeenCalled();
+    });
+
+    it("says a test email that timed out may have gone out anyway", async () => {
+      sendStaff.mockRejectedValue(new Error("Connection timeout"));
+      const entry = await saveEntry();
+      const res = await sendTest({ entryId: entry.id }).expect(502);
+      expect(res.body.message).toBe(
+        "The test email may have gone out anyway; check your inbox before sending another: Connection timeout",
+      );
+    });
+
+    it("says why the test email wasn't sent", async () => {
+      sendStaff.mockResolvedValue(mailWith(EmailStatus.Pending));
+      const entry = await saveEntry();
+      const res = await sendTest({ entryId: entry.id }).expect(502);
+      expect(res.body.message).toBe(
+        "The test email failed: Mail delivery is off on this server",
+      );
+    });
+
+    it("says the test email failed when the mail server defers it", async () => {
+      sendStaff.mockRejectedValue(
+        Object.assign(new Error("421 try again later"), { responseCode: 421 }),
+      );
+      const entry = await saveEntry();
+      const res = await sendTest({ entryId: entry.id }).expect(502);
+      expect(res.body.message).toBe(
+        "The test email failed: 421 try again later",
+      );
+    });
+  });
 });

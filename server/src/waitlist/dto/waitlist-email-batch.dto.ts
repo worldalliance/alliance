@@ -1,11 +1,12 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsBoolean, IsUUID } from "class-validator";
+import { IsBoolean, IsInt, IsUUID } from "class-validator";
 import type { WaitlistEmailBatch } from "../entities/waitlist-email-batch.entity";
 import {
   type WaitlistEmailRecipient,
   WaitlistEmailRecipientStatus,
 } from "../entities/waitlist-email-recipient.entity";
 import { WaitlistEmailSkipReason } from "../waitlist-email-audience";
+import { WaitlistEmailContentDto } from "./waitlist-email-content.dto";
 import { WaitlistEmailAudienceDto } from "./waitlist-email.dto";
 
 export class SendWaitlistEmailDto extends WaitlistEmailAudienceDto {
@@ -20,6 +21,12 @@ export class SendWaitlistEmailDto extends WaitlistEmailAudienceDto {
   })
   @IsBoolean()
   mobilize: boolean;
+}
+
+export class TestWaitlistEmailDto extends WaitlistEmailContentDto {
+  @ApiProperty({ description: "The entry whose values fill the email" })
+  @IsInt()
+  entryId: number;
 }
 
 export class RetryWaitlistEmailDto {

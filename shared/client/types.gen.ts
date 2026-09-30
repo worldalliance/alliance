@@ -4637,6 +4637,18 @@ export type WaitlistEmailPreviewDto = {
     sample: WaitlistEmailSampleDto | null;
 };
 
+export type TestWaitlistEmailDto = {
+    subject: string;
+    /**
+     * Markdown with #{placeholder}s
+     */
+    body: string;
+    /**
+     * The entry whose values fill the email
+     */
+    entryId: number;
+};
+
 export type SendWaitlistEmailDto = {
     subject: string;
     /**
@@ -14278,6 +14290,30 @@ export type WaitlistEmailAdminPreviewEmailAdminResponses = {
 };
 
 export type WaitlistEmailAdminPreviewEmailAdminResponse = WaitlistEmailAdminPreviewEmailAdminResponses[keyof WaitlistEmailAdminPreviewEmailAdminResponses];
+
+export type WaitlistEmailAdminSendTestEmailAdminData = {
+    body: TestWaitlistEmailDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/emails/test';
+};
+
+export type WaitlistEmailAdminSendTestEmailAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminSendTestEmailAdminError = WaitlistEmailAdminSendTestEmailAdminErrors[keyof WaitlistEmailAdminSendTestEmailAdminErrors];
+
+export type WaitlistEmailAdminSendTestEmailAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type WaitlistEmailAdminSendTestEmailAdminResponse = WaitlistEmailAdminSendTestEmailAdminResponses[keyof WaitlistEmailAdminSendTestEmailAdminResponses];
 
 export type WaitlistEmailAdminFindEmailsAdminData = {
     body?: never;
