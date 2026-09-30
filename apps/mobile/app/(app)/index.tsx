@@ -4,14 +4,14 @@ import {
   useActionsQuery,
   useInvalidateActions,
 } from "@alliance/shared/lib/actionsListPage";
-import {
-  ActionWithAwayStatus,
-  homePagePriorityComparator,
-} from "@alliance/shared/lib/actionUtils";
+import { type ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { ParsedHomeFeedItemDto } from "@alliance/shared/lib/feedHelpers";
-import { type ParsedGeneralUpdate } from "@alliance/shared/lib/generalUpdates";
-import { useHomePageActions } from "@alliance/shared/lib/homePage";
+import {
+  type HomeSequenceItem,
+  interleaveActionsAndUpdates,
+  useHomePageActions,
+} from "@alliance/shared/lib/homePage";
 import { getTaskDismissInfo } from "@alliance/shared/lib/largeActionCard";
 import { useBoundedIndex } from "@alliance/shared/lib/useBoundedIndex";
 import { useUnreadGeneralUpdates } from "@alliance/shared/lib/useGeneralUpdates";
@@ -52,8 +52,7 @@ import {
 import { colors } from "../../lib/style/colors";
 
 type HomeScreenItem =
-  | { kind: "action"; action: ActionWithAwayStatus }
-  | { kind: "generalUpdate"; generalUpdate: ParsedGeneralUpdate }
+  | HomeSequenceItem
   | { kind: "followUpForm"; followUpForm: FollowUpFormDto; actionId: number };
 
 // Stable identity — LegendList remounts its scroll view whenever this prop changes.
@@ -143,15 +142,9 @@ export default function HomeScreen() {
   );
 
   const allItems = useMemo<HomeScreenItem[]>(() => {
-    const actionAndUpdateItems: HomeScreenItem[] = [
-      ...todoActions.map((action) => ({ kind: "action", action }) as const),
-      ...generalUpdates.map(
-        (generalUpdate) => ({ kind: "generalUpdate", generalUpdate }) as const,
-      ),
-    ].sort((a, b) => {
-      const aVal = a.kind === "action" ? a.action : a.generalUpdate;
-      const bVal = b.kind === "action" ? b.action : b.generalUpdate;
-      return homePagePriorityComparator(aVal, bVal);
+    const actionAndUpdateItems = interleaveActionsAndUpdates({
+      todoActions,
+      generalUpdates,
     });
 
     const followUpItems: HomeScreenItem[] = activeCompletableFollowUpForms.map(

@@ -5,10 +5,12 @@ import {
   homePagePriorityComparator,
   isActionOptional,
   isCurrentlyCompletedAction,
+  isDeferredForViewer,
   isFollowUpFormActive,
   shouldCompleteAction,
   showActionInSidebarList,
 } from "./actionUtils";
+import type { ParsedGeneralUpdate } from "./generalUpdates";
 
 export type ActiveFollowUpFormEntry = {
   followUpForm: FollowUpFormDto;
@@ -16,12 +18,16 @@ export type ActiveFollowUpFormEntry = {
 };
 
 export function useHomePageActions(actions: ActionWithAwayStatus[] | null) {
-  const todoActions = useMemo(() => {
-    return (
-      actions?.filter(shouldCompleteAction).sort(homePagePriorityComparator) ??
-      []
-    );
-  }, [actions]);
+  const todoActions = useMemo(
+    () =>
+      withDeferredLast(
+        actions
+          ?.filter(shouldCompleteAction)
+          .sort(homePagePriorityComparator) ?? [],
+        isDeferredForViewer,
+      ),
+    [actions],
+  );
 
   const isActionDeadlineWithinDays = useCallback(
     (action: ActionDto, days: number) => {
@@ -123,4 +129,38 @@ export function compareFollowUpFormsByStartDateDesc(
   b: FollowUpFormDto,
 ): number {
   return followUpStartTimeMs(b) - followUpStartTimeMs(a);
+}
+
+export type HomeSequenceItem =
+  | { kind: "action"; action: ActionWithAwayStatus }
+  | { kind: "generalUpdate"; generalUpdate: ParsedGeneralUpdate };
+
+export function interleaveActionsAndUpdates(params: {
+  todoActions: ActionWithAwayStatus[];
+  generalUpdates: ParsedGeneralUpdate[];
+}): HomeSequenceItem[] {
+  const sorted = [
+    ...params.todoActions.map(
+      (action) => ({ kind: "action", action }) as const,
+    ),
+    ...params.generalUpdates.map(
+      (generalUpdate) => ({ kind: "generalUpdate", generalUpdate }) as const,
+    ),
+  ].sort((a, b) =>
+    homePagePriorityComparator(
+      a.kind === "action" ? a.action : a.generalUpdate,
+      b.kind === "action" ? b.action : b.generalUpdate,
+    ),
+  );
+  return withDeferredLast(
+    sorted,
+    (item) => item.kind === "action" && isDeferredForViewer(item.action),
+  );
+}
+
+function withDeferredLast<T>(sorted: T[], isDeferred: (item: T) => boolean) {
+  return [
+    ...sorted.filter((item) => !isDeferred(item)),
+    ...sorted.filter(isDeferred),
+  ];
 }
