@@ -54,11 +54,13 @@ jobs:
           - 5432:5432
     env:
       OUTPUT_DIR: ${{ github.workspace }}/.scratch/pr-screenshots
+      TOOLS_DIR: ${{ github.workspace }}/.scratch/pr-screenshots-tools
       AVD_IMAGE: system-images;android-34;google_apis;x86_64
       APP_VARIANT: development
       PGHOST: localhost
       PGUSER: postgres
       PGPASSWORD: postgres
+      PGDATABASE: alliance
 
     steps:
       - name: Require write access from whoever labeled
@@ -169,11 +171,14 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASH_DEFAULT_TIMEOUT_MS: "600000"
         run: |
           set -o pipefail
           BASE_SHA="$(git merge-base "$BASE_SHA" "$HEAD_SHA")"
           export BASE_SHA
-          mkdir -p "$OUTPUT_DIR"
+          mkdir -p "$OUTPUT_DIR" "$TOOLS_DIR"
+          # Outside git's reach, so a checkout of the base leaves them in place.
+          cp .github/pr-screenshots/*.ts "$TOOLS_DIR"
           # On stdin, not argv, so a `ps | grep` for a command the prompt names can't match claude.
           claude -p \
             --dangerously-skip-permissions \
@@ -196,16 +201,18 @@ jobs:
           include-hidden-files: true
 
       # Artifacts are public here and, unlike logs, not secret-masked.
-      - name: Redact transcript
+      - name: Redact transcript and logs
         id: redact
         if: always()
         env:
           TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
-          transcript="$RUNNER_TEMP/transcript.jsonl"
-          if [ -n "$TOKEN" ] && [ -f "$transcript" ]; then
-            perl -pi -e 's/\Q$ENV{TOKEN}\E/[redacted]/g' "$transcript"
-          fi
+          shopt -s nullglob
+          for file in "$RUNNER_TEMP/transcript.jsonl" "$TOOLS_DIR"/run/*.log; do
+            if [ -n "$TOKEN" ] && [ -f "$file" ]; then
+              perl -pi -e 's/\Q$ENV{TOKEN}\E/[redacted]/g' "$file"
+            fi
+          done
 
       - name: Upload transcript and logs
         if: always() && steps.redact.outcome == 'success'
@@ -213,9 +220,11 @@ jobs:
         with:
           name: pr-screenshots-transcript
           retention-days: 7
+          include-hidden-files: true
           path: |
             ${{ runner.temp }}/transcript.jsonl
             ${{ runner.temp }}/emulator.log
+            ${{ env.TOOLS_DIR }}/run/*.log
 
   post:
     needs: capture
