@@ -20,7 +20,7 @@ import React, {
   useState,
 } from "react";
 import CohortControls from "../components/waitlist/CohortControls";
-import MobilizeActions from "../components/waitlist/MobilizeActions";
+import EntryActions from "../components/waitlist/EntryActions";
 import TagActions from "../components/waitlist/TagActions";
 import TagManager from "../components/waitlist/TagManager";
 import WaitlistFilters from "../components/waitlist/WaitlistFilters";
@@ -189,7 +189,7 @@ const WaitlistPage: React.FC = () => {
             onChanged={() => changeSelection(new Set())}
           />
           <TagManager tags={tags.data} />
-          <MobilizeActions
+          <EntryActions
             selectedIds={selectedIds}
             onChanged={() => changeSelection(new Set())}
           />

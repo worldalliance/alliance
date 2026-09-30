@@ -49,6 +49,7 @@ type WaitlistApiState = {
   holdIds: Promise<void> | undefined;
   holdSearch: Promise<void> | undefined;
   mobilizeStatus: number;
+  revokeStatus: number;
   tagAddStatus: number;
   tagRenameStatus: number;
   tagCreateStatus: number;
@@ -72,6 +73,7 @@ const initialState = (): WaitlistApiState => ({
   holdIds: undefined,
   holdSearch: undefined,
   mobilizeStatus: 200,
+  revokeStatus: 200,
   tagAddStatus: 200,
   tagRenameStatus: 200,
   tagCreateStatus: 200,
@@ -137,6 +139,10 @@ export const serveWaitlistApi = () => {
               { status: api.mobilizeStatus },
             ),
       "POST /waitlist/admin/entries/unmobilize": recordPost({ changed: 0 }),
+      "POST /waitlist/admin/entries/revoke-invites": async (input) =>
+        api.revokeStatus === 200
+          ? recordPost({ changed: 3 })(input)
+          : Response.json({}, { status: api.revokeStatus }),
       "GET /campaigns": () =>
         Response.json([
           { ...campaign, id: 7, name: "Acme", kind: "organization" },
