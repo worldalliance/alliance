@@ -4,7 +4,7 @@ import {
   variableReferencePattern,
 } from "@alliance/common/forms/variables";
 import { cn } from "@alliance/shared/styles/util";
-import { Braces } from "lucide-react";
+import { SquareFunction } from "lucide-react";
 import {
   useEffect,
   useMemo,
@@ -276,7 +276,7 @@ export function VariableTextField({
             onClick={openPicker}
             className="absolute right-1 top-1 rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
           >
-            <Braces size={14} />
+            <SquareFunction size={14} />
           </button>
         )}
       </div>
