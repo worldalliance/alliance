@@ -1,11 +1,17 @@
 name: Dirty check
 description: Fail when the checkout has a non-empty dirty.txt, which freezes production releases.
 
+inputs:
+  working-directory:
+    description: Checkout to check.
+    default: .
+
 runs:
   using: composite
   steps:
     - name: Abort if dirty.txt has content
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
       run: |
         if [ -f dirty.txt ] && [ -s dirty.txt ]; then
           echo "dirty.txt has content. Aborting."

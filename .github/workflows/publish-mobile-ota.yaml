@@ -3,9 +3,18 @@ name: Publish Mobile OTA
 # Publishes an over-the-air JS/asset update to the production EAS Update
 # channel. Only JS/asset changes ship this way; native changes still require a
 # store build (the fingerprint runtimeVersion guards compatibility).
+#
+# Dispatch with a commit to ship an older commit to the store-live runtime after
+# main has moved to a new fingerprint:
+#   gh workflow run publish-mobile-ota.yaml -f ref=<full-sha>
 
 on:
   workflow_call:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Full SHA of a commit whose fingerprint matches the store-live baseline and whose API calls the production backend already serves
+        required: true
 
 jobs:
   publish-mobile-ota:
@@ -13,8 +22,42 @@ jobs:
     timeout-minutes: 15
     environment: production
     steps:
+      # release/ is the commit that ships; on dispatch the root is main, for its
+      # actions and live fingerprint baseline.
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Checkout Release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          path: release
+
+      - name: Require a deployed production commit dispatched from main
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ inputs.ref }}
+        run: |
+          if [[ ! "$REF" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "ref must be a full commit SHA." >&2
+            exit 1
+          fi
+          if [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "Dispatch from main, whose fingerprint baseline is live." >&2
+            exit 1
+          fi
+          live=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yaml/runs?branch=production&status=success&per_page=1" --jq '.workflow_runs[0].head_sha')
+          status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$REF...$live" --jq .status)
+          if [ "$status" != ahead ] && [ "$status" != identical ]; then
+            echo "$REF is not in the last successful production deploy, $live (compare status: $status)." >&2
+            exit 1
+          fi
+
+      - uses: ./.github/actions/dirty-check
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        with:
+          working-directory: release
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -23,10 +66,18 @@ jobs:
 
       - name: Install Dependencies
         run: bun install --frozen-lockfile
+        working-directory: ./release
+
+      - name: Require store-live fingerprint
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          cp common/src/mobileFingerprints.gen.ts release/common/src/mobileFingerprints.gen.ts
+          (cd release/apps/mobile && bun run fingerprint:check)
+          git -C release checkout -- common/src/mobileFingerprints.gen.ts
 
       - name: Publish EAS Update
-        run: bunx eas-cli@16.5.0 update --branch production --message "$COMMIT_MESSAGE" --non-interactive
-        working-directory: ./apps/mobile
+        run: bunx eas-cli@16.5.0 update --branch production --message "$(git log -1 --format=%B)" --non-interactive
+        working-directory: ./release/apps/mobile
         env:
           # `eas update` ignores eas.json build profiles, so pin the variant
           # here. Must resolve the same app config as the production store build,
@@ -34,4 +85,3 @@ jobs:
           # the OTA never applies.
           APP_VARIANT: production
           EXPO_TOKEN: ${{ secrets.EXPO_ACCESS_TOKEN }}
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
