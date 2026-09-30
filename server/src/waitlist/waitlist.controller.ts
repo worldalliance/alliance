@@ -35,6 +35,7 @@ import {
   WaitlistMailConfigDto,
   WaitlistReferralCodesDto,
   WaitlistReferralDto,
+  WaitlistUnsubscribeDto,
 } from "./dto/waitlist.dto";
 import { WaitlistBrowserService } from "./waitlist-browser.service";
 import {
@@ -148,6 +149,16 @@ export class WaitlistController {
       email: dto.email,
       emailType: EmailType.WaitlistLink,
     });
+  }
+
+  @Post("unsubscribe")
+  @Public()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse()
+  async unsubscribe(@Body() dto: WaitlistUnsubscribeDto): Promise<void> {
+    if (R.isFailure(await this.waitlistService.unsubscribe(dto.token))) {
+      throw new NotFoundException("This unsubscribe link is not valid");
+    }
   }
 
   @Get("mail-config")

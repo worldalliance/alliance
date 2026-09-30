@@ -4388,6 +4388,13 @@ export type WaitlistLinkRequestDto = {
     email: string;
 };
 
+export type WaitlistUnsubscribeDto = {
+    /**
+     * The token in a waitlist email's unsubscribe link
+     */
+    token: string;
+};
+
 export type WaitlistMailConfigDto = {
     /**
      * Whether the waitlist can email links
@@ -13605,6 +13612,30 @@ export type WaitlistRequestLinkResponses = {
 };
 
 export type WaitlistRequestLinkResponse = WaitlistRequestLinkResponses[keyof WaitlistRequestLinkResponses];
+
+export type WaitlistUnsubscribeData = {
+    body: WaitlistUnsubscribeDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/unsubscribe';
+};
+
+export type WaitlistUnsubscribeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistUnsubscribeError = WaitlistUnsubscribeErrors[keyof WaitlistUnsubscribeErrors];
+
+export type WaitlistUnsubscribeResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type WaitlistUnsubscribeResponse = WaitlistUnsubscribeResponses[keyof WaitlistUnsubscribeResponses];
 
 export type WaitlistMailConfigData = {
     body?: never;

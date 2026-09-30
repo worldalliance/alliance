@@ -5,6 +5,7 @@ import {
   Check,
   Column,
   Entity,
+  Generated,
   Index,
   JoinColumn,
   ManyToOne,
@@ -77,6 +78,12 @@ export class WaitlistEntry {
 
   @Column({ type: "timestamptz", nullable: true })
   unsubscribedAt: Date | null;
+
+  /** Carried by the unsubscribe link, since the personal code is public. */
+  @Index({ unique: true })
+  @Column({ type: "uuid" })
+  @Generated("uuid")
+  unsubscribeToken: string;
 
   @CreateDateColumnTz()
   createdAt: Date;
