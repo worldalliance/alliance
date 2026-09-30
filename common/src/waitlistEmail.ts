@@ -31,3 +31,12 @@ export function findWaitlistEmailPlaceholders(
   }
   return { used, unknown: [...unknown] };
 }
+
+/** Replaces every known placeholder; unknown ones stay as written. */
+export const replaceWaitlistEmailPlaceholders = (
+  text: string,
+  valueOf: (placeholder: WaitlistEmailPlaceholder) => string,
+): string =>
+  text.replace(PLACEHOLDER_PATTERN, (token, name: string, close: string) =>
+    close && isPlaceholder(name) ? valueOf(name) : token,
+  );

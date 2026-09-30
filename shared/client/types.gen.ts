@@ -230,7 +230,7 @@ export type ActionEventNotifType = 'announcement' | 'misseddeadline' | 'reminder
 
 export type EmailStatus = 'pending' | 'sent' | 'failed';
 
-export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reminder' | 'waitlist_confirmation' | 'waitlist_link';
+export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reminder' | 'waitlist_confirmation' | 'waitlist_link' | 'waitlist_staff';
 
 export type Mail = {
     id: number;
@@ -4574,6 +4574,63 @@ export type CreateWaitlistCohortDto = {
 export type UpdateWaitlistCohortDto = {
     name?: string;
     filter?: WaitlistEntryFilterDto;
+};
+
+export type PreviewWaitlistEmailDto = {
+    subject: string;
+    /**
+     * Markdown with #{placeholder}s
+     */
+    body: string;
+    entryIds: Array<number>;
+    /**
+     * Also email entries whose invite an account claimed
+     */
+    includeClaimed: boolean;
+    /**
+     * The recipient to render
+     */
+    sampleEntryId?: number;
+};
+
+export type WaitlistEmailPlaceholder = 'name' | 'organizationName' | 'signupLink' | 'personalShareLink';
+
+export type WaitlistEmailSampleDto = {
+    entryId: number;
+    name: string;
+    email: string;
+    subject: string | null;
+    html: string | null;
+    missing: Array<WaitlistEmailPlaceholder>;
+};
+
+export type WaitlistEmailPreviewDto = {
+    /**
+     * Selected entries that exist
+     */
+    selected: number;
+    /**
+     * Selected entries skipped as unsubscribed
+     */
+    unsubscribed: number;
+    /**
+     * Subscribed selected entries whose invite an account claimed, skipped unless included
+     */
+    claimed: number;
+    recipientIds: Array<number>;
+    /**
+     * Recipients not yet mobilized
+     */
+    waiting: number;
+    /**
+     * Recipients with no organization
+     */
+    withoutOrganization: number;
+    /**
+     * Recipients whose organization has no group
+     */
+    withoutGroup: number;
+    sample: WaitlistEmailSampleDto | null;
 };
 
 export type WaitlistEmailTemplateDto = {
@@ -14120,6 +14177,28 @@ export type WaitlistAdminUpdateCohortAdminResponses = {
 };
 
 export type WaitlistAdminUpdateCohortAdminResponse = WaitlistAdminUpdateCohortAdminResponses[keyof WaitlistAdminUpdateCohortAdminResponses];
+
+export type WaitlistEmailAdminPreviewEmailAdminData = {
+    body: PreviewWaitlistEmailDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/emails/preview';
+};
+
+export type WaitlistEmailAdminPreviewEmailAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminPreviewEmailAdminError = WaitlistEmailAdminPreviewEmailAdminErrors[keyof WaitlistEmailAdminPreviewEmailAdminErrors];
+
+export type WaitlistEmailAdminPreviewEmailAdminResponses = {
+    200: WaitlistEmailPreviewDto;
+};
+
+export type WaitlistEmailAdminPreviewEmailAdminResponse = WaitlistEmailAdminPreviewEmailAdminResponses[keyof WaitlistEmailAdminPreviewEmailAdminResponses];
 
 export type WaitlistEmailAdminFindTemplatesAdminData = {
     body?: never;

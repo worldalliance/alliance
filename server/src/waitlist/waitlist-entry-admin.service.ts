@@ -17,8 +17,11 @@ import { WaitlistTagService } from "./waitlist-tag.service";
 
 const ENTRY_INVITE = `SELECT 1 FROM onetime_invite invite WHERE invite."waitlistEntryId" = entry.id`;
 
+/** Whether an account claimed any invite of the entry aliased `entry`. */
+export const ENTRY_INVITE_CLAIMED_SQL = `EXISTS (${ENTRY_INVITE} AND ${inviteClaimedSql("invite")})`;
+
 const INVITE_STATE_SQL = `CASE
-  WHEN EXISTS (${ENTRY_INVITE} AND ${inviteClaimedSql("invite")})
+  WHEN ${ENTRY_INVITE_CLAIMED_SQL}
     THEN '${WaitlistInviteState.Claimed}'
   WHEN EXISTS (${ENTRY_INVITE} AND ${inviteClaimableSql("invite")})
     THEN '${WaitlistInviteState.Unused}'

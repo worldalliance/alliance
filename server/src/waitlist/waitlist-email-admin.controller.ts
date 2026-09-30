@@ -17,12 +17,30 @@ import {
   SaveWaitlistEmailTemplateDto,
   WaitlistEmailTemplateDto,
 } from "./dto/waitlist-email-template.dto";
+import {
+  PreviewWaitlistEmailDto,
+  WaitlistEmailPreviewDto,
+} from "./dto/waitlist-email.dto";
 import { WaitlistEmailTemplateService } from "./waitlist-email-template.service";
+import { WaitlistEmailService } from "./waitlist-email.service";
 
 @Controller("waitlist/admin")
 @UseGuards(AdminGuard)
 export class WaitlistEmailAdminController {
-  constructor(private readonly templateService: WaitlistEmailTemplateService) {}
+  constructor(
+    private readonly templateService: WaitlistEmailTemplateService,
+    private readonly emailService: WaitlistEmailService,
+  ) {}
+
+  /** Who a send would reach and skip, and one recipient's rendered email. */
+  @Post("emails/preview")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: WaitlistEmailPreviewDto })
+  async previewEmailAdmin(
+    @Body() dto: PreviewWaitlistEmailDto,
+  ): Promise<WaitlistEmailPreviewDto> {
+    return new WaitlistEmailPreviewDto(await this.emailService.preview(dto));
+  }
 
   @Get("email-templates")
   @ApiOkResponse({ type: WaitlistEmailTemplateDto, isArray: true })

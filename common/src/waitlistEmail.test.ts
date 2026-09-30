@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
   findWaitlistEmailPlaceholders,
+  replaceWaitlistEmailPlaceholders,
   WaitlistEmailPlaceholder,
 } from "./waitlistEmail";
 
@@ -25,5 +26,14 @@ describe("waitlist email placeholders", () => {
       used: new Set([WaitlistEmailPlaceholder.SignupLink]),
       unknown: ["#{name"],
     });
+  });
+
+  it("replaces known placeholders and leaves unknown ones", () => {
+    expect(
+      replaceWaitlistEmailPlaceholders(
+        "#{name} #{name} #{nope} #{signupLink",
+        (placeholder) => `<${placeholder}>`,
+      ),
+    ).toBe("<name> <name> #{nope} #{signupLink");
   });
 });

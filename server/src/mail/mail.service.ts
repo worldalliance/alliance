@@ -128,6 +128,13 @@ export type WaitlistEmailType =
   | EmailType.WaitlistConfirmation
   | EmailType.WaitlistLink;
 
+/** `bodyHtml` must be safe to embed, as `renderWaitlistEmail` produces. */
+export type WaitlistStaffEmail = {
+  subject: string;
+  bodyHtml: string;
+  unsubscribeUrl: string;
+};
+
 const WAITLIST_SUBJECTS: Record<WaitlistEmailType, string> = {
   [EmailType.WaitlistConfirmation]: "You’re on the Alliance waitlist",
   [EmailType.WaitlistLink]: "Your Alliance waitlist link",
@@ -159,6 +166,7 @@ export class MailService {
     [EmailType.ContractReminder]: "contractreminder",
     [EmailType.WaitlistConfirmation]: "waitlist-confirmation",
     [EmailType.WaitlistLink]: "waitlist-link",
+    [EmailType.WaitlistStaff]: "waitlist-staff",
   };
 
   async renderHtml(emailType: EmailType, context: ISendMailOptions["context"]) {
@@ -327,6 +335,10 @@ export class MailService {
       context: { url, unsubscribeUrl },
       cid: null,
     });
+  }
+
+  renderWaitlistStaffEmail(content: WaitlistStaffEmail): Promise<string> {
+    return this.renderHtml(EmailType.WaitlistStaff, content);
   }
 
   public async sendForumDigestEmail(params: {
