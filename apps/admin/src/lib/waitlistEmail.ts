@@ -43,9 +43,22 @@ export function emailWarnings(params: {
   const { preview, used, includeClaimed } = params;
   const signupLink = used.has(WaitlistEmailPlaceholder.SignupLink);
   const warnings: string[] = [];
+  if (
+    preview.withoutOrganization &&
+    !used.has(WaitlistEmailPlaceholder.OrganizationName)
+  ) {
+    warnings.push(
+      `${withCount(preview.withoutOrganization, "recipient")} ${have(preview.withoutOrganization)} no organization, so staff place them after they sign up.`,
+    );
+  }
   if (preview.withoutGroup) {
     warnings.push(
       `${withCount(preview.withoutGroup, "recipient")} ${have(preview.withoutGroup)} an organization without a group, so staff place them after they sign up.`,
+    );
+  }
+  if (preview.inFullGroup) {
+    warnings.push(
+      `${withCount(preview.inFullGroup, "recipient")} ${have(preview.inFullGroup)} an organization whose group is full, so staff may need to place them after they sign up.`,
     );
   }
   if (preview.alreadySent) {

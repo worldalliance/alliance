@@ -51,6 +51,29 @@ describe("blockingProblem", () => {
 });
 
 describe("emailWarnings", () => {
+  it("warns of recipients without an organization and of full groups", () => {
+    expect(
+      emailWarnings({
+        preview: preview({ withoutOrganization: 1, inFullGroup: 3 }),
+        used: uses(),
+        includeClaimed: false,
+      }),
+    ).toEqual([
+      "1 recipient has no organization, so staff place them after they sign up.",
+      "3 recipients have an organization whose group is full, so staff may need to place them after they sign up.",
+    ]);
+  });
+
+  it("leaves recipients without an organization to the blocking problem when the email names one", () => {
+    expect(
+      emailWarnings({
+        preview: preview({ withoutOrganization: 1 }),
+        used: uses(WaitlistEmailPlaceholder.OrganizationName),
+        includeClaimed: false,
+      }),
+    ).toEqual([]);
+  });
+
   it("warns of missing groups, with or without a signup link", () => {
     for (const used of [uses(WaitlistEmailPlaceholder.SignupLink), uses()]) {
       expect(
