@@ -101,10 +101,6 @@ export const filterActions = (
       return actions.filter(
         (action) => action.status === "member_action" && !action.onboarding,
       );
-    case FilterMode.Past:
-      return actions.filter(
-        (action) => action.status === "completed" || action.status === "failed",
-      );
     default:
       const x: never = mode;
       throw new Error(`Invalid filter mode: ${x}`);

@@ -18,7 +18,7 @@ serveApi(routes({ "GET /actions/loggedIn": () => loggedIn() }));
 
 afterEach(cleanup);
 
-it("offers a retry instead of an empty list and zero counts when actions fail to load", async () => {
+it("offers a retry instead of an empty list and a zero count when actions fail to load", async () => {
   const { wrapper } = queryWrapper();
   render(
     <MemoryRouter>
@@ -28,7 +28,7 @@ it("offers a retry instead of an empty list and zero counts when actions fail to
   );
   await screen.findByText("Couldn't load actions.");
   expect(screen.queryByText("No matching actions")).toBeNull();
-  expect(screen.queryByText("0")).toBeNull();
+  expect(screen.queryByText(/^showing/)).toBeNull();
 
   const { promise, resolve } = Promise.withResolvers<Response>();
   loggedIn = () => promise;
@@ -43,5 +43,5 @@ it("offers a retry instead of an empty list and zero counts when actions fail to
   resolve(Response.json([makeAction({ name: "Call your representative" })]));
   await screen.findByText("Call your representative");
   expect(screen.queryByText("Couldn't load actions.")).toBeNull();
-  expect(screen.getAllByText("0").length).toBeGreaterThan(0);
+  expect(screen.getByText("showing 1")).toBeTruthy();
 });

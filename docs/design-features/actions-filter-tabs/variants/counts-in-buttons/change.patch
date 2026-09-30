@@ -1,0 +1,171 @@
+diff --git a/apps/frontend/src/pages/app/ActionsListPage.tsx b/apps/frontend/src/pages/app/ActionsListPage.tsx
+index 8ffc95d8d..28c945d29 100644
+--- a/apps/frontend/src/pages/app/ActionsListPage.tsx
++++ b/apps/frontend/src/pages/app/ActionsListPage.tsx
+@@ -6,11 +6,11 @@ import {
+ import { FilterMode } from "@alliance/shared/lib/actionUtils";
+ import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
+ import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
+-import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
+ import Spinner from "@alliance/sharedweb/ui/Spinner";
+ import { useMemo, useState } from "react";
+ import { href, Link } from "react-router";
+ import ActionItemCard from "../../components/ActionItemCard";
++import ActionsFilterBar from "../../components/ActionsFilterBar";
+ import { useGrayBackground } from "../../components/HtmlBackgroundManager";
+ import LoadFailed from "../../components/LoadFailed";
+ 
+@@ -46,21 +46,15 @@ const ActionsListPage = () => {
+ 
+   return (
+     <CenterLayout className="gap-y-4" width="4xl">
+-      <div className="flex flex-row justify-between w-full items-center">
+-        <div className="flex flex-row justify-start items-center w-full gap-x-4">
+-          <p>Filter by:</p>
+-          <DropdownSelect
+-            options={FilterMode}
+-            secondaryLabel={([, mode]) =>
+-              didFail ? undefined : modeToActions[mode].length.toString()
+-            }
+-            value={filterMode}
+-            onChange={([, mode]) => setUserFilterMode(mode)}
+-          />
+-        </div>
++      <div className="flex flex-row flex-wrap justify-between w-full items-center gap-x-4 gap-y-2">
++        <ActionsFilterBar
++          value={filterMode}
++          onChange={setUserFilterMode}
++          actionsByMode={didFail ? undefined : modeToActions}
++        />
+         <Link
+           to={href("/action-updates")}
+-          className="text-zinc-800 hover:underline rounded font-medium whitespace-nowrap"
++          className="ml-auto text-zinc-800 hover:underline rounded font-medium whitespace-nowrap"
+         >
+           Action updates
+         </Link>
+diff --git a/shared/lib/actionUtils.ts b/shared/lib/actionUtils.ts
+index f4fa6e3e6..5d5dbd142 100644
+--- a/shared/lib/actionUtils.ts
++++ b/shared/lib/actionUtils.ts
+@@ -109,11 +109,10 @@ export function isFollowUpFormActive(f: {
+ }
+ 
+ export enum FilterMode {
++  CompletedByMe = "My completed actions",
+   All = "All",
+-  CompletedByMe = "Completed by me",
+   MemberAction = "Members taking action",
+   PendingOfficeResolution = "Pending office resolution",
+-  Past = "Past",
+ }
+ 
+ export type ActionWithAwayStatus = ActionDto & { awayStatus: TaskAwayStatus };
+diff --git a/shared/lib/actionsListPage.ts b/shared/lib/actionsListPage.ts
+index 670c39543..a08141fb8 100644
+--- a/shared/lib/actionsListPage.ts
++++ b/shared/lib/actionsListPage.ts
+@@ -101,10 +101,6 @@ export const filterActions = (
+       return actions.filter(
+         (action) => action.status === "member_action" && !action.onboarding,
+       );
+-    case FilterMode.Past:
+-      return actions.filter(
+-        (action) => action.status === "completed" || action.status === "failed",
+-      );
+     default:
+       const x: never = mode;
+       throw new Error(`Invalid filter mode: ${x}`);
+diff --git a/apps/frontend/src/components/ActionsFilterBar.tsx b/apps/frontend/src/components/ActionsFilterBar.tsx
+new file mode 100644
+index 000000000..e24d4bfea
+--- /dev/null
++++ b/apps/frontend/src/components/ActionsFilterBar.tsx
+@@ -0,0 +1,87 @@
++import { ActionDto } from "@alliance/shared/client";
++import { FilterMode } from "@alliance/shared/lib/actionUtils";
++import { cn } from "@alliance/shared/styles/util";
++import { useId } from "react";
++
++const IS_IN_PROGRESS: Record<FilterMode, boolean> = {
++  [FilterMode.CompletedByMe]: false,
++  [FilterMode.All]: false,
++  [FilterMode.MemberAction]: true,
++  [FilterMode.PendingOfficeResolution]: true,
++};
++
++type ActionsFilterBarProps = {
++  value: FilterMode;
++  onChange: (mode: FilterMode) => void;
++  actionsByMode?: Record<FilterMode, ActionDto[]>;
++};
++
++const ActionsFilterBar = ({
++  value,
++  onChange,
++  actionsByMode,
++}: ActionsFilterBarProps) => {
++  const name = useId();
++  const inProgressLabelId = useId();
++
++  const segments = (inProgress: boolean) => (
++    <div className="flex flex-wrap gap-0.5 rounded-sm border border-grey-2 bg-white p-0.5">
++      {Object.values(FilterMode)
++        .filter((mode) => IS_IN_PROGRESS[mode] === inProgress)
++        .map((mode) => {
++          const selected = mode === value;
++          return (
++            <label
++              key={mode}
++              className={cn(
++                "flex cursor-pointer items-center gap-x-2 whitespace-nowrap rounded-xs px-3 py-1.5 text-sm has-focus-visible:outline-2 has-focus-visible:outline-offset-1 has-focus-visible:outline-black",
++                selected ? "bg-black text-white" : "hover:bg-zinc-100",
++              )}
++              style={{ fontWeight: 450 }}
++            >
++              <input
++                type="radio"
++                name={name}
++                className="sr-only"
++                checked={selected}
++                onChange={() => onChange(mode)}
++                aria-describedby={inProgress ? inProgressLabelId : undefined}
++              />
++              {mode}
++              {actionsByMode && (
++                <span
++                  className={cn(
++                    "font-mono",
++                    selected ? "text-zinc-400" : "text-zinc-500",
++                  )}
++                >
++                  {actionsByMode[mode].length}
++                </span>
++              )}
++            </label>
++          );
++        })}
++    </div>
++  );
++
++  return (
++    <div
++      role="radiogroup"
++      aria-label="Filter actions"
++      className="flex flex-wrap items-center gap-x-3 gap-y-2"
++    >
++      {segments(false)}
++      <div className="flex min-w-0 items-center gap-x-2">
++        <span
++          id={inProgressLabelId}
++          className="text-xs text-zinc-500 whitespace-nowrap"
++        >
++          in-progress
++        </span>
++        {segments(true)}
++      </div>
++    </div>
++  );
++};
++
++export default ActionsFilterBar;

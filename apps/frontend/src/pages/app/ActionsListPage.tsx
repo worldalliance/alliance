@@ -6,11 +6,11 @@ import {
 import { FilterMode } from "@alliance/shared/lib/actionUtils";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
-import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useMemo, useState } from "react";
 import { href, Link } from "react-router";
 import ActionItemCard from "../../components/ActionItemCard";
+import ActionsFilterBar from "../../components/ActionsFilterBar";
 import { useGrayBackground } from "../../components/HtmlBackgroundManager";
 import LoadFailed from "../../components/LoadFailed";
 
@@ -46,21 +46,15 @@ const ActionsListPage = () => {
 
   return (
     <CenterLayout className="gap-y-4" width="4xl">
-      <div className="flex flex-row justify-between w-full items-center">
-        <div className="flex flex-row justify-start items-center w-full gap-x-4">
-          <p>Filter by:</p>
-          <DropdownSelect
-            options={FilterMode}
-            secondaryLabel={([, mode]) =>
-              didFail ? undefined : modeToActions[mode].length.toString()
-            }
-            value={filterMode}
-            onChange={([, mode]) => setUserFilterMode(mode)}
-          />
-        </div>
+      <div className="flex flex-row flex-wrap justify-between w-full items-center gap-x-4 gap-y-2">
+        <ActionsFilterBar
+          value={filterMode}
+          onChange={setUserFilterMode}
+          shownCount={didFail ? undefined : filteredActions.length}
+        />
         <Link
           to={href("/action-updates")}
-          className="text-zinc-800 hover:underline rounded font-medium whitespace-nowrap"
+          className="ml-auto text-zinc-800 hover:underline rounded font-medium whitespace-nowrap"
         >
           Action updates
         </Link>

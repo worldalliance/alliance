@@ -109,11 +109,10 @@ export function isFollowUpFormActive(f: {
 }
 
 export enum FilterMode {
+  CompletedByMe = "My completed actions",
   All = "All",
-  CompletedByMe = "Completed by me",
   MemberAction = "Members taking action",
   PendingOfficeResolution = "Pending office resolution",
-  Past = "Past",
 }
 
 export type ActionWithAwayStatus = ActionDto & { awayStatus: TaskAwayStatus };
