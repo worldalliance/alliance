@@ -141,6 +141,9 @@ export const queryKeys = {
     ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
   usersAdmin: () => ["userListAdmin"] as const,
   waitlistCohortsAdmin: () => ["waitlistAdminFindCohortsAdmin"] as const,
+  waitlistEmailAdmin: (id: number) =>
+    ["waitlistEmailAdminFindEmailAdmin", id] as const,
+  waitlistEmailsAdmin: () => ["waitlistEmailAdminFindEmailsAdmin"] as const,
   waitlistEmailPreviewAdminAll,
   waitlistEmailPreviewAdmin: (preview: PreviewWaitlistEmailDto) =>
     [...waitlistEmailPreviewAdminAll(), preview] as const,

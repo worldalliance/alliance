@@ -82,7 +82,9 @@ const EmailSendActions: React.FC<EmailSendActionsProps> = ({
         throwOnError: true,
       }).then((r) => r.data),
     onSuccess: (_batch, { recipients }) => {
-      success(`Sending to ${withCount(recipients, "recipient")}`);
+      success(
+        `Sending to ${withCount(recipients, "recipient")}. Follow it under Waitlist emails.`,
+      );
       onSent();
     },
     onError: (err) => refusalToast(err, "Could not send the email."),

@@ -1,10 +1,16 @@
 import { pickForCount, withCount } from "@alliance/common/plural";
+import type { Assert, Equal } from "@alliance/common/types";
 import {
   WaitlistEmailPlaceholder,
   waitlistEmailToken,
   withoutOrganizationMessage,
 } from "@alliance/common/waitlistEmail";
-import type { WaitlistEmailPreviewDto } from "@alliance/shared/client/types.gen";
+import type {
+  WaitlistEmailBatchDto,
+  WaitlistEmailPreviewDto,
+  WaitlistEmailRecipientStatus,
+} from "@alliance/shared/client/types.gen";
+import { milliseconds } from "date-fns";
 
 export type EmailDraft = { subject: string; body: string };
 
@@ -98,3 +104,30 @@ export function sendConfirmation(params: {
   ];
   return lines.filter((line) => line !== null).join("\n\n");
 }
+
+export const STATUS_LABELS: Record<WaitlistEmailRecipientStatus, string> = {
+  pending: "Pending",
+  sending: "Sending",
+  sent: "Sent",
+  failed: "Failed",
+  uncertain: "Uncertain",
+  skipped: "Skipped",
+};
+
+export const STATUSES = [
+  "sent",
+  "pending",
+  "sending",
+  "failed",
+  "uncertain",
+  "skipped",
+] as const satisfies readonly WaitlistEmailRecipientStatus[];
+
+type _typecheck = Assert<
+  Equal<(typeof STATUSES)[number], WaitlistEmailRecipientStatus>
+>;
+
+export const inProgress = (batch: WaitlistEmailBatchDto): boolean =>
+  batch.counts.pending + batch.counts.sending > 0;
+
+export const SENDING_POLL_MS = milliseconds({ seconds: 3 });

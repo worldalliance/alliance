@@ -70,7 +70,11 @@ it("previews the email for the selection and sends it after confirming", async (
       },
     ]),
   );
-  expect(await screen.findByText("Sending to 2 recipients")).toBeTruthy();
+  expect(
+    await screen.findByText(
+      "Sending to 2 recipients. Follow it under Waitlist emails.",
+    ),
+  ).toBeTruthy();
   expect(screen.queryByLabelText("Subject")).toBeNull();
   expect(screen.queryByText(/selected$/)).toBeNull();
 });

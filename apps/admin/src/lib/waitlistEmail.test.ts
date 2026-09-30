@@ -4,6 +4,7 @@ import { describe, expect, it } from "bun:test";
 import {
   blockingProblem,
   emailWarnings,
+  inProgress,
   sendConfirmation,
 } from "./waitlistEmail";
 
@@ -140,5 +141,24 @@ describe("sendConfirmation", () => {
     expect(text).toContain(
       "Recipients without an unused invite get a new one.",
     );
+  });
+});
+
+describe("inProgress", () => {
+  const batch = (pending: number, sending: number) => ({
+    id: 1,
+    subject: "Hi",
+    body: "Body",
+    mobilize: false,
+    includeClaimed: false,
+    staffName: null,
+    createdAt: "2026-09-02T00:00:00.000Z",
+    counts: { pending, sending, sent: 1, failed: 1, uncertain: 1, skipped: 1 },
+  });
+
+  it("holds while any recipient is pending or sending", () => {
+    expect(inProgress(batch(1, 0))).toBe(true);
+    expect(inProgress(batch(0, 1))).toBe(true);
+    expect(inProgress(batch(0, 0))).toBe(false);
   });
 });
