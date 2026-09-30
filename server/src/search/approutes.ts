@@ -1,5 +1,8 @@
 import { appendQueryParam } from "@alliance/common/url";
-import { waitlistShareUrl } from "@alliance/common/waitlist";
+import {
+  waitlistShareUrl,
+  waitlistUnsubscribeUrl,
+} from "@alliance/common/waitlist";
 import {
   Comment,
   CommentParentObject,
@@ -14,12 +17,20 @@ export function actionUrl(actionId: number, full = false) {
   return full ? `${process.env.APP_URL}${path}` : path;
 }
 
-export function waitlistShareLink(code: string) {
+function waitlistBaseUrl() {
   const baseUrl = inviteBaseUrl();
   if (!baseUrl) {
     throw new Error("APP_URL is not set, so a waitlist link has no host");
   }
-  return waitlistShareUrl(baseUrl, code);
+  return baseUrl;
+}
+
+export function waitlistShareLink(code: string) {
+  return waitlistShareUrl(waitlistBaseUrl(), code);
+}
+
+export function waitlistUnsubscribeLink(token: string) {
+  return waitlistUnsubscribeUrl(waitlistBaseUrl(), token);
 }
 
 export function signupUrl(full = false) {

@@ -13,3 +13,9 @@ export const waitlistLinkUrl = (baseUrl: string, code: string): string =>
 
 export const WAITLIST_UNSUBSCRIBE_PATH = "/waitlist/unsubscribe";
 export const WAITLIST_UNSUBSCRIBE_PARAM = "token";
+
+export const waitlistUnsubscribeUrl = (
+  baseUrl: string,
+  token: string,
+): string =>
+  `${baseUrl}${WAITLIST_UNSUBSCRIBE_PATH}?${new URLSearchParams({ [WAITLIST_UNSUBSCRIBE_PARAM]: token })}`;

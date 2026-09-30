@@ -80,9 +80,10 @@ describe("Waitlist mail (e2e)", () => {
     await ctx.app.close();
   });
 
-  it("mails a new entry its personal link", async () => {
+  it("mails a new entry its personal link and an unsubscribe link", async () => {
     const email = uniqueEmail();
     const code = await join(email);
+    const entry = await entryRepo.findOneByOrFail({ email });
 
     expect(sentTo(email)).toEqual([
       [
@@ -91,6 +92,9 @@ describe("Waitlist mail (e2e)", () => {
           emailType: EmailType.WaitlistConfirmation,
           url: expect.stringContaining(
             `/projects/democratic-grantmaking-26?ref=${code}`,
+          ),
+          unsubscribeUrl: expect.stringContaining(
+            `/waitlist/unsubscribe?token=${entry.unsubscribeToken}`,
           ),
         },
       ],
@@ -154,6 +158,7 @@ describe("Waitlist mail (e2e)", () => {
           recipient: email,
           emailType: EmailType.WaitlistLink,
           url: expect.stringContaining(`?ref=${entry.code}`),
+          unsubscribeUrl: expect.stringContaining(entry.unsubscribeToken),
         },
       ],
     ]);
