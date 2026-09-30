@@ -20,6 +20,8 @@ import React, {
   useState,
 } from "react";
 import MobilizeActions from "../components/waitlist/MobilizeActions";
+import TagActions from "../components/waitlist/TagActions";
+import TagManager from "../components/waitlist/TagManager";
 import WaitlistFilters from "../components/waitlist/WaitlistFilters";
 import WaitlistTable from "../components/waitlist/WaitlistTable";
 import { adminRefusalMessage } from "../lib/adminRefusal";
@@ -30,6 +32,7 @@ import {
   campaignsQuery,
   waitlistLinksLoadFailed,
   waitlistLinksQuery,
+  waitlistTagsQuery,
 } from "../lib/waitlistAdminQueries";
 import { withFilterField } from "../lib/waitlistFilter";
 
@@ -74,6 +77,7 @@ const WaitlistPage: React.FC = () => {
   });
   const campaigns = useQuery(campaignsQuery);
   const links = useQuery(waitlistLinksQuery);
+  const tags = useQuery(waitlistTagsQuery);
 
   const organizations = useMemo(
     () => (campaigns.data ?? []).filter(isOrganization),
@@ -105,7 +109,9 @@ const WaitlistPage: React.FC = () => {
       adminRefusalMessage(entries.error, "Unable to load the waitlist.")) ||
     (campaigns.error &&
       adminRefusalMessage(campaigns.error, campaignsLoadFailed)) ||
-    (links.error && adminRefusalMessage(links.error, waitlistLinksLoadFailed));
+    (links.error &&
+      adminRefusalMessage(links.error, waitlistLinksLoadFailed)) ||
+    (tags.error && adminRefusalMessage(tags.error, "Unable to load tags."));
 
   return (
     <div className="p-5 space-y-4">
@@ -117,6 +123,7 @@ const WaitlistPage: React.FC = () => {
         onChange={changeFilter}
         organizations={organizations}
         links={links.data ?? []}
+        tags={tags.data ?? []}
       />
 
       <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-700">
@@ -158,6 +165,12 @@ const WaitlistPage: React.FC = () => {
           </button>
         )}
         <div className="flex gap-2 ml-auto">
+          <TagActions
+            selectedIds={selectedIds}
+            tags={tags.data ?? []}
+            onChanged={() => changeSelection(new Set())}
+          />
+          <TagManager tags={tags.data} />
           <MobilizeActions
             selectedIds={selectedIds}
             onChanged={() => changeSelection(new Set())}

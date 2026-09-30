@@ -1,4 +1,7 @@
-import { DropdownMenuContent } from "@alliance/sharedweb/ui/DropdownMenu";
+import {
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@alliance/sharedweb/ui/DropdownMenu";
 import { Menu } from "@base-ui/react/menu";
 import { Check, ChevronDown } from "lucide-react";
 
@@ -15,11 +18,16 @@ function MultiSelectFilter<T extends string | number>({
   selected: readonly T[];
   onChange: (selected: T[]) => void;
 }) {
+  const missing = selected.filter(
+    (value) => !options.some((option) => option.value === value),
+  );
   const summary =
-    options
-      .filter((option) => selected.includes(option.value))
-      .map((option) => option.label)
-      .join(", ") || "Any";
+    [
+      ...options
+        .filter((option) => selected.includes(option.value))
+        .map((option) => option.label),
+      ...(missing.length ? [`${missing.length} not found`] : []),
+    ].join(", ") || "Any";
 
   return (
     <Menu.Root>
@@ -29,6 +37,16 @@ function MultiSelectFilter<T extends string | number>({
         <ChevronDown size={14} className="shrink-0" />
       </Menu.Trigger>
       <DropdownMenuContent className="min-w-44 max-h-80 overflow-y-auto">
+        {missing.length > 0 && (
+          <DropdownMenuItem
+            onClick={() =>
+              onChange(selected.filter((value) => !missing.includes(value)))
+            }
+            className="text-amber-700"
+          >
+            Remove {missing.length} not found
+          </DropdownMenuItem>
+        )}
         {options.length === 0 && (
           <p className="px-3 py-2 text-sm text-zinc-500">None yet</p>
         )}

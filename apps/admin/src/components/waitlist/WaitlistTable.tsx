@@ -137,6 +137,7 @@ const WaitlistTable: React.FC<WaitlistTableProps> = ({
               sort={sort}
               onSortChange={onSortChange}
             />
+            <th className="px-3 py-2 font-medium text-zinc-600">Tags</th>
             <th className="px-3 py-2 font-medium text-zinc-600">Mobilized</th>
             <th className="px-3 py-2 font-medium text-zinc-600">Invite</th>
           </tr>
@@ -186,6 +187,18 @@ const WaitlistTable: React.FC<WaitlistTableProps> = ({
               </td>
               <td className="px-3 py-2 whitespace-nowrap">
                 {formatMediumDateEnUS(new Date(entry.createdAt))}
+              </td>
+              <td className="px-3 py-2">
+                <div className="flex flex-wrap gap-1">
+                  {entry.tags.map((tag) => (
+                    <span
+                      key={tag.id}
+                      className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-700"
+                    >
+                      {tag.name}
+                    </span>
+                  ))}
+                </div>
               </td>
               <td className="px-3 py-2 whitespace-nowrap">
                 {entry.mobilizedAt

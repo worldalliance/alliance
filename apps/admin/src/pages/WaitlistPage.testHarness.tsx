@@ -5,7 +5,7 @@ import type {
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import WaitlistPage from "./WaitlistPage";
 
@@ -36,6 +36,11 @@ const campaign = {
   updatedAt: "2026-09-01T00:00:00.000Z",
 };
 
+const allTags = [
+  { id: 5, name: "Speakers", entryCount: 1 },
+  { id: 6, name: "Hosts", entryCount: 0 },
+];
+
 type WaitlistApiState = {
   searches: WaitlistEntrySearchDto[];
   searchStatus: number;
@@ -44,6 +49,12 @@ type WaitlistApiState = {
   holdIds: Promise<void> | undefined;
   holdSearch: Promise<void> | undefined;
   mobilizeStatus: number;
+  tagAddStatus: number;
+  tagRenameStatus: number;
+  tagCreateStatus: number;
+  tagDeleteStatus: number;
+  tagsStatus: number;
+  tagsServed: typeof allTags;
 };
 
 const initialState = (): WaitlistApiState => ({
@@ -54,6 +65,12 @@ const initialState = (): WaitlistApiState => ({
   holdIds: undefined,
   holdSearch: undefined,
   mobilizeStatus: 200,
+  tagAddStatus: 200,
+  tagRenameStatus: 200,
+  tagCreateStatus: 200,
+  tagDeleteStatus: 204,
+  tagsStatus: 200,
+  tagsServed: allTags,
 });
 
 export const api = initialState();
@@ -84,7 +101,10 @@ export const serveWaitlistApi = () => {
         return Response.json({
           entries: [
             entry(1, { reason: "I care" }),
-            entry(2, { referrer: { id: 1, name: "Person 1" } }),
+            entry(2, {
+              referrer: { id: 1, name: "Person 1" },
+              tags: [{ id: 5, name: "Speakers" }],
+            }),
           ],
           total: api.searchTotal,
         });
@@ -119,8 +139,49 @@ export const serveWaitlistApi = () => {
             entryCount: 1,
           },
         ]),
+      "GET /waitlist/admin/tags": () =>
+        api.tagsStatus === 200
+          ? Response.json(api.tagsServed)
+          : Response.json({}, { status: api.tagsStatus }),
+      "POST /waitlist/admin/tags": async (input) =>
+        api.tagCreateStatus === 200
+          ? recordPost({ id: 9, name: "Donors" })(input)
+          : Response.json(
+              { message: "A tag with that name already exists" },
+              { status: api.tagCreateStatus },
+            ),
+      "POST /waitlist/admin/tags/:id/add": async (input) =>
+        api.tagAddStatus === 200
+          ? recordPost({ changed: 2 })(input)
+          : Response.json(
+              { message: "Add refused" },
+              { status: api.tagAddStatus },
+            ),
+      "POST /waitlist/admin/tags/:id/remove": recordPost({ changed: 1 }),
+      "PATCH /waitlist/admin/tags/:id": async (input) =>
+        api.tagRenameStatus === 200
+          ? recordPost({ id: 6, name: "Co-hosts" })(input)
+          : Response.json(
+              { message: "A tag with that name already exists" },
+              { status: api.tagRenameStatus },
+            ),
+      "DELETE /waitlist/admin/tags/:id": ({ request }) => {
+        if (api.tagDeleteStatus !== 204) {
+          return Response.json(
+            { message: "Cohorts filter by this tag: Donors" },
+            { status: api.tagDeleteStatus },
+          );
+        }
+        api.posts.push({ path: new URL(request.url).pathname, body: null });
+        return new Response(null, { status: 204 });
+      },
     }),
   );
+};
+
+export const pickMenuItem = async (menu: string, item: string) => {
+  fireEvent.click(screen.getByRole("button", { name: menu }));
+  fireEvent.click(await screen.findByRole("menuitem", { name: item }));
 };
 
 export const renderPage = () =>

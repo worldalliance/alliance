@@ -1,5 +1,6 @@
 import type {
   AdminWaitlistLinkDto,
+  AdminWaitlistTagDto,
   CampaignDto,
   WaitlistEntryFilterDto,
 } from "@alliance/shared/client/types.gen";
@@ -49,6 +50,7 @@ type WaitlistFiltersProps = {
   onChange: (filter: WaitlistEntryFilterDto) => void;
   organizations: CampaignDto[];
   links: AdminWaitlistLinkDto[];
+  tags: AdminWaitlistTagDto[];
 };
 
 const WaitlistFilters: React.FC<WaitlistFiltersProps> = ({
@@ -56,6 +58,7 @@ const WaitlistFilters: React.FC<WaitlistFiltersProps> = ({
   onChange,
   organizations,
   links,
+  tags,
 }) => {
   const [search, setSearch] = useState(filter.search ?? "");
   useEffect(() => {
@@ -115,6 +118,12 @@ const WaitlistFilters: React.FC<WaitlistFiltersProps> = ({
         }))}
         selected={filter.inviteStates ?? []}
         onChange={(states) => set("inviteStates", states)}
+      />
+      <MultiSelectFilter
+        label="Tag"
+        options={tags.map((tag) => ({ value: tag.id, label: tag.name }))}
+        selected={filter.tagIds ?? []}
+        onChange={(ids) => set("tagIds", ids)}
       />
       {BOOLEAN_FIELDS.map((key) => (
         <BooleanFilter

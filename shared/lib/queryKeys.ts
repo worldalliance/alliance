@@ -105,6 +105,7 @@ export const queryKeys = {
   waitlistEntriesAdmin: (search: WaitlistEntrySearchDto) =>
     [...waitlistEntriesAdminAll(), search] as const,
   waitlistLinksAdmin: () => ["waitlistAdminFindLinksAdmin"] as const,
+  waitlistTagsAdmin: () => ["waitlistAdminFindTagsAdmin"] as const,
   videoAdmin: (videoId: number) =>
     ["videosGetVideoDetailsAdmin", videoId] as const,
   videosAdmin: () => ["videosListVideosAdmin"] as const,
