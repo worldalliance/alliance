@@ -7,6 +7,8 @@ const onetimeInvitesAdminAll = () => ["userGetOnetimeInvitesAdmin"] as const;
 const formsAdminAll = () => ["formsAdmin"] as const;
 
 const projectsAdminAll = () => ["projectsAdmin"] as const;
+const waitlistEntriesAdminAll = () =>
+  ["waitlistAdminSearchEntriesAdmin"] as const;
 
 const actionCompletionCurvesAdminAll = () =>
   ["analyticsGetActionCompletionCurvesAdmin"] as const;
@@ -99,8 +101,9 @@ export const queryKeys = {
   timeSpentPerUserTotalAdmin: () =>
     ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
   usersAdmin: () => ["userListAdmin"] as const,
+  waitlistEntriesAdminAll,
   waitlistEntriesAdmin: (search: WaitlistEntrySearchDto) =>
-    ["waitlistAdminSearchEntriesAdmin", search] as const,
+    [...waitlistEntriesAdminAll(), search] as const,
   waitlistLinksAdmin: () => ["waitlistAdminFindLinksAdmin"] as const,
   videoAdmin: (videoId: number) =>
     ["videosGetVideoDetailsAdmin", videoId] as const,

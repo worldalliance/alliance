@@ -1,5 +1,8 @@
-import { withCount } from "@alliance/common/plural";
-import { waitlistAdminSearchEntriesAdmin } from "@alliance/shared/client";
+import { pickForCount, withCount } from "@alliance/common/plural";
+import {
+  waitlistAdminFindEntryIdsAdmin,
+  waitlistAdminSearchEntriesAdmin,
+} from "@alliance/shared/client";
 import type {
   WaitlistEntryFilterDto,
   WaitlistEntrySort,
@@ -7,12 +10,21 @@ import type {
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import React, { useCallback, useMemo, useState } from "react";
+import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
+import { X } from "lucide-react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import MobilizeActions from "../components/waitlist/MobilizeActions";
 import WaitlistFilters from "../components/waitlist/WaitlistFilters";
 import WaitlistTable from "../components/waitlist/WaitlistTable";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { isOrganization } from "../lib/isOrganization";
+import { useRefusalToast } from "../lib/useRefusalToast";
 import {
   campaignsLoadFailed,
   campaignsQuery,
@@ -24,14 +36,26 @@ import { withFilterField } from "../lib/waitlistFilter";
 const PAGE_SIZE = 50;
 
 const WaitlistPage: React.FC = () => {
+  const refusalToast = useRefusalToast();
   const [filter, setFilter] = useState<WaitlistEntryFilterDto>({});
   const [sort, setSort] = useState<WaitlistEntrySort>("joined_desc");
   const [page, setPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const selectionVersion = useRef(0);
 
-  const changeFilter = useCallback((next: WaitlistEntryFilterDto) => {
-    setFilter(next);
-    setPage(1);
+  const changeSelection = useCallback((next: Set<number>) => {
+    selectionVersion.current += 1;
+    setSelectedIds(next);
   }, []);
+
+  const changeFilter = useCallback(
+    (next: WaitlistEntryFilterDto) => {
+      setFilter(next);
+      setPage(1);
+      changeSelection(new Set());
+    },
+    [changeSelection],
+  );
 
   const searchDto = {
     filter,
@@ -56,7 +80,26 @@ const WaitlistPage: React.FC = () => {
     [campaigns.data],
   );
 
+  const selectAllMatching = useMutation({
+    mutationFn: (params: {
+      matching: WaitlistEntryFilterDto;
+      version: number;
+    }) =>
+      waitlistAdminFindEntryIdsAdmin({
+        body: { filter: params.matching },
+        throwOnError: true,
+      }).then((r) => r.data.ids),
+    onSuccess: (ids, { version }) => {
+      if (version === selectionVersion.current) changeSelection(new Set(ids));
+    },
+    onError: (err) => refusalToast(err, "Could not select every entry."),
+  });
+
   const total = entries.data?.total ?? 0;
+  const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  useEffect(() => {
+    if (entries.data && page > lastPage) setPage(lastPage);
+  }, [entries.data, page, lastPage]);
   const loadError =
     (entries.error &&
       adminRefusalMessage(entries.error, "Unable to load the waitlist.")) ||
@@ -82,6 +125,44 @@ const WaitlistPage: React.FC = () => {
             ? withCount(total, "entry")
             : entries.isPending && "Loading…"}
         </span>
+        {selectedIds.size > 0 && (
+          <span className="font-medium">
+            {withCount(selectedIds.size, "entry")}{" "}
+            {pickForCount(selectedIds.size, "is", "are")} selected
+          </span>
+        )}
+        {total > 0 && selectedIds.size < total && (
+          <button
+            type="button"
+            className="text-blue-600 hover:underline disabled:opacity-50"
+            disabled={selectAllMatching.isPending || entries.isPlaceholderData}
+            onClick={() =>
+              selectAllMatching.mutate({
+                matching: filter,
+                version: selectionVersion.current,
+              })
+            }
+          >
+            Select all {total} matching
+          </button>
+        )}
+        {selectedIds.size > 0 && (
+          <button
+            type="button"
+            aria-label="Clear selection"
+            title="Clear selection"
+            className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+            onClick={() => changeSelection(new Set())}
+          >
+            <X size={16} />
+          </button>
+        )}
+        <div className="flex gap-2 ml-auto">
+          <MobilizeActions
+            selectedIds={selectedIds}
+            onChanged={() => changeSelection(new Set())}
+          />
+        </div>
       </div>
 
       {loadError && <p className="text-sm text-red-500">{loadError}</p>}
@@ -98,6 +179,9 @@ const WaitlistPage: React.FC = () => {
           >
             <WaitlistTable
               entries={entries.data.entries}
+              selectedIds={selectedIds}
+              onSelectedIdsChange={changeSelection}
+              selectable={!entries.isPlaceholderData}
               sort={sort}
               onSortChange={(next) => {
                 setSort(next);
@@ -113,11 +197,7 @@ const WaitlistPage: React.FC = () => {
         ))}
 
       {total > PAGE_SIZE && (
-        <Pagination
-          page={page}
-          totalPages={Math.ceil(total / PAGE_SIZE)}
-          onPageChange={setPage}
-        />
+        <Pagination page={page} totalPages={lastPage} onPageChange={setPage} />
       )}
     </div>
   );

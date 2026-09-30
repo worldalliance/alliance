@@ -67,6 +67,10 @@ const SortHeader: React.FC<{
 
 type WaitlistTableProps = {
   entries: AdminWaitlistEntryDto[];
+  selectedIds: ReadonlySet<number>;
+  onSelectedIdsChange: (ids: Set<number>) => void;
+  /** False while the rows shown belong to a previous search. */
+  selectable: boolean;
   sort: WaitlistEntrySort;
   onSortChange: (sort: WaitlistEntrySort) => void;
   onFilterReferrer: (entryId: number) => void;
@@ -74,15 +78,49 @@ type WaitlistTableProps = {
 
 const WaitlistTable: React.FC<WaitlistTableProps> = ({
   entries,
+  selectedIds,
+  onSelectedIdsChange,
+  selectable,
   sort,
   onSortChange,
   onFilterReferrer,
 }) => {
+  const pageSelected =
+    entries.length > 0 && entries.every((entry) => selectedIds.has(entry.id));
+  const pagePartlySelected =
+    !pageSelected && entries.some((entry) => selectedIds.has(entry.id));
+
+  const toggle = (ids: number[], selected: boolean) => {
+    const next = new Set(selectedIds);
+    for (const id of ids) {
+      if (selected) next.add(id);
+      else next.delete(id);
+    }
+    onSelectedIdsChange(next);
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="bg-zinc-100 text-left">
           <tr>
+            <th className="px-3 py-2 w-8">
+              <input
+                type="checkbox"
+                aria-label="Select this page"
+                checked={pageSelected}
+                ref={(el) => {
+                  if (el) el.indeterminate = pagePartlySelected;
+                }}
+                disabled={!selectable}
+                onChange={(e) =>
+                  toggle(
+                    entries.map((entry) => entry.id),
+                    e.target.checked,
+                  )
+                }
+              />
+            </th>
             <th className="px-3 py-2 font-medium text-zinc-600">Person</th>
             <th className="px-3 py-2 font-medium text-zinc-600">Reason</th>
             <SortHeader
@@ -106,6 +144,15 @@ const WaitlistTable: React.FC<WaitlistTableProps> = ({
         <tbody className="divide-y divide-zinc-100">
           {entries.map((entry) => (
             <tr key={entry.id} className="hover:bg-zinc-50 align-top">
+              <td className="px-3 py-2">
+                <input
+                  type="checkbox"
+                  aria-label={`Select ${entry.name}`}
+                  checked={selectedIds.has(entry.id)}
+                  disabled={!selectable}
+                  onChange={(e) => toggle([entry.id], e.target.checked)}
+                />
+              </td>
               <td className="px-3 py-2">
                 <p className="font-medium text-zinc-900">{entry.name}</p>
                 <p className="text-xs text-zinc-500">{entry.email}</p>

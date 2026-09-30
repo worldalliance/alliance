@@ -47,10 +47,25 @@ const campaign = {
 let searches: WaitlistEntrySearchDto[] = [];
 let searchStatus = 200;
 let searchTotal = 2;
+let posts: { path: string; body: unknown }[] = [];
+let holdIds: Promise<void> | undefined;
+let holdSearch: Promise<void> | undefined;
+let mobilizeStatus = 200;
+
+const recordPost =
+  (response: unknown) =>
+  async ({ request }: { request: Request }) => {
+    posts.push({
+      path: new URL(request.url).pathname,
+      body: await request.json(),
+    });
+    return Response.json(response);
+  };
 
 serveApi(
   routes({
     "POST /waitlist/admin/entries/search": async ({ request }) => {
+      await holdSearch;
       const body: WaitlistEntrySearchDto = await request.json();
       searches.push(body);
       if (searchStatus !== 200) {
@@ -64,6 +79,15 @@ serveApi(
         total: searchTotal,
       });
     },
+    "POST /waitlist/admin/entries/ids": async (input) => {
+      await holdIds;
+      return recordPost({ ids: [1, 2, 3] })(input);
+    },
+    "POST /waitlist/admin/entries/mobilize": async (input) =>
+      mobilizeStatus === 200
+        ? recordPost({ changed: 1 })(input)
+        : Response.json({ message: "Refused" }, { status: mobilizeStatus }),
+    "POST /waitlist/admin/entries/unmobilize": recordPost({ changed: 0 }),
     "GET /campaigns": () =>
       Response.json([
         { ...campaign, id: 7, name: "Acme", kind: "organization" },
@@ -89,6 +113,10 @@ beforeEach(() => {
   searches = [];
   searchStatus = 200;
   searchTotal = 2;
+  posts = [];
+  holdIds = undefined;
+  holdSearch = undefined;
+  mobilizeStatus = 200;
 });
 
 const renderPage = () =>
@@ -262,5 +290,198 @@ it("filters by organization and by link", async () => {
       organizationIds: [7],
       sourceLinkIds: [9],
     }),
+  );
+});
+
+it("marks the selected entries mobilized after confirming", async () => {
+  renderPage();
+  fireEvent.click(await screen.findByLabelText("Select Person 2"));
+  expect(screen.getByText("1 entry is selected")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Mark mobilized" }));
+  expect(await screen.findByText(/sends no email/)).toBeTruthy();
+  expect(posts).toEqual([]);
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+  await waitFor(() =>
+    expect(posts).toEqual([
+      { path: "/waitlist/admin/entries/mobilize", body: { entryIds: [2] } },
+    ]),
+  );
+  expect(await screen.findByText("Marked 1 entry mobilized")).toBeTruthy();
+  expect(screen.queryByText(/selected/)).toBeNull();
+  await waitFor(() => expect(searches).toHaveLength(2));
+});
+
+it("selects every matching entry across pages, and undoes their mobilization", async () => {
+  renderPage();
+  await screen.findByText("person1@example.com");
+  fireEvent.change(screen.getByLabelText("Mobilized"), {
+    target: { value: "true" },
+  });
+  await waitFor(() =>
+    expect(searches.at(-1)?.filter).toEqual({ mobilized: true }),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Select all 2 matching" }),
+  );
+  expect(await screen.findByText("3 entries are selected")).toBeTruthy();
+  expect(posts[0]).toEqual({
+    path: "/waitlist/admin/entries/ids",
+    body: { filter: { mobilized: true } },
+  });
+
+  fireEvent.click(screen.getByRole("button", { name: "Undo mobilized" }));
+  expect(await screen.findByText(/stays usable/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+  await waitFor(() =>
+    expect(posts.at(-1)).toEqual({
+      path: "/waitlist/admin/entries/unmobilize",
+      body: { entryIds: [1, 2, 3] },
+    }),
+  );
+});
+
+it("shows a partly selected page as indeterminate", async () => {
+  renderPage();
+  fireEvent.click(await screen.findByLabelText("Select Person 1"));
+  const header = screen.getByLabelText("Select this page");
+  expect(header).toHaveProperty("indeterminate", true);
+  fireEvent.click(screen.getByLabelText("Select Person 2"));
+  expect(header).toHaveProperty("indeterminate", false);
+  expect(header).toHaveProperty("checked", true);
+});
+
+it("clears the selection when the filter changes", async () => {
+  renderPage();
+  fireEvent.click(await screen.findByLabelText("Select this page"));
+  expect(screen.getByText("2 entries are selected")).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Reason"), {
+    target: { value: "true" },
+  });
+  await waitFor(() => expect(screen.queryByText(/selected/)).toBeNull());
+});
+
+it("ignores a select-all answer for a filter since changed", async () => {
+  let release = () => {};
+  holdIds = new Promise((resolve) => {
+    release = resolve;
+  });
+  renderPage();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Select all 2 matching" }),
+  );
+  fireEvent.change(screen.getByLabelText("Reason"), {
+    target: { value: "true" },
+  });
+  await waitFor(() =>
+    expect(searches.at(-1)?.filter).toEqual({ hasReason: true }),
+  );
+  release();
+  await waitFor(() => expect(posts).toHaveLength(1));
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Select all 2 matching" }),
+    ).toHaveProperty("disabled", false),
+  );
+  expect(screen.queryByText(/selected/)).toBeNull();
+});
+
+it("ignores a select-all answer once the selection has since changed", async () => {
+  let release = () => {};
+  holdIds = new Promise((resolve) => {
+    release = resolve;
+  });
+  renderPage();
+  fireEvent.click(await screen.findByLabelText("Select Person 1"));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Select all 2 matching" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+  release();
+  await waitFor(() => expect(posts).toHaveLength(1));
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Select all 2 matching" }),
+    ).toHaveProperty("disabled", false),
+  );
+  expect(screen.queryByText(/selected/)).toBeNull();
+});
+
+it("changes only the entries selected when the confirmation opened", async () => {
+  let release = () => {};
+  holdIds = new Promise((resolve) => {
+    release = resolve;
+  });
+  renderPage();
+  fireEvent.click(await screen.findByLabelText("Select Person 2"));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Select all 2 matching" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Mark mobilized" }));
+  expect(await screen.findByText(/among 1 selected entry/)).toBeTruthy();
+  release();
+  expect(await screen.findByText("3 entries are selected")).toBeTruthy();
+  expect(screen.getByText(/among 1 selected entry/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+  await waitFor(() =>
+    expect(posts.at(-1)).toEqual({
+      path: "/waitlist/admin/entries/mobilize",
+      body: { entryIds: [2] },
+    }),
+  );
+});
+
+it("moves back to the last page once entries leave it", async () => {
+  searchTotal = 120;
+  renderPage();
+  await screen.findByText("person1@example.com");
+  fireEvent.click(screen.getByRole("button", { name: "3" }));
+  await waitFor(() => expect(searches.at(-1)?.offset).toBe(100));
+
+  searchTotal = 60;
+  fireEvent.click(screen.getByLabelText("Select this page"));
+  fireEvent.click(screen.getByRole("button", { name: "Mark mobilized" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Confirm" }));
+  await waitFor(() => expect(searches.at(-1)?.offset).toBe(50));
+});
+
+it("keeps the selection and says why when mobilizing fails", async () => {
+  mobilizeStatus = 403;
+  renderPage();
+  fireEvent.click(await screen.findByLabelText("Select Person 2"));
+  fireEvent.click(screen.getByRole("button", { name: "Mark mobilized" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Confirm" }));
+  expect(await screen.findByText("Refused")).toBeTruthy();
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "Confirm" })).toBeNull(),
+  );
+  expect(screen.getByText("1 entry is selected")).toBeTruthy();
+});
+
+it("disables selection while the previous filter's rows still show", async () => {
+  renderPage();
+  await screen.findByText("person1@example.com");
+  let release = () => {};
+  holdSearch = new Promise((resolve) => {
+    release = resolve;
+  });
+  fireEvent.change(screen.getByLabelText("Reason"), {
+    target: { value: "true" },
+  });
+  await waitFor(() =>
+    expect(screen.getByLabelText("Select Person 1")).toHaveProperty(
+      "disabled",
+      true,
+    ),
+  );
+  expect(
+    screen.getByRole("button", { name: "Select all 2 matching" }),
+  ).toHaveProperty("disabled", true);
+  release();
+  await waitFor(() =>
+    expect(screen.getByLabelText("Select Person 1")).toHaveProperty(
+      "disabled",
+      false,
+    ),
   );
 });
