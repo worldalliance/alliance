@@ -38,6 +38,10 @@ Implement later in the shared ordering logic, web/mobile consumers, and admin pr
 - The final tie-breaker is ascending item ID inside `homePagePriorityComparator`, so the admin list, web, and mobile agree on ties.
 - `useHomePageActions().todoActions` carries the partition, so web's task navigator, current task, and this-week/next-week lists all inherit it; the sidebar applies it within each week group, keeping that grouping. The navigator's own re-sort of `todoActions` is removed because it would undo the partition. Web sorts that are not task-card sequences (sidebar progress bars, completed parents, general updates) keep the baseline comparator.
 - Mobile's action/update sequence moves to `interleaveActionsAndUpdates` in `shared/lib/homePage.ts`, so it is unit-testable without rendering the mobile screen.
+- Admin placement lives in `apps/admin/src/lib/homePlacement.ts`, a pure function per item type over configuration and `now`. It recomputes an action's status from its events at `now` rather than reading the fetched `status`, so a cached list agrees with the event dates it compares:
+  - Actions: archived, public-only, and completion-blocked (outside staff preview) are inactive with that reason. Otherwise badges are Active task (`member_action`), Onboarding, Available after deadline (`shouldCompleteAfterDeadline` on an action whose member action has started or is scheduled, since members only keep it after a phase they could act in), Scheduled (a future member-action event, not active, completion not blocked), Draft (no member-action event, status `draft`/`planned`), Staff preview (`staffPreview` before any member-action event). An action with none of these is inactive as closed.
+  - General updates: unscheduled (no start date) stays in the default list with an Unscheduled badge, since members need a start date; a future start is Scheduled; a past end date is inactive as expired.
+- Badge descriptions are `title` tooltips; inactive reasons render as visible text, since they only appear under Show all where the reason is the point.
 
 ## Acceptance checks for implementation
 

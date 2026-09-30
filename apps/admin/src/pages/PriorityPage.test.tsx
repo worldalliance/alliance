@@ -4,6 +4,7 @@ import type {
   SetPriorityDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { makeEvent } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
@@ -258,4 +259,37 @@ it("keeps the reorder and says why when the save is refused", async () => {
 
   expect(await screen.findByText(sessionExpiredMessage)).toBeTruthy();
   expect(screen.getByText("Save")).toBeTruthy();
+});
+
+const pastDate = "2026-01-01T00:00:00.000Z";
+const closedDate = "2026-01-10T00:00:00.000Z";
+it("lists a closed action shown after its deadline and says why", async () => {
+  servedActions = [
+    adminActionListItem(1, "Late petition", {
+      status: "office_action",
+      shouldCompleteAfterDeadline: true,
+      events: [
+        makeEvent({ date: pastDate }),
+        makeEvent({ id: 3, newStatus: "office_action", date: closedDate }),
+      ],
+    }),
+    adminActionListItem(2, "Old petition", {
+      status: "office_action",
+      events: [
+        makeEvent({ id: 2, date: pastDate }),
+        makeEvent({ id: 4, newStatus: "office_action", date: closedDate }),
+      ],
+    }),
+  ];
+  renderPage();
+  expect(await screen.findByText("Late petition")).toBeTruthy();
+  expect(screen.getByText("Available after deadline")).toBeTruthy();
+  expect(screen.queryByText("Old petition")).toBeNull();
+
+  fireEvent.click(screen.getByLabelText("Show all"));
+
+  expect(screen.getByText("Old petition")).toBeTruthy();
+  expect(
+    screen.getByText(/No member action open, upcoming, or shown after/),
+  ).toBeTruthy();
 });
