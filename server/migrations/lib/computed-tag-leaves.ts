@@ -1,7 +1,8 @@
-// Frozen helpers for `1790785172521-ComputedAllMembersAndStaff`. They live
-// outside `migrations/*.ts` because TypeORM instantiates every export it finds
-// there. Application code must not import them, and their behavior must not
-// change once the migration has run.
+// Frozen helpers for `1790785172521-ComputedAllMembersAndStaff` and
+// `1790791195549-RetireAllMembersStaffAndEuTags`. They live outside
+// `migrations/*.ts` because TypeORM instantiates every export it finds there.
+// Application code must not import them, and their behavior must not change
+// once the migrations have run.
 import { QueryRunner } from "typeorm";
 
 type Node = { type: string; tagId?: string; child?: Node; children?: Node[] };
