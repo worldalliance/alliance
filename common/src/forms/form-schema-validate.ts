@@ -179,6 +179,7 @@ function getLocalFieldReference(cond: Condition): string | null {
     case "equals":
     case "includesOption":
     case "anySelected":
+    case "selectedCount":
     case "hasValue":
       return cond.sourceFormId == null ? cond.when : null;
     case "validator":
