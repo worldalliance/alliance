@@ -11,6 +11,8 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { isAtCapacity } from "src/community/community.utils";
+import { Community } from "src/community/entities/community.entity";
 import { MailService, type WaitlistStaffEmail } from "src/mail/mail.service";
 import {
   signupUrl,
@@ -19,7 +21,7 @@ import {
 } from "src/search/approutes";
 import { UserService } from "src/user/user.service";
 import type { Repository } from "src/utils/Repository";
-import { DataSource, In } from "typeorm";
+import { DataSource, In, IsNull, Not } from "typeorm";
 import type {
   SendWaitlistEmailDto,
   TestWaitlistEmailDto,
@@ -134,6 +136,30 @@ export class WaitlistEmailService {
     );
   }
 
+  /** Needs the entries' organizations loaded. */
+  private async countInFullGroups(entries: WaitlistEntry[]): Promise<number> {
+    const communityIds = new Set(
+      entries.flatMap((entry) => entry.organization?.communityId ?? []),
+    );
+    if (!communityIds.size) return 0;
+    const communities = await this.dataSource.getRepository(Community).find({
+      select: {
+        id: true,
+        maxCapacity: true,
+        users: { id: true },
+        leaders: { id: true },
+      },
+      where: { id: In([...communityIds]), maxCapacity: Not(IsNull()) },
+      relations: { users: true, leaders: true },
+    });
+    const full = new Set(
+      communities.filter(isAtCapacity).map((community) => community.id),
+    );
+    return entries.filter((entry) =>
+      full.has(entry.organization?.communityId ?? -1),
+    ).length;
+  }
+
   private async countAlreadySent(params: {
     entryIds: number[];
     subject: string;
@@ -202,10 +228,10 @@ export class WaitlistEmailService {
       ({ entry }) => entry,
     );
     const recipientIds = recipients.map((entry) => entry.id);
-    const alreadySent = await this.countAlreadySent({
-      entryIds: recipientIds,
-      subject: dto.subject,
-    });
+    const [alreadySent, inFullGroup] = await Promise.all([
+      this.countAlreadySent({ entryIds: recipientIds, subject: dto.subject }),
+      this.countInFullGroups(recipients),
+    ]);
 
     const needsOrganization = usesOrganizationName(dto);
     const sampleEntry =
@@ -225,6 +251,7 @@ export class WaitlistEmailService {
         (entry) =>
           entry.organization && entry.organization.communityId === null,
       ).length,
+      inFullGroup,
       alreadySent,
       sample: sampleEntry
         ? await this.renderSample({ content: dto, entry: sampleEntry })

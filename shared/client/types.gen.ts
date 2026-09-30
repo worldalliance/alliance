@@ -4631,6 +4631,10 @@ export type WaitlistEmailPreviewDto = {
      */
     withoutGroup: number;
     /**
+     * Recipients whose organization's group is at or past its capacity
+     */
+    inFullGroup: number;
+    /**
      * Recipients already sent, or being sent, an email with this subject
      */
     alreadySent: number;

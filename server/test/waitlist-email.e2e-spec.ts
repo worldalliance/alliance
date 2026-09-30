@@ -310,6 +310,44 @@ describe("Waitlist email admin (e2e)", () => {
       ]);
     });
 
+    it("counts recipients whose organization's group is full", async () => {
+      const full = await saveOrganization("Full Org", true);
+      await ctx.dataSource.getRepository(Community).save({
+        id: full.communityId ?? undefined,
+        maxCapacity: 1,
+        users: [{ id: ctx.adminUserId }],
+      });
+      const roomy = await saveOrganization("Roomy Org", true);
+      const led = await saveOrganization("Led Org", true);
+      await ctx.dataSource.getRepository(Community).save({
+        id: led.communityId ?? undefined,
+        maxCapacity: 1,
+        users: [{ id: ctx.adminUserId }],
+        leaders: [{ id: ctx.adminUserId }],
+      });
+      const uncapped = await saveOrganization("Uncapped Org", true);
+      await ctx.dataSource.getRepository(Community).save({
+        id: uncapped.communityId ?? undefined,
+        maxCapacity: null,
+        public: false,
+        allowMemberInvites: false,
+        allowStaffAssignments: false,
+        users: [{ id: ctx.adminUserId }],
+      });
+      const entries = await Promise.all([
+        saveEntry({ organizationId: full.id }),
+        saveEntry({ organizationId: roomy.id }),
+        saveEntry({ organizationId: led.id }),
+        saveEntry({ organizationId: uncapped.id }),
+        saveEntry(),
+      ]);
+
+      const res = await preview({
+        entryIds: entries.map((entry) => entry.id),
+      }).expect(200);
+      expect(res.body.inFullGroup).toBe(1);
+    });
+
     it("renders the requested recipient without issuing an invite", async () => {
       const organization = await saveOrganization("Sample Org", false);
       const first = await saveEntry({ organizationId: organization.id });

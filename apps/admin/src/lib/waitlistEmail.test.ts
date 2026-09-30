@@ -18,6 +18,7 @@ const preview = (
   waiting: 2,
   withoutOrganization: 0,
   withoutGroup: 0,
+  inFullGroup: 0,
   alreadySent: 0,
   sample: null,
   ...fields,

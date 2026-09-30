@@ -81,6 +81,7 @@ export const emailPreview = (
   waiting: 2,
   withoutOrganization: 0,
   withoutGroup: 0,
+  inFullGroup: 0,
   alreadySent: 0,
   sample: {
     entryId: 1,

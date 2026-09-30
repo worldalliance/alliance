@@ -25,6 +25,11 @@ function freeSlots(c: Community): number {
   return (c.maxCapacity ?? 0) - getMemberCount(c);
 }
 
+/** At or past its cap. A consensual placement still joins it. */
+export function isAtCapacity(c: Community): boolean {
+  return c.maxCapacity !== null && freeSlots(c) <= 0;
+}
+
 /** Room for one more member placed by the automated referral system. */
 export function acceptsAutomatedMember(c: Community): boolean {
   return c.allowMemberInvites && freeSlots(c) > 0;
@@ -51,7 +56,7 @@ export function acceptsPublicJoin(c: Community): boolean {
  * is inviting or assigning anyone here.
  */
 export function hasRoomForReturningMember(c: Community): boolean {
-  return c.maxCapacity === null || freeSlots(c) > 0;
+  return !isAtCapacity(c);
 }
 
 /**

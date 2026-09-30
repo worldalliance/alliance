@@ -79,6 +79,7 @@ export type WaitlistEmailPreview = {
   waiting: number;
   withoutOrganization: number;
   withoutGroup: number;
+  inFullGroup: number;
   alreadySent: number;
   sample: WaitlistEmailSample | null;
 };
@@ -112,6 +113,12 @@ export class WaitlistEmailPreviewDto {
 
   @ApiProperty({
     description:
+      "Recipients whose organization's group is at or past its capacity",
+  })
+  inFullGroup: number;
+
+  @ApiProperty({
+    description:
       "Recipients already sent, or being sent, an email with this subject",
   })
   alreadySent: number;
@@ -127,6 +134,7 @@ export class WaitlistEmailPreviewDto {
     this.waiting = input.waiting;
     this.withoutOrganization = input.withoutOrganization;
     this.withoutGroup = input.withoutGroup;
+    this.inFullGroup = input.inFullGroup;
     this.alreadySent = input.alreadySent;
     this.sample = input.sample && new WaitlistEmailSampleDto(input.sample);
   }
