@@ -147,7 +147,10 @@ import { CohortAdmissionService } from "./cohort-admission.service";
 import { readsSavedDecisions } from "./cohort-decision";
 import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import { CohortDecisionService } from "./cohort-decision.service";
-import { assertNotInACohort } from "./cohort-reference-validation";
+import {
+  assertNotInACohort,
+  assertTagsExist,
+} from "./cohort-reference-validation";
 import {
   ActionActivityDto,
   ActionDto,
@@ -488,6 +491,19 @@ export class ActionsService {
     return parsed.data;
   }
 
+  private async parseCohortExpressionForSaveOrThrow(
+    value: unknown,
+    stored?: unknown,
+  ): Promise<CohortExpression> {
+    const expression = this.parseCohortExpressionOrThrow(value);
+    await assertTagsExist({
+      em: this.actionRepository.manager,
+      expression,
+      previous: cohortExpressionSchema.safeParse(stored).data,
+    });
+    return expression;
+  }
+
   /** Reviewers are ordered by the position the admin sent them in. */
   private reviewerRows(reviewers: ActionReviewerDto[]): ActionReviewer[] {
     return reviewers.map((reviewer, position) =>
@@ -528,7 +544,7 @@ export class ActionsService {
     const { suiteId, authorIds, reviewers, ...rest } = createActionDto;
     this.rewriteRenderedImages(rest);
     if (rest.cohortExpression != null) {
-      rest.cohortExpression = this.parseCohortExpressionOrThrow(
+      rest.cohortExpression = await this.parseCohortExpressionForSaveOrThrow(
         rest.cohortExpression,
       );
     }
@@ -1989,8 +2005,9 @@ export class ActionsService {
     const { suiteId, authorIds, reviewers, ...rest } = updateActionDto;
     this.dropEchoedImages(rest, action);
     if (rest.cohortExpression != null) {
-      rest.cohortExpression = this.parseCohortExpressionOrThrow(
+      rest.cohortExpression = await this.parseCohortExpressionForSaveOrThrow(
         rest.cohortExpression,
+        action.cohortExpression,
       );
     }
 
@@ -2132,7 +2149,7 @@ export class ActionsService {
     dto: CreateFollowUpFormDto,
   ): Promise<ParsedFollowUpForm> {
     if (dto.cohortExpression != null) {
-      dto.cohortExpression = this.parseCohortExpressionOrThrow(
+      dto.cohortExpression = await this.parseCohortExpressionForSaveOrThrow(
         dto.cohortExpression,
       );
     }
@@ -2160,8 +2177,9 @@ export class ActionsService {
       relations: { form: true, action: true },
     });
     if (dto.cohortExpression != null) {
-      dto.cohortExpression = this.parseCohortExpressionOrThrow(
+      dto.cohortExpression = await this.parseCohortExpressionForSaveOrThrow(
         dto.cohortExpression,
+        followUpForm.cohortExpression,
       );
     }
     Object.assign(followUpForm, dto);
@@ -3750,7 +3768,9 @@ export class ActionsService {
     const cohortExpression =
       actionCols.cohortExpression == null
         ? undefined
-        : this.parseCohortExpressionOrThrow(actionCols.cohortExpression);
+        : await this.parseCohortExpressionForSaveOrThrow(
+            actionCols.cohortExpression,
+          );
 
     let suiteIdToSync: number | undefined;
     const result = await this.actionRepository.manager.transaction(

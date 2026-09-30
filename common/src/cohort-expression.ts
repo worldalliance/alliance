@@ -203,14 +203,15 @@ export function expressionHasLeaf(
 }
 
 /**
- * The action ids from action leaves, and the form ids from FormFieldValue
- * leaves, the expression references.
+ * The action ids from action leaves, the form ids from FormFieldValue leaves,
+ * and the tag ids from Tag leaves, the expression references.
  */
 export function collectCohortDependencies(
   expr: CohortExpression | null | undefined,
-): { actionIds: Set<number>; formIds: Set<number> } {
+): { actionIds: Set<number>; formIds: Set<number>; tagIds: Set<string> } {
   const actionIds = new Set<number>();
   const formIds = new Set<number>();
+  const tagIds = new Set<string>();
 
   const walk = (node: CohortExpression): void => {
     switch (node.type) {
@@ -222,6 +223,8 @@ export function collectCohortDependencies(
         formIds.add(node.formId);
         break;
       case "Tag":
+        tagIds.add(node.tagId);
+        break;
       case "Manual":
       case "GroupLead":
       case "USMember":
@@ -243,7 +246,7 @@ export function collectCohortDependencies(
   };
 
   if (expr) walk(expr);
-  return { actionIds, formIds };
+  return { actionIds, formIds, tagIds };
 }
 
 export type ReferencedAction = {
