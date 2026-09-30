@@ -494,7 +494,7 @@ const withdrawalReason = (withdrawal: ActionWithdrawalDto): string =>
   [
     withdrawal.outOfTime ? "out of time" : null,
     withdrawal.isMoral ? "moral objection" : null,
-    withdrawal.declineReason ?? null,
+    withdrawal.declineReason,
   ]
     .filter((part): part is string => Boolean(part))
     .join("; ");

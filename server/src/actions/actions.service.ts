@@ -1890,7 +1890,7 @@ export class ActionsService {
       action: action,
       user: user,
       taskFormResponse,
-      declineReason,
+      declineReason: declineReason ?? null,
       outOfTime: isOutOfTime,
       isMoral,
       source: adminCreated
@@ -4026,7 +4026,7 @@ export class ActionsService {
             case ActionActivityType.USER_WONT_COMPLETE:
               activityStatus = UserActionRelationPillStatus.WontComplete;
               // Surface withdrawal reason for the leader view.
-              detail.declineReason = terminal.declineReason;
+              detail.declineReason = terminal.declineReason ?? undefined;
               detail.isMoral = terminal.isMoral;
               detail.outOfTime = terminal.outOfTime;
               break;
