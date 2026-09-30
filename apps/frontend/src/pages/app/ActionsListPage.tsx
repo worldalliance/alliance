@@ -8,6 +8,7 @@ import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
+import { ChevronRight, Newspaper } from "lucide-react";
 import { useMemo, useState } from "react";
 import { href, Link } from "react-router";
 import ActionItemCard from "../../components/ActionItemCard";
@@ -46,8 +47,8 @@ const ActionsListPage = () => {
 
   return (
     <CenterLayout className="gap-y-4" width="4xl">
-      <div className="flex flex-row justify-between w-full items-center">
-        <div className="flex flex-row justify-start items-center w-full gap-x-4">
+      <div className="flex flex-row flex-wrap justify-between w-full items-center gap-2">
+        <div className="flex flex-row justify-start items-center gap-x-4">
           <p>Filter by:</p>
           <DropdownSelect
             options={FilterMode}
@@ -60,9 +61,21 @@ const ActionsListPage = () => {
         </div>
         <Link
           to={href("/action-updates")}
-          className="text-zinc-800 hover:underline rounded font-medium whitespace-nowrap"
+          className="ml-auto flex flex-row items-center gap-x-3 bg-white border border-zinc-200 rounded-[7px] px-3 py-2 hover:border-zinc-300 hover:bg-zinc-50"
         >
-          Action updates
+          <Newspaper size={20} className="shrink-0 text-zinc-700" />
+          <div className="flex flex-col">
+            <span className="font-medium text-zinc-900 whitespace-nowrap">
+              Action updates
+            </span>
+            <span className="text-xs text-zinc-500 whitespace-nowrap">
+              <span className="hidden md:inline">
+                Short posts about what we achieved
+              </span>
+              <span className="md:hidden">What we achieved</span>
+            </span>
+          </div>
+          <ChevronRight size={16} className="shrink-0 text-zinc-400" />
         </Link>
       </div>
 
