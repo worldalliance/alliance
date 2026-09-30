@@ -230,7 +230,7 @@ export type ActionEventNotifType = 'announcement' | 'misseddeadline' | 'reminder
 
 export type EmailStatus = 'pending' | 'sent' | 'failed';
 
-export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reminder';
+export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reminder' | 'waitlist_confirmation' | 'waitlist_link';
 
 export type Mail = {
     id: number;
@@ -1680,7 +1680,7 @@ export type NotifClickResponseDto = {
     mms: boolean;
 };
 
-export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested' | 'account_deleted' | 'join_request' | 'admin_role_changed';
+export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested' | 'account_deleted' | 'join_request' | 'admin_role_changed' | 'waitlist_mail_cap_reached';
 
 export type EventLogUserDto = {
     id: number;
@@ -4346,6 +4346,17 @@ export type WaitlistEntryResultDto = {
      * The new entry's personal code; null when the email was already on the waitlist
      */
     shareCode: string | null;
+};
+
+export type WaitlistLinkRequestDto = {
+    email: string;
+};
+
+export type WaitlistMailConfigDto = {
+    /**
+     * Whether the waitlist can email links
+     */
+    enabled: boolean;
 };
 
 export type WaitlistOrganizationDto = {
@@ -13317,6 +13328,52 @@ export type WaitlistCreateResponses = {
 };
 
 export type WaitlistCreateResponse = WaitlistCreateResponses[keyof WaitlistCreateResponses];
+
+export type WaitlistRequestLinkData = {
+    body: WaitlistLinkRequestDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/link-requests';
+};
+
+export type WaitlistRequestLinkErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistRequestLinkError = WaitlistRequestLinkErrors[keyof WaitlistRequestLinkErrors];
+
+export type WaitlistRequestLinkResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type WaitlistRequestLinkResponse = WaitlistRequestLinkResponses[keyof WaitlistRequestLinkResponses];
+
+export type WaitlistMailConfigData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/waitlist/mail-config';
+};
+
+export type WaitlistMailConfigErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistMailConfigError = WaitlistMailConfigErrors[keyof WaitlistMailConfigErrors];
+
+export type WaitlistMailConfigResponses = {
+    200: WaitlistMailConfigDto;
+};
+
+export type WaitlistMailConfigResponse = WaitlistMailConfigResponses[keyof WaitlistMailConfigResponses];
 
 export type WaitlistFindReferralData = {
     body?: never;

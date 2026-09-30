@@ -124,6 +124,15 @@ export function processKeywordReplacements(
   return str;
 }
 
+export type WaitlistEmailType =
+  | EmailType.WaitlistConfirmation
+  | EmailType.WaitlistLink;
+
+const WAITLIST_SUBJECTS: Record<WaitlistEmailType, string> = {
+  [EmailType.WaitlistConfirmation]: "You’re on the Alliance waitlist",
+  [EmailType.WaitlistLink]: "Your Alliance waitlist link",
+};
+
 @Injectable()
 export class MailService {
   constructor(
@@ -148,6 +157,8 @@ export class MailService {
     [EmailType.CustomActionReminder]: "customactionreminder",
     [EmailType.ContractSuspended]: "contractsuspended",
     [EmailType.ContractReminder]: "contractreminder",
+    [EmailType.WaitlistConfirmation]: "waitlist-confirmation",
+    [EmailType.WaitlistLink]: "waitlist-link",
   };
 
   async renderHtml(emailType: EmailType, context: ISendMailOptions["context"]) {
@@ -298,6 +309,21 @@ export class MailService {
         name,
         link: `${process.env.APP_URL}/tasks`,
       },
+      cid: null,
+    });
+  }
+
+  public async sendWaitlistLinkEmail(params: {
+    recipient: string;
+    emailType: WaitlistEmailType;
+    url: string;
+  }): Promise<Mail> {
+    const { recipient, emailType, url } = params;
+    return this.sendMail({
+      recipient,
+      emailType,
+      subject: WAITLIST_SUBJECTS[emailType],
+      context: { url },
       cid: null,
     });
   }

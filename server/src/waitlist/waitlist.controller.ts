@@ -9,20 +9,31 @@ import {
   NotFoundException,
   Post,
   Query,
+  ServiceUnavailableException,
   UseGuards,
 } from "@nestjs/common";
-import { ApiOkResponse } from "@nestjs/swagger";
+import { ApiNoContentResponse, ApiOkResponse } from "@nestjs/swagger";
 import { ThrottlerGuard } from "@nestjs/throttler";
 import { Public } from "src/auth/public.decorator";
-import { WAITLIST_ENTRY_THROTTLE } from "src/auth/signup-throttle.config";
+import {
+  WAITLIST_ENTRY_THROTTLE,
+  WAITLIST_LINK_THROTTLE,
+} from "src/auth/signup-throttle.config";
+import { EmailType } from "src/mail/mail.entity";
 import { OnlyThrottle } from "src/utils/throttle";
 import {
   CreateWaitlistEntryDto,
   WaitlistCountDto,
   WaitlistEntryResultDto,
+  WaitlistLinkRequestDto,
+  WaitlistMailConfigDto,
   WaitlistReferralCodesDto,
   WaitlistReferralDto,
 } from "./dto/waitlist.dto";
+import {
+  publicMailDailyCap,
+  WaitlistMailService,
+} from "./waitlist-mail.service";
 import { WaitlistEntryError, WaitlistService } from "./waitlist.service";
 
 function entryException(
@@ -46,7 +57,10 @@ function entryException(
 
 @Controller("waitlist")
 export class WaitlistController {
-  constructor(private readonly waitlistService: WaitlistService) {}
+  constructor(
+    private readonly waitlistService: WaitlistService,
+    private readonly waitlistMailService: WaitlistMailService,
+  ) {}
 
   @Post("entries")
   @Public()
@@ -61,7 +75,40 @@ export class WaitlistController {
     if (R.isFailure(created)) {
       throw entryException(created.error);
     }
+    if (created.value !== null) {
+      void this.waitlistMailService.sendShareLink({
+        email: dto.email,
+        emailType: EmailType.WaitlistConfirmation,
+      });
+    }
     return new WaitlistEntryResultDto(created.value);
+  }
+
+  /**
+   * Answers alike whether or not the address has an entry, and mails in the
+   * background so the response time doesn't tell either.
+   */
+  @Post("link-requests")
+  @Public()
+  @UseGuards(ThrottlerGuard)
+  @OnlyThrottle(WAITLIST_LINK_THROTTLE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse()
+  async requestLink(@Body() dto: WaitlistLinkRequestDto): Promise<void> {
+    if (publicMailDailyCap() === null) {
+      throw new ServiceUnavailableException("Emailing links is not available");
+    }
+    void this.waitlistMailService.sendShareLink({
+      email: dto.email,
+      emailType: EmailType.WaitlistLink,
+    });
+  }
+
+  @Get("mail-config")
+  @Public()
+  @ApiOkResponse({ type: WaitlistMailConfigDto })
+  mailConfig(): WaitlistMailConfigDto {
+    return new WaitlistMailConfigDto(publicMailDailyCap() !== null);
   }
 
   @Get("referral")

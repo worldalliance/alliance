@@ -20,6 +20,7 @@ import { configureApp } from "./utils/configure-app";
 import { socketCorsOrigins } from "./utils/cors-origins";
 import { requestContext } from "./utils/request-context";
 import { RouteContextGuard } from "./utils/request-context.guard";
+import { publicMailDailyCap } from "./waitlist/waitlist-mail.service";
 
 // Let validateNodeEnv report unknown values without treating them as deployed.
 function deployedUrlVars(): string[] {
@@ -49,6 +50,10 @@ function validateEnv() {
     );
     process.exit(1);
   }
+
+  // Parses the waitlist mail cap now, so a malformed one fails boot rather
+  // than a request.
+  publicMailDailyCap();
 
   validateNodeEnv();
 }

@@ -40,6 +40,11 @@ export const WAITLIST_ENTRY_THROTTLE: Record<string, ThrottlerOptions> = {
   waitlistEntrySustained: { limit: 200, ttl: milliseconds({ hours: 1 }) },
 };
 
+export const WAITLIST_LINK_THROTTLE: Record<string, ThrottlerOptions> = {
+  waitlistLinkBurst: { limit: 5, ttl: milliseconds({ minutes: 1 }) },
+  waitlistLinkSustained: { limit: 20, ttl: milliseconds({ hours: 1 }) },
+};
+
 /**
  * Sign-in through a provider. Looser than {@link SIGNUP_THROTTLE} because
  * /start is one click of a login button, not a registration, and a roomful of

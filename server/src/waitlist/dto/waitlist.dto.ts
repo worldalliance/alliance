@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
 import {
   Equals,
@@ -56,6 +56,19 @@ export class CreateWaitlistEntryDto extends WaitlistReferralCodesDto {
   @ApiProperty({ type: Boolean, enum: [true] })
   @Equals(true)
   committed: true;
+}
+
+export class WaitlistLinkRequestDto extends PickType(CreateWaitlistEntryDto, [
+  "email",
+] as const) {}
+
+export class WaitlistMailConfigDto {
+  @ApiProperty({ description: "Whether the waitlist can email links" })
+  enabled: boolean;
+
+  constructor(enabled: boolean) {
+    this.enabled = enabled;
+  }
 }
 
 export class WaitlistEntryResultDto {
