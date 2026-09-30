@@ -1,3 +1,4 @@
+import { WAITLIST_PATH } from "@alliance/common/waitlist";
 import { href } from "react-router";
 
 export type SiteLink = {
@@ -11,7 +12,7 @@ export const PEOPLE_HREF = href("/people");
 export const GUIDE_HREF = href("/guide");
 export const PROGRESS_HREF = href("/progress");
 export const PARTNER_HREF = href("/outreach-partner");
-export const WAITLIST_HREF = href("/projects/democratic-grantmaking-26");
+export const WAITLIST_HREF = href(WAITLIST_PATH);
 export const FAQ_HREF = href("/faq");
 export const GOVERNANCE_HREF = href("/governance");
 export const FOUNDATION_HREF = href("/foundation");

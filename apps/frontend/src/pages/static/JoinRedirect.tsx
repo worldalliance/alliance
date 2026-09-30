@@ -1,14 +1,14 @@
-import { redirect } from "react-router";
 import {
-  LINK_PARAM,
-  REFERRER_PARAM,
-} from "../../components/projects/democratic-grantmaking-26/useWaitlist";
+  WAITLIST_LINK_PARAM,
+  WAITLIST_REFERRER_PARAM,
+} from "@alliance/common/waitlist";
+import { redirect } from "react-router";
 import { WAITLIST_HREF } from "../../site/links";
 
 export function loader({ request }: { request: Request }) {
   const incoming = new URL(request.url).searchParams;
   const kept = new URLSearchParams();
-  for (const param of [LINK_PARAM, REFERRER_PARAM]) {
+  for (const param of [WAITLIST_LINK_PARAM, WAITLIST_REFERRER_PARAM]) {
     const value = incoming.get(param);
     if (value !== null) kept.set(param, value);
   }
