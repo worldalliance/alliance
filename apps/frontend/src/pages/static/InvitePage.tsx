@@ -11,6 +11,7 @@ import posthog from "posthog-js";
 import React, { useEffect, useState } from "react";
 import { href, Link, useSearchParams } from "react-router";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
+import { useRememberInvite } from "../../lib/useRememberInvite";
 import { HERO_SUBHEAD } from "../../site/content";
 import { SiteFooter } from "../../site/Footer";
 import { JoinCta } from "../../site/JoinCta";
@@ -39,6 +40,7 @@ const InvitePage: React.FC = () => {
   const [searchParams] = useSearchParams();
 
   const referralCode = searchParams.get("ref");
+  useRememberInvite(referralCode);
 
   const [inviterProfile, setInviterProfile] =
     useState<ReferrerProfileDto | null>(null);

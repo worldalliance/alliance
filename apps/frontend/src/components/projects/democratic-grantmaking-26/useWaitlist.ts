@@ -4,6 +4,7 @@ import {
   waitlistShareUrl,
 } from "@alliance/common/waitlist";
 import {
+  waitlistBrowser,
   waitlistCount,
   waitlistFindReferral,
   waitlistMailConfig,
@@ -23,6 +24,16 @@ export function useWaitlistCount() {
     queryFn: () =>
       waitlistCount({ throwOnError: true }).then((res) => res.data.waiting),
     retry: retryUnlessRefused(1),
+  });
+}
+
+export function useWaitlistBrowser() {
+  return useQuery({
+    queryKey: queryKeys.waitlistBrowser(),
+    queryFn: () =>
+      waitlistBrowser({ throwOnError: true }).then((res) => res.data),
+    retry: retryUnlessRefused(1),
+    staleTime: Infinity,
   });
 }
 
