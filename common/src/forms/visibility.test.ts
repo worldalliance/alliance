@@ -211,6 +211,36 @@ describe("a condition kind this build doesn't know", () => {
   });
 });
 
+describe("hasValue: false condition on a choice answer", () => {
+  const noAnswerPage = page("p1", {
+    fields: [textField("f1")],
+    visibleIfFormula: formula({
+      c1: { kind: "hasValue", when: "choice", hasValue: false },
+    }),
+  });
+
+  it.each([
+    ["no answer", undefined],
+    ["an empty select", ""],
+    ["an empty multiselect", []],
+  ])("holds for %s", (_, choice) => {
+    const data: Record<string, FormValue> =
+      choice === undefined ? {} : { choice };
+    expect(isPageCurrentlyVisible(noAnswerPage, data, extras)).toBe(true);
+  });
+
+  it.each([
+    ["a declined contract", false],
+    ["a range value", 1],
+    ["a select value", "red"],
+    ["a multiselect selection", ["red"]],
+  ])("fails for %s", (_, choice) => {
+    expect(isPageCurrentlyVisible(noAnswerPage, { choice }, extras)).toBe(
+      false,
+    );
+  });
+});
+
 describe("completedActionCount condition", () => {
   const completedPage = (atLeast: number): Page =>
     page("p1", {
