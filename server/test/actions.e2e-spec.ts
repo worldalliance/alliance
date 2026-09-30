@@ -1184,6 +1184,56 @@ describe("Actions (e2e)", () => {
       await cityRepo.delete([usCity.id, frenchCity.id]);
     });
 
+    it("selects every user on AllMembers and staff users on Staff, on both paths", async () => {
+      const recipientService = ctx.app.get(ActionEventRecipientService);
+      const singleMemberCohortService = ctx.app.get(SingleMemberCohortService);
+      const stamp = Date.now();
+      const member = await userService.create({
+        email: `computed-member-${stamp}@example.com`,
+        password: "Password123!",
+        name: "Member",
+      });
+      const staffCreated = await userService.create({
+        email: `computed-staff-${stamp}@example.com`,
+        password: "Password123!",
+        name: "Staffer",
+      });
+      await userRepo.update(staffCreated.id, { staff: true });
+      const [memberUser, staffUser] = await Promise.all([
+        userRepo.findOneOrFail({ where: { id: member.id } }),
+        userRepo.findOneOrFail({ where: { id: staffCreated.id } }),
+      ]);
+
+      const [allMembers, staff] = await Promise.all([
+        recipientService.resolveCohortMemberIds({ type: "AllMembers" }),
+        recipientService.resolveCohortMemberIds({ type: "Staff" }),
+      ]);
+      expect(allMembers.has(memberUser.id)).toBe(true);
+      expect(allMembers.has(staffUser.id)).toBe(true);
+      expect(staff.has(staffUser.id)).toBe(true);
+      expect(staff.has(memberUser.id)).toBe(false);
+
+      const perUser = async (user: User) => ({
+        allMembers: await singleMemberCohortService.computeIsInCohortExpression(
+          { user, cohortExpression: { type: "AllMembers" } },
+        ),
+        staff: await singleMemberCohortService.computeIsInCohortExpression({
+          user,
+          cohortExpression: { type: "Staff" },
+        }),
+      });
+      expect(await perUser(memberUser)).toEqual({
+        allMembers: true,
+        staff: false,
+      });
+      expect(await perUser(staffUser)).toEqual({
+        allMembers: true,
+        staff: true,
+      });
+
+      await userRepo.delete([memberUser.id, staffUser.id]);
+    });
+
     it("evaluates FormFieldValue cohort expression against real form response data", async () => {
       const respondedUser = await userService.create({
         email: `responded-${Date.now()}@example.com`,

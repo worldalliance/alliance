@@ -22,6 +22,7 @@ export type CohortEvaluationContext = {
     membership: UsMembership.Us | UsMembership.NonUs,
   ): Promise<Set<number>>;
   getAllCandidateUserIds(): Promise<Set<number>>;
+  getStaffUserIds(): Promise<Set<number>>;
   targetUserId?: number;
 };
 
@@ -75,6 +76,10 @@ export async function evaluateCohortExpression(
       return ctx.getUserIdsByUsMembership(UsMembership.Us);
     case "NonUSMember":
       return ctx.getUserIdsByUsMembership(UsMembership.NonUs);
+    case "AllMembers":
+      return ctx.getAllCandidateUserIds();
+    case "Staff":
+      return ctx.getStaffUserIds();
     case "AND": {
       if (expr.children.length === 0) return new Set();
       const { targetUserId } = ctx;
@@ -155,6 +160,7 @@ export type SingleUserCohortPredicates = {
   }): Promise<boolean>;
   isGroupLead(): Promise<boolean>;
   usMembership(): Promise<UsMembership>;
+  isStaff(): boolean;
 };
 
 /**
@@ -185,6 +191,7 @@ export function singleUserCohortContext(
     getUserIdsByUsMembership: async (membership) =>
       just((await p.usMembership()) === membership),
     getAllCandidateUserIds: async () => just(true),
+    getStaffUserIds: async () => just(p.isStaff()),
     targetUserId: p.userId,
   };
 }

@@ -148,6 +148,8 @@ describe("collectCohortDependencies", () => {
         { type: "GroupLead" },
         { type: "USMember" },
         { type: "NonUSMember" },
+        { type: "AllMembers" },
+        { type: "Staff" },
       ],
     };
 

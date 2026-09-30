@@ -27,6 +27,7 @@ export class CohortResolutionSession {
   activeUsers?: Promise<User[]>;
   candidateUserIds?: Promise<Set<number>>;
   groupLeadUserIds?: Promise<Set<number>>;
+  staffUserIds?: Promise<Set<number>>;
   usMembershipUserIds?: Promise<Record<UsMembership, Set<number>>>;
   /**
    * The single-user path's counterpart to `usMembershipUserIds`: one lookup

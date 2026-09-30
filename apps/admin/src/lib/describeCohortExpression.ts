@@ -12,6 +12,8 @@ export const LEAF_LABELS: Record<LeafCondition["type"], string> = {
   GroupLead: "Group Lead",
   USMember: "US Member",
   NonUSMember: "Non-US Member",
+  AllMembers: "All Members",
+  Staff: "Staff",
 };
 
 export type CohortSegment = { text: string; leaf?: LeafCondition["type"] };
@@ -37,6 +39,8 @@ const describeLeaf = (expr: LeafCondition, names: CohortNames): string => {
     case "GroupLead":
     case "USMember":
     case "NonUSMember":
+    case "AllMembers":
+    case "Staff":
       return LEAF_LABELS[expr.type];
     default:
       throw new Error(`unknown cohort condition: ${expr satisfies never}`);
