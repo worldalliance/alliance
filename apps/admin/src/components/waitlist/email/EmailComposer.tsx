@@ -11,6 +11,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { adminRefusalMessage } from "../../../lib/adminRefusal";
 import {
   blockingProblem,
+  completeDraft,
   type EmailDraft,
   emailWarnings,
 } from "../../../lib/waitlistEmail";
@@ -19,6 +20,7 @@ import FormTextarea from "../../FormTextarea";
 import { ICON_BUTTON_CLASS } from "../controlClasses";
 import EmailPreviewPanel from "./EmailPreviewPanel";
 import EmailSendActions from "./EmailSendActions";
+import EmailTemplateControls from "./EmailTemplateControls";
 
 const FIELD_CLASS = "w-full rounded border border-zinc-300 px-2 py-1 text-sm";
 
@@ -53,12 +55,6 @@ const EmailComposer: React.FC<EmailComposerProps> = ({
     draft.body,
   ]);
   const entryIds = [...selectedIds];
-  const complete = (content: EmailDraft) =>
-    content.subject.trim() !== "" &&
-    content.body.trim() !== "" &&
-    !findWaitlistEmailPlaceholders([content.subject, content.body]).unknown
-      .length;
-
   const previewDto = {
     ...settledDraft,
     entryIds,
@@ -72,7 +68,7 @@ const EmailComposer: React.FC<EmailComposerProps> = ({
         body: previewDto,
         throwOnError: true,
       }).then((r) => r.data),
-    enabled: entryIds.length > 0 && complete(settledDraft),
+    enabled: entryIds.length > 0 && completeDraft(settledDraft),
     placeholderData: keepPreviousData,
   });
   const current =
@@ -80,7 +76,7 @@ const EmailComposer: React.FC<EmailComposerProps> = ({
     !preview.isPlaceholderData &&
     !preview.isFetching &&
     settledDraft === draft &&
-    complete(draft)
+    completeDraft(draft)
       ? preview.data
       : null;
   const problem = preview.data
@@ -133,11 +129,12 @@ const EmailComposer: React.FC<EmailComposerProps> = ({
         <ConfirmDialog
           isOpen={discarding}
           title="Discard this email?"
-          message="Closes the composer and discards the subject and body you wrote."
+          message="Closes the composer and discards this subject and body."
           onConfirm={onClose}
           onCancel={() => setDiscarding(false)}
         />
       </div>
+      <EmailTemplateControls draft={draft} onLoad={setDraft} />
       <input
         aria-label="Subject"
         placeholder="Subject"
@@ -192,7 +189,7 @@ const EmailComposer: React.FC<EmailComposerProps> = ({
           {adminRefusalMessage(preview.error, "Unable to preview the email.")}
         </p>
       )}
-      {preview.data && selectedIds.size > 0 && complete(settledDraft) && (
+      {preview.data && selectedIds.size > 0 && completeDraft(settledDraft) && (
         <EmailPreviewPanel
           preview={preview.data}
           includeClaimed={includeClaimed}

@@ -2,6 +2,7 @@ import type {
   AdminWaitlistEntryDto,
   PreviewWaitlistEmailDto,
   WaitlistEmailPreviewDto,
+  WaitlistEmailTemplateDto,
   WaitlistEntrySearchDto,
 } from "@alliance/shared/client/types.gen";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
@@ -69,6 +70,8 @@ type WaitlistApiState = {
   previewStatus: number;
   sendStatus: number;
   previewServed: WaitlistEmailPreviewDto;
+  templatesServed: WaitlistEmailTemplateDto[];
+  templateSaveStatus: number;
 };
 
 export const emailPreview = (
@@ -122,6 +125,16 @@ const initialState = (): WaitlistApiState => ({
   previewStatus: 200,
   sendStatus: 200,
   previewServed: emailPreview(),
+  templateSaveStatus: 200,
+  templatesServed: [
+    {
+      id: 8,
+      name: "Invitation",
+      subject: "You're invited, #{name}",
+      body: "Join: #{signupLink}",
+      updatedAt: "2026-09-01T00:00:00.000Z",
+    },
+  ],
 });
 
 export const api = initialState();
@@ -263,6 +276,46 @@ export const serveWaitlistApi = () => {
           path: new URL(request.url).pathname,
           body: await request.json(),
         });
+        return new Response(null, { status: 204 });
+      },
+      "GET /waitlist/admin/email-templates": () =>
+        Response.json(api.templatesServed),
+      "POST /waitlist/admin/email-templates": async ({ request }) => {
+        if (api.templateSaveStatus !== 200) {
+          return Response.json(
+            { message: "An email template with that name already exists" },
+            { status: api.templateSaveStatus },
+          );
+        }
+        const body: { name: string; subject: string; body: string } =
+          await request.json();
+        api.posts.push({ path: new URL(request.url).pathname, body });
+        const created = { id: 9, ...body, updatedAt: "2026-09-02T00:00:00Z" };
+        api.templatesServed = [...api.templatesServed, created];
+        return Response.json(created);
+      },
+      "PUT /waitlist/admin/email-templates/:id": async ({
+        request,
+        params,
+      }) => {
+        const body: { name: string; subject: string; body: string } =
+          await request.json();
+        api.posts.push({ path: new URL(request.url).pathname, body });
+        const updated = {
+          id: Number(params.id),
+          ...body,
+          updatedAt: "2026-09-02T00:00:00Z",
+        };
+        api.templatesServed = api.templatesServed.map((template) =>
+          template.id === updated.id ? updated : template,
+        );
+        return Response.json(updated);
+      },
+      "DELETE /waitlist/admin/email-templates/:id": ({ request, params }) => {
+        api.posts.push({ path: new URL(request.url).pathname, body: null });
+        api.templatesServed = api.templatesServed.filter(
+          (template) => template.id !== Number(params.id),
+        );
         return new Response(null, { status: 204 });
       },
       "GET /waitlist/admin/tags": () =>

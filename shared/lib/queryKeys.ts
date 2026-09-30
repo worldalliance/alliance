@@ -147,6 +147,8 @@ export const queryKeys = {
   waitlistEmailPreviewAdminAll,
   waitlistEmailPreviewAdmin: (preview: PreviewWaitlistEmailDto) =>
     [...waitlistEmailPreviewAdminAll(), preview] as const,
+  waitlistEmailTemplatesAdmin: () =>
+    ["waitlistEmailAdminFindTemplatesAdmin"] as const,
   waitlistEntriesAdminAll,
   waitlistEntriesAdmin: (search: WaitlistEntrySearchDto) =>
     [...waitlistEntriesAdminAll(), search] as const,

@@ -270,7 +270,9 @@ it("keeps sending off while a preview after a failed send fails", async () => {
 it("asks before discarding a written draft", async () => {
   await compose("Hi", "Welcome");
   fireEvent.click(screen.getByRole("button", { name: "Discard email" }));
-  expect(await screen.findByText(/discards the subject and body/)).toBeTruthy();
+  expect(
+    await screen.findByText(/discards this subject and body/),
+  ).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(screen.getByLabelText("Subject")).toHaveProperty("value", "Hi");
 

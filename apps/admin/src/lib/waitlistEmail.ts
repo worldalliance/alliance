@@ -1,6 +1,7 @@
 import { pickForCount, withCount } from "@alliance/common/plural";
 import type { Assert, Equal } from "@alliance/common/types";
 import {
+  findWaitlistEmailPlaceholders,
   WaitlistEmailPlaceholder,
   waitlistEmailToken,
   withoutOrganizationMessage,
@@ -13,6 +14,12 @@ import type {
 import { milliseconds } from "date-fns";
 
 export type EmailDraft = { subject: string; body: string };
+
+/** Whether a draft can be previewed, sent, or saved as a template. */
+export const completeDraft = (draft: EmailDraft): boolean =>
+  draft.subject.trim() !== "" &&
+  draft.body.trim() !== "" &&
+  !findWaitlistEmailPlaceholders([draft.subject, draft.body]).unknown.length;
 
 const have = (count: number) => pickForCount(count, "has", "have");
 
