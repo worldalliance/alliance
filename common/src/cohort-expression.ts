@@ -185,24 +185,21 @@ export function isLeafCondition(expr: CohortExpression): expr is LeafCondition {
   return !isBooleanOperator(expr);
 }
 
-/**
- * Walk the expression tree and check if any TagCondition references the given tagId.
- */
-export function expressionReferencesTag(
+export function expressionHasLeaf(
   expr: CohortExpression | null | undefined,
-  tagId: string,
+  predicate: (leaf: LeafCondition) => boolean,
 ): boolean {
   if (!expr) return false;
 
   if (isLeafCondition(expr)) {
-    return expr.type === "Tag" && expr.tagId === tagId;
+    return predicate(expr);
   }
 
   if (expr.type === "NOT") {
-    return expressionReferencesTag(expr.child, tagId);
+    return expressionHasLeaf(expr.child, predicate);
   }
 
-  return expr.children.some((child) => expressionReferencesTag(child, tagId));
+  return expr.children.some((child) => expressionHasLeaf(child, predicate));
 }
 
 /**

@@ -8,7 +8,7 @@ import {
 import { ExceptionEvent } from "@alliance/common/analytics";
 import {
   cohortExpressionSchema,
-  expressionReferencesTag,
+  expressionHasLeaf,
   type CohortExpression,
 } from "@alliance/common/cohort-expression";
 import {
@@ -3906,9 +3906,12 @@ export class ActionsService {
         name: action.name,
         status: action.status,
         weekNumber: action.deadlineWeekNumber,
-        allMembersParticipating:
-          allMembersTagId !== null &&
-          expressionReferencesTag(action.cohortExpression, allMembersTagId),
+        allMembersParticipating: expressionHasLeaf(
+          action.cohortExpression,
+          (leaf) =>
+            leaf.type === "AllMembers" ||
+            (leaf.type === "Tag" && leaf.tagId === allMembersTagId),
+        ),
         suiteId: action.suite?.id,
         memberActionDeadline:
           action.memberActionPhase?.deadlineEvent?.date?.getTime() ?? null,

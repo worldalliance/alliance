@@ -1,7 +1,7 @@
 import {
   CohortExpression,
   cohortExpressionSchema,
-  expressionReferencesTag,
+  expressionHasLeaf,
   isBooleanOperator,
   isLeafCondition,
 } from "@alliance/common/cohort-expression";
@@ -165,9 +165,18 @@ describe("formFieldValueConditionSchema refinement", () => {
   });
 });
 
-// --- expressionReferencesTag ---
+// --- expressionHasLeaf ---
 
-describe("expressionReferencesTag", () => {
+describe("expressionHasLeaf", () => {
+  const expressionReferencesTag = (
+    expr: CohortExpression | null | undefined,
+    tagId: string,
+  ) =>
+    expressionHasLeaf(
+      expr,
+      (leaf) => leaf.type === "Tag" && leaf.tagId === tagId,
+    );
+
   it("returns false for null/undefined", () => {
     expect(expressionReferencesTag(null, "tag1")).toBe(false);
     expect(expressionReferencesTag(undefined, "tag1")).toBe(false);
@@ -250,6 +259,15 @@ describe("expressionReferencesTag", () => {
     };
     expect(expressionReferencesTag(expr, "deep-tag")).toBe(true);
     expect(expressionReferencesTag(expr, "missing-tag")).toBe(false);
+  });
+
+  it("tests leaves of any type", () => {
+    expect(
+      expressionHasLeaf(
+        { type: "NOT", child: { type: "AllMembers" } },
+        (leaf) => leaf.type === "AllMembers",
+      ),
+    ).toBe(true);
   });
 
   it("returns false when empty AND has no children", () => {
