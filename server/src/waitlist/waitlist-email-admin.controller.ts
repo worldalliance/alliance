@@ -16,6 +16,7 @@ import { AdminGuard } from "src/auth/guards/admin.guard";
 import type { JwtPayload } from "src/auth/tokens";
 import { ReqUser } from "src/auth/user.decorator";
 import {
+  RetryWaitlistEmailDto,
   SendWaitlistEmailDto,
   WaitlistEmailBatchDetailDto,
   WaitlistEmailBatchDto,
@@ -74,6 +75,21 @@ export class WaitlistEmailAdminController {
   ): Promise<WaitlistEmailBatchDetailDto> {
     return new WaitlistEmailBatchDetailDto(
       await this.emailService.findDetail(id),
+    );
+  }
+
+  @Post("emails/:id/retry")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: WaitlistEmailBatchDto })
+  async retryEmailAdmin(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: RetryWaitlistEmailDto,
+  ): Promise<WaitlistEmailBatchDto> {
+    return new WaitlistEmailBatchDto(
+      await this.emailService.retry({
+        id,
+        includeUncertain: dto.includeUncertain,
+      }),
     );
   }
 

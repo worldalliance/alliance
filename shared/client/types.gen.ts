@@ -4701,6 +4701,13 @@ export type WaitlistEmailBatchDetailDto = {
     recipients: Array<WaitlistEmailRecipientDto>;
 };
 
+export type RetryWaitlistEmailDto = {
+    /**
+     * Also resend recipients whose email may already have gone out
+     */
+    includeUncertain: boolean;
+};
+
 export type WaitlistEmailTemplateDto = {
     id: number;
     name: string;
@@ -14335,6 +14342,30 @@ export type WaitlistEmailAdminFindEmailAdminResponses = {
 };
 
 export type WaitlistEmailAdminFindEmailAdminResponse = WaitlistEmailAdminFindEmailAdminResponses[keyof WaitlistEmailAdminFindEmailAdminResponses];
+
+export type WaitlistEmailAdminRetryEmailAdminData = {
+    body: RetryWaitlistEmailDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/emails/{id}/retry';
+};
+
+export type WaitlistEmailAdminRetryEmailAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminRetryEmailAdminError = WaitlistEmailAdminRetryEmailAdminErrors[keyof WaitlistEmailAdminRetryEmailAdminErrors];
+
+export type WaitlistEmailAdminRetryEmailAdminResponses = {
+    200: WaitlistEmailBatchDto;
+};
+
+export type WaitlistEmailAdminRetryEmailAdminResponse = WaitlistEmailAdminRetryEmailAdminResponses[keyof WaitlistEmailAdminRetryEmailAdminResponses];
 
 export type WaitlistEmailAdminFindTemplatesAdminData = {
     body?: never;

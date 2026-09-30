@@ -126,6 +126,11 @@ describe("Waitlist email admin (e2e)", () => {
     return res.body;
   };
 
+  const retry = (batchId: number, body: Record<string, unknown>) =>
+    asAdmin(
+      request(server()).post(`/waitlist/admin/emails/${batchId}/retry`),
+    ).send(body);
+
   const recipientsOf = (batchId: number) =>
     recipientRepo.find({ where: { batchId }, order: { id: "ASC" } });
 
@@ -552,7 +557,7 @@ describe("Waitlist email admin (e2e)", () => {
       expect(await recipientRepo.countBy({ entryId: entry.id })).toBe(0);
     });
 
-    it("mobilizes only accepted recipients", async () => {
+    it("mobilizes only accepted recipients, and retries uncertain ones only when asked", async () => {
       const refused = await saveEntry();
       const off = await saveEntry();
       const timedOut = await saveEntry();
@@ -598,6 +603,78 @@ describe("Waitlist email admin (e2e)", () => {
           mobilizedAt: Not(IsNull()),
         }),
       ).toBe(0);
+
+      sendStaff.mockReset();
+      sendStaff.mockResolvedValue(mailWith(EmailStatus.Sent));
+      const resend = (includeUncertain: boolean) =>
+        retry(batch.id, { includeUncertain }).expect(200).then(settled);
+
+      await resend(false);
+      expect(sentTo(timedOut.email)).toHaveLength(0);
+      expect(sentTo(refused.email)).toHaveLength(1);
+      await resend(true);
+      expect(sentTo(timedOut.email)).toHaveLength(1);
+      await resend(true);
+      expect(sendStaff).toHaveBeenCalledTimes(4);
+      expect(
+        await entryRepo.countBy({
+          id: In(entryIds),
+          mobilizedAt: Not(IsNull()),
+        }),
+      ).toBe(4);
+    });
+
+    it("clears a retried recipient's error", async () => {
+      const entry = await saveEntry();
+      sendStaff.mockRejectedValueOnce(
+        Object.assign(new Error("550 no"), {
+          responseCode: 550,
+          command: "RCPT TO",
+        }),
+      );
+      const batch = await send({ entryIds: [entry.id] });
+      run.mockImplementationOnce(async () => {});
+
+      await retry(batch.id, { includeUncertain: false })
+        .expect(200)
+        .then(settled);
+
+      expect(await recipientsOf(batch.id)).toEqual([
+        expect.objectContaining({
+          status: WaitlistEmailRecipientStatus.Pending,
+          error: null,
+        }),
+      ]);
+      await ctx.app.get(WaitlistEmailSender).run();
+    });
+
+    it("leaves recipients being sent or skipped alone when retrying", async () => {
+      const [sending, skipped] = await Promise.all([saveEntry(), saveEntry()]);
+      run.mockImplementationOnce(async () => {});
+      const batch = await send({ entryIds: [sending.id, skipped.id] });
+      const [first, second] = await recipientsOf(batch.id);
+      await recipientRepo.update(first.id, {
+        status: WaitlistEmailRecipientStatus.Sending,
+      });
+      await recipientRepo.update(second.id, {
+        status: WaitlistEmailRecipientStatus.Skipped,
+        skipReason: WaitlistEmailSkipReason.Unsubscribed,
+      });
+      run.mockImplementationOnce(async () => {});
+
+      await retry(batch.id, { includeUncertain: true }).expect(200);
+      expect((await recipientsOf(batch.id)).map((r) => r.status)).toEqual([
+        WaitlistEmailRecipientStatus.Sending,
+        WaitlistEmailRecipientStatus.Skipped,
+      ]);
+      await ctx.app.get(WaitlistEmailSender).run();
+    });
+
+    it("refuses a retry without includeUncertain, or of an unknown email", async () => {
+      const entry = await saveEntry();
+      const batch = await send({ entryIds: [entry.id] });
+      await retry(batch.id, {}).expect(400);
+      await retry(999999, { includeUncertain: false }).expect(404);
     });
 
     it("sends nobody while the mail server can't be reached", async () => {

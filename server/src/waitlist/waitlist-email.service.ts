@@ -17,7 +17,7 @@ import {
   withRef,
 } from "src/search/approutes";
 import type { Repository } from "src/utils/Repository";
-import { DataSource } from "typeorm";
+import { DataSource, In } from "typeorm";
 import type {
   SendWaitlistEmailDto,
   WaitlistEmailBatchDetail,
@@ -302,5 +302,32 @@ export class WaitlistEmailService {
       }),
     ]);
     return { ...summary, recipients };
+  }
+
+  /**
+   * Queues failed recipients again, and uncertain ones only when asked, since
+   * their email may have gone out. Sent recipients are never resent.
+   */
+  async retry(params: {
+    id: number;
+    includeUncertain: boolean;
+  }): Promise<WaitlistEmailBatchSummary> {
+    if (!(await this.batchRepository.existsBy({ id: params.id }))) {
+      throw new NotFoundException("Waitlist email not found");
+    }
+    await this.recipientRepository.update(
+      {
+        batchId: params.id,
+        status: In([
+          WaitlistEmailRecipientStatus.Failed,
+          ...(params.includeUncertain
+            ? [WaitlistEmailRecipientStatus.Uncertain]
+            : []),
+        ]),
+      },
+      { status: WaitlistEmailRecipientStatus.Pending, error: null },
+    );
+    void this.sender.run();
+    return this.findSummary(params.id);
   }
 }

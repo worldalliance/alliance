@@ -22,6 +22,14 @@ export class SendWaitlistEmailDto extends WaitlistEmailAudienceDto {
   mobilize: boolean;
 }
 
+export class RetryWaitlistEmailDto {
+  @ApiProperty({
+    description: "Also resend recipients whose email may already have gone out",
+  })
+  @IsBoolean()
+  includeUncertain: boolean;
+}
+
 export type WaitlistEmailCounts = Record<WaitlistEmailRecipientStatus, number>;
 
 export class WaitlistEmailCountsDto {
