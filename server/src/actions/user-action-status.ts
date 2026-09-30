@@ -234,7 +234,7 @@ export function resolveUserActionStatus(params: {
             outOfTime: !!terminal.outOfTime,
             isMoral: !!terminal.isMoral,
           }),
-          note: terminal.declineReason ?? null,
+          note: terminal.declineReason,
         };
         break;
       default:

@@ -115,11 +115,10 @@ export class ActionActivity {
   @JoinColumn()
   taskFormResponse?: Relation<FormResponse>;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  declineReason?: string;
+  declineReason: string | null;
 
   @Column({ nullable: true })
   @ApiPropertyOptional()

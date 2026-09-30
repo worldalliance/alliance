@@ -110,6 +110,7 @@ function activity(
     createdAt: new Date(
       PHASE_START.getTime() + ++activitySeq * milliseconds({ minutes: 1 }),
     ),
+    declineReason: null,
     ...overrides,
   };
 }

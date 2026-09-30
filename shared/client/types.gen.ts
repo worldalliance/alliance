@@ -172,7 +172,7 @@ export type ActionActivity = {
     likes: Array<User>;
     likesCount: number;
     taskFormResponse?: FormResponse;
-    declineReason?: string;
+    declineReason: string | null;
     isMoral?: boolean;
     outOfTime?: boolean;
     /**
@@ -2350,7 +2350,7 @@ export type GlobalFeedItemDto = {
 
 export type ActionWithdrawalDto = {
     userId: number;
-    declineReason?: string;
+    declineReason: string | null;
     isMoral?: boolean;
     outOfTime?: boolean;
 };
