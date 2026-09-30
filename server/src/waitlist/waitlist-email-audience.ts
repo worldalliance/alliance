@@ -26,6 +26,14 @@ export function skipReason(params: {
   return null;
 }
 
+export const reachable = (
+  candidates: WaitlistEmailCandidate[],
+  includeClaimed: boolean,
+): WaitlistEmailCandidate[] =>
+  candidates.filter(
+    (candidate) => skipReason({ candidate, includeClaimed }) === null,
+  );
+
 /** Needs the entry's organization loaded. */
 export function waitlistEmailValues(params: {
   entry: WaitlistEntry;

@@ -140,6 +140,16 @@ const WAITLIST_SUBJECTS: Record<WaitlistEmailType, string> = {
   [EmailType.WaitlistLink]: "Your Alliance waitlist link",
 };
 
+/** Thrown by `sendMail` when it failed before handing the message to the mail server. */
+export class MailNotSentError extends Error {}
+
+const notSent = (error: unknown): never => {
+  throw new MailNotSentError(
+    error instanceof Error ? error.message : String(error),
+    { cause: error },
+  );
+};
+
 @Injectable()
 export class MailService {
   constructor(
@@ -204,16 +214,16 @@ export class MailService {
     // portal. Register a new address there before changing MAIL_FROM.
     const from = process.env.MAIL_FROM;
     if (!from) {
-      throw new Error("MAIL_FROM is unset");
+      throw new MailNotSentError("MAIL_FROM is unset");
     }
 
     const tag =
       process.env.NODE_ENV === "production" ? "production" : "development";
 
-    const html = await this.renderHtml(emailType, context);
+    const html = await this.renderHtml(emailType, context).catch(notSent);
 
     mail.renderedHtml = html;
-    await this.mailRepository.save(mail);
+    await this.mailRepository.save(mail).catch(notSent);
 
     const sent = await R.fromPromise(
       this.mailerService.sendMail({
@@ -339,6 +349,28 @@ export class MailService {
 
   renderWaitlistStaffEmail(content: WaitlistStaffEmail): Promise<string> {
     return this.renderHtml(EmailType.WaitlistStaff, content);
+  }
+
+  /** Whether the mail server can be reached; true while sending is off. */
+  async verifyTransport(): Promise<boolean> {
+    if (!mailSendingEnabled()) return true;
+    const verified = await R.fromPromise(
+      this.mailerService.verifyAllTransporters(),
+    );
+    return verified.ok && verified.value;
+  }
+
+  public async sendWaitlistStaffEmail(params: {
+    recipient: string;
+    content: WaitlistStaffEmail;
+  }): Promise<Mail> {
+    return this.sendMail({
+      recipient: params.recipient,
+      emailType: EmailType.WaitlistStaff,
+      subject: params.content.subject,
+      context: params.content,
+      cid: null,
+    });
   }
 
   public async sendForumDigestEmail(params: {

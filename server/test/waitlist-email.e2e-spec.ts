@@ -1,16 +1,28 @@
 import request from "supertest";
-import type { Repository } from "typeorm";
+import { In, IsNull, Not, type Repository } from "typeorm";
 import {
   Campaign,
   CampaignKind,
 } from "../src/campaign/entities/campaign.entity";
 import { Community } from "../src/community/entities/community.entity";
+import { EmailStatus, Mail } from "../src/mail/mail.entity";
+import { MailService } from "../src/mail/mail.service";
 import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "../src/user/entities/onetime-invite.entity";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
+import {
+  WaitlistEmailRecipient,
+  WaitlistEmailRecipientStatus,
+} from "../src/waitlist/entities/waitlist-email-recipient.entity";
+import {
+  WaitlistEntryAction,
+  WaitlistEntryActionKind,
+} from "../src/waitlist/entities/waitlist-entry-action.entity";
 import { WaitlistEntry } from "../src/waitlist/entities/waitlist-entry.entity";
+import { WaitlistEmailSkipReason } from "../src/waitlist/waitlist-email-audience";
+import { WaitlistEmailSender } from "../src/waitlist/waitlist-email-sender.service";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
 import { createTestApp, TestContext } from "./e2e-test-utils";
 
@@ -19,6 +31,9 @@ describe("Waitlist email admin (e2e)", () => {
   let entryRepo: Repository<WaitlistEntry>;
   let campaignRepo: Repository<Campaign>;
   let inviteRepo: Repository<OnetimeInvite>;
+  let recipientRepo: Repository<WaitlistEmailRecipient>;
+  let sendStaff: jest.SpyInstance;
+  let run: jest.SpyInstance;
 
   const server = () => ctx.app.getHttpServer();
   const asAdmin = (req: request.Test) =>
@@ -89,12 +104,49 @@ describe("Waitlist email admin (e2e)", () => {
       ...body,
     });
 
+  const mailWith = (status: EmailStatus) =>
+    Object.assign(new Mail(), { status });
+
+  /** Waits for the sending runs requests started. */
+  const settled = () =>
+    Promise.all(run.mock.results.map((result) => result.value));
+
+  const send = async (body: Record<string, unknown>) => {
+    const res = await asAdmin(request(server()).post("/waitlist/admin/emails"))
+      .send({
+        subject: "Hi #{name}",
+        body: "Welcome",
+        includeClaimed: false,
+        mobilize: false,
+        requestId: crypto.randomUUID(),
+        ...body,
+      })
+      .expect(201);
+    await settled();
+    return res.body;
+  };
+
+  const recipientsOf = (batchId: number) =>
+    recipientRepo.find({ where: { batchId }, order: { id: "ASC" } });
+
+  const sentTo = (email: string) =>
+    sendStaff.mock.calls.filter(([params]) => params.recipient === email);
+
   beforeAll(async () => {
     ctx = await createTestApp([WaitlistModule]);
     entryRepo = ctx.dataSource.getRepository(WaitlistEntry);
     campaignRepo = ctx.dataSource.getRepository(Campaign);
     inviteRepo = ctx.dataSource.getRepository(OnetimeInvite);
+    recipientRepo = ctx.dataSource.getRepository(WaitlistEmailRecipient);
+    sendStaff = jest.spyOn(ctx.app.get(MailService), "sendWaitlistStaffEmail");
+    run = jest.spyOn(ctx.app.get(WaitlistEmailSender), "run");
   }, 50000);
+
+  beforeEach(() => {
+    sendStaff.mockReset();
+    sendStaff.mockResolvedValue(mailWith(EmailStatus.Sent));
+    run.mockClear();
+  });
 
   afterAll(async () => {
     await ctx.app.close();
@@ -313,6 +365,345 @@ describe("Waitlist email admin (e2e)", () => {
       const unsubscribed = await saveEntry({ unsubscribedAt: new Date() });
       const res = await preview({ entryIds: [unsubscribed.id] }).expect(200);
       expect(res.body.sample).toBeNull();
+    });
+  });
+
+  describe("sending", () => {
+    it("emails each recipient an invite to their organization's group and mobilizes the waiting", async () => {
+      const organization = await saveOrganization("Sending Org", true);
+      const waiting = await saveEntry({
+        name: "Wai Ting",
+        organizationId: organization.id,
+      });
+      const mobilizedAt = new Date("2026-01-01T00:00:00Z");
+      const mobilized = await saveEntry({ mobilizedAt });
+
+      run.mockImplementationOnce(async () => {});
+      const batch = await send({
+        entryIds: [waiting.id, mobilized.id],
+        subject: "Join, #{name}",
+        body: "[Sign up](#{signupLink})",
+        mobilize: true,
+      });
+
+      expect(batch.counts).toMatchObject({ pending: 2, sent: 0 });
+      await ctx.app.get(WaitlistEmailSender).run();
+      const recipients = await recipientsOf(batch.id);
+      expect(recipients.map((r) => r.status)).toEqual([
+        WaitlistEmailRecipientStatus.Sent,
+        WaitlistEmailRecipientStatus.Sent,
+      ]);
+      const [invite] = await inviteRepo.find({
+        where: { waitlistEntryId: waiting.id },
+        relations: { community: true },
+      });
+      expect(invite).toMatchObject({
+        organizationId: organization.id,
+        community: { id: organization.communityId },
+        status: OnetimeInviteStatus.LINK_UNUSED,
+      });
+      expect(recipients[0]).toMatchObject({
+        inviteId: invite.id,
+        renderedSubject: "Join, Wai Ting",
+        acceptedAt: expect.any(Date),
+      });
+      expect(recipients[0].renderedHtml).toContain(
+        `/signup?ref=${invite.code}`,
+      );
+      expect(recipients[0].renderedHtml).toContain(waiting.unsubscribeToken);
+      expect(sentTo(waiting.email)).toEqual([
+        [
+          {
+            recipient: waiting.email,
+            content: expect.objectContaining({ subject: "Join, Wai Ting" }),
+          },
+        ],
+      ]);
+
+      expect(
+        (await entryRepo.findOneByOrFail({ id: waiting.id })).mobilizedAt,
+      ).not.toBeNull();
+      expect(
+        (await entryRepo.findOneByOrFail({ id: mobilized.id })).mobilizedAt,
+      ).toEqual(mobilizedAt);
+      expect(
+        await ctx.dataSource.getRepository(WaitlistEntryAction).findBy({
+          entryId: waiting.id,
+        }),
+      ).toEqual([
+        expect.objectContaining({
+          kind: WaitlistEntryActionKind.EmailMobilize,
+          staffUserId: ctx.adminUserId,
+        }),
+      ]);
+    });
+
+    it("reuses an entry's unused invite and issues another once it's revoked", async () => {
+      const entry = await saveEntry();
+      const content = { entryIds: [entry.id], body: "#{signupLink}" };
+
+      await send(content);
+      await send(content);
+      const [first] = await inviteRepo.findBy({ waitlistEntryId: entry.id });
+      expect(
+        sentTo(entry.email).map(([params]) => params.content.bodyHtml),
+      ).toEqual([
+        expect.stringContaining(first.code),
+        expect.stringContaining(first.code),
+      ]);
+
+      await inviteRepo.update(first.id, { deletedAt: new Date() });
+      await send(content);
+      expect(await inviteRepo.countBy({ waitlistEntryId: entry.id })).toBe(2);
+    });
+
+    it("keeps a reused invite's group after its organization's changes", async () => {
+      const organization = await saveOrganization("Later Group Org", false);
+      const entry = await saveEntry({ organizationId: organization.id });
+      const content = { entryIds: [entry.id], body: "#{signupLink}" };
+      await send(content);
+      const group = await ctx.dataSource
+        .getRepository(Community)
+        .save({ name: "Later group" });
+      await campaignRepo.update(organization.id, { communityId: group.id });
+
+      await send(content);
+      const invites = await inviteRepo.find({
+        where: { waitlistEntryId: entry.id },
+        relations: { community: true },
+      });
+      expect(invites.map((invite) => invite.community)).toEqual([null]);
+    });
+
+    it("issues no invite for an email without a signup link", async () => {
+      const entry = await saveEntry();
+      await send({ entryIds: [entry.id], mobilize: true });
+      expect(await inviteRepo.countBy({ waitlistEntryId: entry.id })).toBe(0);
+    });
+
+    it("creates one batch per request id and sends it once", async () => {
+      const entry = await saveEntry();
+      const requestId = crypto.randomUUID();
+
+      const first = await send({ entryIds: [entry.id], requestId });
+      const other = await saveEntry();
+      const repeat = await send({ entryIds: [entry.id, other.id], requestId });
+
+      expect(repeat.id).toBe(first.id);
+      expect(await recipientsOf(first.id)).toHaveLength(1);
+      expect(sentTo(entry.email)).toHaveLength(1);
+      expect(sentTo(other.email)).toHaveLength(0);
+    });
+
+    it("rechecks suppression when sending, and skips claimed invites unless included", async () => {
+      const organization = await saveOrganization("Claimed Org", false);
+      const unsubscribed = await saveEntry();
+      const claimed = await saveEntry({ organizationId: organization.id });
+      await claimInvite(claimed);
+      run.mockImplementationOnce(async () => {});
+
+      const batch = await send({
+        entryIds: [unsubscribed.id, claimed.id],
+        body: "#{signupLink}",
+      });
+      await entryRepo.update(unsubscribed.id, { unsubscribedAt: new Date() });
+      await ctx.app.get(WaitlistEmailSender).run();
+
+      expect(
+        (await recipientsOf(batch.id)).map((r) => [r.status, r.skipReason]),
+      ).toEqual([
+        [
+          WaitlistEmailRecipientStatus.Skipped,
+          WaitlistEmailSkipReason.Unsubscribed,
+        ],
+        [
+          WaitlistEmailRecipientStatus.Skipped,
+          WaitlistEmailSkipReason.InviteClaimed,
+        ],
+      ]);
+      expect(sendStaff).not.toHaveBeenCalled();
+
+      await send({
+        entryIds: [claimed.id],
+        body: "#{signupLink}",
+        includeClaimed: true,
+      });
+      expect(sentTo(claimed.email)).toHaveLength(1);
+      expect(await inviteRepo.countBy({ waitlistEntryId: claimed.id })).toBe(2);
+    });
+
+    it("refuses #{organizationName} when a recipient has no organization", async () => {
+      const entry = await saveEntry();
+      const res = await asAdmin(
+        request(server()).post("/waitlist/admin/emails"),
+      )
+        .send({
+          subject: "From #{organizationName}",
+          body: "Hi",
+          entryIds: [entry.id],
+          includeClaimed: false,
+          mobilize: false,
+          requestId: crypto.randomUUID(),
+        })
+        .expect(400);
+      expect(res.body.message).toBe(
+        "1 recipient has no organization for #{organizationName}",
+      );
+      expect(await recipientRepo.countBy({ entryId: entry.id })).toBe(0);
+    });
+
+    it("mobilizes only accepted recipients", async () => {
+      const refused = await saveEntry();
+      const off = await saveEntry();
+      const timedOut = await saveEntry();
+      const later = await saveEntry();
+      const entryIds = [refused.id, off.id, timedOut.id, later.id];
+      sendStaff.mockImplementation(async ({ recipient }) => {
+        if (recipient === refused.email) {
+          throw Object.assign(new Error("550 mailbox unavailable"), {
+            responseCode: 550,
+            command: "RCPT TO",
+          });
+        }
+        if (recipient === timedOut.email) {
+          throw Object.assign(new Error("Timeout"), { code: "ETIMEDOUT" });
+        }
+        return mailWith(EmailStatus.Pending);
+      });
+      const statuses = async () =>
+        (await recipientsOf(batch.id)).map((r) => [r.status, r.error]);
+
+      const batch = await send({ entryIds, mobilize: true });
+      expect(await statuses()).toEqual([
+        [WaitlistEmailRecipientStatus.Failed, "550 mailbox unavailable"],
+        [
+          WaitlistEmailRecipientStatus.Failed,
+          "Mail delivery is off on this server",
+        ],
+        [WaitlistEmailRecipientStatus.Uncertain, "Timeout"],
+        [WaitlistEmailRecipientStatus.Pending, null],
+      ]);
+
+      await ctx.app.get(WaitlistEmailSender).run();
+      expect((await statuses()).slice(2)).toEqual([
+        [WaitlistEmailRecipientStatus.Uncertain, "Timeout"],
+        [
+          WaitlistEmailRecipientStatus.Failed,
+          "Mail delivery is off on this server",
+        ],
+      ]);
+      expect(
+        await entryRepo.countBy({
+          id: In(entryIds),
+          mobilizedAt: Not(IsNull()),
+        }),
+      ).toBe(0);
+    });
+
+    it("sends nobody while the mail server can't be reached", async () => {
+      const entry = await saveEntry();
+      const verify = jest
+        .spyOn(ctx.app.get(MailService), "verifyTransport")
+        .mockResolvedValue(false);
+      try {
+        const batch = await send({ entryIds: [entry.id] });
+        expect(await recipientsOf(batch.id)).toEqual([
+          expect.objectContaining({
+            status: WaitlistEmailRecipientStatus.Pending,
+          }),
+        ]);
+        expect(sendStaff).not.toHaveBeenCalled();
+      } finally {
+        verify.mockRestore();
+      }
+      await ctx.app.get(WaitlistEmailSender).run();
+      expect(sentTo(entry.email)).toHaveLength(1);
+    });
+
+    it("keeps recipients pending while the mail server defers a send", async () => {
+      const deferred = await saveEntry();
+      const after = await saveEntry();
+      sendStaff.mockRejectedValueOnce(
+        Object.assign(new Error("421 try again later"), { responseCode: 421 }),
+      );
+      const batch = await send({ entryIds: [deferred.id, after.id] });
+      expect(
+        (await recipientsOf(batch.id)).map((r) => [r.status, r.error]),
+      ).toEqual([
+        [WaitlistEmailRecipientStatus.Pending, "421 try again later"],
+        [WaitlistEmailRecipientStatus.Pending, null],
+      ]);
+      expect(sendStaff).toHaveBeenCalledTimes(1);
+
+      await ctx.app.get(WaitlistEmailSender).run();
+      expect(
+        (await recipientsOf(batch.id)).map((r) => [r.status, r.error]),
+      ).toEqual([
+        [WaitlistEmailRecipientStatus.Sent, null],
+        [WaitlistEmailRecipientStatus.Sent, null],
+      ]);
+    });
+
+    it("returns the batch for a repeated request id before checking its content", async () => {
+      const organization = await saveOrganization("Repeat Org", false);
+      const entry = await saveEntry({ organizationId: organization.id });
+      const requestId = crypto.randomUUID();
+      const first = await send({
+        entryIds: [entry.id],
+        body: "From #{organizationName}",
+        requestId,
+      });
+      const unaffiliated = await saveEntry();
+
+      const repeat = await send({
+        entryIds: [entry.id, unaffiliated.id],
+        body: "From #{organizationName}",
+        requestId,
+      });
+      expect(repeat.id).toBe(first.id);
+    });
+
+    it("fails a recipient it can't prepare and leaves the rest for the next run", async () => {
+      const broken = await saveEntry();
+      const fine = await saveEntry();
+      const renderStaff = jest
+        .spyOn(ctx.app.get(MailService), "renderWaitlistStaffEmail")
+        .mockRejectedValueOnce(new Error("template broke"));
+      try {
+        const batch = await send({ entryIds: [broken.id, fine.id] });
+        expect(
+          (await recipientsOf(batch.id)).map((r) => [r.status, r.error]),
+        ).toEqual([
+          [WaitlistEmailRecipientStatus.Failed, "template broke"],
+          [WaitlistEmailRecipientStatus.Pending, null],
+        ]);
+        await ctx.app.get(WaitlistEmailSender).run();
+        expect((await recipientsOf(batch.id)).map((r) => r.status)).toEqual([
+          WaitlistEmailRecipientStatus.Failed,
+          WaitlistEmailRecipientStatus.Sent,
+        ]);
+      } finally {
+        renderStaff.mockRestore();
+      }
+    });
+
+    it("marks a recipient left sending by an interrupted run uncertain", async () => {
+      const entry = await saveEntry();
+      run.mockImplementationOnce(async () => {});
+      const batch = await send({ entryIds: [entry.id] });
+      await recipientRepo.update(
+        { batchId: batch.id },
+        { status: WaitlistEmailRecipientStatus.Sending },
+      );
+
+      await ctx.app.get(WaitlistEmailSender).run();
+
+      expect(await recipientsOf(batch.id)).toEqual([
+        expect.objectContaining({
+          status: WaitlistEmailRecipientStatus.Uncertain,
+        }),
+      ]);
+      expect(sendStaff).not.toHaveBeenCalled();
     });
   });
 });

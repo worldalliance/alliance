@@ -3,6 +3,7 @@ import {
   findWaitlistEmailPlaceholders,
   replaceWaitlistEmailPlaceholders,
   WaitlistEmailPlaceholder,
+  withoutOrganizationMessage,
 } from "./waitlistEmail";
 
 describe("waitlist email placeholders", () => {
@@ -35,5 +36,14 @@ describe("waitlist email placeholders", () => {
         (placeholder) => `<${placeholder}>`,
       ),
     ).toBe("<name> <name> #{nope} #{signupLink");
+  });
+
+  it("says how many recipients lack an organization", () => {
+    expect(withoutOrganizationMessage(1)).toBe(
+      "1 recipient has no organization for #{organizationName}",
+    );
+    expect(withoutOrganizationMessage(2)).toBe(
+      "2 recipients have no organization for #{organizationName}",
+    );
   });
 });

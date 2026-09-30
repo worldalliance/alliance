@@ -4,7 +4,11 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { Action } from "src/actions/entities/action.entity";
 import { User } from "src/user/entities/user.entity";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
-import { MailService, processKeywordReplacements } from "./mail.service";
+import {
+  MailNotSentError,
+  MailService,
+  processKeywordReplacements,
+} from "./mail.service";
 
 describe("processKeywordReplacements", () => {
   let originalAppUrl: string | undefined;
@@ -197,17 +201,30 @@ describe("sendMail", () => {
     sendMail: (
       options: ISendMailOptions,
     ) => Promise<{ accepted: string[]; messageId: string }>,
+    other: {
+      saveFails?: boolean;
+      verifyAllTransporters?: () => Promise<boolean>;
+    } = {},
   ) {
     const saves: Mail[] = [];
     const moduleRef = await Test.createTestingModule({
       providers: [
         MailService,
-        { provide: MailerService, useValue: { sendMail } },
+        {
+          provide: MailerService,
+          useValue: {
+            sendMail,
+            verifyAllTransporters: other.verifyAllTransporters,
+          },
+        },
         {
           provide: getRepositoryToken(Mail),
           useValue: {
             create: (mail: Partial<Mail>) => ({ ...mail }),
             save: (mail: Mail) => {
+              if (other.saveFails) {
+                return Promise.reject(new Error("connection lost"));
+              }
               saves.push({ ...mail });
               return Promise.resolve(mail);
             },
@@ -270,8 +287,47 @@ describe("sendMail", () => {
       return Promise.resolve({ accepted: [], messageId: "" });
     });
 
-    await expect(send(service)).rejects.toThrow("MAIL_FROM is unset");
+    const sending = send(service);
+    await expect(sending).rejects.toThrow("MAIL_FROM is unset");
+    await expect(sending).rejects.toBeInstanceOf(MailNotSentError);
     expect(attempted).toBe(false);
+  });
+
+  it("reports a Mail row it couldn't save as not sent, without sending", async () => {
+    let attempted = false;
+    const { service } = await harness(
+      () => {
+        attempted = true;
+        return Promise.resolve({ accepted: [], messageId: "" });
+      },
+      { saveFails: true },
+    );
+
+    await expect(send(service)).rejects.toBeInstanceOf(MailNotSentError);
+    expect(attempted).toBe(false);
+  });
+
+  it.each([
+    { reachable: true, verify: () => Promise.resolve(true) },
+    { reachable: false, verify: () => Promise.reject(new Error("refused")) },
+  ])(
+    "reports the mail server reachable: $reachable",
+    async ({ reachable, verify }) => {
+      const { service } = await harness(
+        () => Promise.reject(new Error("unused")),
+        { verifyAllTransporters: verify },
+      );
+      expect(await service.verifyTransport()).toBe(reachable);
+    },
+  );
+
+  it("reports the mail server reachable while sending is off", async () => {
+    process.env.NODE_ENV = "test";
+    const { service } = await harness(
+      () => Promise.reject(new Error("unused")),
+      { verifyAllTransporters: () => Promise.resolve(false) },
+    );
+    expect(await service.verifyTransport()).toBe(true);
   });
 
   it.each([

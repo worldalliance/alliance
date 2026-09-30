@@ -9,30 +9,31 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { WaitlistEntry } from "./waitlist-entry.entity";
 
-export enum WaitlistEntryActionKind {
-  ManualMobilize = "manual_mobilize",
-  UndoMobilize = "undo_mobilize",
-  EmailMobilize = "email_mobilize",
-}
-
-/** A staff change to an entry's status, recorded only when it changed. */
+/** One confirmed staff email, sent to recipients fixed when it was created. */
 @Entity()
-export class WaitlistEntryAction {
+export class WaitlistEmailBatch {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Index()
+  /** The admin's key for the send request; repeating it creates nothing. */
+  @Index({ unique: true })
+  @Column({ type: "uuid" })
+  requestId: string;
+
   @Column()
-  entryId: number;
+  subject: string;
 
-  @ManyToOne(() => WaitlistEntry)
-  @JoinColumn({ name: "entryId" })
-  entry?: Relation<WaitlistEntry>;
+  /** Markdown with `#{placeholder}`s, as staff wrote it. */
+  @Column({ type: "text" })
+  body: string;
 
-  @Column({ type: "enum", enum: WaitlistEntryActionKind })
-  kind: WaitlistEntryActionKind;
+  /** Marks each waiting recipient mobilized once the mail server accepts. */
+  @Column()
+  mobilize: boolean;
+
+  @Column()
+  includeClaimed: boolean;
 
   @Column({ nullable: true })
   staffUserId: number | null;

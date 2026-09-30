@@ -4633,6 +4633,47 @@ export type WaitlistEmailPreviewDto = {
     sample: WaitlistEmailSampleDto | null;
 };
 
+export type SendWaitlistEmailDto = {
+    subject: string;
+    /**
+     * Markdown with #{placeholder}s
+     */
+    body: string;
+    entryIds: Array<number>;
+    /**
+     * Also email entries whose invite an account claimed
+     */
+    includeClaimed: boolean;
+    /**
+     * One per confirmed send; repeating it creates nothing
+     */
+    requestId: string;
+    /**
+     * Mark each waiting recipient mobilized once it's sent
+     */
+    mobilize: boolean;
+};
+
+export type WaitlistEmailCountsDto = {
+    pending: number;
+    sending: number;
+    sent: number;
+    failed: number;
+    uncertain: number;
+    skipped: number;
+};
+
+export type WaitlistEmailBatchDto = {
+    id: number;
+    subject: string;
+    body: string;
+    mobilize: boolean;
+    includeClaimed: boolean;
+    staffName: string | null;
+    createdAt: string;
+    counts: WaitlistEmailCountsDto;
+};
+
 export type WaitlistEmailTemplateDto = {
     id: number;
     name: string;
@@ -14199,6 +14240,28 @@ export type WaitlistEmailAdminPreviewEmailAdminResponses = {
 };
 
 export type WaitlistEmailAdminPreviewEmailAdminResponse = WaitlistEmailAdminPreviewEmailAdminResponses[keyof WaitlistEmailAdminPreviewEmailAdminResponses];
+
+export type WaitlistEmailAdminSendEmailAdminData = {
+    body: SendWaitlistEmailDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/emails';
+};
+
+export type WaitlistEmailAdminSendEmailAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminSendEmailAdminError = WaitlistEmailAdminSendEmailAdminErrors[keyof WaitlistEmailAdminSendEmailAdminErrors];
+
+export type WaitlistEmailAdminSendEmailAdminResponses = {
+    200: WaitlistEmailBatchDto;
+};
+
+export type WaitlistEmailAdminSendEmailAdminResponse = WaitlistEmailAdminSendEmailAdminResponses[keyof WaitlistEmailAdminSendEmailAdminResponses];
 
 export type WaitlistEmailAdminFindTemplatesAdminData = {
     body?: never;

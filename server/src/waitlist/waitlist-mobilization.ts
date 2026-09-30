@@ -3,6 +3,7 @@ import { WaitlistEntryActionKind } from "./entities/waitlist-entry-action.entity
 
 const MOBILIZES: Record<WaitlistEntryActionKind, boolean> = {
   [WaitlistEntryActionKind.ManualMobilize]: true,
+  [WaitlistEntryActionKind.EmailMobilize]: true,
   [WaitlistEntryActionKind.UndoMobilize]: false,
 };
 
@@ -14,7 +15,7 @@ export async function recordMobilization(params: {
   manager: EntityManager;
   entryIds: number[];
   kind: WaitlistEntryActionKind;
-  staffUserId: number;
+  staffUserId: number | null;
 }): Promise<number> {
   if (!params.entryIds.length) return 0;
   const mobilizes = MOBILIZES[params.kind];

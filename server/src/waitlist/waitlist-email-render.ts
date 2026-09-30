@@ -3,6 +3,7 @@ import {
   findWaitlistEmailPlaceholders,
   replaceWaitlistEmailPlaceholders,
   WaitlistEmailPlaceholder,
+  waitlistEmailToken,
 } from "@alliance/common/waitlistEmail";
 import { randomBytes } from "crypto";
 import MarkdownIt, { type Token } from "markdown-it";
@@ -94,6 +95,10 @@ const fillTokens = (params: {
     }
   }
 };
+
+export const missingValuesMessage = (
+  missing: WaitlistEmailPlaceholder[],
+): string => `No value for ${missing.map(waitlistEmailToken).join(", ")}`;
 
 export type RenderedWaitlistEmail = { subject: string; bodyHtml: string };
 

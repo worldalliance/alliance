@@ -13,6 +13,12 @@ import {
 } from "@nestjs/common";
 import { ApiNoContentResponse, ApiOkResponse } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
+import type { JwtPayload } from "src/auth/tokens";
+import { ReqUser } from "src/auth/user.decorator";
+import {
+  SendWaitlistEmailDto,
+  WaitlistEmailBatchDto,
+} from "./dto/waitlist-email-batch.dto";
 import {
   SaveWaitlistEmailTemplateDto,
   WaitlistEmailTemplateDto,
@@ -40,6 +46,17 @@ export class WaitlistEmailAdminController {
     @Body() dto: PreviewWaitlistEmailDto,
   ): Promise<WaitlistEmailPreviewDto> {
     return new WaitlistEmailPreviewDto(await this.emailService.preview(dto));
+  }
+
+  @Post("emails")
+  @ApiOkResponse({ type: WaitlistEmailBatchDto })
+  async sendEmailAdmin(
+    @ReqUser() user: JwtPayload,
+    @Body() dto: SendWaitlistEmailDto,
+  ): Promise<WaitlistEmailBatchDto> {
+    return new WaitlistEmailBatchDto(
+      await this.emailService.send({ dto, staffUserId: user.sub }),
+    );
   }
 
   @Get("email-templates")

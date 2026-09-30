@@ -1,3 +1,5 @@
+import { pickForCount, withCount } from "./plural";
+
 export enum WaitlistEmailPlaceholder {
   Name = "name",
   OrganizationName = "organizationName",
@@ -12,6 +14,13 @@ const PLACEHOLDERS = new Set<string>(Object.values(WaitlistEmailPlaceholder));
 
 const isPlaceholder = (name: string): name is WaitlistEmailPlaceholder =>
   PLACEHOLDERS.has(name);
+
+export const waitlistEmailToken = (placeholder: string): string =>
+  `#{${placeholder}}`;
+
+/** Why a send naming `#{organizationName}` is refused. */
+export const withoutOrganizationMessage = (recipients: number): string =>
+  `${withCount(recipients, "recipient")} ${pickForCount(recipients, "has", "have")} no organization for ${waitlistEmailToken(WaitlistEmailPlaceholder.OrganizationName)}`;
 
 export type WaitlistEmailPlaceholders = {
   used: Set<WaitlistEmailPlaceholder>;
