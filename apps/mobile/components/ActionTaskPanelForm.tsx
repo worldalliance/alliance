@@ -12,7 +12,6 @@ import {
 import { useFormulaSourcesRefetch } from "@alliance/shared/forms/useFormulaSourcesRefetch";
 import type { ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import { captureException } from "@alliance/shared/lib/analytics";
-import { noop } from "@alliance/shared/lib/constants";
 import { useInvalidateVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -31,7 +30,6 @@ interface ActionTaskPanelFormProps {
   actionId: number;
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
-  onSubmitSuccess?: () => void;
   disabled?: boolean;
   formResponse?: FormResponseDto;
   /** Editable but unsubmittable, and nothing typed outlives the screen. */
@@ -46,7 +44,6 @@ const ActionTaskPanelForm = ({
   actionId,
   scrollPageTo,
   scrollToEnd,
-  onSubmitSuccess = noop,
   disabled,
   formResponse,
   preview = false,
@@ -115,7 +112,7 @@ const ActionTaskPanelForm = ({
               await setStoredGuestToken(issuedGuestToken);
             }
           }
-          onSubmitSuccess();
+          onCompleteAction(false);
           return true;
         } else {
           if (refetchIfSourcesChanged(response)) return false;

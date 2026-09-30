@@ -21,6 +21,8 @@ export const queryKeys = {
   actionUpdatesAll: () => ["actionsAllUpdates"] as const,
   actionUpdatesRecent: (limit: number) =>
     ["actionsRecentUpdates", limit] as const,
+  /** Also prefixes generalUpdatesUnread, so invalidating it refetches that too. */
+  actions: () => ["actions"] as const,
   activitiesAll,
   activities: ({
     list,
