@@ -22,6 +22,7 @@ import {
   type ReactNode,
 } from "react";
 import type { AddressedWrite } from "../../lib/displayBlockById";
+import { ElementJsonButton } from "../FormJsonButton";
 import {
   ConditionalVisibility,
   type OutputBlockOption,
@@ -647,6 +648,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
         </span>
       )}
       <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <ElementJsonButton />
         {showConditional && (
           <div className="relative" ref={optionsMenuRef}>
             <button

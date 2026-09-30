@@ -58,6 +58,7 @@ import { Copy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBeforeUnload, useBlocker, useSearchParams } from "react-router";
 import { addressedWrite } from "../lib/displayBlockById";
+import { formSchemaIds, JsonScopeKind, type JsonScope } from "../lib/formJson";
 import { mergeFormSchemas } from "../lib/formSchemaMerge";
 import { reorderPages } from "../lib/reorderPages";
 import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
@@ -79,6 +80,8 @@ import {
 import { EditableFieldGroup } from "./form-fields/EditableFieldGroup";
 import { renderFieldEditor } from "./form-fields/fieldEditors";
 import { FormConflictModal } from "./FormConflictModal";
+import { ElementJsonContext, FormJsonButton } from "./FormJsonButton";
+import { FormJsonModal } from "./FormJsonModal";
 import { formFieldsErrorReason } from "./FormPickerError";
 import { FormulaSourcesProvider } from "./FormulaSourcesContext";
 import { FormVariablesProvider } from "./FormVariablesContext";
@@ -428,45 +431,7 @@ const createUniqueFormBuilderId = (
   return id;
 };
 
-const collectFormElementIds = (elements: PageItem[], usedIds: Set<string>) => {
-  elements.forEach((element) => {
-    if (element.id) {
-      usedIds.add(element.id);
-    }
-    if (isFieldGroup(element)) {
-      collectFormElementIds(element.fields, usedIds);
-      return;
-    }
-    if (isQuestionField(element)) {
-      if ("fields" in element) collectFormElementIds(element.fields, usedIds);
-      return;
-    }
-    if (element.kind === "accordion") {
-      element.sections.forEach((section) => {
-        if (section.id) usedIds.add(section.id);
-        collectFormElementIds(section.blocks, usedIds);
-      });
-    }
-  });
-};
-
-const collectSchemaIds = (schema: FormSchema) => {
-  const usedIds = new Set<string>();
-  schema.pages.forEach((page) => {
-    usedIds.add(page.id);
-    collectFormElementIds(page.fields, usedIds);
-  });
-  schema.outputViews.forEach((view) => {
-    usedIds.add(view.id);
-    view.blocks.forEach((block) => {
-      if (block.id) {
-        usedIds.add(block.id);
-      }
-    });
-  });
-  schema.aggregateViews?.forEach((view) => usedIds.add(view.id));
-  return usedIds;
-};
+const collectSchemaIds = (schema: FormSchema) => new Set(formSchemaIds(schema));
 
 const remapConditionFieldReferences = (
   condition: Condition,
@@ -827,8 +792,9 @@ export function FormBuilder(props: FormBuilderProps) {
   } | null>(null);
   // Formula editors, in VariableBuilder's cards and in the page's choice
   // fields, only follow their formulas through their own edits, so a schema
-  // loaded from a conflict remounts them with no sample answers.
-  const [conflictLoads, setConflictLoads] = useState(0);
+  // loaded from a conflict or from pasted JSON remounts them with no sample
+  // answers.
+  const [schemaLoads, setSchemaLoads] = useState(0);
   const [confirmUnresolvedVariables, setConfirmUnresolvedVariables] =
     useState(false);
 
@@ -899,6 +865,7 @@ export function FormBuilder(props: FormBuilderProps) {
     [],
   );
   const [copyPicker, setCopyPicker] = useState<InsertLoc | null>(null);
+  const [jsonScope, setJsonScope] = useState<JsonScope | null>(null);
   const [customValidatorDrafts, setCustomValidatorDrafts] = useState<
     Record<number, CustomValidatorDraft>
   >({});
@@ -1689,6 +1656,13 @@ export function FormBuilder(props: FormBuilderProps) {
     setPageDropPosition(null);
   };
 
+  const applyJson = (next: FormSchema) => {
+    updateSchema(next);
+    setSchemaLoads((count) => count + 1);
+    setSelectedPageIndex((index) => Math.min(index, next.pages.length - 1));
+    setJsonScope(null);
+  };
+
   const removePage = (pageIndex: number) => {
     if (schema.pages.length <= 1) return;
     updateSchema({
@@ -1971,7 +1945,7 @@ export function FormBuilder(props: FormBuilderProps) {
       return;
     }
     setSchema(conflict.theirs);
-    setConflictLoads((count) => count + 1);
+    setSchemaLoads((count) => count + 1);
     setLastSavedSchemaJSON(JSON.stringify(conflict.theirs));
     setBaseFormSnapshotId(conflict.theirsSnapshotId);
     setHasUnsavedChanges(false);
@@ -1991,7 +1965,7 @@ export function FormBuilder(props: FormBuilderProps) {
       return;
     }
     setSchema(result.value);
-    setConflictLoads((count) => count + 1);
+    setSchemaLoads((count) => count + 1);
     setLastSavedSchemaJSON(JSON.stringify(conflict.theirs));
     setBaseFormSnapshotId(conflict.theirsSnapshotId);
     setConflict(null);
@@ -2565,7 +2539,11 @@ export function FormBuilder(props: FormBuilderProps) {
                         {childIndex === 0 && (
                           <InsertPoint loc={{ groupId: group.id, index: 0 }} />
                         )}
-                        {renderField(child, childIndex, group.id)}
+                        {renderPageItem({
+                          field: child,
+                          index: childIndex,
+                          parentId: group.id,
+                        })}
                         {childIndex === group.fields.length - 1 && (
                           <InsertPoint
                             loc={{
@@ -2593,6 +2571,30 @@ export function FormBuilder(props: FormBuilderProps) {
       </div>
     );
   };
+
+  const renderPageItem = ({
+    field,
+    index,
+    parentId = null,
+  }: {
+    field: PageItem;
+    index: number;
+    parentId?: string | null;
+  }) => (
+    <ElementJsonContext.Provider
+      value={{
+        open: () =>
+          setJsonScope({
+            kind: JsonScopeKind.Element,
+            pageIndex: selectedPageIndex,
+            parentId,
+            index,
+          }),
+      }}
+    >
+      {renderField(field, index, parentId)}
+    </ElementJsonContext.Provider>
+  );
 
   return (
     <CustomValidatorDraftsContext.Provider value={customValidatorDraftContext}>
@@ -2623,6 +2625,15 @@ export function FormBuilder(props: FormBuilderProps) {
           void saveForm();
         }}
       />
+      {jsonScope && (
+        <FormJsonModal
+          scope={jsonScope}
+          schema={schema}
+          displayOnly={displayOnly}
+          onApply={applyJson}
+          onClose={() => setJsonScope(null)}
+        />
+      )}
       <FormVariablesProvider variables={schema.variables}>
         <FormulaSourcesProvider value={formulaSources}>
           <div className="flex h-[calc(100vh-40px)] bg-zinc-50">
@@ -2648,6 +2659,15 @@ export function FormBuilder(props: FormBuilderProps) {
               <div className="bg-white border-b border-gray-200 p-4">
                 <div className="flex items-center justify-end gap-4 flex-wrap xl:flex-nowrap">
                   <div className="flex items-center space-x-2">
+                    {!isPreviewMode && (
+                      <FormJsonButton
+                        label="Edit form JSON"
+                        onClick={() =>
+                          setJsonScope({ kind: JsonScopeKind.Form })
+                        }
+                        className="h-8 w-8 rounded-md hover:bg-gray-100"
+                      />
+                    )}
                     {activeEditor === "form" && (
                       <Button
                         onClick={() => setIsPreviewMode(!isPreviewMode)}
@@ -2835,6 +2855,17 @@ export function FormBuilder(props: FormBuilderProps) {
                               />
                             </button>
 
+                            <FormJsonButton
+                              label={`Edit ${page.title || "page"} JSON`}
+                              onClick={() =>
+                                setJsonScope({
+                                  kind: JsonScopeKind.Page,
+                                  pageIndex: index,
+                                })
+                              }
+                              className="py-2 px-1 text-gray-400"
+                            />
+
                             {schema.pages.length > 1 && (
                               <button
                                 type="button"
@@ -2913,7 +2944,7 @@ export function FormBuilder(props: FormBuilderProps) {
                   />
                 ) : activeEditor === "variables" ? (
                   <VariableBuilder
-                    key={conflictLoads}
+                    key={schemaLoads}
                     schema={schema}
                     onSchemaChange={updateSchema}
                   />
@@ -2986,7 +3017,7 @@ export function FormBuilder(props: FormBuilderProps) {
                       </div>
                     )}
                     <PerViewerOptions allowed={!displayOnly}>
-                      <div key={conflictLoads} className="space-y-4">
+                      <div key={schemaLoads} className="space-y-4">
                         {currentPage.fields.length === 0 && (
                           <InsertPoint loc={{ groupId: null, index: 0 }} />
                         )}
@@ -3000,7 +3031,7 @@ export function FormBuilder(props: FormBuilderProps) {
                               <InsertPoint loc={{ groupId: null, index: 0 }} />
                             )}
 
-                            {renderField(field, index)}
+                            {renderPageItem({ field, index })}
 
                             {index === currentPage.fields.length - 1 && (
                               <InsertPoint

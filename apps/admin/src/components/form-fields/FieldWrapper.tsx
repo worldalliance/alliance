@@ -11,6 +11,7 @@ import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import RenderField from "@alliance/sharedweb/forms/RenderField";
 import { useEffect, useState } from "react";
 import { FORM_BUILDER_PREVIEW_USER } from "../../lib/testData";
+import { ElementJsonButton } from "../FormJsonButton";
 import {
   ConditionalVisibility,
   CustomValidatorSelect,
@@ -285,6 +286,7 @@ export function FieldWrapper<T extends AnyField>({
       </div>
 
       <div className="mb-1 flex items-center justify-end gap-1 absolute right-0 top-0 bg-white rounded-lg">
+        <ElementJsonButton />
         {isCurrentFormField && (
           <FieldExtraMenu
             field={field}

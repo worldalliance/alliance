@@ -1,6 +1,7 @@
 import type { AnyField, FieldGroup } from "@alliance/common/forms/form-schema";
 import { cn } from "@alliance/shared/styles/util";
 import { useEffect, useRef, useState } from "react";
+import { ElementJsonButton } from "../FormJsonButton";
 import { ConditionalVisibility, RequiredToggle } from "./CommonControls";
 
 type EditableFieldGroupProps = {
@@ -111,6 +112,7 @@ export function EditableFieldGroup({
           />
         </div>
         <div className="flex items-center gap-1">
+          <ElementJsonButton />
           <div className="relative" ref={extraMenuRef}>
             <button
               type="button"
