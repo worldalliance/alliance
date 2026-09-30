@@ -1,4 +1,4 @@
-import { siteHref } from "@alliance/common/url";
+import { siteHref, withOrigin } from "@alliance/common/url";
 import React, { createContext, useCallback, useContext } from "react";
 
 const SiteAppContext = createContext<((url: string) => string) | undefined>(
@@ -27,12 +27,7 @@ export function SiteOriginLinkProvider({
   children,
 }: React.PropsWithChildren<{ origin: string }>) {
   const toOrigin = useCallback(
-    (url: string): string => {
-      const href = siteHref(url);
-      return href.startsWith("/") && !href.startsWith("//")
-        ? `${origin}${href}`
-        : href;
-    },
+    (url: string): string => withOrigin({ url: siteHref(url), origin }),
     [origin],
   );
   return (

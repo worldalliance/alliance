@@ -3,6 +3,7 @@ import {
   isLegacyAllianceHost,
   siteHref,
   urlMatchesDomain,
+  withOrigin,
 } from "./url";
 
 describe("isLegacyAllianceHost", () => {
@@ -120,5 +121,22 @@ describe("siteHref", () => {
     expect(siteHref("mailto:contact@worldalliance.org")).toBe(
       "mailto:contact@worldalliance.org",
     );
+  });
+});
+
+describe("withOrigin", () => {
+  it("puts a site path on the origin", () => {
+    expect(
+      withOrigin({ url: "/actions/5", origin: "https://thealliance.org" }),
+    ).toBe("https://thealliance.org/actions/5");
+  });
+
+  it.each([
+    "https://example.org/p",
+    "//example.org/p",
+    "#top",
+    "mailto:someone@example.org",
+  ])("leaves %s alone", (url) => {
+    expect(withOrigin({ url, origin: "https://thealliance.org" })).toBe(url);
   });
 });
