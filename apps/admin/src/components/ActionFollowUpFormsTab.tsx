@@ -7,6 +7,7 @@ import type {
   FollowUpFormDto,
   TagDto,
 } from "@alliance/shared/client/types.gen";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { useInvalidateFormsIndex } from "@alliance/shared/lib/useFormsAdmin";
 import { parseFollowUpFormDto } from "@alliance/shared/parsed-dtos";
@@ -20,6 +21,7 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
 import CohortExpressionBuilder from "./CohortExpressionBuilder";
 import { FormBuilder } from "./FormBuilder";
 
@@ -148,11 +150,16 @@ export default function ActionFollowUpFormsTab({
             cohortExpression: fields.cohortExpression,
           },
         }),
+        (thrown) => {
+          console.error("Failed to save follow-up form fields", thrown);
+          return thrownRefusalMessage({
+            error: thrown,
+            fallback: "Failed to save follow-up form fields",
+            sessionExpired: sessionExpiredMessage,
+          });
+        },
       );
-      if (!result.ok) {
-        console.error("Failed to save follow-up form fields", result.error);
-        pushError("Failed to save follow-up form fields");
-      }
+      if (!result.ok) pushError(result.error);
     },
     [updateFollowUpForm, pushError],
   );

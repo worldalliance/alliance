@@ -1,5 +1,6 @@
 import { R } from "@alliance/common/result";
 import { actionsPasteJsonAdmin } from "@alliance/shared/client";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useInvalidateActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import {
   DropdownMenuContent,
@@ -10,6 +11,7 @@ import { Menu } from "@base-ui/react/menu";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
 
 const CreateActionMenu = () => {
   const navigate = useNavigate();
@@ -19,19 +21,30 @@ const CreateActionMenu = () => {
 
   const handlePasteJson = async () => {
     setPasteJsonLoading(true);
-    const result = await R.fromPromiseFn(async () => {
-      const json = await navigator.clipboard.readText();
-      return actionsPasteJsonAdmin({ body: { body: json } });
-    });
+    const result = await R.fromPromiseFn(
+      async () => {
+        const json = await navigator.clipboard.readText();
+        return actionsPasteJsonAdmin({
+          body: { body: json },
+          throwOnError: true,
+        });
+      },
+      (thrown) => {
+        console.error("Failed to paste action", thrown);
+        return thrownRefusalMessage({
+          error: thrown,
+          fallback: "Could not paste action",
+          sessionExpired: sessionExpiredMessage,
+        });
+      },
+    );
     setPasteJsonLoading(false);
-    const created = result.ok ? result.value.data : undefined;
-    if (created) {
+    if (result.ok) {
       void invalidateActions();
-      navigate(`/actions/${created.id}`);
+      navigate(`/actions/${result.value.data.id}`);
       success("Action pasted successfully");
     } else {
-      if (!result.ok) console.error("Failed to paste action", result.error);
-      error("Could not paste action");
+      error(result.error);
     }
   };
 
