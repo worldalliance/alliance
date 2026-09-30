@@ -287,8 +287,6 @@ export class AuthService {
       referralSource,
     } = await this.resolveReferralCode(input.referralCode);
 
-    const defaultTag = await this.usersService.findAllMembersTag();
-
     const user = await this.usersService.createWithInviteAssignment(
       {
         name: input.name,
@@ -310,7 +308,6 @@ export class AuthService {
         referredByCampaign: referredByCampaign ?? null,
         referredByShareUrl: referredByShareUrl ?? null,
         referralSource,
-        tags: defaultTag ? [defaultTag] : undefined,
       },
       inviteAssignment,
     );

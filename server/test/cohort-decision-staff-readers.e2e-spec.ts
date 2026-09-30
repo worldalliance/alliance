@@ -7,13 +7,11 @@ import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import { Action } from "../src/actions/entities/action.entity";
 import { AnalyticsModule } from "../src/analytics/analytics.module";
 import { AnalyticsService } from "../src/analytics/analytics.service";
-import { ALL_MEMBERS_TAG_NAME } from "../src/constants";
 import { TasksModule } from "../src/tasks/tasks.module";
 import {
   UserActionRelationPillStatus,
   type UserActionRelations,
 } from "../src/user/dto/user-action-relations.dto";
-import { Tag } from "../src/user/entities/tag.entity";
 import {
   UserAwayRange,
   UserAwayRangeReason,
@@ -113,20 +111,12 @@ describe("Staff-facing reads of cohort decisions (e2e)", () => {
     ).toBe(UserActionRelationPillStatus.Away);
   });
 
-  it("reports all members participating in an action whose cohort is AllMembers or the All Members tag", async () => {
+  it("reports all members participating in an action whose cohort is AllMembers", async () => {
     const member = await createUser({ signedAt });
     const window = { start: addDays(now, -1), deadline: addDays(now, 3) };
     const everyone = await createAction({
       ...window,
       cohortExpression: { type: "AllMembers" },
-    });
-    const tagRepo = ctx.dataSource.getRepository(Tag);
-    const allMembersTag = await tagRepo.save(
-      tagRepo.create({ name: ALL_MEMBERS_TAG_NAME, description: "" }),
-    );
-    const allMembersTagged = await createAction({
-      ...window,
-      cohortExpression: { type: "Tag", tagId: allMembersTag.id },
     });
     const tagged = await createAction(window);
 
@@ -138,9 +128,7 @@ describe("Staff-facing reads of cohort decisions (e2e)", () => {
       body.actions.find((action) => action.id === actionId)
         ?.allMembersParticipating;
     expect(participating(everyone.id)).toBe(true);
-    expect(participating(allMembersTagged.id)).toBe(true);
     expect(participating(tagged.id)).toBe(false);
-    await tagRepo.delete(allMembersTag.id);
   });
 
   it("lists a moved member as incomplete on the branch they were decided into", async () => {

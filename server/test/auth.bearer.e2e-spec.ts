@@ -15,6 +15,7 @@ import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "../src/user/entities/onetime-invite.entity";
+import { Tag } from "../src/user/entities/tag.entity";
 import { User } from "../src/user/entities/user.entity";
 import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
 
@@ -73,7 +74,11 @@ describe("Auth (e2e)", () => {
       .expect(401);
   });
 
-  it("registers a new user", async () => {
+  it("registers a new user without tagging them", async () => {
+    const tagRepo = ctx.dataSource.getRepository(Tag);
+    await tagRepo.save(
+      tagRepo.create({ name: "All Members", description: "" }),
+    );
     const referrer = await userRepository.save(
       userRepository.create({
         email: "referrer@test.com",
@@ -93,6 +98,12 @@ describe("Auth (e2e)", () => {
         referralCode: referrer.referralCode,
       } satisfies SignUpDto)
       .expect(201);
+
+    const user = await userRepository.findOneOrFail({
+      where: { email: "newusertest@test.com" },
+      relations: { tags: true },
+    });
+    expect(user.tags).toEqual([]);
   });
 
   it("returns a token for a valid login", async () => {

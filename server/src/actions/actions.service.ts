@@ -3907,11 +3907,6 @@ export class ActionsService {
       });
     });
 
-    const allMembersTagIdP: Promise<string | null> = run(async () => {
-      const tag = await this.userService.findAllMembersTag();
-      return tag?.id ?? null;
-    });
-
     // --- end of promise defs ---
 
     const now = new Date();
@@ -3919,7 +3914,6 @@ export class ActionsService {
     const userById = new Map(users.map((user) => [user.id, user]));
     const actions = await actionsP;
 
-    const allMembersTagId = await allMembersTagIdP;
     const actionSummaries: UserActionSummary[] = actions.map((action) => {
       return {
         id: action.id,
@@ -3928,9 +3922,7 @@ export class ActionsService {
         weekNumber: action.deadlineWeekNumber,
         allMembersParticipating: expressionHasLeaf(
           action.cohortExpression,
-          (leaf) =>
-            leaf.type === "AllMembers" ||
-            (leaf.type === "Tag" && leaf.tagId === allMembersTagId),
+          (leaf) => leaf.type === "AllMembers",
         ),
         suiteId: action.suite?.id,
         memberActionDeadline:
