@@ -19,7 +19,7 @@ Deliver as stacked pull requests. PR 0 is #323 on `charlie/project-page`; later 
 2. Done, #329. Atomic invite claiming, a fix independent of the waitlist: account creation claims its invite in the same transaction, and pending or rejected invite requests cannot be claimed (ALL-1281).
 3. Done, #330. Data model: campaign kind, the organization's unique group, waitlist entries, organization links, organization-owned invites. Backend and migrations only, plus an independent fix: a one-time invite with no inviting user can be deleted, approved, or rejected without a 500.
 4. Done, #331. Public entry: email submission API, personal sharing links, the reason rule, page wiring, member/waitlist counts and social proof, `/join` removal and redirect. Sends no email.
-5. Public email: confirmation and recovery mail, bot validation, recipient and IP limits, the global volume cap. Public sending stays disabled until the Mailgun threshold is chosen.
+5. Public email: confirmation and recovery mail, recipient and IP limits, the global volume cap. Public sending stays disabled until the Mailgun threshold is chosen.
 6. Remembered browser state and “Forget this browser.”
 7. Admin: organizations and their links, the waitlist list, filters, tags, cohorts, manual mobilize/undo.
 8. Admin email: composer, templates, durable batches, idempotent sends, unsubscribe, send-and-mobilize.
@@ -105,13 +105,22 @@ PR 4 public entry choices:
 
 ## Email abuse and recovery
 
-The user approved these agent recommendations and explicitly requested recording them in DECISIONS only. The prior attack used different IPs/devices; per-IP limits alone do not address that pattern.
+The user approved these agent recommendations and explicitly requested recording them in DECISIONS only. The user later dropped bot protection, so the recipient, IP, and global limits carry the protection. The prior attack used different IPs/devices; per-IP limits alone do not address that pattern.
 
-Send one automatic confirmation email containing the personal sharing link after first entry. Add an explicit “Email me my link” recovery action. Duplicate submissions do not trigger mail. Both public send paths use server-validated bot protection, existing-style IP throttles, and a shared per-normalized-recipient limit; changing devices/IPs must not reset the recipient allowance. Start with no more than one public-triggered email per recipient per 24 hours. Staff-initiated sends are separate.
+Send one automatic confirmation email containing the personal sharing link after first entry. Add an explicit “Email me my link” recovery action. Duplicate submissions do not trigger mail. Both public send paths use existing-style IP throttles and a shared per-normalized-recipient limit; changing devices/IPs must not reset the recipient allowance. Start with no more than one public-triggered email per recipient per 24 hours. Staff-initiated sends are separate.
 
 Require the email-send allowance to be claimed atomically across concurrent requests, independently of whether a waitlist row already exists. Use bounded global send-volume protection and visible operational failure reporting to limit distributed attacks across many email addresses. Choose its deployment threshold against the actual Mailgun allowance before enabling public sending; no account pricing or quota was inspected in this task.
 
-Recovery returns the same generic response for absent, suppressed, and existing entries. Reuse stored content rather than reflecting arbitrary newly submitted names or text into recovery mail. Unsubscribed recipients stay suppressed on public recovery; repeated form submissions cannot resubscribe them. Public bot-check or email-send failures do not silently enable an unprotected send path.
+Recovery returns the same generic response for absent, suppressed, and existing entries. Reuse stored content rather than reflecting arbitrary newly submitted names or text into recovery mail. Unsubscribed recipients stay suppressed on public recovery; repeated form submissions cannot resubscribe them. Public email-send failures do not silently enable an unprotected send path.
+
+PR 5 public email choices:
+
+- Public email is on only when `WAITLIST_PUBLIC_MAIL_DAILY_CAP` is set; deploy exports it, empty until each environment sets it. `GET /waitlist/mail-config` tells the page, so the server alone decides whether to offer recovery. A malformed cap fails boot.
+- A new entry's confirmation goes out in the background, so a slow or failing mail server never holds up the page showing its link. A failed send only logs; the entry stays recorded.
+- Recovery is `POST /waitlist/link-requests`, offered on the duplicate confirmation, where the page already has the address. It answers 204 alike for present, absent, and unsubscribed addresses and for those over their own or the day's allowance, and mails in the background so its timing doesn't tell them apart. With public email off it answers 503, whatever the address. Per IP it takes 5 a minute and 20 an hour, as account registration does (`SIGNUP_THROTTLE`), and answers 429 past that.
+- `waitlist_mail_allowance` holds one row per address (`citext`) with its last claim. One transaction-scoped advisory lock serializes every claim, so the per-address rule (one per rolling 24 hours) and the global cap (per UTC day) are checked and claimed atomically. A day's claims are the rows claimed that day, since an address can claim at most once in it. A claim is not refunded when the send then fails, so failures cannot be used to retry past the limit.
+- The claim that fills the day's cap posts a `waitlist_mail_cap_reached` event to Slack, once per day. Later refusals only log.
+- The emails carry only the personal link, never the stored name, so a stranger's submitted text never reaches someone else's inbox. Unsubscribe arrives with PR 8's waitlist unsubscribe; public mail already skips unsubscribed entries. Leave the cap unset in every environment until then (ALL-1291), since anyone can request a stranger's link daily.
 
 This reduces amplification but does not prove genuine intent or defeat all distributed abuse. Mailgun charges can apply above the account's allowance. References: [Mailgun overages](https://help.mailgun.com/hc/en-us/articles/6745531451547-What-happens-if-I-send-more-emails-than-my-monthly-plan-provides), [OWASP browser storage](https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html#local-storage), [OWASP recovery protections](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html).
 
@@ -182,7 +191,7 @@ Implementation is complete when these behaviors pass focused automated checks an
 
 1. Organization, personal, and direct entry resolve the expected attribution. Referral chains retain organization/channel and immediate referrer; direct/unaffiliated entries require a reason.
 2. Duplicate and concurrent entry submissions produce one record and one personal code, retain initial attribution/status, and cannot grant access by merely submitting a known email. Commitment and invalid fields are rejected server-side.
-3. A public sharing link permits referrals but reveals no email, private browser access, or mobilization invite. Public email requests obey recipient and IP limits, bot validation, suppression, and atomic send allowances even under concurrent submissions.
+3. A public sharing link permits referrals but reveals no email, private browser access, or mobilization invite. Public email requests obey recipient and IP limits, suppression, and atomic send allowances even under concurrent submissions.
 4. Confirmation and recovery emails preserve access to the public share link. Mail failure does not lose a recorded entry. Returning browsers restore only authorized state; forgetting/expiry clears it. Explicit invites override remembered codes; used/revoked codes cannot start signup.
 5. Multiple organization links attribute independently. An organization can lack a group, but two organizations cannot claim the same group. Issued invites retain their destination unless explicitly changed.
 6. Admin cohorts recompute from saved filters, tags change only manually, selection spans pagination correctly, and confirmed email batches do not acquire new recipients. Suppressed entries are skipped with visible counts.
