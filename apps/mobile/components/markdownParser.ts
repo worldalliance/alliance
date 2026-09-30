@@ -26,3 +26,22 @@ markdownParser.linkify
       match.url = `http://${match.url}`;
     },
   });
+
+/**
+ * CommonMark alone, rendered the way a rich copy text block is copied: raw html
+ * stays as typed and a soft break joins its lines with a space.
+ */
+export const commonMarkParser = MarkdownIt("commonmark", { html: false });
+
+commonMarkParser.core.ruler.push("as_copied", (state) => {
+  for (const token of state.tokens) {
+    token.children =
+      token.children?.map((child) => {
+        if (child.type !== "softbreak") return child;
+        const space = new state.Token("text", "", 0);
+        space.content = " ";
+        return space;
+      }) ?? null;
+  }
+  return true;
+});

@@ -485,7 +485,7 @@ export function RenderDisplayBlockMobile({
         </TouchableOpacity>
       );
     case "copytext":
-      return <CopyTextDisplay text={block.text} title={block.title} />;
+      return <CopyTextDisplay block={block} />;
     case "accordion":
       if (block.sections.length === 0) return null;
       return <AccordionDisplayMobile block={block} />;

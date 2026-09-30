@@ -1,4 +1,4 @@
-import { markdownParser } from "./markdownParser";
+import { commonMarkParser, markdownParser } from "./markdownParser";
 
 function hrefs(source: string): string[] {
   return markdownParser
@@ -31,5 +31,35 @@ describe("markdownParser", () => {
     "`https://example.com`",
   ])("leaves %p plain", (source) => {
     expect(hrefs(source)).toEqual([]);
+  });
+});
+
+describe("commonMarkParser", () => {
+  const inline = (source: string) =>
+    commonMarkParser
+      .parse(source, {})
+      .flatMap((token) => token.children ?? [])
+      .map((token) => [token.type, token.content]);
+
+  test("joins a soft break's lines with a space", () => {
+    expect(inline("one\ntwo")).toEqual([
+      ["text", "one"],
+      ["text", " "],
+      ["text", "two"],
+    ]);
+  });
+
+  test("keeps raw html as text", () => {
+    expect(
+      inline("Dear <Your Name>")
+        .map(([, content]) => content)
+        .join(""),
+    ).toBe("Dear <Your Name>");
+  });
+
+  test("leaves bare urls and strikethrough as text", () => {
+    expect(inline("~~old~~ https://example.org")).toEqual([
+      ["text", "~~old~~ https://example.org"],
+    ]);
   });
 });
