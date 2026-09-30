@@ -17,10 +17,10 @@ Everything here is ephemeral, and you have permission to do whatever you need in
 
 Write everything to `$OUTPUT_DIR`:
 
-- `comment.md`: the comment body. Reference each asset as `./<filename>`, e.g. `![after](./settings-after.png)`, and the posting job replaces those references with uploaded URLs. Put screenshots in tables, before and after side by side. Put each video on its own line outside any table, since GitHub only embeds a player for a video that stands alone.
+- `comment.md`: the comment body. Reference each asset as `./<filename>`, e.g. `![after](./settings-after.png)`, and the posting job replaces those references with uploaded URLs. Open with one sentence on what changed for someone using the app. Captions and prose say what a reviewer sees; leave identifiers, file names, and capture technique to a collapsed `<details>` at the end, together with the test data you created. Put screenshots in tables, before and after side by side. Put each video on its own line outside any table, since GitHub only embeds a player for a video that stands alone.
 - The assets themselves, flat in that directory: `.png` screenshots, `.mp4` videos. Nothing else goes there. GitHub rejects a video over 10 MB, and `adb shell screenrecord` passes that in seconds, so re-encode or trim each `.mp4` under 10 MB with `ffmpeg`.
 
-Keep it to the journeys the diff actually changes. Capture motion, such as animations, transitions, and interactions, as video, since a screenshot can't show it. If you can't capture something, say so in the comment instead of skipping it quietly.
+Keep it to the journeys the diff actually changes. When the PR intends no visible change, such as a refactor, capture a before and after of one representative screen per surface it touches, say in one line whether each pair matches, and show any difference. Capture motion, such as animations, transitions, and interactions, as video, since a screenshot can't show it. If you can't capture something, say so in the comment instead of skipping it quietly.
 
 ## Before and after
 
@@ -30,4 +30,4 @@ The PR may change dependencies and the schema. After each checkout, run `bun ins
 
 Dev servers don't reliably hot-reload a `git checkout`. Restart every server and Metro after each checkout, then reload the page or app.
 
-Before you write the comment, open every asset and confirm it shows what the comment says. A before and after that are identical, or that both show the same side of the change, means the capture is wrong. Retake it rather than posting it.
+Before you write the comment, open every asset and confirm it shows what the comment says. For a PR with a visible change, a before and after that are identical, or that both show the same side of the change, means the capture is wrong. Retake it rather than posting it.
