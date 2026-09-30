@@ -63,7 +63,9 @@ export const queryKeys = {
     ["cohortDecisionsListForActionAdmin", actionId] as const,
   actionRelationsAdmin: () => ["actionsActionRelationsAdmin"] as const,
   ambassadorProgramAdmin: () => ["userGetAmbassadorProgramAdmin"] as const,
+  campaignsAdmin: () => ["campaignFindAllAdmin"] as const,
   clustersAdmin: () => ["clusterListAdmin"] as const,
+  communitiesAdmin: () => ["communityGetCommunitiesAdmin"] as const,
   contractsAdmin: () => ["contractAllAdmin"] as const,
   eventLogAdmin: (page: number, limit: number, eventType: EventType | "") =>
     ["eventLogFindAllAdmin", page, limit, eventType] as const,
@@ -97,6 +99,7 @@ export const queryKeys = {
   timeSpentPerUserTotalAdmin: () =>
     ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
   usersAdmin: () => ["userListAdmin"] as const,
+  waitlistLinksAdmin: () => ["waitlistAdminFindLinksAdmin"] as const,
   videoAdmin: (videoId: number) =>
     ["videosGetVideoDetailsAdmin", videoId] as const,
   videosAdmin: () => ["videosListVideosAdmin"] as const,

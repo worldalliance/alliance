@@ -1,6 +1,7 @@
 import { cn } from "@alliance/shared/styles/util";
 import {
   BarChart2,
+  Building2,
   Calendar,
   ChevronDown,
   ChevronRight,
@@ -135,6 +136,17 @@ const SidebarNav = ({
           to: "/share-targets",
           label: "Share Targets",
           icon: <SquareMousePointer size={16} />,
+        },
+      ],
+    },
+    {
+      folder: SidebarFolder.Waitlist,
+      label: "Waitlist",
+      links: [
+        {
+          to: "/organizations",
+          label: "Organizations",
+          icon: <Building2 size={16} />,
         },
       ],
     },
