@@ -95,6 +95,8 @@ type DisplayBlockChildRenderProps<T extends DisplayBlock> = {
   targetLabel: TargetLabel;
   isDefaultContent: boolean;
   hasContentForUser: boolean;
+  /** Writes the default content and every user's content alike. */
+  updateBlockWide: (updates: Partial<T>) => void;
 };
 
 interface DisplayBlockWrapperProps<T extends DisplayBlock = DisplayBlock> {
@@ -356,9 +358,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     [manualUserContent, manualUsers],
   );
 
-  const handleConditionalChange = (updates: {
-    visibleIfFormula?: VisibleIfFormula;
-  }) => {
+  const updateBlockWide = (updates: Partial<T>) => {
     if (!onUpdate || !block) {
       return;
     }
@@ -373,14 +373,18 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
         ]),
       ) as Record<string, ManualDisplayBlockContent>;
       onUpdate({
-        ...(updates as Partial<T>),
+        ...updates,
         manualUserContent: nextManualContent,
       } as Partial<T>);
       return;
     }
 
-    onUpdate(updates as Partial<T>);
+    onUpdate(updates);
   };
+
+  const handleConditionalChange = (updates: {
+    visibleIfFormula?: VisibleIfFormula;
+  }) => updateBlockWide(updates as Partial<T>);
 
   const handleConditionalVisibilityToggle = (checked: boolean) => {
     setShowConditionalVisibilityControl(checked);
@@ -592,6 +596,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
           targetLabel,
           isDefaultContent: !manualPerUserEnabled || !activeManualUserId,
           hasContentForUser: hasContentForActiveUser,
+          updateBlockWide,
         })
       : children;
 
