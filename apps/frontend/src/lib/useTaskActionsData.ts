@@ -1,13 +1,11 @@
-import { ActionDto, actionsDismissAction } from "@alliance/shared/client";
-import { useActionsQuery } from "@alliance/shared/lib/actionsListPage";
 import {
-  ActionWithAwayStatus,
-  withOptimisticDismissal,
-} from "@alliance/shared/lib/actionUtils";
+  useActionsQuery,
+  useDismissActionMutation,
+} from "@alliance/shared/lib/actionsListPage";
+import { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { type ParsedGeneralUpdate } from "@alliance/shared/lib/generalUpdates";
 import { useUnreadGeneralUpdates } from "@alliance/shared/lib/useGeneralUpdates";
-import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { type LoadFailure } from "../components/LoadFailed";
 
@@ -21,7 +19,7 @@ export function useTaskActionsData(options?: {
   handleDismissAction: (actionId: number) => Promise<void>;
   handleDismissGeneralUpdate: (generalUpdateId: number) => Promise<void>;
 } {
-  const queryClient = useQueryClient();
+  const { mutateAsync: dismissAction } = useDismissActionMutation();
   const actionsQuery = useActionsQuery({
     refetchInterval: options?.refetchInterval,
   });
@@ -65,17 +63,9 @@ export function useTaskActionsData(options?: {
 
   const handleDismissAction = useCallback(
     async (actionId: number) => {
-      await actionsDismissAction({
-        path: { id: actionId },
-      });
-
-      queryClient.setQueryData<ActionDto[] | undefined>(["actions"], (prev) =>
-        prev?.map((action) =>
-          action.id === actionId ? withOptimisticDismissal(action) : action,
-        ),
-      );
+      await dismissAction(actionId);
     },
-    [queryClient],
+    [dismissAction],
   );
 
   return {

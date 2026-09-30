@@ -1,6 +1,9 @@
 import type { FollowUpFormDto } from "@alliance/shared/client";
 import { actionsDismissAction } from "@alliance/shared/client";
-import { useActionsQuery } from "@alliance/shared/lib/actionsListPage";
+import {
+  useActionsQuery,
+  useInvalidateActions,
+} from "@alliance/shared/lib/actionsListPage";
 import {
   ActionWithAwayStatus,
   homePagePriorityComparator,
@@ -60,6 +63,7 @@ const renderKeyboardAwareScrollComponent = (props: ScrollViewProps) => (
 
 export default function HomeScreen() {
   const queryClient = useQueryClient();
+  const invalidateActions = useInvalidateActions();
   const [refreshing, setRefreshing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const hasNoTasks = useRef(true);
@@ -350,7 +354,7 @@ export default function HomeScreen() {
               scrollPageTo={scrollPageTo}
               scrollToEnd={scrollToEnd}
               onSubmitted={() => {
-                queryClient.invalidateQueries({ queryKey: ["actions"] });
+                invalidateActions();
                 resetHomeFeed(queryClient);
               }}
             />
@@ -390,6 +394,7 @@ export default function HomeScreen() {
     currentItem,
     dismissProps,
     handleDismissGeneralUpdate,
+    invalidateActions,
     queryClient,
     refetch,
     scrollPageTo,
