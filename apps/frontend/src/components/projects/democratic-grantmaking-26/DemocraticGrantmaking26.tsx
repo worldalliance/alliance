@@ -3,6 +3,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { socialPreviewMeta } from "../../../lib/socialPreviewMeta";
 import { DocProse } from "../../../site/DocProse";
 import { SiteFooter } from "../../../site/Footer";
+import { WAITLIST_HREF } from "../../../site/links";
 import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
 import {
   BandHeading,
@@ -27,7 +28,7 @@ export function meta() {
   return socialPreviewMeta({
     title: "Democratic Grantmaking '26 — The Alliance",
     description: `We're planning a project in which an expert panel and ${MEMBER_GOAL_LABEL} members will work together to make a significant grant.`,
-    url: "/projects/democratic-grantmaking-26",
+    url: WAITLIST_HREF,
   });
 }
 

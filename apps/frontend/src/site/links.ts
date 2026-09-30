@@ -12,6 +12,7 @@ export const GUIDE_HREF = href("/guide");
 export const PROGRESS_HREF = href("/progress");
 export const PARTNER_HREF = href("/outreach-partner");
 export const JOIN_HREF = href("/join");
+export const WAITLIST_HREF = href("/projects/democratic-grantmaking-26");
 export const FAQ_HREF = href("/faq");
 export const GOVERNANCE_HREF = href("/governance");
 export const FOUNDATION_HREF = href("/foundation");

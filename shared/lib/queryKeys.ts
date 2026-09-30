@@ -46,6 +46,8 @@ export const queryKeys = {
     ["userSignupSocialProof", referralCode, count] as const,
   staffDirectory: () => ["userStaffDirectory"] as const,
   waitlistCount: () => ["waitlistCount"] as const,
+  waitlistReferral: (codes: { linkCode?: string; referrerCode?: string }) =>
+    ["waitlistFindReferral", codes] as const,
 
   // Admin
   actionAdmin: (actionId: number | null) =>
