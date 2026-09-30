@@ -4409,6 +4409,38 @@ export type WaitlistCountDto = {
     waiting: number;
 };
 
+export type AdminWaitlistLinkDto = {
+    id: number;
+    code: string;
+    organizationId: number;
+    channel: string;
+    publishedAt: string | null;
+    archivedAt: string | null;
+    createdAt: string;
+    /**
+     * Entries whose referral chain began here
+     */
+    entryCount: number;
+};
+
+export type CreateWaitlistLinkDto = {
+    organizationId: number;
+    /**
+     * Where the link is shared, e.g. Newsletter
+     */
+    channel: string;
+    publishedAt?: string | null;
+};
+
+export type UpdateWaitlistLinkDto = {
+    channel?: string;
+    publishedAt?: string | null;
+    /**
+     * Archiving stops new entries through the link
+     */
+    archived?: boolean;
+};
+
 export type HeyApiError = {
     statusCode: number;
     message: string | Array<string>;
@@ -13520,6 +13552,74 @@ export type WaitlistCountResponses = {
 };
 
 export type WaitlistCountResponse = WaitlistCountResponses[keyof WaitlistCountResponses];
+
+export type WaitlistAdminFindLinksAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/links';
+};
+
+export type WaitlistAdminFindLinksAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminFindLinksAdminError = WaitlistAdminFindLinksAdminErrors[keyof WaitlistAdminFindLinksAdminErrors];
+
+export type WaitlistAdminFindLinksAdminResponses = {
+    200: Array<AdminWaitlistLinkDto>;
+};
+
+export type WaitlistAdminFindLinksAdminResponse = WaitlistAdminFindLinksAdminResponses[keyof WaitlistAdminFindLinksAdminResponses];
+
+export type WaitlistAdminCreateLinkAdminData = {
+    body: CreateWaitlistLinkDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/links';
+};
+
+export type WaitlistAdminCreateLinkAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminCreateLinkAdminError = WaitlistAdminCreateLinkAdminErrors[keyof WaitlistAdminCreateLinkAdminErrors];
+
+export type WaitlistAdminCreateLinkAdminResponses = {
+    200: AdminWaitlistLinkDto;
+};
+
+export type WaitlistAdminCreateLinkAdminResponse = WaitlistAdminCreateLinkAdminResponses[keyof WaitlistAdminCreateLinkAdminResponses];
+
+export type WaitlistAdminUpdateLinkAdminData = {
+    body: UpdateWaitlistLinkDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/links/{id}';
+};
+
+export type WaitlistAdminUpdateLinkAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminUpdateLinkAdminError = WaitlistAdminUpdateLinkAdminErrors[keyof WaitlistAdminUpdateLinkAdminErrors];
+
+export type WaitlistAdminUpdateLinkAdminResponses = {
+    200: AdminWaitlistLinkDto;
+};
+
+export type WaitlistAdminUpdateLinkAdminResponse = WaitlistAdminUpdateLinkAdminResponses[keyof WaitlistAdminUpdateLinkAdminResponses];
 
 export type ClientOptions = {
     baseUrl: string;

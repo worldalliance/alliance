@@ -19,7 +19,7 @@ export enum WaitlistEntryError {
   ReasonRequired = "reason_required",
 }
 
-const TAKES_WAITLIST_ENTRIES: Record<CampaignKind, boolean> = {
+export const TAKES_WAITLIST_ENTRIES: Record<CampaignKind, boolean> = {
   [CampaignKind.Campaign]: false,
   [CampaignKind.Organization]: true,
 };
