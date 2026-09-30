@@ -5,14 +5,17 @@ import { MailModule } from "src/mail/mail.module";
 import { User } from "src/user/entities/user.entity";
 import { UserModule } from "src/user/user.module";
 import { WaitlistBrowser } from "./entities/waitlist-browser.entity";
+import { WaitlistEntryTag } from "./entities/waitlist-entry-tag.entity";
 import { WaitlistEntry } from "./entities/waitlist-entry.entity";
 import { WaitlistLink } from "./entities/waitlist-link.entity";
 import { WaitlistMailAllowance } from "./entities/waitlist-mail-allowance.entity";
+import { WaitlistTag } from "./entities/waitlist-tag.entity";
 import { WaitlistAdminController } from "./waitlist-admin.controller";
 import { WaitlistBrowserService } from "./waitlist-browser.service";
 import { WaitlistEntryAdminService } from "./waitlist-entry-admin.service";
 import { WaitlistLinkService } from "./waitlist-link.service";
 import { WaitlistMailService } from "./waitlist-mail.service";
+import { WaitlistTagService } from "./waitlist-tag.service";
 import { WaitlistController } from "./waitlist.controller";
 import { WaitlistService } from "./waitlist.service";
 
@@ -22,8 +25,10 @@ import { WaitlistService } from "./waitlist.service";
       User,
       WaitlistBrowser,
       WaitlistEntry,
+      WaitlistEntryTag,
       WaitlistLink,
       WaitlistMailAllowance,
+      WaitlistTag,
     ]),
     MailModule,
     EventLogModule,
@@ -36,6 +41,7 @@ import { WaitlistService } from "./waitlist.service";
     WaitlistBrowserService,
     WaitlistLinkService,
     WaitlistEntryAdminService,
+    WaitlistTagService,
   ],
 })
 export class WaitlistModule {}

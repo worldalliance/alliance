@@ -25,6 +25,8 @@ import {
 import { toDateTime, trimToNull } from "src/utils/transforms";
 import type { WaitlistEntry } from "../entities/waitlist-entry.entity";
 import type { WaitlistLink } from "../entities/waitlist-link.entity";
+import type { WaitlistTag } from "../entities/waitlist-tag.entity";
+import { WaitlistTagDto } from "./waitlist-tag.dto";
 
 /**
  * Claimed if an account references any of the entry's invites, else unused if
@@ -106,6 +108,16 @@ export class WaitlistEntryFilterDto {
   @ValidateIf((_object, value) => value !== undefined)
   @IsBoolean()
   hasReason?: boolean;
+
+  @ApiPropertyOptional({
+    type: Number,
+    isArray: true,
+    description: "Entries with any of these tags",
+  })
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  tagIds?: number[];
 
   @ApiPropertyOptional({
     enum: WaitlistInviteState,
@@ -202,6 +214,7 @@ export class WaitlistSourceLinkDto {
 export type AdminWaitlistEntry = {
   entry: WaitlistEntry;
   inviteState: WaitlistInviteState;
+  tags: WaitlistTag[];
 };
 
 export class AdminWaitlistEntryDto {
@@ -238,6 +251,9 @@ export class AdminWaitlistEntryDto {
   @ApiProperty({ enum: WaitlistInviteState, enumName: "WaitlistInviteState" })
   inviteState: WaitlistInviteState;
 
+  @ApiProperty({ type: () => WaitlistTagDto, isArray: true })
+  tags: WaitlistTagDto[];
+
   constructor(input: AdminWaitlistEntry) {
     const { entry } = input;
     this.id = entry.id;
@@ -257,6 +273,7 @@ export class AdminWaitlistEntryDto {
     this.mobilizedAt = entry.mobilizedAt;
     this.unsubscribedAt = entry.unsubscribedAt;
     this.inviteState = input.inviteState;
+    this.tags = input.tags.map((tag) => new WaitlistTagDto(tag));
   }
 }
 
@@ -286,5 +303,21 @@ export class WaitlistEntryIdsDto {
 
   constructor(ids: number[]) {
     this.ids = ids;
+  }
+}
+
+export class WaitlistEntryIdsBodyDto {
+  @ApiProperty({ type: Number, isArray: true })
+  @IsArray()
+  @IsInt({ each: true })
+  entryIds: number[];
+}
+
+export class WaitlistChangeCountDto {
+  @ApiProperty({ description: "Entries the request changed" })
+  changed: number;
+
+  constructor(changed: number) {
+    this.changed = changed;
   }
 }

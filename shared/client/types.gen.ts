@@ -4437,6 +4437,10 @@ export type WaitlistEntryFilterDto = {
     mobilized?: boolean;
     subscribed?: boolean;
     hasReason?: boolean;
+    /**
+     * Entries with any of these tags
+     */
+    tagIds?: Array<number>;
     inviteStates?: Array<WaitlistInviteState>;
 };
 
@@ -4459,6 +4463,11 @@ export type WaitlistSourceLinkDto = {
     channel: string;
 };
 
+export type WaitlistTagDto = {
+    id: number;
+    name: string;
+};
+
 export type AdminWaitlistEntryDto = {
     id: number;
     name: string;
@@ -4471,6 +4480,7 @@ export type AdminWaitlistEntryDto = {
     mobilizedAt: string | null;
     unsubscribedAt: string | null;
     inviteState: WaitlistInviteState;
+    tags: Array<WaitlistTagDto>;
 };
 
 export type WaitlistEntryPageDto = {
@@ -4519,6 +4529,27 @@ export type UpdateWaitlistLinkDto = {
      * Archiving stops new entries through the link
      */
     archived?: boolean;
+};
+
+export type AdminWaitlistTagDto = {
+    id: number;
+    name: string;
+    entryCount: number;
+};
+
+export type SaveWaitlistTagDto = {
+    name: string;
+};
+
+export type WaitlistEntryIdsBodyDto = {
+    entryIds: Array<number>;
+};
+
+export type WaitlistChangeCountDto = {
+    /**
+     * Entries the request changed
+     */
+    changed: number;
 };
 
 export type HeyApiError = {
@@ -13744,6 +13775,148 @@ export type WaitlistAdminUpdateLinkAdminResponses = {
 };
 
 export type WaitlistAdminUpdateLinkAdminResponse = WaitlistAdminUpdateLinkAdminResponses[keyof WaitlistAdminUpdateLinkAdminResponses];
+
+export type WaitlistAdminFindTagsAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/tags';
+};
+
+export type WaitlistAdminFindTagsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminFindTagsAdminError = WaitlistAdminFindTagsAdminErrors[keyof WaitlistAdminFindTagsAdminErrors];
+
+export type WaitlistAdminFindTagsAdminResponses = {
+    200: Array<AdminWaitlistTagDto>;
+};
+
+export type WaitlistAdminFindTagsAdminResponse = WaitlistAdminFindTagsAdminResponses[keyof WaitlistAdminFindTagsAdminResponses];
+
+export type WaitlistAdminCreateTagAdminData = {
+    body: SaveWaitlistTagDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/tags';
+};
+
+export type WaitlistAdminCreateTagAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminCreateTagAdminError = WaitlistAdminCreateTagAdminErrors[keyof WaitlistAdminCreateTagAdminErrors];
+
+export type WaitlistAdminCreateTagAdminResponses = {
+    200: WaitlistTagDto;
+};
+
+export type WaitlistAdminCreateTagAdminResponse = WaitlistAdminCreateTagAdminResponses[keyof WaitlistAdminCreateTagAdminResponses];
+
+export type WaitlistAdminDeleteTagAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/tags/{id}';
+};
+
+export type WaitlistAdminDeleteTagAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminDeleteTagAdminError = WaitlistAdminDeleteTagAdminErrors[keyof WaitlistAdminDeleteTagAdminErrors];
+
+export type WaitlistAdminDeleteTagAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type WaitlistAdminDeleteTagAdminResponse = WaitlistAdminDeleteTagAdminResponses[keyof WaitlistAdminDeleteTagAdminResponses];
+
+export type WaitlistAdminRenameTagAdminData = {
+    body: SaveWaitlistTagDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/tags/{id}';
+};
+
+export type WaitlistAdminRenameTagAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminRenameTagAdminError = WaitlistAdminRenameTagAdminErrors[keyof WaitlistAdminRenameTagAdminErrors];
+
+export type WaitlistAdminRenameTagAdminResponses = {
+    200: WaitlistTagDto;
+};
+
+export type WaitlistAdminRenameTagAdminResponse = WaitlistAdminRenameTagAdminResponses[keyof WaitlistAdminRenameTagAdminResponses];
+
+export type WaitlistAdminTagEntriesAdminData = {
+    body: WaitlistEntryIdsBodyDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/tags/{id}/add';
+};
+
+export type WaitlistAdminTagEntriesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminTagEntriesAdminError = WaitlistAdminTagEntriesAdminErrors[keyof WaitlistAdminTagEntriesAdminErrors];
+
+export type WaitlistAdminTagEntriesAdminResponses = {
+    200: WaitlistChangeCountDto;
+};
+
+export type WaitlistAdminTagEntriesAdminResponse = WaitlistAdminTagEntriesAdminResponses[keyof WaitlistAdminTagEntriesAdminResponses];
+
+export type WaitlistAdminUntagEntriesAdminData = {
+    body: WaitlistEntryIdsBodyDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/tags/{id}/remove';
+};
+
+export type WaitlistAdminUntagEntriesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminUntagEntriesAdminError = WaitlistAdminUntagEntriesAdminErrors[keyof WaitlistAdminUntagEntriesAdminErrors];
+
+export type WaitlistAdminUntagEntriesAdminResponses = {
+    200: WaitlistChangeCountDto;
+};
+
+export type WaitlistAdminUntagEntriesAdminResponse = WaitlistAdminUntagEntriesAdminResponses[keyof WaitlistAdminUntagEntriesAdminResponses];
 
 export type ClientOptions = {
     baseUrl: string;

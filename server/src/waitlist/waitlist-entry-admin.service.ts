@@ -11,6 +11,7 @@ import {
   WaitlistInviteState,
 } from "./dto/waitlist-entry-admin.dto";
 import { WaitlistEntry } from "./entities/waitlist-entry.entity";
+import { WaitlistTagService } from "./waitlist-tag.service";
 
 const ENTRY_INVITE = `SELECT 1 FROM onetime_invite invite WHERE invite."waitlistEntryId" = entry.id`;
 
@@ -31,6 +32,7 @@ export class WaitlistEntryAdminService {
   constructor(
     @InjectRepository(WaitlistEntry)
     private readonly entryRepository: Repository<WaitlistEntry>,
+    private readonly tagService: WaitlistTagService,
   ) {}
 
   private filtered(
@@ -91,12 +93,32 @@ export class WaitlistEntryAdminService {
         filter.hasReason ? "entry.reason IS NOT NULL" : "entry.reason IS NULL",
       );
     }
+    if (filter.tagIds?.length) {
+      query.andWhere(
+        `EXISTS (SELECT 1 FROM waitlist_entry_tag entry_tag WHERE entry_tag."entryId" = entry.id AND entry_tag."tagId" IN (:...tagIds))`,
+        { tagIds: filter.tagIds },
+      );
+    }
     if (filter.inviteStates?.length) {
       query.andWhere(`(${INVITE_STATE_SQL}) IN (:...inviteStates)`, {
         inviteStates: filter.inviteStates,
       });
     }
     return query;
+  }
+
+  private async findInviteStates(
+    ids: number[],
+  ): Promise<Map<number, WaitlistInviteState>> {
+    const rows = ids.length
+      ? await this.entryRepository
+          .createQueryBuilder("entry")
+          .select("entry.id", "id")
+          .addSelect(INVITE_STATE_SQL, "inviteState")
+          .where("entry.id IN (:...ids)", { ids })
+          .getRawMany<{ id: number; inviteState: WaitlistInviteState }>()
+      : [];
+    return new Map(rows.map((row) => [row.id, row.inviteState]));
   }
 
   async search(dto: WaitlistEntrySearchDto): Promise<WaitlistEntryPage> {
@@ -129,23 +151,19 @@ export class WaitlistEntryAdminService {
     const [entries, total] = await query
       .addOrderBy("entry.id")
       .getManyAndCount();
-    const states = entries.length
-      ? await this.entryRepository
-          .createQueryBuilder("entry")
-          .select("entry.id", "id")
-          .addSelect(INVITE_STATE_SQL, "inviteState")
-          .where("entry.id IN (:...ids)", { ids: entries.map((e) => e.id) })
-          .getRawMany<{ id: number; inviteState: WaitlistInviteState }>()
-      : [];
+    const ids = entries.map((entry) => entry.id);
+    const [stateById, tagsByEntry] = await Promise.all([
+      this.findInviteStates(ids),
+      this.tagService.findForEntries(ids),
+    ]);
 
-    const stateById = new Map(states.map((row) => [row.id, row.inviteState]));
     return {
       entries: entries.map((entry) => {
         const inviteState = stateById.get(entry.id);
         if (inviteState === undefined) {
           throw new Error(`no invite state for waitlist entry ${entry.id}`);
         }
-        return { entry, inviteState };
+        return { entry, inviteState, tags: tagsByEntry.get(entry.id) ?? [] };
       }),
       total,
     };

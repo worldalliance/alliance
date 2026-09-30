@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -10,10 +11,12 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
-import { ApiOkResponse } from "@nestjs/swagger";
+import { ApiNoContentResponse, ApiOkResponse } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import {
+  WaitlistChangeCountDto,
   WaitlistEntryFilterBodyDto,
+  WaitlistEntryIdsBodyDto,
   WaitlistEntryIdsDto,
   WaitlistEntryPageDto,
   WaitlistEntrySearchDto,
@@ -23,8 +26,14 @@ import {
   CreateWaitlistLinkDto,
   UpdateWaitlistLinkDto,
 } from "./dto/waitlist-link.dto";
+import {
+  AdminWaitlistTagDto,
+  SaveWaitlistTagDto,
+  WaitlistTagDto,
+} from "./dto/waitlist-tag.dto";
 import { WaitlistEntryAdminService } from "./waitlist-entry-admin.service";
 import { WaitlistLinkService } from "./waitlist-link.service";
+import { WaitlistTagService } from "./waitlist-tag.service";
 
 @Controller("waitlist/admin")
 @UseGuards(AdminGuard)
@@ -32,6 +41,7 @@ export class WaitlistAdminController {
   constructor(
     private readonly linkService: WaitlistLinkService,
     private readonly entryService: WaitlistEntryAdminService,
+    private readonly tagService: WaitlistTagService,
   ) {}
 
   @Post("entries/search")
@@ -75,5 +85,60 @@ export class WaitlistAdminController {
     @Body() dto: UpdateWaitlistLinkDto,
   ): Promise<AdminWaitlistLinkDto> {
     return new AdminWaitlistLinkDto(await this.linkService.update(id, dto));
+  }
+
+  @Get("tags")
+  @ApiOkResponse({ type: AdminWaitlistTagDto, isArray: true })
+  async findTagsAdmin(): Promise<AdminWaitlistTagDto[]> {
+    const tags = await this.tagService.findAll();
+    return tags.map((tag) => new AdminWaitlistTagDto(tag));
+  }
+
+  @Post("tags")
+  @ApiOkResponse({ type: WaitlistTagDto })
+  async createTagAdmin(
+    @Body() dto: SaveWaitlistTagDto,
+  ): Promise<WaitlistTagDto> {
+    return new WaitlistTagDto(await this.tagService.create(dto.name));
+  }
+
+  @Patch("tags/:id")
+  @ApiOkResponse({ type: WaitlistTagDto })
+  async renameTagAdmin(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: SaveWaitlistTagDto,
+  ): Promise<WaitlistTagDto> {
+    return new WaitlistTagDto(await this.tagService.rename(id, dto.name));
+  }
+
+  @Delete("tags/:id")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse()
+  async deleteTagAdmin(@Param("id", ParseIntPipe) id: number): Promise<void> {
+    await this.tagService.delete(id);
+  }
+
+  @Post("tags/:id/add")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: WaitlistChangeCountDto })
+  async tagEntriesAdmin(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: WaitlistEntryIdsBodyDto,
+  ): Promise<WaitlistChangeCountDto> {
+    return new WaitlistChangeCountDto(
+      await this.tagService.add(id, dto.entryIds),
+    );
+  }
+
+  @Post("tags/:id/remove")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: WaitlistChangeCountDto })
+  async untagEntriesAdmin(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: WaitlistEntryIdsBodyDto,
+  ): Promise<WaitlistChangeCountDto> {
+    return new WaitlistChangeCountDto(
+      await this.tagService.remove(id, dto.entryIds),
+    );
   }
 }

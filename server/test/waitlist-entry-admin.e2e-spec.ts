@@ -339,6 +339,90 @@ describe("Waitlist entry admin (e2e)", () => {
     expect(ids.body.ids).toEqual([betaEntry.id, alphaEntry.id]);
   });
 
+  describe("tags", () => {
+    const admin = (method: "post" | "patch" | "delete" | "get", path: string) =>
+      request(server())
+        [method](`/waitlist/admin/tags${path}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+
+    it("tags and untags entries, and filters by any selected tag", async () => {
+      const organization = await saveOrganization("Tag Org");
+      const first = await saveEntry({ organizationId: organization.id });
+      const second = await saveEntry({ organizationId: organization.id });
+      const untagged = await saveEntry({ organizationId: organization.id });
+      const speakers = await admin("post", "")
+        .send({ name: " Speakers " })
+        .expect(201);
+      const hosts = await admin("post", "").send({ name: "Hosts" }).expect(201);
+      expect(speakers.body.name).toBe("Speakers");
+
+      const added = await admin("post", `/${speakers.body.id}/add`)
+        .send({ entryIds: [first.id, second.id, 999999] })
+        .expect(200);
+      expect(added.body.changed).toBe(2);
+      const again = await admin("post", `/${speakers.body.id}/add`)
+        .send({ entryIds: [first.id] })
+        .expect(200);
+      expect(again.body.changed).toBe(0);
+      await admin("post", `/${hosts.body.id}/add`)
+        .send({ entryIds: [first.id] })
+        .expect(200);
+
+      const organizationIds = [organization.id];
+      const res = await search({ organizationIds }).expect(200);
+      expect(res.body.entries[0].tags).toEqual([
+        { id: hosts.body.id, name: "Hosts" },
+        { id: speakers.body.id, name: "Speakers" },
+      ]);
+      expect(
+        await searchIds({
+          organizationIds,
+          tagIds: [speakers.body.id, hosts.body.id],
+        }),
+      ).toEqual([first.id, second.id]);
+
+      const removed = await admin("post", `/${speakers.body.id}/remove`)
+        .send({ entryIds: [second.id, untagged.id] })
+        .expect(200);
+      expect(removed.body.changed).toBe(1);
+      const list = await admin("get", "").expect(200);
+      expect(
+        list.body.find((tag: { id: number }) => tag.id === speakers.body.id),
+      ).toMatchObject({ entryCount: 1 });
+    });
+
+    it("keeps tag names unique regardless of case", async () => {
+      const tag = await admin("post", "").send({ name: "Donors" }).expect(201);
+      await admin("post", "").send({ name: "donors" }).expect(409);
+      await admin("post", "").send({ name: "  " }).expect(400);
+      const other = await admin("post", "").send({ name: "Press" }).expect(201);
+      await admin("patch", `/${other.body.id}`)
+        .send({ name: "DONORS" })
+        .expect(409);
+      const renamed = await admin("patch", `/${tag.body.id}`)
+        .send({ name: "Major donors" })
+        .expect(200);
+      expect(renamed.body.name).toBe("Major donors");
+    });
+
+    it("deletes a tag with its memberships, leaving the entries", async () => {
+      const entry = await saveEntry({ reason: "Tagged then deleted" });
+      const tag = await admin("post", "")
+        .send({ name: "Temporary" })
+        .expect(201);
+      await admin("post", `/${tag.body.id}/add`)
+        .send({ entryIds: [entry.id] })
+        .expect(200);
+      await admin("delete", `/${tag.body.id}`).expect(204);
+
+      expect(await entryRepo.existsBy({ id: entry.id })).toBe(true);
+      await admin("post", `/${tag.body.id}/add`)
+        .send({ entryIds: [entry.id] })
+        .expect(404);
+      await admin("delete", `/${tag.body.id}`).expect(404);
+    });
+  });
+
   it("refuses a malformed filter", async () => {
     await request(server())
       .post("/waitlist/admin/entries/ids")
