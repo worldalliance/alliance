@@ -101,7 +101,16 @@ export function isFollowUpFormActive(f: {
   startDate?: string | null;
   endDate?: string | null;
 }): boolean {
-  const now = new Date();
+  return isFollowUpFormActiveAt(f, new Date());
+}
+
+export function isFollowUpFormActiveAt(
+  f: {
+    startDate?: string | null;
+    endDate?: string | null;
+  },
+  now: Date,
+): boolean {
   if (!f.startDate || new Date(f.startDate) > now) {
     return false;
   }

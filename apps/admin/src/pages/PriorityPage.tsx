@@ -24,6 +24,7 @@ import {
 import React, { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
 import HomePlacementBadges from "../components/HomePlacementBadges";
+import PriorityFollowUps from "../components/PriorityFollowUps";
 import {
   actionHomePlacement,
   generalUpdateHomePlacement,
@@ -413,6 +414,9 @@ const PriorityPage: React.FC = () => {
           );
         })}
       </ul>
+      {actions.data && (
+        <PriorityFollowUps actions={actions.data} showAll={showAll} />
+      )}
     </div>
   );
 };

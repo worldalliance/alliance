@@ -2,8 +2,10 @@ import type {
   ActionEventDto,
   ActionStatus,
   AdminActionListItemDto,
+  AdminFollowUpFormDto,
   GeneralUpdateAdminDto,
 } from "@alliance/shared/client";
+import { isFollowUpFormActiveAt } from "@alliance/shared/lib/actionUtils";
 
 export enum PlacementBadge {
   ActiveTask = "active_task",
@@ -39,7 +41,8 @@ export const PLACEMENT_BADGE_COPY: Record<
   },
   [PlacementBadge.Scheduled]: {
     label: "Scheduled",
-    description: "Reaches member home pages at its start date.",
+    description:
+      "Opens to members at a later date; a follow-up also waits for its parent action to open.",
   },
   [PlacementBadge.Draft]: {
     label: "Draft",
@@ -62,6 +65,14 @@ export enum InactiveReason {
   CompletionBlocked = "completion_blocked",
   Closed = "closed",
   Expired = "expired",
+  Unscheduled = "unscheduled",
+  EndsBeforeStart = "ends_before_start",
+  EndsBeforeParentOpens = "ends_before_parent_opens",
+  NoCohort = "no_cohort",
+  ParentArchived = "parent_archived",
+  ParentPublicOnly = "parent_public_only",
+  ParentUnscheduled = "parent_unscheduled",
+  ParentDraft = "parent_draft",
 }
 
 export const INACTIVE_REASON_COPY: Record<InactiveReason, string> = {
@@ -71,6 +82,16 @@ export const INACTIVE_REASON_COPY: Record<InactiveReason, string> = {
   [InactiveReason.Closed]:
     "No member action open, upcoming, or shown after its deadline",
   [InactiveReason.Expired]: "Past its end date",
+  [InactiveReason.Unscheduled]: "No start date",
+  [InactiveReason.EndsBeforeStart]: "Ends before it starts",
+  [InactiveReason.EndsBeforeParentOpens]:
+    "Ends before its parent action opens to members",
+  [InactiveReason.NoCohort]: "No target cohort",
+  [InactiveReason.ParentArchived]: "Parent action is archived",
+  [InactiveReason.ParentPublicOnly]: "Parent action is public only",
+  [InactiveReason.ParentUnscheduled]: "Parent action has no member-action date",
+  [InactiveReason.ParentDraft]:
+    "Parent action is in draft whenever the form is open",
 };
 
 export type HomePlacement =
@@ -178,6 +199,69 @@ export function generalUpdateHomePlacement(params: {
       new Date(generalUpdate.startDate) > now
         ? PlacementBadge.Scheduled
         : PlacementBadge.Active,
+    ],
+    inactive: null,
+  };
+}
+
+export function followUpHomePlacement(params: {
+  followUpForm: Pick<
+    AdminFollowUpFormDto,
+    "startDate" | "endDate" | "cohortExpression"
+  >;
+  parent: Pick<AdminActionListItemDto, "archived" | "publicOnly" | "events">;
+  now: Date;
+}): HomePlacement {
+  const { followUpForm, parent, now } = params;
+  if (parent.archived) return inactive(InactiveReason.ParentArchived);
+  if (parent.publicOnly) return inactive(InactiveReason.ParentPublicOnly);
+  const parentOpens = memberActionDates(parent.events).map((date) =>
+    date.getTime(),
+  );
+  if (parentOpens.length === 0) {
+    return inactive(InactiveReason.ParentUnscheduled);
+  }
+  if (!followUpForm.cohortExpression) return inactive(InactiveReason.NoCohort);
+  if (!followUpForm.startDate) return inactive(InactiveReason.Unscheduled);
+  const start = new Date(followUpForm.startDate);
+  if (!isFollowUpFormActiveAt(followUpForm, start)) {
+    return inactive(InactiveReason.EndsBeforeStart);
+  }
+  const firstOpen = Math.min(...parentOpens);
+  if (
+    !isFollowUpFormActiveAt(
+      followUpForm,
+      new Date(Math.max(start.getTime(), firstOpen)),
+    )
+  ) {
+    return inactive(InactiveReason.EndsBeforeParentOpens);
+  }
+  // Members receive it while the form is active and the parent has opened and
+  // isn't in draft. Those only change at the form's start or a parent event.
+  const reachesMembersAt = (time: number) =>
+    firstOpen <= time &&
+    isFollowUpFormActiveAt(followUpForm, new Date(time)) &&
+    statusAt({ events: parent.events, now: new Date(time + 1) }) !== "draft";
+  const firstReach = [
+    now.getTime(),
+    start.getTime(),
+    ...parent.events.map((event) => new Date(event.date).getTime()),
+  ]
+    .filter((time) => time >= now.getTime())
+    .sort((a, b) => a - b)
+    .find(reachesMembersAt);
+  if (firstReach === undefined) {
+    return inactive(
+      followUpForm.endDate && new Date(followUpForm.endDate) < now
+        ? InactiveReason.Expired
+        : InactiveReason.ParentDraft,
+    );
+  }
+  return {
+    badges: [
+      firstReach === now.getTime()
+        ? PlacementBadge.Active
+        : PlacementBadge.Scheduled,
     ],
     inactive: null,
   };

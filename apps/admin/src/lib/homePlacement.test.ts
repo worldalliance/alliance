@@ -2,6 +2,7 @@ import { makeEvent } from "@alliance/shared/lib/testFixtures";
 import { describe, expect, it } from "bun:test";
 import {
   actionHomePlacement,
+  followUpHomePlacement,
   generalUpdateHomePlacement,
   InactiveReason,
   PlacementBadge,
@@ -161,5 +162,107 @@ describe("generalUpdateHomePlacement", () => {
     expect(placement(future).badges).toEqual([PlacementBadge.Scheduled]);
     expect(placement(past, future).badges).toEqual([PlacementBadge.Active]);
     expect(placement(past, past).inactive).toBe(InactiveReason.Expired);
+  });
+});
+
+describe("followUpHomePlacement", () => {
+  const cohortExpression = { type: "all" };
+  const placement = (
+    followUpForm: {
+      startDate: string | null;
+      endDate?: string | null;
+      cohortExpression?: { type: string } | null;
+    },
+    parent: Parameters<typeof adminActionListItem>[2] = {},
+  ) =>
+    followUpHomePlacement({
+      followUpForm: { endDate: null, cohortExpression, ...followUpForm },
+      parent: adminActionListItem(1, "A", {
+        events: [makeEvent({ newStatus: "member_action", date: past })],
+        ...parent,
+      }),
+      now,
+    });
+
+  it("lists active and scheduled follow-ups", () => {
+    expect(placement({ startDate: past }).badges).toEqual([
+      PlacementBadge.Active,
+    ]);
+    expect(placement({ startDate: future }).badges).toEqual([
+      PlacementBadge.Scheduled,
+    ]);
+  });
+
+  it("schedules an open follow-up until its parent opens", () => {
+    const opensLater = {
+      events: [makeEvent({ newStatus: "member_action", date: future })],
+    };
+    expect(placement({ startDate: past }, opensLater).badges).toEqual([
+      PlacementBadge.Scheduled,
+    ]);
+    expect(
+      placement({ startDate: past, endDate: closed }, opensLater).inactive,
+    ).toBe(InactiveReason.EndsBeforeParentOpens);
+  });
+
+  it("schedules a follow-up whose parent reopens after a draft", () => {
+    expect(
+      placement(
+        { startDate: past },
+        {
+          events: [
+            makeEvent({ newStatus: "member_action", date: past }),
+            makeEvent({ newStatus: "draft", date: closed }),
+            makeEvent({ newStatus: "member_action", date: future }),
+          ],
+        },
+      ).badges,
+    ).toEqual([PlacementBadge.Scheduled]);
+  });
+
+  it("gives the reason a follow-up isn't shown", () => {
+    expect(placement({ startDate: null }).inactive).toBe(
+      InactiveReason.Unscheduled,
+    );
+    expect(placement({ startDate: past, endDate: past }).inactive).toBe(
+      InactiveReason.Expired,
+    );
+    expect(placement({ startDate: future, endDate: past }).inactive).toBe(
+      InactiveReason.EndsBeforeStart,
+    );
+    expect(
+      placement({ startDate: past, cohortExpression: null }).inactive,
+    ).toBe(InactiveReason.NoCohort);
+    expect(placement({ startDate: past }, { archived: true }).inactive).toBe(
+      InactiveReason.ParentArchived,
+    );
+    expect(placement({ startDate: past }, { publicOnly: true }).inactive).toBe(
+      InactiveReason.ParentPublicOnly,
+    );
+    expect(placement({ startDate: past }, { events: [] }).inactive).toBe(
+      InactiveReason.ParentUnscheduled,
+    );
+    expect(
+      placement(
+        { startDate: past },
+        {
+          events: [
+            makeEvent({ newStatus: "member_action", date: past }),
+            makeEvent({ newStatus: "draft", date: closed }),
+          ],
+        },
+      ).inactive,
+    ).toBe(InactiveReason.ParentDraft);
+    expect(
+      placement(
+        { startDate: future },
+        {
+          events: [
+            makeEvent({ newStatus: "member_action", date: past }),
+            makeEvent({ newStatus: "draft", date: closed }),
+          ],
+        },
+      ).inactive,
+    ).toBe(InactiveReason.ParentDraft);
   });
 });

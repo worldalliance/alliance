@@ -293,3 +293,53 @@ it("lists a closed action shown after its deadline and says why", async () => {
     screen.getByText(/No member action open, upcoming, or shown after/),
   ).toBeTruthy();
 });
+
+const futureDate = "2999-01-01T00:00:00.000Z";
+
+it("lists follow-ups read-only with their parent", async () => {
+  const followUpForm = (
+    id: number,
+    name: string,
+    startDate: string | null,
+  ) => ({
+    id,
+    name,
+    startDate,
+    endDate: null,
+    instructions: null,
+    actionId: 1,
+    formId: id,
+    cohortExpression: { type: "all" },
+  });
+  servedActions = [
+    adminActionListItem(1, "Call your rep", {
+      events: [makeEvent({ date: pastDate })],
+      followUpForms: [
+        followUpForm(7, "Weekly check-in", pastDate),
+        followUpForm(8, "Later check-in", futureDate),
+        followUpForm(9, "Unscheduled check-in", null),
+      ],
+    }),
+  ];
+  renderPage();
+  expect(await screen.findByText("Weekly check-in")).toBeTruthy();
+  const names = () =>
+    Array.from(
+      document.querySelectorAll("section li span:first-child"),
+      (el) => el.textContent,
+    );
+  expect(names()).toEqual(["Later check-in", "Weekly check-in"]);
+  expect(screen.getAllByRole("link", { name: "Call your rep" })).toHaveLength(
+    2,
+  );
+  expect(document.querySelector("section [draggable]")).toBeNull();
+
+  fireEvent.click(screen.getByLabelText("Show all"));
+
+  expect(names()).toEqual([
+    "Later check-in",
+    "Weekly check-in",
+    "Unscheduled check-in",
+  ]);
+  expect(screen.getByText("Not on home pages: No start date")).toBeTruthy();
+});
