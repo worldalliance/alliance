@@ -29,6 +29,7 @@ function mockBatchContext(
     getGroupLeadUserIds: jest.fn().mockResolvedValue(new Set<number>()),
     getUserIdsByUsMembership: jest.fn().mockResolvedValue(new Set<number>()),
     getAllCandidateUserIds: jest.fn().mockResolvedValue(new Set<number>()),
+    getStaffUserIds: jest.fn().mockResolvedValue(new Set<number>()),
     ...overrides,
   };
 }
@@ -49,6 +50,7 @@ function scopedContext(
     matchesFormField: async () => false,
     isGroupLead: async () => false,
     usMembership: async () => UsMembership.Unknown,
+    isStaff: () => false,
     ...overrides,
   });
 }
@@ -366,6 +368,25 @@ describe("evaluateCohortExpression", () => {
       });
       const result = await evaluateCohortExpression({ type: "GroupLead" }, ctx);
       expect(result).toEqual(new Set([100, 200]));
+    });
+
+    it("selects every candidate on AllMembers and staff on Staff", async () => {
+      const ctx = mockBatchContext({
+        getAllCandidateUserIds: jest.fn().mockResolvedValue(new Set([1, 2, 3])),
+        getStaffUserIds: jest.fn().mockResolvedValue(new Set([2])),
+      });
+      expect(
+        await evaluateCohortExpression({ type: "AllMembers" }, ctx),
+      ).toEqual(new Set([1, 2, 3]));
+      expect(await evaluateCohortExpression({ type: "Staff" }, ctx)).toEqual(
+        new Set([2]),
+      );
+      expect(
+        await evaluateCohortExpression(
+          { type: "NOT", child: { type: "AllMembers" } },
+          ctx,
+        ),
+      ).toEqual(new Set());
     });
 
     it("asks for the US partition on USMember and the non-US one on NonUSMember", async () => {
@@ -761,6 +782,14 @@ describe("single-user scoping (singleUserCohortContext)", () => {
         },
       );
       expect(result).toBe(true);
+    });
+
+    it("places every member in AllMembers and only staff in Staff", async () => {
+      expect(await userInCohort(1, { type: "AllMembers" })).toBe(true);
+      expect(await userInCohort(1, { type: "Staff" })).toBe(false);
+      expect(
+        await userInCohort(1, { type: "Staff" }, { isStaff: () => true }),
+      ).toBe(true);
     });
 
     it.each([

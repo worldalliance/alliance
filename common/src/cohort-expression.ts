@@ -93,6 +93,18 @@ export const nonUsMemberConditionSchema = z.strictObject({
 });
 export type NonUsMemberCondition = z.infer<typeof nonUsMemberConditionSchema>;
 
+/** Every user, the same population `NOT` excludes from. */
+export const allMembersConditionSchema = z.strictObject({
+  type: z.literal("AllMembers"),
+});
+export type AllMembersCondition = z.infer<typeof allMembersConditionSchema>;
+
+/** Users with the `staff` flag. */
+export const staffConditionSchema = z.strictObject({
+  type: z.literal("Staff"),
+});
+export type StaffCondition = z.infer<typeof staffConditionSchema>;
+
 export const leafConditionSchema = z.discriminatedUnion("type", [
   tagConditionSchema,
   manualConditionSchema,
@@ -102,6 +114,8 @@ export const leafConditionSchema = z.discriminatedUnion("type", [
   groupLeadConditionSchema,
   usMemberConditionSchema,
   nonUsMemberConditionSchema,
+  allMembersConditionSchema,
+  staffConditionSchema,
 ]);
 export type LeafCondition = z.infer<typeof leafConditionSchema>;
 
@@ -152,6 +166,8 @@ export const cohortExpressionSchema: z.ZodType<CohortExpression> =
     groupLeadConditionSchema,
     usMemberConditionSchema,
     nonUsMemberConditionSchema,
+    allMembersConditionSchema,
+    staffConditionSchema,
     andOperatorSchema,
     orOperatorSchema,
     notOperatorSchema,
@@ -213,6 +229,8 @@ export function collectCohortDependencies(
       case "GroupLead":
       case "USMember":
       case "NonUSMember":
+      case "AllMembers":
+      case "Staff":
         break;
       case "AND":
       case "OR":

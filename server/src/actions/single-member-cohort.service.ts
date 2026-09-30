@@ -230,6 +230,7 @@ export class SingleMemberCohortService {
         }
         return pending;
       },
+      isStaff: () => user.staff,
     });
 
     const memberIds = await evaluateCohortExpression(

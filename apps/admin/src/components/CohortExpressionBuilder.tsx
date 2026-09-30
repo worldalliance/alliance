@@ -103,6 +103,10 @@ function createDefaultLeaf(type: LeafCondition["type"]): LeafCondition {
       return { type: "USMember" };
     case "NonUSMember":
       return { type: "NonUSMember" };
+    case "AllMembers":
+      return { type: "AllMembers" };
+    case "Staff":
+      return { type: "Staff" };
   }
 }
 
@@ -479,6 +483,12 @@ const LeafConditionEditor: React.FC<{
         <p className="text-sm text-gray-500 italic">
           City outside the US, or time zone if no city is set.
         </p>
+      );
+    case "AllMembers":
+      return <p className="text-sm text-gray-500 italic">Every user</p>;
+    case "Staff":
+      return (
+        <p className="text-sm text-gray-500 italic">Users marked as staff</p>
       );
   }
 };

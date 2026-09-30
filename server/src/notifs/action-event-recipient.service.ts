@@ -270,6 +270,10 @@ export class ActionEventRecipientService {
         (session.candidateUserIds ??= this.userService
           .findActiveUserIds()
           .then((ids) => new Set(ids))),
+      getStaffUserIds: () =>
+        (session.staffUserIds ??= this.userRepository
+          .find({ where: { staff: true }, select: { id: true } })
+          .then((users) => new Set(users.map((user) => user.id)))),
     };
   }
 

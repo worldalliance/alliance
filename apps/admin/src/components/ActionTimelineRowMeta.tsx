@@ -30,6 +30,8 @@ const CHIP_COLORS: Record<LeafCondition["type"], string | null> = {
   GroupLead: null,
   USMember: lighten(swatchColors("USMember").from),
   NonUSMember: lighten(swatchColors("NonUSMember").from),
+  AllMembers: null,
+  Staff: null,
 };
 
 const CHIP = "rounded border border-black/10 px-1 leading-4 shrink-0";
