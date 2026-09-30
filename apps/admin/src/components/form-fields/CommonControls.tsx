@@ -27,6 +27,7 @@ import {
   UserValueProperty,
 } from "@alliance/common/forms/user-properties";
 import {
+  SelectedCountComparison,
   type Condition,
   type VisibleIfFormula,
 } from "@alliance/common/forms/visible-if-formula";
@@ -78,7 +79,9 @@ import {
   ANY_SELECTED_VALUE,
   FormulaChoiceConditionValue,
   NO_VALUE_SELECTED,
+  SELECTED_COUNT_VALUE,
 } from "./FormulaChoiceConditionValue";
+import { SelectedCountConditionValue } from "./SelectedCountConditionValue";
 
 function getFormulaConditionRefs(node: VisibleIfFormula["formula"]): string[] {
   if (typeof node === "string") return [node];
@@ -289,7 +292,14 @@ function defaultNumberEqualsForVisibility(controller: NumberField): number {
 
 type FieldCondition = Extract<
   Condition,
-  { kind: "equals" | "includesOption" | "anySelected" | "hasValue" }
+  {
+    kind:
+      | "equals"
+      | "includesOption"
+      | "anySelected"
+      | "selectedCount"
+      | "hasValue";
+  }
 >;
 type ValidatorCondition = Extract<Condition, { kind: "validator" }>;
 type DeviceCondition = Extract<Condition, { kind: "deviceType" }>;
@@ -316,6 +326,7 @@ function isFieldCondition(cond: Condition): cond is FieldCondition {
     cond.kind === "equals" ||
     cond.kind === "includesOption" ||
     cond.kind === "anySelected" ||
+    cond.kind === "selectedCount" ||
     cond.kind === "hasValue"
   );
 }
@@ -384,6 +395,12 @@ function isAnySelectedCondition(
   condition: Condition,
 ): condition is Extract<Condition, { kind: "anySelected" }> {
   return condition.kind === "anySelected";
+}
+
+function isSelectedCountCondition(
+  condition: Condition,
+): condition is Extract<Condition, { kind: "selectedCount" }> {
+  return condition.kind === "selectedCount";
 }
 
 function isEqualsCondition(
@@ -1086,7 +1103,14 @@ export function ConditionalVisibility({
         next[index] =
           value === ANY_SELECTED_VALUE
             ? { kind: "anySelected", ...base, anySelected: true }
-            : { kind: "includesOption", ...base, includesOption: value };
+            : value === SELECTED_COUNT_VALUE
+              ? {
+                  kind: "selectedCount",
+                  ...base,
+                  comparison: SelectedCountComparison.AtLeast,
+                  count: 1,
+                }
+              : { kind: "includesOption", ...base, includesOption: value };
       } else if (controller.kind === "range") {
         next[index] = { kind: "equals", ...base, equals: Number(value) };
       } else if (controller.kind === "number") {
@@ -1186,14 +1210,16 @@ export function ConditionalVisibility({
       controller?.kind === "multiselect"
         ? isAnySelectedCondition(condition)
           ? ANY_SELECTED_VALUE
-          : noneSelected
-            ? NO_VALUE_SELECTED
-            : isIncludesOptionCondition(condition)
-              ? (condition.includesOption ?? "")
-              : isEqualsCondition(condition) &&
-                  typeof condition.equals === "string"
-                ? condition.equals
-                : ""
+          : isSelectedCountCondition(condition)
+            ? SELECTED_COUNT_VALUE
+            : noneSelected
+              ? NO_VALUE_SELECTED
+              : isIncludesOptionCondition(condition)
+                ? (condition.includesOption ?? "")
+                : isEqualsCondition(condition) &&
+                    typeof condition.equals === "string"
+                  ? condition.equals
+                  : ""
         : "";
     const rangeValues =
       controller?.kind === "range" ? getRangeValues(controller) : [];
@@ -1348,6 +1374,7 @@ export function ConditionalVisibility({
                 }
               >
                 <option value={ANY_SELECTED_VALUE}>Any option selected</option>
+                <option value={SELECTED_COUNT_VALUE}>Number selected…</option>
                 <option value={NO_VALUE_SELECTED}>No option selected</option>
                 {controller.options?.map((opt, idx) => (
                   <option key={idx} value={opt.value}>
@@ -1435,6 +1462,19 @@ export function ConditionalVisibility({
                 ))}
                 <option value={NO_VALUE_SELECTED}>No option selected</option>
               </select>
+            )}
+            {isSelectedCountCondition(condition) && (
+              <div className="mt-2">
+                <SelectedCountConditionValue
+                  comparison={condition.comparison}
+                  count={condition.count}
+                  onChange={({ comparison, count }) => {
+                    const next = [...conditions];
+                    next[index] = { ...condition, comparison, count };
+                    updateConditions(next, true);
+                  }}
+                />
+              </div>
             )}
           </div>
         ) : (

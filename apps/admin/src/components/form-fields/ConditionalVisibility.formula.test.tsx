@@ -5,13 +5,19 @@ import type {
   RangeField,
   SelectField,
 } from "@alliance/common/forms/form-schema";
-import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
+import {
+  SelectedCountComparison,
+  type VisibleIfFormula,
+} from "@alliance/common/forms/visible-if-formula";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { ConditionalVisibility } from "./CommonControls";
-import { NO_VALUE_SELECTED } from "./FormulaChoiceConditionValue";
+import {
+  NO_VALUE_SELECTED,
+  SELECTED_COUNT_VALUE,
+} from "./FormulaChoiceConditionValue";
 import { CustomValidatorDraftsContext } from "./customValidatorDrafts";
 
 afterEach(cleanup);
@@ -190,4 +196,63 @@ it("shows a field when a choice question has no option selected", () => {
     expect(screen.getByDisplayValue("No option selected")).toBeTruthy();
     cleanup();
   }
+});
+
+it("shows a field when a multiselect has a number of options selected", () => {
+  for (const [controller, initialChoice] of [
+    [staticMultiselect, "Red"],
+    [formulaMultiselect, "Any option selected"],
+  ] as const) {
+    render(<Editor controller={controller} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Field condition" }));
+    fireEvent.change(screen.getByDisplayValue(initialChoice), {
+      target: { value: SELECTED_COUNT_VALUE },
+    });
+    expect(conditionOf()).toEqual({
+      kind: "selectedCount",
+      when: controller.id,
+      comparison: SelectedCountComparison.AtLeast,
+      count: 1,
+    });
+    expect(screen.getByDisplayValue("Number selected…")).toBeTruthy();
+    expect(screen.queryByRole("textbox", { name: "Choice value" })).toBeNull();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Comparison" }), {
+      target: { value: SelectedCountComparison.LessThan },
+    });
+    fireEvent.change(
+      screen.getByRole("spinbutton", { name: "Number of options selected" }),
+      { target: { value: "3" } },
+    );
+    expect(conditionOf()).toEqual({
+      kind: "selectedCount",
+      when: controller.id,
+      comparison: SelectedCountComparison.LessThan,
+      count: 3,
+    });
+    cleanup();
+  }
+});
+
+it("keeps the saved count while its input is cleared or fractional", () => {
+  render(<Editor controller={staticMultiselect} />);
+  fireEvent.click(screen.getByRole("button", { name: "+ Field condition" }));
+  fireEvent.change(screen.getByDisplayValue("Red"), {
+    target: { value: SELECTED_COUNT_VALUE },
+  });
+  const input = screen.getByRole<HTMLInputElement>("spinbutton", {
+    name: "Number of options selected",
+  });
+
+  for (const typed of ["", "2.5", "3"]) {
+    fireEvent.change(input, { target: { value: typed } });
+    expect(input.value).toBe(typed);
+  }
+  expect(conditionOf()).toMatchObject({ count: 3 });
+
+  fireEvent.change(input, { target: { value: "" } });
+  fireEvent.blur(input);
+  expect(input.value).toBe("3");
+  expect(conditionOf()).toMatchObject({ count: 3 });
 });

@@ -1,7 +1,8 @@
 export const ANY_SELECTED_VALUE = "__ANY_SELECTED__";
 export const NO_VALUE_SELECTED = "__NO_VALUE_SELECTED__";
+export const SELECTED_COUNT_VALUE = "__SELECTED_COUNT__";
 
-const INPUT_CLASS =
+export const INPUT_CLASS =
   "w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500";
 
 export function FormulaChoiceConditionValue({
@@ -15,23 +16,28 @@ export function FormulaChoiceConditionValue({
 }) {
   const anySelected = multiselect && value === ANY_SELECTED_VALUE;
   const noneSelected = value === NO_VALUE_SELECTED;
+  const selectedCount = multiselect && value === SELECTED_COUNT_VALUE;
+  const matchesValue = !anySelected && !noneSelected && !selectedCount;
   return (
     <div className="space-y-1">
       <select
         aria-label="Match"
         className={INPUT_CLASS}
-        value={anySelected || noneSelected ? value : ""}
+        value={matchesValue ? "" : value}
         onChange={(event) => onChange(event.target.value)}
       >
         {multiselect && (
-          <option value={ANY_SELECTED_VALUE}>Any option selected</option>
+          <>
+            <option value={ANY_SELECTED_VALUE}>Any option selected</option>
+            <option value={SELECTED_COUNT_VALUE}>Number selected…</option>
+          </>
         )}
         <option value="">
           {multiselect ? "Includes the value" : "Equals the value"}
         </option>
         <option value={NO_VALUE_SELECTED}>No option selected</option>
       </select>
-      {!anySelected && !noneSelected && (
+      {matchesValue && (
         <>
           <input
             type="text"
