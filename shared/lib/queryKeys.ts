@@ -1,4 +1,4 @@
-import type { EventType } from "../client/types.gen";
+import type { EventType, WaitlistEntrySearchDto } from "../client/types.gen";
 
 const onetimeInvitesAdminAll = () => ["userGetOnetimeInvitesAdmin"] as const;
 
@@ -99,6 +99,8 @@ export const queryKeys = {
   timeSpentPerUserTotalAdmin: () =>
     ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
   usersAdmin: () => ["userListAdmin"] as const,
+  waitlistEntriesAdmin: (search: WaitlistEntrySearchDto) =>
+    ["waitlistAdminSearchEntriesAdmin", search] as const,
   waitlistLinksAdmin: () => ["waitlistAdminFindLinksAdmin"] as const,
   videoAdmin: (videoId: number) =>
     ["videosGetVideoDetailsAdmin", videoId] as const,

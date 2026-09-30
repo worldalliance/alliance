@@ -1,0 +1,159 @@
+import type {
+  AdminWaitlistEntryDto,
+  WaitlistEntrySort,
+} from "@alliance/shared/client/types.gen";
+import { formatMediumDateEnUS } from "@alliance/shared/lib/dateFormatters";
+import { ArrowDown, ArrowUp } from "lucide-react";
+import React from "react";
+import { INVITE_STATE_LABELS } from "../../lib/waitlistFilter";
+
+enum SortColumn {
+  Joined = "joined",
+  Organization = "organization",
+}
+
+/** `first` is the order a click on an unsorted column picks. */
+const SORTS: Record<
+  SortColumn,
+  { asc: WaitlistEntrySort; desc: WaitlistEntrySort; first: WaitlistEntrySort }
+> = {
+  [SortColumn.Joined]: {
+    asc: "joined_asc",
+    desc: "joined_desc",
+    first: "joined_desc",
+  },
+  [SortColumn.Organization]: {
+    asc: "organization_asc",
+    desc: "organization_desc",
+    first: "organization_asc",
+  },
+};
+
+const SortHeader: React.FC<{
+  column: SortColumn;
+  label: string;
+  sort: WaitlistEntrySort;
+  onSortChange: (sort: WaitlistEntrySort) => void;
+}> = ({ column, label, sort, onSortChange }) => {
+  const { asc, desc, first } = SORTS[column];
+  const direction = sort === asc ? "asc" : sort === desc ? "desc" : null;
+  return (
+    <th
+      className="px-3 py-2 font-medium text-zinc-600"
+      aria-sort={
+        direction === "asc"
+          ? "ascending"
+          : direction === "desc"
+            ? "descending"
+            : undefined
+      }
+    >
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 hover:text-black"
+        onClick={() =>
+          onSortChange(
+            direction === "desc" ? asc : direction === "asc" ? desc : first,
+          )
+        }
+      >
+        {label}
+        {direction === "asc" && <ArrowUp size={14} />}
+        {direction === "desc" && <ArrowDown size={14} />}
+      </button>
+    </th>
+  );
+};
+
+type WaitlistTableProps = {
+  entries: AdminWaitlistEntryDto[];
+  sort: WaitlistEntrySort;
+  onSortChange: (sort: WaitlistEntrySort) => void;
+  onFilterReferrer: (entryId: number) => void;
+};
+
+const WaitlistTable: React.FC<WaitlistTableProps> = ({
+  entries,
+  sort,
+  onSortChange,
+  onFilterReferrer,
+}) => {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-zinc-100 text-left">
+          <tr>
+            <th className="px-3 py-2 font-medium text-zinc-600">Person</th>
+            <th className="px-3 py-2 font-medium text-zinc-600">Reason</th>
+            <SortHeader
+              column={SortColumn.Organization}
+              label="Organization"
+              sort={sort}
+              onSortChange={onSortChange}
+            />
+            <th className="px-3 py-2 font-medium text-zinc-600">Link</th>
+            <th className="px-3 py-2 font-medium text-zinc-600">Referrer</th>
+            <SortHeader
+              column={SortColumn.Joined}
+              label="Joined"
+              sort={sort}
+              onSortChange={onSortChange}
+            />
+            <th className="px-3 py-2 font-medium text-zinc-600">Mobilized</th>
+            <th className="px-3 py-2 font-medium text-zinc-600">Invite</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-100">
+          {entries.map((entry) => (
+            <tr key={entry.id} className="hover:bg-zinc-50 align-top">
+              <td className="px-3 py-2">
+                <p className="font-medium text-zinc-900">{entry.name}</p>
+                <p className="text-xs text-zinc-500">{entry.email}</p>
+                {entry.unsubscribedAt && (
+                  <p className="text-xs text-amber-700">Unsubscribed</p>
+                )}
+              </td>
+              <td className="px-3 py-2 max-w-xs">
+                <p
+                  className="line-clamp-2 text-zinc-700"
+                  title={entry.reason ?? ""}
+                >
+                  {entry.reason}
+                </p>
+              </td>
+              <td className="px-3 py-2">{entry.organization?.name}</td>
+              <td className="px-3 py-2">{entry.sourceLink?.channel}</td>
+              <td className="px-3 py-2">
+                {entry.referrer && (
+                  <button
+                    type="button"
+                    className="text-blue-600 hover:underline text-left"
+                    title={`Filter to entries ${entry.referrer.name} referred`}
+                    onClick={() =>
+                      entry.referrer && onFilterReferrer(entry.referrer.id)
+                    }
+                  >
+                    {entry.referrer.name}
+                  </button>
+                )}
+              </td>
+              <td className="px-3 py-2 whitespace-nowrap">
+                {formatMediumDateEnUS(new Date(entry.createdAt))}
+              </td>
+              <td className="px-3 py-2 whitespace-nowrap">
+                {entry.mobilizedAt
+                  ? formatMediumDateEnUS(new Date(entry.mobilizedAt))
+                  : "Waiting"}
+              </td>
+              <td className="px-3 py-2">
+                {INVITE_STATE_LABELS[entry.inviteState]}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+export default WaitlistTable;

@@ -7,6 +7,7 @@ import type {
   AdminWaitlistLinkDto,
   UpdateWaitlistLinkDto,
 } from "@alliance/shared/client/types.gen";
+import { formatMediumDateEnUS } from "@alliance/shared/lib/dateFormatters";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
@@ -19,13 +20,6 @@ import { fromDateInput, toDateInput } from "../../lib/dateInput";
 import { useRefusalToast } from "../../lib/useRefusalToast";
 import ConfirmDialog from "../ConfirmDialog";
 import InlineTextInput from "../InlineTextInput";
-
-const formatDate = (iso: string): string =>
-  new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 
 type OrganizationLinksProps = {
   organizationId: number;
@@ -228,7 +222,9 @@ const LinkRow: React.FC<LinkRowProps> = ({
           onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
         />
       </td>
-      <td className="px-3 py-2">{formatDate(link.createdAt)}</td>
+      <td className="px-3 py-2">
+        {formatMediumDateEnUS(new Date(link.createdAt))}
+      </td>
       <td className="px-3 py-2">{link.entryCount}</td>
       <td className="px-3 py-2 text-right">
         <Button

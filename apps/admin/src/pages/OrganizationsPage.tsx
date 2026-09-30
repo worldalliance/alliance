@@ -1,9 +1,7 @@
 import {
   campaignCreateAdmin,
-  campaignFindAllAdmin,
   campaignUpdateAdmin,
   communityGetCommunitiesAdmin,
-  waitlistAdminFindLinksAdmin,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -13,25 +11,23 @@ import OrganizationCard from "../components/organizations/OrganizationCard";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { isOrganization } from "../lib/isOrganization";
 import { useRefusalToast } from "../lib/useRefusalToast";
+import {
+  campaignsLoadFailed,
+  campaignsQuery,
+  waitlistLinksLoadFailed,
+  waitlistLinksQuery,
+} from "../lib/waitlistAdminQueries";
 
 const OrganizationsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const refusalToast = useRefusalToast();
-  const campaigns = useQuery({
-    queryKey: queryKeys.campaignsAdmin(),
-    queryFn: () =>
-      campaignFindAllAdmin({ throwOnError: true }).then((r) => r.data),
-  });
+  const campaigns = useQuery(campaignsQuery);
   const communities = useQuery({
     queryKey: queryKeys.communitiesAdmin(),
     queryFn: () =>
       communityGetCommunitiesAdmin({ throwOnError: true }).then((r) => r.data),
   });
-  const links = useQuery({
-    queryKey: queryKeys.waitlistLinksAdmin(),
-    queryFn: () =>
-      waitlistAdminFindLinksAdmin({ throwOnError: true }).then((r) => r.data),
-  });
+  const links = useQuery(waitlistLinksQuery);
 
   const [newName, setNewName] = useState("");
   const [designateId, setDesignateId] = useState("");
@@ -76,11 +72,11 @@ const OrganizationsPage: React.FC = () => {
   });
 
   const loadError = campaigns.error
-    ? adminRefusalMessage(campaigns.error, "Unable to load organizations.")
+    ? adminRefusalMessage(campaigns.error, campaignsLoadFailed)
     : communities.error
       ? adminRefusalMessage(communities.error, "Unable to load groups.")
       : links.error
-        ? adminRefusalMessage(links.error, "Unable to load waitlist links.")
+        ? adminRefusalMessage(links.error, waitlistLinksLoadFailed)
         : null;
   const loaded = campaigns.data && communities.data && links.data;
 

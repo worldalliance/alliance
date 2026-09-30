@@ -10,6 +10,7 @@ import {
   Film,
   Handshake,
   ImageUp,
+  ListChecks,
   ListOrdered,
   MailPlus,
   Map,
@@ -143,6 +144,7 @@ const SidebarNav = ({
       folder: SidebarFolder.Waitlist,
       label: "Waitlist",
       links: [
+        { to: "/waitlist", label: "Entries", icon: <ListChecks size={16} /> },
         {
           to: "/organizations",
           label: "Organizations",
