@@ -28,6 +28,8 @@ import { FormBuilder } from "./FormBuilder";
 export interface ActionFollowUpFormsTabProps {
   action: AdminActionDto;
   availableTags: TagDto[];
+  tagsLoading: boolean;
+  tagsError: boolean;
   availableActions: { id: number; name: string }[];
   availableUsers: UserSelectUser[];
 }
@@ -48,6 +50,8 @@ function followUpFormLabel(fuf: FollowUpFormDto): string {
 export default function ActionFollowUpFormsTab({
   action,
   availableTags,
+  tagsLoading,
+  tagsError,
   availableActions,
   availableUsers,
 }: ActionFollowUpFormsTabProps) {
@@ -263,6 +267,8 @@ export default function ActionFollowUpFormsTab({
           savingFields={savingFollowUpFormIds.has(selectedForm.id)}
           deleting={deletingFollowUpFormIds.has(selectedForm.id)}
           availableTags={availableTags}
+          tagsLoading={tagsLoading}
+          tagsError={tagsError}
           availableActions={availableActions}
           availableUsers={availableUsers}
         />
@@ -289,6 +295,8 @@ interface FollowUpFormCardProps {
   savingFields: boolean;
   deleting: boolean;
   availableTags: TagDto[];
+  tagsLoading: boolean;
+  tagsError: boolean;
   availableActions: { id: number; name: string }[];
   availableUsers: UserSelectUser[];
 }
@@ -302,6 +310,8 @@ function FollowUpFormCard({
   savingFields,
   deleting,
   availableTags,
+  tagsLoading,
+  tagsError,
   availableActions,
   availableUsers,
 }: FollowUpFormCardProps) {
@@ -386,6 +396,8 @@ function FollowUpFormCard({
             value={cohortExpr}
             onChange={setCohortExpr}
             availableTags={availableTags}
+            tagsLoading={tagsLoading}
+            tagsError={tagsError}
             availableActions={availableActions}
             availableUsers={availableUsers}
           />

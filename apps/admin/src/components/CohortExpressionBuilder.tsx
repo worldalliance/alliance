@@ -51,6 +51,8 @@ interface CohortExpressionBuilderProps {
   value: CohortExpression | null | undefined;
   onChange: (value: CohortExpression | null) => void;
   availableTags: TagDto[];
+  tagsLoading: boolean;
+  tagsError: boolean;
   availableActions: { id: number; name: string }[];
   availableUsers: UserSelectUser[];
   usersLoading?: boolean;
@@ -112,17 +114,28 @@ function createDefaultLeaf(type: LeafCondition["type"]): LeafCondition {
 
 // --- Leaf Editors ---
 
-const TagEditor: React.FC<{
+export const TagEditor: React.FC<{
   value: TagCondition;
   onChange: (v: TagCondition) => void;
   availableTags: TagDto[];
-}> = ({ value, onChange, availableTags }) => (
+  tagsLoading: boolean;
+  tagsError: boolean;
+}> = ({ value, onChange, availableTags, tagsLoading, tagsError }) => (
   <select
     value={value.tagId}
     onChange={(e) => onChange({ ...value, tagId: e.target.value })}
     className="w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
   >
     <option value="">Select tag...</option>
+    {value.tagId && !availableTags.some((tag) => tag.id === value.tagId) && (
+      <option value={value.tagId} disabled>
+        {tagsLoading
+          ? "Loading tags..."
+          : tagsError
+            ? "Couldn't load tags"
+            : "Deleted tag"}
+      </option>
+    )}
     {availableTags.map((tag) => (
       <option key={tag.id} value={tag.id}>
         {tag.name}
@@ -444,6 +457,8 @@ const LeafConditionEditor: React.FC<{
           value={expr}
           onChange={onChange}
           availableTags={props.availableTags}
+          tagsLoading={props.tagsLoading}
+          tagsError={props.tagsError}
         />
       );
     case "Manual":
