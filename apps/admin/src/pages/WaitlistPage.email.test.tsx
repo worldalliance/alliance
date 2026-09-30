@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { useLocation } from "react-router";
 import {
   api,
   emailPreview,
@@ -400,4 +401,20 @@ it("sends a test to the staff member after confirming", async () => {
     ]),
   );
   expect(await screen.findByText("Test email sent to you")).toBeTruthy();
+});
+
+it("opens the composer with a draft another page passed", async () => {
+  renderPage({ draft: { subject: "Again", body: "Same body" } });
+  expect(await screen.findByLabelText("Subject")).toHaveProperty(
+    "value",
+    "Again",
+  );
+  expect(screen.getByLabelText("Body")).toHaveProperty("value", "Same body");
+});
+
+it("clears the passed draft once the composer has it", async () => {
+  const StateProbe = () => <p>State: {JSON.stringify(useLocation().state)}</p>;
+  renderPage({ draft: { subject: "A", body: "B" } }, <StateProbe />);
+  expect(await screen.findByText("State: null")).toBeTruthy();
+  expect(screen.getByLabelText("Subject")).toHaveProperty("value", "A");
 });

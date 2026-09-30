@@ -14,8 +14,8 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
-import { SENDING_POLL_MS } from "../lib/waitlistEmail";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router";
+import { emailDraftFromState, SENDING_POLL_MS } from "../lib/waitlistEmail";
 import WaitlistEmailsPage from "./WaitlistEmailsPage";
 
 const batch: WaitlistEmailBatchDto = {
@@ -114,11 +114,23 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
+const DraftProbe = () => {
+  const draft = emailDraftFromState(useLocation().state);
+  return (
+    <p>
+      Composing {draft?.subject}: {draft?.body}
+    </p>
+  );
+};
+
 const renderPage = () =>
   render(
     <MemoryRouter initialEntries={["/waitlist-emails"]}>
       <ToastProvider>
-        <WaitlistEmailsPage />
+        <Routes>
+          <Route path="/waitlist-emails" element={<WaitlistEmailsPage />} />
+          <Route path="/waitlist" element={<DraftProbe />} />
+        </Routes>
       </ToastProvider>
     </MemoryRouter>,
     queryWrapper(),
@@ -194,6 +206,16 @@ it("warns that uncertain recipients could get the email twice", async () => {
   ).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
   await waitFor(() => expect(retries).toEqual([{ includeUncertain: true }]));
+});
+
+it("uses an email again as a new draft on the waitlist", async () => {
+  await openBatch();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Use again as a new draft" }),
+  );
+  expect(
+    await screen.findByText("Composing You're invited: Join: #{signupLink}"),
+  ).toBeTruthy();
 });
 
 describe("while an email is still sending", () => {

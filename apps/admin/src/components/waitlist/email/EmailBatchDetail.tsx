@@ -6,13 +6,18 @@ import type {
 import { formatDateTime } from "@alliance/shared/lib/dateFormatters";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useQuery } from "@tanstack/react-query";
+import { CopyPlus } from "lucide-react";
 import React from "react";
+import { useNavigate } from "react-router";
 import { adminRefusalMessage } from "../../../lib/adminRefusal";
 import {
+  type EmailDraft,
+  emailDraftState,
   inProgress,
   SENDING_POLL_MS,
   STATUS_LABELS,
 } from "../../../lib/waitlistEmail";
+import { BORDERED_ICON_BUTTON_CLASS } from "../controlClasses";
 import EmailRetryActions from "./EmailRetryActions";
 
 const SKIP_LABELS: Record<WaitlistEmailSkipReason, string> = {
@@ -23,6 +28,7 @@ const SKIP_LABELS: Record<WaitlistEmailSkipReason, string> = {
 const EmailBatchDetail: React.FC<{ batch: WaitlistEmailBatchDto }> = ({
   batch,
 }) => {
+  const navigate = useNavigate();
   const detail = useQuery({
     queryKey: queryKeys.waitlistEmailAdmin(batch.id),
     queryFn: () =>
@@ -35,10 +41,24 @@ const EmailBatchDetail: React.FC<{ batch: WaitlistEmailBatchDto }> = ({
         ? SENDING_POLL_MS
         : false,
   });
+  const draft: EmailDraft = { subject: batch.subject, body: batch.body };
 
   return (
     <div className="space-y-3 border-t border-zinc-100 bg-zinc-50 p-4 text-sm">
-      <EmailRetryActions batch={batch} />
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          aria-label="Use again as a new draft"
+          title="Use again as a new draft"
+          className={BORDERED_ICON_BUTTON_CLASS}
+          onClick={() =>
+            navigate("/waitlist", { state: emailDraftState(draft) })
+          }
+        >
+          <CopyPlus size={16} />
+        </button>
+        <EmailRetryActions batch={batch} />
+      </div>
       <pre className="whitespace-pre-wrap rounded border border-zinc-200 bg-white p-2 font-sans">
         {batch.body}
       </pre>

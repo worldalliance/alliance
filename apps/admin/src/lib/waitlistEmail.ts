@@ -12,8 +12,22 @@ import type {
   WaitlistEmailRecipientStatus,
 } from "@alliance/shared/client/types.gen";
 import { milliseconds } from "date-fns";
+import { z } from "zod";
 
-export type EmailDraft = { subject: string; body: string };
+const emailDraftSchema = z.object({ subject: z.string(), body: z.string() });
+
+export type EmailDraft = z.infer<typeof emailDraftSchema>;
+
+const emailDraftStateSchema = z.object({ draft: emailDraftSchema });
+
+/** Router state that opens the waitlist's composer with `draft`. */
+export const emailDraftState = (
+  draft: EmailDraft,
+): z.infer<typeof emailDraftStateSchema> => ({ draft });
+
+/** The draft "Use again" navigates to the waitlist with, if any. */
+export const emailDraftFromState = (state: unknown): EmailDraft | null =>
+  emailDraftStateSchema.safeParse(state).data?.draft ?? null;
 
 /** Whether a draft can be previewed, sent, or saved as a template. */
 export const completeDraft = (draft: EmailDraft): boolean =>

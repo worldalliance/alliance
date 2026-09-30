@@ -9,6 +9,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import WaitlistPage from "./WaitlistPage";
 
@@ -363,11 +364,14 @@ export const pickMenuItem = async (menu: string, item: string) => {
   fireEvent.click(await screen.findByRole("menuitem", { name: item }));
 };
 
-export const renderPage = () =>
+export const renderPage = (routerState?: unknown, beside?: ReactNode) =>
   render(
-    <MemoryRouter>
+    <MemoryRouter
+      initialEntries={[{ pathname: "/waitlist", state: routerState }]}
+    >
       <ToastProvider>
         <WaitlistPage />
+        {beside}
       </ToastProvider>
     </MemoryRouter>,
     queryWrapper(),

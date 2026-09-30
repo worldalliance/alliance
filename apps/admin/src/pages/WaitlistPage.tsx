@@ -19,6 +19,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useLocation, useNavigate } from "react-router";
 import CohortControls from "../components/waitlist/CohortControls";
 import {
   BORDERED_ICON_BUTTON_CLASS,
@@ -41,7 +42,7 @@ import {
   waitlistLinksQuery,
   waitlistTagsQuery,
 } from "../lib/waitlistAdminQueries";
-import type { EmailDraft } from "../lib/waitlistEmail";
+import { type EmailDraft, emailDraftFromState } from "../lib/waitlistEmail";
 import { withFilterField } from "../lib/waitlistFilter";
 
 const PAGE_SIZE = 50;
@@ -55,7 +56,20 @@ const WaitlistPage: React.FC = () => {
   const [filtersKey, setFiltersKey] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const selectionVersion = useRef(0);
-  const [draft, setDraft] = useState<EmailDraft | null>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [draft, setDraft] = useState<EmailDraft | null>(() =>
+    emailDraftFromState(location.state),
+  );
+  // Clearing the passed draft keeps Back or a reload from reopening it.
+  useEffect(() => {
+    if (emailDraftFromState(location.state)) {
+      navigate(
+        { pathname: location.pathname, search: location.search },
+        { replace: true, state: null },
+      );
+    }
+  }, [location, navigate]);
 
   const changeSelection = useCallback((next: Set<number>) => {
     selectionVersion.current += 1;
