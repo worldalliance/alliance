@@ -1,15 +1,24 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { isUniqueViolation } from "src/utils/db-errors";
+import { isForeignKeyViolation, isUniqueViolation } from "src/utils/db-errors";
 import { randomToken } from "src/utils/random";
 import type { Repository } from "src/utils/Repository";
+import { WaitlistEntry } from "src/waitlist/entities/waitlist-entry.entity";
+import { WaitlistLink } from "src/waitlist/entities/waitlist-link.entity";
+import type { EntityManager } from "typeorm";
 import { CreateCampaignDto, UpdateCampaignDto } from "./dto/campaign.dto";
-import { Campaign } from "./entities/campaign.entity";
+import {
+  Campaign,
+  CampaignKind,
+  HAS_GROUP,
+  TAKES_WAITLIST_ENTRIES,
+} from "./entities/campaign.entity";
 
 /** Attempts to find a free random `code` before giving up. */
 const MAX_CODE_GENERATION_ATTEMPTS = 5;
@@ -53,6 +62,7 @@ export class CampaignService {
         name: dto.name,
         code: generateCampaignCode(),
         picture: dto.picture ?? null,
+        kind: dto.kind ?? CampaignKind.Campaign,
       });
       try {
         return await this.repository.save(campaign);
@@ -66,13 +76,66 @@ export class CampaignService {
     );
   }
 
+  private async hasWaitlistRecords(
+    manager: EntityManager,
+    organizationId: number,
+  ): Promise<boolean> {
+    return (
+      (await manager.existsBy(WaitlistLink, { organizationId })) ||
+      (await manager.existsBy(WaitlistEntry, { organizationId }))
+    );
+  }
+
+  /**
+   * Locks the campaign so a concurrent update can't combine with this one
+   * into a state either would have refused.
+   */
   async update(id: number, dto: UpdateCampaignDto): Promise<Campaign> {
     if (Object.keys(dto).length === 0) {
       throw new BadRequestException("No fields to update");
     }
-    const campaign = await this.findOne(id);
-    if (dto.name !== undefined) campaign.name = dto.name;
-    if (dto.picture !== undefined) campaign.picture = dto.picture;
-    return this.repository.save(campaign);
+    try {
+      return await this.repository.manager.transaction(async (manager) => {
+        const campaign = await manager.findOne(Campaign, {
+          where: { id },
+          lock: { mode: "pessimistic_write" },
+        });
+        if (!campaign) {
+          throw new NotFoundException("Campaign not found");
+        }
+        if (
+          dto.kind !== undefined &&
+          TAKES_WAITLIST_ENTRIES[campaign.kind] &&
+          !TAKES_WAITLIST_ENTRIES[dto.kind] &&
+          (await this.hasWaitlistRecords(manager, id))
+        ) {
+          throw new ConflictException(
+            "An organization with waitlist links or entries stays an organization",
+          );
+        }
+        if (dto.name !== undefined) campaign.name = dto.name;
+        if (dto.picture !== undefined) campaign.picture = dto.picture;
+        if (dto.kind !== undefined) campaign.kind = dto.kind;
+        if (dto.communityId !== undefined) {
+          campaign.communityId = dto.communityId;
+        }
+        if (campaign.communityId !== null && !HAS_GROUP[campaign.kind]) {
+          throw new BadRequestException(
+            "Only an organization can have a group",
+          );
+        }
+        return manager.save(campaign);
+      });
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        throw new ConflictException(
+          "That group already belongs to another organization",
+        );
+      }
+      if (isForeignKeyViolation(err)) {
+        throw new BadRequestException("That group does not exist");
+      }
+      throw err;
+    }
   }
 }

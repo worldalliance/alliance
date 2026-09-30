@@ -1600,11 +1600,18 @@ export type UpdateExternalShareTargetDto = {
     paramName?: string;
 };
 
+export type CampaignKind = 'campaign' | 'organization';
+
 export type CampaignDto = {
     id: number;
     name: string;
     code: string;
     picture: string | null;
+    kind: CampaignKind;
+    /**
+     * An organization's accountability group
+     */
+    communityId: number | null;
     createdAt: string;
     updatedAt: string;
 };
@@ -1615,11 +1622,17 @@ export type CreateCampaignDto = {
      * Image key (from POST /images/uploadImage) for the avatar.
      */
     picture?: string;
+    kind?: CampaignKind;
 };
 
 export type UpdateCampaignDto = {
     name?: string;
     picture?: string | null;
+    kind?: CampaignKind;
+    /**
+     * Only an organization has a group
+     */
+    communityId?: number | null;
 };
 
 export type PushOpenedDto = {

@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { Campaign } from "src/campaign/entities/campaign.entity";
 import { EventLogModule } from "src/eventlog/eventlog.module";
 import { MailModule } from "src/mail/mail.module";
 import { User } from "src/user/entities/user.entity";
@@ -19,7 +18,6 @@ import { WaitlistService } from "./waitlist.service";
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      Campaign,
       User,
       WaitlistBrowser,
       WaitlistEntry,

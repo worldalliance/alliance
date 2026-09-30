@@ -4,7 +4,10 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Campaign } from "src/campaign/entities/campaign.entity";
+import {
+  Campaign,
+  TAKES_WAITLIST_ENTRIES,
+} from "src/campaign/entities/campaign.entity";
 import { randomToken } from "src/utils/random";
 import type { Repository } from "src/utils/Repository";
 import type {
@@ -14,7 +17,6 @@ import type {
 } from "./dto/waitlist-link.dto";
 import { WaitlistEntry } from "./entities/waitlist-entry.entity";
 import { WaitlistLink } from "./entities/waitlist-link.entity";
-import { TAKES_WAITLIST_ENTRIES } from "./waitlist.service";
 
 @Injectable()
 export class WaitlistLinkService {
@@ -23,8 +25,6 @@ export class WaitlistLinkService {
     private readonly linkRepository: Repository<WaitlistLink>,
     @InjectRepository(WaitlistEntry)
     private readonly entryRepository: Repository<WaitlistEntry>,
-    @InjectRepository(Campaign)
-    private readonly campaignRepository: Repository<Campaign>,
   ) {}
 
   async findAll(): Promise<AdminWaitlistLink[]> {
@@ -48,22 +48,29 @@ export class WaitlistLinkService {
     }));
   }
 
-  async create(dto: CreateWaitlistLinkDto): Promise<AdminWaitlistLink> {
-    const organization = await this.campaignRepository.findOneBy({
-      id: dto.organizationId,
+  /**
+   * Share-locks the organization so `CampaignService.update` can't turn it
+   * into a campaign while the link is created.
+   */
+  create(dto: CreateWaitlistLinkDto): Promise<AdminWaitlistLink> {
+    return this.linkRepository.manager.transaction(async (manager) => {
+      const organization = await manager.findOne(Campaign, {
+        where: { id: dto.organizationId },
+        lock: { mode: "pessimistic_read" },
+      });
+      if (!organization || !TAKES_WAITLIST_ENTRIES[organization.kind]) {
+        throw new BadRequestException("Links belong to an organization");
+      }
+      const link = await manager.save(
+        manager.create(WaitlistLink, {
+          code: randomToken(8),
+          organizationId: organization.id,
+          channel: dto.channel,
+          publishedAt: dto.publishedAt ? new Date(dto.publishedAt) : null,
+        }),
+      );
+      return { link, entryCount: 0 };
     });
-    if (!organization || !TAKES_WAITLIST_ENTRIES[organization.kind]) {
-      throw new BadRequestException("Links belong to an organization");
-    }
-    const link = await this.linkRepository.save(
-      this.linkRepository.create({
-        code: randomToken(8),
-        organizationId: organization.id,
-        channel: dto.channel,
-        publishedAt: dto.publishedAt ? new Date(dto.publishedAt) : null,
-      }),
-    );
-    return { link, entryCount: 0 };
   }
 
   async update(

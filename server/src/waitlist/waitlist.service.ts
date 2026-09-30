@@ -1,7 +1,10 @@
 import { R, type Result } from "@alliance/common/result";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Campaign, CampaignKind } from "src/campaign/entities/campaign.entity";
+import {
+  Campaign,
+  TAKES_WAITLIST_ENTRIES,
+} from "src/campaign/entities/campaign.entity";
 import { randomToken } from "src/utils/random";
 import type { Repository } from "src/utils/Repository";
 import { IsNull } from "typeorm";
@@ -18,11 +21,6 @@ export enum WaitlistEntryError {
   UnknownCode = "unknown_code",
   ReasonRequired = "reason_required",
 }
-
-export const TAKES_WAITLIST_ENTRIES: Record<CampaignKind, boolean> = {
-  [CampaignKind.Campaign]: false,
-  [CampaignKind.Organization]: true,
-};
 
 export type NewWaitlistEntry = { id: number; code: string };
 

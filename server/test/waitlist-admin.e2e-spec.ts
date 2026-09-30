@@ -5,7 +5,7 @@ import {
   CampaignKind,
 } from "../src/campaign/entities/campaign.entity";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, TestContext, waitForLockWait } from "./e2e-test-utils";
 
 describe("Waitlist admin (e2e)", () => {
   let ctx: TestContext;
@@ -150,6 +150,31 @@ describe("Waitlist admin (e2e)", () => {
         .patch(path, { publishedAt: "2026-09-02T12:00:00.000Z" })
         .expect(200);
       expect(published.body.publishedAt).toBe("2026-09-02T12:00:00.000Z");
+    });
+
+    it("refuses a link for an organization turned into a campaign meanwhile", async () => {
+      const organization = await saveCampaign(CampaignKind.Organization);
+      const runner = ctx.dataSource.createQueryRunner();
+      await runner.startTransaction();
+      try {
+        await runner.query("SELECT id FROM campaign WHERE id = $1 FOR UPDATE", [
+          organization.id,
+        ]);
+        const creation = request(server())
+          .post("/waitlist/admin/links")
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({ organizationId: organization.id, channel: "Newsletter" })
+          .then((res) => res.status);
+        await waitForLockWait(ctx.dataSource);
+        await runner.query("UPDATE campaign SET kind = $1 WHERE id = $2", [
+          CampaignKind.Campaign,
+          organization.id,
+        ]);
+        await runner.commitTransaction();
+        expect(await creation).toBe(400);
+      } finally {
+        await runner.release();
+      }
     });
 
     it("404s for a missing link", async () => {

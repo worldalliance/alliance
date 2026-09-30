@@ -20,6 +20,16 @@ export enum CampaignKind {
   Organization = "organization",
 }
 
+export const TAKES_WAITLIST_ENTRIES: Record<CampaignKind, boolean> = {
+  [CampaignKind.Campaign]: false,
+  [CampaignKind.Organization]: true,
+};
+
+export const HAS_GROUP: Record<CampaignKind, boolean> = {
+  [CampaignKind.Campaign]: false,
+  [CampaignKind.Organization]: true,
+};
+
 /**
  * A referral owner that is not a user account — e.g. a marketing campaign, a
  * QR code at an event, or, with `kind` organization, a partner organization
