@@ -1,5 +1,6 @@
 import {
   campaignFindAllAdmin,
+  waitlistAdminFindCohortsAdmin,
   waitlistAdminFindLinksAdmin,
   waitlistAdminFindTagsAdmin,
 } from "@alliance/shared/client";
@@ -25,6 +26,12 @@ export const waitlistTagsQuery = queryOptions({
   queryKey: queryKeys.waitlistTagsAdmin(),
   queryFn: () =>
     waitlistAdminFindTagsAdmin({ throwOnError: true }).then((r) => r.data),
+});
+
+export const waitlistCohortsQuery = queryOptions({
+  queryKey: queryKeys.waitlistCohortsAdmin(),
+  queryFn: () =>
+    waitlistAdminFindCohortsAdmin({ throwOnError: true }).then((r) => r.data),
 });
 
 /** A tag write changes both the entries' tags and the tags' counts. */

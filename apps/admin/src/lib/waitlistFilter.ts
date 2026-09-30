@@ -4,6 +4,12 @@ import type {
   WaitlistInviteState,
 } from "@alliance/shared/client/types.gen";
 
+const isBlank = (value: unknown): boolean =>
+  value === undefined ||
+  value === null ||
+  value === "" ||
+  (Array.isArray(value) && value.length === 0);
+
 /** Sets a filter field, dropping it when blank so an empty filter has no keys. */
 export function withFilterField<K extends keyof WaitlistEntryFilterDto>({
   filter,
@@ -15,12 +21,7 @@ export function withFilterField<K extends keyof WaitlistEntryFilterDto>({
   value: WaitlistEntryFilterDto[K];
 }): WaitlistEntryFilterDto {
   const next = { ...filter };
-  const blank =
-    value === undefined ||
-    value === null ||
-    value === "" ||
-    (Array.isArray(value) && value.length === 0);
-  if (blank) {
+  if (isBlank(value)) {
     delete next[key];
   } else {
     next[key] = value;
@@ -30,6 +31,29 @@ export function withFilterField<K extends keyof WaitlistEntryFilterDto>({
 
 export const isFilterEmpty = (filter: WaitlistEntryFilterDto): boolean =>
   Object.keys(filter).length === 0;
+
+export const compactFilter = (
+  filter: WaitlistEntryFilterDto,
+): WaitlistEntryFilterDto =>
+  Object.fromEntries(
+    Object.entries(filter).filter(([, value]) => !isBlank(value)),
+  );
+
+const canonical = (filter: WaitlistEntryFilterDto): string =>
+  JSON.stringify(
+    Object.entries(compactFilter(filter))
+      .map(([key, value]) => [
+        key,
+        Array.isArray(value) ? [...value].sort() : value,
+      ])
+      .sort(([a], [b]) => String(a).localeCompare(String(b))),
+  );
+
+/** Whether two filters match the same entries, ignoring order and blanks. */
+export const sameFilter = (
+  a: WaitlistEntryFilterDto,
+  b: WaitlistEntryFilterDto,
+): boolean => canonical(a) === canonical(b);
 
 /** Labels a link by organization and channel, adding its code when two match. */
 export const linkOptions = (

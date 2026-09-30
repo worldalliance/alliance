@@ -5,7 +5,6 @@ import {
   waitlistAdminUntagEntriesAdmin,
 } from "@alliance/shared/client";
 import type { AdminWaitlistTagDto } from "@alliance/shared/client/types.gen";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import {
   DropdownMenuContent,
   DropdownMenuItem,
@@ -18,6 +17,7 @@ import React, { useState } from "react";
 import { useRefusalToast } from "../../lib/useRefusalToast";
 import { invalidateTagQueries } from "../../lib/waitlistAdminQueries";
 import ConfirmDialog from "../ConfirmDialog";
+import InlineNameForm from "./InlineNameForm";
 
 const TRIGGER_CLASS =
   "flex items-center gap-1 rounded border border-zinc-300 bg-white px-2 py-1 text-sm cursor-pointer hover:bg-zinc-50 disabled:cursor-default disabled:opacity-50";
@@ -36,7 +36,7 @@ const TagActions: React.FC<TagActionsProps> = ({
   const queryClient = useQueryClient();
   const refusalToast = useRefusalToast();
   const { success } = useToast();
-  const [newTagName, setNewTagName] = useState<string | null>(null);
+  const [naming, setNaming] = useState(false);
   const [removing, setRemoving] = useState<{
     tag: AdminWaitlistTagDto;
     entryIds: number[];
@@ -59,7 +59,7 @@ const TagActions: React.FC<TagActionsProps> = ({
                 throwOnError: true,
               })
             ).data;
-      setNewTagName(null);
+      setNaming(false);
       const send = params.add
         ? waitlistAdminTagEntriesAdmin
         : waitlistAdminUntagEntriesAdmin;
@@ -87,47 +87,23 @@ const TagActions: React.FC<TagActionsProps> = ({
 
   const disabled = selectedIds.size === 0 || change.isPending;
 
-  if (newTagName !== null) {
+  if (naming) {
     return (
-      <form
-        className="flex items-center gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (newTagName.trim()) {
-            change.mutate({
-              tag: { name: newTagName.trim() },
-              add: true,
-              entryIds: [...selectedIds],
-            });
-          }
-        }}
-      >
-        <input
-          autoFocus
-          aria-label="New tag name"
-          placeholder="New tag"
-          maxLength={100}
-          className="rounded border border-zinc-300 px-2 py-1 text-sm"
-          value={newTagName}
-          onChange={(e) => setNewTagName(e.target.value)}
-          onKeyDown={(e) => e.key === "Escape" && setNewTagName(null)}
-        />
-        <Button
-          color={ButtonColor.White}
-          size="small"
-          type="submit"
-          disabled={disabled || !newTagName.trim()}
-        >
-          Create and tag
-        </Button>
-        <Button
-          color={ButtonColor.Transparent}
-          size="small"
-          onClick={() => setNewTagName(null)}
-        >
-          Cancel
-        </Button>
-      </form>
+      <InlineNameForm
+        label="New tag name"
+        placeholder="New tag"
+        submitLabel="Create and tag"
+        maxLength={100}
+        disabled={disabled}
+        onSubmit={(name) =>
+          change.mutate({
+            tag: { name },
+            add: true,
+            entryIds: [...selectedIds],
+          })
+        }
+        onCancel={() => setNaming(false)}
+      />
     );
   }
 
@@ -148,7 +124,7 @@ const TagActions: React.FC<TagActionsProps> = ({
               {tag.name}
             </DropdownMenuItem>
           ))}
-          <DropdownMenuItem onClick={() => setNewTagName("")}>
+          <DropdownMenuItem onClick={() => setNaming(true)}>
             New tag…
           </DropdownMenuItem>
         </DropdownMenuContent>

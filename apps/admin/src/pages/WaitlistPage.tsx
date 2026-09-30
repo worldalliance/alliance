@@ -19,6 +19,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import CohortControls from "../components/waitlist/CohortControls";
 import MobilizeActions from "../components/waitlist/MobilizeActions";
 import TagActions from "../components/waitlist/TagActions";
 import TagManager from "../components/waitlist/TagManager";
@@ -30,6 +31,7 @@ import { useRefusalToast } from "../lib/useRefusalToast";
 import {
   campaignsLoadFailed,
   campaignsQuery,
+  waitlistCohortsQuery,
   waitlistLinksLoadFailed,
   waitlistLinksQuery,
   waitlistTagsQuery,
@@ -43,6 +45,8 @@ const WaitlistPage: React.FC = () => {
   const [filter, setFilter] = useState<WaitlistEntryFilterDto>({});
   const [sort, setSort] = useState<WaitlistEntrySort>("joined_desc");
   const [page, setPage] = useState(1);
+  // Remounting the filters on a cohort drops a search still being typed.
+  const [filtersKey, setFiltersKey] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const selectionVersion = useRef(0);
 
@@ -78,9 +82,10 @@ const WaitlistPage: React.FC = () => {
   const campaigns = useQuery(campaignsQuery);
   const links = useQuery(waitlistLinksQuery);
   const tags = useQuery(waitlistTagsQuery);
+  const cohorts = useQuery(waitlistCohortsQuery);
 
   const organizations = useMemo(
-    () => (campaigns.data ?? []).filter(isOrganization),
+    () => campaigns.data?.filter(isOrganization),
     [campaigns.data],
   );
 
@@ -111,19 +116,32 @@ const WaitlistPage: React.FC = () => {
       adminRefusalMessage(campaigns.error, campaignsLoadFailed)) ||
     (links.error &&
       adminRefusalMessage(links.error, waitlistLinksLoadFailed)) ||
-    (tags.error && adminRefusalMessage(tags.error, "Unable to load tags."));
+    (tags.error && adminRefusalMessage(tags.error, "Unable to load tags.")) ||
+    (cohorts.error &&
+      adminRefusalMessage(cohorts.error, "Unable to load cohorts."));
 
   return (
     <div className="p-5 space-y-4">
       <title>Waitlist - Admin</title>
-      <h1 className="text-lg font-bold text-zinc-900">Waitlist</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-lg font-bold text-zinc-900">Waitlist</h1>
+        <CohortControls
+          cohorts={cohorts.data ?? []}
+          filter={filter}
+          onApply={(next) => {
+            setFiltersKey((key) => key + 1);
+            changeFilter(next);
+          }}
+        />
+      </div>
 
       <WaitlistFilters
+        key={filtersKey}
         filter={filter}
         onChange={changeFilter}
         organizations={organizations}
-        links={links.data ?? []}
-        tags={tags.data ?? []}
+        links={links.data}
+        tags={tags.data}
       />
 
       <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-700">

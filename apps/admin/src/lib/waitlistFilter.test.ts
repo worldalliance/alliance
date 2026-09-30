@@ -1,4 +1,10 @@
-import { isFilterEmpty, linkOptions, withFilterField } from "./waitlistFilter";
+import {
+  compactFilter,
+  isFilterEmpty,
+  linkOptions,
+  sameFilter,
+  withFilterField,
+} from "./waitlistFilter";
 
 describe("withFilterField", () => {
   it("sets a value and drops blank ones", () => {
@@ -36,6 +42,34 @@ describe("withFilterField", () => {
     expect(isFilterEmpty(filter)).toBe(false);
     expect(isFilterEmpty({})).toBe(true);
   });
+});
+
+describe("sameFilter", () => {
+  it("ignores key order, list order, and blank fields", () => {
+    expect(
+      sameFilter(
+        { organizationIds: [2, 1], mobilized: false, search: null },
+        { mobilized: false, organizationIds: [1, 2], tagIds: [] },
+      ),
+    ).toBe(true);
+  });
+
+  it("tells different filters apart", () => {
+    expect(sameFilter({ mobilized: false }, { mobilized: true })).toBe(false);
+    expect(sameFilter({ tagIds: [1] }, { tagIds: [1, 2] })).toBe(false);
+    expect(sameFilter({ mobilized: false }, {})).toBe(false);
+  });
+});
+
+it("compacts a filter's blank fields", () => {
+  expect(
+    compactFilter({
+      search: null,
+      tagIds: [],
+      mobilized: false,
+      hasReason: true,
+    }),
+  ).toEqual({ mobilized: false, hasReason: true });
 });
 
 describe("linkOptions", () => {

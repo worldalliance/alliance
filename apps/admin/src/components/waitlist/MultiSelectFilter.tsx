@@ -14,20 +14,26 @@ function MultiSelectFilter<T extends string | number>({
   onChange,
 }: {
   label: string;
-  options: Option<T>[];
+  /** Undefined until loaded, when no id reads as not found. */
+  options: Option<T>[] | undefined;
   selected: readonly T[];
   onChange: (selected: T[]) => void;
 }) {
-  const missing = selected.filter(
-    (value) => !options.some((option) => option.value === value),
-  );
-  const summary =
-    [
-      ...options
-        .filter((option) => selected.includes(option.value))
-        .map((option) => option.label),
-      ...(missing.length ? [`${missing.length} not found`] : []),
-    ].join(", ") || "Any";
+  const missing = options
+    ? selected.filter(
+        (value) => !options.some((option) => option.value === value),
+      )
+    : [];
+  const summary = options
+    ? [
+        ...options
+          .filter((option) => selected.includes(option.value))
+          .map((option) => option.label),
+        ...(missing.length ? [`${missing.length} not found`] : []),
+      ].join(", ") || "Any"
+    : selected.length
+      ? `${selected.length} selected`
+      : "Any";
 
   return (
     <Menu.Root>
@@ -47,10 +53,13 @@ function MultiSelectFilter<T extends string | number>({
             Remove {missing.length} not found
           </DropdownMenuItem>
         )}
-        {options.length === 0 && (
+        {!options && (
+          <p className="px-3 py-2 text-sm text-zinc-500">Not loaded</p>
+        )}
+        {options?.length === 0 && (
           <p className="px-3 py-2 text-sm text-zinc-500">None yet</p>
         )}
-        {options.map((option) => (
+        {options?.map((option) => (
           <Menu.CheckboxItem
             key={option.value}
             checked={selected.includes(option.value)}

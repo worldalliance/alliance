@@ -48,9 +48,9 @@ const BooleanFilter: React.FC<{
 type WaitlistFiltersProps = {
   filter: WaitlistEntryFilterDto;
   onChange: (filter: WaitlistEntryFilterDto) => void;
-  organizations: CampaignDto[];
-  links: AdminWaitlistLinkDto[];
-  tags: AdminWaitlistTagDto[];
+  organizations: CampaignDto[] | undefined;
+  links: AdminWaitlistLinkDto[] | undefined;
+  tags: AdminWaitlistTagDto[] | undefined;
 };
 
 const WaitlistFilters: React.FC<WaitlistFiltersProps> = ({
@@ -77,7 +77,9 @@ const WaitlistFilters: React.FC<WaitlistFiltersProps> = ({
     value: WaitlistEntryFilterDto[K],
   ) => onChange(withFilterField({ filter, key, value }));
 
-  const organizationName = new Map(organizations.map((o) => [o.id, o.name]));
+  const organizationName = new Map(
+    (organizations ?? []).map((o) => [o.id, o.name]),
+  );
   const booleanFilters: Record<
     BooleanField,
     { label: string; yes: string; no: string }
@@ -100,13 +102,13 @@ const WaitlistFilters: React.FC<WaitlistFiltersProps> = ({
       />
       <MultiSelectFilter
         label="Organization"
-        options={organizations.map((o) => ({ value: o.id, label: o.name }))}
+        options={organizations?.map((o) => ({ value: o.id, label: o.name }))}
         selected={filter.organizationIds ?? []}
         onChange={(ids) => set("organizationIds", ids)}
       />
       <MultiSelectFilter
         label="Link"
-        options={linkOptions(links, organizationName)}
+        options={links && linkOptions(links, organizationName)}
         selected={filter.sourceLinkIds ?? []}
         onChange={(ids) => set("sourceLinkIds", ids)}
       />
@@ -121,7 +123,7 @@ const WaitlistFilters: React.FC<WaitlistFiltersProps> = ({
       />
       <MultiSelectFilter
         label="Tag"
-        options={tags.map((tag) => ({ value: tag.id, label: tag.name }))}
+        options={tags?.map((tag) => ({ value: tag.id, label: tag.name }))}
         selected={filter.tagIds ?? []}
         onChange={(ids) => set("tagIds", ids)}
       />

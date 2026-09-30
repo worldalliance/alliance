@@ -55,6 +55,13 @@ type WaitlistApiState = {
   tagDeleteStatus: number;
   tagsStatus: number;
   tagsServed: typeof allTags;
+  cohortsServed: {
+    id: number;
+    name: string;
+    filter: object;
+    updatedAt: string;
+  }[];
+  cohortCreateStatus: number;
 };
 
 const initialState = (): WaitlistApiState => ({
@@ -71,6 +78,15 @@ const initialState = (): WaitlistApiState => ({
   tagDeleteStatus: 204,
   tagsStatus: 200,
   tagsServed: allTags,
+  cohortsServed: [
+    {
+      id: 3,
+      name: "Waiting",
+      filter: { mobilized: false, search: null },
+      updatedAt: "2026-09-01T00:00:00.000Z",
+    },
+  ],
+  cohortCreateStatus: 200,
 });
 
 export const api = initialState();
@@ -139,6 +155,43 @@ export const serveWaitlistApi = () => {
             entryCount: 1,
           },
         ]),
+      "GET /waitlist/admin/cohorts": () => Response.json(api.cohortsServed),
+      "POST /waitlist/admin/cohorts": async ({ request }) => {
+        if (api.cohortCreateStatus !== 200) {
+          return Response.json(
+            { message: "A cohort with that name already exists" },
+            { status: api.cohortCreateStatus },
+          );
+        }
+        const body: { name: string; filter: object } = await request.json();
+        api.posts.push({ path: new URL(request.url).pathname, body });
+        const created = {
+          id: 4,
+          ...body,
+          updatedAt: "2026-09-02T00:00:00.000Z",
+        };
+        api.cohortsServed = [...api.cohortsServed, created];
+        return Response.json(created);
+      },
+      "DELETE /waitlist/admin/cohorts/:id": ({ request, params }) => {
+        api.posts.push({ path: new URL(request.url).pathname, body: null });
+        api.cohortsServed = api.cohortsServed.filter(
+          (cohort) => cohort.id !== Number(params.id),
+        );
+        return new Response(null, { status: 204 });
+      },
+      "PATCH /waitlist/admin/cohorts/:id": async ({ request, params }) => {
+        const body: { filter: object } = await request.json();
+        api.posts.push({ path: new URL(request.url).pathname, body });
+        api.cohortsServed = api.cohortsServed.map((cohort) =>
+          cohort.id === Number(params.id)
+            ? { ...cohort, ...body, updatedAt: "2026-09-02T00:00:00.000Z" }
+            : cohort,
+        );
+        return Response.json(
+          api.cohortsServed.find((cohort) => cohort.id === Number(params.id)),
+        );
+      },
       "GET /waitlist/admin/tags": () =>
         api.tagsStatus === 200
           ? Response.json(api.tagsServed)
