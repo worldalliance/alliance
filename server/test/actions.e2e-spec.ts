@@ -2704,24 +2704,24 @@ describe("Actions (e2e)", () => {
   });
 
   describe("Global feed", () => {
-    let activeUser: User | null = null;
-    let suspendedUser: User | null = null;
+    let userA: User | null = null;
+    let userB: User | null = null;
 
     afterEach(async () => {
-      if (activeUser) {
-        await userRepo.delete(activeUser.id);
-        activeUser = null;
+      if (userA) {
+        await userRepo.delete(userA.id);
+        userA = null;
       }
-      if (suspendedUser) {
-        await userRepo.delete(suspendedUser.id);
-        suspendedUser = null;
+      if (userB) {
+        await userRepo.delete(userB.id);
+        userB = null;
       }
     });
 
     it("excludes suspended members from new member feed items", async () => {
       const now = Date.now();
 
-      activeUser = await userService.create({
+      userA = await userService.create({
         email: `active-${now}@example.com`,
         password: "Password123!",
         name: "Active Member",
@@ -2736,7 +2736,7 @@ describe("Actions (e2e)", () => {
         ],
       });
 
-      suspendedUser = await userService.create({
+      userB = await userService.create({
         email: `suspended-${now}@example.com`,
         password: "Password123!",
         name: "Suspended Member",
@@ -2770,8 +2770,67 @@ describe("Actions (e2e)", () => {
         (user) => user.id,
       );
 
-      expect(newMemberIds).toContain(activeUser.id);
-      expect(newMemberIds).not.toContain(suspendedUser.id);
+      expect(newMemberIds).toContain(userA.id);
+      expect(newMemberIds).not.toContain(userB.id);
+    });
+
+    it("puts a member with a profile picture ahead of a more recent one without", async () => {
+      const now = Date.now();
+
+      userA = await userService.create({
+        email: `no-photo-${now}@example.com`,
+        password: "Password123!",
+        name: "No Photo Member",
+        tags: [ctx.defaultTag],
+        contractEvents: [
+          {
+            type: ContractEventType.SIGNED,
+            date: new Date(now - milliseconds({ minutes: 1 })),
+            automatic: false,
+            contractId: ctx.defaultContractId,
+          },
+        ],
+      });
+
+      userB = await userService.create({
+        email: `with-photo-${now}@example.com`,
+        password: "Password123!",
+        name: "Photo Member",
+        tags: [ctx.defaultTag],
+        contractEvents: [
+          {
+            type: ContractEventType.SIGNED,
+            date: new Date(now - milliseconds({ minutes: 2 })),
+            automatic: false,
+            contractId: ctx.defaultContractId,
+          },
+        ],
+      });
+      await userRepo.update(userB.id, {
+        profilePicture: "https://example.com/photo.jpg",
+      });
+
+      const res = await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed")
+        .query({ limit: 20 })
+        .expect(200);
+
+      const newMembersItem = res.body.find(
+        (item) => item.type === GlobalFeedItemType.NewMembers,
+      );
+
+      expect(newMembersItem).toBeDefined();
+      const newMemberIds: number[] = newMembersItem.newMembers.users.map(
+        (user) => user.id,
+      );
+
+      expect(newMemberIds.indexOf(userB.id)).toBeLessThan(
+        newMemberIds.indexOf(userA.id),
+      );
+      expect(newMembersItem.newMembers.count).toBeGreaterThanOrEqual(2);
+      expect(new Date(newMembersItem.date).getTime()).toBeGreaterThanOrEqual(
+        now - milliseconds({ minutes: 1 }),
+      );
     });
   });
 
