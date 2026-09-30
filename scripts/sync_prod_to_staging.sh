@@ -257,6 +257,86 @@ SET
                   END;
 UPDATE "user" SET "password" = :'password_hash';
 
+-- Keys the fake names and sentences, so each comes out the same from one sync
+-- to the next. Change it to deal new ones.
+\set seed 1
+SELECT set_config('anonymize.seed', :'seed', true);
+
+CREATE TEMP TABLE first_name (id SERIAL PRIMARY KEY, name TEXT NOT NULL)
+  ON COMMIT DROP;
+CREATE TEMP TABLE last_name (id SERIAL PRIMARY KEY, name TEXT NOT NULL)
+  ON COMMIT DROP;
+\copy first_name (name) FROM '/home/ec2-user/nest-backend/scripts/anonymize/first_names.txt' WITH (FORMAT csv, DELIMITER E'\t', QUOTE E'\x01')
+\copy last_name (name) FROM '/home/ec2-user/nest-backend/scripts/anonymize/last_names.txt' WITH (FORMAT csv, DELIMITER E'\t', QUOTE E'\x01')
+
+UPDATE "user" u
+SET "name" = f.name || ' ' || l.name
+FROM first_name f, last_name l,
+     (SELECT count(*) FROM first_name) fc(n),
+     (SELECT count(*) FROM last_name) lc(n)
+WHERE f.id = 1 + (hashtext(:'seed' || ':first:' || u.id) & 2147483647) % fc.n
+  AND l.id = 1 + (hashtext(:'seed' || ':last:' || u.id) & 2147483647) % lc.n;
+
+-- One `<word count>\t<sentence>` per line.
+CREATE TEMP TABLE dracula_sentence (
+  id    SERIAL PRIMARY KEY,
+  words INT NOT NULL CHECK (words > 0),
+  body  TEXT NOT NULL
+) ON COMMIT DROP;
+\copy dracula_sentence (words, body) FROM '/home/ec2-user/nest-backend/scripts/anonymize/dracula_words.txt' WITH (FORMAT csv, DELIMITER E'\t', QUOTE E'\x01')
+CREATE INDEX ON dracula_sentence (words);
+
+-- Sentences totalling the answer's word count, chained when no single sentence
+-- is that long, and picked by hashing the seed with `answer_key` rather than
+-- the answer, so equal answers don't get equal sentences. NULL stays NULL and
+-- blank stays blank.
+CREATE FUNCTION pg_temp.dracula(answer JSONB, answer_key TEXT) RETURNS JSONB
+LANGUAGE plpgsql AS $fn$
+DECLARE
+  remaining   INT;
+  bucket      INT;
+  bucket_size INT;
+  chunk       INT := 0;
+  sentence    dracula_sentence;
+  sentences   TEXT[] := '{}';
+BEGIN
+  IF jsonb_typeof(answer) = 'null' THEN
+    RETURN answer;
+  END IF;
+
+  SELECT count(*) INTO remaining
+  FROM regexp_matches(answer #>> '{}', '\S+', 'g');
+
+  WHILE remaining > 0 LOOP
+    SELECT max(words) INTO bucket FROM dracula_sentence WHERE words <= remaining;
+
+    IF bucket IS NULL THEN
+      RAISE EXCEPTION 'dracula_words.txt has no sentence of % words or fewer',
+        remaining;
+    END IF;
+
+    SELECT count(*) INTO bucket_size FROM dracula_sentence WHERE words = bucket;
+
+    SELECT * INTO sentence
+    FROM dracula_sentence
+    WHERE words = bucket
+    ORDER BY id
+    OFFSET (
+      hashtext(
+        current_setting('anonymize.seed') || ':' || answer_key || ':' || chunk
+      ) & 2147483647
+    ) % bucket_size
+    LIMIT 1;
+
+    sentences := sentences || sentence.body;
+    remaining := remaining - sentence.words;
+    chunk := chunk + 1;
+  END LOOP;
+
+  RETURN to_jsonb(array_to_string(sentences, ' '));
+END
+$fn$;
+
 -- ============================================================================
 -- Selectively redact text-based answers in form_response instead of wiping all
 -- answers. Preserves non-text values (numbers, booleans, radio/select choices,
@@ -276,10 +356,10 @@ DECLARE
   new_answers JSONB;
   list_val    JSONB;
   item        JSONB;
+  item_index  BIGINT;
   new_item    JSONB;
   new_list    JSONB;
   text_kinds  TEXT[] := ARRAY['text', 'textarea', 'email', 'phone'];
-  redacted    CONSTANT JSONB := '"answer"';
   updated_count INT := 0;
 BEGIN
   FOR resp IN
@@ -303,7 +383,14 @@ BEGIN
         CONTINUE WHEN NOT (new_answers ? field_id);
 
         IF field_kind = ANY(text_kinds) THEN
-          new_answers := jsonb_set(new_answers, ARRAY[field_id], redacted);
+          new_answers := jsonb_set(
+            new_answers,
+            ARRAY[field_id],
+            pg_temp.dracula(
+              new_answers -> field_id,
+              resp.resp_id || ':' || field_id
+            )
+          );
 
         ELSIF field_kind = 'list' THEN
           list_val := new_answers -> field_id;
@@ -311,7 +398,8 @@ BEGIN
           IF jsonb_typeof(list_val) = 'array' THEN
             new_list := '[]'::jsonb;
 
-            FOR item IN SELECT * FROM jsonb_array_elements(list_val)
+            FOR item, item_index IN
+              SELECT * FROM jsonb_array_elements(list_val) WITH ORDINALITY
             LOOP
               new_item := item;
 
@@ -323,7 +411,11 @@ BEGIN
                   new_item := jsonb_set(
                     new_item,
                     ARRAY[sub_field ->> 'id'],
-                    redacted
+                    pg_temp.dracula(
+                      new_item -> (sub_field ->> 'id'),
+                      resp.resp_id || ':' || field_id || ':' || item_index
+                        || ':' || (sub_field ->> 'id')
+                    )
                   );
                 END IF;
               END LOOP;

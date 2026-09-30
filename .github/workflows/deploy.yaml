@@ -722,6 +722,7 @@ jobs:
             server/src \
             server/migrations \
             scripts/sync_prod_to_staging.sh \
+            scripts/anonymize \
             common/package.json \
             common/tsconfig.json \
             common/src \
