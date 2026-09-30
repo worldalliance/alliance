@@ -296,6 +296,7 @@ const mapConditionForOptionValue = (
       }
       return { condition, updated: false };
     case "anySelected":
+    case "selectedCount":
     case "completedActionCount":
     case "deviceType":
     case "firstContractSigned":
@@ -475,6 +476,7 @@ const remapConditionFieldReferences = (
     case "equals":
     case "includesOption":
     case "anySelected":
+    case "selectedCount":
     case "hasValue": {
       if (condition.sourceFormId != null) {
         return condition;

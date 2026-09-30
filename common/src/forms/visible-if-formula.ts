@@ -23,6 +23,22 @@ const conditionAnySelectedSchema = z.strictObject({
   sourceFormId: z.number().optional(),
 });
 
+export enum SelectedCountComparison {
+  GreaterThan = "gt",
+  AtLeast = "gte",
+  LessThan = "lt",
+  AtMost = "lte",
+  Equals = "eq",
+}
+
+const conditionSelectedCountSchema = z.strictObject({
+  kind: z.literal("selectedCount"),
+  when: z.string(),
+  comparison: z.enum(SelectedCountComparison),
+  count: z.number().int().min(0),
+  sourceFormId: z.number().optional(),
+});
+
 const conditionHasValueSchema = z.strictObject({
   kind: z.literal("hasValue"),
   when: z.string(),
@@ -81,6 +97,7 @@ export const conditionSchema = z.discriminatedUnion("kind", [
   conditionEqualsSchema,
   conditionIncludesOptionSchema,
   conditionAnySelectedSchema,
+  conditionSelectedCountSchema,
   conditionHasValueSchema,
   conditionValidatorSchema,
   conditionDeviceTypeSchema,
@@ -105,6 +122,7 @@ export const CONDITION_KIND_IS_ACCOUNT_DERIVED = {
   equals: false,
   includesOption: false,
   anySelected: false,
+  selectedCount: false,
   hasValue: false,
   validator: false,
   deviceType: false,

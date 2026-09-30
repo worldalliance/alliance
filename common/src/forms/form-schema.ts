@@ -674,6 +674,7 @@ export function collectSourceFormIds(schema: FormSchema): number[] {
       case "equals":
       case "includesOption":
       case "anySelected":
+      case "selectedCount":
       case "hasValue":
         if (typeof c.sourceFormId === "number") {
           ids.add(c.sourceFormId);
