@@ -444,6 +444,7 @@ export class ActionsController {
       suite: true,
       reviewers: true,
       formVariants: true,
+      followUpForms: true,
     });
     return actions.map((action) => new AdminActionListItemDto(action));
   }
