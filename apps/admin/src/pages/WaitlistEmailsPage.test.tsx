@@ -6,7 +6,14 @@ import { formatDateTime } from "@alliance/shared/lib/dateFormatters";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { SENDING_POLL_MS } from "../lib/waitlistEmail";
 import WaitlistEmailsPage from "./WaitlistEmailsPage";
@@ -65,6 +72,8 @@ const detail: WaitlistEmailBatchDetailDto = {
   ],
 };
 
+let retries: unknown[];
+let retryRefused: boolean;
 let listed: WaitlistEmailBatchDto[];
 let detailServed: WaitlistEmailBatchDetailDto;
 
@@ -72,10 +81,33 @@ serveApi(
   routes({
     "GET /waitlist/admin/emails": () => Response.json(listed),
     "GET /waitlist/admin/emails/:id": () => Response.json(detailServed),
+    "POST /waitlist/admin/emails/:id/retry": async ({ request }) => {
+      if (retryRefused) {
+        return Response.json(
+          { message: "Waitlist email not found" },
+          { status: 404 },
+        );
+      }
+      retries.push(await request.json());
+      listed = [
+        { ...batch, counts: { ...batch.counts, failed: 0, pending: 1 } },
+      ];
+      detailServed = {
+        ...detail,
+        recipients: detail.recipients.map((recipient) =>
+          recipient.status === "failed"
+            ? { ...recipient, status: "pending", error: null }
+            : recipient,
+        ),
+      };
+      return Response.json(batch);
+    },
   }),
 );
 
 beforeEach(() => {
+  retries = [];
+  retryRefused = false;
   listed = [batch];
   detailServed = detail;
 });
@@ -92,6 +124,14 @@ const renderPage = () =>
     queryWrapper(),
   );
 
+const openBatch = async () => {
+  renderPage();
+  fireEvent.click(
+    await screen.findByRole("button", { name: /You're invited/ }),
+  );
+  await screen.findByText("Failed Person");
+};
+
 it("lists emails with their counts and shows a batch's recipients", async () => {
   renderPage();
   expect(
@@ -107,6 +147,53 @@ it("lists emails with their counts and shows a batch's recipients", async () => 
       `Sent ${formatDateTime(new Date("2026-09-02T00:01:00.000Z"))}`,
     ),
   ).toBeTruthy();
+});
+
+it("retries failed recipients after confirming", async () => {
+  await openBatch();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Retry 1 failed recipient" }),
+  );
+  expect(
+    within(screen.getByRole("dialog")).getByText(/don't get it again/),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+  await waitFor(() => expect(retries).toEqual([{ includeUncertain: false }]));
+  expect(await screen.findByText(/Pending 1/)).toBeTruthy();
+  expect(
+    screen.queryByRole("button", { name: "Retry 1 failed recipient" }),
+  ).toBeNull();
+  expect(await screen.findByText("Resending the email")).toBeTruthy();
+  await waitFor(() =>
+    expect(
+      screen.getByText("Failed Person").closest("tr")?.textContent,
+    ).toContain("Pending"),
+  );
+});
+
+it("retries nothing when the confirmation is cancelled", async () => {
+  await openBatch();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Retry 1 failed recipient" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(retries).toEqual([]);
+  expect(
+    screen.getByRole("button", { name: "Retry 1 failed recipient" }),
+  ).toBeTruthy();
+});
+
+it("warns that uncertain recipients could get the email twice", async () => {
+  await openBatch();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Resend failed and uncertain" }),
+  );
+  expect(
+    within(screen.getByRole("dialog")).getByText(/could get it twice/),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+  await waitFor(() => expect(retries).toEqual([{ includeUncertain: true }]));
 });
 
 describe("while an email is still sending", () => {
@@ -157,4 +244,32 @@ describe("while an email is still sending", () => {
       ),
     ).toBeTruthy();
   });
+});
+
+it("offers to resend only uncertain recipients when none failed", async () => {
+  listed = [{ ...batch, counts: { ...batch.counts, failed: 0 } }];
+  await openBatch();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Resend uncertain" }),
+  );
+  expect(
+    within(screen.getByRole("dialog")).getByText(
+      /^Resends to 1 uncertain recipient\./,
+    ),
+  ).toBeTruthy();
+});
+
+it("says when a retry is refused and keeps offering it", async () => {
+  retryRefused = true;
+  await openBatch();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Retry 1 failed recipient" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+  expect(await screen.findByText("Waitlist email not found")).toBeTruthy();
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(
+    screen.getByRole("button", { name: "Retry 1 failed recipient" }),
+  ).toBeTruthy();
 });

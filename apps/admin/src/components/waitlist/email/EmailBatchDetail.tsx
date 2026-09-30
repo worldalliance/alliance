@@ -13,6 +13,7 @@ import {
   SENDING_POLL_MS,
   STATUS_LABELS,
 } from "../../../lib/waitlistEmail";
+import EmailRetryActions from "./EmailRetryActions";
 
 const SKIP_LABELS: Record<WaitlistEmailSkipReason, string> = {
   unsubscribed: "Unsubscribed",
@@ -37,6 +38,7 @@ const EmailBatchDetail: React.FC<{ batch: WaitlistEmailBatchDto }> = ({
 
   return (
     <div className="space-y-3 border-t border-zinc-100 bg-zinc-50 p-4 text-sm">
+      <EmailRetryActions batch={batch} />
       <pre className="whitespace-pre-wrap rounded border border-zinc-200 bg-white p-2 font-sans">
         {batch.body}
       </pre>
