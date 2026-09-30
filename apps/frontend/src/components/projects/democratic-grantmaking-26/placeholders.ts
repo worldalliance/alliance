@@ -72,9 +72,6 @@ export const MEMBERS: ProjectPerson[] = [
   },
 ];
 
-export const MEMBER_COUNT = 213;
-export const WAITLIST_COUNT = 309;
-
 const LOREM =
   "Lorem ipsum dolor sit amet consectetur adipiscing elit possimus in fugiat dolor minim veniam labore illum ducimus non sunt et velit nam nobis est dolore voluptas optio dolor vel praesentium nostrud minus cillum qui in do rerum praesentium libero cumque qui pariatur quibusdam aliquip nobis nihil eligendi laboris sunt est.";
 
