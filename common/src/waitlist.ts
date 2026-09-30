@@ -10,3 +10,6 @@ export const waitlistShareUrl = (baseUrl: string, code: string): string =>
 
 export const waitlistLinkUrl = (baseUrl: string, code: string): string =>
   waitlistUrl(baseUrl, WAITLIST_LINK_PARAM, code);
+
+export const WAITLIST_UNSUBSCRIBE_PATH = "/waitlist/unsubscribe";
+export const WAITLIST_UNSUBSCRIBE_PARAM = "token";
