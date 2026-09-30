@@ -21,6 +21,7 @@ type Props = {
   onEditingChange?: (editing: boolean) => void;
   placeholder?: string;
   disabled?: boolean;
+  accessibilityLabel?: string;
 };
 
 export default function PhoneNumberInput({
@@ -32,6 +33,7 @@ export default function PhoneNumberInput({
   onEditingChange,
   placeholder = "Enter phone number",
   disabled,
+  accessibilityLabel,
 }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -76,6 +78,7 @@ export default function PhoneNumberInput({
         </TouchableOpacity>
         <View className="w-px self-stretch my-2 bg-zinc-200" />
         <TextInput
+          accessibilityLabel={accessibilityLabel}
           className="flex-1 px-3 py-3 text-base"
           value={displayValue}
           onChangeText={changeText}
