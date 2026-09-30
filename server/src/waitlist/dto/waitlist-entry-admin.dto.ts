@@ -316,7 +316,10 @@ export class WaitlistEntryIdsBodyDto {
 }
 
 export class WaitlistChangeCountDto {
-  @ApiProperty({ description: "Entries the request changed" })
+  @ApiProperty({
+    description:
+      "How many the request changed: entries, or invites for a revocation",
+  })
   changed: number;
 
   constructor(changed: number) {

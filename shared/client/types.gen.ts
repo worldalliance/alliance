@@ -4512,7 +4512,7 @@ export type WaitlistEntryIdsBodyDto = {
 
 export type WaitlistChangeCountDto = {
     /**
-     * Entries the request changed
+     * How many the request changed: entries, or invites for a revocation
      */
     changed: number;
 };
@@ -13964,6 +13964,28 @@ export type WaitlistAdminUnmobilizeEntriesAdminResponses = {
 };
 
 export type WaitlistAdminUnmobilizeEntriesAdminResponse = WaitlistAdminUnmobilizeEntriesAdminResponses[keyof WaitlistAdminUnmobilizeEntriesAdminResponses];
+
+export type WaitlistAdminRevokeEntryInvitesAdminData = {
+    body: WaitlistEntryIdsBodyDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/entries/revoke-invites';
+};
+
+export type WaitlistAdminRevokeEntryInvitesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminRevokeEntryInvitesAdminError = WaitlistAdminRevokeEntryInvitesAdminErrors[keyof WaitlistAdminRevokeEntryInvitesAdminErrors];
+
+export type WaitlistAdminRevokeEntryInvitesAdminResponses = {
+    200: WaitlistChangeCountDto;
+};
+
+export type WaitlistAdminRevokeEntryInvitesAdminResponse = WaitlistAdminRevokeEntryInvitesAdminResponses[keyof WaitlistAdminRevokeEntryInvitesAdminResponses];
 
 export type WaitlistAdminFindLinksAdminData = {
     body?: never;

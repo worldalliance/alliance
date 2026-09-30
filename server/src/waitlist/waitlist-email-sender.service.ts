@@ -378,6 +378,9 @@ export class WaitlistEmailSender {
       .where('invite."waitlistEntryId" = :entryId', { entryId: entry.id })
       .andWhere(inviteClaimableSql("invite"))
       .orderBy("invite.id", "DESC")
+      .limit(1)
+      // Holds a revoke off until the recipient is recorded as sending it.
+      .setLock("pessimistic_read")
       .getOne();
     if (reusable) return { invite: reusable, issued: false };
     const communityId = entry.organization?.communityId ?? null;

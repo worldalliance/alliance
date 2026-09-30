@@ -15,6 +15,11 @@ import {
   WaitlistInviteState,
 } from "../src/waitlist/dto/waitlist-entry-admin.dto";
 import { WaitlistCohort } from "../src/waitlist/entities/waitlist-cohort.entity";
+import { WaitlistEmailBatch } from "../src/waitlist/entities/waitlist-email-batch.entity";
+import {
+  WaitlistEmailRecipient,
+  WaitlistEmailRecipientStatus,
+} from "../src/waitlist/entities/waitlist-email-recipient.entity";
 import {
   WaitlistEntryAction,
   WaitlistEntryActionKind,
@@ -22,7 +27,7 @@ import {
 import { WaitlistEntry } from "../src/waitlist/entities/waitlist-entry.entity";
 import { WaitlistLink } from "../src/waitlist/entities/waitlist-link.entity";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, TestContext, waitForLockWait } from "./e2e-test-utils";
 
 describe("Waitlist entry admin (e2e)", () => {
   let ctx: TestContext;
@@ -514,6 +519,134 @@ describe("Waitlist entry admin (e2e)", () => {
         .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({ entryIds: [] })
         .expect(401);
+    });
+  });
+
+  describe("revoking invites", () => {
+    it("revokes only invites signup could still claim, leaving mobilization alone", async () => {
+      const mobilizedAt = new Date("2026-01-01T00:00:00Z");
+      const entry = await saveEntry({ reason: "Revoked", mobilizedAt });
+      const unused = await saveInvite(entry, {});
+      const usedUnclaimed = await saveInvite(entry, {
+        status: OnetimeInviteStatus.LINK_USED,
+      });
+      const alreadyRevoked = new Date("2026-02-01T00:00:00Z");
+      const revoked = await saveInvite(entry, { deletedAt: alreadyRevoked });
+      const unselected = await saveInvite(
+        await saveEntry({ reason: "Not selected" }),
+        {},
+      );
+      const unrelated = await inviteRepo.save(
+        inviteRepo.create({
+          invitee: "Someone",
+          code: `invite-${Math.random()}`,
+          status: OnetimeInviteStatus.LINK_UNUSED,
+        }),
+      );
+      const claimedEntry = await saveEntry({ reason: "Claimed" });
+      const claimed = await saveInvite(claimedEntry, {
+        status: OnetimeInviteStatus.LINK_USED,
+      });
+      const userRepo = ctx.dataSource.getRepository(User);
+      await userRepo.save(
+        userRepo.create({
+          email: `claimant-${Math.random()}@example.com`,
+          password: "password",
+          name: "Claimant",
+          referralSource: ReferralSource.OnetimeInvite,
+          referredByInvite: claimed,
+        }),
+      );
+
+      const res = await request(server())
+        .post("/waitlist/admin/entries/revoke-invites")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ entryIds: [entry.id, claimedEntry.id] })
+        .expect(200);
+
+      expect(res.body.changed).toBe(2);
+      const deletedAt = async (invite: OnetimeInvite) =>
+        (await inviteRepo.findOneByOrFail({ id: invite.id })).deletedAt;
+      expect(await deletedAt(unused)).toEqual(expect.any(Date));
+      expect(await deletedAt(usedUnclaimed)).toEqual(expect.any(Date));
+      expect(await deletedAt(revoked)).toEqual(alreadyRevoked);
+      expect(await deletedAt(claimed)).toBeNull();
+      expect(await deletedAt(unselected)).toBeNull();
+      expect(await deletedAt(unrelated)).toBeNull();
+      expect(
+        (await entryRepo.findOneByOrFail({ id: entry.id })).mobilizedAt,
+      ).toEqual(mobilizedAt);
+      expect(
+        await searchIds({ inviteStates: [WaitlistInviteState.Revoked] }),
+      ).toContain(entry.id);
+    });
+
+    it("waits for a signup claiming the invite, then leaves it", async () => {
+      const entry = await saveEntry({ reason: "Claiming" });
+      const invite = await saveInvite(entry, {});
+      const runner = ctx.dataSource.createQueryRunner();
+      await runner.connect();
+      await runner.startTransaction();
+      try {
+        await runner.query(
+          `UPDATE onetime_invite SET status = $2, "usedAt" = now() WHERE id = $1`,
+          [invite.id, OnetimeInviteStatus.LINK_USED],
+        );
+        await runner.manager.save(
+          runner.manager.create(User, {
+            email: `claimant-${Math.random()}@example.com`,
+            password: "password",
+            name: "Claimant",
+            referralSource: ReferralSource.OnetimeInvite,
+            referredByInvite: invite,
+          }),
+        );
+        const revoke = request(server())
+          .post("/waitlist/admin/entries/revoke-invites")
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({ entryIds: [entry.id] })
+          .then((res) => res);
+        await waitForLockWait(ctx.dataSource);
+        await runner.commitTransaction();
+        expect((await revoke).body.changed).toBe(0);
+      } finally {
+        await runner.release();
+      }
+      expect(
+        (await inviteRepo.findOneByOrFail({ id: invite.id })).deletedAt,
+      ).toBeNull();
+    });
+
+    it("leaves an invite a waitlist email is sending", async () => {
+      const entry = await saveEntry({ reason: "Being emailed" });
+      const invite = await saveInvite(entry, {});
+      const batch = await ctx.dataSource
+        .getRepository(WaitlistEmailBatch)
+        .save({
+          requestId: crypto.randomUUID(),
+          subject: "Join",
+          body: "#{signupLink}",
+          mobilize: false,
+          includeClaimed: false,
+          staffUserId: null,
+        });
+      await ctx.dataSource.getRepository(WaitlistEmailRecipient).save({
+        batchId: batch.id,
+        entryId: entry.id,
+        status: WaitlistEmailRecipientStatus.Sending,
+        inviteId: invite.id,
+      });
+
+      const res = await request(server())
+        .post("/waitlist/admin/entries/revoke-invites")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ entryIds: [entry.id] })
+        .expect(200);
+
+      expect(res.body.changed).toBe(0);
+      expect(
+        (await inviteRepo.findOneByOrFail({ id: invite.id })).deletedAt,
+      ).toBeNull();
     });
   });
 

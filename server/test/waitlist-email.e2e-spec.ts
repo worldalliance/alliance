@@ -24,7 +24,7 @@ import { WaitlistEntry } from "../src/waitlist/entities/waitlist-entry.entity";
 import { WaitlistEmailSkipReason } from "../src/waitlist/waitlist-email-audience";
 import { WaitlistEmailSender } from "../src/waitlist/waitlist-email-sender.service";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, TestContext, waitForLockWait } from "./e2e-test-utils";
 
 describe("Waitlist email admin (e2e)", () => {
   let ctx: TestContext;
@@ -883,6 +883,92 @@ describe("Waitlist email admin (e2e)", () => {
       await asAdmin(
         request(server()).get("/waitlist/admin/emails/999999"),
       ).expect(404);
+    });
+  });
+
+  describe("revoking during a send", () => {
+    it("holds a revoke off, then leaves the invite a recipient is being sent", async () => {
+      const entry = await saveEntry();
+      const invite = await inviteRepo.save(
+        inviteRepo.create({
+          invitee: entry.name,
+          code: `invite-${Math.random()}`,
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          waitlistEntryId: entry.id,
+        }),
+      );
+      run.mockImplementationOnce(async () => {});
+      await send({ entryIds: [entry.id], body: "#{signupLink}" });
+      const mail = ctx.app.get(MailService);
+      const render = mail.renderWaitlistStaffEmail.bind(mail);
+      let rendering!: () => void;
+      const rendered = new Promise<void>((resolve) => (rendering = resolve));
+      let release!: () => void;
+      const released = new Promise<void>((resolve) => (release = resolve));
+      const spy = jest
+        .spyOn(mail, "renderWaitlistStaffEmail")
+        .mockImplementationOnce(async (params) => {
+          rendering();
+          await released;
+          return render(params);
+        });
+      let sent!: () => void;
+      const sendHeld = new Promise<void>((resolve) => (sent = resolve));
+      sendStaff.mockImplementationOnce(async () => {
+        await sendHeld;
+        return mailWith(EmailStatus.Sent);
+      });
+      try {
+        const sending = ctx.app.get(WaitlistEmailSender).run();
+        await rendered;
+        const revoke = asAdmin(
+          request(server()).post("/waitlist/admin/entries/revoke-invites"),
+        )
+          .send({ entryIds: [entry.id] })
+          .then((res) => res);
+        await waitForLockWait(ctx.dataSource);
+        release();
+        expect((await revoke).body.changed).toBe(0);
+        sent();
+        await sending;
+      } finally {
+        spy.mockRestore();
+      }
+      expect(
+        (await inviteRepo.findOneByOrFail({ id: invite.id })).deletedAt,
+      ).toBeNull();
+    });
+
+    it("waits for a revoke, then issues a new invite instead", async () => {
+      const entry = await saveEntry();
+      const invite = await inviteRepo.save(
+        inviteRepo.create({
+          invitee: entry.name,
+          code: `invite-${Math.random()}`,
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          waitlistEntryId: entry.id,
+        }),
+      );
+      run.mockImplementationOnce(async () => {});
+      const batch = await send({ entryIds: [entry.id], body: "#{signupLink}" });
+      const revoking = ctx.dataSource.createQueryRunner();
+      await revoking.connect();
+      try {
+        await revoking.startTransaction();
+        await revoking.manager.update(OnetimeInvite, invite.id, {
+          deletedAt: new Date(),
+        });
+        const sending = ctx.app.get(WaitlistEmailSender).run();
+        await waitForLockWait(ctx.dataSource);
+        await revoking.commitTransaction();
+        await sending;
+      } finally {
+        await revoking.release();
+      }
+      const [recipient] = await recipientsOf(batch.id);
+      expect(recipient.status).toBe(WaitlistEmailRecipientStatus.Sent);
+      expect(recipient.inviteId).not.toBeNull();
+      expect(recipient.inviteId).not.toBe(invite.id);
     });
   });
 
