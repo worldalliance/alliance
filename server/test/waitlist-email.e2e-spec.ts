@@ -705,5 +705,58 @@ describe("Waitlist email admin (e2e)", () => {
       ]);
       expect(sendStaff).not.toHaveBeenCalled();
     });
+
+    it("lists emails with their counts and shows one's recipients", async () => {
+      const entry = await saveEntry({ name: "Listed Person" });
+      const unsubscribed = await saveEntry({ unsubscribedAt: new Date() });
+      const older = await send({ entryIds: [entry.id] });
+      const batch = await send({
+        entryIds: [entry.id, unsubscribed.id],
+        subject: "Listed subject",
+      });
+
+      const listed = await asAdmin(
+        request(server()).get("/waitlist/admin/emails"),
+      ).expect(200);
+      expect(
+        listed.body
+          .slice(0, 2)
+          .map((listedBatch: { id: number }) => listedBatch.id),
+      ).toEqual([batch.id, older.id]);
+      expect(listed.body[0]).toMatchObject({
+        id: batch.id,
+        subject: "Listed subject",
+        body: "Welcome",
+        mobilize: false,
+        staffName: expect.any(String),
+        counts: { sent: 1, skipped: 1, pending: 0, failed: 0, uncertain: 0 },
+      });
+
+      const detail = await asAdmin(
+        request(server()).get(`/waitlist/admin/emails/${batch.id}`),
+      ).expect(200);
+      expect(detail.body.recipients).toEqual([
+        expect.objectContaining({
+          entryId: entry.id,
+          name: "Listed Person",
+          email: entry.email,
+          status: WaitlistEmailRecipientStatus.Sent,
+          acceptedAt: expect.any(String),
+          error: null,
+        }),
+        expect.objectContaining({
+          entryId: unsubscribed.id,
+          status: WaitlistEmailRecipientStatus.Skipped,
+          skipReason: WaitlistEmailSkipReason.Unsubscribed,
+          acceptedAt: null,
+        }),
+      ]);
+    });
+
+    it("answers 404 for an email that doesn't exist", async () => {
+      await asAdmin(
+        request(server()).get("/waitlist/admin/emails/999999"),
+      ).expect(404);
+    });
   });
 });

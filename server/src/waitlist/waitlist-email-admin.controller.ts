@@ -17,6 +17,7 @@ import type { JwtPayload } from "src/auth/tokens";
 import { ReqUser } from "src/auth/user.decorator";
 import {
   SendWaitlistEmailDto,
+  WaitlistEmailBatchDetailDto,
   WaitlistEmailBatchDto,
 } from "./dto/waitlist-email-batch.dto";
 import {
@@ -56,6 +57,23 @@ export class WaitlistEmailAdminController {
   ): Promise<WaitlistEmailBatchDto> {
     return new WaitlistEmailBatchDto(
       await this.emailService.send({ dto, staffUserId: user.sub }),
+    );
+  }
+
+  @Get("emails")
+  @ApiOkResponse({ type: WaitlistEmailBatchDto, isArray: true })
+  async findEmailsAdmin(): Promise<WaitlistEmailBatchDto[]> {
+    const summaries = await this.emailService.findSummaries();
+    return summaries.map((summary) => new WaitlistEmailBatchDto(summary));
+  }
+
+  @Get("emails/:id")
+  @ApiOkResponse({ type: WaitlistEmailBatchDetailDto })
+  async findEmailAdmin(
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<WaitlistEmailBatchDetailDto> {
+    return new WaitlistEmailBatchDetailDto(
+      await this.emailService.findDetail(id),
     );
   }
 

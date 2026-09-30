@@ -20,6 +20,7 @@ import type { Repository } from "src/utils/Repository";
 import { DataSource } from "typeorm";
 import type {
   SendWaitlistEmailDto,
+  WaitlistEmailBatchDetail,
   WaitlistEmailBatchSummary,
   WaitlistEmailCounts,
 } from "./dto/waitlist-email-batch.dto";
@@ -258,6 +259,18 @@ export class WaitlistEmailService {
     return counts;
   }
 
+  async findSummaries(): Promise<WaitlistEmailBatchSummary[]> {
+    const batches = await this.batchRepository.find({
+      relations: { staffUser: true },
+      order: { id: "DESC" },
+    });
+    const counts = await this.countsFor(batches.map((batch) => batch.id));
+    return batches.map((batch) => ({
+      batch,
+      counts: counts.get(batch.id) ?? zeroCounts(),
+    }));
+  }
+
   private async findSummary(id: number): Promise<WaitlistEmailBatchSummary> {
     const batch = await this.batchRepository.findOne({
       where: { id },
@@ -268,5 +281,26 @@ export class WaitlistEmailService {
     }
     const counts = await this.countsFor([id]);
     return { batch, counts: counts.get(id) ?? zeroCounts() };
+  }
+
+  async findDetail(id: number): Promise<WaitlistEmailBatchDetail> {
+    const [summary, recipients] = await Promise.all([
+      this.findSummary(id),
+      this.recipientRepository.find({
+        select: {
+          id: true,
+          entryId: true,
+          status: true,
+          skipReason: true,
+          error: true,
+          acceptedAt: true,
+          entry: { id: true, name: true, email: true },
+        },
+        where: { batchId: id },
+        relations: { entry: true },
+        order: { id: "ASC" },
+      }),
+    ]);
+    return { ...summary, recipients };
   }
 }

@@ -4674,6 +4674,33 @@ export type WaitlistEmailBatchDto = {
     counts: WaitlistEmailCountsDto;
 };
 
+export type WaitlistEmailRecipientStatus = 'pending' | 'sending' | 'sent' | 'failed' | 'uncertain' | 'skipped';
+
+export type WaitlistEmailSkipReason = 'unsubscribed' | 'invite_claimed';
+
+export type WaitlistEmailRecipientDto = {
+    id: number;
+    entryId: number;
+    name: string;
+    email: string;
+    status: WaitlistEmailRecipientStatus;
+    skipReason: WaitlistEmailSkipReason | null;
+    error: string | null;
+    acceptedAt: string | null;
+};
+
+export type WaitlistEmailBatchDetailDto = {
+    id: number;
+    subject: string;
+    body: string;
+    mobilize: boolean;
+    includeClaimed: boolean;
+    staffName: string | null;
+    createdAt: string;
+    counts: WaitlistEmailCountsDto;
+    recipients: Array<WaitlistEmailRecipientDto>;
+};
+
 export type WaitlistEmailTemplateDto = {
     id: number;
     name: string;
@@ -14241,6 +14268,28 @@ export type WaitlistEmailAdminPreviewEmailAdminResponses = {
 
 export type WaitlistEmailAdminPreviewEmailAdminResponse = WaitlistEmailAdminPreviewEmailAdminResponses[keyof WaitlistEmailAdminPreviewEmailAdminResponses];
 
+export type WaitlistEmailAdminFindEmailsAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/emails';
+};
+
+export type WaitlistEmailAdminFindEmailsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminFindEmailsAdminError = WaitlistEmailAdminFindEmailsAdminErrors[keyof WaitlistEmailAdminFindEmailsAdminErrors];
+
+export type WaitlistEmailAdminFindEmailsAdminResponses = {
+    200: Array<WaitlistEmailBatchDto>;
+};
+
+export type WaitlistEmailAdminFindEmailsAdminResponse = WaitlistEmailAdminFindEmailsAdminResponses[keyof WaitlistEmailAdminFindEmailsAdminResponses];
+
 export type WaitlistEmailAdminSendEmailAdminData = {
     body: SendWaitlistEmailDto;
     path?: never;
@@ -14262,6 +14311,30 @@ export type WaitlistEmailAdminSendEmailAdminResponses = {
 };
 
 export type WaitlistEmailAdminSendEmailAdminResponse = WaitlistEmailAdminSendEmailAdminResponses[keyof WaitlistEmailAdminSendEmailAdminResponses];
+
+export type WaitlistEmailAdminFindEmailAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/emails/{id}';
+};
+
+export type WaitlistEmailAdminFindEmailAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminFindEmailAdminError = WaitlistEmailAdminFindEmailAdminErrors[keyof WaitlistEmailAdminFindEmailAdminErrors];
+
+export type WaitlistEmailAdminFindEmailAdminResponses = {
+    200: WaitlistEmailBatchDetailDto;
+};
+
+export type WaitlistEmailAdminFindEmailAdminResponse = WaitlistEmailAdminFindEmailAdminResponses[keyof WaitlistEmailAdminFindEmailAdminResponses];
 
 export type WaitlistEmailAdminFindTemplatesAdminData = {
     body?: never;

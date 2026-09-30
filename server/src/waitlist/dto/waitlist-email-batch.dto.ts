@@ -1,7 +1,11 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsBoolean, IsUUID } from "class-validator";
 import type { WaitlistEmailBatch } from "../entities/waitlist-email-batch.entity";
-import { WaitlistEmailRecipientStatus } from "../entities/waitlist-email-recipient.entity";
+import {
+  type WaitlistEmailRecipient,
+  WaitlistEmailRecipientStatus,
+} from "../entities/waitlist-email-recipient.entity";
+import { WaitlistEmailSkipReason } from "../waitlist-email-audience";
 import { WaitlistEmailAudienceDto } from "./waitlist-email.dto";
 
 export class SendWaitlistEmailDto extends WaitlistEmailAudienceDto {
@@ -92,5 +96,70 @@ export class WaitlistEmailBatchDto {
     this.staffName = batch.staffUser?.name ?? null;
     this.createdAt = batch.createdAt;
     this.counts = new WaitlistEmailCountsDto(input.counts);
+  }
+}
+
+export class WaitlistEmailRecipientDto {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  entryId: number;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty({
+    enum: WaitlistEmailRecipientStatus,
+    enumName: "WaitlistEmailRecipientStatus",
+  })
+  status: WaitlistEmailRecipientStatus;
+
+  @ApiProperty({
+    enum: WaitlistEmailSkipReason,
+    enumName: "WaitlistEmailSkipReason",
+    nullable: true,
+  })
+  skipReason: WaitlistEmailSkipReason | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  error: string | null;
+
+  @ApiProperty({ type: Date, nullable: true })
+  acceptedAt: Date | null;
+
+  constructor(input: WaitlistEmailRecipient) {
+    if (!input.entry) {
+      throw new Error(
+        `entry of waitlist email recipient ${input.id} not loaded`,
+      );
+    }
+    this.id = input.id;
+    this.entryId = input.entryId;
+    this.name = input.entry.name;
+    this.email = input.entry.email;
+    this.status = input.status;
+    this.skipReason = input.skipReason;
+    this.error = input.error;
+    this.acceptedAt = input.acceptedAt;
+  }
+}
+
+export type WaitlistEmailBatchDetail = WaitlistEmailBatchSummary & {
+  recipients: WaitlistEmailRecipient[];
+};
+
+export class WaitlistEmailBatchDetailDto extends WaitlistEmailBatchDto {
+  @ApiProperty({ type: () => WaitlistEmailRecipientDto, isArray: true })
+  recipients: WaitlistEmailRecipientDto[];
+
+  constructor(input: WaitlistEmailBatchDetail) {
+    super(input);
+    this.recipients = input.recipients.map(
+      (recipient) => new WaitlistEmailRecipientDto(recipient),
+    );
   }
 }
