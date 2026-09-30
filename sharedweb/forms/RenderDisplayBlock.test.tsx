@@ -1,8 +1,10 @@
-import type {
-  AccordionBlock,
-  BigLinkBlock,
-  CopyTextBlock,
+import {
+  CopyTextFormat,
+  type AccordionBlock,
+  type BigLinkBlock,
+  type CopyTextBlock,
 } from "@alliance/common/forms/display-blocks";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { SiteAppProvider, SiteOriginLinkProvider } from "../ui/SiteAppProvider";
@@ -130,5 +132,74 @@ describe("the copytext display block", () => {
     fireEvent.click(screen.getByText("Dear council"));
 
     expect(await screen.findByText(label)).toBeTruthy();
+  });
+
+  it("follows a link in a rich block without copying", () => {
+    const write = jest.fn(() => Promise.resolve());
+    jest.spyOn(navigator.clipboard, "write").mockImplementation(write);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <SiteAppProvider>
+          <RenderDisplayBlock
+            block={{
+              ...copytext,
+              text: "See [the plan](https://example.org)",
+              format: CopyTextFormat.Markdown,
+            }}
+          />
+        </SiteAppProvider>
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByText("the plan"));
+
+    expect(write).not.toHaveBeenCalled();
+  });
+
+  it("doesn't copy on a click in a link's hover card", async () => {
+    const write = jest.fn(() => Promise.resolve());
+    jest.spyOn(navigator.clipboard, "write").mockImplementation(write);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <SiteAppProvider>
+          <RenderDisplayBlock
+            block={{
+              ...copytext,
+              text: "See [the plan](https://example.org/plan)",
+              format: CopyTextFormat.Markdown,
+            }}
+          />
+        </SiteAppProvider>
+      </QueryClientProvider>,
+    );
+
+    fireEvent.pointerEnter(screen.getByText("the plan"));
+    fireEvent.mouseEnter(screen.getByText("the plan"));
+    const card = await screen.findByText("example.org");
+    fireEvent.click(card);
+
+    expect(write).not.toHaveBeenCalled();
+  });
+
+  it("renders and copies markdown when rich", async () => {
+    const write = jest.fn(() => Promise.resolve());
+    jest.spyOn(navigator.clipboard, "write").mockImplementation(write);
+    render(
+      <SiteAppProvider>
+        <RenderDisplayBlock
+          block={{
+            ...copytext,
+            text: "Dear **council**",
+            format: CopyTextFormat.Markdown,
+          }}
+        />
+      </SiteAppProvider>,
+    );
+
+    fireEvent.click(screen.getByText("council"));
+
+    expect(screen.getByText("council").tagName).toBe("STRONG");
+    expect(await screen.findByText("Copied!")).toBeTruthy();
+    expect(write).toHaveBeenCalledTimes(1);
   });
 });

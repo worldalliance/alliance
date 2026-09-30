@@ -204,6 +204,7 @@ const renderDisplay = (block: DisplayBlock): string | null => {
         [
           ["kind", "copytext"],
           ["title", block.title],
+          ["format", block.format],
         ],
         escapeXml(block.text),
       );

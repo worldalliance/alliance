@@ -98,10 +98,16 @@ const bigLinkContentSchema = z.strictObject({
   icon: bigLinkIconSchema.optional(),
 });
 
+export enum CopyTextFormat {
+  Plain = "plain",
+  Markdown = "markdown",
+}
+
 const copyTextContentSchema = z.strictObject({
   ...baseContentFields,
   text: z.string(),
   title: z.string().optional(),
+  format: z.enum(CopyTextFormat).optional(),
 });
 
 const previousAnswerContentSchema = z.strictObject({

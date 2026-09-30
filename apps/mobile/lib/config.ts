@@ -1,4 +1,5 @@
 import { resolveUploadSrc, uploadSrc } from "@alliance/common/image-src";
+import { ALLIANCE_DOMAIN } from "@alliance/common/url";
 import { NativeModules, Platform } from "react-native";
 import { getVisualTestApiUrl } from "./visualTest";
 
@@ -44,6 +45,13 @@ export const getBaseUrl = (): string => {
   const apiUrl = getApiUrl();
   return apiUrl.replace(/\/api\/?$/, "") || "https://worldalliance.org";
 };
+
+/**
+ * Where links shared off the app point: thealliance.org in builds, the dev API
+ * server's origin under `__DEV__`.
+ */
+export const getShareBaseUrl = (): string =>
+  __DEV__ ? getBaseUrl() : `https://${ALLIANCE_DOMAIN}`;
 
 export const getImageSource = (key: string) =>
   uploadSrc({ key, apiUrl: getApiUrl() });
