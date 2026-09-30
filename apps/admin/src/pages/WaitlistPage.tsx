@@ -11,7 +11,7 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
 import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
-import { X } from "lucide-react";
+import { Mail, X } from "lucide-react";
 import React, {
   useCallback,
   useEffect,
@@ -20,6 +20,7 @@ import React, {
   useState,
 } from "react";
 import CohortControls from "../components/waitlist/CohortControls";
+import EmailComposer from "../components/waitlist/email/EmailComposer";
 import EntryActions from "../components/waitlist/EntryActions";
 import TagActions from "../components/waitlist/TagActions";
 import TagManager from "../components/waitlist/TagManager";
@@ -36,6 +37,7 @@ import {
   waitlistLinksQuery,
   waitlistTagsQuery,
 } from "../lib/waitlistAdminQueries";
+import type { EmailDraft } from "../lib/waitlistEmail";
 import { withFilterField } from "../lib/waitlistFilter";
 
 const PAGE_SIZE = 50;
@@ -49,6 +51,7 @@ const WaitlistPage: React.FC = () => {
   const [filtersKey, setFiltersKey] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const selectionVersion = useRef(0);
+  const [draft, setDraft] = useState<EmailDraft | null>(null);
 
   const changeSelection = useCallback((next: Set<number>) => {
     selectionVersion.current += 1;
@@ -193,8 +196,30 @@ const WaitlistPage: React.FC = () => {
             selectedIds={selectedIds}
             onChanged={() => changeSelection(new Set())}
           />
+          <button
+            type="button"
+            aria-label="Compose email"
+            title="Compose email"
+            className="rounded border border-zinc-300 bg-white p-1.5 text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+            disabled={draft !== null}
+            onClick={() => setDraft({ subject: "", body: "" })}
+          >
+            <Mail size={16} />
+          </button>
         </div>
       </div>
+
+      {draft && (
+        <EmailComposer
+          selectedIds={selectedIds}
+          initialDraft={draft}
+          onClose={() => setDraft(null)}
+          onSent={() => {
+            setDraft(null);
+            changeSelection(new Set());
+          }}
+        />
+      )}
 
       {loadError && <p className="text-sm text-red-500">{loadError}</p>}
 

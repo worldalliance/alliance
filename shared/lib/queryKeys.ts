@@ -1,4 +1,8 @@
-import type { EventType, WaitlistEntrySearchDto } from "../client/types.gen";
+import type {
+  EventType,
+  PreviewWaitlistEmailDto,
+  WaitlistEntrySearchDto,
+} from "../client/types.gen";
 import type { UseActivitiesProps } from "./useActivities";
 
 const activitiesAll = () => ["useActivities"] as const;
@@ -10,6 +14,9 @@ const onetimeInvitesAdminAll = () => ["userGetOnetimeInvitesAdmin"] as const;
 const formsAdminAll = () => ["formsAdmin"] as const;
 
 const projectsAdminAll = () => ["projectsAdmin"] as const;
+const waitlistEmailPreviewAdminAll = () =>
+  ["waitlistEmailAdminPreviewEmailAdmin"] as const;
+
 const waitlistEntriesAdminAll = () =>
   ["waitlistAdminSearchEntriesAdmin"] as const;
 
@@ -134,6 +141,9 @@ export const queryKeys = {
     ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
   usersAdmin: () => ["userListAdmin"] as const,
   waitlistCohortsAdmin: () => ["waitlistAdminFindCohortsAdmin"] as const,
+  waitlistEmailPreviewAdminAll,
+  waitlistEmailPreviewAdmin: (preview: PreviewWaitlistEmailDto) =>
+    [...waitlistEmailPreviewAdminAll(), preview] as const,
   waitlistEntriesAdminAll,
   waitlistEntriesAdmin: (search: WaitlistEntrySearchDto) =>
     [...waitlistEntriesAdminAll(), search] as const,

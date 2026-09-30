@@ -1,5 +1,7 @@
 import type {
   AdminWaitlistEntryDto,
+  PreviewWaitlistEmailDto,
+  WaitlistEmailPreviewDto,
   WaitlistEntrySearchDto,
 } from "@alliance/shared/client/types.gen";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
@@ -63,7 +65,33 @@ type WaitlistApiState = {
     updatedAt: string;
   }[];
   cohortCreateStatus: number;
+  previews: PreviewWaitlistEmailDto[];
+  previewStatus: number;
+  sendStatus: number;
+  previewServed: WaitlistEmailPreviewDto;
 };
+
+export const emailPreview = (
+  fields: Partial<WaitlistEmailPreviewDto> = {},
+): WaitlistEmailPreviewDto => ({
+  selected: 2,
+  unsubscribed: 0,
+  claimed: 0,
+  recipientIds: [1, 2],
+  waiting: 2,
+  withoutOrganization: 0,
+  withoutGroup: 0,
+  alreadySent: 0,
+  sample: {
+    entryId: 1,
+    name: "Person 1",
+    email: "person1@example.com",
+    subject: "Hi Person 1",
+    html: "<p>Welcome</p>",
+    missing: [],
+  },
+  ...fields,
+});
 
 const initialState = (): WaitlistApiState => ({
   searches: [],
@@ -89,6 +117,10 @@ const initialState = (): WaitlistApiState => ({
     },
   ],
   cohortCreateStatus: 200,
+  previews: [],
+  previewStatus: 200,
+  sendStatus: 200,
+  previewServed: emailPreview(),
 });
 
 export const api = initialState();
@@ -197,6 +229,40 @@ export const serveWaitlistApi = () => {
         return Response.json(
           api.cohortsServed.find((cohort) => cohort.id === Number(params.id)),
         );
+      },
+      "POST /waitlist/admin/emails/preview": async ({ request }) => {
+        api.previews.push(await request.json());
+        return Response.json(api.previewServed, { status: api.previewStatus });
+      },
+      "POST /waitlist/admin/emails": async (input) => {
+        const reply = recordPost({
+          id: 1,
+          subject: "Hi #{name}",
+          body: "Welcome",
+          mobilize: false,
+          includeClaimed: false,
+          staffName: "Staff",
+          createdAt: "2026-09-02T00:00:00.000Z",
+          counts: {
+            pending: 3,
+            sending: 0,
+            sent: 0,
+            failed: 0,
+            uncertain: 0,
+            skipped: 0,
+          },
+        });
+        const response = await reply(input);
+        return api.sendStatus === 200
+          ? response
+          : Response.json({}, { status: api.sendStatus });
+      },
+      "POST /waitlist/admin/emails/test": async ({ request }) => {
+        api.posts.push({
+          path: new URL(request.url).pathname,
+          body: await request.json(),
+        });
+        return new Response(null, { status: 204 });
       },
       "GET /waitlist/admin/tags": () =>
         api.tagsStatus === 200
