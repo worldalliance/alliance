@@ -27,6 +27,7 @@ export function useTagsAdmin(params?: { enabled?: boolean }) {
     // a disabled query is permanently pending
     isLoading,
     isError,
+    isLoadingError,
     refetch,
   } = useQuery({
     queryKey: QUERY_KEY,
@@ -84,6 +85,7 @@ export function useTagsAdmin(params?: { enabled?: boolean }) {
     tags,
     isLoading,
     isError,
+    isLoadingError,
     refetch,
     createTag,
     updateTag,

@@ -7,6 +7,7 @@ import type {
   FollowUpFormDto,
   TagDto,
 } from "@alliance/shared/client/types.gen";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { useInvalidateFormsIndex } from "@alliance/shared/lib/useFormsAdmin";
 import { parseFollowUpFormDto } from "@alliance/shared/parsed-dtos";
@@ -20,12 +21,15 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
 import CohortExpressionBuilder from "./CohortExpressionBuilder";
 import { FormBuilder } from "./FormBuilder";
 
 export interface ActionFollowUpFormsTabProps {
   action: AdminActionDto;
   availableTags: TagDto[];
+  tagsLoading: boolean;
+  tagsError: boolean;
   availableActions: { id: number; name: string }[];
   availableUsers: UserSelectUser[];
 }
@@ -46,6 +50,8 @@ function followUpFormLabel(fuf: FollowUpFormDto): string {
 export default function ActionFollowUpFormsTab({
   action,
   availableTags,
+  tagsLoading,
+  tagsError,
   availableActions,
   availableUsers,
 }: ActionFollowUpFormsTabProps) {
@@ -148,11 +154,16 @@ export default function ActionFollowUpFormsTab({
             cohortExpression: fields.cohortExpression,
           },
         }),
+        (thrown) => {
+          console.error("Failed to save follow-up form fields", thrown);
+          return thrownRefusalMessage({
+            error: thrown,
+            fallback: "Failed to save follow-up form fields",
+            sessionExpired: sessionExpiredMessage,
+          });
+        },
       );
-      if (!result.ok) {
-        console.error("Failed to save follow-up form fields", result.error);
-        pushError("Failed to save follow-up form fields");
-      }
+      if (!result.ok) pushError(result.error);
     },
     [updateFollowUpForm, pushError],
   );
@@ -256,6 +267,8 @@ export default function ActionFollowUpFormsTab({
           savingFields={savingFollowUpFormIds.has(selectedForm.id)}
           deleting={deletingFollowUpFormIds.has(selectedForm.id)}
           availableTags={availableTags}
+          tagsLoading={tagsLoading}
+          tagsError={tagsError}
           availableActions={availableActions}
           availableUsers={availableUsers}
         />
@@ -282,6 +295,8 @@ interface FollowUpFormCardProps {
   savingFields: boolean;
   deleting: boolean;
   availableTags: TagDto[];
+  tagsLoading: boolean;
+  tagsError: boolean;
   availableActions: { id: number; name: string }[];
   availableUsers: UserSelectUser[];
 }
@@ -295,6 +310,8 @@ function FollowUpFormCard({
   savingFields,
   deleting,
   availableTags,
+  tagsLoading,
+  tagsError,
   availableActions,
   availableUsers,
 }: FollowUpFormCardProps) {
@@ -379,6 +396,8 @@ function FollowUpFormCard({
             value={cohortExpr}
             onChange={setCohortExpr}
             availableTags={availableTags}
+            tagsLoading={tagsLoading}
+            tagsError={tagsError}
             availableActions={availableActions}
             availableUsers={availableUsers}
           />

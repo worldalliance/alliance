@@ -1,11 +1,10 @@
-import { Module, OnModuleInit, forwardRef } from "@nestjs/common";
+import { Module, forwardRef } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { CampaignModule } from "src/campaign/campaign.module";
 import { CommunityModule } from "src/community/community.module";
 import { CommunityInvite } from "src/community/entities/community-invite.entity";
 import { Community } from "src/community/entities/community.entity";
-import { ALL_MEMBERS_TAG_NAME } from "src/constants";
 import { EventLogModule } from "src/eventlog/eventlog.module";
 import { ImagesModule } from "src/images/images.module";
 import { MailModule } from "src/mail/mail.module";
@@ -64,16 +63,4 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
   providers: [UserService, IsUserAlreadyExist],
   exports: [UserService],
 })
-export class UserModule implements OnModuleInit {
-  constructor(private readonly userService: UserService) {}
-
-  async onModuleInit() {
-    const existing = await this.userService.findAllMembersTag();
-    if (!existing) {
-      await this.userService.createTag({
-        name: ALL_MEMBERS_TAG_NAME,
-        description: "Every Alliance member",
-      });
-    }
-  }
-}
+export class UserModule {}

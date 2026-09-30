@@ -225,7 +225,11 @@ const ActionDashboard: React.FC = () => {
     cancel: cancelCoverImage,
     reset: resetCoverImage,
   } = useCoverImage();
-  const { tags: availableTags, isLoading: tagsLoading } = useTagsAdmin();
+  const {
+    tags: availableTags,
+    isLoading: tagsLoading,
+    isLoadingError: tagsError,
+  } = useTagsAdmin();
   const invalidateFormsIndex = useInvalidateFormsIndex();
   const [availableSuites, setAvailableSuites] = useState<ActionSuiteDto[]>([]);
   const [suitesLoading, setSuitesLoading] = useState<boolean>(true);
@@ -1006,6 +1010,7 @@ const ActionDashboard: React.FC = () => {
             onCancel={handleCancel}
             availableTags={availableTags}
             tagsLoading={tagsLoading}
+            tagsError={tagsError}
             availableSuites={availableSuites}
             suitesLoading={suitesLoading}
             availableUsers={availableUsers}
@@ -1582,6 +1587,7 @@ const ActionDashboard: React.FC = () => {
                   baseUrl={baseUrl}
                   availableTags={availableTags}
                   tagsLoading={tagsLoading}
+                  tagsError={tagsError}
                   availableSuites={availableSuites}
                   suitesLoading={suitesLoading}
                   availableUsers={availableUsers}
@@ -1637,6 +1643,8 @@ const ActionDashboard: React.FC = () => {
               <ActionFollowUpFormsTab
                 action={action}
                 availableTags={availableTags}
+                tagsLoading={tagsLoading}
+                tagsError={tagsError}
                 availableActions={allActions}
                 availableUsers={availableUsers}
               />
