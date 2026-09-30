@@ -4422,6 +4422,73 @@ export type WaitlistCountDto = {
     waiting: number;
 };
 
+export type WaitlistInviteState = 'none' | 'unused' | 'claimed' | 'revoked';
+
+export type WaitlistEntryFilterDto = {
+    /**
+     * Matches part of a name or email
+     */
+    search?: string | null;
+    organizationIds?: Array<number>;
+    sourceLinkIds?: Array<number>;
+    referrerIds?: Array<number>;
+    joinedFrom?: string;
+    joinedBefore?: string;
+    mobilized?: boolean;
+    subscribed?: boolean;
+    hasReason?: boolean;
+    inviteStates?: Array<WaitlistInviteState>;
+};
+
+export type WaitlistEntrySort = 'joined_desc' | 'joined_asc' | 'organization_asc' | 'organization_desc';
+
+export type WaitlistEntrySearchDto = {
+    filter: WaitlistEntryFilterDto;
+    sort: WaitlistEntrySort;
+    offset: number;
+    limit: number;
+};
+
+export type WaitlistNamedRefDto = {
+    id: number;
+    name: string;
+};
+
+export type WaitlistSourceLinkDto = {
+    id: number;
+    channel: string;
+};
+
+export type AdminWaitlistEntryDto = {
+    id: number;
+    name: string;
+    email: string;
+    reason: string | null;
+    organization: WaitlistNamedRefDto | null;
+    sourceLink: WaitlistSourceLinkDto | null;
+    referrer: WaitlistNamedRefDto | null;
+    createdAt: string;
+    mobilizedAt: string | null;
+    unsubscribedAt: string | null;
+    inviteState: WaitlistInviteState;
+};
+
+export type WaitlistEntryPageDto = {
+    entries: Array<AdminWaitlistEntryDto>;
+    /**
+     * Entries matching the filter, on every page
+     */
+    total: number;
+};
+
+export type WaitlistEntryFilterBodyDto = {
+    filter: WaitlistEntryFilterDto;
+};
+
+export type WaitlistEntryIdsDto = {
+    ids: Array<number>;
+};
+
 export type AdminWaitlistLinkDto = {
     id: number;
     code: string;
@@ -13565,6 +13632,50 @@ export type WaitlistCountResponses = {
 };
 
 export type WaitlistCountResponse = WaitlistCountResponses[keyof WaitlistCountResponses];
+
+export type WaitlistAdminSearchEntriesAdminData = {
+    body: WaitlistEntrySearchDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/entries/search';
+};
+
+export type WaitlistAdminSearchEntriesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminSearchEntriesAdminError = WaitlistAdminSearchEntriesAdminErrors[keyof WaitlistAdminSearchEntriesAdminErrors];
+
+export type WaitlistAdminSearchEntriesAdminResponses = {
+    200: WaitlistEntryPageDto;
+};
+
+export type WaitlistAdminSearchEntriesAdminResponse = WaitlistAdminSearchEntriesAdminResponses[keyof WaitlistAdminSearchEntriesAdminResponses];
+
+export type WaitlistAdminFindEntryIdsAdminData = {
+    body: WaitlistEntryFilterBodyDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/entries/ids';
+};
+
+export type WaitlistAdminFindEntryIdsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminFindEntryIdsAdminError = WaitlistAdminFindEntryIdsAdminErrors[keyof WaitlistAdminFindEntryIdsAdminErrors];
+
+export type WaitlistAdminFindEntryIdsAdminResponses = {
+    200: WaitlistEntryIdsDto;
+};
+
+export type WaitlistAdminFindEntryIdsAdminResponse = WaitlistAdminFindEntryIdsAdminResponses[keyof WaitlistAdminFindEntryIdsAdminResponses];
 
 export type WaitlistAdminFindLinksAdminData = {
     body?: never;

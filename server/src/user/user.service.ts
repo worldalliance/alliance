@@ -77,7 +77,6 @@ import {
   DataSource,
   DeepPartial,
   type EntityManager,
-  type FindOptionsWhere,
   ILike,
   In,
   IsNull,
@@ -143,6 +142,7 @@ import {
   sqlUserHasActiveContractAt,
   User,
 } from "./entities/user.entity";
+import { CLAIMABLE_INVITE } from "./invite-claim";
 import { type FriendsAcceptedPayload, UserEvents } from "./user.events";
 import { referralLabel } from "./user.utils";
 
@@ -222,24 +222,6 @@ const SIGNUP_SOCIAL_PROOF_COUNT = 5;
 
 /** A ceiling on the caller's count: the endpoint is public and unpaginated. */
 const SIGNUP_SOCIAL_PROOF_MAX = 24;
-
-// A `link_used` invite with no claimant stays claimable: signups before claims
-// became transactional could mark one used and then fail, and deleting an
-// account leaves its invite used.
-const INVITE_STATUS_CLAIMABLE: Record<OnetimeInviteStatus, boolean> = {
-  [OnetimeInviteStatus.REQUEST_PENDING]: false,
-  [OnetimeInviteStatus.REQUEST_REJECTED]: false,
-  [OnetimeInviteStatus.LINK_UNUSED]: true,
-  [OnetimeInviteStatus.LINK_USED]: true,
-};
-const CLAIMABLE_INVITE_STATUSES = Object.values(OnetimeInviteStatus).filter(
-  (status) => INVITE_STATUS_CLAIMABLE[status],
-);
-/** Claimable only while `inviteHasClaimant` is false as well. */
-const CLAIMABLE_INVITE = {
-  deletedAt: IsNull(),
-  status: In(CLAIMABLE_INVITE_STATUSES),
-} satisfies FindOptionsWhere<OnetimeInvite>;
 
 @Injectable()
 export class UserService {

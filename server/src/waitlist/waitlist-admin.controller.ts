@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseIntPipe,
   Patch,
@@ -11,16 +13,45 @@ import {
 import { ApiOkResponse } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import {
+  WaitlistEntryFilterBodyDto,
+  WaitlistEntryIdsDto,
+  WaitlistEntryPageDto,
+  WaitlistEntrySearchDto,
+} from "./dto/waitlist-entry-admin.dto";
+import {
   AdminWaitlistLinkDto,
   CreateWaitlistLinkDto,
   UpdateWaitlistLinkDto,
 } from "./dto/waitlist-link.dto";
+import { WaitlistEntryAdminService } from "./waitlist-entry-admin.service";
 import { WaitlistLinkService } from "./waitlist-link.service";
 
 @Controller("waitlist/admin")
 @UseGuards(AdminGuard)
 export class WaitlistAdminController {
-  constructor(private readonly linkService: WaitlistLinkService) {}
+  constructor(
+    private readonly linkService: WaitlistLinkService,
+    private readonly entryService: WaitlistEntryAdminService,
+  ) {}
+
+  @Post("entries/search")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: WaitlistEntryPageDto })
+  async searchEntriesAdmin(
+    @Body() dto: WaitlistEntrySearchDto,
+  ): Promise<WaitlistEntryPageDto> {
+    return new WaitlistEntryPageDto(await this.entryService.search(dto));
+  }
+
+  /** Every matching entry, for acting on a selection across pages. */
+  @Post("entries/ids")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: WaitlistEntryIdsDto })
+  async findEntryIdsAdmin(
+    @Body() dto: WaitlistEntryFilterBodyDto,
+  ): Promise<WaitlistEntryIdsDto> {
+    return new WaitlistEntryIdsDto(await this.entryService.findIds(dto.filter));
+  }
 
   @Get("links")
   @ApiOkResponse({ type: AdminWaitlistLinkDto, isArray: true })

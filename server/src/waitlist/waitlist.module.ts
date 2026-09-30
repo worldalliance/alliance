@@ -10,6 +10,7 @@ import { WaitlistLink } from "./entities/waitlist-link.entity";
 import { WaitlistMailAllowance } from "./entities/waitlist-mail-allowance.entity";
 import { WaitlistAdminController } from "./waitlist-admin.controller";
 import { WaitlistBrowserService } from "./waitlist-browser.service";
+import { WaitlistEntryAdminService } from "./waitlist-entry-admin.service";
 import { WaitlistLinkService } from "./waitlist-link.service";
 import { WaitlistMailService } from "./waitlist-mail.service";
 import { WaitlistController } from "./waitlist.controller";
@@ -34,6 +35,7 @@ import { WaitlistService } from "./waitlist.service";
     WaitlistMailService,
     WaitlistBrowserService,
     WaitlistLinkService,
+    WaitlistEntryAdminService,
   ],
 })
 export class WaitlistModule {}
