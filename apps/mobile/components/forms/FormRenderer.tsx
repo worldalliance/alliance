@@ -86,14 +86,11 @@ import {
   useVisibilityValidatorResults,
 } from "@alliance/shared/useFormRenderer";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { milliseconds } from "date-fns";
 import { DeviceType, deviceType as expoDeviceType } from "expo-device";
 import { router } from "expo-router";
 import {
-  Check,
   ChevronDown,
   CircleCheck,
-  Copy,
   Ellipsis,
   File,
   FileCheck,
@@ -111,7 +108,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { copyOrAlert } from "../../lib/clipboard";
 import { resolveImageSource } from "../../lib/config";
 import { getImageLoadSize } from "../../lib/imageLoadSize";
 import { colors } from "../../lib/style/colors";
@@ -123,6 +119,7 @@ import ProfileImage from "../ProfileImage";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Checkbox from "../system/Checkbox";
 import Text, { FontWeight } from "../system/Text";
+import CopyTextDisplay from "./CopyTextDisplay";
 import FormModal from "./FormModal";
 import HtmlBlock from "./HtmlBlock";
 import { RenderField } from "./RenderField";
@@ -181,51 +178,6 @@ const detectDeviceType = (): DeviceVisibilityTarget => {
 };
 
 const DEVICE_TYPE: DeviceVisibilityTarget = detectDeviceType();
-
-function CopyTextDisplayMobile({
-  text,
-  title,
-}: {
-  text: string;
-  title?: string;
-}) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    if (!(await copyOrAlert(text))) {
-      return;
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), milliseconds({ seconds: 2 }));
-  };
-
-  return (
-    <View>
-      {title ? (
-        <Text className="text-sm text-zinc-500 mb-1">{title}</Text>
-      ) : null}
-      <TouchableOpacity
-        className="relative rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-3"
-        onPress={handleCopy}
-        activeOpacity={0.7}
-      >
-        <Text>{text}</Text>
-        <View className="absolute top-1.5 right-1.5 flex-row items-center gap-1 bg-zinc-50 border border-zinc-200 px-1.5 py-0.5 rounded">
-          {copied ? (
-            <>
-              <Text className="text-sm text-green" weight={FontWeight.Medium}>
-                Copied!
-              </Text>
-              <Check size={14} className="text-green" />
-            </>
-          ) : (
-            <Copy size={14} className="text-gray-400" />
-          )}
-        </View>
-      </TouchableOpacity>
-    </View>
-  );
-}
 
 const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }>> = {
   "messages-square": MessagesSquare,
@@ -533,7 +485,7 @@ export function RenderDisplayBlockMobile({
         </TouchableOpacity>
       );
     case "copytext":
-      return <CopyTextDisplayMobile text={block.text} title={block.title} />;
+      return <CopyTextDisplay text={block.text} title={block.title} />;
     case "accordion":
       if (block.sections.length === 0) return null;
       return <AccordionDisplayMobile block={block} />;
