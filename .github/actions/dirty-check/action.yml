@@ -1,0 +1,15 @@
+name: Dirty check
+description: Fail when the checkout has a non-empty dirty.txt, which freezes production releases.
+
+runs:
+  using: composite
+  steps:
+    - name: Abort if dirty.txt has content
+      shell: bash
+      run: |
+        if [ -f dirty.txt ] && [ -s dirty.txt ]; then
+          echo "dirty.txt has content. Aborting."
+          exit 1
+        else
+          echo "dirty.txt is empty or not found. Continuing."
+        fi

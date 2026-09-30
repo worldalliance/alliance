@@ -20,15 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Abort if dirty.txt has content
+      - uses: ./.github/actions/dirty-check
         if: ${{ github.ref_name == 'production' }}
-        run: |
-          if [ -f dirty.txt ] && [ -s dirty.txt ]; then
-            echo "dirty.txt has content. Aborting."
-            exit 1
-          else
-            echo "dirty.txt is empty or not found. Continuing."
-          fi
 
   test-backend-e2e:
     uses: ./.github/workflows/test-backend-e2e.yaml
