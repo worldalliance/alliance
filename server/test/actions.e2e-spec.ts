@@ -2,7 +2,10 @@ import { ActionActivityType } from "@alliance/common/actionActivity";
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { milliseconds } from "date-fns";
 import { ActionCategory } from "src/actions/action-category";
-import { ActionsService } from "src/actions/actions.service";
+import {
+  ActionsService,
+  GLOBAL_FEED_FACEPILE_LIMIT,
+} from "src/actions/actions.service";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { SingleMemberCohortService } from "src/actions/single-member-cohort.service";
 import { ContractService } from "src/contract/contract.service";
@@ -2704,24 +2707,29 @@ describe("Actions (e2e)", () => {
   });
 
   describe("Global feed", () => {
-    let userA: User | null = null;
-    let userB: User | null = null;
+    let activeUser: User | null = null;
+    let suspendedUser: User | null = null;
+    let facepileUsers: User[] = [];
 
     afterEach(async () => {
-      if (userA) {
-        await userRepo.delete(userA.id);
-        userA = null;
+      if (activeUser) {
+        await userRepo.delete(activeUser.id);
+        activeUser = null;
       }
-      if (userB) {
-        await userRepo.delete(userB.id);
-        userB = null;
+      if (suspendedUser) {
+        await userRepo.delete(suspendedUser.id);
+        suspendedUser = null;
       }
+      for (const user of facepileUsers) {
+        await userRepo.delete(user.id);
+      }
+      facepileUsers = [];
     });
 
     it("excludes suspended members from new member feed items", async () => {
       const now = Date.now();
 
-      userA = await userService.create({
+      activeUser = await userService.create({
         email: `active-${now}@example.com`,
         password: "Password123!",
         name: "Active Member",
@@ -2736,7 +2744,7 @@ describe("Actions (e2e)", () => {
         ],
       });
 
-      userB = await userService.create({
+      suspendedUser = await userService.create({
         email: `suspended-${now}@example.com`,
         password: "Password123!",
         name: "Suspended Member",
@@ -2770,45 +2778,36 @@ describe("Actions (e2e)", () => {
         (user) => user.id,
       );
 
-      expect(newMemberIds).toContain(userA.id);
-      expect(newMemberIds).not.toContain(userB.id);
+      expect(newMemberIds).toContain(activeUser.id);
+      expect(newMemberIds).not.toContain(suspendedUser.id);
     });
 
-    it("puts a member with a profile picture ahead of a more recent one without", async () => {
+    it("keeps a member with a profile picture in the facepile past a full run of more recent ones without", async () => {
       const now = Date.now();
+      const createMember = (label: string, joinedMinutesAgo: number) =>
+        userService.create({
+          email: `${label}-${now}@example.com`,
+          password: "Password123!",
+          name: label,
+          tags: [ctx.defaultTag],
+          contractEvents: [
+            {
+              type: ContractEventType.SIGNED,
+              date: new Date(now - milliseconds({ minutes: joinedMinutesAgo })),
+              automatic: false,
+              contractId: ctx.defaultContractId,
+            },
+          ],
+        });
 
-      userA = await userService.create({
-        email: `no-photo-${now}@example.com`,
-        password: "Password123!",
-        name: "No Photo Member",
-        tags: [ctx.defaultTag],
-        contractEvents: [
-          {
-            type: ContractEventType.SIGNED,
-            date: new Date(now - milliseconds({ minutes: 1 })),
-            automatic: false,
-            contractId: ctx.defaultContractId,
-          },
-        ],
-      });
-
-      userB = await userService.create({
-        email: `with-photo-${now}@example.com`,
-        password: "Password123!",
-        name: "Photo Member",
-        tags: [ctx.defaultTag],
-        contractEvents: [
-          {
-            type: ContractEventType.SIGNED,
-            date: new Date(now - milliseconds({ minutes: 2 })),
-            automatic: false,
-            contractId: ctx.defaultContractId,
-          },
-        ],
-      });
-      await userRepo.update(userB.id, {
+      const photoUser = await createMember("with-photo", 30);
+      facepileUsers.push(photoUser);
+      await userRepo.update(photoUser.id, {
         profilePicture: "https://example.com/photo.jpg",
       });
+      for (let i = 1; i <= GLOBAL_FEED_FACEPILE_LIMIT; i++) {
+        facepileUsers.push(await createMember(`no-photo-${i}`, i));
+      }
 
       const res = await request(ctx.app.getHttpServer())
         .get("/actions/globalFeed")
@@ -2824,10 +2823,10 @@ describe("Actions (e2e)", () => {
         (user) => user.id,
       );
 
-      expect(newMemberIds.indexOf(userB.id)).toBeLessThan(
-        newMemberIds.indexOf(userA.id),
+      expect(newMemberIds).toContain(photoUser.id);
+      expect(newMembersItem.newMembers.count).toBeGreaterThan(
+        GLOBAL_FEED_FACEPILE_LIMIT,
       );
-      expect(newMembersItem.newMembers.count).toBeGreaterThanOrEqual(2);
       expect(new Date(newMembersItem.date).getTime()).toBeGreaterThanOrEqual(
         now - milliseconds({ minutes: 1 }),
       );

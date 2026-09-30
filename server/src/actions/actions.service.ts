@@ -276,7 +276,7 @@ export type MissedActionReminderContext = {
 };
 
 /** Facepile preview size; member-list endpoints paginate full lists. */
-const GLOBAL_FEED_FACEPILE_LIMIT = 8;
+export const GLOBAL_FEED_FACEPILE_LIMIT = 8;
 
 /** Feed/member-list rolling window. */
 const GLOBAL_FEED_WINDOW_DAYS = 8;
@@ -5073,8 +5073,8 @@ export class ActionsService {
   /**
    * Orders the facepile preview by profile picture first, then recency, so
    * recent photo-less joins don't crowd out photos from earlier in the
-   * window. `totalCount`/`windowLatestAt` are window-wide aggregates, not
-   * read off the first row, since that row no longer means "most recent".
+   * window. `windowLatestAt` is a window-wide MAX because the first row is
+   * photo-first, not the most recent.
    */
   private async queryFeedMemberSummary({
     rankedSql,
