@@ -13,6 +13,8 @@ import {
 } from "@nestjs/common";
 import { ApiNoContentResponse, ApiOkResponse } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
+import type { JwtPayload } from "src/auth/tokens";
+import { ReqUser } from "src/auth/user.decorator";
 import {
   WaitlistChangeCountDto,
   WaitlistEntryFilterBodyDto,
@@ -61,6 +63,38 @@ export class WaitlistAdminController {
     @Body() dto: WaitlistEntryFilterBodyDto,
   ): Promise<WaitlistEntryIdsDto> {
     return new WaitlistEntryIdsDto(await this.entryService.findIds(dto.filter));
+  }
+
+  @Post("entries/mobilize")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: WaitlistChangeCountDto })
+  async mobilizeEntriesAdmin(
+    @ReqUser() user: JwtPayload,
+    @Body() dto: WaitlistEntryIdsBodyDto,
+  ): Promise<WaitlistChangeCountDto> {
+    return new WaitlistChangeCountDto(
+      await this.entryService.setMobilized({
+        entryIds: dto.entryIds,
+        mobilized: true,
+        staffUserId: user.sub,
+      }),
+    );
+  }
+
+  @Post("entries/unmobilize")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: WaitlistChangeCountDto })
+  async unmobilizeEntriesAdmin(
+    @ReqUser() user: JwtPayload,
+    @Body() dto: WaitlistEntryIdsBodyDto,
+  ): Promise<WaitlistChangeCountDto> {
+    return new WaitlistChangeCountDto(
+      await this.entryService.setMobilized({
+        entryIds: dto.entryIds,
+        mobilized: false,
+        staffUserId: user.sub,
+      }),
+    );
   }
 
   @Get("links")

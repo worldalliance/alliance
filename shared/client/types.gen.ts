@@ -4499,6 +4499,17 @@ export type WaitlistEntryIdsDto = {
     ids: Array<number>;
 };
 
+export type WaitlistEntryIdsBodyDto = {
+    entryIds: Array<number>;
+};
+
+export type WaitlistChangeCountDto = {
+    /**
+     * Entries the request changed
+     */
+    changed: number;
+};
+
 export type AdminWaitlistLinkDto = {
     id: number;
     code: string;
@@ -4539,17 +4550,6 @@ export type AdminWaitlistTagDto = {
 
 export type SaveWaitlistTagDto = {
     name: string;
-};
-
-export type WaitlistEntryIdsBodyDto = {
-    entryIds: Array<number>;
-};
-
-export type WaitlistChangeCountDto = {
-    /**
-     * Entries the request changed
-     */
-    changed: number;
 };
 
 export type HeyApiError = {
@@ -13707,6 +13707,50 @@ export type WaitlistAdminFindEntryIdsAdminResponses = {
 };
 
 export type WaitlistAdminFindEntryIdsAdminResponse = WaitlistAdminFindEntryIdsAdminResponses[keyof WaitlistAdminFindEntryIdsAdminResponses];
+
+export type WaitlistAdminMobilizeEntriesAdminData = {
+    body: WaitlistEntryIdsBodyDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/entries/mobilize';
+};
+
+export type WaitlistAdminMobilizeEntriesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminMobilizeEntriesAdminError = WaitlistAdminMobilizeEntriesAdminErrors[keyof WaitlistAdminMobilizeEntriesAdminErrors];
+
+export type WaitlistAdminMobilizeEntriesAdminResponses = {
+    200: WaitlistChangeCountDto;
+};
+
+export type WaitlistAdminMobilizeEntriesAdminResponse = WaitlistAdminMobilizeEntriesAdminResponses[keyof WaitlistAdminMobilizeEntriesAdminResponses];
+
+export type WaitlistAdminUnmobilizeEntriesAdminData = {
+    body: WaitlistEntryIdsBodyDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/entries/unmobilize';
+};
+
+export type WaitlistAdminUnmobilizeEntriesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminUnmobilizeEntriesAdminError = WaitlistAdminUnmobilizeEntriesAdminErrors[keyof WaitlistAdminUnmobilizeEntriesAdminErrors];
+
+export type WaitlistAdminUnmobilizeEntriesAdminResponses = {
+    200: WaitlistChangeCountDto;
+};
+
+export type WaitlistAdminUnmobilizeEntriesAdminResponse = WaitlistAdminUnmobilizeEntriesAdminResponses[keyof WaitlistAdminUnmobilizeEntriesAdminResponses];
 
 export type WaitlistAdminFindLinksAdminData = {
     body?: never;

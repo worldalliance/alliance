@@ -5,6 +5,7 @@ import { MailModule } from "src/mail/mail.module";
 import { User } from "src/user/entities/user.entity";
 import { UserModule } from "src/user/user.module";
 import { WaitlistBrowser } from "./entities/waitlist-browser.entity";
+import { WaitlistEntryAction } from "./entities/waitlist-entry-action.entity";
 import { WaitlistEntryTag } from "./entities/waitlist-entry-tag.entity";
 import { WaitlistEntry } from "./entities/waitlist-entry.entity";
 import { WaitlistLink } from "./entities/waitlist-link.entity";
@@ -25,6 +26,7 @@ import { WaitlistService } from "./waitlist.service";
       User,
       WaitlistBrowser,
       WaitlistEntry,
+      WaitlistEntryAction,
       WaitlistEntryTag,
       WaitlistLink,
       WaitlistMailAllowance,

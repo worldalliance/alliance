@@ -10,6 +10,7 @@ import {
   WaitlistEntrySort,
   WaitlistInviteState,
 } from "./dto/waitlist-entry-admin.dto";
+import { WaitlistEntryActionKind } from "./entities/waitlist-entry-action.entity";
 import { WaitlistEntry } from "./entities/waitlist-entry.entity";
 import { WaitlistTagService } from "./waitlist-tag.service";
 
@@ -175,5 +176,37 @@ export class WaitlistEntryAdminService {
       .orderBy("entry.id")
       .getRawMany<{ id: number }>();
     return rows.map((row) => row.id);
+  }
+
+  /**
+   * Sets or clears the mobilized time of the entries whose status differs,
+   * recording each change. Resolves to how many changed.
+   */
+  async setMobilized(params: {
+    entryIds: number[];
+    mobilized: boolean;
+    staffUserId: number;
+  }): Promise<number> {
+    if (!params.entryIds.length) return 0;
+    const rows: unknown[] = await this.entryRepository.query(
+      `WITH changed AS (
+         UPDATE waitlist_entry
+         SET "mobilizedAt" = ${params.mobilized ? "now()" : "NULL"}
+         WHERE id = ANY($1)
+           AND "mobilizedAt" IS ${params.mobilized ? "NULL" : "NOT NULL"}
+         RETURNING id
+       )
+       INSERT INTO waitlist_entry_action ("entryId", kind, "staffUserId")
+       SELECT id, $2, $3 FROM changed
+       RETURNING "entryId"`,
+      [
+        params.entryIds,
+        params.mobilized
+          ? WaitlistEntryActionKind.ManualMobilize
+          : WaitlistEntryActionKind.UndoMobilize,
+        params.staffUserId,
+      ],
+    );
+    return rows.length;
   }
 }

@@ -14,6 +14,10 @@ import {
   WaitlistEntrySort,
   WaitlistInviteState,
 } from "../src/waitlist/dto/waitlist-entry-admin.dto";
+import {
+  WaitlistEntryAction,
+  WaitlistEntryActionKind,
+} from "../src/waitlist/entities/waitlist-entry-action.entity";
 import { WaitlistEntry } from "../src/waitlist/entities/waitlist-entry.entity";
 import { WaitlistLink } from "../src/waitlist/entities/waitlist-link.entity";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
@@ -420,6 +424,95 @@ describe("Waitlist entry admin (e2e)", () => {
         .send({ entryIds: [entry.id] })
         .expect(404);
       await admin("delete", `/${tag.body.id}`).expect(404);
+    });
+  });
+
+  describe("mobilizing", () => {
+    const post = (path: string, entryIds: number[]) =>
+      request(server())
+        .post(`/waitlist/admin/entries/${path}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ entryIds });
+
+    const actionsOf = (entryId: number) =>
+      ctx.dataSource
+        .getRepository(WaitlistEntryAction)
+        .find({ where: { entryId }, order: { id: "ASC" } });
+
+    it("marks and unmarks only entries whose status changes, recording who", async () => {
+      const waiting = await saveEntry({ reason: "Waiting" });
+      const earlier = new Date("2026-01-01T00:00:00Z");
+      const mobilized = await saveEntry({
+        reason: "Already mobilized",
+        mobilizedAt: earlier,
+      });
+
+      const marked = await post("mobilize", [
+        waiting.id,
+        mobilized.id,
+        999999,
+      ]).expect(200);
+      expect(marked.body.changed).toBe(1);
+      expect(
+        (await entryRepo.findOneByOrFail({ id: mobilized.id })).mobilizedAt,
+      ).toEqual(earlier);
+      expect(
+        (await entryRepo.findOneByOrFail({ id: waiting.id })).mobilizedAt,
+      ).toEqual(expect.any(Date));
+      expect(await actionsOf(mobilized.id)).toEqual([]);
+
+      const stillWaiting = await saveEntry({ reason: "Still waiting" });
+      const undone = await post("unmobilize", [
+        waiting.id,
+        stillWaiting.id,
+      ]).expect(200);
+      expect(undone.body.changed).toBe(1);
+      expect(await actionsOf(stillWaiting.id)).toEqual([]);
+      expect(
+        (await entryRepo.findOneByOrFail({ id: waiting.id })).mobilizedAt,
+      ).toBeNull();
+      expect(await actionsOf(waiting.id)).toMatchObject([
+        {
+          kind: WaitlistEntryActionKind.ManualMobilize,
+          staffUserId: ctx.adminUserId,
+        },
+        {
+          kind: WaitlistEntryActionKind.UndoMobilize,
+          staffUserId: ctx.adminUserId,
+        },
+      ]);
+    });
+
+    it("takes more ids than a statement has bind parameters", async () => {
+      const entry = await saveEntry({ reason: "One of many" });
+      const entryIds = [
+        ...Array.from({ length: 70000 }, (_, i) => -1 - i),
+        entry.id,
+      ];
+      const marked = await post("mobilize", entryIds).expect(200);
+      expect(marked.body.changed).toBe(1);
+      const undone = await post("unmobilize", entryIds).expect(200);
+      expect(undone.body.changed).toBe(1);
+    });
+
+    it("leaves an entry's invites alone when undoing", async () => {
+      const entry = await saveEntry({
+        reason: "Invited",
+        mobilizedAt: new Date(),
+      });
+      const invite = await saveInvite(entry, {});
+      await post("unmobilize", [entry.id]).expect(200);
+      expect(await inviteRepo.findOneByOrFail({ id: invite.id })).toMatchObject(
+        { deletedAt: null },
+      );
+    });
+
+    it("rejects non-admins", async () => {
+      await request(server())
+        .post("/waitlist/admin/entries/mobilize")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ entryIds: [] })
+        .expect(401);
     });
   });
 
