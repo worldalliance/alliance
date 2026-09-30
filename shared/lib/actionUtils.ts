@@ -8,6 +8,7 @@ import {
 } from "../client";
 
 type TaskPriority = {
+  id: number;
   priority: number;
   deadlineTimestamp: number;
   startTimestamp: number;
@@ -16,9 +17,9 @@ type TaskPriority = {
 
 type GeneralUpdatePriorityFields = Pick<
   GeneralUpdateDto,
-  "priority" | "endDate" | "startDate"
+  "id" | "priority" | "endDate" | "startDate"
 >;
-type ActionPriorityFields = Pick<ActionDto, "priority" | "events">;
+type ActionPriorityFields = Pick<ActionDto, "id" | "priority" | "events">;
 
 export function isGeneralUpdate(
   a: GeneralUpdatePriorityFields | ActionPriorityFields,
@@ -30,6 +31,7 @@ function generalUpdatePriority(
   generalUpdate: GeneralUpdatePriorityFields,
 ): TaskPriority {
   return {
+    id: generalUpdate.id,
     priority: generalUpdate.priority,
     deadlineTimestamp: generalUpdate.endDate
       ? new Date(generalUpdate.endDate).getTime()
@@ -46,6 +48,7 @@ function actionPriority(action: ActionPriorityFields): TaskPriority {
     (event) => event.newStatus === "member_action",
   )?.date;
   return {
+    id: action.id,
     priority: action.priority,
     deadlineTimestamp: getDeadlineTimestamp(action),
     startTimestamp: startDateString
@@ -91,14 +94,23 @@ export function homePagePriorityComparator(
     return bPriority.typePriority - aPriority.typePriority;
   }
 
-  return 0;
+  return aPriority.id - bPriority.id;
 }
 
 export function isFollowUpFormActive(f: {
   startDate?: string | null;
   endDate?: string | null;
 }): boolean {
-  const now = new Date();
+  return isFollowUpFormActiveAt(f, new Date());
+}
+
+export function isFollowUpFormActiveAt(
+  f: {
+    startDate?: string | null;
+    endDate?: string | null;
+  },
+  now: Date,
+): boolean {
   if (!f.startDate || new Date(f.startDate) > now) {
     return false;
   }
@@ -198,6 +210,16 @@ export function getViewerOnlyOptionalReason(
       reason satisfies never;
   }
   return ViewerOnlyOptionalReason.Unknown;
+}
+
+/**
+ * Does this task go after the viewer's other home items? Only a contract gap
+ * defers it: an action the admin marked optional keeps its admin-chosen rank.
+ */
+export function isDeferredForViewer(action: ActionDto): boolean {
+  return (
+    getViewerOnlyOptionalReason(action) === ViewerOnlyOptionalReason.ContractGap
+  );
 }
 
 export function isActionAssignedAndNotDismissed(action: ActionDto): boolean {

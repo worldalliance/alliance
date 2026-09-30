@@ -191,9 +191,9 @@ const HomePage = () => {
   }, [actions, activeCompletableFollowUpForms, completedActions]);
 
   const taskNavigatorItems = useMemo<TaskNavigatorItem[]>(() => {
-    const actionCards: TaskNavigatorItem[] = [...todoActions]
-      .sort(homePagePriorityComparator)
-      .map((action) => ({ kind: "action", action }) as const);
+    const actionCards: TaskNavigatorItem[] = todoActions.map(
+      (action) => ({ kind: "action", action }) as const,
+    );
 
     // Follow-up forms come after the todo actions; order within follow-ups is
     // already handled by `activeCompletableFollowUpForms`.

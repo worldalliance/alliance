@@ -4,6 +4,7 @@ import type {
   SetPriorityDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { makeEvent } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
@@ -258,4 +259,87 @@ it("keeps the reorder and says why when the save is refused", async () => {
 
   expect(await screen.findByText(sessionExpiredMessage)).toBeTruthy();
   expect(screen.getByText("Save")).toBeTruthy();
+});
+
+const pastDate = "2026-01-01T00:00:00.000Z";
+const closedDate = "2026-01-10T00:00:00.000Z";
+it("lists a closed action shown after its deadline and says why", async () => {
+  servedActions = [
+    adminActionListItem(1, "Late petition", {
+      status: "office_action",
+      shouldCompleteAfterDeadline: true,
+      events: [
+        makeEvent({ date: pastDate }),
+        makeEvent({ id: 3, newStatus: "office_action", date: closedDate }),
+      ],
+    }),
+    adminActionListItem(2, "Old petition", {
+      status: "office_action",
+      events: [
+        makeEvent({ id: 2, date: pastDate }),
+        makeEvent({ id: 4, newStatus: "office_action", date: closedDate }),
+      ],
+    }),
+  ];
+  renderPage();
+  expect(await screen.findByText("Late petition")).toBeTruthy();
+  expect(screen.getByText("Available after deadline")).toBeTruthy();
+  expect(screen.queryByText("Old petition")).toBeNull();
+
+  fireEvent.click(screen.getByLabelText("Show all"));
+
+  expect(screen.getByText("Old petition")).toBeTruthy();
+  expect(
+    screen.getByText(/No member action open, upcoming, or shown after/),
+  ).toBeTruthy();
+});
+
+const futureDate = "2999-01-01T00:00:00.000Z";
+
+it("lists follow-ups read-only with their parent", async () => {
+  const followUpForm = (
+    id: number,
+    name: string,
+    startDate: string | null,
+  ) => ({
+    id,
+    name,
+    startDate,
+    endDate: null,
+    instructions: null,
+    actionId: 1,
+    formId: id,
+    cohortExpression: { type: "all" },
+  });
+  servedActions = [
+    adminActionListItem(1, "Call your rep", {
+      events: [makeEvent({ date: pastDate })],
+      followUpForms: [
+        followUpForm(7, "Weekly check-in", pastDate),
+        followUpForm(8, "Later check-in", futureDate),
+        followUpForm(9, "Unscheduled check-in", null),
+      ],
+    }),
+  ];
+  renderPage();
+  expect(await screen.findByText("Weekly check-in")).toBeTruthy();
+  const names = () =>
+    Array.from(
+      document.querySelectorAll("section li span:first-child"),
+      (el) => el.textContent,
+    );
+  expect(names()).toEqual(["Later check-in", "Weekly check-in"]);
+  expect(screen.getAllByRole("link", { name: "Call your rep" })).toHaveLength(
+    2,
+  );
+  expect(document.querySelector("section [draggable]")).toBeNull();
+
+  fireEvent.click(screen.getByLabelText("Show all"));
+
+  expect(names()).toEqual([
+    "Later check-in",
+    "Weekly check-in",
+    "Unscheduled check-in",
+  ]);
+  expect(screen.getByText("Not on home pages: No start date")).toBeTruthy();
 });

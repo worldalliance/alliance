@@ -1,5 +1,6 @@
 import request from "supertest";
 import { ActionFormVariant } from "../src/actions/entities/action-form-variant.entity";
+import { FollowUpForm } from "../src/actions/entities/follow-up-form.entity";
 import { TasksModule } from "../src/tasks/tasks.module";
 import {
   addDays,
@@ -96,6 +97,33 @@ describe("Admin action member-action phase (e2e)", () => {
     expect(
       response.body.find((listed: { id: number }) => listed.id === action.id),
     ).toMatchObject({ variantFormIds: [form.id] });
+  });
+
+  it("lists each action's follow-up forms", async () => {
+    const action = await createAction({
+      start: addDays(now, -1),
+      deadline: null,
+    });
+    const { form } = await createFormWithSnapshot(ctx.dataSource, {
+      title: "Follow-up form",
+      schema: { title: "Follow-up form", pages: [], outputViews: [] },
+    });
+    const cohortExpression = { type: "Tag", tagId: ctx.defaultTag.id };
+    const followUp = await ctx.dataSource.getRepository(FollowUpForm).save({
+      actionId: action.id,
+      formId: form.id,
+      cohortExpression,
+    });
+
+    const response = await request(ctx.app.getHttpServer())
+      .get("/actions/all")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+
+    expect(
+      response.body.find((listed: { id: number }) => listed.id === action.id),
+    ).toMatchObject({
+      followUpForms: [{ id: followUp.id, cohortExpression }],
+    });
   });
 
   it("returns no deadline for a phase nothing closes", async () => {

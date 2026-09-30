@@ -4,7 +4,6 @@ import { R } from "@alliance/common/result";
 import { AdminActionDto, tasksCreateFormAdmin } from "@alliance/shared/client";
 import type {
   AdminFollowUpFormDto,
-  FollowUpFormDto,
   TagDto,
 } from "@alliance/shared/client/types.gen";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
@@ -21,6 +20,7 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
+import { followUpFormLabel } from "../lib/followUpFormLabel";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import CohortExpressionBuilder from "./CohortExpressionBuilder";
 import { FormBuilder } from "./FormBuilder";
@@ -41,11 +41,6 @@ const emptyFormSchema: FormSchema = {
   outputViews: [],
   aggregateViews: [],
 };
-
-function followUpFormLabel(fuf: FollowUpFormDto): string {
-  const label = fuf.name?.trim();
-  return label ? label : `Follow-up form #${fuf.id}`;
-}
 
 export default function ActionFollowUpFormsTab({
   action,
