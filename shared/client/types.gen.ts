@@ -4348,6 +4348,29 @@ export type WaitlistEntryResultDto = {
     shareCode: string | null;
 };
 
+export type RememberedWaitlistEntryDto = {
+    /**
+     * The entry's personal code
+     */
+    shareCode: string;
+    mobilized: boolean;
+};
+
+export type WaitlistBrowserDto = {
+    entry: RememberedWaitlistEntryDto | null;
+    /**
+     * A signup invite this browser opened that is still claimable
+     */
+    inviteCode: string | null;
+};
+
+export type RememberInviteDto = {
+    /**
+     * A signup invite code this browser opened
+     */
+    code: string;
+};
+
 export type WaitlistLinkRequestDto = {
     email: string;
 };
@@ -13328,6 +13351,76 @@ export type WaitlistCreateResponses = {
 };
 
 export type WaitlistCreateResponse = WaitlistCreateResponses[keyof WaitlistCreateResponses];
+
+export type WaitlistForgetBrowserData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/waitlist/browser';
+};
+
+export type WaitlistForgetBrowserErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistForgetBrowserError = WaitlistForgetBrowserErrors[keyof WaitlistForgetBrowserErrors];
+
+export type WaitlistForgetBrowserResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type WaitlistForgetBrowserResponse = WaitlistForgetBrowserResponses[keyof WaitlistForgetBrowserResponses];
+
+export type WaitlistBrowserData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/waitlist/browser';
+};
+
+export type WaitlistBrowserErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistBrowserError = WaitlistBrowserErrors[keyof WaitlistBrowserErrors];
+
+export type WaitlistBrowserResponses = {
+    200: WaitlistBrowserDto;
+};
+
+export type WaitlistBrowserResponse = WaitlistBrowserResponses[keyof WaitlistBrowserResponses];
+
+export type WaitlistRememberInviteData = {
+    body: RememberInviteDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/browser/invite';
+};
+
+export type WaitlistRememberInviteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistRememberInviteError = WaitlistRememberInviteErrors[keyof WaitlistRememberInviteErrors];
+
+export type WaitlistRememberInviteResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type WaitlistRememberInviteResponse = WaitlistRememberInviteResponses[keyof WaitlistRememberInviteResponses];
 
 export type WaitlistRequestLinkData = {
     body: WaitlistLinkRequestDto;

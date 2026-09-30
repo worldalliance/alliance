@@ -11,6 +11,7 @@ import {
 } from "class-validator";
 import { getImageSource } from "src/images/images.service";
 import { trim, trimToNull } from "src/utils/transforms";
+import type { WaitlistEntry } from "../entities/waitlist-entry.entity";
 
 /** At most one; neither means the visitor arrived without a referral. */
 export class WaitlistReferralCodesDto {
@@ -141,5 +142,48 @@ export class WaitlistCountDto {
 
   constructor(waiting: number) {
     this.waiting = waiting;
+  }
+}
+
+export class RememberInviteDto {
+  @ApiProperty({ description: "A signup invite code this browser opened" })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  code: string;
+}
+
+export class RememberedWaitlistEntryDto {
+  @ApiProperty({ description: "The entry's personal code" })
+  shareCode: string;
+
+  @ApiProperty()
+  mobilized: boolean;
+
+  constructor(input: WaitlistEntry) {
+    this.shareCode = input.code;
+    this.mobilized = input.mobilizedAt !== null;
+  }
+}
+
+export type WaitlistBrowserDtoArgs = {
+  entry: WaitlistEntry | null;
+  inviteCode: string | null;
+};
+
+export class WaitlistBrowserDto {
+  @ApiProperty({ type: () => RememberedWaitlistEntryDto, nullable: true })
+  entry: RememberedWaitlistEntryDto | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: "A signup invite this browser opened that is still claimable",
+  })
+  inviteCode: string | null;
+
+  constructor(input: WaitlistBrowserDtoArgs) {
+    this.entry = input.entry && new RememberedWaitlistEntryDto(input.entry);
+    this.inviteCode = input.inviteCode;
   }
 }

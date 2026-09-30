@@ -3,17 +3,21 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
   NotFoundException,
   Post,
   Query,
+  Req,
+  Res,
   ServiceUnavailableException,
   UseGuards,
 } from "@nestjs/common";
 import { ApiNoContentResponse, ApiOkResponse } from "@nestjs/swagger";
 import { ThrottlerGuard } from "@nestjs/throttler";
+import type { Request, Response } from "express";
 import { Public } from "src/auth/public.decorator";
 import {
   WAITLIST_ENTRY_THROTTLE,
@@ -23,6 +27,8 @@ import { EmailType } from "src/mail/mail.entity";
 import { OnlyThrottle } from "src/utils/throttle";
 import {
   CreateWaitlistEntryDto,
+  RememberInviteDto,
+  WaitlistBrowserDto,
   WaitlistCountDto,
   WaitlistEntryResultDto,
   WaitlistLinkRequestDto,
@@ -30,6 +36,7 @@ import {
   WaitlistReferralCodesDto,
   WaitlistReferralDto,
 } from "./dto/waitlist.dto";
+import { WaitlistBrowserService } from "./waitlist-browser.service";
 import {
   publicMailDailyCap,
   WaitlistMailService,
@@ -60,6 +67,7 @@ export class WaitlistController {
   constructor(
     private readonly waitlistService: WaitlistService,
     private readonly waitlistMailService: WaitlistMailService,
+    private readonly browserService: WaitlistBrowserService,
   ) {}
 
   @Post("entries")
@@ -70,18 +78,56 @@ export class WaitlistController {
   @ApiOkResponse({ type: WaitlistEntryResultDto })
   async create(
     @Body() dto: CreateWaitlistEntryDto,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<WaitlistEntryResultDto> {
     const created = await this.waitlistService.create(dto);
     if (R.isFailure(created)) {
       throw entryException(created.error);
     }
-    if (created.value !== null) {
-      void this.waitlistMailService.sendShareLink({
-        email: dto.email,
-        emailType: EmailType.WaitlistConfirmation,
-      });
+    if (created.value === null) {
+      return new WaitlistEntryResultDto(null);
     }
-    return new WaitlistEntryResultDto(created.value);
+    void this.waitlistMailService.sendShareLink({
+      email: dto.email,
+      emailType: EmailType.WaitlistConfirmation,
+    });
+    await this.browserService.rememberEntry({
+      res,
+      entryId: created.value.id,
+    });
+    return new WaitlistEntryResultDto(created.value.code);
+  }
+
+  @Get("browser")
+  @Public()
+  @ApiOkResponse({ type: WaitlistBrowserDto })
+  async browser(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<WaitlistBrowserDto> {
+    return new WaitlistBrowserDto(await this.browserService.find(req, res));
+  }
+
+  @Post("browser/invite")
+  @Public()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse()
+  async rememberInvite(
+    @Body() dto: RememberInviteDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    await this.browserService.rememberInvite({ res, code: dto.code });
+  }
+
+  @Delete("browser")
+  @Public()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse()
+  async forgetBrowser(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    await this.browserService.forget(req, res);
   }
 
   /**
