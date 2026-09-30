@@ -1,6 +1,7 @@
 import { ActionReviewerIcon } from "@alliance/shared/client";
 import { useActionHandlers } from "@alliance/shared/lib/actionPage";
 import { showActionPageTaskSection } from "@alliance/shared/lib/actionPageTaskPanel";
+import { useInvalidateActions } from "@alliance/shared/lib/actionsListPage";
 import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
 import { nameListSeparator } from "@alliance/shared/lib/nameList";
 import useActivities, {
@@ -121,9 +122,7 @@ export default function ActionDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const refreshActivities = useRefreshActivities();
 
-  const reloadTasks = useCallback(() => {
-    router.reload();
-  }, []);
+  const reloadTasks = useInvalidateActions();
 
   const { action, loading, refetchAction, onCompleteAction, onOptOutAction } =
     useActionHandlers(parseInt(id), true, reloadTasks);

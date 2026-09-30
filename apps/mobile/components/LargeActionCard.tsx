@@ -22,7 +22,6 @@ import TaskTimeInfo from "./TaskTimeInfo";
 export interface LargeActionCardProps extends LargeActionCardPropsShared {
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
-  onSubmitSuccess: () => void;
   onCompleteAction?: () => void;
 }
 
@@ -87,7 +86,6 @@ export default function LargeActionCard({
   onUpdateActionState,
   scrollPageTo,
   scrollToEnd,
-  onSubmitSuccess,
   onCompleteAction = onUpdateActionState,
 }: LargeActionCardProps) {
   const nextEvent = getNextEvent(action);
@@ -150,7 +148,6 @@ export default function LargeActionCard({
           onOptOutAction={onUpdateActionState}
           scrollPageTo={scrollPageTo}
           scrollToEnd={scrollToEnd}
-          onSubmitSuccess={onSubmitSuccess}
         />
       </View>
     </Card>

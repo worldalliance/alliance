@@ -11,7 +11,6 @@ import ActionTaskPanelForm from "./ActionTaskPanelForm";
 export type ActionTaskPanelProps = ActionTaskPanelPropsShared & {
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
-  onSubmitSuccess?: () => void;
 };
 
 const ActionTaskPanel = ({
@@ -22,7 +21,6 @@ const ActionTaskPanel = ({
   scrollToEnd,
   disabled,
   formResponse,
-  onSubmitSuccess = noop,
 }: ActionTaskPanelProps) => {
   const { handleCompleteWithTracking, handleAbandonAction } =
     useTaskFormHandlers({
@@ -53,7 +51,6 @@ const ActionTaskPanel = ({
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
         actionId={action.id}
-        onSubmitSuccess={onSubmitSuccess}
         disabled={true}
         formResponse={formResponse}
       />
@@ -84,7 +81,6 @@ const ActionTaskPanel = ({
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
         actionId={action.id}
-        onSubmitSuccess={onSubmitSuccess}
         disabled={disabled}
       />
     );

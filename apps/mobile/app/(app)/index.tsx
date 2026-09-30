@@ -205,8 +205,9 @@ export default function HomeScreen() {
 
   const handleOverlayFadeIn = useCallback(() => {
     refetch();
+    resetHomeFeed(queryClient);
     scrollToTop();
-  }, [refetch, scrollToTop]);
+  }, [refetch, queryClient, scrollToTop]);
 
   const scrollToEnd = useCallback((animated = true) => {
     scrollViewRef.current?.scrollToEnd({ animated });
@@ -377,14 +378,9 @@ export default function HomeScreen() {
             onUpdateActionState={() => {
               refetch();
             }}
-            onCompleteAction={() => {
-              refetch();
-              resetHomeFeed(queryClient);
-              scrollToTop();
-            }}
+            onCompleteAction={handleSubmitSuccess}
             scrollPageTo={scrollPageTo}
             scrollToEnd={scrollToEnd}
-            onSubmitSuccess={handleSubmitSuccess}
           />
         </Anchor>
       ),
@@ -399,7 +395,6 @@ export default function HomeScreen() {
     refetch,
     scrollPageTo,
     scrollToEnd,
-    scrollToTop,
     handleSubmitSuccess,
   ]);
 
