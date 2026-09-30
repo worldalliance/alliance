@@ -56,6 +56,20 @@ const usesOrganizationName = (content: WaitlistEmailContentDto): boolean =>
     WaitlistEmailPlaceholder.OrganizationName,
   );
 
+// Counts toward a repeat send: the email may have reached, or may still reach,
+// the inbox.
+const MAY_REACH_INBOX: Record<WaitlistEmailRecipientStatus, boolean> = {
+  [WaitlistEmailRecipientStatus.Pending]: true,
+  [WaitlistEmailRecipientStatus.Sending]: true,
+  [WaitlistEmailRecipientStatus.Sent]: true,
+  [WaitlistEmailRecipientStatus.Uncertain]: true,
+  [WaitlistEmailRecipientStatus.Failed]: false,
+  [WaitlistEmailRecipientStatus.Skipped]: false,
+};
+const REPEAT_STATUSES = Object.values(WaitlistEmailRecipientStatus).filter(
+  (status) => MAY_REACH_INBOX[status],
+);
+
 const zeroCounts = (): WaitlistEmailCounts => ({
   [WaitlistEmailRecipientStatus.Pending]: 0,
   [WaitlistEmailRecipientStatus.Sending]: 0,
@@ -109,6 +123,25 @@ export class WaitlistEmailService {
     );
   }
 
+  private async countAlreadySent(params: {
+    entryIds: number[];
+    subject: string;
+  }): Promise<number> {
+    const row = await this.recipientRepository
+      .createQueryBuilder("recipient")
+      .innerJoin("recipient.batch", "batch")
+      .select('count(DISTINCT recipient."entryId")::int', "count")
+      .where("recipient.entryId = ANY(:entryIds)", {
+        entryIds: params.entryIds,
+      })
+      .andWhere("recipient.status = ANY(:statuses)", {
+        statuses: REPEAT_STATUSES,
+      })
+      .andWhere("batch.subject = :subject", { subject: params.subject })
+      .getRawOne<{ count: number }>();
+    return row?.count ?? 0;
+  }
+
   private async renderSample(params: {
     subject: string;
     body: string;
@@ -147,6 +180,11 @@ export class WaitlistEmailService {
     const recipients = reachable(candidates, dto.includeClaimed).map(
       ({ entry }) => entry,
     );
+    const recipientIds = recipients.map((entry) => entry.id);
+    const alreadySent = await this.countAlreadySent({
+      entryIds: recipientIds,
+      subject: dto.subject,
+    });
 
     const needsOrganization = usesOrganizationName(dto);
     const sampleEntry =
@@ -158,7 +196,7 @@ export class WaitlistEmailService {
       selected: candidates.length,
       unsubscribed: countSkipped(WaitlistEmailSkipReason.Unsubscribed),
       claimed: countSkipped(WaitlistEmailSkipReason.InviteClaimed),
-      recipientIds: recipients.map((entry) => entry.id),
+      recipientIds,
       waiting: recipients.filter((entry) => !entry.mobilizedAt).length,
       withoutOrganization: recipients.filter((entry) => !entry.organization)
         .length,
@@ -166,6 +204,7 @@ export class WaitlistEmailService {
         (entry) =>
           entry.organization && entry.organization.communityId === null,
       ).length,
+      alreadySent,
       sample: sampleEntry
         ? await this.renderSample({
             subject: dto.subject,

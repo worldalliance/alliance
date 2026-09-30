@@ -373,6 +373,55 @@ describe("Waitlist email admin (e2e)", () => {
     });
   });
 
+  describe("repeat sends", () => {
+    it("counts recipients sent or being sent the same subject, once each", async () => {
+      const [sentTwice, pending, sending, failed, uncertain, skipped] =
+        await Promise.all([
+          saveEntry(),
+          saveEntry(),
+          saveEntry(),
+          saveEntry(),
+          saveEntry(),
+          saveEntry({ unsubscribedAt: new Date() }),
+        ]);
+      const subject = `Repeat ${Math.random()} #{name}`;
+      await send({ entryIds: [sentTwice.id], subject });
+      await send({ entryIds: [sentTwice.id], subject });
+      sendStaff.mockResolvedValueOnce(mailWith(EmailStatus.Failed));
+      await send({ entryIds: [failed.id], subject });
+      sendStaff.mockRejectedValueOnce(
+        Object.assign(new Error("Timeout"), { code: "ETIMEDOUT" }),
+      );
+      await send({ entryIds: [uncertain.id], subject });
+      await send({ entryIds: [skipped.id], subject });
+      run.mockImplementationOnce(async () => {});
+      await send({ entryIds: [pending.id], subject });
+      run.mockImplementationOnce(async () => {});
+      const unsent = await send({ entryIds: [sending.id], subject });
+      await recipientRepo.update(
+        { batchId: unsent.id },
+        { status: WaitlistEmailRecipientStatus.Sending },
+      );
+      const entryIds = [
+        sentTwice.id,
+        pending.id,
+        sending.id,
+        failed.id,
+        uncertain.id,
+        skipped.id,
+      ];
+
+      const same = await preview({ entryIds, subject }).expect(200);
+      await entryRepo.update(skipped.id, { unsubscribedAt: null });
+      const withSkipped = await preview({ entryIds, subject }).expect(200);
+      expect(same.body.alreadySent).toBe(4);
+      expect(withSkipped.body.alreadySent).toBe(4);
+      const other = await preview({ entryIds, subject: "Other" }).expect(200);
+      expect(other.body.alreadySent).toBe(0);
+      await ctx.app.get(WaitlistEmailSender).run();
+    });
+  });
+
   describe("sending", () => {
     it("emails each recipient an invite to their organization's group and mobilizes the waiting", async () => {
       const organization = await saveOrganization("Sending Org", true);

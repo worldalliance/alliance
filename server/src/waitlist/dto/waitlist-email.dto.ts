@@ -79,6 +79,7 @@ export type WaitlistEmailPreview = {
   waiting: number;
   withoutOrganization: number;
   withoutGroup: number;
+  alreadySent: number;
   sample: WaitlistEmailSample | null;
 };
 
@@ -109,6 +110,12 @@ export class WaitlistEmailPreviewDto {
   })
   withoutGroup: number;
 
+  @ApiProperty({
+    description:
+      "Recipients already sent, or being sent, an email with this subject",
+  })
+  alreadySent: number;
+
   @ApiProperty({ type: () => WaitlistEmailSampleDto, nullable: true })
   sample: WaitlistEmailSampleDto | null;
 
@@ -120,6 +127,7 @@ export class WaitlistEmailPreviewDto {
     this.waiting = input.waiting;
     this.withoutOrganization = input.withoutOrganization;
     this.withoutGroup = input.withoutGroup;
+    this.alreadySent = input.alreadySent;
     this.sample = input.sample && new WaitlistEmailSampleDto(input.sample);
   }
 }

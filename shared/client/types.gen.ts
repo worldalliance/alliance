@@ -4630,6 +4630,10 @@ export type WaitlistEmailPreviewDto = {
      * Recipients whose organization has no group
      */
     withoutGroup: number;
+    /**
+     * Recipients already sent, or being sent, an email with this subject
+     */
+    alreadySent: number;
     sample: WaitlistEmailSampleDto | null;
 };
 
