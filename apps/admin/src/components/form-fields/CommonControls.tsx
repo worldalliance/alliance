@@ -77,6 +77,7 @@ import {
 import {
   ANY_SELECTED_VALUE,
   FormulaChoiceConditionValue,
+  NO_VALUE_SELECTED,
 } from "./FormulaChoiceConditionValue";
 
 function getFormulaConditionRefs(node: VisibleIfFormula["formula"]): string[] {
@@ -1073,7 +1074,9 @@ export function ConditionalVisibility({
       const base = sourceFormId
         ? { when: controller.id, sourceFormId }
         : { when: controller.id };
-      if (isTextContentController(controller)) {
+      if (value === NO_VALUE_SELECTED) {
+        next[index] = { kind: "hasValue", ...base, hasValue: false };
+      } else if (isTextContentController(controller)) {
         next[index] = { kind: "hasValue", ...base, hasValue: value === "true" };
       } else if (controller.kind === "checkbox") {
         next[index] = { kind: "equals", ...base, equals: value === "true" };
@@ -1172,16 +1175,25 @@ export function ConditionalVisibility({
     const hasContentValue = isHasValueCondition(condition)
       ? String(condition.hasValue ?? true)
       : "true";
+    const noneSelected =
+      isHasValueCondition(condition) && condition.hasValue === false;
+    const choiceValue = noneSelected
+      ? NO_VALUE_SELECTED
+      : isEqualsCondition(condition)
+        ? String(condition.equals ?? "")
+        : "";
     const multiSelectValue =
       controller?.kind === "multiselect"
         ? isAnySelectedCondition(condition)
           ? ANY_SELECTED_VALUE
-          : isIncludesOptionCondition(condition)
-            ? (condition.includesOption ?? "")
-            : isEqualsCondition(condition) &&
-                typeof condition.equals === "string"
-              ? condition.equals
-              : ""
+          : noneSelected
+            ? NO_VALUE_SELECTED
+            : isIncludesOptionCondition(condition)
+              ? (condition.includesOption ?? "")
+              : isEqualsCondition(condition) &&
+                  typeof condition.equals === "string"
+                ? condition.equals
+                : ""
         : "";
     const rangeValues =
       controller?.kind === "range" ? getRangeValues(controller) : [];
@@ -1293,12 +1305,16 @@ export function ConditionalVisibility({
             ) : controller.kind === "contract" ? (
               <select
                 className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={String(
-                  isEqualsCondition(condition) &&
-                    typeof condition.equals === "boolean"
-                    ? condition.equals
-                    : true,
-                )}
+                value={
+                  noneSelected
+                    ? NO_VALUE_SELECTED
+                    : String(
+                        isEqualsCondition(condition) &&
+                          typeof condition.equals === "boolean"
+                          ? condition.equals
+                          : true,
+                      )
+                }
                 onChange={(event) =>
                   handleConditionValueChange(index, event.target.value)
                 }
@@ -1309,6 +1325,7 @@ export function ConditionalVisibility({
                 <option value="false">
                   {controller.noLabel?.trim() || "No"}
                 </option>
+                <option value={NO_VALUE_SELECTED}>No option selected</option>
               </select>
             ) : (controller.kind === "select" ||
                 controller.kind === "multiselect") &&
@@ -1318,10 +1335,7 @@ export function ConditionalVisibility({
                 value={
                   controller.kind === "multiselect"
                     ? multiSelectValue
-                    : isEqualsCondition(condition) &&
-                        typeof condition.equals === "string"
-                      ? condition.equals
-                      : ""
+                    : choiceValue
                 }
                 onChange={(value) => handleConditionValueChange(index, value)}
               />
@@ -1334,6 +1348,7 @@ export function ConditionalVisibility({
                 }
               >
                 <option value={ANY_SELECTED_VALUE}>Any option selected</option>
+                <option value={NO_VALUE_SELECTED}>No option selected</option>
                 {controller.options?.map((opt, idx) => (
                   <option key={idx} value={opt.value}>
                     {opt.label}
@@ -1343,9 +1358,7 @@ export function ConditionalVisibility({
             ) : controller.kind === "range" ? (
               <select
                 className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={String(
-                  isEqualsCondition(condition) ? (condition.equals ?? "") : "",
-                )}
+                value={choiceValue}
                 onChange={(event) =>
                   handleConditionValueChange(index, event.target.value)
                 }
@@ -1355,6 +1368,7 @@ export function ConditionalVisibility({
                     {value}
                   </option>
                 ))}
+                <option value={NO_VALUE_SELECTED}>No option selected</option>
               </select>
             ) : controller.kind === "number" ? (
               <div className="space-y-2">
@@ -1409,9 +1423,7 @@ export function ConditionalVisibility({
             ) : (
               <select
                 className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={String(
-                  isEqualsCondition(condition) ? (condition.equals ?? "") : "",
-                )}
+                value={choiceValue}
                 onChange={(event) =>
                   handleConditionValueChange(index, event.target.value)
                 }
@@ -1421,6 +1433,7 @@ export function ConditionalVisibility({
                     {opt.label}
                   </option>
                 ))}
+                <option value={NO_VALUE_SELECTED}>No option selected</option>
               </select>
             )}
           </div>

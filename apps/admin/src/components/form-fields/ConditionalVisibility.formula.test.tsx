@@ -1,6 +1,8 @@
 import type {
   AnyField,
+  ContractField,
   MultiSelectField,
+  RangeField,
   SelectField,
 } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
@@ -9,6 +11,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { ConditionalVisibility } from "./CommonControls";
+import { NO_VALUE_SELECTED } from "./FormulaChoiceConditionValue";
 import { CustomValidatorDraftsContext } from "./customValidatorDrafts";
 
 afterEach(cleanup);
@@ -37,6 +40,42 @@ const formulaMultiselect: MultiSelectField = {
   label: "Tags",
   options: [],
   optionsFormula: formula,
+};
+
+const staticSelect: SelectField = {
+  id: "color",
+  type: "input",
+  kind: "select",
+  label: "Color",
+  options: [
+    { label: "Red", value: "red" },
+    { label: "Blue", value: "blue" },
+  ],
+};
+
+const staticMultiselect: MultiSelectField = {
+  ...staticSelect,
+  id: "colors",
+  kind: "multiselect",
+};
+
+const range: RangeField = {
+  id: "score",
+  type: "input",
+  kind: "range",
+  label: "Score",
+  optionCount: 3,
+};
+
+const contract: ContractField = {
+  id: "agreement",
+  type: "input",
+  kind: "contract",
+  label: "Agreement",
+  contractId: null,
+  signQuestion: "Do you agree?",
+  yesLabel: "I agree",
+  noLabel: "I decline",
 };
 
 const dependent: AnyField = {
@@ -111,4 +150,44 @@ it("starts a condition on a formula multiselect at any option, then types a valu
     when: "tags",
     includesOption: "red",
   });
+});
+
+it("shows a field when a formula select has no option selected", () => {
+  render(<Editor controller={formulaSelect} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "+ Field condition" }));
+  fireEvent.change(screen.getByRole("combobox", { name: "Match" }), {
+    target: { value: NO_VALUE_SELECTED },
+  });
+
+  expect(conditionOf()).toEqual({
+    kind: "hasValue",
+    when: "pick",
+    hasValue: false,
+  });
+  expect(screen.queryByRole("textbox", { name: "Choice value" })).toBeNull();
+});
+
+it("shows a field when a choice question has no option selected", () => {
+  for (const [controller, initialChoice] of [
+    [staticSelect, "Red"],
+    [staticMultiselect, "Red"],
+    [range, "1"],
+    [contract, "I agree"],
+  ] as const) {
+    render(<Editor controller={controller} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Field condition" }));
+    fireEvent.change(screen.getByDisplayValue(initialChoice), {
+      target: { value: NO_VALUE_SELECTED },
+    });
+
+    expect(conditionOf()).toEqual({
+      kind: "hasValue",
+      when: controller.id,
+      hasValue: false,
+    });
+    expect(screen.getByDisplayValue("No option selected")).toBeTruthy();
+    cleanup();
+  }
 });
