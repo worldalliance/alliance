@@ -16,6 +16,11 @@ import { AdminGuard } from "src/auth/guards/admin.guard";
 import type { JwtPayload } from "src/auth/tokens";
 import { ReqUser } from "src/auth/user.decorator";
 import {
+  CreateWaitlistCohortDto,
+  UpdateWaitlistCohortDto,
+  WaitlistCohortDto,
+} from "./dto/waitlist-cohort.dto";
+import {
   WaitlistChangeCountDto,
   WaitlistEntryFilterBodyDto,
   WaitlistEntryIdsBodyDto,
@@ -33,6 +38,7 @@ import {
   SaveWaitlistTagDto,
   WaitlistTagDto,
 } from "./dto/waitlist-tag.dto";
+import { WaitlistCohortService } from "./waitlist-cohort.service";
 import { WaitlistEntryAdminService } from "./waitlist-entry-admin.service";
 import { WaitlistLinkService } from "./waitlist-link.service";
 import { WaitlistTagService } from "./waitlist-tag.service";
@@ -44,6 +50,7 @@ export class WaitlistAdminController {
     private readonly linkService: WaitlistLinkService,
     private readonly entryService: WaitlistEntryAdminService,
     private readonly tagService: WaitlistTagService,
+    private readonly cohortService: WaitlistCohortService,
   ) {}
 
   @Post("entries/search")
@@ -174,5 +181,38 @@ export class WaitlistAdminController {
     return new WaitlistChangeCountDto(
       await this.tagService.remove(id, dto.entryIds),
     );
+  }
+
+  @Get("cohorts")
+  @ApiOkResponse({ type: WaitlistCohortDto, isArray: true })
+  async findCohortsAdmin(): Promise<WaitlistCohortDto[]> {
+    const cohorts = await this.cohortService.findAll();
+    return cohorts.map((cohort) => new WaitlistCohortDto(cohort));
+  }
+
+  @Post("cohorts")
+  @ApiOkResponse({ type: WaitlistCohortDto })
+  async createCohortAdmin(
+    @Body() dto: CreateWaitlistCohortDto,
+  ): Promise<WaitlistCohortDto> {
+    return new WaitlistCohortDto(await this.cohortService.create(dto));
+  }
+
+  @Patch("cohorts/:id")
+  @ApiOkResponse({ type: WaitlistCohortDto })
+  async updateCohortAdmin(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: UpdateWaitlistCohortDto,
+  ): Promise<WaitlistCohortDto> {
+    return new WaitlistCohortDto(await this.cohortService.update(id, dto));
+  }
+
+  @Delete("cohorts/:id")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse()
+  async deleteCohortAdmin(
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<void> {
+    await this.cohortService.delete(id);
   }
 }

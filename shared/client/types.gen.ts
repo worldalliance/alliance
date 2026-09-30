@@ -4552,6 +4552,23 @@ export type SaveWaitlistTagDto = {
     name: string;
 };
 
+export type WaitlistCohortDto = {
+    id: number;
+    name: string;
+    filter: WaitlistEntryFilterDto;
+    updatedAt: string;
+};
+
+export type CreateWaitlistCohortDto = {
+    filter: WaitlistEntryFilterDto;
+    name: string;
+};
+
+export type UpdateWaitlistCohortDto = {
+    name?: string;
+    filter?: WaitlistEntryFilterDto;
+};
+
 export type HeyApiError = {
     statusCode: number;
     message: string | Array<string>;
@@ -13961,6 +13978,100 @@ export type WaitlistAdminUntagEntriesAdminResponses = {
 };
 
 export type WaitlistAdminUntagEntriesAdminResponse = WaitlistAdminUntagEntriesAdminResponses[keyof WaitlistAdminUntagEntriesAdminResponses];
+
+export type WaitlistAdminFindCohortsAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/cohorts';
+};
+
+export type WaitlistAdminFindCohortsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminFindCohortsAdminError = WaitlistAdminFindCohortsAdminErrors[keyof WaitlistAdminFindCohortsAdminErrors];
+
+export type WaitlistAdminFindCohortsAdminResponses = {
+    200: Array<WaitlistCohortDto>;
+};
+
+export type WaitlistAdminFindCohortsAdminResponse = WaitlistAdminFindCohortsAdminResponses[keyof WaitlistAdminFindCohortsAdminResponses];
+
+export type WaitlistAdminCreateCohortAdminData = {
+    body: CreateWaitlistCohortDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/cohorts';
+};
+
+export type WaitlistAdminCreateCohortAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminCreateCohortAdminError = WaitlistAdminCreateCohortAdminErrors[keyof WaitlistAdminCreateCohortAdminErrors];
+
+export type WaitlistAdminCreateCohortAdminResponses = {
+    200: WaitlistCohortDto;
+};
+
+export type WaitlistAdminCreateCohortAdminResponse = WaitlistAdminCreateCohortAdminResponses[keyof WaitlistAdminCreateCohortAdminResponses];
+
+export type WaitlistAdminDeleteCohortAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/cohorts/{id}';
+};
+
+export type WaitlistAdminDeleteCohortAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminDeleteCohortAdminError = WaitlistAdminDeleteCohortAdminErrors[keyof WaitlistAdminDeleteCohortAdminErrors];
+
+export type WaitlistAdminDeleteCohortAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type WaitlistAdminDeleteCohortAdminResponse = WaitlistAdminDeleteCohortAdminResponses[keyof WaitlistAdminDeleteCohortAdminResponses];
+
+export type WaitlistAdminUpdateCohortAdminData = {
+    body: UpdateWaitlistCohortDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/cohorts/{id}';
+};
+
+export type WaitlistAdminUpdateCohortAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminUpdateCohortAdminError = WaitlistAdminUpdateCohortAdminErrors[keyof WaitlistAdminUpdateCohortAdminErrors];
+
+export type WaitlistAdminUpdateCohortAdminResponses = {
+    200: WaitlistCohortDto;
+};
+
+export type WaitlistAdminUpdateCohortAdminResponse = WaitlistAdminUpdateCohortAdminResponses[keyof WaitlistAdminUpdateCohortAdminResponses];
 
 export type ClientOptions = {
     baseUrl: string;

@@ -48,7 +48,9 @@ export enum WaitlistEntrySort {
 
 /**
  * Fields combine with AND; the values of one list field combine with OR, and
- * an empty list filters nothing.
+ * an empty list filters nothing. Saved cohorts store this as jsonb, so
+ * removing, renaming, or narrowing a field needs a migration of
+ * `waitlist_cohort.filter`.
  */
 export class WaitlistEntryFilterDto {
   @ApiPropertyOptional({

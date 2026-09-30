@@ -7,9 +7,13 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { isUniqueViolation } from "src/utils/db-errors";
 import type { Repository } from "src/utils/Repository";
 import { In } from "typeorm";
+import type { WaitlistEntryFilterDto } from "./dto/waitlist-entry-admin.dto";
 import type { AdminWaitlistTag } from "./dto/waitlist-tag.dto";
+import { WaitlistCohort } from "./entities/waitlist-cohort.entity";
 import { WaitlistEntryTag } from "./entities/waitlist-entry-tag.entity";
 import { WaitlistTag } from "./entities/waitlist-tag.entity";
+
+const TAG_NOT_FOUND = "Waitlist tag not found";
 
 @Injectable()
 export class WaitlistTagService {
@@ -62,7 +66,7 @@ export class WaitlistTagService {
   private async findOne(id: number): Promise<WaitlistTag> {
     const tag = await this.tagRepository.findOneBy({ id });
     if (!tag) {
-      throw new NotFoundException("Waitlist tag not found");
+      throw new NotFoundException(TAG_NOT_FOUND);
     }
     return tag;
   }
@@ -88,8 +92,32 @@ export class WaitlistTagService {
     return this.saveNamed(tag);
   }
 
+  /**
+   * Refuses while a cohort filters by the tag, which would silently change what
+   * it matches. Locking the tag keeps a cohort from saving with it meanwhile.
+   */
   async delete(id: number): Promise<void> {
-    await this.tagRepository.remove(await this.findOne(id));
+    await this.tagRepository.manager.transaction(async (manager) => {
+      const tag = await manager.findOne(WaitlistTag, {
+        where: { id },
+        lock: { mode: "pessimistic_write" },
+      });
+      if (!tag) throw new NotFoundException(TAG_NOT_FOUND);
+      const cohorts = await manager
+        .createQueryBuilder(WaitlistCohort, "cohort")
+        .where("cohort.filter -> :key @> to_jsonb(:id::int)", {
+          key: "tagIds" satisfies keyof WaitlistEntryFilterDto,
+          id,
+        })
+        .orderBy("cohort.name")
+        .getMany();
+      if (cohorts.length) {
+        throw new ConflictException(
+          `Cohorts filter by this tag: ${cohorts.map((c) => c.name).join(", ")}`,
+        );
+      }
+      await manager.remove(tag);
+    });
   }
 
   /** Resolves to how many of the entries were newly tagged. */

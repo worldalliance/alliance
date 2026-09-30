@@ -14,6 +14,7 @@ import {
   WaitlistEntrySort,
   WaitlistInviteState,
 } from "../src/waitlist/dto/waitlist-entry-admin.dto";
+import { WaitlistCohort } from "../src/waitlist/entities/waitlist-cohort.entity";
 import {
   WaitlistEntryAction,
   WaitlistEntryActionKind,
@@ -513,6 +514,131 @@ describe("Waitlist entry admin (e2e)", () => {
         .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({ entryIds: [] })
         .expect(401);
+    });
+  });
+
+  describe("cohorts", () => {
+    const admin = (method: "post" | "patch" | "delete" | "get", path: string) =>
+      request(server())
+        [method](`/waitlist/admin/cohorts${path}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+
+    it("saves a filter whose entries are recomputed on use", async () => {
+      const organization = await saveOrganization("Cohort Org");
+      const filter = {
+        organizationIds: [organization.id],
+        mobilized: false,
+        joinedFrom: "2026-01-01T00:00:00.000Z",
+      };
+      const created = await admin("post", "")
+        .send({ name: " Waiting at Cohort Org ", filter })
+        .expect(201);
+      expect(created.body).toMatchObject({
+        name: "Waiting at Cohort Org",
+        filter,
+      });
+
+      const list = await admin("get", "").expect(200);
+      const saved = list.body.find(
+        (cohort: { id: number }) => cohort.id === created.body.id,
+      );
+      const before = await searchIds(saved.filter);
+      const joined = await saveEntry({ organizationId: organization.id });
+      expect(await searchIds(saved.filter)).toEqual([...before, joined.id]);
+    });
+
+    it("renames and refilters a cohort, keeping names unique", async () => {
+      const created = await admin("post", "")
+        .send({ name: "Unsubscribed", filter: { subscribed: false } })
+        .expect(201);
+      await admin("post", "")
+        .send({ name: "unsubscribed", filter: {} })
+        .expect(409);
+      const updated = await admin("patch", `/${created.body.id}`)
+        .send({ filter: { subscribed: false, hasReason: true } })
+        .expect(200);
+      expect(updated.body).toMatchObject({
+        name: "Unsubscribed",
+        filter: { subscribed: false, hasReason: true },
+      });
+      for (const filter of [{ tagIds: "nope" }, [], null]) {
+        await admin("patch", `/${created.body.id}`)
+          .send({ filter })
+          .expect(400);
+      }
+      await admin("post", "").send({ name: "No filter" }).expect(400);
+      await admin("post", "")
+        .send({ name: "List filter", filter: [] })
+        .expect(400);
+      await admin("post", "")
+        .send({ name: "Retired field", filter: { retired: true } })
+        .expect(400);
+      await admin("patch", `/${created.body.id}`)
+        .send({ filter: { retired: true } })
+        .expect(400);
+      await admin("delete", `/${created.body.id}`).expect(204);
+      await admin("patch", `/${created.body.id}`)
+        .send({ name: "Gone" })
+        .expect(404);
+    });
+
+    it("fails loudly on a stored filter the list no longer takes", async () => {
+      const cohortRepo = ctx.dataSource.getRepository(WaitlistCohort);
+      const stale = await cohortRepo.save({
+        name: "Stale",
+        filter: { retiredField: true },
+      });
+      await admin("get", "").expect(500);
+      await admin("patch", `/${stale.id}`)
+        .send({ name: "Renamed" })
+        .expect(500);
+      expect((await cohortRepo.findOneByOrFail({ id: stale.id })).name).toBe(
+        "Stale",
+      );
+      await cohortRepo.delete(stale.id);
+    });
+
+    it("keeps a tag a cohort filters by, and a deleted tag out of cohorts", async () => {
+      const tag = await request(server())
+        .post("/waitlist/admin/tags")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ name: "Cohort tag" })
+        .expect(201);
+      const cohort = await admin("post", "")
+        .send({ name: "Tagged cohort", filter: { tagIds: [tag.body.id] } })
+        .expect(201);
+      const refused = await request(server())
+        .delete(`/waitlist/admin/tags/${tag.body.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(409);
+      expect(refused.body.message).toContain("Tagged cohort");
+      const unrelated = await request(server())
+        .post("/waitlist/admin/tags")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ name: "Unrelated tag" })
+        .expect(201);
+      await request(server())
+        .delete(`/waitlist/admin/tags/${unrelated.body.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(204);
+
+      await admin("delete", `/${cohort.body.id}`).expect(204);
+      await request(server())
+        .delete(`/waitlist/admin/tags/${tag.body.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(204);
+
+      const refusedSave = await admin("post", "")
+        .send({ name: "Deleted tag", filter: { tagIds: [tag.body.id] } })
+        .expect(400);
+      expect(refusedSave.body.message).toContain(String(tag.body.id));
+      const other = await admin("post", "")
+        .send({ name: "Untagged", filter: {} })
+        .expect(201);
+      await admin("patch", `/${other.body.id}`)
+        .send({ filter: { tagIds: [tag.body.id] } })
+        .expect(400);
+      await admin("delete", `/${other.body.id}`).expect(204);
     });
   });
 

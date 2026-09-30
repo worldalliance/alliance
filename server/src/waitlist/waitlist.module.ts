@@ -5,6 +5,7 @@ import { MailModule } from "src/mail/mail.module";
 import { User } from "src/user/entities/user.entity";
 import { UserModule } from "src/user/user.module";
 import { WaitlistBrowser } from "./entities/waitlist-browser.entity";
+import { WaitlistCohort } from "./entities/waitlist-cohort.entity";
 import { WaitlistEntryAction } from "./entities/waitlist-entry-action.entity";
 import { WaitlistEntryTag } from "./entities/waitlist-entry-tag.entity";
 import { WaitlistEntry } from "./entities/waitlist-entry.entity";
@@ -13,6 +14,7 @@ import { WaitlistMailAllowance } from "./entities/waitlist-mail-allowance.entity
 import { WaitlistTag } from "./entities/waitlist-tag.entity";
 import { WaitlistAdminController } from "./waitlist-admin.controller";
 import { WaitlistBrowserService } from "./waitlist-browser.service";
+import { WaitlistCohortService } from "./waitlist-cohort.service";
 import { WaitlistEntryAdminService } from "./waitlist-entry-admin.service";
 import { WaitlistLinkService } from "./waitlist-link.service";
 import { WaitlistMailService } from "./waitlist-mail.service";
@@ -25,6 +27,7 @@ import { WaitlistService } from "./waitlist.service";
     TypeOrmModule.forFeature([
       User,
       WaitlistBrowser,
+      WaitlistCohort,
       WaitlistEntry,
       WaitlistEntryAction,
       WaitlistEntryTag,
@@ -44,6 +47,7 @@ import { WaitlistService } from "./waitlist.service";
     WaitlistLinkService,
     WaitlistEntryAdminService,
     WaitlistTagService,
+    WaitlistCohortService,
   ],
 })
 export class WaitlistModule {}
