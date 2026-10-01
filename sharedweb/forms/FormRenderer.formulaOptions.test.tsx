@@ -4,8 +4,8 @@ import type {
   MultiSelectField,
   SelectField,
 } from "@alliance/common/forms/form-schema";
-import type { FormResponseDto, SubmitFormDto } from "@alliance/shared/client";
-import { makeUser } from "@alliance/shared/lib/testFixtures";
+import type { SubmitFormDto } from "@alliance/shared/client";
+import { makeFormResponse, makeUser } from "@alliance/shared/lib/testFixtures";
 import {
   routes,
   serveApi,
@@ -116,25 +116,6 @@ const schemaOf = (fields: AnyField[]): FormSchema => ({
   outputViews: [],
 });
 
-const savedResponse = (
-  saved: Pick<FormResponseDto, "answers"> &
-    Partial<Pick<FormResponseDto, "formulaChoices">>,
-): FormResponseDto => ({
-  id: 1,
-  formId: 1,
-  formSnapshotId: 1,
-  createdAt: "2026-01-01T00:00:00.000Z",
-  publicAnswers: {},
-  schemaSnapshot: {},
-  phDistinctId: null,
-  deviceType: null,
-  sessionReplayUrl: null,
-  sid: null,
-  visibilityValidatorResults: {},
-  formulaChoices: {},
-  ...saved,
-});
-
 const formTree = (
   schema: FormSchema,
   props: Partial<React.ComponentProps<typeof FormRenderer>> = {},
@@ -226,7 +207,7 @@ it("keeps a draft's selection while its options read a deleted form", async () =
   window.localStorage.clear();
   renderForm(schemaOf([latestColors]), {
     persistKey: "k",
-    draftFormResponse: savedResponse({ answers: { pick: "red" } }),
+    draftFormResponse: makeFormResponse({ answers: { pick: "red" } }),
   });
   await screen.findByText(/has been deleted, so it can't be shown/);
   await act(async () => {});
@@ -347,7 +328,7 @@ it("offers a list sub-field's choices in every row, and drops the ones it stops 
 
 it("clears a restored draft's selections its options no longer offer", async () => {
   renderForm(schemaOf([localSource, fromLocal]), {
-    draftFormResponse: savedResponse({
+    draftFormResponse: makeFormResponse({
       answers: { source: ["a"], picked: ["a", "b"] },
     }),
   });
@@ -357,7 +338,7 @@ it("clears a restored draft's selections its options no longer offer", async () 
 });
 
 it("keeps a restored draft's selections until sign-in loads", async () => {
-  const draftFormResponse = savedResponse({
+  const draftFormResponse = makeFormResponse({
     answers: { source: ["a"], picked: ["a", "b"] },
   });
   const schema = schemaOf([localSource, fromLocal]);
@@ -430,7 +411,7 @@ describe("keeps a restored draft's selections once a visibility input fails", ()
     try {
       renderForm(schemaOf([localSource, fromLocal]), {
         user: makeUser(),
-        draftFormResponse: savedResponse({
+        draftFormResponse: makeFormResponse({
           answers: { source: ["a"], picked: ["a", "b"] },
         }),
       });
@@ -468,7 +449,7 @@ it("drops a guest's stopped choice on a form with a validator condition", async 
     ]),
     {
       adminPreviewUserId: undefined,
-      draftFormResponse: savedResponse({
+      draftFormResponse: makeFormResponse({
         answers: { source: ["a"], picked: ["a", "b"] },
       }),
     },
@@ -540,7 +521,7 @@ it("shows a completed response's saved choice without loading the history", asyn
   const requests = serveHistory([["red"]]);
   renderForm(schemaOf([latestColors]), {
     renderFormAsCompleted: true,
-    completedFormResponse: savedResponse({
+    completedFormResponse: makeFormResponse({
       answers: { pick: "gone" },
       formulaChoices: { pick: [{ label: "Saved label", value: "gone" }] },
     }),

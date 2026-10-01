@@ -1,5 +1,5 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import type { FormResponseDto } from "@alliance/shared/client";
+import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
 import { cleanup, render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import FormResponsesView from "./FormResponsesView";
@@ -16,21 +16,12 @@ const schema: FormSchema = {
   outputViews: [],
 };
 
-const response: FormResponseDto = {
-  id: 1,
-  formId: 1,
+const response = makeFormResponse({
   formSnapshotId: 7,
   createdAt: "2026-03-05T10:00:00.000Z",
   answers: { home: {} },
-  publicAnswers: {},
-  formulaChoices: {},
   schemaSnapshot: schema,
-  phDistinctId: null,
-  deviceType: null,
-  sid: null,
-  sessionReplayUrl: null,
-  visibilityValidatorResults: {},
-};
+});
 
 it("lists no response to a question whose stored answer is an empty object", () => {
   const router = createMemoryRouter(

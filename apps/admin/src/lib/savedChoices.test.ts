@@ -1,24 +1,11 @@
 import type { FormResponseDto } from "@alliance/shared/client";
+import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
 import { savedChoicesAcrossResponses } from "./savedChoices";
 
 const response = (
   createdAt: string,
   formulaChoices: FormResponseDto["formulaChoices"],
-): FormResponseDto => ({
-  id: 1,
-  formId: 1,
-  formSnapshotId: 7,
-  answers: {},
-  publicAnswers: {},
-  createdAt,
-  schemaSnapshot: {},
-  phDistinctId: null,
-  deviceType: null,
-  sessionReplayUrl: null,
-  sid: null,
-  visibilityValidatorResults: {},
-  formulaChoices,
-});
+): FormResponseDto => makeFormResponse({ createdAt, formulaChoices });
 
 it("merges every response's saved choices under the label first saved", () => {
   expect(

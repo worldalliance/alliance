@@ -1,5 +1,6 @@
 import type { AnyField } from "@alliance/common/forms/form-schema";
 import type { FormResponseDto } from "@alliance/shared/client";
+import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
 import { choiceAnswerText } from "./questionAnswer";
 
 const pick: AnyField = {
@@ -13,21 +14,7 @@ const pick: AnyField = {
 
 const response = (
   formulaChoices: FormResponseDto["formulaChoices"],
-): FormResponseDto => ({
-  id: 1,
-  formId: 1,
-  formSnapshotId: 7,
-  answers: {},
-  publicAnswers: {},
-  createdAt: "2026-03-04T10:00:00.000Z",
-  schemaSnapshot: {},
-  phDistinctId: null,
-  deviceType: null,
-  sessionReplayUrl: null,
-  sid: null,
-  visibilityValidatorResults: {},
-  formulaChoices,
-});
+): FormResponseDto => makeFormResponse({ formulaChoices });
 
 it("labels a formula field's answer with the choices its response saved", () => {
   expect(

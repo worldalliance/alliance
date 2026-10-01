@@ -3,6 +3,7 @@ import type {
   ActionEventDto,
   ConversationDto,
   ConversationType,
+  FormResponseDto,
   ParticipantDto,
   ParticipantRole,
   ProfileDto,
@@ -195,6 +196,27 @@ export function makeUser(overrides: Partial<UserDto> = {}): UserDto {
     clusterId: null,
     hasPassword: true,
     oauthAccounts: [],
+    ...overrides,
+  };
+}
+
+export function makeFormResponse(
+  overrides: Partial<FormResponseDto> = {},
+): FormResponseDto {
+  return {
+    id: 1,
+    formId: 1,
+    formSnapshotId: 1,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    answers: {},
+    publicAnswers: {},
+    schemaSnapshot: {},
+    phDistinctId: null,
+    deviceType: null,
+    sessionReplayUrl: null,
+    sid: null,
+    visibilityValidatorResults: {},
+    formulaChoices: {},
     ...overrides,
   };
 }

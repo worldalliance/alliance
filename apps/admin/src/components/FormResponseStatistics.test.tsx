@@ -1,5 +1,6 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { FormResponseDto } from "@alliance/shared/client";
+import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
 import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { cleanup, render, screen } from "@testing-library/react";
 import FormResponseStatistics from "./FormResponseStatistics";
@@ -29,18 +30,8 @@ const response = (
   saved: Pick<FormResponseDto, "id" | "createdAt" | "answers"> & {
     formulaChoices: FormResponseDto["formulaChoices"];
   },
-): FormResponseDto => ({
-  formId: 1,
-  formSnapshotId: 7,
-  publicAnswers: {},
-  schemaSnapshot: schema,
-  phDistinctId: null,
-  deviceType: null,
-  sessionReplayUrl: null,
-  sid: null,
-  visibilityValidatorResults: {},
-  ...saved,
-});
+): FormResponseDto =>
+  makeFormResponse({ formSnapshotId: 7, schemaSnapshot: schema, ...saved });
 
 it("counts every choice any response saved, under the label saved first", () => {
   render(

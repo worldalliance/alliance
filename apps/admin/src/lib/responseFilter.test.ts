@@ -1,5 +1,5 @@
 import type { AnyField } from "@alliance/common/forms/form-schema";
-import type { FormResponseDto } from "@alliance/shared/client";
+import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
 import { filterDescription } from "./responseFilter";
 
 const pick: AnyField = {
@@ -11,21 +11,10 @@ const pick: AnyField = {
   optionsFormula: { inputs: {}, formula: "[]" },
 };
 
-const response: FormResponseDto = {
-  id: 1,
-  formId: 1,
-  formSnapshotId: 7,
+const response = makeFormResponse({
   answers: { pick: ["a"] },
-  publicAnswers: {},
-  createdAt: "2026-03-04T10:00:00.000Z",
-  schemaSnapshot: {},
-  phDistinctId: null,
-  deviceType: null,
-  sessionReplayUrl: null,
-  sid: null,
-  visibilityValidatorResults: {},
   formulaChoices: { pick: [{ label: "Alpha", value: "a" }] },
-};
+});
 
 it("names a formula multiselect's filter with the label its responses saved", () => {
   expect(
