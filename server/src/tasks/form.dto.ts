@@ -77,13 +77,15 @@ export class FormulaSourceDto {
   responseIds: number[];
 }
 
-export class SubmitFormDto extends PickType(FormResponse, [
-  "answers",
-  "sessionReplayUrl",
-]) {
+export class SubmitFormDto extends PickType(FormResponse, ["answers"]) {
   @ApiPropertyOptional({ type: String })
   @IsOptional()
   phDistinctId?: string;
+
+  @ApiPropertyOptional({ type: String })
+  @IsOptional()
+  @Type(() => String)
+  sessionReplayUrl?: string;
 
   // BACKCOMPAT(form-snapshot): formSnapshotId is the canonical field for
   // newer clients. Old mobile builds (pre-snapshot-cutover) still post

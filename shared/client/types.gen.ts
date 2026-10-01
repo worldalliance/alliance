@@ -147,7 +147,7 @@ export type FormResponse = {
     deviceType?: string;
     user?: User;
     guest?: Guest;
-    sessionReplayUrl?: string;
+    sessionReplayUrl: string | null;
     createdAt: string;
     phDistinctId: string | null;
     formSnapshotId: number;
@@ -3756,8 +3756,8 @@ export type SubmitFormDto = {
     answers: {
         [key: string]: unknown;
     };
-    sessionReplayUrl?: string;
     phDistinctId?: string;
+    sessionReplayUrl?: string;
     formSnapshotId?: number;
     schemaSnapshot?: {
         [key: string]: unknown;
@@ -3796,7 +3796,7 @@ export type FormResponseDto = {
         [key: string]: unknown;
     };
     deviceType?: string;
-    sessionReplayUrl?: string;
+    sessionReplayUrl: string | null;
     createdAt: string;
     phDistinctId: string | null;
     formSnapshotId: number;
@@ -3818,8 +3818,8 @@ export type SubmitFollowUpFormDto = {
     answers: {
         [key: string]: unknown;
     };
-    sessionReplayUrl?: string;
     phDistinctId?: string;
+    sessionReplayUrl?: string;
     formSnapshotId?: number;
     schemaSnapshot?: {
         [key: string]: unknown;

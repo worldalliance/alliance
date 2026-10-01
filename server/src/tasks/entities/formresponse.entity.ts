@@ -95,11 +95,10 @@ export class FormResponse {
   guest?: Relation<Guest>;
 
   @Column({ type: "text", nullable: true })
-  @ApiPropertyOptional()
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
   @Type(() => String)
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  sessionReplayUrl?: string;
+  sessionReplayUrl: string | null;
 
   @CreateDateColumnTz()
   @ApiProperty()
