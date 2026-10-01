@@ -623,6 +623,18 @@ describe("findUsersToSuspend (e2e)", () => {
       });
     });
 
+    it("counts dismissed actions as missed", async () => {
+      await createMemberSuites(
+        "streak-dismissed",
+        ["2023-03-13", "2023-03-16", "2023-03-19"],
+        1,
+      );
+      for (const [action] of suiteActions) {
+        await record(action, ActionActivityType.USER_DISMISSED);
+      }
+      expect(await isSuspended()).toBe(true);
+    });
+
     it("recalculates the run after a late completion without erasing later misses", async () => {
       await createMemberSuites(
         "streak-late",

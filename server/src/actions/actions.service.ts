@@ -717,14 +717,12 @@ export class ActionsService {
    * `Action.usersJoined` counter (which keeps its legacy wire/DB name for now).
    * The formula:
    *
-   *   base recipients (assigned, INCLUDING dismissed)
+   *   base recipients (assigned)
    *   − away at any point during the member-action window
    *   − withdrawn (USER_WONT_COMPLETE)
    *   + everyone with a USER_COMPLETED activity
    *
-   * i.e. "could this user have done it at all?" — note this is NOT the same
-   * set as the reminder/suspension roster (computeIsAssignedAndPresent), which
-   * excludes dismissed users.
+   * i.e. "could this user have done it at all?"
    *
    * Batched: fetches the shared data in a handful of bulk queries instead of
    * per-action. Returns a map of actionId -> participant userIds.
@@ -751,14 +749,13 @@ export class ActionsService {
 
     const actionIds = entries.map((e) => e.action.id);
 
-    // 1. Batched base users (1 user query, 1 dismissed query, deduplicated cohorts)
+    // 1. Batched base users (1 user query, deduplicated cohorts)
     const baseUsersByAction =
       await this.actionEventRecipientService.findBaseUsersForEvents({
         entries: entries.map((e) => ({
           action: e.action,
           eventId: e.event.id,
         })),
-        includeDismissed: true,
         session,
       });
 
@@ -3677,7 +3674,7 @@ export class ActionsService {
       .filter(
         (action) =>
           action.status !== ActionStatus.Draft &&
-          action.shouldParticipate &&
+          action.viewer?.assigned &&
           // Action-wide optional tasks stay; reminder groups drop those
           // through `excludeOptionalActions`.
           !(action.viewer?.optional && !action.optional) &&
@@ -4200,29 +4197,17 @@ export class ActionsService {
     const actionIds = closedSuites.flatMap((suite) =>
       suite.actions.map((action) => action.id),
     );
-    const [satisfyingActivities, dismissals] = await Promise.all([
-      this.actionActivityRepository.find({
-        where: {
-          actionId: In(actionIds),
-          type: In(TERMINAL_ACTIVITY_TYPES),
-        },
-        select: { actionId: true, userId: true },
-      }),
-      this.actionActivityRepository.find({
-        where: {
-          actionId: In(actionIds),
-          type: ActionActivityType.USER_DISMISSED,
-        },
-        select: { actionId: true, userId: true },
-      }),
-    ]);
+    const satisfyingActivities = await this.actionActivityRepository.find({
+      where: {
+        actionId: In(actionIds),
+        type: In(TERMINAL_ACTIVITY_TYPES),
+      },
+      select: { actionId: true, userId: true },
+    });
     const satisfied = new Set(
       satisfyingActivities.map(
         (activity) => `${activity.userId}:${activity.actionId}`,
       ),
-    );
-    const dismissed = new Set(
-      dismissals.map((activity) => `${activity.userId}:${activity.actionId}`),
     );
 
     // Share the active-user load and per-leaf cohort queries across every
@@ -4275,7 +4260,6 @@ export class ActionsService {
               deadlineDate: deadlineEvent?.date ?? null,
               cohortMemberIds,
               user,
-              userDismissed: dismissed.has(`${user.id}:${action.id}`),
               onboarding: action.onboarding,
             })
           ) {

@@ -72,8 +72,8 @@ export type UserActionStatus = {
   withdrawal: UserActionWithdrawal | null;
   /**
    * View-only "mark as seen" overlay: the viewer hid this action's card from
-   * their home page (which also mutes their reminders). NOT a relation — a
-   * dismissed action is still assigned and completable. See the
+   * their home page. NOT a relation — a dismissed action is still assigned,
+   * reminded, completable, and counted for suspension. See the
    * `ActionActivityType.USER_DISMISSED` doc in `common/`.
    */
   dismissed: boolean;

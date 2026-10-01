@@ -15,6 +15,7 @@ import {
 } from "src/forum/entities/comment.entity";
 import { City } from "src/geo/city.entity";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
+import { ActionEventNotifType } from "src/notifs/entities/action-event-notif.entity";
 import {
   Notification,
   NotificationCategory,
@@ -1694,6 +1695,60 @@ describe("Actions (e2e)", () => {
       await actionRepo.delete(action.id);
       await userRepo.delete(lateSigner.id);
       await userRepo.delete(eligibleUser.id);
+    });
+
+    it("keeps a dismissed action's member on its reminders", async () => {
+      const { action, event } = await createPublishedAction(
+        "Dismissed Reminder",
+        { status: ActionStatus.MemberAction, actionOverrides: {} },
+      );
+      const member = await userService.create({
+        email: `dismissed-reminder-${Date.now()}@example.com`,
+        password: "Password123!",
+        name: "Dismissed Reminder",
+        contractEvents: [
+          {
+            type: ContractEventType.SIGNED,
+            date: new Date(event.date.getTime() - 1000),
+            automatic: false,
+            contractId: ctx.defaultContractId,
+          },
+        ],
+        tags: [ctx.defaultTag],
+      });
+      await activityRepo.save(
+        activityRepo.create({
+          actionId: action.id,
+          userId: member.id,
+          type: ActionActivityType.USER_DISMISSED,
+        }),
+      );
+
+      try {
+        const tasks = await ctx.app
+          .get(ActionsService)
+          .findUncompletedTasks(member.id);
+        expect(tasks.map((task) => task.id)).toContain(action.id);
+
+        await saveLiveCohortDecisions(ctx, [action.id]);
+        const recipients = await ctx.app
+          .get(ActionEventRecipientService)
+          .findFilteredUsersForEvent(
+            {
+              ...event,
+              action: await actionRepo.findOneOrFail({
+                where: { id: action.id },
+                relations: { events: true },
+              }),
+            },
+            null,
+            ActionEventNotifType.PersonalReminder,
+          );
+        expect(recipients.map((user) => user.id)).toContain(member.id);
+      } finally {
+        await actionRepo.delete(action.id);
+        await userRepo.delete(member.id);
+      }
     });
 
     it("shows onboarding actions to users without contracts", async () => {

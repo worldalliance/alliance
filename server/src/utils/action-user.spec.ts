@@ -295,7 +295,6 @@ describe("computeIsAssignedFromCohortSet", () => {
       deadlineDate: DEADLINE,
       cohortMemberIds: new Set([1]),
       user: makePopulationUser({}).user,
-      userDismissed: false,
       onboarding: false,
       ...overrides,
     };
@@ -303,17 +302,6 @@ describe("computeIsAssignedFromCohortSet", () => {
 
   it("participates when in cohort with a contract active over the window", () => {
     expect(computeIsAssignedFromCohortSet(populationInput())).toBe(true);
-  });
-
-  it("does not participate when dismissed, unless includeDismissed", () => {
-    expect(
-      computeIsAssignedFromCohortSet(populationInput({ userDismissed: true })),
-    ).toBe(false);
-    expect(
-      computeIsAssignedFromCohortSet(
-        populationInput({ userDismissed: true, includeDismissed: true }),
-      ),
-    ).toBe(true);
   });
 
   it("does not participate when not in the cohort", () => {
