@@ -46,10 +46,38 @@ describe("missedSuiteNoticeTemplates", () => {
     process.env.APP_URL = originalAppUrl;
   });
 
-  it("sends the group's configured copy for a first miss", () => {
+  it("sends the control the group's configured copy", () => {
     expect(
       missedSuiteNoticeTemplates(MissedSuiteNoticeCopy.FirstMissControl, group),
     ).toEqual(group);
+  });
+
+  it("renders the first-miss report copy for one missed task", () => {
+    const notice = render(MissedSuiteNoticeCopy.FirstMissReportV1, ["Call"]);
+    expect(notice.push).toBe(
+      "The deadline for Call passed without your completion.",
+    );
+    expect(notice.emailSubject).toBe(notice.push);
+    expect(notice.text).toContain(
+      "The deadline for Call passed without your completion. If you did complete it, contact us. https://app.example.org/",
+    );
+    expect(notice.emailMessage).toContain(
+      "Hi Jane,\nThe deadline for Call passed and we have no completion recorded for you. If you did complete it, contact us; we may have made a mistake.\nEach action is planned around the number of members expected to participate.\nhttps://app.example.org/",
+    );
+  });
+
+  it("pluralizes the first-miss report copy for several missed tasks", () => {
+    const notice = render(MissedSuiteNoticeCopy.FirstMissReportV1, [
+      "Call",
+      "Write",
+    ]);
+    expect(notice.emailSubject).toBe(
+      "The deadline for Call, Write passed without your completion.",
+    );
+    expect(notice.text).toContain("If you did complete them, contact us.");
+    expect(notice.emailMessage).toContain(
+      "If you did complete them, contact us;",
+    );
   });
 
   it("renders the second-miss report copy", () => {

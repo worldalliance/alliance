@@ -31,6 +31,7 @@ export enum ActionEventNotifType {
 export enum MissedSuiteNoticeCopy {
   /** The reminder group's configured text. */
   FirstMissControl = "first_miss_control",
+  FirstMissReportV1 = "first_miss_report_v1",
   SecondMissReportV1 = "second_miss_report_v1",
 }
 

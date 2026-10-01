@@ -20,6 +20,11 @@ import {
   MissedSuiteNoticeCopy,
 } from "src/notifs/entities/action-event-notif.entity";
 import {
+  Experiment,
+  ExperimentArm,
+  ExperimentAssignment,
+} from "src/notifs/entities/experiment-assignment.entity";
+import {
   ContractEvent,
   ContractEventType,
 } from "src/user/entities/contract-event.entity";
@@ -37,6 +42,7 @@ describe("missed-suite notices (e2e)", () => {
   let groupRepo: Repository<ReminderGroup>;
   let notifRepo: Repository<ActionEventNotif>;
   let activityRepo: Repository<ActionActivity>;
+  let armRepo: Repository<ExperimentAssignment>;
   let userRepo: Repository<User>;
   let contractEventRepo: Repository<ContractEvent>;
 
@@ -124,6 +130,15 @@ describe("missed-suite notices (e2e)", () => {
       }),
     );
 
+  const setArm = (arm: ExperimentArm) =>
+    armRepo.save(
+      armRepo.create({
+        userId: ctx.testUserId,
+        experiment: Experiment.MissedSuiteFirstNotice,
+        arm,
+      }),
+    );
+
   const dispatch = async () => {
     await saveLiveCohortDecisions(ctx);
     await worker.dispatchDueNotifs();
@@ -145,6 +160,7 @@ describe("missed-suite notices (e2e)", () => {
     groupRepo = ctx.dataSource.getRepository(ReminderGroup);
     notifRepo = ctx.dataSource.getRepository(ActionEventNotif);
     activityRepo = ctx.dataSource.getRepository(ActionActivity);
+    armRepo = ctx.dataSource.getRepository(ExperimentAssignment);
     userRepo = ctx.dataSource.getRepository(User);
     contractEventRepo = ctx.dataSource.getRepository(ContractEvent);
   });
@@ -157,6 +173,7 @@ describe("missed-suite notices (e2e)", () => {
     for (const table of [
       "action_event_notif",
       "notification",
+      "experiment_assignment",
       "reminder_group",
       "action_activity",
       "action_event",
@@ -184,7 +201,8 @@ describe("missed-suite notices (e2e)", () => {
     );
   });
 
-  it("sends one notice per suite naming only the missed tasks", async () => {
+  it("sends one variant notice per suite naming only the missed tasks", async () => {
+    await setArm(ExperimentArm.Variant);
     const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
       "Done task",
       "Missed task",
@@ -207,12 +225,17 @@ describe("missed-suite notices (e2e)", () => {
     const [notice] = notices;
     expect(notice.actionSuite?.id).toBe(closed.suite.id);
     expect(notice.missNumber).toBe(1);
-    expect(notice.missedSuiteCopy).toBe(MissedSuiteNoticeCopy.FirstMissControl);
+    expect(notice.missedSuiteCopy).toBe(
+      MissedSuiteNoticeCopy.FirstMissReportV1,
+    );
     expect(notice.notifiedActionIds).toEqual([closed.actions[1].id]);
-    expect(notice.mms?.body).toBe("Control text");
+    expect(notice.mms?.body).toMatch(
+      /^The deadline for Missed task passed without your completion\. If you did complete it, contact us\. \S+\/tasks/,
+    );
   });
 
   it("totals the missed tasks' time estimates for #{tasktime}", async () => {
+    await setArm(ExperimentArm.Control);
     const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
       "First task",
       "Second task",
@@ -229,7 +252,57 @@ describe("missed-suite notices (e2e)", () => {
     expect(notice.mms?.body).toBe("About 45 minutes");
   });
 
-  it("names dismissed tasks", async () => {
+  it("sends the control group its configured copy and keeps its arm", async () => {
+    await setArm(ExperimentArm.Control);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    await createMissedSuiteGroup(closed);
+
+    await dispatch();
+
+    const [notice] = await findNotices();
+    expect(notice.missedSuiteCopy).toBe(MissedSuiteNoticeCopy.FirstMissControl);
+    expect(notice.mms?.body).toBe("Control text");
+    expect(
+      await armRepo.findOneByOrFail({
+        userId: ctx.testUserId,
+        experiment: Experiment.MissedSuiteFirstNotice,
+      }),
+    ).toMatchObject({ arm: ExperimentArm.Control });
+  });
+
+  it("draws an arm once and reuses it for later first misses", async () => {
+    const first = await createClosedSuite("First", ago({ hours: 2 }), [
+      "First missed task",
+    ]);
+    const satisfied = await createClosedSuite("Between", ago({ hours: 1 }), [
+      "Done task",
+    ]);
+    await record(satisfied.actions[0], ActionActivityType.USER_COMPLETED);
+    const later = await createClosedSuite("Later", ago({ minutes: 10 }), [
+      "Later missed task",
+    ]);
+    await createMissedSuiteGroup(first);
+    await createMissedSuiteGroup(later);
+
+    await dispatch();
+
+    const [assignment, ...otherArms] = await armRepo.find();
+    expect(otherArms).toHaveLength(0);
+    const notices = await findNotices();
+    expect(notices.map((notice) => notice.missNumber)).toEqual([1, 1]);
+    expect(new Set(notices.map((notice) => notice.missedSuiteCopy))).toEqual(
+      new Set([
+        assignment.arm === ExperimentArm.Control
+          ? MissedSuiteNoticeCopy.FirstMissControl
+          : MissedSuiteNoticeCopy.FirstMissReportV1,
+      ]),
+    );
+  });
+
+  it("names dismissed tasks and pluralizes for several missed tasks", async () => {
+    await setArm(ExperimentArm.Variant);
     const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
       "First task",
       "Second task",
@@ -243,9 +316,13 @@ describe("missed-suite notices (e2e)", () => {
     expect(new Set(notice.notifiedActionIds)).toEqual(
       new Set(closed.actions.map((action) => action.id)),
     );
+    expect(notice.mms?.body).toMatch(
+      /^The deadline for (First task, Second task|Second task, First task) passed without your completion\. If you did complete them, contact us\./,
+    );
   });
 
-  it("sends the second-miss copy on a second consecutive miss", async () => {
+  it("sends everyone the second-miss copy on a second consecutive miss", async () => {
+    await setArm(ExperimentArm.Control);
     await createClosedSuite("Earlier", ago({ days: 7 }), ["Earlier task"]);
     const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
       "Missed task",

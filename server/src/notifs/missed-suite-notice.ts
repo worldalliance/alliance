@@ -3,6 +3,7 @@ import type { ActionSuite } from "src/actions/entities/action-suite.entity";
 import type { ReminderGroup } from "src/actions/entities/reminder-group.entity";
 import type { SuiteOutcome } from "src/actions/missed-suite-streak";
 import { MissedSuiteNoticeCopy } from "./entities/action-event-notif.entity";
+import { ExperimentArm } from "./entities/experiment-assignment.entity";
 
 export type ChannelTemplates = Pick<
   ReminderGroup,
@@ -38,6 +39,11 @@ export function closedNoticeSuite(
 export const missedSuiteNoticeKey = (suiteId: number, userId: number) =>
   `missed-suite:${suiteId}:${userId}`;
 
+export const FIRST_MISS_COPY: Record<ExperimentArm, MissedSuiteNoticeCopy> = {
+  [ExperimentArm.Control]: MissedSuiteNoticeCopy.FirstMissControl,
+  [ExperimentArm.Variant]: MissedSuiteNoticeCopy.FirstMissReportV1,
+};
+
 export function missedSuiteNoticeTemplates(
   copy: MissedSuiteNoticeCopy,
   group: ChannelTemplates,
@@ -49,6 +55,21 @@ export function missedSuiteNoticeTemplates(
         textMessage: group.textMessage,
         emailSubject: group.emailSubject,
         emailMessage: group.emailMessage,
+      };
+    case MissedSuiteNoticeCopy.FirstMissReportV1:
+      return {
+        pushMessage:
+          "The deadline for #{tasknames} passed without your completion.",
+        textMessage:
+          "The deadline for #{tasknames} passed without your completion. If you did complete #{it|them}, contact us. #{link}",
+        emailSubject:
+          "The deadline for #{tasknames} passed without your completion.",
+        emailMessage: [
+          "Hi #{firstname},",
+          "The deadline for #{tasknames} passed and we have no completion recorded for you. If you did complete #{it|them}, contact us; we may have made a mistake.",
+          "Each action is planned around the number of members expected to participate.",
+          "#{link}",
+        ].join("\n"),
       };
     case MissedSuiteNoticeCopy.SecondMissReportV1:
       return {

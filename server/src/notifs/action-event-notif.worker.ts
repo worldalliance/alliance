@@ -2,6 +2,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
+import { randomInt } from "crypto";
 import { ActionsService } from "src/actions/actions.service";
 import type { ActionSuite } from "src/actions/entities/action-suite.entity";
 import {
@@ -39,10 +40,16 @@ import {
   ActionEventNotifType,
   MissedSuiteNoticeCopy,
 } from "./entities/action-event-notif.entity";
+import {
+  Experiment,
+  ExperimentArm,
+  ExperimentAssignment,
+} from "./entities/experiment-assignment.entity";
 import { LOCK_KEYS } from "./lock-keys";
 import { withPgAdvisoryLock } from "./lock-utils";
 import {
   closedNoticeSuite,
+  FIRST_MISS_COPY,
   isMissedSuiteReminderGroup,
   missedSuiteNoticeKey,
   missedSuiteNoticeTemplates,
@@ -71,6 +78,8 @@ export class ActionEventNotifWorker {
     private readonly actionEventNotifsRepository: Repository<ActionEventNotif>,
     private readonly reminderService: ActionEventReminderService,
     private readonly pushService: PushService,
+    @InjectRepository(ExperimentAssignment)
+    private readonly experimentAssignmentRepository: Repository<ExperimentAssignment>,
   ) {}
 
   @Cron("*/3 * * * *")
@@ -286,7 +295,7 @@ export class ActionEventNotifWorker {
             standing,
             copy:
               standing.missNumber === 1
-                ? MissedSuiteNoticeCopy.FirstMissControl
+                ? FIRST_MISS_COPY[await this.assignFirstMissArm(plan.user.id)]
                 : MissedSuiteNoticeCopy.SecondMissReportV1,
           }
         : null;
@@ -363,6 +372,25 @@ export class ActionEventNotifWorker {
       ).map((notif) => notif.idempotency_key),
     );
     return plans.filter((plan) => !claimed.has(keyOf(plan)));
+  }
+
+  private async assignFirstMissArm(userId: number): Promise<ExperimentArm> {
+    const experiment = Experiment.MissedSuiteFirstNotice;
+    await this.experimentAssignmentRepository
+      .createQueryBuilder()
+      .insert()
+      .values({
+        userId,
+        experiment,
+        arm: randomInt(2) === 0 ? ExperimentArm.Control : ExperimentArm.Variant,
+      })
+      .orIgnore()
+      .execute();
+    const { arm } = await this.experimentAssignmentRepository.findOneByOrFail({
+      userId,
+      experiment,
+    });
+    return arm;
   }
 
   /** Sends on each channel the member enabled; true if any was attempted. */

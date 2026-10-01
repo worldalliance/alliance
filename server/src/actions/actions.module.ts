@@ -15,6 +15,7 @@ import { ActionEventNotifWorker } from "src/notifs/action-event-notif.worker";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
+import { ExperimentAssignment } from "src/notifs/entities/experiment-assignment.entity";
 import { NotifsModule } from "src/notifs/notifs.module";
 import { PushModule } from "src/push/push.module";
 import { ShareUrlsModule } from "src/share-urls/share-urls.module";
@@ -82,6 +83,7 @@ import { SingleMemberCohortService } from "./single-member-cohort.service";
       ContractEvent,
       CustomValidator,
       EditableContent,
+      ExperimentAssignment,
       Form,
       FormResponse,
       FollowUpForm,
