@@ -2307,281 +2307,136 @@ export class UserService {
   private async getAmbassadorInviteStatsByUserIds(
     userIds: number[],
   ): Promise<Map<number, AmbassadorInviteStats>> {
-    if (!userIds.length) {
-      return new Map();
-    }
-
-    const rows = (await this.onetimeInviteRepository.query(
-      `
-        WITH selected_users AS (
-          SELECT UNNEST($1::int[]) AS "userId"
-        ),
-        invite_stats AS (
-          SELECT
-            selected_users."userId",
-            COUNT(invite."id")::int AS "totalInvitesSent",
-            COUNT(invite."id") FILTER (
-              WHERE invite."status" = $2
-            )::int AS "totalAcceptedInvites"
-          FROM selected_users
-          LEFT JOIN "onetime_invite" invite
-            ON invite."invitingUserId" = selected_users."userId"
-            AND invite."deletedAt" IS NULL
-          GROUP BY selected_users."userId"
-        ),
-        successful_stats AS (
-          SELECT
-            selected_users."userId",
-            COUNT(invited_user."id") FILTER (
-              WHERE first_sign."signedAt" IS NOT NULL
-            )::int AS "totalSuccessfulRecruits"
-          FROM selected_users
-          LEFT JOIN "user" invited_user
-            ON invited_user."referredById" = selected_users."userId"
-            AND invited_user."referralSource"::text = ANY($3::text[])
-          LEFT JOIN LATERAL (
-            SELECT MIN(contract_event."date") AS "signedAt"
-            FROM "contract_event" contract_event
-            WHERE contract_event."userId" = invited_user."id"
-              AND contract_event."type" = $4
-          ) first_sign ON TRUE
-          GROUP BY selected_users."userId"
-        ),
-        share_stats AS (
-          SELECT
-            selected_users."userId",
-            COUNT(share_invite."id")::int AS "duplicateInviteLinks"
-          FROM selected_users
-          LEFT JOIN "share_url" share_invite
-            ON share_invite."userId" = selected_users."userId"
-            AND share_invite."kind" = $5
-            AND share_invite."duplicate" = TRUE
-          GROUP BY selected_users."userId"
-        )
-        SELECT
-          selected_users."userId",
-          (
-            COALESCE(invite_stats."totalInvitesSent", 0)
-            + COALESCE(share_stats."duplicateInviteLinks", 0)
-          )::int AS "totalInvitesSent",
-          COALESCE(invite_stats."totalAcceptedInvites", 0)::int
-            AS "totalAcceptedInvites",
-          COALESCE(successful_stats."totalSuccessfulRecruits", 0)::int
-            AS "totalSuccessfulRecruits",
-          0::int AS "goalSuccessfulRecruits"
-        FROM selected_users
-        LEFT JOIN invite_stats
-          ON invite_stats."userId" = selected_users."userId"
-        LEFT JOIN successful_stats
-          ON successful_stats."userId" = selected_users."userId"
-        LEFT JOIN share_stats
-          ON share_stats."userId" = selected_users."userId"
-      `,
-      [
-        userIds,
-        OnetimeInviteStatus.LINK_USED,
-        AMBASSADOR_REFERRAL_SOURCES,
-        ContractEventType.SIGNED,
-        ShareUrlKind.Invite,
-      ],
-    )) as ({
-      userId: number;
-    } & AmbassadorInviteStats)[];
-
-    return new Map(
-      rows.map((row) => [
-        row.userId,
-        {
-          totalInvitesSent: row.totalInvitesSent,
-          totalAcceptedInvites: row.totalAcceptedInvites,
-          totalSuccessfulRecruits: row.totalSuccessfulRecruits,
-          goalSuccessfulRecruits: row.goalSuccessfulRecruits,
-        },
-      ]),
+    const stats = await this.queryAmbassadorInviteStats(
+      userIds.map((userId) => ({ userId, goal: null })),
     );
+    return new Map(userIds.map((userId, i) => [userId, stats[i]]));
   }
 
   private async getAmbassadorInviteStatsByGoalIds(
     goals: AmbassadorInviteGoal[],
   ): Promise<Map<number, AmbassadorInviteStats>> {
-    if (!goals.length) {
-      return new Map();
-    }
-
-    const rows = (await this.onetimeInviteRepository.query(
-      `
-        WITH selected_goals AS (
-          SELECT *
-          FROM UNNEST(
-            $1::int[],
-            $2::int[],
-            $3::timestamptz[],
-            $4::timestamptz[]
-          ) AS goal("goalId", "userId", "startAt", "dueAt")
-        ),
-        invite_stats AS (
-          SELECT
-            selected_goals."goalId",
-            COUNT(invite."id")::int AS "totalInvitesSent",
-            COUNT(invite."id") FILTER (
-              WHERE invite."status" = $5
-            )::int AS "totalAcceptedInvites"
-          FROM selected_goals
-          LEFT JOIN "onetime_invite" invite
-            ON invite."invitingUserId" = selected_goals."userId"
-            AND invite."deletedAt" IS NULL
-            AND invite."createdAt" >= selected_goals."startAt"
-            AND invite."createdAt" <= selected_goals."dueAt"
-          GROUP BY selected_goals."goalId"
-        ),
-        successful_stats AS (
-          SELECT
-            selected_goals."goalId",
-            COUNT(invited_user."id") FILTER (
-              WHERE first_sign."signedAt" >= selected_goals."startAt"
-                AND first_sign."signedAt" <= selected_goals."dueAt"
-            )::int AS "totalSuccessfulRecruits"
-          FROM selected_goals
-          LEFT JOIN "user" invited_user
-            ON invited_user."referredById" = selected_goals."userId"
-            AND invited_user."referralSource"::text = ANY($6::text[])
-          LEFT JOIN LATERAL (
-            SELECT MIN(contract_event."date") AS "signedAt"
-            FROM "contract_event" contract_event
-            WHERE contract_event."userId" = invited_user."id"
-              AND contract_event."type" = $7
-          ) first_sign ON TRUE
-          GROUP BY selected_goals."goalId"
-        ),
-        share_stats AS (
-          SELECT
-            selected_goals."goalId",
-            COUNT(share_invite."id")::int AS "duplicateInviteLinks"
-          FROM selected_goals
-          LEFT JOIN "share_url" share_invite
-            ON share_invite."userId" = selected_goals."userId"
-            AND share_invite."kind" = $8
-            AND share_invite."duplicate" = TRUE
-            AND share_invite."createdAt" >= selected_goals."startAt"
-            AND share_invite."createdAt" <= selected_goals."dueAt"
-          GROUP BY selected_goals."goalId"
-        )
-        SELECT
-          selected_goals."goalId",
-          (
-            COALESCE(invite_stats."totalInvitesSent", 0)
-            + COALESCE(share_stats."duplicateInviteLinks", 0)
-          )::int AS "totalInvitesSent",
-          COALESCE(invite_stats."totalAcceptedInvites", 0)::int
-            AS "totalAcceptedInvites",
-          COALESCE(successful_stats."totalSuccessfulRecruits", 0)::int
-            AS "totalSuccessfulRecruits",
-          COALESCE(successful_stats."totalSuccessfulRecruits", 0)::int
-            AS "goalSuccessfulRecruits"
-        FROM selected_goals
-        LEFT JOIN invite_stats
-          ON invite_stats."goalId" = selected_goals."goalId"
-        LEFT JOIN successful_stats
-          ON successful_stats."goalId" = selected_goals."goalId"
-        LEFT JOIN share_stats
-          ON share_stats."goalId" = selected_goals."goalId"
-      `,
-      [
-        goals.map((goal) => goal.id),
-        goals.map((goal) => goal.ambassador.id),
-        goals.map((goal) => goal.startAt),
-        goals.map((goal) => goal.dueAt),
-        OnetimeInviteStatus.LINK_USED,
-        AMBASSADOR_REFERRAL_SOURCES,
-        ContractEventType.SIGNED,
-        ShareUrlKind.Invite,
-      ],
-    )) as ({
-      goalId: number;
-    } & AmbassadorInviteStats)[];
-
-    return new Map(
-      rows.map((row) => [
-        row.goalId,
-        {
-          totalInvitesSent: row.totalInvitesSent,
-          totalAcceptedInvites: row.totalAcceptedInvites,
-          totalSuccessfulRecruits: row.totalSuccessfulRecruits,
-          goalSuccessfulRecruits: row.goalSuccessfulRecruits,
-        },
-      ]),
+    const stats = await this.queryAmbassadorInviteStats(
+      goals.map((goal) => ({ userId: goal.ambassador.id, goal })),
     );
+    return new Map(goals.map((goal, i) => [goal.id, stats[i]]));
   }
 
   private async getAmbassadorInviteStats(
     userId: number,
     goal?: AmbassadorInviteGoal,
   ): Promise<AmbassadorInviteStats> {
-    const goalStartAt = goal?.startAt ?? null;
-    const goalDueAt = goal?.dueAt ?? null;
+    const [stats] = await this.queryAmbassadorInviteStats([
+      { userId, goal: goal ?? null },
+    ]);
+    return stats;
+  }
 
-    const [row] = (await this.onetimeInviteRepository.query(
+  /**
+   * Stats per entry, in input order. An entry with a goal counts only what
+   * falls inside the goal's inclusive window; one without counts all time.
+   */
+  private async queryAmbassadorInviteStats(
+    entries: {
+      userId: number;
+      goal: Pick<AmbassadorInviteGoal, "startAt" | "dueAt"> | null;
+    }[],
+  ): Promise<AmbassadorInviteStats[]> {
+    if (!entries.length) {
+      return [];
+    }
+
+    const rows = (await this.onetimeInviteRepository.query(
       `
+        WITH selected_windows AS (
+          SELECT *
+          FROM UNNEST(
+            $1::int[],
+            $2::timestamptz[],
+            $3::timestamptz[]
+          ) WITH ORDINALITY AS selected_window("userId", "startAt", "dueAt", "ordinal")
+        ),
+        invite_stats AS (
+          SELECT
+            selected_windows."ordinal",
+            COUNT(invite."id")::int AS "totalInvitesSent",
+            COUNT(invite."id") FILTER (
+              WHERE invite."status" = $4
+            )::int AS "totalAcceptedInvites"
+          FROM selected_windows
+          LEFT JOIN "onetime_invite" invite
+            ON invite."invitingUserId" = selected_windows."userId"
+            AND invite."deletedAt" IS NULL
+            AND (selected_windows."startAt" IS NULL OR invite."createdAt" >= selected_windows."startAt")
+            AND (selected_windows."dueAt" IS NULL OR invite."createdAt" <= selected_windows."dueAt")
+          GROUP BY selected_windows."ordinal"
+        ),
+        successful_stats AS (
+          SELECT
+            selected_windows."ordinal",
+            COUNT(invited_user."id") FILTER (
+              WHERE first_sign."signedAt" IS NOT NULL
+                AND (selected_windows."startAt" IS NULL OR first_sign."signedAt" >= selected_windows."startAt")
+                AND (selected_windows."dueAt" IS NULL OR first_sign."signedAt" <= selected_windows."dueAt")
+            )::int AS "totalSuccessfulRecruits"
+          FROM selected_windows
+          LEFT JOIN "user" invited_user
+            ON invited_user."referredById" = selected_windows."userId"
+            AND invited_user."referralSource"::text = ANY($5::text[])
+          LEFT JOIN LATERAL (
+            SELECT MIN(contract_event."date") AS "signedAt"
+            FROM "contract_event" contract_event
+            WHERE contract_event."userId" = invited_user."id"
+              AND contract_event."type" = $6
+          ) first_sign ON TRUE
+          GROUP BY selected_windows."ordinal"
+        ),
+        share_stats AS (
+          SELECT
+            selected_windows."ordinal",
+            COUNT(share_invite."id")::int AS "duplicateInviteLinks"
+          FROM selected_windows
+          LEFT JOIN "share_url" share_invite
+            ON share_invite."userId" = selected_windows."userId"
+            AND share_invite."kind" = $7
+            AND share_invite."duplicate" = TRUE
+            AND (selected_windows."startAt" IS NULL OR share_invite."createdAt" >= selected_windows."startAt")
+            AND (selected_windows."dueAt" IS NULL OR share_invite."createdAt" <= selected_windows."dueAt")
+          GROUP BY selected_windows."ordinal"
+        )
         SELECT
-          COUNT(*) FILTER (
-            WHERE ($4::timestamptz IS NULL OR invite."createdAt" >= $4::timestamptz)
-              AND ($5::timestamptz IS NULL OR invite."createdAt" <= $5::timestamptz)
-          )::int + (
-            SELECT COUNT(*)::int
-            FROM "share_url" share_invite
-            WHERE share_invite."userId" = $1
-              AND share_invite."kind" = $6
-              AND share_invite."duplicate" = TRUE
-              AND ($4::timestamptz IS NULL OR share_invite."createdAt" >= $4::timestamptz)
-              AND ($5::timestamptz IS NULL OR share_invite."createdAt" <= $5::timestamptz)
-          ) AS "totalInvitesSent",
-          COUNT(*) FILTER (
-            WHERE invite."status" = $2
-              AND ($4::timestamptz IS NULL OR invite."createdAt" >= $4::timestamptz)
-              AND ($5::timestamptz IS NULL OR invite."createdAt" <= $5::timestamptz)
-          )::int AS "totalAcceptedInvites",
           (
-            SELECT COUNT(*)::int
-            FROM "user" invited_user
-            LEFT JOIN LATERAL (
-              SELECT MIN(contract_event."date") AS "signedAt"
-              FROM "contract_event" contract_event
-              WHERE contract_event."userId" = invited_user."id"
-                AND contract_event."type" = $7
-            ) first_sign ON TRUE
-            WHERE invited_user."referredById" = $1
-              AND invited_user."referralSource"::text = ANY($3::text[])
-              AND first_sign."signedAt" IS NOT NULL
-              AND ($4::timestamptz IS NULL OR first_sign."signedAt" >= $4::timestamptz)
-              AND ($5::timestamptz IS NULL OR first_sign."signedAt" <= $5::timestamptz)
-          ) AS "totalSuccessfulRecruits"
-        FROM "onetime_invite" invite
-        WHERE invite."invitingUserId" = $1
-          AND invite."deletedAt" IS NULL
+            COALESCE(invite_stats."totalInvitesSent", 0)
+            + COALESCE(share_stats."duplicateInviteLinks", 0)
+          )::int AS "totalInvitesSent",
+          COALESCE(invite_stats."totalAcceptedInvites", 0)::int
+            AS "totalAcceptedInvites",
+          COALESCE(successful_stats."totalSuccessfulRecruits", 0)::int
+            AS "totalSuccessfulRecruits"
+        FROM selected_windows
+        LEFT JOIN invite_stats
+          ON invite_stats."ordinal" = selected_windows."ordinal"
+        LEFT JOIN successful_stats
+          ON successful_stats."ordinal" = selected_windows."ordinal"
+        LEFT JOIN share_stats
+          ON share_stats."ordinal" = selected_windows."ordinal"
+        ORDER BY selected_windows."ordinal"
       `,
       [
-        userId,
+        entries.map((entry) => entry.userId),
+        entries.map((entry) => entry.goal?.startAt ?? null),
+        entries.map((entry) => entry.goal?.dueAt ?? null),
         OnetimeInviteStatus.LINK_USED,
         AMBASSADOR_REFERRAL_SOURCES,
-        goalStartAt,
-        goalDueAt,
-        ShareUrlKind.Invite,
         ContractEventType.SIGNED,
+        ShareUrlKind.Invite,
       ],
-    )) as [
-      {
-        totalInvitesSent: number;
-        totalAcceptedInvites: number;
-        totalSuccessfulRecruits: number;
-      },
-    ];
+    )) as Omit<AmbassadorInviteStats, "goalSuccessfulRecruits">[];
 
-    return {
-      totalInvitesSent: row.totalInvitesSent,
-      totalAcceptedInvites: row.totalAcceptedInvites,
-      totalSuccessfulRecruits: row.totalSuccessfulRecruits,
-      goalSuccessfulRecruits: goal ? row.totalSuccessfulRecruits : 0,
-    };
+    return entries.map(({ goal }, i) => ({
+      ...rows[i],
+      goalSuccessfulRecruits: goal ? rows[i].totalSuccessfulRecruits : 0,
+    }));
   }
 
   private validateAmbassadorInviteGoalDates(startAt: Date, dueAt: Date): void {

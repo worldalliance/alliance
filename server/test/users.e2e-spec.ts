@@ -13,9 +13,13 @@ import {
   NotificationCategory,
 } from "src/notifs/entities/notification.entity";
 import { PosthogService } from "src/posthog/posthog.service";
-import { ShareUrl } from "src/share-urls/entities/share-url.entity";
+import {
+  ShareUrl,
+  ShareUrlKind,
+} from "src/share-urls/entities/share-url.entity";
 import { StoredInviteAssignmentKind } from "src/share-urls/invite-assignment";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
+import { AmbassadorInviteGoal } from "src/user/entities/ambassador-invite-goal.entity";
 import {
   OnetimeInvite,
   OnetimeInviteStatus,
@@ -1054,6 +1058,218 @@ describe("Users (e2e)", () => {
     expect(
       programMember?.inviteStats?.currentGoal?.stats.goalSuccessfulRecruits,
     ).toBe(3);
+  });
+
+  it("counts invites and recruits the same way for all-time totals and a goal's window", async () => {
+    const day = milliseconds({ days: 1 });
+    const now = Date.now();
+    const startAt = new Date(now - 10 * day);
+    const dueAt = new Date(now - milliseconds({ minutes: 1 }));
+    const inside = new Date(now - 7 * day);
+    const before = new Date(now - 12 * day);
+
+    const ambassador = await userRepo.save(
+      userRepo.create({
+        name: "Window Ambassador",
+        email: "window.ambassador@example.com",
+        password: "Password123!",
+        ambassador: true,
+      }),
+    );
+    const goalRepo = ctx.dataSource.getRepository(AmbassadorInviteGoal);
+    const goal = await goalRepo.save({
+      ambassador,
+      targetSuccessfulRecruits: 5,
+      startAt,
+      dueAt,
+    });
+    const earlierGoal = await goalRepo.save({
+      ambassador,
+      targetSuccessfulRecruits: 5,
+      startAt: new Date(now - 14 * day),
+      dueAt: new Date(now - 11 * day),
+    });
+
+    const saveInvite = async (params: {
+      code: string;
+      createdAt: Date;
+      used: boolean;
+      deleted?: boolean;
+    }) => {
+      const invite = await onetimeInviteRepo.save(
+        onetimeInviteRepo.create({
+          invitee: params.code,
+          code: params.code,
+          invitingUser: ambassador,
+          status: params.used
+            ? OnetimeInviteStatus.LINK_USED
+            : OnetimeInviteStatus.LINK_UNUSED,
+        }),
+      );
+      await onetimeInviteRepo.update(invite.id, {
+        createdAt: params.createdAt,
+        deletedAt: params.deleted ? params.createdAt : null,
+      });
+    };
+    await saveInvite({ code: "WINDOW-USED", createdAt: inside, used: true });
+    await saveInvite({ code: "WINDOW-OPEN", createdAt: inside, used: false });
+    await saveInvite({ code: "WINDOW-AT-DUE", createdAt: dueAt, used: false });
+    await saveInvite({
+      code: "WINDOW-AT-START",
+      createdAt: startAt,
+      used: false,
+    });
+    await saveInvite({ code: "WINDOW-BEFORE", createdAt: before, used: true });
+    await saveInvite({
+      code: "WINDOW-DELETED",
+      createdAt: inside,
+      used: true,
+      deleted: true,
+    });
+
+    const shareUrlRepo = ctx.dataSource.getRepository(ShareUrl);
+    const saveShareUrl = async (duplicate: boolean, createdAt: Date) => {
+      const shareUrl = await shareUrlRepo.save({
+        url: "https://example.com/invite",
+        kind: ShareUrlKind.Invite,
+        userId: ambassador.id,
+        duplicate,
+      });
+      await shareUrlRepo.update(shareUrl.id, { createdAt });
+    };
+    await saveShareUrl(true, inside);
+    await saveShareUrl(true, startAt);
+    await saveShareUrl(true, dueAt);
+    await saveShareUrl(true, before);
+    await saveShareUrl(false, inside);
+
+    const saveRecruit = async (params: {
+      email: string;
+      referralSource: ReferralSource;
+      signedAt: Date | null;
+    }) => {
+      const recruit = await userRepo.save(
+        userRepo.create({
+          name: "Window Recruit",
+          email: params.email,
+          password: "Password123!",
+          referredBy: ambassador,
+          referralSource: params.referralSource,
+        }),
+      );
+      if (!params.signedAt) return;
+      await contractService.signContract({
+        userId: recruit.id,
+        signedName: recruit.name,
+        viaTaskForm: false,
+        contractId: ctx.defaultContractId,
+      });
+      await ctx.dataSource.query(
+        `UPDATE "contract_event" SET "date" = $1 WHERE "userId" = $2`,
+        [params.signedAt, recruit.id],
+      );
+    };
+    await saveRecruit({
+      email: "window.inside@example.com",
+      referralSource: ReferralSource.OnetimeInvite,
+      signedAt: inside,
+    });
+    await saveRecruit({
+      email: "window.at.start@example.com",
+      referralSource: ReferralSource.InviteShareLink,
+      signedAt: startAt,
+    });
+    await saveRecruit({
+      email: "window.at.due@example.com",
+      referralSource: ReferralSource.ReferralLink,
+      signedAt: dueAt,
+    });
+    await saveRecruit({
+      email: "window.before@example.com",
+      referralSource: ReferralSource.OnetimeInvite,
+      signedAt: before,
+    });
+    await saveRecruit({
+      email: "window.after@example.com",
+      referralSource: ReferralSource.ReferralLink,
+      signedAt: new Date(now),
+    });
+    await saveRecruit({
+      email: "window.ineligible@example.com",
+      referralSource: ReferralSource.ActionShareLink,
+      signedAt: inside,
+    });
+    await saveRecruit({
+      email: "window.unsigned@example.com",
+      referralSource: ReferralSource.InviteShareLink,
+      signedAt: null,
+    });
+
+    const allTime = {
+      totalInvitesSent: 9,
+      totalAcceptedInvites: 2,
+      totalSuccessfulRecruits: 5,
+      goalSuccessfulRecruits: 0,
+    };
+    const dashboard = await userService.getAmbassadorInviteDashboard(
+      ambassador.id,
+    );
+    expect(dashboard.stats).toEqual(allTime);
+    const goalStats = (goalId: number) =>
+      dashboard.goals.find(({ goal: { id } }) => id === goalId)?.stats;
+    expect(goalStats(goal.id)).toEqual({
+      totalInvitesSent: 7,
+      totalAcceptedInvites: 1,
+      totalSuccessfulRecruits: 3,
+      goalSuccessfulRecruits: 3,
+    });
+    expect(goalStats(earlierGoal.id)).toEqual({
+      totalInvitesSent: 2,
+      totalAcceptedInvites: 1,
+      totalSuccessfulRecruits: 1,
+      goalSuccessfulRecruits: 1,
+    });
+
+    const otherAmbassador = await userRepo.save(
+      userRepo.create({
+        name: "Other Window Ambassador",
+        email: "other.window.ambassador@example.com",
+        password: "Password123!",
+        ambassador: true,
+      }),
+    );
+    await onetimeInviteRepo.save(
+      onetimeInviteRepo.create({
+        invitee: "OTHER-WINDOW",
+        code: "OTHER-WINDOW",
+        status: OnetimeInviteStatus.LINK_UNUSED,
+        invitingUser: otherAmbassador,
+      }),
+    );
+    for (const { id } of [ambassador, otherAmbassador]) {
+      await userService.upsertAmbassadorProgramMember({
+        userId: id,
+        activeParticipant: true,
+      });
+    }
+    const { members } = await userService.getAmbassadorProgramDashboard();
+    const totalsOf = (userId: number) =>
+      members.find((member) => member.userId === userId)?.inviteStats?.totals;
+    expect(totalsOf(ambassador.id)).toEqual(allTime);
+    expect(totalsOf(otherAmbassador.id)).toEqual({
+      totalInvitesSent: 1,
+      totalAcceptedInvites: 0,
+      totalSuccessfulRecruits: 0,
+      goalSuccessfulRecruits: 0,
+    });
+
+    await userService.sendDueAmbassadorInviteGoalNotifications();
+    const notifications = await ctx.dataSource
+      .getRepository(Notification)
+      .findBy({ user: { id: ambassador.id } });
+    expect(notifications.map(({ message }) => message)).toContain(
+      "Your recruiting goal ended. You reached 60% of your goal (3/5 successful recruits).",
+    );
   });
 
   describe("signContract behavior", () => {
