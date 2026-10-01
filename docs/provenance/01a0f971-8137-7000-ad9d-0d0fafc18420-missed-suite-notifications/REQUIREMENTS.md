@@ -14,6 +14,7 @@ task: Specify items 1 and 2 of Automated Messages Report (3), including missed-s
 - Messages run automatically. Experiment assignment and delivery information must be stored in the database for manual review.
 - Keep existing delivery-failure behavior rather than introducing the agent's proposed retry policy.
 - The user requested that the agent's treatment of unequal deadlines within a suite be recorded only in DECISIONS.md.
+- The suspension notice must also go out as a push. During review, the agent noted (ALL-1370) that members with only push enabled would otherwise get no message when a third missed suite suspends them; the user asked for a suspension push and left its wording to the agent.
 
 ## Agent proposals explicitly approved by the user
 

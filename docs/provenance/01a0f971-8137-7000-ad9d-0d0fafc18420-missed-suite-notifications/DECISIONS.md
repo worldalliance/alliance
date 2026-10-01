@@ -83,6 +83,8 @@ Start implementation with regression tests for partial suites, historical versus
 
 **Channels.** The in-app entry is a `Notification` with category `action_event` that links to `/tasks`, with `shouldPush: false`. The reminder sender delivers the push with screen `/tasks`, so the in-app pipeline cannot dispatch a second push. External channels follow the existing per-channel preferences and failure behavior. The report email bodies keep the source's line breaks (single newlines).
 
+**Suspension push.** The suspension notice sends a push alongside its SMS and email, gated on the member's action-push preference. It reuses the SMS sentence (`suspensionMessage`) so the two channels cannot drift, and opens `/membership`, where a suspended member can re-sign. Its idempotency key includes the suspension reason key, so a member suspended again after re-signing gets a new push.
+
 **Copy correction.** A data migration replaces the obsolete sentence ("miss all of your assigned non-optional actions for three weeks in a row") in reminder groups whose deadline is still ahead. Groups past their deadline keep the copy they went out with; `allSent` is never set, so it cannot tell sent groups apart. The admin preset default, the `#{secondmisswarning}` text, the suspension SMS/email, the shared contract term, and the explanation pages now say "miss any assigned non-optional task for 3 weeks in a row". The stored contracts in the local snapshot do not contain the suspension clause, so no contract record changed.
 
 **Removed.** `server/scripts/local-test-missed-action-emails.ts` checked the old personalized second-miss email through the removed `getMissedActionReminderContexts`, so it was deleted.
