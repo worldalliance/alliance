@@ -1,5 +1,3 @@
-import { errorMessage } from "@alliance/common/errorMessage";
-import { tasksGetForm } from "@alliance/shared/client";
 import type {
   ActionReviewerIcon,
   ProfileDto,
@@ -15,12 +13,12 @@ import {
   getCompletedShareableTextTemplate,
   getDefaultShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
+import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import AggregateProgressBarBlock from "@alliance/sharedweb/ui/AggregateProgressBarBlock";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import ExternalLinkPreview from "@alliance/sharedweb/ui/ExternalLinkPreview";
 import LinkedInIcon from "@alliance/sharedweb/ui/icons/LinkedInIcon";
-import { useQuery } from "@tanstack/react-query";
 import { Link2Icon } from "lucide-react";
 import { Fragment, useEffect, useMemo, type ReactNode } from "react";
 import {
@@ -85,25 +83,8 @@ const ActionContents = () => {
   const loggedInMode = !action.publicOnly;
   const isCompleted = context.userRelation === "completed";
   const formResponse = useCompletedTaskForm(action, isCompleted);
-  const { data: taskForm } = useQuery({
-    queryKey: ["form", action.taskFormId],
-    queryFn: async () => {
-      const response = await tasksGetForm({
-        path: { id: action.taskFormId! },
-      });
-
-      if (!response.data) {
-        throw new Error(
-          errorMessage({
-            error: response.error,
-            fallback: "Unable to load form",
-          }),
-        );
-      }
-
-      return response.data;
-    },
-    enabled: !isCompleted && action.taskFormId != null,
+  const { data: taskForm } = useTaskForm(action.taskFormId, {
+    enabled: !isCompleted,
   });
   const shareTemplate = isCompleted
     ? getCompletedShareableTextTemplate({

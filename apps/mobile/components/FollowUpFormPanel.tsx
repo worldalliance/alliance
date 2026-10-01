@@ -1,5 +1,4 @@
 import { FormSchema } from "@alliance/common/forms/form-schema";
-import { tasksGetForm } from "@alliance/shared/client";
 import type {
   FollowUpFormDto,
   SubmitFormDto,
@@ -11,8 +10,8 @@ import {
   followUpPersistKey,
   submitFollowUpForm,
 } from "@alliance/shared/lib/followUpForm";
+import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Alert, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
@@ -47,13 +46,7 @@ export default function FollowUpFormPanel({
     data: form,
     error: formError,
     isPending,
-  } = useQuery({
-    queryKey: ["form", followUpForm.formId],
-    queryFn: () =>
-      tasksGetForm({ path: { id: followUpForm.formId } }).then(
-        (response) => response.data,
-      ),
-  });
+  } = useTaskForm(followUpForm.formId);
 
   const handleSubmit = useCallback(
     async (data: SubmitFormDto) => {

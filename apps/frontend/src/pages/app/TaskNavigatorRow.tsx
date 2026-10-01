@@ -1,14 +1,12 @@
 import { type ActionDto, type FollowUpFormDto } from "@alliance/shared/client";
-import {
-  useCompletedTaskForm,
-  useTaskForm,
-} from "@alliance/shared/lib/actionTaskPanelCompleted";
+import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
 import {
   isActionOptional,
   type ActionWithAwayStatus,
 } from "@alliance/shared/lib/actionUtils";
 import { clipboardCopy, taskHeaders } from "@alliance/shared/lib/copy";
 import { getCompletedShareableTextTemplate } from "@alliance/shared/lib/shareText";
+import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { cn } from "@alliance/shared/styles/util";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import {
@@ -191,7 +189,7 @@ export function TaskNavigatorCompletedRow({
 }) {
   const { user, isAuthenticated } = useAuth();
   const formResponse = useCompletedTaskForm(action, true);
-  const taskForm = useTaskForm(action, true);
+  const { data: taskForm } = useTaskForm(action.taskFormId);
   const shareTemplate = getCompletedShareableTextTemplate({
     schemaSnapshot: formResponse?.schemaSnapshot as
       | Record<string, unknown>

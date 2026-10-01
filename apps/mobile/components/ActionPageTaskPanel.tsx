@@ -5,10 +5,7 @@ import {
   getActionPageTaskPanelState,
   shouldLoadCompletedTaskFormByState,
 } from "@alliance/shared/lib/actionPageTaskPanel";
-import {
-  useCompletedTaskForm,
-  useTaskForm,
-} from "@alliance/shared/lib/actionTaskPanelCompleted";
+import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
 import {
   clipboardCopy,
   taskHeaders,
@@ -19,6 +16,7 @@ import {
   buildShareText,
   getCompletedShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
+import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { milliseconds } from "date-fns";
 import { Link } from "expo-router";
 import { ArrowRight, Link2 } from "lucide-react-native";
@@ -136,10 +134,9 @@ const ActionPageTaskPanel = ({
     action,
     shouldLoadCompletedTaskFormByState[state],
   );
-  const taskForm = useTaskForm(
-    action,
-    state === ActionPageTaskPanelState.Completed,
-  );
+  const { data: taskForm } = useTaskForm(action.taskFormId, {
+    enabled: state === ActionPageTaskPanelState.Completed,
+  });
   const shareTemplate = getCompletedShareableTextTemplate({
     schemaSnapshot: formResponse?.schemaSnapshot as
       | Record<string, unknown>

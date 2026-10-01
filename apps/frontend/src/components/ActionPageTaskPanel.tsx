@@ -10,7 +10,6 @@ import { ActionTaskPanelPropsShared } from "@alliance/shared/lib/actionTaskPanel
 import {
   useCompletedTaskForm,
   useGuestTaskForm,
-  useTaskForm,
 } from "@alliance/shared/lib/actionTaskPanelCompleted";
 import {
   clipboardCopy,
@@ -19,6 +18,7 @@ import {
   type TitledCopy,
 } from "@alliance/shared/lib/copy";
 import { getCompletedShareableTextTemplate } from "@alliance/shared/lib/shareText";
+import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { cn } from "@alliance/shared/styles/util";
 import Card from "@alliance/sharedweb/ui/Card";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
@@ -186,7 +186,9 @@ const ActionPageTaskPanel = () => {
   const effectiveFormResponse = guestFormResponse ?? formResponse ?? undefined;
   const isCompletedPanel =
     state === ActionPageTaskPanelState.Completed || guestCompleted;
-  const taskForm = useTaskForm(action, isCompletedPanel);
+  const { data: taskForm } = useTaskForm(action.taskFormId, {
+    enabled: isCompletedPanel,
+  });
   const shareTemplate = getCompletedShareableTextTemplate({
     schemaSnapshot: effectiveFormResponse?.schemaSnapshot as
       | Record<string, unknown>

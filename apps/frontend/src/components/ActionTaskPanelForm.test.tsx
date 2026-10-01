@@ -1,4 +1,5 @@
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { makeUser } from "@alliance/shared/lib/testFixtures";
 import { recordExceptions } from "@alliance/shared/lib/testing/recordExceptions";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
@@ -65,7 +66,7 @@ it("seeds a timezone field from a member whose session loads after the form", as
   );
   const { rerender } = render(panel(authValue({ loading: true })));
   await waitFor(() =>
-    expect(queryClient.getQueryData(["form", 7])).toBeDefined(),
+    expect(queryClient.getQueryData(queryKeys.taskForm(7))).toBeDefined(),
   );
   rerender(
     panel(authValue({ user: makeUser({ timeZone: "Pacific/Chatham" }) })),

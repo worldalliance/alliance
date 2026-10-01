@@ -1,5 +1,4 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
-import { errorMessage } from "@alliance/common/errorMessage";
 import {
   flattenPageItems,
   FormSchema,
@@ -8,7 +7,6 @@ import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options"
 import {
   FormResponseDto,
   SubmitFormDto,
-  tasksGetForm,
   tasksGetLinkedGuestDraft,
   tasksSubmitForm,
   tasksSubmitPublicForm,
@@ -16,6 +14,7 @@ import {
 import { formulaSourcesChanged } from "@alliance/shared/forms/formulaChoices";
 import type { ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import { captureException } from "@alliance/shared/lib/analytics";
+import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { useInvalidateVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -73,26 +72,7 @@ const ActionTaskPanelForm = ({
     data: form,
     error: formError,
     isPending,
-  } = useQuery({
-    queryKey: ["form", taskFormId],
-    queryFn: async () => {
-      const response = await tasksGetForm({
-        path: { id: taskFormId },
-      });
-
-      if (!response.data) {
-        throw new Error(
-          errorMessage({
-            error: response.error,
-            fallback: "Unable to load form",
-          }),
-        );
-      }
-
-      return response.data;
-    },
-    enabled: !formResponse,
-  });
+  } = useTaskForm(taskFormId, { enabled: !formResponse });
 
   const draftEnabled =
     !formResponse && !disabled && !publicAction && !preview && isAuthenticated;

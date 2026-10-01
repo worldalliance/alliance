@@ -13,6 +13,8 @@ const projectsAdminAll = () => ["projectsAdmin"] as const;
 const waitlistEntriesAdminAll = () =>
   ["waitlistAdminSearchEntriesAdmin"] as const;
 
+const taskFormsAll = () => ["form"] as const;
+
 const actionCompletionCurvesAdminAll = () =>
   ["analyticsGetActionCompletionCurvesAdmin"] as const;
 
@@ -75,6 +77,8 @@ export const queryKeys = {
   signupSocialProof: (referralCode: string | null, count?: number) =>
     ["userSignupSocialProof", referralCode, count] as const,
   staffDirectory: () => ["userStaffDirectory"] as const,
+  taskFormsAll,
+  taskForm: (formId: number | null) => [...taskFormsAll(), formId] as const,
   waitlistBrowser: () => ["waitlistBrowser"] as const,
   waitlistCount: () => ["waitlistCount"] as const,
   waitlistMailConfig: () => ["waitlistMailConfig"] as const,
