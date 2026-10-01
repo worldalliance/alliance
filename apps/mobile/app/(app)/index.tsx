@@ -16,6 +16,7 @@ import { getTaskDismissInfo } from "@alliance/shared/lib/largeActionCard";
 import { useBoundedIndex } from "@alliance/shared/lib/useBoundedIndex";
 import { useUnreadGeneralUpdates } from "@alliance/shared/lib/useGeneralUpdates";
 import useHomeFeed, { resetHomeFeed } from "@alliance/shared/lib/useHomeFeed";
+import { useInvalidateTaskForms } from "@alliance/shared/lib/useTaskForm";
 import { LegendList, type LegendListRef } from "@legendapp/list";
 import { useQueryClient } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
@@ -62,6 +63,7 @@ const renderKeyboardAwareScrollComponent = (props: ScrollViewProps) => (
 
 export default function HomeScreen() {
   const queryClient = useQueryClient();
+  const invalidateTaskForms = useInvalidateTaskForms();
   const invalidateActions = useInvalidateActions();
   const [refreshing, setRefreshing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -179,12 +181,12 @@ export default function HomeScreen() {
       await Promise.all([
         refetch(),
         refetchGeneralUpdates(),
-        queryClient.invalidateQueries({ queryKey: ["form"] }),
+        invalidateTaskForms(),
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, [refetch, refetchGeneralUpdates, queryClient]);
+  }, [refetch, refetchGeneralUpdates, invalidateTaskForms]);
 
   const scrollPageTo = useCallback((y: number, animated = true) => {
     scrollViewRef.current?.scrollTo({ y, animated });

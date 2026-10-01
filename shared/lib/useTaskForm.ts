@@ -1,5 +1,6 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-import { skipToken, useQuery } from "@tanstack/react-query";
+import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { tasksGetForm } from "../client";
 import { queryKeys } from "./queryKeys";
 
@@ -26,4 +27,12 @@ export function useTaskForm(
           },
     enabled: params?.enabled ?? true,
   });
+}
+
+export function useInvalidateTaskForms(): () => Promise<void> {
+  const queryClient = useQueryClient();
+  return useCallback(
+    () => queryClient.invalidateQueries({ queryKey: queryKeys.taskFormsAll() }),
+    [queryClient],
+  );
 }

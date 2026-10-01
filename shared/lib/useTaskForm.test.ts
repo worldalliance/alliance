@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
-import { useTaskForm } from "./useTaskForm";
+import { useInvalidateTaskForms, useTaskForm } from "./useTaskForm";
 
 const form = { id: 7, title: "task", formSnapshotId: 1, schema: {} };
 let status = 200;
@@ -53,4 +53,17 @@ it("does not fetch without an id or while disabled", async () => {
   await new Promise((resolve) => setTimeout(resolve, 20));
   for (const hook of hooks) expect(hook.result.current.data).toBeUndefined();
   expect(requests).toBe(0);
+});
+
+it("refetches a loaded form once invalidated", async () => {
+  const { wrapper } = queryWrapper();
+  const hook = renderHook(
+    () => ({ form: useTaskForm(7), invalidate: useInvalidateTaskForms() }),
+    { wrapper },
+  );
+  await waitFor(() => expect(hook.result.current.form.isSuccess).toBe(true));
+
+  await hook.result.current.invalidate();
+
+  expect(requests).toBe(2);
 });
