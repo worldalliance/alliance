@@ -1,20 +1,16 @@
-import { waitlistEmailAdminFindEmailAdmin } from "@alliance/shared/client";
 import type {
   WaitlistEmailBatchDto,
   WaitlistEmailSkipReason,
 } from "@alliance/shared/client/types.gen";
 import { formatDateTime } from "@alliance/shared/lib/dateFormatters";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { useQuery } from "@tanstack/react-query";
 import { CopyPlus } from "lucide-react";
 import React from "react";
 import { useNavigate } from "react-router";
 import { adminRefusalMessage } from "../../../lib/adminRefusal";
+import { useWaitlistEmailAdmin } from "../../../lib/useWaitlistEmailsAdmin";
 import {
   type EmailDraft,
   emailDraftState,
-  inProgress,
-  SENDING_POLL_MS,
   STATUS_LABELS,
 } from "../../../lib/waitlistEmail";
 import { BORDERED_ICON_BUTTON_CLASS } from "../controlClasses";
@@ -29,18 +25,7 @@ const EmailBatchDetail: React.FC<{ batch: WaitlistEmailBatchDto }> = ({
   batch,
 }) => {
   const navigate = useNavigate();
-  const detail = useQuery({
-    queryKey: queryKeys.waitlistEmailAdmin(batch.id),
-    queryFn: () =>
-      waitlistEmailAdminFindEmailAdmin({
-        path: { id: batch.id },
-        throwOnError: true,
-      }).then((r) => r.data),
-    refetchInterval: (query) =>
-      query.state.data && inProgress(query.state.data)
-        ? SENDING_POLL_MS
-        : false,
-  });
+  const detail = useWaitlistEmailAdmin(batch.id);
   const draft: EmailDraft = { subject: batch.subject, body: batch.body };
 
   return (
