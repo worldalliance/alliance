@@ -92,6 +92,27 @@ describe("MmsService sendMms", () => {
     expect(eventLogService.sendMessage).not.toHaveBeenCalled();
   });
 
+  it("sends to UK numbers from the alphanumeric sender", async () => {
+    const create = jest.fn(() => Promise.resolve(message));
+    service["twilioClient"] = {
+      messages: { create },
+    } as unknown as Twilio.Twilio;
+
+    await asProduction(() =>
+      service.sendMms({
+        to: "+447700900123",
+        body: BODY,
+        mediaUrls: [],
+        cid: null,
+      }),
+    );
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "+447700900123", from: "The Alliance" }),
+    );
+    expect(saved).toEqual([expect.objectContaining({ from: "The Alliance" })]);
+  });
+
   it("gives up on a send twilio never answers", async () => {
     service["twilioClient"] = {
       messages: { create: () => new Promise(() => {}) },

@@ -17,6 +17,9 @@ import Twilio from "twilio";
 import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
 import { Mms } from "./mms.entity";
 
+/** Twilio delivers to UK numbers only from an alphanumeric sender. */
+const UK_SENDER_ID = "The Alliance";
+
 const SEND_TIMEOUT_MS = milliseconds({ seconds: 10 });
 
 /**
@@ -122,7 +125,7 @@ export class MmsService {
     try {
       const sending = this.twilioClient.messages.create({
         to: to,
-        from: this.twilioPhoneNumber,
+        from: this.senderFor(to),
         body: body,
         mediaUrl: mediaUrls,
       });
@@ -146,12 +149,16 @@ export class MmsService {
         this.eventLogService.sendMessage({
           type: EventType.SmsFailure,
           message: `Failed to send MMS to ${to}: ${errorMessage}`,
-          blob: { errorMessage, to, from: this.twilioPhoneNumber },
+          blob: { errorMessage, to, from: this.senderFor(to) },
           userId: null,
         });
       }
       return null;
     }
+  }
+
+  private senderFor(to: string): string {
+    return to.startsWith("+44") ? UK_SENDER_ID : this.twilioPhoneNumber;
   }
 
   private saveSent(params: {
@@ -164,7 +171,7 @@ export class MmsService {
     return this.mmsRepository.save(
       this.mmsRepository.create({
         to: to,
-        from: this.twilioPhoneNumber,
+        from: this.senderFor(to),
         body: body,
         twilioSid: message.sid,
         status: message.status,
