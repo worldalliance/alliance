@@ -1,5 +1,5 @@
 import { withCount } from "@alliance/common/plural";
-import { clusterListAdmin, clusterUpdateAdmin } from "@alliance/shared/client";
+import { clusterUpdateAdmin } from "@alliance/shared/client";
 import type { ClusterAdminDto } from "@alliance/shared/client/types.gen";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
@@ -9,34 +9,25 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
 import React, { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { memberProfileUrl } from "../lib/config";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
+import { useClustersAdmin } from "../lib/useClustersAdmin";
 
-function useClustersAdmin() {
+const ClustersPage: React.FC = () => {
   const queryClient = useQueryClient();
-  const queryKey = queryKeys.clustersAdmin();
-  const list = useQuery({
-    queryKey,
-    queryFn: () => clusterListAdmin({ throwOnError: true }).then((r) => r.data),
-  });
-
+  const list = useClustersAdmin();
   const replaceCluster = async (updated: ClusterAdminDto) => {
+    const queryKey = queryKeys.clustersAdmin();
     // A refetch in flight would land the old name back over the rename.
     await queryClient.cancelQueries({ queryKey });
     queryClient.setQueryData<ClusterAdminDto[]>(queryKey, (prev) =>
       prev?.map((c) => (c.id === updated.id ? updated : c)),
     );
   };
-
-  return { list, replaceCluster };
-}
-
-const ClustersPage: React.FC = () => {
-  const { list, replaceCluster } = useClustersAdmin();
   const clusters = useMemo(() => list.data ?? [], [list.data]);
   const error = list.isError
     ? thrownRefusalMessage({
