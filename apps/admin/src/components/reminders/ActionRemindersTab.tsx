@@ -19,7 +19,11 @@ import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import {
+  ConfirmMode,
+  ToastPlacement,
+  useToast,
+} from "@alliance/sharedweb/ui/ToastProvider";
 import { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import {
   format,
@@ -580,7 +584,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
         message: `This will send reminders to all members participating in this action`,
         confirmLabel: "Create",
         cancelLabel: "Cancel",
-        mode: "fullscreen",
+        mode: ConfirmMode.Fullscreen,
         requiredText: `I am going to notify many real members`,
       });
       if (!ok) {
@@ -704,7 +708,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
         message: `This will send emails or texts to ${recipientCount} members.`,
         confirmLabel: "Create",
         cancelLabel: "Cancel",
-        mode: "fullscreen",
+        mode: ConfirmMode.Fullscreen,
         requiredText: `I am going to notify ${recipientCount} real members`,
       });
       if (!ok) {

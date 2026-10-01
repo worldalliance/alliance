@@ -35,7 +35,11 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import CharacterLimitNotice from "@alliance/sharedweb/ui/CharacterLimitNotice";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
-import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import {
+  ConfirmMode,
+  ToastPlacement,
+  useToast,
+} from "@alliance/sharedweb/ui/ToastProvider";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { keyBy } from "es-toolkit";
@@ -435,7 +439,7 @@ const CommunityDetailPage: React.FC = () => {
         "All members and leaders will lose this community assignment. This action cannot be undone.",
       confirmLabel: "Delete community",
       cancelLabel: "Cancel",
-      mode: "fullscreen",
+      mode: ConfirmMode.Fullscreen,
     });
     if (!confirmed) {
       return;
@@ -510,7 +514,7 @@ const CommunityDetailPage: React.FC = () => {
         cancelLabel: "Cancel",
         anchorEl,
         placement: ToastPlacement.Top,
-        mode: "popover",
+        mode: ConfirmMode.Popover,
       });
       if (!ok) {
         return;

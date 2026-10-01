@@ -10,7 +10,7 @@ import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { Download, Plus, Trash2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
@@ -185,7 +185,7 @@ const PostsManagementPage: React.FC = () => {
         } lose their label. This cannot be undone.`,
         confirmLabel: "Delete",
         cancelLabel: "Keep",
-        mode: "fullscreen",
+        mode: ConfirmMode.Fullscreen,
       });
       if (!confirmed) return;
     }
