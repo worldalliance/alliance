@@ -1,19 +1,17 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
-import { errorMessage } from "@alliance/common/errorMessage";
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import { GUEST_HEADER } from "@alliance/common/guest";
 import {
   FormResponseDto,
   SubmitFormDto,
-  tasksGetForm,
   tasksSubmitForm,
   tasksSubmitPublicForm,
 } from "@alliance/shared/client";
 import { useFormulaSourcesRefetch } from "@alliance/shared/forms/useFormulaSourcesRefetch";
 import type { ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import { captureException } from "@alliance/shared/lib/analytics";
+import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { useInvalidateVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
-import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
@@ -58,26 +56,7 @@ const ActionTaskPanelForm = ({
     data: form,
     error: formError,
     isPending,
-  } = useQuery({
-    queryKey: ["form", taskFormId],
-    queryFn: async () => {
-      const response = await tasksGetForm({
-        path: { id: taskFormId },
-      });
-
-      if (!response.data) {
-        throw new Error(
-          errorMessage({
-            error: response.error,
-            fallback: "Unable to load form. Please try again.",
-          }),
-        );
-      }
-
-      return response.data;
-    },
-    enabled: !formResponse,
-  });
+  } = useTaskForm(taskFormId, { enabled: !formResponse });
 
   const handleSubmitForm = onCompleteAction
     ? async (data: SubmitFormDto) => {
