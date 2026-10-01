@@ -126,7 +126,7 @@ const OnboardingScreen = () => {
   const { data: latestContract, isPending: contractPending } =
     useCurrentContract();
 
-  const { used: inviteUsed, inviter } = useInvite(referralCode ?? null);
+  const { refusal: inviteRefusal, inviter } = useInvite(referralCode ?? null);
 
   // A signed-in member opens a browser session only to connect an account, so
   // their cut-off return link belongs to settings. The param is cleared once
@@ -341,7 +341,7 @@ const OnboardingScreen = () => {
             pendingProvider={pendingProvider}
             providerFailure={providerFailure}
             onContinueWithProvider={continueWithProvider}
-            inviteUsed={inviteUsed}
+            inviteRefusal={inviteRefusal}
             inviter={inviter}
           />
         );

@@ -1,14 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { Transform, TransformFnParams, Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   ArrayNotEmpty,
   IsArray,
   IsDate,
   IsEnum,
   IsOptional,
-  isISO8601,
-  isRFC3339,
 } from "class-validator";
+import { toDateTime } from "src/utils/transforms";
 import { UnreadContentType } from "../entities/unread-content.entity";
 import { NotificationSourceType } from "./notification.dto";
 
@@ -21,13 +20,6 @@ export class ReadNotificationQueryDto {
   @IsEnum(NotificationSourceType)
   sourceType?: NotificationSourceType;
 }
-
-// Anything but a strict ISO 8601 / RFC 3339 date-time stays a string for
-// @IsDate to reject; `new Date` would guess a year or time zone for it.
-const toDateTime = ({ value }: TransformFnParams): unknown =>
-  isRFC3339(value) && isISO8601(value, { strict: true })
-    ? new Date(value)
-    : value;
 
 export class ReadAllNotificationsQueryDto {
   // eslint-disable-next-line @darraghor/nestjs-typed/validated-non-primitive-property-needs-type-decorator -- toDateTime converts; @Type(() => Date) would parse loosely

@@ -807,12 +807,12 @@ jobs:
             export POSTHOG_QUERY_KEY=${{ secrets.POSTHOG_QUERY_KEY }}
             export POSTHOG_PROJECT_ID=${{ secrets.POSTHOG_PROJECT_ID }}
             export MAILGUN_SIGNING_KEY=${{ secrets.MAILGUN_SIGNING_KEY }}
+            export WAITLIST_PUBLIC_MAIL_DAILY_CAP=${{ vars.WAITLIST_PUBLIC_MAIL_DAILY_CAP }}
             export NOTIF_TEST_PHONE_NUMBER=${{ secrets.NOTIF_TEST_PHONE_NUMBER }}
             export NOTIF_TEST_EMAIL=${{ secrets.NOTIF_TEST_EMAIL }}
             export USE_CLOUDFRONT=${{ vars.USE_CLOUDFRONT }}
             export CLOUDFRONT_DOMAIN=${{ secrets.CLOUDFRONT_DOMAIN }}
             export SLACK_WEBHOOK_URL=${{ secrets.SLACK_WEBHOOK_URL }}
-            export SLACK_FIREHOSE_WEBHOOK_URL=${{ secrets.SLACK_FIREHOSE_WEBHOOK_URL }}
             export DB_CA_CERT="${{ secrets.DB_CA_CERT }}"
             export PANGRAM_API_KEY=${{ secrets.PANGRAM_API_KEY }}
             export PANGRAM_API_URL=https://text.api.pangram.com/v3

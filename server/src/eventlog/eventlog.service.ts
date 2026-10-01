@@ -13,21 +13,10 @@ import { EventLog, EventType, SEND_TO_SLACK } from "./event-log.entity";
 import { EventLogEvents } from "./eventlog.events";
 import { escapeSlackText } from "./slack-format";
 
-export enum SlackChannel {
-  Alerts = "alerts",
-  Firehose = "firehose",
-}
-
-const SLACK_WEBHOOK_ENV: Record<SlackChannel, string> = {
-  [SlackChannel.Alerts]: "SLACK_WEBHOOK_URL",
-  [SlackChannel.Firehose]: "SLACK_FIREHOSE_WEBHOOK_URL",
-};
-
 export interface EventLogMessage {
   type: EventType;
   message: string;
   slackMessage?: string;
-  slackChannel?: SlackChannel;
   blob: Record<string, unknown> | null;
   userId: number | null;
 }
@@ -177,11 +166,9 @@ export class EventLogService {
       return;
     }
 
-    const webhookEnv =
-      SLACK_WEBHOOK_ENV[data.slackChannel ?? SlackChannel.Alerts];
-    const webhookUrl = process.env[webhookEnv];
+    const webhookUrl = process.env.SLACK_WEBHOOK_URL;
     if (!webhookUrl) {
-      this.logger.warn(`${webhookEnv} is not set; skipping Slack message`);
+      this.logger.warn("SLACK_WEBHOOK_URL is not set; skipping Slack message");
       return;
     }
     if (process.env.NODE_ENV !== "production") {

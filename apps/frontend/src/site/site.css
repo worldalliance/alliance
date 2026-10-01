@@ -19,6 +19,12 @@
   font-family: var(--site-font-logotype);
 }
 
+/** Small labels and captions, which take the app face. */
+.site-root .site-sans,
+.site-root .site-sans * {
+  font-family: var(--font-sans);
+}
+
 @keyframes site-check-pop {
   0% {
     transform: scale(0.4);

@@ -2418,6 +2418,29 @@ describe("Users (e2e)", () => {
         });
       });
 
+      describe("deleteOnetimeInvite", () => {
+        it("lets an admin delete an invite with no inviting user", async () => {
+          const invite = await onetimeInviteRepo.save(
+            onetimeInviteRepo.create({
+              invitee: "No inviter",
+              code: "NO-INVITER-DELETE",
+              status: OnetimeInviteStatus.LINK_UNUSED,
+              invitingUser: null,
+            }),
+          );
+
+          await request(ctx.app.getHttpServer())
+            .delete(`/user/onetimeInvites/${invite.id}`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .expect(200);
+
+          const deleted = await onetimeInviteRepo.findOneByOrFail({
+            id: invite.id,
+          });
+          expect(deleted.deletedAt).not.toBeNull();
+        });
+      });
+
       describe("requestOnetimeInvite", () => {
         it("rejects requests from users that are not members of the community", async () => {
           const res = await request(ctx.app.getHttpServer())
@@ -2466,6 +2489,22 @@ describe("Users (e2e)", () => {
           expect(res.body.id).toBe(pendingInvite.id);
           expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
           expect(res.body.invitingUser.id).toBe(communityMemberId);
+        });
+
+        it("approves a request whose requester is gone", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+          await onetimeInviteRepo.update(pendingInvite.id, {
+            invitingUser: null,
+          });
+
+          const res = await request(ctx.app.getHttpServer())
+            .post(`/user/onetimeInvite/${pendingInvite.id}/approve`)
+            .set("Authorization", `Bearer ${userAToken}`)
+            .send()
+            .expect(201);
+
+          expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
+          expect(res.body.invitingUser ?? null).toBeNull();
         });
 
         it("rejects approval attempts from non-leaders", async () => {

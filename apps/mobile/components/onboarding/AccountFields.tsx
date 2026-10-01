@@ -1,6 +1,10 @@
 import { OAUTH_PROVIDER_LABEL, OAuthProvider } from "@alliance/common/oauth";
 import type { ReferrerProfileDto } from "@alliance/shared/client";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
+import {
+  INVITE_REFUSAL_HEADING,
+  type InviteRefusal,
+} from "@alliance/shared/lib/useInvite";
 import { ArrowRight } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
@@ -52,7 +56,7 @@ export function AccountFields({
   pendingProvider,
   providerFailure,
   onContinueWithProvider,
-  inviteUsed,
+  inviteRefusal,
   inviter,
   onFieldFocus,
   onFieldBlur,
@@ -70,7 +74,7 @@ export function AccountFields({
   pendingProvider: OAuthProvider | null;
   providerFailure: ProviderFailure | null;
   onContinueWithProvider: (provider: OAuthProvider) => void;
-  inviteUsed: boolean;
+  inviteRefusal: InviteRefusal | null;
   inviter: ReferrerProfileDto | null;
   /** Both fields report focus, so the keyboard handling can tell a swap from a dismissal. */
   onFieldFocus: () => void;
@@ -80,13 +84,13 @@ export function AccountFields({
   const [showPassword, setShowPassword] = useState(false);
 
   const loggingIn = mode === AccountMode.LogIn;
-  const showForm = loggingIn || !inviteUsed;
+  const showForm = loggingIn || !inviteRefusal;
   const emailValid = EMAIL_PATTERN.test(email.trim());
   const ready = emailValid && password.length > 0;
   const busy = submitting || pendingProvider !== null;
   const heading =
-    !loggingIn && inviteUsed
-      ? "This invite link has already been used."
+    !loggingIn && inviteRefusal
+      ? INVITE_REFUSAL_HEADING[inviteRefusal]
       : ACCOUNT_HEADING[mode];
 
   return (

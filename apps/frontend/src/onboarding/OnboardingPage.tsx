@@ -27,6 +27,7 @@ import { useSiteBackground } from "../components/HtmlBackgroundManager";
 import { useAuth } from "../lib/AuthContext";
 import { socialPreviewMeta } from "../lib/socialPreviewMeta";
 import { useContract } from "../lib/useContract";
+import { useRememberInvite } from "../lib/useRememberInvite";
 // import { useMediaQuery } from "../lib/useMediaQuery";
 import { SiteFooter } from "../site/Footer";
 import { JoinCta } from "../site/JoinCta";
@@ -101,7 +102,8 @@ const OnboardingPage = () => {
   const isAccount = step === OnboardingStep.Account;
   // const mobileWeb = useMediaQuery(MOBILE_WEB_QUERY);
   useLockedViewport(!isAccount);
-  const { inviter, used: inviteUsed } = useInvite(referralCode);
+  const { inviter, refusal: inviteRefusal } = useInvite(referralCode);
+  useRememberInvite(referralCode);
   const faces = useSignupFaces(referralCode, {
     enabled: step === OnboardingStep.Agreement,
   });
@@ -474,8 +476,8 @@ const OnboardingPage = () => {
           </section>
           <LandingBody />
           <JoinCta
-            to={inviteUsed ? undefined : ACCOUNT_ANCHOR}
-            heading={inviteUsed ? undefined : "Create an account"}
+            to={inviteRefusal ? undefined : ACCOUNT_ANCHOR}
+            heading={inviteRefusal ? undefined : "Create an account"}
           />
           <SiteFooter />
         </>

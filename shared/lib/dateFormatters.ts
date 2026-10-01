@@ -23,6 +23,13 @@ const shortDateFormatter = new Intl.DateTimeFormat(undefined, {
   day: "numeric",
 });
 
+/** "Jan 1, 2025" (en-US) */
+const mediumDateFormatterEnUS = new Intl.DateTimeFormat("en-US", {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
+
 /** "Jan 1, 2025, 3:00 PM" */
 const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
@@ -52,6 +59,10 @@ export function formatLongDateEnUS(date: Date): string {
 
 export function formatShortDate(date: Date): string {
   return shortDateFormatter.format(date);
+}
+
+export function formatMediumDateEnUS(date: Date): string {
+  return mediumDateFormatterEnUS.format(date);
 }
 
 export function formatDateTime(date: Date): string {

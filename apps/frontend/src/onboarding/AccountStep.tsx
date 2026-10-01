@@ -3,7 +3,10 @@ import { ACCOUNT_MOVED_MESSAGE, ALLIANCE_DOMAIN } from "@alliance/common/url";
 import { authForgotPassword, authLogin } from "@alliance/shared/client";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
 import { Features } from "@alliance/shared/lib/features";
-import { useInvite } from "@alliance/shared/lib/useInvite";
+import {
+  INVITE_REFUSAL_HEADING,
+  useInvite,
+} from "@alliance/shared/lib/useInvite";
 import { useAppOrigin } from "@alliance/sharedweb/lib/appOrigin";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import {
@@ -16,18 +19,18 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import OAuthButtons from "@alliance/sharedweb/ui/OAuthButtons";
 import { useState, type FormEvent, type ReactNode } from "react";
-import { href, useLocation, useNavigate } from "react-router";
+import { href, Link, useLocation, useNavigate } from "react-router";
 import { z } from "zod";
 import { useAuth } from "../lib/AuthContext";
 import { getApiUrl, isFeatureEnabled } from "../lib/config";
-import { JOIN_MAILTO } from "../site/content";
+import { WAITLIST_HREF } from "../site/links";
 import { SiteArrow } from "../site/ui";
-import { EmailDivider, riseStyle } from "./chrome";
-
-const FIELD =
-  "h-11 w-full rounded-md border border-zinc-300 bg-white px-3.5 text-sm text-black outline-none transition-colors placeholder:text-zinc-500 focus:border-[var(--ob-navy)]";
-
-const CARD_BUTTON = "w-full gap-2 py-2.5";
+import {
+  ACCOUNT_BUTTON,
+  ACCOUNT_FIELD,
+  EmailDivider,
+  riseStyle,
+} from "./chrome";
 
 const handedNotice = z.object({ message: z.string() });
 
@@ -67,7 +70,7 @@ export function AccountStep({
   const { onLogin } = useAuth();
   const navigate = useNavigate();
   const {
-    used: inviteUsed,
+    refusal: inviteRefusal,
     pending: invitePending,
     unresolved: inviteUnresolved,
     inviter,
@@ -77,13 +80,13 @@ export function AccountStep({
   // the trip rather than the whole journey.
   const inviteOnly =
     (!isFeatureEnabled(Features.PublicSignup) && !referralCode) ||
-    inviteUsed ||
+    inviteRefusal !== null ||
     inviteUnresolved;
   // An invite in the URL is a way in, so logging in offers the sign-up screen
   // it came from rather than sending the member off to ask for another invite.
   const canSignUp =
     isFeatureEnabled(Features.PublicSignup) ||
-    (!!referralCode && !inviteUsed && !inviteUnresolved);
+    (!!referralCode && inviteRefusal === null && !inviteUnresolved);
   const [loggingIn, setLoggingIn] = useState(startInLogin);
   const [error, setError] = useState<ReactNode>(null);
   const location = useLocation();
@@ -105,8 +108,8 @@ export function AccountStep({
 
   const heading = loggingIn
     ? "Log into your account"
-    : inviteUsed
-      ? "This invite link has already been used."
+    : inviteRefusal
+      ? INVITE_REFUSAL_HEADING[inviteRefusal]
       : inviteUnresolved
         ? "This invite link isn’t valid."
         : inviteOnly
@@ -248,7 +251,7 @@ export function AccountStep({
                   autoComplete="email"
                   placeholder="Email"
                   defaultValue={email}
-                  className={FIELD}
+                  className={ACCOUNT_FIELD}
                   aria-label="Email"
                 />
                 <input
@@ -258,7 +261,7 @@ export function AccountStep({
                   autoComplete={loggingIn ? "current-password" : "new-password"}
                   placeholder="Password"
                   defaultValue={password}
-                  className={FIELD}
+                  className={ACCOUNT_FIELD}
                   aria-label="Password"
                 />
                 {error && (
@@ -270,7 +273,7 @@ export function AccountStep({
                 <Button
                   type="submit"
                   color={ButtonColor.Black}
-                  className={CARD_BUTTON}
+                  className={ACCOUNT_BUTTON}
                   disabled={pending}
                 >
                   {loggingIn ? "Log in" : "Get started"}
@@ -297,12 +300,12 @@ export function AccountStep({
               ? "Don’t have an account? "
               : "Already have an account? "}
             {loggingIn && !canSignUp ? (
-              <a
-                href={JOIN_MAILTO}
+              <Link
+                to={WAITLIST_HREF}
                 className="font-medium text-black underline underline-offset-2"
               >
-                Request an invite
-              </a>
+                Join the waitlist
+              </Link>
             ) : (
               <button
                 type="button"

@@ -223,7 +223,7 @@ We define "the Alliance" as the body of our members, not as any legal entity.
     id: "how-do-i-join",
     question: "How do I join the Alliance?",
     answer: `
-Membership is currently by invitation only. You can [request to join](/join), and we will follow up with a signup link if there is a fit.
+Membership is currently by invitation only. You can [join the waitlist](/projects/democratic-grantmaking-26), and we will email you when you can join.
 `,
   },
   {

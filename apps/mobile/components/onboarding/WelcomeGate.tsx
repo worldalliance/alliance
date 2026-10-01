@@ -1,5 +1,6 @@
 import type { OAuthProvider } from "@alliance/common/oauth";
 import type { ReferrerProfileDto } from "@alliance/shared/client";
+import type { InviteRefusal } from "@alliance/shared/lib/useInvite";
 import { Image } from "expo-image";
 import { memo, useEffect, useRef } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
@@ -176,7 +177,7 @@ export function WelcomeGate({
   pendingProvider,
   providerFailure,
   onContinueWithProvider,
-  inviteUsed,
+  inviteRefusal,
   inviter,
 }: {
   mode: AccountMode;
@@ -192,7 +193,7 @@ export function WelcomeGate({
   pendingProvider: OAuthProvider | null;
   providerFailure: ProviderFailure | null;
   onContinueWithProvider: (provider: OAuthProvider) => void;
-  inviteUsed: boolean;
+  inviteRefusal: InviteRefusal | null;
   inviter: ReferrerProfileDto | null;
 }) {
   const insets = useSafeAreaInsets();
@@ -246,7 +247,7 @@ export function WelcomeGate({
           pendingProvider={pendingProvider}
           providerFailure={providerFailure}
           onContinueWithProvider={onContinueWithProvider}
-          inviteUsed={inviteUsed}
+          inviteRefusal={inviteRefusal}
           inviter={inviter}
           onFieldFocus={onFieldFocus}
           onFieldBlur={onFieldBlur}

@@ -182,7 +182,8 @@ export class AuthService {
 
   /**
    * Resolves a referral code to invite (if onetime invite), referring user, and referral source.
-   * Throws if code is missing, invite already used, or (outside test) invalid referral code.
+   * Throws (outside test) on an invalid referral code. Creating the user claims
+   * the invite, which is where an already-used invite fails.
    */
   private async resolveReferralCode(referralCode: string): Promise<{
     invite: OnetimeInvite | null;
@@ -196,7 +197,6 @@ export class AuthService {
       inviteRelations: {
         invitingUser: { communities: true },
         community: true,
-        invitedUser: true,
       },
     });
 
@@ -217,12 +217,6 @@ export class AuthService {
     switch (resolution.kind) {
       case "invite": {
         const { invite } = resolution;
-        if (invite.invitedUser) {
-          throw new BadRequestException(
-            "This invite code has already been used",
-          );
-        }
-        await this.usersService.invalidateInvite(invite.id);
         return {
           invite,
           referringUser: invite.invitingUser,

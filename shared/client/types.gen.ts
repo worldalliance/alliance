@@ -230,7 +230,7 @@ export type ActionEventNotifType = 'announcement' | 'misseddeadline' | 'reminder
 
 export type EmailStatus = 'pending' | 'sent' | 'failed';
 
-export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reminder';
+export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reminder' | 'waitlist_confirmation' | 'waitlist_link';
 
 export type Mail = {
     id: number;
@@ -644,7 +644,7 @@ export type OnetimeInvite = {
     status: OnetimeInviteStatus;
     deletedAt: string | null;
     usedAt: string | null;
-    invitingUser: User;
+    invitingUser: User | null;
     invitedUser: User | null;
     invitedUserId?: number;
     community?: Community | null;
@@ -1600,11 +1600,18 @@ export type UpdateExternalShareTargetDto = {
     paramName?: string;
 };
 
+export type CampaignKind = 'campaign' | 'organization';
+
 export type CampaignDto = {
     id: number;
     name: string;
     code: string;
     picture: string | null;
+    kind: CampaignKind;
+    /**
+     * An organization's accountability group
+     */
+    communityId: number | null;
     createdAt: string;
     updatedAt: string;
 };
@@ -1615,11 +1622,17 @@ export type CreateCampaignDto = {
      * Image key (from POST /images/uploadImage) for the avatar.
      */
     picture?: string;
+    kind?: CampaignKind;
 };
 
 export type UpdateCampaignDto = {
     name?: string;
     picture?: string | null;
+    kind?: CampaignKind;
+    /**
+     * Only an organization has a group
+     */
+    communityId?: number | null;
 };
 
 export type PushOpenedDto = {
@@ -1680,7 +1693,7 @@ export type NotifClickResponseDto = {
     mms: boolean;
 };
 
-export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested' | 'account_deleted' | 'join_request' | 'admin_role_changed';
+export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested' | 'account_deleted' | 'join_request' | 'admin_role_changed' | 'waitlist_mail_cap_reached';
 
 export type EventLogUserDto = {
     id: number;
@@ -4323,14 +4336,261 @@ export type ContractStatusPointDto = {
     totalEverSigned: number;
 };
 
-export type CreateJoinRequestDto = {
+export type CreateWaitlistEntryDto = {
+    /**
+     * An organization's waitlist link code
+     */
+    linkCode?: string;
+    /**
+     * A waitlist entry's personal code
+     */
+    referrerCode?: string;
     name: string;
     email: string;
-    reason: string;
+    /**
+     * Required when the referral resolves to no organization
+     */
+    reason?: string | null;
+    committed: true;
 };
 
-export type JoinRequestResultDto = {
-    submitted: boolean;
+export type WaitlistEntryResultDto = {
+    /**
+     * The new entry's personal code; null when the email was already on the waitlist
+     */
+    shareCode: string | null;
+};
+
+export type RememberedWaitlistEntryDto = {
+    /**
+     * The entry's personal code
+     */
+    shareCode: string;
+    mobilized: boolean;
+};
+
+export type WaitlistBrowserDto = {
+    entry: RememberedWaitlistEntryDto | null;
+    /**
+     * A signup invite this browser opened that is still claimable
+     */
+    inviteCode: string | null;
+};
+
+export type RememberInviteDto = {
+    /**
+     * A signup invite code this browser opened
+     */
+    code: string;
+};
+
+export type WaitlistLinkRequestDto = {
+    email: string;
+};
+
+export type WaitlistUnsubscribeDto = {
+    /**
+     * The token in a waitlist email's unsubscribe link
+     */
+    token: string;
+};
+
+export type WaitlistMailConfigDto = {
+    /**
+     * Whether the waitlist can email links
+     */
+    enabled: boolean;
+};
+
+export type WaitlistOrganizationDto = {
+    name: string;
+    /**
+     * URL of the organization's logo, else its group's photo
+     */
+    picture: string | null;
+    /**
+     * Entries ever attributed to the organization
+     */
+    entryCount: number;
+};
+
+export type WaitlistReferralDto = {
+    organization: WaitlistOrganizationDto | null;
+    /**
+     * Set for a personal link
+     */
+    inviterName: string | null;
+};
+
+export type WaitlistCountDto = {
+    /**
+     * Entries not yet mobilized
+     */
+    waiting: number;
+};
+
+export type WaitlistInviteState = 'none' | 'unused' | 'claimed' | 'revoked';
+
+export type WaitlistEntryFilterDto = {
+    /**
+     * Matches part of a name or email
+     */
+    search?: string | null;
+    organizationIds?: Array<number>;
+    sourceLinkIds?: Array<number>;
+    referrerIds?: Array<number>;
+    joinedFrom?: string;
+    joinedBefore?: string;
+    mobilized?: boolean;
+    subscribed?: boolean;
+    hasReason?: boolean;
+    /**
+     * Entries with any of these tags
+     */
+    tagIds?: Array<number>;
+    inviteStates?: Array<WaitlistInviteState>;
+};
+
+export type WaitlistEntrySort = 'joined_desc' | 'joined_asc' | 'organization_asc' | 'organization_desc';
+
+export type WaitlistEntrySearchDto = {
+    filter: WaitlistEntryFilterDto;
+    sort: WaitlistEntrySort;
+    offset: number;
+    limit: number;
+};
+
+export type WaitlistNamedRefDto = {
+    id: number;
+    name: string;
+};
+
+export type WaitlistSourceLinkDto = {
+    id: number;
+    channel: string;
+};
+
+export type WaitlistTagDto = {
+    id: number;
+    name: string;
+};
+
+export type AdminWaitlistEntryDto = {
+    id: number;
+    name: string;
+    email: string;
+    reason: string | null;
+    organization: WaitlistNamedRefDto | null;
+    sourceLink: WaitlistSourceLinkDto | null;
+    referrer: WaitlistNamedRefDto | null;
+    createdAt: string;
+    mobilizedAt: string | null;
+    unsubscribedAt: string | null;
+    inviteState: WaitlistInviteState;
+    tags: Array<WaitlistTagDto>;
+};
+
+export type WaitlistEntryPageDto = {
+    entries: Array<AdminWaitlistEntryDto>;
+    /**
+     * Entries matching the filter, on every page
+     */
+    total: number;
+};
+
+export type WaitlistEntryFilterBodyDto = {
+    filter: WaitlistEntryFilterDto;
+};
+
+export type WaitlistEntryIdsDto = {
+    ids: Array<number>;
+};
+
+export type WaitlistEntryIdsBodyDto = {
+    entryIds: Array<number>;
+};
+
+export type WaitlistChangeCountDto = {
+    /**
+     * Entries the request changed
+     */
+    changed: number;
+};
+
+export type AdminWaitlistLinkDto = {
+    id: number;
+    code: string;
+    organizationId: number;
+    channel: string;
+    publishedAt: string | null;
+    archivedAt: string | null;
+    createdAt: string;
+    /**
+     * Entries whose referral chain began here
+     */
+    entryCount: number;
+};
+
+export type CreateWaitlistLinkDto = {
+    organizationId: number;
+    /**
+     * Where the link is shared, e.g. Newsletter
+     */
+    channel: string;
+    publishedAt?: string | null;
+};
+
+export type UpdateWaitlistLinkDto = {
+    channel?: string;
+    publishedAt?: string | null;
+    /**
+     * Archiving stops new entries through the link
+     */
+    archived?: boolean;
+};
+
+export type AdminWaitlistTagDto = {
+    id: number;
+    name: string;
+    entryCount: number;
+};
+
+export type SaveWaitlistTagDto = {
+    name: string;
+};
+
+export type WaitlistCohortDto = {
+    id: number;
+    name: string;
+    filter: WaitlistEntryFilterDto;
+    updatedAt: string;
+};
+
+export type CreateWaitlistCohortDto = {
+    filter: WaitlistEntryFilterDto;
+    name: string;
+};
+
+export type UpdateWaitlistCohortDto = {
+    name?: string;
+    filter?: WaitlistEntryFilterDto;
+};
+
+export type WaitlistEmailTemplateDto = {
+    id: number;
+    name: string;
+    subject: string;
+    body: string;
+    updatedAt: string;
+};
+
+export type SaveWaitlistEmailTemplateDto = {
+    subject: string;
+    /**
+     * Markdown with #{placeholder}s
+     */
+    body: string;
+    name: string;
 };
 
 export type HeyApiError = {
@@ -13254,27 +13514,706 @@ export type AnalyticsGetContractStatusHistoryAdminResponses = {
 
 export type AnalyticsGetContractStatusHistoryAdminResponse = AnalyticsGetContractStatusHistoryAdminResponses[keyof AnalyticsGetContractStatusHistoryAdminResponses];
 
-export type JoinRequestsCreateData = {
-    body: CreateJoinRequestDto;
+export type WaitlistCreateData = {
+    body: CreateWaitlistEntryDto;
     path?: never;
     query?: never;
-    url: '/join-requests';
+    url: '/waitlist/entries';
 };
 
-export type JoinRequestsCreateErrors = {
+export type WaitlistCreateErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type JoinRequestsCreateError = JoinRequestsCreateErrors[keyof JoinRequestsCreateErrors];
+export type WaitlistCreateError = WaitlistCreateErrors[keyof WaitlistCreateErrors];
 
-export type JoinRequestsCreateResponses = {
-    200: JoinRequestResultDto;
+export type WaitlistCreateResponses = {
+    200: WaitlistEntryResultDto;
 };
 
-export type JoinRequestsCreateResponse = JoinRequestsCreateResponses[keyof JoinRequestsCreateResponses];
+export type WaitlistCreateResponse = WaitlistCreateResponses[keyof WaitlistCreateResponses];
+
+export type WaitlistForgetBrowserData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/waitlist/browser';
+};
+
+export type WaitlistForgetBrowserErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistForgetBrowserError = WaitlistForgetBrowserErrors[keyof WaitlistForgetBrowserErrors];
+
+export type WaitlistForgetBrowserResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type WaitlistForgetBrowserResponse = WaitlistForgetBrowserResponses[keyof WaitlistForgetBrowserResponses];
+
+export type WaitlistBrowserData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/waitlist/browser';
+};
+
+export type WaitlistBrowserErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistBrowserError = WaitlistBrowserErrors[keyof WaitlistBrowserErrors];
+
+export type WaitlistBrowserResponses = {
+    200: WaitlistBrowserDto;
+};
+
+export type WaitlistBrowserResponse = WaitlistBrowserResponses[keyof WaitlistBrowserResponses];
+
+export type WaitlistRememberInviteData = {
+    body: RememberInviteDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/browser/invite';
+};
+
+export type WaitlistRememberInviteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistRememberInviteError = WaitlistRememberInviteErrors[keyof WaitlistRememberInviteErrors];
+
+export type WaitlistRememberInviteResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type WaitlistRememberInviteResponse = WaitlistRememberInviteResponses[keyof WaitlistRememberInviteResponses];
+
+export type WaitlistRequestLinkData = {
+    body: WaitlistLinkRequestDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/link-requests';
+};
+
+export type WaitlistRequestLinkErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistRequestLinkError = WaitlistRequestLinkErrors[keyof WaitlistRequestLinkErrors];
+
+export type WaitlistRequestLinkResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type WaitlistRequestLinkResponse = WaitlistRequestLinkResponses[keyof WaitlistRequestLinkResponses];
+
+export type WaitlistUnsubscribeData = {
+    body: WaitlistUnsubscribeDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/unsubscribe';
+};
+
+export type WaitlistUnsubscribeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistUnsubscribeError = WaitlistUnsubscribeErrors[keyof WaitlistUnsubscribeErrors];
+
+export type WaitlistUnsubscribeResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type WaitlistUnsubscribeResponse = WaitlistUnsubscribeResponses[keyof WaitlistUnsubscribeResponses];
+
+export type WaitlistMailConfigData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/waitlist/mail-config';
+};
+
+export type WaitlistMailConfigErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistMailConfigError = WaitlistMailConfigErrors[keyof WaitlistMailConfigErrors];
+
+export type WaitlistMailConfigResponses = {
+    200: WaitlistMailConfigDto;
+};
+
+export type WaitlistMailConfigResponse = WaitlistMailConfigResponses[keyof WaitlistMailConfigResponses];
+
+export type WaitlistFindReferralData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * An organization's waitlist link code
+         */
+        linkCode?: string;
+        /**
+         * A waitlist entry's personal code
+         */
+        referrerCode?: string;
+    };
+    url: '/waitlist/referral';
+};
+
+export type WaitlistFindReferralErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistFindReferralError = WaitlistFindReferralErrors[keyof WaitlistFindReferralErrors];
+
+export type WaitlistFindReferralResponses = {
+    200: WaitlistReferralDto;
+};
+
+export type WaitlistFindReferralResponse = WaitlistFindReferralResponses[keyof WaitlistFindReferralResponses];
+
+export type WaitlistCountData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/waitlist/count';
+};
+
+export type WaitlistCountErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistCountError = WaitlistCountErrors[keyof WaitlistCountErrors];
+
+export type WaitlistCountResponses = {
+    200: WaitlistCountDto;
+};
+
+export type WaitlistCountResponse = WaitlistCountResponses[keyof WaitlistCountResponses];
+
+export type WaitlistAdminSearchEntriesAdminData = {
+    body: WaitlistEntrySearchDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/entries/search';
+};
+
+export type WaitlistAdminSearchEntriesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminSearchEntriesAdminError = WaitlistAdminSearchEntriesAdminErrors[keyof WaitlistAdminSearchEntriesAdminErrors];
+
+export type WaitlistAdminSearchEntriesAdminResponses = {
+    200: WaitlistEntryPageDto;
+};
+
+export type WaitlistAdminSearchEntriesAdminResponse = WaitlistAdminSearchEntriesAdminResponses[keyof WaitlistAdminSearchEntriesAdminResponses];
+
+export type WaitlistAdminFindEntryIdsAdminData = {
+    body: WaitlistEntryFilterBodyDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/entries/ids';
+};
+
+export type WaitlistAdminFindEntryIdsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminFindEntryIdsAdminError = WaitlistAdminFindEntryIdsAdminErrors[keyof WaitlistAdminFindEntryIdsAdminErrors];
+
+export type WaitlistAdminFindEntryIdsAdminResponses = {
+    200: WaitlistEntryIdsDto;
+};
+
+export type WaitlistAdminFindEntryIdsAdminResponse = WaitlistAdminFindEntryIdsAdminResponses[keyof WaitlistAdminFindEntryIdsAdminResponses];
+
+export type WaitlistAdminMobilizeEntriesAdminData = {
+    body: WaitlistEntryIdsBodyDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/entries/mobilize';
+};
+
+export type WaitlistAdminMobilizeEntriesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminMobilizeEntriesAdminError = WaitlistAdminMobilizeEntriesAdminErrors[keyof WaitlistAdminMobilizeEntriesAdminErrors];
+
+export type WaitlistAdminMobilizeEntriesAdminResponses = {
+    200: WaitlistChangeCountDto;
+};
+
+export type WaitlistAdminMobilizeEntriesAdminResponse = WaitlistAdminMobilizeEntriesAdminResponses[keyof WaitlistAdminMobilizeEntriesAdminResponses];
+
+export type WaitlistAdminUnmobilizeEntriesAdminData = {
+    body: WaitlistEntryIdsBodyDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/entries/unmobilize';
+};
+
+export type WaitlistAdminUnmobilizeEntriesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminUnmobilizeEntriesAdminError = WaitlistAdminUnmobilizeEntriesAdminErrors[keyof WaitlistAdminUnmobilizeEntriesAdminErrors];
+
+export type WaitlistAdminUnmobilizeEntriesAdminResponses = {
+    200: WaitlistChangeCountDto;
+};
+
+export type WaitlistAdminUnmobilizeEntriesAdminResponse = WaitlistAdminUnmobilizeEntriesAdminResponses[keyof WaitlistAdminUnmobilizeEntriesAdminResponses];
+
+export type WaitlistAdminFindLinksAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/links';
+};
+
+export type WaitlistAdminFindLinksAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminFindLinksAdminError = WaitlistAdminFindLinksAdminErrors[keyof WaitlistAdminFindLinksAdminErrors];
+
+export type WaitlistAdminFindLinksAdminResponses = {
+    200: Array<AdminWaitlistLinkDto>;
+};
+
+export type WaitlistAdminFindLinksAdminResponse = WaitlistAdminFindLinksAdminResponses[keyof WaitlistAdminFindLinksAdminResponses];
+
+export type WaitlistAdminCreateLinkAdminData = {
+    body: CreateWaitlistLinkDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/links';
+};
+
+export type WaitlistAdminCreateLinkAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminCreateLinkAdminError = WaitlistAdminCreateLinkAdminErrors[keyof WaitlistAdminCreateLinkAdminErrors];
+
+export type WaitlistAdminCreateLinkAdminResponses = {
+    200: AdminWaitlistLinkDto;
+};
+
+export type WaitlistAdminCreateLinkAdminResponse = WaitlistAdminCreateLinkAdminResponses[keyof WaitlistAdminCreateLinkAdminResponses];
+
+export type WaitlistAdminUpdateLinkAdminData = {
+    body: UpdateWaitlistLinkDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/links/{id}';
+};
+
+export type WaitlistAdminUpdateLinkAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminUpdateLinkAdminError = WaitlistAdminUpdateLinkAdminErrors[keyof WaitlistAdminUpdateLinkAdminErrors];
+
+export type WaitlistAdminUpdateLinkAdminResponses = {
+    200: AdminWaitlistLinkDto;
+};
+
+export type WaitlistAdminUpdateLinkAdminResponse = WaitlistAdminUpdateLinkAdminResponses[keyof WaitlistAdminUpdateLinkAdminResponses];
+
+export type WaitlistAdminFindTagsAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/tags';
+};
+
+export type WaitlistAdminFindTagsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminFindTagsAdminError = WaitlistAdminFindTagsAdminErrors[keyof WaitlistAdminFindTagsAdminErrors];
+
+export type WaitlistAdminFindTagsAdminResponses = {
+    200: Array<AdminWaitlistTagDto>;
+};
+
+export type WaitlistAdminFindTagsAdminResponse = WaitlistAdminFindTagsAdminResponses[keyof WaitlistAdminFindTagsAdminResponses];
+
+export type WaitlistAdminCreateTagAdminData = {
+    body: SaveWaitlistTagDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/tags';
+};
+
+export type WaitlistAdminCreateTagAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminCreateTagAdminError = WaitlistAdminCreateTagAdminErrors[keyof WaitlistAdminCreateTagAdminErrors];
+
+export type WaitlistAdminCreateTagAdminResponses = {
+    200: WaitlistTagDto;
+};
+
+export type WaitlistAdminCreateTagAdminResponse = WaitlistAdminCreateTagAdminResponses[keyof WaitlistAdminCreateTagAdminResponses];
+
+export type WaitlistAdminDeleteTagAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/tags/{id}';
+};
+
+export type WaitlistAdminDeleteTagAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminDeleteTagAdminError = WaitlistAdminDeleteTagAdminErrors[keyof WaitlistAdminDeleteTagAdminErrors];
+
+export type WaitlistAdminDeleteTagAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type WaitlistAdminDeleteTagAdminResponse = WaitlistAdminDeleteTagAdminResponses[keyof WaitlistAdminDeleteTagAdminResponses];
+
+export type WaitlistAdminRenameTagAdminData = {
+    body: SaveWaitlistTagDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/tags/{id}';
+};
+
+export type WaitlistAdminRenameTagAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminRenameTagAdminError = WaitlistAdminRenameTagAdminErrors[keyof WaitlistAdminRenameTagAdminErrors];
+
+export type WaitlistAdminRenameTagAdminResponses = {
+    200: WaitlistTagDto;
+};
+
+export type WaitlistAdminRenameTagAdminResponse = WaitlistAdminRenameTagAdminResponses[keyof WaitlistAdminRenameTagAdminResponses];
+
+export type WaitlistAdminTagEntriesAdminData = {
+    body: WaitlistEntryIdsBodyDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/tags/{id}/add';
+};
+
+export type WaitlistAdminTagEntriesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminTagEntriesAdminError = WaitlistAdminTagEntriesAdminErrors[keyof WaitlistAdminTagEntriesAdminErrors];
+
+export type WaitlistAdminTagEntriesAdminResponses = {
+    200: WaitlistChangeCountDto;
+};
+
+export type WaitlistAdminTagEntriesAdminResponse = WaitlistAdminTagEntriesAdminResponses[keyof WaitlistAdminTagEntriesAdminResponses];
+
+export type WaitlistAdminUntagEntriesAdminData = {
+    body: WaitlistEntryIdsBodyDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/tags/{id}/remove';
+};
+
+export type WaitlistAdminUntagEntriesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminUntagEntriesAdminError = WaitlistAdminUntagEntriesAdminErrors[keyof WaitlistAdminUntagEntriesAdminErrors];
+
+export type WaitlistAdminUntagEntriesAdminResponses = {
+    200: WaitlistChangeCountDto;
+};
+
+export type WaitlistAdminUntagEntriesAdminResponse = WaitlistAdminUntagEntriesAdminResponses[keyof WaitlistAdminUntagEntriesAdminResponses];
+
+export type WaitlistAdminFindCohortsAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/cohorts';
+};
+
+export type WaitlistAdminFindCohortsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminFindCohortsAdminError = WaitlistAdminFindCohortsAdminErrors[keyof WaitlistAdminFindCohortsAdminErrors];
+
+export type WaitlistAdminFindCohortsAdminResponses = {
+    200: Array<WaitlistCohortDto>;
+};
+
+export type WaitlistAdminFindCohortsAdminResponse = WaitlistAdminFindCohortsAdminResponses[keyof WaitlistAdminFindCohortsAdminResponses];
+
+export type WaitlistAdminCreateCohortAdminData = {
+    body: CreateWaitlistCohortDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/cohorts';
+};
+
+export type WaitlistAdminCreateCohortAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminCreateCohortAdminError = WaitlistAdminCreateCohortAdminErrors[keyof WaitlistAdminCreateCohortAdminErrors];
+
+export type WaitlistAdminCreateCohortAdminResponses = {
+    200: WaitlistCohortDto;
+};
+
+export type WaitlistAdminCreateCohortAdminResponse = WaitlistAdminCreateCohortAdminResponses[keyof WaitlistAdminCreateCohortAdminResponses];
+
+export type WaitlistAdminDeleteCohortAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/cohorts/{id}';
+};
+
+export type WaitlistAdminDeleteCohortAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminDeleteCohortAdminError = WaitlistAdminDeleteCohortAdminErrors[keyof WaitlistAdminDeleteCohortAdminErrors];
+
+export type WaitlistAdminDeleteCohortAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type WaitlistAdminDeleteCohortAdminResponse = WaitlistAdminDeleteCohortAdminResponses[keyof WaitlistAdminDeleteCohortAdminResponses];
+
+export type WaitlistAdminUpdateCohortAdminData = {
+    body: UpdateWaitlistCohortDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/cohorts/{id}';
+};
+
+export type WaitlistAdminUpdateCohortAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminUpdateCohortAdminError = WaitlistAdminUpdateCohortAdminErrors[keyof WaitlistAdminUpdateCohortAdminErrors];
+
+export type WaitlistAdminUpdateCohortAdminResponses = {
+    200: WaitlistCohortDto;
+};
+
+export type WaitlistAdminUpdateCohortAdminResponse = WaitlistAdminUpdateCohortAdminResponses[keyof WaitlistAdminUpdateCohortAdminResponses];
+
+export type WaitlistEmailAdminFindTemplatesAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/email-templates';
+};
+
+export type WaitlistEmailAdminFindTemplatesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminFindTemplatesAdminError = WaitlistEmailAdminFindTemplatesAdminErrors[keyof WaitlistEmailAdminFindTemplatesAdminErrors];
+
+export type WaitlistEmailAdminFindTemplatesAdminResponses = {
+    200: Array<WaitlistEmailTemplateDto>;
+};
+
+export type WaitlistEmailAdminFindTemplatesAdminResponse = WaitlistEmailAdminFindTemplatesAdminResponses[keyof WaitlistEmailAdminFindTemplatesAdminResponses];
+
+export type WaitlistEmailAdminCreateTemplateAdminData = {
+    body: SaveWaitlistEmailTemplateDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/email-templates';
+};
+
+export type WaitlistEmailAdminCreateTemplateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminCreateTemplateAdminError = WaitlistEmailAdminCreateTemplateAdminErrors[keyof WaitlistEmailAdminCreateTemplateAdminErrors];
+
+export type WaitlistEmailAdminCreateTemplateAdminResponses = {
+    200: WaitlistEmailTemplateDto;
+};
+
+export type WaitlistEmailAdminCreateTemplateAdminResponse = WaitlistEmailAdminCreateTemplateAdminResponses[keyof WaitlistEmailAdminCreateTemplateAdminResponses];
+
+export type WaitlistEmailAdminDeleteTemplateAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/email-templates/{id}';
+};
+
+export type WaitlistEmailAdminDeleteTemplateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminDeleteTemplateAdminError = WaitlistEmailAdminDeleteTemplateAdminErrors[keyof WaitlistEmailAdminDeleteTemplateAdminErrors];
+
+export type WaitlistEmailAdminDeleteTemplateAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type WaitlistEmailAdminDeleteTemplateAdminResponse = WaitlistEmailAdminDeleteTemplateAdminResponses[keyof WaitlistEmailAdminDeleteTemplateAdminResponses];
+
+export type WaitlistEmailAdminUpdateTemplateAdminData = {
+    body: SaveWaitlistEmailTemplateDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/email-templates/{id}';
+};
+
+export type WaitlistEmailAdminUpdateTemplateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminUpdateTemplateAdminError = WaitlistEmailAdminUpdateTemplateAdminErrors[keyof WaitlistEmailAdminUpdateTemplateAdminErrors];
+
+export type WaitlistEmailAdminUpdateTemplateAdminResponses = {
+    200: WaitlistEmailTemplateDto;
+};
+
+export type WaitlistEmailAdminUpdateTemplateAdminResponse = WaitlistEmailAdminUpdateTemplateAdminResponses[keyof WaitlistEmailAdminUpdateTemplateAdminResponses];
 
 export type ClientOptions = {
     baseUrl: string;

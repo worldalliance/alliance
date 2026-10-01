@@ -303,3 +303,27 @@ describe("sendMail", () => {
     },
   );
 });
+
+describe("waitlist templates", () => {
+  it.each([EmailType.WaitlistConfirmation, EmailType.WaitlistLink])(
+    "links %s emails to unsubscribing",
+    async (emailType) => {
+      const moduleRef = await Test.createTestingModule({
+        providers: [
+          MailService,
+          { provide: MailerService, useValue: {} },
+          { provide: getRepositoryToken(Mail), useValue: {} },
+        ],
+      }).compile();
+
+      const html = await moduleRef.get(MailService).renderHtml(emailType, {
+        url: "https://example.org/share",
+        unsubscribeUrl: "https://example.org/waitlist/unsubscribe?token=t",
+      });
+
+      expect(html).toContain(
+        '<a href="https://example.org/waitlist/unsubscribe?token=t">Unsubscribe from waitlist emails</a>',
+      );
+    },
+  );
+});

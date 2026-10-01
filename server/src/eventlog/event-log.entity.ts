@@ -26,6 +26,7 @@ export enum EventType {
   AccountDeleted = "account_deleted",
   JoinRequest = "join_request",
   AdminRoleChanged = "admin_role_changed",
+  WaitlistMailCapReached = "waitlist_mail_cap_reached",
 }
 
 export const SEND_TO_SLACK: Record<EventType, boolean> = {
@@ -44,6 +45,7 @@ export const SEND_TO_SLACK: Record<EventType, boolean> = {
   [EventType.AccountDeleted]: true,
   [EventType.JoinRequest]: true,
   [EventType.AdminRoleChanged]: true,
+  [EventType.WaitlistMailCapReached]: true,
 };
 
 @Entity()

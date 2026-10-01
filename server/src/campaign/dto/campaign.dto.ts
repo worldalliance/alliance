@@ -1,7 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsNotEmpty, IsOptional, IsString } from "class-validator";
+import {
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateIf,
+} from "class-validator";
 import { getImageSource } from "src/images/images.service";
-import { Campaign } from "../entities/campaign.entity";
+import { Campaign, CampaignKind } from "../entities/campaign.entity";
 
 export class CampaignDto {
   @ApiProperty()
@@ -16,6 +23,16 @@ export class CampaignDto {
   @ApiProperty({ type: String, nullable: true })
   picture: string | null;
 
+  @ApiProperty({ enum: CampaignKind, enumName: "CampaignKind" })
+  kind: CampaignKind;
+
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: "An organization's accountability group",
+  })
+  communityId: number | null;
+
   @ApiProperty({ type: Date })
   createdAt: Date;
 
@@ -27,6 +44,8 @@ export class CampaignDto {
     this.name = input.name;
     this.code = input.code;
     this.picture = input.picture ? getImageSource(input.picture) : null;
+    this.kind = input.kind;
+    this.communityId = input.communityId;
     this.createdAt = input.createdAt;
     this.updatedAt = input.updatedAt;
   }
@@ -44,6 +63,11 @@ export class CreateCampaignDto {
   @IsOptional()
   @IsString()
   picture?: string;
+
+  @ApiPropertyOptional({ enum: CampaignKind, enumName: "CampaignKind" })
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsEnum(CampaignKind)
+  kind?: CampaignKind;
 }
 
 export class UpdateCampaignDto {
@@ -57,4 +81,18 @@ export class UpdateCampaignDto {
   @IsOptional()
   @IsString()
   picture?: string | null;
+
+  @ApiPropertyOptional({ enum: CampaignKind, enumName: "CampaignKind" })
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsEnum(CampaignKind)
+  kind?: CampaignKind;
+
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    description: "Only an organization has a group",
+  })
+  @IsOptional()
+  @IsInt()
+  communityId?: number | null;
 }
