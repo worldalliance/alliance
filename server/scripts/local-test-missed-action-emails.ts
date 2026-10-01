@@ -33,7 +33,7 @@ const expectedFragments: Record<EmailVariant, string[]> = {
   ],
   [EmailVariant.RepeatMiss]: [
     "Remember that we plan each action around the number of members we expect to participate.",
-    "If you miss all of your assigned non-optional actions again next week, your contract will be suspended automatically.",
+    "If you miss any assigned non-optional task again next week, your agreement will be suspended automatically.",
   ],
 };
 

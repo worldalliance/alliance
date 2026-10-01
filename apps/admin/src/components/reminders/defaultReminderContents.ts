@@ -45,7 +45,7 @@ The Alliance Team`;
 
 export const defaultMissedDeadlineTextMessage = `The deadline for the current task has passed and you have not completed it. If you did complete it, please contact us. We may have made a mistake.
 
-If you miss all of your assigned non-optional actions for three weeks in a row, your contract will be suspended automatically.`;
+If you miss any assigned non-optional task for three weeks in a row, your agreement will be suspended automatically.`;
 
 // group leads reminder
 

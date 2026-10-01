@@ -79,7 +79,7 @@ export function processKeywordReplacements(
     .replaceAll(
       "#{secondmisswarning}",
       context.consecutiveMissedSuiteCount === 2
-        ? "\n\nIf you miss all of your assigned non-optional actions again next week, your contract will be suspended automatically."
+        ? "\n\nIf you miss any assigned non-optional task again next week, your agreement will be suspended automatically."
         : "",
     )
     .replaceAll("#{s}", context.uncompletedTasksCount === 1 ? "" : "s")
