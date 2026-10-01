@@ -67,6 +67,22 @@ describe("processKeywordReplacements", () => {
       expect(result).toContain("cid=test-cid");
     });
 
+    it("links #{link} and #{grouplink} to ALT_APP_URL when set", () => {
+      const originalAltAppUrl = process.env.ALT_APP_URL;
+      process.env.ALT_APP_URL = "https://alt.example.org";
+      try {
+        const result = processKeywordReplacements(
+          "Link: #{link} Group: #{grouplink}",
+          { ...baseContext, uncompletedTasksCount: 1 },
+        );
+        expect(result).toBe(
+          "Link: https://alt.example.org/tasks?cid=test-cid Group: https://alt.example.org/groups?tab=members&cid=test-cid",
+        );
+      } finally {
+        process.env.ALT_APP_URL = originalAltAppUrl;
+      }
+    });
+
     it("explains reliability when the member misses their first action", () => {
       const result = processKeywordReplacements(
         "#{missedactioncontext}\n#{secondmisswarning}",

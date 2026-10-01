@@ -6,7 +6,12 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { ActionEvent } from "src/actions/entities/action-event.entity";
 import { Action } from "src/actions/entities/action.entity";
 import { getTimeLeftString } from "src/notifs/textnotifcontents";
-import { groupMembersListUrl, tasksUrl, withCid } from "src/search/approutes";
+import {
+  groupMembersListUrl,
+  siteBaseUrl,
+  tasksUrl,
+  withCid,
+} from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "src/utils/Repository";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
@@ -325,7 +330,7 @@ export class MailService {
       subject: "Sign your membership contract to participate in actions",
       context: {
         name,
-        link: `${process.env.APP_URL}/tasks`,
+        link: tasksUrl(true),
       },
       cid: null,
     });
@@ -399,7 +404,7 @@ export class MailService {
           url: item.url,
           createdAt: item.createdAt,
         })),
-        appUrl: process.env.APP_URL,
+        appUrl: siteBaseUrl(),
       },
       cid,
     });

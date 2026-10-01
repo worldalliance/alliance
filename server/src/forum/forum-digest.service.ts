@@ -8,7 +8,7 @@ import {
   NotificationCategory,
 } from "src/notifs/entities/notification.entity";
 import { generateCIDForNotif } from "src/notifs/notif-utils";
-import { withCid } from "src/search/approutes";
+import { siteBaseUrl, withCid } from "src/search/approutes";
 import { ForumDigestPreference, User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
 import { ForumDigestLog } from "./entities/forum-digest-log.entity";
@@ -158,7 +158,7 @@ export class ForumDigestService {
     if (path.startsWith("http://") || path.startsWith("https://")) {
       return path;
     }
-    const appUrl = process.env.APP_URL ?? "";
+    const appUrl = siteBaseUrl() ?? "";
     return `${appUrl}${path}`;
   }
 }

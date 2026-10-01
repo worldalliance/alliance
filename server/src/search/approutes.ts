@@ -14,11 +14,11 @@ export function profileUrl(userId: number) {
 
 export function actionUrl(actionId: number, full = false) {
   const path = `/actions/${actionId}`;
-  return full ? `${process.env.APP_URL}${path}` : path;
+  return full ? `${siteBaseUrl()}${path}` : path;
 }
 
 function waitlistBaseUrl() {
-  const baseUrl = inviteBaseUrl();
+  const baseUrl = siteBaseUrl();
   if (!baseUrl) {
     throw new Error("APP_URL is not set, so a waitlist link has no host");
   }
@@ -35,10 +35,10 @@ export function waitlistUnsubscribeLink(token: string) {
 
 export function signupUrl(full = false) {
   const path = `/signup`;
-  return full ? `${inviteBaseUrl()}${path}` : path;
+  return full ? `${siteBaseUrl()}${path}` : path;
 }
 
-function inviteBaseUrl() {
+export function siteBaseUrl() {
   return process.env.ALT_APP_URL || process.env.APP_URL;
 }
 
@@ -60,17 +60,17 @@ export function actionActivityUrl(
   full = false,
 ) {
   const path = `/actions/${actionId}/activity/${activityId}`;
-  return full ? `${process.env.APP_URL}${path}` : path;
+  return full ? `${siteBaseUrl()}${path}` : path;
 }
 
 export function tasksUrl(full = false) {
   const path = `/tasks`;
-  return full ? `${process.env.APP_URL}${path}` : path;
+  return full ? `${siteBaseUrl()}${path}` : path;
 }
 
 export function groupMembersListUrl(full = false) {
   const path = `/groups?tab=members`; //TODO: multiple groups
-  return full ? `${process.env.APP_URL}${path}` : path;
+  return full ? `${siteBaseUrl()}${path}` : path;
 }
 
 export function postUrl(postId: number) {
@@ -98,7 +98,7 @@ export function commentUrl(
         `Invalid parent object type: ${comment.parentObjectType satisfies never}`,
       );
   }
-  return full ? `${process.env.APP_URL}${path}` : path;
+  return full ? `${siteBaseUrl()}${path}` : path;
 }
 
 export function conversationUrl(conversationId: number) {
