@@ -12,6 +12,7 @@ import {
   type OutputViewSchema,
   type PageItem,
 } from "./form-schema";
+import { getRangeOptionCount, isValidRangeSelection } from "./range";
 import { sourceVariablesInSharedOutput } from "./variable-interpolation";
 import type { SourceFormFields } from "./variable-scope";
 import { collectVariableErrors } from "./variable-validate";
@@ -312,6 +313,16 @@ function collectInputErrors(
     errors.push({
       blockId,
       message: `Number of options must be a whole number from ${MIN_RANGE_OPTION_COUNT} to ${MAX_RANGE_OPTION_COUNT}`,
+    });
+  }
+  if (
+    item.kind === "range" &&
+    item.defaultValue != null &&
+    !isValidRangeSelection(item, item.defaultValue)
+  ) {
+    errors.push({
+      blockId,
+      message: `Default selection must be a whole number from 1 to ${getRangeOptionCount(item)}`,
     });
   }
   if (item.kind === "list") {

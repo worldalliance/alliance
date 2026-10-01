@@ -21,6 +21,7 @@ import {
   type TextareaField,
   type TextField,
 } from "@alliance/common/forms/form-schema";
+import { getRangeValues } from "@alliance/common/forms/range";
 import {
   USER_VALUE_PROPERTIES,
   USER_VALUE_PROPERTY_LABELS,
@@ -41,7 +42,6 @@ import {
   userListAdmin,
   type UserDto,
 } from "@alliance/shared/client";
-import { getRangeValues } from "@alliance/shared/formrenderer";
 import {
   conditionNameForIndex,
   defaultFormulaForConditionCount,

@@ -12,13 +12,11 @@ import {
   isFieldGroup,
   type ListField,
   type ListSubField,
-  MAX_RANGE_OPTION_COUNT,
-  MIN_RANGE_OPTION_COUNT,
   type NumberField,
   type Page,
   type PageItem,
-  type RangeField,
 } from "@alliance/common/forms/form-schema";
+import { isValidRangeSelection } from "@alliance/common/forms/range";
 import {
   getRankingSlotCount,
   isValidRankingSelection,
@@ -95,8 +93,6 @@ export function getFallbackVisiblePageIndex(
     visibleIndices[visibleIndices.length - 1]
   );
 }
-
-const DEFAULT_RANGE_OPTION_COUNT = 10;
 
 /**
  * Compute a stable storage key for a form draft.
@@ -249,38 +245,6 @@ export function schemaNeedsVisibilityContext(schema: FormSchema): boolean {
     schema,
     (condition) => CONDITION_KIND_IS_ACCOUNT_DERIVED[condition.kind],
   );
-}
-
-export function getRangeOptionCount(field: RangeField): number {
-  const desired = field.optionCount ?? DEFAULT_RANGE_OPTION_COUNT;
-  const normalized = Number.isFinite(desired)
-    ? Math.floor(desired)
-    : DEFAULT_RANGE_OPTION_COUNT;
-  return Math.min(
-    MAX_RANGE_OPTION_COUNT,
-    Math.max(MIN_RANGE_OPTION_COUNT, normalized),
-  );
-}
-
-export function getRangeValues(field: RangeField): number[] {
-  return Array.from(
-    { length: getRangeOptionCount(field) },
-    (_, index) => index + 1,
-  );
-}
-
-export function isValidRangeSelection(
-  field: RangeField,
-  value: unknown,
-): value is number {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return false;
-  }
-  if (field.kind !== "range") {
-    return false;
-  }
-  const max = getRangeOptionCount(field);
-  return value >= 1 && value <= max;
 }
 
 export function resolveFieldDefaultValue(

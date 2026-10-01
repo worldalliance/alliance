@@ -871,3 +871,42 @@ describe("range option count", () => {
     expect(validateFormSchema(schema)).toEqual([error]);
   });
 });
+
+describe("range default selection", () => {
+  const rangeField = (
+    defaultValue: RangeField["defaultValue"],
+  ): RangeField => ({
+    id: "scale",
+    type: "input",
+    kind: "range",
+    label: "Scale",
+    optionCount: 5,
+    defaultValue,
+  });
+  const error = {
+    blockId: "scale",
+    message: "Default selection must be a whole number from 1 to 5",
+  };
+
+  it.each([undefined, null, 1, 5])("accepts defaultValue=%p", (value) => {
+    const schema = baseSchema({ pages: [page("p1", [rangeField(value)])] });
+    expect(validateFormSchema(schema)).toEqual([]);
+  });
+
+  it.each([0, 6, 8, 2.5])("flags defaultValue=%p", (value) => {
+    const schema = baseSchema({ pages: [page("p1", [rangeField(value)])] });
+    expect(validateFormSchema(schema)).toEqual([error]);
+  });
+
+  it("flags a range sub-field of a list", () => {
+    const list: ListField = {
+      id: "list1",
+      type: "input",
+      kind: "list",
+      label: "list",
+      fields: [rangeField(8)],
+    };
+    const schema = baseSchema({ pages: [page("p1", [list])] });
+    expect(validateFormSchema(schema)).toEqual([error]);
+  });
+});
