@@ -16,11 +16,15 @@ export function useTaskForm(
         : async () => {
             const response = await tasksGetForm({ path: { id: formId } });
             if (!response.data) {
-              throw new Error(
-                errorMessage({
-                  error: response.error,
-                  fallback: "Unable to load form",
-                }),
+              // The status lets retryUnlessRefused skip a refusal.
+              throw Object.assign(
+                new Error(
+                  errorMessage({
+                    error: response.error,
+                    fallback: "Unable to load form",
+                  }),
+                ),
+                { statusCode: response.response.status },
               );
             }
             return response.data;

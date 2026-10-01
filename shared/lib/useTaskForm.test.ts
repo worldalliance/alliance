@@ -1,4 +1,5 @@
 import { renderHook, waitFor } from "@testing-library/react";
+import { retryUnlessRefused } from "./retryQuery";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import { useInvalidateTaskForms, useTaskForm } from "./useTaskForm";
@@ -40,6 +41,19 @@ it("fails with the server's message", async () => {
 
   await waitFor(() => expect(hook.result.current.isError).toBe(true));
   expect(hook.result.current.error?.message).toBe("Form is gone");
+});
+
+it("does not retry a refused load", async () => {
+  status = 404;
+  const { wrapper } = queryWrapper({
+    retry: retryUnlessRefused(3),
+    retryDelay: 0,
+  });
+
+  const hook = renderHook(() => useTaskForm(7), { wrapper });
+
+  await waitFor(() => expect(hook.result.current.isError).toBe(true));
+  expect(requests).toBe(1);
 });
 
 it("does not fetch without an id or while disabled", async () => {
