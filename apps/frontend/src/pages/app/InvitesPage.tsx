@@ -36,7 +36,7 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { milliseconds } from "date-fns";
 import { MoreHorizontal, Trash2, UserCheck } from "lucide-react";
 import type { FormEvent, MouseEvent } from "react";
@@ -293,7 +293,7 @@ const InvitesPage = () => {
           confirmLabel: deleteInviteConfirmation.confirmLabel,
           cancelLabel: deleteInviteConfirmation.cancelLabel,
           anchorEl: event.currentTarget,
-          placement: "topleft",
+          placement: ToastPlacement.TopLeft,
         });
         if (!ok) {
           return;
@@ -368,7 +368,7 @@ const InvitesPage = () => {
           confirmLabel: "Delete goal",
           cancelLabel: "Cancel",
           anchorEl: event.currentTarget,
-          placement: "topleft",
+          placement: ToastPlacement.TopLeft,
         });
         if (!ok) {
           return;

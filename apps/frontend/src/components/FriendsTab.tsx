@@ -14,7 +14,7 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import List from "@alliance/sharedweb/ui/List";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useState } from "react";
 import { Link, href } from "react-router";
 import LoadFailed from "./LoadFailed";
@@ -130,7 +130,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
       confirmLabel: "Yes",
       cancelLabel: "No",
       anchorEl: e.currentTarget,
-      placement: "topleft",
+      placement: ToastPlacement.TopLeft,
     });
     if (!ok) {
       return;

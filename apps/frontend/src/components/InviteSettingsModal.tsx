@@ -17,7 +17,7 @@ import Modal, {
   ModalTitle,
 } from "@alliance/sharedweb/ui/Modal";
 import NewButton, { ButtonColor } from "@alliance/sharedweb/ui/NewButton";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { milliseconds } from "date-fns";
 import { Check, Copy as CopyIcon, Trash2, Users } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -88,7 +88,7 @@ const InviteSettingsModal = ({
           confirmLabel: "Delete",
           cancelLabel: "Cancel",
           anchorEl: event.currentTarget,
-          placement: "topleft",
+          placement: ToastPlacement.TopLeft,
           requiredText: "DELETE",
           requiredTextPlaceholder: "Type DELETE to confirm",
         });

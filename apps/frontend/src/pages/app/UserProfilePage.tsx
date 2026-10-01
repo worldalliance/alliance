@@ -27,7 +27,7 @@ import Card from "@alliance/sharedweb/ui/Card";
 import InfoTooltip from "@alliance/sharedweb/ui/InfoTooltip";
 import List from "@alliance/sharedweb/ui/List";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   Tooltip,
   TooltipContent,
@@ -213,7 +213,7 @@ const UserProfilePage: React.FC = () => {
         confirmLabel: "Yes",
         cancelLabel: "No",
         anchorEl: e.currentTarget,
-        placement: "bottomleft",
+        placement: ToastPlacement.BottomLeft,
       });
 
       if (!ok) return;

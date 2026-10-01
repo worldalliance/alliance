@@ -23,7 +23,7 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import List from "@alliance/sharedweb/ui/List";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { ChevronDown, ChevronLeft, Minus, Plus } from "lucide-react";
 import {
   Fragment,
@@ -136,7 +136,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
             confirmLabel: "Accept",
             cancelLabel: "Cancel",
             anchorEl: anchor,
-            placement: "topleft",
+            placement: ToastPlacement.TopLeft,
           })
         : true;
 
@@ -187,7 +187,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
             confirmLabel: "Yes, reassign me",
             cancelLabel: "No",
             anchorEl: anchor,
-            placement: "topleft",
+            placement: ToastPlacement.TopLeft,
           })
         : true;
       if (ok) {
@@ -213,7 +213,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
             confirmLabel: "Join group",
             cancelLabel: "Cancel",
             anchorEl: anchor,
-            placement: "topleft",
+            placement: ToastPlacement.TopLeft,
           })
         : true;
       if (!ok) {
