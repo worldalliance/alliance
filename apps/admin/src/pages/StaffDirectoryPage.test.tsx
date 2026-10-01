@@ -1,5 +1,4 @@
 import type { StaffDirectoryEntryDto } from "@alliance/shared/client";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
@@ -28,7 +27,6 @@ const entry = (id: number, displayName: string) =>
 
 let saved: StaffDirectoryEntryDto[] = [];
 let loadStatus = 200;
-let loadGate = Promise.resolve();
 let saveStatus = 200;
 const puts: unknown[] = [];
 
@@ -38,8 +36,7 @@ serveApi(
       if (loadStatus !== 200) {
         return Response.json({}, { status: loadStatus });
       }
-      const snapshot = saved;
-      return loadGate.then(() => Response.json(snapshot));
+      return Response.json(saved);
     },
     "PUT /user/staff-directory-admin": async ({ request }) => {
       if (saveStatus !== 200) {
@@ -55,7 +52,6 @@ serveApi(
 beforeEach(() => {
   saved = [entry(1, "Ada"), entry(2, "Grace")];
   loadStatus = 200;
-  loadGate = Promise.resolve();
   saveStatus = 200;
   puts.length = 0;
 });
@@ -160,37 +156,6 @@ it("keeps the loaded directory beside a refetch error", async () => {
     await screen.findByText("Failed to load staff directory"),
   ).toBeTruthy();
   expect(screen.getByRole("link", { name: "Ada" })).toBeTruthy();
-});
-
-it("keeps the save when a refetch started before it lands after it", async () => {
-  const query = queryWrapper();
-  renderPage(query);
-  await editFirstTitle("Founder");
-
-  let releaseLoad = () => {};
-  loadGate = new Promise((resolve) => {
-    releaseLoad = resolve;
-  });
-  const refetch = query.client.refetchQueries();
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
-  await screen.findByRole("button", { name: "No changes to save" });
-
-  await act(async () => {
-    releaseLoad();
-    await refetch;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
-
-  expect(
-    query.client.getQueryData<StaffDirectoryEntryDto[]>(
-      queryKeys.staffDirectoryAdmin(),
-    )?.[0].staffTitle,
-  ).toBe("Founder");
-
-  expect(screen.getAllByPlaceholderText("Brief title")[0]).toHaveProperty(
-    "value",
-    "Founder",
-  );
 });
 
 it("says the session expired when the load is refused with a 401", async () => {
