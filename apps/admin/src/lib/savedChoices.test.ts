@@ -12,6 +12,7 @@ const response = (
   publicAnswers: {},
   createdAt,
   schemaSnapshot: {},
+  phDistinctId: null,
   sid: null,
   visibilityValidatorResults: {},
   formulaChoices,

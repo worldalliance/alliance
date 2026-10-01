@@ -107,11 +107,10 @@ export class FormResponse {
   @Type(() => Date)
   createdAt: Date;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  phDistinctId?: string;
+  phDistinctId: string | null;
 
   @Column()
   @ApiProperty()

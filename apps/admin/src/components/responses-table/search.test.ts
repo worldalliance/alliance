@@ -65,6 +65,7 @@ const response = (params: {
   schemaSnapshot: SCHEMA,
   visibilityValidatorResults: {},
   formulaChoices: {},
+  phDistinctId: null,
   sid: params.sid ?? null,
 });
 
