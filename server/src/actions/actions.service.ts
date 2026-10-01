@@ -13,6 +13,7 @@ import {
   expressionHasLeaf,
   type CohortExpression,
 } from "@alliance/common/cohort-expression";
+import { ANONYMOUS_DISPLAY_NAME } from "@alliance/common/displayName";
 import {
   displayOnlySchema,
   displayOnlySchemaError,
@@ -1449,11 +1450,9 @@ export class ActionsService {
   private getFirstNameForSharePreview(
     user: Pick<User, "anonymous" | "name">,
   ): string {
-    if (user.anonymous) {
-      return "Someone";
-    }
-
-    return user.name.trim().split(/\s+/)[0] || "Someone";
+    return user.anonymous
+      ? ANONYMOUS_DISPLAY_NAME
+      : user.name.trim().split(/\s+/)[0] || ANONYMOUS_DISPLAY_NAME;
   }
 
   async findAllGeneralUpdates(): Promise<GeneralUpdate[]> {

@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
+import { publicDisplayName } from "@alliance/common/displayName";
 import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
@@ -185,7 +186,7 @@ export class OnetimeInviteMemberUserDto {
 
   constructor(input: User) {
     this.id = input.id;
-    this.displayName = input.anonymous ? "Someone" : input.name;
+    this.displayName = publicDisplayName(input);
     this.profilePicture = input.profilePicture
       ? getImageSource(input.profilePicture)
       : null;

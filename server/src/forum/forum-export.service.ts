@@ -1,3 +1,4 @@
+import { publicDisplayName } from "@alliance/common/displayName";
 import { isUploadKey } from "@alliance/common/image-src";
 import { withCount } from "@alliance/common/plural";
 import { R } from "@alliance/common/result";
@@ -158,7 +159,7 @@ function renderPostPage(input: PageInput): string {
       ? [post.author]
       : [];
   const byline = [
-    authors.map(displayName).join(", "),
+    authors.map(publicDisplayName).join(", "),
     format(post.visibleAt ?? post.createdAt, "d MMMM yyyy"),
     withCount(commentCount, "comment"),
   ].filter(Boolean);
@@ -228,7 +229,7 @@ function renderComment(comment: Comment, input: PageInput): string {
   const children = (comment.children ?? []).filter(isWorthRendering);
 
   return `<li class="comment">
-<p class="byline">${renderAvatar(comment.author, "comment")}<span class="author">${escapeHtml(displayName(comment.author))}</span> · ${escapeHtml(format(comment.createdAt, "d MMMM yyyy"))}${badges.map((badge) => ` <span class="badge">${escapeHtml(badge)}</span>`).join("")}${renderLikes(comment.likesCount)}</p>
+<p class="byline">${renderAvatar(comment.author, "comment")}<span class="author">${escapeHtml(publicDisplayName(comment.author))}</span> · ${escapeHtml(format(comment.createdAt, "d MMMM yyyy"))}${badges.map((badge) => ` <span class="badge">${escapeHtml(badge)}</span>`).join("")}${renderLikes(comment.likesCount)}</p>
 ${comment.deleted ? `<p class="deleted">Content has been deleted</p>` : renderContent(comment.editableContent, input)}
 ${children.length ? renderThread(children, input) : ""}
 </li>`;
@@ -244,7 +245,7 @@ function renderAvatar(
   if (!user) {
     return "";
   }
-  const initial = displayName(user).trim().charAt(0).toUpperCase();
+  const initial = publicDisplayName(user).trim().charAt(0).toUpperCase();
   const image = user.profilePicture
     ? `<img src="${escapeHtml(getImageSource(user.profilePicture))}" alt="" onerror="this.remove()">`
     : "";
@@ -278,10 +279,6 @@ function renderContent(
       : `<p class="missing">Attachment ${escapeHtml(attachment)} could not be read from storage.</p>`;
   });
   return `<div class="body">${input.bodies.get(content.id) ?? ""}${attachments.join("\n")}</div>`;
-}
-
-function displayName(user: Pick<User, "name" | "anonymous">): string {
-  return user.anonymous ? "Someone" : user.name;
 }
 
 const pageStyles = `

@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
+import { publicDisplayName } from "@alliance/common/displayName";
 import { type UserPropertyPresence } from "@alliance/common/forms/user-properties";
 import { Temporal } from "@js-temporal/polyfill";
 import {
@@ -136,11 +137,7 @@ export class ProfileDto extends PickType(User, [
     this.lastContractEvent = lastContractEvent
       ? new ContractEventDto(lastContractEvent)
       : undefined;
-    if (user.anonymous) {
-      this.displayName = "Someone";
-    } else {
-      this.displayName = user.name;
-    }
+    this.displayName = publicDisplayName(user);
 
     this.profilePicture = user.profilePicture
       ? getImageSource(user.profilePicture)
@@ -171,7 +168,7 @@ export class ReferrerProfileDto {
     switch (input.kind) {
       case "user":
         this.kind = "user";
-        this.displayName = input.user.anonymous ? "Someone" : input.user.name;
+        this.displayName = publicDisplayName(input.user);
         this.profilePicture = input.user.profilePicture
           ? getImageSource(input.user.profilePicture)
           : null;
@@ -646,7 +643,7 @@ export class StaffDirectoryEntryDto {
     >,
   ) {
     this.id = user.id;
-    this.displayName = user.anonymous ? "Someone" : user.name;
+    this.displayName = publicDisplayName(user);
     this.profilePicture = user.profilePicture
       ? getImageSource(user.profilePicture)
       : null;

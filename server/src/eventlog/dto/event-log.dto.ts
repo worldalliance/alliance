@@ -1,3 +1,4 @@
+import { publicDisplayName } from "@alliance/common/displayName";
 import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import { IsEnum, IsOptional } from "class-validator";
 import {
@@ -17,7 +18,7 @@ export class EventLogUserDto {
 
   constructor(input: User) {
     this.id = input.id;
-    this.displayName = input.anonymous ? "Someone" : input.name;
+    this.displayName = publicDisplayName(input);
   }
 }
 

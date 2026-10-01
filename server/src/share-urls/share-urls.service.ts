@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
+import { publicDisplayName } from "@alliance/common/displayName";
 import { DEFAULT_INVITE_MESSAGE_TEMPLATE } from "@alliance/common/inviteMessage";
 import { run } from "@alliance/common/run";
 import { appendQueryParam } from "@alliance/common/url";
@@ -398,9 +399,7 @@ export class ShareUrlsService {
       return {
         id: shareUrl.id,
         createdAt: shareUrl.createdAt,
-        invitingUserDisplayName: shareUrl.user.anonymous
-          ? "Someone"
-          : shareUrl.user.name,
+        invitingUserDisplayName: publicDisplayName(shareUrl.user),
         communityId:
           shareUrl.inviteAssignmentKind === StoredInviteAssignmentKind.Community
             ? shareUrl.inviteAssignmentCommunityId
