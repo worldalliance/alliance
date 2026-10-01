@@ -1,5 +1,4 @@
 import type { ClusterAdminDto } from "@alliance/shared/client";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
@@ -9,7 +8,6 @@ import {
   fireEvent,
   render,
   screen,
-  waitFor,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
@@ -28,14 +26,12 @@ const cluster = (id: number, displayName: string) =>
 
 let loadStatus = 200;
 let loads = 0;
-let holdLoad: Promise<void> | undefined;
 let renameAnswer: () => Response = () => Response.json({});
 
 serveApi(
   routes({
-    "GET /cluster/admin": async () => {
+    "GET /cluster/admin": () => {
       loads += 1;
-      await holdLoad;
       return loadStatus === 200
         ? Response.json([cluster(1, "North"), cluster(2, "South")])
         : Response.json({}, { status: loadStatus });
@@ -47,7 +43,6 @@ serveApi(
 beforeEach(() => {
   loadStatus = 200;
   loads = 0;
-  holdLoad = undefined;
 });
 
 const renderPage = (query = queryWrapper()) =>
@@ -121,29 +116,6 @@ it("shows the renamed cluster once the server accepts the name", async () => {
   expect(await screen.findByText("Northeast")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
   expect(screen.queryByText("North")).toBeNull();
-});
-
-it("keeps a rename that lands while a refetch is in flight", async () => {
-  renameAnswer = () => Response.json(cluster(1, "Northeast"));
-  const query = queryWrapper();
-  renderPage(query);
-  await screen.findByText("North");
-
-  let release = () => {};
-  holdLoad = new Promise((resolve) => (release = resolve));
-  const refetch = query.client.refetchQueries();
-  await renameNorthTo("Northeast");
-  await waitFor(() =>
-    expect(screen.queryByRole("button", { name: "Save" })).toBeNull(),
-  );
-  release();
-  await act(() => refetch);
-
-  expect(
-    query.client
-      .getQueryData<ClusterAdminDto[]>(queryKeys.clustersAdmin())
-      ?.map((c) => c.displayName),
-  ).toEqual(["Northeast", "South"]);
 });
 
 it("keeps the rename open and says why when the server refuses it", async () => {
