@@ -997,7 +997,7 @@ export type UpdateProfileDto = {
 export type City = {
     id: number;
     name: string;
-    asciiName: string;
+    asciiName: string | null;
     englishName: string | null;
     admin1: string;
     admin2: string;
