@@ -28,8 +28,19 @@ const fields = new Map<string, AnyField>([
           options,
         },
         { id: "note", type: "input", kind: "text", label: "Note" },
+        {
+          id: "mood",
+          type: "input",
+          kind: "range",
+          label: "Mood",
+          optionCount: 5,
+        },
       ],
     },
+  ],
+  [
+    "scale",
+    { id: "scale", type: "input", kind: "range", label: "S", optionCount: 5 },
   ],
 ]);
 
@@ -66,6 +77,25 @@ describe("dropUnknownOptionAnswers", () => {
         { stops: ["ca"], note: "a" },
         { stops: [], note: "b" },
       ],
+    });
+  });
+
+  it("keeps a range answer that matches an option", () => {
+    expect(drop({ scale: 3 })).toEqual({ scale: 3 });
+  });
+
+  it("clears a range answer outside the options", () => {
+    expect(drop({ scale: 8 })).toEqual({ scale: "" });
+    expect(drop({ scale: 2.5 })).toEqual({ scale: "" });
+  });
+
+  it("keeps a cleared range answer", () => {
+    expect(drop({ scale: "" })).toEqual({ scale: "" });
+  });
+
+  it("clears a range answer outside the options inside list cards", () => {
+    expect(drop({ trips: [{ mood: 8 }, { mood: 2 }] })).toEqual({
+      trips: [{ mood: "" }, { mood: 2 }],
     });
   });
 

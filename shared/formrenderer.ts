@@ -434,7 +434,8 @@ export function filterAnswersByFieldIds(
 /**
  * The answers a renderer should start a draft from: only fields the schema
  * still has, only multiselect selections of fixed options the field still has,
- * and only file answers naming an image that reached the server. Callers apply
+ * only range answers the field still offers, and only file answers naming an
+ * image that reached the server. Callers apply
  * defaults afterwards, since an empty result is what decides which of several
  * stored drafts wins.
  */
