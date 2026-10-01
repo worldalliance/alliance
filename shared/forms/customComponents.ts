@@ -81,9 +81,17 @@ const customComponentMetadata: Record<
 
 export const buildCustomComponentRegistry = (
   components: Record<CustomComponentId, ComponentType<CustomComponentProps>>,
-): CustomComponentDefinition[] =>
-  Object.values(CustomComponentId).map((id) => ({
+) => {
+  const customComponentRegistry: CustomComponentDefinition[] = Object.values(
+    CustomComponentId,
+  ).map((id) => ({
     id,
     ...customComponentMetadata[id],
     component: components[id],
   }));
+  return {
+    customComponentRegistry,
+    getCustomComponentById: (id: string | undefined | null) =>
+      customComponentRegistry.find((component) => component.id === id),
+  };
+};
