@@ -1,4 +1,3 @@
-import { ActionActivityType } from "@alliance/common/actionActivity";
 import {
   flattenPageItems,
   forEachCondition,
@@ -32,6 +31,7 @@ import {
   QueryFailedError,
   type Repository,
 } from "typeorm";
+import { TERMINAL_ACTIVITY_TYPES } from "./action-activity-status";
 import { ActionsService } from "./actions.service";
 import { CohortDecisionService } from "./cohort-decision.service";
 import { ForumAutocompletePlan } from "./dto/action.dto";
@@ -251,10 +251,7 @@ export class ForumActionCompleterWorker {
       where: {
         actionId: action.id,
         userId: In(eligibleResponderIds),
-        type: In([
-          ActionActivityType.USER_COMPLETED,
-          ActionActivityType.USER_WONT_COMPLETE,
-        ]),
+        type: In(TERMINAL_ACTIVITY_TYPES),
       },
     });
 

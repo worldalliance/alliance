@@ -146,7 +146,6 @@ describe("Live cohort with prerequisites (e2e)", () => {
       activityFind.mock.calls.flatMap(([options]) => options?.where),
     ).toEqual([
       expect.objectContaining({ actionId: upstream.id, userId: member.id }),
-      expect.objectContaining({ actionId: upstream.id, userId: member.id }),
     ]);
     expect(decisionFind.mock.calls.map(([options]) => options?.where)).toEqual([
       expect.objectContaining({ actionId: upstream.id, userId: member.id }),
