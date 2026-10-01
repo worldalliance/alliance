@@ -25,6 +25,7 @@ const samplePost: PostDto = {
   authorId: 1,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
+  visibleAt: null,
   pinned: false,
   deleted: false,
   qaMode: false,

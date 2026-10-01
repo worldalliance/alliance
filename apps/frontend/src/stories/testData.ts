@@ -174,6 +174,7 @@ export const testForumPosts: PostDto[] = [
     likes: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    visibleAt: null,
     author: testUser,
     pinned: false,
     deleted: false,

@@ -536,7 +536,7 @@ export type Post = {
     createdAt: string;
     pinned: boolean;
     updatedAt: string;
-    visibleAt?: string;
+    visibleAt: string | null;
     deleted: boolean;
     likes?: Array<User>;
     likesIds: Array<number>;
@@ -3539,7 +3539,7 @@ export type PostDto = {
     createdAt: string;
     pinned: boolean;
     updatedAt: string;
-    visibleAt?: string;
+    visibleAt: string | null;
     deleted: boolean;
     qaMode: boolean;
     expertLabel: string | null;

@@ -10,12 +10,14 @@ import { Transform, Type } from "class-transformer";
 import {
   IsArray,
   IsBoolean,
+  IsDate,
   IsDefined,
   IsInt,
   IsObject,
   IsOptional,
   IsString,
   MaxLength,
+  ValidateIf,
   ValidateNested,
 } from "class-validator";
 import { ActionDto } from "src/actions/dto/action.dto";
@@ -152,11 +154,13 @@ export type PostDtoArgs = {
   requestingUserId?: number;
 };
 
-export class CreatePostDto extends PickType(Post, [
-  "title",
-  "actionId",
-  "visibleAt",
-]) {
+export class CreatePostDto extends PickType(Post, ["title", "actionId"]) {
+  @ApiPropertyOptional({ type: Date })
+  @ValidateIf((_, value) => value !== undefined)
+  @Type(() => Date)
+  @IsDate()
+  visibleAt?: Date;
+
   @ApiProperty({ type: CreateEditableContentDto })
   @ValidateNested()
   @Type(() => CreateEditableContentDto)
@@ -164,7 +168,9 @@ export class CreatePostDto extends PickType(Post, [
   editableContent: CreateEditableContentDto;
 }
 
-export class UpdatePostDto extends PartialType(CreatePostDto) {}
+export class UpdatePostDto extends PartialType(CreatePostDto, {
+  skipNullProperties: false,
+}) {}
 
 export class UpdatePostExpertsDto {
   @ApiProperty({ type: Number, isArray: true })
