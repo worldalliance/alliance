@@ -27,10 +27,12 @@ import WaitlistFilters from "../components/waitlist/WaitlistFilters";
 import WaitlistTable from "../components/waitlist/WaitlistTable";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { isOrganization } from "../lib/isOrganization";
-import { useRefusalToast } from "../lib/useRefusalToast";
 import {
   campaignsLoadFailed,
-  campaignsQuery,
+  useCampaignsAdmin,
+} from "../lib/useCampaignsAdmin";
+import { useRefusalToast } from "../lib/useRefusalToast";
+import {
   waitlistCohortsQuery,
   waitlistLinksLoadFailed,
   waitlistLinksQuery,
@@ -79,7 +81,7 @@ const WaitlistPage: React.FC = () => {
       }).then((r) => r.data),
     placeholderData: keepPreviousData,
   });
-  const campaigns = useQuery(campaignsQuery);
+  const campaigns = useCampaignsAdmin();
   const links = useQuery(waitlistLinksQuery);
   const tags = useQuery(waitlistTagsQuery);
   const cohorts = useQuery(waitlistCohortsQuery);
