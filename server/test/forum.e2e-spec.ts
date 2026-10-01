@@ -157,6 +157,7 @@ describe("Forum (e2e)", () => {
       expect(response.body.title).toBe("Test Post");
       expect(response.body.editableContent.body).toBe("This is a test post");
       expect(response.body.authorId).toBe(ctx.testUserId);
+      expect(response.body.actionId).toBeNull();
     });
 
     it("publishes a post created without visibleAt immediately", async () => {

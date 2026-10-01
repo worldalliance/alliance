@@ -532,7 +532,7 @@ export type Post = {
     };
     authorId: number;
     action?: Action;
-    actionId?: number;
+    actionId: number | null;
     createdAt: string;
     pinned: boolean;
     updatedAt: string;
@@ -3535,7 +3535,7 @@ export type PostDto = {
     id: number;
     title: string;
     authorId: number;
-    actionId?: number;
+    actionId: number | null;
     createdAt: string;
     pinned: boolean;
     updatedAt: string;

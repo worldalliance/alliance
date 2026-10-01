@@ -69,12 +69,11 @@ export class Post {
   @Type(() => Action)
   action?: Relation<Action> | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional({ required: false })
+  @Column({ type: "int", nullable: true })
+  @ApiProperty({ type: Number, nullable: true })
   @IsOptional()
   @Allow()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  actionId?: number;
+  actionId: number | null;
 
   @CreateDateColumnTz()
   @ApiProperty()
