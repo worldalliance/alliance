@@ -582,13 +582,12 @@ export function validateFieldValue(
       return null;
     }
     case "range": {
-      if (!required) return null;
       if (
         valueToCheck === undefined ||
         valueToCheck === null ||
         valueToCheck === ""
       ) {
-        return "Please select a value.";
+        return required ? "Please select a value." : null;
       }
       if (field.kind !== "range") {
         return "Please select a value.";
