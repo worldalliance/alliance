@@ -10,9 +10,10 @@ export function getMemberCount(c: Community): number {
 /**
  * Placement splits in two, and only one half is capacity-bound:
  *
- * - Consensual — a leader named this group (invite link, one-time invite,
- *   community invite). `maxCapacity` does not apply: the leader asked for this
- *   person, so call neither predicate below and just place them.
+ * - Consensual — a leader named this group (invite link, one-time invite other
+ *   than a waitlist invite, community invite). `maxCapacity` does not apply:
+ *   the leader asked for this person, so call neither predicate below and just
+ *   place them.
  * - Non-consensual — the automated referral system or staff picked the group on
  *   the leader's behalf. `maxCapacity` is the ceiling on those, gated by the
  *   matching opt-in flag.
@@ -20,6 +21,10 @@ export function getMemberCount(c: Community): number {
  * `maxCapacity` is null exactly when a group takes nothing non-consensual, so
  * the flag-gated predicates below already return false for it via their flag
  * check (see the check constraint on {@link Community}).
+ *
+ * A waitlist invite's group, which staff picked through its organization, fits
+ * neither: no opt-in flag covers it, so like a returning member it is gated on
+ * {@link isAtCapacity} alone, and an uncapped group always takes the claimant.
  */
 function freeSlots(c: Community): number {
   return (c.maxCapacity ?? 0) - getMemberCount(c);
