@@ -25,7 +25,6 @@ import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import UserSelect, {
   useSelectableUserIds,
 } from "@alliance/sharedweb/ui/UserSelect";
-import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Copy, Pencil, Trash2 } from "lucide-react";
 import React, {
   useCallback,
@@ -37,13 +36,13 @@ import React, {
 import { actionsLoadError } from "../lib/actionsLoadError";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
-  externalShareTargetsLoadError,
-  externalShareTargetsQuery,
-} from "../lib/externalShareTargetsQuery";
-import {
   useCampaignsAdmin,
   useInvalidateCampaignsAdmin,
 } from "../lib/useCampaignsAdmin";
+import {
+  externalShareTargetsLoadError,
+  useExternalShareTargetsAdmin,
+} from "../lib/useExternalShareTargetsAdmin";
 
 type TargetKind = "action" | "external" | "invite";
 type PickableKind = Exclude<TargetKind, "invite">;
@@ -174,7 +173,7 @@ const ShareLinksPage: React.FC = () => {
   const [loadingRows, setLoadingRows] = useState(false);
 
   const actions = useActionsAdmin();
-  const externalTargets = useQuery(externalShareTargetsQuery);
+  const externalTargets = useExternalShareTargetsAdmin();
 
   const [selectedKind, setSelectedKind] = useState<TargetKind>("action");
   const [selectedTarget, setSelectedTarget] = useState<Target | null>(null);

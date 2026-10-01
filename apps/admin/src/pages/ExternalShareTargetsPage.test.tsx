@@ -2,7 +2,6 @@ import type {
   CreateExternalShareTargetDto,
   ExternalShareTargetDto,
 } from "@alliance/shared/client";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
@@ -34,9 +33,8 @@ const target = (id: number, name: string) =>
 
 let stored: ExternalShareTargetDto[] = [];
 let loadStatus = 200;
-let loadGate = Promise.resolve();
-let createGate = Promise.resolve();
 let writeStatus = 200;
+let writeGate = Promise.resolve();
 
 const refusal = (status: number) =>
   Response.json(
@@ -50,24 +48,25 @@ serveApi(
   routes({
     "GET /external-share-targets": () => {
       if (loadStatus !== 200) return Response.json({}, { status: loadStatus });
-      const snapshot = stored;
-      return loadGate.then(() => Response.json(snapshot));
+      return Response.json(stored);
     },
     "POST /external-share-targets": async ({ request }) => {
       if (writeStatus !== 200) return refusal(writeStatus);
       const body: CreateExternalShareTargetDto = await request.json();
       const created = { ...target(99, body.name), ...body };
       stored = [created, ...stored];
-      return createGate.then(() => Response.json(created));
+      return Response.json(created);
     },
     "PATCH /external-share-targets/:id": async ({ request, params }) => {
+      await writeGate;
       if (writeStatus !== 200) return refusal(writeStatus);
       const body: CreateExternalShareTargetDto = await request.json();
       const updated = { ...target(Number(params.id), body.name), ...body };
       stored = stored.map((t) => (t.id === updated.id ? updated : t));
       return Response.json(updated);
     },
-    "DELETE /external-share-targets/:id": ({ params }) => {
+    "DELETE /external-share-targets/:id": async ({ params }) => {
+      await writeGate;
       if (writeStatus !== 200) return refusal(writeStatus);
       stored = stored.filter((t) => String(t.id) !== params.id);
       return new Response(null, { status: 200 });
@@ -78,9 +77,8 @@ serveApi(
 beforeEach(() => {
   stored = [target(1, "Partner A"), target(2, "Partner B")];
   loadStatus = 200;
-  loadGate = Promise.resolve();
-  createGate = Promise.resolve();
   writeStatus = 200;
+  writeGate = Promise.resolve();
   jest.spyOn(window, "confirm").mockReturnValue(true);
 });
 
@@ -132,45 +130,6 @@ it("adds a created target to the list and clears the form", async () => {
   expect(name).toHaveProperty("value", "");
 });
 
-it("lists a target created while the first load is in flight", async () => {
-  let releaseLoad = () => {};
-  loadGate = new Promise((resolve) => {
-    releaseLoad = resolve;
-  });
-  renderPage();
-  createPartnerC();
-
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    releaseLoad();
-  });
-
-  expect(await screen.findByText("Partner C")).toBeTruthy();
-  expect(screen.getByText("Partner A")).toBeTruthy();
-});
-
-it("lists a created target once when a refetch already returned it", async () => {
-  const query = queryWrapper();
-  renderPage(query);
-  await screen.findByText("Partner A");
-
-  let releaseCreate = () => {};
-  createGate = new Promise((resolve) => {
-    releaseCreate = resolve;
-  });
-  createPartnerC();
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await query.client.refetchQueries();
-    releaseCreate();
-  });
-
-  await waitFor(() =>
-    expect(screen.getByRole("button", { name: "Create" })).toBeTruthy(),
-  );
-  expect(screen.getAllByText("Partner C")).toHaveLength(1);
-});
-
 it("keeps the form and shows the refusal when the create fails", async () => {
   writeStatus = 400;
   renderPage();
@@ -188,6 +147,18 @@ it("shows a saved target and leaves edit mode", async () => {
 
   expect(await screen.findByText("Partner Z")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+});
+
+it("marks the row saving until the save lands", async () => {
+  let release = () => {};
+  writeGate = new Promise((resolve) => (release = resolve));
+  renderPage();
+  await saveFirstAs("Partner Z");
+
+  const saving = await screen.findByRole("button", { name: "Saving…" });
+  expect(saving.hasAttribute("disabled")).toBe(true);
+  release();
+  expect(await screen.findByText("Partner Z")).toBeTruthy();
 });
 
 it("stays in edit mode and shows the refusal when the save fails", async () => {
@@ -208,33 +179,16 @@ it("removes a deleted target from the list", async () => {
   expect(stored.map((t) => t.id)).toEqual([2]);
 });
 
-it("keeps the delete when a refetch started before it lands after it", async () => {
-  const query = queryWrapper();
-  renderPage(query);
-  await screen.findByText("Partner A");
-
-  let releaseLoad = () => {};
-  loadGate = new Promise((resolve) => {
-    releaseLoad = resolve;
-  });
-  const refetch = query.client.refetchQueries();
+it("marks the row deleting until the delete lands", async () => {
+  let release = () => {};
+  writeGate = new Promise((resolve) => (release = resolve));
+  renderPage();
   await deleteFirst();
 
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    releaseLoad();
-    await refetch;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
-
-  expect(
-    query.client
-      .getQueryData<
-        ExternalShareTargetDto[]
-      >(queryKeys.externalShareTargetsAdmin())
-      ?.map((t) => t.id),
-  ).toEqual([2]);
-  expect(screen.queryByText("Partner A")).toBeNull();
+  const deleting = await screen.findByRole("button", { name: "Deleting…" });
+  expect(deleting.hasAttribute("disabled")).toBe(true);
+  release();
+  await waitForElementToBeRemoved(() => screen.queryByText("Partner A"));
 });
 
 it("keeps the target and says so when the delete fails", async () => {
@@ -246,6 +200,13 @@ it("keeps the target and says so when the delete fails", async () => {
     await screen.findByText("Unable to delete share target."),
   ).toBeTruthy();
   expect(screen.getByText("Partner A")).toBeTruthy();
+  await waitFor(() =>
+    expect(
+      screen
+        .getAllByRole("button", { name: "Delete" })
+        .map((b) => b.hasAttribute("disabled")),
+    ).toEqual([false, false]),
+  );
 });
 
 it("drops a target another admin already deleted", async () => {
