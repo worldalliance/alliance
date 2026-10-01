@@ -10,6 +10,7 @@ import {
   WaitlistEntrySort,
   WaitlistInviteState,
 } from "./dto/waitlist-entry-admin.dto";
+import { WaitlistEmailRecipientStatus } from "./entities/waitlist-email-recipient.entity";
 import { WaitlistEntryActionKind } from "./entities/waitlist-entry-action.entity";
 import { WaitlistEntry } from "./entities/waitlist-entry.entity";
 import { recordMobilization } from "./waitlist-mobilization";
@@ -17,8 +18,11 @@ import { WaitlistTagService } from "./waitlist-tag.service";
 
 const ENTRY_INVITE = `SELECT 1 FROM onetime_invite invite WHERE invite."waitlistEntryId" = entry.id`;
 
+/** Whether an account claimed any invite of the entry aliased `entry`. */
+export const ENTRY_INVITE_CLAIMED_SQL = `EXISTS (${ENTRY_INVITE} AND ${inviteClaimedSql("invite")})`;
+
 const INVITE_STATE_SQL = `CASE
-  WHEN EXISTS (${ENTRY_INVITE} AND ${inviteClaimedSql("invite")})
+  WHEN ${ENTRY_INVITE_CLAIMED_SQL}
     THEN '${WaitlistInviteState.Claimed}'
   WHEN EXISTS (${ENTRY_INVITE} AND ${inviteClaimableSql("invite")})
     THEN '${WaitlistInviteState.Unused}'
@@ -177,6 +181,37 @@ export class WaitlistEntryAdminService {
       .orderBy("entry.id")
       .getRawMany<{ id: number }>();
     return rows.map((row) => row.id);
+  }
+
+  /**
+   * Revokes every invite of the entries that signup could still claim, except
+   * one a waitlist email is sending right now. Resolves to how many it revoked.
+   */
+  revokeInvites(entryIds: number[]): Promise<number> {
+    const claimable = `invite."waitlistEntryId" = ANY($1) AND ${inviteClaimableSql("invite")}`;
+    return this.entryRepository.manager.transaction(async (manager) => {
+      // Locking first makes the update run on a fresh snapshot, which sees a
+      // signup claim or a recipient marked sending while this waited. Locking
+      // in id order keeps overlapping revokes from deadlocking.
+      await manager.query(
+        `SELECT invite.id FROM onetime_invite invite WHERE ${claimable} ORDER BY invite.id FOR UPDATE`,
+        [entryIds],
+      );
+      const [{ count }] = await manager.query(
+        `WITH revoked AS (
+           UPDATE onetime_invite invite SET "deletedAt" = now()
+           WHERE ${claimable}
+             AND NOT EXISTS (
+               SELECT 1 FROM waitlist_email_recipient recipient
+               WHERE recipient."inviteId" = invite.id AND recipient.status = $2
+             )
+           RETURNING invite.id
+         )
+         SELECT count(*)::int AS count FROM revoked`,
+        [entryIds, WaitlistEmailRecipientStatus.Sending],
+      );
+      return count;
+    });
   }
 
   setMobilized(params: {

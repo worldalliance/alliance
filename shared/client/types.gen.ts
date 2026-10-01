@@ -230,7 +230,7 @@ export type ActionEventNotifType = 'announcement' | 'misseddeadline' | 'reminder
 
 export type EmailStatus = 'pending' | 'sent' | 'failed';
 
-export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reminder' | 'waitlist_confirmation' | 'waitlist_link';
+export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reminder' | 'waitlist_confirmation' | 'waitlist_link' | 'waitlist_staff';
 
 export type Mail = {
     id: number;
@@ -4512,7 +4512,7 @@ export type WaitlistEntryIdsBodyDto = {
 
 export type WaitlistChangeCountDto = {
     /**
-     * Entries the request changed
+     * How many the request changed: entries, or invites for a revocation
      */
     changed: number;
 };
@@ -4574,6 +4574,158 @@ export type CreateWaitlistCohortDto = {
 export type UpdateWaitlistCohortDto = {
     name?: string;
     filter?: WaitlistEntryFilterDto;
+};
+
+export type PreviewWaitlistEmailDto = {
+    subject: string;
+    /**
+     * Markdown with #{placeholder}s
+     */
+    body: string;
+    entryIds: Array<number>;
+    /**
+     * Also email entries whose invite an account claimed
+     */
+    includeClaimed: boolean;
+    /**
+     * The recipient to render
+     */
+    sampleEntryId?: number;
+};
+
+export type WaitlistEmailPlaceholder = 'name' | 'organizationName' | 'signupLink' | 'personalShareLink';
+
+export type WaitlistEmailSampleDto = {
+    entryId: number;
+    name: string;
+    email: string;
+    subject: string | null;
+    html: string | null;
+    missing: Array<WaitlistEmailPlaceholder>;
+};
+
+export type WaitlistEmailPreviewDto = {
+    /**
+     * Selected entries that exist
+     */
+    selected: number;
+    /**
+     * Selected entries skipped as unsubscribed
+     */
+    unsubscribed: number;
+    /**
+     * Subscribed selected entries whose invite an account claimed, skipped unless included
+     */
+    claimed: number;
+    recipientIds: Array<number>;
+    /**
+     * Recipients not yet mobilized
+     */
+    waiting: number;
+    /**
+     * Recipients with no organization
+     */
+    withoutOrganization: number;
+    /**
+     * Recipients whose organization has no group
+     */
+    withoutGroup: number;
+    /**
+     * Recipients whose organization's group is at or past its capacity
+     */
+    inFullGroup: number;
+    /**
+     * Recipients already sent, or being sent, an email with this subject
+     */
+    alreadySent: number;
+    sample: WaitlistEmailSampleDto | null;
+};
+
+export type TestWaitlistEmailDto = {
+    subject: string;
+    /**
+     * Markdown with #{placeholder}s
+     */
+    body: string;
+    /**
+     * The entry whose values fill the email
+     */
+    entryId: number;
+};
+
+export type SendWaitlistEmailDto = {
+    subject: string;
+    /**
+     * Markdown with #{placeholder}s
+     */
+    body: string;
+    entryIds: Array<number>;
+    /**
+     * Also email entries whose invite an account claimed
+     */
+    includeClaimed: boolean;
+    /**
+     * One per confirmed send; repeating it creates nothing
+     */
+    requestId: string;
+    /**
+     * Mark each waiting recipient mobilized once it's sent
+     */
+    mobilize: boolean;
+};
+
+export type WaitlistEmailCountsDto = {
+    pending: number;
+    sending: number;
+    sent: number;
+    failed: number;
+    uncertain: number;
+    skipped: number;
+};
+
+export type WaitlistEmailBatchDto = {
+    id: number;
+    subject: string;
+    body: string;
+    mobilize: boolean;
+    includeClaimed: boolean;
+    staffName: string | null;
+    createdAt: string;
+    counts: WaitlistEmailCountsDto;
+};
+
+export type WaitlistEmailRecipientStatus = 'pending' | 'sending' | 'sent' | 'failed' | 'uncertain' | 'skipped';
+
+export type WaitlistEmailSkipReason = 'unsubscribed' | 'invite_claimed';
+
+export type WaitlistEmailRecipientDto = {
+    id: number;
+    entryId: number;
+    name: string;
+    email: string;
+    status: WaitlistEmailRecipientStatus;
+    skipReason: WaitlistEmailSkipReason | null;
+    error: string | null;
+    acceptedAt: string | null;
+};
+
+export type WaitlistEmailBatchDetailDto = {
+    id: number;
+    subject: string;
+    body: string;
+    mobilize: boolean;
+    includeClaimed: boolean;
+    staffName: string | null;
+    createdAt: string;
+    counts: WaitlistEmailCountsDto;
+    recipients: Array<WaitlistEmailRecipientDto>;
+};
+
+export type RetryWaitlistEmailDto = {
+    /**
+     * Also resend recipients whose email may already have gone out
+     */
+    includeUncertain: boolean;
 };
 
 export type WaitlistEmailTemplateDto = {
@@ -13817,6 +13969,28 @@ export type WaitlistAdminUnmobilizeEntriesAdminResponses = {
 
 export type WaitlistAdminUnmobilizeEntriesAdminResponse = WaitlistAdminUnmobilizeEntriesAdminResponses[keyof WaitlistAdminUnmobilizeEntriesAdminResponses];
 
+export type WaitlistAdminRevokeEntryInvitesAdminData = {
+    body: WaitlistEntryIdsBodyDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/entries/revoke-invites';
+};
+
+export type WaitlistAdminRevokeEntryInvitesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminRevokeEntryInvitesAdminError = WaitlistAdminRevokeEntryInvitesAdminErrors[keyof WaitlistAdminRevokeEntryInvitesAdminErrors];
+
+export type WaitlistAdminRevokeEntryInvitesAdminResponses = {
+    200: WaitlistChangeCountDto;
+};
+
+export type WaitlistAdminRevokeEntryInvitesAdminResponse = WaitlistAdminRevokeEntryInvitesAdminResponses[keyof WaitlistAdminRevokeEntryInvitesAdminResponses];
+
 export type WaitlistAdminFindLinksAdminData = {
     body?: never;
     path?: never;
@@ -14120,6 +14294,144 @@ export type WaitlistAdminUpdateCohortAdminResponses = {
 };
 
 export type WaitlistAdminUpdateCohortAdminResponse = WaitlistAdminUpdateCohortAdminResponses[keyof WaitlistAdminUpdateCohortAdminResponses];
+
+export type WaitlistEmailAdminPreviewEmailAdminData = {
+    body: PreviewWaitlistEmailDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/emails/preview';
+};
+
+export type WaitlistEmailAdminPreviewEmailAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminPreviewEmailAdminError = WaitlistEmailAdminPreviewEmailAdminErrors[keyof WaitlistEmailAdminPreviewEmailAdminErrors];
+
+export type WaitlistEmailAdminPreviewEmailAdminResponses = {
+    200: WaitlistEmailPreviewDto;
+};
+
+export type WaitlistEmailAdminPreviewEmailAdminResponse = WaitlistEmailAdminPreviewEmailAdminResponses[keyof WaitlistEmailAdminPreviewEmailAdminResponses];
+
+export type WaitlistEmailAdminSendTestEmailAdminData = {
+    body: TestWaitlistEmailDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/emails/test';
+};
+
+export type WaitlistEmailAdminSendTestEmailAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminSendTestEmailAdminError = WaitlistEmailAdminSendTestEmailAdminErrors[keyof WaitlistEmailAdminSendTestEmailAdminErrors];
+
+export type WaitlistEmailAdminSendTestEmailAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type WaitlistEmailAdminSendTestEmailAdminResponse = WaitlistEmailAdminSendTestEmailAdminResponses[keyof WaitlistEmailAdminSendTestEmailAdminResponses];
+
+export type WaitlistEmailAdminFindEmailsAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/emails';
+};
+
+export type WaitlistEmailAdminFindEmailsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminFindEmailsAdminError = WaitlistEmailAdminFindEmailsAdminErrors[keyof WaitlistEmailAdminFindEmailsAdminErrors];
+
+export type WaitlistEmailAdminFindEmailsAdminResponses = {
+    200: Array<WaitlistEmailBatchDto>;
+};
+
+export type WaitlistEmailAdminFindEmailsAdminResponse = WaitlistEmailAdminFindEmailsAdminResponses[keyof WaitlistEmailAdminFindEmailsAdminResponses];
+
+export type WaitlistEmailAdminSendEmailAdminData = {
+    body: SendWaitlistEmailDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/emails';
+};
+
+export type WaitlistEmailAdminSendEmailAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminSendEmailAdminError = WaitlistEmailAdminSendEmailAdminErrors[keyof WaitlistEmailAdminSendEmailAdminErrors];
+
+export type WaitlistEmailAdminSendEmailAdminResponses = {
+    200: WaitlistEmailBatchDto;
+};
+
+export type WaitlistEmailAdminSendEmailAdminResponse = WaitlistEmailAdminSendEmailAdminResponses[keyof WaitlistEmailAdminSendEmailAdminResponses];
+
+export type WaitlistEmailAdminFindEmailAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/emails/{id}';
+};
+
+export type WaitlistEmailAdminFindEmailAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminFindEmailAdminError = WaitlistEmailAdminFindEmailAdminErrors[keyof WaitlistEmailAdminFindEmailAdminErrors];
+
+export type WaitlistEmailAdminFindEmailAdminResponses = {
+    200: WaitlistEmailBatchDetailDto;
+};
+
+export type WaitlistEmailAdminFindEmailAdminResponse = WaitlistEmailAdminFindEmailAdminResponses[keyof WaitlistEmailAdminFindEmailAdminResponses];
+
+export type WaitlistEmailAdminRetryEmailAdminData = {
+    body: RetryWaitlistEmailDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/emails/{id}/retry';
+};
+
+export type WaitlistEmailAdminRetryEmailAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminRetryEmailAdminError = WaitlistEmailAdminRetryEmailAdminErrors[keyof WaitlistEmailAdminRetryEmailAdminErrors];
+
+export type WaitlistEmailAdminRetryEmailAdminResponses = {
+    200: WaitlistEmailBatchDto;
+};
+
+export type WaitlistEmailAdminRetryEmailAdminResponse = WaitlistEmailAdminRetryEmailAdminResponses[keyof WaitlistEmailAdminRetryEmailAdminResponses];
 
 export type WaitlistEmailAdminFindTemplatesAdminData = {
     body?: never;

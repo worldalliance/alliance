@@ -104,6 +104,18 @@ export class WaitlistAdminController {
     );
   }
 
+  /** Leaves mobilization alone; the next email with a signup link issues a new invite. */
+  @Post("entries/revoke-invites")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: WaitlistChangeCountDto })
+  async revokeEntryInvitesAdmin(
+    @Body() dto: WaitlistEntryIdsBodyDto,
+  ): Promise<WaitlistChangeCountDto> {
+    return new WaitlistChangeCountDto(
+      await this.entryService.revokeInvites(dto.entryIds),
+    );
+  }
+
   @Get("links")
   @ApiOkResponse({ type: AdminWaitlistLinkDto, isArray: true })
   async findLinksAdmin(): Promise<AdminWaitlistLinkDto[]> {

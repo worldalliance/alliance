@@ -12,6 +12,7 @@ import {
   ImageUp,
   ListChecks,
   ListOrdered,
+  Mail,
   MailPlus,
   Map,
   MessageSquare,
@@ -145,6 +146,7 @@ const SidebarNav = ({
       label: "Waitlist",
       links: [
         { to: "/waitlist", label: "Entries", icon: <ListChecks size={16} /> },
+        { to: "/waitlist-emails", label: "Emails", icon: <Mail size={16} /> },
         {
           to: "/organizations",
           label: "Organizations",

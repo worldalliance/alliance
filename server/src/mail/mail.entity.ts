@@ -20,6 +20,7 @@ export enum EmailType {
   ContractReminder = "contract_reminder",
   WaitlistConfirmation = "waitlist_confirmation",
   WaitlistLink = "waitlist_link",
+  WaitlistStaff = "waitlist_staff",
 }
 
 export enum EmailStatus {

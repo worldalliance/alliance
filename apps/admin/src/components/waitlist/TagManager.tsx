@@ -16,6 +16,10 @@ import { useRefusalToast } from "../../lib/useRefusalToast";
 import { invalidateTagQueries } from "../../lib/waitlistAdminQueries";
 import ConfirmDialog from "../ConfirmDialog";
 import InlineTextInput from "../InlineTextInput";
+import {
+  BORDERED_ICON_BUTTON_CLASS,
+  DELETE_BUTTON_CLASS,
+} from "./controlClasses";
 
 const TagRow: React.FC<{
   tag: AdminWaitlistTagDto;
@@ -39,7 +43,7 @@ const TagRow: React.FC<{
       type="button"
       aria-label={`Delete ${tag.name}`}
       title={`Delete ${tag.name}`}
-      className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-red-600"
+      className={DELETE_BUTTON_CLASS}
       disabled={disabled}
       onClick={onDelete}
     >
@@ -86,7 +90,7 @@ const TagManager: React.FC<{ tags: AdminWaitlistTagDto[] | undefined }> = ({
         type="button"
         aria-label="Manage tags"
         title="Manage tags"
-        className="rounded border border-zinc-300 bg-white p-1.5 text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+        className={BORDERED_ICON_BUTTON_CLASS}
         disabled={tags === undefined}
         onClick={() => setOpen(true)}
       >

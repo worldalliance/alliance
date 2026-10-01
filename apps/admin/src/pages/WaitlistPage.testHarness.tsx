@@ -1,11 +1,15 @@
 import type {
   AdminWaitlistEntryDto,
+  PreviewWaitlistEmailDto,
+  WaitlistEmailPreviewDto,
+  WaitlistEmailTemplateDto,
   WaitlistEntrySearchDto,
 } from "@alliance/shared/client/types.gen";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import WaitlistPage from "./WaitlistPage";
 
@@ -49,6 +53,7 @@ type WaitlistApiState = {
   holdIds: Promise<void> | undefined;
   holdSearch: Promise<void> | undefined;
   mobilizeStatus: number;
+  revokeStatus: number;
   tagAddStatus: number;
   tagRenameStatus: number;
   tagCreateStatus: number;
@@ -62,7 +67,36 @@ type WaitlistApiState = {
     updatedAt: string;
   }[];
   cohortCreateStatus: number;
+  previews: PreviewWaitlistEmailDto[];
+  previewStatus: number;
+  sendStatus: number;
+  previewServed: WaitlistEmailPreviewDto;
+  templatesServed: WaitlistEmailTemplateDto[];
+  templateSaveStatus: number;
 };
+
+export const emailPreview = (
+  fields: Partial<WaitlistEmailPreviewDto> = {},
+): WaitlistEmailPreviewDto => ({
+  selected: 2,
+  unsubscribed: 0,
+  claimed: 0,
+  recipientIds: [1, 2],
+  waiting: 2,
+  withoutOrganization: 0,
+  withoutGroup: 0,
+  inFullGroup: 0,
+  alreadySent: 0,
+  sample: {
+    entryId: 1,
+    name: "Person 1",
+    email: "person1@example.com",
+    subject: "Hi Person 1",
+    html: "<p>Welcome</p>",
+    missing: [],
+  },
+  ...fields,
+});
 
 const initialState = (): WaitlistApiState => ({
   searches: [],
@@ -72,6 +106,7 @@ const initialState = (): WaitlistApiState => ({
   holdIds: undefined,
   holdSearch: undefined,
   mobilizeStatus: 200,
+  revokeStatus: 200,
   tagAddStatus: 200,
   tagRenameStatus: 200,
   tagCreateStatus: 200,
@@ -87,6 +122,20 @@ const initialState = (): WaitlistApiState => ({
     },
   ],
   cohortCreateStatus: 200,
+  previews: [],
+  previewStatus: 200,
+  sendStatus: 200,
+  previewServed: emailPreview(),
+  templateSaveStatus: 200,
+  templatesServed: [
+    {
+      id: 8,
+      name: "Invitation",
+      subject: "You're invited, #{name}",
+      body: "Join: #{signupLink}",
+      updatedAt: "2026-09-01T00:00:00.000Z",
+    },
+  ],
 });
 
 export const api = initialState();
@@ -137,6 +186,10 @@ export const serveWaitlistApi = () => {
               { status: api.mobilizeStatus },
             ),
       "POST /waitlist/admin/entries/unmobilize": recordPost({ changed: 0 }),
+      "POST /waitlist/admin/entries/revoke-invites": async (input) =>
+        api.revokeStatus === 200
+          ? recordPost({ changed: 3 })(input)
+          : Response.json({}, { status: api.revokeStatus }),
       "GET /campaigns": () =>
         Response.json([
           { ...campaign, id: 7, name: "Acme", kind: "organization" },
@@ -192,6 +245,80 @@ export const serveWaitlistApi = () => {
           api.cohortsServed.find((cohort) => cohort.id === Number(params.id)),
         );
       },
+      "POST /waitlist/admin/emails/preview": async ({ request }) => {
+        api.previews.push(await request.json());
+        return Response.json(api.previewServed, { status: api.previewStatus });
+      },
+      "POST /waitlist/admin/emails": async (input) => {
+        const reply = recordPost({
+          id: 1,
+          subject: "Hi #{name}",
+          body: "Welcome",
+          mobilize: false,
+          includeClaimed: false,
+          staffName: "Staff",
+          createdAt: "2026-09-02T00:00:00.000Z",
+          counts: {
+            pending: 3,
+            sending: 0,
+            sent: 0,
+            failed: 0,
+            uncertain: 0,
+            skipped: 0,
+          },
+        });
+        const response = await reply(input);
+        return api.sendStatus === 200
+          ? response
+          : Response.json({}, { status: api.sendStatus });
+      },
+      "POST /waitlist/admin/emails/test": async ({ request }) => {
+        api.posts.push({
+          path: new URL(request.url).pathname,
+          body: await request.json(),
+        });
+        return new Response(null, { status: 204 });
+      },
+      "GET /waitlist/admin/email-templates": () =>
+        Response.json(api.templatesServed),
+      "POST /waitlist/admin/email-templates": async ({ request }) => {
+        if (api.templateSaveStatus !== 200) {
+          return Response.json(
+            { message: "An email template with that name already exists" },
+            { status: api.templateSaveStatus },
+          );
+        }
+        const body: { name: string; subject: string; body: string } =
+          await request.json();
+        api.posts.push({ path: new URL(request.url).pathname, body });
+        const created = { id: 9, ...body, updatedAt: "2026-09-02T00:00:00Z" };
+        api.templatesServed = [...api.templatesServed, created];
+        return Response.json(created);
+      },
+      "PUT /waitlist/admin/email-templates/:id": async ({
+        request,
+        params,
+      }) => {
+        const body: { name: string; subject: string; body: string } =
+          await request.json();
+        api.posts.push({ path: new URL(request.url).pathname, body });
+        const updated = {
+          id: Number(params.id),
+          ...body,
+          updatedAt: "2026-09-02T00:00:00Z",
+        };
+        api.templatesServed = api.templatesServed.map((template) =>
+          template.id === updated.id ? updated : template,
+        );
+        return Response.json(updated);
+      },
+      "DELETE /waitlist/admin/email-templates/:id": ({ request, params }) => {
+        api.posts.push({ path: new URL(request.url).pathname, body: null });
+        api.templatesServed = api.templatesServed.filter(
+          (template) => template.id !== Number(params.id),
+        );
+        return new Response(null, { status: 204 });
+      },
       "GET /waitlist/admin/tags": () =>
         api.tagsStatus === 200
           ? Response.json(api.tagsServed)
@@ -237,11 +364,14 @@ export const pickMenuItem = async (menu: string, item: string) => {
   fireEvent.click(await screen.findByRole("menuitem", { name: item }));
 };
 
-export const renderPage = () =>
+export const renderPage = (routerState?: unknown, beside?: ReactNode) =>
   render(
-    <MemoryRouter>
+    <MemoryRouter
+      initialEntries={[{ pathname: "/waitlist", state: routerState }]}
+    >
       <ToastProvider>
         <WaitlistPage />
+        {beside}
       </ToastProvider>
     </MemoryRouter>,
     queryWrapper(),

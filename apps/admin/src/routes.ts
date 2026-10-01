@@ -45,6 +45,7 @@ export default [
       route("/share-links", "pages/ShareLinksPage.tsx"),
       route("/organizations", "pages/OrganizationsPage.tsx"),
       route("/waitlist", "pages/WaitlistPage.tsx"),
+      route("/waitlist-emails", "pages/WaitlistEmailsPage.tsx"),
       route("/invite-message-template", "pages/InviteMessageTemplatePage.tsx"),
       route("/priority", "pages/PriorityPage.tsx"),
       route("/staff-directory", "pages/StaffDirectoryPage.tsx"),

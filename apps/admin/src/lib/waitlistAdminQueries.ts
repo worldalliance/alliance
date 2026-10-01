@@ -3,6 +3,7 @@ import {
   waitlistAdminFindCohortsAdmin,
   waitlistAdminFindLinksAdmin,
   waitlistAdminFindTagsAdmin,
+  waitlistEmailAdminFindTemplatesAdmin,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { type QueryClient, queryOptions } from "@tanstack/react-query";
@@ -32,6 +33,14 @@ export const waitlistCohortsQuery = queryOptions({
   queryKey: queryKeys.waitlistCohortsAdmin(),
   queryFn: () =>
     waitlistAdminFindCohortsAdmin({ throwOnError: true }).then((r) => r.data),
+});
+
+export const waitlistEmailTemplatesQuery = queryOptions({
+  queryKey: queryKeys.waitlistEmailTemplatesAdmin(),
+  queryFn: () =>
+    waitlistEmailAdminFindTemplatesAdmin({ throwOnError: true }).then(
+      (r) => r.data,
+    ),
 });
 
 /** A tag write changes both the entries' tags and the tags' counts. */

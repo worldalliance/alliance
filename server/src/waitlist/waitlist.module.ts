@@ -6,6 +6,8 @@ import { User } from "src/user/entities/user.entity";
 import { UserModule } from "src/user/user.module";
 import { WaitlistBrowser } from "./entities/waitlist-browser.entity";
 import { WaitlistCohort } from "./entities/waitlist-cohort.entity";
+import { WaitlistEmailBatch } from "./entities/waitlist-email-batch.entity";
+import { WaitlistEmailRecipient } from "./entities/waitlist-email-recipient.entity";
 import { WaitlistEmailTemplate } from "./entities/waitlist-email-template.entity";
 import { WaitlistEntryAction } from "./entities/waitlist-entry-action.entity";
 import { WaitlistEntryTag } from "./entities/waitlist-entry-tag.entity";
@@ -17,7 +19,9 @@ import { WaitlistAdminController } from "./waitlist-admin.controller";
 import { WaitlistBrowserService } from "./waitlist-browser.service";
 import { WaitlistCohortService } from "./waitlist-cohort.service";
 import { WaitlistEmailAdminController } from "./waitlist-email-admin.controller";
+import { WaitlistEmailSender } from "./waitlist-email-sender.service";
 import { WaitlistEmailTemplateService } from "./waitlist-email-template.service";
+import { WaitlistEmailService } from "./waitlist-email.service";
 import { WaitlistEntryAdminService } from "./waitlist-entry-admin.service";
 import { WaitlistLinkService } from "./waitlist-link.service";
 import { WaitlistMailService } from "./waitlist-mail.service";
@@ -31,6 +35,8 @@ import { WaitlistService } from "./waitlist.service";
       User,
       WaitlistBrowser,
       WaitlistCohort,
+      WaitlistEmailBatch,
+      WaitlistEmailRecipient,
       WaitlistEmailTemplate,
       WaitlistEntry,
       WaitlistEntryAction,
@@ -57,6 +63,8 @@ import { WaitlistService } from "./waitlist.service";
     WaitlistTagService,
     WaitlistCohortService,
     WaitlistEmailTemplateService,
+    WaitlistEmailService,
+    WaitlistEmailSender,
   ],
 })
 export class WaitlistModule {}

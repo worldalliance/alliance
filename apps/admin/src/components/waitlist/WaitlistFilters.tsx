@@ -20,6 +20,7 @@ import {
   withFilterField,
 } from "../../lib/waitlistFilter";
 import MultiSelectFilter from "./MultiSelectFilter";
+import { ICON_BUTTON_CLASS, SELECT_CLASS } from "./controlClasses";
 
 const BOOLEAN_FIELDS = ["mobilized", "subscribed", "hasReason"] as const;
 type BooleanField = (typeof BOOLEAN_FIELDS)[number];
@@ -33,7 +34,7 @@ const BooleanFilter: React.FC<{
 }> = ({ label, yes, no, value, onChange }) => (
   <select
     aria-label={label}
-    className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm"
+    className={SELECT_CLASS}
     value={value === undefined ? "" : String(value)}
     onChange={(e) =>
       onChange(e.target.value === "" ? undefined : e.target.value === "true")
@@ -182,7 +183,7 @@ const WaitlistFilters: React.FC<WaitlistFiltersProps> = ({
           type="button"
           aria-label="Clear filters"
           title="Clear filters"
-          className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+          className={ICON_BUTTON_CLASS}
           onClick={() => {
             setSearch("");
             onChange({});

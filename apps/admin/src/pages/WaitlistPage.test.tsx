@@ -219,6 +219,34 @@ it("selects every matching entry across pages, and undoes their mobilization", a
   );
 });
 
+it("revokes the selected entries' unused invites after confirming", async () => {
+  renderPage();
+  fireEvent.click(await screen.findByLabelText("Select Person 1"));
+  fireEvent.click(screen.getByRole("button", { name: "Revoke invites" }));
+  expect(await screen.findByText(/signup links stop working/)).toBeTruthy();
+  expect(api.posts).toEqual([]);
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+  await waitFor(() =>
+    expect(api.posts).toEqual([
+      {
+        path: "/waitlist/admin/entries/revoke-invites",
+        body: { entryIds: [1] },
+      },
+    ]),
+  );
+  expect(await screen.findByText("Revoked 3 invites")).toBeTruthy();
+});
+
+it("says revoking failed when the server gives no reason", async () => {
+  api.revokeStatus = 500;
+  renderPage();
+  fireEvent.click(await screen.findByLabelText("Select Person 1"));
+  fireEvent.click(screen.getByRole("button", { name: "Revoke invites" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Confirm" }));
+  expect(await screen.findByText("Could not revoke the invites.")).toBeTruthy();
+});
+
 it("shows a partly selected page as indeterminate", async () => {
   renderPage();
   fireEvent.click(await screen.findByLabelText("Select Person 1"));

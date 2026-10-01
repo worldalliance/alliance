@@ -4,6 +4,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { CommunityService } from "src/community/community.service";
 import {
   hasRoomForReturningMember,
+  isAtCapacity,
   isCommunityLedBy,
 } from "src/community/community.utils";
 import { Community } from "src/community/entities/community.entity";
@@ -238,25 +239,34 @@ export class ContractService {
       });
       const community = user.referredByInvite!.community!;
       let referrerNotified = false;
-      await this.communityService.addUsersToCommunityAndRefreshConversation({
-        user,
-        community,
-        contractBeingSigned: true,
-        notifForLeader: user.referredBy
-          ? buildNotifForLeaderWithReferrer(
-              user,
-              community,
-              user.referredBy,
-              (v) => (referrerNotified = v),
-            )
-          : ({ leader }) =>
-              memberJoinedCommunityNotif(
-                leader,
+      // A waitlist invite's group can fill after it is emailed; its claimant
+      // then awaits staff placement rather than overfilling it.
+      if (
+        user.referredByInvite!.waitlistEntryId !== null &&
+        isAtCapacity(community)
+      ) {
+        userUpdate.undergoingGroupAssignment = true;
+      } else {
+        await this.communityService.addUsersToCommunityAndRefreshConversation({
+          user,
+          community,
+          contractBeingSigned: true,
+          notifForLeader: user.referredBy
+            ? buildNotifForLeaderWithReferrer(
                 user,
                 community,
-                `${user.name} joined the Alliance and your group (${community.name})`,
-              ),
-      });
+                user.referredBy,
+                (v) => (referrerNotified = v),
+              )
+            : ({ leader }) =>
+                memberJoinedCommunityNotif(
+                  leader,
+                  user,
+                  community,
+                  `${user.name} joined the Alliance and your group (${community.name})`,
+                ),
+        });
+      }
       if (user.referredBy && !referrerNotified) {
         notifs.push(newMemberReferredNotif(user, user.referredBy));
       }

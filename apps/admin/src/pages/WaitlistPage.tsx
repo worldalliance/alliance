@@ -11,7 +11,7 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
 import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
-import { X } from "lucide-react";
+import { Mail, X } from "lucide-react";
 import React, {
   useCallback,
   useEffect,
@@ -19,8 +19,14 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useLocation, useNavigate } from "react-router";
 import CohortControls from "../components/waitlist/CohortControls";
-import MobilizeActions from "../components/waitlist/MobilizeActions";
+import {
+  BORDERED_ICON_BUTTON_CLASS,
+  ICON_BUTTON_CLASS,
+} from "../components/waitlist/controlClasses";
+import EmailComposer from "../components/waitlist/email/EmailComposer";
+import EntryActions from "../components/waitlist/EntryActions";
 import TagActions from "../components/waitlist/TagActions";
 import TagManager from "../components/waitlist/TagManager";
 import WaitlistFilters from "../components/waitlist/WaitlistFilters";
@@ -36,6 +42,7 @@ import {
   waitlistLinksQuery,
   waitlistTagsQuery,
 } from "../lib/waitlistAdminQueries";
+import { type EmailDraft, emailDraftFromState } from "../lib/waitlistEmail";
 import { withFilterField } from "../lib/waitlistFilter";
 
 const PAGE_SIZE = 50;
@@ -49,6 +56,20 @@ const WaitlistPage: React.FC = () => {
   const [filtersKey, setFiltersKey] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const selectionVersion = useRef(0);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [draft, setDraft] = useState<EmailDraft | null>(() =>
+    emailDraftFromState(location.state),
+  );
+  // Clearing the passed draft keeps Back or a reload from reopening it.
+  useEffect(() => {
+    if (emailDraftFromState(location.state)) {
+      navigate(
+        { pathname: location.pathname, search: location.search },
+        { replace: true, state: null },
+      );
+    }
+  }, [location, navigate]);
 
   const changeSelection = useCallback((next: Set<number>) => {
     selectionVersion.current += 1;
@@ -176,7 +197,7 @@ const WaitlistPage: React.FC = () => {
             type="button"
             aria-label="Clear selection"
             title="Clear selection"
-            className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+            className={ICON_BUTTON_CLASS}
             onClick={() => changeSelection(new Set())}
           >
             <X size={16} />
@@ -189,12 +210,34 @@ const WaitlistPage: React.FC = () => {
             onChanged={() => changeSelection(new Set())}
           />
           <TagManager tags={tags.data} />
-          <MobilizeActions
+          <EntryActions
             selectedIds={selectedIds}
             onChanged={() => changeSelection(new Set())}
           />
+          <button
+            type="button"
+            aria-label="Compose email"
+            title="Compose email"
+            className={BORDERED_ICON_BUTTON_CLASS}
+            disabled={draft !== null}
+            onClick={() => setDraft({ subject: "", body: "" })}
+          >
+            <Mail size={16} />
+          </button>
         </div>
       </div>
+
+      {draft && (
+        <EmailComposer
+          selectedIds={selectedIds}
+          initialDraft={draft}
+          onClose={() => setDraft(null)}
+          onSent={() => {
+            setDraft(null);
+            changeSelection(new Set());
+          }}
+        />
+      )}
 
       {loadError && <p className="text-sm text-red-500">{loadError}</p>}
 

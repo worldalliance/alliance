@@ -128,9 +128,26 @@ export type WaitlistEmailType =
   | EmailType.WaitlistConfirmation
   | EmailType.WaitlistLink;
 
+/** `bodyHtml` must be safe to embed, as `renderWaitlistEmail` produces. */
+export type WaitlistStaffEmail = {
+  subject: string;
+  bodyHtml: string;
+  unsubscribeUrl: string;
+};
+
 const WAITLIST_SUBJECTS: Record<WaitlistEmailType, string> = {
   [EmailType.WaitlistConfirmation]: "You’re on the Alliance waitlist",
   [EmailType.WaitlistLink]: "Your Alliance waitlist link",
+};
+
+/** Thrown by `sendMail` when it failed before handing the message to the mail server. */
+export class MailNotSentError extends Error {}
+
+const notSent = (error: unknown): never => {
+  throw new MailNotSentError(
+    error instanceof Error ? error.message : String(error),
+    { cause: error },
+  );
 };
 
 @Injectable()
@@ -159,6 +176,7 @@ export class MailService {
     [EmailType.ContractReminder]: "contractreminder",
     [EmailType.WaitlistConfirmation]: "waitlist-confirmation",
     [EmailType.WaitlistLink]: "waitlist-link",
+    [EmailType.WaitlistStaff]: "waitlist-staff",
   };
 
   async renderHtml(emailType: EmailType, context: ISendMailOptions["context"]) {
@@ -196,16 +214,16 @@ export class MailService {
     // portal. Register a new address there before changing MAIL_FROM.
     const from = process.env.MAIL_FROM;
     if (!from) {
-      throw new Error("MAIL_FROM is unset");
+      throw new MailNotSentError("MAIL_FROM is unset");
     }
 
     const tag =
       process.env.NODE_ENV === "production" ? "production" : "development";
 
-    const html = await this.renderHtml(emailType, context);
+    const html = await this.renderHtml(emailType, context).catch(notSent);
 
     mail.renderedHtml = html;
-    await this.mailRepository.save(mail);
+    await this.mailRepository.save(mail).catch(notSent);
 
     const sent = await R.fromPromise(
       this.mailerService.sendMail({
@@ -325,6 +343,32 @@ export class MailService {
       emailType,
       subject: WAITLIST_SUBJECTS[emailType],
       context: { url, unsubscribeUrl },
+      cid: null,
+    });
+  }
+
+  renderWaitlistStaffEmail(content: WaitlistStaffEmail): Promise<string> {
+    return this.renderHtml(EmailType.WaitlistStaff, content);
+  }
+
+  /** Whether the mail server can be reached; true while sending is off. */
+  async verifyTransport(): Promise<boolean> {
+    if (!mailSendingEnabled()) return true;
+    const verified = await R.fromPromise(
+      this.mailerService.verifyAllTransporters(),
+    );
+    return verified.ok && verified.value;
+  }
+
+  public async sendWaitlistStaffEmail(params: {
+    recipient: string;
+    content: WaitlistStaffEmail;
+  }): Promise<Mail> {
+    return this.sendMail({
+      recipient: params.recipient,
+      emailType: EmailType.WaitlistStaff,
+      subject: params.content.subject,
+      context: params.content,
       cid: null,
     });
   }
