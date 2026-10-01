@@ -10,8 +10,8 @@ import {
   isQuestionField,
 } from "@alliance/common/forms/form-schema";
 import { fieldWithSavedChoices } from "@alliance/common/forms/formula-options";
+import { getRangeValues } from "@alliance/common/forms/range";
 import { FormResponseDto } from "@alliance/shared/client";
-import { getRangeValues } from "@alliance/shared/formrenderer";
 import Card from "@alliance/sharedweb/ui/Card";
 import FormMarkdownWrapper from "@alliance/sharedweb/ui/FormMarkdownWrapper";
 import React, { useMemo } from "react";

@@ -13,6 +13,7 @@ const RENDER_PATH_ENTRIES = [
   "./variable-interpolation.ts",
   "./visibility.ts",
   "./output-resolution.ts",
+  "./range.ts",
   "./ranking.ts",
   "./element-descriptors.ts",
   "./display-only-schema.ts",

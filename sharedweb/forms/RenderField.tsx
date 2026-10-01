@@ -8,9 +8,9 @@ import type {
   PhoneField,
   TimeField,
 } from "@alliance/common/forms/form-schema";
+import { getRangeValues } from "@alliance/common/forms/range";
 import { withCount } from "@alliance/common/plural";
 import type { UserDto } from "@alliance/shared/client";
-import { getRangeValues } from "@alliance/shared/formrenderer";
 import {
   resolveUploadSlot,
   type FileUploadSlot,

@@ -3,7 +3,7 @@ import {
   MIN_RANGE_OPTION_COUNT,
   type RangeField,
 } from "@alliance/common/forms/form-schema";
-import { getRangeOptionCount } from "@alliance/shared/formrenderer";
+import { getRangeOptionCount } from "@alliance/common/forms/range";
 import { RequiredToggle } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
