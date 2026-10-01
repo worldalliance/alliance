@@ -2,6 +2,7 @@ import type {
   AnyField,
   FormSchema,
   ListField,
+  RangeField,
   TextField,
 } from "@alliance/common/forms/form-schema";
 import type { ConditionExtras } from "@alliance/common/forms/visibility";
@@ -15,6 +16,7 @@ import {
   getPreviousVisiblePageIndex,
   restorableAnswers,
   schemaNeedsVisibilityContext,
+  validateFieldValue,
 } from "./formrenderer";
 
 describe("getNextVisiblePageIndex", () => {
@@ -394,6 +396,44 @@ describe("restorableAnswers", () => {
     );
     expect(applyDefaultValues(restored, new Map([["places", ["ny"]]]))).toEqual(
       { places: [] },
+    );
+  });
+});
+
+describe("validateFieldValue for a range field", () => {
+  const extras: ConditionExtras = { deviceType: "desktop" };
+  const scale = (required: boolean): RangeField => ({
+    id: "scale",
+    type: "input",
+    kind: "range",
+    label: "Scale",
+    optionCount: 5,
+    required,
+  });
+
+  it.each([true, false])("accepts an option when required=%p", (required) => {
+    expect(validateFieldValue(scale(required), 3, {}, extras)).toBeNull();
+  });
+
+  it.each([true, false])(
+    "rejects a value outside the options when required=%p",
+    (required) => {
+      expect(validateFieldValue(scale(required), 8, {}, extras)).toBe(
+        "Please select a value.",
+      );
+      expect(validateFieldValue(scale(required), 2.5, {}, extras)).toBe(
+        "Please select a value.",
+      );
+    },
+  );
+
+  it.each([undefined, ""])("accepts an empty optional answer: %p", (value) => {
+    expect(validateFieldValue(scale(false), value, {}, extras)).toBeNull();
+  });
+
+  it("requires an answer when required", () => {
+    expect(validateFieldValue(scale(true), undefined, {}, extras)).toBe(
+      "Please select a value.",
     );
   });
 });
