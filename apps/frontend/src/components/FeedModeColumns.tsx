@@ -1,3 +1,4 @@
+import { FeedMode } from "@alliance/shared/lib/useActivityFeeds";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import {
@@ -7,11 +8,6 @@ import {
   useRef,
   useState,
 } from "react";
-
-export enum FeedMode {
-  Friends = "friends",
-  Everyone = "everyone",
-}
 
 const MODE_OFFSET: Record<FeedMode, string> = {
   [FeedMode.Friends]: "translateX(0%)",
