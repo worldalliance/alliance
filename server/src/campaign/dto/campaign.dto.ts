@@ -72,7 +72,7 @@ export class CreateCampaignDto {
 
 export class UpdateCampaignDto {
   @ApiPropertyOptional()
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsString()
   @IsNotEmpty()
   name?: string;

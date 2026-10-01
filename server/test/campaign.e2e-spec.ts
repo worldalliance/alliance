@@ -352,6 +352,11 @@ describe("Campaigns (e2e)", () => {
         await patch(organization.id, { communityId: 999999 }).expect(400);
         await patch(organization.id, { kind: null }).expect(400);
       });
+
+      it("refuses a null name", async () => {
+        const campaign = await createCampaign("Keeps its name");
+        await patch(campaign.id, { name: null }).expect(400);
+      });
     });
   });
 });
