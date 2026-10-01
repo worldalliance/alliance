@@ -3,6 +3,7 @@ import type {
   ProfileDto,
   ReferrerProfileDto,
 } from "@alliance/shared/client";
+import { agreementEnteredCount } from "@alliance/shared/lib/copy";
 import { useRouter } from "expo-router";
 import { Check } from "lucide-react-native";
 import { Pressable, TextInput, View } from "react-native";
@@ -60,7 +61,7 @@ function SignedBy({
         className="text-white"
         style={{ fontSize: scale.ui, lineHeight: scale.ui * 1.35 }}
       >
-        {inviter ? (
+        {inviter && (
           <>
             <Text
               weight={FontWeight.Medium}
@@ -69,15 +70,9 @@ function SignedBy({
             >
               {inviter.displayName}
             </Text>{" "}
-            and {Math.max(signedCount - 1, 0).toLocaleString("en-US")} others
-            have entered the agreement.
-          </>
-        ) : (
-          <>
-            {signedCount.toLocaleString("en-US")} members have entered the
-            agreement.
           </>
         )}
+        {agreementEnteredCount({ afterInviter: !!inviter, signedCount })}
       </Text>
     </View>
   );

@@ -3,6 +3,7 @@ import type {
   ProfileDto,
   ReferrerProfileDto,
 } from "@alliance/shared/client";
+import { agreementEnteredCount } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { Check } from "lucide-react";
@@ -95,18 +96,12 @@ function SignedBy({
         </span>
       )}
       <p className="text-[length:var(--ob-ui)] leading-snug text-pretty text-white">
-        {inviter ? (
+        {inviter && (
           <>
-            <span className="font-medium">{inviter.displayName}</span> and{" "}
-            {Math.max(signedCount - 1, 0).toLocaleString("en-US")} others have
-            entered the agreement.
-          </>
-        ) : (
-          <>
-            {signedCount.toLocaleString("en-US")} members have signed the
-            agreement.
+            <span className="font-medium">{inviter.displayName}</span>{" "}
           </>
         )}
+        {agreementEnteredCount({ afterInviter: !!inviter, signedCount })}
       </p>
     </div>
   );
