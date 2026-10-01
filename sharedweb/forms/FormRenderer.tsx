@@ -6,7 +6,10 @@ import {
   withdrawalFlagsFromOption,
   type WithdrawalOption,
 } from "@alliance/common/actionActivity";
-import { type DeviceVisibilityTarget } from "@alliance/common/forms/device";
+import {
+  deviceVisibilityTargetSchema,
+  type DeviceVisibilityTarget,
+} from "@alliance/common/forms/device";
 import { type DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
   flattenPageItems,
@@ -461,9 +464,9 @@ const FormRenderer = ({
     };
   }, [readOnly]);
 
-  const savedDeviceType = completedFormResponse?.deviceType as
-    | DeviceVisibilityTarget
-    | undefined;
+  const savedDeviceType = deviceVisibilityTargetSchema.safeParse(
+    completedFormResponse?.deviceType,
+  ).data;
 
   const effectiveDeviceType = readOnly
     ? (savedDeviceType ?? deviceType)
