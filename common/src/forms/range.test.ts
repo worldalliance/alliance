@@ -1,5 +1,9 @@
 import type { RangeField } from "./form-schema";
-import { getRangeValues, isValidRangeSelection } from "./range";
+import {
+  getRangeValues,
+  isEmptyRangeAnswer,
+  isValidRangeSelection,
+} from "./range";
 
 describe("getRangeValues", () => {
   const rangeField = (optionCount?: number): RangeField => ({
@@ -39,5 +43,21 @@ describe("isValidRangeSelection", () => {
 
   it.each([0, 6, 2.5, Number.NaN, "3"])("rejects %p", (value) => {
     expect(isValidRangeSelection(field, value)).toBe(false);
+  });
+});
+
+describe("isEmptyRangeAnswer", () => {
+  it("counts undefined, null, and the empty string as no answer", () => {
+    expect([undefined, null, ""].map(isEmptyRangeAnswer)).toEqual([
+      true,
+      true,
+      true,
+    ]);
+    expect([0, 3, " ", Number.NaN].map(isEmptyRangeAnswer)).toEqual([
+      false,
+      false,
+      false,
+      false,
+    ]);
   });
 });
