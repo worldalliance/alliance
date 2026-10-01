@@ -1,6 +1,6 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsOptional } from "class-validator";
+import { Allow, IsString, ValidateIf } from "class-validator";
 import { GeneralUpdate } from "src/actions/entities/general-update.entity";
 import {
   CreateDateColumnTz,
@@ -37,11 +37,11 @@ export class Tag {
   @Allow()
   description: string;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  publicDisplayName?: string;
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  publicDisplayName: string | null;
 
   @CreateDateColumnTz()
   @ApiProperty()

@@ -8,7 +8,9 @@ import Card from "@alliance/sharedweb/ui/Card";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 
-const INITIAL_NEW_TAG = {
+type TagFormValues = Record<keyof CreateTagDto, string>;
+
+const INITIAL_NEW_TAG: TagFormValues = {
   name: "",
   description: "",
   publicDisplayName: "",
@@ -21,7 +23,7 @@ const TagManagement: React.FC = () => {
   const { mutateAsync: updateTagAsync } = updateTag;
   const { mutateAsync: deleteTagAsync } = deleteTag;
   const [error, setError] = useState<string | null>(null);
-  const [newTag, setNewTag] = useState<CreateTagDto>(INITIAL_NEW_TAG);
+  const [newTag, setNewTag] = useState<TagFormValues>(INITIAL_NEW_TAG);
 
   const sortedTags = useMemo(() => {
     return [...tags].sort((a, b) => a.name.localeCompare(b.name));
@@ -32,7 +34,7 @@ const TagManagement: React.FC = () => {
       event.preventDefault();
       const name = newTag.name.trim();
       const description = newTag.description.trim();
-      const publicDisplayName = newTag.publicDisplayName?.trim();
+      const publicDisplayName = newTag.publicDisplayName.trim();
       if (!name || !description) {
         setError("Name and description are required.");
         return;
@@ -42,7 +44,7 @@ const TagManagement: React.FC = () => {
         await createTagAsync({
           name,
           description,
-          publicDisplayName: publicDisplayName || undefined,
+          publicDisplayName: publicDisplayName || null,
         });
         setNewTag(INITIAL_NEW_TAG);
       } catch (err) {
@@ -54,7 +56,7 @@ const TagManagement: React.FC = () => {
   );
 
   const handleUpdateTag = useCallback(
-    async (tagId: string, values: CreateTagDto) => {
+    async (tagId: string, values: TagFormValues) => {
       setError(null);
       try {
         await updateTagAsync({
@@ -62,7 +64,7 @@ const TagManagement: React.FC = () => {
           body: {
             name: values.name.trim(),
             description: values.description.trim(),
-            publicDisplayName: values.publicDisplayName?.trim() || undefined,
+            publicDisplayName: values.publicDisplayName.trim() || null,
           },
         });
         return true;
@@ -189,7 +191,7 @@ const TagManagement: React.FC = () => {
 
 type TagCardProps = {
   tag: TagDto;
-  onSave: (values: CreateTagDto) => Promise<boolean> | boolean;
+  onSave: (values: TagFormValues) => Promise<boolean> | boolean;
   onDelete: () => Promise<boolean> | boolean;
   isUpdating: boolean;
   isDeleting: boolean;
@@ -203,7 +205,7 @@ const TagCard: React.FC<TagCardProps> = ({
   isDeleting,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [formValues, setFormValues] = useState<CreateTagDto>({
+  const [formValues, setFormValues] = useState<TagFormValues>({
     name: tag.name,
     description: tag.description,
     publicDisplayName: tag.publicDisplayName ?? "",
