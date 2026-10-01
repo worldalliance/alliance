@@ -22,8 +22,22 @@ import ShareLinksPage from "./ShareLinksPage";
 
 afterEach(cleanup);
 
+const campaign = (id: number, name: string) =>
+  ({
+    id,
+    name,
+    code: `spring${id}`,
+    picture: null,
+    kind: "campaign",
+    communityId: null,
+    createdAt: "2026-01-02T00:00:00.000Z",
+    updatedAt: "2026-01-02T00:00:00.000Z",
+  }) satisfies CampaignDto;
+
 let actionsStatus = 200;
 let targetsStatus = 200;
+let campaignsStatus = 200;
+let campaigns = [campaign(7, "Spring fundraiser")];
 let actionsGate = Promise.resolve();
 let targetsGate = Promise.resolve();
 
@@ -54,18 +68,15 @@ serveApi(
         : Response.json({}, { status: targetsStatus });
     },
     "GET /campaigns": () =>
-      Response.json([
-        {
-          id: 7,
-          name: "Spring fundraiser",
-          code: "spring7",
-          picture: null,
-          kind: "campaign",
-          communityId: null,
-          createdAt: "2026-01-02T00:00:00.000Z",
-          updatedAt: "2026-01-02T00:00:00.000Z",
-        } satisfies CampaignDto,
-      ]),
+      campaignsStatus === 200
+        ? Response.json(campaigns)
+        : Response.json({}, { status: campaignsStatus }),
+    "POST /campaigns": async ({ request }) => {
+      const { name }: { name: string } = await request.json();
+      const created = campaign(8, name);
+      campaigns = [...campaigns, created];
+      return Response.json(created);
+    },
     "GET /share-urls/for-user/:userId": () => Response.json([]),
     "GET /share-urls/for-campaign/:campaignId": () => Response.json([]),
     "GET /user/members": () =>
@@ -89,6 +100,8 @@ serveApi(
 beforeEach(() => {
   actionsStatus = 200;
   targetsStatus = 200;
+  campaignsStatus = 200;
+  campaigns = [campaign(7, "Spring fundraiser")];
   actionsGate = Promise.resolve();
   targetsGate = Promise.resolve();
 });
@@ -192,7 +205,7 @@ it("says the external share targets failed to load", async () => {
   expect(await screen.findByText("Failed to load share targets.")).toBeTruthy();
 });
 
-it("gives a campaign's signup link on the invite domain", async () => {
+const pickCampaignKind = async () => {
   jest
     .spyOn(config, "getInviteBaseUrl")
     .mockReturnValue("https://test.alliance/");
@@ -202,9 +215,13 @@ it("gives a campaign's signup link on the invite domain", async () => {
     </ToastProvider>,
     queryWrapper(),
   );
-  fireEvent.change(screen.getByDisplayValue("User"), {
+  fireEvent.change(await screen.findByDisplayValue("User"), {
     target: { value: "campaign" },
   });
+};
+
+it("gives a campaign's signup link on the invite domain", async () => {
+  await pickCampaignKind();
   await screen.findByRole("option", { name: "Spring fundraiser" });
   fireEvent.change(screen.getByDisplayValue("Select a campaign…"), {
     target: { value: "7" },
@@ -213,4 +230,27 @@ it("gives a campaign's signup link on the invite domain", async () => {
   expect(
     await screen.findByText("https://test.alliance/signup?ref=spring7"),
   ).toBeTruthy();
+});
+
+it("lists and selects a campaign it creates", async () => {
+  await pickCampaignKind();
+  await screen.findByRole("option", { name: "Spring fundraiser" });
+
+  fireEvent.change(screen.getByPlaceholderText(/Campaign name/), {
+    target: { value: "Fall drive" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Create" }));
+
+  expect(
+    await screen.findByRole("option", { name: "Fall drive", selected: true }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("option", { name: "Spring fundraiser" }),
+  ).toBeTruthy();
+});
+
+it("says the campaigns failed to load", async () => {
+  campaignsStatus = 500;
+  await pickCampaignKind();
+  expect(await screen.findByText("Failed to load campaigns.")).toBeTruthy();
 });

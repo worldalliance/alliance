@@ -2,7 +2,6 @@
 import { withCount } from "@alliance/common/plural";
 import {
   campaignCreateAdmin,
-  campaignFindAllAdmin,
   imagesUploadImage,
   shareUrlsCreateDuplicateAdmin,
   shareUrlsDeleteAdmin,
@@ -36,10 +35,15 @@ import React, {
   useState,
 } from "react";
 import { actionsLoadError } from "../lib/actionsLoadError";
+import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
   externalShareTargetsLoadError,
   externalShareTargetsQuery,
 } from "../lib/externalShareTargetsQuery";
+import {
+  useCampaignsAdmin,
+  useInvalidateCampaignsAdmin,
+} from "../lib/useCampaignsAdmin";
 
 type TargetKind = "action" | "external" | "invite";
 type PickableKind = Exclude<TargetKind, "invite">;
@@ -142,12 +146,13 @@ const ShareLinksPage: React.FC = () => {
   const selectedUserId = selectedUserIds[0] ?? null;
   const selectedUser = users.find((u) => u.id === selectedUserId);
 
-  const [campaigns, setCampaigns] = useState<CampaignDto[]>([]);
+  const campaigns = useCampaignsAdmin();
+  const invalidateCampaigns = useInvalidateCampaignsAdmin();
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(
     null,
   );
   const selectedCampaign =
-    campaigns.find((c) => c.id === selectedCampaignId) ?? null;
+    campaigns.data?.find((c) => c.id === selectedCampaignId) ?? null;
 
   const owner = useMemo((): Owner | null => {
     if (ownerKind === "user") {
@@ -194,20 +199,6 @@ const ShareLinksPage: React.FC = () => {
   }, [currentOwnerKey]);
 
   const { error, success, confirm } = useToast();
-
-  const loadCampaigns = useCallback(async () => {
-    try {
-      const res = await campaignFindAllAdmin();
-      setCampaigns(res.data ?? []);
-    } catch (err) {
-      console.error("Failed to load campaigns", err);
-      error("Failed to load campaigns.");
-    }
-  }, [error]);
-
-  useEffect(() => {
-    void loadCampaigns();
-  }, [loadCampaigns]);
 
   const loadRows = useCallback(
     async (target: Owner) => {
@@ -277,7 +268,7 @@ const ShareLinksPage: React.FC = () => {
       });
       const created = res.data;
       if (created) {
-        setCampaigns((prev) => [created, ...prev]);
+        await invalidateCampaigns();
         setSelectedCampaignId(created.id);
         setNewCampaignName("");
         setNewCampaignPicture(null);
@@ -290,7 +281,13 @@ const ShareLinksPage: React.FC = () => {
     } finally {
       setCreatingCampaign(false);
     }
-  }, [newCampaignName, newCampaignPicture, success, error]);
+  }, [
+    newCampaignName,
+    newCampaignPicture,
+    invalidateCampaigns,
+    success,
+    error,
+  ]);
 
   const targetsForKind = useMemo((): Target[] => {
     switch (selectedKind) {
@@ -542,7 +539,14 @@ const ShareLinksPage: React.FC = () => {
               />
             ) : (
               <CampaignPicker
-                campaigns={campaigns}
+                campaigns={campaigns.data ?? []}
+                loadError={
+                  campaigns.error &&
+                  adminRefusalMessage(
+                    campaigns.error,
+                    "Failed to load campaigns.",
+                  )
+                }
                 selectedCampaignId={selectedCampaignId}
                 onSelect={setSelectedCampaignId}
                 newCampaignName={newCampaignName}
@@ -700,6 +704,7 @@ const ShareLinksPage: React.FC = () => {
 
 const CampaignPicker: React.FC<{
   campaigns: CampaignDto[];
+  loadError: string | null;
   selectedCampaignId: number | null;
   onSelect: (id: number | null) => void;
   newCampaignName: string;
@@ -710,6 +715,7 @@ const CampaignPicker: React.FC<{
   onPictureChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }> = ({
   campaigns,
+  loadError,
   selectedCampaignId,
   onSelect,
   newCampaignName,
@@ -723,6 +729,7 @@ const CampaignPicker: React.FC<{
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <label className="text-xs font-medium text-zinc-700">Campaign</label>
+        {loadError && <p className="text-xs text-red-500">{loadError}</p>}
         <select
           className="border border-zinc-300 rounded px-3 py-2 text-sm bg-white"
           value={selectedCampaignId ?? ""}
