@@ -1,7 +1,8 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
-  ActionActivityType,
+  ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
   WITHDRAWAL_OPTIONS,
+  type FeedActionActivity,
   type WithdrawalOption,
 } from "@alliance/common/actionActivity";
 import { type CohortExpression } from "@alliance/common/cohort-expression";
@@ -1279,12 +1280,6 @@ export enum GlobalFeedItemType {
   ForumComments = "forum_comments",
 }
 
-export const GlobalFeedActivityTypes = [
-  ActionActivityType.USER_COMPLETED,
-  ActionActivityType.USER_SUBMITTED_FOLLOW_UP_FORM,
-] as const satisfies ActionActivityType[];
-export type GlobalFeedActivityType = (typeof GlobalFeedActivityTypes)[number];
-
 export class GlobalFeedActivityGroupDto {
   @ApiProperty({ type: () => ProfileDto, isArray: true })
   @Type(() => ProfileDto)
@@ -1297,10 +1292,10 @@ export class GlobalFeedActivityGroupDto {
   actionName: string;
 
   @ApiProperty({
-    enum: GlobalFeedActivityTypes,
+    enum: ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
     enumName: "GlobalFeedActivityTypes",
   })
-  activityType: GlobalFeedActivityType;
+  activityType: FeedActionActivity;
 
   @ApiProperty()
   count: number;

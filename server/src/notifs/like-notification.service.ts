@@ -1,6 +1,6 @@
+import type { FeedActionActivity } from "@alliance/common/actionActivity";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import type { GlobalFeedActivityType } from "src/actions/dto/action.dto";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { User } from "src/user/entities/user.entity";
 import { In, IsNull, type EntityManager, type Repository } from "typeorm";
@@ -13,7 +13,7 @@ import { NotifsService } from "./notifs.service";
 export type LikeNotificationTarget =
   | "post"
   | "comment"
-  | `activity:${GlobalFeedActivityType}`;
+  | `activity:${FeedActionActivity}`;
 
 type LegacyGroupingKey =
   | `activity_like:${number}`

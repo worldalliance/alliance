@@ -1,4 +1,8 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
+import {
+  ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
+  type FeedActionActivity,
+} from "@alliance/common/actionActivity";
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import {
   BadRequestException,
@@ -74,8 +78,6 @@ import {
   EvaluateCohortExpressionDto,
   EvaluateCohortExpressionResponseDto,
   ExportActionDto,
-  GlobalFeedActivityType,
-  GlobalFeedActivityTypes,
   GlobalFeedItemDto,
   HomeFeedItemDto,
   PasteJsonDto,
@@ -121,9 +123,10 @@ function capGlobalFeedMembersLimit(limit: number): number {
   return Math.min(Math.max(limit, 1), GLOBAL_FEED_MEMBERS_MAX_LIMIT);
 }
 
-function parseFeedActivityType(value: string): GlobalFeedActivityType {
-  if ((GlobalFeedActivityTypes as readonly string[]).includes(value)) {
-    return value as GlobalFeedActivityType;
+function parseFeedActivityType(value: string): FeedActionActivity {
+  const type = ACTION_ACTIVITY_FEED_VISIBLE_TYPES.find((t) => t === value);
+  if (type) {
+    return type;
   }
   throw new BadRequestException(`Invalid activityType: ${value}`);
 }
