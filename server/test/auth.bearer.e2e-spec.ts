@@ -597,6 +597,141 @@ describe("Auth (e2e)", () => {
 
       expect(friendship).not.toBeNull();
     });
+
+    const registerWithInvite = (email: string, referralCode: string) =>
+      request(ctx.app.getHttpServer())
+        .post("/auth/register")
+        .send({
+          email,
+          password: "password",
+          name: "Invited User",
+          referralCode,
+          mode: TokenMode.Header,
+          timeZone: "America/Los_Angeles",
+        } satisfies SignUpDto);
+
+    it("leaves the invite unused when creating the account fails", async () => {
+      const invite = await inviteRepo.save(
+        inviteRepo.create({
+          invitee: "failed-signup@test.com",
+          code: "FAILED-SIGNUP-CODE",
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          invitingUser,
+        }),
+      );
+      const insertFailure = jest
+        .spyOn(User.prototype, "hashPassword")
+        .mockRejectedValueOnce(new Error("insert failed"));
+
+      try {
+        await registerWithInvite("failed-signup@test.com", invite.code).expect(
+          500,
+        );
+      } finally {
+        insertFailure.mockRestore();
+      }
+
+      const afterFailure = await inviteRepo.findOneByOrFail({ id: invite.id });
+      expect(afterFailure.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
+      expect(afterFailure.usedAt).toBeNull();
+
+      await registerWithInvite("failed-signup@test.com", invite.code).expect(
+        201,
+      );
+      const claimed = await inviteRepo.findOneOrFail({
+        where: { id: invite.id },
+        relations: { invitedUser: true },
+      });
+      expect(claimed.status).toBe(OnetimeInviteStatus.LINK_USED);
+      expect(claimed.usedAt).not.toBeNull();
+      expect(claimed.invitedUser?.email).toBe("failed-signup@test.com");
+    });
+
+    it("lets only one of two concurrent signups claim an invite", async () => {
+      const invite = await inviteRepo.save(
+        inviteRepo.create({
+          invitee: "concurrent@test.com",
+          code: "CONCURRENT-CODE",
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          invitingUser,
+        }),
+      );
+
+      const responses = await Promise.all(
+        ["concurrent-a@test.com", "concurrent-b@test.com"].map((email) =>
+          registerWithInvite(email, invite.code),
+        ),
+      );
+
+      expect(responses.map((res) => res.status).sort()).toEqual([201, 400]);
+      expect(
+        await userRepository.countBy({ referredByInvite: { id: invite.id } }),
+      ).toBe(1);
+    });
+
+    it("refuses an invite someone has already claimed", async () => {
+      const invite = await inviteRepo.save(
+        inviteRepo.create({
+          invitee: "claimed@test.com",
+          code: "CLAIMED-CODE",
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          invitingUser,
+        }),
+      );
+      await registerWithInvite("claimed-first@test.com", invite.code).expect(
+        201,
+      );
+
+      await registerWithInvite("claimed-second@test.com", invite.code).expect(
+        400,
+      );
+      expect(
+        await userRepository.existsBy({ email: "claimed-second@test.com" }),
+      ).toBe(false);
+    });
+
+    it("lets someone claim a used invite that no account references", async () => {
+      const invite = await inviteRepo.save(
+        inviteRepo.create({
+          invitee: "orphaned@test.com",
+          code: "ORPHANED-CODE",
+          status: OnetimeInviteStatus.LINK_USED,
+          usedAt: new Date(),
+          invitingUser,
+        }),
+      );
+
+      await registerWithInvite("orphaned@test.com", invite.code).expect(201);
+
+      const claimed = await inviteRepo.findOneOrFail({
+        where: { id: invite.id },
+        relations: { invitedUser: true },
+      });
+      expect(claimed.invitedUser?.email).toBe("orphaned@test.com");
+    });
+
+    it.each([
+      OnetimeInviteStatus.REQUEST_PENDING,
+      OnetimeInviteStatus.REQUEST_REJECTED,
+    ])("refuses the code of a %s invite request", async (status) => {
+      const invite = await inviteRepo.save(
+        inviteRepo.create({
+          invitee: `${status}@test.com`,
+          code: `${status}-CODE`,
+          status,
+          invitingUser,
+        }),
+      );
+
+      await registerWithInvite(`${status}@test.com`, invite.code).expect(400);
+
+      expect(
+        await userRepository.existsBy({ email: `${status}@test.com` }),
+      ).toBe(false);
+      const unchanged = await inviteRepo.findOneByOrFail({ id: invite.id });
+      expect(unchanged.status).toBe(status);
+      expect(unchanged.usedAt).toBeNull();
+    });
   });
 
   describe("time zone", () => {

@@ -1,15 +1,10 @@
-// TODO: replace with the waitlist, invite, and member data once the waiting room backend exists.
+// TODO: replace with the designer's advisors, members, and copy.
 
 export interface ProjectPerson {
   name: string;
   role: string;
   pictureKey: string;
 }
-
-export const INVITER = {
-  name: "Friends of Malheur",
-  pictureKey: "1763446793321.webp",
-};
 
 export const FEATURED_PEOPLE: ProjectPerson[] = [
   {
@@ -71,9 +66,6 @@ export const MEMBERS: ProjectPerson[] = [
     pictureKey: "1765237298519.webp",
   },
 ];
-
-export const MEMBER_COUNT = 213;
-export const WAITLIST_COUNT = 309;
 
 const LOREM =
   "Lorem ipsum dolor sit amet consectetur adipiscing elit possimus in fugiat dolor minim veniam labore illum ducimus non sunt et velit nam nobis est dolore voluptas optio dolor vel praesentium nostrud minus cillum qui in do rerum praesentium libero cumque qui pariatur quibusdam aliquip nobis nihil eligendi laboris sunt est.";

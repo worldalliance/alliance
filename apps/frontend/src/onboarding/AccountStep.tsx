@@ -3,7 +3,10 @@ import { ACCOUNT_MOVED_MESSAGE, ALLIANCE_DOMAIN } from "@alliance/common/url";
 import { authForgotPassword, authLogin } from "@alliance/shared/client";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
 import { Features } from "@alliance/shared/lib/features";
-import { useInvite } from "@alliance/shared/lib/useInvite";
+import {
+  INVITE_REFUSAL_HEADING,
+  useInvite,
+} from "@alliance/shared/lib/useInvite";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import {
   newDomainUrl,
@@ -15,11 +18,11 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import OAuthButtons from "@alliance/sharedweb/ui/OAuthButtons";
 import { useState, type FormEvent, type ReactNode } from "react";
-import { href, useLocation, useNavigate } from "react-router";
+import { href, Link, useLocation, useNavigate } from "react-router";
 import { z } from "zod";
 import { useAuth } from "../lib/AuthContext";
 import { getApiUrl, isFeatureEnabled } from "../lib/config";
-import { JOIN_MAILTO } from "../site/content";
+import { WAITLIST_HREF } from "../site/links";
 import { SiteArrow } from "../site/ui";
 import {
   ACCOUNT_BUTTON,
@@ -66,7 +69,7 @@ export function AccountStep({
   const { onLogin } = useAuth();
   const navigate = useNavigate();
   const {
-    used: inviteUsed,
+    refusal: inviteRefusal,
     pending: invitePending,
     unresolved: inviteUnresolved,
     inviter,
@@ -76,13 +79,13 @@ export function AccountStep({
   // the trip rather than the whole journey.
   const inviteOnly =
     (!isFeatureEnabled(Features.PublicSignup) && !referralCode) ||
-    inviteUsed ||
+    inviteRefusal !== null ||
     inviteUnresolved;
   // An invite in the URL is a way in, so logging in offers the sign-up screen
   // it came from rather than sending the member off to ask for another invite.
   const canSignUp =
     isFeatureEnabled(Features.PublicSignup) ||
-    (!!referralCode && !inviteUsed && !inviteUnresolved);
+    (!!referralCode && inviteRefusal === null && !inviteUnresolved);
   const [loggingIn, setLoggingIn] = useState(startInLogin);
   const [error, setError] = useState<ReactNode>(null);
   const location = useLocation();
@@ -104,8 +107,8 @@ export function AccountStep({
 
   const heading = loggingIn
     ? "Log into your account"
-    : inviteUsed
-      ? "This invite link has already been used."
+    : inviteRefusal
+      ? INVITE_REFUSAL_HEADING[inviteRefusal]
       : inviteUnresolved
         ? "This invite link isn’t valid."
         : inviteOnly
@@ -296,12 +299,12 @@ export function AccountStep({
               ? "Don’t have an account? "
               : "Already have an account? "}
             {loggingIn && !canSignUp ? (
-              <a
-                href={JOIN_MAILTO}
+              <Link
+                to={WAITLIST_HREF}
                 className="font-medium text-black underline underline-offset-2"
               >
-                Request an invite
-              </a>
+                Join the waitlist
+              </Link>
             ) : (
               <button
                 type="button"

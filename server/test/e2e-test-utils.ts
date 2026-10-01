@@ -69,6 +69,19 @@ export async function eventually<T>(
   throw new Error(`timed out waiting for ${label}`);
 }
 
+/** Resolves once some query in the test database waits on a row lock. */
+export function waitForLockWait(dataSource: DataSource): Promise<unknown> {
+  return eventually(
+    (): Promise<{ waiting: number }[]> =>
+      dataSource.query(
+        `SELECT count(*)::int AS waiting FROM pg_stat_activity
+         WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+      ),
+    ([row]) => row.waiting > 0,
+    "a query to wait on a lock",
+  );
+}
+
 export function signAccessToken(
   jwtService: JwtService,
   user: { id: number; email: string },

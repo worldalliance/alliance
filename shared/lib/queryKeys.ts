@@ -1,4 +1,4 @@
-import type { EventType } from "../client/types.gen";
+import type { EventType, WaitlistEntrySearchDto } from "../client/types.gen";
 
 const onetimeInvitesAdminAll = () => ["userGetOnetimeInvitesAdmin"] as const;
 
@@ -7,6 +7,8 @@ const onetimeInvitesAdminAll = () => ["userGetOnetimeInvitesAdmin"] as const;
 const formsAdminAll = () => ["formsAdmin"] as const;
 
 const projectsAdminAll = () => ["projectsAdmin"] as const;
+const waitlistEntriesAdminAll = () =>
+  ["waitlistAdminSearchEntriesAdmin"] as const;
 
 const actionCompletionCurvesAdminAll = () =>
   ["analyticsGetActionCompletionCurvesAdmin"] as const;
@@ -45,6 +47,11 @@ export const queryKeys = {
   signupSocialProof: (referralCode: string | null, count?: number) =>
     ["userSignupSocialProof", referralCode, count] as const,
   staffDirectory: () => ["userStaffDirectory"] as const,
+  waitlistBrowser: () => ["waitlistBrowser"] as const,
+  waitlistCount: () => ["waitlistCount"] as const,
+  waitlistMailConfig: () => ["waitlistMailConfig"] as const,
+  waitlistReferral: (codes: { linkCode?: string; referrerCode?: string }) =>
+    ["waitlistFindReferral", codes] as const,
 
   // Admin
   actionAdmin: (actionId: number | null) =>
@@ -58,7 +65,9 @@ export const queryKeys = {
     ["cohortDecisionsListForActionAdmin", actionId] as const,
   actionRelationsAdmin: () => ["actionsActionRelationsAdmin"] as const,
   ambassadorProgramAdmin: () => ["userGetAmbassadorProgramAdmin"] as const,
+  campaignsAdmin: () => ["campaignFindAllAdmin"] as const,
   clustersAdmin: () => ["clusterListAdmin"] as const,
+  communitiesAdmin: () => ["communityGetCommunitiesAdmin"] as const,
   contractsAdmin: () => ["contractAllAdmin"] as const,
   eventLogAdmin: (page: number, limit: number, eventType: EventType | "") =>
     ["eventLogFindAllAdmin", page, limit, eventType] as const,
@@ -92,6 +101,12 @@ export const queryKeys = {
   timeSpentPerUserTotalAdmin: () =>
     ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
   usersAdmin: () => ["userListAdmin"] as const,
+  waitlistCohortsAdmin: () => ["waitlistAdminFindCohortsAdmin"] as const,
+  waitlistEntriesAdminAll,
+  waitlistEntriesAdmin: (search: WaitlistEntrySearchDto) =>
+    [...waitlistEntriesAdminAll(), search] as const,
+  waitlistLinksAdmin: () => ["waitlistAdminFindLinksAdmin"] as const,
+  waitlistTagsAdmin: () => ["waitlistAdminFindTagsAdmin"] as const,
   videoAdmin: (videoId: number) =>
     ["videosGetVideoDetailsAdmin", videoId] as const,
   videosAdmin: () => ["videosListVideosAdmin"] as const,

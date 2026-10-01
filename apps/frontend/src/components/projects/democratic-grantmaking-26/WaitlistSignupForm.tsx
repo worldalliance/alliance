@@ -1,42 +1,200 @@
+import {
+  waitlistCreate,
+  type CreateWaitlistEntryDto,
+  type WaitlistReferralDto,
+} from "@alliance/shared/client";
+import {
+  thrownRefusalMessage,
+  thrownStatus,
+} from "@alliance/shared/lib/hey-api";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { isRefused } from "@alliance/shared/lib/retryQuery";
 import { cn } from "@alliance/shared/styles/util";
+import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { ACCOUNT_BUTTON, ACCOUNT_FIELD } from "../../../onboarding/chrome";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { RotateCw } from "lucide-react";
+import type { FormEvent } from "react";
+import { ACCOUNT_BUTTON } from "../../../onboarding/chrome";
 import { SiteArrow } from "../../../site/ui";
-import { PersonAvatar } from "./PersonRow";
-import { INVITER } from "./placeholders";
+import {
+  useWaitlistBrowser,
+  useWaitlistMailEnabled,
+  useWaitlistReferral,
+} from "./useWaitlist";
+import { ForgetBrowser, RememberedInvite } from "./WaitlistBrowserMemory";
+import { WaitlistConfirmation } from "./WaitlistConfirmation";
+import { WAITLIST_FIELD } from "./waitlistStyles";
 
-// `!` because index.css gives every input an unlayered white background.
-const FIELD = cn(
-  ACCOUNT_FIELD,
-  "lg:border-white/45 lg:bg-white/10! lg:text-white lg:placeholder:text-white/80 lg:focus:border-white",
-);
+const SOCIAL_PROOF_THRESHOLD = 3;
 
-/** A white card on narrow screens; from `lg` it sits straight on the primary band. */
-export function WaitlistSignupForm({ className }: { className?: string }) {
+const SUBMIT_FALLBACK = "Something went wrong. Please try again.";
+
+function ReferralBanner({ referral }: { referral: WaitlistReferralDto }) {
+  const { organization, inviterName } = referral;
+  const inviter = inviterName ?? organization?.name;
+  if (!inviter) return null;
+  const counted =
+    !inviterName &&
+    organization &&
+    organization.entryCount >= SOCIAL_PROOF_THRESHOLD;
   return (
-    <form
-      className={cn(
-        "flex flex-col gap-3 bg-white p-5 text-[var(--site-ink)] sm:p-6 lg:bg-transparent lg:p-0 lg:text-white",
-        className,
-      )}
-      style={{ borderRadius: "var(--site-radius-card)" }}
-      onSubmit={(e) => {
-        // TODO: submit to the waitlist once the waiting room backend exists.
-        e.preventDefault();
-      }}
-    >
-      <p className="mb-3 flex items-center justify-center gap-x-2 text-base text-zinc-500 lg:text-white/85">
-        <PersonAvatar
-          pictureKey={INVITER.pictureKey}
-          className="size-6 rounded-[5px]"
+    <p className="mb-3 flex items-center justify-center gap-x-2 text-base text-zinc-500 lg:text-white/85">
+      {!inviterName && organization?.picture && (
+        <AvatarProfile
+          pfp={organization.picture}
+          size="override"
+          thumbnail
+          alt=""
+          className="size-6 shrink-0 rounded-[5px]"
         />
+      )}
+      {counted ? (
+        <span>
+          Join {organization.entryCount.toLocaleString("en-US")} others from{" "}
+          <span className="font-medium text-black lg:text-white">
+            {organization.name}
+          </span>
+        </span>
+      ) : (
         <span>
           <span className="font-medium text-black lg:text-white">
-            {INVITER.name}
+            {inviter}
           </span>{" "}
           invited you to the Alliance
         </span>
-      </p>
+      )}
+    </p>
+  );
+}
+
+/** A white card on narrow screens; from `lg` it sits straight on the primary band. */
+export function WaitlistSignupForm({ className }: { className?: string }) {
+  const queryClient = useQueryClient();
+  const {
+    codes,
+    hasCode,
+    query: referral,
+    dropReferral,
+  } = useWaitlistReferral();
+  const mailEnabled = useWaitlistMailEnabled();
+  const browser = useWaitlistBrowser();
+  const submit = useMutation({
+    mutationFn: (body: CreateWaitlistEntryDto) =>
+      waitlistCreate({ body, throwOnError: true }).then((res) => res.data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.waitlistBrowser(),
+      });
+      return queryClient.invalidateQueries({
+        queryKey: queryKeys.waitlistCount(),
+      });
+    },
+  });
+  // Until the browser state answers, a returning entrant's input would vanish
+  // into their confirmation. An error falls through to a usable form.
+  const restoring = browser.isPending;
+  const remembered = browser.data?.entry ?? null;
+  const inviteCode = browser.data?.inviteCode ?? null;
+  const browserMemory = (
+    <>
+      {inviteCode && <RememberedInvite code={inviteCode} />}
+      {(remembered || inviteCode) && (
+        <ForgetBrowser onForgotten={() => submit.reset()} />
+      )}
+    </>
+  );
+
+  const linkFailed =
+    (hasCode && referral.isError && referral.data === undefined) ||
+    thrownStatus(submit.error) === 404;
+  const linkInactive =
+    thrownStatus(submit.error) === 404 || isRefused(referral.error);
+  const referralKnown = !hasCode || referral.data !== undefined;
+  const needsReason = referralKnown && !referral.data?.organization;
+
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    submit.mutate({
+      name: String(form.get("name") ?? ""),
+      email: String(form.get("email") ?? ""),
+      reason: needsReason ? String(form.get("reason") ?? "") : undefined,
+      committed: true,
+      ...codes,
+    });
+  };
+
+  const card = cn(
+    "flex flex-col gap-3 bg-white p-5 text-[var(--site-ink)] sm:p-6 lg:bg-transparent lg:p-0 lg:text-white",
+    className,
+  );
+  const cardStyle = { borderRadius: "var(--site-radius-card)" };
+
+  const confirmed = submit.isSuccess
+    ? {
+        shareCode: submit.data.shareCode,
+        email: submit.variables.email,
+        mobilized: false,
+      }
+    : remembered && {
+        shareCode: remembered.shareCode,
+        email: null,
+        mobilized: remembered.mobilized,
+      };
+  if (confirmed) {
+    return (
+      <div className={card} style={cardStyle}>
+        <WaitlistConfirmation {...confirmed} mailEnabled={mailEnabled} />
+        {browserMemory}
+      </div>
+    );
+  }
+
+  return (
+    <form className={card} style={cardStyle} onSubmit={onSubmit}>
+      {browserMemory}
+      {linkFailed ? (
+        <div
+          role="alert"
+          className="mb-3 flex flex-col items-center gap-2 text-center text-base"
+        >
+          <p className="flex items-center gap-1.5">
+            {linkInactive
+              ? "This invitation link is not active."
+              : "We couldn’t check this invitation link."}
+            {!linkInactive && (
+              <button
+                type="button"
+                aria-label="Try again"
+                title="Try again"
+                onClick={() => void referral.refetch()}
+                disabled={referral.isFetching}
+              >
+                <RotateCw className="size-4" aria-hidden />
+              </button>
+            )}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              submit.reset();
+              dropReferral();
+            }}
+            className="font-medium underline underline-offset-2"
+          >
+            Continue without this link
+          </button>
+        </div>
+      ) : referral.data ? (
+        <ReferralBanner referral={referral.data} />
+      ) : (
+        hasCode && (
+          <p className="mb-3 text-center text-base text-zinc-500 lg:text-white/85">
+            Checking your invitation link…
+          </p>
+        )
+      )}
       <input
         name="name"
         type="text"
@@ -44,7 +202,9 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
         placeholder="Full Name"
         aria-label="Full Name"
         required
-        className={FIELD}
+        maxLength={200}
+        disabled={restoring}
+        className={WAITLIST_FIELD}
       />
       <input
         name="email"
@@ -53,13 +213,28 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
         placeholder="Email"
         aria-label="Email"
         required
-        className={FIELD}
+        maxLength={320}
+        disabled={restoring}
+        className={WAITLIST_FIELD}
       />
+      {needsReason && (
+        <textarea
+          name="reason"
+          placeholder="Why do you want to join the Alliance?"
+          aria-label="Why do you want to join the Alliance?"
+          required
+          maxLength={4000}
+          rows={3}
+          disabled={restoring}
+          className={cn(WAITLIST_FIELD, "h-auto resize-y py-2.5")}
+        />
+      )}
       <label className="flex items-center gap-2 text-sm">
         <input
           name="commit"
           type="checkbox"
           required
+          disabled={restoring}
           className="accent-green size-4 shrink-0"
         />
         I commit to join the Alliance.
@@ -67,11 +242,21 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
       <Button
         type="submit"
         color={ButtonColor.Green}
+        disabled={restoring || submit.isPending || !referralKnown || linkFailed}
         className={ACCOUNT_BUTTON}
       >
-        Join the Waitlist
+        {submit.isPending ? "Joining…" : "Join the Waitlist"}
         <SiteArrow className="size-2.5" />
       </Button>
+      {submit.isError && !linkFailed && (
+        <p className="text-sm text-red-600 lg:text-red-200" role="alert">
+          {thrownRefusalMessage({
+            error: submit.error,
+            fallback: SUBMIT_FALLBACK,
+            sessionExpired: SUBMIT_FALLBACK,
+          })}
+        </p>
+      )}
       <p className="text-center text-sm text-zinc-600 lg:text-white/85">
         By signing up you agree to get updates.
       </p>

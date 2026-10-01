@@ -5,6 +5,7 @@ export enum SidebarFolder {
   ActionPlanning = "action-planning",
   Activity = "activity",
   InvitesSharing = "invites-sharing",
+  Waitlist = "waitlist",
   Community = "community",
   Outreach = "outreach",
   Content = "content",

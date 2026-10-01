@@ -1,12 +1,28 @@
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AuthContext } from "../../../lib/AuthContext";
 import { authValue } from "../../../testing/authValue";
 import DemocraticGrantmaking26 from "./DemocraticGrantmaking26";
 
-serveApi(routes({}));
+let membersReply: () => Response;
+let waitlistReply: () => Response;
+
+serveApi(
+  routes({
+    "POST /user/nmembers": () => membersReply(),
+    "GET /waitlist/count": () => waitlistReply(),
+    "GET /waitlist/mail-config": () => Response.json({ enabled: false }),
+    "GET /waitlist/browser": () =>
+      Response.json({ entry: null, inviteCode: null }),
+  }),
+);
+
+beforeEach(() => {
+  membersReply = () => Response.json({ count: 213 });
+  waitlistReply = () => Response.json({ waiting: 309 });
+});
 
 afterEach(cleanup);
 
@@ -30,10 +46,10 @@ test("marks preparation as the current phase", () => {
   expect(current?.textContent).toContain("Preparation");
 });
 
-test("stacks members and waitlist against the member goal", () => {
+test("stacks members and waitlist against the member goal", async () => {
   renderPage();
 
-  const bar = screen.getByRole("img", {
+  const bar = await screen.findByRole("img", {
     name: "213 members and 309 on the waitlist, toward 1,000",
   });
   const [members, waitlist] = Array.from(
@@ -44,14 +60,22 @@ test("stacks members and waitlist against the member goal", () => {
   expect(waitlist).toBe("30.9%");
 });
 
-test("the waitlist form stays on the page when submitted", () => {
-  renderPage();
+test.each<[string, () => void]>([
+  ["member", () => (membersReply = () => new Response(null, { status: 500 }))],
+  [
+    "waitlist",
+    () => (waitlistReply = () => new Response(null, { status: 500 })),
+  ],
+])(
+  "says the counts are unavailable when the %s count fails",
+  async (_count, fail) => {
+    fail();
+    renderPage();
 
-  const form = screen
-    .getByRole("button", { name: "Join the Waitlist" })
-    .closest("form");
-  if (!form) throw new Error("Join the Waitlist is outside a form");
-  const submit = new Event("submit", { bubbles: true, cancelable: true });
-  fireEvent(form, submit);
-  expect(submit.defaultPrevented).toBe(true);
-});
+    await screen.findByText(
+      "Member and waitlist counts unavailable",
+      {},
+      { timeout: 2500 },
+    );
+  },
+);

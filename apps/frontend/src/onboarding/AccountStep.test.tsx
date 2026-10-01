@@ -26,7 +26,13 @@ const signedIn = () => new Response(null, { status: 200 });
 let loginReply: () => Response = signedIn;
 
 /** What the two lookups behind the code in the URL come back with. */
-let inviteState: "valid" | "used" | "unknown" = "valid";
+let inviteState: "valid" | "used" | "pending" | "unknown" = "valid";
+
+const INVITE_STATUS = {
+  valid: "link_unused",
+  used: "link_used",
+  pending: "request_pending",
+} as const;
 
 const notFound = () => new Response(null, { status: 404 });
 
@@ -49,7 +55,7 @@ serveApi(
         ? notFound()
         : Response.json({
             code: "invite-code",
-            status: inviteState === "used" ? "link_used" : "link_unused",
+            status: INVITE_STATUS[inviteState],
           }),
   }),
 );
@@ -159,6 +165,18 @@ describe("AccountStep", () => {
     await waitFor(() =>
       expect(screen.getByText("This invite link isn’t valid.")).toBeDefined(),
     );
+    expect(providerButtons()).toBe(0);
+    expect(screen.queryByLabelText("Email")).toBeNull();
+  });
+
+  it.each([
+    ["used", "This invite link has already been used."],
+    ["pending", "This invite link isn’t active."],
+  ] as const)("refuses a %s invite", async (state, heading) => {
+    inviteState = state;
+    render(<SignUpWithCode />);
+
+    await waitFor(() => expect(screen.getByText(heading)).toBeDefined());
     expect(providerButtons()).toBe(0);
     expect(screen.queryByLabelText("Email")).toBeNull();
   });

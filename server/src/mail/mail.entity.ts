@@ -18,6 +18,8 @@ export enum EmailType {
   CustomActionReminder = "custom_action_reminder",
   ContractSuspended = "contract_suspended",
   ContractReminder = "contract_reminder",
+  WaitlistConfirmation = "waitlist_confirmation",
+  WaitlistLink = "waitlist_link",
 }
 
 export enum EmailStatus {

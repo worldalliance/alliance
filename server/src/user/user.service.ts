@@ -76,6 +76,7 @@ import {
   Brackets,
   DataSource,
   DeepPartial,
+  type EntityManager,
   ILike,
   In,
   IsNull,
@@ -141,6 +142,7 @@ import {
   sqlUserHasActiveContractAt,
   User,
 } from "./entities/user.entity";
+import { CLAIMABLE_INVITE } from "./invite-claim";
 import { type FriendsAcceptedPayload, UserEvents } from "./user.events";
 import { referralLabel } from "./user.utils";
 
@@ -265,10 +267,16 @@ export class UserService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
+  /**
+   * A user referred by a one-time invite claims it in the same transaction,
+   * so a failed insert leaves the invite usable and only one signup can claim it.
+   */
   async create(data: DeepPartial<User>): Promise<User> {
-    const user = await this.userRepository.save(
-      this.userRepository.create(data),
-    );
+    const inviteId = data.referredByInvite?.id;
+    const user = await this.dataSource.transaction(async (manager) => {
+      if (inviteId !== undefined) await this.claimInvite(manager, inviteId);
+      return manager.save(manager.create(User, data));
+    });
     await this.eventLogService.sendMessage({
       type: EventType.AccountCreated,
       message: [user.name, referralLabel(user), "created an account."]
@@ -278,6 +286,32 @@ export class UserService {
       blob: null,
     });
     return user;
+  }
+
+  private async claimInvite(
+    manager: EntityManager,
+    inviteId: number,
+  ): Promise<void> {
+    // The update locks the invite row, so a concurrent claim waits here and
+    // then sees the committed claimant.
+    const { affected } = await manager.update(
+      OnetimeInvite,
+      { id: inviteId, ...CLAIMABLE_INVITE },
+      { status: OnetimeInviteStatus.LINK_USED, usedAt: new Date() },
+    );
+    if (!affected) {
+      throw new BadRequestException("This invite code isn't valid");
+    }
+    if (await this.inviteHasClaimant(manager, inviteId)) {
+      throw new BadRequestException("This invite code has already been used");
+    }
+  }
+
+  private inviteHasClaimant(
+    manager: EntityManager,
+    inviteId: number,
+  ): Promise<boolean> {
+    return manager.existsBy(User, { referredByInvite: { id: inviteId } });
   }
 
   async update(id: number, data: UpdateProfileDto): Promise<User> {
@@ -476,7 +510,7 @@ export class UserService {
    * signup-page inviter display ({@link resolveReferrer}) build on it, so the
    * two can't drift. `opts.inviteRelations` lets a caller load the matched
    * invite with extra relations (AuthService needs the inviting user's
-   * communities and the invited user to detect a spent invite).
+   * communities).
    */
   async resolveReferral(
     code: string,
@@ -2660,7 +2694,7 @@ export class UserService {
     const user = await this.findOneOrFail(userId);
     if (
       !(
-        invite.invitingUser.id === userId ||
+        invite.invitingUser?.id === userId ||
         user.leaderOfIds.some((cid) => cid === invite.communityId) ||
         user.admin
       )
@@ -2796,16 +2830,19 @@ export class UserService {
     }
     const savedInvite = await this.onetimeInviteRepository.save(request);
 
-    await this.notifsService.sendNotif({
-      user: savedInvite.invitingUser,
-      category,
-      message: message.replace("[USER]", savedInvite.invitee),
-      webAppLocation: groupUrl({
-        tab: "invites",
-        communityId: savedInvite.communityId,
-      }),
-      associatedUsers: [savedInvite.invitingUser],
-    });
+    const { invitingUser } = savedInvite;
+    if (invitingUser) {
+      await this.notifsService.sendNotif({
+        user: invitingUser,
+        category,
+        message: message.replace("[USER]", savedInvite.invitee),
+        webAppLocation: groupUrl({
+          tab: "invites",
+          communityId: savedInvite.communityId,
+        }),
+        associatedUsers: [invitingUser],
+      });
+    }
 
     return savedInvite;
   }
@@ -2822,6 +2859,17 @@ export class UserService {
         community: true,
       },
     });
+  }
+
+  async isInviteClaimable(code: string): Promise<boolean> {
+    const invite = await this.onetimeInviteRepository.findOneBy({
+      code,
+      ...CLAIMABLE_INVITE,
+    });
+    return (
+      invite !== null &&
+      !(await this.inviteHasClaimant(this.dataSource.manager, invite.id))
+    );
   }
 
   async findAllOnetimeInvites(
@@ -2949,13 +2997,6 @@ export class UserService {
         community: true,
         invitingUser: true,
       },
-    });
-  }
-
-  async invalidateInvite(inviteId: number): Promise<void> {
-    await this.onetimeInviteRepository.update(inviteId, {
-      status: OnetimeInviteStatus.LINK_USED,
-      usedAt: new Date(),
     });
   }
 
