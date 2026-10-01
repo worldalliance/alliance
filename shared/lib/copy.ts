@@ -352,6 +352,18 @@ export const disconnectAccount = {
     `${label} is your only way to log in. Set a password or connect another account before disconnecting it.`,
 } as const;
 
+/** Follows the inviter's name, which each app styles itself, when there is one. */
+export const agreementEnteredCount = ({
+  afterInviter,
+  signedCount,
+}: {
+  afterInviter: boolean;
+  signedCount: number;
+}) =>
+  afterInviter
+    ? `and ${Math.max(signedCount - 1, 0).toLocaleString("en-US")} others have entered the agreement.`
+    : `${signedCount.toLocaleString("en-US")} members have entered the agreement.`;
+
 /**
  * The 1,000-member milestone, named in four places: the onboarding Scale screen
  * on web and mobile, and the milestone tracks on the site and redesign pages.
