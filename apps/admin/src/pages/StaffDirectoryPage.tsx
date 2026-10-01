@@ -1,6 +1,5 @@
 import {
   type StaffDirectoryEntryDto,
-  userStaffDirectoryAdmin,
   userUpdateStaffDirectoryAdmin,
 } from "@alliance/shared/client";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
@@ -8,22 +7,19 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { GripVertical } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { DropPosition, useDragReorder } from "../lib/useDragReorder";
+import { useStaffDirectoryAdmin } from "../lib/useStaffDirectoryAdmin";
 
 type StaffRow = StaffDirectoryEntryDto;
 
 const StaffDirectoryPage: React.FC = () => {
   const queryClient = useQueryClient();
-  const directory = useQuery({
-    queryKey: queryKeys.staffDirectoryAdmin(),
-    queryFn: () =>
-      userStaffDirectoryAdmin({ throwOnError: true }).then((r) => r.data),
-  });
+  const directory = useStaffDirectoryAdmin();
   const loadError = directory.isError
     ? thrownRefusalMessage({
         error: directory.error,
