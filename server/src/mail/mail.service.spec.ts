@@ -90,7 +90,6 @@ describe("processKeywordReplacements", () => {
           ...baseContext,
           uncompletedTasksCount: 1,
           isFirstAssignedSuite: true,
-          consecutiveMissedSuiteCount: 1,
         },
       );
 
@@ -100,26 +99,13 @@ describe("processKeywordReplacements", () => {
       expect(result).not.toContain("contract will be suspended");
     });
 
-    it("warns after a second consecutive missed action", () => {
-      const result = processKeywordReplacements(
-        "#{missedactioncontext}\n#{secondmisswarning}",
-        {
+    it("renders #{secondmisswarning} as nothing", () => {
+      expect(
+        processKeywordReplacements("a#{secondmisswarning}b", {
           ...baseContext,
           uncompletedTasksCount: 1,
-          isFirstAssignedSuite: false,
-          consecutiveMissedSuiteCount: 2,
-        },
-      );
-
-      expect(result).toContain(
-        "Remember that we plan each action around the number of members we expect to participate.",
-      );
-      expect(result).toContain(
-        "If you miss any assigned non-optional task again next week, your agreement will be suspended automatically.",
-      );
-      expect(result).not.toContain("second week");
-      expect(result).not.toContain("third week");
-      expect(result).not.toContain("sign the contract again");
+        }),
+      ).toBe("ab");
     });
 
     it("keeps an ordinary missed-action email brief for returning members", () => {
@@ -129,7 +115,6 @@ describe("processKeywordReplacements", () => {
           ...baseContext,
           uncompletedTasksCount: 1,
           isFirstAssignedSuite: false,
-          consecutiveMissedSuiteCount: 1,
         },
       );
 

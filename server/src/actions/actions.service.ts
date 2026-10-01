@@ -277,11 +277,6 @@ export type SuspensionCandidate = { user: User; reasonKey: string };
  */
 export type LinkedAction = Pick<Action, "id" | "name">;
 
-export type MissedActionReminderContext = {
-  isFirstAssignedSuite: boolean;
-  consecutiveMissedSuiteCount: number;
-};
-
 /** Facepile preview size; member-list endpoints paginate full lists. */
 export const GLOBAL_FEED_FACEPILE_LIMIT = 8;
 
@@ -4292,6 +4287,11 @@ export class ActionsService {
       suites.push({
         suiteId: suite.suiteId,
         closedAt: suite.closedAt,
+        actions: suite.actions.map(({ id, name, timeEstimate }) => ({
+          id,
+          name,
+          timeEstimate,
+        })),
         missedActionIdsByUser,
       });
     }
@@ -4327,37 +4327,10 @@ export class ActionsService {
     return this.computeUsersToSuspendFromContext(now, context);
   }
 
-  async getMissedActionReminderContexts(
-    userIds: number[],
-    now: Date,
-  ): Promise<Map<number, MissedActionReminderContext>> {
-    const uniqueUserIds = [...new Set(userIds)];
-    if (uniqueUserIds.length === 0) {
-      return new Map();
-    }
-
+  /** Suites closed by `now`, in close order. */
+  async findClosedSuiteOutcomes(now: Date): Promise<SuiteOutcome[]> {
     const actions = await this.findAllSorted({ events: true, suite: true });
-    const closedSuites = (await this.buildSuspendPlanContext(actions, now))
-      .suites;
-
-    return new Map(
-      uniqueUserIds.map(
-        (userId) =>
-          [
-            userId,
-            {
-              isFirstAssignedSuite:
-                closedSuites.filter((suite) =>
-                  suite.missedActionIdsByUser.has(userId),
-                ).length === 1,
-              consecutiveMissedSuiteCount: trailingMissedSuiteIds(
-                closedSuites,
-                userId,
-              ).length,
-            },
-          ] as const,
-      ),
-    );
+    return (await this.buildSuspendPlanContext(actions, now)).suites;
   }
 
   async getSuspendPlans(

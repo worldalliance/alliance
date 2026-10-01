@@ -599,30 +599,6 @@ describe("findUsersToSuspend (e2e)", () => {
       expect(await isSuspended()).toBe(false);
     });
 
-    it("reads the run into the missed-deadline reminder context", async () => {
-      await createMemberSuites(
-        "streak-reminder",
-        ["2023-03-13", "2023-03-16"],
-        2,
-      );
-      for (const [first] of suiteActions) {
-        await record(first, ActionActivityType.USER_COMPLETED);
-      }
-      const contextAt = async (at: Date) =>
-        (
-          await actionsService.getMissedActionReminderContexts([member.id], at)
-        ).get(member.id);
-
-      expect(await contextAt(new Date("2023-03-16T00:00:00Z"))).toEqual({
-        isFirstAssignedSuite: true,
-        consecutiveMissedSuiteCount: 1,
-      });
-      expect(await contextAt(now)).toEqual({
-        isFirstAssignedSuite: false,
-        consecutiveMissedSuiteCount: 2,
-      });
-    });
-
     it("counts dismissed actions as missed", async () => {
       await createMemberSuites(
         "streak-dismissed",

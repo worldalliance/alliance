@@ -1,6 +1,12 @@
 /** Consecutive missed suites that suspend an agreement. */
 export const SUSPENSION_MISSED_SUITE_COUNT = 3;
 
+export type SuiteOutcomeAction = {
+  id: number;
+  name: string;
+  timeEstimate?: number;
+};
+
 /**
  * One closed suite's outcome for every member it counted for. A member is
  * keyed only when they had a required assignment in the suite during their
@@ -10,6 +16,7 @@ export const SUSPENSION_MISSED_SUITE_COUNT = 3;
 export type SuiteOutcome = {
   suiteId: number;
   closedAt: Date;
+  actions: SuiteOutcomeAction[];
   missedActionIdsByUser: Map<number, number[]>;
 };
 
@@ -41,4 +48,34 @@ export function trailingMissedSuiteIds(
  */
 export function suspensionReasonKey(run: number[]): string {
   return `s-${run.slice(0, SUSPENSION_MISSED_SUITE_COUNT).join("-")}`;
+}
+
+export type MissedSuiteStanding = {
+  /** Position of this suite in the member's run of consecutive misses. */
+  missNumber: number;
+  missedActions: SuiteOutcomeAction[];
+  isFirstAssignedSuite: boolean;
+};
+
+/** The member's standing at `suiteId`, or null unless they missed it. */
+export function findMissedSuiteStanding(params: {
+  suites: SuiteOutcome[];
+  userId: number;
+  suiteId: number;
+}): MissedSuiteStanding | null {
+  const { suites, userId, suiteId } = params;
+  const index = suites.findIndex((suite) => suite.suiteId === suiteId);
+  if (index === -1) return null;
+  const suite = suites[index];
+  const missedIds = suite.missedActionIdsByUser.get(userId);
+  if (!missedIds?.length) return null;
+  const through = suites.slice(0, index + 1);
+  return {
+    missNumber: trailingMissedSuiteIds(through, userId).length,
+    missedActions: suite.actions.filter((action) =>
+      missedIds.includes(action.id),
+    ),
+    isFirstAssignedSuite:
+      through.filter((s) => s.missedActionIdsByUser.has(userId)).length === 1,
+  };
 }

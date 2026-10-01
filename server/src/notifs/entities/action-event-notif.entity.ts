@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { ActionEvent } from "src/actions/entities/action-event.entity";
+import { ActionSuite } from "src/actions/entities/action-suite.entity";
 import { ReminderGroup } from "src/actions/entities/reminder-group.entity";
 import { CreateDateColumnTz } from "src/datasources/basecolumns";
 import { Mail } from "src/mail/mail.entity";
@@ -24,6 +25,13 @@ export enum ActionEventNotifType {
   MissedDeadline = "misseddeadline",
   Reminder = "reminder",
   PersonalReminder = "personalreminder",
+}
+
+/** Which copy a missed-suite notice sent; a reworded copy gets a new value. */
+export enum MissedSuiteNoticeCopy {
+  /** The reminder group's configured text. */
+  FirstMissControl = "first_miss_control",
+  SecondMissReportV1 = "second_miss_report_v1",
 }
 
 @Entity()
@@ -109,6 +117,22 @@ export class ActionEventNotif {
   @JoinColumn({ name: "userId" })
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
+
+  @ManyToOne(() => ActionSuite, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "actionSuiteId" })
+  actionSuite?: Relation<ActionSuite>;
+
+  /** Position of `actionSuite` in the member's run of consecutive misses. */
+  @Column({ type: "integer", nullable: true })
+  missNumber: number | null;
+
+  @Column({
+    type: "enum",
+    enum: MissedSuiteNoticeCopy,
+    enumName: "MissedSuiteNoticeCopy",
+    nullable: true,
+  })
+  missedSuiteCopy: MissedSuiteNoticeCopy | null;
 
   @Column({ default: false })
   @ApiProperty({
