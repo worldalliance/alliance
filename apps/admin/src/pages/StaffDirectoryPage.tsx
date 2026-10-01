@@ -1,29 +1,22 @@
-import {
-  type StaffDirectoryEntryDto,
-  userStaffDirectoryAdmin,
-  userUpdateStaffDirectoryAdmin,
-} from "@alliance/shared/client";
+import { type StaffDirectoryEntryDto } from "@alliance/shared/client";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { GripVertical } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { DropPosition, useDragReorder } from "../lib/useDragReorder";
+import {
+  useSaveStaffDirectoryAdmin,
+  useStaffDirectoryAdmin,
+} from "../lib/useStaffDirectoryAdmin";
 
 type StaffRow = StaffDirectoryEntryDto;
 
 const StaffDirectoryPage: React.FC = () => {
-  const queryClient = useQueryClient();
-  const directory = useQuery({
-    queryKey: queryKeys.staffDirectoryAdmin(),
-    queryFn: () =>
-      userStaffDirectoryAdmin({ throwOnError: true }).then((r) => r.data),
-  });
+  const directory = useStaffDirectoryAdmin();
   const loadError = directory.isError
     ? thrownRefusalMessage({
         error: directory.error,
@@ -81,28 +74,8 @@ const StaffDirectoryPage: React.FC = () => {
     );
   };
 
-  const save = useMutation({
-    mutationFn: (rows: StaffRow[]) =>
-      userUpdateStaffDirectoryAdmin({
-        body: {
-          items: rows.map((item, index) => ({
-            id: item.id,
-            staffTitle: item.staffTitle ?? null,
-            staffLink: item.staffLink ?? null,
-            staffDisplayOrder: index,
-          })),
-        },
-        throwOnError: true,
-      }).then((r) => r.data),
-    onSuccess: async (data) => {
-      // A refetch started before the save would land the pre-save directory
-      // over this one.
-      await queryClient.cancelQueries({
-        queryKey: queryKeys.staffDirectoryAdmin(),
-      });
-      queryClient.setQueryData(queryKeys.staffDirectoryAdmin(), data);
-      setEdits(null);
-    },
+  const save = useSaveStaffDirectoryAdmin({
+    onSuccess: () => setEdits(null),
     onError: (err) => {
       showError("Failed to save staff directory");
       console.error(err);
