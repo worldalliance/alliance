@@ -8,6 +8,7 @@ const availableTags = [
     id: "tag-1",
     name: "non-US",
     description: "",
+    publicDisplayName: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
     users: [],

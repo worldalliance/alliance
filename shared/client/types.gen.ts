@@ -762,7 +762,7 @@ export type Tag = {
     id: string;
     name: string;
     description: string;
-    publicDisplayName?: string;
+    publicDisplayName?: string | null;
     createdAt: string;
     updatedAt: string;
     users: Array<User>;
@@ -1189,14 +1189,14 @@ export type NMembersResponseDto = {
 export type CreateTagDto = {
     name: string;
     description: string;
-    publicDisplayName?: string;
+    publicDisplayName?: string | null;
 };
 
 export type TagDto = {
     id: string;
     name: string;
     description: string;
-    publicDisplayName?: string;
+    publicDisplayName?: string | null;
     createdAt: string;
     updatedAt: string;
     users: Array<ProfileDto>;
@@ -1206,7 +1206,7 @@ export type TagSummaryDto = {
     id: string;
     name: string;
     description: string;
-    publicDisplayName?: string;
+    publicDisplayName?: string | null;
     createdAt: string;
     updatedAt: string;
 };
