@@ -1,7 +1,7 @@
 import { externalShareTargetsFindAllAdmin } from "@alliance/shared/client";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { sessionExpiredMessage } from "./sessionExpired";
 
 export const externalShareTargetsQuery = queryOptions({
@@ -11,6 +11,10 @@ export const externalShareTargetsQuery = queryOptions({
       (r) => r.data,
     ),
 });
+
+export function useExternalShareTargetsAdmin() {
+  return useQuery(externalShareTargetsQuery);
+}
 
 export const externalShareTargetsLoadError = (error: unknown) =>
   thrownRefusalMessage({

@@ -8,13 +8,12 @@ import {
   customComponentRegistry,
   getCustomComponentById,
 } from "@alliance/sharedweb/forms/components";
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import {
   externalShareTargetsLoadError,
-  externalShareTargetsQuery,
-} from "../../lib/externalShareTargetsQuery";
+  useExternalShareTargetsAdmin,
+} from "../../lib/useExternalShareTargetsAdmin";
 import { RequiredToggle } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
@@ -405,7 +404,7 @@ function ExternalShareTargetSelect({
     data: targets,
     isPending,
     error: loadError,
-  } = useQuery(externalShareTargetsQuery);
+  } = useExternalShareTargetsAdmin();
 
   const hasTargets = !!targets && targets.length > 0;
   const isOrphaned =

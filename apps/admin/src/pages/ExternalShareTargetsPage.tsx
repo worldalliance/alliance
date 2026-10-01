@@ -15,13 +15,14 @@ import {
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import React, { useEffect, useState } from "react";
+import { sessionExpiredMessage } from "../lib/sessionExpired";
 import {
   externalShareTargetsLoadError,
   externalShareTargetsQuery,
-} from "../lib/externalShareTargetsQuery";
-import { sessionExpiredMessage } from "../lib/sessionExpired";
+  useExternalShareTargetsAdmin,
+} from "../lib/useExternalShareTargetsAdmin";
 import { usePatchQueryData } from "../lib/usePatchQueryData";
 
 const INITIAL_NEW_TARGET: CreateExternalShareTargetDto = {
@@ -37,7 +38,7 @@ const withoutId = (ids: Set<number>, id: number) => {
 };
 
 const ExternalShareTargetsPage: React.FC = () => {
-  const list = useQuery(externalShareTargetsQuery);
+  const list = useExternalShareTargetsAdmin();
   const targets = list.data ?? [];
   const loadError = list.isError
     ? externalShareTargetsLoadError(list.error)
