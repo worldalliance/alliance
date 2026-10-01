@@ -1,5 +1,6 @@
 import type { AnyField } from "@alliance/common/forms/form-schema";
 import type { FormResponseDto, ProfileDto } from "@alliance/shared/client";
+import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
 import {
   buildQuestionColumns,
   collectSnapshotFields,
@@ -55,20 +56,15 @@ const response = (params: {
   id: number;
   answers: Record<string, unknown>;
   sid?: string;
-}): FormResponseDto => ({
-  id: params.id,
-  formId: 1,
-  formSnapshotId: 7,
-  answers: params.answers,
-  publicAnswers: {},
-  createdAt: "2026-03-04T10:00:00.000Z",
-  schemaSnapshot: SCHEMA,
-  visibilityValidatorResults: {},
-  formulaChoices: {},
-  phDistinctId: null,
-  sessionReplayUrl: null,
-  sid: params.sid ?? null,
-});
+}): FormResponseDto =>
+  makeFormResponse({
+    id: params.id,
+    formSnapshotId: 7,
+    answers: params.answers,
+    createdAt: "2026-03-04T10:00:00.000Z",
+    schemaSnapshot: SCHEMA,
+    sid: params.sid ?? null,
+  });
 
 const buildTestRows = (responses: FormResponseDto[]) => {
   const fields = collectSnapshotFields({

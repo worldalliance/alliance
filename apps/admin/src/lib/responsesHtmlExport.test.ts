@@ -1,5 +1,6 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { FormResponseDto } from "@alliance/shared/client";
+import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
 import { describe, expect, test } from "bun:test";
 import { buildResponsesHtml } from "./responsesHtmlExport";
 
@@ -53,20 +54,14 @@ const schema: FormSchema = {
 
 const response = (
   overrides: Partial<FormResponseDto> & Pick<FormResponseDto, "id">,
-): FormResponseDto => ({
-  formId: 7,
-  formSnapshotId: 81,
-  createdAt: "2026-03-02T15:11:09.000Z",
-  answers: {},
-  publicAnswers: {},
-  schemaSnapshot: { ...schema },
-  phDistinctId: null,
-  sessionReplayUrl: null,
-  sid: null,
-  visibilityValidatorResults: {},
-  formulaChoices: {},
-  ...overrides,
-});
+): FormResponseDto =>
+  makeFormResponse({
+    formId: 7,
+    formSnapshotId: 81,
+    createdAt: "2026-03-02T15:11:09.000Z",
+    schemaSnapshot: { ...schema },
+    ...overrides,
+  });
 
 const build = (responses: FormResponseDto[], title = "Governance") =>
   buildResponsesHtml({

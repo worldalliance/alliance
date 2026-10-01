@@ -25,6 +25,7 @@ const submission: FormResponseOutputDto = {
   formId: 1,
   answers: { name: "Stored" },
   publicAnswers: { name: true },
+  deviceType: null,
   schemaSnapshot: {},
   visibilityValidatorResults: {},
 };

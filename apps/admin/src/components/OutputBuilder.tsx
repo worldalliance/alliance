@@ -642,6 +642,7 @@ export function OutputBuilder({
                         submission={{
                           id: 0,
                           formId: 0,
+                          deviceType: null,
                           answers: previewAnswers,
                           visibilityValidatorResults: {},
                           publicAnswers: Object.fromEntries(

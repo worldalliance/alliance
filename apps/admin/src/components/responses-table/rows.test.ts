@@ -1,5 +1,5 @@
 import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
-import type { FormResponseDto } from "@alliance/shared/client";
+import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
 import {
   buildQuestionColumns,
   collectSnapshotFields,
@@ -26,25 +26,18 @@ const SCHEMA: FormSchema = {
   outputViews: [],
 };
 
-const response: FormResponseDto = {
-  id: 1,
-  formId: 1,
+const response = makeFormResponse({
   formSnapshotId: 7,
   answers: { pick: ["b", "a"] },
-  publicAnswers: {},
   createdAt: "2026-03-04T10:00:00.000Z",
   schemaSnapshot: SCHEMA,
-  phDistinctId: null,
-  sessionReplayUrl: null,
-  sid: null,
-  visibilityValidatorResults: {},
   formulaChoices: {
     pick: [
       { label: "Alpha", value: "a" },
       { label: "Beta", value: "b" },
     ],
   },
-};
+});
 
 it("labels a formula field's answer with the choices its response saved", () => {
   const fields = collectSnapshotFields({

@@ -2261,7 +2261,7 @@ export class ActionsService {
       schema,
       answers: response.answers,
       validatorResults: response.visibilityValidatorResults,
-      deviceType: response.deviceType,
+      deviceType: response.deviceType ?? undefined,
     });
     const publicAnswers = response.publicAnswers ?? {};
 
@@ -2306,7 +2306,7 @@ export class ActionsService {
       schema,
       answers: response.answers,
       validatorResults: response.visibilityValidatorResults,
-      deviceType: response.deviceType,
+      deviceType: response.deviceType ?? undefined,
       publicAnswers,
     });
     for (const fieldId of output.malformedListFieldIds) {
