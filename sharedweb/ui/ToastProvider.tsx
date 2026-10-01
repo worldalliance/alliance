@@ -94,6 +94,13 @@ const toastRegion: Record<ToastVariant, ToastRegion> = {
   error: ToastRegion.Alert,
 };
 
+const toastColorClasses: Record<ToastVariant, string> = {
+  info: "bg-slate-700 text-white",
+  success: "bg-emerald-600 text-white",
+  warning: "bg-amber-500 text-white",
+  error: "bg-white text-red-500 border border-red-500",
+};
+
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 
 export function useToast() {
@@ -251,20 +258,11 @@ type DefaultToastItemProps = {
 };
 
 const DefaultToastItem: FC<DefaultToastItemProps> = ({ toast, onDismiss }) => {
-  const colorClasses =
-    toast.variant === "success"
-      ? "bg-emerald-600 text-white"
-      : toast.variant === "error"
-        ? "bg-white text-red-500 border border-red-500"
-        : toast.variant === "warning"
-          ? "bg-amber-500 text-white"
-          : "bg-slate-700 text-white";
-
   return (
     <div
       className={cn(
         "pointer-events-auto mb-4 w-full max-w-sm rounded-xl shadow-lg ring-1 ring-black/5",
-        colorClasses,
+        toastColorClasses[toast.variant],
       )}
     >
       <div className="flex items-start gap-3 px-4 py-3">
