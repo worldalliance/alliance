@@ -1,29 +1,14 @@
-import { waitlistEmailAdminFindEmailsAdmin } from "@alliance/shared/client";
 import { formatDateTime } from "@alliance/shared/lib/dateFormatters";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import React, { useState } from "react";
 import EmailBatchDetail from "../components/waitlist/email/EmailBatchDetail";
 import { adminRefusalMessage } from "../lib/adminRefusal";
-import {
-  inProgress,
-  SENDING_POLL_MS,
-  STATUS_LABELS,
-  STATUSES,
-} from "../lib/waitlistEmail";
+import { useWaitlistEmailsAdmin } from "../lib/useWaitlistEmailsAdmin";
+import { STATUS_LABELS, STATUSES } from "../lib/waitlistEmail";
 
 const WaitlistEmailsPage: React.FC = () => {
   const [openId, setOpenId] = useState<number | null>(null);
-  const emails = useQuery({
-    queryKey: queryKeys.waitlistEmailsAdmin(),
-    queryFn: () =>
-      waitlistEmailAdminFindEmailsAdmin({ throwOnError: true }).then(
-        (r) => r.data,
-      ),
-    refetchInterval: (query) =>
-      query.state.data?.some(inProgress) ? SENDING_POLL_MS : false,
-  });
+  const emails = useWaitlistEmailsAdmin();
 
   return (
     <div className="space-y-4 p-5">
