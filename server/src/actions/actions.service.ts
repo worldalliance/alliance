@@ -936,6 +936,7 @@ export class ActionsService {
       ),
     );
 
+    const now = new Date();
     return {
       requiredActionCount,
       members: users
@@ -945,6 +946,7 @@ export class ActionsService {
               action,
               user,
               inCohort: cohorts[index].has(user.id),
+              now,
             }),
           );
           const applicableIds = new Set(
@@ -1104,6 +1106,7 @@ export class ActionsService {
                 action,
                 user,
                 inCohort: cohort.eligible,
+                now,
               })
             : false,
           shouldParticipate,
@@ -1366,6 +1369,7 @@ export class ActionsService {
             action,
             user,
             inCohort: cohort.eligible,
+            now,
           })
         : false,
       shouldParticipate:
@@ -1847,6 +1851,7 @@ export class ActionsService {
     isOutOfTime?: boolean;
     isMoral?: boolean;
     adminCreated?: boolean;
+    now?: Date;
   }): Promise<ActionActivity> {
     const {
       actionId,
@@ -1857,6 +1862,7 @@ export class ActionsService {
       isOutOfTime,
       isMoral,
       adminCreated,
+      now = new Date(),
     } = options;
     const action = await this.findOneOrFail({ id: actionId, userId });
 
@@ -1875,7 +1881,7 @@ export class ActionsService {
     }
 
     if (type === ActionActivityType.USER_COMPLETED && !adminCreated) {
-      await this.ensureCompletionAllowed(action, userId);
+      await this.ensureCompletionAllowed({ action, userId, now });
     }
 
     const user = await this.userService.findOneOrFail(userId);
@@ -1955,6 +1961,7 @@ export class ActionsService {
     options: {
       taskFormResponse?: FormResponse;
       adminCreated?: boolean;
+      now?: Date;
     } = {},
   ): Promise<ActionActivity> {
     return this.createActionActivity({
@@ -1963,6 +1970,7 @@ export class ActionsService {
       type: ActionActivityType.USER_COMPLETED,
       taskFormResponse: options.taskFormResponse,
       adminCreated: options.adminCreated,
+      now: options.now,
     });
   }
 
@@ -2606,10 +2614,12 @@ export class ActionsService {
     return this.toActivityDtos({ activities, requestingUserId, comments });
   }
 
-  async isCompletionAllowed(
-    action: ParsedAction,
-    user: User,
-  ): Promise<boolean> {
+  async isCompletionAllowed(params: {
+    action: ParsedAction;
+    user: User;
+    now: Date;
+  }): Promise<boolean> {
+    const { action, user, now } = params;
     // preventCompletion short-circuits before the DB-hitting cohort
     // evaluation; the rule itself lives in computeCanCompleteAction.
     if (action.preventCompletion) {
@@ -2620,7 +2630,7 @@ export class ActionsService {
       action,
       user,
       session: new CohortResolutionSession(),
-      now: new Date(),
+      now,
       undecidedActionIds: new Set(),
     });
 
@@ -2628,16 +2638,22 @@ export class ActionsService {
       action,
       user,
       inCohort: cohort.eligible,
+      now,
     });
   }
 
-  async ensureCompletionAllowed(action: ParsedAction, userId: number) {
+  async ensureCompletionAllowed(params: {
+    action: ParsedAction;
+    userId: number;
+    now: Date;
+  }) {
+    const { action, userId, now } = params;
     const user = await this.userService.findOneOrFail(userId, {
       tags: true,
       contractEvents: true,
       awayRanges: true,
     });
-    if (!(await this.isCompletionAllowed(action, user))) {
+    if (!(await this.isCompletionAllowed({ action, user, now }))) {
       throw new ForbiddenException("This action is not available to you");
     }
   }

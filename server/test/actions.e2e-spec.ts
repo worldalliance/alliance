@@ -2227,6 +2227,77 @@ describe("Actions (e2e)", () => {
       await actionRepo.delete(action.id);
     });
 
+    it("closes ordinary completion at the deadline unless late completion is allowed", async () => {
+      const createClosedAction = async (
+        shouldCompleteAfterDeadline: boolean,
+      ) => {
+        const { action } = await createPublishedAction(
+          `Late Completion ${shouldCompleteAfterDeadline}`,
+          { actionOverrides: { shouldCompleteAfterDeadline } },
+        );
+        await eventRepo.save(
+          eventRepo.create({
+            title: "Deadline",
+            description: "Office phase",
+            newStatus: ActionStatus.OfficeAction,
+            date: new Date(Date.now() - milliseconds({ seconds: 0.5 })),
+            action,
+          }),
+        );
+        return action;
+      };
+      const viewOf = async (actionId: number) =>
+        (
+          await request(ctx.app.getHttpServer())
+            .get("/actions/loggedIn")
+            .set("Authorization", `Bearer ${ctx.accessToken}`)
+            .expect(200)
+        ).body.find((action: ActionDto) => action.id === actionId);
+      const closed = await createClosedAction(false);
+      const closedMidSubmit = await createClosedAction(false);
+      const lateAllowed = await createClosedAction(true);
+
+      try {
+        const closedView = await viewOf(closed.id);
+        expect(closedView.canParticipate).toBe(false);
+        expect(closedView.viewer.canComplete).toBe(false);
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/complete/${closed.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .expect(403);
+
+        await request(ctx.app.getHttpServer())
+          .post("/actions/createActivity")
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({
+            actionId: closed.id,
+            userId: ctx.testUserId,
+            type: ActionActivityType.USER_COMPLETED,
+          })
+          .expect(201);
+
+        const lateView = await viewOf(lateAllowed.id);
+        expect(lateView.canParticipate).toBe(true);
+        expect(lateView.viewer.canComplete).toBe(true);
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/complete/${lateAllowed.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .expect(201);
+
+        await ctx.app
+          .get(ActionsService)
+          .completeAction(closedMidSubmit.id, ctx.testUserId, {
+            now: new Date(Date.now() - milliseconds({ minutes: 1 })),
+          });
+      } finally {
+        await actionRepo.delete([
+          closed.id,
+          closedMidSubmit.id,
+          lateAllowed.id,
+        ]);
+      }
+    });
+
     it("rejects invalid before cursor when fetching the activity feed", async () => {
       await request(ctx.app.getHttpServer())
         .get("/actions/activities/feed")
