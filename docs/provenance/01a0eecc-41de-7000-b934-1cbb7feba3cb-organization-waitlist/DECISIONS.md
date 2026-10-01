@@ -22,12 +22,12 @@ Delivered as pull requests in dependency order. PR 0 is #323 on `charlie/project
 5. Done, #333. Public email: confirmation and recovery mail, recipient and IP limits, the global volume cap. Public sending stays disabled until the Mailgun threshold is chosen.
 6. Done, #334. Remembered browser state and “Forget this browser.”
 7. Done, #339. Admin: organizations and their links, the waitlist list, filters, tags, cohorts, manual mobilize/undo.
-8. Unsubscribe and email templates done, #346. Admin email: composer, durable batches, idempotent sends, send-and-mobilize.
-9. Metrics.
+8. Done, #346 and #359. Unsubscribe and email templates, then admin email: composer, durable batches, idempotent sends, send-and-mobilize.
+9. Metrics, on `charles/waitlist-9-metrics`.
 
 PRs 5 and 8 each send real email, so each gets its own focused review. The onboarding localStorage password fix stays outside the stack.
 
-At the user's direction, PRs 0–7 and #346 landed on `main` together as one squash commit through #323, before the rest of the stack was approved. The rest of PR 8 follows on `charles/waitlist-8-email-send` as a PR targeting `main`, which gets CI; PR 9 then targets that branch until it lands, and gets no CI until it targets `main`, since `ci.yaml` runs only on PRs targeting `main` or `production`: run typecheck, tests, dupcheck, and covercheck locally for it. After amending PR 8's branch, run `git rebase --update-refs` from PR 9's branch and force-push both.
+At the user's direction, PRs 0–7 and #346 landed on `main` together as one squash commit through #323, before the rest of the stack was approved. The rest of PR 8 landed as #359. PR 9 targets `main`.
 
 ## Existing implementation and gaps
 
@@ -218,6 +218,14 @@ Store timestamps and relationships first; avoid a general analytics framework. I
 - Among claimed invitations, counts reaching contract signing and first completed action, including onboarding actions. Aggregate by organization and the invite's destination group, retaining an unassigned bucket.
 
 Use distinct recipient entries for recipient conversion rates, and show individual invite claims separately if staff issue replacements/additional invites. Keep numerator/denominator populations explicit and based on the same selected cohort. A forwarded invite measures use of that invitation, not verified conversion of the original recipient. Do not implement click/open tracking or unrelated-signup matching for this release.
+
+PR 9 metrics choices:
+
+- The metrics are a panel on the waitlist page, toggled by an icon button, over the entries the page's filter matches, so a saved cohort's metrics are its filter's. `POST /waitlist/admin/entries/metrics` takes the same filter body as the entry list and reuses its query, so the two can't disagree on who is in the cohort. Its query key shares the entry list's prefix, so mobilizing, tagging, or sending refreshes it with the list. Every count is read in one `REPEATABLE READ` transaction, so each part counts the same entries and claims.
+- An invite claim is an account whose `referredByInviteId` names one of the entry's invites, the same rule as the list's invite state, with the account's creation as the claim time, since signup claims the invite in the transaction that creates the account. A forwarded, replaced, or revoked invite's claim counts as its entry's, and each claimed invite counts once among the claims, so an entry can have several. Signups not through a waitlist invite count nowhere, even from an entry's email.
+- A mobilization email is one the mail server accepted carrying an invite, whatever its mobilize choice: that is the email someone can claim through. Its rates count distinct entries: those emailed, and of them, those with any claim. Time to claim runs from an entry's first such email to its first claim at or after it; the median and how many entries it covers are shown, and an entry mobilized by hand or claimed only before its first accepted email, as through an email left uncertain, has no time.
+- Entries and claims over time are weekly counts in UTC, from Monday, as the server's other analytics use UTC dates; a week with neither is omitted. Staff see one link's weeks by filtering to it. The by-source table counts entries and claims for each organization and link, with each link's publication date.
+- Contract signing and first action count claimants, grouped by the entry's organization and the claimed invite's destination group, with no group shown as unassigned. Contract signed means any signing event. First action means any completed action, onboarding ones included, except the contract-signing action, which the contract count already covers.
 
 ## Acceptance checks
 
