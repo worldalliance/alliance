@@ -1,15 +1,10 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from "@nestjs/common";
+import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
-import { IS_PUBLIC_KEY } from "../public.decorator";
-import { extractAccessToken, verifyAccessToken } from "../tokens";
-import { attachSession } from "./attach-session";
+import { isPublicRoute } from "../public.decorator";
+import { extractAccessToken } from "../tokens";
+import { attachAccessSession } from "./attach-session";
 
 @Injectable()
 export class AuthOptionalGuard implements CanActivate {
@@ -19,12 +14,7 @@ export class AuthOptionalGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-
-    if (isPublic) {
+    if (isPublicRoute(this.reflector, context)) {
       return true;
     }
 
@@ -36,11 +26,7 @@ export class AuthOptionalGuard implements CanActivate {
       return true;
     }
 
-    try {
-      attachSession(request, await verifyAccessToken(this.jwtService, token));
-    } catch {
-      throw new UnauthorizedException();
-    }
+    await attachAccessSession({ jwtService: this.jwtService, request, token });
     return true;
   }
 }

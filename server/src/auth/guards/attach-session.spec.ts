@@ -1,10 +1,13 @@
+import { type Type, UnauthorizedException } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { ExecutionContextHost } from "@nestjs/core/helpers/execution-context-host";
 import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
 import { type RequestContext, requestContext } from "src/utils/request-context";
+import { Public } from "../public.decorator";
 import { JWTTokenType } from "../tokens";
 import { attachSession } from "./attach-session";
+import { AuthGuard } from "./auth.guard";
 import { AuthOptionalGuard } from "./authoptional.guard";
 import { RefreshTokenGuard } from "./refresh.guard";
 
@@ -87,5 +90,65 @@ describe("token-verifying guards", () => {
         headers: { authorization: `Bearer ${token}` },
       }),
     ).toBe(9);
+  });
+
+  describe("AuthGuard and AuthOptionalGuard", () => {
+    @Public()
+    class PublicController {}
+
+    class PrivateController {}
+
+    const authGuard = new AuthGuard(jwtService, new Reflector());
+    const optionalGuard = new AuthOptionalGuard(jwtService, new Reflector());
+    const guards = Object.entries({
+      AuthGuard: authGuard,
+      AuthOptionalGuard: optionalGuard,
+    });
+
+    const activate = (params: {
+      guard: AuthGuard | AuthOptionalGuard;
+      controller: Type;
+      headers?: Record<string, string>;
+    }) => {
+      const request = { headers: params.headers ?? {}, cookies: {} };
+      return params.guard.canActivate(
+        new ExecutionContextHost([request], params.controller, () => {}),
+      );
+    };
+
+    it.each(guards)(
+      "%s lets a @Public route through without verifying its token",
+      async (_name, guard) => {
+        expect(
+          await activate({
+            guard,
+            controller: PublicController,
+            headers: { authorization: "Bearer not-a-jwt" },
+          }),
+        ).toBe(true);
+      },
+    );
+
+    it.each(guards)(
+      "%s refuses a token that does not verify",
+      async (_name, guard) => {
+        await expect(
+          activate({
+            guard,
+            controller: PrivateController,
+            headers: { authorization: "Bearer not-a-jwt" },
+          }),
+        ).rejects.toBeInstanceOf(UnauthorizedException);
+      },
+    );
+
+    it("only AuthOptionalGuard lets a request without a token through", async () => {
+      await expect(
+        activate({ guard: authGuard, controller: PrivateController }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(
+        await activate({ guard: optionalGuard, controller: PrivateController }),
+      ).toBe(true);
+    });
   });
 });

@@ -7,9 +7,9 @@ import {
 import { Reflector } from "@nestjs/core";
 import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
-import { IS_PUBLIC_KEY } from "../public.decorator";
-import { sessionFromRequest } from "../tokens";
-import { attachSession } from "./attach-session";
+import { isPublicRoute } from "../public.decorator";
+import { extractAccessToken } from "../tokens";
+import { attachAccessSession } from "./attach-session";
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -19,25 +19,18 @@ export class AuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-
-    if (isPublic) {
+    if (isPublicRoute(this.reflector, context)) {
       return true;
     }
 
     const request = context.switchToHttp().getRequest<Request>();
 
-    try {
-      attachSession(
-        request,
-        await sessionFromRequest(this.jwtService, request),
-      );
-    } catch {
+    const token = extractAccessToken(request);
+    if (!token) {
       throw new UnauthorizedException();
     }
+
+    await attachAccessSession({ jwtService: this.jwtService, request, token });
     return true;
   }
 }
