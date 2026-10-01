@@ -28,7 +28,7 @@ export function isValidRangeSelection(
   field: RangeField,
   value: unknown,
 ): value is number {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
+  if (typeof value !== "number" || !Number.isInteger(value)) {
     return false;
   }
   if (field.kind !== "range") {
