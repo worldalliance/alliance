@@ -16,6 +16,7 @@ import { Plus, X } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import FormTextarea from "../components/FormTextarea";
+import { useInvalidateContractsAdmin } from "../lib/useContractsAdmin";
 
 type DescriptionRow = {
   key: string;
@@ -66,6 +67,7 @@ const ContractPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<ContractForm>(emptyForm);
   const { success } = useToast();
+  const invalidateContracts = useInvalidateContractsAdmin();
 
   useEffect(() => {
     if (isNew || id == null || isNaN(id)) {
@@ -136,6 +138,7 @@ const ContractPage: React.FC = () => {
             body,
           });
           if (!response.data) throw new Error("Failed to create");
+          await invalidateContracts();
           navigate(`/contracts/${response.data.id}`);
         } else if (id != null) {
           const body: UpdateContractDto = {
@@ -152,6 +155,7 @@ const ContractPage: React.FC = () => {
           });
           if (response.data) setContract(response.data);
           else throw new Error("Update failed");
+          await invalidateContracts();
           success("Contract updated successfully");
         }
       } catch (err) {
@@ -161,7 +165,7 @@ const ContractPage: React.FC = () => {
         setSaving(false);
       }
     },
-    [isNew, id, form, navigate, success],
+    [isNew, id, form, navigate, success, invalidateContracts],
   );
 
   if (loading) {
