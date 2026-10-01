@@ -2017,6 +2017,11 @@ async function fetchCustomValidators(): Promise<CustomValidatorTypeDto[]> {
   throw new Error("Unknown error loading custom validators");
 }
 
+export function resetCustomValidatorsCache(): void {
+  cachedValidators = null;
+  cachedValidatorsError = null;
+}
+
 function useCustomValidators(): {
   validators: CustomValidatorTypeDto[];
   loading: boolean;

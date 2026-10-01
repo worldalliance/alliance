@@ -57,6 +57,10 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Copy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBeforeUnload, useBlocker, useSearchParams } from "react-router";
+import {
+  customValidatorIds,
+  mapCustomValidatorIds,
+} from "../lib/customValidatorIds";
 import { addressedWrite } from "../lib/displayBlockById";
 import { formSchemaIds, JsonScopeKind, type JsonScope } from "../lib/formJson";
 import { mergeFormSchemas } from "../lib/formSchemaMerge";
@@ -939,45 +943,9 @@ export function FormBuilder(props: FormBuilderProps) {
     if (Object.keys(customValidatorDrafts).length === 0) {
       return;
     }
-    const activeDraftIds = new Set<number>();
-
-    const collectFromVisibleIfFormula = (visibleIfFormula?: {
-      conditions: Record<string, Condition>;
-    }) => {
-      if (!visibleIfFormula?.conditions) return;
-      Object.values(visibleIfFormula.conditions).forEach((condition) => {
-        if (
-          condition.kind === "validator" &&
-          isDraftValidatorId(condition.validatorId)
-        ) {
-          activeDraftIds.add(condition.validatorId);
-        }
-      });
-    };
-
-    schema.pages.forEach((page) => {
-      collectFromVisibleIfFormula(page.visibleIfFormula);
-      flattenPageItems(page.fields).forEach((field) => {
-        if (isQuestionField(field)) {
-          if (isDraftValidatorId(field.customValidatorId)) {
-            activeDraftIds.add(field.customValidatorId);
-          }
-        }
-        collectFromVisibleIfFormula(field.visibleIfFormula);
-      });
-      page.fields.forEach((field) => {
-        if (isFieldGroup(field)) {
-          collectFromVisibleIfFormula(field.visibleIfFormula);
-          collectFromVisibleIfFormula(field.requiredIfFormula);
-        }
-      });
-    });
-
-    schema.outputViews.forEach((view) => {
-      view.blocks.forEach((block) => {
-        collectFromVisibleIfFormula(block.visibleIfFormula);
-      });
-    });
+    const activeDraftIds = new Set(
+      [...customValidatorIds(schema)].filter(isDraftValidatorId),
+    );
 
     setCustomValidatorDrafts((prev) => {
       const next: Record<number, CustomValidatorDraft> = {};
@@ -1345,62 +1313,17 @@ export function FormBuilder(props: FormBuilderProps) {
 
   const resolveCustomValidatorDrafts = useCallback(
     async (schemaToSave: FormSchema) => {
-      const draftIds = new Set<number>();
+      const draftIds = [...customValidatorIds(schemaToSave)].filter(
+        isDraftValidatorId,
+      );
 
-      const collectFromVisibleIfFormula = (visibleIfFormula?: {
-        conditions: Record<string, Condition>;
-      }) => {
-        if (!visibleIfFormula?.conditions) return;
-        Object.values(visibleIfFormula.conditions).forEach((condition) => {
-          if (
-            condition.kind === "validator" &&
-            isDraftValidatorId(condition.validatorId)
-          ) {
-            draftIds.add(condition.validatorId);
-          }
-        });
-      };
-
-      schemaToSave.pages.forEach((page) => {
-        collectFromVisibleIfFormula(page.visibleIfFormula);
-        page.fields.forEach((field) => {
-          if (isFieldGroup(field)) {
-            collectFromVisibleIfFormula(field.visibleIfFormula);
-            collectFromVisibleIfFormula(field.requiredIfFormula);
-            field.fields.forEach((child) => {
-              if (
-                isQuestionField(child) &&
-                isDraftValidatorId(child.customValidatorId)
-              ) {
-                draftIds.add(child.customValidatorId);
-              }
-              collectFromVisibleIfFormula(child.visibleIfFormula);
-            });
-            return;
-          }
-          if (
-            isQuestionField(field) &&
-            isDraftValidatorId(field.customValidatorId)
-          ) {
-            draftIds.add(field.customValidatorId);
-          }
-          collectFromVisibleIfFormula(field.visibleIfFormula);
-        });
-      });
-
-      schemaToSave.outputViews.forEach((view) => {
-        view.blocks.forEach((block) => {
-          collectFromVisibleIfFormula(block.visibleIfFormula);
-        });
-      });
-
-      if (draftIds.size === 0) {
+      if (draftIds.length === 0) {
         return { schema: schemaToSave, resolvedDraftIds: [] as number[] };
       }
 
       const resolvedIds = new Map<number, number>();
       await Promise.all(
-        [...draftIds].map(async (draftId) => {
+        draftIds.map(async (draftId) => {
           const draft = customValidatorDrafts[draftId];
           if (!draft) {
             throw new Error("Missing custom validator draft configuration.");
@@ -1419,101 +1342,10 @@ export function FormBuilder(props: FormBuilderProps) {
         }),
       );
 
-      const mapCondition = (condition: Condition): Condition => {
-        if (
-          condition.kind === "validator" &&
-          isDraftValidatorId(condition.validatorId)
-        ) {
-          const nextId = resolvedIds.get(condition.validatorId);
-          if (!nextId) {
-            return condition;
-          }
-          return { ...condition, validatorId: nextId };
-        }
-        return condition;
-      };
-
-      const mapVisibleIfFormula = (
-        visibleIfFormula?: VisibleIfFormula,
-      ): VisibleIfFormula | undefined => {
-        if (!visibleIfFormula?.conditions) return visibleIfFormula;
-        const nextConditions: Record<string, Condition> = {};
-        for (const [name, cond] of Object.entries(
-          visibleIfFormula.conditions,
-        )) {
-          nextConditions[name] = mapCondition(cond);
-        }
-        return {
-          ...visibleIfFormula,
-          conditions: nextConditions,
-        };
-      };
-
-      const nextSchema: FormSchema = {
-        ...schemaToSave,
-        pages: schemaToSave.pages.map((page) => ({
-          ...page,
-          visibleIfFormula: mapVisibleIfFormula(page.visibleIfFormula),
-          fields: page.fields.map((field) => {
-            if (isFieldGroup(field)) {
-              return {
-                ...field,
-                visibleIfFormula: mapVisibleIfFormula(field.visibleIfFormula),
-                requiredIfFormula: mapVisibleIfFormula(field.requiredIfFormula),
-                fields: field.fields.map((child) => {
-                  const nextVisibleIfFormula = mapVisibleIfFormula(
-                    child.visibleIfFormula,
-                  );
-                  if (isQuestionField(child)) {
-                    const nextValidatorId = isDraftValidatorId(
-                      child.customValidatorId,
-                    )
-                      ? (resolvedIds.get(child.customValidatorId) ??
-                        child.customValidatorId)
-                      : child.customValidatorId;
-                    return {
-                      ...child,
-                      customValidatorId: nextValidatorId,
-                      visibleIfFormula: nextVisibleIfFormula,
-                    };
-                  }
-                  return {
-                    ...child,
-                    visibleIfFormula: nextVisibleIfFormula,
-                  };
-                }),
-              };
-            }
-            const nextVisibleIfFormula = mapVisibleIfFormula(
-              field.visibleIfFormula,
-            );
-            if (isQuestionField(field)) {
-              const nextValidatorId = isDraftValidatorId(
-                field.customValidatorId,
-              )
-                ? (resolvedIds.get(field.customValidatorId) ??
-                  field.customValidatorId)
-                : field.customValidatorId;
-              return {
-                ...field,
-                customValidatorId: nextValidatorId,
-                visibleIfFormula: nextVisibleIfFormula,
-              };
-            }
-            return {
-              ...field,
-              visibleIfFormula: nextVisibleIfFormula,
-            };
-          }),
-        })),
-        outputViews: schemaToSave.outputViews.map((view) => ({
-          ...view,
-          blocks: view.blocks.map((block) => ({
-            ...block,
-            visibleIfFormula: mapVisibleIfFormula(block.visibleIfFormula),
-          })),
-        })),
-      };
+      const nextSchema = mapCustomValidatorIds(
+        schemaToSave,
+        (id) => resolvedIds.get(id) ?? id,
+      );
 
       return {
         schema: nextSchema,

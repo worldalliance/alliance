@@ -1,9 +1,6 @@
 import { formSchemaToDisplayOnly } from "@alliance/common/forms/display-only-schema";
 import {
   fieldGroupSchema,
-  flattenPageItems,
-  forEachCondition,
-  forEachOutputViewCondition,
   formSchema,
   isFieldGroup,
   isQuestionField,
@@ -13,12 +10,12 @@ import {
   type Page,
   type PageItem,
 } from "@alliance/common/forms/form-schema";
-import type { Condition } from "@alliance/common/forms/visible-if-formula";
 import { R, type Result } from "@alliance/common/result";
 import { describeSchemaIssues } from "@alliance/common/zod-issues";
 import { isEqual } from "es-toolkit";
 import type z from "zod";
 import { isDraftValidatorId } from "../components/form-fields/customValidatorDrafts";
+import { customValidatorIds } from "./customValidatorIds";
 
 export enum JsonScopeKind {
   Element = "element",
@@ -331,27 +328,6 @@ function identityChanges(params: {
     default:
       throw new Error(`unknown scope: ${scope satisfies never}`);
   }
-}
-
-function customValidatorIds(schema: FormSchema): Set<number> {
-  const ids = new Set<number>();
-  const visit = (condition: Condition) => {
-    if (condition.kind === "validator") ids.add(condition.validatorId);
-  };
-  forEachCondition(schema, visit);
-  forEachOutputViewCondition(schema, visit);
-  for (const page of schema.pages) {
-    for (const element of flattenPageItems(page.fields)) {
-      if (!isQuestionField(element)) continue;
-      const fields = element.kind === "list" ? (element.fields ?? []) : [];
-      for (const field of [element, ...fields]) {
-        if (field.customValidatorId !== undefined) {
-          ids.add(field.customValidatorId);
-        }
-      }
-    }
-  }
-  return ids;
 }
 
 async function customValidatorErrors(params: {
