@@ -47,6 +47,7 @@ import { AuthGuard } from "./guards/auth.guard";
 import { RefreshTokenGuard } from "./guards/refresh.guard";
 import { Public } from "./public.decorator";
 import { SIGNUP_THROTTLE } from "./signup-throttle.config";
+import { siteUrlForHost } from "./site-url";
 import {
   extractGuestTokenFromCookie,
   extractRefreshTokenFromCookie,
@@ -332,6 +333,7 @@ export class AuthController {
   })
   async impersonateAdmin(
     @Param("userId", ParseIntPipe) userId: number,
+    @Request() req: ExpressRequest,
     @Res() res: Response,
   ): Promise<void> {
     const { access_token, refresh_token } =
@@ -343,7 +345,11 @@ export class AuthController {
       throw new Error("APP_URL is not set");
     }
 
-    const frontendUrl = process.env.APP_URL + "/tasks";
-    res.redirect(frontendUrl);
+    const siteUrl = siteUrlForHost({
+      host: req.get("host"),
+      appUrl: process.env.APP_URL,
+      altAppUrl: process.env.ALT_APP_URL,
+    });
+    res.redirect(siteUrl + "/tasks");
   }
 }
