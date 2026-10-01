@@ -51,7 +51,7 @@ export const TERMINAL_ACTIVITY_TYPES = Object.values(ActionActivityType).filter(
   (type): type is TerminalActivityType => IS_TERMINAL_ACTIVITY_TYPE[type],
 );
 
-function isTerminalActivity<T extends Pick<ActionActivity, "type">>(
+export function isTerminalActivity<T extends Pick<ActionActivity, "type">>(
   activity: T,
 ): activity is T & { type: TerminalActivityType } {
   return IS_TERMINAL_ACTIVITY_TYPE[activity.type];

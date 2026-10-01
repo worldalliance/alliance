@@ -161,21 +161,11 @@ export class SingleMemberCohortService {
         const now = new Date();
         if (!canMissActionDeadline(action, now)) return false;
 
-        const [terminal, inCohort] = await Promise.all([
-          this.actionActivityRepository.findOne({
-            where: [
-              {
-                userId: user.id,
-                actionId,
-                type: ActionActivityType.USER_COMPLETED,
-              },
-              {
-                userId: user.id,
-                actionId,
-                type: ActionActivityType.USER_WONT_COMPLETE,
-              },
-            ],
-          }),
+        const [terminalUserIds, inCohort] = await Promise.all([
+          this.prerequisiteProgressService.loadTerminalUserIds(
+            actionId,
+            user.id,
+          ),
           this.computeIsInRosterCohort({
             user,
             action,
@@ -189,7 +179,7 @@ export class SingleMemberCohortService {
           action,
           user,
           inCohort,
-          hasTerminalActivity: !!terminal,
+          hasTerminalActivity: terminalUserIds.size > 0,
           now,
         });
       },

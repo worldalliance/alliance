@@ -1,8 +1,8 @@
-import { ActionActivityType } from "@alliance/common/actionActivity";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import type { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
-import type { Repository } from "typeorm";
+import { In, type Repository } from "typeorm";
+import { TERMINAL_ACTIVITY_TYPES } from "./action-activity-status";
 import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import { Action } from "./entities/action.entity";
@@ -136,10 +136,7 @@ export class PrerequisiteProgressService {
   ): Promise<Set<number>> {
     const member = userId === undefined ? {} : { userId };
     const terminal = await this.actionActivityRepository.find({
-      where: [
-        { actionId, type: ActionActivityType.USER_COMPLETED, ...member },
-        { actionId, type: ActionActivityType.USER_WONT_COMPLETE, ...member },
-      ],
+      where: { actionId, type: In(TERMINAL_ACTIVITY_TYPES), ...member },
       select: { userId: true },
     });
     return new Set(terminal.map((a) => a.userId));

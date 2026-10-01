@@ -137,6 +137,7 @@ import {
 import { UserService } from "../user/user.service";
 import {
   findLatestTerminalActivity,
+  isTerminalActivity,
   resolveUserActionRelation,
   TERMINAL_ACTIVITY_TYPES,
 } from "./action-activity-status";
@@ -759,25 +760,29 @@ export class ActionsService {
     const allActivities = await this.actionActivityRepository.find({
       where: {
         actionId: In(actionIds),
-        type: In([
-          ActionActivityType.USER_COMPLETED,
-          ActionActivityType.USER_WONT_COMPLETE,
-        ]),
+        type: In(TERMINAL_ACTIVITY_TYPES),
       },
     });
     const completionsByAction = new Map<number, number[]>();
     const withdrawalsByAction = new Map<number, Set<number>>();
-    for (const act of allActivities) {
-      if (act.type === ActionActivityType.USER_COMPLETED) {
-        if (!completionsByAction.has(act.actionId)) {
-          completionsByAction.set(act.actionId, []);
-        }
-        completionsByAction.get(act.actionId)!.push(act.userId);
-      } else {
-        if (!withdrawalsByAction.has(act.actionId)) {
-          withdrawalsByAction.set(act.actionId, new Set());
-        }
-        withdrawalsByAction.get(act.actionId)!.add(act.userId);
+    for (const act of allActivities.filter(isTerminalActivity)) {
+      switch (act.type) {
+        case ActionActivityType.USER_COMPLETED:
+          if (!completionsByAction.has(act.actionId)) {
+            completionsByAction.set(act.actionId, []);
+          }
+          completionsByAction.get(act.actionId)!.push(act.userId);
+          break;
+        case ActionActivityType.USER_WONT_COMPLETE:
+          if (!withdrawalsByAction.has(act.actionId)) {
+            withdrawalsByAction.set(act.actionId, new Set());
+          }
+          withdrawalsByAction.get(act.actionId)!.add(act.userId);
+          break;
+        default:
+          throw new Error(
+            `unknown terminal activity type: ${act.type satisfies never}`,
+          );
       }
     }
 
@@ -4288,10 +4293,7 @@ export class ActionsService {
       this.actionActivityRepository.find({
         where: {
           actionId: In(actionIds),
-          type: In([
-            ActionActivityType.USER_COMPLETED,
-            ActionActivityType.USER_WONT_COMPLETE,
-          ]),
+          type: In(TERMINAL_ACTIVITY_TYPES),
         },
       }),
     ]);

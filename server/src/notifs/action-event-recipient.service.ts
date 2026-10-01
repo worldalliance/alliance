@@ -3,6 +3,7 @@ import { ActionActivityType } from "@alliance/common/actionActivity";
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { TERMINAL_ACTIVITY_TYPES } from "src/actions/action-activity-status";
 import { CohortAdmissionService } from "src/actions/cohort-admission.service";
 import { readsSavedDecisions } from "src/actions/cohort-decision";
 import {
@@ -566,10 +567,7 @@ export class ActionEventRecipientService {
         where: {
           userId: In(users.map((user) => user.id)),
           actionId: In(actions.map((action) => action.id)),
-          type: In([
-            ActionActivityType.USER_COMPLETED,
-            ActionActivityType.USER_WONT_COMPLETE,
-          ]),
+          type: In(TERMINAL_ACTIVITY_TYPES),
         },
       }),
     ]);

@@ -229,7 +229,6 @@ describe("CohortDecisionService prerequisites (e2e)", () => {
       activityFind.mock.calls.flatMap(([options]) => options?.where),
     ).toEqual([
       expect.objectContaining({ actionId: upstream.id, userId: member.id }),
-      expect.objectContaining({ actionId: upstream.id, userId: member.id }),
     ]);
 
     await record({
