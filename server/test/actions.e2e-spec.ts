@@ -2282,6 +2282,32 @@ describe("Actions (e2e)", () => {
       await actionRepo.delete(action.id);
     });
 
+    it("rejects likes and group members for activity types hidden from feeds", async () => {
+      const { action } = await createPublishedAction("Hidden Activity Type", {
+        status: ActionStatus.MemberAction,
+      });
+      const dismissal = await activityRepo.save(
+        activityRepo.create({
+          userId: ctx.testUserId,
+          actionId: action.id,
+          type: ActionActivityType.USER_DISMISSED,
+        }),
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/likeActivity/${dismissal.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(400);
+
+      await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed/activityGroupMembers")
+        .query({ actionId: action.id, activityType: "user_dismissed" })
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(400);
+
+      await actionRepo.delete(action.id);
+    });
+
     it("notifies activity owners when their updates receive likes", async () => {
       const { action } = await createPublishedAction("Activity Like Notice", {
         status: ActionStatus.MemberAction,

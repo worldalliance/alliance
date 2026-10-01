@@ -1,9 +1,11 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
   ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
+  actionActivityIsVisibleInFeed,
   ActionActivityType,
   WITHDRAWAL_OPTION_LABELS,
   withdrawalOptionFromFlags,
+  type FeedActionActivity,
 } from "@alliance/common/actionActivity";
 import { ExceptionEvent } from "@alliance/common/analytics";
 import {
@@ -165,8 +167,6 @@ import {
   ExportActionDto,
   GlobalFeedActionUpdateDto,
   GlobalFeedActivityGroupDto,
-  GlobalFeedActivityType,
-  GlobalFeedActivityTypes,
   GlobalFeedForumCommentsDto,
   GlobalFeedItemDto,
   GlobalFeedItemType,
@@ -2224,10 +2224,7 @@ export class ActionsService {
     const activities = await this.actionActivityRepository.find({
       where: {
         userId,
-        type: In([
-          ActionActivityType.USER_COMPLETED,
-          ActionActivityType.USER_SUBMITTED_FOLLOW_UP_FORM,
-        ]),
+        type: In(ACTION_ACTIVITY_FEED_VISIBLE_TYPES),
       },
       relations: {
         action: true,
@@ -2901,10 +2898,7 @@ export class ActionsService {
       this.actionActivityRepository.find({
         where: {
           userId,
-          type: In([
-            ActionActivityType.USER_COMPLETED,
-            ActionActivityType.USER_SUBMITTED_FOLLOW_UP_FORM,
-          ]),
+          type: In(ACTION_ACTIVITY_FEED_VISIBLE_TYPES),
           ...(before ? { createdAt: LessThan(before) } : {}),
         },
         relations: {
@@ -3013,9 +3007,7 @@ export class ActionsService {
     assertNotInStaffPreview(
       await this.findOneOrFail({ id: activity.actionId, userId }),
     );
-    if (
-      !GlobalFeedActivityTypes.includes(activity.type as GlobalFeedActivityType)
-    ) {
+    if (!actionActivityIsVisibleInFeed(activity.type)) {
       throw new BadRequestException("Activity type is not supported");
     }
     const user = await this.userService.findOneOrFail(userId);
@@ -3061,7 +3053,7 @@ export class ActionsService {
       await this.likeNotificationService.createOrUpdate({
         owner: updatedActivity.user,
         liker: user,
-        targetType: `activity:${updatedActivity.type as GlobalFeedActivityType}`,
+        targetType: `activity:${activity.type}`,
         targetContent: updatedActivity.action.name,
         targetId: updatedActivity.id,
         webAppLocation: actionActivityUrl(
@@ -3075,7 +3067,7 @@ export class ActionsService {
       await this.likeNotificationService.removeOnUnlike({
         ownerId: updatedActivity.user.id,
         unlikerId: user.id,
-        targetType: `activity:${updatedActivity.type as GlobalFeedActivityType}`,
+        targetType: `activity:${activity.type}`,
         targetId: updatedActivity.id,
       });
     }
@@ -4697,13 +4689,13 @@ export class ActionsService {
       ])
       .loadRelationIdAndMap("user.leaderOfIds", "user.leaderOf")
       .where("activity.type IN (:...types)", {
-        types: GlobalFeedActivityTypes,
+        types: ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
       })
       .andWhere("action.onboarding = false")
       .andWhere("activity.createdAt > :oneWeekAgo", { oneWeekAgo })
       .orderBy("activity.createdAt", "DESC")
       .getMany()) as (ActionActivity & {
-      type: GlobalFeedActivityType;
+      type: FeedActionActivity;
     })[];
 
     // The recency window runs on `visibleAt`, not `date`: an update backdated to
@@ -4733,7 +4725,7 @@ export class ActionsService {
         activities: ActionActivity[];
         actionId: number;
         actionName: string;
-        type: GlobalFeedActivityType;
+        type: FeedActionActivity;
         latestDate: Date;
       }
     >();
@@ -5112,7 +5104,7 @@ export class ActionsService {
 
   async getActivityGroupMembers(
     actionId: number,
-    activityType: GlobalFeedActivityType,
+    activityType: FeedActionActivity,
     limit: number,
     afterId?: number,
     requestingUserId?: number,
