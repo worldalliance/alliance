@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsOptional, IsString } from "class-validator";
+import { Allow, IsString, ValidateIf } from "class-validator";
 import { GeneralUpdate } from "src/actions/entities/general-update.entity";
 import {
   CreateDateColumnTz,
@@ -38,8 +38,8 @@ export class Tag {
   description: string;
 
   @Column({ type: "varchar", nullable: true })
-  @ApiProperty({ type: String, nullable: true, required: false })
-  @IsOptional()
+  @ApiProperty({ type: String, nullable: true })
+  @ValidateIf((_, value) => value !== null)
   @IsString()
   publicDisplayName: string | null;
 

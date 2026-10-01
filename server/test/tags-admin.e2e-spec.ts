@@ -49,8 +49,11 @@ describe("Admin tag public display name (e2e)", () => {
     expect(saved.publicDisplayName).toBeNull();
   });
 
-  it("rejects a public display name that is not a string", async () => {
-    const response = await post("/user/createTag", createBody(42));
+  it.each([
+    ["missing", undefined],
+    ["not a string", 42],
+  ])("rejects a public display name that is %s", async (_, value) => {
+    const response = await post("/user/createTag", createBody(value));
 
     expect(response.status).toBe(400);
   });
