@@ -37,6 +37,47 @@ it("filters by a referrer and by status", async () => {
   await waitFor(() => expect(api.searches.at(-1)?.filter).toEqual({}));
 });
 
+it("shows metrics for the current filter", async () => {
+  renderPage();
+  fireEvent.click(await screen.findByRole("button", { name: "Metrics" }));
+  expect(
+    await screen.findByText("For the 2 entries", { exact: false }),
+  ).toBeTruthy();
+
+  fireEvent.change(screen.getByLabelText("Mobilized"), {
+    target: { value: "false" },
+  });
+  await waitFor(() =>
+    expect(api.posts.filter((post) => post.path.endsWith("/metrics"))).toEqual([
+      { path: "/waitlist/admin/entries/metrics", body: { filter: {} } },
+      {
+        path: "/waitlist/admin/entries/metrics",
+        body: { filter: { mobilized: false } },
+      },
+    ]),
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Metrics" }));
+  expect(screen.queryByRole("region", { name: "Metrics" })).toBeNull();
+});
+
+it("refreshes open metrics after marking entries mobilized", async () => {
+  renderPage();
+  fireEvent.click(await screen.findByRole("button", { name: "Metrics" }));
+  await screen.findByRole("region", { name: "Metrics" });
+  fireEvent.click(screen.getByLabelText("Select Person 2"));
+  fireEvent.click(screen.getByRole("button", { name: "Mark mobilized" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Confirm" }));
+
+  await waitFor(() =>
+    expect(api.posts.map((post) => post.path)).toEqual([
+      "/waitlist/admin/entries/metrics",
+      "/waitlist/admin/entries/mobilize",
+      "/waitlist/admin/entries/metrics",
+    ]),
+  );
+});
+
 it("clears a referrer filter from its chip", async () => {
   renderPage();
   fireEvent.click(await screen.findByRole("button", { name: "Person 1" }));

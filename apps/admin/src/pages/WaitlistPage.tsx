@@ -11,7 +11,7 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
 import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
-import { Mail, X } from "lucide-react";
+import { ChartColumn, Mail, X } from "lucide-react";
 import React, {
   useCallback,
   useEffect,
@@ -30,6 +30,7 @@ import EntryActions from "../components/waitlist/EntryActions";
 import TagActions from "../components/waitlist/TagActions";
 import TagManager from "../components/waitlist/TagManager";
 import WaitlistFilters from "../components/waitlist/WaitlistFilters";
+import WaitlistMetrics from "../components/waitlist/WaitlistMetrics";
 import WaitlistTable from "../components/waitlist/WaitlistTable";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { isOrganization } from "../lib/isOrganization";
@@ -57,6 +58,7 @@ const WaitlistPage: React.FC = () => {
   // Remounting the filters on a cohort drops a search still being typed.
   const [filtersKey, setFiltersKey] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showMetrics, setShowMetrics] = useState(false);
   const selectionVersion = useRef(0);
   const location = useLocation();
   const navigate = useNavigate();
@@ -218,6 +220,19 @@ const WaitlistPage: React.FC = () => {
           />
           <button
             type="button"
+            aria-label="Metrics"
+            title="Metrics"
+            aria-pressed={showMetrics}
+            className={cn(
+              BORDERED_ICON_BUTTON_CLASS,
+              showMetrics && "bg-zinc-100",
+            )}
+            onClick={() => setShowMetrics((shown) => !shown)}
+          >
+            <ChartColumn size={16} />
+          </button>
+          <button
+            type="button"
             aria-label="Compose email"
             title="Compose email"
             className={BORDERED_ICON_BUTTON_CLASS}
@@ -228,6 +243,8 @@ const WaitlistPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {showMetrics && <WaitlistMetrics filter={filter} />}
 
       {draft && (
         <EmailComposer

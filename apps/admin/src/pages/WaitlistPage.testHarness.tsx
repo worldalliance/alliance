@@ -4,6 +4,7 @@ import type {
   WaitlistEmailPreviewDto,
   WaitlistEmailTemplateDto,
   WaitlistEntrySearchDto,
+  WaitlistMetricsDto,
 } from "@alliance/shared/client/types.gen";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
@@ -186,6 +187,24 @@ export const serveWaitlistApi = () => {
               { status: api.mobilizeStatus },
             ),
       "POST /waitlist/admin/entries/unmobilize": recordPost({ changed: 0 }),
+      "POST /waitlist/admin/entries/metrics": recordPost({
+        status: {
+          entries: 2,
+          waiting: 2,
+          mobilized: 0,
+          inviteClaimed: 0,
+          inviteClaims: 0,
+        },
+        inviteEmails: {
+          emailed: 0,
+          claimed: 0,
+          timedClaims: 0,
+          medianSecondsToClaim: null,
+        },
+        weeks: [],
+        sources: [],
+        conversions: [],
+      } satisfies WaitlistMetricsDto),
       "POST /waitlist/admin/entries/revoke-invites": async (input) =>
         api.revokeStatus === 200
           ? recordPost({ changed: 3 })(input)

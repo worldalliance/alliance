@@ -1,6 +1,7 @@
 import type {
   EventType,
   PreviewWaitlistEmailDto,
+  WaitlistEntryFilterDto,
   WaitlistEntrySearchDto,
 } from "../client/types.gen";
 import type { UseActivitiesProps } from "./useActivities";
@@ -17,6 +18,8 @@ const projectsAdminAll = () => ["projectsAdmin"] as const;
 const waitlistEmailPreviewAdminAll = () =>
   ["waitlistEmailAdminPreviewEmailAdmin"] as const;
 
+/** Prefix over the entry list and its metrics, so a change to entries
+ * refreshes both. */
 const waitlistEntriesAdminAll = () =>
   ["waitlistAdminSearchEntriesAdmin"] as const;
 
@@ -152,6 +155,8 @@ export const queryKeys = {
   waitlistEntriesAdminAll,
   waitlistEntriesAdmin: (search: WaitlistEntrySearchDto) =>
     [...waitlistEntriesAdminAll(), search] as const,
+  waitlistEntryMetricsAdmin: (filter: WaitlistEntryFilterDto) =>
+    [...waitlistEntriesAdminAll(), "metrics", filter] as const,
   waitlistLinksAdmin: () => ["waitlistAdminFindLinksAdmin"] as const,
   waitlistTagsAdmin: () => ["waitlistAdminFindTagsAdmin"] as const,
   videoAdmin: (videoId: number) =>

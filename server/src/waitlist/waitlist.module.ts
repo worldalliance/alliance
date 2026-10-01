@@ -25,6 +25,7 @@ import { WaitlistEmailService } from "./waitlist-email.service";
 import { WaitlistEntryAdminService } from "./waitlist-entry-admin.service";
 import { WaitlistLinkService } from "./waitlist-link.service";
 import { WaitlistMailService } from "./waitlist-mail.service";
+import { WaitlistMetricsService } from "./waitlist-metrics.service";
 import { WaitlistTagService } from "./waitlist-tag.service";
 import { WaitlistController } from "./waitlist.controller";
 import { WaitlistService } from "./waitlist.service";
@@ -65,6 +66,7 @@ import { WaitlistService } from "./waitlist.service";
     WaitlistEmailTemplateService,
     WaitlistEmailService,
     WaitlistEmailSender,
+    WaitlistMetricsService,
   ],
 })
 export class WaitlistModule {}

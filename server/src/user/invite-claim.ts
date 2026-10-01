@@ -25,9 +25,14 @@ export const CLAIMABLE_INVITE = {
   status: In(CLAIMABLE_INVITE_STATUSES),
 } satisfies FindOptionsWhere<OnetimeInvite>;
 
+export const inviteClaimantSql = (params: {
+  invite: string;
+  claimant: string;
+}): string => `${params.claimant}."referredByInviteId" = ${params.invite}.id`;
+
 /** Whether an account references the `onetime_invite` row aliased `alias`. */
 export const inviteClaimedSql = (alias: string): string =>
-  `EXISTS (SELECT 1 FROM "user" claimant WHERE claimant."referredByInviteId" = ${alias}.id)`;
+  `EXISTS (SELECT 1 FROM "user" claimant WHERE ${inviteClaimantSql({ invite: alias, claimant: "claimant" })})`;
 
 /** Whether signup could claim the `onetime_invite` row aliased `alias`. */
 export const inviteClaimableSql = (alias: string): string =>
