@@ -17,8 +17,8 @@ Deliver as stacked pull requests. PR 0 is #323 on `charlie/project-page`; later 
 0. Done, #323. The page redesign with placeholder data. PR 4 connects it.
 1. Done, #328. This specification.
 2. Done, #329. Atomic invite claiming, a fix independent of the waitlist: account creation claims its invite in the same transaction, and pending or rejected invite requests cannot be claimed (ALL-1281).
-3. Data model: campaign kind, the organization's unique group, waitlist entries, organization links, organization-owned invites. Backend and migrations only.
-4. Public entry: email submission API, personal sharing links, the reason rule, page wiring, member/waitlist counts and social proof, `/join` removal and redirect. Sends no email.
+3. Done, #330. Data model: campaign kind, the organization's unique group, waitlist entries, organization links, organization-owned invites. Backend and migrations only, plus an independent fix: a one-time invite with no inviting user can be deleted, approved, or rejected without a 500.
+4. Done, #331. Public entry: email submission API, personal sharing links, the reason rule, page wiring, member/waitlist counts and social proof, `/join` removal and redirect. Sends no email.
 5. Public email: confirmation and recovery mail, bot validation, recipient and IP limits, the global volume cap. Public sending stays disabled until the Mailgun threshold is chosen.
 6. Remembered browser state and “Forget this browser.”
 7. Admin: organizations and their links, the waitlist list, filters, tags, cohorts, manual mobilize/undo.
@@ -57,11 +57,21 @@ Organization waitlist links are reusable acquisition links, distinct from normal
 
 Each new waitlist entry gets a stable reusable personal sharing link, including entries with no organization. Its descendants inherit organization attribution and retain their direct referring entry. Keep the original organization/channel source as well as the immediate personal referrer so staff can count both distribution and referral chains. Sharing continues after mobilization or invite claim.
 
-Duplicates leave name, reason, attribution, commitment, tags, and statuses unchanged. Return a generic confirmation unless the browser already possesses access to that entry; knowing an email alone does not grant access to its details or signup invite. An explicit recovery action sends the personal sharing link to the stored email.
+Duplicates leave name, reason, attribution, commitment, tags, and statuses unchanged. A duplicate sees the same success message without a personal link (see the PR 4 choices below); knowing an email alone does not grant access to its details or signup invite. An explicit recovery action sends the personal sharing link to the stored email.
 
 Existing Alliance accounts may enter this separate waitlist. Do not infer identity or conversion from an unverified submitted email. The admin's account-related filter is explicitly invite-derived, not an assertion that every unclaimed entry lacks an account.
 
 Keep waitlist, organization, and invite history persistent. Default operations archive/disable acquisition links rather than deleting attribution. Invalid or disabled incoming links show an error with an explicit option to continue without an organization; do not silently assign a different source.
+
+PR 3 schema choices:
+
+- Organization waitlist links get their own `waitlist_link` table rather than reusing `share_url`, whose invite links lead to account signup.
+- The database enforces the entry rules it can: email is `citext`, like `user.email`, and must be stored trimmed; an entry without an organization needs a nonblank reason; an invite names at most one of an inviting user and an organization.
+- An entry's `sourceLinkId` names the organization link its referral chain started from. PR 4's entry service copies it, and the organization, from the referrer when an entry joins through a personal link; the database does not check this (ALL-1284).
+- The foreign keys this PR adds into campaigns, links, and entries do not cascade, so deleting a record that waitlist attribution depends on fails. The older `share_url` and `user.referredByCampaignId` keys still cascade and set null. An organization's `communityId` sets null when its group is deleted, leaving the organization and its attribution in place.
+- Nothing in the schema requires a waitlist entry's, link's, or invite's campaign to be an organization; the writers in PRs 4, 7, and 8 check `kind` (ALL-1283).
+- An organization-issued invite records `organizationId` and `waitlistEntryId`. Its claimant keeps the `onetime_invite` referral source and reaches the organization through the invite, since `user.referredByCampaignId` requires the `campaign` source.
+- Tags and staff action records arrive with PR 7, their first reader. New columns carry no Swagger annotations; later PRs expose them through DTOs.
 
 ## Public entry, confirmation, and returning visits
 
@@ -80,6 +90,18 @@ Provide “Forget this browser” to clear both waitlist and remembered-invite s
 Point all on-site join CTAs and content links at the project page. Keep `/join` only as a redirect, preserving referral query parameters that the project page understands. Leave `/signup` as the existing account-creation route.
 
 The existing onboarding draft writes a password to localStorage. Removal is a separately identified fix, not part of this specification's waitlist persistence work.
+
+PR 4 public entry choices:
+
+- The page reads an organization link's code from `?link=` and a personal code from `?ref=`. Separate parameters keep codes from the two tables from colliding. `/join` redirects to the page and keeps only these two parameters. A null link or referrer code is refused rather than treated as absent.
+- `POST /waitlist/entries` returns the new entry's personal code, or `null` for an email already on the waitlist. Both see the same success message, but only a new entry shows a link. The spec originally called for a generic confirmation that hid whether an email was already present. Here a submitter can tell, though nothing about the existing entry: showing a new entry's link right away, without email verification, requires it. PR 6's browser state and PR 5's recovery email restore the link for returning visitors.
+- The email is stored trimmed, with its case as typed; `citext` makes uniqueness case-insensitive. Personal codes are 8 random bytes in base64url.
+- A repeated or concurrent submission for one email relies on the unique email index. The insert uses `ON CONFLICT DO NOTHING` rather than catching a unique violation, because a failed query is logged with its parameters, here the entrant's details. When nothing was inserted and the email exists, the submission is a duplicate; otherwise the personal code collided and the request fails.
+- Entry creation allows 30 requests a minute and 200 an hour per IP, as loose as OAuth sign-in, because an organization's audience often joins from one office or event network. PR 5 adds the per-recipient and global email limits.
+- `GET /waitlist/referral` returns the organization's name, its logo or else its group's photo, and its count of all attributed entries, plus, for a personal link, the inviter's name. It never returns an email. A personal link shows the inviter's name even when the inviter has an organization; that entrant still inherits the organization and so skips the reason.
+- An unknown or archived link, a campaign that is not an organization, or a failed lookup disables submission and offers "Continue without this link", which removes both parameters. A failed lookup can also be retried. A link archived between loading and submitting shows the same state.
+- The progress bar reads members from the existing `/user/nmembers` and the waitlist from `GET /waitlist/count`, and shows text while loading or when a count fails. Featured people, the member list, and body copy stay placeholders for the designer.
+- The login screen's "Request an invite" mail link was an on-site join CTA, so it now links to the page. Removing the join request endpoint keeps `EventType.JoinRequest`, so past join request events stay readable. A new entry posts nothing to Slack. Join requests were the only messages routed to the existing Slack firehose channel, a routing an earlier task added at the user's request for join request spam. That routing and deploy's `SLACK_FIREHOSE_WEBHOOK_URL` export go with the endpoint, and each GitHub environment's secret can be deleted once the stack deploys there: staging's when it reaches `main`, production's when it reaches `production`.
 
 ## Email abuse and recovery
 

@@ -1,7 +1,9 @@
+import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { cn } from "@alliance/shared/styles/util";
 import { socialPreviewMeta } from "../../../lib/socialPreviewMeta";
 import { DocProse } from "../../../site/DocProse";
 import { SiteFooter } from "../../../site/Footer";
+import { WAITLIST_HREF } from "../../../site/links";
 import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
 import {
   BandHeading,
@@ -17,26 +19,38 @@ import {
 import { MEMBER_GOAL_LABEL } from "./GrantmakingMemberProgress";
 import { MemberWaitlistBar } from "./MemberWaitlistBar";
 import { PersonRow } from "./PersonRow";
-import {
-  ABOUT_SECTIONS,
-  FEATURED_PEOPLE,
-  MEMBER_COUNT,
-  MEMBERS,
-  WAITLIST_COUNT,
-} from "./placeholders";
+import { ABOUT_SECTIONS, FEATURED_PEOPLE, MEMBERS } from "./placeholders";
 import { ProjectTimeline } from "./ProjectTimeline";
+import { useWaitlistCount } from "./useWaitlist";
 import { WaitlistSignupForm } from "./WaitlistSignupForm";
 
 export function meta() {
   return socialPreviewMeta({
     title: "Democratic Grantmaking '26 — The Alliance",
     description: `We're planning a project in which an expert panel and ${MEMBER_GOAL_LABEL} members will work together to make a significant grant.`,
-    url: "/projects/democratic-grantmaking-26",
+    url: WAITLIST_HREF,
   });
 }
 
 const GRID =
   "grid grid-cols-1 gap-y-10 lg:grid-cols-[minmax(0,1fr)_max(24rem,28.65%)] lg:gap-x-[5.65%]";
+
+function ProjectProgress() {
+  const members = useAllianceMemberCount();
+  const waitlist = useWaitlistCount();
+  if (members.data !== undefined && waitlist.data !== undefined) {
+    return (
+      <MemberWaitlistBar members={members.data} waitlist={waitlist.data} />
+    );
+  }
+  return (
+    <p className="site-sans text-sm text-zinc-500">
+      {members.isError || waitlist.isError
+        ? "Member and waitlist counts unavailable"
+        : "Loading member and waitlist counts…"}
+    </p>
+  );
+}
 
 export default function DemocraticGrantmaking26() {
   return (
@@ -90,10 +104,7 @@ export default function DemocraticGrantmaking26() {
         </div>
         <div className={cn(SITE_COL, GRID, "pt-10 pb-16 lg:pt-14 lg:pb-24")}>
           <div className="flex flex-col gap-10">
-            <MemberWaitlistBar
-              members={MEMBER_COUNT}
-              waitlist={WAITLIST_COUNT}
-            />
+            <ProjectProgress />
             {ABOUT_SECTIONS.map((section) => (
               <section key={section.heading} className="flex flex-col gap-4">
                 <BandHeading

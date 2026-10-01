@@ -2703,7 +2703,7 @@ export class UserService {
     const user = await this.findOneOrFail(userId);
     if (
       !(
-        invite.invitingUser.id === userId ||
+        invite.invitingUser?.id === userId ||
         user.leaderOfIds.some((cid) => cid === invite.communityId) ||
         user.admin
       )
@@ -2839,16 +2839,19 @@ export class UserService {
     }
     const savedInvite = await this.onetimeInviteRepository.save(request);
 
-    await this.notifsService.sendNotif({
-      user: savedInvite.invitingUser,
-      category,
-      message: message.replace("[USER]", savedInvite.invitee),
-      webAppLocation: groupUrl({
-        tab: "invites",
-        communityId: savedInvite.communityId,
-      }),
-      associatedUsers: [savedInvite.invitingUser],
-    });
+    const { invitingUser } = savedInvite;
+    if (invitingUser) {
+      await this.notifsService.sendNotif({
+        user: invitingUser,
+        category,
+        message: message.replace("[USER]", savedInvite.invitee),
+        webAppLocation: groupUrl({
+          tab: "invites",
+          communityId: savedInvite.communityId,
+        }),
+        associatedUsers: [invitingUser],
+      });
+    }
 
     return savedInvite;
   }

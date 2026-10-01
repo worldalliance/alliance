@@ -44,7 +44,11 @@ export function MemberWaitlistBar({
         />
         <div
           className="h-full rounded-r-full bg-[var(--site-primary)]"
-          style={{ width: share(waitlist) }}
+          style={{
+            width: share(
+              Math.min(waitlist, Math.max(0, MEMBER_GOAL - members)),
+            ),
+          }}
         />
       </div>
     </div>
