@@ -33,6 +33,7 @@ import {
   CreateWaitlistLinkDto,
   UpdateWaitlistLinkDto,
 } from "./dto/waitlist-link.dto";
+import { WaitlistMetricsDto } from "./dto/waitlist-metrics.dto";
 import {
   AdminWaitlistTagDto,
   SaveWaitlistTagDto,
@@ -41,6 +42,7 @@ import {
 import { WaitlistCohortService } from "./waitlist-cohort.service";
 import { WaitlistEntryAdminService } from "./waitlist-entry-admin.service";
 import { WaitlistLinkService } from "./waitlist-link.service";
+import { WaitlistMetricsService } from "./waitlist-metrics.service";
 import { WaitlistTagService } from "./waitlist-tag.service";
 
 @Controller("waitlist/admin")
@@ -51,6 +53,7 @@ export class WaitlistAdminController {
     private readonly entryService: WaitlistEntryAdminService,
     private readonly tagService: WaitlistTagService,
     private readonly cohortService: WaitlistCohortService,
+    private readonly metricsService: WaitlistMetricsService,
   ) {}
 
   @Post("entries/search")
@@ -70,6 +73,15 @@ export class WaitlistAdminController {
     @Body() dto: WaitlistEntryFilterBodyDto,
   ): Promise<WaitlistEntryIdsDto> {
     return new WaitlistEntryIdsDto(await this.entryService.findIds(dto.filter));
+  }
+
+  @Post("entries/metrics")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: WaitlistMetricsDto })
+  async findEntryMetricsAdmin(
+    @Body() dto: WaitlistEntryFilterBodyDto,
+  ): Promise<WaitlistMetricsDto> {
+    return new WaitlistMetricsDto(await this.metricsService.find(dto.filter));
   }
 
   @Post("entries/mobilize")

@@ -41,9 +41,7 @@ export class WaitlistEntryAdminService {
     private readonly tagService: WaitlistTagService,
   ) {}
 
-  private filtered(
-    filter: WaitlistEntryFilterDto,
-  ): SelectQueryBuilder<WaitlistEntry> {
+  filtered(filter: WaitlistEntryFilterDto): SelectQueryBuilder<WaitlistEntry> {
     const query = this.entryRepository.createQueryBuilder("entry");
     if (filter.search) {
       query.andWhere(

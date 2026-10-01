@@ -4506,6 +4506,92 @@ export type WaitlistEntryIdsDto = {
     ids: Array<number>;
 };
 
+export type WaitlistStatusCountsDto = {
+    entries: number;
+    waiting: number;
+    mobilized: number;
+    /**
+     * Entries an account claimed an invite of
+     */
+    inviteClaimed: number;
+    /**
+     * Claimed invites of the selected entries, one per account
+     */
+    inviteClaims: number;
+};
+
+export type WaitlistInviteEmailCountsDto = {
+    /**
+     * Entries the mail server accepted an email with an invite for
+     */
+    emailed: number;
+    /**
+     * Of those entries, how many had an invite claimed
+     */
+    claimed: number;
+    /**
+     * Emailed entries with an invite claimed after their first invite email
+     */
+    timedClaims: number;
+    /**
+     * Median time from an entry's first accepted invite email to its first claim after it
+     */
+    medianSecondsToClaim: number | null;
+};
+
+export type WaitlistMetricsWeekDto = {
+    /**
+     * The week's Monday, as a UTC date
+     */
+    weekStart: string;
+    /**
+     * Entries that joined that week
+     */
+    entries: number;
+    /**
+     * Invites claimed that week
+     */
+    claims: number;
+};
+
+export type WaitlistMetricsLinkDto = {
+    id: number;
+    channel: string;
+    publishedAt: string | null;
+};
+
+export type WaitlistMetricsSourceDto = {
+    organization: WaitlistNamedRefDto | null;
+    link: WaitlistMetricsLinkDto | null;
+    entries: number;
+    claims: number;
+};
+
+export type WaitlistMetricsConversionDto = {
+    organization: WaitlistNamedRefDto | null;
+    /**
+     * The claimed invite's destination group
+     */
+    group: WaitlistNamedRefDto | null;
+    claims: number;
+    /**
+     * Claimants who signed a contract
+     */
+    contractSigned: number;
+    /**
+     * Claimants who completed an action other than contract signing, onboarding actions included
+     */
+    firstAction: number;
+};
+
+export type WaitlistMetricsDto = {
+    status: WaitlistStatusCountsDto;
+    inviteEmails: WaitlistInviteEmailCountsDto;
+    weeks: Array<WaitlistMetricsWeekDto>;
+    sources: Array<WaitlistMetricsSourceDto>;
+    conversions: Array<WaitlistMetricsConversionDto>;
+};
+
 export type WaitlistEntryIdsBodyDto = {
     entryIds: Array<number>;
 };
@@ -13924,6 +14010,28 @@ export type WaitlistAdminFindEntryIdsAdminResponses = {
 };
 
 export type WaitlistAdminFindEntryIdsAdminResponse = WaitlistAdminFindEntryIdsAdminResponses[keyof WaitlistAdminFindEntryIdsAdminResponses];
+
+export type WaitlistAdminFindEntryMetricsAdminData = {
+    body: WaitlistEntryFilterBodyDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/entries/metrics';
+};
+
+export type WaitlistAdminFindEntryMetricsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminFindEntryMetricsAdminError = WaitlistAdminFindEntryMetricsAdminErrors[keyof WaitlistAdminFindEntryMetricsAdminErrors];
+
+export type WaitlistAdminFindEntryMetricsAdminResponses = {
+    200: WaitlistMetricsDto;
+};
+
+export type WaitlistAdminFindEntryMetricsAdminResponse = WaitlistAdminFindEntryMetricsAdminResponses[keyof WaitlistAdminFindEntryMetricsAdminResponses];
 
 export type WaitlistAdminMobilizeEntriesAdminData = {
     body: WaitlistEntryIdsBodyDto;
