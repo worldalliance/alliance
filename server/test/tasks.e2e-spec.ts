@@ -7,6 +7,7 @@ import {
 } from "@alliance/common/forms/form-responses";
 import type {
   FormSchema,
+  RangeField,
   RankingField,
 } from "@alliance/common/forms/form-schema";
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
@@ -3332,6 +3333,45 @@ describe("Tasks (e2e)", () => {
     });
   });
 
+  const setupForm = async (
+    title: string,
+    fields: FormSchema["pages"][number]["fields"],
+  ) => {
+    const action = await createAction(`${title} Action`);
+    const formRes = await request(ctx.app.getHttpServer())
+      .post("/tasks/createForm")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({
+        title,
+        schema: {
+          pages: [{ id: "page-1", fields }],
+          outputViews: [],
+        } satisfies FormSchema,
+      })
+      .expect(201);
+    const formId = formRes.body.id as number;
+    await actionRepo.update(action.id, { taskFormId: formId });
+    return {
+      formId,
+      formSnapshotId: formRes.body.formSnapshotId as number,
+      actionId: action.id,
+    };
+  };
+
+  const submit = (
+    form: Awaited<ReturnType<typeof setupForm>>,
+    answers: Record<string, unknown>,
+  ) =>
+    request(ctx.app.getHttpServer())
+      .post(`/tasks/submitForm/${form.formId}`)
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .send({
+        answers,
+        formSnapshotId: form.formSnapshotId,
+        actionId: form.actionId,
+        deviceType: "desktop" as const,
+      });
+
   describe("Ranking field validation", () => {
     const rankingOptions = [
       { label: "A", value: "a" },
@@ -3347,45 +3387,6 @@ describe("Tasks (e2e)", () => {
       label: "Rank these",
       options: rankingOptions,
     };
-
-    const setupForm = async (
-      title: string,
-      fields: FormSchema["pages"][number]["fields"],
-    ) => {
-      const action = await createAction(`${title} Action`);
-      const formRes = await request(ctx.app.getHttpServer())
-        .post("/tasks/createForm")
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({
-          title,
-          schema: {
-            pages: [{ id: "page-1", fields }],
-            outputViews: [],
-          } satisfies FormSchema,
-        })
-        .expect(201);
-      const formId = formRes.body.id as number;
-      await actionRepo.update(action.id, { taskFormId: formId });
-      return {
-        formId,
-        formSnapshotId: formRes.body.formSnapshotId as number,
-        actionId: action.id,
-      };
-    };
-
-    const submit = (
-      form: Awaited<ReturnType<typeof setupForm>>,
-      answers: Record<string, unknown>,
-    ) =>
-      request(ctx.app.getHttpServer())
-        .post(`/tasks/submitForm/${form.formId}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .send({
-          answers,
-          formSnapshotId: form.formSnapshotId,
-          actionId: form.actionId,
-          deviceType: "desktop" as const,
-        });
 
     it("rejects invalid and incomplete rankings for a required field", async () => {
       const form = await setupForm("Required Ranking", [
@@ -3468,6 +3469,69 @@ describe("Tasks (e2e)", () => {
       await submit(form, { role: "organizer" }).expect(400);
       // Hidden (role = volunteer): the required ranking doesn't apply.
       await submit(form, { role: "volunteer" }).expect(201);
+    });
+  });
+
+  describe("Range field validation", () => {
+    const optionalRangeField: RangeField = {
+      id: "scale",
+      type: "input",
+      kind: "range",
+      label: "Rate it",
+      optionCount: 5,
+    };
+
+    it("rejects an optional answer outside the options", async () => {
+      const form = await setupForm("Optional Range", [optionalRangeField]);
+
+      for (const answer of [8, 0, 2.5, "3"]) {
+        const res = await submit(form, { scale: answer }).expect(400);
+        expect(res.body.message).toContain("has an answer outside its options");
+      }
+
+      for (const [title, answers] of [
+        ["Optional Range Omitted", {}],
+        ["Optional Range Null", { scale: null }],
+        ["Optional Range Cleared", { scale: "" }],
+        ["Optional Range Valid", { scale: 5 }],
+      ] as const) {
+        await submit(
+          await setupForm(title, [optionalRangeField]),
+          answers,
+        ).expect(201);
+      }
+    });
+
+    it("rejects a required answer outside the options", async () => {
+      const form = await setupForm("Required Range", [
+        { ...optionalRangeField, required: true },
+      ]);
+
+      await submit(form, { scale: 8 }).expect(400);
+      await submit(form, { scale: 1 }).expect(201);
+    });
+
+    it("rejects an optional list sub-field answer outside the options", async () => {
+      const form = await setupForm("Range In List", [
+        {
+          id: "rows",
+          type: "input",
+          kind: "list",
+          label: "Rows",
+          fields: [optionalRangeField],
+        },
+      ]);
+
+      const res = await submit(form, {
+        rows: [{ scale: 2 }, { scale: 8 }],
+      }).expect(400);
+      expect(res.body.message).toContain(
+        "(item 2): Rate it has an answer outside its options",
+      );
+
+      await submit(form, { rows: [{ scale: 2 }, { scale: "" }, {}] }).expect(
+        201,
+      );
     });
   });
 

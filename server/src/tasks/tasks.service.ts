@@ -39,6 +39,10 @@ import {
 } from "@alliance/common/forms/form-schema-validate";
 import { type FormulaChoices } from "@alliance/common/forms/formula-options";
 import {
+  isEmptyRangeAnswer,
+  isValidRangeSelection,
+} from "@alliance/common/forms/range";
+import {
   getRankingSlotCount,
   isValidRankingSelection,
 } from "@alliance/common/forms/ranking";
@@ -310,6 +314,14 @@ export class TasksService {
       return value.length > 0;
     }
     return true;
+  }
+
+  private hasInvalidRangeAnswer(field: AnyField, value: unknown): boolean {
+    return (
+      field.kind === "range" &&
+      !isEmptyRangeAnswer(value) &&
+      !isValidRangeSelection(field, value)
+    );
   }
 
   async createForm(createFormDto: CreateFormDto): Promise<Form> {
@@ -660,6 +672,14 @@ export class TasksService {
             }
           }
           if (
+            this.hasInvalidRangeAnswer(field, effectiveAnswers[field.id]) &&
+            isElementCurrentlyVisible(field, effectiveAnswers, visibilityExtras)
+          ) {
+            throw new BadRequestException(
+              `Field ${elementInternalDescriptor(field)} has an answer outside its options.`,
+            );
+          }
+          if (
             field.kind === "ranking" &&
             isElementCurrentlyVisible(field, effectiveAnswers, visibilityExtras)
           ) {
@@ -734,8 +754,16 @@ export class TasksService {
                 row: card,
                 extras: visibilityExtras,
               })) {
+                if (!isQuestionField(sub)) {
+                  continue;
+                }
+                const subValue = card[sub.id];
+                if (this.hasInvalidRangeAnswer(sub, subValue)) {
+                  throw new BadRequestException(
+                    `Field ${elementInternalDescriptor(listField)} (item ${i + 1}): ${elementInternalDescriptor(sub)} has an answer outside its options.`,
+                  );
+                }
                 if (
-                  !isQuestionField(sub) ||
                   !isFieldConditionallyRequired(
                     sub,
                     mergedData,
@@ -744,7 +772,6 @@ export class TasksService {
                 ) {
                   continue;
                 }
-                const subValue = card[sub.id];
                 if (!this.hasRequiredValue(sub, subValue)) {
                   throw new BadRequestException(
                     `Field ${elementInternalDescriptor(listField)} (item ${i + 1}): ${elementInternalDescriptor(sub)} is required.`,

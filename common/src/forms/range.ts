@@ -37,3 +37,7 @@ export function isValidRangeSelection(
   const max = getRangeOptionCount(field);
   return value >= 1 && value <= max;
 }
+
+export function isEmptyRangeAnswer(value: unknown): boolean {
+  return value === undefined || value === null || value === "";
+}

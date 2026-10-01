@@ -16,7 +16,10 @@ import {
   type Page,
   type PageItem,
 } from "@alliance/common/forms/form-schema";
-import { isValidRangeSelection } from "@alliance/common/forms/range";
+import {
+  isEmptyRangeAnswer,
+  isValidRangeSelection,
+} from "@alliance/common/forms/range";
 import {
   getRankingSlotCount,
   isValidRankingSelection,
@@ -582,11 +585,7 @@ export function validateFieldValue(
       return null;
     }
     case "range": {
-      if (
-        valueToCheck === undefined ||
-        valueToCheck === null ||
-        valueToCheck === ""
-      ) {
+      if (isEmptyRangeAnswer(valueToCheck)) {
         return required ? "Please select a value." : null;
       }
       if (field.kind !== "range") {
