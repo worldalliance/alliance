@@ -1,3 +1,4 @@
+import { FeedMode } from "@alliance/shared/lib/useActivityFeeds";
 import {
   cleanup,
   fireEvent,
@@ -5,7 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import FeedModeColumns, { FeedMode } from "./FeedModeColumns";
+import FeedModeColumns from "./FeedModeColumns";
 
 afterEach(cleanup);
 

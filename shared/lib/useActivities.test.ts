@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { activity } from "./testing/activity";
 import { pending, type Pending } from "./testing/pending";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
@@ -10,15 +11,6 @@ import useActivities, {
 
 let communityRequests = 0;
 let likeResponses: Pending<Response>[] = [];
-
-const activity = (id: number) => ({
-  id,
-  type: "user_completed",
-  createdAt: "2026-01-01T00:00:00.000Z",
-  likedByMe: false,
-  likesCount: 0,
-  likes: [],
-});
 
 serveApi(
   routes({

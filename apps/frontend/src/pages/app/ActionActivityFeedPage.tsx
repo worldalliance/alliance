@@ -3,6 +3,10 @@ import useActivities, {
   ActivityList,
 } from "@alliance/shared/lib/useActivities";
 import {
+  FEED_EMPTY_MESSAGE,
+  FeedMode,
+} from "@alliance/shared/lib/useActivityFeeds";
+import {
   selectFriendIds,
   useUserFriendsQuery,
 } from "@alliance/shared/lib/user";
@@ -10,7 +14,7 @@ import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, href, useParams } from "react-router";
 import chevronLeft from "../../assets/icons8-expand-arrow-96.png";
-import FeedModeColumns, { FeedMode } from "../../components/FeedModeColumns";
+import FeedModeColumns from "../../components/FeedModeColumns";
 import UserActivityCard from "../../components/UserActivityCard";
 import { useInfiniteScrollSentinel } from "../../hooks/useInfiniteScrollSentinel";
 import { useAuth } from "../../lib/AuthContext";
@@ -99,7 +103,7 @@ const ActionActivityFeedPage = () => {
               <p>
                 {loading || actionLoading
                   ? "Loading..."
-                  : `No ${mode === FeedMode.Friends ? "friend " : ""}activity yet`}
+                  : FEED_EMPTY_MESSAGE[mode]}
               </p>
             </div>
           )}
