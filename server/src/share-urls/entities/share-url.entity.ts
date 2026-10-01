@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { Action } from "src/actions/entities/action.entity";
 import { Campaign } from "src/campaign/entities/campaign.entity";
@@ -126,10 +126,9 @@ export class ShareUrl {
   @Type(() => ExternalShareTarget)
   externalTarget?: Relation<ExternalShareTarget> | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  sid?: string;
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
+  sid: string | null;
 
   @Column({ default: false })
   @ApiProperty({

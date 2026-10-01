@@ -243,8 +243,8 @@ export class ShareUrlMineDto {
   @ApiProperty()
   duplicate: boolean;
 
-  @ApiPropertyOptional()
-  sid?: string;
+  @ApiProperty({ type: String, nullable: true })
+  sid: string | null;
 
   @ApiProperty({ type: Date })
   createdAt: Date;
@@ -315,8 +315,8 @@ export class ShareUrlAdminDto {
   @ApiProperty({ enum: ShareUrlKind, enumName: "ShareUrlKind" })
   kind: ShareUrlKind;
 
-  @ApiPropertyOptional()
-  sid?: string;
+  @ApiProperty({ type: String, nullable: true })
+  sid: string | null;
 
   @ApiProperty()
   url: string;
