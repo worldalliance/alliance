@@ -101,6 +101,7 @@ const comments: CommentDto[] = [1, 2, 3].map((id) => ({
   deleted: false,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
+  parentId: null,
   pinned: false,
   tagId: null,
   author,

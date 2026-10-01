@@ -110,9 +110,12 @@ export type UserComment = {
 
 export class CreateCommentDto extends PickType(Comment, [
   "parentObjectId",
-  "parentId",
   "parentObjectType",
 ]) {
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  parentId?: number | null;
+
   @ApiProperty({ type: CreateEditableContentDto })
   @ValidateNested()
   @Type(() => CreateEditableContentDto)

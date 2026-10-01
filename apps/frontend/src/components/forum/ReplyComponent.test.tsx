@@ -29,6 +29,7 @@ const reply = (id: number, children: CommentDto[] = []): CommentDto => ({
   deleted: false,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
+  parentId: null,
   pinned: false,
   tagId: null,
   author,

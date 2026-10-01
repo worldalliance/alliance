@@ -536,7 +536,7 @@ export class ForumService {
 
     // Organize into hierarchy
     replies.forEach((reply) => {
-      if (reply.parentId === null || reply.parentId === undefined) {
+      if (reply.parentId === null) {
         topLevelReplies.push(reply);
       } else {
         const parent = replyMap.get(reply.parentId);
