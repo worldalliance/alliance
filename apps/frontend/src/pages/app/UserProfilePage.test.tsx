@@ -44,6 +44,7 @@ const POST: PostDto = {
   author: GRACE,
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
+  visibleAt: null,
   pinned: false,
   deleted: false,
   qaMode: false,

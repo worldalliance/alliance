@@ -8,6 +8,7 @@ import {
 } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import {
+  Allow,
   IsArray,
   IsBoolean,
   IsDefined,
@@ -152,11 +153,13 @@ export type PostDtoArgs = {
   requestingUserId?: number;
 };
 
-export class CreatePostDto extends PickType(Post, [
-  "title",
-  "actionId",
-  "visibleAt",
-]) {
+export class CreatePostDto extends PickType(Post, ["title", "actionId"]) {
+  @ApiPropertyOptional({ type: Date })
+  @IsOptional()
+  @Type(() => Date)
+  @Allow()
+  visibleAt?: Date;
+
   @ApiProperty({ type: CreateEditableContentDto })
   @ValidateNested()
   @Type(() => CreateEditableContentDto)

@@ -159,6 +159,25 @@ describe("Forum (e2e)", () => {
       expect(response.body.authorId).toBe(ctx.testUserId);
     });
 
+    it("publishes a post created without visibleAt immediately", async () => {
+      const before = new Date();
+      const response = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Unscheduled Post",
+          editableContent: { body: "Posted right away", attachments: [] },
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      expect(
+        new Date(response.body.visibleAt).getTime(),
+      ).toBeGreaterThanOrEqual(before.getTime());
+      expect(new Date(response.body.visibleAt).getTime()).toBeLessThanOrEqual(
+        Date.now(),
+      );
+    });
+
     it("should create a post with action association", async () => {
       const response = await request(ctx.app.getHttpServer())
         .post("/forum/posts")

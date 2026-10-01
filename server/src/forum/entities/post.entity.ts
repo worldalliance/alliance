@@ -94,12 +94,11 @@ export class Post {
   updatedAt: Date;
 
   @Column({ type: "timestamptz", nullable: true })
-  @ApiPropertyOptional()
+  @ApiProperty({ type: Date, nullable: true })
   @IsOptional()
   @Type(() => Date)
   @Allow()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  visibleAt?: Date;
+  visibleAt: Date | null;
 
   @Column({ default: false })
   @ApiProperty()
