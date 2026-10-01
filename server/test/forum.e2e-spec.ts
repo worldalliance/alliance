@@ -178,6 +178,50 @@ describe("Forum (e2e)", () => {
       );
     });
 
+    it("rejects a null title or editableContent on update", async () => {
+      const created = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Edited Post",
+          editableContent: { body: "Before the edit", attachments: [] },
+        } satisfies CreatePostDto)
+        .expect(201);
+      for (const body of [{ title: null }, { editableContent: null }]) {
+        await request(ctx.app.getHttpServer())
+          .patch(`/forum/posts/${created.body.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send(body)
+          .expect(400);
+      }
+    });
+
+    it("rejects a null or unparseable visibleAt on create and update", async () => {
+      const post = {
+        title: "Scheduled Post",
+        editableContent: { body: "Posted later", attachments: [] },
+      };
+      const visibleAt = new Date(Date.now() + milliseconds({ days: 1 }));
+      const created = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ ...post, visibleAt } satisfies CreatePostDto)
+        .expect(201);
+
+      for (const invalid of [null, "not a date"]) {
+        await request(ctx.app.getHttpServer())
+          .post("/forum/posts")
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({ ...post, visibleAt: invalid })
+          .expect(400);
+        await request(ctx.app.getHttpServer())
+          .patch(`/forum/posts/${created.body.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({ visibleAt: invalid })
+          .expect(400);
+      }
+    });
+
     it("should create a post with action association", async () => {
       const response = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
