@@ -1,29 +1,21 @@
 import { appendQueryParam, isValidHttpUrl } from "@alliance/common/url";
-import {
-  externalShareTargetsCreateAdmin,
-  externalShareTargetsRemoveAdmin,
-  externalShareTargetsUpdateAdmin,
-} from "@alliance/shared/client";
 import type {
   CreateExternalShareTargetDto,
   ExternalShareTargetDto,
 } from "@alliance/shared/client/types.gen";
-import {
-  rethrowUnlessNotFound,
-  thrownRefusalMessage,
-} from "@alliance/shared/lib/hey-api";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import { useMutation } from "@tanstack/react-query";
 import React, { useEffect, useState } from "react";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import {
   externalShareTargetsLoadError,
-  externalShareTargetsQuery,
+  useCreateExternalShareTargetAdmin,
+  useDeleteExternalShareTargetAdmin,
   useExternalShareTargetsAdmin,
+  useUpdateExternalShareTargetAdmin,
 } from "../lib/useExternalShareTargetsAdmin";
-import { usePatchQueryData } from "../lib/usePatchQueryData";
 
 const INITIAL_NEW_TARGET: CreateExternalShareTargetDto = {
   name: "",
@@ -49,8 +41,6 @@ const ExternalShareTargetsPage: React.FC = () => {
   const [updatingIds, setUpdatingIds] = useState<Set<number>>(() => new Set());
   const [deletingIds, setDeletingIds] = useState<Set<number>>(() => new Set());
 
-  const setTargets = usePatchQueryData(externalShareTargetsQuery.queryKey);
-
   const reportError = (err: unknown, fallback: string) => {
     console.error(fallback, err);
     setError(
@@ -62,66 +52,16 @@ const ExternalShareTargetsPage: React.FC = () => {
     );
   };
 
-  const createTarget = useMutation({
-    mutationFn: (body: CreateExternalShareTargetDto) =>
-      externalShareTargetsCreateAdmin({ body, throwOnError: true }).then(
-        (r) => r.data,
-      ),
-    onSuccess: async (created) => {
-      setNewTarget(INITIAL_NEW_TARGET);
-      // A refetch that landed before this response may already list it.
-      await setTargets((prev) => [
-        created,
-        ...prev.filter((t) => t.id !== created.id),
-      ]);
-    },
+  const createTarget = useCreateExternalShareTargetAdmin({
+    onSuccess: () => setNewTarget(INITIAL_NEW_TARGET),
     onError: (err) => reportError(err, "Unable to create share target."),
   });
 
-  const updateTarget = useMutation({
-    mutationFn: ({
-      id,
-      values,
-    }: {
-      id: number;
-      values: CreateExternalShareTargetDto;
-    }) =>
-      externalShareTargetsUpdateAdmin({
-        path: { id },
-        body: {
-          name: values.name.trim(),
-          url: values.url.trim(),
-          paramName: values.paramName.trim(),
-        },
-        throwOnError: true,
-      }).then((r) => r.data),
-    onMutate: ({ id }) => {
-      setUpdatingIds((prev) => new Set(prev).add(id));
-    },
-    onSettled: (_data, _err, { id }) => {
-      setUpdatingIds((prev) => withoutId(prev, id));
-    },
-    onSuccess: (updated) =>
-      setTargets((prev) =>
-        prev.map((t) => (t.id === updated.id ? updated : t)),
-      ),
+  const updateTarget = useUpdateExternalShareTargetAdmin({
     onError: (err) => reportError(err, "Unable to update share target."),
   });
 
-  const deleteTarget = useMutation({
-    mutationFn: (id: number) =>
-      externalShareTargetsRemoveAdmin({
-        path: { id },
-        throwOnError: true,
-      }).then(() => undefined, rethrowUnlessNotFound),
-    onMutate: (id) => {
-      setDeletingIds((prev) => new Set(prev).add(id));
-    },
-    onSettled: (_data, _err, id) => {
-      setDeletingIds((prev) => withoutId(prev, id));
-    },
-    onSuccess: (_data, id) =>
-      setTargets((prev) => prev.filter((t) => t.id !== id)),
+  const deleteTarget = useDeleteExternalShareTargetAdmin({
     onError: (err) => reportError(err, "Unable to delete share target."),
   });
 
@@ -144,10 +84,14 @@ const ExternalShareTargetsPage: React.FC = () => {
 
   const handleUpdate = (id: number, values: CreateExternalShareTargetDto) => {
     setError(null);
-    return updateTarget.mutateAsync({ id, values }).then(
-      () => true,
-      () => false,
-    );
+    setUpdatingIds((prev) => new Set(prev).add(id));
+    return updateTarget
+      .mutateAsync({ id, values })
+      .then(
+        () => true,
+        () => false,
+      )
+      .finally(() => setUpdatingIds((prev) => withoutId(prev, id)));
   };
 
   const handleDelete = (id: number, name: string) => {
@@ -157,7 +101,12 @@ const ExternalShareTargetsPage: React.FC = () => {
       return;
     }
     setError(null);
-    deleteTarget.mutate(id);
+    setDeletingIds((prev) => new Set(prev).add(id));
+    // onError reports the failure.
+    deleteTarget
+      .mutateAsync(id)
+      .catch(() => {})
+      .finally(() => setDeletingIds((prev) => withoutId(prev, id)));
   };
 
   return (
