@@ -22,7 +22,7 @@ import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import UserSelect, {
   useSelectableUserIds,
 } from "@alliance/sharedweb/ui/UserSelect";
@@ -448,7 +448,7 @@ const ShareLinksPage: React.FC = () => {
         confirmLabel: "Delete",
         cancelLabel: "Cancel",
         anchorEl: event.currentTarget,
-        placement: "topleft",
+        placement: ToastPlacement.TopLeft,
       });
       if (!ok) return;
       const requestKey = ownerKeyRef.current;

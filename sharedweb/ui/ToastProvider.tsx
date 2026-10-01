@@ -22,6 +22,65 @@ enum ToastVariant {
   Warning = "warning",
 }
 
+export enum ToastPlacement {
+  Top = "top",
+  Bottom = "bottom",
+  Left = "left",
+  Right = "right",
+  TopLeft = "topleft",
+  TopRight = "topright",
+  BottomLeft = "bottomleft",
+  BottomRight = "bottomright",
+}
+
+const CONFIRM_ANCHOR_MARGIN = 8;
+
+const confirmAnchorStyle: Record<
+  ToastPlacement,
+  (rect: DOMRect) => CSSProperties
+> = {
+  [ToastPlacement.Top]: (rect) => ({
+    top: rect.top - CONFIRM_ANCHOR_MARGIN,
+    left: rect.left + rect.width / 2,
+    transform: "translate(-50%, -100%)",
+  }),
+  [ToastPlacement.Bottom]: (rect) => ({
+    top: rect.bottom + CONFIRM_ANCHOR_MARGIN,
+    left: rect.left + rect.width / 2,
+    transform: "translate(-50%, 0)",
+  }),
+  [ToastPlacement.Left]: (rect) => ({
+    top: rect.top + rect.height / 2,
+    left: rect.left - CONFIRM_ANCHOR_MARGIN,
+    transform: "translate(-100%, -50%)",
+  }),
+  [ToastPlacement.Right]: (rect) => ({
+    top: rect.top + rect.height / 2,
+    left: rect.right + CONFIRM_ANCHOR_MARGIN,
+    transform: "translate(0, -50%)",
+  }),
+  [ToastPlacement.TopLeft]: (rect) => ({
+    top: rect.top - CONFIRM_ANCHOR_MARGIN,
+    left: rect.right,
+    transform: "translate(-100%, -100%)",
+  }),
+  [ToastPlacement.TopRight]: (rect) => ({
+    top: rect.top - CONFIRM_ANCHOR_MARGIN,
+    left: rect.right + CONFIRM_ANCHOR_MARGIN,
+    transform: "translate(0, -100%)",
+  }),
+  [ToastPlacement.BottomLeft]: (rect) => ({
+    top: rect.bottom + CONFIRM_ANCHOR_MARGIN,
+    left: rect.left - CONFIRM_ANCHOR_MARGIN,
+    transform: "translate(-100%, 0)",
+  }),
+  [ToastPlacement.BottomRight]: (rect) => ({
+    top: rect.bottom + CONFIRM_ANCHOR_MARGIN,
+    left: rect.right + CONFIRM_ANCHOR_MARGIN,
+    transform: "translate(0, 0)",
+  }),
+};
+
 type ToastBase = {
   id: number;
   variant: ToastVariant;
@@ -35,15 +94,7 @@ type ConfirmOptions = {
   confirmLabel?: string;
   cancelLabel?: string;
   anchorEl?: HTMLElement | null;
-  placement?:
-    | "top"
-    | "bottom"
-    | "left"
-    | "right"
-    | "topleft"
-    | "topright"
-    | "bottomleft"
-    | "bottomright";
+  placement?: ToastPlacement;
   mode?: "popover" | "fullscreen";
   requiredText?: string;
   requiredTextLabel?: string;
@@ -57,15 +108,7 @@ type ToastOptions = Omit<ToastBase, "id" | "variant"> & {
 
 type ToastConfirm = Omit<ToastBase, "variant"> & {
   anchorEl?: HTMLElement | null;
-  placement?:
-    | "top"
-    | "bottom"
-    | "left"
-    | "right"
-    | "topleft"
-    | "topright"
-    | "bottomleft"
-    | "bottomright";
+  placement?: ToastPlacement;
   variant: "confirm";
   confirmLabel: string;
   cancelLabel: string;
@@ -413,80 +456,14 @@ const ConfirmToastItem: FC<ConfirmToastItemProps> = ({ toast, onConfirm }) => {
     );
   }
 
-  let style: CSSProperties = {};
-  if (toast.anchorEl) {
-    const rect = toast.anchorEl.getBoundingClientRect();
-    const placement = toast.placement || "bottom";
-    style = { position: "fixed" };
-    const margin = 8;
-
-    switch (placement) {
-      case "top":
-        style = {
-          ...style,
-          top: rect.top - margin,
-          left: rect.left + rect.width / 2,
-          transform: "translate(-50%, -100%)",
-        };
-        break;
-      case "bottom":
-        style = {
-          ...style,
-          top: rect.bottom + margin,
-          left: rect.left + rect.width / 2,
-          transform: "translate(-50%, 0)",
-        };
-        break;
-      case "left":
-        style = {
-          ...style,
-          top: rect.top + rect.height / 2,
-          left: rect.left - margin,
-          transform: "translate(-100%, -50%)",
-        };
-        break;
-      case "right":
-        style = {
-          ...style,
-          top: rect.top + rect.height / 2,
-          left: rect.right + margin,
-          transform: "translate(0, -50%)",
-        };
-        break;
-      case "topleft":
-        style = {
-          ...style,
-          top: rect.top - margin,
-          left: rect.right,
-          transform: "translate(-100%, -100%)",
-        };
-        break;
-      case "topright":
-        style = {
-          ...style,
-          top: rect.top - margin,
-          left: rect.right + margin,
-          transform: "translate(0, -100%)",
-        };
-        break;
-      case "bottomleft":
-        style = {
-          ...style,
-          top: rect.bottom + margin,
-          left: rect.left - margin,
-          transform: "translate(-100%, 0)",
-        };
-        break;
-      case "bottomright":
-        style = {
-          ...style,
-          top: rect.bottom + margin,
-          left: rect.right + margin,
-          transform: "translate(0, 0)",
-        };
-        break;
-    }
-  }
+  const style: CSSProperties = toast.anchorEl
+    ? {
+        position: "fixed",
+        ...confirmAnchorStyle[toast.placement ?? ToastPlacement.Bottom](
+          toast.anchorEl.getBoundingClientRect(),
+        ),
+      }
+    : {};
 
   return (
     <div

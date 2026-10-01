@@ -20,7 +20,7 @@ import { Link } from "react-router";
 import { AvatarProfile } from "./Avatar";
 import Button, { ButtonColor } from "./Button";
 import InfoTooltip from "./InfoTooltip";
-import { useToast } from "./ToastProvider";
+import { ToastPlacement, useToast } from "./ToastProvider";
 import UserDisplayName from "./UserDisplayName";
 import UserProgressPills from "./UserProgressPills";
 
@@ -75,7 +75,7 @@ const CommunityMemberTableRow = ({
       confirmLabel: "Yes, remove",
       cancelLabel: "No",
       anchorEl: anchor,
-      placement: "topleft",
+      placement: ToastPlacement.TopLeft,
     });
     if (ok) {
       await communityRemoveMember({

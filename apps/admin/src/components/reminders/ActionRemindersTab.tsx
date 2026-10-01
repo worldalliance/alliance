@@ -19,7 +19,7 @@ import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import {
   format,
@@ -230,7 +230,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
       confirmLabel: "Delete",
       cancelLabel: "Cancel",
       anchorEl: anchor,
-      placement: "topleft",
+      placement: ToastPlacement.TopLeft,
     });
     if (!ok) {
       return;

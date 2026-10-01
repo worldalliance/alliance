@@ -22,7 +22,7 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import List from "@alliance/sharedweb/ui/List";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import UserSelect, {
   UserSelectUser,
   useSelectableUserIds,
@@ -233,7 +233,7 @@ const CommunityInvitesLeaderTab = ({
         confirmLabel: deleteInviteConfirmation.confirmLabel,
         cancelLabel: deleteInviteConfirmation.cancelLabel,
         anchorEl: event.currentTarget,
-        placement: "topleft",
+        placement: ToastPlacement.TopLeft,
       });
       if (!ok) {
         return;

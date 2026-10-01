@@ -35,7 +35,7 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import CharacterLimitNotice from "@alliance/sharedweb/ui/CharacterLimitNotice";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { keyBy } from "es-toolkit";
@@ -509,7 +509,7 @@ const CommunityDetailPage: React.FC = () => {
         confirmLabel: "Make leader",
         cancelLabel: "Cancel",
         anchorEl,
-        placement: "top",
+        placement: ToastPlacement.Top,
         mode: "popover",
       });
       if (!ok) {
