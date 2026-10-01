@@ -6,6 +6,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   ValidateIf,
 } from "class-validator";
@@ -62,6 +63,14 @@ export class CreateWaitlistEntryDto extends WaitlistReferralCodesDto {
 export class WaitlistLinkRequestDto extends PickType(CreateWaitlistEntryDto, [
   "email",
 ] as const) {}
+
+export class WaitlistUnsubscribeDto {
+  @ApiProperty({
+    description: "The token in a waitlist email's unsubscribe link",
+  })
+  @IsUUID()
+  token: string;
+}
 
 export class WaitlistMailConfigDto {
   @ApiProperty({ description: "Whether the waitlist can email links" })

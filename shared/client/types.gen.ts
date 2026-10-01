@@ -4388,6 +4388,13 @@ export type WaitlistLinkRequestDto = {
     email: string;
 };
 
+export type WaitlistUnsubscribeDto = {
+    /**
+     * The token in a waitlist email's unsubscribe link
+     */
+    token: string;
+};
+
 export type WaitlistMailConfigDto = {
     /**
      * Whether the waitlist can email links
@@ -4567,6 +4574,23 @@ export type CreateWaitlistCohortDto = {
 export type UpdateWaitlistCohortDto = {
     name?: string;
     filter?: WaitlistEntryFilterDto;
+};
+
+export type WaitlistEmailTemplateDto = {
+    id: number;
+    name: string;
+    subject: string;
+    body: string;
+    updatedAt: string;
+};
+
+export type SaveWaitlistEmailTemplateDto = {
+    subject: string;
+    /**
+     * Markdown with #{placeholder}s
+     */
+    body: string;
+    name: string;
 };
 
 export type HeyApiError = {
@@ -13606,6 +13630,30 @@ export type WaitlistRequestLinkResponses = {
 
 export type WaitlistRequestLinkResponse = WaitlistRequestLinkResponses[keyof WaitlistRequestLinkResponses];
 
+export type WaitlistUnsubscribeData = {
+    body: WaitlistUnsubscribeDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/unsubscribe';
+};
+
+export type WaitlistUnsubscribeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistUnsubscribeError = WaitlistUnsubscribeErrors[keyof WaitlistUnsubscribeErrors];
+
+export type WaitlistUnsubscribeResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type WaitlistUnsubscribeResponse = WaitlistUnsubscribeResponses[keyof WaitlistUnsubscribeResponses];
+
 export type WaitlistMailConfigData = {
     body?: never;
     path?: never;
@@ -14072,6 +14120,100 @@ export type WaitlistAdminUpdateCohortAdminResponses = {
 };
 
 export type WaitlistAdminUpdateCohortAdminResponse = WaitlistAdminUpdateCohortAdminResponses[keyof WaitlistAdminUpdateCohortAdminResponses];
+
+export type WaitlistEmailAdminFindTemplatesAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/email-templates';
+};
+
+export type WaitlistEmailAdminFindTemplatesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminFindTemplatesAdminError = WaitlistEmailAdminFindTemplatesAdminErrors[keyof WaitlistEmailAdminFindTemplatesAdminErrors];
+
+export type WaitlistEmailAdminFindTemplatesAdminResponses = {
+    200: Array<WaitlistEmailTemplateDto>;
+};
+
+export type WaitlistEmailAdminFindTemplatesAdminResponse = WaitlistEmailAdminFindTemplatesAdminResponses[keyof WaitlistEmailAdminFindTemplatesAdminResponses];
+
+export type WaitlistEmailAdminCreateTemplateAdminData = {
+    body: SaveWaitlistEmailTemplateDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/email-templates';
+};
+
+export type WaitlistEmailAdminCreateTemplateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminCreateTemplateAdminError = WaitlistEmailAdminCreateTemplateAdminErrors[keyof WaitlistEmailAdminCreateTemplateAdminErrors];
+
+export type WaitlistEmailAdminCreateTemplateAdminResponses = {
+    200: WaitlistEmailTemplateDto;
+};
+
+export type WaitlistEmailAdminCreateTemplateAdminResponse = WaitlistEmailAdminCreateTemplateAdminResponses[keyof WaitlistEmailAdminCreateTemplateAdminResponses];
+
+export type WaitlistEmailAdminDeleteTemplateAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/email-templates/{id}';
+};
+
+export type WaitlistEmailAdminDeleteTemplateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminDeleteTemplateAdminError = WaitlistEmailAdminDeleteTemplateAdminErrors[keyof WaitlistEmailAdminDeleteTemplateAdminErrors];
+
+export type WaitlistEmailAdminDeleteTemplateAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type WaitlistEmailAdminDeleteTemplateAdminResponse = WaitlistEmailAdminDeleteTemplateAdminResponses[keyof WaitlistEmailAdminDeleteTemplateAdminResponses];
+
+export type WaitlistEmailAdminUpdateTemplateAdminData = {
+    body: SaveWaitlistEmailTemplateDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/email-templates/{id}';
+};
+
+export type WaitlistEmailAdminUpdateTemplateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistEmailAdminUpdateTemplateAdminError = WaitlistEmailAdminUpdateTemplateAdminErrors[keyof WaitlistEmailAdminUpdateTemplateAdminErrors];
+
+export type WaitlistEmailAdminUpdateTemplateAdminResponses = {
+    200: WaitlistEmailTemplateDto;
+};
+
+export type WaitlistEmailAdminUpdateTemplateAdminResponse = WaitlistEmailAdminUpdateTemplateAdminResponses[keyof WaitlistEmailAdminUpdateTemplateAdminResponses];
 
 export type ClientOptions = {
     baseUrl: string;

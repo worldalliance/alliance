@@ -150,6 +150,22 @@ export class WaitlistService {
     throw new Error("Waitlist entry insert conflicted on its personal code");
   }
 
+  async unsubscribe(
+    token: string,
+  ): Promise<Result<void, WaitlistEntryError.UnknownCode>> {
+    const entry = await this.entryRepository.findOneBy({
+      unsubscribeToken: token,
+    });
+    if (!entry) {
+      return R.failure(WaitlistEntryError.UnknownCode);
+    }
+    await this.entryRepository.update(
+      { id: entry.id, unsubscribedAt: IsNull() },
+      { unsubscribedAt: new Date() },
+    );
+    return R.success(undefined);
+  }
+
   countWaiting(): Promise<number> {
     return this.entryRepository.countBy({ mobilizedAt: IsNull() });
   }

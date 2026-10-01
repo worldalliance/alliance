@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { waitlistLinkUrl, waitlistShareUrl } from "./waitlist";
+import {
+  waitlistLinkUrl,
+  waitlistShareUrl,
+  waitlistUnsubscribeUrl,
+} from "./waitlist";
 
 describe("waitlist urls", () => {
   it("puts an organization link's code in ?link= and a personal code in ?ref=", () => {
@@ -8,6 +12,12 @@ describe("waitlist urls", () => {
     );
     expect(waitlistShareUrl("https://example.com", "abc")).toBe(
       "https://example.com/projects/democratic-grantmaking-26?ref=abc",
+    );
+  });
+
+  it("puts the unsubscribe token in ?token=", () => {
+    expect(waitlistUnsubscribeUrl("https://example.com", "t-1")).toBe(
+      "https://example.com/waitlist/unsubscribe?token=t-1",
     );
   });
 });

@@ -21,7 +21,7 @@ Deliver as stacked pull requests. PR 0 is #323 on `charlie/project-page`; later 
 4. Done, #331. Public entry: email submission API, personal sharing links, the reason rule, page wiring, member/waitlist counts and social proof, `/join` removal and redirect. Sends no email.
 5. Done, #333. Public email: confirmation and recovery mail, recipient and IP limits, the global volume cap. Public sending stays disabled until the Mailgun threshold is chosen.
 6. Done, #334. Remembered browser state and “Forget this browser.”
-7. Admin: organizations and their links, the waitlist list, filters, tags, cohorts, manual mobilize/undo.
+7. Done, #339. Admin: organizations and their links, the waitlist list, filters, tags, cohorts, manual mobilize/undo.
 8. Admin email: composer, templates, durable batches, idempotent sends, unsubscribe, send-and-mobilize.
 9. Metrics.
 

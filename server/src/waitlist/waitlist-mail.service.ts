@@ -4,7 +4,10 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { MailService, type WaitlistEmailType } from "src/mail/mail.service";
-import { waitlistShareLink } from "src/search/approutes";
+import {
+  waitlistShareLink,
+  waitlistUnsubscribeLink,
+} from "src/search/approutes";
 import type { Repository } from "src/utils/Repository";
 import { DataSource } from "typeorm";
 import { z } from "zod";
@@ -127,6 +130,7 @@ export class WaitlistMailService {
       recipient: entry.email,
       emailType,
       url: waitlistShareLink(entry.code),
+      unsubscribeUrl: waitlistUnsubscribeLink(entry.unsubscribeToken),
     });
   }
 

@@ -80,9 +80,10 @@ describe("Waitlist mail (e2e)", () => {
     await ctx.app.close();
   });
 
-  it("mails a new entry its personal link", async () => {
+  it("mails a new entry its personal link and an unsubscribe link", async () => {
     const email = uniqueEmail();
     const code = await join(email);
+    const entry = await entryRepo.findOneByOrFail({ email });
 
     expect(sentTo(email)).toEqual([
       [
@@ -92,9 +93,42 @@ describe("Waitlist mail (e2e)", () => {
           url: expect.stringContaining(
             `/projects/democratic-grantmaking-26?ref=${code}`,
           ),
+          unsubscribeUrl: expect.stringContaining(
+            `/waitlist/unsubscribe?token=${entry.unsubscribeToken}`,
+          ),
         },
       ],
     ]);
+  });
+
+  it("unsubscribes the entry an unsubscribe token names, keeping its first date", async () => {
+    const entry = await enter(uniqueEmail());
+    const unsubscribe = () =>
+      request(ctx.app.getHttpServer())
+        .post("/waitlist/unsubscribe")
+        .send({ token: entry.unsubscribeToken });
+
+    await unsubscribe().expect(204);
+    const { unsubscribedAt } = await entryRepo.findOneByOrFail({
+      id: entry.id,
+    });
+    expect(unsubscribedAt).not.toBeNull();
+
+    await unsubscribe().expect(204);
+    expect(
+      (await entryRepo.findOneByOrFail({ id: entry.id })).unsubscribedAt,
+    ).toEqual(unsubscribedAt);
+  });
+
+  it("refuses an unknown or malformed unsubscribe token", async () => {
+    await request(ctx.app.getHttpServer())
+      .post("/waitlist/unsubscribe")
+      .send({ token: crypto.randomUUID() })
+      .expect(404);
+    await request(ctx.app.getHttpServer())
+      .post("/waitlist/unsubscribe")
+      .send({ token: "not-a-token" })
+      .expect(400);
   });
 
   it("mails nothing for a repeated email", async () => {
@@ -124,6 +158,7 @@ describe("Waitlist mail (e2e)", () => {
           recipient: email,
           emailType: EmailType.WaitlistLink,
           url: expect.stringContaining(`?ref=${entry.code}`),
+          unsubscribeUrl: expect.stringContaining(entry.unsubscribeToken),
         },
       ],
     ]);

@@ -317,13 +317,14 @@ export class MailService {
     recipient: string;
     emailType: WaitlistEmailType;
     url: string;
+    unsubscribeUrl: string;
   }): Promise<Mail> {
-    const { recipient, emailType, url } = params;
+    const { recipient, emailType, url, unsubscribeUrl } = params;
     return this.sendMail({
       recipient,
       emailType,
       subject: WAITLIST_SUBJECTS[emailType],
-      context: { url },
+      context: { url, unsubscribeUrl },
       cid: null,
     });
   }

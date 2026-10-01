@@ -1,3 +1,4 @@
+import { WAITLIST_UNSUBSCRIBE_PATH } from "@alliance/common/waitlist";
 import {
   type RouteConfig,
   index,
@@ -29,6 +30,7 @@ export default [
     "components/projects/democratic-grantmaking-26/DemocraticGrantmaking26.tsx",
   ),
   route("/projects/:slug", "pages/static/ProgressProjectPage.tsx"),
+  route(WAITLIST_UNSUBSCRIBE_PATH, "pages/static/WaitlistUnsubscribePage.tsx"),
 
   route("/utensilinitiative", "pages/static/oneoff/UtensilWastePage.tsx"),
   route("/restaurantguide", "pages/static/oneoff/RestaurantGuidePage.tsx"),
