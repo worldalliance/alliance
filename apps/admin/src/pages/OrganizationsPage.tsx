@@ -5,23 +5,25 @@ import {
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import React, { useMemo, useState } from "react";
 import OrganizationCard from "../components/organizations/OrganizationCard";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { isOrganization } from "../lib/isOrganization";
-import { useRefusalToast } from "../lib/useRefusalToast";
 import {
   campaignsLoadFailed,
-  campaignsQuery,
+  useCampaignsAdmin,
+  useInvalidateCampaignsAdmin,
+} from "../lib/useCampaignsAdmin";
+import { useRefusalToast } from "../lib/useRefusalToast";
+import {
   waitlistLinksLoadFailed,
   waitlistLinksQuery,
 } from "../lib/waitlistAdminQueries";
 
 const OrganizationsPage: React.FC = () => {
-  const queryClient = useQueryClient();
   const refusalToast = useRefusalToast();
-  const campaigns = useQuery(campaignsQuery);
+  const campaigns = useCampaignsAdmin();
   const communities = useQuery({
     queryKey: queryKeys.communitiesAdmin(),
     queryFn: () =>
@@ -41,8 +43,7 @@ const OrganizationsPage: React.FC = () => {
     [campaigns.data],
   );
 
-  const invalidateCampaigns = () =>
-    queryClient.invalidateQueries({ queryKey: queryKeys.campaignsAdmin() });
+  const invalidateCampaigns = useInvalidateCampaignsAdmin();
 
   const create = useMutation({
     mutationFn: (name: string) =>

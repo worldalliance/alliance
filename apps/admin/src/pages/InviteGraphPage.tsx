@@ -1,6 +1,4 @@
 import {
-  CampaignDto,
-  campaignFindAllAdmin,
   OnetimeInviteEdgeDto,
   UserDto,
   userGetOnetimeInviteGraphEdgesAdmin,
@@ -22,6 +20,7 @@ import {
   UserGraphFilterControls,
   useUserGraphFilters,
 } from "../components/force-graph/UserGraphFilters";
+import { useCampaignsAdmin } from "../lib/useCampaignsAdmin";
 
 enum NodeKind {
   User = "user",
@@ -126,9 +125,19 @@ const LINK_TONE: Record<LinkTone, { color: string; markerId: string }> = {
 const InviteGraphPage = () => {
   const [users, setUsers] = useState<UserDto[]>([]);
   const [inviteEdges, setInviteEdges] = useState<OnetimeInviteEdgeDto[]>([]);
-  const [campaigns, setCampaigns] = useState<CampaignDto[]>([]);
+  // A changed campaign list rebuilds the layout and drops the selection, so
+  // the graph skips the refetches that land while an admin is exploring it.
+  const campaignsQuery = useCampaignsAdmin({
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+  const campaigns = useMemo(
+    () => campaignsQuery.data ?? [],
+    [campaignsQuery.data],
+  );
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [failedLoads, setFailedLoads] = useState<string[]>([]);
+  const [unreachable, setUnreachable] = useState(false);
 
   // Filters
   const [contractFilter, setContractFilter] = useState(ContractFilter.Active);
@@ -138,12 +147,10 @@ const InviteGraphPage = () => {
     Promise.all([
       userListForGraphAdmin(),
       userGetOnetimeInviteGraphEdgesAdmin(),
-      campaignFindAllAdmin(),
     ])
-      .then(([usersRes, edgesRes, campaignsRes]) => {
+      .then(([usersRes, edgesRes]) => {
         setUsers(usersRes.data ?? []);
         setInviteEdges(edgesRes.data ?? []);
-        setCampaigns(campaignsRes.data ?? []);
 
         // A failed request leaves a whole class of edges out of the graph,
         // which reads as "no attribution" rather than as a failure — so name
@@ -151,7 +158,6 @@ const InviteGraphPage = () => {
         const failed = [
           { name: "users", error: usersRes.error },
           { name: "used invites", error: edgesRes.error },
-          { name: "campaigns", error: campaignsRes.error },
         ].filter((request) => request.error !== undefined);
 
         for (const request of failed) {
@@ -161,17 +167,20 @@ const InviteGraphPage = () => {
           );
         }
 
-        setLoadError(
-          failed.length > 0
-            ? `Could not load ${failed.map((request) => request.name).join(", ")}. The graph below is incomplete — attribution from the missing data shows as "no attribution".`
-            : null,
-        );
+        setFailedLoads(failed.map((request) => request.name));
       })
-      .catch(() =>
-        setLoadError("Could not load the graph data. Try reloading the page."),
-      )
+      .catch(() => setUnreachable(true))
       .finally(() => setLoading(false));
   }, []);
+
+  const failed = campaignsQuery.isError
+    ? [...failedLoads, "campaigns"]
+    : failedLoads;
+  const loadError = unreachable
+    ? "Could not load the graph data. Try reloading the page."
+    : failed.length > 0
+      ? `Could not load ${failed.join(", ")}. The graph below is incomplete — attribution from the missing data shows as "no attribution".`
+      : null;
 
   const filters = useUserGraphFilters(users);
   const { matches: matchesUserFilters, clear: clearUserFilters } = filters;
@@ -433,7 +442,7 @@ const InviteGraphPage = () => {
     return users.filter((u) => filteredUserIds.has(u.id)).length;
   }, [users, filteredUserIds, hasActiveFilters]);
 
-  if (loading) {
+  if (loading || !campaignsQuery.isFetchedAfterMount) {
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-gray-500">Loading graph...</p>

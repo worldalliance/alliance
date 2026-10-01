@@ -6,15 +6,15 @@ import type {
   CommunityDto,
   UpdateCampaignDto,
 } from "@alliance/shared/client/types.gen";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { uploadImageDataUri } from "@alliance/shared/lib/uploadImageDataUri";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { readFileDataUri } from "@alliance/sharedweb/lib/readFileDataUri";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Building2, ImageUp } from "lucide-react";
 import React from "react";
+import { useInvalidateCampaignsAdmin } from "../../lib/useCampaignsAdmin";
 import { useRefusalToast } from "../../lib/useRefusalToast";
 import InlineTextInput from "../InlineTextInput";
 import OrganizationLinks from "./OrganizationLinks";
@@ -32,7 +32,7 @@ const OrganizationCard: React.FC<OrganizationCardProps> = ({
   takenCommunityIds,
   links,
 }) => {
-  const queryClient = useQueryClient();
+  const invalidateCampaigns = useInvalidateCampaignsAdmin();
   const refusalToast = useRefusalToast();
   const { error: toastError } = useToast();
 
@@ -43,8 +43,7 @@ const OrganizationCard: React.FC<OrganizationCardProps> = ({
         body,
         throwOnError: true,
       }),
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.campaignsAdmin() }),
+    onSettled: invalidateCampaigns,
     onError: (err) => refusalToast(err, "Could not update the organization."),
   });
 
@@ -64,8 +63,7 @@ const OrganizationCard: React.FC<OrganizationCardProps> = ({
     onSuccess: (result) => {
       if (!result.ok) toastError(result.error);
     },
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.campaignsAdmin() }),
+    onSettled: invalidateCampaigns,
     onError: (err) => refusalToast(err, "Could not upload the logo."),
   });
 
