@@ -63,6 +63,7 @@ const submission: FormResponseOutputDto = {
   formId: 1,
   answers: {},
   publicAnswers: { people: true },
+  deviceType: null,
   schemaSnapshot: {},
   visibilityValidatorResults: {},
 };
@@ -137,14 +138,10 @@ describe("OutputRenderer list rows", () => {
   });
 
   it("draws a device-gated cell when the response recorded no device", () => {
-    // The API sends a missing device as null, which the generated type leaves out.
-    const fromApi: FormResponseOutputDto = JSON.parse(
-      JSON.stringify({
-        ...submission,
-        deviceType: null,
-        answers: { people: [{ name: "Ada", phone: "typed on a phone" }] },
-      }),
-    );
+    const fromApi: FormResponseOutputDto = {
+      ...submission,
+      answers: { people: [{ name: "Ada", phone: "typed on a phone" }] },
+    };
     render(
       <SiteAppProvider>
         <OutputRenderer schema={schema} viewId="v1" submission={fromApi} />

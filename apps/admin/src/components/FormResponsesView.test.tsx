@@ -26,6 +26,7 @@ const response: FormResponseDto = {
   formulaChoices: {},
   schemaSnapshot: schema,
   phDistinctId: null,
+  deviceType: null,
   sid: null,
   sessionReplayUrl: null,
   visibilityValidatorResults: {},

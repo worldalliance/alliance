@@ -144,7 +144,7 @@ export type FormResponse = {
     formulaChoices: {
         [key: string]: unknown;
     };
-    deviceType?: string;
+    deviceType: string | null;
     user?: User;
     guest?: Guest;
     sessionReplayUrl: string | null;
@@ -1985,7 +1985,7 @@ export type FormResponseOutputDto = {
     publicAnswers: {
         [key: string]: unknown;
     };
-    deviceType?: string;
+    deviceType: string | null;
     schemaSnapshot: {
         [key: string]: unknown;
     };
@@ -3795,7 +3795,7 @@ export type FormResponseDto = {
     publicAnswers: {
         [key: string]: unknown;
     };
-    deviceType?: string;
+    deviceType: string | null;
     sessionReplayUrl: string | null;
     createdAt: string;
     phDistinctId: string | null;

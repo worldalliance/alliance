@@ -35,6 +35,7 @@ const response = (
   publicAnswers: {},
   schemaSnapshot: schema,
   phDistinctId: null,
+  deviceType: null,
   sessionReplayUrl: null,
   sid: null,
   visibilityValidatorResults: {},

@@ -13,6 +13,7 @@ const response = (
   createdAt,
   schemaSnapshot: {},
   phDistinctId: null,
+  deviceType: null,
   sessionReplayUrl: null,
   sid: null,
   visibilityValidatorResults: {},

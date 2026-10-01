@@ -127,6 +127,7 @@ const savedResponse = (
   publicAnswers: {},
   schemaSnapshot: {},
   phDistinctId: null,
+  deviceType: null,
   sessionReplayUrl: null,
   sid: null,
   visibilityValidatorResults: {},
