@@ -1,5 +1,10 @@
+import type { CampaignDto } from "@alliance/shared/client";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import { focusManager, onlineManager } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -16,7 +21,7 @@ import InviteGraphPage from "./InviteGraphPage";
 
 afterEach(cleanup);
 
-serveApi(
+const api = serveApi(
   routes({
     "GET /user/list-graph": () =>
       Response.json([
@@ -32,8 +37,8 @@ serveApi(
 
 const HUB = "No attribution (2)";
 
-const renderPage = async () => {
-  const view = render(<InviteGraphPage />);
+const renderPage = async (query = queryWrapper()) => {
+  const view = render(<InviteGraphPage />, query);
   await waitFor(() => drawnNode(view.container, "sam"));
   const markerEnds = () =>
     Object.fromEntries(
@@ -104,4 +109,112 @@ it("counts only active members by default once another filter shows the count", 
   });
 
   expect(screen.getByText("3 matching filters", { exact: false })).toBeTruthy();
+});
+
+it("names the campaigns when they fail to load", async () => {
+  api.alsoServing({
+    "GET /campaigns": () => Response.json({}, { status: 500 }),
+  });
+  await renderPage();
+
+  expect(
+    screen.getByText("Could not load campaigns.", { exact: false }),
+  ).toBeTruthy();
+});
+
+const springDrive = {
+  id: 9,
+  name: "Spring drive",
+  code: "spring",
+  picture: null,
+  kind: "campaign",
+  communityId: null,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+} satisfies CampaignDto;
+
+const withCampaignMember = {
+  "GET /user/list-graph": () =>
+    Response.json([
+      user({ id: 1, name: "ada" }),
+      user({ id: 2, name: "sam", referredById: 1 }),
+      user({ id: 5, name: "kim", referredByCampaignId: 9 }),
+    ]),
+};
+
+it("draws cached campaigns and names them when their refetch fails", async () => {
+  api.alsoServing({
+    ...withCampaignMember,
+    "GET /campaigns": () => Response.json({}, { status: 500 }),
+  });
+  const query = queryWrapper();
+  query.client.setQueryData(queryKeys.campaignsAdmin(), [springDrive]);
+
+  const { container } = await renderPage(query);
+
+  expect(drawnNode(container, "Spring drive")).toBeTruthy();
+  expect(
+    screen.getByText("Could not load campaigns.", { exact: false }),
+  ).toBeTruthy();
+});
+
+it.each([
+  ["none are cached", undefined],
+  ["older ones are cached", []],
+])("waits for the campaigns before drawing when %s", async (_case, cached) => {
+  let release = () => {};
+  const campaignsGate = new Promise<void>((resolve) => (release = resolve));
+  let usersServed = false;
+  api.alsoServing({
+    "GET /user/list-graph": () => {
+      usersServed = true;
+      return withCampaignMember["GET /user/list-graph"]();
+    },
+    "GET /campaigns": async () => {
+      await campaignsGate;
+      return Response.json([springDrive]);
+    },
+  });
+
+  const query = queryWrapper();
+  if (cached) query.client.setQueryData(queryKeys.campaignsAdmin(), cached);
+  const view = render(<InviteGraphPage />, query);
+  await waitFor(() => expect(usersServed).toBe(true));
+  await act(async () => {});
+  expect(screen.getByText("Loading graph...")).toBeTruthy();
+
+  release();
+  await waitFor(() => drawnNode(view.container, "Spring drive"));
+  expect(drawnNode(view.container, "No attribution (1)")).toBeTruthy();
+});
+
+it.each([
+  [
+    "the window regains focus",
+    (on: boolean) => focusManager.setFocused(on),
+    () => focusManager.setFocused(undefined),
+  ],
+  [
+    "the network reconnects",
+    (on: boolean) => onlineManager.setOnline(on),
+    () => onlineManager.setOnline(true),
+  ],
+])("keeps its campaigns when %s", async (_event, toggle, reset) => {
+  let campaignLoads = 0;
+  api.alsoServing({
+    "GET /campaigns": () => {
+      campaignLoads += 1;
+      return Response.json([]);
+    },
+  });
+  await renderPage();
+
+  act(() => {
+    toggle(false);
+    toggle(true);
+  });
+  await act(async () => {});
+  reset();
+
+  expect(campaignLoads).toBe(1);
 });

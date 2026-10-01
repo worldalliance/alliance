@@ -5,11 +5,15 @@ import { useCallback } from "react";
 
 export const campaignsLoadFailed = "Unable to load organizations.";
 
-export function useCampaignsAdmin() {
+export function useCampaignsAdmin(params?: {
+  refetchOnWindowFocus?: boolean;
+  refetchOnReconnect?: boolean;
+}) {
   return useQuery({
     queryKey: queryKeys.campaignsAdmin(),
     queryFn: () =>
       campaignFindAllAdmin({ throwOnError: true }).then((r) => r.data),
+    ...params,
   });
 }
 
