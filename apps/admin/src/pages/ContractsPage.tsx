@@ -3,15 +3,14 @@ import { ContractAdminDto } from "@alliance/shared/client";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useCurrentContract } from "@alliance/shared/lib/useCurrentContract";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useQuery } from "@tanstack/react-query";
 import React, { useMemo } from "react";
 import { useNavigate } from "react-router";
 import ContractCard from "../components/ContractCard";
-import { contractsAdminQuery } from "../lib/contractsAdminQuery";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
+import { useContractsAdmin } from "../lib/useContractsAdmin";
 
 const ContractsPage: React.FC = () => {
-  const list = useQuery(contractsAdminQuery);
+  const list = useContractsAdmin();
   const contracts = useMemo(() => list.data ?? [], [list.data]);
   const error = list.isError
     ? thrownRefusalMessage({
