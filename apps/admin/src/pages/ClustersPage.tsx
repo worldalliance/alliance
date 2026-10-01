@@ -1,42 +1,24 @@
 import { withCount } from "@alliance/common/plural";
-import { clusterListAdmin, clusterUpdateAdmin } from "@alliance/shared/client";
 import type { ClusterAdminDto } from "@alliance/shared/client/types.gen";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
 import React, { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { memberProfileUrl } from "../lib/config";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
-
-function useClustersAdmin() {
-  const queryClient = useQueryClient();
-  const queryKey = queryKeys.clustersAdmin();
-  const list = useQuery({
-    queryKey,
-    queryFn: () => clusterListAdmin({ throwOnError: true }).then((r) => r.data),
-  });
-
-  const replaceCluster = async (updated: ClusterAdminDto) => {
-    // A refetch in flight would land the old name back over the rename.
-    await queryClient.cancelQueries({ queryKey });
-    queryClient.setQueryData<ClusterAdminDto[]>(queryKey, (prev) =>
-      prev?.map((c) => (c.id === updated.id ? updated : c)),
-    );
-  };
-
-  return { list, replaceCluster };
-}
+import {
+  useClustersAdmin,
+  useRenameClusterAdmin,
+} from "../lib/useClustersAdmin";
 
 const ClustersPage: React.FC = () => {
-  const { list, replaceCluster } = useClustersAdmin();
+  const list = useClustersAdmin();
   const clusters = useMemo(() => list.data ?? [], [list.data]);
   const error = list.isError
     ? thrownRefusalMessage({
@@ -127,11 +109,7 @@ const ClustersPage: React.FC = () => {
         ) : (
           <div className="flex flex-col gap-3">
             {clusters.map((cluster) => (
-              <ClusterCard
-                key={cluster.id}
-                cluster={cluster}
-                onRenamed={replaceCluster}
-              />
+              <ClusterCard key={cluster.id} cluster={cluster} />
             ))}
           </div>
         )}
@@ -142,25 +120,15 @@ const ClustersPage: React.FC = () => {
 
 type ClusterCardProps = {
   cluster: ClusterAdminDto;
-  onRenamed: (cluster: ClusterAdminDto) => Promise<void>;
 };
 
-const ClusterCard: React.FC<ClusterCardProps> = ({ cluster, onRenamed }) => {
+const ClusterCard: React.FC<ClusterCardProps> = ({ cluster }) => {
   const [editing, setEditing] = useState<boolean>(false);
   const [draftName, setDraftName] = useState<string>(cluster.displayName);
   const { error: toastError } = useToast();
 
-  const { mutate: rename, isPending: saving } = useMutation({
-    mutationFn: (displayName: string) =>
-      clusterUpdateAdmin({
-        path: { id: cluster.id },
-        body: { displayName },
-        throwOnError: true,
-      }).then((r) => r.data),
-    onSuccess: async (updated) => {
-      await onRenamed(updated);
-      setEditing(false);
-    },
+  const { mutate: rename, isPending: saving } = useRenameClusterAdmin({
+    onSuccess: () => setEditing(false),
     onError: (err) => {
       console.error("Failed to rename cluster", err);
       toastError(
@@ -189,7 +157,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({ cluster, onRenamed }) => {
       cancelEdit();
       return;
     }
-    rename(trimmed);
+    rename({ id: cluster.id, displayName: trimmed });
   };
 
   return (
