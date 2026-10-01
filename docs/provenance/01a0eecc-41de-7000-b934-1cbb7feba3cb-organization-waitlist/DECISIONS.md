@@ -12,7 +12,7 @@ The page works responsively in mobile browsers. Normal registration and invite c
 
 ## Pull request stack
 
-Deliver as stacked pull requests. PR 0 is #323 on `charlie/project-page`; later PRs use branches `charles/waitlist-<n>-<slug>`. PR 0 targets `main`; each later PR targets the previous PR's branch. Order follows dependencies:
+Delivered as pull requests in dependency order. PR 0 is #323 on `charlie/project-page`; later PRs use branches `charles/waitlist-<n>-<slug>`. Through #346, PR 0 targeted `main` and each later PR targeted the previous PR's branch:
 
 0. Done, #323. The page redesign with placeholder data. PR 4 connects it.
 1. Done, #328. This specification.
@@ -22,17 +22,12 @@ Deliver as stacked pull requests. PR 0 is #323 on `charlie/project-page`; later 
 5. Done, #333. Public email: confirmation and recovery mail, recipient and IP limits, the global volume cap. Public sending stays disabled until the Mailgun threshold is chosen.
 6. Done, #334. Remembered browser state and “Forget this browser.”
 7. Done, #339. Admin: organizations and their links, the waitlist list, filters, tags, cohorts, manual mobilize/undo.
-8. Admin email: composer, templates, durable batches, idempotent sends, unsubscribe, send-and-mobilize.
+8. Unsubscribe and email templates done, #346. Admin email: composer, durable batches, idempotent sends, send-and-mobilize.
 9. Metrics.
 
 PRs 5 and 8 each send real email, so each gets its own focused review. The onboarding localStorage password fix stays outside the stack.
 
-At the user's request, no PR merges until the whole stack is approved, and the stack lands together:
-
-- PR 0 stays a draft until then, and each PR body lists the stack.
-- Land top-down: squash PR 9 into PR 8's branch, then 8 into 7, and so on, finishing with PR 0 into `main`. `main` receives one commit and `deploy.yaml`, which deploys every push to `main`, runs once. Landing bottom-up would deploy each partial state.
-- `ci.yaml` runs only on PRs targeting `main` or `production`, so PRs 1–9 get no CI until they fold into PR 0. Run typecheck, tests, dupcheck, and covercheck locally for each PR.
-- After amending a lower PR or rebasing onto `main`, run `git rebase --update-refs` from the top branch to move every branch in the stack, then `git push --force-with-lease` each moved branch.
+At the user's direction, PRs 0–7 and #346 landed on `main` together as one squash commit through #323, before the rest of the stack was approved. The rest of PR 8 follows on `charles/waitlist-8-email-send` as a PR targeting `main`, which gets CI; PR 9 then targets that branch until it lands, and gets no CI until it targets `main`, since `ci.yaml` runs only on PRs targeting `main` or `production`: run typecheck, tests, dupcheck, and covercheck locally for it. After amending PR 8's branch, run `git rebase --update-refs` from PR 9's branch and force-push both.
 
 ## Existing implementation and gaps
 
@@ -101,7 +96,7 @@ PR 4 public entry choices:
 - `GET /waitlist/referral` returns the organization's name, its logo or else its group's photo, and its count of all attributed entries, plus, for a personal link, the inviter's name. It never returns an email. A personal link shows the inviter's name even when the inviter has an organization; that entrant still inherits the organization and so skips the reason.
 - An unknown or archived link, a campaign that is not an organization, or a failed lookup disables submission and offers "Continue without this link", which removes both parameters. A failed lookup can also be retried. A link archived between loading and submitting shows the same state.
 - The progress bar reads members from the existing `/user/nmembers` and the waitlist from `GET /waitlist/count`, and shows text while loading or when a count fails. Featured people, the member list, and body copy stay placeholders for the designer.
-- The login screen's "Request an invite" mail link was an on-site join CTA, so it now links to the page. Removing the join request endpoint keeps `EventType.JoinRequest`, so past join request events stay readable. A new entry posts nothing to Slack. Join requests were the only messages routed to the existing Slack firehose channel, a routing an earlier task added at the user's request for join request spam. That routing and deploy's `SLACK_FIREHOSE_WEBHOOK_URL` export go with the endpoint, and each GitHub environment's secret can be deleted once the stack deploys there: staging's when it reaches `main`, production's when it reaches `production`.
+- The login screen's "Request an invite" mail link was an on-site join CTA, so it now links to the page. Removing the join request endpoint keeps `EventType.JoinRequest`, so past join request events stay readable. A new entry posts nothing to Slack. Join requests were the only messages routed to the existing Slack firehose channel, a routing an earlier task added at the user's request for join request spam. That routing and deploy's `SLACK_FIREHOSE_WEBHOOK_URL` export go with the endpoint, and each GitHub environment's secret can be deleted once the stack deploys there: staging's now that #323 put it on `main`, production's when it reaches `production`.
 
 PR 6 browser state choices:
 
