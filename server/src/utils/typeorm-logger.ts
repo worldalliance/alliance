@@ -60,7 +60,7 @@ export class AppTypeOrmLogger implements TypeOrmLogger {
     this.logger.error({
       event: "db.query_error",
       sql: query,
-      params: this.safeParams(parameters),
+      params: parameters?.map((p) => (p === null ? "null" : typeof p)),
       error: error instanceof Error ? error.message : error,
       handler: ctx?.handler,
       request_id: ctx?.requestId,
@@ -113,13 +113,5 @@ export class AppTypeOrmLogger implements TypeOrmLogger {
   log(level: "log" | "info" | "warn", message: any) {
     if (level === "warn") this.logger.warn(message);
     else this.logger.log(message);
-  }
-
-  private safeParams(params?: any[]) {
-    if (!params) return undefined;
-    return params.map((p) => {
-      if (typeof p === "string" && p.length > 256) return "[long-string]";
-      return p;
-    });
   }
 }
