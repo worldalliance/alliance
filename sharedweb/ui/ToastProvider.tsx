@@ -15,7 +15,12 @@ import {
 } from "react";
 import { zIndex } from "./zIndex";
 
-type ToastVariant = "info" | "success" | "error" | "warning";
+enum ToastVariant {
+  Info = "info",
+  Success = "success",
+  Error = "error",
+  Warning = "warning",
+}
 
 type ToastBase = {
   id: number;
@@ -88,17 +93,17 @@ enum ToastRegion {
 }
 
 const toastRegion: Record<ToastVariant, ToastRegion> = {
-  info: ToastRegion.Status,
-  success: ToastRegion.Status,
-  warning: ToastRegion.Status,
-  error: ToastRegion.Alert,
+  [ToastVariant.Info]: ToastRegion.Status,
+  [ToastVariant.Success]: ToastRegion.Status,
+  [ToastVariant.Warning]: ToastRegion.Status,
+  [ToastVariant.Error]: ToastRegion.Alert,
 };
 
 const toastColorClasses: Record<ToastVariant, string> = {
-  info: "bg-slate-700 text-white",
-  success: "bg-emerald-600 text-white",
-  warning: "bg-amber-500 text-white",
-  error: "bg-white text-red-500 border border-red-500",
+  [ToastVariant.Info]: "bg-slate-700 text-white",
+  [ToastVariant.Success]: "bg-emerald-600 text-white",
+  [ToastVariant.Warning]: "bg-amber-500 text-white",
+  [ToastVariant.Error]: "bg-white text-red-500 border border-red-500",
 };
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
@@ -121,7 +126,7 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   const showToast = useCallback(
     ({
-      variant = "info",
+      variant = ToastVariant.Info,
       title,
       message,
       durationMs = milliseconds({ seconds: 4 }),
@@ -184,22 +189,22 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   const success = useCallback(
     (message: string, title?: string) =>
-      showToast({ variant: "success", message, title }),
+      showToast({ variant: ToastVariant.Success, message, title }),
     [showToast],
   );
   const error = useCallback(
     (message: string, title?: string) =>
-      showToast({ variant: "error", message, title }),
+      showToast({ variant: ToastVariant.Error, message, title }),
     [showToast],
   );
   const info = useCallback(
     (message: string, title?: string) =>
-      showToast({ variant: "info", message, title }),
+      showToast({ variant: ToastVariant.Info, message, title }),
     [showToast],
   );
   const warning = useCallback(
     (message: string, title?: string) =>
-      showToast({ variant: "warning", message, title }),
+      showToast({ variant: ToastVariant.Warning, message, title }),
     [showToast],
   );
 
