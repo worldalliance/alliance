@@ -281,6 +281,7 @@ describe("Tasks (e2e)", () => {
       .expect(201);
 
     expect(submitResponse.body.formId).toBe(formId);
+    expect(submitResponse.body.sid).toBeNull();
 
     const meResponse = await request(ctx.app.getHttpServer())
       .get(`/tasks/myResponse/${formId}`)

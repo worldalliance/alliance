@@ -126,11 +126,10 @@ export class FormResponse {
   formSnapshot: Relation<FormSnapshot>;
 
   @Column({ type: "text", nullable: true })
-  @ApiPropertyOptional({ type: "string" })
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
   @Type(() => String)
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  sid?: string;
+  sid: string | null;
 }
 
 /**

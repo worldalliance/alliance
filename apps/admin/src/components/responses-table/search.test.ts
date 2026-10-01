@@ -65,7 +65,7 @@ const response = (params: {
   schemaSnapshot: SCHEMA,
   visibilityValidatorResults: {},
   formulaChoices: {},
-  sid: params.sid,
+  sid: params.sid ?? null,
 });
 
 const buildTestRows = (responses: FormResponseDto[]) => {

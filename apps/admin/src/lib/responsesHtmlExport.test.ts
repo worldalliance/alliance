@@ -60,6 +60,7 @@ const response = (
   answers: {},
   publicAnswers: {},
   schemaSnapshot: { ...schema },
+  sid: null,
   visibilityValidatorResults: {},
   formulaChoices: {},
   ...overrides,
