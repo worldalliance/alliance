@@ -1,6 +1,5 @@
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
-import { FormDto, tasksGetForm } from "@alliance/shared/client";
 import type {
   FollowUpFormDto,
   SubmitFormDto,
@@ -12,6 +11,7 @@ import {
   followUpPersistKey,
   submitFollowUpForm,
 } from "@alliance/shared/lib/followUpForm";
+import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { CardStyle } from "@alliance/shared/styles/card";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
@@ -19,7 +19,7 @@ import Card from "@alliance/sharedweb/ui/Card";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import posthog from "posthog-js";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
 
 interface FollowUpFormPanelProps {
@@ -35,27 +35,16 @@ export default function FollowUpFormPanel({
   border = false,
   onSubmitted,
 }: FollowUpFormPanelProps) {
-  const [form, setForm] = useState<FormDto | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [formInstanceKey, setFormInstanceKey] = useState(0);
   const { user, loading: userLoading } = useAuth();
   const { success } = useToast();
 
-  useEffect(() => {
-    const fetchForm = async () => {
-      const res = await tasksGetForm({
-        path: { id: followUpForm.formId },
-      });
-      setLoading(false);
-      if (!res.data) {
-        setError("Unable to load form – please reload");
-        return;
-      }
-      setForm(res.data);
-    };
-    fetchForm();
-  }, [followUpForm.formId]);
+  const {
+    data: form,
+    error: formError,
+    isPending,
+  } = useTaskForm(followUpForm.formId);
 
   const handleSubmit = useCallback(
     async (data: SubmitFormDto): Promise<boolean> => {
@@ -97,13 +86,13 @@ export default function FollowUpFormPanel({
     [],
   );
 
-  if (loading || !form) {
+  if (isPending || !form) {
     return (
       <div className="flex flex-col justify-center items-center p-6 border border-zinc-200 rounded-md">
-        {loading ? (
+        {isPending ? (
           <Spinner />
         ) : (
-          <p className="text-red-500">{error ?? "Error loading form"}</p>
+          <p className="text-red-500">{formError?.message}</p>
         )}
       </div>
     );
