@@ -40,6 +40,7 @@ const makeReply = (overrides: Partial<CommentDto> = {}): CommentDto => {
     updatedAt: new Date(
       Date.now() - milliseconds({ minutes: 30 }),
     ).toISOString(),
+    parentId: null,
     pinned: false,
     tagId: null,
     author: makeAuthor(),

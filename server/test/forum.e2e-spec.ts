@@ -763,6 +763,7 @@ describe("Forum (e2e)", () => {
         } satisfies CreateCommentDto)
         .expect(201);
 
+      expect(parentResponse.body.parentId).toBeNull();
       const parentReplyId = parentResponse.body.id;
 
       // Create a nested reply

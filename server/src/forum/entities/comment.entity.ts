@@ -100,11 +100,10 @@ export class Comment {
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   parent: Relation<Comment> | null;
 
-  @Column({ nullable: true })
+  @Column({ type: "int", nullable: true })
   @IsOptional()
-  @ApiPropertyOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  parentId?: number;
+  @ApiProperty({ type: Number, nullable: true })
+  parentId: number | null;
 
   @OneToMany(() => Comment, (comment) => comment.parent)
   @ApiProperty({ type: () => Comment, required: false, isArray: true })

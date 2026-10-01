@@ -60,6 +60,7 @@ const forumCommentItem: ParsedHomeFeedItemDto = {
       deleted: false,
       createdAt: date,
       updatedAt: date,
+      parentId: null,
       pinned: false,
       tagId: null,
       author,

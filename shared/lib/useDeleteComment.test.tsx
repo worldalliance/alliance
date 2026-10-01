@@ -59,6 +59,7 @@ const reply = ({
   deleted,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
+  parentId: null,
   pinned: false,
   tagId: null,
   author,

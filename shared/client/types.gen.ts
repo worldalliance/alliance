@@ -572,7 +572,7 @@ export type Comment = {
     createdAt: string;
     updatedAt: string;
     parent?: Comment;
-    parentId?: number;
+    parentId: number | null;
     children?: Array<Comment>;
     pinned: boolean;
     likes: Array<User>;
@@ -1965,7 +1965,7 @@ export type CommentDto = {
     deleted: boolean;
     createdAt: string;
     updatedAt: string;
-    parentId?: number;
+    parentId: number | null;
     pinned: boolean;
     tagId: number | null;
     author: ProfileDto;
@@ -3567,7 +3567,7 @@ export type UserCommentDto = {
     deleted: boolean;
     createdAt: string;
     updatedAt: string;
-    parentId?: number;
+    parentId: number | null;
     pinned: boolean;
     tagId: number | null;
     author: ProfileDto;
@@ -3589,7 +3589,7 @@ export type UpdatePostDto = {
 export type CreateCommentDto = {
     parentObjectType: CommentParentObject;
     parentObjectId: number;
-    parentId?: number;
+    parentId?: number | null;
     editableContent: CreateEditableContentDto;
     tagId?: number | null;
 };
@@ -3597,7 +3597,7 @@ export type CreateCommentDto = {
 export type UpdateCommentDto = {
     parentObjectType?: CommentParentObject;
     parentObjectId?: number;
-    parentId?: number;
+    parentId?: number | null;
     editableContent?: CreateEditableContentDto;
     tagId?: number | null;
 };
