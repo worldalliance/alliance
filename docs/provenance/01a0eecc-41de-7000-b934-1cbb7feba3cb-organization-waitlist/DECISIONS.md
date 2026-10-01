@@ -1,0 +1,172 @@
+# Organization waitlist specification
+
+This file contains agent-authored design choices and acceptance criteria. REQUIREMENTS.md distinguishes direct user requirements from approvals of agent proposals. The interview is complete; this task produces documentation only.
+
+## Delivery boundary
+
+Implement the waitlist backend, admin workflow, and functional integration with `/projects/democratic-grantmaking-26`. Retain the current page's layout while connecting its data, adding conditional reason collection, and supplying a basic confirmation. Final public copy and visual design belong to the designer.
+
+All email operations in this release are immediate. Saved cohorts and templates support manual followups; no scheduler, event-relative rules, action-date integration, or automatic group-lead outreach is included. No special account onboarding, general email-based account matching, or historical join-request import is included.
+
+The page works responsively in mobile browsers. Normal registration and invite claiming must remain compatible with existing web/mobile paths. This project does not introduce a native waitlist dashboard.
+
+## Pull request stack
+
+Deliver as stacked pull requests. PR 0 is #323 on `charlie/project-page`; later PRs use branches `charles/waitlist-<n>-<slug>`. PR 0 targets `main`; each later PR targets the previous PR's branch. Order follows dependencies:
+
+0. The page redesign with placeholder data, already on this branch before this specification. PR 4 connects it.
+1. This specification.
+2. Atomic invite claiming. Account creation currently marks an invite used before creating the user, a bug independent of the waitlist.
+3. Data model: campaign kind, the organization's unique group, waitlist entries, organization links, organization-owned invites. Backend and migrations only.
+4. Public entry: email submission API, personal sharing links, the reason rule, page wiring, member/waitlist counts and social proof, `/join` removal and redirect. Sends no email.
+5. Public email: confirmation and recovery mail, bot validation, recipient and IP limits, the global volume cap. Public sending stays disabled until the Mailgun threshold is chosen.
+6. Remembered browser state and “Forget this browser.”
+7. Admin: organizations and their links, the waitlist list, filters, tags, cohorts, manual mobilize/undo.
+8. Admin email: composer, templates, durable batches, idempotent sends, unsubscribe, send-and-mobilize.
+9. Metrics.
+
+PRs 5 and 8 each send real email, so each gets its own focused review. The onboarding localStorage password fix stays outside the stack.
+
+At the user's request, no PR merges until the whole stack is approved, and the stack lands together:
+
+- PR 0 stays a draft until then, and each PR body lists the stack.
+- Land top-down: squash PR 9 into PR 8's branch, then 8 into 7, and so on, finishing with PR 0 into `main`. `main` receives one commit and `deploy.yaml`, which deploys every push to `main`, runs once. Landing bottom-up would deploy each partial state.
+- `ci.yaml` runs only on PRs targeting `main` or `production`, so PRs 1–9 get no CI until they fold into PR 0. Run typecheck, tests, dupcheck, and covercheck locally for each PR.
+- After amending a lower PR or rebasing onto `main`, run `git rebase --update-refs` from the top branch to move every branch in the stack, then `git push --force-with-lease` each moved branch.
+
+## Existing implementation and gaps
+
+These are observations of this branch, not evidence of user intent:
+
+- The project form currently prevents submission. The inviter, counts, featured people, and member list are fixtures. Body sections contain lorem ipsum. There is no waitlist persistence.
+- The timeline and required commitment checkbox exist. The visible heading differs from the supplied project title; the progress bar follows the opening section, and the opening section is not explicitly constrained to a viewport. Advisor identities, pilot text, and assessment criteria remain designer deliverables.
+- `Campaign` stores a name, picture, and referral code, owns share links, and supplies account attribution and invite-graph nodes. It has no notification scheduling semantics.
+- Existing one-time invites store a destination community, claimant, and use timestamp. Their creation expects a user inviter. Organization ownership and links back to waitlist recipients require extensions.
+- Normal registration already supports one-time referrals. Account creation currently marks an invite used before creating the user; this path needs atomic claiming for reliable new bulk-issued invitations.
+- Group placement occurs through existing signup/contract processing. Campaign-owned share referral resolution currently drops the share-link assignment; using organization-owned one-time invites requires carrying the organization and existing destination through the supported referral path.
+- Existing mail infrastructure records pending/sent/failed messages and rendered content. Existing templates and invite-funnel metrics are useful foundations, not a ready-made waitlist system.
+- Existing `/join` submits a reason-bearing request to staff through Slack. Replace its public entry path, without converting historical requests into waitlist entries. Remove any form/API code orphaned by the replacement after checking callers; preserve event history.
+
+## Records and attribution
+
+Use the current campaign identity as the organization record. Add a closed campaign kind distinguishing organization from ordinary campaign, plus a nullable unique community relationship. Existing campaigns default to ordinary campaign; staff explicitly designate organization records. Preserve their existing codes, links, and attributed accounts. Organization editing supplies a display name, logo, and group selector; fall back to the group's photo when no logo exists.
+
+Use one waitlist entry per trimmed, case-normalized email, without provider-specific dot/plus rewriting. Store name, email, optional reason, commitment timestamp, creation time, nullable organization, original incoming waitlist link, nullable referring waitlist entry, personal sharing code, mobilized timestamp, unsubscribe state, and manual tag associations. The reason is required and nonblank when the resolved organization is absent. Apply bounded text validation using established form conventions. Determine organization/referrer server-side from the link.
+
+Organization waitlist links are reusable acquisition links, distinct from normal account invites. Store their organization, human-readable channel label, creation timestamp, and optional publication timestamp. Link creation selects an organization, not a future waitlist member's group. Multiple labels and links may belong to the same organization.
+
+Each new waitlist entry gets a stable reusable personal sharing link, including entries with no organization. Its descendants inherit organization attribution and retain their direct referring entry. Keep the original organization/channel source as well as the immediate personal referrer so staff can count both distribution and referral chains. Sharing continues after mobilization or invite claim.
+
+Duplicates leave name, reason, attribution, commitment, tags, and statuses unchanged. Return a generic confirmation unless the browser already possesses access to that entry; knowing an email alone does not grant access to its details or signup invite. An explicit recovery action sends the personal sharing link to the stored email.
+
+Existing Alliance accounts may enter this separate waitlist. Do not infer identity or conversion from an unverified submitted email. The admin's account-related filter is explicitly invite-derived, not an assertion that every unclaimed entry lacks an account.
+
+Keep waitlist, organization, and invite history persistent. Default operations archive/disable acquisition links rather than deleting attribution. Invalid or disabled incoming links show an error with an explicit option to continue without an organization; do not silently assign a different source.
+
+## Public entry, confirmation, and returning visits
+
+Show validation errors before submission, prevent duplicate clicks while submitting, and preserve input on failures. A successful database insert defines entry success even when confirmation email fails; display the personal link immediately and offer the protected recovery path. Do not recreate an entry or automatically resend email on a repeated submission.
+
+Confirmation shows that the person is on the waitlist, that staff will email when they can join, and a copyable personal sharing link. A remembered mobilized entry instead says an invitation was sent; it does not disclose that private invite unless this browser previously opened it. Designers own final language.
+
+Referral banners use organization branding for direct organization links and the inviter's display name for personal links. Personal links still carry the organization's attribution. No referral means no invented inviter. Organization social proof uses cumulative distinct entries attributed to that organization, with the three-entry wording threshold. Main progress uses the existing active-member definition and currently non-mobilized waitlist entries, against the existing project goal. Keep both counts separately visible and cap the visual fill at the goal. Unsubscribing does not itself mobilize or erase an entry.
+
+Remember waitlist access using an opaque, random, limited-purpose identifier in a Secure, HttpOnly, SameSite cookie, valid for 30 days. Store its association server-side; its authority is limited to the confirmation/share view. Never store passwords, provider credentials, or account authentication tokens for this feature in localStorage. Cookie refusal simply loses browser restoration; it does not block entry.
+
+Remember an explicitly opened normal signup invite separately, for 30 days. Explicit URL codes take precedence, including showing an error for an invalid explicit code rather than silently reverting to an older invite. Revalidate remembered codes before offering signup, and discard used/revoked codes. Merely receiving an email cannot set this browser state. Neither the public personal sharing code nor an unverified duplicate submission can reveal an issued signup invite.
+
+Provide “Forget this browser” to clear both waitlist and remembered-invite state without deleting the entry, revoking invitations, or logging out an unrelated Alliance account. Email supplies cross-device recovery of the public sharing link; no separate private waitlist login-link system is necessary for this release.
+
+Point all on-site join CTAs and content links at the project page. Keep `/join` only as a redirect, preserving referral query parameters that the project page understands. Leave `/signup` as the existing account-creation route.
+
+The existing onboarding draft writes a password to localStorage. Removal is a separately identified fix, not part of this specification's waitlist persistence work.
+
+## Email abuse and recovery
+
+The user approved these agent recommendations and explicitly requested recording them in DECISIONS only. The prior attack used different IPs/devices; per-IP limits alone do not address that pattern.
+
+Send one automatic confirmation email containing the personal sharing link after first entry. Add an explicit “Email me my link” recovery action. Duplicate submissions do not trigger mail. Both public send paths use server-validated bot protection, existing-style IP throttles, and a shared per-normalized-recipient limit; changing devices/IPs must not reset the recipient allowance. Start with no more than one public-triggered email per recipient per 24 hours. Staff-initiated sends are separate.
+
+Require the email-send allowance to be claimed atomically across concurrent requests, independently of whether a waitlist row already exists. Use bounded global send-volume protection and visible operational failure reporting to limit distributed attacks across many email addresses. Choose its deployment threshold against the actual Mailgun allowance before enabling public sending; no account pricing or quota was inspected in this task.
+
+Recovery returns the same generic response for absent, suppressed, and existing entries. Reuse stored content rather than reflecting arbitrary newly submitted names or text into recovery mail. Unsubscribed recipients stay suppressed on public recovery; repeated form submissions cannot resubscribe them. Public bot-check or email-send failures do not silently enable an unprotected send path.
+
+This reduces amplification but does not prove genuine intent or defeat all distributed abuse. Mailgun charges can apply above the account's allowance. References: [Mailgun overages](https://help.mailgun.com/hc/en-us/articles/6745531451547-What-happens-if-I-send-more-emails-than-my-monthly-plan-provides), [OWASP browser storage](https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html#local-storage), [OWASP recovery protections](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html).
+
+## Signup invites and independent statuses
+
+Extend existing single-use invites to support organization ownership, while retaining existing user-owned behavior. A waitlist-issued invite records its recipient entry and optional destination community; staff can also issue a general invite with no organization or destination. An account can claim it with any email, irrespective of waitlist membership.
+
+Allocate a recipient's invite when an email needs `#{signupLink}`. Reuse its current unused invite in retries and later messages. Previewing a draft does not consume an invite. Missing/full/unavailable groups produce an explicit confirmation warning; proceeding leaves placement to staff where the normal destination cannot be honored. Group existence and capacity must be rechecked at actual placement, not just at send time.
+
+Copy the destination onto the invite when issued. Changing an organization's group does not silently retarget already emailed invitations. Use the existing admin invite-edit capability, or an explicit replacement, when staff intend to change an outstanding destination.
+
+Consume an invite exactly once in the same database transaction as successful account creation and its claimant relationship. Failed registration leaves it usable. Preserve existing email/password and OAuth account signup screens, contract flow, and ordinary member invitations. Carry organization attribution for reporting without assigning an artificial staff member as the referrer.
+
+Expose mobilization and invite claim as independent dimensions:
+
+| Dimension                              | Meaning                                                             |
+| -------------------------------------- | ------------------------------------------------------------------- |
+| Waiting / mobilized                    | Staff acceptance status, toggled manually or after successful send. |
+| No invite / unused / claimed / revoked | Recorded lifecycle of issued signup invitations.                    |
+| Subscribed / unsubscribed              | Eligibility for waitlist mail; independent of acceptance.           |
+
+Keep invite history when replacing/revoking a code. “Invite claimed” means at least one associated invite has a claimant, even if staff undo mobilization. Display the claimant through existing admin account views, without claiming it is necessarily the named waitlist recipient. Signup through another link remains untracked here.
+
+Undoing mobilization never revokes a code. Revoking an unused code never changes acceptance or an existing account. Replacing an unused invite revokes the old code and creates a new one after confirmation. Issuing another invite after a claim requires explicit confirmation; ordinary followups default to excluding claimed entries.
+
+## Admin waitlist and cohorts
+
+Use existing admin authorization. Keep operational access in admin; group-lead access to waitlist contact data is outside this release.
+
+The list shows name/email, reason where present, organization, original channel/link, referrer, joined time, tags, mobilized status, and invite state. Provide searchable name/email, ascending/descending joined date and organization sorting, and filters for these attribution/status fields and date range. Include reason-present, subscription state, and invite-claimed filters.
+
+Save a named cohort as the current filter definition, with results recomputed when opened. Combine different filters with AND and multiple selected values within a filter with OR; tags match any selected tag. Tags are separately named lists with explicit bulk add/remove membership. Saving a cohort does not create a tag or start an email job.
+
+Selection supports checked rows and every matching result across pagination. Freeze recipient IDs for the confirmed send; changes to filters or new entries do not expand an approved batch. Recheck suppression and current statuses before sending, and report resulting skips.
+
+Support manual mark/unmark mobilized, explicit invite revoke/replace, and tag changes. Confirmation warnings cover already-claimed invites, repeat sends, missing destination groups, and unusual status reversals. Record staff actions and timestamps sufficiently to distinguish manual acceptance, reversals, and successful emailed mobilization. Avoid an unrestricted override of email suppression; staff can communicate externally.
+
+## Composer, templates, and sending
+
+The composer has subject and formatted body, selection summary, template selection, and per-recipient preview. Reuse the application's established safe formatting/rendering conventions. Every real send, including a test send, requires clear recipient confirmation.
+
+Implement `#{name}`, `#{organizationName}`, `#{signupLink}`, and `#{personalShareLink}` using the existing interpolation convention. Reject unknown placeholders and unresolved required values before sending; do not send raw tokens. For selections with no organization, flag use of `#{organizationName}` so staff can change the text or selection. `#{signupLink}` is a normal signup URL, not a waitlist referral URL.
+
+“Send email” leaves acceptance unchanged. “Send email and mark as mobilized” marks each waiting recipient after provider acceptance. Mixed selections may include mobilized recipients, whose acceptance timestamp remains unchanged. Acceptance-changing messages require a signup-link placeholder or an explicit warning that staff are accepting people without supplying an invitation in that message.
+
+Show final eligible recipient count, suppressed/skipped count, subject, rendered sample, and whether statuses will change. Confirm actual sending in a modal. Missing group warnings are advisory, as requested. After confirmation, process the fixed batch durably so leaving the admin page does not discard it.
+
+Persist each batch and recipient result with rendered subject/body, invite reference, initiating admin, and provider-accepted time or failure. Provider acceptance defines “successfully sent”; it does not promise delivery. A later bounce does not automatically reverse mobilization. Failure leaves acceptance unchanged and appears in admin.
+
+Make repeat submission of the same send request idempotent. Retry only recipients not known to have been accepted. When a provider timeout leaves the outcome uncertain, surface that uncertainty rather than blindly generating duplicate mail. Staff can explicitly resend after confirmation. Existing successful recipients keep their original recorded send outcome.
+
+Message history offers “Use again” to create an editable draft. “Save as template” explicitly creates or updates a named reusable subject/body. Editing a template cannot rewrite historical messages. Add unsubscribe to waitlist emails and enforce its suppression on bulk sending; retain entries and attribution for staff and metrics.
+
+## Metrics
+
+Store timestamps and relationships first; avoid a general analytics framework. Initial admin summaries offer:
+
+- Distinct waitlist entries and signup counts over time, grouped by organization and acquisition link/channel, with each link's optional publication date visible.
+- Waiting, mobilized, and invite-claimed counts for filtered cohorts.
+- Successful mobilization recipients, associated invite claims, and elapsed time between first successful mobilization send and claim. Manual acceptance without a recorded email has no fabricated send-to-claim duration.
+- Among claimed invitations, counts reaching contract signing and first completed action, including onboarding actions. Aggregate by organization and the invite's destination group, retaining an unassigned bucket.
+
+Use distinct recipient entries for recipient conversion rates, and show individual invite claims separately if staff issue replacements/additional invites. Keep numerator/denominator populations explicit and based on the same selected cohort. A forwarded invite measures use of that invitation, not verified conversion of the original recipient. Do not implement click/open tracking or unrelated-signup matching for this release.
+
+## Acceptance checks
+
+Implementation is complete when these behaviors pass focused automated checks and the public/admin flows are verified using synthetic data:
+
+1. Organization, personal, and direct entry resolve the expected attribution. Referral chains retain organization/channel and immediate referrer; direct/unaffiliated entries require a reason.
+2. Duplicate and concurrent entry submissions produce one record and one personal code, retain initial attribution/status, and cannot grant access by merely submitting a known email. Commitment and invalid fields are rejected server-side.
+3. A public sharing link permits referrals but reveals no email, private browser access, or mobilization invite. Public email requests obey recipient and IP limits, bot validation, suppression, and atomic send allowances even under concurrent submissions.
+4. Confirmation and recovery emails preserve access to the public share link. Mail failure does not lose a recorded entry. Returning browsers restore only authorized state; forgetting/expiry clears it. Explicit invites override remembered codes; used/revoked codes cannot start signup.
+5. Multiple organization links attribute independently. An organization can lack a group, but two organizations cannot claim the same group. Issued invites retain their destination unless explicitly changed.
+6. Admin cohorts recompute from saved filters, tags change only manually, selection spans pagination correctly, and confirmed email batches do not acquire new recipients. Suppressed entries are skipped with visible counts.
+7. Email-only, send-and-mobilize, manual mobilize, undo, revoke, replacement, and claimed-invite warnings work independently. Partial failure marks only successful recipients; retries cannot resend known successes accidentally. Historical mail/template content remains stable.
+8. Password and OAuth registration use the existing signup flow. Concurrent claims allow one account; failed creation leaves the invite unused. The eventual claimant/organization/group and timestamps support the funnel, including forwarding and unavailable-group fallback.
+9. Member/waitlist counts and organization social proof obey their different populations and threshold. All former on-site `/join` links lead to the project page, and `/join` redirects. Ordinary account invites keep working.
+10. Metric fixtures cover manual acceptance without email, duplicate entries, forwarded claims, replacement invites, contract signing, and onboarding-action completion. Untracked alternate-invite signup is not falsely reported as a conversion.
+
+Run package typechecks, meaningful tests, duplication checks, and changed-logic coverage review during implementation. This documentation-only task requires formatting, duplication review, and a scan for secrets/personal information; it does not exercise application behavior. Final page copy, advisor identities, and exact viewport design remain designer handoff items, not claims of completed implementation.
