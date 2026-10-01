@@ -77,6 +77,7 @@ import {
   DataSource,
   DeepPartial,
   type EntityManager,
+  type FindOptionsWhere,
   ILike,
   In,
   IsNull,
@@ -234,6 +235,11 @@ const INVITE_STATUS_CLAIMABLE: Record<OnetimeInviteStatus, boolean> = {
 const CLAIMABLE_INVITE_STATUSES = Object.values(OnetimeInviteStatus).filter(
   (status) => INVITE_STATUS_CLAIMABLE[status],
 );
+/** Claimable only while `inviteHasClaimant` is false as well. */
+const CLAIMABLE_INVITE = {
+  deletedAt: IsNull(),
+  status: In(CLAIMABLE_INVITE_STATUSES),
+} satisfies FindOptionsWhere<OnetimeInvite>;
 
 @Injectable()
 export class UserService {
@@ -308,19 +314,22 @@ export class UserService {
     // then sees the committed claimant.
     const { affected } = await manager.update(
       OnetimeInvite,
-      {
-        id: inviteId,
-        deletedAt: IsNull(),
-        status: In(CLAIMABLE_INVITE_STATUSES),
-      },
+      { id: inviteId, ...CLAIMABLE_INVITE },
       { status: OnetimeInviteStatus.LINK_USED, usedAt: new Date() },
     );
     if (!affected) {
       throw new BadRequestException("This invite code isn't valid");
     }
-    if (await manager.existsBy(User, { referredByInvite: { id: inviteId } })) {
+    if (await this.inviteHasClaimant(manager, inviteId)) {
       throw new BadRequestException("This invite code has already been used");
     }
+  }
+
+  private inviteHasClaimant(
+    manager: EntityManager,
+    inviteId: number,
+  ): Promise<boolean> {
+    return manager.existsBy(User, { referredByInvite: { id: inviteId } });
   }
 
   async update(id: number, data: UpdateProfileDto): Promise<User> {
@@ -2868,6 +2877,17 @@ export class UserService {
         community: true,
       },
     });
+  }
+
+  async isInviteClaimable(code: string): Promise<boolean> {
+    const invite = await this.onetimeInviteRepository.findOneBy({
+      code,
+      ...CLAIMABLE_INVITE,
+    });
+    return (
+      invite !== null &&
+      !(await this.inviteHasClaimant(this.dataSource.manager, invite.id))
+    );
   }
 
   async findAllOnetimeInvites(

@@ -14,6 +14,8 @@ serveApi(
     "POST /user/nmembers": () => membersReply(),
     "GET /waitlist/count": () => waitlistReply(),
     "GET /waitlist/mail-config": () => Response.json({ enabled: false }),
+    "GET /waitlist/browser": () =>
+      Response.json({ entry: null, inviteCode: null }),
   }),
 );
 

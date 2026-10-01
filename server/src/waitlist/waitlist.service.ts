@@ -24,6 +24,8 @@ const TAKES_WAITLIST_ENTRIES: Record<CampaignKind, boolean> = {
   [CampaignKind.Organization]: true,
 };
 
+export type NewWaitlistEntry = { id: number; code: string };
+
 type ResolvedReferral = {
   organization: Campaign | null;
   sourceLinkId: number | null;
@@ -107,10 +109,10 @@ export class WaitlistService {
     });
   }
 
-  /** Resolves to the new entry's personal code, or null for a known email. */
+  /** Resolves to the new entry, or null for a known email. */
   async create(
     dto: CreateWaitlistEntryDto,
-  ): Promise<Result<string | null, WaitlistEntryError>> {
+  ): Promise<Result<NewWaitlistEntry | null, WaitlistEntryError>> {
     const resolved = await this.resolveReferral(dto);
     if (R.isFailure(resolved)) {
       return resolved;
@@ -140,8 +142,9 @@ export class WaitlistService {
       .orIgnore()
       .returning("id")
       .execute();
-    if (inserted.raw.length > 0) {
-      return R.success(code);
+    const [row] = inserted.raw;
+    if (row) {
+      return R.success({ id: row.id, code });
     }
     if (await this.entryRepository.existsBy({ email: dto.email })) {
       return R.success(null);

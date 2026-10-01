@@ -20,10 +20,13 @@ export function WaitlistConfirmation({
   shareCode,
   email,
   mailEnabled,
+  mobilized,
 }: {
   shareCode: string | null;
-  email: string;
+  /** Null when the browser remembered the entry rather than submitting it. */
+  email: string | null;
   mailEnabled: boolean;
+  mobilized: boolean;
 }) {
   const [copied, setCopied] = useState<CopyOutcome | null>(null);
   const url = shareCode && personalShareUrl(shareCode);
@@ -32,10 +35,12 @@ export function WaitlistConfirmation({
     <div role="status" className="flex flex-col gap-3">
       <p className="flex items-center gap-2 text-2xl">
         <Check className="text-green size-6 shrink-0" aria-hidden />
-        You’re on the waitlist
+        {mobilized ? "You’re invited to join" : "You’re on the waitlist"}
       </p>
       <p className="text-zinc-600 lg:text-white/85">
-        We’ll email you when you can join the Alliance.
+        {mobilized
+          ? "We emailed you an invitation to join the Alliance."
+          : "We’ll email you when you can join the Alliance."}
       </p>
       {url && (
         <>
@@ -67,7 +72,7 @@ export function WaitlistConfirmation({
           )}
         </>
       )}
-      {!url && mailEnabled && <WaitlistLinkRequest email={email} />}
+      {!url && email && mailEnabled && <WaitlistLinkRequest email={email} />}
     </div>
   );
 }

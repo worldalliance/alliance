@@ -1,7 +1,9 @@
 import type {
   CreateWaitlistEntryDto,
+  WaitlistBrowserDto,
   WaitlistReferralDto,
 } from "@alliance/shared/client";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -23,6 +25,8 @@ serveApi(
   routes({
     "GET /waitlist/referral": ({ request }) => referral(new URL(request.url)),
     "GET /waitlist/mail-config": () => Response.json({ enabled: mailEnabled }),
+    "GET /waitlist/browser": () =>
+      Response.json({ entry: null, inviteCode: null }),
     "POST /waitlist/entries": async ({ request }) => {
       const body: CreateWaitlistEntryDto = await request.json();
       sent.push(body);
@@ -48,8 +52,13 @@ const organizationReferral = (entryCount: number): WaitlistReferralDto => ({
   inviterName: null,
 });
 
-const renderForm = (search = "", client = new QueryClient()) =>
-  render(
+/** Starts from a browser that remembers nothing, so the form is usable at once. */
+const renderForm = (search = "", client = new QueryClient()) => {
+  client.setQueryData(queryKeys.waitlistBrowser(), {
+    entry: null,
+    inviteCode: null,
+  } satisfies WaitlistBrowserDto);
+  return render(
     <QueryClientProvider client={client}>
       <MemoryRouter
         initialEntries={[`/projects/democratic-grantmaking-26${search}`]}
@@ -58,6 +67,7 @@ const renderForm = (search = "", client = new QueryClient()) =>
       </MemoryRouter>
     </QueryClientProvider>,
   );
+};
 
 const fill = ({ reason }: { reason?: string } = {}) => {
   fireEvent.change(screen.getByLabelText("Full Name"), {
@@ -241,11 +251,13 @@ test("keeps a checked link usable when a later refetch fails", async () => {
   await screen.findByText("Acme Foundation");
 
   referral = () => new Response(null, { status: 503 });
-  void client.refetchQueries();
-  await waitFor(
-    () => expect(client.getQueryCache().getAll()[0].state.status).toBe("error"),
-    { timeout: 2500 },
-  );
+  const lookup = client
+    .getQueryCache()
+    .find({ queryKey: queryKeys.waitlistReferral({ linkCode: "acme-news" }) });
+  void client.refetchQueries({ queryKey: lookup?.queryKey });
+  await waitFor(() => expect(lookup?.state.status).toBe("error"), {
+    timeout: 2500,
+  });
 
   screen.getByText("Acme Foundation");
   expect(

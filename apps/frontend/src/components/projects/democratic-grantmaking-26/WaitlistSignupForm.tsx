@@ -17,7 +17,12 @@ import { RotateCw } from "lucide-react";
 import type { FormEvent } from "react";
 import { ACCOUNT_BUTTON } from "../../../onboarding/chrome";
 import { SiteArrow } from "../../../site/ui";
-import { useWaitlistMailEnabled, useWaitlistReferral } from "./useWaitlist";
+import {
+  useWaitlistBrowser,
+  useWaitlistMailEnabled,
+  useWaitlistReferral,
+} from "./useWaitlist";
+import { ForgetBrowser, RememberedInvite } from "./WaitlistBrowserMemory";
 import { WaitlistConfirmation } from "./WaitlistConfirmation";
 import { WAITLIST_FIELD } from "./waitlistStyles";
 
@@ -73,12 +78,32 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
     dropReferral,
   } = useWaitlistReferral();
   const mailEnabled = useWaitlistMailEnabled();
+  const browser = useWaitlistBrowser();
   const submit = useMutation({
     mutationFn: (body: CreateWaitlistEntryDto) =>
       waitlistCreate({ body, throwOnError: true }).then((res) => res.data),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.waitlistCount() }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.waitlistBrowser(),
+      });
+      return queryClient.invalidateQueries({
+        queryKey: queryKeys.waitlistCount(),
+      });
+    },
   });
+  // Until the browser state answers, a returning entrant's input would vanish
+  // into their confirmation. An error falls through to a usable form.
+  const restoring = browser.isPending;
+  const remembered = browser.data?.entry ?? null;
+  const inviteCode = browser.data?.inviteCode ?? null;
+  const browserMemory = (
+    <>
+      {inviteCode && <RememberedInvite code={inviteCode} />}
+      {(remembered || inviteCode) && (
+        <ForgetBrowser onForgotten={() => submit.reset()} />
+      )}
+    </>
+  );
 
   const linkFailed =
     (hasCode && referral.isError && referral.data === undefined) ||
@@ -106,20 +131,29 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
   );
   const cardStyle = { borderRadius: "var(--site-radius-card)" };
 
-  if (submit.isSuccess) {
+  const confirmed = submit.isSuccess
+    ? {
+        shareCode: submit.data.shareCode,
+        email: submit.variables.email,
+        mobilized: false,
+      }
+    : remembered && {
+        shareCode: remembered.shareCode,
+        email: null,
+        mobilized: remembered.mobilized,
+      };
+  if (confirmed) {
     return (
       <div className={card} style={cardStyle}>
-        <WaitlistConfirmation
-          shareCode={submit.data.shareCode}
-          email={submit.variables.email}
-          mailEnabled={mailEnabled}
-        />
+        <WaitlistConfirmation {...confirmed} mailEnabled={mailEnabled} />
+        {browserMemory}
       </div>
     );
   }
 
   return (
     <form className={card} style={cardStyle} onSubmit={onSubmit}>
+      {browserMemory}
       {linkFailed ? (
         <div
           role="alert"
@@ -169,6 +203,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
         aria-label="Full Name"
         required
         maxLength={200}
+        disabled={restoring}
         className={WAITLIST_FIELD}
       />
       <input
@@ -179,6 +214,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
         aria-label="Email"
         required
         maxLength={320}
+        disabled={restoring}
         className={WAITLIST_FIELD}
       />
       {needsReason && (
@@ -189,6 +225,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
           required
           maxLength={4000}
           rows={3}
+          disabled={restoring}
           className={cn(WAITLIST_FIELD, "h-auto resize-y py-2.5")}
         />
       )}
@@ -197,6 +234,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
           name="commit"
           type="checkbox"
           required
+          disabled={restoring}
           className="accent-green size-4 shrink-0"
         />
         I commit to join the Alliance.
@@ -204,7 +242,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
       <Button
         type="submit"
         color={ButtonColor.Green}
-        disabled={submit.isPending || !referralKnown || linkFailed}
+        disabled={restoring || submit.isPending || !referralKnown || linkFailed}
         className={ACCOUNT_BUTTON}
       >
         {submit.isPending ? "Joining…" : "Join the Waitlist"}

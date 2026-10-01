@@ -27,6 +27,7 @@ import { useSiteBackground } from "../components/HtmlBackgroundManager";
 import { useAuth } from "../lib/AuthContext";
 import { socialPreviewMeta } from "../lib/socialPreviewMeta";
 import { useContract } from "../lib/useContract";
+import { useRememberInvite } from "../lib/useRememberInvite";
 // import { useMediaQuery } from "../lib/useMediaQuery";
 import { SiteFooter } from "../site/Footer";
 import { JoinCta } from "../site/JoinCta";
@@ -102,6 +103,7 @@ const OnboardingPage = () => {
   // const mobileWeb = useMediaQuery(MOBILE_WEB_QUERY);
   useLockedViewport(!isAccount);
   const { inviter, refusal: inviteRefusal } = useInvite(referralCode);
+  useRememberInvite(referralCode);
   const faces = useSignupFaces(referralCode, {
     enabled: step === OnboardingStep.Agreement,
   });

@@ -20,7 +20,7 @@ Deliver as stacked pull requests. PR 0 is #323 on `charlie/project-page`; later 
 3. Done, #330. Data model: campaign kind, the organization's unique group, waitlist entries, organization links, organization-owned invites. Backend and migrations only, plus an independent fix: a one-time invite with no inviting user can be deleted, approved, or rejected without a 500.
 4. Done, #331. Public entry: email submission API, personal sharing links, the reason rule, page wiring, member/waitlist counts and social proof, `/join` removal and redirect. Sends no email.
 5. Done, #333. Public email: confirmation and recovery mail, recipient and IP limits, the global volume cap. Public sending stays disabled until the Mailgun threshold is chosen.
-6. Remembered browser state and “Forget this browser.”
+6. Done, #334. Remembered browser state and “Forget this browser.”
 7. Admin: organizations and their links, the waitlist list, filters, tags, cohorts, manual mobilize/undo.
 8. Admin email: composer, templates, durable batches, idempotent sends, unsubscribe, send-and-mobilize.
 9. Metrics.
@@ -102,6 +102,18 @@ PR 4 public entry choices:
 - An unknown or archived link, a campaign that is not an organization, or a failed lookup disables submission and offers "Continue without this link", which removes both parameters. A failed lookup can also be retried. A link archived between loading and submitting shows the same state.
 - The progress bar reads members from the existing `/user/nmembers` and the waitlist from `GET /waitlist/count`, and shows text while loading or when a count fails. Featured people, the member list, and body copy stay placeholders for the designer.
 - The login screen's "Request an invite" mail link was an on-site join CTA, so it now links to the page. Removing the join request endpoint keeps `EventType.JoinRequest`, so past join request events stay readable. A new entry posts nothing to Slack. Join requests were the only messages routed to the existing Slack firehose channel, a routing an earlier task added at the user's request for join request spam. That routing and deploy's `SLACK_FIREHOSE_WEBHOOK_URL` export go with the endpoint, and each GitHub environment's secret can be deleted once the stack deploys there: staging's when it reaches `main`, production's when it reaches `production`.
+
+PR 6 browser state choices:
+
+- Only a new entry remembers its browser. A duplicate submission or a visit through a personal link never does, since an unverified email or a public code would otherwise hand a stranger that entry's link and status. The confirmation email is queued before the browser is remembered, so a failure to remember never costs the entrant their emailed link.
+- The `waitlist_browser` cookie holds 32 random bytes. The `waitlist_browser` table stores their sha256 with the entry and an expiry 30 days out, matching the cookie's `Max-Age`. A daily cron deletes expired rows. The `waitlist_browser` and `remembered_invite` cookies are both HttpOnly and `SameSite=Strict`, and Secure in production, like the auth cookies (local development runs over http).
+- `GET /waitlist/browser` returns the remembered entry's personal code and whether it is mobilized, and nothing else about it. A mobilized entry's confirmation says an invitation was emailed, and still shows the personal link.
+- A remembered browser sees its confirmation instead of the form, whatever referral parameters the URL carries. The form stays disabled until the browser state answers, so a returning entrant's typing can't vanish into their confirmation; if the lookup fails, the form works as before.
+- The `remembered_invite` cookie holds the invite code itself. The browser already had it in a URL, and HttpOnly keeps it from scripts. The invite page and the onboarding page (`/onboarding`, `/signup`, `/login`) post any `?ref=` code to `POST /waitlist/browser/invite`. It answers 204 either way, and remembers only a one-time invite that signup could still claim, by `UserService`'s claim rule. Reusable referral codes are public and never spent, so they are not remembered. A claimable newly opened invite replaces the remembered one; an unusable one leaves it.
+- Every `GET /waitlist/browser` rechecks the remembered invite and clears the cookie once the invite is deleted, claimed, or refused.
+- Only the waitlist page offers a remembered invite, as "Continue signing up" to `/signup?ref=`. `/signup` never falls back to a remembered code, so an explicit code always wins, and an invalid one shows its own error.
+- "Forget this browser" (`DELETE /waitlist/browser`) deletes the browser's row and clears both cookies. It leaves the entry, invites, and auth cookies alone. It shows whenever either is remembered, including right after joining.
+- The mobile app gets nothing: the waitlist is a web page, and this project adds no native waitlist.
 
 ## Email abuse and recovery
 
