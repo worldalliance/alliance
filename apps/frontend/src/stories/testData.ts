@@ -170,6 +170,7 @@ export const testForumPosts: PostDto[] = [
       attachments: [],
     },
     authorId: 1,
+    actionId: null,
     commentCount: 0,
     likes: [],
     createdAt: new Date().toISOString(),

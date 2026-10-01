@@ -41,6 +41,7 @@ const POST: PostDto = {
   id: 7,
   title: "Grace's post",
   authorId: GRACE.id,
+  actionId: null,
   author: GRACE,
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",

@@ -8,6 +8,7 @@ import {
 } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import {
+  Allow,
   IsArray,
   IsBoolean,
   IsDate,
@@ -154,7 +155,12 @@ export type PostDtoArgs = {
   requestingUserId?: number;
 };
 
-export class CreatePostDto extends PickType(Post, ["title", "actionId"]) {
+export class CreatePostDto extends PickType(Post, ["title"]) {
+  @ApiPropertyOptional({ type: Number })
+  @IsOptional()
+  @Allow()
+  actionId?: number;
+
   @ApiPropertyOptional({ type: Date })
   @ValidateIf((_, value) => value !== undefined)
   @Type(() => Date)

@@ -23,6 +23,7 @@ const samplePost: PostDto = {
     anonymous: false,
   },
   authorId: 1,
+  actionId: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   visibleAt: null,

@@ -68,7 +68,7 @@ const PostFormPage: React.FC = () => {
           if (postResponse.data) {
             setTitle(postResponse.data.title);
             setContent(postResponse.data.editableContent);
-            setActionId(postResponse.data.actionId);
+            setActionId(postResponse.data.actionId ?? undefined);
             if (
               !!postResponse.data.visibleAt &&
               new Date(postResponse.data.visibleAt) > new Date()
