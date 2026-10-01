@@ -1,6 +1,5 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { formatInviteMessage } from "@alliance/common/inviteMessage";
-import { withCount } from "@alliance/common/plural";
 import { OnetimeInviteDto } from "@alliance/shared/client";
 import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import { MEMBER_GOAL } from "@alliance/shared/lib/constants";
@@ -10,8 +9,8 @@ import {
   roleBadges,
 } from "@alliance/shared/lib/copy";
 import {
-  InviteGoalPhase,
   inviteGoalStatus,
+  inviteGoalSummary,
   selectInviteGoals,
 } from "@alliance/shared/lib/inviteGoals";
 import { onetimeInviteSettings } from "@alliance/shared/lib/inviteSettings";
@@ -138,50 +137,18 @@ const InvitesPage = () => {
   } = useInviteGoalForms({ currentGoal, createGoal, updateGoal });
   const currentGoalSummary = useMemo(() => {
     if (!currentGoal) {
-      return "Set a goal to track successful invitations.";
+      return null;
     }
 
-    const status = inviteGoalStatus(currentGoal);
-    switch (status.phase) {
-      case InviteGoalPhase.Upcoming:
-        return (
-          <>
-            This goal starts in{" "}
-            <span className="font-semibold text-white">
-              {withCount(status.daysToStart, "day")}
-            </span>
-            .
-          </>
-        );
-      case InviteGoalPhase.Completed:
-        return "You have completed this invitation goal.";
-      case InviteGoalPhase.Ended:
-        return (
-          <>
-            This goal ended with{" "}
-            <span className="font-semibold text-white">
-              {withCount(status.remainingRecruits, "member")}
-            </span>{" "}
-            left to successfully invite.
-          </>
-        );
-      case InviteGoalPhase.Active:
-        return (
-          <>
-            You have{" "}
-            <span className="font-semibold text-white">
-              {withCount(status.daysLeft, "day")}
-            </span>{" "}
-            to successfully invite{" "}
-            <span className="font-semibold text-white">
-              {withCount(status.remainingRecruits, "more member")}
-            </span>
-            .
-          </>
-        );
-      default:
-        throw new Error(`unknown phase: ${status satisfies never}`);
-    }
+    return inviteGoalSummary(inviteGoalStatus(currentGoal)).map((part, i) =>
+      typeof part === "string" ? (
+        part
+      ) : (
+        <span key={i} className="font-semibold text-white">
+          {part.emphasis}
+        </span>
+      ),
+    );
   }, [currentGoal]);
 
   const leaderCommunityIds = useMemo(

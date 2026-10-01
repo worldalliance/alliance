@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import { addMonths } from "date-fns";
 import { millisecondsInDay } from "date-fns/constants";
 import type { AmbassadorInviteGoalWithStatsDto } from "../client";
@@ -150,4 +151,38 @@ export function selectInviteGoals(
     currentGoal,
     pastGoals: selectPastInviteGoals({ goals, currentGoal, now }),
   };
+}
+
+/** A run of summary text, with the counts each app may set apart. */
+export type InviteGoalSummaryPart = string | { emphasis: string };
+
+export function inviteGoalSummary(
+  status: InviteGoalStatus,
+): InviteGoalSummaryPart[] {
+  switch (status.phase) {
+    case InviteGoalPhase.Upcoming:
+      return [
+        "This goal starts in ",
+        { emphasis: withCount(status.daysToStart, "day") },
+        ".",
+      ];
+    case InviteGoalPhase.Completed:
+      return ["You have completed this invitation goal."];
+    case InviteGoalPhase.Ended:
+      return [
+        "This goal ended with ",
+        { emphasis: withCount(status.remainingRecruits, "member") },
+        " left to successfully invite.",
+      ];
+    case InviteGoalPhase.Active:
+      return [
+        "You have ",
+        { emphasis: withCount(status.daysLeft, "day") },
+        " to successfully invite ",
+        { emphasis: withCount(status.remainingRecruits, "more member") },
+        ".",
+      ];
+    default:
+      throw new Error(`unknown phase: ${status satisfies never}`);
+  }
 }

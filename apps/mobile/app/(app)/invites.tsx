@@ -1,5 +1,4 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import { withCount } from "@alliance/common/plural";
 import type { OnetimeInviteDto } from "@alliance/shared/client";
 import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import { MEMBER_GOAL } from "@alliance/shared/lib/constants";
@@ -10,8 +9,8 @@ import {
 } from "@alliance/shared/lib/copy";
 import {
   dateToInputValue,
-  InviteGoalPhase,
   inviteGoalStatus,
+  inviteGoalSummary,
   selectInviteGoals,
 } from "@alliance/shared/lib/inviteGoals";
 import {
@@ -505,47 +504,17 @@ export default function InvitesScreen() {
   }, [currentGoal]);
   const currentGoalInvitesCreated = currentGoal?.stats.totalInvitesSent ?? 0;
 
-  const currentGoalSummary = useMemo(() => {
-    if (!currentGoal) {
-      return (
+  const currentGoalSummary = useMemo(
+    () =>
+      currentGoal && (
         <Text className="text-lg text-white" weight={FontWeight.Semibold}>
-          Set a goal to track successful invitations.
+          {inviteGoalSummary(inviteGoalStatus(currentGoal))
+            .map((part) => (typeof part === "string" ? part : part.emphasis))
+            .join("")}
         </Text>
-      );
-    }
-
-    const status = inviteGoalStatus(currentGoal);
-    switch (status.phase) {
-      case InviteGoalPhase.Upcoming:
-        return (
-          <Text className="text-lg text-white" weight={FontWeight.Semibold}>
-            This goal starts in {withCount(status.daysToStart, "day")}.
-          </Text>
-        );
-      case InviteGoalPhase.Completed:
-        return (
-          <Text className="text-lg text-white" weight={FontWeight.Semibold}>
-            You have completed this invitation goal.
-          </Text>
-        );
-      case InviteGoalPhase.Ended:
-        return (
-          <Text className="text-lg text-white" weight={FontWeight.Semibold}>
-            This goal ended with {withCount(status.remainingRecruits, "member")}{" "}
-            left to successfully invite.
-          </Text>
-        );
-      case InviteGoalPhase.Active:
-        return (
-          <Text className="text-lg text-white" weight={FontWeight.Semibold}>
-            You have {withCount(status.daysLeft, "day")} to successfully invite{" "}
-            {withCount(status.remainingRecruits, "more member")}.
-          </Text>
-        );
-      default:
-        throw new Error(`unknown phase: ${status satisfies never}`);
-    }
-  }, [currentGoal]);
+      ),
+    [currentGoal],
+  );
 
   const isEmptyPast =
     actionable.length === 0 &&

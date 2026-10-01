@@ -9,6 +9,7 @@ import {
   inviteGoalIsUp,
   InviteGoalPhase,
   inviteGoalStatus,
+  inviteGoalSummary,
   oneMonthFromTodayDateInputValue,
   selectCurrentInviteGoal,
   selectInviteGoals,
@@ -186,5 +187,34 @@ test("date inputs convert to the start and end of that local day", () => {
   expect(dateToInputValue(end)).toBe("2026-03-09");
   expect([end.getHours(), end.getMinutes(), end.getSeconds()]).toEqual([
     23, 59, 59,
+  ]);
+});
+
+test("inviteGoalSummary sets apart each count in the phase's sentence", () => {
+  expect(
+    inviteGoalSummary({ phase: InviteGoalPhase.Upcoming, daysToStart: 1 }),
+  ).toEqual(["This goal starts in ", { emphasis: "1 day" }, "."]);
+  expect(inviteGoalSummary({ phase: InviteGoalPhase.Completed })).toEqual([
+    "You have completed this invitation goal.",
+  ]);
+  expect(
+    inviteGoalSummary({ phase: InviteGoalPhase.Ended, remainingRecruits: 3 }),
+  ).toEqual([
+    "This goal ended with ",
+    { emphasis: "3 members" },
+    " left to successfully invite.",
+  ]);
+  expect(
+    inviteGoalSummary({
+      phase: InviteGoalPhase.Active,
+      daysLeft: 4,
+      remainingRecruits: 1,
+    }),
+  ).toEqual([
+    "You have ",
+    { emphasis: "4 days" },
+    " to successfully invite ",
+    { emphasis: "1 more member" },
+    ".",
   ]);
 });
