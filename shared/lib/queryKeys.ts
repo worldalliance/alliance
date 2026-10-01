@@ -1,4 +1,7 @@
 import type { EventType, WaitlistEntrySearchDto } from "../client/types.gen";
+import type { UseActivitiesProps } from "./useActivities";
+
+const activitiesAll = () => ["useActivities"] as const;
 
 const onetimeInvitesAdminAll = () => ["userGetOnetimeInvitesAdmin"] as const;
 
@@ -20,9 +23,29 @@ export const queryKeys = {
   actionUpdatesAll: () => ["actionsAllUpdates"] as const,
   actionUpdatesRecent: (limit: number) =>
     ["actionsRecentUpdates", limit] as const,
+  /** Also prefixes generalUpdatesUnread, so invalidating it refetches that too. */
+  actions: () => ["actions"] as const,
+  activitiesAll,
+  activities: ({
+    list,
+    objectId,
+    limit,
+    comments,
+  }: UseActivitiesProps & { limit: number }) =>
+    [
+      ...activitiesAll(),
+      list,
+      objectId ?? "none",
+      limit,
+      comments ?? false,
+    ] as const,
   allianceMemberCount: () => ["userNmembers"] as const,
   ambassadorInviteDashboard: () =>
     ["userGetAmbassadorInviteDashboard"] as const,
+  communityMemberInfo: (
+    communityId: number | undefined,
+    userId: number | undefined,
+  ) => ["communityMemberInfo", communityId ?? null, userId ?? null] as const,
   communityOnetimeInvites: (communityId: number) =>
     ["userGetOnetimeInvitesByCommunity", communityId] as const,
   contractById: (contractId: number | null) =>
@@ -37,6 +60,11 @@ export const queryKeys = {
   myReusableInvites: () => ["shareUrlsMyInvites"] as const,
   inviteMessageTemplate: () => ["shareUrlsInviteMessageTemplate"] as const,
   myVisibilityContext: () => ["userMyVisibilityContext"] as const,
+  /** Prefixes the unread count and load time, so invalidating it invalidates
+   * all three. */
+  notifications: () => ["notifications"] as const,
+  notificationsLoadedAt: () => ["notifications", "loadedAt"] as const,
+  notificationsUnreadCount: () => ["notifications", "unreadCount"] as const,
   onetimeInvite: (code: string | null) => ["userOnetimeInvite", code] as const,
   onetimeInvitesOverview: () => ["userGetOnetimeInvitesOverview"] as const,
   publicCommunities: () => ["communityGetPublicCommunities"] as const,

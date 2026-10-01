@@ -6,12 +6,8 @@ import {
   LikesBucket,
   NotificationRenderItem,
 } from "@alliance/shared/lib/notificationBucketing";
-import {
-  getNotificationIdentityKey,
-  getNotificationReadRequest,
-} from "@alliance/shared/lib/notificationIdentity";
+import { getNotificationReadRequest } from "@alliance/shared/lib/notificationIdentity";
 import { LegendList } from "@legendapp/list";
-import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RelativePathString, router } from "expo-router";
 import { Ellipsis } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
@@ -29,12 +25,11 @@ import SwipeableNotification from "../../components/SwipeableNotification";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
-import {
-  fetchNotifications,
-  LOADED_AT_QUERY_KEY,
-  markAllNotificationsRead,
-} from "../../lib/notificationsLoadedAt";
 import { colors } from "../../lib/style/colors";
+import {
+  useNotificationsCache,
+  useNotificationsList,
+} from "../../lib/useNotificationsCache";
 
 const normalizeLocation = (location: string | null) => {
   if (!location) return null;
@@ -50,8 +45,6 @@ const normalizeLocation = (location: string | null) => {
 };
 
 export default function NotificationsScreen() {
-  const queryClient = useQueryClient();
-
   const { user } = useAuth();
 
   const [overflowOpen, setOverflowOpen] = useState(false);
@@ -61,24 +54,12 @@ export default function NotificationsScreen() {
     isPending,
     isRefetching,
     error,
-    refetch,
-  } = useQuery({
-    queryKey: ["notifications"],
-    queryFn: ({ signal }) => fetchNotifications(queryClient, signal),
-  });
-
-  // Observed so the cache keeps it as long as the list it came with.
-  useQuery<string | null>({
-    queryKey: LOADED_AT_QUERY_KEY,
-    queryFn: skipToken,
-  });
-
-  const refreshNotifications = useCallback(() => {
-    refetch();
-    queryClient.invalidateQueries({
-      queryKey: ["notifications", "unreadCount"],
-    });
-  }, [refetch, queryClient]);
+  } = useNotificationsList();
+  const {
+    markAllRead,
+    markCachedRead: markNotificationsRead,
+    refresh: refreshNotifications,
+  } = useNotificationsCache();
 
   const notifications = useMemo(() => response ?? [], [response]);
 
@@ -94,56 +75,10 @@ export default function NotificationsScreen() {
   const handleMarkAllAsRead = useCallback(async () => {
     if (unreadTotal === 0) return;
 
-    await queryClient.cancelQueries({ queryKey: ["notifications"] });
-    await queryClient.cancelQueries({
-      queryKey: ["notifications", "unreadCount"],
-    });
-
-    // Backend marks everything read; we also update cached list for snappy UX.
-    const prevNotifications = queryClient.getQueryData<NotificationDto[]>([
-      "notifications",
-    ]);
-    const prevUnreadCount = queryClient.getQueryData<number>([
-      "notifications",
-      "unreadCount",
-    ]);
-
-    const readAt = new Date().toISOString();
-    queryClient.setQueryData(
-      ["notifications"],
-      (oldData: NotificationDto[] | undefined) => {
-        if (!oldData) return oldData;
-        return oldData.map((notification) => ({
-          ...notification,
-          readAt,
-        }));
-      },
-    );
-    queryClient.setQueryData<number>(["notifications", "unreadCount"], 0);
-
-    try {
-      await markAllNotificationsRead(queryClient);
-    } catch {
-      if (prevNotifications !== undefined) {
-        queryClient.setQueryData(["notifications"], prevNotifications);
-      } else {
-        queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      }
-
-      if (prevUnreadCount !== undefined) {
-        queryClient.setQueryData(
-          ["notifications", "unreadCount"],
-          prevUnreadCount,
-        );
-      } else {
-        queryClient.invalidateQueries({
-          queryKey: ["notifications", "unreadCount"],
-        });
-      }
-    }
+    await markAllRead();
 
     captureEvent(AnalyticsEvent.NotificationsMarkedAllAsRead);
-  }, [queryClient, unreadTotal]);
+  }, [markAllRead, unreadTotal]);
 
   const markAllOverflow = (() => {
     if (unreadTotal === 0) return null;
@@ -188,43 +123,6 @@ export default function NotificationsScreen() {
       </View>
     );
   })();
-
-  const markNotificationsRead = useCallback(
-    (notificationsToMark: Pick<NotificationDto, "id" | "sourceType">[]) => {
-      if (notificationsToMark.length === 0) {
-        return;
-      }
-
-      const keys = new Set(
-        notificationsToMark.map((notification) =>
-          getNotificationIdentityKey(notification),
-        ),
-      );
-      const readAt = new Date().toISOString();
-      queryClient.setQueryData(
-        ["notifications"],
-        (oldData: typeof response) => {
-          if (!oldData) return oldData;
-          return oldData.map((notification) =>
-            keys.has(getNotificationIdentityKey(notification))
-              ? { ...notification, readAt }
-              : notification,
-          );
-        },
-      );
-      queryClient.setQueryData<number>(
-        ["notifications", "unreadCount"],
-        (prev) =>
-          Math.max(
-            (prev ??
-              notifications.filter((notification) => !notification.readAt)
-                .length) - notificationsToMark.length,
-            0,
-          ),
-      );
-    },
-    [notifications, queryClient],
-  );
 
   const handleMarkAsRead = useCallback(
     (notification: NotificationDto) => {

@@ -22,6 +22,7 @@ import {
 } from "./user-properties";
 import {
   type Condition,
+  SelectedCountComparison,
   type VisibleIfFormula,
   evaluateVisibilityFormula,
   evaluateVisibilityFormulaWithUnknowns,
@@ -122,7 +123,14 @@ export type ConditionExtras = {
 
 type ValueBasedCondition = Extract<
   Condition,
-  { kind: "equals" | "includesOption" | "anySelected" | "hasValue" }
+  {
+    kind:
+      | "equals"
+      | "includesOption"
+      | "anySelected"
+      | "selectedCount"
+      | "hasValue";
+  }
 >;
 
 function resolveConditionValue(
@@ -149,6 +157,25 @@ const evaluateValueBasedCondition = (
   if (cond.kind === "anySelected") {
     const selections = Array.isArray(val) ? val : [];
     return cond.anySelected ? selections.length > 0 : selections.length === 0;
+  }
+  if (cond.kind === "selectedCount") {
+    const selected = Array.isArray(val) ? val.length : 0;
+    const { comparison } = cond;
+    switch (comparison) {
+      case SelectedCountComparison.GreaterThan:
+        return selected > cond.count;
+      case SelectedCountComparison.AtLeast:
+        return selected >= cond.count;
+      case SelectedCountComparison.LessThan:
+        return selected < cond.count;
+      case SelectedCountComparison.AtMost:
+        return selected <= cond.count;
+      case SelectedCountComparison.Equals:
+        return selected === cond.count;
+      default:
+        comparison satisfies never;
+        return false;
+    }
   }
   if (cond.kind === "includesOption") {
     if (!cond.includesOption) {
@@ -234,13 +261,14 @@ export function evaluateCondition(
       if (Number.isNaN(signedAt) || Number.isNaN(threshold)) {
         return false;
       }
-      switch (cond.comparison) {
+      const { comparison } = cond;
+      switch (comparison) {
         case "before":
           return signedAt < threshold;
         case "onOrAfter":
           return signedAt >= threshold;
         default:
-          cond.comparison satisfies never;
+          comparison satisfies never;
           return false;
       }
     }
@@ -249,6 +277,7 @@ export function evaluateCondition(
     case "equals":
     case "includesOption":
     case "anySelected":
+    case "selectedCount":
     case "hasValue": {
       const val = resolveConditionValue(cond, data, extras);
       return evaluateValueBasedCondition(cond, val);
@@ -288,6 +317,7 @@ function savedResponseReplay(
       case "equals":
       case "includesOption":
       case "anySelected":
+      case "selectedCount":
       case "hasValue": {
         if (cond.sourceFormId != null) return false;
         const referenced = fieldLookup.get(cond.when);
@@ -726,6 +756,7 @@ function evaluateConditionResults(
       case "equals":
       case "includesOption":
       case "anySelected":
+      case "selectedCount":
       case "hasValue": {
         const value = resolveValue(cond);
         results[name] = evaluateValueBasedCondition(cond, value);

@@ -15,7 +15,7 @@ import {
 } from "react";
 import { zIndex } from "./zIndex";
 
-type ToastVariant = "info" | "success" | "error" | "warning" | "confirm";
+type ToastVariant = "info" | "success" | "error" | "warning";
 
 type ToastBase = {
   id: number;
@@ -46,11 +46,11 @@ type ConfirmOptions = {
 };
 
 type ToastOptions = Omit<ToastBase, "id" | "variant"> & {
-  variant?: Exclude<ToastVariant, "confirm">;
+  variant?: ToastVariant;
   durationMs?: number;
 };
 
-type ToastConfirm = ToastBase & {
+type ToastConfirm = Omit<ToastBase, "variant"> & {
   anchorEl?: HTMLElement | null;
   placement?:
     | "top"
@@ -80,6 +80,18 @@ type ToastContextValue = {
   info: (message: string, title?: string) => void;
   warning: (message: string, title?: string) => void;
   confirm: (opts: ConfirmOptions) => Promise<boolean>;
+};
+
+enum ToastRegion {
+  Status = "status",
+  Alert = "alert",
+}
+
+const toastRegion: Record<ToastVariant, ToastRegion> = {
+  info: ToastRegion.Status,
+  success: ToastRegion.Status,
+  warning: ToastRegion.Status,
+  error: ToastRegion.Alert,
 };
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
@@ -197,28 +209,37 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
       <div
         className={cn(
           zIndex.toast,
-          "pointer-events-none fixed inset-0 flex flex-col items-end gap-2 px-4 py-6 sm:bottom-0 sm:items-end",
+          "pointer-events-none fixed inset-0 flex flex-col items-end px-4 py-6 sm:bottom-0 sm:items-end",
         )}
       >
-        {toasts.map((toast) => {
-          if (toast.variant === "confirm") {
-            return (
-              <ConfirmToastItem
-                key={toast.id}
-                toast={toast as ToastConfirm}
-                onConfirm={handleConfirm}
-              />
-            );
-          }
-
-          return (
-            <DefaultToastItem
+        {Object.values(ToastRegion).map((region) => (
+          <div
+            key={region}
+            role={region}
+            aria-atomic={false}
+            className="flex w-full flex-col items-end"
+          >
+            {toasts.map((toast) =>
+              toast.variant !== "confirm" &&
+              toastRegion[toast.variant] === region ? (
+                <DefaultToastItem
+                  key={toast.id}
+                  toast={toast}
+                  onDismiss={removeToast}
+                />
+              ) : null,
+            )}
+          </div>
+        ))}
+        {toasts.map((toast) =>
+          toast.variant === "confirm" ? (
+            <ConfirmToastItem
               key={toast.id}
-              toast={toast as ToastBase}
-              onDismiss={removeToast}
+              toast={toast}
+              onConfirm={handleConfirm}
             />
-          );
-        })}
+          ) : null,
+        )}
       </div>
     </ToastContext.Provider>
   );
@@ -242,7 +263,7 @@ const DefaultToastItem: FC<DefaultToastItemProps> = ({ toast, onDismiss }) => {
   return (
     <div
       className={cn(
-        "pointer-events-auto mb-2 w-full max-w-sm rounded-xl shadow-lg ring-1 ring-black/5",
+        "pointer-events-auto mb-4 w-full max-w-sm rounded-xl shadow-lg ring-1 ring-black/5",
         colorClasses,
       )}
     >
@@ -256,6 +277,7 @@ const DefaultToastItem: FC<DefaultToastItemProps> = ({ toast, onDismiss }) => {
 
         <button
           type="button"
+          aria-label="Dismiss"
           className="ml-2 text-slate-100/70 hover:text-white"
           onClick={() => onDismiss(toast.id)}
         >
@@ -467,7 +489,7 @@ const ConfirmToastItem: FC<ConfirmToastItemProps> = ({ toast, onConfirm }) => {
     <div
       ref={containerRef}
       style={style}
-      className="pointer-events-auto mb-2 w-full max-w-sm rounded border border-zinc-200 bg-white text-black shadow"
+      className="pointer-events-auto mb-4 w-full max-w-sm rounded border border-zinc-200 bg-white text-black shadow"
     >
       <div className="flex items-start gap-3 px-4 py-3">
         <div className="flex-1">

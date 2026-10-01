@@ -5,7 +5,6 @@ import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { memberProfileUrl } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -14,6 +13,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
 import React, { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
+import { memberProfileUrl } from "../lib/config";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 
 function useClustersAdmin() {

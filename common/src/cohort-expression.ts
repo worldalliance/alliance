@@ -31,14 +31,6 @@ export type CompletedActionCondition = z.infer<
   typeof completedActionConditionSchema
 >;
 
-export const inProgressActionConditionSchema = z.strictObject({
-  type: z.literal("InProgressAction"),
-  actionId: z.number(),
-});
-export type InProgressActionCondition = z.infer<
-  typeof inProgressActionConditionSchema
->;
-
 /**
  * Users who failed to complete the referenced action: assigned to it, its
  * member-action deadline has passed, and they neither completed nor withdrew.
@@ -101,16 +93,29 @@ export const nonUsMemberConditionSchema = z.strictObject({
 });
 export type NonUsMemberCondition = z.infer<typeof nonUsMemberConditionSchema>;
 
+/** Every user, the same population `NOT` excludes from. */
+export const allMembersConditionSchema = z.strictObject({
+  type: z.literal("AllMembers"),
+});
+export type AllMembersCondition = z.infer<typeof allMembersConditionSchema>;
+
+/** Users with the `staff` flag. */
+export const staffConditionSchema = z.strictObject({
+  type: z.literal("Staff"),
+});
+export type StaffCondition = z.infer<typeof staffConditionSchema>;
+
 export const leafConditionSchema = z.discriminatedUnion("type", [
   tagConditionSchema,
   manualConditionSchema,
   completedActionConditionSchema,
-  inProgressActionConditionSchema,
   missedActionDeadlineConditionSchema,
   formFieldValueConditionSchema,
   groupLeadConditionSchema,
   usMemberConditionSchema,
   nonUsMemberConditionSchema,
+  allMembersConditionSchema,
+  staffConditionSchema,
 ]);
 export type LeafCondition = z.infer<typeof leafConditionSchema>;
 
@@ -156,12 +161,13 @@ export const cohortExpressionSchema: z.ZodType<CohortExpression> =
     tagConditionSchema,
     manualConditionSchema,
     completedActionConditionSchema,
-    inProgressActionConditionSchema,
     missedActionDeadlineConditionSchema,
     formFieldValueConditionSchema,
     groupLeadConditionSchema,
     usMemberConditionSchema,
     nonUsMemberConditionSchema,
+    allMembersConditionSchema,
+    staffConditionSchema,
     andOperatorSchema,
     orOperatorSchema,
     notOperatorSchema,
@@ -179,40 +185,37 @@ export function isLeafCondition(expr: CohortExpression): expr is LeafCondition {
   return !isBooleanOperator(expr);
 }
 
-/**
- * Walk the expression tree and check if any TagCondition references the given tagId.
- */
-export function expressionReferencesTag(
+export function expressionHasLeaf(
   expr: CohortExpression | null | undefined,
-  tagId: string,
+  predicate: (leaf: LeafCondition) => boolean,
 ): boolean {
   if (!expr) return false;
 
   if (isLeafCondition(expr)) {
-    return expr.type === "Tag" && expr.tagId === tagId;
+    return predicate(expr);
   }
 
   if (expr.type === "NOT") {
-    return expressionReferencesTag(expr.child, tagId);
+    return expressionHasLeaf(expr.child, predicate);
   }
 
-  return expr.children.some((child) => expressionReferencesTag(child, tagId));
+  return expr.children.some((child) => expressionHasLeaf(child, predicate));
 }
 
 /**
- * The action ids from action leaves, and the form ids from FormFieldValue
- * leaves, the expression references.
+ * The action ids from action leaves, the form ids from FormFieldValue leaves,
+ * and the tag ids from Tag leaves, the expression references.
  */
 export function collectCohortDependencies(
   expr: CohortExpression | null | undefined,
-): { actionIds: Set<number>; formIds: Set<number> } {
+): { actionIds: Set<number>; formIds: Set<number>; tagIds: Set<string> } {
   const actionIds = new Set<number>();
   const formIds = new Set<number>();
+  const tagIds = new Set<string>();
 
   const walk = (node: CohortExpression): void => {
     switch (node.type) {
       case "CompletedAction":
-      case "InProgressAction":
       case "MissedActionDeadline":
         actionIds.add(node.actionId);
         break;
@@ -220,10 +223,14 @@ export function collectCohortDependencies(
         formIds.add(node.formId);
         break;
       case "Tag":
+        tagIds.add(node.tagId);
+        break;
       case "Manual":
       case "GroupLead":
       case "USMember":
       case "NonUSMember":
+      case "AllMembers":
+      case "Staff":
         break;
       case "AND":
       case "OR":
@@ -239,7 +246,7 @@ export function collectCohortDependencies(
   };
 
   if (expr) walk(expr);
-  return { actionIds, formIds };
+  return { actionIds, formIds, tagIds };
 }
 
 export type ReferencedAction = {

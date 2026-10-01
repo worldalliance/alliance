@@ -13,7 +13,11 @@ import {
   stripHiddenListCells,
   visibleListSubFields,
 } from "./visibility";
-import type { Condition, VisibleIfFormula } from "./visible-if-formula";
+import {
+  type Condition,
+  SelectedCountComparison,
+  type VisibleIfFormula,
+} from "./visible-if-formula";
 
 const formula = (conditions: Record<string, Condition>): VisibleIfFormula => ({
   conditions,
@@ -208,6 +212,80 @@ describe("a condition kind this build doesn't know", () => {
     });
     expect(isPageCurrentlyVisible(orPage, { f1: "yes" }, extras)).toBe(true);
     expect(isPageCurrentlyVisible(orPage, { f1: "no" }, extras)).toBe(false);
+  });
+});
+
+describe("hasValue: false condition on a choice answer", () => {
+  const noAnswerPage = page("p1", {
+    fields: [textField("f1")],
+    visibleIfFormula: formula({
+      c1: { kind: "hasValue", when: "choice", hasValue: false },
+    }),
+  });
+
+  it.each([
+    ["no answer", undefined],
+    ["an empty select", ""],
+    ["an empty multiselect", []],
+  ])("holds for %s", (_, choice) => {
+    const data: Record<string, FormValue> =
+      choice === undefined ? {} : { choice };
+    expect(isPageCurrentlyVisible(noAnswerPage, data, extras)).toBe(true);
+  });
+
+  it.each([
+    ["a declined contract", false],
+    ["a range value", 1],
+    ["a select value", "red"],
+    ["a multiselect selection", ["red"]],
+  ])("fails for %s", (_, choice) => {
+    expect(isPageCurrentlyVisible(noAnswerPage, { choice }, extras)).toBe(
+      false,
+    );
+  });
+});
+
+describe("selectedCount condition", () => {
+  const countPage = (comparison: SelectedCountComparison, count: number) =>
+    page("p1", {
+      fields: [textField("f1")],
+      visibleIfFormula: formula({
+        c1: { kind: "selectedCount", when: "tags", comparison, count },
+      }),
+    });
+  const selected = (n: number) => ({
+    tags: Array.from({ length: n }, (_, i) => `option-${i}`),
+  });
+
+  it.each([
+    [SelectedCountComparison.GreaterThan, [false, false, true]],
+    [SelectedCountComparison.AtLeast, [false, true, true]],
+    [SelectedCountComparison.LessThan, [true, false, false]],
+    [SelectedCountComparison.AtMost, [true, true, false]],
+    [SelectedCountComparison.Equals, [false, true, false]],
+  ])("compares %s 2 against 1, 2 and 3 selections", (comparison, expected) => {
+    expect(
+      [1, 2, 3].map((n) =>
+        isPageCurrentlyVisible(countPage(comparison, 2), selected(n), extras),
+      ),
+    ).toEqual(expected);
+  });
+
+  it("counts no answer as zero selected", () => {
+    expect(
+      isPageCurrentlyVisible(
+        countPage(SelectedCountComparison.LessThan, 1),
+        {},
+        extras,
+      ),
+    ).toBe(true);
+    expect(
+      isPageCurrentlyVisible(
+        countPage(SelectedCountComparison.AtLeast, 1),
+        {},
+        extras,
+      ),
+    ).toBe(false);
   });
 });
 

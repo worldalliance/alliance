@@ -57,9 +57,6 @@ export const getBaseUrl = (): string => {
 export const getInviteBaseUrl = (): string =>
   env.VITE_ALT_APP_URL || getBaseUrl();
 
-export const memberProfileUrl = (id: number | string): string =>
-  `${getBaseUrl()}/member/${id}`;
-
 export const getApiUrl = (): string => {
   if (mode === "development") {
     return devUrl("ALLIANCE_DEV_API_URL");

@@ -188,7 +188,7 @@ The resolver derives readiness (completion or withdrawal activity, deadline reac
 
 Prerequisites are an integer array on the action rather than a join table: the set is small, read whole, and never queried from the upstream side except by validation. Importing an exported action drops them, since action ids name different actions in another environment.
 
-The live recomputation path treats a member whose prerequisites are not ready as outside the cohort. The configuration then takes effect for members immediately, and shadow comparisons stay meaningful. Every read of an action's live cohort goes through that rule, including the rosters `InProgressAction` and `MissedActionDeadline` leaves read. The divergence check keeps comparing decisions with the expression alone, since a decided member's prerequisites had resolved; follow-up forms and the admin's expression preview have no prerequisites.
+The live recomputation path treats a member whose prerequisites are not ready as outside the cohort. The configuration then takes effect for members immediately, and shadow comparisons stay meaningful. Every read of an action's live cohort goes through that rule. The rosters `InProgressAction` and `MissedActionDeadline` leaves read take the upstream action's saved decision for each member it has decided (stage 7) and this rule for the rest. The divergence check keeps comparing decisions with the expression alone, since a decided member's prerequisites had resolved; follow-up forms and the admin's expression preview have no prerequisites.
 
 Ships alone: existing actions have no prerequisites, so nothing waits until staff configure one.
 
@@ -221,11 +221,21 @@ Ships alone: stages 2–5 already populated and verified the data.
 
 Switch admin and leader status tables, participation counts, analytics, and welcome queues. Follow-up-form eligibility, public guest actions, and form-variant selection keep their own policies.
 
+These readers take the cohort from saved decisions by the stage 6 rule: from the member-action start, with the live cohort before it and on a public-only action. None of them reconcile. The participant roster's staff callers (the `usersJoined` counter, the admin and leader status tables, and the incomplete-member list) switch first. Until the pass decides a just-launched action, at most five minutes unless it fails, these readers show its members as unassigned. That window is preferred to having a staff read write decisions. The counter refreshes on activity and on its ten-minute cron, so after a launch it trails the pass by up to one refresh (ALL-1254 tracks refreshing it from the pass).
+
+The welcome queue counts the onboarding actions each member's saved decisions assign, and takes the live cohort for an action that has not decided that member yet. Welcoming is permanent, since a staff comment removes the member from the queue, so an undecided action must still count against them. That covers a dependent onboarding action waiting on its prerequisite and a signer the signing writer has not reached.
+
+Dependent cohorts are in the user's scope, so the `InProgressAction` and `MissedActionDeadline` leaves read the upstream action's roster from its saved decision for each member it has decided, on both the population and single-member paths. A downstream decision therefore sees who was assigned the upstream action, not whom its expression would select now. A member the upstream has not decided yet reads from its live cohort, because the resolver evaluates these leaves and its decisions are final: reading them as outside would permanently exclude a member whose upstream decision had not been written yet, such as one signing while both actions are open, or one the pass reached downstream first. A `MissedActionDeadline` upstream that closed while its pass failed gets resolved-after-deadline exclusions, and a member excluded that way did not miss it, matching that no missed obligation is created.
+
+Analytics follows: retention by signing cohort, missed actions, and tenure cohorts read their rosters from saved decisions, so a member who moves after a decision counts toward the action they were assigned.
+
+With no reader left on the live roster, the `CohortSource` switch stage 6 added goes: the participant and base-user rosters always read saved decisions, with the live cohort before launch and on public-only actions.
+
 Ships alone: staff-facing reads only; stage 6 already made the member experience consistent.
 
 ### 8. Remove recomputation
 
-Delete the live cohort recomputation paths that stage 6 and 7 consumers left behind, and the stage 2 divergence logging. The cohort evaluator remains for the resolver and follow-up-form targeting.
+Delete the stage 2 divergence logging. Stage 7 already removed the live roster source. The live cohort remains for readers before launch, public-only actions, voluntary completion of an unassigned action, the resolver, and follow-up-form targeting.
 
 Ships alone: dead-code removal, after stages 6 and 7 have run in production long enough to trust.
 
@@ -239,7 +249,9 @@ Rewrite #81, #83, #87, #128, and #142 as prerequisites and drop the leaf, then d
 - #128: prerequisite #126; completed #126.
 - #142: prerequisite #141; did not answer "Yes" on form 126, or missed #141.
 
-Ships alone: cleanup after stage 8; decisions for these closed actions are already saved and must not change.
+A migration rewrites each action only while its stored expression and empty prerequisites match exactly, and fails if an `InProgressAction` leaf remains on any action or follow-up form, since the schema no longer parses one. Each upstream action has left member action, so the dropped leaf was false for everyone. Against staging data, each action's live cohort, its readers' cohort, and every member's single-member result are identical before and after. With the leaf gone, so do the builder's read-only rendering and the server's added-leaf rejection; the schema rejects the type.
+
+Ships alone: decisions for these closed actions are already saved and the migration leaves them untouched. It needs nothing from stage 8: these actions closed long before the divergence check's seven-day window.
 
 ### 10. Computed All Members and Staff options
 
@@ -247,11 +259,13 @@ Add two cohort leaves: `AllMembers`, every user, the same universe `NOT` evaluat
 
 In staging, All Members is the whole cohort of 60 actions and is ANDed with a `NOT Manual` exclusion on #11 and #133. Staff appears only on archived #82, which has no events and no decisions. Signup adds every new account to All Members (`AuthService.createReferredUser`), so the tag differs from every user only for accounts created some other way or removed by hand. In staging that is one admin account. Before this ships, count production users without the tag; a real member among them would join those cohorts. The Staff tag's seven members are a subset of the eight `staff` users, which no live action can notice.
 
-Ships alone: after stage 3, so every closed action's decisions are saved before its expression changes. The hourly divergence check reports any member the rewrite moved.
+`allMembersParticipating` counts an `AllMembers` leaf as well as the tag, since the rewrite would otherwise turn it false on every action. The migration finds both tags by name and reverts by rewriting both leaves back to them. Against staging data it rewrote 63 expressions, left none naming either tag, and moved only the one admin account without the tag into the 62 All Members cohorts.
+
+Ships alone: after stage 3, so every closed action's decisions are saved before its expression changes. The hourly divergence check reports any member the rewrite moved. The migration ships in the same deploy as the leaves, which the user accepted: a deploy runs migrations while the previous build still serves, and that build's schema rejects both leaves, so it fails to read the rewritten actions until the restart, and after a failed deploy's rollback until the migration is reverted by hand. The migration only has to handle staging data, so it guards no shape staging lacks.
 
 ### 11. Retire the All Members, Staff, and EU tags
 
-Signup stops adding the All Members tag, `UserModule.onModuleInit` stops creating it, and `allMembersParticipating` checks for the `AllMembers` leaf; the field stays on the wire. A migration deletes the All Members, Staff, and EU tags; EU has no references. Their `tag_users_user` rows cascade. The builder renders a `Tag` leaf whose tag no longer exists, rather than failing, for the non-US deletion below.
+Signup stops adding the All Members tag, `UserModule.onModuleInit` stops creating it, and `allMembersParticipating` stops checking for the tag; the field stays on the wire. A migration repeats the stage 10 rewrite, since the builder still offers both tags until they are gone, then deletes the All Members, Staff, and EU tags; EU has no references in staging, and the migration fails rather than deletes a tag a cohort expression still names. Their `tag_users_user` rows cascade. Action updates, reminder groups, and general updates also reference tags without cascading; staging has no such reference to the three, so a production one fails the migration rather than being guessed at. Reverting recreates the three by name, All Members holding every user and Staff the `staff` users, so reverting stage 10 finds them; EU's members are not restored. Against staging data it deleted the three tags and changed no expression, since stage 10 had already rewritten them. The builder shows a `Tag` leaf whose tag no longer exists as a deleted tag, where it used to look unset, for the non-US deletion below; staging's #55 already names such a tag. The server rejects saving or importing an action, or saving a follow-up form, whose cohort has a `Tag` leaf naming no existing tag, since it would silently match nobody; an admin tab loaded before the tags are deleted still offers them. An update checks only the tag ids its saved cohort did not already name, so a tag deleted under a cohort, as staff will do for non-US, does not block unrelated edits to that action or form. The expression preview is not checked.
 
 The non-US tag stays until stage 7 has shipped. #149 (`NOT non-US`) and #152 (`non-US`), both closed, still reference it, so deleting it earlier would make #149 everyone and #152 no one wherever cohorts are recomputed live: suspension plans until stage 6, and staff status tables and analytics until stage 7. After stage 7 staff delete it by hand from the admin; until stage 8 removes the divergence check, it logs both actions as diverged.
 

@@ -20,15 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Abort if dirty.txt has content
+      - uses: ./.github/actions/dirty-check
         if: ${{ github.ref_name == 'production' }}
-        run: |
-          if [ -f dirty.txt ] && [ -s dirty.txt ]; then
-            echo "dirty.txt has content. Aborting."
-            exit 1
-          else
-            echo "dirty.txt is empty or not found. Continuing."
-          fi
 
   test-backend-e2e:
     uses: ./.github/workflows/test-backend-e2e.yaml
@@ -825,6 +818,12 @@ jobs:
             export PANGRAM_API_URL=https://text.api.pangram.com/v3
             export EXPO_ACCESS_TOKEN=${{ secrets.EXPO_ACCESS_TOKEN }}
 
+            # Held until ~/nest-backend is final, rollback included; the prod →
+            # staging sync takes it around its own migrate-and-swap. pm2 calls
+            # close it so a daemon they spawn can't hold it.
+            exec 9>>~/migrate.lock
+            flock -w 300 9 || { echo "could not take ~/migrate.lock; a prod → staging sync may hold it"; exit 1; }
+
             rm -rf nest-backend-deploy-backup || true
             mv nest-backend nest-backend-deploy-backup || true
 
@@ -832,12 +831,12 @@ jobs:
               trap - ERR
               echo "Deployment failed - rolling back"
               cd ~/
-              pm2 delete nest-app || true
+              pm2 delete nest-app 9>&- || true
               if [ -d "nest-backend-deploy-backup" ]; then
                 rm -rf nest-backend
                 mv nest-backend-deploy-backup nest-backend
                 cd ~/nest-backend/server
-                pm2 start "bun src/main.ts" --name nest-app --interpreter none
+                pm2 start "bun src/main.ts" --name nest-app --interpreter none 9>&-
               fi
               exit 1
             }
@@ -853,14 +852,15 @@ jobs:
             # Run migrations
             bunx typeorm-ts-node-commonjs --dataSource src/datasources/dataSource.ts migration:run
 
-            pm2 delete nest-app || true
-            pm2 start "bun src/main.ts" --name nest-app --interpreter none
-            pm2 save
+            pm2 delete nest-app 9>&- || true
+            pm2 start "bun src/main.ts" --name nest-app --interpreter none 9>&-
+            pm2 save 9>&-
 
             sleep 10
             # The public /api/ path goes through the nginx vhost
             # deploy-react-app owns, not this job; verify-api covers it.
             curl --silent --fail --show-error --max-time 10 http://localhost:3005/ > /dev/null
+            exec 9>&-
 
             # The prod → staging sync runs from this box, outside the app, so
             # ship its script with the deploy. Staging only. Never fails the
@@ -871,6 +871,8 @@ jobs:
                 && mv -f ~/sync_prod_to_staging.sh.new ~/sync_prod_to_staging.sh \
                 && echo "installed ~/sync_prod_to_staging.sh" \
                 || echo "WARNING: could not install sync_prod_to_staging.sh"
+              printf '%s\n' "$DB_CA_CERT" > ~/db-ca.pem \
+                || echo "WARNING: could not write ~/db-ca.pem"
             fi
 
   verify-deployment:
@@ -998,38 +1000,11 @@ jobs:
           slack_post "$WEBHOOK" \
             "${MENTION:+$MENTION }Deploy $env_name did not succeed for $SUBJECT${FAILED:+ ($FAILED)}. <$RUN_URL|Open run>"
 
-  # Publishes an over-the-air JS/asset update to the production EAS Update
-  # channel. Only JS/asset changes ship this way; native changes still require a
-  # store build (the fingerprint runtimeVersion guards compatibility). Runs only
-  # on the production branch, after the backend is live so the OTA bundle never
-  # talks to an API older than itself.
+  # Runs only on the production branch, after the backend is live so the OTA
+  # bundle never talks to an API older than itself.
   publish-mobile-ota:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
     needs:
       - deploy-nest-backend
     if: ${{ github.ref_name == 'production' }}
-    environment: production
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.6
-
-      - name: Install Dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Publish EAS Update
-        run: bunx eas-cli@16.5.0 update --branch production --message "$COMMIT_MESSAGE" --non-interactive
-        working-directory: ./apps/mobile
-        env:
-          # `eas update` ignores eas.json build profiles, so pin the variant
-          # here. Must resolve the same app config as the production store build,
-          # or the fingerprint runtimeVersion won't match any installed build and
-          # the OTA never applies.
-          APP_VARIANT: production
-          EXPO_TOKEN: ${{ secrets.EXPO_ACCESS_TOKEN }}
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+    uses: ./.github/workflows/publish-mobile-ota.yaml
+    secrets: inherit

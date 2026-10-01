@@ -7,13 +7,14 @@ import {
   INVITE_REFUSAL_HEADING,
   useInvite,
 } from "@alliance/shared/lib/useInvite";
+import { useAppOrigin } from "@alliance/sharedweb/lib/appOrigin";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import {
   newDomainUrl,
   redirectAlreadyTried,
   redirectToNewDomain,
 } from "@alliance/sharedweb/lib/domainMigration";
-import { oauthStartUrl, useAppOrigin } from "@alliance/sharedweb/lib/oauth";
+import { oauthStartUrl } from "@alliance/sharedweb/lib/oauth";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import OAuthButtons from "@alliance/sharedweb/ui/OAuthButtons";

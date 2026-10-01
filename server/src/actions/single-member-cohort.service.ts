@@ -12,13 +12,14 @@ import {
   computeMissedActionDeadline,
 } from "src/utils/action-user";
 import type { Repository } from "typeorm";
+import { CohortAdmissionService } from "./cohort-admission.service";
+import { readsSavedDecisions } from "./cohort-decision";
 import {
   answerMatchesFormField,
   evaluateCohortExpression,
   singleUserCohortContext,
 } from "./cohort-expression.evaluator";
 import { ActionActivity } from "./entities/action-activity.entity";
-import { ActionStatus } from "./entities/action-event.entity";
 import {
   Action,
   parseAction,
@@ -27,8 +28,8 @@ import {
 import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 
 /**
- * The single-member cohort path: whether one member is in an expression's or
- * an action's live cohort.
+ * The single-member cohort path: whether one member is in an expression's
+ * cohort or an action's live cohort.
  */
 @Injectable()
 export class SingleMemberCohortService {
@@ -44,6 +45,7 @@ export class SingleMemberCohortService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly prerequisiteProgressService: PrerequisiteProgressService,
+    private readonly cohortAdmissionService: CohortAdmissionService,
   ) {}
 
   private loadActionWithEvents(
@@ -92,6 +94,27 @@ export class SingleMemberCohortService {
   }
 
   /**
+   * Whether the member is in the cohort of an action a roster leaf reads: their
+   * saved decision where one exists, the live cohort otherwise, as
+   * `resolveDecidedCohort` on the population path.
+   */
+  private async computeIsInRosterCohort(params: {
+    user: User;
+    action: ParsedAction;
+    visitedActionIds: Set<number>;
+    session: CohortResolutionSession;
+  }): Promise<boolean> {
+    const { user, action, session } = params;
+    if (readsSavedDecisions(action, new Date())) {
+      const included = (
+        await this.cohortAdmissionService.loadDecisionsForUser(user.id, session)
+      ).get(action.id);
+      if (included !== undefined) return included;
+    }
+    return this.computeIsInActionCohort(params);
+  }
+
+  /**
    * Check if a user is in a cohort expression's target set.
    */
   async computeIsInCohortExpression(params: {
@@ -129,37 +152,6 @@ export class SingleMemberCohortService {
         }
         return (await pending).has(actionId);
       },
-      inProgressAction: async (actionId: number) => {
-        if (visitedActionIds.has(actionId)) return false;
-        const fetched = await this.loadActionWithEvents(actionId, session);
-        if (!fetched) return false;
-        const action = parseAction(fetched);
-
-        const inCohort = await this.computeIsInActionCohort({
-          user,
-          action,
-          visitedActionIds: new Set(visitedActionIds).add(actionId),
-          session,
-        });
-        if (action.status !== ActionStatus.MemberAction) return false;
-
-        if (!inCohort) return false;
-        const terminal = await this.actionActivityRepository.findOne({
-          where: [
-            {
-              userId: user.id,
-              actionId,
-              type: ActionActivityType.USER_COMPLETED,
-            },
-            {
-              userId: user.id,
-              actionId,
-              type: ActionActivityType.USER_WONT_COMPLETE,
-            },
-          ],
-        });
-        return !terminal;
-      },
       missedActionDeadline: async (actionId: number) => {
         if (visitedActionIds.has(actionId)) return false;
         const fetched = await this.loadActionWithEvents(actionId, session);
@@ -184,7 +176,7 @@ export class SingleMemberCohortService {
               },
             ],
           }),
-          this.computeIsInActionCohort({
+          this.computeIsInRosterCohort({
             user,
             action,
             visitedActionIds: new Set(visitedActionIds).add(actionId),
@@ -238,6 +230,7 @@ export class SingleMemberCohortService {
         }
         return pending;
       },
+      isStaff: () => user.staff,
     });
 
     const memberIds = await evaluateCohortExpression(

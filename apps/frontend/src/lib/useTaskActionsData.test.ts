@@ -89,11 +89,11 @@ it("keeps the tasks it had when a refetch fails", async () => {
     Response.json({ message: "Internal server error" }, { status: 500 });
   const cached = [makeAction({ id: 1 })];
   const { client, wrapper } = queryWrapper();
-  client.setQueryData(["actions"], cached);
+  client.setQueryData(queryKeys.actions(), cached);
   const hook = renderHook(() => useTaskActionsData(), { wrapper });
 
   await waitFor(() =>
-    expect(client.getQueryState(["actions"])?.status).toBe("error"),
+    expect(client.getQueryState(queryKeys.actions())?.status).toBe("error"),
   );
   expect(hook.result.current.actions?.map((action) => action.id)).toEqual([1]);
   expect(hook.result.current.actionsFailure).toBeNull();

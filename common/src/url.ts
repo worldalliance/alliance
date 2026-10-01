@@ -113,3 +113,13 @@ export const siteHref = (url: string): string => {
   // resolve it against the host that follows, not the current one.
   return path.startsWith("//") ? url : path;
 };
+
+/** `url` on `origin` when it is a site path; anything else as it came. */
+export const withOrigin = ({
+  url,
+  origin,
+}: {
+  url: string;
+  origin: string;
+}): string =>
+  url.startsWith("/") && !url.startsWith("//") ? `${origin}${url}` : url;

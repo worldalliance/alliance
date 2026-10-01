@@ -66,11 +66,6 @@ describe("CohortDecisionService (e2e)", () => {
       start: addDays(now, -3),
       deadline: addDays(now, -1),
     });
-    const inProgress = await createAction({
-      start: addDays(now, -1),
-      deadline: addDays(now, 3),
-      cohortExpression: { type: "InProgressAction", actionId: deleted.id },
-    });
     const missed = await createAction({
       start: addDays(now, -1),
       deadline: addDays(now, 3),
@@ -80,9 +75,6 @@ describe("CohortDecisionService (e2e)", () => {
 
     await service.resolveAll(now);
 
-    expect((await decisionsFor(inProgress.id)).get(member.id)?.included).toBe(
-      false,
-    );
     expect((await decisionsFor(missed.id)).get(member.id)?.included).toBe(
       false,
     );

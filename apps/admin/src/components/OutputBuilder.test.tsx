@@ -1,5 +1,5 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import { AuthoredLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
+import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
@@ -9,7 +9,7 @@ afterEach(cleanup);
 
 const renderBuilder = (schema: FormSchema) =>
   render(
-    <AuthoredLinkProvider>
+    <SiteOriginLinkProvider origin="https://worldalliance.org">
       <QueryClientProvider client={new QueryClient()}>
         <ToastProvider>
           <OutputBuilder
@@ -19,7 +19,7 @@ const renderBuilder = (schema: FormSchema) =>
           />
         </ToastProvider>
       </QueryClientProvider>
-    </AuthoredLinkProvider>,
+    </SiteOriginLinkProvider>,
   );
 
 describe("OutputBuilder", () => {

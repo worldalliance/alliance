@@ -1,0 +1,4 @@
+- New condition kind `selectedCount` (`when`, `comparison`, `count`, optional `sourceFormId`) rather than extending `anySelected`, so saved `anySelected` conditions keep their shape. Clients that predate it block the schema through the existing unknown-kind check.
+- An unanswered or hidden multiselect counts as zero selected, matching `anySelected: false`. So "fewer than 2" holds before the user answers.
+- `count` is a non-negative integer.
+- The admin offers it for every multiselect controller, fixed-option or formula-backed, as a "Number selected…" choice beside "Any option selected", with an operator select and a count input. A new condition defaults to "at least 1".

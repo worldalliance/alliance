@@ -1,5 +1,6 @@
 import {
   getApiUrl as getApiUrlShared,
+  getBaseUrl,
   getWebSocketUrl as getWebSocketUrlShared,
 } from "@alliance/sharedweb/lib/config";
 
@@ -28,3 +29,9 @@ export const getApiUrl = (): string => {
 export const getWebSocketUrl = (): string => {
   return altAppOrigin() ?? getWebSocketUrlShared(import.meta.env.MODE);
 };
+
+/** The site on the domain the panel was loaded from. */
+export const getSiteUrl = (): string => altAppOrigin() ?? getBaseUrl();
+
+export const memberProfileUrl = (id: number): string =>
+  `${getSiteUrl()}/member/${id}`;

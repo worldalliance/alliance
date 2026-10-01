@@ -1,63 +1,59 @@
-import type { CohortExpression } from "@alliance/common/cohort-expression";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import CohortExpressionBuilder from "./CohortExpressionBuilder";
+import { cleanup, render, screen } from "@testing-library/react";
+import { TagEditor } from "./CohortExpressionBuilder";
 
 afterEach(cleanup);
 
-const renderBuilder = (
-  value: CohortExpression,
-  onChange: (value: CohortExpression | null) => void = () => {},
+const availableTags = [
+  {
+    id: "tag-1",
+    name: "non-US",
+    description: "",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    users: [],
+  },
+];
+
+const renderTagEditor = (
+  tagId: string,
+  { tagsLoading = false, tagsError = false } = {},
 ) =>
   render(
-    <QueryClientProvider client={new QueryClient()}>
-      <ToastProvider>
-        <CohortExpressionBuilder
-          value={value}
-          onChange={onChange}
-          availableTags={[]}
-          availableActions={[{ id: 1, name: "Call your rep" }]}
-          availableUsers={[]}
-        />
-      </ToastProvider>
-    </QueryClientProvider>,
+    <TagEditor
+      value={{ type: "Tag", tagId }}
+      onChange={jest.fn()}
+      availableTags={availableTags}
+      tagsLoading={tagsLoading}
+      tagsError={tagsError}
+    />,
   );
 
-const typeSelect = (type: string) => {
-  const select = screen
-    .getAllByRole<HTMLSelectElement>("combobox")
-    .find((element) => element.value === type);
-  if (!select) throw new Error(`no type select showing ${type}`);
-  return select;
-};
+const selectedLabel = () =>
+  screen.getByRole<HTMLSelectElement>("combobox").selectedOptions[0]
+    .textContent;
 
-const optionValues = (select: HTMLSelectElement) =>
-  Array.from(select.options).map((option) => option.value);
+describe("TagEditor", () => {
+  it("shows the selected tag's name", () => {
+    renderTagEditor("tag-1");
 
-describe("CohortExpressionBuilder", () => {
-  it("doesn't offer In-Progress Action for a new condition", () => {
-    renderBuilder({ type: "CompletedAction", actionId: 1 });
-
-    expect(optionValues(typeSelect("CompletedAction"))).not.toContain(
-      "InProgressAction",
-    );
+    expect(selectedLabel()).toBe("non-US");
   });
 
-  it("locks an existing In-Progress Action condition's action but lets it change type", () => {
-    const onChange = jest.fn();
-    renderBuilder({ type: "InProgressAction", actionId: 1 }, onChange);
+  it("shows a tag that no longer exists as deleted rather than unset", () => {
+    renderTagEditor("gone");
 
-    fireEvent.change(typeSelect("InProgressAction"), {
-      target: { value: "CompletedAction" },
-    });
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "CompletedAction" }),
-    );
-    const actionSelect = screen
-      .getAllByRole<HTMLSelectElement>("combobox")
-      .find((element) => element.value === "1");
-    expect(actionSelect?.disabled).toBe(true);
-    expect(screen.getByText(/Can't be added or edited anymore/)).toBeDefined();
+    expect(selectedLabel()).toBe("Deleted tag");
+  });
+
+  it("does not call a tag deleted while tags are loading", () => {
+    renderTagEditor("gone", { tagsLoading: true });
+
+    expect(selectedLabel()).toBe("Loading tags...");
+  });
+
+  it("does not call a tag deleted when the tags failed to load", () => {
+    renderTagEditor("gone", { tagsError: true });
+
+    expect(selectedLabel()).toBe("Couldn't load tags");
   });
 });

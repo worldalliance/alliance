@@ -1,4 +1,9 @@
-import type { RangeField } from "@alliance/common/forms/form-schema";
+import {
+  MAX_RANGE_OPTION_COUNT,
+  MIN_RANGE_OPTION_COUNT,
+  type RangeField,
+} from "@alliance/common/forms/form-schema";
+import { getRangeOptionCount } from "@alliance/shared/formrenderer";
 import { RequiredToggle } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
@@ -67,6 +72,8 @@ export function EditableRangeField({
           </label>
           <input
             type="number"
+            min={MIN_RANGE_OPTION_COUNT}
+            max={MAX_RANGE_OPTION_COUNT}
             value={field.optionCount}
             onChange={(event) => handleOptionCountChange(event.target.value)}
             className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -80,7 +87,7 @@ export function EditableRangeField({
           <input
             type="number"
             min={1}
-            max={field.optionCount}
+            max={getRangeOptionCount(field)}
             value={defaultValue}
             onChange={(event) => handleDefaultValueChange(event.target.value)}
             placeholder="None"

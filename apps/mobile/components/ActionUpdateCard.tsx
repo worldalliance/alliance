@@ -1,11 +1,10 @@
 import { readDisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
 import { ActionUpdateDto } from "@alliance/shared/client";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
-import { useQueryClient } from "@tanstack/react-query";
 import { formatDistance } from "date-fns";
 import { useMemo } from "react";
 import { View } from "react-native";
-import { markCachedNotificationsReadByContent } from "../lib/notificationsCache";
+import { useNotificationsCache } from "../lib/useNotificationsCache";
 import DisplayOnlyRenderer from "./DisplayOnlyRenderer";
 import Text, { FontWeight } from "./system/Text";
 
@@ -14,17 +13,12 @@ export interface ActionUpdateCardProps {
 }
 
 export default function ActionUpdateCard({ update }: ActionUpdateCardProps) {
-  const queryClient = useQueryClient();
+  const { markCachedReadByContent } = useNotificationsCache();
 
   useMarkUnreadContentRead({
     contentType: "action_update",
     contentIds: [update.id],
-    onMarked: (contentType, contentIds) =>
-      markCachedNotificationsReadByContent({
-        queryClient,
-        contentType,
-        contentIds,
-      }),
+    onMarked: markCachedReadByContent,
   });
 
   const schema = useMemo(

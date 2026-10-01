@@ -27,7 +27,6 @@ import type {
   UserActionRelationDetailDto,
   UserActionSummaryDto,
 } from "@alliance/shared/client/types.gen";
-import { calculateCompletionData } from "@alliance/shared/lib/actionUtils";
 import { getMemberCount } from "@alliance/shared/lib/communityUtils";
 import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 import { groupSettings } from "@alliance/shared/lib/copy";
@@ -42,6 +41,7 @@ import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { keyBy } from "es-toolkit";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { href, Link, useNavigate, useParams } from "react-router";
+import { useCompletedAllActiveActions } from "../lib/useCompletedAllActiveActions";
 
 const CommunityDetailPage: React.FC = () => {
   const { id } = useParams();
@@ -127,9 +127,6 @@ const CommunityDetailPage: React.FC = () => {
     actionSummaries: actionSummaries,
     userActionRelations,
   });
-  const [activeActions, setActiveActions] = useState<UserActionSummaryDto[]>(
-    [],
-  );
 
   const [memberContactInfo, setMemberContactInfo] = useState<Record<
     number,
@@ -144,11 +141,6 @@ const CommunityDetailPage: React.FC = () => {
           resp.data.actions.reverse();
 
           setActionSummaries(resp.data.actions);
-          setActiveActions(
-            resp.data.actions.filter(
-              (action) => action.status === "member_action",
-            ),
-          );
           const relationMap: Record<number, UserActionRelationDetailDto[]> =
             Object.fromEntries(
               resp.data.users.map((user) => [user.userId, user.relations]),
@@ -202,24 +194,10 @@ const CommunityDetailPage: React.FC = () => {
     }
   }, [community]);
 
-  const { completedAllCurrentActions } = useMemo<{
-    completedAllCurrentActions: Record<number, boolean>;
-    nCompleted: number;
-    nTotal: number;
-  }>(() => {
-    if (!userActionRelations) {
-      return {
-        completedAllCurrentActions: {} as Record<number, boolean>,
-        nCompleted: 0,
-        nTotal: 0,
-      };
-    }
-
-    return calculateCompletionData({
-      filteredActionIds: activeActions.map((a) => a.id),
-      userActionRelations,
-    });
-  }, [activeActions, userActionRelations]);
+  const completedAllCurrentActions = useCompletedAllActiveActions({
+    actionSummaries,
+    userActionRelations,
+  });
 
   const handleUpdateDetails = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {

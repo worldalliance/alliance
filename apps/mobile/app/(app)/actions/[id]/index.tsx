@@ -1,17 +1,15 @@
-import {
-  ActionActivityDto,
-  ActionReviewerIcon,
-  actionsGetActionActivities,
-  actionsLikeActivity,
-  actionsUnlikeActivity,
-} from "@alliance/shared/client";
-import { actionActivityDtoIsVisibleInFeed } from "@alliance/shared/lib/actionActivity";
+import { ActionReviewerIcon } from "@alliance/shared/client";
 import { useActionHandlers } from "@alliance/shared/lib/actionPage";
 import { showActionPageTaskSection } from "@alliance/shared/lib/actionPageTaskPanel";
+import { useInvalidateActions } from "@alliance/shared/lib/actionsListPage";
 import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
 import { nameListSeparator } from "@alliance/shared/lib/nameList";
+import useActivities, {
+  ActivityList,
+  UseActivitiesProps,
+  useRefreshActivities,
+} from "@alliance/shared/lib/useActivities";
 import { cn } from "@alliance/shared/styles/util";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import {
@@ -70,110 +68,23 @@ const tabs: { id: TabId; label: string }[] = [
   { id: "comments", label: "Comments" },
 ];
 
+const actionActivities = (actionId: number) =>
+  ({
+    list: ActivityList.Action,
+    objectId: actionId,
+    comments: true,
+  }) satisfies UseActivitiesProps;
+
 interface ActivityTabContentProps {
   actionId: number;
 }
 
 function ActivityTabContent({ actionId }: ActivityTabContentProps) {
-  const queryClient = useQueryClient();
-
-  const { data: activitiesResponse, isPending } = useQuery({
-    queryKey: ["actionActivities", actionId],
-    queryFn: () =>
-      actionsGetActionActivities({
-        path: { id: actionId },
-        query: { limit: 50, comments: true, before: new Date().toISOString() },
-      }),
-  });
-
-  const activities = (activitiesResponse?.data ?? []).sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  const { activities, handleLikeActivity, loading } = useActivities(
+    actionActivities(actionId),
   );
 
-  const likeMutation = useMutation({
-    mutationFn: async ({
-      activityId,
-      isLiked,
-    }: {
-      activityId: number;
-      isLiked: boolean;
-    }) => {
-      const response = isLiked
-        ? await actionsUnlikeActivity({ path: { id: activityId } })
-        : await actionsLikeActivity({ path: { id: activityId } });
-      if (response.response.ok && response.data) return response.data;
-      throw new Error("Like request failed");
-    },
-    onMutate: async ({ activityId, isLiked }) => {
-      const queryKey = ["actionActivities", actionId];
-      await queryClient.cancelQueries({ queryKey });
-      const previousData = queryClient.getQueryData(queryKey);
-
-      queryClient.setQueryData(
-        queryKey,
-        (oldData: typeof activitiesResponse) => {
-          if (!oldData?.data) return oldData;
-          return {
-            ...oldData,
-            data: oldData.data.map((a: ActionActivityDto) =>
-              a.id === activityId
-                ? {
-                    ...a,
-                    likedByMe: !isLiked,
-                    likesCount: isLiked ? a.likesCount - 1 : a.likesCount + 1,
-                  }
-                : a,
-            ),
-          };
-        },
-      );
-
-      return { previousData };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(
-          ["actionActivities", actionId],
-          context.previousData,
-        );
-      }
-    },
-    onSuccess: (data, { activityId }) => {
-      queryClient.setQueryData(
-        ["actionActivities", actionId],
-        (oldData: typeof activitiesResponse) => {
-          if (!oldData?.data) return oldData;
-          return {
-            ...oldData,
-            data: oldData.data.map((a) =>
-              a.id === activityId
-                ? {
-                    ...a,
-                    likes: data.likes,
-                    likesCount: data.likesCount,
-                    likedByMe: data.likedByMe,
-                  }
-                : a,
-            ),
-          };
-        },
-      );
-    },
-  });
-
-  const handleLike = useCallback(
-    async (activityId: number) => {
-      const activity = activities.find((a) => a.id === activityId);
-      if (!activity) return;
-      await likeMutation.mutateAsync({
-        activityId,
-        isLiked: activity.likedByMe ?? false,
-      });
-    },
-    [activities, likeMutation],
-  );
-
-  if (isPending) {
+  if (loading) {
     return (
       <View className="py-8 items-center">
         <ActivityIndicator size="small" color={colors.green} />
@@ -191,17 +102,14 @@ function ActivityTabContent({ actionId }: ActivityTabContentProps) {
 
   return (
     <View>
-      {activities.map(
-        (activity) =>
-          actionActivityDtoIsVisibleInFeed(activity) && (
-            <View
-              key={activity.id}
-              className="-mx-4 border-b-3 border-zinc-100"
-            >
-              <UserActivityCard activity={activity} handleLike={handleLike} />
-            </View>
-          ),
-      )}
+      {activities.map((activity) => (
+        <View key={activity.id} className="-mx-4 border-b-3 border-zinc-100">
+          <UserActivityCard
+            activity={activity}
+            handleLike={handleLikeActivity}
+          />
+        </View>
+      ))}
     </View>
   );
 }
@@ -212,11 +120,9 @@ export default function ActionDetailScreen() {
     tabs.find((t) => t.id === tab)?.id ?? "task",
   );
   const [refreshing, setRefreshing] = useState(false);
-  const queryClient = useQueryClient();
+  const refreshActivities = useRefreshActivities();
 
-  const reloadTasks = useCallback(() => {
-    router.reload();
-  }, []);
+  const reloadTasks = useInvalidateActions();
 
   const { action, loading, refetchAction, onCompleteAction, onOptOutAction } =
     useActionHandlers(parseInt(id), true, reloadTasks);
@@ -229,14 +135,12 @@ export default function ActionDetailScreen() {
     try {
       await refetchAction({ silent: true });
       if (activeTab === "activity") {
-        await queryClient.refetchQueries({
-          queryKey: ["actionActivities", action.id],
-        });
+        await refreshActivities(actionActivities(action.id));
       }
     } finally {
       setRefreshing(false);
     }
-  }, [action, refetchAction, queryClient, activeTab]);
+  }, [action, refetchAction, refreshActivities, activeTab]);
 
   if (loading) {
     return (

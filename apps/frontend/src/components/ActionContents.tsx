@@ -12,13 +12,9 @@ import { clipboardCopy } from "@alliance/shared/lib/copy";
 import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
 import { nameListSeparator } from "@alliance/shared/lib/nameList";
 import {
-  buildActionShareUrl,
-  buildShareText,
   getCompletedShareableTextTemplate,
   getDefaultShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
-import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import AggregateProgressBarBlock from "@alliance/sharedweb/ui/AggregateProgressBarBlock";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -36,6 +32,7 @@ import {
 } from "react-router";
 import chevronLeft from "../assets/icons8-expand-arrow-96.png";
 import { useAuth } from "../lib/AuthContext";
+import { copyActionShareText } from "../lib/actionShare";
 import { useLiveTaskFormAggregateViews } from "../lib/useLiveTaskFormAggregateViews";
 import ActionCompletedBarWithInfo from "../pages/app/ActionCompletedBarWithInfo";
 import TaskTimeInfo from "../pages/app/TaskTimeInfo";
@@ -156,20 +153,14 @@ const ActionContents = () => {
 
   const nextEvent = getNextEvent(action);
 
-  const handleShareAction = async () => {
-    const url = await buildActionShareUrl({
+  const handleShareAction = () =>
+    copyActionShareText({
       actionId: action.id,
-      baseUrl: getBaseUrl(),
       isAuthenticated,
-    });
-    const text = buildShareText({
       template: shareTemplate,
       formResponse,
       userName: user?.name,
-      url,
     });
-    return copyToClipboard(text);
-  };
 
   return (
     <div className="flex flex-col gap-y-3 flex-2 w-full">

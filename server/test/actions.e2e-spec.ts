@@ -2,7 +2,10 @@ import { ActionActivityType } from "@alliance/common/actionActivity";
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { milliseconds } from "date-fns";
 import { ActionCategory } from "src/actions/action-category";
-import { ActionsService } from "src/actions/actions.service";
+import {
+  ActionsService,
+  GLOBAL_FEED_FACEPILE_LIMIT,
+} from "src/actions/actions.service";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { SingleMemberCohortService } from "src/actions/single-member-cohort.service";
 import { ContractService } from "src/contract/contract.service";
@@ -855,126 +858,6 @@ describe("Actions (e2e)", () => {
       await userRepo.delete(incompleteUser.id);
     });
 
-    it("evaluates InProgressAction cohort expression against real activity data", async () => {
-      const prerequisiteAction = await actionRepo.save(
-        actionRepo.create({
-          name: `InProgress Prereq ${Date.now()}`,
-          category: [],
-          body: "Body",
-          visibilityMode: VisibilityMode.Public,
-          cohortExpression: {
-            type: "Tag",
-            tagId: ctx.defaultTag.id,
-          },
-        }),
-      );
-      await eventRepo.save(
-        eventRepo.create({
-          title: "Prerequisite Launch",
-          description: "Prerequisite",
-          newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
-          action: prerequisiteAction,
-        }),
-      );
-
-      const inProgressUser = await userService.create({
-        email: `inprogress-${Date.now()}@example.com`,
-        password: "Password123!",
-        name: "In Progress User",
-        tags: [ctx.defaultTag],
-      });
-
-      const doneUser = await userService.create({
-        email: `done-${Date.now()}@example.com`,
-        password: "Password123!",
-        name: "Done User",
-        tags: [ctx.defaultTag],
-      });
-
-      const neverJoinedUser = await userService.create({
-        email: `neverjoined-${Date.now()}@example.com`,
-        password: "Password123!",
-        name: "Never Joined User",
-      });
-
-      // inProgressUser is in the cohort (has defaultTag) but has NOT completed
-      // (no activity record needed - being in cohort without completion = in progress)
-
-      // doneUser completed the prerequisite
-      await activityRepo.save(
-        activityRepo.create({
-          userId: doneUser.id,
-          actionId: prerequisiteAction.id,
-          type: ActionActivityType.USER_COMPLETED,
-        }),
-      );
-
-      const targetAction = await actionRepo.save(
-        actionRepo.create({
-          name: `InProgressAction Cohort ${Date.now()}`,
-          category: [],
-          body: "Body",
-          visibilityMode: VisibilityMode.Public,
-          preventCompletion: false,
-          onboarding: true,
-          cohortExpression: {
-            type: "InProgressAction",
-            actionId: prerequisiteAction.id,
-          },
-        }),
-      );
-
-      const targetEvent = await eventRepo.save(
-        eventRepo.create({
-          title: "Launch",
-          description: "Go",
-          newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
-          action: targetAction,
-        }),
-      );
-
-      const makeToken = (u: User) => signAccessToken(ctx.jwtService, u);
-
-      const [inProgressRes, doneRes, neverJoinedRes] = await Promise.all([
-        request(ctx.app.getHttpServer())
-          .get("/actions/loggedIn")
-          .set("Authorization", `Bearer ${makeToken(inProgressUser)}`)
-          .expect(200),
-        request(ctx.app.getHttpServer())
-          .get("/actions/loggedIn")
-          .set("Authorization", `Bearer ${makeToken(doneUser)}`)
-          .expect(200),
-        request(ctx.app.getHttpServer())
-          .get("/actions/loggedIn")
-          .set("Authorization", `Bearer ${makeToken(neverJoinedUser)}`)
-          .expect(200),
-      ]);
-
-      const findTarget = (res: request.Response) =>
-        res.body.find((a: ActionDto) => a.id === targetAction.id);
-
-      // In-progress user should be in cohort
-      expect(findTarget(inProgressRes)?.canParticipate).toBe(true);
-      // Assignment comes from the saved decision, which applies the population
-      // path's required-and-present roster check to the upstream action.
-      expect(findTarget(inProgressRes)?.shouldParticipate).toBe(false);
-      // Completed user should NOT be in cohort (no longer in progress)
-      expect(findTarget(doneRes)?.canParticipate).toBe(false);
-      // Never joined user should NOT be in cohort
-      expect(findTarget(neverJoinedRes)?.canParticipate).toBe(false);
-
-      // Cleanup
-      await activityRepo.delete({ actionId: prerequisiteAction.id });
-      await eventRepo.delete(targetEvent.id);
-      await actionRepo.delete(targetAction.id);
-      await actionRepo.delete(prerequisiteAction.id);
-      await userRepo.delete(inProgressUser.id);
-      await userRepo.delete(doneUser.id);
-      await userRepo.delete(neverJoinedUser.id);
-    });
-
     it("resolves MissedActionDeadline the same on the single-user and population paths", async () => {
       const recipientService = ctx.app.get(ActionEventRecipientService);
       const singleMemberCohortService = ctx.app.get(SingleMemberCohortService);
@@ -1302,6 +1185,56 @@ describe("Actions (e2e)", () => {
         unplaceableUser.id,
       ]);
       await cityRepo.delete([usCity.id, frenchCity.id]);
+    });
+
+    it("selects every user on AllMembers and staff users on Staff, on both paths", async () => {
+      const recipientService = ctx.app.get(ActionEventRecipientService);
+      const singleMemberCohortService = ctx.app.get(SingleMemberCohortService);
+      const stamp = Date.now();
+      const member = await userService.create({
+        email: `computed-member-${stamp}@example.com`,
+        password: "Password123!",
+        name: "Member",
+      });
+      const staffCreated = await userService.create({
+        email: `computed-staff-${stamp}@example.com`,
+        password: "Password123!",
+        name: "Staffer",
+      });
+      await userRepo.update(staffCreated.id, { staff: true });
+      const [memberUser, staffUser] = await Promise.all([
+        userRepo.findOneOrFail({ where: { id: member.id } }),
+        userRepo.findOneOrFail({ where: { id: staffCreated.id } }),
+      ]);
+
+      const [allMembers, staff] = await Promise.all([
+        recipientService.resolveCohortMemberIds({ type: "AllMembers" }),
+        recipientService.resolveCohortMemberIds({ type: "Staff" }),
+      ]);
+      expect(allMembers.has(memberUser.id)).toBe(true);
+      expect(allMembers.has(staffUser.id)).toBe(true);
+      expect(staff.has(staffUser.id)).toBe(true);
+      expect(staff.has(memberUser.id)).toBe(false);
+
+      const perUser = async (user: User) => ({
+        allMembers: await singleMemberCohortService.computeIsInCohortExpression(
+          { user, cohortExpression: { type: "AllMembers" } },
+        ),
+        staff: await singleMemberCohortService.computeIsInCohortExpression({
+          user,
+          cohortExpression: { type: "Staff" },
+        }),
+      });
+      expect(await perUser(memberUser)).toEqual({
+        allMembers: true,
+        staff: false,
+      });
+      expect(await perUser(staffUser)).toEqual({
+        allMembers: true,
+        staff: true,
+      });
+
+      await userRepo.delete([memberUser.id, staffUser.id]);
     });
 
     it("evaluates FormFieldValue cohort expression against real form response data", async () => {
@@ -2776,6 +2709,7 @@ describe("Actions (e2e)", () => {
   describe("Global feed", () => {
     let activeUser: User | null = null;
     let suspendedUser: User | null = null;
+    let facepileUsers: User[] = [];
 
     afterEach(async () => {
       if (activeUser) {
@@ -2786,6 +2720,10 @@ describe("Actions (e2e)", () => {
         await userRepo.delete(suspendedUser.id);
         suspendedUser = null;
       }
+      for (const user of facepileUsers) {
+        await userRepo.delete(user.id);
+      }
+      facepileUsers = [];
     });
 
     it("excludes suspended members from new member feed items", async () => {
@@ -2842,6 +2780,56 @@ describe("Actions (e2e)", () => {
 
       expect(newMemberIds).toContain(activeUser.id);
       expect(newMemberIds).not.toContain(suspendedUser.id);
+    });
+
+    it("keeps a member with a profile picture in the facepile past a full run of more recent ones without", async () => {
+      const now = Date.now();
+      const createMember = (label: string, joinedMinutesAgo: number) =>
+        userService.create({
+          email: `${label}-${now}@example.com`,
+          password: "Password123!",
+          name: label,
+          tags: [ctx.defaultTag],
+          contractEvents: [
+            {
+              type: ContractEventType.SIGNED,
+              date: new Date(now - milliseconds({ minutes: joinedMinutesAgo })),
+              automatic: false,
+              contractId: ctx.defaultContractId,
+            },
+          ],
+        });
+
+      const photoUser = await createMember("with-photo", 30);
+      facepileUsers.push(photoUser);
+      await userRepo.update(photoUser.id, {
+        profilePicture: "https://example.com/photo.jpg",
+      });
+      for (let i = 1; i <= GLOBAL_FEED_FACEPILE_LIMIT; i++) {
+        facepileUsers.push(await createMember(`no-photo-${i}`, i));
+      }
+
+      const res = await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed")
+        .query({ limit: 20 })
+        .expect(200);
+
+      const newMembersItem = res.body.find(
+        (item) => item.type === GlobalFeedItemType.NewMembers,
+      );
+
+      expect(newMembersItem).toBeDefined();
+      const newMemberIds: number[] = newMembersItem.newMembers.users.map(
+        (user) => user.id,
+      );
+
+      expect(newMemberIds).toContain(photoUser.id);
+      expect(newMembersItem.newMembers.count).toBeGreaterThan(
+        GLOBAL_FEED_FACEPILE_LIMIT,
+      );
+      expect(new Date(newMembersItem.date).getTime()).toBeGreaterThanOrEqual(
+        now - milliseconds({ minutes: 1 }),
+      );
     });
   });
 
@@ -4894,10 +4882,13 @@ describe("Actions (e2e)", () => {
   });
 
   describe("Welcome queue", () => {
-    const welcomeQueue = () =>
-      request(ctx.app.getHttpServer())
+    const welcomeQueue = async () => {
+      await saveLiveCohortDecisions(ctx);
+      return request(ctx.app.getHttpServer())
         .get("/actions/welcome-queue")
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+    };
 
     beforeEach(async () => {
       await actionRepo.update({ onboarding: true }, { onboarding: false });
@@ -4949,7 +4940,7 @@ describe("Actions (e2e)", () => {
       );
 
     it("returns an empty queue when there are no active required onboarding tasks", async () => {
-      const response = await welcomeQueue().expect(200);
+      const response = await welcomeQueue();
       expect(response.body).toEqual({ requiredActionCount: 0, members: [] });
     });
 
@@ -4969,13 +4960,13 @@ describe("Actions (e2e)", () => {
         actionId: first.id,
         date: "2020-01-02",
       });
-      expect((await welcomeQueue().expect(200)).body.members).toHaveLength(2);
+      expect((await welcomeQueue()).body.members).toHaveLength(2);
 
       const { action: next, event } = await createWelcomeAction("New task", {
         actionOverrides: { onboarding: true },
       });
       await eventRepo.update(event.id, { date: new Date("2020-01-01") });
-      const queue: WelcomeQueueDto = (await welcomeQueue().expect(200)).body;
+      const queue: WelcomeQueueDto = (await welcomeQueue()).body;
       expect(queue.members).toMatchObject([
         { user: { id: older.id }, activityId: olderCompletion.id },
       ]);
@@ -4987,7 +4978,7 @@ describe("Actions (e2e)", () => {
         actionId: next.id,
         date: "2020-01-03",
       });
-      expect((await welcomeQueue().expect(200)).body.members).toMatchObject([
+      expect((await welcomeQueue()).body.members).toMatchObject([
         { user: { id: newer.id }, activityId: latest.id },
         { user: { id: older.id }, activityId: olderCompletion.id },
       ]);
@@ -5015,14 +5006,14 @@ describe("Actions (e2e)", () => {
           },
         },
       );
-      const queue: WelcomeQueueDto = (await welcomeQueue().expect(200)).body;
+      const queue: WelcomeQueueDto = (await welcomeQueue()).body;
       expect(queue.members.map((entry) => entry.user.id)).toEqual([outside.id]);
       const latest = await complete({
         userId: targeted.id,
         actionId: targetedTask.id,
         date: "2020-01-02",
       });
-      expect((await welcomeQueue().expect(200)).body.members).toMatchObject([
+      expect((await welcomeQueue()).body.members).toMatchObject([
         { user: { id: targeted.id }, activityId: latest.id },
         { user: { id: outside.id }, actionId: first.id },
       ]);
@@ -5060,7 +5051,7 @@ describe("Actions (e2e)", () => {
         actionId: other.id,
         date: "2020-01-03",
       });
-      const queue: WelcomeQueueDto = (await welcomeQueue().expect(200)).body;
+      const queue: WelcomeQueueDto = (await welcomeQueue()).body;
       expect(queue.members).toHaveLength(1);
       expect(queue.members[0]).toMatchObject({
         user: { id: user.id },
@@ -5084,7 +5075,7 @@ describe("Actions (e2e)", () => {
         actionId: action.id,
         date: "2020-01-01",
       });
-      expect((await welcomeQueue().expect(200)).body.members).toEqual([]);
+      expect((await welcomeQueue()).body.members).toEqual([]);
       const events = ctx.dataSource.getRepository(ContractEvent);
       await events.save(
         events.create({
@@ -5093,7 +5084,7 @@ describe("Actions (e2e)", () => {
           date: new Date("2020-01-02"),
         }),
       );
-      expect((await welcomeQueue().expect(200)).body.members).toEqual([]);
+      expect((await welcomeQueue()).body.members).toEqual([]);
       for (const date of ["2020-01-03", "2020-01-04"]) {
         await events.save(
           events.create({
@@ -5111,7 +5102,7 @@ describe("Actions (e2e)", () => {
           date: new Date("2020-01-05"),
         }),
       );
-      const queue: WelcomeQueueDto = (await welcomeQueue().expect(200)).body;
+      const queue: WelcomeQueueDto = (await welcomeQueue()).body;
       expect(queue.members).toMatchObject([
         { user: { id: user.id }, activityId: completion.id },
       ]);
@@ -5191,7 +5182,7 @@ describe("Actions (e2e)", () => {
       const staff = await userRepo.save({ ...(await member()), staff: true });
       await activityRepo.save({ ...newerLast, likes: [staff, older] });
 
-      const queue: WelcomeQueueDto = (await welcomeQueue().expect(200)).body;
+      const queue: WelcomeQueueDto = (await welcomeQueue()).body;
       expect(queue.members.map((entry) => entry.user.id)).toEqual([
         newer.id,
         older.id,
@@ -5230,13 +5221,13 @@ describe("Actions (e2e)", () => {
           createdAt: new Date("2020-01-02"),
         }),
       );
-      expect((await welcomeQueue().expect(200)).body.members).toEqual([]);
+      expect((await welcomeQueue()).body.members).toEqual([]);
       const latest = await complete({
         userId: user.id,
         actionId: action.id,
         date: "2020-01-03",
       });
-      expect((await welcomeQueue().expect(200)).body.members).toMatchObject([
+      expect((await welcomeQueue()).body.members).toMatchObject([
         { user: { id: user.id }, activityId: latest.id },
       ]);
     });
@@ -5323,7 +5314,7 @@ describe("Actions (e2e)", () => {
         });
         if (!scenario.excluded) expectedIds.push(user.id);
       }
-      const queue: WelcomeQueueDto = (await welcomeQueue().expect(200)).body;
+      const queue: WelcomeQueueDto = (await welcomeQueue()).body;
       expect(
         queue.members.map((entry) => entry.user.id).sort((a, b) => a - b),
       ).toEqual(expectedIds);

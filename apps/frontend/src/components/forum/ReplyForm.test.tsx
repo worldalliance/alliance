@@ -478,14 +478,17 @@ describe("ReplyForm", () => {
 
     await post();
 
-    expect(screen.getByRole("alert").textContent).toBe(
-      "The image was too large",
-    );
+    expect(
+      screen.getByText("The image was too large").getAttribute("role"),
+    ).toBe("alert");
+    expect(screen.queryByText("Reply cannot be empty")).toBeNull();
   });
 
   it("shows the rejection next to the field it came from", () => {
     render(<Harness onSubmit={() => {}} error="Reply cannot be empty" />);
 
-    expect(screen.getByRole("alert").textContent).toBe("Reply cannot be empty");
+    expect(screen.getByText("Reply cannot be empty").getAttribute("role")).toBe(
+      "alert",
+    );
   });
 });

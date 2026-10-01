@@ -1,4 +1,5 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { queryKeys } from "./queryKeys";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import { useActionAdmin } from "./useActionAdmin";
@@ -23,6 +24,7 @@ serveApi(
         { headers: { "Content-Type": "application/json" } },
       );
     },
+    "PATCH /actions/follow-up-forms/:followUpFormId": () => Response.json({}),
   }),
 );
 
@@ -45,5 +47,20 @@ describe("useActionAdmin", () => {
       expect(result.current.action?.memberActionStart).toBe(memberActionStart),
     );
     expect(fetches).toBe(2);
+  });
+
+  it("marks the all-actions list stale when a follow-up form is saved", async () => {
+    const query = queryWrapper();
+    query.client.setQueryData(queryKeys.actionsAllAdmin(), []);
+    const { result } = renderHook(() => useActionAdmin(1), query);
+    await waitFor(() => expect(result.current.action).toBeDefined());
+
+    await act(() =>
+      result.current.updateFollowUpForm({ followUpFormId: 7, body: {} }),
+    );
+
+    expect(
+      query.client.getQueryState(queryKeys.actionsAllAdmin())?.isInvalidated,
+    ).toBe(true);
   });
 });

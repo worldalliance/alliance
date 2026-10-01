@@ -1,4 +1,8 @@
-import { evaluateVisibilityFormulaWithUnknowns } from "./visible-if-formula";
+import {
+  conditionSchema,
+  evaluateVisibilityFormulaWithUnknowns,
+  SelectedCountComparison,
+} from "./visible-if-formula";
 
 describe("evaluateVisibilityFormulaWithUnknowns", () => {
   const results = { yes: true, no: false, unknown: undefined };
@@ -15,5 +19,26 @@ describe("evaluateVisibilityFormulaWithUnknowns", () => {
     ["missing", false],
   ] as const)("evaluates %j to %p", (node, expected) => {
     expect(evaluateVisibilityFormulaWithUnknowns(node, results)).toBe(expected);
+  });
+});
+
+describe("selectedCount condition schema", () => {
+  const condition = {
+    kind: "selectedCount",
+    when: "tags",
+    comparison: SelectedCountComparison.AtLeast,
+    count: 2,
+  };
+
+  it("accepts a whole, non-negative count", () => {
+    expect(conditionSchema.safeParse(condition).success).toBe(true);
+  });
+
+  it.each([
+    ["a negative count", { ...condition, count: -1 }],
+    ["a fractional count", { ...condition, count: 1.5 }],
+    ["an unknown comparison", { ...condition, comparison: "ne" }],
+  ])("rejects %s", (_, invalid) => {
+    expect(conditionSchema.safeParse(invalid).success).toBe(false);
   });
 });

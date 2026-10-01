@@ -37,7 +37,6 @@ import { Campaign } from "src/campaign/entities/campaign.entity";
 import { CommunityService } from "src/community/community.service";
 import { getStaffAssignableSlots } from "src/community/community.utils";
 import { Community } from "src/community/entities/community.entity";
-import { ALL_MEMBERS_TAG_NAME } from "src/constants";
 import { EventType } from "src/eventlog/event-log.entity";
 import {
   EventLogMessage,
@@ -1679,14 +1678,6 @@ export class UserService {
 
   async findAllTagSummaries(): Promise<Tag[]> {
     return this.tagRepository.find();
-  }
-
-  async findTagByName(name: string): Promise<Tag | null> {
-    return this.tagRepository.findOne({ where: { name } });
-  }
-
-  async findAllMembersTag(): Promise<Tag | null> {
-    return this.findTagByName(ALL_MEMBERS_TAG_NAME);
   }
 
   async findTagOrFail(id: string): Promise<Tag> {

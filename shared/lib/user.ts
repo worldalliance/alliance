@@ -30,7 +30,7 @@ import {
 } from "../client";
 import { failedToLoad } from "./failedToLoad";
 import { thrownRefusalMessage } from "./hey-api";
-import { queryKeys } from "./queryKeys";
+import { useInvalidateVisibilityContext } from "./useVisibilityContext";
 
 export const userQueryKeys = {
   profile: (userId: number) => ["user", userId, "profile"] as const,
@@ -408,6 +408,7 @@ export const useUpdateProfileMutation = (
   options?: UpdateProfileMutationOptions,
 ) => {
   const queryClient = useQueryClient();
+  const invalidateVisibilityContext = useInvalidateVisibilityContext();
   return useMutation({
     mutationFn: async (payload: UpdateProfileDto) => {
       const response = await userUpdate({ body: payload });
@@ -421,9 +422,7 @@ export const useUpdateProfileMutation = (
       if (targetId) {
         queryClient.setQueryData(userQueryKeys.profile(targetId), data);
       }
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.myVisibilityContext(),
-      });
+      invalidateVisibilityContext();
       options?.onSuccess?.(data, variables, onMutateResult, context);
     },
     onError: (error, variables, onMutateResult, context) => {

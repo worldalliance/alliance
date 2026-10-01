@@ -66,6 +66,7 @@ import Checkbox, { CheckboxSize } from "../system/Checkbox";
 import Text, { FontWeight } from "../system/Text";
 import CityAutosuggest from "./CityAutosuggest";
 import { getCustomComponentById } from "./customComponentRegistry";
+import { fieldAccessibilityLabel } from "./fieldAccessibilityLabel";
 import FormModal from "./FormModal";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import PhoneNumberInput from "./PhoneNumberInput";
@@ -221,6 +222,7 @@ export function RenderField({
             required={required}
           />
           <TextInput
+            accessibilityLabel={fieldAccessibilityLabel(field)}
             className={inputBase}
             value={(value as string) ?? ""}
             onChangeText={(text) => onChange?.(text)}
@@ -244,6 +246,7 @@ export function RenderField({
             required={required}
           />
           <TextInput
+            accessibilityLabel={fieldAccessibilityLabel(field)}
             className={cn(inputBase, "text-base")}
             style={{
               lineHeight: TEXTAREA_LINE_HEIGHT,
@@ -284,6 +287,7 @@ export function RenderField({
             required={required}
           />
           <TextInput
+            accessibilityLabel={fieldAccessibilityLabel(field)}
             className={inputBase}
             value={(value as string) ?? ""}
             onChangeText={(text) => onChange?.(text)}
@@ -326,6 +330,7 @@ export function RenderField({
             required={required}
           />
           <TextInput
+            accessibilityLabel={fieldAccessibilityLabel(field)}
             className={inputBase}
             value={value === undefined || value === null ? "" : String(value)}
             onChangeText={(text) => {
@@ -712,6 +717,7 @@ export function RenderField({
             required={required}
           />
           <TextInput
+            accessibilityLabel={fieldAccessibilityLabel(field)}
             className={inputBase}
             value={(value as string) ?? ""}
             onChangeText={(text) => onChange?.(text)}
@@ -780,6 +786,7 @@ export function RenderField({
             debounceMs={(field as CityField).debounceMs}
             disabled={disabled}
             allowCustomValue
+            accessibilityLabel={fieldAccessibilityLabel(field)}
             onSelect={(city) => onChange?.(city)}
           />
           {renderValidationMessage(errorMessage)}
@@ -1152,6 +1159,7 @@ export function PhoneInputField({
           }
         }}
         disabled={disabled || !onChange}
+        accessibilityLabel={fieldAccessibilityLabel(field)}
         placeholder={field.placeholder || "Enter phone number"}
         error={baseError}
       />
@@ -1247,6 +1255,7 @@ export function TimeInputField({
           )}
         >
           <TextInput
+            accessibilityLabel={fieldAccessibilityLabel(field)}
             className="flex-1 text-base text-zinc-900"
             value={inputValue}
             onChangeText={(text) => {

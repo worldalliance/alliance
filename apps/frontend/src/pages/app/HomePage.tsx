@@ -1,11 +1,14 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
 import { withCount } from "@alliance/common/plural";
-import { ActionDto, FollowUpFormDto } from "@alliance/shared/client";
+import { FollowUpFormDto } from "@alliance/shared/client";
+import {
+  useInvalidateActions,
+  useMarkActionCompleted,
+} from "@alliance/shared/lib/actionsListPage";
 import {
   ActionWithAwayStatus,
   homePagePriorityComparator,
-  withOptimisticRelation,
 } from "@alliance/shared/lib/actionUtils";
 import {
   noTasksContractSuspended,
@@ -72,6 +75,8 @@ function TaskNavigatorListShell({ children }: { children: ReactNode }) {
 
 const HomePage = () => {
   const queryClient = useQueryClient();
+  const invalidateActions = useInvalidateActions();
+  const markActionCompleted = useMarkActionCompleted();
   const hasNoTasks = useRef(true);
   const {
     actions: liveActions,
@@ -186,9 +191,9 @@ const HomePage = () => {
   }, [actions, activeCompletableFollowUpForms, completedActions]);
 
   const taskNavigatorItems = useMemo<TaskNavigatorItem[]>(() => {
-    const actionCards: TaskNavigatorItem[] = [...todoActions]
-      .sort(homePagePriorityComparator)
-      .map((action) => ({ kind: "action", action }) as const);
+    const actionCards: TaskNavigatorItem[] = todoActions.map(
+      (action) => ({ kind: "action", action }) as const,
+    );
 
     // Follow-up forms come after the todo actions; order within follow-ups is
     // already handled by `activeCompletableFollowUpForms`.
@@ -452,20 +457,11 @@ const HomePage = () => {
                   selectedTaskNavigatorItem.action.userRelation ?? "none"
                 }
                 onCompleteAction={() => {
-                  queryClient.setQueryData<ActionDto[] | undefined>(
-                    ["actions"],
-                    (prev) =>
-                      prev?.map((action) =>
-                        action.id === selectedTaskNavigatorItem.action.id
-                          ? withOptimisticRelation(action, "completed")
-                          : action,
-                      ),
-                  );
-                  queryClient.invalidateQueries({ queryKey: ["actions"] });
+                  markActionCompleted(selectedTaskNavigatorItem.action.id);
                   resetHomeFeed(queryClient);
                 }}
                 onUpdateActionState={() => {
-                  queryClient.invalidateQueries({ queryKey: ["actions"] });
+                  invalidateActions();
                   mainScrollRef.current?.scrollTo({
                     top: 0,
                     behavior: "instant",
@@ -486,9 +482,7 @@ const HomePage = () => {
                 followUpForm={selectedTaskNavigatorItem.followUpForm}
                 actionId={selectedTaskNavigatorItem.actionId}
                 onSubmitted={() => {
-                  queryClient.invalidateQueries({
-                    queryKey: ["actions"],
-                  });
+                  invalidateActions();
                   resetHomeFeed(queryClient);
                 }}
               />
@@ -511,9 +505,7 @@ const HomePage = () => {
                               followUpForm={followUpForm}
                               actionId={actionId}
                               onSubmitted={() => {
-                                queryClient.invalidateQueries({
-                                  queryKey: ["actions"],
-                                });
+                                invalidateActions();
                               }}
                             />
                           ),
@@ -574,6 +566,8 @@ const HomePage = () => {
     actionsFailure,
     taskNavigatorListContent,
     queryClient,
+    invalidateActions,
+    markActionCompleted,
     activeCompletableFollowUpForms,
     isLargeScreen,
     mocked,

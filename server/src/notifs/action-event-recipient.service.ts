@@ -3,10 +3,7 @@ import { ActionActivityType } from "@alliance/common/actionActivity";
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import {
-  CohortAdmissionService,
-  CohortSource,
-} from "src/actions/cohort-admission.service";
+import { CohortAdmissionService } from "src/actions/cohort-admission.service";
 import { readsSavedDecisions } from "src/actions/cohort-decision";
 import {
   answerMatchesFormField,
@@ -32,10 +29,7 @@ import {
 import { yieldToEventLoop } from "src/utils/event-loop";
 import { In, type Repository } from "typeorm";
 import { ActionActivity } from "../actions/entities/action-activity.entity";
-import {
-  ActionEvent,
-  ActionStatus,
-} from "../actions/entities/action-event.entity";
+import { ActionEvent } from "../actions/entities/action-event.entity";
 import {
   Action,
   parseAction,
@@ -78,9 +72,8 @@ export class ActionEventRecipientService {
    * one request/batch) so the active-user load and per-leaf queries are
    * shared instead of re-run per expression. `resolvingActionIds` is the
    * chain of action ids currently being resolved above this call through
-   * action-referencing leaves (InProgressAction, MissedActionDeadline); a
-   * leaf that re-enters an id already on the chain resolves to the empty
-   * set, so cyclic expressions terminate.
+   * `MissedActionDeadline` leaves; a leaf that re-enters an id already on the
+   * chain resolves to the empty set, so cyclic expressions terminate.
    */
   async resolveCohortMemberIds(
     expression: CohortExpression | null | undefined,
@@ -130,39 +123,58 @@ export class ActionEventRecipientService {
   }
 
   /**
-   * An action's cohort from `source`. Saved decisions stand in for the live
-   * cohort from launch on, so a member the pass has not decided yet reads as
-   * outside it; see `readsSavedDecisions`.
+   * An action's cohort as its readers see it. Saved decisions stand in for the
+   * live cohort from launch on, so a member the pass has not decided yet reads
+   * as outside it; see `readsSavedDecisions`.
    */
   resolveCohort(params: {
     action: ParsedAction;
-    source: CohortSource;
     session: CohortResolutionSession;
     resolvingActionIds?: ReadonlySet<number>;
   }): Promise<Set<number>> {
-    const { action, source, session, resolvingActionIds } = params;
-    switch (source) {
-      case CohortSource.Decisions:
-        if (readsSavedDecisions(action, new Date())) {
-          return this.cohortAdmissionService.loadAdmittedMemberIds(
-            action.id,
-            session,
-          );
-        }
-        return this.resolveActionCohortMemberIds({
-          action,
-          session,
-          resolvingActionIds,
-        });
-      case CohortSource.Live:
-        return this.resolveActionCohortMemberIds({
-          action,
-          session,
-          resolvingActionIds,
-        });
-      default:
-        throw new Error(`unknown cohort source: ${source satisfies never}`);
+    const { action, session, resolvingActionIds } = params;
+    if (readsSavedDecisions(action, new Date())) {
+      return this.cohortAdmissionService.loadAdmittedMemberIds(
+        action.id,
+        session,
+      );
     }
+    return this.resolveActionCohortMemberIds({
+      action,
+      session,
+      resolvingActionIds,
+    });
+  }
+
+  /**
+   * An action's cohort taking each member's saved decision where one exists
+   * and the live cohort otherwise, for readers that must not count an
+   * undecided member as outside.
+   */
+  async resolveDecidedCohort(params: {
+    action: ParsedAction;
+    session: CohortResolutionSession;
+    resolvingActionIds?: ReadonlySet<number>;
+  }): Promise<Set<number>> {
+    const { action, session, resolvingActionIds } = params;
+    const live = this.resolveActionCohortMemberIds({
+      action,
+      session,
+      resolvingActionIds,
+    });
+    if (!readsSavedDecisions(action, new Date())) {
+      return live;
+    }
+    const [decisions, liveIds] = await Promise.all([
+      this.cohortAdmissionService.loadDecisionsForAction(action.id, session),
+      live,
+    ]);
+    return new Set([
+      ...[...decisions].flatMap(([userId, included]) =>
+        included ? [userId] : [],
+      ),
+      ...[...liveIds].filter((userId) => !decisions.has(userId)),
+    ]);
   }
 
   private buildCohortContext(
@@ -200,29 +212,10 @@ export class ActionEventRecipientService {
         }
         return pending;
       },
-      getUserIdsInProgressAction: (actionId: number) => {
+      getUserIdsMissedActionDeadline: (actionId: number) => {
         if (!actionId) return Promise.resolve(new Set());
         // Cycle cut: this action's roster is already being resolved higher
         // up the chain, so its membership contributes nothing new.
-        if (resolvingActionIds.has(actionId)) {
-          return Promise.resolve(new Set());
-        }
-        const key = `${chainKey}|${actionId}`;
-        let pending = session.inProgressActionUserIds.get(key);
-        if (!pending) {
-          pending = this.loadInProgressActionUserIds(
-            actionId,
-            session,
-            new Set([...resolvingActionIds, actionId]),
-          );
-          session.inProgressActionUserIds.set(key, pending);
-        }
-        return pending;
-      },
-      getUserIdsMissedActionDeadline: (actionId: number) => {
-        if (!actionId) return Promise.resolve(new Set());
-        // Same cycle cut as InProgressAction: resolving this action's roster
-        // recurses into its cohort expression.
         if (resolvingActionIds.has(actionId)) {
           return Promise.resolve(new Set());
         }
@@ -277,6 +270,10 @@ export class ActionEventRecipientService {
         (session.candidateUserIds ??= this.userService
           .findActiveUserIds()
           .then((ids) => new Set(ids))),
+      getStaffUserIds: () =>
+        (session.staffUserIds ??= this.userRepository
+          .find({ where: { staff: true }, select: { id: true } })
+          .then((users) => new Set(users.map((user) => user.id)))),
     };
   }
 
@@ -322,21 +319,6 @@ export class ActionEventRecipientService {
     return action && parseAction(action);
   }
 
-  private async loadInProgressActionUserIds(
-    actionId: number,
-    session: CohortResolutionSession,
-    resolvingActionIds: ReadonlySet<number>,
-  ): Promise<Set<number>> {
-    const action = await this.loadRosterLeafAction(actionId);
-    if (!action || action.status !== ActionStatus.MemberAction)
-      return new Set();
-    return this.loadUncompletedRosterUserIds(
-      action,
-      session,
-      resolvingActionIds,
-    );
-  }
-
   private async loadMissedActionDeadlineUserIds(
     actionId: number,
     session: CohortResolutionSession,
@@ -347,11 +329,7 @@ export class ActionEventRecipientService {
     if (!action || !canMissActionDeadline(action, now)) return new Set();
     const [users, cohortMemberIds, terminalUserIds] = await Promise.all([
       this.getActiveUsers(session),
-      this.resolveActionCohortMemberIds({
-        action,
-        session,
-        resolvingActionIds,
-      }),
+      this.resolveDecidedCohort({ action, session, resolvingActionIds }),
       this.prerequisiteProgressService.loadTerminalUserIds(action.id),
     ]);
     return new Set(
@@ -366,39 +344,6 @@ export class ActionEventRecipientService {
           }),
         )
         .map((user) => user.id),
-    );
-  }
-
-  /**
-   * The action's member-action roster minus users with a terminal activity
-   * (completed or withdrawn).
-   */
-  private async loadUncompletedRosterUserIds(
-    action: ParsedAction,
-    session: CohortResolutionSession,
-    resolvingActionIds: ReadonlySet<number>,
-  ): Promise<Set<number>> {
-    const event = action.events.find(
-      (e) => e.newStatus === ActionStatus.MemberAction,
-    );
-    if (!event) return new Set();
-    const baseUsers = await this.findBaseUsersForEvent({
-      action,
-      eventId: event.id,
-      cohortSource: CohortSource.Live,
-      session,
-      resolvingActionIds,
-      // Dismissal is a view-only "mark as seen" overlay (see
-      // ActionActivityType.USER_DISMISSED) — it hides the card and mutes
-      // reminders but doesn't end participation, so it must not drop the
-      // user out of a cohort leaf's member set (matching the single-user
-      // predicates, which never consider dismissal).
-      includeDismissed: true,
-    });
-    const terminalIds =
-      await this.prerequisiteProgressService.loadTerminalUserIds(action.id);
-    return new Set(
-      baseUsers.map((u) => u.id).filter((id) => !terminalIds.has(id)),
     );
   }
 
@@ -437,15 +382,13 @@ export class ActionEventRecipientService {
    */
   public async findBaseUsersForEvents(params: {
     entries: Array<{ action: ParsedAction; eventId: number }>;
-    cohortSource: CohortSource;
     includeSuspended?: boolean;
     includeDismissed?: boolean;
     /** Share loads across calls within one request; see resolveCohortMemberIds. */
     session?: CohortResolutionSession;
     resolvingActionIds?: ReadonlySet<number>;
   }): Promise<Map<number, User[]>> {
-    const { entries, cohortSource, includeSuspended, includeDismissed } =
-      params;
+    const { entries, includeSuspended, includeDismissed } = params;
     if (entries.length === 0) return new Map();
     const session = params.session ?? new CohortResolutionSession();
     const resolvingActionIds = params.resolvingActionIds ?? new Set<number>();
@@ -479,7 +422,6 @@ export class ActionEventRecipientService {
         action.id,
         this.resolveCohort({
           action,
-          source: cohortSource,
           session,
           resolvingActionIds,
         }),
@@ -528,7 +470,6 @@ export class ActionEventRecipientService {
   public async findBaseUsersForEvent(params: {
     action: ParsedAction;
     eventId: number;
-    cohortSource: CohortSource;
     includeSuspended?: boolean;
     includeDismissed?: boolean;
     session?: CohortResolutionSession;
@@ -537,7 +478,6 @@ export class ActionEventRecipientService {
     const {
       action,
       eventId,
-      cohortSource,
       includeSuspended,
       includeDismissed,
       session,
@@ -550,7 +490,6 @@ export class ActionEventRecipientService {
 
     const result = await this.findBaseUsersForEvents({
       entries: [{ action, eventId }],
-      cohortSource,
       includeSuspended,
       includeDismissed,
       session,
@@ -612,7 +551,6 @@ export class ActionEventRecipientService {
         .then((acts) => new Set(acts.map((a) => a.userId))),
       this.resolveCohort({
         action: eventAction,
-        source: CohortSource.Decisions,
         session,
       }),
       Promise.all(
@@ -620,7 +558,6 @@ export class ActionEventRecipientService {
           actionId: action.id,
           memberIds: await this.resolveCohort({
             action,
-            source: CohortSource.Decisions,
             session,
           }),
         })),
@@ -717,7 +654,6 @@ export class ActionEventRecipientService {
           // The event relation carries a raw db entity; parse at first use.
           action: parseAction(event.action),
           eventId: event.id,
-          cohortSource: CohortSource.Decisions,
         });
     return type === ActionEventNotifType.Announcement
       ? users

@@ -238,7 +238,7 @@ it("says a provider linked on return, and nothing for a cancellation", async () 
 
   render(account({ entry: "/settings?appleError=cancelled" }));
   await screen.findByText("g@example.com");
-  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getByRole("alert").textContent).toBe("");
 });
 
 it("says why a link was refused on return", async () => {

@@ -145,6 +145,8 @@
         "es-toolkit": "^1.49.0",
         "express": "^5.1.0",
         "gray-matter": "^4.0.3",
+        "hast-util-to-html": "^9.0.5",
+        "hast-util-to-text": "^4.0.2",
         "hls.js": "^1.6.15",
         "html2canvas-pro": "^1.6.2",
         "install": "^0.13.0",
@@ -155,6 +157,7 @@
         "libphonenumber-js": "^1.12.17",
         "lucide-react": "^0.563.0",
         "mdast-util-from-markdown": "^2.0.3",
+        "mdast-util-to-hast": "^13.2.1",
         "mdast-util-to-string": "^4.0.0",
         "morgan": "^1.10.0",
         "pluralize": "^8.0.0",
@@ -177,6 +180,7 @@
         "tailwind-variants": "^1.0.0",
         "turndown": "^7.2.4",
         "typescript": "^5.9.3",
+        "unist-util-visit-parents": "^6.0.2",
         "validator": "^13.12.0",
         "web-vitals": "^4.2.4",
         "yet-another-react-lightbox": "^3.32.1",
@@ -196,6 +200,7 @@
         "@types/compression": "^1",
         "@types/d3": "^7.4.3",
         "@types/express": "^5",
+        "@types/hast": "^3.0.4",
         "@types/jest": "^29.5.14",
         "@types/morgan": "^1",
         "@types/node": "^22.10.7",
@@ -263,9 +268,12 @@
         "expo-updates": "~57.0.22",
         "expo-video": "~57.0.4",
         "expo-web-browser": "~57.0.3",
+        "hast-util-to-html": "^9.0.5",
+        "hast-util-to-text": "^4.0.2",
         "lucide-react-native": "^0.562.0",
         "markdown-it": "^10.0.0",
         "mdast-util-from-markdown": "^2.0.3",
+        "mdast-util-to-hast": "^13.2.1",
         "mdast-util-to-string": "^4.0.0",
         "posthog-react-native": "^4.17.2",
         "posthog-react-native-session-replay": "^1.5.3",
@@ -284,6 +292,7 @@
         "react-native-webview": "13.16.1",
         "react-native-worklets": "0.10.1",
         "tailwindcss": "^4.1.18",
+        "unist-util-visit-parents": "^6.0.2",
         "uniwind": "^1.12.0",
         "zustand": "^5.0.4",
       },
@@ -291,6 +300,7 @@
         "@babel/core": "^7.25.2",
         "@hey-api/openapi-ts": "^0.67.3",
         "@react-native-community/cli": "20.2.0",
+        "@types/hast": "^3.0.4",
         "@types/jest": "^29.5.14",
         "@types/markdown-it": "10.0.2",
         "@types/node": "^22.10.7",
@@ -456,12 +466,16 @@
         "clsx": "^2.1.1",
         "date-fns": "^4.1.0",
         "es-toolkit": "^1.49.0",
+        "hast-util-to-html": "^9.0.5",
+        "hast-util-to-text": "^4.0.2",
         "lucide-react": "^0.563.0",
         "mdast-util-from-markdown": "^2.0.3",
+        "mdast-util-to-hast": "^13.2.1",
         "mdast-util-to-string": "^4.0.0",
         "react-router": "7.13.2",
         "socket.io-client": "^4.8.1",
         "tailwind-merge": "^3.5.0",
+        "unist-util-visit-parents": "^6.0.2",
         "zod": "^4.3.6",
       },
       "devDependencies": {
@@ -470,6 +484,7 @@
         "@testing-library/dom": "^10.4.0",
         "@testing-library/react": "^16.3.2",
         "@types/bun": "^1.3.6",
+        "@types/hast": "^3.0.4",
         "@types/jest": "^29.5.14",
         "eslint-plugin-react-refresh": "^0.4.20",
         "socket.io": "^4.8.1",
@@ -3205,11 +3220,15 @@
 
     "hasown": ["hasown@2.0.2", "", { "dependencies": { "function-bind": "^1.1.2" } }, "sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ=="],
 
+    "hast-util-is-element": ["hast-util-is-element@3.0.0", "", { "dependencies": { "@types/hast": "^3.0.0" } }, "sha512-Val9mnv2IWpLbNPqc/pUem+a7Ipj2aHacCwgNfTiK0vJKl0LF+4Ba4+v1oPHFpf3bLYmreq0/l3Gud9S5OH42g=="],
+
     "hast-util-sanitize": ["hast-util-sanitize@5.0.2", "", { "dependencies": { "@types/hast": "^3.0.0", "@ungap/structured-clone": "^1.0.0", "unist-util-position": "^5.0.0" } }, "sha512-3yTWghByc50aGS7JlGhk61SPenfE/p1oaFeNwkOOyrscaOkMGrcW9+Cy/QAIOBpZxP1yqDIzFMR0+Np0i0+usg=="],
 
     "hast-util-to-html": ["hast-util-to-html@9.0.5", "", { "dependencies": { "@types/hast": "^3.0.0", "@types/unist": "^3.0.0", "ccount": "^2.0.0", "comma-separated-tokens": "^2.0.0", "hast-util-whitespace": "^3.0.0", "html-void-elements": "^3.0.0", "mdast-util-to-hast": "^13.0.0", "property-information": "^7.0.0", "space-separated-tokens": "^2.0.0", "stringify-entities": "^4.0.0", "zwitch": "^2.0.4" } }, "sha512-OguPdidb+fbHQSU4Q4ZiLKnzWo8Wwsf5bZfbvu7//a9oTYoqD/fWpe96NuHkoS9h0ccGOTe0C4NGXdtS0iObOw=="],
 
     "hast-util-to-jsx-runtime": ["hast-util-to-jsx-runtime@2.3.6", "", { "dependencies": { "@types/estree": "^1.0.0", "@types/hast": "^3.0.0", "@types/unist": "^3.0.0", "comma-separated-tokens": "^2.0.0", "devlop": "^1.0.0", "estree-util-is-identifier-name": "^3.0.0", "hast-util-whitespace": "^3.0.0", "mdast-util-mdx-expression": "^2.0.0", "mdast-util-mdx-jsx": "^3.0.0", "mdast-util-mdxjs-esm": "^2.0.0", "property-information": "^7.0.0", "space-separated-tokens": "^2.0.0", "style-to-js": "^1.0.0", "unist-util-position": "^5.0.0", "vfile-message": "^4.0.0" } }, "sha512-zl6s8LwNyo1P9uw+XJGvZtdFF1GdAkOg8ujOw+4Pyb76874fLps4ueHXDhXWdk6YHQ6OgUtinliG7RsYvCbbBg=="],
+
+    "hast-util-to-text": ["hast-util-to-text@4.0.2", "", { "dependencies": { "@types/hast": "^3.0.0", "@types/unist": "^3.0.0", "hast-util-is-element": "^3.0.0", "unist-util-find-after": "^5.0.0" } }, "sha512-KK6y/BN8lbaq654j7JgBydev7wuNMcID54lkRav1P0CaE1e47P72AWWPiGKXTJU271ooYzcvTAn/Zt0REnvc7A=="],
 
     "hast-util-whitespace": ["hast-util-whitespace@3.0.0", "", { "dependencies": { "@types/hast": "^3.0.0" } }, "sha512-88JUN06ipLwsnv+dVn+OIYOvAuvBMy/Qoi6O7mQHxdPXpjy+Cd6xRkWwux7DKO+4sYILtLBRIKgsdpS2gQc7qw=="],
 
@@ -4836,6 +4855,8 @@
     "unicode-property-aliases-ecmascript": ["unicode-property-aliases-ecmascript@2.2.0", "", {}, "sha512-hpbDzxUY9BFwX+UeBnxv3Sh1q7HFxj48DTmXchNgRa46lO8uj3/1iEn3MiNUYTg1g9ctIqXCCERn8gYZhHC5lQ=="],
 
     "unified": ["unified@11.0.5", "", { "dependencies": { "@types/unist": "^3.0.0", "bail": "^2.0.0", "devlop": "^1.0.0", "extend": "^3.0.0", "is-plain-obj": "^4.0.0", "trough": "^2.0.0", "vfile": "^6.0.0" } }, "sha512-xKvGhPWw3k84Qjh8bI3ZeJjqnyadK+GEFtazSfZv/rKeTkTjOJho6mFqh2SM96iIcZokxiOpg78GazTSg8+KHA=="],
+
+    "unist-util-find-after": ["unist-util-find-after@5.0.0", "", { "dependencies": { "@types/unist": "^3.0.0", "unist-util-is": "^6.0.0" } }, "sha512-amQa0Ep2m6hE2g72AugUItjbuM8X8cGQnFoHk0pGfrFeT9GZhzN5SW8nRsiGKK7Aif4CrACPENkA6P/Lw6fHGQ=="],
 
     "unist-util-is": ["unist-util-is@6.0.1", "", { "dependencies": { "@types/unist": "^3.0.0" } }, "sha512-LsiILbtBETkDz8I9p1dQ0uyRUWuaQzd/cuEeS1hoRSyW5E5XGmTzlwY1OrNzzakGowI9Dr/I8HVaw4hTtnxy8g=="],
 

@@ -1,9 +1,9 @@
-import { siteHref } from "@alliance/common/url";
-import React, { createContext, useContext } from "react";
+import { siteHref, withOrigin } from "@alliance/common/url";
+import React, { createContext, useCallback, useContext } from "react";
 
-const SiteAppContext = createContext<boolean | undefined>(undefined);
-
-const asAuthored = (url: string): string => url;
+const SiteAppContext = createContext<((url: string) => string) | undefined>(
+  undefined,
+);
 
 /**
  * Marks the app served on worldalliance.org and thealliance.org, the only one
@@ -11,26 +11,38 @@ const asAuthored = (url: string): string => url;
  */
 export function SiteAppProvider({ children }: React.PropsWithChildren) {
   return (
-    <SiteAppContext.Provider value={true}>{children}</SiteAppContext.Provider>
+    <SiteAppContext.Provider value={siteHref}>
+      {children}
+    </SiteAppContext.Provider>
   );
 }
 
 /**
  * Marks an app served on some other host — the admin, on admin.<domain>, whose
- * router has no route for a path on the site. Links stay as authored.
+ * router has no route for a path on the site. An authored link to either
+ * domain, or to a path on the site, is aimed at `origin` instead.
  */
-export function AuthoredLinkProvider({ children }: React.PropsWithChildren) {
+export function SiteOriginLinkProvider({
+  origin,
+  children,
+}: React.PropsWithChildren<{ origin: string }>) {
+  const toOrigin = useCallback(
+    (url: string): string => withOrigin({ url: siteHref(url), origin }),
+    [origin],
+  );
   return (
-    <SiteAppContext.Provider value={false}>{children}</SiteAppContext.Provider>
+    <SiteAppContext.Provider value={toOrigin}>
+      {children}
+    </SiteAppContext.Provider>
   );
 }
 
 export const useSiteHref = (): ((url: string) => string) => {
-  const servesTheSite = useContext(SiteAppContext);
-  if (servesTheSite === undefined) {
+  const href = useContext(SiteAppContext);
+  if (href === undefined) {
     throw new Error(
-      "no SiteAppProvider or AuthoredLinkProvider is mounted: an app has to say whether it is served on the site's own hosts before it can render a link to them",
+      "no SiteAppProvider or SiteOriginLinkProvider is mounted: an app has to say whether it is served on the site's own hosts before it can render a link to them",
     );
   }
-  return servesTheSite ? siteHref : asAuthored;
+  return href;
 };

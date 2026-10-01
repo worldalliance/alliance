@@ -7,6 +7,7 @@ import type {
   OutputFieldBlock,
   Page,
   PageItem,
+  RangeField,
   TextField,
 } from "./form-schema";
 import { validateFormSchema } from "./form-schema-validate";
@@ -828,5 +829,45 @@ describe("validateFormSchema", () => {
       pages: [page("p1", [group])],
     });
     expect(validateFormSchema(schema)).toEqual([]);
+  });
+});
+
+describe("range option count", () => {
+  const rangeField = (optionCount?: number): RangeField => ({
+    id: "scale",
+    type: "input",
+    kind: "range",
+    label: "Scale",
+    optionCount,
+  });
+  const error = {
+    blockId: "scale",
+    message: "Number of options must be a whole number from 2 to 50",
+  };
+
+  it.each([undefined, 2, 10, 50])("accepts optionCount=%p", (optionCount) => {
+    const schema = baseSchema({
+      pages: [page("p1", [rangeField(optionCount)])],
+    });
+    expect(validateFormSchema(schema)).toEqual([]);
+  });
+
+  it.each([0, 1, 2.5, 51, 80])("flags optionCount=%p", (optionCount) => {
+    const schema = baseSchema({
+      pages: [page("p1", [rangeField(optionCount)])],
+    });
+    expect(validateFormSchema(schema)).toEqual([error]);
+  });
+
+  it("flags a range sub-field of a list", () => {
+    const list: ListField = {
+      id: "list1",
+      type: "input",
+      kind: "list",
+      label: "list",
+      fields: [rangeField(80)],
+    };
+    const schema = baseSchema({ pages: [page("p1", [list])] });
+    expect(validateFormSchema(schema)).toEqual([error]);
   });
 });

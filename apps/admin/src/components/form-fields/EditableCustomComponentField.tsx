@@ -4,6 +4,7 @@ import type {
   CustomComponentDefinition,
 } from "@alliance/sharedweb/forms/components";
 import {
+  CustomComponentId,
   customComponentRegistry,
   getCustomComponentById,
 } from "@alliance/sharedweb/forms/components";
@@ -227,7 +228,7 @@ export function EditableCustomComponentField({
     const draftValue = configDrafts[configField.name] ?? "";
 
     if (
-      field.componentId === "share-url" &&
+      field.componentId === CustomComponentId.ShareUrl &&
       configField.name === "externalTargetId"
     ) {
       return (

@@ -112,21 +112,15 @@ const CommunityInvitesLeaderTab = ({
     unverifiableActionable: onetimeUnverifiableActionable,
     waitingForResponse: onetimeWaitingForResponse,
     settled: onetimeSettled,
-  } = useMemo(() => {
-    if (!user) {
-      return {
-        actionable: [],
-        unverifiableActionable: [],
-        waitingForResponse: [],
-        settled: [],
-      };
-    }
-    return bucketOnetimeInvitesByActionability({
-      invites: onetimeInvites,
-      leaderCommunityIds,
-      userId: user.id,
-    });
-  }, [onetimeInvites, leaderCommunityIds, user]);
+  } = useMemo(
+    () =>
+      bucketOnetimeInvitesByActionability({
+        invites: onetimeInvites,
+        leaderCommunityIds,
+        userId: user?.id,
+      }),
+    [onetimeInvites, leaderCommunityIds, user?.id],
+  );
 
   const {
     actionable: communityActionable,

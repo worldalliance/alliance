@@ -116,6 +116,10 @@ export function useActionAdmin(
   const invalidateActionAndList = () =>
     Promise.all([invalidate(), invalidateList()]);
 
+  // Follow-up forms are on the all-actions list but not in the forms index.
+  const invalidateActionAndActionsList = () =>
+    Promise.all([invalidate(), invalidateActionsList()]);
+
   /**
    * For child flows that hand back a raw AdminActionDto: validate the
    * cohortExpression at the boundary and write the result into the query
@@ -190,7 +194,7 @@ export function useActionAdmin(
         body,
         throwOnError: true,
       }).then((r) => r.data),
-    onSuccess: invalidate,
+    onSuccess: invalidateActionAndActionsList,
   });
 
   // A single useMutation only exposes the latest call's `variables`, but
@@ -222,7 +226,7 @@ export function useActionAdmin(
     onSettled: (_result, _error, { followUpFormId }) => {
       setSavingFollowUpFormIds((ids) => withRemoved(ids, followUpFormId));
     },
-    onSuccess: invalidate,
+    onSuccess: invalidateActionAndActionsList,
   });
 
   const deleteFollowUpFormMutation = useMutation({
@@ -237,7 +241,7 @@ export function useActionAdmin(
     onSettled: (_result, _error, followUpFormId) => {
       setDeletingFollowUpFormIds((ids) => withRemoved(ids, followUpFormId));
     },
-    onSuccess: invalidate,
+    onSuccess: invalidateActionAndActionsList,
   });
 
   return {

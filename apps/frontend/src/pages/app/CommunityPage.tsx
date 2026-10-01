@@ -8,7 +8,6 @@ import { errorMessage } from "@alliance/common/errorMessage";
 import { changedPhoto } from "@alliance/common/image-src";
 import {
   actionsCommunityCompletedActionsCount,
-  actionsGetCommunityMemberInfo,
   communityDelete,
   communityGetMemberContactInfo,
   CommunityMemberContactInfoDto,
@@ -22,6 +21,7 @@ import {
 import { getMemberCount, isLedBy } from "@alliance/shared/lib/communityUtils";
 import { groupSettings } from "@alliance/shared/lib/copy";
 import { Features } from "@alliance/shared/lib/features";
+import { useCommunityMemberInfo } from "@alliance/shared/lib/useCommunityMemberInfo";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useOnNextDeadline } from "@alliance/shared/lib/useOnNextDeadline";
@@ -165,17 +165,9 @@ const CommunityPage = () => {
     return community && isLedBy(community, user?.id);
   }, [community, user]);
 
-  const { data: communityMemberInfo } = useQuery({
-    queryKey: ["communityMemberInfo", community?.id ?? null, user?.id ?? null],
-    queryFn: () =>
-      community
-        ? actionsGetCommunityMemberInfo({
-            path: {
-              communityId: community.id,
-            },
-          }).then((resp) => resp.data)
-        : null,
-    enabled: !!community,
+  const { data: communityMemberInfo } = useCommunityMemberInfo({
+    communityId: community?.id,
+    userId: user?.id,
   });
 
   const { data: communityCompletedActionsCount = 0 } = useQuery({
@@ -196,12 +188,9 @@ const CommunityPage = () => {
     useCallback(() => {
       if (community?.id == null) return;
       void queryClient.invalidateQueries({
-        queryKey: ["communityMemberInfo", community.id, user?.id ?? null],
-      });
-      void queryClient.invalidateQueries({
         queryKey: ["communityCompletedActionsCount", community.id],
       });
-    }, [queryClient, community?.id, user?.id]),
+    }, [queryClient, community?.id]),
   );
 
   const userActionRelations = useMemo(

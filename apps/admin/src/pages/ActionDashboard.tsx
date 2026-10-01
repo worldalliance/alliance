@@ -37,7 +37,7 @@ import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { getApiUrl, getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { getApiUrl } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -89,6 +89,7 @@ import {
   changedActionImages,
   duplicatedActionImages,
 } from "../lib/actionImages";
+import { getSiteUrl } from "../lib/config";
 import type { FormResponseFilter } from "../lib/responseFilter";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { makeTempId } from "../lib/tempId";
@@ -224,7 +225,11 @@ const ActionDashboard: React.FC = () => {
     cancel: cancelCoverImage,
     reset: resetCoverImage,
   } = useCoverImage();
-  const { tags: availableTags, isLoading: tagsLoading } = useTagsAdmin();
+  const {
+    tags: availableTags,
+    isLoading: tagsLoading,
+    isLoadingError: tagsError,
+  } = useTagsAdmin();
   const invalidateFormsIndex = useInvalidateFormsIndex();
   const [availableSuites, setAvailableSuites] = useState<ActionSuiteDto[]>([]);
   const [suitesLoading, setSuitesLoading] = useState<boolean>(true);
@@ -1005,6 +1010,7 @@ const ActionDashboard: React.FC = () => {
             onCancel={handleCancel}
             availableTags={availableTags}
             tagsLoading={tagsLoading}
+            tagsError={tagsError}
             availableSuites={availableSuites}
             suitesLoading={suitesLoading}
             availableUsers={availableUsers}
@@ -1046,7 +1052,7 @@ const ActionDashboard: React.FC = () => {
                 </button>
               ))}
               <a
-                href={getBaseUrl() + `/actions/${action?.id}`}
+                href={getSiteUrl() + `/actions/${action?.id}`}
                 target="_blank"
                 rel="noreferrer"
                 className="py-2 px-1 border-b-2 font-medium text-sm text-nowrap border-transparent text-blue-500 hover:text-blue-600 hover:border-blue-300"
@@ -1581,6 +1587,7 @@ const ActionDashboard: React.FC = () => {
                   baseUrl={baseUrl}
                   availableTags={availableTags}
                   tagsLoading={tagsLoading}
+                  tagsError={tagsError}
                   availableSuites={availableSuites}
                   suitesLoading={suitesLoading}
                   availableUsers={availableUsers}
@@ -1636,6 +1643,8 @@ const ActionDashboard: React.FC = () => {
               <ActionFollowUpFormsTab
                 action={action}
                 availableTags={availableTags}
+                tagsLoading={tagsLoading}
+                tagsError={tagsError}
                 availableActions={allActions}
                 availableUsers={availableUsers}
               />

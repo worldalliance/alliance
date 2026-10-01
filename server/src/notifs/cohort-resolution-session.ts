@@ -19,8 +19,7 @@ export type FormResponseAnswerRow = {
  * longer-lived session would serve stale membership.
  *
  * The action-roster and expression memos are keyed by the chain of
- * action-referencing leaf ids (InProgressAction, MissedActionDeadline)
- * currently being resolved (see
+ * `MissedActionDeadline` leaf ids currently being resolved (see
  * `ActionEventRecipientService.resolveCohortMemberIds`), so a cyclic
  * expression terminates instead of deadlocking on its own pending promise.
  */
@@ -28,6 +27,7 @@ export class CohortResolutionSession {
   activeUsers?: Promise<User[]>;
   candidateUserIds?: Promise<Set<number>>;
   groupLeadUserIds?: Promise<Set<number>>;
+  staffUserIds?: Promise<Set<number>>;
   usMembershipUserIds?: Promise<Record<UsMembership, Set<number>>>;
   /**
    * The single-user path's counterpart to `usMembershipUserIds`: one lookup
@@ -37,7 +37,6 @@ export class CohortResolutionSession {
   readonly expressionMemberIds = new Map<string, Promise<Set<number>>>();
   readonly tagUserIds = new Map<string, Promise<Set<number>>>();
   readonly completedActionUserIds = new Map<number, Promise<Set<number>>>();
-  readonly inProgressActionUserIds = new Map<string, Promise<Set<number>>>();
   readonly missedActionDeadlineUserIds = new Map<
     string,
     Promise<Set<number>>
@@ -64,6 +63,8 @@ export class CohortResolutionSession {
   readonly actionWithEventsById = new Map<number, Promise<Action | null>>();
   readonly admittedActionIdsByUser = new Map<number, Promise<Set<number>>>();
   readonly admittedUserIdsByAction = new Map<number, Promise<Set<number>>>();
+  readonly decisionsByUser = new Map<number, Promise<Map<number, boolean>>>();
+  readonly decisionsByAction = new Map<number, Promise<Map<number, boolean>>>();
   readonly memberPrerequisiteProgress = new Map<
     string,
     Promise<PrerequisiteProgress>

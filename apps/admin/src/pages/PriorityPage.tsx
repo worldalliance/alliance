@@ -1,7 +1,7 @@
 import {
-  ActionDto,
   actionsSetPriorityAdmin,
   SetPriorityDto,
+  type AdminActionListItemDto,
   type GeneralUpdateAdminDto,
 } from "@alliance/shared/client";
 import { homePagePriorityComparator } from "@alliance/shared/lib/actionUtils";
@@ -23,6 +23,13 @@ import {
 } from "lucide-react";
 import React, { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
+import HomePlacementBadges from "../components/HomePlacementBadges";
+import PriorityFollowUps from "../components/PriorityFollowUps";
+import {
+  actionHomePlacement,
+  generalUpdateHomePlacement,
+  type HomePlacement,
+} from "../lib/homePlacement";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { DropPosition, useDragReorder } from "../lib/useDragReorder";
 import {
@@ -37,6 +44,7 @@ type PriorityItem =
       name: string;
       priority: number;
       suiteName?: string;
+      placement: HomePlacement;
     }
   | {
       type: "generalUpdate";
@@ -44,6 +52,7 @@ type PriorityItem =
       name: string;
       priority: number;
       suiteName?: string;
+      placement: HomePlacement;
     }
   | {
       type: "divider";
@@ -51,54 +60,45 @@ type PriorityItem =
       name?: undefined;
       priority?: undefined;
       suiteName?: undefined;
+      placement?: undefined;
     };
 
-function buildInitialList(
-  actions: ActionDto[],
-  generalUpdates: GeneralUpdateAdminDto[],
-  filterForIncomplete: boolean,
-): PriorityItem[] {
+function buildInitialList(params: {
+  actions: AdminActionListItemDto[];
+  generalUpdates: GeneralUpdateAdminDto[];
+  showAll: boolean;
+  now: Date;
+}): PriorityItem[] {
+  const { actions, generalUpdates, showAll, now } = params;
   const withRaw: {
     item: PriorityItem;
-    raw: ActionDto | GeneralUpdateAdminDto;
+    raw: AdminActionListItemDto | GeneralUpdateAdminDto;
   }[] = [
-    ...actions
-      .filter((a) =>
-        filterForIncomplete
-          ? a.status !== "completed" &&
-            a.status !== "office_action" &&
-            !a.archived
-          : true,
-      )
-      .map((a) => ({
-        item: {
-          type: "action" as const,
-          id: a.id,
-          name: a.name,
-          priority: a.priority,
-          suiteName: a.suite?.name,
-        },
-        raw: a,
-      })),
-    ...generalUpdates
-      .filter((gu) =>
-        filterForIncomplete
-          ? !gu.endDate || new Date(gu.endDate).getTime() > new Date().getTime()
-          : true,
-      )
-      .map((gu) => ({
-        item: {
-          type: "generalUpdate" as const,
-          id: gu.id,
-          name: gu.name,
-          priority: gu.priority,
-          suiteName: gu.suites?.length
-            ? gu.suites.map((s) => s.name).join(", ")
-            : undefined,
-        },
-        raw: gu,
-      })),
-  ];
+    ...actions.map((a) => ({
+      item: {
+        type: "action" as const,
+        id: a.id,
+        name: a.name,
+        priority: a.priority,
+        suiteName: a.suite?.name,
+        placement: actionHomePlacement({ action: a, now }),
+      },
+      raw: a,
+    })),
+    ...generalUpdates.map((gu) => ({
+      item: {
+        type: "generalUpdate" as const,
+        id: gu.id,
+        name: gu.name,
+        priority: gu.priority,
+        suiteName: gu.suites?.length
+          ? gu.suites.map((s) => s.name).join(", ")
+          : undefined,
+        placement: generalUpdateHomePlacement({ generalUpdate: gu, now }),
+      },
+      raw: gu,
+    })),
+  ].filter(({ item }) => showAll || item.placement.inactive === null);
   withRaw.sort((a, b) => homePagePriorityComparator(a.raw, b.raw));
   // Insert "new items" divider above all priority <= 0, below any priority > 0
   const dividerIndex = withRaw.findIndex(({ raw }) => {
@@ -118,17 +118,18 @@ const PriorityPage: React.FC = () => {
   const generalUpdates = useGeneralUpdatesAdmin();
   const invalidateActions = useInvalidateActionsAdmin();
   const invalidateGeneralUpdates = useInvalidateGeneralUpdatesAdmin();
-  const [filterForIncomplete, setFilterForIncomplete] = useState(true);
+  const [showAll, setShowAll] = useState(false);
   const startingItems = useMemo(
     () =>
       actions.data && generalUpdates.data
-        ? buildInitialList(
-            actions.data,
-            generalUpdates.data,
-            filterForIncomplete,
-          )
+        ? buildInitialList({
+            actions: actions.data,
+            generalUpdates: generalUpdates.data,
+            showAll,
+            now: new Date(),
+          })
         : null,
-    [actions.data, generalUpdates.data, filterForIncomplete],
+    [actions.data, generalUpdates.data, showAll],
   );
   // Held apart from startingItems, with the order it started from, so a
   // background refetch neither drops an unsaved reorder nor shifts what it is
@@ -282,9 +283,9 @@ const PriorityPage: React.FC = () => {
       <label className="flex items-center gap-2 cursor-pointer">
         <input
           type="checkbox"
-          checked={!filterForIncomplete}
+          checked={showAll}
           onChange={(e) => {
-            setFilterForIncomplete(!e.target.checked);
+            setShowAll(e.target.checked);
             setReorder(null);
           }}
           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
@@ -292,9 +293,22 @@ const PriorityPage: React.FC = () => {
         <span className="text-sm font-medium text-gray-900">Show all</span>
       </label>
       {error && <p className="text-red-500">{error}</p>}
-      <p className="text-sm text-zinc-600">
-        Actions/general updates at the top are shown first on the home page.
-      </p>
+      <div className="text-sm text-zinc-600 space-y-1">
+        <p>
+          Everything that can appear on a member&apos;s home page, now or later.
+          Items at the top are shown first. Badges say why an item can appear,
+          not that every member sees it.
+        </p>
+        <p>
+          A task that is optional for a member only because their contract
+          doesn&apos;t cover its whole window moves after that member&apos;s
+          other tasks, and on mobile after general updates too.
+        </p>
+        <p>
+          The mobile app mixes general updates into this order; the web shows
+          them separately from tasks.
+        </p>
+      </div>
       <ul
         ref={listRef}
         onDragOver={handleListDragOver}
@@ -373,6 +387,7 @@ const PriorityPage: React.FC = () => {
                     <span className="font-medium text-zinc-800 min-w-0 truncate">
                       {item.name}
                     </span>
+                    <HomePlacementBadges placement={item.placement} />
                     {item.suiteName ? (
                       <span className="text-xs text-zinc-500 shrink-0">
                         {item.suiteName}
@@ -399,6 +414,9 @@ const PriorityPage: React.FC = () => {
           );
         })}
       </ul>
+      {actions.data && (
+        <PriorityFollowUps actions={actions.data} showAll={showAll} />
+      )}
     </div>
   );
 };

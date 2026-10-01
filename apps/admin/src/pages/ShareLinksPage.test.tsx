@@ -1,10 +1,12 @@
 import type {
+  CampaignDto,
   ExternalShareTargetDto,
   ProfileDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import * as config from "@alliance/sharedweb/lib/config";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
@@ -51,8 +53,19 @@ serveApi(
           ])
         : Response.json({}, { status: targetsStatus });
     },
-    "GET /campaigns": () => Response.json([]),
+    "GET /campaigns": () =>
+      Response.json([
+        {
+          id: 7,
+          name: "Spring fundraiser",
+          code: "spring7",
+          picture: null,
+          createdAt: "2026-01-02T00:00:00.000Z",
+          updatedAt: "2026-01-02T00:00:00.000Z",
+        } satisfies CampaignDto,
+      ]),
     "GET /share-urls/for-user/:userId": () => Response.json([]),
+    "GET /share-urls/for-campaign/:campaignId": () => Response.json([]),
     "GET /user/members": () =>
       Response.json([
         {
@@ -175,4 +188,27 @@ it("says the external share targets failed to load", async () => {
   targetsStatus = 500;
   await pickExternalKind();
   expect(await screen.findByText("Failed to load share targets.")).toBeTruthy();
+});
+
+it("gives a campaign's signup link on the invite domain", async () => {
+  jest
+    .spyOn(config, "getInviteBaseUrl")
+    .mockReturnValue("https://test.alliance/");
+  render(
+    <ToastProvider>
+      <ShareLinksPage />
+    </ToastProvider>,
+    queryWrapper(),
+  );
+  fireEvent.change(screen.getByDisplayValue("User"), {
+    target: { value: "campaign" },
+  });
+  await screen.findByRole("option", { name: "Spring fundraiser" });
+  fireEvent.change(screen.getByDisplayValue("Select a campaign…"), {
+    target: { value: "7" },
+  });
+
+  expect(
+    await screen.findByText("https://test.alliance/signup?ref=spring7"),
+  ).toBeTruthy();
 });

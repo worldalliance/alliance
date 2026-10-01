@@ -1,4 +1,5 @@
 import { RelativePathString, router } from "expo-router";
+import type MarkdownIt from "markdown-it";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   Image,
@@ -161,6 +162,7 @@ interface AppMarkdownWrapperProps {
   truncated?: boolean;
   small?: boolean;
   tone?: MarkdownTone;
+  markdownit?: MarkdownIt;
 }
 
 const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
@@ -170,6 +172,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
   truncated = false,
   small = false,
   tone = MarkdownTone.Default,
+  markdownit = markdownParser,
 }) => {
   const markdownSource = markdownContent ?? children ?? "";
   const handleLinkPress = useHandleLinkPress();
@@ -492,7 +495,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
           <Markdown
             style={markdownStyles}
             rules={rules}
-            markdownit={markdownParser}
+            markdownit={markdownit}
             mergeStyle
           >
             {markdownSource}
@@ -502,7 +505,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
         <Markdown
           style={markdownStyles}
           rules={rules}
-          markdownit={markdownParser}
+          markdownit={markdownit}
           mergeStyle
         >
           {markdownSource}

@@ -33,7 +33,6 @@ import { useLoadComments } from "@alliance/shared/lib/useLoadComments";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
-import { useQueryClient } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
 import {
   ArrowUpDown,
@@ -62,9 +61,9 @@ import {
 } from "react-native";
 import type { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useAuth } from "../lib/AuthContext";
-import { markCachedNotificationsReadByContent } from "../lib/notificationsCache";
 import { colors } from "../lib/style/colors";
 import { useAnnounceOnIos } from "../lib/useAnnounceOnIos";
+import { useNotificationsCache } from "../lib/useNotificationsCache";
 import BottomSheetOptionPicker from "./BottomSheetOptionPicker";
 import EditableContentForm from "./EditableContentForm";
 import EditableContentRenderer from "./EditableContentRenderer";
@@ -720,7 +719,7 @@ export default function Comments({
     [qaMode, expertIdsProp],
   );
   const { user } = useAuth();
-  const queryClient = useQueryClient();
+  const { markCachedReadByContent } = useNotificationsCache();
   const isPostComments = type === "post";
   const activeQaMode = isPostComments && qaMode;
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
@@ -970,12 +969,7 @@ export default function Comments({
     contentType: "forum_reply",
     contentIds: commentIds,
     enabled: !!user && commentIds.length > 0,
-    onMarked: (contentType, contentIds) =>
-      markCachedNotificationsReadByContent({
-        queryClient,
-        contentType,
-        contentIds,
-      }),
+    onMarked: markCachedReadByContent,
   });
 
   return (

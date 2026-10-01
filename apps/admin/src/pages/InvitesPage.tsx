@@ -5,11 +5,12 @@ import {
   userGetOnetimeInvitesAdmin,
   userListAdmin,
 } from "@alliance/shared/client";
+import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { usePaginatedQuery } from "@alliance/shared/lib/usePaginatedQuery";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -21,12 +22,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { memberProfileUrl } from "../lib/config";
 
 const INVITES_PER_PAGE = 50;
 
 const InvitesPage = () => {
   const queryClient = useQueryClient();
-  const { error: pushError } = useToast();
+  const { error: pushError, success: pushSuccess } = useToast();
 
   const {
     data,
@@ -91,7 +93,11 @@ const InvitesPage = () => {
   });
 
   const copyInviteLink = async (code: string) => {
-    if (!(await copyToClipboard(`${getBaseUrl()}/signup?ref=${code}`))) {
+    if (
+      await copyToClipboard(getOnetimeInviteSignupUrl(getInviteBaseUrl(), code))
+    ) {
+      pushSuccess("Invite link copied");
+    } else {
       pushError("Could not copy the invite link to the clipboard");
     }
   };
@@ -225,9 +231,7 @@ const InvitesPage = () => {
                       <span className="text-gray-500"> inviting </span>{" "}
                       {invite.invitedUserId ? (
                         <a
-                          href={
-                            getBaseUrl() + `/member/${invite.invitedUserId}`
-                          }
+                          href={memberProfileUrl(invite.invitedUserId)}
                           className="underline"
                         >
                           {" "}
@@ -245,12 +249,15 @@ const InvitesPage = () => {
                     ) : (
                       <p className="text-gray-500">used</p>
                     )}
-                    <div
+                    <button
+                      type="button"
+                      aria-label={`Copy invite link ${invite.code}`}
+                      title="Copy invite link"
                       className="cursor-pointer active:scale-85 transition-all duration-100"
                       onClick={() => void copyInviteLink(invite.code)}
                     >
                       <Copy className="h-4 w-4 text-gray-500" />
-                    </div>
+                    </button>
                   </div>
                 </div>
                 <div className="flex flex-row gap-2 items-center justify-between mt-1">

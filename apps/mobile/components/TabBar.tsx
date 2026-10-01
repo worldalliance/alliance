@@ -1,8 +1,6 @@
-import { notifsGetUnreadCount } from "@alliance/shared/client";
 import { useActionsQuery } from "@alliance/shared/lib/actionsListPage";
 import { showActionInSidebarList } from "@alliance/shared/lib/actionUtils";
 import { cn } from "@alliance/shared/styles/util";
-import { useQuery } from "@tanstack/react-query";
 import { impactAsync, ImpactFeedbackStyle } from "expo-haptics";
 import { usePathname, useRouter } from "expo-router";
 import { Bell, ListTodo, MessageSquare, Users } from "lucide-react-native";
@@ -17,6 +15,7 @@ import {
   WalkthroughAnchor,
 } from "../lib/onboarding/walkthrough";
 import { colors } from "../lib/style/colors";
+import { useUnreadNotificationCount } from "../lib/useNotificationsCache";
 import Text, { FontWeight } from "./system/Text";
 
 const tabs = [
@@ -110,13 +109,7 @@ export default function TabBar() {
     updateTick,
     refreshUnreadCount,
   } = useMessagingUnread();
-  const { data: unreadNotifications = 0 } = useQuery({
-    queryKey: ["notifications", "unreadCount"],
-    queryFn: () =>
-      notifsGetUnreadCount().then(
-        (response) => response.data?.unreadCount ?? 0,
-      ),
-  });
+  const unreadNotifications = useUnreadNotificationCount();
 
   const uncompletedTaskCount = useMemo(() => {
     if (!actions) {

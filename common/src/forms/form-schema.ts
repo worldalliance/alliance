@@ -125,6 +125,9 @@ const numberFieldSchema = z.strictObject({
 });
 export type NumberField = z.infer<typeof numberFieldSchema>;
 
+export const MIN_RANGE_OPTION_COUNT = 2;
+export const MAX_RANGE_OPTION_COUNT = 50;
+
 const rangeFieldSchema = z.strictObject({
   ...baseFieldSchema.shape,
   kind: z.literal("range"),
@@ -671,6 +674,7 @@ export function collectSourceFormIds(schema: FormSchema): number[] {
       case "equals":
       case "includesOption":
       case "anySelected":
+      case "selectedCount":
       case "hasValue":
         if (typeof c.sourceFormId === "number") {
           ids.add(c.sourceFormId);

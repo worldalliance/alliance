@@ -118,10 +118,11 @@ describe("collectCohortDependencies", () => {
     expect(collectCohortDependencies(null)).toEqual({
       actionIds: new Set(),
       formIds: new Set(),
+      tagIds: new Set(),
     });
   });
 
-  it("collects action and form ids nested under every operator, once each", () => {
+  it("collects action, form, and tag ids nested under every operator, once each", () => {
     const expr: CohortExpression = {
       type: "AND",
       children: [
@@ -129,7 +130,7 @@ describe("collectCohortDependencies", () => {
         {
           type: "OR",
           children: [
-            { type: "InProgressAction", actionId: 2 },
+            { type: "MissedActionDeadline", actionId: 2 },
             { type: "CompletedAction", actionId: 1 },
           ],
         },
@@ -144,16 +145,20 @@ describe("collectCohortDependencies", () => {
           responseEqualTo: "Paris",
         },
         { type: "Tag", tagId: "tag" },
+        { type: "NOT", child: { type: "Tag", tagId: "tag" } },
         { type: "Manual", userIds: [5] },
         { type: "GroupLead" },
         { type: "USMember" },
         { type: "NonUSMember" },
+        { type: "AllMembers" },
+        { type: "Staff" },
       ],
     };
 
     expect(collectCohortDependencies(expr)).toEqual({
       actionIds: new Set([1, 2, 3]),
       formIds: new Set([7]),
+      tagIds: new Set(["tag"]),
     });
   });
 });

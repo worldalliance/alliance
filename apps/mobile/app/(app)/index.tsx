@@ -1,14 +1,17 @@
 import type { FollowUpFormDto } from "@alliance/shared/client";
 import { actionsDismissAction } from "@alliance/shared/client";
-import { useActionsQuery } from "@alliance/shared/lib/actionsListPage";
 import {
-  ActionWithAwayStatus,
-  homePagePriorityComparator,
-} from "@alliance/shared/lib/actionUtils";
+  useActionsQuery,
+  useInvalidateActions,
+} from "@alliance/shared/lib/actionsListPage";
+import { type ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { ParsedHomeFeedItemDto } from "@alliance/shared/lib/feedHelpers";
-import { type ParsedGeneralUpdate } from "@alliance/shared/lib/generalUpdates";
-import { useHomePageActions } from "@alliance/shared/lib/homePage";
+import {
+  type HomeSequenceItem,
+  interleaveActionsAndUpdates,
+  useHomePageActions,
+} from "@alliance/shared/lib/homePage";
 import { getTaskDismissInfo } from "@alliance/shared/lib/largeActionCard";
 import { useBoundedIndex } from "@alliance/shared/lib/useBoundedIndex";
 import { useUnreadGeneralUpdates } from "@alliance/shared/lib/useGeneralUpdates";
@@ -49,8 +52,7 @@ import {
 import { colors } from "../../lib/style/colors";
 
 type HomeScreenItem =
-  | { kind: "action"; action: ActionWithAwayStatus }
-  | { kind: "generalUpdate"; generalUpdate: ParsedGeneralUpdate }
+  | HomeSequenceItem
   | { kind: "followUpForm"; followUpForm: FollowUpFormDto; actionId: number };
 
 // Stable identity — LegendList remounts its scroll view whenever this prop changes.
@@ -60,6 +62,7 @@ const renderKeyboardAwareScrollComponent = (props: ScrollViewProps) => (
 
 export default function HomeScreen() {
   const queryClient = useQueryClient();
+  const invalidateActions = useInvalidateActions();
   const [refreshing, setRefreshing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const hasNoTasks = useRef(true);
@@ -139,15 +142,9 @@ export default function HomeScreen() {
   );
 
   const allItems = useMemo<HomeScreenItem[]>(() => {
-    const actionAndUpdateItems: HomeScreenItem[] = [
-      ...todoActions.map((action) => ({ kind: "action", action }) as const),
-      ...generalUpdates.map(
-        (generalUpdate) => ({ kind: "generalUpdate", generalUpdate }) as const,
-      ),
-    ].sort((a, b) => {
-      const aVal = a.kind === "action" ? a.action : a.generalUpdate;
-      const bVal = b.kind === "action" ? b.action : b.generalUpdate;
-      return homePagePriorityComparator(aVal, bVal);
+    const actionAndUpdateItems = interleaveActionsAndUpdates({
+      todoActions,
+      generalUpdates,
     });
 
     const followUpItems: HomeScreenItem[] = activeCompletableFollowUpForms.map(
@@ -201,8 +198,9 @@ export default function HomeScreen() {
 
   const handleOverlayFadeIn = useCallback(() => {
     refetch();
+    resetHomeFeed(queryClient);
     scrollToTop();
-  }, [refetch, scrollToTop]);
+  }, [refetch, queryClient, scrollToTop]);
 
   const scrollToEnd = useCallback((animated = true) => {
     scrollViewRef.current?.scrollToEnd({ animated });
@@ -350,7 +348,7 @@ export default function HomeScreen() {
               scrollPageTo={scrollPageTo}
               scrollToEnd={scrollToEnd}
               onSubmitted={() => {
-                queryClient.invalidateQueries({ queryKey: ["actions"] });
+                invalidateActions();
                 resetHomeFeed(queryClient);
               }}
             />
@@ -373,14 +371,9 @@ export default function HomeScreen() {
             onUpdateActionState={() => {
               refetch();
             }}
-            onCompleteAction={() => {
-              refetch();
-              resetHomeFeed(queryClient);
-              scrollToTop();
-            }}
+            onCompleteAction={handleSubmitSuccess}
             scrollPageTo={scrollPageTo}
             scrollToEnd={scrollToEnd}
-            onSubmitSuccess={handleSubmitSuccess}
           />
         </Anchor>
       ),
@@ -390,11 +383,11 @@ export default function HomeScreen() {
     currentItem,
     dismissProps,
     handleDismissGeneralUpdate,
+    invalidateActions,
     queryClient,
     refetch,
     scrollPageTo,
     scrollToEnd,
-    scrollToTop,
     handleSubmitSuccess,
   ]);
 

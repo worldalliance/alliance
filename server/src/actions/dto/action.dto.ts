@@ -1088,7 +1088,7 @@ export class ReminderGroupDto extends PickType(ReminderGroup, [
 /**
  * A dependency action's deadline event, offered as a reminder-group timing
  * anchor (`ReminderGroup.timingAnchorEvent`). Dependencies are derived from
- * the action's cohort expression (form-response and completed/in-progress
+ * the action's cohort expression (form-response and completed/missed
  * action conditions).
  */
 export type ReminderAnchorCandidate = {

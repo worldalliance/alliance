@@ -48,6 +48,7 @@ interface ActionFormProps {
   baseUrl?: string;
   availableTags?: TagDto[];
   tagsLoading: boolean;
+  tagsError: boolean;
   availableSuites?: ActionSuiteDto[];
   suitesLoading: boolean;
   availableUsers?: UserSelectUser[];
@@ -123,6 +124,8 @@ const ActionForm: React.FC<ActionFormProps> = ({
   //   onDelete,
   baseUrl,
   availableTags = [],
+  tagsLoading,
+  tagsError,
   availableSuites = [],
   suitesLoading = false,
   availableUsers = [],
@@ -793,6 +796,8 @@ const ActionForm: React.FC<ActionFormProps> = ({
           value={cohortExpression}
           onChange={onCohortExpressionChange}
           availableTags={availableTags}
+          tagsLoading={tagsLoading}
+          tagsError={tagsError}
           availableActions={allActions}
           availableUsers={availableUsers}
           usersLoading={usersLoading}
