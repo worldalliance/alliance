@@ -1,17 +1,7 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { client } from "@alliance/shared/client/client.gen";
-import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
-import { createMemoryRouter, RouterProvider } from "react-router";
-import { FormBuilder } from "./FormBuilder";
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 
 afterEach(cleanup);
 
@@ -36,27 +26,7 @@ const mine: FormSchema = {
 };
 
 function renderBuilder(initialSchema: FormSchema = mine) {
-  const router = createMemoryRouter([
-    {
-      path: "/",
-      element: (
-        <FormBuilder
-          formId={1}
-          initialSchema={initialSchema}
-          setFormId={() => {}}
-        />
-      ),
-    },
-  ]);
-  render(
-    <SiteOriginLinkProvider origin="https://worldalliance.org">
-      <QueryClientProvider client={new QueryClient()}>
-        <ToastProvider>
-          <RouterProvider router={router} />
-        </ToastProvider>
-      </QueryClientProvider>
-    </SiteOriginLinkProvider>,
-  );
+  renderFormBuilder(initialSchema, 1);
 }
 
 describe("FormBuilder save conflict", () => {

@@ -10,6 +10,7 @@ import type {
 } from "@alliance/common/forms/form-schema";
 import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
 import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
+import { ElementJsonContext } from "../FormJsonButton";
 import {
   formFieldsErrorReason,
   FormPickerError,
@@ -121,7 +122,13 @@ function renderSubFieldEditor<K extends ListSubFieldKind>(
   props: BaseFieldProps<FieldOfKind[K]>,
 ) {
   const Editor: FieldEditor<K> | null = LIST_SUB_FIELD_EDITORS[kind];
-  return Editor && <Editor {...props} />;
+  return (
+    Editor && (
+      <ElementJsonContext.Provider value={null}>
+        <Editor {...props} />
+      </ElementJsonContext.Provider>
+    )
+  );
 }
 
 function renderEditableSubField(

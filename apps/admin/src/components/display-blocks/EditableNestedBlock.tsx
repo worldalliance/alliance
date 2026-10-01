@@ -1,4 +1,5 @@
 import type { NestedDisplayKind } from "@alliance/common/forms/display-blocks";
+import { ElementJsonContext } from "../FormJsonButton";
 import { NESTED_BLOCK_EDITORS } from "./nestedBlockEditors";
 import type { BlockEditor, BlockOfKind } from "./types";
 
@@ -15,11 +16,13 @@ function renderNestedBlockEditor<K extends NestedDisplayKind>(
   const Editor: BlockEditor<K> | undefined = NESTED_BLOCK_EDITORS[kind];
   if (!Editor) throw new Error(`no editor for nested block kind ${kind}`);
   return (
-    <Editor
-      block={block}
-      onUpdate={(updates) => onChange({ ...block, ...updates })}
-      onRemove={onRemove}
-    />
+    <ElementJsonContext.Provider value={null}>
+      <Editor
+        block={block}
+        onUpdate={(updates) => onChange({ ...block, ...updates })}
+        onRemove={onRemove}
+      />
+    </ElementJsonContext.Provider>
   );
 }
 
