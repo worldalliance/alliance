@@ -34,6 +34,7 @@ const response = (
   formSnapshotId: 7,
   publicAnswers: {},
   schemaSnapshot: schema,
+  sid: null,
   visibilityValidatorResults: {},
   ...saved,
 });

@@ -151,7 +151,7 @@ export type FormResponse = {
     createdAt: string;
     phDistinctId?: string;
     formSnapshotId: number;
-    sid?: string;
+    sid: string | null;
 };
 
 /**
@@ -3800,7 +3800,7 @@ export type FormResponseDto = {
     createdAt: string;
     phDistinctId?: string;
     formSnapshotId: number;
-    sid?: string;
+    sid: string | null;
     schemaSnapshot: {
         [key: string]: unknown;
     };

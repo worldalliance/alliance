@@ -12,6 +12,7 @@ const response = (
   publicAnswers: {},
   createdAt,
   schemaSnapshot: {},
+  sid: null,
   visibilityValidatorResults: {},
   formulaChoices,
 });

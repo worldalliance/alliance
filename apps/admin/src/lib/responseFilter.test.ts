@@ -19,6 +19,7 @@ const response: FormResponseDto = {
   publicAnswers: {},
   createdAt: "2026-03-04T10:00:00.000Z",
   schemaSnapshot: {},
+  sid: null,
   visibilityValidatorResults: {},
   formulaChoices: { pick: [{ label: "Alpha", value: "a" }] },
 };
