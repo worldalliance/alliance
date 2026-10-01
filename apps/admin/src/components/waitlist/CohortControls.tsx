@@ -16,10 +16,12 @@ import { useRefusalToast } from "../../lib/useRefusalToast";
 import { waitlistCohortsQuery } from "../../lib/waitlistAdminQueries";
 import { compactFilter, sameFilter } from "../../lib/waitlistFilter";
 import ConfirmDialog from "../ConfirmDialog";
+import {
+  DELETE_BUTTON_CLASS,
+  ICON_BUTTON_CLASS,
+  SELECT_CLASS,
+} from "./controlClasses";
 import InlineNameForm from "./InlineNameForm";
-
-const ICON_BUTTON_CLASS =
-  "rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800";
 
 type CohortControlsProps = {
   cohorts: WaitlistCohortDto[];
@@ -119,7 +121,7 @@ const CohortControls: React.FC<CohortControlsProps> = ({
     <div className="flex flex-wrap items-center gap-2">
       <select
         aria-label="Cohort"
-        className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm"
+        className={SELECT_CLASS}
         value={cohortId ?? ""}
         onChange={(e) => {
           const chosen = cohorts.find((c) => c.id === Number(e.target.value));
@@ -170,7 +172,7 @@ const CohortControls: React.FC<CohortControlsProps> = ({
           type="button"
           aria-label={`Delete cohort ${cohort.name}`}
           title={`Delete cohort ${cohort.name}`}
-          className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-red-600"
+          className={DELETE_BUTTON_CLASS}
           onClick={() => setDeleting(true)}
         >
           <Trash2 size={16} />

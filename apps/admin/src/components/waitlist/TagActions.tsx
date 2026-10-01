@@ -18,9 +18,7 @@ import { useRefusalToast } from "../../lib/useRefusalToast";
 import { invalidateTagQueries } from "../../lib/waitlistAdminQueries";
 import ConfirmDialog from "../ConfirmDialog";
 import InlineNameForm from "./InlineNameForm";
-
-const TRIGGER_CLASS =
-  "flex items-center gap-1 rounded border border-zinc-300 bg-white px-2 py-1 text-sm cursor-pointer hover:bg-zinc-50 disabled:cursor-default disabled:opacity-50";
+import { MENU_TRIGGER_CLASS } from "./controlClasses";
 
 type TagActionsProps = {
   selectedIds: ReadonlySet<number>;
@@ -110,7 +108,7 @@ const TagActions: React.FC<TagActionsProps> = ({
   return (
     <>
       <Menu.Root>
-        <Menu.Trigger disabled={disabled} className={TRIGGER_CLASS}>
+        <Menu.Trigger disabled={disabled} className={MENU_TRIGGER_CLASS}>
           Add tag <ChevronDown size={14} />
         </Menu.Trigger>
         <DropdownMenuContent className="min-w-44 max-h-80 overflow-y-auto">
@@ -132,7 +130,7 @@ const TagActions: React.FC<TagActionsProps> = ({
       <Menu.Root>
         <Menu.Trigger
           disabled={disabled || tags.length === 0}
-          className={TRIGGER_CLASS}
+          className={MENU_TRIGGER_CLASS}
         >
           Remove tag <ChevronDown size={14} />
         </Menu.Trigger>

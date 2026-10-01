@@ -3,6 +3,7 @@ import type { WaitlistEmailPreviewDto } from "@alliance/shared/client/types.gen"
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import React from "react";
 import { skippedGroups } from "../../../lib/waitlistEmail";
+import { ICON_BUTTON_CLASS } from "../controlClasses";
 
 type EmailPreviewPanelProps = {
   preview: WaitlistEmailPreviewDto;
@@ -47,7 +48,7 @@ const EmailPreviewPanel: React.FC<EmailPreviewPanelProps> = ({
               type="button"
               aria-label="Previous recipient"
               title="Previous recipient"
-              className="rounded p-1 text-zinc-600 hover:bg-zinc-100 disabled:opacity-40"
+              className={ICON_BUTTON_CLASS}
               disabled={index <= 0}
               onClick={() => onSample(recipientIds[index - 1])}
             >
@@ -61,7 +62,7 @@ const EmailPreviewPanel: React.FC<EmailPreviewPanelProps> = ({
               type="button"
               aria-label="Next recipient"
               title="Next recipient"
-              className="rounded p-1 text-zinc-600 hover:bg-zinc-100 disabled:opacity-40"
+              className={ICON_BUTTON_CLASS}
               disabled={index < 0 || index >= recipientIds.length - 1}
               onClick={() => onSample(recipientIds[index + 1])}
             >

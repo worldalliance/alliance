@@ -4,6 +4,7 @@ import {
 } from "@alliance/sharedweb/ui/DropdownMenu";
 import { Menu } from "@base-ui/react/menu";
 import { Check, ChevronDown } from "lucide-react";
+import { MENU_TRIGGER_CLASS } from "./controlClasses";
 
 type Option<T> = { value: T; label: string };
 
@@ -37,7 +38,7 @@ function MultiSelectFilter<T extends string | number>({
 
   return (
     <Menu.Root>
-      <Menu.Trigger className="flex items-center gap-1 rounded border border-zinc-300 bg-white px-2 py-1 text-sm max-w-64 cursor-pointer hover:bg-zinc-50">
+      <Menu.Trigger className={`${MENU_TRIGGER_CLASS} max-w-64`}>
         <span className="font-medium text-zinc-700">{label}</span>
         <span className="truncate text-zinc-500">· {summary}</span>
         <ChevronDown size={14} className="shrink-0" />

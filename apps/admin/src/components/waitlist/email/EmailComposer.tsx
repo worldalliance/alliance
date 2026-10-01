@@ -16,6 +16,7 @@ import {
 } from "../../../lib/waitlistEmail";
 import ConfirmDialog from "../../ConfirmDialog";
 import FormTextarea from "../../FormTextarea";
+import { ICON_BUTTON_CLASS } from "../controlClasses";
 import EmailPreviewPanel from "./EmailPreviewPanel";
 import EmailSendActions from "./EmailSendActions";
 
@@ -120,7 +121,7 @@ const EmailComposer: React.FC<EmailComposerProps> = ({
           type="button"
           aria-label="Discard email"
           title="Discard email"
-          className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+          className={ICON_BUTTON_CLASS}
           onClick={() =>
             draft.subject.trim() || draft.body.trim()
               ? setDiscarding(true)

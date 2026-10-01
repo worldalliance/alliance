@@ -20,6 +20,10 @@ import React, {
   useState,
 } from "react";
 import CohortControls from "../components/waitlist/CohortControls";
+import {
+  BORDERED_ICON_BUTTON_CLASS,
+  ICON_BUTTON_CLASS,
+} from "../components/waitlist/controlClasses";
 import EmailComposer from "../components/waitlist/email/EmailComposer";
 import EntryActions from "../components/waitlist/EntryActions";
 import TagActions from "../components/waitlist/TagActions";
@@ -179,7 +183,7 @@ const WaitlistPage: React.FC = () => {
             type="button"
             aria-label="Clear selection"
             title="Clear selection"
-            className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+            className={ICON_BUTTON_CLASS}
             onClick={() => changeSelection(new Set())}
           >
             <X size={16} />
@@ -200,7 +204,7 @@ const WaitlistPage: React.FC = () => {
             type="button"
             aria-label="Compose email"
             title="Compose email"
-            className="rounded border border-zinc-300 bg-white p-1.5 text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+            className={BORDERED_ICON_BUTTON_CLASS}
             disabled={draft !== null}
             onClick={() => setDraft({ subject: "", body: "" })}
           >
