@@ -66,6 +66,7 @@ const response = (params: {
   visibilityValidatorResults: {},
   formulaChoices: {},
   phDistinctId: null,
+  sessionReplayUrl: null,
   sid: params.sid ?? null,
 });
 
