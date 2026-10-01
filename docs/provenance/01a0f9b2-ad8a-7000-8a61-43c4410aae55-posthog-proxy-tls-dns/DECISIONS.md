@@ -10,7 +10,7 @@
 ## DNS re-resolution
 
 - nginx resolves a literal `proxy_pass` host once, at start or reload, and the deploy reloads only on push. The host now goes through `$posthog_host`, which nginx resolves per request through `resolver`, caching each answer for its TTL.
-- `resolver 169.254.169.253`, the Amazon VPC DNS server reachable from any EC2 instance, rather than PostHog's example of Google DNS, so lookups stay inside AWS. Its reachability from the hosts is unverified before deploy; the post-deploy check catches it.
+- `resolver 169.254.169.253`, the Amazon VPC DNS server reachable from any EC2 instance, rather than PostHog's example of Google DNS, so lookups stay inside AWS. The user ran `dig @169.254.169.253 us.i.posthog.com` on the staging and production hosts; both answered with the ELB CNAME and eight A records. The post-deploy check catches it if that changes.
 - No `valid=`: PostHog's guide sets `valid=300s`, but `us.i.posthog.com` is a CNAME to an AWS ELB whose A records carry a 60s TTL, so overriding it would keep a released IP for up to five minutes.
 - `ipv6=off`: the ELB also publishes AAAA records, which nginx's resolver returns by default. The startup lookup it replaces (getaddrinfo with AI_ADDRCONFIG) left them out on a host without IPv6, so on such a host about half the peers would be unreachable. Whether the hosts have IPv6 is unverified; IPv4 reaches PostHog either way.
 - A variable in `proxy_pass` stops nginx from replacing the matched `/events/` prefix, so `rewrite ^/events/(.*)$ /$1 break` strips it. Without the rewrite, the local nginx test gets 404 for `/static/array.js`, `/flags/?v=2`, and `/i/v0/e/`.
