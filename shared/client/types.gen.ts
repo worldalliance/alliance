@@ -149,7 +149,7 @@ export type FormResponse = {
     guest?: Guest;
     sessionReplayUrl?: string;
     createdAt: string;
-    phDistinctId?: string;
+    phDistinctId: string | null;
     formSnapshotId: number;
     sid: string | null;
 };
@@ -3798,7 +3798,7 @@ export type FormResponseDto = {
     deviceType?: string;
     sessionReplayUrl?: string;
     createdAt: string;
-    phDistinctId?: string;
+    phDistinctId: string | null;
     formSnapshotId: number;
     sid: string | null;
     schemaSnapshot: {
