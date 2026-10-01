@@ -4,7 +4,7 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { getApiUrl } from "../../../lib/config";
 import type { ProjectPerson } from "./placeholders";
 
-export function PersonAvatar({
+function PersonAvatar({
   pictureKey,
   className,
 }: {

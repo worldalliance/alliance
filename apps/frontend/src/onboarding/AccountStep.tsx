@@ -18,11 +18,11 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import OAuthButtons from "@alliance/sharedweb/ui/OAuthButtons";
 import { useState, type FormEvent, type ReactNode } from "react";
-import { href, useLocation, useNavigate } from "react-router";
+import { href, Link, useLocation, useNavigate } from "react-router";
 import { z } from "zod";
 import { useAuth } from "../lib/AuthContext";
 import { getApiUrl, isFeatureEnabled } from "../lib/config";
-import { JOIN_MAILTO } from "../site/content";
+import { WAITLIST_HREF } from "../site/links";
 import { SiteArrow } from "../site/ui";
 import {
   ACCOUNT_BUTTON,
@@ -299,12 +299,12 @@ export function AccountStep({
               ? "Don’t have an account? "
               : "Already have an account? "}
             {loggingIn && !canSignUp ? (
-              <a
-                href={JOIN_MAILTO}
+              <Link
+                to={WAITLIST_HREF}
                 className="font-medium text-black underline underline-offset-2"
               >
-                Request an invite
-              </a>
+                Join the waitlist
+              </Link>
             ) : (
               <button
                 type="button"

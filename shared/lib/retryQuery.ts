@@ -4,7 +4,7 @@ import { thrownStatus } from "./hey-api";
  * to wait, not settling the question. */
 const RETRYABLE_REFUSALS = new Set([408, 429]);
 
-const isRefused = (error: unknown): boolean => {
+export const isRefused = (error: unknown): boolean => {
   const status = thrownStatus(error);
   return (
     status !== undefined && status < 500 && !RETRYABLE_REFUSALS.has(status)
