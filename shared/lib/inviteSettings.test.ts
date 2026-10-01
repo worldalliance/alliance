@@ -12,6 +12,7 @@ const link = (overrides: Partial<ShareUrlMineDto> = {}): ShareUrlMineDto => ({
   url: "https://example.com/signup?ref=share-abc",
   label: "Instagram bio",
   duplicate: true,
+  sid: "share-abc",
   createdAt: "2026-01-01T00:00:00.000Z",
   signupCount: 0,
   assignmentKind: "community",

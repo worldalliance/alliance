@@ -1475,7 +1475,7 @@ export type ShareUrlMineDto = {
     url: string;
     label: string | null;
     duplicate: boolean;
-    sid?: string;
+    sid: string | null;
     createdAt: string;
     signupCount: number;
     assignmentKind: InviteAssignmentKind;
@@ -1560,7 +1560,7 @@ export type ShareUrlAdminExternalTargetDto = {
 export type ShareUrlAdminDto = {
     id: string;
     kind: ShareUrlKind;
-    sid?: string;
+    sid: string | null;
     url: string;
     duplicate: boolean;
     label: string | null;
@@ -3381,7 +3381,7 @@ export type ScheduledPlansOverviewDto = {
 
 export type ShareUrlDto = {
     url: string;
-    sid?: string;
+    sid: string | null;
     user: ProfileDto;
 };
 
