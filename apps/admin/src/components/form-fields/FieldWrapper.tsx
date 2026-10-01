@@ -141,7 +141,6 @@ export function FieldWrapper<T extends AnyField>({
     expression: string | null;
   }) => {
     const { validatorType, idArgument, expression } = params;
-    console.log("handlevalidatorchange", validatorType, idArgument);
     if (!validatorType) {
       if (
         field.customValidatorId &&
