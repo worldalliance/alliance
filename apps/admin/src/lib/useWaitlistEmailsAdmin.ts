@@ -3,7 +3,8 @@ import {
   waitlistEmailAdminFindEmailsAdmin,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { inProgress, SENDING_POLL_MS } from "./waitlistEmail";
 
 export function useWaitlistEmailsAdmin() {
@@ -31,4 +32,21 @@ export function useWaitlistEmailAdmin(id: number) {
         ? SENDING_POLL_MS
         : false,
   });
+}
+
+/** Refreshes one email's detail and the list its counts appear in. */
+export function useInvalidateWaitlistEmailAdmin(
+  id: number,
+): () => Promise<void> {
+  const queryClient = useQueryClient();
+  return useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.waitlistEmailAdmin(id),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.waitlistEmailsAdmin(),
+      }),
+    ]);
+  }, [queryClient, id]);
 }

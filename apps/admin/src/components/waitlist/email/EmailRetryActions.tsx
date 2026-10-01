@@ -1,18 +1,18 @@
 import { pickForCount, withCount } from "@alliance/common/plural";
 import { waitlistEmailAdminRetryEmailAdmin } from "@alliance/shared/client";
 import type { WaitlistEmailBatchDto } from "@alliance/shared/client/types.gen";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import React, { useState } from "react";
 import { useRefusalToast } from "../../../lib/useRefusalToast";
+import { useInvalidateWaitlistEmailAdmin } from "../../../lib/useWaitlistEmailsAdmin";
 import ConfirmDialog from "../../ConfirmDialog";
 
 const EmailRetryActions: React.FC<{ batch: WaitlistEmailBatchDto }> = ({
   batch,
 }) => {
-  const queryClient = useQueryClient();
+  const invalidate = useInvalidateWaitlistEmailAdmin(batch.id);
   const refusalToast = useRefusalToast();
   const { success } = useToast();
   const [retrying, setRetrying] = useState<{
@@ -30,14 +30,7 @@ const EmailRetryActions: React.FC<{ batch: WaitlistEmailBatchDto }> = ({
     onError: (err) => refusalToast(err, "Could not resend the email."),
     onSettled: async () => {
       setRetrying(null);
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.waitlistEmailAdmin(batch.id),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.waitlistEmailsAdmin(),
-        }),
-      ]);
+      await invalidate();
     },
   });
 
