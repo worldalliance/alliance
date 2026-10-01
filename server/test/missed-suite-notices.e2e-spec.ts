@@ -24,14 +24,16 @@ import {
   ExperimentArm,
   ExperimentAssignment,
 } from "src/notifs/entities/experiment-assignment.entity";
+import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
   ContractEvent,
   ContractEventType,
 } from "src/user/entities/contract-event.entity";
+import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, stubExpoClient, TestContext } from "./e2e-test-utils";
 
 describe("missed-suite notices (e2e)", () => {
   let ctx: TestContext;
@@ -147,12 +149,13 @@ describe("missed-suite notices (e2e)", () => {
   const findNotices = () =>
     notifRepo.find({
       where: { type: ActionEventNotifType.MissedDeadline },
-      relations: { actionSuite: true, mms: true },
+      relations: { actionSuite: true, notification: true, mms: true },
     });
 
   beforeAll(async () => {
     process.env.SEND_DEV_NOTIFS = "1";
     ctx = await createTestApp([]);
+    stubExpoClient(ctx);
     worker = ctx.app.get(ActionEventNotifWorker);
     actionRepo = ctx.dataSource.getRepository(Action);
     eventRepo = ctx.dataSource.getRepository(ActionEvent);
@@ -186,6 +189,7 @@ describe("missed-suite notices (e2e)", () => {
       turnedOffAllNotifs: false,
       emailNotifsForActions: false,
       textNotifsForActions: true,
+      pushNotifsForActions: false,
       phoneNumber: "+14155550100",
       name: "Missed Tester",
     });
@@ -229,6 +233,12 @@ describe("missed-suite notices (e2e)", () => {
       MissedSuiteNoticeCopy.FirstMissReportV1,
     );
     expect(notice.notifiedActionIds).toEqual([closed.actions[1].id]);
+    expect(notice.notification).toMatchObject({
+      category: NotificationCategory.ActionEvent,
+      message: "The deadline for Missed task passed without your completion.",
+      webAppLocation: "/tasks",
+      shouldPush: false,
+    });
     expect(notice.mms?.body).toMatch(
       /^The deadline for Missed task passed without your completion\. If you did complete it, contact us\. \S+\/tasks/,
     );
@@ -263,6 +273,7 @@ describe("missed-suite notices (e2e)", () => {
 
     const [notice] = await findNotices();
     expect(notice.missedSuiteCopy).toBe(MissedSuiteNoticeCopy.FirstMissControl);
+    expect(notice.notification?.message).toBe("Control push");
     expect(notice.mms?.body).toBe("Control text");
     expect(
       await armRepo.findOneByOrFail({
@@ -321,6 +332,66 @@ describe("missed-suite notices (e2e)", () => {
     );
   });
 
+  it("gives the in-app entry to a member with every channel off", async () => {
+    await userRepo.update(ctx.testUserId, { turnedOffAllNotifs: true });
+    await setArm(ExperimentArm.Control);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    await createMissedSuiteGroup(closed);
+
+    await dispatch();
+
+    const [notice] = await findNotices();
+    expect(notice).toMatchObject({ sent: true, mms: null });
+    expect(notice.notification?.message).toBe("Control push");
+  });
+
+  it("links the push to the in-app entry", async () => {
+    await userRepo.update(ctx.testUserId, { pushNotifsForActions: true });
+    const deviceRepo = ctx.dataSource.getRepository(UserDevice);
+    await deviceRepo.save(
+      deviceRepo.create({
+        user: { id: ctx.testUserId },
+        deviceType: "iOS",
+        expoPushToken: `ExponentPushToken[missed_suite_${Date.now()}]`,
+      }),
+    );
+    await setArm(ExperimentArm.Control);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    await createMissedSuiteGroup(closed);
+
+    try {
+      await dispatch();
+
+      const [notice] = await notifRepo.find({
+        where: { type: ActionEventNotifType.MissedDeadline },
+        relations: { notification: true, pushes: { notification: true } },
+      });
+      expect(notice.pushes).toHaveLength(1);
+      expect(notice.pushes?.[0].notification?.id).toBe(notice.notification?.id);
+    } finally {
+      await deviceRepo.delete({ user: { id: ctx.testUserId } });
+    }
+  });
+
+  it("skips the in-app entry when the group's push copy is blank", async () => {
+    await setArm(ExperimentArm.Control);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    const group = await createMissedSuiteGroup(closed);
+    await groupRepo.update(group.id, { pushMessage: "" });
+
+    await dispatch();
+
+    const [notice] = await findNotices();
+    expect(notice.notification).toBeNull();
+    expect(notice.mms?.body).toBe("Control text");
+  });
+
   it("sends everyone the second-miss copy on a second consecutive miss", async () => {
     await setArm(ExperimentArm.Control);
     await createClosedSuite("Earlier", ago({ days: 7 }), ["Earlier task"]);
@@ -338,6 +409,9 @@ describe("missed-suite notices (e2e)", () => {
     );
     expect(notice.mms?.body).toMatch(
       /^You have missed two consecutive weeks of tasks\. /,
+    );
+    expect(notice.notification?.message).toBe(
+      "You have missed two consecutive weeks. One more pauses your agreement automatically.",
     );
   });
 

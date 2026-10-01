@@ -19,6 +19,7 @@ import { EmailStatus } from "src/mail/mail.entity";
 import { MailService, processKeywordReplacements } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { PushService } from "src/push/push.service";
+import { tasksUrl } from "src/search/approutes";
 import type { User } from "src/user/entities/user.entity";
 import {
   userActionNotifsEnabled_email,
@@ -45,6 +46,10 @@ import {
   ExperimentArm,
   ExperimentAssignment,
 } from "./entities/experiment-assignment.entity";
+import {
+  NotificationCategory,
+  type Notification,
+} from "./entities/notification.entity";
 import { LOCK_KEYS } from "./lock-keys";
 import { withPgAdvisoryLock } from "./lock-utils";
 import {
@@ -56,6 +61,7 @@ import {
   type ChannelTemplates,
 } from "./missed-suite-notice";
 import { generateCIDForNotif } from "./notif-utils";
+import { NotifsService } from "./notifs.service";
 
 export type UncompletedTaskSummary = {
   id: number;
@@ -78,6 +84,7 @@ export class ActionEventNotifWorker {
     private readonly actionEventNotifsRepository: Repository<ActionEventNotif>,
     private readonly reminderService: ActionEventReminderService,
     private readonly pushService: PushService,
+    private readonly notifsService: NotifsService,
     @InjectRepository(ExperimentAssignment)
     private readonly experimentAssignmentRepository: Repository<ExperimentAssignment>,
   ) {}
@@ -341,13 +348,35 @@ export class ActionEventNotifWorker {
         notice.standing,
       );
 
+    const inAppMessage = await render(templates.pushMessage);
+    if (inAppMessage.trim()) {
+      notif.notification = await this.notifsService.sendNotif({
+        user: plan.user,
+        category: NotificationCategory.ActionEvent,
+        message: inAppMessage,
+        webAppLocation: tasksUrl(),
+        mobileAppLocation: tasksUrl(),
+        associatedUsers: [],
+        shouldPush: false,
+        cid,
+      });
+      notif.sent = true;
+    } else {
+      this.logger.error(
+        `missed-suite reminder group ${plan.group.id} has blank push copy; skipped its in-app entry`,
+      );
+    }
     await this.deliver({
       notif,
       user: plan.user,
       cid,
       templates,
       render,
-      push: { screen: "/", idempotencyKey: `missed-suite-${suiteId}` },
+      push: {
+        screen: "/",
+        idempotencyKey: `missed-suite-${suiteId}`,
+        notification: notif.notification,
+      },
     });
     await this.actionEventNotifsRepository.save(notif);
   }
@@ -400,7 +429,11 @@ export class ActionEventNotifWorker {
     cid: string;
     templates: ChannelTemplates;
     render: (template: string) => Promise<string>;
-    push: { screen: string; idempotencyKey: string };
+    push: {
+      screen: string;
+      idempotencyKey: string;
+      notification?: Notification;
+    };
   }): Promise<boolean> {
     const { notif, user, cid, templates, render, push } = params;
     let sendingAnyNotif = false;
@@ -411,6 +444,7 @@ export class ActionEventNotifWorker {
         body: await render(templates.pushMessage),
         screen: push.screen,
         idempotencyKey: push.idempotencyKey,
+        notification: push.notification,
       });
 
       const result = await this.pushService.sendMessages(pushes);

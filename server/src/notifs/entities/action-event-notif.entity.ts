@@ -19,6 +19,7 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { Notification } from "./notification.entity";
 
 export enum ActionEventNotifType {
   Announcement = "announcement",
@@ -134,6 +135,11 @@ export class ActionEventNotif {
     nullable: true,
   })
   missedSuiteCopy: MissedSuiteNoticeCopy | null;
+
+  /** The in-app entry a missed-suite notice created alongside its channels. */
+  @OneToOne(() => Notification, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "notificationId" })
+  notification?: Relation<Notification>;
 
   @Column({ default: false })
   @ApiProperty({
