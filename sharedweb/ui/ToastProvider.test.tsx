@@ -71,6 +71,17 @@ describe("ToastProvider", () => {
     expect(screen.getByRole("alert").textContent).toBe("");
   });
 
+  it("opens a confirm that requires typed text as a fullscreen modal", () => {
+    renderProvider();
+    act(() => {
+      void toast.confirm({
+        message: "Delete this group?",
+        requiredText: "DELETE",
+      });
+    });
+    expect(screen.getByPlaceholderText("DELETE")).toBeTruthy();
+  });
+
   it.each([
     [
       ToastPlacement.Top,

@@ -33,6 +33,11 @@ export enum ToastPlacement {
   BottomRight = "bottomright",
 }
 
+export enum ConfirmMode {
+  Popover = "popover",
+  Fullscreen = "fullscreen",
+}
+
 const CONFIRM_ANCHOR_MARGIN = 8;
 
 const confirmAnchorStyle: Record<
@@ -95,7 +100,7 @@ type ConfirmOptions = {
   cancelLabel?: string;
   anchorEl?: HTMLElement | null;
   placement?: ToastPlacement;
-  mode?: "popover" | "fullscreen";
+  mode?: ConfirmMode;
   requiredText?: string;
   requiredTextLabel?: string;
   requiredTextPlaceholder?: string;
@@ -113,7 +118,7 @@ type ToastConfirm = Omit<ToastBase, "variant"> & {
   confirmLabel: string;
   cancelLabel: string;
   resolve: (value: boolean) => void;
-  mode: "popover" | "fullscreen";
+  mode: ConfirmMode;
   requiredText?: string;
   requiredTextLabel?: string;
   requiredTextPlaceholder?: string;
@@ -211,7 +216,9 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
           anchorEl,
           placement,
           resolve,
-          mode: mode ?? (requiredText ? "fullscreen" : "popover"),
+          mode:
+            mode ??
+            (requiredText ? ConfirmMode.Fullscreen : ConfirmMode.Popover),
           requiredText,
           requiredTextLabel,
           requiredTextPlaceholder,
@@ -344,7 +351,6 @@ const ConfirmToastItem: FC<ConfirmToastItemProps> = ({ toast, onConfirm }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const requiresText = toast.requiredText;
-  const isFullscreen = toast.mode === "fullscreen";
   const confirmDisabled =
     !!requiresText &&
     inputValue.trim() !== (requiresText ? requiresText.trim() : "");
@@ -448,12 +454,17 @@ const ConfirmToastItem: FC<ConfirmToastItemProps> = ({ toast, onConfirm }) => {
     </div>
   );
 
-  if (isFullscreen) {
-    return (
-      <div className="pointer-events-auto absolute inset-0 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm px-4">
-        {modalContent}
-      </div>
-    );
+  switch (toast.mode) {
+    case ConfirmMode.Fullscreen:
+      return (
+        <div className="pointer-events-auto absolute inset-0 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm px-4">
+          {modalContent}
+        </div>
+      );
+    case ConfirmMode.Popover:
+      break;
+    default:
+      throw new Error(`unknown confirm mode: ${toast.mode satisfies never}`);
   }
 
   const style: CSSProperties = toast.anchorEl

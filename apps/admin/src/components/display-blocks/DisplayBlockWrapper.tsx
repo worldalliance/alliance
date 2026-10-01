@@ -11,7 +11,7 @@ import { pickForCount, withCount } from "@alliance/common/plural";
 import { userListAdmin, type UserDto } from "@alliance/shared/client";
 import { resolveDisplayBlockForUser } from "@alliance/shared/formrenderer";
 import { cn } from "@alliance/shared/styles/util";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { CheckCircle2, Circle } from "lucide-react";
 import {
   useCallback,
@@ -548,7 +548,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
         message: `${withCount(overwriteCount, "user")} already ${pickForCount(overwriteCount, "has", "have")} a different ${manualImportField} value. Continue and replace ${pickForCount(overwriteCount, "it", "them")}?`,
         confirmLabel: "Overwrite",
         cancelLabel: "Cancel",
-        mode: "fullscreen",
+        mode: ConfirmMode.Fullscreen,
       });
       if (!ok) return;
     }
