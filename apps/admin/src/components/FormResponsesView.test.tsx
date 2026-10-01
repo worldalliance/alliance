@@ -27,6 +27,7 @@ const response: FormResponseDto = {
   schemaSnapshot: schema,
   phDistinctId: null,
   sid: null,
+  sessionReplayUrl: null,
   visibilityValidatorResults: {},
 };
 
