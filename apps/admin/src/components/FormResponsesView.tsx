@@ -31,7 +31,7 @@ import React, {
   useState,
 } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
-import { normalizeBoolean } from "../lib/answerValues";
+import { isEmptyAnswer, normalizeBoolean } from "../lib/answerValues";
 import {
   getDirectSnapshotTarget,
   type ReturnToState,
@@ -114,13 +114,6 @@ const isTab = (value: string | null): value is Tab =>
   value === "questions" ||
   value === "replays";
 
-const isNoResponseValue = (value: unknown): boolean => {
-  if (value === null || value === undefined) return true;
-  if (Array.isArray(value)) return value.length === 0;
-  if (typeof value === "string") return value.trim() === "";
-  return false;
-};
-
 const formatAiScore = (value: number | null): string => {
   if (typeof value !== "number" || Number.isNaN(value)) return "--";
   return `${Math.round(value * 100)}%`;
@@ -133,7 +126,7 @@ const matchesResponseFilter = (
 ): boolean => {
   const rawValue = response.answers?.[filter.fieldId];
   if (filter.op === "no-response") {
-    return isNoResponseValue(rawValue);
+    return isEmptyAnswer(rawValue);
   }
 
   switch (field.kind) {
@@ -474,8 +467,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
   const questionResponses = useMemo(() => {
     if (!selectedQuestionFieldId) return [];
     return scopedResponses.filter(
-      (response) =>
-        !isNoResponseValue(response.answers?.[selectedQuestionFieldId]),
+      (response) => !isEmptyAnswer(response.answers?.[selectedQuestionFieldId]),
     );
   }, [scopedResponses, selectedQuestionFieldId]);
 
