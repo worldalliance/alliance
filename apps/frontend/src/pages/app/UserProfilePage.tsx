@@ -315,7 +315,7 @@ const UserProfilePage: React.FC = () => {
             ) : (
               <div className="flex flex-row gap-3 items-center">
                 <h1 className="text-title-small">{profile.displayName}</h1>
-                {profile.displayName === "Someone" && (
+                {profile.anonymous && (
                   <div className="mt-px">
                     <InfoTooltip content="Names are hidden for members who have set their account to be anonymous." />
                   </div>

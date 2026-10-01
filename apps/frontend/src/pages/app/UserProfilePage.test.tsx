@@ -302,3 +302,23 @@ it("shows how many actions the member completed", async () => {
   const label = await screen.findByText("actions completed");
   expect(label.closest("div")?.textContent).toMatch(/^3actions/);
 });
+
+it.each([
+  { anonymous: true, tooltip: true },
+  { anonymous: false, tooltip: false },
+])(
+  "shows the hidden-name tooltip: $tooltip, when anonymous is $anonymous",
+  async ({ anonymous, tooltip }) => {
+    api.alsoServing({
+      "GET /user/slug/:id": () =>
+        Response.json({ ...GRACE, anonymous, displayName: "Someone" }),
+    });
+    renderProfile();
+
+    const heading = await screen.findByRole("heading", { name: "Someone" });
+    expect(
+      heading.parentElement?.querySelector('[data-slot="tooltip-trigger"]') !==
+        null,
+    ).toBe(tooltip);
+  },
+);

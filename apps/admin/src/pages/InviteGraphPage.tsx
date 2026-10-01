@@ -1,3 +1,4 @@
+import { publicDisplayName } from "@alliance/common/displayName";
 import {
   OnetimeInviteEdgeDto,
   UserDto,
@@ -213,7 +214,7 @@ const InviteGraphPage = () => {
       id: userNodeId(u.id),
       kind: NodeKind.User,
       userId: u.id,
-      displayName: u.anonymous ? "Someone" : u.name,
+      displayName: publicDisplayName(u),
       profilePicture: u.profilePicture,
     }));
 

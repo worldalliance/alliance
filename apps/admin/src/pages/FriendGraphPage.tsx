@@ -1,3 +1,4 @@
+import { publicDisplayName } from "@alliance/common/displayName";
 import {
   FriendGraphEdgeDto,
   UserDto,
@@ -98,7 +99,7 @@ const FriendGraphPage = () => {
     const nodes: GraphNode[] = activeUsers.map((u) => ({
       id: userNodeId(u.id),
       userId: u.id,
-      displayName: u.anonymous ? "Someone" : u.name,
+      displayName: publicDisplayName(u),
       profilePicture: u.profilePicture,
     }));
     const nodeIds = new Set(nodes.map((n) => n.id));
