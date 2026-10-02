@@ -1,3 +1,4 @@
+import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { makeUser } from "@alliance/shared/lib/testFixtures";
@@ -56,6 +57,7 @@ it("seeds a timezone field from a member whose session loads after the form", as
               taskFormId={7}
               actionId={1}
               onCompleteAction={null}
+              onDeadlinePassed={() => {}}
               onFormStarted={() => {}}
               publicAction
             />
@@ -104,6 +106,7 @@ it("shows a form with no timezone field before the session loads", async () => {
               taskFormId={8}
               actionId={1}
               onCompleteAction={null}
+              onDeadlinePassed={() => {}}
               onFormStarted={() => {}}
               publicAction
             />
@@ -116,7 +119,10 @@ it("shows a form with no timezone field before the session loads", async () => {
   expect(await screen.findByRole("textbox")).toBeTruthy();
 });
 
-it("shows the reload instruction, unreported, when the histories its options read changed", async () => {
+const submitRefusedWith = async (
+  refusal: { statusCode: number; message: string },
+  onDeadlinePassed: () => void = () => {},
+) => {
   api.alsoServing({
     "GET /tasks/slug/:id": () =>
       Response.json({
@@ -138,10 +144,7 @@ it("shows the reload instruction, unreported, when the histories its options rea
     "GET /tasks/draft/:id": () => Response.json({}),
     "GET /tasks/formDraft/:id": () => Response.json({}),
     "POST /tasks/submitForm/:id": () =>
-      Response.json(
-        { statusCode: 409, message: FORMULA_SOURCES_CHANGED },
-        { status: 409 },
-      ),
+      Response.json(refusal, { status: refusal.statusCode }),
   });
   render(
     <QueryClientProvider client={new QueryClient()}>
@@ -154,6 +157,7 @@ it("shows the reload instruction, unreported, when the histories its options rea
                 actionId={1}
                 onCompleteAction={() => {}}
                 onFormStarted={() => {}}
+                onDeadlinePassed={onDeadlinePassed}
               />
             </ToastProvider>
           </AuthContext.Provider>
@@ -163,7 +167,27 @@ it("shows the reload instruction, unreported, when the histories its options rea
   );
 
   fireEvent.click(await screen.findByRole("button", { name: "Complete" }));
+};
+
+it("shows the reload instruction, unreported, when the histories its options read changed", async () => {
+  await submitRefusedWith({
+    statusCode: 409,
+    message: FORMULA_SOURCES_CHANGED,
+  });
 
   expect(await screen.findByText(FORMULA_SOURCES_CHANGED)).toBeTruthy();
+  expect(reported).toEqual([]);
+});
+
+it("refetches the action, unreported, when the deadline passed before the submit", async () => {
+  const onDeadlinePassed = jest.fn();
+
+  await submitRefusedWith(
+    { statusCode: 403, message: MEMBER_ACTION_DEADLINE_PASSED },
+    onDeadlinePassed,
+  );
+
+  expect(await screen.findByText(MEMBER_ACTION_DEADLINE_PASSED)).toBeTruthy();
+  expect(onDeadlinePassed).toHaveBeenCalledTimes(1);
   expect(reported).toEqual([]);
 });

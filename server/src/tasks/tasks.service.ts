@@ -923,17 +923,8 @@ export class TasksService {
       where: { id: submitFormDto.actionId },
       relations: { events: true },
     });
-    // One instant for both completion checks, so a deadline passing
-    // mid-submission cannot reject the completion after the answers applied.
-    const submittedAt = new Date();
     if (action) {
       assertNotInStaffPreview(action);
-      // Before any answer side effects (contract signing, profile updates).
-      await this.actionsService.ensureCompletionAllowed({
-        action: parseAction(action),
-        userId,
-        now: submittedAt,
-      });
     }
     const variants = await this.actionFormVariantService.listForAction(
       submitFormDto.actionId,
@@ -950,6 +941,18 @@ export class TasksService {
     });
     if (existingFormResponse) {
       throw new BadRequestException("Form already submitted");
+    }
+
+    // One instant for both completion checks, so a deadline passing
+    // mid-submission cannot reject the completion after the answers applied.
+    const submittedAt = new Date();
+    if (action) {
+      // Before any answer side effects (contract signing, profile updates).
+      await this.actionsService.ensureCompletionAllowed({
+        action: parseAction(action),
+        userId,
+        now: submittedAt,
+      });
     }
 
     const submittedSnapshot = await this.resolveSubmissionSnapshot(

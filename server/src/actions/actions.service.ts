@@ -3,6 +3,7 @@ import {
   ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
   actionActivityIsVisibleInFeed,
   ActionActivityType,
+  MEMBER_ACTION_DEADLINE_PASSED,
   WITHDRAWAL_OPTION_LABELS,
   withdrawalOptionFromFlags,
   type FeedActionActivity,
@@ -252,7 +253,9 @@ import {
 } from "./staff-preview";
 import { resolveUserActionPillStatus } from "./user-action-pill-status";
 import {
+  CompletionBlock,
   computeCanCompleteAction,
+  computeCompletionBlock,
   resolveUserActionStatus,
   type ViewerCohort,
 } from "./user-action-status";
@@ -289,6 +292,15 @@ const GLOBAL_FEED_WINDOW_DAYS = 8;
  * the activity row and in the event's blob.
  */
 const OPT_OUT_REASON_PREVIEW_LENGTH = 300;
+
+const COMPLETION_UNAVAILABLE = "This action is not available to you";
+
+const COMPLETION_BLOCK_MESSAGE: Record<CompletionBlock, string> = {
+  [CompletionBlock.PreventCompletion]: COMPLETION_UNAVAILABLE,
+  [CompletionBlock.NotInCohort]: COMPLETION_UNAVAILABLE,
+  [CompletionBlock.DeadlinePassed]: MEMBER_ACTION_DEADLINE_PASSED,
+  [CompletionBlock.OnboardingContractUnsigned]: COMPLETION_UNAVAILABLE,
+};
 
 /**
  * Below this many active friends + group members, the feed is topped up with other
@@ -975,7 +987,7 @@ export class ActionsService {
    * feeding `canParticipate`/`viewer.canComplete`, `shouldParticipate`, and
    * `viewer`. No member-action-phase gate: the completion rule (unlike
    * assignment) applies to actions whose phase isn't scheduled yet, and
-   * gating here made `viewer.canComplete` disagree with `isCompletionAllowed`
+   * gating here made `viewer.canComplete` disagree with `findCompletionBlock`
    * (which the complete mutation enforces).
    */
   private async computeViewerCohort(params: {
@@ -2609,16 +2621,16 @@ export class ActionsService {
     return this.toActivityDtos({ activities, requestingUserId, comments });
   }
 
-  async isCompletionAllowed(params: {
+  async findCompletionBlock(params: {
     action: ParsedAction;
     user: User;
     now: Date;
-  }): Promise<boolean> {
+  }): Promise<CompletionBlock | null> {
     const { action, user, now } = params;
     // preventCompletion short-circuits before the DB-hitting cohort
-    // evaluation; the rule itself lives in computeCanCompleteAction.
+    // evaluation; the rule itself lives in computeCompletionBlock.
     if (action.preventCompletion) {
-      return false;
+      return CompletionBlock.PreventCompletion;
     }
 
     const cohort = await this.computeViewerCohort({
@@ -2629,7 +2641,7 @@ export class ActionsService {
       undecidedActionIds: new Set(),
     });
 
-    return computeCanCompleteAction({
+    return computeCompletionBlock({
       action,
       user,
       inCohort: cohort.eligible,
@@ -2648,8 +2660,9 @@ export class ActionsService {
       contractEvents: true,
       awayRanges: true,
     });
-    if (!(await this.isCompletionAllowed({ action, user, now }))) {
-      throw new ForbiddenException("This action is not available to you");
+    const block = await this.findCompletionBlock({ action, user, now });
+    if (block !== null) {
+      throw new ForbiddenException(COMPLETION_BLOCK_MESSAGE[block]);
     }
   }
 

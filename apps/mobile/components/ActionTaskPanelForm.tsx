@@ -1,3 +1,4 @@
+import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import { GUEST_HEADER } from "@alliance/common/guest";
@@ -8,7 +9,10 @@ import {
   tasksSubmitPublicForm,
 } from "@alliance/shared/client";
 import { useFormulaSourcesRefetch } from "@alliance/shared/forms/useFormulaSourcesRefetch";
-import type { ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
+import {
+  memberActionDeadlinePassed,
+  type ActionWithdrawal,
+} from "@alliance/shared/lib/actionTaskPanel";
 import { captureException } from "@alliance/shared/lib/analytics";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { useInvalidateVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
@@ -25,6 +29,7 @@ interface ActionTaskPanelFormProps {
   onCompleteAction: ((sendComplete: boolean) => void) | null;
   onFormStarted: () => void;
   onAbandonAction?: (withdrawal: ActionWithdrawal) => void;
+  onDeadlinePassed: () => void;
   actionId: number;
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
@@ -39,6 +44,7 @@ const ActionTaskPanelForm = ({
   onCompleteAction,
   onFormStarted,
   onAbandonAction,
+  onDeadlinePassed,
   actionId,
   scrollPageTo,
   scrollToEnd,
@@ -94,6 +100,11 @@ const ActionTaskPanelForm = ({
           onCompleteAction(false);
           return true;
         } else {
+          if (memberActionDeadlinePassed(response)) {
+            setError(MEMBER_ACTION_DEADLINE_PASSED);
+            onDeadlinePassed();
+            return false;
+          }
           if (refetchIfSourcesChanged(response)) return false;
           console.error(response.error);
           captureException(ExceptionEvent.FormSubmitError, response.error, {

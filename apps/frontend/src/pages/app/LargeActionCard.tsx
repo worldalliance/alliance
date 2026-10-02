@@ -165,6 +165,7 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
               userRelation={userRelation}
               onCompleteAction={handleCompleteAction}
               onOptOutAction={handleUpdateActionState}
+              onDeadlinePassed={onUpdateActionState}
               scrollContainerRef={scrollContainerRef}
               disabled={showSignContractFirst}
               staticTaskFormSchema={staticTaskFormSchema}

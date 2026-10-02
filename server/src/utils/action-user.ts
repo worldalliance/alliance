@@ -22,7 +22,7 @@ import type { Repository } from "typeorm";
  *
  * Single source of this rule, shared by {@link computeAssignmentCore}
  * (both assignment variants, i.e. the `ActionDto.shouldParticipate` wire field)
- * and `ActionsService.isCompletionAllowed` (the `ActionDto.canParticipate`
+ * and `ActionsService.findCompletionBlock` (the `ActionDto.canParticipate`
  * wire field).
  */
 export function computeContractSignedAfterOnboardingStart(params: {

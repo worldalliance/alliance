@@ -17,6 +17,7 @@ const ActionTaskPanel = ({
   action,
   onCompleteAction,
   onOptOutAction,
+  onDeadlinePassed,
   scrollPageTo,
   scrollToEnd,
   disabled,
@@ -48,6 +49,7 @@ const ActionTaskPanel = ({
         scrollPageTo={scrollPageTo}
         scrollToEnd={scrollToEnd}
         onCompleteAction={null}
+        onDeadlinePassed={noop}
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
         actionId={action.id}
@@ -64,6 +66,7 @@ const ActionTaskPanel = ({
         scrollPageTo={scrollPageTo}
         scrollToEnd={scrollToEnd}
         onCompleteAction={null}
+        onDeadlinePassed={noop}
         onFormStarted={noop}
         actionId={action.id}
         preview
@@ -80,6 +83,7 @@ const ActionTaskPanel = ({
         onCompleteAction={handleCompleteWithTracking}
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
+        onDeadlinePassed={onDeadlinePassed}
         actionId={action.id}
         disabled={disabled}
       />

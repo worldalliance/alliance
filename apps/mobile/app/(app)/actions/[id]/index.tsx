@@ -124,8 +124,14 @@ export default function ActionDetailScreen() {
 
   const reloadTasks = useInvalidateActions();
 
-  const { action, loading, refetchAction, onCompleteAction, onOptOutAction } =
-    useActionHandlers(parseInt(id), true, reloadTasks);
+  const {
+    action,
+    loading,
+    refetchAction,
+    onCompleteAction,
+    onOptOutAction,
+    onDeadlinePassed,
+  } = useActionHandlers(parseInt(id), true, reloadTasks);
 
   const scrollViewRef = useRef<KeyboardAwareScrollViewRef>(null);
 
@@ -205,6 +211,7 @@ export default function ActionDetailScreen() {
                   action={action}
                   onCompleteAction={onCompleteAction}
                   onOptOutAction={onOptOutAction}
+                  onDeadlinePassed={onDeadlinePassed}
                 />
               </View>
             ) : (

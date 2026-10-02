@@ -146,6 +146,7 @@ export default function LargeActionCard({
           action={action}
           onCompleteAction={onCompleteAction}
           onOptOutAction={onUpdateActionState}
+          onDeadlinePassed={onUpdateActionState}
           scrollPageTo={scrollPageTo}
           scrollToEnd={scrollToEnd}
         />
