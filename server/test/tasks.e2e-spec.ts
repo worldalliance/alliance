@@ -1,4 +1,7 @@
-import { ActionActivityType } from "@alliance/common/actionActivity";
+import {
+  ActionActivityType,
+  MEMBER_ACTION_DEADLINE_PASSED,
+} from "@alliance/common/actionActivity";
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { devPorts, PortCaller } from "@alliance/common/dev-ports";
 import {
@@ -677,8 +680,9 @@ describe("Tasks (e2e)", () => {
         new Date(Date.now() - milliseconds({ minutes: 1 })),
       );
 
-      await submit().expect(403);
+      const refused = await submit().expect(403);
 
+      expect(refused.body.message).toBe(MEMBER_ACTION_DEADLINE_PASSED);
       expect(await formResponseRepo.countBy({ formId })).toBe(0);
     });
 

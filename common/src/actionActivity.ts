@@ -17,6 +17,10 @@ export enum ActionActivityType {
   USER_SUBMITTED_FOLLOW_UP_FORM = "user_submitted_follow_up_form",
 }
 
+/** Installed apps recognize the server's refusal by this exact text. */
+export const MEMBER_ACTION_DEADLINE_PASSED =
+  "The deadline for this action has passed.";
+
 /** Which `ActionActivityType`s appear in feeds. */
 const ACTION_ACTIVITY_FEED_VISIBLE = {
   user_completed: true,

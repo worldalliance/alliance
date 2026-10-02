@@ -12,7 +12,9 @@ import { UserActionRelationPillStatus } from "../user/dto/user-action-relations.
 import type { ActionEvent } from "./entities/action-event.entity";
 import { ActionStatus } from "./entities/action-event.entity";
 import {
+  CompletionBlock,
   computeCanCompleteAction,
+  computeCompletionBlock,
   resolveUserActionStatus,
   type UserActionStatus,
   ViewerActionRelation,
@@ -363,7 +365,7 @@ describe("resolveUserActionStatus", () => {
       action: makeAction({ events: [] as ActionEvent[] }),
     });
     expect(status.assigned).toBe(false);
-    // The completion rule has no phase gate (matching isCompletionAllowed,
+    // The completion rule has no phase gate (matching findCompletionBlock,
     // which the complete mutation enforces).
     expect(status.canComplete).toBe(true);
     expect(status.memberActionStarted).toBe(false);
@@ -504,6 +506,39 @@ describe("computeCanCompleteAction", () => {
         now: NOW,
       }),
     ).toBe(false);
+  });
+
+  it("names a passed deadline as what closes completion", () => {
+    expect(
+      computeCompletionBlock({
+        action: makeAction({ events: pastDeadlineEvents() }),
+        user: makeUser(),
+        inCohort: true,
+        now: NOW,
+      }),
+    ).toBe(CompletionBlock.DeadlinePassed);
+  });
+
+  it("names an earlier block over a passed deadline", () => {
+    expect(
+      computeCompletionBlock({
+        action: makeAction({ events: pastDeadlineEvents() }),
+        user: makeUser(),
+        inCohort: false,
+        now: NOW,
+      }),
+    ).toBe(CompletionBlock.NotInCohort);
+    expect(
+      computeCompletionBlock({
+        action: makeAction({
+          events: pastDeadlineEvents(),
+          preventCompletion: true,
+        }),
+        user: makeUser(),
+        inCohort: true,
+        now: NOW,
+      }),
+    ).toBe(CompletionBlock.PreventCompletion);
   });
 
   it("keeps completion open past the deadline with shouldCompleteAfterDeadline", () => {

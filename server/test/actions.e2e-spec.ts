@@ -1,4 +1,7 @@
-import { ActionActivityType } from "@alliance/common/actionActivity";
+import {
+  ActionActivityType,
+  MEMBER_ACTION_DEADLINE_PASSED,
+} from "@alliance/common/actionActivity";
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { milliseconds } from "date-fns";
 import { ActionCategory } from "src/actions/action-category";
@@ -2261,10 +2264,11 @@ describe("Actions (e2e)", () => {
         const closedView = await viewOf(closed.id);
         expect(closedView.canParticipate).toBe(false);
         expect(closedView.viewer.canComplete).toBe(false);
-        await request(ctx.app.getHttpServer())
+        const refused = await request(ctx.app.getHttpServer())
           .post(`/actions/complete/${closed.id}`)
           .set("Authorization", `Bearer ${ctx.accessToken}`)
           .expect(403);
+        expect(refused.body.message).toBe(MEMBER_ACTION_DEADLINE_PASSED);
 
         await request(ctx.app.getHttpServer())
           .post("/actions/createActivity")

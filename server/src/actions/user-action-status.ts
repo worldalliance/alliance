@@ -63,7 +63,7 @@ export type UserActionStatus = {
    * members without an active contract may still complete regular actions —
    * they're just not expected to (no home-page listing, no reminders, no
    * suspension accounting). Decided 2026-07. See
-   * {@link computeCanCompleteAction} for the exact rule.
+   * {@link computeCompletionBlock} for the exact rule.
    */
   canComplete: boolean;
   /** Latest terminal activity: completed, withdrawn, or none. */
@@ -121,19 +121,14 @@ export type UserActionWithdrawal = {
   note: string | null;
 };
 
-/**
- * Completion-permission rule — the pure core of
- * `ActionsService.isCompletionAllowed` (the `ActionDto.canParticipate` wire
- * field and the server-side gate on the complete mutation).
- *
- * Policy (decided 2026-07): contract state is NOT a completion gate for
- * regular actions — a lapsed/suspended in-cohort member may still complete.
- * Onboarding actions keep the join-timing contract gate because the onboarding
- * sequence exists to get the contract signed. Dismissal and away never block
- * completion. Past the deadline, only `shouldCompleteAfterDeadline` keeps it
- * open; staff corrections bypass this rule entirely.
- */
-export function computeCanCompleteAction(params: {
+export enum CompletionBlock {
+  PreventCompletion = "prevent_completion",
+  NotInCohort = "not_in_cohort",
+  DeadlinePassed = "deadline_passed",
+  OnboardingContractUnsigned = "onboarding_contract_unsigned",
+}
+
+type CompletionRuleParams = {
   action: Pick<
     Action,
     | "preventCompletion"
@@ -144,14 +139,30 @@ export function computeCanCompleteAction(params: {
   user: Pick<User, "contractEvents">;
   inCohort: boolean;
   now: Date;
-}): boolean {
+};
+
+/**
+ * Completion-permission rule — the pure core of
+ * `ActionsService.findCompletionBlock` (the `ActionDto.canParticipate` wire
+ * field and the server-side gate on the complete mutation).
+ *
+ * Policy (decided 2026-07): contract state is NOT a completion gate for
+ * regular actions — a lapsed/suspended in-cohort member may still complete.
+ * Onboarding actions keep the join-timing contract gate because the onboarding
+ * sequence exists to get the contract signed. Dismissal and away never block
+ * completion. Past the deadline, only `shouldCompleteAfterDeadline` keeps it
+ * open; staff corrections bypass this rule entirely.
+ */
+export function computeCompletionBlock(
+  params: CompletionRuleParams,
+): CompletionBlock | null {
   const { action, user, inCohort, now } = params;
 
   if (action.preventCompletion) {
-    return false;
+    return CompletionBlock.PreventCompletion;
   }
   if (!inCohort) {
-    return false;
+    return CompletionBlock.NotInCohort;
   }
   if (
     !action.shouldCompleteAfterDeadline &&
@@ -160,7 +171,7 @@ export function computeCanCompleteAction(params: {
       now,
     )
   ) {
-    return false;
+    return CompletionBlock.DeadlinePassed;
   }
   if (
     action.onboarding &&
@@ -169,9 +180,13 @@ export function computeCanCompleteAction(params: {
       memberActionPhaseStart: action.memberActionPhase.event?.date ?? null,
     })
   ) {
-    return false;
+    return CompletionBlock.OnboardingContractUnsigned;
   }
-  return true;
+  return null;
+}
+
+export function computeCanCompleteAction(params: CompletionRuleParams) {
+  return computeCompletionBlock(params) === null;
 }
 
 /**
