@@ -89,6 +89,9 @@ describe("missedSuiteNoticeTemplates", () => {
       "You have missed two consecutive weeks of tasks.",
     );
     expect(notice.emailMessage).toContain("Hi Jane,\nYou have missed");
+    expect(notice.emailMessage).toContain(
+      "Completing this week's tasks resets the count.",
+    );
     expect(notice.text).toContain("https://app.example.org/");
   });
 });

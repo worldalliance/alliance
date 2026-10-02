@@ -93,3 +93,7 @@ Completing this week's task resets the count.
 If something has changed on your end or isn’t functioning in the platform, contact us.
 #{link}
 ```
+
+## Second-miss email wording — 2026-10-01
+
+- ALL-1367 (agent-filed) noted that “Completing this week's task resets the count” implies one task resets the streak, though every required task must be done. The user: “we can just make it say `this week's tasks`.”
