@@ -58,15 +58,21 @@ export default function DemocraticGrantmaking26() {
       <Navbar overPrimary />
       <main>
         <div
-          className="bg-[var(--site-primary)] pb-10 text-white lg:pb-16"
-          style={{ paddingTop: NAV_HEIGHT + 64 }}
+          className="bg-[var(--site-primary)] pb-10 text-white lg:flex lg:min-h-screen lg:flex-col lg:gap-[clamp(1.5rem,4vh,3.5rem)] lg:pb-[clamp(1.5rem,4vh,3.5rem)]"
+          style={{ paddingTop: NAV_HEIGHT }}
         >
-          <div className={cn(SITE_COL, GRID)}>
-            <div className="flex flex-col gap-4">
+          <div
+            className={cn(
+              SITE_COL,
+              GRID,
+              "pt-16 lg:-translate-y-[2vh] lg:flex-1 lg:items-center lg:pt-[clamp(1.5rem,5vh,4rem)]",
+            )}
+          >
+            <div className="flex flex-col gap-4 lg:gap-[clamp(1rem,2.5vh,2rem)]">
               <DisplayHeading
                 as="h1"
                 onDark
-                className="text-5xl sm:text-6xl lg:text-7xl"
+                className="text-5xl sm:text-6xl lg:text-[clamp(3rem,min(5vw,8vh),6rem)]"
               >
                 Help decide where to donate{" "}
                 <span className="site-display text-green">$100,000</span>
@@ -94,14 +100,14 @@ export default function DemocraticGrantmaking26() {
                 ))}
               </ul>
             </div>
-            <WaitlistSignupForm className="w-full max-w-lg lg:max-w-none" />
+            <WaitlistSignupForm className="w-full max-w-lg lg:max-w-none lg:gap-[clamp(0.75rem,1.5vh,1.25rem)]" />
           </div>
-          <div className={cn(SITE_COL, "mt-14 lg:mt-20")}>
+          <div className={cn(SITE_COL, "mt-14 lg:mt-0")}>
             <ProjectProgress />
           </div>
           <ProjectTimeline
             currentIdx={0}
-            className={cn(SITE_COL, "mt-10 lg:mt-14")}
+            className={cn(SITE_COL, "mt-10 lg:mt-0")}
           />
         </div>
         <div className={cn(SITE_COL, GRID, "pt-10 pb-16 lg:pt-14 lg:pb-24")}>
