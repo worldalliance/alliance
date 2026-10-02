@@ -2,8 +2,6 @@ import { errorMessage } from "@alliance/common/errorMessage";
 import {
   projectsAssignActionAdmin,
   projectsCreateAdmin,
-  projectsFindAllAdmin,
-  projectsFindOneAdmin,
   projectsRemoveAdmin,
   projectsUpdateAdmin,
   type ActionCategory,
@@ -15,11 +13,12 @@ import { cn } from "@alliance/shared/styles/util";
 import SearchableSelect from "@alliance/sharedweb/forms/SearchableSelect";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
 import { Link } from "react-router";
+import { useProjectAdmin, useProjectsAdmin } from "../lib/useProjectsAdmin";
 import { ActionCategoryPicker } from "./ActionCategoryIcons";
 import ConfirmDialog from "./ConfirmDialog";
 
@@ -122,11 +121,8 @@ export function ActionProjectControls({
   const invalidate = useInvalidateProjects(actionId);
   const [mode, setMode] = useState(EditMode.None);
 
-  const { data: projects = [], isPending: projectsLoading } = useQuery({
-    queryKey: queryKeys.projectsAdmin(),
-    queryFn: () =>
-      projectsFindAllAdmin({ throwOnError: true }).then((res) => res.data),
-  });
+  const { data: projects = [], isPending: projectsLoading } =
+    useProjectsAdmin();
 
   const onError = (fallback: string) => (error: unknown) =>
     toast.error(errorMessage({ error, fallback }));
@@ -263,14 +259,7 @@ export function ActionProjectSteps({
   const invalidate = useInvalidateProjects(actionId);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-  const { data: project, error } = useQuery({
-    queryKey: queryKeys.projectAdmin(projectId),
-    queryFn: () =>
-      projectsFindOneAdmin({
-        path: { id: projectId },
-        throwOnError: true,
-      }).then((res) => res.data),
-  });
+  const { data: project, error } = useProjectAdmin(projectId);
 
   const remove = useMutation({
     mutationFn: () =>
