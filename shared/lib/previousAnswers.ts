@@ -5,17 +5,14 @@ import type {
   FormValue,
   ListField,
 } from "@alliance/common/forms/form-schema";
-import {
-  flattenPageItems,
-  isQuestionField,
-} from "@alliance/common/forms/form-schema";
+import { isQuestionField } from "@alliance/common/forms/form-schema";
 
 export function findFieldInSchema(
   schema: FormSchema,
   fieldId: string,
 ): AnyField | undefined {
   for (const page of schema.pages) {
-    for (const element of flattenPageItems(page.fields)) {
+    for (const element of page.fields) {
       if (isQuestionField(element)) {
         if (element.id === fieldId) {
           return element;

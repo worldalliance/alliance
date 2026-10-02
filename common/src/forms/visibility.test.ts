@@ -1,10 +1,9 @@
-import type { FieldGroup, FormValue, Page, TextField } from "./form-schema";
+import type { FormValue, Page, TextField } from "./form-schema";
 import {
   emptyUserPropertyPresence,
   UserValueProperty,
 } from "./user-properties";
 import {
-  isElementCurrentlyVisible,
   isFieldConditionallyRequired,
   isPageCurrentlyVisible,
   isVisibleInSavedResponse,
@@ -791,7 +790,6 @@ describe("isVisibleInSavedResponse", () => {
       deviceType: "desktop",
       visibilityValidatorResults: {},
       fieldLookup: new Map(),
-      groupByFieldId: new Map(),
       pageByFieldId: new Map(),
       ...response,
     });
@@ -935,40 +933,6 @@ describe("isVisibleInSavedResponse", () => {
     ).toBe(true);
   });
 
-  describe("inside a group", () => {
-    const visibleInGroup = (groupFormula: VisibleIfFormula) => {
-      const group: FieldGroup = {
-        id: "g1",
-        type: "group",
-        kind: "group",
-        fields: [],
-        visibleIfFormula: groupFormula,
-      };
-      return visible(
-        { conditions: {}, formula: "" },
-        { groupByFieldId: new Map([["sub", group]]) },
-      );
-    };
-
-    it("hides an element whose group's replayable conditions rule it out", () => {
-      expect(
-        visibleInGroup({
-          conditions: { c1: gateIsYes, c2: hasCity },
-          formula: { op: "AND", left: "c1", right: "c2" },
-        }),
-      ).toBe(false);
-    });
-
-    it("shows an element whose group a condition it can't replay could have shown", () => {
-      expect(
-        visibleInGroup({
-          conditions: { c1: gateIsYes, c2: hasCity },
-          formula: { op: "OR", left: "c1", right: "c2" },
-        }),
-      ).toBe(true);
-    });
-  });
-
   describe("with a condition on a field a recorded verdict hid", () => {
     const hiddenByVerdict = formula({
       c1: { kind: "validator", validatorId: 7 },
@@ -985,24 +949,6 @@ describe("isVisibleInSavedResponse", () => {
           fieldLookup: new Map([
             ["gate", textField("gate", { visibleIfFormula: hiddenByVerdict })],
           ]),
-        }),
-      ).toBe(false);
-    });
-
-    it("reads the field as unanswered when its group hid it", () => {
-      const gate = textField("gate");
-      const group: FieldGroup = {
-        id: "g1",
-        type: "group",
-        kind: "group",
-        fields: [gate],
-        visibleIfFormula: hiddenByVerdict,
-      };
-      expect(
-        visible(formula({ c1: gateIsYes }), {
-          ...response,
-          fieldLookup: new Map([["gate", gate]]),
-          groupByFieldId: new Map([["gate", group]]),
         }),
       ).toBe(false);
     });
@@ -1052,112 +998,6 @@ describe("isVisibleInSavedResponse", () => {
         }),
       ).toBe(true);
     });
-  });
-});
-
-describe("field groups", () => {
-  const grouped = (
-    overrides: Partial<FieldGroup> = {},
-    child: TextField = textField("child"),
-  ): FieldGroup => ({
-    id: "g1",
-    type: "group",
-    kind: "group",
-    fields: [child],
-    ...overrides,
-  });
-
-  it("hides a child when the group formula is false", () => {
-    const group = grouped({
-      visibleIfFormula: formula({
-        c1: { kind: "equals", when: "gate", equals: "yes" },
-      }),
-    });
-    const groupByFieldId = new Map([["child", group]]);
-    expect(
-      isElementCurrentlyVisible(
-        group.fields[0],
-        { gate: "no" },
-        {
-          ...extras,
-          groupByFieldId,
-        },
-      ),
-    ).toBe(false);
-    expect(
-      isElementCurrentlyVisible(
-        group.fields[0],
-        { gate: "yes" },
-        {
-          ...extras,
-          groupByFieldId,
-        },
-      ),
-    ).toBe(true);
-  });
-
-  it("hides a child when either the group or the child formula is false", () => {
-    const child = textField("child", {
-      visibleIfFormula: formula({
-        c1: { kind: "equals", when: "inner", equals: "yes" },
-      }),
-    });
-    const group = grouped(
-      {
-        visibleIfFormula: formula({
-          c1: { kind: "equals", when: "gate", equals: "yes" },
-        }),
-      },
-      child,
-    );
-    const groupByFieldId = new Map([["child", group]]);
-    const ctx = { ...extras, groupByFieldId };
-    expect(
-      isElementCurrentlyVisible(child, { gate: "yes", inner: "yes" }, ctx),
-    ).toBe(true);
-    expect(
-      isElementCurrentlyVisible(child, { gate: "yes", inner: "no" }, ctx),
-    ).toBe(false);
-    expect(
-      isElementCurrentlyVisible(child, { gate: "no", inner: "yes" }, ctx),
-    ).toBe(false);
-  });
-
-  it("makes a child required when the group is required", () => {
-    const group = grouped({ required: true });
-    const child = textField("child");
-    const ctx = { ...extras, groupByFieldId: new Map([["child", group]]) };
-    expect(isFieldConditionallyRequired(child, {}, extras)).toBe(false);
-    expect(isFieldConditionallyRequired(child, {}, ctx)).toBe(true);
-  });
-
-  it("keeps a child required when either the group or the child is", () => {
-    const group = grouped({ required: true });
-    const child = textField("child", { required: true });
-    const ctx = { ...extras, groupByFieldId: new Map([["child", group]]) };
-    expect(isFieldConditionallyRequired(child, {}, ctx)).toBe(true);
-    expect(
-      isFieldConditionallyRequired(
-        textField("child", { required: true }),
-        {},
-        extras,
-      ),
-    ).toBe(true);
-  });
-
-  it("strips answers inside a hidden group", () => {
-    const group = grouped({
-      visibleIfFormula: formula({
-        c1: { kind: "equals", when: "gate", equals: "yes" },
-      }),
-    });
-    const pages = [page("p1", { fields: [textField("gate"), group] })];
-    expect(
-      stripHiddenAnswers(pages, { gate: "no", child: "stale" }, extras),
-    ).toEqual({ gate: "no" });
-    expect(
-      stripHiddenAnswers(pages, { gate: "yes", child: "kept" }, extras),
-    ).toEqual({ gate: "yes", child: "kept" });
   });
 });
 

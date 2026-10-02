@@ -4,7 +4,6 @@
 import type { DisplayBlock, DisplayKind } from "./display-blocks";
 import {
   collectFieldLookup,
-  isFieldGroup,
   isQuestionField,
   type AnyField,
   type FieldKind,
@@ -212,10 +211,6 @@ function visitProps(
 }
 
 function visitElementText(element: PageItem, visit: TextVisitor): void {
-  if (isFieldGroup(element)) {
-    for (const child of element.fields) visitElementText(child, visit);
-    return;
-  }
   const location = element.id ?? `<${element.kind}>`;
   if (isQuestionField(element)) {
     visitProps(element, INTERPOLATED_FIELD_PROPS, location, visit);

@@ -262,7 +262,7 @@ describe("Formulas reading another form (e2e)", () => {
       );
     });
 
-    it("refuses while an options formula on a grouped list's sub-field reads it", async () => {
+    it("refuses while an options formula on a list's sub-field reads it", async () => {
       const source = await createSource();
       await create({
         pages: [
@@ -270,34 +270,27 @@ describe("Formulas reading another form (e2e)", () => {
             id: "p1",
             fields: [
               {
-                id: "group",
-                type: "group",
-                kind: "group",
+                id: "rows",
+                type: "input",
+                kind: "list",
+                label: "Rows",
                 fields: [
                   {
-                    id: "rows",
+                    id: "pick",
                     type: "input",
-                    kind: "list",
-                    label: "Rows",
-                    fields: [
-                      {
-                        id: "pick",
-                        type: "input",
-                        kind: "select",
-                        label: "Pick",
-                        options: [],
-                        optionsFormula: {
-                          inputs: {
-                            input1: {
-                              kind: "sourceField",
-                              sourceFormId: source.id,
-                              fieldId: "colors",
-                            },
-                          },
-                          formula: "input1.at(-1) ?? []",
+                    kind: "select",
+                    label: "Pick",
+                    options: [],
+                    optionsFormula: {
+                      inputs: {
+                        input1: {
+                          kind: "sourceField",
+                          sourceFormId: source.id,
+                          fieldId: "colors",
                         },
                       },
-                    ],
+                      formula: "input1.at(-1) ?? []",
+                    },
                   },
                 ],
               },

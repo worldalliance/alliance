@@ -2,7 +2,6 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import {
   fieldHasOptions,
-  flattenPageItems,
   isQuestionField,
 } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
@@ -895,7 +894,7 @@ const ActionDashboard: React.FC = () => {
         formWords += countWords(page.title);
         formWords += countWords(page.description);
 
-        for (const field of flattenPageItems(page.fields)) {
+        for (const field of page.fields) {
           if (isQuestionField(field)) formWords += countWords(field.label);
           if ("description" in field)
             formWords += countWords(field.description as string);

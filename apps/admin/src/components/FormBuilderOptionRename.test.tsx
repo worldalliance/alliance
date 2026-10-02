@@ -1,8 +1,4 @@
-import type {
-  FieldGroup,
-  FormSchema,
-  PageItem,
-} from "@alliance/common/forms/form-schema";
+import type { FormSchema, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { client } from "@alliance/shared/client/client.gen";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
@@ -16,7 +12,7 @@ const equalsAlpha: VisibleIfFormula = {
   formula: "c1",
 };
 
-const items: FieldGroup["fields"] = [
+const items: PageItem[] = [
   {
     id: "before",
     type: "input",
@@ -63,9 +59,7 @@ const savedPage = z.object({
   schema: z.object({
     pages: z.array(
       z.object({
-        fields: z.array(
-          savedElement.extend({ fields: z.array(savedElement).optional() }),
-        ),
+        fields: z.array(savedElement),
       }),
     ),
   }),
@@ -75,46 +69,35 @@ describe("FormBuilder option value rename", () => {
   const { baseUrl, fetch } = client.getConfig();
   afterEach(() => client.setConfig({ baseUrl, fetch }));
 
-  it.each<[string, PageItem[]]>([
-    ["on the page", items],
-    [
-      "in a field group",
-      [{ id: "g1", type: "group", kind: "group", fields: items }],
-    ],
-  ])(
-    "rewrites conditions above and below a controller %s",
-    async (_, fields) => {
-      const schema = schemaWith(fields);
-      const bodies: unknown[] = [];
-      client.setConfig({
-        baseUrl: "http://localhost",
-        fetch: async (request: Request) => {
-          if (request.method !== "GET") {
-            bodies.push(await request.json());
-            return Response.json({ id: 1, schema, formSnapshotId: 2 });
-          }
-          const path = new URL(request.url).pathname;
-          return path === "/tasks/listForms" || /validator/i.test(path)
-            ? Response.json([])
-            : Response.json({ id: 1, schema, formSnapshotId: 1 });
-        },
-      });
-      renderFormBuilder(schema, 1);
+  it("rewrites conditions above and below a controller", async () => {
+    const schema = schemaWith(items);
+    const bodies: unknown[] = [];
+    client.setConfig({
+      baseUrl: "http://localhost",
+      fetch: async (request: Request) => {
+        if (request.method !== "GET") {
+          bodies.push(await request.json());
+          return Response.json({ id: 1, schema, formSnapshotId: 2 });
+        }
+        const path = new URL(request.url).pathname;
+        return path === "/tasks/listForms" || /validator/i.test(path)
+          ? Response.json([])
+          : Response.json({ id: 1, schema, formSnapshotId: 1 });
+      },
+    });
+    renderFormBuilder(schema, 1);
 
-      const valueInput = screen
-        .getAllByPlaceholderText<HTMLInputElement>("Value")
-        .find((input) => input.value === "alpha");
-      fireEvent.change(valueInput!, { target: { value: "zeta" } });
-      fireEvent.click(screen.getByText("Save Form"));
-      await waitFor(() => expect(bodies).toHaveLength(1));
+    const valueInput = screen
+      .getAllByPlaceholderText<HTMLInputElement>("Value")
+      .find((input) => input.value === "alpha");
+    fireEvent.change(valueInput!, { target: { value: "zeta" } });
+    fireEvent.click(screen.getByText("Save Form"));
+    await waitFor(() => expect(bodies).toHaveLength(1));
 
-      const saved = savedPage
-        .parse(bodies[0])
-        .schema.pages[0]!.fields.flatMap((item) => item.fields ?? [item]);
-      const equalsOf = (id: string) =>
-        saved.find((f) => f.id === id)?.visibleIfFormula?.conditions.c1?.equals;
-      expect(equalsOf("before")).toBe("zeta");
-      expect(equalsOf("after")).toBe("zeta");
-    },
-  );
+    const saved = savedPage.parse(bodies[0]).schema.pages[0]!.fields;
+    const equalsOf = (id: string) =>
+      saved.find((f) => f.id === id)?.visibleIfFormula?.conditions.c1?.equals;
+    expect(equalsOf("before")).toBe("zeta");
+    expect(equalsOf("after")).toBe("zeta");
+  });
 });

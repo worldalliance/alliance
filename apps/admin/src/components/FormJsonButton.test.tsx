@@ -26,19 +26,13 @@ describe("FormBuilder element JSON buttons", () => {
     }),
   );
 
-  it("gives each page item and group child one, and nested elements none", async () => {
+  it("gives each page item one, and nested elements none", async () => {
     const builderSchema: FormSchema = {
       pages: [
         {
           id: "page-1",
           fields: [
             { type: "input", kind: "text", id: "a", label: "A" },
-            {
-              type: "group",
-              kind: "group",
-              id: "g",
-              fields: [{ type: "input", kind: "text", id: "b", label: "B" }],
-            },
             {
               type: "display",
               kind: "accordion",
@@ -80,7 +74,7 @@ describe("FormBuilder element JSON buttons", () => {
 
     expect(
       screen.getAllByRole("button", { name: "Edit element JSON" }),
-    ).toHaveLength(6);
+    ).toHaveLength(4);
   });
 });
 
@@ -92,7 +86,7 @@ describe("FormBuilder JSON buttons open their own scope", () => {
       screen.getByRole<HTMLTextAreaElement>("textbox", { name }).value,
     );
 
-  it("opens a group child's element and an unselected page", () => {
+  it("opens a later element and an unselected page", () => {
     renderFormBuilder({
       pages: [
         {
@@ -100,12 +94,7 @@ describe("FormBuilder JSON buttons open their own scope", () => {
           title: "One",
           fields: [
             { type: "input", kind: "text", id: "a", label: "A" },
-            {
-              type: "group",
-              kind: "group",
-              id: "g",
-              fields: [{ type: "input", kind: "text", id: "b", label: "B" }],
-            },
+            { type: "input", kind: "text", id: "b", label: "B" },
           ],
         },
         { id: "p2", title: "Two", fields: [] },
@@ -114,7 +103,7 @@ describe("FormBuilder JSON buttons open their own scope", () => {
     });
 
     fireEvent.click(
-      screen.getAllByRole("button", { name: "Edit element JSON" })[2],
+      screen.getAllByRole("button", { name: "Edit element JSON" })[1],
     );
     expect(openedJson("Element JSON").id).toBe("b");
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));

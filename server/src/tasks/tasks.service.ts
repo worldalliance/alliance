@@ -23,12 +23,10 @@ import {
   collectFieldLookup,
   collectSourceFormIds,
   type CustomComponentField,
-  flattenPageItems,
   forEachCondition,
   formSchema,
   FormSchema,
   type FormValue,
-  isFieldGroup,
   isQuestionField,
   type ListField,
   type ListFieldValue,
@@ -224,7 +222,7 @@ function assertListAnswersAreLists(
   answers: FormAnswers,
 ): void {
   for (const page of schema.pages) {
-    for (const field of flattenPageItems(page.fields)) {
+    for (const field of page.fields) {
       if (field.kind === "list") {
         readListAnswer(field, answers[field.id]);
       }
@@ -460,10 +458,6 @@ export class TasksService {
     const schema = structuredClone(formSchemaOf(form.formSnapshot));
     const pages = schema.pages;
     const transformElement = (field: Page["fields"][number]): void => {
-      if (isFieldGroup(field)) {
-        field.fields.forEach(transformElement);
-        return;
-      }
       if (field.kind === "images") {
         field.images = field.images.map((image) => ({
           ...image,
@@ -493,7 +487,7 @@ export class TasksService {
     const schema = structuredClone(formSchemaOf(form.formSnapshot));
     const pages = schema.pages;
     for (const page of pages) {
-      for (const field of flattenPageItems(page.fields)) {
+      for (const field of page.fields) {
         if (field.kind === "contract" && field.contractId) {
           field.contract = new ContractDto(
             await this.contractService.findOne(field.contractId),
@@ -643,7 +637,7 @@ export class TasksService {
         // don't apply.
         continue;
       }
-      for (const field of flattenPageItems(page.fields)) {
+      for (const field of page.fields) {
         if (isQuestionField(field)) {
           const required = isFieldConditionallyRequired(
             field,
@@ -886,7 +880,7 @@ export class TasksService {
 
   private stripContractFromSchema(schema: FormSchema): void {
     for (const page of schema.pages ?? []) {
-      for (const field of flattenPageItems(page.fields)) {
+      for (const field of page.fields) {
         if (
           typeof field === "object" &&
           field !== null &&
@@ -1386,7 +1380,7 @@ export class TasksService {
       if (!page.fields) {
         continue;
       }
-      for (const field of flattenPageItems(page.fields)) {
+      for (const field of page.fields) {
         if (kind === "city" && field.kind === "city") {
           if (!field.autoExtractUserData) {
             continue;
@@ -1435,7 +1429,7 @@ export class TasksService {
       if (!page.fields) {
         continue;
       }
-      for (const field of flattenPageItems(page.fields)) {
+      for (const field of page.fields) {
         if (
           (field as { kind?: string }).kind === "contract" &&
           (field as { contractId?: number }).contractId &&
@@ -1458,7 +1452,7 @@ export class TasksService {
       if (!page.fields) {
         continue;
       }
-      for (const field of flattenPageItems(page.fields)) {
+      for (const field of page.fields) {
         if (field.kind !== "checkbox" && field.kind !== "custom") {
           continue;
         }
@@ -1827,7 +1821,7 @@ export class TasksService {
     const answered = new Set<string>();
     const output = new Set<string>();
     for (const page of schema.pages ?? []) {
-      for (const element of flattenPageItems(page.fields ?? [])) {
+      for (const element of page.fields ?? []) {
         if (!isQuestionField(element)) {
           continue;
         }

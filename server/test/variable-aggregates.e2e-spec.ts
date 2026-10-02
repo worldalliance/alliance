@@ -26,18 +26,11 @@ const sourceSchema = (optionCount = 3): FormSchema => ({
       id: "p1",
       fields: [
         {
-          id: "group",
-          type: "group",
-          kind: "group",
-          fields: [
-            {
-              id: "employers",
-              type: "input",
-              kind: "multiselect",
-              label: "Employers",
-              options: options(optionCount),
-            },
-          ],
+          id: "employers",
+          type: "input",
+          kind: "multiselect",
+          label: "Employers",
+          options: options(optionCount),
         },
         { id: "score", type: "input", kind: "number", label: "Score" },
       ],

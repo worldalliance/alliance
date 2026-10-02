@@ -1,5 +1,4 @@
 import {
-  flattenPageItems,
   formSchema,
   isQuestionField,
   type AnyField,
@@ -76,7 +75,7 @@ const ResponseDrawer: React.FC<ResponseDrawerProps> = ({
   const fieldsById = useMemo(() => {
     const fields = new Map<string, AnyField>();
     schema?.pages?.forEach((page) => {
-      flattenPageItems(page.fields).forEach((field) => {
+      page.fields.forEach((field) => {
         if (isQuestionField(field)) fields.set(field.id, field);
       });
     });

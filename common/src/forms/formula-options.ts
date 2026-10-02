@@ -6,7 +6,6 @@ import {
   collectVariableResolutionFields,
   isListRow,
   isQuestionField,
-  mapPageItems,
   variableInputFieldsById,
   type AnyField,
   type FormSchema,
@@ -269,7 +268,7 @@ function mapSchemaFormulaFields(
     ...schema,
     pages: schema.pages.map((page) => ({
       ...page,
-      fields: mapPageItems(page.fields, (item) =>
+      fields: page.fields.map((item) =>
         isQuestionField(item) ? mapFormulaFields(item, map) : item,
       ),
     })),

@@ -4,16 +4,12 @@ import type { DeviceVisibilityTarget } from "./device";
 import type { DisplayBlock } from "./display-blocks";
 import {
   type AnyField,
-  type FieldGroup,
   type FormValue,
   type ListSubField,
   type OutputFieldBlock,
   type Page,
   asCards,
   collectFieldLookup,
-  collectGroupByFieldId,
-  flattenPageItems,
-  isFieldGroup,
   isQuestionField,
 } from "./form-schema";
 import {
@@ -107,7 +103,6 @@ export type ConditionExtras = {
   outputBlockVisibility?: Map<string, boolean>;
   userHasCity?: boolean;
   userPropertyHasValue?: UserPropertyPresence;
-  groupByFieldId?: Map<string, FieldGroup>;
   pageByFieldId?: Map<string, Page>;
   /**
    * ISO datetime of the user's earliest `signed` contract event;
@@ -295,7 +290,6 @@ type SavedResponseContext = {
   deviceType: DeviceVisibilityTarget | undefined;
   visibilityValidatorResults: VisibilityValidatorResults;
   fieldLookup: Map<string, AnyField>;
-  groupByFieldId: Map<string, FieldGroup>;
   pageByFieldId: Map<string, Page>;
 };
 
@@ -306,7 +300,6 @@ function savedResponseReplay(
     deviceType,
     visibilityValidatorResults,
     fieldLookup,
-    groupByFieldId,
     pageByFieldId,
     data,
   } = context;
@@ -355,7 +348,6 @@ function savedResponseReplay(
     visiting.add(element.id);
     const replays =
       formulaReplays(element.visibleIfFormula) &&
-      formulaReplays(groupByFieldId.get(element.id)?.visibleIfFormula) &&
       formulaReplays(pageByFieldId.get(element.id)?.visibleIfFormula);
     visiting.delete(element.id);
     return replays;
@@ -382,13 +374,12 @@ export function isVisibleInSavedResponse(
     data: Record<string, FormValue>;
   },
 ): boolean {
-  const { element, data, groupByFieldId, pageByFieldId } = params;
+  const { element, data, pageByFieldId } = params;
   const conditionReplays = savedResponseReplay(params);
   const extras: ConditionExtras = {
     deviceType: params.deviceType ?? "desktop",
     visibilityValidatorResults: params.visibilityValidatorResults,
     fieldLookup: params.fieldLookup,
-    groupByFieldId,
     pageByFieldId,
   };
   const mayHold = (formula: VisibleIfFormula | undefined): boolean => {
@@ -406,7 +397,6 @@ export function isVisibleInSavedResponse(
   };
   return (
     mayHold(element.visibleIfFormula) &&
-    mayHold(groupByFieldId.get(element.id)?.visibleIfFormula) &&
     mayHold(pageByFieldId.get(element.id)?.visibleIfFormula)
   );
 }
@@ -422,29 +412,15 @@ export function isVisibleInSavedResponse(
  * A `requiredIfFormula` replaces `required` rather than adding to it, so it can
  * make a statically-required field optional as well as the other way round.
  */
-export function isRequiredFromFlags(
-  flags: {
-    required?: boolean;
-    requiredIfFormula?: VisibleIfFormula;
-  },
-  data: Record<string, FormValue>,
-  extras: ConditionExtras,
-): boolean {
-  if (hasEvaluableFormula(flags.requiredIfFormula)) {
-    return evaluateVisibleIfFormula(flags.requiredIfFormula, data, extras);
-  }
-  return !!flags.required;
-}
-
 export function isFieldConditionallyRequired(
   field: AnyField,
   data: Record<string, FormValue>,
   extras: ConditionExtras,
 ): boolean {
-  const own = isRequiredFromFlags(field, data, extras);
-  const group = extras.groupByFieldId?.get(field.id);
-  if (!group) return own;
-  return own || isRequiredFromFlags(group, data, extras);
+  if (hasEvaluableFormula(field.requiredIfFormula)) {
+    return evaluateVisibleIfFormula(field.requiredIfFormula, data, extras);
+  }
+  return !!field.required;
 }
 
 function hasEvaluableFormula(
@@ -458,36 +434,24 @@ function hasEvaluableFormula(
 }
 
 export function isElementCurrentlyVisible(
-  element: AnyField | DisplayBlock | OutputFieldBlock | FieldGroup,
+  element: AnyField | DisplayBlock | OutputFieldBlock,
   data: Record<string, FormValue>,
   extras: ConditionExtras & { readOnly?: boolean },
 ): boolean {
   const own = isOwnElementCurrentlyVisible(element, data, extras);
   if (!own) return false;
-  const group = element.id ? extras.groupByFieldId?.get(element.id) : undefined;
-  if (group && !isOwnElementCurrentlyVisible(group, data, extras)) {
-    return false;
-  }
   const page = element.id ? extras.pageByFieldId?.get(element.id) : undefined;
   return !page || isPageCurrentlyVisible(page, data, extras);
 }
 
 function isOwnElementCurrentlyVisible(
-  element: AnyField | DisplayBlock | OutputFieldBlock | FieldGroup,
+  element: AnyField | DisplayBlock | OutputFieldBlock,
   data: Record<string, FormValue>,
   extras: ConditionExtras & { readOnly?: boolean },
 ): boolean {
   const formula = element.visibleIfFormula;
   if (!hasEvaluableFormula(formula)) {
     return true;
-  }
-  if (extras.readOnly && isFieldGroup(element)) {
-    const anyFieldAnswered = element.fields.some(
-      (field) => isQuestionField(field) && hasContent(data[field.id]),
-    );
-    if (anyFieldAnswered) {
-      return true;
-    }
   }
   if (extras.readOnly && element.id) {
     const existing = data[element.id];
@@ -540,7 +504,7 @@ export function isPageCurrentlyVisible(
   // always replay when reviewing a completed response (e.g. validator results
   // missing from older submissions), so never hide a page the user answered.
   if (extras.readOnly) {
-    const anyFieldAnswered = flattenPageItems(page.fields).some(
+    const anyFieldAnswered = page.fields.some(
       (field) => isQuestionField(field) && hasContent(data[field.id]),
     );
     if (anyFieldAnswered) {
@@ -569,7 +533,6 @@ export function stripHiddenAnswers(
   extras: ConditionExtras & { readOnly?: boolean },
 ): Record<string, FormValue> {
   const fieldLookup = extras.fieldLookup ?? collectFieldLookup(pages);
-  const groupByFieldId = extras.groupByFieldId ?? collectGroupByFieldId(pages);
 
   let data = answers;
   for (;;) {
@@ -578,13 +541,12 @@ export function stripHiddenAnswers(
     const passExtras = {
       ...extras,
       fieldLookup,
-      groupByFieldId,
       visibilityMemo: new Map<string, boolean>(),
       visibilityEvaluationStack: new Set<string>(),
     };
     const hiddenAnsweredIds = pages.flatMap((page) => {
       const pageVisible = isPageCurrentlyVisible(page, data, passExtras);
-      return flattenPageItems(page.fields)
+      return page.fields
         .filter(isQuestionField)
         .filter((field) => field.id in data)
         .filter(
@@ -607,7 +569,6 @@ export function stripHiddenAnswers(
         isElementCurrentlyVisible(subField, rowData, {
           ...extras,
           fieldLookup,
-          groupByFieldId,
         }),
     });
     if (withoutHiddenCells === data) {
@@ -636,7 +597,7 @@ export function stripHiddenListCells(params: {
   const { pages, answers, isVisible } = params;
   let stripped = answers;
   for (const page of pages) {
-    for (const field of flattenPageItems(page.fields)) {
+    for (const field of page.fields) {
       if (!isQuestionField(field) || field.kind !== "list") continue;
       const rows = asCards(answers[field.id]);
       if (!rows) continue;

@@ -16,7 +16,6 @@ import type {
   OutputFieldBlock,
   OutputViewSchema,
 } from "@alliance/common/forms/form-schema";
-import { flattenPageItems } from "@alliance/common/forms/form-schema";
 import { getRankingSlotCount } from "@alliance/common/forms/ranking";
 import { cn } from "@alliance/shared/styles/util";
 import OutputRenderer from "@alliance/sharedweb/forms/OutputRenderer";
@@ -66,7 +65,7 @@ const DISPLAY_BLOCK_KINDS = Object.keys(OUTPUT_BY_KIND).filter(
 const collectOutputFields = (schema: FormSchema): AnyField[] => {
   const result: AnyField[] = [];
   schema.pages.forEach((page) => {
-    flattenPageItems(page.fields).forEach((field) => {
+    page.fields.forEach((field) => {
       if (field.type === "input") {
         if (field.output?.output) {
           result.push(field);

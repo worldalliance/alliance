@@ -1,6 +1,5 @@
 import type { Result } from "../result";
 import {
-  isFieldGroup,
   isQuestionField,
   type AnyField,
   type FormSchema,
@@ -357,12 +356,6 @@ function collectFieldKindsFromItem(
   item: PageItem,
   fields: Map<string, CollectedField>,
 ): void {
-  if (isFieldGroup(item)) {
-    for (const child of item.fields) {
-      collectFieldKindsFromItem(child, fields);
-    }
-    return;
-  }
   if (!isQuestionField(item)) return;
   const subFields = item.kind === "list" ? (item.fields ?? []) : [];
   fields.set(item.id, {

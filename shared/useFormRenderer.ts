@@ -9,10 +9,8 @@ import { type DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import { type DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
   collectFieldLookup,
-  collectGroupByFieldId,
   collectSourceFormIds,
   collectVariableResolutionFields,
-  flattenPageItems,
   forEachCondition,
   isDisplayBlock,
   isQuestionField,
@@ -200,7 +198,7 @@ export function useFormSchemaMaps(args: {
     const defaults = new Map<string, FormValue>();
 
     for (const page of schema.pages) {
-      for (const element of flattenPageItems(page.fields)) {
+      for (const element of page.fields) {
         if (isQuestionField(element)) {
           const defaultValue = resolveFieldDefaultValue(element, timeZone);
           if (defaultValue !== undefined) {
@@ -225,7 +223,7 @@ export function useFormSchemaMaps(args: {
   const hasUserLocationDisplayBlock = useMemo(
     () =>
       schema.pages?.some((page) =>
-        flattenPageItems(page.fields ?? []).some(
+        (page.fields ?? []).some(
           (element) =>
             isDisplayBlock(element) && element.kind === "userLocation",
         ),
@@ -236,7 +234,7 @@ export function useFormSchemaMaps(args: {
   const outputFieldDefaultPublic = useMemo(() => {
     const defaults = new Map<string, boolean>();
     for (const page of schema.pages ?? []) {
-      for (const element of flattenPageItems(page.fields ?? [])) {
+      for (const element of page.fields ?? []) {
         if (isQuestionField(element) && element.output?.output) {
           defaults.set(
             element.id,
@@ -340,7 +338,7 @@ export function usePreviousAnswerSources(args: {
   const sourceFormIds = useMemo(() => {
     const ids = new Set<number>();
     for (const page of schema.pages) {
-      for (const element of flattenPageItems(page.fields)) {
+      for (const element of page.fields) {
         if (isDisplayBlock(element) && element.kind === "previousAnswer") {
           if (element.sourceFormId) {
             ids.add(element.sourceFormId);
@@ -743,11 +741,6 @@ export function useFormVisibility(args: {
     visibilityInputs,
   } = args;
 
-  const groupByFieldId = useMemo(
-    () => collectGroupByFieldId(schema.pages ?? []),
-    [schema.pages],
-  );
-
   // The single source of the account/device/validator state every visibility
   // and requiredness evaluation reads. Built once so a new condition kind is
   // added here rather than at each call site. Miss one and it would silently
@@ -760,7 +753,6 @@ export function useFormVisibility(args: {
       previousAnswerData,
       userHasCity,
       userPropertyHasValue: userPropertyHasValue ?? emptyUserPropertyPresence(),
-      groupByFieldId,
       firstContractSignedAt,
       completedActionCount,
     }),
@@ -771,7 +763,6 @@ export function useFormVisibility(args: {
       previousAnswerData,
       userHasCity,
       userPropertyHasValue,
-      groupByFieldId,
       firstContractSignedAt,
       completedActionCount,
     ],
@@ -1052,9 +1043,7 @@ export function useFormValidation(args: {
       }
 
       const updates: Record<string, string | null> = {};
-      const fieldsOnPage = flattenPageItems(page.fields).filter(
-        isQuestionField,
-      );
+      const fieldsOnPage = page.fields.filter(isQuestionField);
       const pageVisible = visiblePageIndices.includes(pageIndex);
       const visibleFields = pageVisible
         ? fieldsOnPage.filter((field) => isElementCurrentlyVisible(field))

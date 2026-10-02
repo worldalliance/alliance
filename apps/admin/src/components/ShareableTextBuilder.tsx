@@ -1,8 +1,5 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import {
-  flattenPageItems,
-  isQuestionField,
-} from "@alliance/common/forms/form-schema";
+import { isQuestionField } from "@alliance/common/forms/form-schema";
 import {
   FIRST_NAME_TOKEN,
   FULL_NAME_TOKEN,
@@ -53,7 +50,7 @@ const SHAREABLE_NAME_TOKENS = [
 const collectShareableFields = (schema: FormSchema): ShareableInsertable[] => {
   const fields: ShareableInsertable[] = [];
   schema.pages.forEach((page, pageIndex) => {
-    flattenPageItems(page.fields).forEach((field) => {
+    page.fields.forEach((field) => {
       if (!isQuestionField(field) || !field.label) {
         return;
       }

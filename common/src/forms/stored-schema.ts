@@ -30,16 +30,11 @@ type StoredPages = z.infer<typeof storedSchema>["pages"];
 
 function questionFieldsOf(pages: StoredPages): AnyField[] {
   return pages.flatMap((page) =>
-    (page.fields ?? []).flatMap(storedQuestionFieldsFromElement),
+    (page.fields ?? []).flatMap((element) => {
+      const field = anyFieldSchema.safeParse(element);
+      return field.success ? [field.data] : [];
+    }),
   );
-}
-
-function storedQuestionFieldsFromElement(element: unknown): AnyField[] {
-  const field = anyFieldSchema.safeParse(element);
-  if (field.success) return [field.data];
-  const group = storedElement.safeParse(element);
-  if (!group.success || group.data.kind !== "group") return [];
-  return (group.data.fields ?? []).flatMap(storedQuestionFieldsFromElement);
 }
 
 /**
@@ -92,13 +87,11 @@ function storedElementsOf(elements: readonly unknown[]): StoredElement[] {
 
 function storedElementsById(pages: StoredPages): Map<string, StoredElement> {
   const byId = new Map<string, StoredElement>();
-  const visit = (elements: readonly unknown[]) => {
-    for (const element of storedElementsOf(elements)) {
+  for (const page of pages) {
+    for (const element of storedElementsOf(page.fields ?? [])) {
       byId.set(element.id, element);
-      if (element.kind === "group") visit(element.fields ?? []);
     }
-  };
-  pages.forEach((page) => visit(page.fields ?? []));
+  }
   return byId;
 }
 

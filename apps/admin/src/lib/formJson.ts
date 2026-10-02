@@ -1,11 +1,8 @@
 import { formSchemaToDisplayOnly } from "@alliance/common/forms/display-only-schema";
 import {
-  fieldGroupSchema,
   formSchema,
-  isFieldGroup,
   isQuestionField,
   pageSchema,
-  type FieldGroup,
   type FormSchema,
   type Page,
   type PageItem,
@@ -27,7 +24,6 @@ export type JsonScope =
   | {
       kind: JsonScopeKind.Element;
       pageIndex: number;
-      parentId: string | null;
       index: number;
     }
   | { kind: JsonScopeKind.Page; pageIndex: number }
@@ -36,7 +32,6 @@ export type JsonScope =
 type ElementEntry = { id: string | undefined; kind: string };
 
 function nestedEntries(element: PageItem): ElementEntry[] {
-  if (isFieldGroup(element)) return elementEntries(element.fields);
   if (isQuestionField(element)) {
     return "fields" in element ? elementEntries(element.fields) : [];
   }
@@ -80,22 +75,10 @@ function pageAt(schema: FormSchema, pageIndex: number): Page {
   return page;
 }
 
-function siblingsAt(page: Page, parentId: string | null): PageItem[] {
-  if (parentId == null) return page.fields;
-  const group = page.fields.find(
-    (item): item is FieldGroup => isFieldGroup(item) && item.id === parentId,
-  );
-  if (!group) {
-    throw new Error(`no group ${parentId} on page ${page.id}`);
-  }
-  return group.fields;
-}
-
 type ElementScope = Extract<JsonScope, { kind: JsonScopeKind.Element }>;
 
 function elementAt(schema: FormSchema, scope: ElementScope): PageItem {
-  const siblings = siblingsAt(pageAt(schema, scope.pageIndex), scope.parentId);
-  const element = siblings[scope.index];
+  const element = pageAt(schema, scope.pageIndex).fields[scope.index];
   if (!element) throw new Error(`no element at index ${scope.index}`);
   return element;
 }
@@ -117,7 +100,6 @@ export function jsonScopeValue(
 }
 
 const pageItemSchema = pageSchema.shape.fields.element;
-const groupChildSchema = fieldGroupSchema.shape.fields.element;
 
 const replaceAt = <T>({
   items,
@@ -149,29 +131,12 @@ function applyElement(params: {
   value: unknown;
 }): Result<FormSchema, string[]> {
   const { schema, scope, value } = params;
-  const { pageIndex, parentId, index } = scope;
-  if (parentId == null) {
-    return R.map(parseInto(pageItemSchema, value), (element) =>
-      mapPageFields({
-        schema,
-        pageIndex,
-        map: (fields) => replaceAt({ items: fields, index, next: element }),
-      }),
-    );
-  }
-  return R.map(parseInto(groupChildSchema, value), (element) =>
+  const { pageIndex, index } = scope;
+  return R.map(parseInto(pageItemSchema, value), (element) =>
     mapPageFields({
       schema,
       pageIndex,
-      map: (fields) =>
-        fields.map((item) =>
-          isFieldGroup(item) && item.id === parentId
-            ? {
-                ...item,
-                fields: replaceAt({ items: item.fields, index, next: element }),
-              }
-            : item,
-        ),
+      map: (fields) => replaceAt({ items: fields, index, next: element }),
     }),
   );
 }

@@ -1,5 +1,4 @@
 import {
-  flattenPageItems,
   forEachCondition,
   isQuestionField,
   type FormSchema,
@@ -321,7 +320,7 @@ export class ForumActionCompleterWorker {
     // Field-level validators hang off the field itself rather than a condition,
     // so they aren't part of the condition walk.
     for (const page of schema.pages ?? []) {
-      for (const element of flattenPageItems(page.fields ?? [])) {
+      for (const element of page.fields ?? []) {
         if (isQuestionField(element) && element.customValidatorId) {
           validatorIds.add(element.customValidatorId);
         }

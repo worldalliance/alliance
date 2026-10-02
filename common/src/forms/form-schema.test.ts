@@ -5,6 +5,7 @@ import {
   collectSourceFormIds,
   forEachCondition,
   type FormSchema,
+  pageSchema,
   type TextField,
 } from "./form-schema";
 import type { Condition } from "./visible-if-formula";
@@ -33,6 +34,20 @@ describe("option value uniqueness", () => {
     expect(
       anyFieldSchema.safeParse(optionField(kind, ["a", "b", "a"])).success,
     ).toBe(false);
+  });
+});
+
+describe("page elements", () => {
+  it("rejects a group", () => {
+    const group = {
+      id: "g1",
+      type: "group",
+      kind: "group",
+      fields: [{ id: "a", type: "input", kind: "text", label: "A" }],
+    };
+    expect(pageSchema.safeParse({ id: "p1", fields: [group] }).success).toBe(
+      false,
+    );
   });
 });
 
@@ -239,27 +254,6 @@ describe("forEachCondition", () => {
               }),
             ],
           },
-          {
-            id: "g1",
-            type: "group",
-            kind: "group",
-            visibleIfFormula: {
-              conditions: { c1: marker("group-formula") },
-              formula: "c1",
-            },
-            requiredIfFormula: {
-              conditions: { c1: marker("group-requiredIf") },
-              formula: "c1",
-            },
-            fields: [
-              textField("g1f", {
-                visibleIfFormula: {
-                  conditions: { c1: marker("group-child-formula") },
-                  formula: "c1",
-                },
-              }),
-            ],
-          },
         ],
       },
     ],
@@ -284,9 +278,6 @@ describe("forEachCondition", () => {
       "field-requiredIf",
       "sub-formula",
       "sub-requiredIf",
-      "group-formula",
-      "group-requiredIf",
-      "group-child-formula",
     ]);
   });
 
