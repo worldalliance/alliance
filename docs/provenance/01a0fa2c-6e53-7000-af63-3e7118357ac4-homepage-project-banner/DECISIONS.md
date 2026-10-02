@@ -1,0 +1,1 @@
+Use a linked announcement slot above the shared navigation, supplied only by the homepage. Draft the copy as “This fall: help decide where $100k goes.” and link to the existing project route. Reserve the banner height in the homepage layout so the fixed header clears the hero.

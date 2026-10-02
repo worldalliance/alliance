@@ -1,7 +1,7 @@
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { Menu, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { href, Link, useLocation } from "react-router";
 import { useAuth } from "../lib/AuthContext";
 import {
@@ -28,8 +28,10 @@ export function Navbar({
    */
   overPrimary = false,
   signupHref,
+  announcement,
 }: {
   overPrimary?: boolean;
+  announcement?: ReactNode;
   /**
    * Adds a signup call to action beside the account button while logged out,
    * and in its place once the bar is too narrow for both. Carries the referral
@@ -85,14 +87,15 @@ export function Navbar({
         scrolled || menuOpen
           ? "bg-[var(--site-surface)] shadow-[0_1px_0_rgba(0,0,0,0.07)]"
           : "bg-transparent",
-        scrolled ? "py-3" : "py-5 lg:py-7",
         light ? "text-white" : "text-[var(--site-ink)]",
       )}
     >
+      {announcement}
       <div
         className={cn(
           SITE_COL,
-          "flex items-center justify-between gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr]",
+          "flex items-center justify-between gap-6 transition-[padding] duration-300 lg:grid lg:grid-cols-[1fr_auto_1fr]",
+          scrolled ? "py-3" : "py-5 lg:py-7",
         )}
       >
         <nav
