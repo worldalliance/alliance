@@ -3797,6 +3797,7 @@ describe("Actions (e2e)", () => {
         id: number;
         visibleAt: string | null;
         schemaSnapshotId: number;
+        associatedEventId: number | null;
       };
     };
 
@@ -3832,6 +3833,7 @@ describe("Actions (e2e)", () => {
       const update = await createUpdate("Still being written");
 
       expect(update.visibleAt).toBeNull();
+      expect(update.associatedEventId).toBeNull();
       expect(await memberUpdateIds()).not.toContain(update.id);
       expect(
         await updateIdsOnActionPage(ctx.accessToken, "slug"),

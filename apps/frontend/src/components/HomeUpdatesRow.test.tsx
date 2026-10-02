@@ -16,6 +16,7 @@ const update: ActionUpdateDto = {
   date: "2026-01-01T00:00:00.000Z",
   visibleAt: "2026-01-01T00:00:00.000Z",
   shortNotifString: "Halfway there",
+  associatedEventId: null,
   notifyType: "none",
   notifiedAt: null,
   schema: {},

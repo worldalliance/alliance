@@ -514,7 +514,7 @@ export type ActionUpdate = {
     visibleAt: string | null;
     shortNotifString: string;
     associatedEvent?: ActionEvent | null;
-    associatedEventId?: number;
+    associatedEventId: number | null;
     notifyType: ActionUpdateNotifyType;
     notifiedAt: string | null;
     notifs: Array<Notification>;
@@ -2085,7 +2085,7 @@ export type ActionUpdateDto = {
     visibleAt: string | null;
     shortNotifString: string;
     associatedEvent?: ActionEvent | null;
-    associatedEventId?: number;
+    associatedEventId: number | null;
     notifyType: ActionUpdateNotifyType;
     notifiedAt: string | null;
     tag?: Tag | null;
