@@ -26,7 +26,7 @@ Keep configured first-miss control copy, except any necessary correction of an o
 
 Scope notification deduplication to member and suite so an action-level reminder cannot send a second missed-suite notice. Use one in-app entry and one attempt per external channel under the existing delivery semantics; do not dispatch a second push through both the reminder sender and the in-app notification pipeline. Preserve existing failure and retry behavior. A failed or disabled delivery channel does not exempt the member from suspension.
 
-Use the existing singular/plural template mechanism for `#{it|them}` based on the number of missed tasks in this message. Preserve the supplied email subjects and SMS trailing `#{link}`. In particular, the user chose to retain “Completing this week's task resets the count” rather than the agent's proposed copy rewrite; the actual reset still requires satisfying all assigned required actions.
+Use the existing singular/plural template mechanism for `#{it|them}` based on the number of missed tasks in this message. Preserve the supplied email subjects and SMS trailing `#{link}`. The user later changed “Completing this week's task resets the count” to “tasks” (ALL-1367), since the reset requires satisfying all assigned required actions. The edit stays in `SecondMissReportV1` rather than a new copy value: second-miss copy is not an experiment arm.
 
 Update shared agreement text, member-facing policy explanations, and suspension notices to describe missing any required action over three consecutive assigned weeks. Do not change existing signatures or require renewed acceptance. Integrate automatic events with existing admin inspection where available; no new admin editor, per-suite setup, or experiment dashboard is planned.
 

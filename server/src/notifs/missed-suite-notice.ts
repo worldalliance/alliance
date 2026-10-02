@@ -81,7 +81,7 @@ export function missedSuiteNoticeTemplates(
         emailMessage: [
           "Hi #{firstname},",
           "You have missed two consecutive weeks of tasks. If any non-optional tasks are missed again next week, your agreement will be paused automatically.",
-          "Completing this week's task resets the count.",
+          "Completing this week's tasks resets the count.",
           "If something has changed on your end or isn’t functioning in the platform, contact us.",
           "#{link}",
         ].join("\n"),
