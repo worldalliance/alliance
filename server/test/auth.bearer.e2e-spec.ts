@@ -442,6 +442,7 @@ describe("Auth (e2e)", () => {
         where: { id: invite.id },
       });
       expect(updatedInvite?.status).toBe(OnetimeInviteStatus.LINK_USED);
+      expect(updatedInvite?.invitedUserId).toBe(newUser?.id);
     });
 
     it("creates friendship between inviting user and new user when registering with invite", async () => {

@@ -2544,8 +2544,14 @@ describe("Users (e2e)", () => {
 
           expect(res.status).toBe(201);
           expect(res.body.community).toBeNull();
+          expect(res.body.invitedUserId).toBeNull();
           expect(res.body.invitingUser.id).toBe(userAId);
           expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
+
+          const fetched = await request(ctx.app.getHttpServer())
+            .get(`/user/onetimeInvite/${res.body.code}`)
+            .expect(200);
+          expect(fetched.body.invitedUserId).toBeNull();
         });
 
         it("reports the invite's group to analytics, or null for none", async () => {
@@ -2708,6 +2714,7 @@ describe("Users (e2e)", () => {
           expect(res.body.inviteeDescription).toBe(
             "Member request for manual review",
           );
+          expect(res.body.invitedUserId).toBeNull();
         });
 
         it("reports the requested group to analytics", async () => {
@@ -2738,6 +2745,7 @@ describe("Users (e2e)", () => {
           expect(res.body.id).toBe(pendingInvite.id);
           expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
           expect(res.body.invitingUser.id).toBe(communityMemberId);
+          expect(res.body.invitedUserId).toBeNull();
         });
 
         it("approves a request whose requester is gone", async () => {

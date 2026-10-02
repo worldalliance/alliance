@@ -8,6 +8,8 @@ import { Notification } from "src/notifs/entities/notification.entity";
 import type { Relation } from "src/utils/Repository";
 import { WaitlistEntry } from "src/waitlist/entities/waitlist-entry.entity";
 import {
+  AfterInsert,
+  AfterLoad,
   Check,
   Column,
   Entity,
@@ -114,10 +116,16 @@ export class OnetimeInvite {
 
   @RelationId((invite: OnetimeInvite) => invite.invitedUser)
   @Type(() => Number)
-  @ApiPropertyOptional()
+  @ApiProperty({ type: Number, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  invitedUserId?: number;
+  invitedUserId: number | null;
+
+  // TypeORM leaves an inverse-side @RelationId unset when no row matches.
+  @AfterLoad()
+  @AfterInsert()
+  private nullInvitedUserId() {
+    this.invitedUserId ??= null;
+  }
 
   @ManyToOne(() => Community, (community) => community.invites, {
     nullable: true,
