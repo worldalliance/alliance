@@ -116,10 +116,9 @@ export class ActionUpdate {
 
   @RelationId((update: ActionUpdate) => update.associatedEvent)
   @Type(() => Number)
-  @ApiPropertyOptional({ type: Number })
+  @ApiProperty({ type: Number, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  associatedEventId?: number | null;
+  associatedEventId: number | null;
 
   @Column({
     type: "enum",
