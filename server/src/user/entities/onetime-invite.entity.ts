@@ -131,10 +131,9 @@ export class OnetimeInvite {
 
   @RelationId((invite: OnetimeInvite) => invite.community)
   @Type(() => Number)
-  @ApiPropertyOptional()
+  @ApiProperty({ type: Number, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  communityId?: number;
+  communityId: number | null;
 
   @Column({ nullable: true })
   @IsOptional()

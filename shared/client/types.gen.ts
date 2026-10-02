@@ -649,7 +649,7 @@ export type OnetimeInvite = {
     invitedUser: User | null;
     invitedUserId?: number;
     community?: Community | null;
-    communityId?: number;
+    communityId: number | null;
     notifs: Array<Notification>;
 };
 
