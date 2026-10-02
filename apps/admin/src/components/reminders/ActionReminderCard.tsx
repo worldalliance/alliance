@@ -429,6 +429,7 @@ const ActionReminderCard = ({
                       {notif.mms && "text "}
                       {notif.mail && "email "}
                       {notif.pushes?.length ? "push " : null}
+                      {notif.notificationId != null && "in-app "}
                     </p>
                     <Link to={`/member/${notif.user.id}`} target="_blank">
                       {notif.user.displayName}

@@ -8,6 +8,7 @@ export class ActionEventNotifDto extends PickType(ActionEventNotif, [
   "mail",
   "mms",
   "pushes",
+  "notificationId",
   "reminderGroup",
   "sent",
   "idempotency_key",
@@ -23,6 +24,7 @@ export class ActionEventNotifDto extends PickType(ActionEventNotif, [
     this.mail = actionEventNotif.mail;
     this.mms = actionEventNotif.mms;
     this.pushes = actionEventNotif.pushes;
+    this.notificationId = actionEventNotif.notificationId;
     this.reminderGroup = actionEventNotif.reminderGroup;
     this.sent = actionEventNotif.sent;
     this.idempotency_key = actionEventNotif.idempotency_key;

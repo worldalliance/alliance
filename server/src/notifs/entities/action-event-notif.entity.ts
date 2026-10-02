@@ -18,6 +18,7 @@ import {
   OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
+  RelationId,
 } from "typeorm";
 import { Notification } from "./notification.entity";
 
@@ -140,6 +141,10 @@ export class ActionEventNotif {
   @OneToOne(() => Notification, { onDelete: "SET NULL", nullable: true })
   @JoinColumn({ name: "notificationId" })
   notification?: Relation<Notification>;
+
+  @RelationId((notif: ActionEventNotif) => notif.notification)
+  @ApiProperty({ type: Number, nullable: true })
+  notificationId: number | null;
 
   @Column({ default: false })
   @ApiProperty({

@@ -285,6 +285,7 @@ export type ActionEventNotif = {
     reminderGroup?: ReminderGroup;
     memberActionEvent?: ActionEvent;
     notifiedActionIds: Array<number> | null;
+    notificationId: number | null;
     /**
      * Indicates whether the notification has been sent
      */
@@ -1676,6 +1677,7 @@ export type ActionEventNotifDto = {
     mms: Mms | null;
     pushes?: Array<Push>;
     reminderGroup?: ReminderGroup;
+    notificationId: number | null;
     /**
      * Indicates whether the notification has been sent
      */
