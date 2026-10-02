@@ -1,21 +1,20 @@
 name: Dirty check
-description: Fail when the checkout has a non-empty dirty.txt, which freezes production releases.
+description: Check dirty.txt, whose content freezes production releases.
 
 inputs:
   working-directory:
     description: Checkout to check.
     default: .
+  check:
+    description: "`exists` fails when dirty.txt is missing; `empty` fails when it has content."
+    required: true
 
 runs:
   using: composite
   steps:
-    - name: Abort if dirty.txt has content
+    - name: Check dirty.txt
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: |
-        if [ -f dirty.txt ] && [ -s dirty.txt ]; then
-          echo "dirty.txt has content. Aborting."
-          exit 1
-        else
-          echo "dirty.txt is empty or not found. Continuing."
-        fi
+      env:
+        CHECK: ${{ inputs.check }}
+      run: $GITHUB_ACTION_PATH/check.sh

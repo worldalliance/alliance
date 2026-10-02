@@ -5,6 +5,15 @@ on:
     branches: [main, production]
 
 jobs:
+  dirty-check:
+    if: ${{ github.base_ref == 'main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/dirty-check
+        with:
+          check: exists
+
   actionlint:
     uses: ./.github/workflows/actionlint.yaml
 
