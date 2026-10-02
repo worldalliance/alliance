@@ -11,6 +11,7 @@ import { taskHeaders, type TitledCopy } from "./copy";
 export interface LargeActionCardPropsShared {
   action: ActionWithAwayStatus;
   onUpdateActionState: () => void;
+  onDeadlinePassed: () => void;
   dismissProps?: {
     header: string;
     message: string;

@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
+import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
 import { withCount } from "@alliance/common/plural";
 import { FollowUpFormDto } from "@alliance/shared/client";
@@ -27,6 +28,7 @@ import AggregateProgressBarBlock from "@alliance/sharedweb/ui/AggregateProgressB
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import LargeGeneralUpdateCard from "@alliance/sharedweb/ui/LargeGeneralUpdateCard";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useQueryClient } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -77,6 +79,7 @@ const HomePage = () => {
   const queryClient = useQueryClient();
   const invalidateActions = useInvalidateActions();
   const markActionCompleted = useMarkActionCompleted();
+  const { warning } = useToast();
   const hasNoTasks = useRef(true);
   const {
     actions: liveActions,
@@ -472,6 +475,13 @@ const HomePage = () => {
                   });
                   window.scrollTo({ top: 0, behavior: "instant" });
                 }}
+                onDeadlinePassed={() => {
+                  warning(
+                    MEMBER_ACTION_DEADLINE_PASSED,
+                    selectedTaskNavigatorItem.action.name,
+                  );
+                  invalidateActions();
+                }}
                 scrollContainerRef={mainScrollRef}
               />
             </div>
@@ -568,6 +578,7 @@ const HomePage = () => {
     queryClient,
     invalidateActions,
     markActionCompleted,
+    warning,
     activeCompletableFollowUpForms,
     isLargeScreen,
     mocked,
