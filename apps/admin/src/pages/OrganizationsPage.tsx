@@ -1,6 +1,5 @@
 import {
   campaignCreateAdmin,
-  campaignUpdateAdmin,
   communityGetCommunitiesAdmin,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
@@ -14,6 +13,7 @@ import {
   campaignsLoadFailed,
   useCampaignsAdmin,
   useInvalidateCampaignsAdmin,
+  useUpdateCampaignAdmin,
 } from "../lib/useCampaignsAdmin";
 import { useRefusalToast } from "../lib/useRefusalToast";
 import {
@@ -58,17 +58,8 @@ const OrganizationsPage: React.FC = () => {
     onError: (err) => refusalToast(err, "Could not create the organization."),
   });
 
-  const designate = useMutation({
-    mutationFn: (id: number) =>
-      campaignUpdateAdmin({
-        path: { id },
-        body: { kind: "organization" },
-        throwOnError: true,
-      }),
-    onSuccess: async () => {
-      setDesignateId("");
-      await invalidateCampaigns();
-    },
+  const designate = useUpdateCampaignAdmin({
+    onSuccess: () => setDesignateId(""),
     onError: (err) => refusalToast(err, "Could not designate the campaign."),
   });
 
@@ -126,7 +117,11 @@ const OrganizationsPage: React.FC = () => {
             className="flex gap-2 items-end"
             onSubmit={(e) => {
               e.preventDefault();
-              if (designateId) designate.mutate(Number(designateId));
+              if (designateId)
+                designate.mutate({
+                  id: Number(designateId),
+                  body: { kind: "organization" },
+                });
             }}
           >
             <label className="flex flex-col text-sm text-zinc-700">

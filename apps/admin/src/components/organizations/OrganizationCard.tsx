@@ -4,7 +4,6 @@ import type {
   AdminWaitlistLinkDto,
   CampaignDto,
   CommunityDto,
-  UpdateCampaignDto,
 } from "@alliance/shared/client/types.gen";
 import { uploadImageDataUri } from "@alliance/shared/lib/uploadImageDataUri";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -14,7 +13,10 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useMutation } from "@tanstack/react-query";
 import { Building2, ImageUp } from "lucide-react";
 import React from "react";
-import { useInvalidateCampaignsAdmin } from "../../lib/useCampaignsAdmin";
+import {
+  useInvalidateCampaignsAdmin,
+  useUpdateCampaignAdmin,
+} from "../../lib/useCampaignsAdmin";
 import { useRefusalToast } from "../../lib/useRefusalToast";
 import InlineTextInput from "../InlineTextInput";
 import OrganizationLinks from "./OrganizationLinks";
@@ -36,14 +38,7 @@ const OrganizationCard: React.FC<OrganizationCardProps> = ({
   const refusalToast = useRefusalToast();
   const { error: toastError } = useToast();
 
-  const update = useMutation({
-    mutationFn: (body: UpdateCampaignDto) =>
-      campaignUpdateAdmin({
-        path: { id: organization.id },
-        body,
-        throwOnError: true,
-      }),
-    onSettled: invalidateCampaigns,
+  const update = useUpdateCampaignAdmin({
     onError: (err) => refusalToast(err, "Could not update the organization."),
   });
 
@@ -109,7 +104,10 @@ const OrganizationCard: React.FC<OrganizationCardProps> = ({
             value={organization.name}
             disabled={busy}
             onSave={(name, done) =>
-              update.mutate({ name }, { onSettled: done })
+              update.mutate(
+                { id: organization.id, body: { name } },
+                { onSettled: done },
+              )
             }
           />
 
@@ -121,7 +119,10 @@ const OrganizationCard: React.FC<OrganizationCardProps> = ({
               disabled={busy}
               onChange={(e) =>
                 update.mutate({
-                  communityId: e.target.value ? Number(e.target.value) : null,
+                  id: organization.id,
+                  body: {
+                    communityId: e.target.value ? Number(e.target.value) : null,
+                  },
                 })
               }
             >
