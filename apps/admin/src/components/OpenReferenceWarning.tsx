@@ -3,6 +3,7 @@ import {
   type CohortExpression,
   type ReferencedAction,
 } from "@alliance/common/cohort-expression";
+import { pickForCount } from "@alliance/common/plural";
 import { checkPrerequisiteDeadline } from "@alliance/common/prerequisite";
 import { TriangleAlert } from "lucide-react";
 import React from "react";
@@ -56,30 +57,36 @@ const OpenReferenceWarning: React.FC<{
             These conditions read {names(awaitable)},{" "}
             {memberActionStart
               ? "still open when members are decided at launch. A member"
-              : `still open now. If this action launches before ${awaitable.length === 1 ? "it closes" : "they close"}, a member`}{" "}
-            who finishes {awaitable.length === 1 ? "it" : "one"} later keeps
-            their first placement.{" "}
-            {awaitable.length === 1
-              ? "Add it as a prerequisite"
-              : "Add them as prerequisites"}{" "}
+              : `still open now. If this action launches before ${pickForCount(awaitable.length, "it closes", "they close")}, a member`}{" "}
+            who finishes {pickForCount(awaitable.length, "it", "one")} later
+            keeps their first placement.{" "}
+            {pickForCount(
+              awaitable.length,
+              "Add it as a prerequisite",
+              "Add them as prerequisites",
+            )}{" "}
             to wait for each member&apos;s outcome.
           </p>
         )}
         {unawaitable.length > 0 && (
           <p>
             These conditions read {names(unawaitable)}, which{" "}
-            {unawaitable.length === 1
-              ? "closes no earlier than this action or has no deadline, so members are decided before it closes"
-              : "close no earlier than this action or have no deadline, so members are decided before they close"}
+            {pickForCount(
+              unawaitable.length,
+              "closes no earlier than this action or has no deadline, so members are decided before it closes",
+              "close no earlier than this action or have no deadline, so members are decided before they close",
+            )}
             . A prerequisite needs a deadline before this action&apos;s.
           </p>
         )}
         {onboarding.length > 0 && (
           <p>
             These conditions read {names(onboarding)},{" "}
-            {onboarding.length === 1
-              ? "an onboarding action that stays open to members who join later. A prerequisite stops waiting at its deadline, so a member who joins after that is decided before finishing it"
-              : "onboarding actions that stay open to members who join later. A prerequisite stops waiting at their deadline, so a member who joins after that is decided before finishing them"}{" "}
+            {pickForCount(
+              onboarding.length,
+              "an onboarding action that stays open to members who join later. A prerequisite stops waiting at its deadline, so a member who joins after that is decided before finishing it",
+              "onboarding actions that stay open to members who join later. A prerequisite stops waiting at their deadline, so a member who joins after that is decided before finishing them",
+            )}{" "}
             and keeps that placement.
           </p>
         )}
