@@ -2,13 +2,11 @@ import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import { useCallback, useState } from "react";
 import {
   ActionDto,
-  actionsComplete,
   FormResponseDto,
   SubmitFormDto,
   tasksOptout,
 } from "../client";
 import type { SubmitResult } from "../forms/formulaChoices";
-import { useInvalidateVisibilityContext } from "./useVisibilityContext";
 
 export interface ActionTaskPanelPropsShared {
   action: ActionDto;
@@ -40,32 +38,16 @@ export const useTaskFormHandlers = ({
   action,
   onCompleteAction,
   onOptOutAction,
-  guestMode = false,
 }: Pick<
   ActionTaskPanelPropsShared,
-  "action" | "onCompleteAction" | "onOptOutAction" | "guestMode"
+  "action" | "onCompleteAction" | "onOptOutAction"
 >) => {
   const [actionError, setActionError] = useState<string | null>(null);
-  const invalidateVisibilityContext = useInvalidateVisibilityContext();
 
-  const handleComplete = useCallback(
-    async (sendComplete: boolean = true) => {
-      if (sendComplete && !guestMode) {
-        const req = await actionsComplete({
-          path: { id: action.id },
-        });
-        if (req.error) {
-          setActionError("Something went wrong. Please try again.");
-          return false;
-        }
-        // Bumped `completedActionCount`.
-        invalidateVisibilityContext();
-      }
-      setActionError(null);
-      return onCompleteAction();
-    },
-    [action, guestMode, onCompleteAction, invalidateVisibilityContext],
-  );
+  const handleComplete = useCallback(() => {
+    setActionError(null);
+    return onCompleteAction();
+  }, [onCompleteAction]);
 
   const handleAbandonAction = useCallback(
     async (withdrawal: ActionWithdrawal) => {
@@ -91,7 +73,7 @@ export const useTaskFormHandlers = ({
   );
 
   return {
-    handleCompleteWithTracking: handleComplete,
+    handleComplete,
     handleAbandonAction,
     actionError,
   };

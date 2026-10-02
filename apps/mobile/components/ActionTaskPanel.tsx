@@ -23,12 +23,11 @@ const ActionTaskPanel = ({
   disabled,
   formResponse,
 }: ActionTaskPanelProps) => {
-  const { handleCompleteWithTracking, handleAbandonAction } =
-    useTaskFormHandlers({
-      action,
-      onCompleteAction,
-      onOptOutAction,
-    });
+  const { handleComplete, handleAbandonAction } = useTaskFormHandlers({
+    action,
+    onCompleteAction,
+    onOptOutAction,
+  });
 
   // Contract signing actions cannot be withdrawn from.
   const onAbandonAction = action.isContractSigningAction
@@ -80,7 +79,7 @@ const ActionTaskPanel = ({
         taskFormId={action.taskFormId}
         scrollPageTo={scrollPageTo}
         scrollToEnd={scrollToEnd}
-        onCompleteAction={handleCompleteWithTracking}
+        onCompleteAction={handleComplete}
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
         onDeadlinePassed={onDeadlinePassed}

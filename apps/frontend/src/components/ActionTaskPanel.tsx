@@ -59,12 +59,11 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
     });
   }, [action]);
 
-  const { handleCompleteWithTracking, actionError, handleAbandonAction } =
+  const { handleComplete, actionError, handleAbandonAction } =
     useTaskFormHandlers({
       action,
       onCompleteAction: handleCompleteAction,
       onOptOutAction,
-      guestMode,
     });
 
   // Contract signing actions cannot be withdrawn from.
@@ -146,7 +145,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
       <ActionTaskPanelForm
         publicAction={action.publicOnly || guestMode}
         taskFormId={action.taskFormId}
-        onCompleteAction={canSubmit ? handleCompleteWithTracking : null}
+        onCompleteAction={canSubmit ? handleComplete : null}
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
         onDeadlinePassed={onDeadlinePassed}

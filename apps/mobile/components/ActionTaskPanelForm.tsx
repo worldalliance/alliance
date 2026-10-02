@@ -26,7 +26,7 @@ import Text from "./system/Text";
 
 interface ActionTaskPanelFormProps {
   taskFormId: number;
-  onCompleteAction: ((sendComplete: boolean) => void) | null;
+  onCompleteAction: (() => void) | null;
   onFormStarted: () => void;
   onAbandonAction?: (withdrawal: ActionWithdrawal) => void;
   onDeadlinePassed: () => void;
@@ -97,7 +97,7 @@ const ActionTaskPanelForm = ({
               await setStoredGuestToken(issuedGuestToken);
             }
           }
-          onCompleteAction(false);
+          onCompleteAction();
           return true;
         } else {
           if (memberActionDeadlinePassed(response)) {
