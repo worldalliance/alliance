@@ -2543,9 +2543,28 @@ describe("Users (e2e)", () => {
             });
 
           expect(res.status).toBe(201);
-          expect(res.body.community).toBeUndefined();
+          expect(res.body.community).toBeNull();
           expect(res.body.invitingUser.id).toBe(userAId);
           expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
+        });
+
+        it("reports the invite's group to analytics, or null for none", async () => {
+          const capture = jest.spyOn(ctx.app.get(PosthogService), "capture");
+          for (const communityId of [communityLedByUserA.id, undefined]) {
+            await request(ctx.app.getHttpServer())
+              .post("/user/onetimeInvite/create")
+              .set("Authorization", `Bearer ${userAToken}`)
+              .send({ invitee: "analytics@example.com", communityId })
+              .expect(201);
+          }
+          expect(
+            capture.mock.calls
+              .filter(
+                ([{ event }]) => event === AnalyticsEvent.OnetimeInviteCreated,
+              )
+              .map(([{ properties }]) => properties?.communityId),
+          ).toEqual([communityLedByUserA.id, null]);
+          capture.mockRestore();
         });
 
         it("returns not found when admins reference communities that do not exist", async () => {
@@ -2689,6 +2708,20 @@ describe("Users (e2e)", () => {
           expect(res.body.inviteeDescription).toBe(
             "Member request for manual review",
           );
+        });
+
+        it("reports the requested group to analytics", async () => {
+          const capture = jest.spyOn(ctx.app.get(PosthogService), "capture");
+          await createPendingInviteRequest();
+          expect(
+            capture.mock.calls
+              .filter(
+                ([{ event }]) =>
+                  event === AnalyticsEvent.OnetimeInviteRequested,
+              )
+              .map(([{ properties }]) => properties?.communityId),
+          ).toEqual([communityLedByUserA.id]);
+          capture.mockRestore();
         });
       });
 

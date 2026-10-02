@@ -792,7 +792,7 @@ export class UserController {
       distinctId: String(req.user.sub),
       properties: {
         inviteId: invite.id,
-        communityId: invite.communityId ?? invite.community?.id,
+        communityId: invite.communityId,
         invitee: invite.invitee,
       },
     });
@@ -815,7 +815,7 @@ export class UserController {
       distinctId: String(req.user.sub),
       properties: {
         inviteId: invite.id,
-        communityId: invite.communityId ?? invite.community?.id,
+        communityId: invite.communityId,
         invitee: invite.invitee,
       },
     });
@@ -848,7 +848,7 @@ export class UserController {
       distinctId: String(req.user.sub),
       properties: {
         inviteId: invite.id,
-        communityId: invite.communityId ?? invite.community?.id,
+        communityId: invite.communityId,
         invitee: invite.invitee,
       },
     });

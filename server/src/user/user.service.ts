@@ -1959,7 +1959,7 @@ export class UserService {
       ...rest,
       code,
       invitingUser,
-      community,
+      community: community ?? null,
       status: OnetimeInviteStatus.LINK_UNUSED,
     });
     const savedInvite = await this.onetimeInviteRepository.save(invite);
@@ -2653,9 +2653,13 @@ export class UserService {
       );
     }
 
-    if (!user.leaderOfIds.some((cid) => cid === request.communityId)) {
+    const { communityId } = request;
+    if (
+      communityId === null ||
+      !user.leaderOfIds.some((cid) => cid === communityId)
+    ) {
       throw new BadRequestException(
-        `User is not a leader of community ${request.communityId}`,
+        `User is not a leader of community ${communityId}`,
       );
     }
 
@@ -2684,7 +2688,7 @@ export class UserService {
         message: message.replace("[USER]", savedInvite.invitee),
         webAppLocation: groupUrl({
           tab: "invites",
-          communityId: savedInvite.communityId,
+          communityId,
         }),
         associatedUsers: [invitingUser],
       });
