@@ -71,6 +71,12 @@ import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
 import { DropPosition } from "../lib/useDragReorder";
 import { useFormulaSourceForms } from "../lib/useFormulaSourceForms";
 import { useInputSources } from "../lib/useInputSources";
+import { useVisibilityGroupedSchema } from "../lib/useVisibilityGroupedSchema";
+import {
+  deriveVisibilityGroups,
+  type GroupedPages,
+  type VisibilityGroups,
+} from "../lib/visibilityGroups";
 import { AggregateBuilder } from "./AggregateBuilder";
 import ConfirmDialog from "./ConfirmDialog";
 import { createDisplayBlock, PerViewerOptions } from "./display-blocks";
@@ -90,10 +96,15 @@ import { formFieldsErrorReason } from "./FormPickerError";
 import { FormulaSourcesProvider } from "./FormulaSourcesContext";
 import { FormVariablesProvider } from "./FormVariablesContext";
 import { OutputBuilder } from "./OutputBuilder";
+import { PageSegmentList } from "./PageSegmentList";
 import { PageVisibilityControl } from "./PageVisibilityControl";
 import { PreviewAsUserBar } from "./PreviewAsUserBar";
 import { ShareableTextBuilder } from "./ShareableTextBuilder";
 import { VariableBuilder } from "./VariableBuilder";
+import {
+  VisibilityGroupContext,
+  visibilityGroupRole,
+} from "./VisibilityGroupContext";
 
 type FormEditorTab =
   | "form"
@@ -257,6 +268,14 @@ const createUniqueFormBuilderId = (
 };
 
 const collectSchemaIds = (schema: FormSchema) => new Set(formSchemaIds(schema));
+
+const NO_VISIBILITY_GROUPS: VisibilityGroups = new Map();
+
+const REGROUPS_ON_JSON_APPLY: Record<JsonScopeKind, boolean> = {
+  [JsonScopeKind.Form]: true,
+  [JsonScopeKind.Page]: false,
+  [JsonScopeKind.Element]: false,
+};
 
 const remapConditionFieldReferences = (
   condition: Condition,
@@ -477,10 +496,11 @@ const describeCopyableElement = (element: PageItem): string =>
     maxTextLength: 40,
   });
 
-type InsertLoc = { index: number };
+/** `groupKey` marks an insert point inside a visibility group. */
+type InsertLoc = { groupKey: string | null; index: number };
 
 function sameInsertLoc(a: InsertLoc | null, b: InsertLoc): boolean {
-  return a != null && a.index === b.index;
+  return a != null && a.groupKey === b.groupKey && a.index === b.index;
 }
 
 export function FormBuilder(props: FormBuilderProps) {
@@ -517,7 +537,16 @@ export function FormBuilder(props: FormBuilderProps) {
           aggregateViews: [],
         };
 
-  const [schema, setSchema] = useState<FormSchema>(buildInitialSchema);
+  const {
+    schema,
+    groups: visibilityGroups,
+    setSchema,
+    loadSchema,
+    setGroups,
+  } = useVisibilityGroupedSchema(buildInitialSchema);
+  const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const [lastSavedSchemaJSON, setLastSavedSchemaJSON] = useState<string>(() =>
     JSON.stringify(buildInitialSchema()),
   );
@@ -646,14 +675,29 @@ export function FormBuilder(props: FormBuilderProps) {
     schema.pages?.[0] ?? { id: "page-1", title: "Page 1", fields: [] };
 
   const applyInsert = (item: PageItem, loc?: InsertLoc) => {
+    const index = loc?.index ?? currentPage.fields.length;
+    const groupKey = loc?.groupKey ?? null;
+    const groupFormula =
+      groupKey == null
+        ? undefined
+        : currentPage.fields[index - 1]?.visibleIfFormula;
+    const inserted =
+      groupFormula && item.id
+        ? { ...item, visibleIfFormula: groupFormula }
+        : item;
     const newFields = [...currentPage.fields];
-    newFields.splice(loc?.index ?? currentPage.fields.length, 0, item);
-    updateSchema({
-      ...schema,
-      pages: schema.pages.map((page, idx) =>
-        idx === selectedPageIndex ? { ...page, fields: newFields } : page,
-      ),
-    });
+    newFields.splice(index, 0, inserted);
+    updateSchema(
+      {
+        ...schema,
+        pages: schema.pages.map((page, idx) =>
+          idx === selectedPageIndex ? { ...page, fields: newFields } : page,
+        ),
+      },
+      groupKey != null && inserted.id
+        ? new Map(visibilityGroups).set(inserted.id, groupKey)
+        : undefined,
+    );
   };
   const resolvedPreviewUser = useMemo(() => {
     if (previewUserId === "preview") {
@@ -697,14 +741,18 @@ export function FormBuilder(props: FormBuilderProps) {
 
   useEffect(() => {
     if (searchQuery.trim()) {
-      const filtered = availableElements.filter((element) =>
+      const pool =
+        activeSearch?.groupKey != null
+          ? availableElements.filter((element) => element.type !== "copy")
+          : availableElements;
+      const filtered = pool.filter((element) =>
         element.name.toLowerCase().includes(searchQuery.toLowerCase()),
       );
       setSearchResults(filtered);
     } else {
       setSearchResults([]);
     }
-  }, [availableElements, searchQuery]);
+  }, [activeSearch?.groupKey, availableElements, searchQuery]);
 
   const handleSearchSelect = (element: AvailableElement, loc: InsertLoc) => {
     switch (element.type) {
@@ -756,9 +804,17 @@ export function FormBuilder(props: FormBuilderProps) {
     setCopyPicker(null);
   }, [selectedPageIndex]);
 
+  // A new form's first save already holds the saved schema; refetching it
+  // would regroup and drop the admin's manual group boundaries.
+  const createdFormIdRef = useRef<number | null>(null);
+
   // Load form data when formId changes
   useEffect(() => {
     if (displayOnly || !formId || initialSchema) return;
+    if (createdFormIdRef.current === formId) {
+      createdFormIdRef.current = null;
+      return;
+    }
     setIsLoading(true);
     setLoadError(null);
 
@@ -771,7 +827,7 @@ export function FormBuilder(props: FormBuilderProps) {
             const nextSchema = ensurePages(
               form.schema as unknown as FormSchema,
             );
-            setSchema(nextSchema);
+            loadSchema(nextSchema);
             setLastSavedSchemaJSON(JSON.stringify(nextSchema));
             setBaseFormSnapshotId(
               typeof form.formSnapshotId === "number"
@@ -791,7 +847,7 @@ export function FormBuilder(props: FormBuilderProps) {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [displayOnly, formId, initialSchema]);
+  }, [displayOnly, formId, initialSchema, loadSchema]);
 
   const addField = (kind: FieldKind, loc?: InsertLoc) => {
     const fieldId = `field-${Date.now()}`;
@@ -1016,8 +1072,8 @@ export function FormBuilder(props: FormBuilderProps) {
     setCopyPicker(null);
   };
 
-  const updateSchema = (newSchema: FormSchema) => {
-    setSchema(ensureSchemaViews(newSchema));
+  const updateSchema = (newSchema: FormSchema, groups?: VisibilityGroups) => {
+    setSchema(ensureSchemaViews(newSchema), groups);
   };
 
   const updateBlockById = useDisplayBlockWrite(schema, updateSchema);
@@ -1189,10 +1245,10 @@ export function FormBuilder(props: FormBuilderProps) {
     const copiedPageIndex = pageIndex + 1;
     nextPages.splice(copiedPageIndex, 0, copiedPage);
 
-    updateSchema({
-      ...schema,
-      pages: nextPages,
-    });
+    updateSchema(
+      { ...schema, pages: nextPages },
+      new Map([...visibilityGroups, ...deriveVisibilityGroups([copiedPage])]),
+    );
     setSelectedPageIndex(copiedPageIndex);
     setDraggedPageIndex(null);
     setDragOverPageIndex(null);
@@ -1200,7 +1256,11 @@ export function FormBuilder(props: FormBuilderProps) {
   };
 
   const applyJson = (next: FormSchema) => {
-    updateSchema(next);
+    if (jsonScope && REGROUPS_ON_JSON_APPLY[jsonScope.kind]) {
+      loadSchema(ensureSchemaViews(next));
+    } else {
+      updateSchema(next);
+    }
     setSchemaLoads((count) => count + 1);
     setSelectedPageIndex((index) => Math.min(index, next.pages.length - 1));
     setJsonScope(null);
@@ -1321,6 +1381,9 @@ export function FormBuilder(props: FormBuilderProps) {
         setBaseFormSnapshotId(response.data.formSnapshotId);
         setHasUnsavedChanges(false);
         skipNavigationBlockRef.current = true;
+        if (response.data.id !== formId) {
+          createdFormIdRef.current = response.data.id;
+        }
         setFormId(response.data.id);
         skipNavigationBlockRef.current = false;
         if (resolvedDraftIds.length > 0) {
@@ -1357,6 +1420,7 @@ export function FormBuilder(props: FormBuilderProps) {
     resolveCustomValidatorDrafts,
     schema,
     setFormId,
+    setSchema,
     showErrorToast,
     showSuccessToast,
     sourceForms,
@@ -1370,6 +1434,11 @@ export function FormBuilder(props: FormBuilderProps) {
   const unresolvedVariableReferences = useMemo(
     () => collectUnresolvedVariableReferences(schema),
     [schema],
+  );
+
+  const liveValidationErrors = useMemo(
+    () => validateFormSchema(schema, validation),
+    [schema, validation],
   );
 
   const handleSaveForm = useCallback(() => {
@@ -1474,6 +1543,7 @@ export function FormBuilder(props: FormBuilderProps) {
     displayOnlySave,
     formId,
     invalidateForms,
+    setSchema,
     showErrorToast,
     showSuccessToast,
   ]);
@@ -1487,13 +1557,13 @@ export function FormBuilder(props: FormBuilderProps) {
     ) {
       return;
     }
-    setSchema(conflict.theirs);
+    loadSchema(conflict.theirs);
     setSchemaLoads((count) => count + 1);
     setLastSavedSchemaJSON(JSON.stringify(conflict.theirs));
     setBaseFormSnapshotId(conflict.theirsSnapshotId);
     setHasUnsavedChanges(false);
     setConflict(null);
-  }, [conflict]);
+  }, [conflict, loadSchema]);
 
   const handleMerge = useCallback(() => {
     if (!conflict) return;
@@ -1507,13 +1577,13 @@ export function FormBuilder(props: FormBuilderProps) {
       showErrorToast("Can't auto-merge — there are conflicting edits");
       return;
     }
-    setSchema(result.value);
+    loadSchema(result.value);
     setSchemaLoads((count) => count + 1);
     setLastSavedSchemaJSON(JSON.stringify(conflict.theirs));
     setBaseFormSnapshotId(conflict.theirsSnapshotId);
     setConflict(null);
     showSuccessToast("Merged their changes with yours — review and save");
-  }, [conflict, showErrorToast, showSuccessToast, validation]);
+  }, [conflict, loadSchema, showErrorToast, showSuccessToast, validation]);
 
   const handleCopyMine = useCallback(async () => {
     if (!conflict) return;
@@ -1919,6 +1989,17 @@ export function FormBuilder(props: FormBuilderProps) {
     );
   };
 
+  const applyGrouped = ({ pages, groups }: GroupedPages) =>
+    updateSchema({ ...schema, pages }, groups);
+
+  const toggleGroupCollapsed = (key: string) =>
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
   const renderPageItem = ({
     field,
     index,
@@ -1936,7 +2017,22 @@ export function FormBuilder(props: FormBuilderProps) {
           }),
       }}
     >
-      {renderField(field, index)}
+      <VisibilityGroupContext.Provider
+        value={
+          displayOnly
+            ? null
+            : visibilityGroupRole({
+                pages: schema.pages,
+                pageIndex: selectedPageIndex,
+                index,
+                groups: visibilityGroups,
+                setGroups,
+                applyGrouped,
+              })
+        }
+      >
+        {renderField(field, index)}
+      </VisibilityGroupContext.Provider>
     </ElementJsonContext.Provider>
   );
 
@@ -1989,7 +2085,10 @@ export function FormBuilder(props: FormBuilderProps) {
                   setActiveSearch(null);
                   setSearchQuery("");
                   setSearchResults([]);
-                  setCopyPicker({ index: currentPage.fields.length });
+                  setCopyPicker({
+                    groupKey: null,
+                    index: currentPage.fields.length,
+                  });
                 }}
                 displayOnly={displayOnly}
               />
@@ -2359,18 +2458,25 @@ export function FormBuilder(props: FormBuilderProps) {
                     <PerViewerOptions allowed={!displayOnly}>
                       <div key={schemaLoads} className="space-y-4">
                         {currentPage.fields.length === 0 && (
-                          <InsertPoint loc={{ index: 0 }} />
+                          <InsertPoint loc={{ groupKey: null, index: 0 }} />
                         )}
 
-                        {currentPage.fields.map((field, index) => (
-                          <div key={field.id || index}>
-                            <InsertPoint loc={{ index }} />
-                            {renderPageItem({ field, index })}
-                            {index === currentPage.fields.length - 1 && (
-                              <InsertPoint loc={{ index: index + 1 }} />
-                            )}
-                          </div>
-                        ))}
+                        <PageSegmentList
+                          schema={schema}
+                          pageIndex={selectedPageIndex}
+                          groups={
+                            displayOnly
+                              ? NO_VISIBILITY_GROUPS
+                              : visibilityGroups
+                          }
+                          setGroups={setGroups}
+                          applyGrouped={applyGrouped}
+                          collapsedGroups={collapsedGroups}
+                          onToggleCollapsed={toggleGroupCollapsed}
+                          validationErrors={liveValidationErrors}
+                          renderInsertPoint={(loc) => <InsertPoint loc={loc} />}
+                          renderMember={renderPageItem}
+                        />
 
                         {draggedItem && currentPage.fields.length > 0 && (
                           <div

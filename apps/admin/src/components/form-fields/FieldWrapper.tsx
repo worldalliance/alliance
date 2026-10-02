@@ -13,6 +13,11 @@ import { useEffect, useState } from "react";
 import { FORM_BUILDER_PREVIEW_USER } from "../../lib/testData";
 import { ElementJsonButton } from "../FormJsonButton";
 import {
+  JoinVisibilityButtons,
+  SharedVisibilityNotice,
+  useVisibilityGroupMember,
+} from "../VisibilityGroupContext";
+import {
   ConditionalVisibility,
   CustomValidatorSelect,
   OutputFieldToggle,
@@ -48,6 +53,7 @@ export function FieldWrapper<T extends AnyField>({
   isDragging,
 }: FieldWrapperProps<T>) {
   const isCurrentFormField = isFormField(field);
+  const groupMember = useVisibilityGroupMember(field.id);
   const { createDraftId, drafts, removeDraft, setDraft } =
     useCustomValidatorDrafts();
   const [showCustomValidatorControl, setShowCustomValidatorControl] = useState(
@@ -286,6 +292,7 @@ export function FieldWrapper<T extends AnyField>({
       </div>
 
       <div className="mb-1 flex items-center justify-end gap-1 absolute right-0 top-0 bg-white rounded-lg">
+        <JoinVisibilityButtons elementId={field.id} />
         <ElementJsonButton />
         {isCurrentFormField && (
           <FieldExtraMenu
@@ -293,7 +300,9 @@ export function FieldWrapper<T extends AnyField>({
             showCustomValidatorControl={showCustomValidatorControl}
             onCustomValidatorToggle={handleCustomValidatorToggle}
             showConditionalVisibilityControl={showConditionalVisibilityControl}
-            onConditionalVisibilityToggle={handleConditionalVisibilityToggle}
+            onConditionalVisibilityToggle={
+              groupMember ? null : handleConditionalVisibilityToggle
+            }
             onExtractionToggle={handleExtractionToggle}
             onCheckboxExtractionTargetChange={
               handleCheckboxExtractionTargetChange
@@ -357,8 +366,10 @@ export function FieldWrapper<T extends AnyField>({
             )}
           </div>
         )}
+        {groupMember && <SharedVisibilityNotice detach={groupMember.detach} />}
         {isCurrentFormField &&
-          (showCustomValidatorControl || showConditionalVisibilityControl) && (
+          (showCustomValidatorControl ||
+            (showConditionalVisibilityControl && !groupMember)) && (
             <div className="space-y-2 border-t border-gray-200 p-4">
               {showCustomValidatorControl && (
                 <CustomValidatorSelect
@@ -368,7 +379,7 @@ export function FieldWrapper<T extends AnyField>({
                   onChange={handleValidatorChange}
                 />
               )}
-              {showConditionalVisibilityControl && (
+              {showConditionalVisibilityControl && !groupMember && (
                 <ConditionalVisibility
                   field={field}
                   previousFields={previousFields || []}

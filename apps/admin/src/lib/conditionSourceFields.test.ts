@@ -28,4 +28,15 @@ describe("conditionSourceFields", () => {
     expect(ids(result.previousFields)).toEqual(["earlier-page", "a"]);
     expect(ids(result.laterFields)).toEqual(["c"]);
   });
+
+  it("offers the item itself when asked to include it", () => {
+    const result = conditionSourceFields({
+      pages,
+      pageIndex: 1,
+      index: 1,
+      includeItem: true,
+    });
+    expect(ids(result.previousFields)).toEqual(["earlier-page", "a"]);
+    expect(ids(result.laterFields)).toEqual(["b", "c"]);
+  });
 });
