@@ -940,6 +940,14 @@ jobs:
           curl --fail --silent --show-error https://admin.${{vars.ALT_DOMAIN_NAME}} > /dev/null
           echo "admin alt domain https ok"
 
+      # nginx -t can pass while every /events/ request fails, e.g. on PostHog's
+      # certificate. Last, so a PostHog outage doesn't skip the checks above.
+      - name: Check PostHog proxy
+        run: |
+          echo "Checking PostHog proxy..."
+          curl --fail --silent --show-error --max-time 30 https://${{vars.DOMAIN_NAME}}/events/static/array.js > /dev/null
+          echo "PostHog proxy https ok"
+
   verify-api:
     needs:
       - deploy-nest-backend
