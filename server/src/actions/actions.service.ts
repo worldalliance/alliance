@@ -8,7 +8,7 @@ import {
   withdrawalOptionFromFlags,
   type FeedActionActivity,
 } from "@alliance/common/actionActivity";
-import { ExceptionEvent } from "@alliance/common/analytics";
+import { AnalyticsEvent, ExceptionEvent } from "@alliance/common/analytics";
 import {
   cohortExpressionSchema,
   expressionHasLeaf,
@@ -1957,6 +1957,13 @@ export class ActionsService {
     await this.reloadUsersJoinedForAction(actionId);
     if (type === ActionActivityType.USER_COMPLETED) {
       await this.reloadUsersCompletedForAction(actionId);
+      if (!adminCreated) {
+        this.posthogService.capture({
+          event: AnalyticsEvent.ActionCompleted,
+          distinctId: String(userId),
+          properties: { actionId, actionName: action.name },
+        });
+      }
     }
 
     return savedActivity;

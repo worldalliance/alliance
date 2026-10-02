@@ -2,7 +2,7 @@ import {
   ActionActivityType,
   MEMBER_ACTION_DEADLINE_PASSED,
 } from "@alliance/common/actionActivity";
-import { ExceptionEvent } from "@alliance/common/analytics";
+import { AnalyticsEvent, ExceptionEvent } from "@alliance/common/analytics";
 import { devPorts, PortCaller } from "@alliance/common/dev-ports";
 import {
   FORM_DRAFT_MAX_ANSWER_BYTES,
@@ -672,7 +672,12 @@ describe("Tasks (e2e)", () => {
             actionId: action.id,
             deviceType: "desktop" as const,
           });
-      return { formId: form.body.id as number, deadlineEvent, submit };
+      return {
+        formId: form.body.id as number,
+        actionId: action.id,
+        deadlineEvent,
+        submit,
+      };
     };
 
     it("refuses the form as past its deadline without saving it", async () => {
@@ -700,6 +705,38 @@ describe("Tasks (e2e)", () => {
       const retried = await submit().expect(400);
 
       expect(retried.body.message).toBe("Form already submitted");
+    });
+
+    it("reports only a member's own completion to PostHog", async () => {
+      const capture = jest.spyOn(ctx.app.get(PosthogService), "capture");
+      const onTime = await createDeadlineFormAction(
+        "Tracked Form Action",
+        new Date(Date.now() + milliseconds({ hours: 1 })),
+      );
+      const late = await createDeadlineFormAction(
+        "Untracked Form Action",
+        new Date(Date.now() - milliseconds({ minutes: 1 })),
+      );
+
+      await onTime.submit().expect(201);
+      await late.submit().expect(403);
+      await ctx.app
+        .get(ActionsService)
+        .completeAction(late.actionId, ctx.testUserId, { adminCreated: true });
+
+      const completions = capture.mock.calls
+        .map(([params]) => params)
+        .filter(({ event }) => event === AnalyticsEvent.ActionCompleted);
+      expect(completions).toEqual([
+        {
+          event: AnalyticsEvent.ActionCompleted,
+          distinctId: String(ctx.testUserId),
+          properties: {
+            actionId: onTime.actionId,
+            actionName: "Tracked Form Action",
+          },
+        },
+      ]);
     });
   });
 
