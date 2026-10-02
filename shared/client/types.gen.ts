@@ -3119,6 +3119,10 @@ export type ReminderGroupDto = {
     allSent: boolean;
     excludeOptionalActions: boolean;
     excludePreviouslyNotified: boolean;
+    /**
+     * Whether the group's email uses a missed-suite keyword, so dispatch sends it as a missed-suite notice
+     */
+    isMissedSuite: boolean;
 };
 
 export type NotificationChannel = 'text' | 'email' | 'push';
@@ -3127,6 +3131,10 @@ export type PreviewNotificationPlanDto = {
     scheduledFor: string;
     user: UserDto;
     channels: Array<NotificationChannel>;
+    /**
+     * The member's run of consecutive missed suites, once a missed-suite group's suite has closed
+     */
+    missNumber: number | null;
 };
 
 export type CreateActionActivityDto = {

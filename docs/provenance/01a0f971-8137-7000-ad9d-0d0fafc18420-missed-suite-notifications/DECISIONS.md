@@ -88,3 +88,17 @@ Start implementation with regression tests for partial suites, historical versus
 **Copy correction.** A data migration replaces the obsolete sentence ("miss all of your assigned non-optional actions for three weeks in a row") in reminder groups whose deadline is still ahead. Groups past their deadline keep the copy they went out with; `allSent` is never set, so it cannot tell sent groups apart. The admin preset default, the `#{secondmisswarning}` text, the suspension SMS/email, the shared contract term, and the explanation pages now say "miss any assigned non-optional task for 3 weeks in a row". The stored contracts in the local snapshot do not contain the suspension clause, so no contract record changed.
 
 **Removed.** `server/scripts/local-test-missed-action-emails.ts` checked the old personalized second-miss email through the removed `getMissedActionReminderContexts`, so it was deleted.
+
+## Admin preview of missed-suite groups (ALL-1373)
+
+**Filtering.** Once a missed-suite group's suite has closed, both previews keep only the members dispatch would notify: the card's per-group preview (`GET /actions/plansForGroup/:groupId`) and the group form's tentative count (`POST /actions/events/:eventId/checkTentativePlans`), since staff usually create a missed-suite group after its suite closes. `resolveMissedSuitePlan` decides each plan for dispatch and the previews alike (ordinary group, skipped, or due with the member's standing), `getsMissedSuiteNotice` holds the third-miss exclusion, and `MissedSuitePlanService` owns the claimed-key filter and the closed-suite load. The service sits outside `ActionsService` and `ActionEventReminderService` because it needs closed suite outcomes from `ActionsService`, which already depends on the reminder service, so the controller composes their plans with it.
+
+**Suiteless groups.** A missed-suite group with no suite (never set, or its suite was deleted) previews nobody, because dispatch never sends it. Rejecting such a group at save, which ALL-1369 proposed, is left out: that issue was canceled.
+
+**Form suite.** The reminder form's tentative request now sends the tab's suite id, as create and update already do. Without it the form's preview had no suite to filter on, and suite-scoped catch-up groups previewed against their member action alone.
+
+**Miss number.** Each preview row carries `missNumber`, null until the suite closes and for ordinary groups. The preview does not report the first-miss arm, because drawing one would assign members to the experiment from an admin page view.
+
+**Not changed.** `getNotificationSchedule` has no client caller and lists no recipients, so it is unchanged.
+
+**Admin label.** `ReminderGroupDto.isMissedSuite` comes from `isMissedSuiteReminderGroup`, so the admin card does not re-derive the keyword rule. The card states the routing above the group's copy, or says in words that a missed-suite group with no suite sends nothing, and each plan row shows its miss number once the suite has closed. The reminder group list now loads `actionSuite`, which it omitted, so the card can tell those cases apart; the update query loads it too, so the PATCH response carries the same `actionSuite` as the list.

@@ -1,11 +1,14 @@
 import type { ActionSuite } from "src/actions/entities/action-suite.entity";
 import { Action } from "src/actions/entities/action.entity";
+import type { ReminderGroup } from "src/actions/entities/reminder-group.entity";
+import type { SuiteOutcome } from "src/actions/missed-suite-streak";
 import { processKeywordReplacements } from "src/mail/mail.service";
 import { User } from "src/user/entities/user.entity";
 import { MissedSuiteNoticeCopy } from "./entities/action-event-notif.entity";
 import {
-  closedNoticeSuite,
+  MissedSuitePlanKind,
   missedSuiteNoticeTemplates,
+  resolveMissedSuitePlan,
 } from "./missed-suite-notice";
 
 const group = {
@@ -96,26 +99,45 @@ describe("missedSuiteNoticeTemplates", () => {
   });
 });
 
-describe("closedNoticeSuite", () => {
+describe("resolveMissedSuitePlan", () => {
   const suite = { id: 7 } as ActionSuite;
+  const outcome = (suiteId: number): SuiteOutcome => ({
+    suiteId,
+    closedAt: new Date(0),
+    actions: [{ id: 1, name: "Task" }],
+    missedActionIdsByUser: new Map([[5, [1]]]),
+  });
+  const resolve = (
+    overrides: Partial<Pick<ReminderGroup, "actionSuite" | "emailMessage">>,
+    closedSuites: SuiteOutcome[],
+  ) =>
+    resolveMissedSuitePlan({
+      group: { ...group, actionSuite: suite, ...overrides },
+      userId: 5,
+      closedSuites,
+    });
 
-  it("returns the group's suite once it has closed", () => {
-    expect(closedNoticeSuite({ actionSuite: suite }, [{ suiteId: 7 }])).toEqual(
-      { ok: true, value: suite },
-    );
+  it("leaves a group without the missed-suite keywords to ordinary dispatch", () => {
+    expect(resolve({ emailMessage: "plain" }, [outcome(7)])).toEqual({
+      kind: MissedSuitePlanKind.Ordinary,
+    });
   });
 
-  it("refuses a group without a suite or before its suite closes", () => {
-    expect(closedNoticeSuite({}, [{ suiteId: 7 }])).toEqual({
-      ok: false,
-      error: "has no suite",
+  it("tells a group without a suite from one whose suite is still open", () => {
+    expect(resolve({ actionSuite: undefined }, [outcome(7)])).toEqual({
+      kind: MissedSuitePlanKind.NoSuite,
     });
-    expect(closedNoticeSuite({ actionSuite: suite }, [{ suiteId: 8 }])).toEqual(
-      {
-        ok: false,
-        error:
-          "suite 7 has not closed: a required action has a later deadline than this group, or none",
-      },
-    );
+    expect(resolve({}, [outcome(8)])).toEqual({
+      kind: MissedSuitePlanKind.SuiteOpen,
+      suite,
+    });
+  });
+
+  it("gives the member's standing once the suite has closed", () => {
+    expect(resolve({}, [outcome(7)])).toMatchObject({
+      kind: MissedSuitePlanKind.Due,
+      suite,
+      standing: { missNumber: 1 },
+    });
   });
 });

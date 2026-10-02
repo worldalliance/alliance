@@ -1,7 +1,11 @@
-import { R, type Result } from "@alliance/common/result";
 import type { ActionSuite } from "src/actions/entities/action-suite.entity";
 import type { ReminderGroup } from "src/actions/entities/reminder-group.entity";
-import type { SuiteOutcome } from "src/actions/missed-suite-streak";
+import {
+  findMissedSuiteStanding,
+  SUSPENSION_MISSED_SUITE_COUNT,
+  type MissedSuiteStanding,
+  type SuiteOutcome,
+} from "src/actions/missed-suite-streak";
 import { MissedSuiteNoticeCopy } from "./entities/action-event-notif.entity";
 import { ExperimentArm } from "./entities/experiment-assignment.entity";
 
@@ -21,20 +25,54 @@ export function isMissedSuiteReminderGroup(
   );
 }
 
-/** The suite a missed-suite group's notices cover, once it has closed. */
-export function closedNoticeSuite(
-  group: Pick<ReminderGroup, "actionSuite">,
-  closedSuites: Pick<SuiteOutcome, "suiteId">[],
-): Result<ActionSuite, string> {
-  const suite = group.actionSuite;
-  if (!suite) return R.failure("has no suite");
-  if (!closedSuites.some((closed) => closed.suiteId === suite.id)) {
-    return R.failure(
-      `suite ${suite.id} has not closed: a required action has a later deadline than this group, or none`,
-    );
-  }
-  return R.success(suite);
+export enum MissedSuitePlanKind {
+  Ordinary = "ordinary",
+  NoSuite = "no_suite",
+  SuiteOpen = "suite_open",
+  Due = "due",
 }
+
+export type MissedSuitePlanResolution =
+  | { kind: MissedSuitePlanKind.Ordinary }
+  | { kind: MissedSuitePlanKind.NoSuite }
+  | { kind: MissedSuitePlanKind.SuiteOpen; suite: ActionSuite }
+  | {
+      kind: MissedSuitePlanKind.Due;
+      suite: ActionSuite;
+      standing: MissedSuiteStanding | null;
+    };
+
+/** How dispatch treats one member's plan for a reminder group. */
+export function resolveMissedSuitePlan(params: {
+  group: Pick<ReminderGroup, "actionSuite" | "emailSubject" | "emailMessage">;
+  userId: number;
+  closedSuites: SuiteOutcome[];
+}): MissedSuitePlanResolution {
+  const { group, userId, closedSuites } = params;
+  if (!isMissedSuiteReminderGroup(group)) {
+    return { kind: MissedSuitePlanKind.Ordinary };
+  }
+  const suite = group.actionSuite;
+  if (!suite) return { kind: MissedSuitePlanKind.NoSuite };
+  if (!closedSuites.some((closed) => closed.suiteId === suite.id)) {
+    return { kind: MissedSuitePlanKind.SuiteOpen, suite };
+  }
+  return {
+    kind: MissedSuitePlanKind.Due,
+    suite,
+    standing: findMissedSuiteStanding({
+      suites: closedSuites,
+      userId,
+      suiteId: suite.id,
+    }),
+  };
+}
+
+/** A third consecutive miss gets the suspension notice instead. */
+export const getsMissedSuiteNotice = (
+  standing: MissedSuiteStanding | null,
+): standing is MissedSuiteStanding =>
+  standing !== null && standing.missNumber < SUSPENSION_MISSED_SUITE_COUNT;
 
 export const missedSuiteNoticeKey = (suiteId: number, userId: number) =>
   `missed-suite:${suiteId}:${userId}`;

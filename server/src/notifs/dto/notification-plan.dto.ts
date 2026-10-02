@@ -17,6 +17,11 @@ export class NotificationPlan {
   group: ReminderGroup;
 }
 
+export type PreviewNotificationPlan = {
+  plan: NotificationPlan;
+  missNumber: number | null;
+};
+
 export class PreviewNotificationPlanDto {
   @ApiProperty()
   scheduledFor: Date;
@@ -31,7 +36,16 @@ export class PreviewNotificationPlanDto {
   })
   channels: NotificationChannel[];
 
-  constructor(plan: NotificationPlan) {
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description:
+      "The member's run of consecutive missed suites, once a missed-suite group's suite has closed",
+  })
+  missNumber: number | null;
+
+  constructor(input: PreviewNotificationPlan) {
+    const { plan } = input;
     this.scheduledFor = plan.scheduledFor;
     this.user = new UserDto(plan.user);
     this.channels = [];
@@ -41,5 +55,6 @@ export class PreviewNotificationPlanDto {
       this.channels.push(NotificationChannel.Text);
     if (userActionNotifsEnabled_email(plan.user))
       this.channels.push(NotificationChannel.Email);
+    this.missNumber = input.missNumber;
   }
 }

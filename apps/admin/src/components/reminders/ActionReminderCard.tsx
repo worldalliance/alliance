@@ -21,6 +21,7 @@ import ActionReminderGroupForm, {
   ActionReminderGroupFormSubmitPayload,
 } from "./ActionReminderGroupForm";
 import { GroupScheduleLabels } from "./ActionRemindersTab";
+import MissedSuiteNote from "./MissedSuiteNote";
 
 interface ActionReminderCardProps {
   group: ReminderGroupDto;
@@ -51,6 +52,7 @@ interface ActionReminderCardProps {
   ) => (payload: ActionReminderGroupFormSubmitPayload) => Promise<void>;
   reminderPlans?: PreviewNotificationPlanDto[];
   sentReminders?: ActionEventNotifDto[];
+  suiteId: number;
   suiteTaskCount: number;
 }
 const ActionReminderCard = ({
@@ -77,6 +79,7 @@ const ActionReminderCard = ({
   handleEditGroupSubmit,
   reminderPlans,
   sentReminders,
+  suiteId,
   suiteTaskCount,
 }: ActionReminderCardProps) => {
   const [minified, setMinified] = useState(true);
@@ -286,6 +289,8 @@ const ActionReminderCard = ({
         <div className="flex flex-col gap-2 p-4">
           {editing && selectedEventId !== null ? (
             <ActionReminderGroupForm
+              suiteId={suiteId}
+              waitForRecipientCount={false}
               memberEvents={memberEvents}
               anchorCandidates={anchorCandidates}
               users={users}
@@ -307,6 +312,9 @@ const ActionReminderCard = ({
             />
           ) : (
             <>
+              {group.isMissedSuite && (
+                <MissedSuiteNote hasSuite={Boolean(group.actionSuite)} />
+              )}
               <p className="text-sm font-semibold">Email message:</p>
               <Card className="flex flex-col gap-1 !p-2">
                 <p className="text-sm font-semibold text-gray-900">
@@ -402,6 +410,11 @@ const ActionReminderCard = ({
                   <p className="text-xs text-gray-500">
                     ({plan.channels.join(", ")})
                   </p>
+                  {plan.missNumber !== null && (
+                    <p className="text-xs text-gray-500">
+                      consecutive miss {plan.missNumber}
+                    </p>
+                  )}
                 </div>
               ))
             )}

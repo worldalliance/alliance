@@ -1,5 +1,6 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { errorMessage } from "@alliance/common/errorMessage";
+import { R } from "@alliance/common/result";
 import {
   actionsPreviewEmailHtmlAdmin,
   actionsPreviewTextMessageAdmin,
@@ -23,6 +24,7 @@ import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { milliseconds } from "date-fns";
 import { secondsInHour } from "date-fns/constants";
+import { RotateCw } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import TextareaWithHighlights from "../TextareaWithHighlights";
 import {
@@ -122,6 +124,9 @@ const COHORT_OPTIONS = Object.entries(COHORT_OPTION_OBJ).map(
 );
 
 interface ActionReminderFormProps {
+  suiteId: number;
+  /** Holds submit until a current recipient count arrives, for a caller that confirms it. */
+  waitForRecipientCount: boolean;
   memberEvents: ActionEventDto[];
   anchorCandidates: ReminderAnchorCandidateDto[];
   users: UserSelectUser[];
@@ -139,11 +144,13 @@ interface ActionReminderFormProps {
   onEventChange?: (eventId: number) => void;
   onSubmit: (
     payload: ActionReminderGroupFormSubmitPayload,
-    recipientCount: number,
+    recipientCount: number | null,
   ) => Promise<void> | void;
 }
 
 const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
+  suiteId,
+  waitForRecipientCount,
   memberEvents,
   anchorCandidates,
   users,
@@ -244,8 +251,10 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   }, [timingMode, relativeRangeStartHours, relativeRangeEndHours]);
 
   const [tentativePlans, setTentativePlans] = useState<
-    PreviewNotificationPlanDto[]
-  >([]);
+    PreviewNotificationPlanDto[] | null
+  >(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewAttempt, setPreviewAttempt] = useState(0);
 
   const [emailSubject, setEmailSubject] = useState<string>(
     initialValues.reminderGroup?.emailSubject ?? defaultEmailSubject,
@@ -337,6 +346,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
   useEffect(() => {
     if (!selectedEventId) {
+      setTentativePlans(null);
       return;
     }
     if (cohortType === "tag" && !selectedTagId) {
@@ -357,58 +367,72 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     const relativeRangeStartSeconds = relativeRangeStartHours * secondsInHour;
     const relativeRangeEndSeconds = relativeRangeEndHours * secondsInHour;
 
-    actionsTentativePlansForGroupAdmin({
-      path: {
-        eventId: selectedEventId,
-      },
-      body: {
-        name,
-        cohortType,
-        emailSubject,
-        emailMessage,
-        textMessage,
-        pushMessage,
-        timingMode,
-        useSuiteTaskCount,
-        userTagId:
-          cohortType === "tag" ? (selectedTagId ?? undefined) : undefined,
-        userIds: cohortType === "custom" ? selectedUserIds : undefined,
-        sendAtAbsolute: timingMode === "absolute" ? sendAtAbsolute : undefined,
-        sendAtSecondsFromDeadline:
-          timingMode === "from_deadline"
-            ? (sendAtSecondsFromDeadline ?? 0)
-            : undefined,
-        send_range_start:
-          timingMode === "within_range" ? sendRangeStart : undefined,
-        send_range_end:
-          timingMode === "within_range" ? sendRangeEnd : undefined,
-        relative_range_start_seconds_from_deadline:
-          timingMode === "within_relative_range"
-            ? relativeRangeStartSeconds
-            : undefined,
-        relative_range_end_seconds_from_deadline:
-          timingMode === "within_relative_range"
-            ? relativeRangeEndSeconds
-            : undefined,
-        excludeOptionalActions,
-        excludePreviouslyNotified: effectiveExcludePreviouslyNotified,
-        timingAnchorEventId: effectiveTimingAnchorEventId,
-      },
-    }).then((response) => {
-      if (response.error) {
-        setLocalError(
-          errorMessage({
-            error: response.error,
-            fallback: "Unable to get tentative plans",
-          }),
-        );
-        setTentativePlans([]);
-        return;
-      }
-      setLocalError(null);
-      setTentativePlans(response.data ?? []);
-    });
+    setTentativePlans(null);
+    setPreviewError(null);
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      R.fromPromise(
+        actionsTentativePlansForGroupAdmin({
+          path: {
+            eventId: selectedEventId,
+          },
+          body: {
+            name,
+            cohortType,
+            emailSubject,
+            emailMessage,
+            textMessage,
+            pushMessage,
+            timingMode,
+            useSuiteTaskCount,
+            suiteId,
+            userTagId:
+              cohortType === "tag" ? (selectedTagId ?? undefined) : undefined,
+            userIds: cohortType === "custom" ? selectedUserIds : undefined,
+            sendAtAbsolute:
+              timingMode === "absolute" ? sendAtAbsolute : undefined,
+            sendAtSecondsFromDeadline:
+              timingMode === "from_deadline"
+                ? (sendAtSecondsFromDeadline ?? 0)
+                : undefined,
+            send_range_start:
+              timingMode === "within_range" ? sendRangeStart : undefined,
+            send_range_end:
+              timingMode === "within_range" ? sendRangeEnd : undefined,
+            relative_range_start_seconds_from_deadline:
+              timingMode === "within_relative_range"
+                ? relativeRangeStartSeconds
+                : undefined,
+            relative_range_end_seconds_from_deadline:
+              timingMode === "within_relative_range"
+                ? relativeRangeEndSeconds
+                : undefined,
+            excludeOptionalActions,
+            excludePreviouslyNotified: effectiveExcludePreviouslyNotified,
+            timingAnchorEventId: effectiveTimingAnchorEventId,
+          },
+        }),
+      ).then((result) => {
+        if (cancelled) return;
+        if (!result.ok || result.value.error) {
+          setPreviewError(
+            errorMessage({
+              error: result.ok ? result.value.error : result.error,
+              fallback: "Unable to get tentative plans",
+            }),
+          );
+          return;
+        }
+        setLocalError(null);
+        setTentativePlans(result.value.data ?? []);
+      });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [
+    suiteId,
     selectedEventId,
     name,
     cohortType,
@@ -429,6 +453,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     relativeRangeStartHours,
     relativeRangeEndHours,
     useSuiteTaskCount,
+    previewAttempt,
   ]);
 
   useEffect(() => {
@@ -782,14 +807,14 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
     console.log(payload);
 
-    await onSubmit(payload, tentativePlans.length);
+    await onSubmit(payload, tentativePlans?.length ?? null);
   };
 
   const combinedError = localError ?? serverError ?? null;
 
   const [keywordsHelpExpanded, setKeywordsHelpExpanded] = useState(false);
 
-  const sortedPlans = tentativePlans.sort(
+  const sortedPlans = (tentativePlans ?? []).sort(
     (a, b) =>
       new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime(),
   );
@@ -1436,7 +1461,26 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       )}
 
       <div className="flex justify-end gap-3">
-        {tentativePlans.length > 0 && (
+        {tentativePlans === null &&
+          (previewError ? (
+            <div className="px-4 py-2 self-start flex items-center gap-2 text-sm text-red-600">
+              <p>{previewError}</p>
+              <button
+                type="button"
+                onClick={() => setPreviewAttempt((attempt) => attempt + 1)}
+                aria-label="Retry recipient count"
+                title="Retry recipient count"
+                className="shrink-0 rounded p-1 hover:bg-red-50"
+              >
+                <RotateCw className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <p className="px-4 py-2 self-start text-sm text-zinc-500">
+              Counting recipients…
+            </p>
+          ))}
+        {tentativePlans !== null && tentativePlans.length > 0 && (
           <p
             className={cn(
               "px-4 py-2 rounded self-start",
@@ -1473,7 +1517,11 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
         )}
         <Button
           type="submit"
-          disabled={submitting || loadingUsers}
+          disabled={
+            submitting ||
+            loadingUsers ||
+            (waitForRecipientCount && tentativePlans === null)
+          }
           color={ButtonColor.Black}
           ref={anchor}
           className="px-4 py-2"

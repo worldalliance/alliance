@@ -76,7 +76,7 @@ import {
   NOTIFICATION_LOOKBACK_WINDOW_MS,
 } from "src/notifs/action-event-reminder.service";
 import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
-import { PreviewNotificationPlanDto } from "src/notifs/dto/notification-plan.dto";
+import { NotificationPlan } from "src/notifs/dto/notification-plan.dto";
 import { LikeNotificationService } from "src/notifs/like-notification.service";
 import { NotifsService } from "src/notifs/notifs.service";
 import { PosthogService } from "src/posthog/posthog.service";
@@ -3588,7 +3588,7 @@ export class ActionsService {
   async tentativePlansForGroup(
     eventId: number,
     body: CreateReminderGroupDto,
-  ): Promise<PreviewNotificationPlanDto[]> {
+  ): Promise<NotificationPlan[]> {
     assertExcludePreviouslyNotifiedAllowed(body);
     const event = await this.actionEventRepository.findOneOrFail({
       where: { id: eventId },
@@ -3673,13 +3673,11 @@ export class ActionsService {
       }
     }
 
-    const plans = await this.actionEventReminderService.findPlansForGroup(
+    return this.actionEventReminderService.findPlansForGroup(
       withDeadlineEvent,
       new Date(Date.now() - NOTIFICATION_LOOKBACK_WINDOW_MS),
       new Date(Date.now() + milliseconds({ days: 30 })),
     );
-
-    return plans.map((plan) => new PreviewNotificationPlanDto(plan));
   }
 
   async findReminderAnchorCandidates(

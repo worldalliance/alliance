@@ -36,10 +36,7 @@ import {
 import { memberActionPhase } from "../actions/utils/action-event";
 import { DEFAULT_TIME_ZONE, User } from "../user/entities/user.entity";
 import { ActionEventRecipientService } from "./action-event-recipient.service";
-import {
-  NotificationPlan,
-  PreviewNotificationPlanDto,
-} from "./dto/notification-plan.dto";
+import { NotificationPlan } from "./dto/notification-plan.dto";
 import { ActionEventNotifDto } from "./entities/action-event-notif.dto";
 import {
   ActionEventNotif,
@@ -370,7 +367,7 @@ export class ActionEventReminderService {
 
   async findNotificationPlansForGroup(
     groupId: number,
-  ): Promise<PreviewNotificationPlanDto[]> {
+  ): Promise<NotificationPlan[]> {
     const group = await this.reminderGroupRepository.findOneOrFail({
       where: { id: groupId },
       relations: {
@@ -385,12 +382,11 @@ export class ActionEventReminderService {
       },
     });
 
-    const plans = await this.findPlansForGroup(
+    return this.findPlansForGroup(
       group,
       new Date(Date.now() - NOTIFICATION_LOOKBACK_WINDOW_MS),
       new Date(Date.now() + milliseconds({ days: 28 })),
     );
-    return plans.map((plan) => new PreviewNotificationPlanDto(plan));
   }
 
   async getSentNotifsForGroup(groupId: number): Promise<ActionEventNotifDto[]> {
@@ -589,7 +585,7 @@ export class ActionEventReminderService {
     assertExcludePreviouslyNotifiedAllowed(dto);
     const group = await this.reminderGroupRepository.findOneOrFail({
       where: { id: groupId },
-      relations: { memberActionEvent: { action: true } },
+      relations: { memberActionEvent: { action: true }, actionSuite: true },
     });
 
     let userTag: Tag | undefined = undefined;
@@ -634,6 +630,7 @@ export class ActionEventReminderService {
         userTag: true,
         users: true,
         timingAnchorEvent: true,
+        actionSuite: true,
       },
     });
   }

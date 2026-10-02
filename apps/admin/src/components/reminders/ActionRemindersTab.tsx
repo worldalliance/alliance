@@ -698,8 +698,11 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
 
   const handleCreateGroupSubmit = async (
     payload: ActionReminderGroupFormSubmitPayload,
-    recipientCount: number,
+    recipientCount: number | null,
   ) => {
+    if (recipientCount === null) {
+      throw new Error("create submitted before its recipient count arrived");
+    }
     const mode = import.meta.env.MODE;
 
     if (mode !== "development") {
@@ -997,6 +1000,8 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
           {createGroupExpanded && selectedEventId !== null && (
             <>
               <ActionReminderGroupForm
+                suiteId={suite.id}
+                waitForRecipientCount
                 memberEvents={memberEvents}
                 anchorCandidates={anchorCandidates}
                 users={users}
@@ -1050,6 +1055,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
             handleEditGroupSubmit={handleEditGroupSubmit}
             reminderPlans={reminderPlansByGroup[group.id]}
             sentReminders={sentRemindersByGroup[group.id]}
+            suiteId={suite.id}
             suiteTaskCount={suite.actions.length}
           />
         );
