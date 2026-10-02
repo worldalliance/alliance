@@ -37,6 +37,7 @@ export function EditableBigLinkBlock({
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: BaseDisplayBlockProps<BigLinkBlock>) {
   const [showPreview, setShowPreview] = useState(false);
 
@@ -50,6 +51,7 @@ export function EditableBigLinkBlock({
       onUpdate={onUpdate}
       updateCurrent={updateCurrent}
       previousFields={previousFields}
+      laterFields={laterFields}
     >
       {({ block: activeBlock, onUpdate: handleUpdate }) => (
         <div className="space-y-2">

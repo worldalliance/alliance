@@ -231,6 +231,8 @@ type ConditionalVisibilityProps = {
     visibleIfFormula?: VisibleIfFormula;
   };
   previousFields: AnyField[];
+  /** Fields after the element on its page, listed under "Later in form". */
+  laterFields?: AnyField[];
   onChange: (updates: { visibleIfFormula?: VisibleIfFormula }) => void;
   /**
    * When provided, enables an "output block visible" condition type referencing
@@ -423,12 +425,20 @@ function isEqualsCondition(
 export function ConditionalVisibility({
   field,
   previousFields,
+  laterFields,
   onChange,
   outputBlocks,
 }: ConditionalVisibilityProps) {
-  const controllers = (previousFields || []).filter((f): f is ControllerField =>
-    isConditionalController(f),
-  );
+  const { earlierControllers, laterControllers, controllers } = useMemo(() => {
+    const earlier = (previousFields || []).filter(isConditionalController);
+    const later = (laterFields ?? []).filter(isConditionalController);
+    return {
+      earlierControllers: earlier,
+      laterControllers: later,
+      controllers: [...earlier, ...later],
+    };
+  }, [previousFields, laterFields]);
+  const laterControllerIds = new Set(laterControllers.map((f) => f.id));
   const {
     validators,
     loading: validatorsLoading,
@@ -667,7 +677,7 @@ export function ConditionalVisibility({
     const condition = createDefaultFieldCondition();
     if (!condition) {
       setConditionError(
-        "Add a checkbox, contract, select, radio, multiselect, range, number, text, or custom component field earlier on this page first.",
+        "Add a checkbox, contract, select, radio, multiselect, range, number, text, or custom component field first.",
       );
       return false;
     }
@@ -1207,6 +1217,7 @@ export function ConditionalVisibility({
       ? getExternalControllers(sourceFormId)
       : controllers;
     const controller = pool.find((f) => f.id === condition.when);
+    const isLater = !isCrossForm && laterControllerIds.has(condition.when);
     const hasContentValue = isHasValueCondition(condition)
       ? String(condition.hasValue ?? true)
       : "true";
@@ -1286,11 +1297,20 @@ export function ConditionalVisibility({
               handleControllerChange(index, event.target.value)
             }
           >
-            {pool.map((f) => (
+            {(isCrossForm ? pool : earlierControllers).map((f) => (
               <option key={f.id} value={f.id}>
                 {fieldPickerLabel(f)}
               </option>
             ))}
+            {!isCrossForm && laterControllers.length > 0 && (
+              <optgroup label="Later in form">
+                {laterControllers.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {fieldPickerLabel(f)}
+                  </option>
+                ))}
+              </optgroup>
+            )}
             {pool.length === 0 && (
               <option value="">
                 {externalStatus === FormFieldsStatus.Pending
@@ -1299,6 +1319,12 @@ export function ConditionalVisibility({
               </option>
             )}
           </select>
+          {isLater && (
+            <p className="mt-1 text-[11px] text-amber-600">
+              This field comes later in the form, so this element can appear or
+              disappear above where the member is answering.
+            </p>
+          )}
         </div>
 
         {controller ? (
@@ -1816,8 +1842,7 @@ export function ConditionalVisibility({
 
       {noControllerOrValidatorOptions && (
         <p className="mt-1 text-[11px] text-gray-400">
-          No earlier
-          checkbox/contract/select/radio/multiselect/range/number/text/custom
+          No checkbox/contract/select/radio/multiselect/range/number/text/custom
           fields or visibility validators are available. You can still add
           device type rules below.
         </p>
@@ -1999,8 +2024,8 @@ export function ConditionalVisibility({
         {!canUseFieldControllers && (
           <p className="text-[11px] text-gray-400">
             Add a checkbox, contract, select, radio, multiselect, range, number,
-            text, or custom component field earlier on this page to use
-            answer-based visibility. Device-type rules are always available.
+            text, or custom component field to use answer-based visibility.
+            Device-type rules are always available.
           </p>
         )}
         {!canUseValidators && (

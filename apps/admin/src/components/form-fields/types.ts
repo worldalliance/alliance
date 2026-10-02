@@ -9,8 +9,8 @@ export interface BaseFieldProps<T extends AnyField | DisplayBlock> {
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: (e: React.DragEvent) => void;
   isDragging?: boolean;
-  // Fields earlier on the same page; used for conditional visibility
   previousFields?: AnyField[];
+  laterFields?: AnyField[];
 }
 
 export type FieldOfKind = { [F in AnyField as F["kind"]]: F };
@@ -23,6 +23,7 @@ export interface FieldWrapperProps<T extends AnyField | DisplayBlock> {
   field: T;
   onUpdate: (updates: Partial<T>) => void;
   previousFields?: AnyField[];
+  laterFields?: AnyField[];
   onRemove: () => void;
   children: React.ReactNode;
   onDragStart?: (e: React.DragEvent) => void;

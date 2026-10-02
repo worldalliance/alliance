@@ -18,6 +18,7 @@ export function EditableRadioField({
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: BaseFieldProps<RadioField>) {
   const duplicates = duplicateOptionValues(field.options || []);
 
@@ -70,6 +71,7 @@ export function EditableRadioField({
       field={field}
       onUpdate={onUpdate}
       previousFields={previousFields}
+      laterFields={laterFields}
       onRemove={onRemove}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}

@@ -14,6 +14,7 @@ export function EditableContractField({
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: BaseFieldProps<ContractField>) {
   const { data: contracts = [] } = useContractsAdmin();
 
@@ -74,6 +75,7 @@ export function EditableContractField({
       field={fieldWithContract}
       onUpdate={onUpdate}
       previousFields={previousFields}
+      laterFields={laterFields}
       onRemove={onRemove}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}

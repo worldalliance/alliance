@@ -13,6 +13,7 @@ type EditableFieldGroupProps = {
   onDragEnd?: (e: React.DragEvent) => void;
   isDragging?: boolean;
   previousFields?: AnyField[];
+  laterFields?: AnyField[];
   children: React.ReactNode;
 };
 
@@ -25,6 +26,7 @@ export function EditableFieldGroup({
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
   children,
 }: EditableFieldGroupProps) {
   const [isExtraMenuOpen, setIsExtraMenuOpen] = useState(false);
@@ -178,6 +180,7 @@ export function EditableFieldGroup({
           <ConditionalVisibility
             field={group}
             previousFields={previousFields || []}
+            laterFields={laterFields}
             onChange={(updates) => onUpdate(updates)}
           />
         </div>

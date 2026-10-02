@@ -19,6 +19,7 @@ export function EditableChatTranscriptBlock({
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: BaseDisplayBlockProps<ChatTranscriptBlock>) {
   const [showPreview, setShowPreview] = useState(false);
 
@@ -32,6 +33,7 @@ export function EditableChatTranscriptBlock({
       onUpdate={onUpdate}
       updateCurrent={updateCurrent}
       previousFields={previousFields}
+      laterFields={laterFields}
     >
       {({ block: activeBlock, onUpdate: handleUpdate }) => {
         const messages = activeBlock.messages;

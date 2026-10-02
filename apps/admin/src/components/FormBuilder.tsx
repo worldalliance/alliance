@@ -56,6 +56,7 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Copy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBeforeUnload, useBlocker, useSearchParams } from "react-router";
+import { conditionSourceFields } from "../lib/conditionSourceFields";
 import {
   customValidatorIds,
   mapCustomValidatorIds,
@@ -223,15 +224,11 @@ const applyOptionValueToConditionalVisibility = (
   controllerId: string,
   previousValue: string,
   nextValue: string,
-  startIndex: number,
 ): PageItem[] => {
   let hasChanges = false;
 
-  const nextFields = fields.map((candidate, idx) => {
+  const nextFields = fields.map((candidate) => {
     if (isFieldGroup(candidate)) {
-      if (idx <= startIndex) {
-        return candidate;
-      }
       const ownResult = getUpdatedVisibilityFormula(
         candidate.visibleIfFormula,
         controllerId,
@@ -243,7 +240,6 @@ const applyOptionValueToConditionalVisibility = (
         controllerId,
         previousValue,
         nextValue,
-        -1,
       );
       const childrenChanged = childFields !== candidate.fields;
       if (!ownResult.changed && !childrenChanged) {
@@ -259,10 +255,6 @@ const applyOptionValueToConditionalVisibility = (
           ? (childFields as FieldGroup["fields"])
           : candidate.fields,
       } as FieldGroup;
-    }
-
-    if (idx <= startIndex) {
-      return candidate;
     }
 
     const formulaResult = getUpdatedVisibilityFormula(
@@ -2053,19 +2045,12 @@ export function FormBuilder(props: FormBuilderProps) {
             return { ...page, fields: updatedFields };
           }
 
-          const groupIndex =
-            parentId == null
-              ? index
-              : page.fields.findIndex(
-                  (item) => isFieldGroup(item) && item.id === parentId,
-                );
           const fieldsWithUpdatedConditions =
             applyOptionValueToConditionalVisibility(
               updatedFields,
               (field as AnyField).id,
               optionValueChange.previousValue,
               optionValueChange.nextValue,
-              parentId == null ? index : groupIndex,
             );
 
           return { ...page, fields: fieldsWithUpdatedConditions };
@@ -2078,7 +2063,6 @@ export function FormBuilder(props: FormBuilderProps) {
               (field as AnyField).id,
               optionValueChange.previousValue,
               optionValueChange.nextValue,
-              -1,
             );
           const pageFormulaResult = getUpdatedVisibilityFormula(
             page.visibleIfFormula,
@@ -2145,29 +2129,12 @@ export function FormBuilder(props: FormBuilderProps) {
       dropPosition &&
       !isDragging;
 
-    const previousFields = [
-      ...schema.pages
-        .slice(0, selectedPageIndex)
-        .flatMap((page) => flattenPageItems(page.fields)),
-      ...(parentId == null
-        ? flattenPageItems(currentPage.fields.slice(0, index))
-        : [
-            ...flattenPageItems(
-              currentPage.fields.slice(
-                0,
-                currentPage.fields.findIndex(
-                  (item) => isFieldGroup(item) && item.id === parentId,
-                ),
-              ),
-            ),
-            ...((
-              currentPage.fields.find(
-                (item): item is FieldGroup =>
-                  isFieldGroup(item) && item.id === parentId,
-              )?.fields ?? []
-            ).slice(0, index) as Array<AnyField | DisplayBlock>),
-          ]),
-    ].filter(isQuestionField);
+    const { previousFields, laterFields } = conditionSourceFields({
+      pages: schema.pages,
+      pageIndex: selectedPageIndex,
+      parentId,
+      index,
+    });
 
     const commonProps = {
       onUpdate: updateField,
@@ -2177,6 +2144,7 @@ export function FormBuilder(props: FormBuilderProps) {
       onDragEnd: handleDragEnd,
       isDragging: isDragging,
       previousFields,
+      laterFields,
     };
 
     return (
@@ -2222,6 +2190,7 @@ export function FormBuilder(props: FormBuilderProps) {
                     onDragEnd={handleDragEnd}
                     isDragging={isDragging}
                     previousFields={previousFields}
+                    laterFields={laterFields}
                   >
                     {group.fields.length === 0 && (
                       <InsertPoint loc={{ groupId: group.id, index: 0 }} />

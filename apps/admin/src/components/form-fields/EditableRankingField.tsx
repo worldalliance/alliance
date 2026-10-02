@@ -18,6 +18,7 @@ export function EditableRankingField({
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: BaseFieldProps<RankingField>) {
   const duplicates = duplicateOptionValues(field.options);
 
@@ -77,6 +78,7 @@ export function EditableRankingField({
       field={field}
       onUpdate={onUpdate}
       previousFields={previousFields}
+      laterFields={laterFields}
       onRemove={onRemove}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}

@@ -59,6 +59,7 @@ export function EditableCustomComponentField({
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: BaseFieldProps<CustomComponentField>) {
   const [configDrafts, setConfigDrafts] = useState<Record<string, string>>({});
   const [configErrors, setConfigErrors] = useState<Record<string, string>>({});
@@ -323,6 +324,7 @@ export function EditableCustomComponentField({
       field={field}
       onUpdate={onUpdate}
       previousFields={previousFields}
+      laterFields={laterFields}
       onRemove={onRemove}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}

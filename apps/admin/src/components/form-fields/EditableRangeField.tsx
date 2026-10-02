@@ -17,6 +17,7 @@ export function EditableRangeField({
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: BaseFieldProps<RangeField>) {
   const defaultValue =
     typeof field.defaultValue === "number" ? field.defaultValue : "";
@@ -50,6 +51,7 @@ export function EditableRangeField({
       field={field}
       onUpdate={onUpdate}
       previousFields={previousFields}
+      laterFields={laterFields}
       onRemove={onRemove}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
