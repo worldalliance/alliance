@@ -97,29 +97,6 @@ export function homePagePriorityComparator(
   return aPriority.id - bPriority.id;
 }
 
-export function isFollowUpFormActive(f: {
-  startDate?: string | null;
-  endDate?: string | null;
-}): boolean {
-  return isFollowUpFormActiveAt(f, new Date());
-}
-
-export function isFollowUpFormActiveAt(
-  f: {
-    startDate?: string | null;
-    endDate?: string | null;
-  },
-  now: Date,
-): boolean {
-  if (!f.startDate || new Date(f.startDate) > now) {
-    return false;
-  }
-  if (f.endDate && new Date(f.endDate) < now) {
-    return false;
-  }
-  return true;
-}
-
 export enum FilterMode {
   All = "All",
   CompletedByMe = "Completed by me",
