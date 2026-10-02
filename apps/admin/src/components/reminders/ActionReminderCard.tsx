@@ -289,6 +289,7 @@ const ActionReminderCard = ({
           {editing && selectedEventId !== null ? (
             <ActionReminderGroupForm
               suiteId={suiteId}
+              waitForRecipientCount={false}
               memberEvents={memberEvents}
               anchorCandidates={anchorCandidates}
               users={users}
