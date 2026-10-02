@@ -1,6 +1,7 @@
 // Strongly-typed PostHog event names, shared across server, web, and mobile.
 export enum AnalyticsEvent {
   // Actions
+  ActionCompleted = "action_completed",
   FormStarted = "form_started",
 
   // Forms
@@ -128,6 +129,7 @@ export const SLACK_PROPERTY = "send_to_slack";
 // Events that should be forwarded to Slack.
 export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   // Actions
+  [AnalyticsEvent.ActionCompleted]: true,
   [AnalyticsEvent.FormStarted]: false,
 
   // Forms
