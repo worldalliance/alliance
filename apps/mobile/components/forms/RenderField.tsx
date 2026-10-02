@@ -8,6 +8,7 @@ import type {
   PhoneField,
   TimeField,
 } from "@alliance/common/forms/form-schema";
+import { getMaxSelections } from "@alliance/common/forms/multiselect";
 import { getRangeValues } from "@alliance/common/forms/range";
 import { withCount } from "@alliance/common/plural";
 import type { UserDto } from "@alliance/shared/client";
@@ -581,9 +582,9 @@ export function RenderField({
         field.options ??
         []) as ChoiceOption[];
 
+      const maxSelections = getMaxSelections(field);
       const maxReached =
-        field.maxSelections !== undefined &&
-        selectedCount >= field.maxSelections;
+        maxSelections !== undefined && selectedCount >= maxSelections;
       const setSelected = ({
         value: optionValue,
         selected,
@@ -697,9 +698,9 @@ export function RenderField({
               })}
             </View>
           )}
-          {field.maxSelections !== undefined && (
+          {maxSelections !== undefined && (
             <Text className="text-xs text-gray-500">
-              Select up to {withCount(field.maxSelections, "option")}
+              Select up to {withCount(maxSelections, "option")}
             </Text>
           )}
           {renderValidationMessage(errorMessage)}

@@ -8,6 +8,7 @@ import type {
   PhoneField,
   TimeField,
 } from "@alliance/common/forms/form-schema";
+import { getMaxSelections } from "@alliance/common/forms/multiselect";
 import { getRangeValues } from "@alliance/common/forms/range";
 import { withCount } from "@alliance/common/plural";
 import type { UserDto } from "@alliance/shared/client";
@@ -709,10 +710,7 @@ export function RenderField({
           ? (value as string[])
           : [];
       const selectedCount = selections.length;
-      const maxSelections =
-        typeof field.maxSelections === "number" && field.maxSelections > 0
-          ? field.maxSelections
-          : undefined;
+      const maxSelections = getMaxSelections(field);
       const maxReached =
         maxSelections !== undefined && selectedCount >= maxSelections;
 

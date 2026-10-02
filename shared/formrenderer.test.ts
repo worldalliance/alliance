@@ -2,6 +2,7 @@ import type {
   AnyField,
   FormSchema,
   ListField,
+  MultiSelectField,
   RangeField,
   TextField,
 } from "@alliance/common/forms/form-schema";
@@ -435,5 +436,32 @@ describe("validateFieldValue for a range field", () => {
     expect(validateFieldValue(scale(true), undefined, {}, extras)).toBe(
       "Please select a value.",
     );
+  });
+});
+
+describe("validateFieldValue for a multiselect field", () => {
+  const extras: ConditionExtras = { deviceType: "desktop" };
+  const colors = (maxSelections?: number): MultiSelectField => ({
+    id: "colors",
+    type: "input",
+    kind: "multiselect",
+    label: "Colors",
+    options: [
+      { label: "Red", value: "red" },
+      { label: "Blue", value: "blue" },
+    ],
+    maxSelections,
+  });
+
+  it("rejects selections over the cap", () => {
+    expect(validateFieldValue(colors(1), ["red", "blue"], {}, extras)).toBe(
+      "Select no more than 1 option.",
+    );
+  });
+
+  it("treats a cap of 0 as no cap", () => {
+    expect(
+      validateFieldValue(colors(0), ["red", "blue"], {}, extras),
+    ).toBeNull();
   });
 });

@@ -16,6 +16,7 @@ import {
   type Page,
   type PageItem,
 } from "@alliance/common/forms/form-schema";
+import { getMaxSelections } from "@alliance/common/forms/multiselect";
 import {
   isEmptyRangeAnswer,
   isValidRangeSelection,
@@ -492,12 +493,9 @@ export function validateFieldValue(
     if (required && selections.length === 0) {
       return "Select at least one option.";
     }
-    if (
-      typeof field.maxSelections === "number" &&
-      field.maxSelections > 0 &&
-      selections.length > field.maxSelections
-    ) {
-      return `Select no more than ${withCount(field.maxSelections, "option")}.`;
+    const maxSelections = getMaxSelections(field);
+    if (maxSelections !== undefined && selections.length > maxSelections) {
+      return `Select no more than ${withCount(maxSelections, "option")}.`;
     }
     return null;
   }

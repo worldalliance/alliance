@@ -39,6 +39,7 @@ import {
   validateFormSchema,
 } from "@alliance/common/forms/form-schema-validate";
 import { type FormulaChoices } from "@alliance/common/forms/formula-options";
+import { getMaxSelections } from "@alliance/common/forms/multiselect";
 import {
   isEmptyRangeAnswer,
   isValidRangeSelection,
@@ -659,16 +660,16 @@ export class TasksService {
               );
             }
           }
+          const maxSelections =
+            field.kind === "multiselect" ? getMaxSelections(field) : undefined;
           if (
-            field.kind === "multiselect" &&
-            typeof field.maxSelections === "number" &&
-            field.maxSelections > 0 &&
+            maxSelections !== undefined &&
             isElementCurrentlyVisible(field, effectiveAnswers, visibilityExtras)
           ) {
             const answer = effectiveAnswers[field.id];
-            if (Array.isArray(answer) && answer.length > field.maxSelections) {
+            if (Array.isArray(answer) && answer.length > maxSelections) {
               throw new BadRequestException(
-                `Field ${elementInternalDescriptor(field)} allows selecting up to ${field.maxSelections} options.`,
+                `Field ${elementInternalDescriptor(field)} allows selecting up to ${maxSelections} options.`,
               );
             }
           }
