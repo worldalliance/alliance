@@ -1,25 +1,22 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-import {
-  projectsAssignActionAdmin,
-  projectsCreateAdmin,
-  projectsFindAllAdmin,
-  projectsFindOneAdmin,
-  projectsRemoveAdmin,
-  projectsUpdateAdmin,
-  type ActionCategory,
-  type ProjectDto,
-} from "@alliance/shared/client";
+import type { ProjectDto } from "@alliance/shared/client";
 import { optionSections } from "@alliance/shared/forms/optionSections";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
 import SearchableSelect from "@alliance/sharedweb/forms/SearchableSelect";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
 import { Link } from "react-router";
+import {
+  useAssignActionProjectAdmin,
+  useCreateActionProjectAdmin,
+  useDeleteProjectAdmin,
+  useProjectAdmin,
+  useProjectsAdmin,
+  useUpdateProjectAdmin,
+} from "../lib/useProjectsAdmin";
 import { ActionCategoryPicker } from "./ActionCategoryIcons";
 import ConfirmDialog from "./ConfirmDialog";
 
@@ -33,22 +30,6 @@ enum EditMode {
 
 const iconButtonClassName =
   "rounded border border-gray-2 bg-white p-2 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 disabled:opacity-50";
-
-function useInvalidateProjects(actionId: number) {
-  const queryClient = useQueryClient();
-  return (params?: { includeDetails: boolean }) =>
-    Promise.all([
-      queryClient.invalidateQueries({
-        queryKey:
-          params?.includeDetails === false
-            ? queryKeys.projectsAdmin()
-            : queryKeys.projectsAdminAll(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.actionAdmin(actionId),
-      }),
-    ]);
-}
 
 function ProjectNameInput({
   initialName,
@@ -119,59 +100,28 @@ export function ActionProjectControls({
 }) {
   const toast = useToast();
   const labelId = useId();
-  const invalidate = useInvalidateProjects(actionId);
   const [mode, setMode] = useState(EditMode.None);
 
-  const { data: projects = [], isPending: projectsLoading } = useQuery({
-    queryKey: queryKeys.projectsAdmin(),
-    queryFn: () =>
-      projectsFindAllAdmin({ throwOnError: true }).then((res) => res.data),
-  });
+  const { data: projects = [], isPending: projectsLoading } =
+    useProjectsAdmin();
 
   const onError = (fallback: string) => (error: unknown) =>
     toast.error(errorMessage({ error, fallback }));
 
-  const assign = useMutation({
-    mutationFn: (projectId: number | null) =>
-      projectsAssignActionAdmin({
-        path: { actionId },
-        body: { projectId },
-        throwOnError: true,
-      }),
-    onSuccess: () => invalidate(),
+  const assign = useAssignActionProjectAdmin({
+    actionId,
     onError: onError("Could not change the action's project"),
   });
 
-  const create = useMutation({
-    mutationFn: async (name: string) => {
-      const { data: created } = await projectsCreateAdmin({
-        body: { name },
-        throwOnError: true,
-      });
-      await projectsAssignActionAdmin({
-        path: { actionId },
-        body: { projectId: created.id },
-        throwOnError: true,
-      });
-    },
-    onSuccess: async () => {
-      await invalidate();
-      setMode(EditMode.None);
-    },
+  const create = useCreateActionProjectAdmin({
+    actionId,
+    onSuccess: () => setMode(EditMode.None),
     onError: onError("Could not create the project"),
   });
 
-  const rename = useMutation({
-    mutationFn: (params: { id: number; name: string }) =>
-      projectsUpdateAdmin({
-        path: { id: params.id },
-        body: { name: params.name },
-        throwOnError: true,
-      }),
-    onSuccess: async () => {
-      await invalidate();
-      setMode(EditMode.None);
-    },
+  const rename = useUpdateProjectAdmin({
+    actionId,
+    onSuccess: () => setMode(EditMode.None),
     onError: onError("Could not rename the project"),
   });
 
@@ -183,7 +133,7 @@ export function ActionProjectControls({
           initialName={project.name}
           placeholder="Project name"
           saving={rename.isPending}
-          onSave={(name) => rename.mutate({ id: project.id, name })}
+          onSave={(name) => rename.mutate({ id: project.id, body: { name } })}
           onCancel={() => setMode(EditMode.None)}
         />
       );
@@ -260,40 +210,21 @@ export function ActionProjectSteps({
   projectId: number;
 }) {
   const toast = useToast();
-  const invalidate = useInvalidateProjects(actionId);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-  const { data: project, error } = useQuery({
-    queryKey: queryKeys.projectAdmin(projectId),
-    queryFn: () =>
-      projectsFindOneAdmin({
-        path: { id: projectId },
-        throwOnError: true,
-      }).then((res) => res.data),
-  });
+  const { data: project, error } = useProjectAdmin(projectId);
 
-  const remove = useMutation({
-    mutationFn: () =>
-      projectsRemoveAdmin({ path: { id: projectId }, throwOnError: true }),
-    onSuccess: async () => {
-      setConfirmingDelete(false);
-      // The deleted project's detail query would refetch into a 404.
-      await invalidate({ includeDetails: false });
-    },
+  const remove = useDeleteProjectAdmin({
+    actionId,
+    onSuccess: () => setConfirmingDelete(false),
     onError: (error) =>
       toast.error(
         errorMessage({ error, fallback: "Could not delete the project" }),
       ),
   });
 
-  const updateCategory = useMutation({
-    mutationFn: (category: ActionCategory[]) =>
-      projectsUpdateAdmin({
-        path: { id: projectId },
-        body: { category },
-        throwOnError: true,
-      }),
-    onSuccess: () => invalidate(),
+  const updateCategory = useUpdateProjectAdmin({
+    actionId,
     onError: (error) =>
       toast.error(
         errorMessage({
@@ -319,7 +250,9 @@ export function ActionProjectSteps({
           <p className="font-medium">{project.name}</p>
           <ActionCategoryPicker
             value={project.category}
-            onChange={(category) => updateCategory.mutate(category)}
+            onChange={(category) =>
+              updateCategory.mutate({ id: projectId, body: { category } })
+            }
             disabled={updateCategory.isPending}
           />
         </div>
@@ -357,7 +290,7 @@ export function ActionProjectSteps({
         isOpen={confirmingDelete}
         title={`Delete project "${project.name}"?`}
         message={`Its ${project.steps.length} action(s) will no longer belong to a project. The actions themselves are not deleted.`}
-        onConfirm={() => remove.mutate()}
+        onConfirm={() => remove.mutate(projectId)}
         onCancel={() => setConfirmingDelete(false)}
         isLoading={remove.isPending}
       />
