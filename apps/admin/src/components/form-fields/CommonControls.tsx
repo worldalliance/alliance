@@ -9,6 +9,7 @@ import {
   type AnyField,
   type CheckboxField,
   type ContractField,
+  type CustomComponentField,
   type EmailField,
   type FieldGroup,
   type MultiSelectField,
@@ -245,6 +246,10 @@ type TextContentControllerField =
   | EmailField
   | PhoneField;
 
+type PresenceControllerField =
+  | TextContentControllerField
+  | CustomComponentField;
+
 type ControllerField =
   | CheckboxField
   | ContractField
@@ -253,7 +258,7 @@ type ControllerField =
   | MultiSelectField
   | RangeField
   | NumberField
-  | TextContentControllerField;
+  | PresenceControllerField;
 
 function isTextContentController(f: AnyField): f is TextContentControllerField {
   return (
@@ -262,6 +267,12 @@ function isTextContentController(f: AnyField): f is TextContentControllerField {
     f.kind === "email" ||
     f.kind === "phone"
   );
+}
+
+// A custom component's value shape depends on the component, so its conditions
+// only test presence.
+function isPresenceController(f: AnyField): f is PresenceControllerField {
+  return isTextContentController(f) || f.kind === "custom";
 }
 
 function isConditionalController(f: AnyField): f is ControllerField {
@@ -273,7 +284,7 @@ function isConditionalController(f: AnyField): f is ControllerField {
     f.kind === "multiselect" ||
     f.kind === "range" ||
     f.kind === "number" ||
-    isTextContentController(f)
+    isPresenceController(f)
   );
 }
 
@@ -501,7 +512,7 @@ export function ConditionalVisibility({
       const base = sourceFormId
         ? { when: controller.id, sourceFormId }
         : { when: controller.id };
-      if (isTextContentController(controller)) {
+      if (isPresenceController(controller)) {
         return { kind: "hasValue", ...base, hasValue: true };
       }
       if (controller.kind === "checkbox") {
@@ -656,7 +667,7 @@ export function ConditionalVisibility({
     const condition = createDefaultFieldCondition();
     if (!condition) {
       setConditionError(
-        "Add a checkbox, contract, select, radio, multiselect, range, number, or text field earlier on this page first.",
+        "Add a checkbox, contract, select, radio, multiselect, range, number, text, or custom component field earlier on this page first.",
       );
       return false;
     }
@@ -1093,7 +1104,7 @@ export function ConditionalVisibility({
         : { when: controller.id };
       if (value === NO_VALUE_SELECTED) {
         next[index] = { kind: "hasValue", ...base, hasValue: false };
-      } else if (isTextContentController(controller)) {
+      } else if (isPresenceController(controller)) {
         next[index] = { kind: "hasValue", ...base, hasValue: value === "true" };
       } else if (controller.kind === "checkbox") {
         next[index] = { kind: "equals", ...base, equals: value === "true" };
@@ -1293,15 +1304,17 @@ export function ConditionalVisibility({
         {controller ? (
           <div>
             <label className="block text-xs text-gray-700 mb-1">
-              {isTextContentController(controller)
-                ? "has content"
-                : controller.kind === "multiselect"
-                  ? "includes option"
-                  : controller.kind === "number"
-                    ? "when value"
-                    : "equals"}
+              {controller.kind === "custom"
+                ? "answered"
+                : isPresenceController(controller)
+                  ? "has content"
+                  : controller.kind === "multiselect"
+                    ? "includes option"
+                    : controller.kind === "number"
+                      ? "when value"
+                      : "equals"}
             </label>
-            {isTextContentController(controller) ? (
+            {isPresenceController(controller) ? (
               <select
                 className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                 value={hasContentValue}
@@ -1309,8 +1322,16 @@ export function ConditionalVisibility({
                   handleConditionValueChange(index, event.target.value)
                 }
               >
-                <option value="true">Has any text</option>
-                <option value="false">Is empty</option>
+                <option value="true">
+                  {controller.kind === "custom"
+                    ? "Is answered"
+                    : "Has any text"}
+                </option>
+                <option value="false">
+                  {controller.kind === "custom"
+                    ? "Is not answered"
+                    : "Is empty"}
+                </option>
               </select>
             ) : controller.kind === "checkbox" ? (
               <select
@@ -1795,7 +1816,8 @@ export function ConditionalVisibility({
 
       {noControllerOrValidatorOptions && (
         <p className="mt-1 text-[11px] text-gray-400">
-          No earlier checkbox/contract/select/radio/multiselect/range/text
+          No earlier
+          checkbox/contract/select/radio/multiselect/range/number/text/custom
           fields or visibility validators are available. You can still add
           device type rules below.
         </p>
@@ -1977,8 +1999,8 @@ export function ConditionalVisibility({
         {!canUseFieldControllers && (
           <p className="text-[11px] text-gray-400">
             Add a checkbox, contract, select, radio, multiselect, range, number,
-            or text field earlier on this page to use answer-based visibility.
-            Device-type rules are always available.
+            text, or custom component field earlier on this page to use
+            answer-based visibility. Device-type rules are always available.
           </p>
         )}
         {!canUseValidators && (

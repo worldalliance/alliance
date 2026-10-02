@@ -1,6 +1,7 @@
 import type {
   AnyField,
   ContractField,
+  CustomComponentField,
   MultiSelectField,
   RangeField,
   SelectField,
@@ -255,4 +256,31 @@ it("keeps the saved count while its input is cleared or fractional", () => {
   fireEvent.blur(input);
   expect(input.value).toBe("3");
   expect(conditionOf()).toMatchObject({ count: 3 });
+});
+
+const customComponent: CustomComponentField = {
+  id: "share",
+  type: "input",
+  kind: "custom",
+  label: "Share",
+  componentId: "share-url",
+};
+
+it("conditions on a custom component field being answered", () => {
+  render(<Editor controller={customComponent} />);
+  fireEvent.click(screen.getByRole("button", { name: "+ Field condition" }));
+  expect(conditionOf()).toEqual({
+    kind: "hasValue",
+    when: "share",
+    hasValue: true,
+  });
+
+  fireEvent.change(screen.getByDisplayValue("Is answered"), {
+    target: { value: "false" },
+  });
+  expect(conditionOf()).toEqual({
+    kind: "hasValue",
+    when: "share",
+    hasValue: false,
+  });
 });
