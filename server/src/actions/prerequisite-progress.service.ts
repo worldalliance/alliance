@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import type { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
-import { In, type Repository } from "typeorm";
+import { In, LessThan, type Repository } from "typeorm";
 import { TERMINAL_ACTIVITY_TYPES } from "./action-activity-status";
 import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
@@ -66,6 +66,31 @@ export class PrerequisiteProgressService {
     return users.filter((candidate) => isReady(candidate.id));
   }
 
+  /**
+   * The members whose prerequisites had all resolved before `before`, counting
+   * only completions, withdrawals, and exclusions written before it. A lone
+   * member reads only their own rows.
+   */
+  async filterReadyBefore<T extends { id: number }>(params: {
+    action: Pick<Action, "prerequisiteActionIds">;
+    users: T[];
+    before: Date;
+  }): Promise<T[]> {
+    const { action, users, before } = params;
+    if (users.length === 0) return [];
+    const [user] = users;
+    const userId = users.length === 1 && user ? user.id : undefined;
+    const prerequisites = await Promise.all(
+      action.prerequisiteActionIds.map((actionId) =>
+        this.loadOne(actionId, { userId, before }),
+      ),
+    );
+    const now = new Date(before.getTime() - 1);
+    return users.filter((user) =>
+      arePrerequisitesReady({ prerequisites, userId: user.id, now }),
+    );
+  }
+
   /** `loadReadiness` for one member, reading only their rows. */
   async loadMemberReadiness(params: {
     action: Pick<Action, "prerequisiteActionIds">;
@@ -79,7 +104,7 @@ export class PrerequisiteProgressService {
         const key = `${userId}|${actionId}`;
         let pending = session.memberPrerequisiteProgress.get(key);
         if (!pending) {
-          pending = this.loadOne(actionId, userId);
+          pending = this.loadOne(actionId, { userId });
           session.memberPrerequisiteProgress.set(key, pending);
         }
         return pending;
@@ -106,19 +131,22 @@ export class PrerequisiteProgressService {
 
   private async loadOne(
     actionId: number,
-    userId?: number,
+    scope: { userId?: number; before?: Date } = {},
   ): Promise<PrerequisiteProgress> {
+    const { userId, before } = scope;
+    const member = userId === undefined ? {} : { userId };
     const [action, terminalUserIds, excluded] = await Promise.all([
       this.actionRepository.findOneOrFail({
         where: { id: actionId },
         relations: { events: true },
       }),
-      this.loadTerminalUserIds(actionId, userId),
+      this.findTerminalUserIds(actionId, scope),
       this.decisionRepository.find({
         where: {
           actionId,
           included: false,
-          ...(userId === undefined ? {} : { userId }),
+          ...member,
+          ...(before === undefined ? {} : { resolvedAt: LessThan(before) }),
         },
         select: { userId: true },
       }),
@@ -130,13 +158,22 @@ export class PrerequisiteProgressService {
     };
   }
 
-  async loadTerminalUserIds(
+  loadTerminalUserIds(actionId: number, userId?: number): Promise<Set<number>> {
+    return this.findTerminalUserIds(actionId, { userId });
+  }
+
+  private async findTerminalUserIds(
     actionId: number,
-    userId?: number,
+    scope: { userId?: number; before?: Date },
   ): Promise<Set<number>> {
-    const member = userId === undefined ? {} : { userId };
+    const { userId, before } = scope;
     const terminal = await this.actionActivityRepository.find({
-      where: { actionId, type: In(TERMINAL_ACTIVITY_TYPES), ...member },
+      where: {
+        actionId,
+        type: In(TERMINAL_ACTIVITY_TYPES),
+        ...(userId === undefined ? {} : { userId }),
+        ...(before === undefined ? {} : { createdAt: LessThan(before) }),
+      },
       select: { userId: true },
     });
     return new Set(terminal.map((a) => a.userId));

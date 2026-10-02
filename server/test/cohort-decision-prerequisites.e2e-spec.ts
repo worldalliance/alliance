@@ -1,4 +1,5 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { Logger } from "@nestjs/common";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import type { Repository } from "typeorm";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
@@ -333,6 +334,136 @@ describe("CohortDecisionService prerequisites (e2e)", () => {
         included: false,
         reason: CohortDecisionReason.ResolvedAfterDeadline,
       });
+    });
+
+    it("excludes an obligated member who skipped a prerequisite sharing its deadline", async () => {
+      const deadline = addDays(now, 1);
+      const member = await createUser({ signedAt });
+      const upstream = await createAction({
+        start: addDays(now, -3),
+        deadline,
+      });
+      const action = await createAction({
+        start: addDays(now, -1),
+        deadline,
+        prerequisiteActionIds: [upstream.id],
+      });
+      const decided = await createUser({ signedAt });
+      await decisionRepo.save({
+        actionId: action.id,
+        userId: decided.id,
+        included: true,
+        reason: CohortDecisionReason.PrerequisitesResolved,
+        resolvedAt: addDays(now, -1),
+      });
+
+      await service.resolveAll(new Date(deadline.getTime() - 1));
+      expect((await decisionsFor(action.id)).has(member.id)).toBe(false);
+
+      const warn = jest.spyOn(Logger.prototype, "warn");
+      await service.resolveAll(deadline);
+      expect((await decisionsFor(action.id)).get(member.id)).toMatchObject({
+        included: false,
+        reason: CohortDecisionReason.ResolvedAfterDeadline,
+      });
+      expect(warn).not.toHaveBeenCalledWith(
+        expect.stringContaining(`action ${action.id}`),
+      );
+    });
+
+    it("doesn't warn about a member who finished a prerequisite sharing the deadline after it", async () => {
+      const deadline = addDays(now, -1);
+      const member = await createUser({ signedAt });
+      const upstream = await createAction({
+        start: addDays(now, -3),
+        deadline,
+      });
+      const action = await createAction({
+        start: addDays(now, -2),
+        deadline,
+        prerequisiteActionIds: [upstream.id],
+      });
+      const decided = await createUser({ signedAt });
+      await decisionRepo.save({
+        actionId: action.id,
+        userId: decided.id,
+        included: true,
+        reason: CohortDecisionReason.PrerequisitesResolved,
+        resolvedAt: addDays(now, -2),
+      });
+      await activityRepo.save({
+        actionId: upstream.id,
+        userId: member.id,
+        type: ActionActivityType.USER_COMPLETED,
+        createdAt: addDays(deadline, 0.5),
+      });
+      const warn = jest.spyOn(Logger.prototype, "warn");
+
+      await service.resolveAll(now);
+
+      expect((await decisionsFor(action.id)).get(member.id)?.reason).toBe(
+        CohortDecisionReason.ResolvedAfterDeadline,
+      );
+      expect(warn).not.toHaveBeenCalledWith(
+        expect.stringContaining(`action ${action.id}`),
+      );
+    });
+
+    it("doesn't warn along a chain of prerequisites sharing one deadline", async () => {
+      const deadline = addDays(now, 1);
+      const member = await createUser({ signedAt });
+      const first = await createAction({ start: addDays(now, -3), deadline });
+      const middle = await createAction({
+        start: addDays(now, -2),
+        deadline,
+        prerequisiteActionIds: [first.id],
+      });
+      const action = await createAction({
+        start: addDays(now, -1),
+        deadline,
+        prerequisiteActionIds: [middle.id],
+      });
+      const decided = await createUser({ signedAt });
+      await decisionRepo.save(
+        [middle, action].map(({ id }) => ({
+          actionId: id,
+          userId: decided.id,
+          included: true,
+          reason: CohortDecisionReason.PrerequisitesResolved,
+          resolvedAt: addDays(now, -1),
+        })),
+      );
+      await service.resolveAll(new Date(deadline.getTime() - 1));
+      const warn = jest.spyOn(Logger.prototype, "warn");
+
+      await service.resolveAll(deadline);
+      await service.resolveAll(deadline);
+
+      expect((await decisionsFor(action.id)).get(member.id)?.reason).toBe(
+        CohortDecisionReason.ResolvedAfterDeadline,
+      );
+      expect(warn).not.toHaveBeenCalledWith(
+        expect.stringContaining(`action ${action.id}`),
+      );
+    });
+
+    it("warns about a member who was ready before the deadline", async () => {
+      const member = await createUser({ signedAt });
+      const upstream = await createAction({
+        start: addDays(now, -5),
+        deadline: addDays(now, -4),
+      });
+      const action = await createClosed([upstream.id]);
+      const warn = jest.spyOn(Logger.prototype, "warn");
+
+      await service.resolveAll(now);
+
+      expect((await decisionsFor(action.id)).get(member.id)?.reason).toBe(
+        CohortDecisionReason.ResolvedAfterDeadline,
+      );
+      expect(warn).toHaveBeenCalledWith(
+        `decided 1 member(s) of action ${action.id} after its deadline, though they were ready before it`,
+      );
     });
 
     it("admits a ready member of an optional action", async () => {

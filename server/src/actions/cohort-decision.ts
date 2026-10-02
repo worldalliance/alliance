@@ -1,3 +1,4 @@
+import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { millisecondsInDay, millisecondsInMinute } from "date-fns/constants";
 import { ContractEventType } from "src/user/entities/contract-event.entity";
 import type { User } from "src/user/entities/user.entity";
@@ -5,7 +6,7 @@ import {
   computeContractSignedAfterOnboardingStart,
   hasMemberActionDeadlinePassed,
 } from "src/utils/action-user";
-import type { Action } from "./entities/action.entity";
+import type { Action, ParsedAction } from "./entities/action.entity";
 import { CohortDecisionReason } from "./entities/cohort-decision-reason";
 
 /**
@@ -195,6 +196,123 @@ export function isInCatchUp(enrollment: CohortEnrollment, now: Date): boolean {
         `unknown enrollment state: ${enrollment satisfies never}`,
       );
   }
+}
+
+/**
+ * The actions whose saved decisions the expression's MissedActionDeadline
+ * leaves read. Other leaves read no decisions.
+ */
+export function decisionReadActionIds(
+  expr: CohortExpression | null | undefined,
+): number[] {
+  if (!expr) return [];
+  switch (expr.type) {
+    case "MissedActionDeadline":
+      return [expr.actionId];
+    case "AND":
+    case "OR":
+      return expr.children.flatMap(decisionReadActionIds);
+    case "NOT":
+      return decisionReadActionIds(expr.child);
+    case "Tag":
+    case "Manual":
+    case "CompletedAction":
+    case "FormFieldValue":
+    case "GroupLead":
+    case "USMember":
+    case "NonUSMember":
+    case "AllMembers":
+    case "Staff":
+      return [];
+    default:
+      throw new Error(`unknown cohort expression: ${expr satisfies never}`);
+  }
+}
+
+/** Whether the expression reads the decisions of any of `actionIds`. */
+export function readsDecisionsOf(
+  expr: CohortExpression | null | undefined,
+  actionIds: ReadonlySet<number>,
+): boolean {
+  return decisionReadActionIds(expr).some((id) => actionIds.has(id));
+}
+
+/**
+ * Orders `items` so each follows the ones whose decisions its expression
+ * reads. Within a cycle the order is arbitrary.
+ */
+export function orderByDecisionReads<
+  T extends { action: Pick<ParsedAction, "id" | "cohortExpression"> },
+>(items: T[]): T[] {
+  const byId = new Map(items.map((item) => [item.action.id, item]));
+  const visited = new Set<number>();
+  const ordered: T[] = [];
+  const visit = (item: T) => {
+    if (visited.has(item.action.id)) return;
+    visited.add(item.action.id);
+    for (const id of decisionReadActionIds(item.action.cohortExpression)) {
+      const read = byId.get(id);
+      if (read) visit(read);
+    }
+    ordered.push(item);
+  };
+  items.forEach(visit);
+  return ordered;
+}
+
+export function closedEnrollmentsInCatchUp<
+  T extends Pick<Action, "onboarding" | "memberActionPhase">,
+>(params: {
+  actions: T[];
+  now: Date;
+}): Array<{
+  action: T;
+  enrollment: Extract<
+    CohortEnrollment,
+    { state: CohortEnrollmentState.Closed }
+  >;
+}> {
+  const { actions, now } = params;
+  return actions.flatMap((action) => {
+    const enrollment = computeCohortEnrollment(action, now);
+    return enrollment.state === CohortEnrollmentState.Closed &&
+      isInCatchUp(enrollment, now)
+      ? [{ action, enrollment }]
+      : [];
+  });
+}
+
+/**
+ * The closed actions in catch-up whose decisions `actions` read, directly or
+ * through each other, each after the ones it reads.
+ */
+export async function findReadClosedEnrollments<
+  T extends Pick<
+    ParsedAction,
+    "id" | "cohortExpression" | "onboarding" | "memberActionPhase"
+  >,
+>(params: {
+  actions: Pick<ParsedAction, "cohortExpression">[];
+  load: (ids: number[]) => Promise<T[]>;
+  now: Date;
+}): Promise<ReturnType<typeof closedEnrollmentsInCatchUp<T>>> {
+  const { actions, load, now } = params;
+  const closed: ReturnType<typeof closedEnrollmentsInCatchUp<T>> = [];
+  const seen = new Set<number>();
+  let reads = actions.flatMap(({ cohortExpression }) =>
+    decisionReadActionIds(cohortExpression),
+  );
+  while (reads.length > 0) {
+    const ids = [...new Set(reads)].filter((id) => !seen.has(id));
+    ids.forEach((id) => seen.add(id));
+    if (ids.length === 0) break;
+    const found = closedEnrollmentsInCatchUp({ actions: await load(ids), now });
+    closed.push(...found);
+    reads = found.flatMap(({ action }) =>
+      decisionReadActionIds(action.cohortExpression),
+    );
+  }
+  return orderByDecisionReads(closed);
 }
 
 /**

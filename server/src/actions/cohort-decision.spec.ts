@@ -4,8 +4,13 @@ import {
   ContractEventType,
 } from "src/user/entities/contract-event.entity";
 import {
+  closedEnrollmentsInCatchUp,
+  decisionReadActionIds,
+  findReadClosedEnrollments,
   isSettled,
   openEnrollments,
+  orderByDecisionReads,
+  readsDecisionsOf,
   readsSavedDecisions,
 } from "./cohort-decision";
 import { ActionEvent, ActionStatus } from "./entities/action-event.entity";
@@ -91,6 +96,134 @@ describe("openEnrollments", () => {
         ({ action }) => action,
       ),
     ).toEqual([open, onboarding]);
+  });
+});
+
+describe("closedEnrollmentsInCatchUp", () => {
+  it("keeps closed actions still in catch-up and drops the rest", () => {
+    const recent = makeAction({
+      start: daysFromNow(-10),
+      deadline: daysFromNow(-3),
+    });
+    const old = makeAction({
+      start: daysFromNow(-20),
+      deadline: daysFromNow(-8),
+    });
+    const open = makeAction({});
+    const onboarding = makeAction({
+      start: daysFromNow(-10),
+      deadline: daysFromNow(-3),
+      onboarding: true,
+    });
+
+    expect(
+      closedEnrollmentsInCatchUp({
+        actions: [recent, old, open, onboarding],
+        now: NOW,
+      }).map(({ action }) => action),
+    ).toEqual([recent]);
+  });
+});
+
+describe("decisionReadActionIds", () => {
+  it("collects the actions MissedActionDeadline leaves read, and no others", () => {
+    expect(
+      decisionReadActionIds({
+        type: "AND",
+        children: [
+          { type: "MissedActionDeadline", actionId: 1 },
+          { type: "CompletedAction", actionId: 2 },
+          {
+            type: "NOT",
+            child: { type: "MissedActionDeadline", actionId: 3 },
+          },
+        ],
+      }),
+    ).toEqual([1, 3]);
+  });
+});
+
+describe("readsDecisionsOf", () => {
+  it("is true only when a MissedActionDeadline leaf reads one of the actions", () => {
+    const expr = {
+      type: "AND" as const,
+      children: [
+        { type: "CompletedAction" as const, actionId: 1 },
+        { type: "MissedActionDeadline" as const, actionId: 2 },
+      ],
+    };
+
+    expect(readsDecisionsOf(expr, new Set([2]))).toBe(true);
+    expect(readsDecisionsOf(expr, new Set([1]))).toBe(false);
+  });
+});
+
+describe("orderByDecisionReads", () => {
+  const item = (id: number, reads: number[]) => ({
+    action: {
+      id,
+      cohortExpression: {
+        type: "OR" as const,
+        children: reads.map((actionId) => ({
+          type: "MissedActionDeadline" as const,
+          actionId,
+        })),
+      },
+    },
+  });
+
+  it("puts each action after the ones whose decisions it reads", () => {
+    const reader = item(1, [2]);
+    const middle = item(2, [3]);
+    const read = item(3, []);
+
+    expect(orderByDecisionReads([reader, middle, read])).toEqual([
+      read,
+      middle,
+      reader,
+    ]);
+  });
+
+  it("keeps every action of a cycle", () => {
+    const a = item(1, [2]);
+    const b = item(2, [1]);
+
+    expect(orderByDecisionReads([a, b])).toHaveLength(2);
+  });
+});
+
+describe("findReadClosedEnrollments", () => {
+  const closedAction = (id: number, reads: number[]) => ({
+    ...makeAction({ start: daysFromNow(-10), deadline: daysFromNow(-3) }),
+    id,
+    cohortExpression: {
+      type: "OR" as const,
+      children: reads.map((actionId) => ({
+        type: "MissedActionDeadline" as const,
+        actionId,
+      })),
+    },
+  });
+
+  it("follows reads through closed actions and orders each after the ones it reads", async () => {
+    const reader = closedAction(2, [3]);
+    const read = closedAction(3, []);
+    const byId = new Map([reader, read].map((action) => [action.id, action]));
+    const loaded: number[][] = [];
+
+    const closed = await findReadClosedEnrollments({
+      actions: [
+        { cohortExpression: { type: "MissedActionDeadline", actionId: 2 } },
+      ],
+      load: async (ids) => {
+        loaded.push(ids);
+        return ids.flatMap((id) => byId.get(id) ?? []);
+      },
+      now: NOW,
+    });
+
+    expect(closed.map(({ action }) => action)).toEqual([read, reader]);
+    expect(loaded).toEqual([[2], [3]]);
   });
 });
 

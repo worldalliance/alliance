@@ -57,7 +57,7 @@ describe("checkPrerequisites", () => {
     });
   });
 
-  it("rejects a prerequisite due at or after its dependent", () => {
+  it("accepts a prerequisite due at the same time as its dependent", () => {
     expect(
       check(
         [
@@ -66,10 +66,22 @@ describe("checkPrerequisites", () => {
         ],
         [1],
       ),
+    ).toEqual({ ok: true, value: undefined });
+  });
+
+  it("rejects a prerequisite due after its dependent", () => {
+    expect(
+      check(
+        [
+          node(1, { deadline: day(3) }),
+          node(2, { prerequisiteActionIds: [1] }),
+        ],
+        [1],
+      ),
     ).toEqual({
       ok: false,
       error:
-        '"Action 1" is a prerequisite of "Action 2", so its deadline must come first.',
+        '"Action 1" is a prerequisite of "Action 2", so its deadline can\'t be later than that action\'s.',
     });
   });
 

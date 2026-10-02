@@ -2,8 +2,10 @@ export enum CohortDecisionReason {
   Launch = "launch",
   Signing = "signing",
   /**
-   * Processing first reached the member after the member-action deadline, so
-   * the decision is an exclusion rather than a fresh missed obligation.
+   * Processing first reached the member after the member-action deadline, or
+   * they became ready only as it passed (a skipped prerequisite sharing the
+   * deadline), so the decision is an exclusion rather than a fresh missed
+   * obligation.
    */
   ResolvedAfterDeadline = "resolved_after_deadline",
   Backfill = "backfill",

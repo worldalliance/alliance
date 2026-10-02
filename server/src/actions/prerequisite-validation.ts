@@ -52,9 +52,9 @@ export function checkPrerequisites(params: {
             return R.failure(
               `"${upstream.name}" needs a deadline to be a prerequisite of "${dependent.name}".`,
             );
-          case PrerequisiteDeadlineProblem.NotFirst:
+          case PrerequisiteDeadlineProblem.AfterDependent:
             return R.failure(
-              `"${upstream.name}" is a prerequisite of "${dependent.name}", so its deadline must come first.`,
+              `"${upstream.name}" is a prerequisite of "${dependent.name}", so its deadline can't be later than that action's.`,
             );
           default:
             throw new Error(
