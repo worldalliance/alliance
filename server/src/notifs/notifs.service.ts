@@ -5,8 +5,6 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { addMilliseconds } from "date-fns";
-import { toString as mdastToString } from "mdast-util-to-string";
-import { remark } from "remark";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { ActionUpdate } from "src/actions/entities/action-update.entity";
 import {
@@ -45,6 +43,7 @@ import {
   UnreadContent,
   UnreadContentType,
 } from "./entities/unread-content.entity";
+import { getPreviewText } from "./preview-text";
 
 export type CreateNotifParams = Required<
   Pick<
@@ -64,15 +63,6 @@ export type CreateUnreadContentParams = Required<
 // row, so an unchunked "notify all members" send would start failing outright
 // somewhere under 6k recipients.
 const UNREAD_CONTENT_INSERT_CHUNK = 1000;
-
-function getPreviewText(body: string) {
-  const tree = remark().parse(body);
-  const plainText = mdastToString(tree).replace(/\s+/g, " ").trim();
-
-  return plainText.length > 140
-    ? `${plainText.slice(0, 137).trimEnd()}...`
-    : plainText;
-}
 
 // Timestamps are stored to the microsecond but serialized to the
 // millisecond, so a bound covers its whole millisecond.

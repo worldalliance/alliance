@@ -14,6 +14,7 @@ import {
 } from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "src/utils/Repository";
+import { nameParts } from "src/utils/name-parts";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
 
@@ -44,16 +45,10 @@ export function processKeywordReplacements(
     isFirstAssignedSuite?: boolean;
   },
 ): string {
-  const names = context.user.name.split(" ");
   const dateNow = context.dateNow ?? new Date();
-  let firstname = "";
-  let lastname = "";
-  if (names.length < 2) {
-    console.error("User name has less than 2 parts: " + context.user.name);
-    firstname = context.user.name;
-  } else {
-    firstname = names[0];
-    lastname = names[names.length - 1];
+  const { firstname, lastname } = nameParts(context.user.name);
+  if (!lastname) {
+    console.error(`User ${context.user.id} has no last name`);
   }
   let str = text
     .replaceAll("#{fullname}", context.user.name)
