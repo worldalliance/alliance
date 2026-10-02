@@ -223,8 +223,8 @@ describe("Waitlist mail (e2e)", () => {
 
     for (const email of emails) {
       await requestLink(email).expect(204);
+      await settled();
     }
-    await settled();
 
     expect(sendLink).toHaveBeenCalledTimes(2);
     expect(sentTo(emails[2])).toHaveLength(0);
