@@ -3,42 +3,33 @@ import { BandHeading, BandHeadingSize } from "../../../site/PageShell";
 
 interface Phase {
   label: string;
-  /** Short line the stacked mobile timeline shows beside the label. */
-  summary: string;
-  /** Longer line the horizontal desktop timeline shows under the label. */
-  detail: string;
+  description: string;
 }
 
 const PHASES: Phase[] = [
   {
     label: "Preparation",
-    summary: "Office inviting members and experts",
-    detail: "Office invites members and experts",
+    description: "Alliance invites members to participate",
   },
   {
     label: "Week 1",
-    summary: "Members submit nonprofits",
-    detail: "Members submit nonprofits for 100k allocation",
+    description: "Members nominate nonprofits",
   },
   {
     label: "Week 2",
-    summary: "Experts analyze expected outcomes",
-    detail: "Experts analyze expected outcomes for each nonprofit",
+    description: "Experts analyze each nonprofit",
   },
   {
     label: "Week 3",
-    summary: "Members vote on nonprofits",
-    detail: "Members vote on nonprofits",
+    description: "Members vote on nonprofits",
   },
   {
     label: "Week 4",
-    summary: "Experts select the nonprofit",
-    detail: "Experts make final selection based on vote results",
+    description: "Experts select one from top results",
   },
   {
     label: "Post-Project",
-    summary: "Office allocates the $100,000",
-    detail: "Office allocates 100k to the selected nonprofit",
+    description: "Alliance sends $100k to selected nonprofit",
   },
 ];
 
@@ -84,14 +75,14 @@ export function ProjectTimeline({
               </div>
               <p className="lg:hidden">
                 <span className={cn("font-semibold", current && "text-green")}>
-                  {phase.summary}
+                  {phase.description}
                 </span>{" "}
                 <span className="text-white/85">{phase.label}</span>
               </p>
               <div className="hidden pr-4 lg:block">
                 <p className="text-white/85">{phase.label}</p>
                 <p className={cn("font-semibold", current && "text-green")}>
-                  {phase.detail}
+                  {phase.description}
                 </p>
               </div>
             </li>

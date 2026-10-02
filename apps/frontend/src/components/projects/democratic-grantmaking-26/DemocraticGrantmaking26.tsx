@@ -19,7 +19,7 @@ import {
 import { MEMBER_GOAL_LABEL } from "./GrantmakingMemberProgress";
 import { MemberWaitlistBar } from "./MemberWaitlistBar";
 import { PersonRow } from "./PersonRow";
-import { ABOUT_SECTIONS, FEATURED_PEOPLE, MEMBERS } from "./placeholders";
+import { ABOUT_SECTIONS, FEATURED_PEOPLE } from "./placeholders";
 import { ProjectTimeline } from "./ProjectTimeline";
 import { useWaitlistCount } from "./useWaitlist";
 import { WaitlistSignupForm } from "./WaitlistSignupForm";
@@ -44,7 +44,7 @@ function ProjectProgress() {
     );
   }
   return (
-    <p className="site-sans text-sm text-zinc-500">
+    <p className="site-sans text-sm text-white/80">
       {members.isError || waitlist.isError
         ? "Member and waitlist counts unavailable"
         : "Loading member and waitlist counts…"}
@@ -76,35 +76,36 @@ export default function DemocraticGrantmaking26() {
                 onDark
                 className="lg:hidden"
               >
-                Join the Alliance to propose nonprofits and participate in a
-                first-of-its-kind democratic philanthropy experiment.
+                Join the Alliance to nominate a nonprofit and help decide where
+                the money goes.
               </SiteSubtitle>
               <SiteSubtitle
                 size={SubtitleSize.Page}
                 onDark
                 className="hidden lg:block"
               >
-                Join the Alliance to participate in a groundbreaking
-                philanthropic experiment
+                Join the Alliance to choose which nonprofit gets it.
               </SiteSubtitle>
               <ul className="mt-4 hidden flex-wrap gap-x-8 gap-y-3 lg:flex">
                 {FEATURED_PEOPLE.map((person) => (
                   <li key={person.name}>
-                    <PersonRow person={person} onDark />
+                    <PersonRow person={person} />
                   </li>
                 ))}
               </ul>
             </div>
             <WaitlistSignupForm className="w-full max-w-lg lg:max-w-none" />
           </div>
+          <div className={cn(SITE_COL, "mt-14 lg:mt-20")}>
+            <ProjectProgress />
+          </div>
           <ProjectTimeline
             currentIdx={0}
-            className={cn(SITE_COL, "mt-14 lg:mt-28")}
+            className={cn(SITE_COL, "mt-10 lg:mt-14")}
           />
         </div>
         <div className={cn(SITE_COL, GRID, "pt-10 pb-16 lg:pt-14 lg:pb-24")}>
           <div className="flex flex-col gap-10">
-            <ProjectProgress />
             {ABOUT_SECTIONS.map((section) => (
               <section key={section.heading} className="flex flex-col gap-4">
                 <BandHeading
@@ -117,21 +118,6 @@ export default function DemocraticGrantmaking26() {
               </section>
             ))}
           </div>
-          <aside className="hidden flex-col gap-4 lg:flex">
-            <BandHeading
-              size={BandHeadingSize.Section}
-              className="text-[var(--site-primary)]"
-            >
-              Members
-            </BandHeading>
-            <ul className="flex flex-col gap-3">
-              {MEMBERS.map((person) => (
-                <li key={person.name}>
-                  <PersonRow person={person} />
-                </li>
-              ))}
-            </ul>
-          </aside>
         </div>
       </main>
       <SiteFooter />
