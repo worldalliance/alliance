@@ -3119,6 +3119,10 @@ export type ReminderGroupDto = {
     allSent: boolean;
     excludeOptionalActions: boolean;
     excludePreviouslyNotified: boolean;
+    /**
+     * Whether the group's email uses a missed-suite keyword, so dispatch sends it as a missed-suite notice
+     */
+    isMissedSuite: boolean;
 };
 
 export type NotificationChannel = 'text' | 'email' | 'push';

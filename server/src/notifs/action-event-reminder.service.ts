@@ -585,7 +585,7 @@ export class ActionEventReminderService {
     assertExcludePreviouslyNotifiedAllowed(dto);
     const group = await this.reminderGroupRepository.findOneOrFail({
       where: { id: groupId },
-      relations: { memberActionEvent: { action: true } },
+      relations: { memberActionEvent: { action: true }, actionSuite: true },
     });
 
     let userTag: Tag | undefined = undefined;
@@ -630,6 +630,7 @@ export class ActionEventReminderService {
         userTag: true,
         users: true,
         timingAnchorEvent: true,
+        actionSuite: true,
       },
     });
   }

@@ -21,6 +21,7 @@ import ActionReminderGroupForm, {
   ActionReminderGroupFormSubmitPayload,
 } from "./ActionReminderGroupForm";
 import { GroupScheduleLabels } from "./ActionRemindersTab";
+import MissedSuiteNote from "./MissedSuiteNote";
 
 interface ActionReminderCardProps {
   group: ReminderGroupDto;
@@ -311,6 +312,9 @@ const ActionReminderCard = ({
             />
           ) : (
             <>
+              {group.isMissedSuite && (
+                <MissedSuiteNote hasSuite={Boolean(group.actionSuite)} />
+              )}
               <p className="text-sm font-semibold">Email message:</p>
               <Card className="flex flex-col gap-1 !p-2">
                 <p className="text-sm font-semibold text-gray-900">
@@ -406,6 +410,11 @@ const ActionReminderCard = ({
                   <p className="text-xs text-gray-500">
                     ({plan.channels.join(", ")})
                   </p>
+                  {plan.missNumber !== null && (
+                    <p className="text-xs text-gray-500">
+                      consecutive miss {plan.missNumber}
+                    </p>
+                  )}
                 </div>
               ))
             )}

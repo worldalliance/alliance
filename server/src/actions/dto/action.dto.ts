@@ -43,6 +43,7 @@ import { EditableContentDto } from "src/forum/dto/editablecontent.dto";
 import type { Comment } from "src/forum/entities/comment.entity";
 import type { ForumFeedComment } from "src/forum/forum.service";
 import { getImageSource } from "src/images/images.service";
+import { isMissedSuiteReminderGroup } from "src/notifs/missed-suite-notice";
 import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
 import { Form } from "src/tasks/entities/form.entity";
 import {
@@ -1055,6 +1056,12 @@ export class ReminderGroupDto extends PickType(ReminderGroup, [
   "excludeOptionalActions",
   "excludePreviouslyNotified",
 ]) {
+  @ApiProperty({
+    description:
+      "Whether the group's email uses a missed-suite keyword, so dispatch sends it as a missed-suite notice",
+  })
+  isMissedSuite: boolean;
+
   constructor(group: ReminderGroup) {
     super();
     this.id = group.id;
@@ -1083,6 +1090,7 @@ export class ReminderGroupDto extends PickType(ReminderGroup, [
     this.allSent = group.allSent;
     this.excludeOptionalActions = group.excludeOptionalActions;
     this.excludePreviouslyNotified = group.excludePreviouslyNotified;
+    this.isMissedSuite = isMissedSuiteReminderGroup(group);
   }
 }
 

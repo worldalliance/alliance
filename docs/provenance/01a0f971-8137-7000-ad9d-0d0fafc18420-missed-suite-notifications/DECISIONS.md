@@ -100,3 +100,5 @@ Start implementation with regression tests for partial suites, historical versus
 **Miss number.** Each preview row carries `missNumber`, null until the suite closes and for ordinary groups. The preview does not report the first-miss arm, because drawing one would assign members to the experiment from an admin page view.
 
 **Not changed.** `getNotificationSchedule` has no client caller and lists no recipients, so it is unchanged.
+
+**Admin label.** `ReminderGroupDto.isMissedSuite` comes from `isMissedSuiteReminderGroup`, so the admin card does not re-derive the keyword rule. The card states the routing above the group's copy, or says in words that a missed-suite group with no suite sends nothing, and each plan row shows its miss number once the suite has closed. The reminder group list now loads `actionSuite`, which it omitted, so the card can tell those cases apart; the update query loads it too, so the PATCH response carries the same `actionSuite` as the list.

@@ -519,6 +519,49 @@ describe("missed-suite notices (e2e)", () => {
     ).toBe(0);
   });
 
+  it("lists a missed-suite group with its suite for the admin card", async () => {
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    const group = await createMissedSuiteGroup(closed);
+    const server = ctx.app.getHttpServer();
+    const auth = `Bearer ${ctx.adminAccessToken}`;
+
+    const listed = await request(server)
+      .get(`/actions/reminderGroupsForEvent/${closed.memberEvent.id}`)
+      .set("Authorization", auth)
+      .expect(200);
+    expect(listed.body).toEqual([
+      expect.objectContaining({
+        isMissedSuite: true,
+        actionSuite: expect.objectContaining({ id: closed.suite.id }),
+      }),
+    ]);
+
+    const updated = await request(server)
+      .patch(`/actions/remindergroups/${group.id}`)
+      .set("Authorization", auth)
+      .send({
+        name: group.name,
+        timingMode: group.timingMode,
+        sendAtSecondsFromDeadline: 0,
+        cohortType: group.cohortType,
+        emailSubject: group.emailSubject,
+        emailMessage: "Hi #{firstname}",
+        textMessage: group.textMessage,
+        pushMessage: group.pushMessage,
+        suiteId: closed.suite.id,
+        useSuiteTaskCount: true,
+        excludeOptionalActions: true,
+        excludePreviouslyNotified: false,
+      })
+      .expect(200);
+    expect(updated.body).toMatchObject({
+      isMissedSuite: false,
+      actionSuite: { id: closed.suite.id },
+    });
+  });
+
   it("previews a closed suite's notice with the member's miss number", async () => {
     await createClosedSuite("Earlier", ago({ days: 7 }), ["Earlier task"]);
     const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
