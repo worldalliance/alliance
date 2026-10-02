@@ -211,6 +211,7 @@ describe("bucketOnetimeInvitesByActionability", () => {
     code: "code",
     createdAt: "2026-01-01T00:00:00.000Z",
     status: "link_used",
+    invitedUserId: null,
   };
 
   it("buckets nothing without a user", () => {

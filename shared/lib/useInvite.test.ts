@@ -53,6 +53,7 @@ serveApi(
         code: params.code,
         createdAt: new Date().toISOString(),
         status,
+        invitedUserId: null,
       } satisfies OnetimeInviteDto),
   }),
 );

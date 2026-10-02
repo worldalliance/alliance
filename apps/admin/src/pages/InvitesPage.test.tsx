@@ -26,6 +26,7 @@ serveApi(
             code: "abc123",
             createdAt: "2026-01-02T00:00:00.000Z",
             status: "link_unused",
+            invitedUserId: null,
           },
         ],
         totalCount: 1,
