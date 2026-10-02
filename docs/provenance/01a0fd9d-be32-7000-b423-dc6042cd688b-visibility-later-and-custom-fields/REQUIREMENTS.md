@@ -8,6 +8,7 @@ task: Let visibility conditions reference custom inputs and fields that appear l
 
 The user approved the agent's recommendation on each of the following. All option wording is the agent's:
 
+<!-- prettier-ignore -->
 1. "Custom inputs" means custom component fields (`kind: "custom"`).
 2. A custom component field can drive only "has value / is empty" conditions, not per-component conditions.
 3. Custom component fields become selectable wherever they sit in the form, earlier as well as later.
