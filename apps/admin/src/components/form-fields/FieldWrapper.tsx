@@ -40,6 +40,7 @@ export function FieldWrapper<T extends AnyField>({
   field,
   onUpdate,
   previousFields,
+  laterFields,
   onRemove,
   children,
   onDragStart,
@@ -371,6 +372,7 @@ export function FieldWrapper<T extends AnyField>({
                 <ConditionalVisibility
                   field={field}
                   previousFields={previousFields || []}
+                  laterFields={laterFields}
                   onChange={handleVisibilityChange}
                 />
               )}

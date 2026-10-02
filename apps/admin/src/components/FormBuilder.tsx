@@ -23,7 +23,6 @@ import {
   type FormSchema,
   type ListField,
   type ListSubField,
-  type OptionField,
   type Page,
   type PageItem,
 } from "@alliance/common/forms/form-schema";
@@ -57,6 +56,7 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Copy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBeforeUnload, useBlocker, useSearchParams } from "react-router";
+import { conditionSourceFields } from "../lib/conditionSourceFields";
 import {
   customValidatorIds,
   mapCustomValidatorIds,
@@ -64,6 +64,10 @@ import {
 import { addressedWrite } from "../lib/displayBlockById";
 import { formSchemaIds, JsonScopeKind, type JsonScope } from "../lib/formJson";
 import { mergeFormSchemas } from "../lib/formSchemaMerge";
+import {
+  findSingleOptionValueChange,
+  getUpdatedVisibilityFormula,
+} from "../lib/optionValueRename";
 import { reorderPages } from "../lib/reorderPages";
 import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
 import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
@@ -215,158 +219,16 @@ const ensurePages = (schema: FormSchema): FormSchema => {
   return withOutputViews;
 };
 
-const buildValueCounts = (values: string[]) => {
-  const counts = new Map<string, number>();
-  values.forEach((value) => {
-    counts.set(value, (counts.get(value) ?? 0) + 1);
-  });
-  return counts;
-};
-
-const findSingleOptionValueChange = (
-  previousOptions: OptionField["options"] | undefined,
-  nextOptions: OptionField["options"] | undefined,
-): {
-  previousValue: string;
-  nextValue: string;
-} | null => {
-  if (!previousOptions || !nextOptions) {
-    return null;
-  }
-  if (previousOptions.length !== nextOptions.length) {
-    return null;
-  }
-
-  const previousValues = previousOptions.map((option) => option.value ?? "");
-  const nextValues = nextOptions.map((option) => option.value ?? "");
-  const previousCounts = buildValueCounts(previousValues);
-  const nextCounts = buildValueCounts(nextValues);
-
-  const removed: string[] = [];
-  const added: string[] = [];
-
-  previousCounts.forEach((count, value) => {
-    const nextCount = nextCounts.get(value) ?? 0;
-    if (nextCount < count) {
-      for (let i = 0; i < count - nextCount; i += 1) {
-        removed.push(value);
-      }
-    }
-  });
-
-  nextCounts.forEach((count, value) => {
-    const previousCount = previousCounts.get(value) ?? 0;
-    if (previousCount < count) {
-      for (let i = 0; i < count - previousCount; i += 1) {
-        added.push(value);
-      }
-    }
-  });
-
-  if (removed.length === 1 && added.length === 1) {
-    return {
-      previousValue: removed[0],
-      nextValue: added[0],
-    };
-  }
-
-  return null;
-};
-
-const mapConditionForOptionValue = (
-  condition: Condition,
-  controllerId: string,
-  previousValue: string,
-  nextValue: string,
-): { condition: Condition; updated: boolean } => {
-  switch (condition.kind) {
-    case "includesOption":
-      if (
-        condition.when === controllerId &&
-        condition.includesOption === previousValue
-      ) {
-        return {
-          condition: { ...condition, includesOption: nextValue },
-          updated: true,
-        };
-      }
-      return { condition, updated: false };
-    case "equals":
-      if (
-        condition.when === controllerId &&
-        condition.equals === previousValue
-      ) {
-        return {
-          condition: { ...condition, equals: nextValue },
-          updated: true,
-        };
-      }
-      return { condition, updated: false };
-    case "anySelected":
-    case "selectedCount":
-    case "completedActionCount":
-    case "deviceType":
-    case "firstContractSigned":
-    case "hasValue":
-    case "outputBlockVisible":
-    case "userHasCity":
-    case "userPropertyHasValue":
-    case "validator":
-      return { condition, updated: false };
-    default:
-      throw new Error(
-        `Unknown condition kind: ${(condition satisfies never as Condition).kind}`,
-      );
-  }
-};
-
-const getUpdatedVisibilityFormula = (
-  visibleIfFormula: VisibleIfFormula | undefined,
-  controllerId: string,
-  previousValue: string,
-  nextValue: string,
-): { changed: boolean; visibleIfFormula?: VisibleIfFormula } => {
-  if (!visibleIfFormula?.conditions) {
-    return { changed: false };
-  }
-
-  let updated = false;
-  const nextConditions: Record<string, Condition> = {};
-  for (const [name, cond] of Object.entries(visibleIfFormula.conditions)) {
-    const { condition, updated: u } = mapConditionForOptionValue(
-      cond,
-      controllerId,
-      previousValue,
-      nextValue,
-    );
-    nextConditions[name] = condition;
-    if (u) updated = true;
-  }
-
-  if (!updated) {
-    return { changed: false };
-  }
-
-  return {
-    changed: true,
-    visibleIfFormula: { ...visibleIfFormula, conditions: nextConditions },
-  };
-};
-
 const applyOptionValueToConditionalVisibility = (
   fields: PageItem[],
   controllerId: string,
   previousValue: string,
   nextValue: string,
-  startIndex: number,
 ): PageItem[] => {
   let hasChanges = false;
 
-  const nextFields = fields.map((candidate, idx) => {
+  const nextFields = fields.map((candidate) => {
     if (isFieldGroup(candidate)) {
-      if (idx <= startIndex) {
-        return candidate;
-      }
       const ownResult = getUpdatedVisibilityFormula(
         candidate.visibleIfFormula,
         controllerId,
@@ -378,7 +240,6 @@ const applyOptionValueToConditionalVisibility = (
         controllerId,
         previousValue,
         nextValue,
-        -1,
       );
       const childrenChanged = childFields !== candidate.fields;
       if (!ownResult.changed && !childrenChanged) {
@@ -394,10 +255,6 @@ const applyOptionValueToConditionalVisibility = (
           ? (childFields as FieldGroup["fields"])
           : candidate.fields,
       } as FieldGroup;
-    }
-
-    if (idx <= startIndex) {
-      return candidate;
     }
 
     const formulaResult = getUpdatedVisibilityFormula(
@@ -2188,19 +2045,12 @@ export function FormBuilder(props: FormBuilderProps) {
             return { ...page, fields: updatedFields };
           }
 
-          const groupIndex =
-            parentId == null
-              ? index
-              : page.fields.findIndex(
-                  (item) => isFieldGroup(item) && item.id === parentId,
-                );
           const fieldsWithUpdatedConditions =
             applyOptionValueToConditionalVisibility(
               updatedFields,
               (field as AnyField).id,
               optionValueChange.previousValue,
               optionValueChange.nextValue,
-              parentId == null ? index : groupIndex,
             );
 
           return { ...page, fields: fieldsWithUpdatedConditions };
@@ -2213,7 +2063,6 @@ export function FormBuilder(props: FormBuilderProps) {
               (field as AnyField).id,
               optionValueChange.previousValue,
               optionValueChange.nextValue,
-              -1,
             );
           const pageFormulaResult = getUpdatedVisibilityFormula(
             page.visibleIfFormula,
@@ -2280,29 +2129,12 @@ export function FormBuilder(props: FormBuilderProps) {
       dropPosition &&
       !isDragging;
 
-    const previousFields = [
-      ...schema.pages
-        .slice(0, selectedPageIndex)
-        .flatMap((page) => flattenPageItems(page.fields)),
-      ...(parentId == null
-        ? flattenPageItems(currentPage.fields.slice(0, index))
-        : [
-            ...flattenPageItems(
-              currentPage.fields.slice(
-                0,
-                currentPage.fields.findIndex(
-                  (item) => isFieldGroup(item) && item.id === parentId,
-                ),
-              ),
-            ),
-            ...((
-              currentPage.fields.find(
-                (item): item is FieldGroup =>
-                  isFieldGroup(item) && item.id === parentId,
-              )?.fields ?? []
-            ).slice(0, index) as Array<AnyField | DisplayBlock>),
-          ]),
-    ].filter(isQuestionField);
+    const { previousFields, laterFields } = conditionSourceFields({
+      pages: schema.pages,
+      pageIndex: selectedPageIndex,
+      parentId,
+      index,
+    });
 
     const commonProps = {
       onUpdate: updateField,
@@ -2312,6 +2144,7 @@ export function FormBuilder(props: FormBuilderProps) {
       onDragEnd: handleDragEnd,
       isDragging: isDragging,
       previousFields,
+      laterFields,
     };
 
     return (
@@ -2357,6 +2190,7 @@ export function FormBuilder(props: FormBuilderProps) {
                     onDragEnd={handleDragEnd}
                     isDragging={isDragging}
                     previousFields={previousFields}
+                    laterFields={laterFields}
                   >
                     {group.fields.length === 0 && (
                       <InsertPoint loc={{ groupId: group.id, index: 0 }} />

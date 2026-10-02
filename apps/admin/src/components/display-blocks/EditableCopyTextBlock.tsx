@@ -20,6 +20,7 @@ export function EditableCopyTextBlock({
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: BaseDisplayBlockProps<CopyTextBlock>) {
   const [showPreview, setShowPreview] = useState(false);
 
@@ -33,6 +34,7 @@ export function EditableCopyTextBlock({
       onUpdate={onUpdate}
       updateCurrent={updateCurrent}
       previousFields={previousFields}
+      laterFields={laterFields}
     >
       {({ block: activeBlock, onUpdate: handleUpdate, updateBlockWide }) => {
         const rich = copyTextFormat(activeBlock) === CopyTextFormat.Markdown;

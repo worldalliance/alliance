@@ -21,6 +21,7 @@ export function EditablePreviousAnswerBlock({
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: BaseDisplayBlockProps<PreviousAnswerBlock>) {
   const { options: forms, isError: formListFailed } = useFormOptions();
   const { fields: sourceFields, status: sourceStatus } = useFormQuestionFields(
@@ -42,6 +43,7 @@ export function EditablePreviousAnswerBlock({
       onUpdate={onUpdate}
       updateCurrent={updateCurrent}
       previousFields={previousFields}
+      laterFields={laterFields}
     >
       {({ block: activeBlock, onUpdate: handleUpdate }) => (
         <div className="space-y-3">

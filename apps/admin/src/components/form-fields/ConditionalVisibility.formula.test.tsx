@@ -1,6 +1,7 @@
 import type {
   AnyField,
   ContractField,
+  CustomComponentField,
   MultiSelectField,
   RangeField,
   SelectField,
@@ -93,7 +94,13 @@ const dependent: AnyField = {
 
 let latest: VisibleIfFormula | undefined;
 
-function Editor({ controller }: { controller: AnyField }) {
+function Editor({
+  controller,
+  later,
+}: {
+  controller: AnyField;
+  later?: AnyField[];
+}) {
   const [visibleIfFormula, setVisibleIfFormula] = useState<
     VisibleIfFormula | undefined
   >();
@@ -111,6 +118,7 @@ function Editor({ controller }: { controller: AnyField }) {
         <ConditionalVisibility
           field={{ ...dependent, visibleIfFormula }}
           previousFields={[controller]}
+          laterFields={later}
           onChange={(updates) => setVisibleIfFormula(updates.visibleIfFormula)}
         />
       </CustomValidatorDraftsContext.Provider>
@@ -255,4 +263,46 @@ it("keeps the saved count while its input is cleared or fractional", () => {
   fireEvent.blur(input);
   expect(input.value).toBe("3");
   expect(conditionOf()).toMatchObject({ count: 3 });
+});
+
+const customComponent: CustomComponentField = {
+  id: "share",
+  type: "input",
+  kind: "custom",
+  label: "Share",
+  componentId: "share-url",
+};
+
+it("conditions on a custom component field being answered", () => {
+  render(<Editor controller={customComponent} />);
+  fireEvent.click(screen.getByRole("button", { name: "+ Field condition" }));
+  expect(conditionOf()).toEqual({
+    kind: "hasValue",
+    when: "share",
+    hasValue: true,
+  });
+
+  fireEvent.change(screen.getByDisplayValue("Is answered"), {
+    target: { value: "false" },
+  });
+  expect(conditionOf()).toEqual({
+    kind: "hasValue",
+    when: "share",
+    hasValue: false,
+  });
+});
+
+it("lists later fields under their own heading and warns when one is picked", () => {
+  render(<Editor controller={staticSelect} later={[customComponent]} />);
+  fireEvent.click(screen.getByRole("button", { name: "+ Field condition" }));
+
+  const laterGroup = screen.getByRole("group", { name: "Later in form" });
+  expect(laterGroup.querySelector('option[value="share"]')).toBeTruthy();
+  expect(screen.queryByText(/comes later in the form/)).toBeNull();
+
+  fireEvent.change(screen.getByDisplayValue(/Color/), {
+    target: { value: "share" },
+  });
+  expect(conditionOf()).toMatchObject({ when: "share" });
+  expect(screen.getByText(/comes later in the form/)).toBeTruthy();
 });

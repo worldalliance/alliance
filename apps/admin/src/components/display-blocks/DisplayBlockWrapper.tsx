@@ -110,6 +110,7 @@ interface DisplayBlockWrapperProps<T extends DisplayBlock = DisplayBlock> {
   onUpdate?: (updates: Partial<T>) => void;
   updateCurrent?: AddressedWrite;
   previousFields?: AnyField[];
+  laterFields?: AnyField[];
   outputBlocks?: OutputBlockOption[];
   /** A container block's content lives in its children, so it has none to override. */
   perUserContent?: boolean;
@@ -125,6 +126,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   onUpdate,
   updateCurrent,
   previousFields,
+  laterFields,
   outputBlocks,
   perUserContent = true,
 }: DisplayBlockWrapperProps<T>) {
@@ -1049,6 +1051,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
             <ConditionalVisibility
               field={effectiveBlock ?? block!}
               previousFields={previousFields || []}
+              laterFields={laterFields}
               outputBlocks={outputBlocks}
               onChange={handleConditionalChange}
             />

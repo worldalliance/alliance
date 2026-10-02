@@ -12,12 +12,14 @@ export function EditableTextareaField({
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: BaseFieldProps<TextareaField>) {
   return (
     <FieldWrapper
       field={field}
       onUpdate={onUpdate}
       previousFields={previousFields}
+      laterFields={laterFields}
       onRemove={onRemove}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}

@@ -12,12 +12,14 @@ export function EditableDateField({
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: BaseFieldProps<DateField>) {
   return (
     <FieldWrapper
       field={field}
       onUpdate={onUpdate}
       previousFields={previousFields}
+      laterFields={laterFields}
       onRemove={onRemove}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}

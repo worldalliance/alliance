@@ -10,6 +10,8 @@ import type {
 } from "@alliance/common/forms/form-schema";
 import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
 import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
+import type { ConditionSourceFields } from "../../lib/conditionSourceFields";
+import { updateListSubField } from "../../lib/updateListSubField";
 import { ElementJsonContext } from "../FormJsonButton";
 import {
   formFieldsErrorReason,
@@ -136,13 +138,13 @@ function renderEditableSubField(
   index: number,
   updateSubField: (index: number, updates: Partial<AnyField>) => void,
   removeSubField: (index: number) => void,
-  previousFields: AnyField[],
+  sources: ConditionSourceFields,
 ) {
   return renderSubFieldEditor(sub.kind, {
     field: sub,
     onUpdate: (updates) => updateSubField(index, updates),
     onRemove: () => removeSubField(index),
-    previousFields,
+    ...sources,
     isDragging: false,
   });
 }
@@ -155,6 +157,7 @@ export function EditableListField({
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: BaseFieldProps<ListField>) {
   // --- Prefill from previous answer state ---
   const { options: prefillForms, isError: formListFailed } = useFormOptions();
@@ -177,9 +180,9 @@ export function EditableListField({
   };
 
   const updateSubField = (index: number, updates: Partial<AnyField>) => {
-    const next = [...(field.fields ?? [])];
-    next[index] = { ...next[index], ...updates } as ListSubField;
-    onUpdate({ fields: next });
+    onUpdate({
+      fields: updateListSubField(field.fields ?? [], index, updates),
+    });
   };
 
   const removeSubField = (index: number) => {
@@ -188,7 +191,10 @@ export function EditableListField({
   };
 
   const subFields = field.fields ?? [];
-  const previousFieldsFor = (index: number) => subFields.slice(0, index);
+  const sourcesFor = (index: number): ConditionSourceFields => ({
+    previousFields: subFields.slice(0, index),
+    laterFields: subFields.slice(index + 1),
+  });
   const hiddenIds = field.outputViewHiddenFieldIds ?? [];
 
   return (
@@ -196,6 +202,7 @@ export function EditableListField({
       field={field}
       onUpdate={onUpdate}
       previousFields={previousFields}
+      laterFields={laterFields}
       onRemove={onRemove}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
@@ -284,7 +291,7 @@ export function EditableListField({
                 index,
                 updateSubField,
                 removeSubField,
-                previousFieldsFor(index),
+                sourcesFor(index),
               )}
             </div>
           ))}

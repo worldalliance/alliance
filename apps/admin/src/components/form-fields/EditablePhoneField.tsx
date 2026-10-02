@@ -12,12 +12,14 @@ export function EditablePhoneField({
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: BaseFieldProps<PhoneField>) {
   return (
     <FieldWrapper
       field={field}
       onUpdate={onUpdate}
       previousFields={previousFields}
+      laterFields={laterFields}
       onRemove={onRemove}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}

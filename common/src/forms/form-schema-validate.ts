@@ -1,5 +1,6 @@
 import type { DisplayBlock } from "./display-blocks";
 import {
+  collectFieldLookup,
   isFieldGroup,
   isQuestionField,
   MAX_RANGE_OPTION_COUNT,
@@ -70,6 +71,7 @@ export function validateFormSchema(
       collectQuestionFieldIds(item, earlierFieldIds);
     }
   }
+  collectVisibilityCycleErrors(schema, errors);
 
   collectVariableErrors(schema, context, errors);
   for (const { name, location, viewId } of sourceVariablesInSharedOutput(
@@ -131,11 +133,52 @@ function collectCycleErrors(
     deps.set(block.id, edges);
   }
 
+  for (const cycle of findCycles(deps)) {
+    errors.push({
+      viewId: view.id,
+      blockId: cycle[0],
+      message: `Cycle in outputBlockVisible references: ${[
+        ...cycle,
+        cycle[0],
+      ].join(" -> ")}`,
+    });
+  }
+}
+
+// Edges run from a field to each in-form field its own formula reads; loops
+// through a group's or page's formula are not followed.
+function collectVisibilityCycleErrors(
+  schema: FormSchema,
+  errors: FormSchemaValidationError[],
+): void {
+  const deps = new Map<string, string[]>();
+  for (const field of collectFieldLookup(schema.pages ?? []).values()) {
+    deps.set(
+      field.id,
+      Object.values(field.visibleIfFormula?.conditions ?? {}).flatMap(
+        (cond) => getLocalFieldReference(cond) ?? [],
+      ),
+    );
+  }
+
+  for (const cycle of findCycles(deps)) {
+    errors.push({
+      blockId: cycle[0],
+      message: `Visibility conditions form a cycle: ${[...cycle, cycle[0]].join(
+        " -> ",
+      )}`,
+    });
+  }
+}
+
+/** Each distinct cycle in `deps`, as the node ids along it. */
+function findCycles(deps: Map<string, string[]>): string[][] {
   const GRAY = 1;
   const BLACK = 2;
   const color = new Map<string, number>();
   const path: string[] = [];
   const reported = new Set<string>();
+  const cycles: string[][] = [];
 
   const visit = (nodeId: string): void => {
     if (color.get(nodeId) === BLACK) return;
@@ -148,14 +191,7 @@ function collectCycleErrors(
         const key = [...cycle].sort().join("|");
         if (!reported.has(key)) {
           reported.add(key);
-          errors.push({
-            viewId: view.id,
-            blockId: cycle[0],
-            message: `Cycle in outputBlockVisible references: ${[
-              ...cycle,
-              cycle[0],
-            ].join(" -> ")}`,
-          });
+          cycles.push(cycle);
         }
       } else {
         visit(dep);
@@ -168,6 +204,7 @@ function collectCycleErrors(
   for (const id of deps.keys()) {
     visit(id);
   }
+  return cycles;
 }
 
 /**

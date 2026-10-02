@@ -12,12 +12,14 @@ export function EditableTimezoneField({
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: BaseFieldProps<TimezoneField>) {
   return (
     <FieldWrapper
       field={field}
       onUpdate={onUpdate}
       previousFields={previousFields}
+      laterFields={laterFields}
       onRemove={onRemove}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}

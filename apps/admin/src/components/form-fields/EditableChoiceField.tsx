@@ -49,12 +49,14 @@ export function EditableChoiceField({
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: EditableChoiceFieldProps) {
   return (
     <FieldWrapper
       field={field}
       onUpdate={onUpdate}
       previousFields={previousFields}
+      laterFields={laterFields}
       onRemove={onRemove}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}

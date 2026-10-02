@@ -12,6 +12,7 @@ export function EditableUserLocationBlock({
   onDragEnd,
   isDragging,
   previousFields,
+  laterFields,
 }: BaseDisplayBlockProps<UserLocationBlock>) {
   return (
     <DisplayBlockWrapper
@@ -23,6 +24,7 @@ export function EditableUserLocationBlock({
       onUpdate={onUpdate}
       updateCurrent={updateCurrent}
       previousFields={previousFields}
+      laterFields={laterFields}
     >
       {({ block: activeBlock, onUpdate: handleUpdate }) => (
         <div className="space-y-3">
