@@ -4,6 +4,7 @@ import type {
 } from "@aws-sdk/client-s3";
 import { sdkStreamMixin } from "@smithy/util-stream";
 import { milliseconds } from "date-fns";
+import { ActionsService } from "src/actions/actions.service";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
@@ -1109,12 +1110,11 @@ describe("Forum (e2e)", () => {
     });
 
     it("provides activity and action level comment listings", async () => {
-      const actionComplete = await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${testAction.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      const actionComplete = await ctx.app
+        .get(ActionsService)
+        .completeAction(testAction.id, ctx.testUserId);
 
-      const activityId = actionComplete.body.id;
+      const activityId = actionComplete.id;
 
       await request(ctx.app.getHttpServer())
         .post("/forum/comments")
@@ -2434,12 +2434,11 @@ describe("Forum (e2e)", () => {
         actionId: testAction.id,
       });
 
-      const completeResponse = await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${testAction.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      const completeResponse = await ctx.app
+        .get(ActionsService)
+        .completeAction(testAction.id, ctx.testUserId);
 
-      const activityId = completeResponse.body.id;
+      const activityId = completeResponse.id;
 
       const commentResponse = await request(ctx.app.getHttpServer())
         .post("/forum/comments")
