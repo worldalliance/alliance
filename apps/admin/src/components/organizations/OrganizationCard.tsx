@@ -1,21 +1,16 @@
-import { R, type Result } from "@alliance/common/result";
-import { campaignUpdateAdmin } from "@alliance/shared/client";
 import type {
   AdminWaitlistLinkDto,
   CampaignDto,
   CommunityDto,
 } from "@alliance/shared/client/types.gen";
-import { uploadImageDataUri } from "@alliance/shared/lib/uploadImageDataUri";
 import { CardStyle } from "@alliance/shared/styles/card";
-import { readFileDataUri } from "@alliance/sharedweb/lib/readFileDataUri";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useMutation } from "@tanstack/react-query";
 import { Building2, ImageUp } from "lucide-react";
 import React from "react";
 import {
-  useInvalidateCampaignsAdmin,
   useUpdateCampaignAdmin,
+  useUploadCampaignPictureAdmin,
 } from "../../lib/useCampaignsAdmin";
 import { useRefusalToast } from "../../lib/useRefusalToast";
 import InlineTextInput from "../InlineTextInput";
@@ -34,7 +29,6 @@ const OrganizationCard: React.FC<OrganizationCardProps> = ({
   takenCommunityIds,
   links,
 }) => {
-  const invalidateCampaigns = useInvalidateCampaignsAdmin();
   const refusalToast = useRefusalToast();
   const { error: toastError } = useToast();
 
@@ -42,23 +36,10 @@ const OrganizationCard: React.FC<OrganizationCardProps> = ({
     onError: (err) => refusalToast(err, "Could not update the organization."),
   });
 
-  const uploadLogo = useMutation({
-    mutationFn: async (file: File): Promise<Result<void, string>> => {
-      const dataUri = await readFileDataUri(file);
-      if (!dataUri.ok) return R.failure(dataUri.error.message);
-      const key = await uploadImageDataUri(dataUri.value);
-      if (!key.ok) return R.failure(key.error);
-      await campaignUpdateAdmin({
-        path: { id: organization.id },
-        body: { picture: key.value },
-        throwOnError: true,
-      });
-      return R.success(undefined);
-    },
+  const uploadLogo = useUploadCampaignPictureAdmin({
     onSuccess: (result) => {
       if (!result.ok) toastError(result.error);
     },
-    onSettled: invalidateCampaigns,
     onError: (err) => refusalToast(err, "Could not upload the logo."),
   });
 
@@ -92,7 +73,7 @@ const OrganizationCard: React.FC<OrganizationCardProps> = ({
               disabled={busy}
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) uploadLogo.mutate(file);
+                if (file) uploadLogo.mutate({ id: organization.id, file });
                 e.target.value = "";
               }}
             />

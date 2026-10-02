@@ -1,3 +1,4 @@
+import { R } from "@alliance/common/result";
 import type { CampaignDto } from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
@@ -6,8 +7,8 @@ import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import {
   useCampaignsAdmin,
   useCreateCampaignAdmin,
-  useInvalidateCampaignsAdmin,
   useUpdateCampaignAdmin,
+  useUploadCampaignPictureAdmin,
 } from "./useCampaignsAdmin";
 
 afterEach(cleanup);
@@ -27,6 +28,7 @@ const campaign = (name: string) =>
 let stored: CampaignDto = campaign("Spring drive");
 let createStatus = 200;
 let updateStatus = 200;
+let uploadStatus = 200;
 
 serveApi(
   routes({
@@ -38,6 +40,13 @@ serveApi(
       stored = { ...campaign(name), id: 2 };
       return Response.json(stored);
     },
+    "POST /images/uploadImage": () =>
+      uploadStatus === 200
+        ? Response.json({ key: "logo-key", url: "logo-url" })
+        : Response.json(
+            { message: "Image too large" },
+            { status: uploadStatus },
+          ),
     "PATCH /campaigns/:id": async ({ request }) => {
       if (updateStatus !== 200) {
         stored = campaign("Changed elsewhere");
@@ -54,6 +63,7 @@ afterEach(() => {
   stored = campaign("Spring drive");
   createStatus = 200;
   updateStatus = 200;
+  uploadStatus = 200;
 });
 
 describe("useCampaignsAdmin", () => {
@@ -62,32 +72,6 @@ describe("useCampaignsAdmin", () => {
 
     await waitFor(() =>
       expect(view.result.current.data).toEqual([campaign("Spring drive")]),
-    );
-  });
-});
-
-describe("useInvalidateCampaignsAdmin", () => {
-  it("refetches the campaigns", async () => {
-    const view = renderHook(
-      () => ({
-        campaigns: useCampaignsAdmin(),
-        invalidate: useInvalidateCampaignsAdmin(),
-      }),
-      queryWrapper(),
-    );
-    await waitFor(() =>
-      expect(view.result.current.campaigns.data).toEqual([
-        campaign("Spring drive"),
-      ]),
-    );
-
-    stored = campaign("Fall drive");
-    await view.result.current.invalidate();
-
-    await waitFor(() =>
-      expect(view.result.current.campaigns.data).toEqual([
-        campaign("Fall drive"),
-      ]),
     );
   });
 });
@@ -183,5 +167,67 @@ describe("useUpdateCampaignAdmin", () => {
     );
     expect(onError).toHaveBeenCalled();
     expect(onSuccess).not.toHaveBeenCalled();
+  });
+});
+
+describe("useUploadCampaignPictureAdmin", () => {
+  const upload = async () => {
+    const onSuccess = jest.fn();
+    const onError = jest.fn();
+    const view = renderHook(
+      () => ({
+        campaigns: useCampaignsAdmin(),
+        upload: useUploadCampaignPictureAdmin({ onSuccess, onError }),
+      }),
+      queryWrapper(),
+    );
+    await waitFor(() =>
+      expect(view.result.current.campaigns.data).toBeTruthy(),
+    );
+    view.result.current.upload.mutate({
+      id: 1,
+      file: new File(["logo"], "logo.png", { type: "image/png" }),
+    });
+    return { view, onSuccess, onError };
+  };
+
+  const uploadResult = async () => {
+    const { view, onSuccess } = await upload();
+    await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+    return { view, result: onSuccess.mock.calls[0][0] };
+  };
+
+  it("saves the uploaded picture and refetches the campaigns", async () => {
+    const { view, result } = await uploadResult();
+
+    expect(result).toEqual(R.success(undefined));
+    await waitFor(() =>
+      expect(view.result.current.campaigns.data).toEqual([
+        { ...campaign("Spring drive"), picture: "logo-key" },
+      ]),
+    );
+  });
+
+  it("reports a refused save through onError and refetches", async () => {
+    updateStatus = 500;
+
+    const { view, onSuccess, onError } = await upload();
+
+    await waitFor(() =>
+      expect(view.result.current.campaigns.data).toEqual([
+        campaign("Changed elsewhere"),
+      ]),
+    );
+    expect(onError).toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  it("hands back why the image upload failed, saving nothing", async () => {
+    uploadStatus = 413;
+
+    const { result } = await uploadResult();
+
+    expect(result).toEqual(R.failure("Image too large"));
+    expect(stored).toEqual(campaign("Spring drive"));
   });
 });
