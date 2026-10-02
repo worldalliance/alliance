@@ -22,6 +22,7 @@ import {
   groupAssignmentLabels,
   groupRemovalMessage,
   isLedBy,
+  publicGroupJoinState,
 } from "@alliance/shared/lib/communityUtils";
 import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
@@ -624,28 +625,14 @@ export default function GroupManageScreen() {
                 ) : sortedPublicCommunities.length ? (
                   <View className="gap-y-2 mt-4">
                     {sortedPublicCommunities.map((community) => {
-                      const isMember = memberCommunityIds.has(community.id);
-                      const isLeader = isLedBy(community, user?.id);
-                      const memberCount = getMemberCount(community);
-                      const isFull =
-                        community.maxCapacity !== null &&
-                        memberCount >= community.maxCapacity;
-                      const isJoining = joiningCommunityId === community.id;
-                      const joinDisabled =
-                        didGroupsFail ||
-                        isMember ||
-                        isLeader ||
-                        isFull ||
-                        isJoining;
-                      const joinLabel = isLeader
-                        ? "Leader"
-                        : isMember
-                          ? "Member"
-                          : isFull
-                            ? "Full"
-                            : isJoining
-                              ? "Joining…"
-                              : "Join";
+                      const { disabled: joinDisabled, label: joinLabel } =
+                        publicGroupJoinState({
+                          community,
+                          userId: user?.id,
+                          isMember: memberCommunityIds.has(community.id),
+                          isJoining: joiningCommunityId === community.id,
+                          didGroupsFail,
+                        });
                       return (
                         <PublicCommunityCard
                           key={community.id}

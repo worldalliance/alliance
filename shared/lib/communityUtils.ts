@@ -32,6 +32,42 @@ export function getMemberCount(community: {
   return community.users.length - community.leaders.length;
 }
 
+export function publicGroupJoinState({
+  community,
+  userId,
+  isMember,
+  isJoining,
+  didGroupsFail,
+}: {
+  community: {
+    users: unknown[];
+    leaders: { id: number }[];
+    maxCapacity: number | null;
+  };
+  userId: number | undefined;
+  isMember: boolean;
+  isJoining: boolean;
+  didGroupsFail: boolean;
+}) {
+  const isLeader = isLedBy(community, userId);
+  const isFull =
+    community.maxCapacity !== null &&
+    getMemberCount(community) >= community.maxCapacity;
+  const label = isLeader
+    ? "Leader"
+    : isMember
+      ? "Member"
+      : isFull
+        ? "Full"
+        : isJoining
+          ? "Joining…"
+          : "Join";
+  return {
+    disabled: didGroupsFail || isMember || isLeader || isFull || isJoining,
+    label,
+  };
+}
+
 /** Labels for someone undergoing group assignment. Without their groups,
  * whether it's an assignment or a reassignment is unknown, so neither is named. */
 export function groupAssignmentLabels({
