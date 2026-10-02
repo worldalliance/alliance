@@ -1,6 +1,8 @@
 import { Logger } from "@nestjs/common";
+import { getRepositoryToken } from "@nestjs/typeorm";
 import { In, type Repository } from "typeorm";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
+import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
 import { Action, parseAction } from "../src/actions/entities/action.entity";
 import { CohortDecisionReason } from "../src/actions/entities/cohort-decision-reason";
@@ -128,6 +130,66 @@ describe("CohortDecisionService closed actions read by a follow-up (e2e)", () =>
       );
     },
   );
+
+  it("reads only the member's prerequisite rows when deciding the dependent on their read", async () => {
+    const deadline = new Date(now.getTime() - 60_000);
+    const member = await createUser({ signedAt });
+    const upstream = await createAction({
+      start: addDays(now, -3),
+      deadline,
+    });
+    const dependent = await createAction({
+      start: addDays(now, -2),
+      deadline,
+      prerequisiteActionIds: [upstream.id],
+    });
+    const decided = await createUser({ signedAt });
+    await decisionRepo.save({
+      actionId: dependent.id,
+      userId: decided.id,
+      included: true,
+      reason: CohortDecisionReason.PrerequisitesResolved,
+      resolvedAt: addDays(now, -2),
+    });
+    const followUp = await createAction({
+      start: deadline,
+      deadline: addDays(now, 3),
+      cohortExpression: {
+        type: "MissedActionDeadline",
+        actionId: dependent.id,
+      },
+    });
+    const activityFind = jest.spyOn(
+      ctx.app.get<Repository<ActionActivity>>(
+        getRepositoryToken(ActionActivity),
+      ),
+      "find",
+    );
+
+    await service.reconcileForUser({
+      user: await userRepo.findOneOrFail({
+        where: { id: member.id },
+        relations: { contractEvents: true, awayRanges: true },
+      }),
+      actions: [
+        parseAction(
+          await actionRepo.findOneOrFail({
+            where: { id: followUp.id },
+            relations: { events: true },
+          }),
+        ),
+      ],
+      now,
+    });
+
+    expect((await decisionsFor(dependent.id)).has(member.id)).toBe(true);
+    const beforeDeadline = activityFind.mock.calls
+      .flatMap(([options]) => options?.where ?? [])
+      .filter((where) => "createdAt" in where);
+    expect(beforeDeadline).toEqual([
+      expect.objectContaining({ actionId: upstream.id, userId: member.id }),
+    ]);
+  });
 
   it("decides the second of two closed actions that read each other from the first's saved decision", async () => {
     const deadline = new Date(now.getTime() - 60_000);

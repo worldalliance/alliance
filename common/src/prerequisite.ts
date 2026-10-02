@@ -2,12 +2,12 @@ import { R, type Result } from "./result";
 
 export enum PrerequisiteDeadlineProblem {
   Missing = "Missing",
-  NotFirst = "NotFirst",
+  AfterDependent = "AfterDependent",
 }
 
 /**
- * A prerequisite needs a deadline that comes before its dependent's, or a
- * member could wait forever or become ready after the dependent closed.
+ * A prerequisite needs a deadline no later than its dependent's, or a member
+ * could wait forever or become ready after the dependent closed.
  */
 export function checkPrerequisiteDeadline(params: {
   upstream: Date | null;
@@ -15,8 +15,8 @@ export function checkPrerequisiteDeadline(params: {
 }): Result<void, PrerequisiteDeadlineProblem> {
   const { upstream, dependent } = params;
   if (!upstream) return R.failure(PrerequisiteDeadlineProblem.Missing);
-  if (dependent && upstream >= dependent) {
-    return R.failure(PrerequisiteDeadlineProblem.NotFirst);
+  if (dependent && upstream > dependent) {
+    return R.failure(PrerequisiteDeadlineProblem.AfterDependent);
   }
   return R.success(undefined);
 }

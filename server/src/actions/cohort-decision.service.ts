@@ -289,6 +289,11 @@ export class CohortDecisionService {
             startDate: enrollment.start,
             endDate: enrollment.deadline,
           });
+        await this.warnAboutLateDecisions({
+          action,
+          users: pending.filter(obligated),
+          deadline: enrollment.deadline,
+        });
         const cohort = pending.some((user) => !obligated(user))
           ? await this.actionEventRecipientService.resolveCohortMemberIds(
               action.cohortExpression,
@@ -312,6 +317,31 @@ export class CohortDecisionService {
         throw new Error(
           `unknown enrollment state: ${enrollment satisfies never}`,
         );
+    }
+  }
+
+  /**
+   * Warns about obligated members decided after the deadline though they were
+   * ready before it, which the passes should have reached while the action was
+   * open. A member whose prerequisite shares the deadline becomes ready only
+   * as it passes, so deciding them then is expected.
+   */
+  private async warnAboutLateDecisions(params: {
+    action: ParsedAction;
+    users: User[];
+    deadline: Date;
+  }): Promise<void> {
+    const { action, users, deadline } = params;
+    if (users.length === 0) return;
+    const late = await this.prerequisiteProgressService.filterReadyBefore({
+      action,
+      users,
+      before: deadline,
+    });
+    if (late.length > 0) {
+      this.logger.warn(
+        `decided ${late.length} member(s) of action ${action.id} after its deadline, though they were ready before it`,
+      );
     }
   }
 
@@ -628,12 +658,9 @@ export class CohortDecisionService {
     for (const [rowReason, count] of Object.entries(
       countBy(rows, (row) => row.reason),
     )) {
-      const message = `decided ${count} member(s) of action ${action.id} (${rowReason})`;
-      if (rowReason === CohortDecisionReason.ResolvedAfterDeadline) {
-        this.logger.warn(message);
-      } else {
-        this.logger.log(message);
-      }
+      this.logger.log(
+        `decided ${count} member(s) of action ${action.id} (${rowReason})`,
+      );
     }
     return rows;
   }

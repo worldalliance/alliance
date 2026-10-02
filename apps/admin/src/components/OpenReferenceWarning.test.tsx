@@ -6,6 +6,7 @@ afterEach(cleanup);
 const LAUNCH = new Date("2026-01-10T00:00:00Z");
 const OPEN = new Date("2026-01-12T00:00:00Z");
 const DEADLINE = new Date("2026-01-20T00:00:00Z");
+const AFTER_DEADLINE = new Date("2026-01-21T00:00:00Z");
 
 const renderWarning = (
   actions: {
@@ -45,6 +46,7 @@ describe("OpenReferenceWarning", () => {
     renderWarning([{ id: 1, name: "Call", deadline: OPEN }]);
 
     expect(screen.getByText(/Add it as a prerequisite/)).toBeDefined();
+    expect(screen.queryByText(/closes with this action/)).toBeNull();
   });
 
   it("suggests prerequisites for several open actions", () => {
@@ -76,11 +78,22 @@ describe("OpenReferenceWarning", () => {
     expect(screen.queryByText(/decided at launch/)).toBeNull();
   });
 
-  it("doesn't suggest a prerequisite that closes no earlier than this action", () => {
+  it("suggests a prerequisite that closes with this action, saying when skippers are decided", () => {
     renderWarning([{ id: 1, name: "Call", deadline: DEADLINE }]);
 
+    expect(screen.getByText(/Add it as a prerequisite/)).toBeDefined();
     expect(
-      screen.getByText(/closes no earlier than this action or has no deadline/),
+      screen.getByText(
+        /"Call" closes with this action, so a member who never finishes it is decided only as this action closes/,
+      ),
+    ).toBeDefined();
+  });
+
+  it("doesn't suggest a prerequisite that closes after this action", () => {
+    renderWarning([{ id: 1, name: "Call", deadline: AFTER_DEADLINE }]);
+
+    expect(
+      screen.getByText(/closes after this action or has no deadline/),
     ).toBeDefined();
     expect(screen.queryByText(/Add it as a prerequisite/)).toBeNull();
   });
@@ -94,14 +107,14 @@ describe("OpenReferenceWarning", () => {
       screen.getByText(/an onboarding action that stays open/),
     ).toBeDefined();
     expect(screen.queryByText(/Add it as a prerequisite/)).toBeNull();
-    expect(screen.queryByText(/closes no earlier/)).toBeNull();
+    expect(screen.queryByText(/closes after/)).toBeNull();
   });
 
   it("asks for a deadline instead when the action has none", () => {
     renderWarning([{ id: 1, name: "Call", deadline: null }]);
 
     expect(
-      screen.getByText(/closes no earlier than this action or has no deadline/),
+      screen.getByText(/closes after this action or has no deadline/),
     ).toBeDefined();
     expect(screen.queryByText(/Add it as a prerequisite/)).toBeNull();
   });

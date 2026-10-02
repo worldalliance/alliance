@@ -14,6 +14,12 @@ describe("checkPrerequisiteDeadline", () => {
     ).toBe(true);
   });
 
+  it("accepts an upstream due at the same time as its dependent", () => {
+    expect(
+      checkPrerequisiteDeadline({ upstream: tuesday, dependent: tuesday }).ok,
+    ).toBe(true);
+  });
+
   it("accepts any upstream deadline when the dependent has none", () => {
     expect(
       checkPrerequisiteDeadline({ upstream: tuesday, dependent: null }).ok,
@@ -26,11 +32,9 @@ describe("checkPrerequisiteDeadline", () => {
     ).toEqual({ ok: false, error: PrerequisiteDeadlineProblem.Missing });
   });
 
-  it("rejects an upstream due at or after its dependent", () => {
-    for (const upstream of [tuesday, new Date("2026-01-07T00:00:00Z")]) {
-      expect(
-        checkPrerequisiteDeadline({ upstream, dependent: tuesday }),
-      ).toEqual({ ok: false, error: PrerequisiteDeadlineProblem.NotFirst });
-    }
+  it("rejects an upstream due after its dependent", () => {
+    expect(
+      checkPrerequisiteDeadline({ upstream: tuesday, dependent: monday }),
+    ).toEqual({ ok: false, error: PrerequisiteDeadlineProblem.AfterDependent });
   });
 });

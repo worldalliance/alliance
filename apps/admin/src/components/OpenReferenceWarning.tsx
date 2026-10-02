@@ -43,6 +43,11 @@ const OpenReferenceWarning: React.FC<{
         dependent: memberActionDeadline,
       }).ok,
   );
+  const sharingDeadline = awaitable.filter(
+    (action) =>
+      action.deadline !== null &&
+      action.deadline.getTime() === memberActionDeadline?.getTime(),
+  );
   const unawaitable = open.filter(
     (action) => !action.onboarding && !awaitable.includes(action),
   );
@@ -68,15 +73,24 @@ const OpenReferenceWarning: React.FC<{
             to wait for each member&apos;s outcome.
           </p>
         )}
+        {sharingDeadline.length > 0 && (
+          <p>
+            {names(sharingDeadline)}{" "}
+            {pickForCount(sharingDeadline.length, "closes", "close")} with this
+            action, so a member who never finishes{" "}
+            {pickForCount(sharingDeadline.length, "it", "one")} is decided only
+            as this action closes, too late to take part.
+          </p>
+        )}
         {unawaitable.length > 0 && (
           <p>
             These conditions read {names(unawaitable)}, which{" "}
             {pickForCount(
               unawaitable.length,
-              "closes no earlier than this action or has no deadline, so members are decided before it closes",
-              "close no earlier than this action or have no deadline, so members are decided before they close",
+              "closes after this action or has no deadline, so members are decided before it closes",
+              "close after this action or have no deadline, so members are decided before they close",
             )}
-            . A prerequisite needs a deadline before this action&apos;s.
+            . A prerequisite needs a deadline no later than this action&apos;s.
           </p>
         )}
         {onboarding.length > 0 && (
