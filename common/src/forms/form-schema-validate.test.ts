@@ -677,7 +677,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "f1",
-        message: "Visibility conditions form a cycle: f1 -> f1",
+        message: 'Visibility of "f1" depends on its own answer',
       },
     ]);
   });

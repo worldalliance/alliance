@@ -164,9 +164,12 @@ function collectVisibilityCycleErrors(
   for (const cycle of findCycles(deps)) {
     errors.push({
       blockId: cycle[0],
-      message: `Visibility conditions form a cycle: ${[...cycle, cycle[0]].join(
-        " -> ",
-      )}`,
+      message:
+        cycle.length === 1
+          ? `Visibility of "${cycle[0]}" depends on its own answer`
+          : `Visibility conditions form a cycle: ${[...cycle, cycle[0]].join(
+              " -> ",
+            )}`,
     });
   }
 }
