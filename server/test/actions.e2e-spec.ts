@@ -418,10 +418,9 @@ describe("Actions (e2e)", () => {
     it("can see completed actions for a user", async () => {
       const action = await actionRepo.findOneBy({ name: "Test Action" });
 
-      await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${action!.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      await ctx.app
+        .get(ActionsService)
+        .completeAction(action!.id, ctx.testUserId);
 
       const res = await request(ctx.app.getHttpServer())
         .get(`/actions/completed/${ctx.testUserId}`)
@@ -2211,21 +2210,20 @@ describe("Actions (e2e)", () => {
         status: ActionStatus.MemberAction,
       });
 
-      const complete = await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${action.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      const complete = await ctx.app
+        .get(ActionsService)
+        .completeAction(action.id, ctx.testUserId);
 
-      expect(complete.body.type).toBe(ActionActivityType.USER_COMPLETED);
+      expect(complete.type).toBe(ActionActivityType.USER_COMPLETED);
 
       const feed = await request(ctx.app.getHttpServer())
         .get("/actions/activities/feed")
         .query({ limit: 5 })
         .expect(200);
 
-      expect(
-        feed.body.some((activity) => activity.id === complete.body.id),
-      ).toBe(true);
+      expect(feed.body.some((activity) => activity.id === complete.id)).toBe(
+        true,
+      );
 
       await actionRepo.delete(action.id);
     });
@@ -2264,11 +2262,9 @@ describe("Actions (e2e)", () => {
         const closedView = await viewOf(closed.id);
         expect(closedView.canParticipate).toBe(false);
         expect(closedView.viewer.canComplete).toBe(false);
-        const refused = await request(ctx.app.getHttpServer())
-          .post(`/actions/complete/${closed.id}`)
-          .set("Authorization", `Bearer ${ctx.accessToken}`)
-          .expect(403);
-        expect(refused.body.message).toBe(MEMBER_ACTION_DEADLINE_PASSED);
+        await expect(
+          ctx.app.get(ActionsService).completeAction(closed.id, ctx.testUserId),
+        ).rejects.toThrow(MEMBER_ACTION_DEADLINE_PASSED);
 
         await request(ctx.app.getHttpServer())
           .post("/actions/createActivity")
@@ -2283,10 +2279,9 @@ describe("Actions (e2e)", () => {
         const lateView = await viewOf(lateAllowed.id);
         expect(lateView.canParticipate).toBe(true);
         expect(lateView.viewer.canComplete).toBe(true);
-        await request(ctx.app.getHttpServer())
-          .post(`/actions/complete/${lateAllowed.id}`)
-          .set("Authorization", `Bearer ${ctx.accessToken}`)
-          .expect(201);
+        await ctx.app
+          .get(ActionsService)
+          .completeAction(lateAllowed.id, ctx.testUserId);
 
         await ctx.app
           .get(ActionsService)
@@ -2314,12 +2309,11 @@ describe("Actions (e2e)", () => {
         status: ActionStatus.MemberAction,
       });
 
-      const completion = await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${action.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      const completion = await ctx.app
+        .get(ActionsService)
+        .completeAction(action.id, ctx.testUserId);
 
-      const activityId = completion.body.id;
+      const activityId = completion.id;
 
       const activities = await request(ctx.app.getHttpServer())
         .get(`/actions/${action.id}/activities`)
@@ -2364,12 +2358,7 @@ describe("Actions (e2e)", () => {
 
       await userService.makeFriendsAutomated(ctx.testUserId, friend.id);
 
-      const friendToken = signAccessToken(ctx.jwtService, friend);
-
-      await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${action.id}`)
-        .set("Authorization", `Bearer ${friendToken}`)
-        .expect(201);
+      await ctx.app.get(ActionsService).completeAction(action.id, friend.id);
 
       const friendActivity = await request(ctx.app.getHttpServer())
         .get("/actions/friendActivity")
@@ -2388,12 +2377,11 @@ describe("Actions (e2e)", () => {
         { status: ActionStatus.MemberAction },
       );
 
-      const completion = await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${action.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      const completion = await ctx.app
+        .get(ActionsService)
+        .completeAction(action.id, ctx.testUserId);
 
-      const activityId = completion.body.id;
+      const activityId = completion.id;
 
       const like = await request(ctx.app.getHttpServer())
         .post(`/actions/likeActivity/${activityId}`)
@@ -2443,12 +2431,11 @@ describe("Actions (e2e)", () => {
         status: ActionStatus.MemberAction,
       });
 
-      const completion = await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${action.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      const completion = await ctx.app
+        .get(ActionsService)
+        .completeAction(action.id, ctx.testUserId);
 
-      const activityId = completion.body.id;
+      const activityId = completion.id;
 
       await request(ctx.app.getHttpServer())
         .post(`/actions/likeActivity/${activityId}`)
@@ -2479,12 +2466,11 @@ describe("Actions (e2e)", () => {
         status: ActionStatus.MemberAction,
       });
 
-      const completion = await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${action.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      const completion = await ctx.app
+        .get(ActionsService)
+        .completeAction(action.id, ctx.testUserId);
 
-      const activityId = completion.body.id;
+      const activityId = completion.id;
 
       await request(ctx.app.getHttpServer())
         .post(`/actions/likeActivity/${activityId}`)
@@ -2515,12 +2501,11 @@ describe("Actions (e2e)", () => {
         { status: ActionStatus.MemberAction },
       );
 
-      const completion = await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${action.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      const completion = await ctx.app
+        .get(ActionsService)
+        .completeAction(action.id, ctx.testUserId);
 
-      const activityId = completion.body.id;
+      const activityId = completion.id;
 
       const secondLiker = await userService.create({
         email: `second-liker-${Date.now()}@example.com`,
@@ -2692,10 +2677,9 @@ describe("Actions (e2e)", () => {
         },
       );
 
-      const complete = await request(ctx.app.getHttpServer())
-        .post(`/actions/complete/${action.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      const complete = await ctx.app
+        .get(ActionsService)
+        .completeAction(action.id, ctx.testUserId);
 
       const outsiderGlobal = await request(ctx.app.getHttpServer())
         .get("/actions/globalFeed")
@@ -2768,7 +2752,7 @@ describe("Actions (e2e)", () => {
       ).toBe(false);
 
       await request(ctx.app.getHttpServer())
-        .get(`/actions/activities/${complete.body.id}`)
+        .get(`/actions/activities/${complete.id}`)
         .set("Authorization", `Bearer ${outsiderToken}`)
         .expect(404);
 

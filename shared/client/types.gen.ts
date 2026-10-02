@@ -1949,71 +1949,6 @@ export type UpdateClusterDto = {
     displayName: string;
 };
 
-export type EditableContentDto = {
-    /**
-     * Markdown or plain text body
-     */
-    body: string;
-    /**
-     * Image keys attached to the content
-     */
-    attachments: Array<string>;
-};
-
-export type CommentDto = {
-    id: number;
-    parentObjectType: CommentParentObject;
-    parentObjectId: number;
-    deleted: boolean;
-    createdAt: string;
-    updatedAt: string;
-    parentId: number | null;
-    pinned: boolean;
-    tagId: number | null;
-    author: ProfileDto;
-    children?: Array<CommentDto>;
-    likes: Array<ProfileDto>;
-    likesCount: number;
-    likedByMe?: boolean;
-    editableContent: EditableContentDto;
-};
-
-export type FormResponseOutputDto = {
-    id: number;
-    formId: number;
-    answers: {
-        [key: string]: unknown;
-    };
-    publicAnswers: {
-        [key: string]: unknown;
-    };
-    deviceType: string | null;
-    schemaSnapshot: {
-        [key: string]: unknown;
-    };
-    visibilityValidatorResults: {
-        [key: string]: unknown;
-    };
-};
-
-export type ActionActivityDto = {
-    id: number;
-    /**
-     * Type of action activity
-     */
-    type: ActionActivityType;
-    actionId: number;
-    createdAt: string;
-    likesCount: number;
-    user: ProfileDto;
-    actionName: string;
-    likes?: Array<ProfileDto>;
-    likedByMe?: boolean;
-    comments: Array<CommentDto>;
-    formResponseOutput?: FormResponseOutputDto;
-    editableContent: EditableContentDto;
-};
-
 export type ActionReviewerResponseDto = {
     /**
      * Display name of the reviewer
@@ -2316,6 +2251,71 @@ export type UpdateGeneralUpdateDto = {
     expectedSchemaSnapshotId?: number;
     tagIds?: Array<string>;
     suiteIds?: Array<number>;
+};
+
+export type EditableContentDto = {
+    /**
+     * Markdown or plain text body
+     */
+    body: string;
+    /**
+     * Image keys attached to the content
+     */
+    attachments: Array<string>;
+};
+
+export type CommentDto = {
+    id: number;
+    parentObjectType: CommentParentObject;
+    parentObjectId: number;
+    deleted: boolean;
+    createdAt: string;
+    updatedAt: string;
+    parentId: number | null;
+    pinned: boolean;
+    tagId: number | null;
+    author: ProfileDto;
+    children?: Array<CommentDto>;
+    likes: Array<ProfileDto>;
+    likesCount: number;
+    likedByMe?: boolean;
+    editableContent: EditableContentDto;
+};
+
+export type FormResponseOutputDto = {
+    id: number;
+    formId: number;
+    answers: {
+        [key: string]: unknown;
+    };
+    publicAnswers: {
+        [key: string]: unknown;
+    };
+    deviceType: string | null;
+    schemaSnapshot: {
+        [key: string]: unknown;
+    };
+    visibilityValidatorResults: {
+        [key: string]: unknown;
+    };
+};
+
+export type ActionActivityDto = {
+    id: number;
+    /**
+     * Type of action activity
+     */
+    type: ActionActivityType;
+    actionId: number;
+    createdAt: string;
+    likesCount: number;
+    user: ProfileDto;
+    actionName: string;
+    likes?: Array<ProfileDto>;
+    likedByMe?: boolean;
+    comments: Array<CommentDto>;
+    formResponseOutput?: FormResponseOutputDto;
+    editableContent: EditableContentDto;
 };
 
 export type GlobalFeedItemType = 'activity_group' | 'action_update' | 'new_members' | 'forum_comments';
@@ -9366,30 +9366,6 @@ export type ClusterUpdateAdminResponses = {
 };
 
 export type ClusterUpdateAdminResponse = ClusterUpdateAdminResponses[keyof ClusterUpdateAdminResponses];
-
-export type ActionsCompleteData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/complete/{id}';
-};
-
-export type ActionsCompleteErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsCompleteError = ActionsCompleteErrors[keyof ActionsCompleteErrors];
-
-export type ActionsCompleteResponses = {
-    200: ActionActivityDto;
-};
-
-export type ActionsCompleteResponse = ActionsCompleteResponses[keyof ActionsCompleteResponses];
 
 export type ActionsFindAllLoggedInData = {
     body?: never;

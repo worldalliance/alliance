@@ -368,14 +368,11 @@ describe("Staff preview (e2e)", () => {
         events: [pastPlanned, futureMemberAction],
       });
 
-      await request(server())
-        .post(`/actions/complete/${action.id}`)
-        .set("Authorization", `Bearer ${staffToken}`)
-        .expect(403, previewRefusal);
-      await request(server())
-        .post(`/actions/complete/${action.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(403, previewRefusal);
+      for (const userId of [staffUserId, ctx.testUserId]) {
+        await expect(
+          actionsService.completeAction(action.id, userId),
+        ).rejects.toThrow(previewRefusal.message);
+      }
     });
 
     it("refuses dismissal", async () => {
@@ -566,10 +563,7 @@ describe("Staff preview (e2e)", () => {
         events: [pastMemberAction],
       });
 
-      await request(server())
-        .post(`/actions/complete/${action.id}`)
-        .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .expect(201);
+      await actionsService.completeAction(action.id, ctx.testUserId);
       await request(server())
         .post("/forum/comments")
         .set("Authorization", `Bearer ${ctx.accessToken}`)
