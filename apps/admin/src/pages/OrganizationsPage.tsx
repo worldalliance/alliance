@@ -1,11 +1,7 @@
-import {
-  campaignCreateAdmin,
-  campaignUpdateAdmin,
-  communityGetCommunitiesAdmin,
-} from "@alliance/shared/client";
+import { communityGetCommunitiesAdmin } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import React, { useMemo, useState } from "react";
 import OrganizationCard from "../components/organizations/OrganizationCard";
 import { adminRefusalMessage } from "../lib/adminRefusal";
@@ -13,7 +9,8 @@ import { isOrganization } from "../lib/isOrganization";
 import {
   campaignsLoadFailed,
   useCampaignsAdmin,
-  useInvalidateCampaignsAdmin,
+  useCreateCampaignAdmin,
+  useUpdateCampaignAdmin,
 } from "../lib/useCampaignsAdmin";
 import { useRefusalToast } from "../lib/useRefusalToast";
 import {
@@ -43,32 +40,13 @@ const OrganizationsPage: React.FC = () => {
     [campaigns.data],
   );
 
-  const invalidateCampaigns = useInvalidateCampaignsAdmin();
-
-  const create = useMutation({
-    mutationFn: (name: string) =>
-      campaignCreateAdmin({
-        body: { name, kind: "organization" },
-        throwOnError: true,
-      }),
-    onSuccess: async () => {
-      setNewName("");
-      await invalidateCampaigns();
-    },
+  const create = useCreateCampaignAdmin({
+    onSuccess: () => setNewName(""),
     onError: (err) => refusalToast(err, "Could not create the organization."),
   });
 
-  const designate = useMutation({
-    mutationFn: (id: number) =>
-      campaignUpdateAdmin({
-        path: { id },
-        body: { kind: "organization" },
-        throwOnError: true,
-      }),
-    onSuccess: async () => {
-      setDesignateId("");
-      await invalidateCampaigns();
-    },
+  const designate = useUpdateCampaignAdmin({
+    onSuccess: () => setDesignateId(""),
     onError: (err) => refusalToast(err, "Could not designate the campaign."),
   });
 
@@ -99,7 +77,7 @@ const OrganizationsPage: React.FC = () => {
           onSubmit={(e) => {
             e.preventDefault();
             const name = newName.trim();
-            if (name) create.mutate(name);
+            if (name) create.mutate({ name, kind: "organization" });
           }}
         >
           <label className="flex flex-col text-sm text-zinc-700">
@@ -108,6 +86,7 @@ const OrganizationsPage: React.FC = () => {
               className="border border-zinc-300 rounded px-2 py-1 mt-1"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
+              readOnly={create.isPending}
               placeholder="Name"
             />
           </label>
@@ -126,7 +105,11 @@ const OrganizationsPage: React.FC = () => {
             className="flex gap-2 items-end"
             onSubmit={(e) => {
               e.preventDefault();
-              if (designateId) designate.mutate(Number(designateId));
+              if (designateId)
+                designate.mutate({
+                  id: Number(designateId),
+                  body: { kind: "organization" },
+                });
             }}
           >
             <label className="flex flex-col text-sm text-zinc-700">

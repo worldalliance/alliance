@@ -38,6 +38,7 @@ let actionsStatus = 200;
 let targetsStatus = 200;
 let campaignsStatus = 200;
 let campaigns = [campaign(7, "Spring fundraiser")];
+let createCampaignStatus = 200;
 let actionsGate = Promise.resolve();
 let targetsGate = Promise.resolve();
 
@@ -72,6 +73,8 @@ serveApi(
         ? Response.json(campaigns)
         : Response.json({}, { status: campaignsStatus }),
     "POST /campaigns": async ({ request }) => {
+      if (createCampaignStatus !== 200)
+        return Response.json({}, { status: createCampaignStatus });
       const { name }: { name: string } = await request.json();
       const created = campaign(8, name);
       campaigns = [...campaigns, created];
@@ -102,6 +105,7 @@ beforeEach(() => {
   targetsStatus = 200;
   campaignsStatus = 200;
   campaigns = [campaign(7, "Spring fundraiser")];
+  createCampaignStatus = 200;
   actionsGate = Promise.resolve();
   targetsGate = Promise.resolve();
 });
@@ -247,6 +251,33 @@ it("lists and selects a campaign it creates", async () => {
   expect(
     screen.getByRole("option", { name: "Spring fundraiser" }),
   ).toBeTruthy();
+});
+
+it("says when it cannot create a campaign", async () => {
+  createCampaignStatus = 500;
+  jest.spyOn(console, "error").mockImplementation(() => {});
+  await pickCampaignKind();
+
+  fireEvent.change(await screen.findByPlaceholderText(/Campaign name/), {
+    target: { value: "Fall drive" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Create" }));
+
+  expect(await screen.findByText("Failed to create campaign.")).toBeTruthy();
+  expect(screen.getByDisplayValue("Fall drive")).toBeTruthy();
+});
+
+it("says the session expired when a campaign create is refused for it", async () => {
+  createCampaignStatus = 401;
+  jest.spyOn(console, "error").mockImplementation(() => {});
+  await pickCampaignKind();
+
+  fireEvent.change(await screen.findByPlaceholderText(/Campaign name/), {
+    target: { value: "Fall drive" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Create" }));
+
+  expect(await screen.findByText(sessionExpiredMessage)).toBeTruthy();
 });
 
 it("says the campaigns failed to load", async () => {
