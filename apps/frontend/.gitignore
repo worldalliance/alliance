@@ -21,7 +21,6 @@ dist-ssr
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
 
 *storybook.log
 .react-router/
