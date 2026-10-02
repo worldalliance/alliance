@@ -32,6 +32,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
   action,
   onCompleteAction,
   onOptOutAction,
+  onDeadlinePassed,
   card = false,
   disabled = false,
   formResponse,
@@ -95,6 +96,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
       <ActionTaskPanelForm
         taskFormId={action.taskFormId}
         onCompleteAction={null}
+        onDeadlinePassed={noop}
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
         card={card}
@@ -111,6 +113,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
       <ActionTaskPanelForm
         taskFormId={action.taskFormId}
         onCompleteAction={null}
+        onDeadlinePassed={noop}
         onFormStarted={noop}
         card={card}
         actionId={action.id}
@@ -146,6 +149,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
         onCompleteAction={canSubmit ? handleCompleteWithTracking : null}
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
+        onDeadlinePassed={onDeadlinePassed}
         card={card}
         actionId={action.id}
         redirectOnComplete={redirectOnComplete}

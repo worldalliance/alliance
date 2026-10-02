@@ -1,3 +1,4 @@
+import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import { ExceptionEvent } from "@alliance/common/analytics";
 import {
   flattenPageItems,
@@ -12,7 +13,10 @@ import {
   tasksSubmitPublicForm,
 } from "@alliance/shared/client";
 import { formulaSourcesChanged } from "@alliance/shared/forms/formulaChoices";
-import type { ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
+import {
+  memberActionDeadlinePassed,
+  type ActionWithdrawal,
+} from "@alliance/shared/lib/actionTaskPanel";
 import { captureException } from "@alliance/shared/lib/analytics";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { useInvalidateVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
@@ -33,6 +37,7 @@ interface ActionTaskPanelFormProps {
   onCompleteAction: ((sendComplete: boolean) => void) | null;
   onFormStarted: () => void;
   onAbandonAction?: (withdrawal: ActionWithdrawal) => void;
+  onDeadlinePassed: () => void;
   card?: boolean;
   actionId: number;
   disabled?: boolean;
@@ -50,6 +55,7 @@ const ActionTaskPanelForm = ({
   onCompleteAction,
   onFormStarted,
   onAbandonAction,
+  onDeadlinePassed,
   card = false,
   actionId,
   disabled = false,
@@ -129,6 +135,11 @@ const ActionTaskPanelForm = ({
         }
         if (response.error?.message === "Form already submitted") {
           window.location.reload();
+          return false;
+        }
+        if (memberActionDeadlinePassed(response)) {
+          setError(MEMBER_ACTION_DEADLINE_PASSED);
+          onDeadlinePassed();
           return false;
         }
         if (formulaSourcesChanged(response)) {

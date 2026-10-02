@@ -74,5 +74,6 @@ export function useActionHandlers(
     refetchAction: fetchAction,
     onCompleteAction,
     onOptOutAction,
+    onDeadlinePassed: refetchOnEventBoundary,
   };
 }

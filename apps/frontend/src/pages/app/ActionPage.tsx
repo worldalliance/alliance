@@ -141,8 +141,13 @@ export default function ActionPage() {
     }
   }, []);
 
-  const { action, loading, onCompleteAction, onOptOutAction } =
-    useActionHandlers(actionId, isAuthenticated, reloadTasks);
+  const {
+    action,
+    loading,
+    onCompleteAction,
+    onOptOutAction,
+    onDeadlinePassed,
+  } = useActionHandlers(actionId, isAuthenticated, reloadTasks);
 
   const publicMode = !isAuthenticated;
 
@@ -263,6 +268,7 @@ export default function ActionPage() {
                 onCompleteAction,
                 publicMode,
                 onOptOutAction,
+                onDeadlinePassed,
                 activities,
                 handleLikeActivity,
               } satisfies TaskPanelContext & ActionActivityDetailContext

@@ -1,3 +1,4 @@
+import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import { useCallback, useState } from "react";
 import {
   ActionDto,
@@ -6,12 +7,15 @@ import {
   SubmitFormDto,
   tasksOptout,
 } from "../client";
+import type { SubmitResult } from "../forms/formulaChoices";
 import { useInvalidateVisibilityContext } from "./useVisibilityContext";
 
 export interface ActionTaskPanelPropsShared {
   action: ActionDto;
   onCompleteAction: () => boolean | void | Promise<boolean | void>;
   onOptOutAction: () => void;
+  /** Called when the server refuses completion because the action's deadline passed. */
+  onDeadlinePassed: () => void;
   disabled?: boolean;
   formResponse?: FormResponseDto;
   guestMode?: boolean;
@@ -24,6 +28,13 @@ export type ActionWithdrawal = {
   reason: string;
   partialFormData: SubmitFormDto;
 };
+
+export function memberActionDeadlinePassed(result: SubmitResult): boolean {
+  return (
+    result.response.status === 403 &&
+    result.error?.message === MEMBER_ACTION_DEADLINE_PASSED
+  );
+}
 
 export const useTaskFormHandlers = ({
   action,
