@@ -11,6 +11,7 @@ import { ActionEventNotif } from "./entities/action-event-notif.entity";
 import { Notification } from "./entities/notification.entity";
 import { UnreadContent } from "./entities/unread-content.entity";
 import { LikeNotificationService } from "./like-notification.service";
+import { NotificationRenderService } from "./notification-render.service";
 import { NotifsController } from "./notifs.controller";
 import { NotifsService } from "./notifs.service";
 
@@ -30,7 +31,11 @@ import { NotifsService } from "./notifs.service";
     forwardRef(() => UserModule),
   ],
   controllers: [NotifsController],
-  providers: [NotifsService, LikeNotificationService],
+  providers: [
+    NotifsService,
+    LikeNotificationService,
+    NotificationRenderService,
+  ],
   exports: [NotifsService, LikeNotificationService],
 })
 export class NotifsModule {}
