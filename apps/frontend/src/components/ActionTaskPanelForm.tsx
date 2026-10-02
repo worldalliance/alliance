@@ -34,7 +34,7 @@ import { useAuth } from "../lib/AuthContext";
 
 interface ActionTaskPanelFormProps {
   taskFormId: number;
-  onCompleteAction: ((sendComplete: boolean) => void) | null;
+  onCompleteAction: (() => void) | null;
   onFormStarted: () => void;
   onAbandonAction?: (withdrawal: ActionWithdrawal) => void;
   onDeadlinePassed: () => void;
@@ -130,7 +130,7 @@ const ActionTaskPanelForm = ({
             //TODO: better handling of user refresh (things used to break if the user signed a contract in another tab then went back to the first one)
             refreshUser();
           }
-          onCompleteAction(false); //tasksSubmitForm handles completion here
+          onCompleteAction();
           return true;
         }
         if (response.error?.message === "Form already submitted") {

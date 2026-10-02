@@ -115,10 +115,7 @@ export function useVisibilityContext(
  *
  * Call after anything that moves an account-derived value: completing an
  * action bumps `completedActionCount`, and signing a contract sets
- * `firstContractSignedAt`. Note that an action backed by a task form is
- * completed by the server inside `POST /tasks/submitForm` rather than by a
- * separate `actionsComplete` call, so the form-submission success path has to
- * invalidate too — see the callers.
+ * `firstContractSignedAt`.
  *
  * No-op for guests: the query is disabled without a logged-in user.
  */
