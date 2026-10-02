@@ -1,3 +1,4 @@
+import { isFollowUpFormActiveAt } from "@alliance/common/followUpForm";
 import type {
   ActionEventDto,
   ActionStatus,
@@ -5,7 +6,6 @@ import type {
   AdminFollowUpFormDto,
   GeneralUpdateAdminDto,
 } from "@alliance/shared/client";
-import { isFollowUpFormActiveAt } from "@alliance/shared/lib/actionUtils";
 
 export enum PlacementBadge {
   ActiveTask = "active_task",

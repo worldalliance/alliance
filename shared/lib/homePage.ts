@@ -1,3 +1,4 @@
+import { isFollowUpFormActive } from "@alliance/common/followUpForm";
 import { useCallback, useMemo } from "react";
 import { ActionDto, FollowUpFormDto } from "../client";
 import {
@@ -6,7 +7,6 @@ import {
   isActionOptional,
   isCurrentlyCompletedAction,
   isDeferredForViewer,
-  isFollowUpFormActive,
   shouldCompleteAction,
   showActionInSidebarList,
 } from "./actionUtils";

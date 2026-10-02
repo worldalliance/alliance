@@ -4,6 +4,7 @@ import {
   withdrawalHasRequiredReason,
 } from "@alliance/common/actionActivity";
 import { thrownMessage } from "@alliance/common/errorMessage";
+import { isFollowUpFormActive } from "@alliance/common/followUpForm";
 import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import {
@@ -1127,10 +1128,7 @@ export class TasksService {
       throw new NotFoundException("Follow-up form not found");
     }
     const followUpForm = parseFollowUpForm(fetchedFollowUpForm);
-    if (
-      !followUpForm.startDate ||
-      (followUpForm.endDate && followUpForm.endDate < new Date())
-    ) {
+    if (!isFollowUpFormActive(followUpForm)) {
       throw new BadRequestException("Follow-up form is not active");
     }
     const inCohort =

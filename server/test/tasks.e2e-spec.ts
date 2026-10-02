@@ -24,6 +24,7 @@ import {
 } from "src/actions/entities/action-event.entity";
 import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
+import { FollowUpForm } from "src/actions/entities/follow-up-form.entity";
 import { Community } from "src/community/entities/community.entity";
 import {
   Comment,
@@ -700,6 +701,44 @@ describe("Tasks (e2e)", () => {
 
       expect(retried.body.message).toBe("Form already submitted");
     });
+  });
+
+  it("refuses a follow-up form before its start date", async () => {
+    const action = await createAction("Unstarted Follow-up Action");
+    const form = await request(ctx.app.getHttpServer())
+      .post("/tasks/createForm")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({
+        title: "Unstarted Follow-up Form",
+        schema: { pages: [], outputViews: [], aggregateViews: [] },
+      })
+      .expect(201);
+    await actionActivityRepo.save(
+      actionActivityRepo.create({
+        actionId: action.id,
+        userId: ctx.testUserId,
+        type: ActionActivityType.USER_COMPLETED,
+      }),
+    );
+    const followUp = await ctx.dataSource.getRepository(FollowUpForm).save({
+      actionId: action.id,
+      formId: form.body.id as number,
+      startDate: new Date(Date.now() + milliseconds({ days: 1 })),
+      cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+    });
+
+    const refused = await request(ctx.app.getHttpServer())
+      .post(`/tasks/submitFollowUpForm/${followUp.id}`)
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .send({
+        answers: {},
+        formSnapshotId: form.body.formSnapshotId as number,
+        deviceType: "desktop",
+      })
+      .expect(400);
+
+    expect(refused.body.message).toBe("Follow-up form is not active");
+    expect(await formResponseRepo.countBy({ formId: form.body.id })).toBe(0);
   });
 
   it("sums number field answers into aggregate views", async () => {
