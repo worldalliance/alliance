@@ -102,15 +102,8 @@ describe("Member-facing reads of cohort decisions (e2e)", () => {
       viewer: { assigned: false, canComplete: true },
     });
 
-    const token = signAccessToken(ctx.jwtService, member);
-    await request(ctx.app.getHttpServer())
-      .post(`/actions/complete/${us.id}`)
-      .set("Authorization", `Bearer ${token}`)
-      .expect(201);
-    await request(ctx.app.getHttpServer())
-      .post(`/actions/complete/${nonUs.id}`)
-      .set("Authorization", `Bearer ${token}`)
-      .expect(201);
+    await ctx.app.get(ActionsService).completeAction(us.id, member.id);
+    await ctx.app.get(ActionsService).completeAction(nonUs.id, member.id);
     expect((await decisionsFor(nonUs.id)).get(member.id)?.included).toBe(false);
   });
 

@@ -146,25 +146,6 @@ export class ActionsController {
     private readonly userService: UserService,
   ) {}
 
-  @Post("complete/:id")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: ActionActivityDto })
-  async complete(
-    @Request() req: JwtRequest,
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<ActionActivityDto> {
-    const activity = await this.actionsService.completeAction(id, req.user.sub);
-    this.posthog.capture({
-      event: AnalyticsEvent.ActionCompleted,
-      distinctId: String(req.user.sub),
-      properties: {
-        actionId: id,
-        actionName: activity.action?.name,
-      },
-    });
-    return new ActionActivityDto(activity);
-  }
-
   @Get("loggedIn")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: [ActionDto] })
