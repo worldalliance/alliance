@@ -71,6 +71,7 @@ const mapConditionForOptionValue = (
   switch (condition.kind) {
     case "includesOption":
       if (
+        condition.sourceFormId == null &&
         condition.when === controllerId &&
         condition.includesOption === previousValue
       ) {
@@ -82,6 +83,7 @@ const mapConditionForOptionValue = (
       return { condition, updated: false };
     case "equals":
       if (
+        condition.sourceFormId == null &&
         condition.when === controllerId &&
         condition.equals === previousValue
       ) {

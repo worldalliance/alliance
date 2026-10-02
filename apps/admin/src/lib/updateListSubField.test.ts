@@ -115,4 +115,26 @@ describe("updateListSubField", () => {
     });
     expect(next[2]).toBe(unrelated);
   });
+
+  it("leaves another form's field alone when its id matches", () => {
+    const crossForm = dependent("crossForm", {
+      conditions: {
+        c1: { kind: "equals", when: "color", equals: "red", sourceFormId: 7 },
+        c2: {
+          kind: "includesOption",
+          when: "color",
+          includesOption: "red",
+          sourceFormId: 7,
+        },
+      },
+      formula: "c1 || c2",
+    });
+    const next = updateListSubField([color, crossForm], 0, {
+      options: [
+        { label: "Red", value: "crimson" },
+        { label: "Blue", value: "blue" },
+      ],
+    });
+    expect(next[1]).toBe(crossForm);
+  });
 });
