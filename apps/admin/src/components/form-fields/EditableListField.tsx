@@ -10,6 +10,7 @@ import type {
 } from "@alliance/common/forms/form-schema";
 import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
 import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
+import { updateListSubField } from "../../lib/updateListSubField";
 import { ElementJsonContext } from "../FormJsonButton";
 import {
   formFieldsErrorReason,
@@ -177,9 +178,9 @@ export function EditableListField({
   };
 
   const updateSubField = (index: number, updates: Partial<AnyField>) => {
-    const next = [...(field.fields ?? [])];
-    next[index] = { ...next[index], ...updates } as ListSubField;
-    onUpdate({ fields: next });
+    onUpdate({
+      fields: updateListSubField(field.fields ?? [], index, updates),
+    });
   };
 
   const removeSubField = (index: number) => {
