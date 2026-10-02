@@ -1,25 +1,17 @@
 import { ensureHttpProtocol } from "@alliance/common/url";
-import {
-  actionPartnershipsCreateNoteAdmin,
-  actionPartnershipsDeleteResponseAdmin,
-} from "@alliance/shared/client";
 import type {
   ActionPartnershipNoteDto,
   ActionPartnershipResponseDto,
 } from "@alliance/shared/client/types.gen";
-import {
-  rethrowUnlessNotFound,
-  thrownRefusalMessage,
-} from "@alliance/shared/lib/hey-api";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useMutation } from "@tanstack/react-query";
 import React, { useMemo, useRef, useState } from "react";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import {
-  outreachPartnershipResponsesQuery,
+  useAddOutreachPartnershipNoteAdmin,
+  useDeleteOutreachPartnershipResponseAdmin,
   useOutreachPartnershipResponsesAdmin,
 } from "../lib/useOutreachPartnershipResponsesAdmin";
-import { usePatchQueryData } from "../lib/usePatchQueryData";
 
 const formatDateTime = (value: string): string =>
   new Date(value).toLocaleString(undefined, {
@@ -71,10 +63,6 @@ const OutreachPartnershipsPage: React.FC = () => {
     }
   }, [responses.length]);
 
-  const setResponses = usePatchQueryData(
-    outreachPartnershipResponsesQuery.queryKey,
-  );
-
   const reportError = (err: unknown, fallback: string) => {
     console.error(fallback, err);
     setError(
@@ -86,69 +74,18 @@ const OutreachPartnershipsPage: React.FC = () => {
     );
   };
 
-  const addNote = useMutation({
-    mutationFn: ({
-      responseId,
-      body,
-      noteDate,
-    }: {
-      responseId: number;
-      body: string;
-      noteDate: string | undefined;
-    }) =>
-      actionPartnershipsCreateNoteAdmin({
-        path: { id: responseId },
-        body: {
-          body,
-          ...(noteDate ? { noteDate: new Date(noteDate).toISOString() } : {}),
-        },
-        throwOnError: true,
-      }).then((r) => r.data),
-    onMutate: ({ responseId }) => {
-      setSavingNoteIds((prev) => new Set(prev).add(responseId));
-    },
-    onSettled: (_data, _err, { responseId }) => {
-      setSavingNoteIds((prev) => withoutId(prev, responseId));
-    },
-    onSuccess: async (note, { responseId }) => {
+  const addNote = useAddOutreachPartnershipNoteAdmin({
+    onSuccess: (responseId) => {
       setNoteBodies((prev) => ({ ...prev, [responseId]: "" }));
       setNoteDates((prev) => ({
         ...prev,
         [responseId]: getDefaultNoteDate(),
       }));
-      // A refetch that landed before this response may already list it.
-      await setResponses((prev) =>
-        prev.map((response) =>
-          response.id === responseId
-            ? {
-                ...response,
-                notesHistory: [
-                  note,
-                  ...response.notesHistory.filter((n) => n.id !== note.id),
-                ],
-              }
-            : response,
-        ),
-      );
     },
     onError: (err) => reportError(err, "Failed to save note."),
   });
 
-  const deleteResponse = useMutation({
-    mutationFn: (id: number) =>
-      actionPartnershipsDeleteResponseAdmin({
-        path: { id },
-        throwOnError: true,
-      }).then(() => undefined, rethrowUnlessNotFound),
-    onSettled: (_data, _err, id) => {
-      deletingResponseIdsRef.current = withoutId(
-        deletingResponseIdsRef.current,
-        id,
-      );
-      setDeletingResponseIds(deletingResponseIdsRef.current);
-    },
-    onSuccess: (_data, id) =>
-      setResponses((prev) => prev.filter((response) => response.id !== id)),
+  const deleteResponse = useDeleteOutreachPartnershipResponseAdmin({
     onError: (err) => reportError(err, "Failed to delete response."),
   });
 
@@ -159,7 +96,12 @@ const OutreachPartnershipsPage: React.FC = () => {
       return;
     }
     setError(null);
-    addNote.mutate({ responseId, body, noteDate: noteDates[responseId] });
+    setSavingNoteIds((prev) => new Set(prev).add(responseId));
+    // onError reports the failure.
+    addNote
+      .mutateAsync({ responseId, body, noteDate: noteDates[responseId] })
+      .catch(() => {})
+      .finally(() => setSavingNoteIds((prev) => withoutId(prev, responseId)));
   };
 
   const handleDeleteResponse = (response: ActionPartnershipResponseDto) => {
@@ -179,7 +121,17 @@ const OutreachPartnershipsPage: React.FC = () => {
     ).add(response.id);
     setDeletingResponseIds(deletingResponseIdsRef.current);
     setError(null);
-    deleteResponse.mutate(response.id);
+    // onError reports the failure.
+    deleteResponse
+      .mutateAsync(response.id)
+      .catch(() => {})
+      .finally(() => {
+        deletingResponseIdsRef.current = withoutId(
+          deletingResponseIdsRef.current,
+          response.id,
+        );
+        setDeletingResponseIds(deletingResponseIdsRef.current);
+      });
   };
 
   return (

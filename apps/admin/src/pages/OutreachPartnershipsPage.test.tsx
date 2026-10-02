@@ -168,6 +168,11 @@ it("keeps the note and shows the refusal when the save fails", async () => {
 
   expect(await screen.findByText("Refused by the server")).toBeTruthy();
   expect(field).toHaveProperty("value", "Called them back");
+  await waitFor(() =>
+    expect(screen.getAllByRole("button", { name: "Save note" })).toHaveLength(
+      2,
+    ),
+  );
 });
 
 it("asks for a note before saving an empty one", async () => {
@@ -215,6 +220,13 @@ it("keeps the response and says so when the delete fails", async () => {
 
   expect(await screen.findByText("Failed to delete response.")).toBeTruthy();
   expect(screen.getByText("Org A")).toBeTruthy();
+
+  writeStatus = 200;
+  await waitFor(() =>
+    expect(screen.getAllByRole("button", { name: "Delete" })).toHaveLength(2),
+  );
+  await deleteFirst();
+  await waitForElementToBeRemoved(() => screen.queryByText("Org A"));
 });
 
 it("drops a response another admin already deleted", async () => {
