@@ -12,6 +12,7 @@ import {
   groupAssignmentLabels,
   groupRemovalMessage,
   isLedBy,
+  publicGroupJoinState,
 } from "@alliance/shared/lib/communityUtils";
 import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
@@ -541,25 +542,15 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
         ) : publicCommunities.length ? (
           <List>
             {publicCommunities.map((community) => {
-              const isMember = memberCommunityIds.has(community.id);
-              const isLeader = isLedBy(community, user?.id);
               const memberCount = getMemberCount(community);
-              const isFull =
-                community.maxCapacity !== null &&
-                memberCount >= community.maxCapacity;
-              const isJoining = joiningCommunityId === community.id;
-              const joinDisabled =
-                didGroupsFail || isMember || isLeader || isFull || isJoining;
-
-              const joinLabel = isLeader
-                ? "Leader"
-                : isMember
-                  ? "Member"
-                  : isFull
-                    ? "Full"
-                    : isJoining
-                      ? "Joining..."
-                      : "Join";
+              const { disabled: joinDisabled, label: joinLabel } =
+                publicGroupJoinState({
+                  community,
+                  userId: user?.id,
+                  isMember: memberCommunityIds.has(community.id),
+                  isJoining: joiningCommunityId === community.id,
+                  didGroupsFail,
+                });
 
               return (
                 <div

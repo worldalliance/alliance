@@ -2,6 +2,7 @@ import {
   groupAssignmentLabels,
   groupRemovalMessage,
   isLedBy,
+  publicGroupJoinState,
 } from "./communityUtils";
 
 describe("groupAssignmentLabels", () => {
@@ -60,5 +61,71 @@ describe("groupRemovalMessage", () => {
     ).toBe(
       "You will be removed from the following groups: (Book Club, Chess Club).",
     );
+  });
+});
+
+describe("publicGroupJoinState", () => {
+  const community = {
+    users: [{}, {}, {}],
+    leaders: [{ id: 1 }],
+    maxCapacity: 3,
+  };
+  const base = {
+    community,
+    userId: 7,
+    isMember: false,
+    isJoining: false,
+    didGroupsFail: false,
+  };
+
+  it("offers Join to an outsider while there is room", () => {
+    expect(publicGroupJoinState(base)).toEqual({
+      disabled: false,
+      label: "Join",
+    });
+  });
+
+  it("is full once members, not counting leaders, reach capacity", () => {
+    expect(
+      publicGroupJoinState({
+        ...base,
+        community: { ...community, users: [{}, {}, {}, {}] },
+      }),
+    ).toEqual({ disabled: true, label: "Full" });
+  });
+
+  it("names the leader before membership or capacity", () => {
+    expect(
+      publicGroupJoinState({
+        ...base,
+        userId: 1,
+        isMember: true,
+        community: { ...community, users: [{}, {}, {}, {}] },
+      }),
+    ).toEqual({ disabled: true, label: "Leader" });
+  });
+
+  it("names a member before capacity", () => {
+    expect(
+      publicGroupJoinState({
+        ...base,
+        isMember: true,
+        community: { ...community, users: [{}, {}, {}, {}] },
+      }),
+    ).toEqual({ disabled: true, label: "Member" });
+  });
+
+  it("disables while joining", () => {
+    expect(publicGroupJoinState({ ...base, isJoining: true })).toEqual({
+      disabled: true,
+      label: "Joining…",
+    });
+  });
+
+  it("disables Join while your groups won't load", () => {
+    expect(publicGroupJoinState({ ...base, didGroupsFail: true })).toEqual({
+      disabled: true,
+      label: "Join",
+    });
   });
 });
